@@ -23,5 +23,22 @@ Recorded before source implementation on 2026-07-20 at 20:43 PDT.
 
 ## Integrated verification
 
-Pending lane integration.
+### Full-story boundary
 
+The user creates and edits a bounded brick build through mouse, touch, or keyboard controls, frames that exact build, then enters Explore where part-aware physics and an obstruction-safe camera preserve traversal and mode continuity across supported responsive layouts.
+
+### Planned matrix
+
+| Surface | Viewport/configuration | Build checks | Explore checks |
+| --- | --- | --- | --- |
+| Desktop | 1440 x 900, desktop budget | keyboard core loop, bounds Frame All, 200-brick stress | special parts, camera obstruction, rapid mode switching |
+| iPad portrait | 820 x 1180 emulation | history reachability, budget, inspector/drawer | joystick interruption, return/toast layout |
+| iPad landscape | 1180 x 820 emulation | history reachability, orientation reaction | touch controls, continuity |
+| Phone portrait | 390 x 844 emulation | collapsed toolbar/sheet, 75-brick budget | controls and toast/return separation |
+| Phone landscape | 844 x 390 emulation | compact controls and focus | controls, continuity, orientation reaction |
+
+Viewport emulation is browser evidence only and will not be reported as real-device verification.
+
+### Results
+
+Pending lane integration.
