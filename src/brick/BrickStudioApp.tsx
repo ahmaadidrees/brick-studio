@@ -18,13 +18,23 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import BrickStudioScene from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { useBrickStore } from './store'
 import type { ViewPreset } from './types'
 import './brick-studio.css'
+
+export function requestExploreMode() {
+  const state = useBrickStore.getState()
+  if (state.bricks.length === 0) {
+    useBrickStore.setState({ toast: 'Place at least one brick before entering Explore.' })
+    return false
+  }
+  state.setMode('explore')
+  return true
+}
 
 function useBuilderShortcuts() {
   useEffect(() => {
@@ -40,7 +50,7 @@ function useBuilderShortcuts() {
       if (command && event.key.toLowerCase() === 'v') { event.preventDefault(); state.paste(); return }
       if (command && event.key.toLowerCase() === 'd') { event.preventDefault(); state.duplicate(); return }
       if (event.key === '1') state.setMode('build')
-      if (event.key === '2') state.setMode('explore')
+      if (event.key === '2') requestExploreMode()
       if (state.mode !== 'build') return
       if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
       if ((event.key === 'Enter' || event.key === ' ') && state.draft) { event.preventDefault(); state.placeDraft(); return }
@@ -100,7 +110,7 @@ function Header() {
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
         <button aria-label="Build mode" className={mode === 'build' ? 'active' : ''} onClick={() => setMode('build')}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
-        <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={() => setMode('explore')} disabled={bricks.length === 0}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
+        <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={requestExploreMode} disabled={bricks.length === 0}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
       </nav>
       <div className="brick-header-actions">
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick budget for ${budgetProfile}`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks · {budgetProfile}</i></span>
@@ -143,7 +153,7 @@ function PartLibrary() {
           onChange={(event) => selectBrick(event.target.value || null)}
           disabled={bricks.length === 0}
           aria-describedby="placed-brick-help"
-          aria-keyshortcuts="[ ]"
+          aria-keyshortcuts="BracketLeft BracketRight"
         >
           <option value="">{bricks.length ? `Choose 1 of ${bricks.length}` : 'No placed bricks'}</option>
           {bricks.map((brick, index) => (
@@ -180,6 +190,7 @@ function Inspector() {
   const paste = useBrickStore((state) => state.paste)
   const deleteSelected = useBrickStore((state) => state.deleteSelected)
   const requestView = useBrickStore((state) => state.requestView)
+  const [detailsExpanded, setDetailsExpanded] = useState(false)
   const selected = bricks.find((brick) => brick.id === selectedId)
   const moving = Boolean(movingId && draft)
   const target = moving ? draft : selected ?? draft
@@ -187,19 +198,28 @@ function Inspector() {
   const part = BRICK_PART_MAP[target.partId]
 
   return (
-    <aside className="brick-inspector">
-      <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{part.name}</h2></div></div>
-      <section><label><Palette size={15} /> Color</label><ColorPalette /></section>
-      <div className="inspector-actions">
-        <button aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
-        {selected && <button aria-label="Move brick" onClick={startMove}><Move size={18} /><span>Move</span></button>}
-        {selected && <button aria-label="Duplicate brick" onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>}
-        {selected && <button aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={18} /><span>Focus</span><kbd>F</kbd></button>}
-        {selected && <button aria-label="Copy brick" onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>}
-        {!selected && <button aria-label="Paste brick" onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>}
-        {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
+    <aside className={`brick-inspector ${detailsExpanded ? 'details-expanded' : 'details-collapsed'}`}>
+      <div className="inspector-toolbar">
+        <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{part.name}</h2></div></div>
+        <div className="inspector-quick-actions">
+          <button aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /></button>
+          {selected && <button aria-label="Move brick" onClick={startMove}><Move size={18} /></button>}
+          <button className="inspector-sheet-toggle" aria-controls="brick-inspector-properties" aria-expanded={detailsExpanded} aria-label={detailsExpanded ? 'Hide brick properties' : 'Show brick properties'} onClick={() => setDetailsExpanded((expanded) => !expanded)}><ChevronDown size={19} /></button>
+        </div>
       </div>
-      <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
+      <div className="inspector-sheet" id="brick-inspector-properties">
+        <section><label><Palette size={15} /> Color</label><ColorPalette /></section>
+        <div className="inspector-actions">
+          <button className="inspector-sheet-primary" aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
+          {selected && <button className="inspector-sheet-primary" aria-label="Move brick" onClick={startMove}><Move size={18} /><span>Move</span></button>}
+          {selected && <button aria-label="Duplicate brick" onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>}
+          {selected && <button aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={18} /><span>Focus</span><kbd>F</kbd></button>}
+          {selected && <button aria-label="Copy brick" onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>}
+          {!selected && <button aria-label="Paste brick" onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>}
+          {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
+        </div>
+        <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
+      </div>
     </aside>
   )
 }
@@ -234,6 +254,23 @@ function TouchExploreControls() {
   const setMode = useBrickStore((state) => state.setMode)
   const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
   const look = useRef<{ id: number; x: number } | null>(null)
+  const resetTouchControls = useCallback(() => {
+    joystick.current = null
+    look.current = null
+    setMove(0, 0)
+  }, [setMove])
+
+  useEffect(() => {
+    const handleBlur = () => resetTouchControls()
+    const handleVisibility = () => { if (document.visibilityState !== 'visible') resetTouchControls() }
+    window.addEventListener('blur', handleBlur)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('blur', handleBlur)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      resetTouchControls()
+    }
+  }, [resetTouchControls])
 
   return (
     <div className="explore-controls">
@@ -242,17 +279,21 @@ function TouchExploreControls() {
         onPointerDown={(event) => { look.current = { id: event.pointerId, x: event.clientX }; event.currentTarget.setPointerCapture(event.pointerId) }}
         onPointerMove={(event) => { if (look.current?.id !== event.pointerId) return; addYaw((look.current.x - event.clientX) * 0.012); look.current.x = event.clientX }}
         onPointerUp={() => { look.current = null }}
+        onPointerCancel={() => { look.current = null }}
+        onLostPointerCapture={() => { look.current = null }}
       />
       <div
         className="virtual-stick"
         role="application"
         onPointerDown={(event) => { joystick.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture(event.pointerId) }}
         onPointerMove={(event) => { if (joystick.current?.id !== event.pointerId) return; setMove(Math.max(-1, Math.min(1, (event.clientX - joystick.current.x) / 42)), Math.max(-1, Math.min(1, (event.clientY - joystick.current.y) / 42))) }}
-        onPointerUp={() => { joystick.current = null; setMove(0, 0) }}
+        onPointerUp={resetTouchControls}
+        onPointerCancel={resetTouchControls}
+        onLostPointerCapture={resetTouchControls}
         aria-label="Movement joystick"
       ><span /></div>
       <button className="jump-button" onClick={jump}>Jump</button>
-      <button className="return-build" onClick={() => setMode('build')}><Layers3 size={18} /> Return to Build</button>
+      <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>
       <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Esc</kbd> Build</span></div>
     </div>
   )

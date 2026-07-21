@@ -46,11 +46,11 @@
 .brick-mode-switch .active kbd { background: rgba(255,255,255,.18); }
 
 .brick-header-actions { justify-self: end; display: flex; align-items: center; gap: 6px; }
-.brick-header-actions > button { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid rgba(171,181,183,.38); border-radius: 12px; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); cursor: pointer; }
+.brick-header-actions > button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(171,181,183,.38); border-radius: 12px; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); cursor: pointer; }
 .brick-header-actions > button:disabled { opacity: .38; }
-.brick-count { height: 42px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border-radius: 12px; color: #586b73; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); font-size: 12px; font-weight: 900; }
+.brick-count { height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border-radius: 12px; color: #586b73; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); font-size: 12px; font-weight: 900; }
 .brick-count i { font-style: normal; }
-.rover-link { min-height: 42px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #6358b7; background: #eeecff; font-size: 11px; font-weight: 900; text-decoration: none; }
+.rover-link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #6358b7; background: #eeecff; font-size: 11px; font-weight: 900; text-decoration: none; }
 
 .part-library {
   position: absolute;
@@ -74,6 +74,11 @@
 .library-title > button { display: none; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 11px; background: #edf1f2; }
 .brick-eyebrow { display: block; color: #89969a; font-size: 9px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
 .part-grid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; overflow-y: auto; padding: 1px; }
+.placed-brick-navigator { flex: 0 0 auto; display: grid; gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e3e7e6; }
+.placed-brick-navigator label { color: #6d7e84; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.placed-brick-navigator select { width: 100%; min-height: 40px; padding: 0 30px 0 9px; border: 1px solid #cdd6d7; border-radius: 10px; color: #405961; background: #f7f9f8; font: 800 10px/1.2 inherit; }
+.placed-brick-navigator select:focus-visible { outline: 3px solid rgba(62,131,215,.4); outline-offset: 2px; }
+.placed-brick-navigator > span { color: #829094; font-size: 9px; line-height: 1.35; }
 .library-part { min-height: 83px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 7px; border: 2px solid transparent; border-radius: 14px; color: #5f7279; background: #f1f3f2; font-size: 10px; font-weight: 800; text-align: center; cursor: pointer; }
 .library-part:hover { background: #edf4fb; }
 .library-part.active { border-color: var(--studio-blue); color: #2a659f; background: #e5f1fd; }
@@ -97,8 +102,15 @@
   box-shadow: 0 18px 44px rgba(47,62,68,.14);
   backdrop-filter: blur(16px);
 }
-.inspector-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+.inspector-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.inspector-heading { min-width: 0; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+.inspector-heading > div { min-width: 0; }
+.inspector-heading h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inspector-cube { width: 39px; height: 39px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 11px; color: white; box-shadow: inset 0 -5px 0 rgba(0,0,0,.11); }
+.inspector-quick-actions { display: none; align-items: center; gap: 5px; }
+.inspector-quick-actions button { width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 11px; color: #526970; background: #eef1f1; }
+.inspector-sheet-toggle svg { transition: transform 160ms ease; }
+.details-expanded .inspector-sheet-toggle svg { transform: rotate(180deg); }
 .brick-inspector section > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: #6d7e84; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
 .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .color-grid button { aspect-ratio: 1; min-width: 27px; display: grid; place-items: center; border: 2px solid white; border-radius: 8px; color: white; box-shadow: 0 0 0 1px #d3d9da; cursor: pointer; }
@@ -145,12 +157,13 @@
 }
 
 @media (max-width: 900px) {
-  .brick-header { grid-template-columns: 1fr auto; }
-  .brick-mode-switch { grid-row: 1; grid-column: 2; }
-  .brick-header-actions { display: none; }
+  .brick-header { grid-template-columns: minmax(150px, 1fr) auto minmax(212px, 1fr); }
   .part-library { top: auto; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); left: max(10px, env(safe-area-inset-left)); width: auto; height: 168px; padding: 11px 12px; border-radius: 18px; }
   .library-title { margin-bottom: 7px; }.library-title h2 { font-size: 14px; }.library-title > button { display: grid; }.part-library.collapsed { height: 58px; }.part-library.collapsed .part-grid { display: none; }.part-library.collapsed .library-title > button { transform: rotate(180deg); }
   .part-grid { display: flex; gap: 7px; overflow-x: auto; overflow-y: hidden; padding-bottom: 3px; }
+  .placed-brick-navigator { position: absolute; top: 8px; right: 64px; width: min(180px, 40%); margin: 0; padding: 0; border: 0; }
+  .placed-brick-navigator label, .placed-brick-navigator > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .placed-brick-navigator select { min-height: 44px; }
   .library-part { min-width: 86px; min-height: 92px; }
   .brick-inspector { top: 86px; right: max(10px, env(safe-area-inset-right)); width: 218px; padding: 12px; border-radius: 16px; }
   .brick-inspector h2 { font-size: 14px; }.inspector-heading { margin-bottom: 9px; }.inspector-cube { width: 34px; height: 34px; }
@@ -162,18 +175,37 @@
   .empty-guide { top: 88px; max-width: 260px; }
 }
 
+@media (max-width: 740px) {
+  .brick-header { grid-template-columns: 1fr auto; }
+  .brick-mode-switch { grid-row: 1; grid-column: 2; }
+  .brick-header-actions { position: absolute; top: 58px; right: 0; }
+}
+
 @media (max-width: 600px) {
   .brick-header { top: max(7px, env(safe-area-inset-top)); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); height: 54px; }
   .brick-brand-mark { width: 38px; height: 38px; }.brick-brand strong { font-size: 16px; }.brick-brand span:last-child { display: none; }
   .brick-mode-switch { padding: 4px; }.brick-mode-switch button { min-width: 50px; min-height: 44px; padding: 0 9px; }.brick-mode-switch button span, .brick-mode-switch kbd { display: none; }
-  .brick-inspector { top: 68px; width: 218px; }.inspector-actions { grid-template-columns: repeat(3, 1fr); }
-  .view-controls { bottom: 182px; }.view-controls button { min-width: 38px; }.view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
+  .brick-header-actions { gap: 4px; }.brick-count { padding: 0 9px; }.brick-count i { display: none; }.rover-link { padding: 0 10px; }
+  .brick-inspector { top: auto; right: max(8px, env(safe-area-inset-right)); bottom: max(188px, calc(env(safe-area-inset-bottom) + 178px)); left: max(8px, env(safe-area-inset-left)); width: auto; max-height: calc(100% - 304px); overflow-y: auto; padding: 8px; border-radius: 16px; }
+  .inspector-toolbar { min-height: 44px; }.inspector-heading { flex: 1; margin-bottom: 0; }.inspector-heading h2 { max-width: 108px; }.inspector-cube { width: 40px; height: 40px; }
+  .inspector-quick-actions { display: flex; }.details-collapsed .inspector-sheet { display: none; }.details-expanded .inspector-sheet { padding-top: 12px; }
+  .inspector-sheet-primary { display: none !important; }.details-expanded .coordinates { display: grid; }
+  .inspector-actions { grid-template-columns: repeat(3, 1fr); }
+  .view-controls { top: 116px; bottom: auto; }.view-controls button { min-width: 38px; }.view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
   .empty-guide { display: none; }
-  .brick-toast { top: 64px; max-width: 80%; text-align: center; }
+  .brick-toast { top: max(168px, calc(env(safe-area-inset-top) + 160px)); max-width: 80%; text-align: center; }
+  .brick-mode-explore .return-build { top: max(116px, calc(env(safe-area-inset-top) + 108px)); }
+  .brick-mode-explore .brick-toast { top: max(168px, calc(env(safe-area-inset-top) + 160px)); }
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
   .part-library { left: 8px; right: auto; bottom: 8px; width: 300px; height: 138px; }.library-part { min-width: 72px; min-height: 73px; }.part-shape { width: 42px; height: 25px; }
-  .brick-inspector { top: 68px; right: 8px; transform: scale(.86); transform-origin: top right; }
-  .view-controls { bottom: 8px; left: 320px; }
+  .brick-inspector { top: 68px; right: 8px; bottom: auto; left: auto; width: 292px; max-height: calc(100% - 76px); overflow-y: auto; padding: 8px; }
+  .inspector-toolbar { min-height: 44px; }.inspector-heading { flex: 1; margin-bottom: 0; }.inspector-heading h2 { max-width: 108px; }.inspector-cube { width: 40px; height: 40px; }
+  .inspector-quick-actions { display: flex; }.details-collapsed .inspector-sheet { display: none; }.details-expanded .inspector-sheet { padding-top: 12px; }
+  .inspector-sheet-primary { display: none !important; }.details-expanded .coordinates { display: grid; }
+  .inspector-actions { grid-template-columns: repeat(3, 1fr); }
+  .view-controls { top: auto; bottom: 8px; left: 320px; }
+  .brick-mode-explore .return-build { top: 92px; }
+  .brick-mode-explore .brick-toast { top: 144px; }
 }
