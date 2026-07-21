@@ -1,5 +1,7 @@
 export type BrickMode = 'build' | 'explore'
 
+export type BrickBudgetProfile = 'desktop' | 'tablet' | 'phone'
+
 export type BrickKind = 'brick' | 'plate' | 'slope' | 'stair' | 'window' | 'door'
 
 export type BrickPart = {

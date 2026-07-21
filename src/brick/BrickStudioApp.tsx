@@ -18,8 +18,9 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import BrickStudioScene from './BrickStudioScene'
+import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { useBrickStore } from './store'
 import type { ViewPreset } from './types'
@@ -28,8 +29,10 @@ import './brick-studio.css'
 function useBuilderShortcuts() {
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement
-      if (target.matches('input, textarea, select')) return
+      const target = event.target
+      if (target instanceof HTMLElement && target.matches('input, textarea, [contenteditable="true"]')) return
+      const interactiveTarget = target instanceof HTMLElement && target.matches('select, button, a')
+      const selectionTarget = target instanceof HTMLSelectElement
       const state = useBrickStore.getState()
       const command = event.metaKey || event.ctrlKey
       if (command && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? state.redo() : state.undo(); return }
@@ -39,21 +42,43 @@ function useBuilderShortcuts() {
       if (event.key === '1') state.setMode('build')
       if (event.key === '2') state.setMode('explore')
       if (state.mode !== 'build') return
+      if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
+      if ((event.key === 'Enter' || event.key === ' ') && state.draft) { event.preventDefault(); state.placeDraft(); return }
+      if (event.key === 'Escape') { event.preventDefault(); state.cancelInteraction(); return }
+      if (event.key === '[') { event.preventDefault(); state.selectAdjacentBrick(-1); return }
+      if (event.key === ']') { event.preventDefault(); state.selectAdjacentBrick(1); return }
       if (event.key.toLowerCase() === 'r') state.rotate()
       if (event.key === 'Delete' || event.key === 'Backspace') state.deleteSelected()
-      if (event.key === 'ArrowLeft') state.nudge(-1, 0, 0)
-      if (event.key === 'ArrowRight') state.nudge(1, 0, 0)
-      if (event.key === 'ArrowUp') state.nudge(0, 0, -1)
-      if (event.key === 'ArrowDown') state.nudge(0, 0, 1)
-      if (event.key === 'PageUp') state.nudge(0, 1, 0)
-      if (event.key === 'PageDown') state.nudge(0, -1, 0)
+      if (!selectionTarget && event.key === 'ArrowLeft') { event.preventDefault(); state.nudge(-1, 0, 0) }
+      if (!selectionTarget && event.key === 'ArrowRight') { event.preventDefault(); state.nudge(1, 0, 0) }
+      if (!selectionTarget && event.key === 'ArrowUp') { event.preventDefault(); state.nudge(0, 0, -1) }
+      if (!selectionTarget && event.key === 'ArrowDown') { event.preventDefault(); state.nudge(0, 0, 1) }
+      if (!selectionTarget && event.key === 'PageUp') { event.preventDefault(); state.nudge(0, 1, 0) }
+      if (!selectionTarget && event.key === 'PageDown') { event.preventDefault(); state.nudge(0, -1, 0) }
       if (event.key.toLowerCase() === 'f') state.requestView('selection')
       if (event.key === 'Home') state.requestView('home')
-      if (event.key === 'Escape') state.selectBrick(null)
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+}
+
+function useReactiveBrickBudget() {
+  const setBudgetProfile = useBrickStore((state) => state.setBudgetProfile)
+
+  useEffect(() => {
+    const coarsePointer = window.matchMedia?.('(pointer: coarse)')
+    const updateBudget = () => setBudgetProfile(getBrickBudgetProfile(readBrickBudgetEnvironment()))
+    updateBudget()
+    window.addEventListener('resize', updateBudget)
+    window.addEventListener('orientationchange', updateBudget)
+    coarsePointer?.addEventListener?.('change', updateBudget)
+    return () => {
+      window.removeEventListener('resize', updateBudget)
+      window.removeEventListener('orientationchange', updateBudget)
+      coarsePointer?.removeEventListener?.('change', updateBudget)
+    }
+  }, [setBudgetProfile])
 }
 
 function Header() {
@@ -64,6 +89,8 @@ function Header() {
   const redo = useBrickStore((state) => state.redo)
   const undoCount = useBrickStore((state) => state.undoStack.length)
   const redoCount = useBrickStore((state) => state.redoStack.length)
+  const brickBudget = useBrickStore((state) => state.brickBudget)
+  const budgetProfile = useBrickStore((state) => state.budgetProfile)
 
   return (
     <header className="brick-header">
@@ -76,7 +103,7 @@ function Header() {
         <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={() => setMode('explore')} disabled={bricks.length === 0}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
       </nav>
       <div className="brick-header-actions">
-        <span className="brick-count"><Box size={16} /> {bricks.length}<i> bricks</i></span>
+        <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick budget for ${budgetProfile}`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks · {budgetProfile}</i></span>
         {mode === 'build' && <>
           <button onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
           <button onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
@@ -90,6 +117,9 @@ function Header() {
 function PartLibrary() {
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
+  const bricks = useBrickStore((state) => state.bricks)
+  const selectedId = useBrickStore((state) => state.selectedId)
+  const selectBrick = useBrickStore((state) => state.selectBrick)
   const [expanded, setExpanded] = useState(true)
   return (
     <aside className={`part-library ${expanded ? 'expanded' : 'collapsed'}`}>
@@ -104,6 +134,25 @@ function PartLibrary() {
             <span>{part.name}</span>
           </button>
         ))}
+      </div>
+      <div className="placed-brick-navigator">
+        <label htmlFor="placed-brick-select">Placed bricks</label>
+        <select
+          id="placed-brick-select"
+          value={selectedId ?? ''}
+          onChange={(event) => selectBrick(event.target.value || null)}
+          disabled={bricks.length === 0}
+          aria-describedby="placed-brick-help"
+          aria-keyshortcuts="[ ]"
+        >
+          <option value="">{bricks.length ? `Choose 1 of ${bricks.length}` : 'No placed bricks'}</option>
+          {bricks.map((brick, index) => (
+            <option key={brick.id} value={brick.id}>
+              {index + 1}. {BRICK_PART_MAP[brick.partId].name} — X {brick.x}, Y {brick.y}, Z {brick.z}
+            </option>
+          ))}
+        </select>
+        <span id="placed-brick-help">Use this list or [ and ] to select each placed brick.</span>
       </div>
     </aside>
   )
@@ -122,6 +171,7 @@ function ColorPalette() {
 function Inspector() {
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
+  const movingId = useBrickStore((state) => state.movingId)
   const bricks = useBrickStore((state) => state.bricks)
   const rotate = useBrickStore((state) => state.rotate)
   const startMove = useBrickStore((state) => state.startMove)
@@ -131,13 +181,14 @@ function Inspector() {
   const deleteSelected = useBrickStore((state) => state.deleteSelected)
   const requestView = useBrickStore((state) => state.requestView)
   const selected = bricks.find((brick) => brick.id === selectedId)
-  const target = selected ?? draft
+  const moving = Boolean(movingId && draft)
+  const target = moving ? draft : selected ?? draft
   if (!target) return null
   const part = BRICK_PART_MAP[target.partId]
 
   return (
     <aside className="brick-inspector">
-      <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{selected ? 'Selected brick' : 'Placing'}</span><h2>{part.name}</h2></div></div>
+      <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{part.name}</h2></div></div>
       <section><label><Palette size={15} /> Color</label><ColorPalette /></section>
       <div className="inspector-actions">
         <button aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
@@ -208,11 +259,12 @@ function TouchExploreControls() {
 }
 
 function ShortcutBar() {
-  return <div className="shortcut-bar"><span><MousePointer2 size={14} /> Click to select</span><span>Right-drag rotate view</span><span>Shift-drag pan</span><span>Scroll zoom</span><span><kbd>R</kbd> Rotate</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  return <div className="shortcut-bar"><span><MousePointer2 size={14} /> Click to select</span><span><kbd>Enter</kbd> Place</span><span><kbd>[</kbd><kbd>]</kbd> Select bricks</span><span><kbd>Esc</kbd> Cancel</span><span><kbd>R</kbd> Rotate</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
 export default function BrickStudioApp() {
   useBuilderShortcuts()
+  useReactiveBrickBudget()
   const mode = useBrickStore((state) => state.mode)
   return (
     <main className={`brick-studio brick-mode-${mode}`}>

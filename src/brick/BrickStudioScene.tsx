@@ -3,6 +3,7 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, CuboidCollider, Physics, RigidBody, useRapier, type RapierRigidBody } from '@react-three/rapier'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { getBuildBounds, getFrameDistance } from './bounds'
 import { createBrickGeometry } from './geometry'
 import { BRICK_PART_MAP, GRID_SIZE, PLATE_HEIGHT, STUD, brickWorldPosition, rotatedSize } from './parts'
 import { draftIsValid, useBrickStore } from './store'
@@ -143,30 +144,38 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
 function BuildCamera() {
   const controls = useRef<any>(null)
   const request = useBrickStore((state) => state.viewRequest)
-  const bricks = useBrickStore((state) => state.bricks)
-  const selectedId = useBrickStore((state) => state.selectedId)
-  const { camera } = useThree()
+  const { camera, size: viewportSize } = useThree()
 
   useEffect(() => {
+    const { bricks, selectedId } = useBrickStore.getState()
     const target = new THREE.Vector3(0, 0, 0)
     const selected = bricks.find((brick) => brick.id === selectedId)
+    const perspectiveCamera = camera as THREE.PerspectiveCamera
+    const frameBounds = getBuildBounds(bricks)
     if (request.preset === 'selection' && selected) {
       const position = brickWorldPosition(selected)
       target.set(position[0], position[1] + 0.5, position[2])
+    } else if (request.preset === 'home') {
+      target.fromArray(frameBounds.center)
     }
-    const distance = request.preset === 'selection' ? 6 : 24
+    const distance = request.preset === 'selection'
+      ? 6
+      : request.preset === 'home'
+        ? getFrameDistance(frameBounds, perspectiveCamera.fov, perspectiveCamera.aspect)
+        : 24
+    const homeDirection = new THREE.Vector3(14, 12, 16).normalize()
     const positions: Record<string, THREE.Vector3> = {
       top: new THREE.Vector3(target.x, distance, target.z + 0.01),
       front: new THREE.Vector3(target.x, target.y + 5, target.z + distance),
       right: new THREE.Vector3(target.x + distance, target.y + 5, target.z),
       perspective: new THREE.Vector3(target.x + 14, target.y + 12, target.z + 16),
-      home: new THREE.Vector3(14, 12, 16),
+      home: target.clone().add(homeDirection.multiplyScalar(distance)),
       selection: new THREE.Vector3(target.x + 5, target.y + 4, target.z + 6),
     }
     camera.position.copy(positions[request.preset] ?? positions.home)
     controls.current?.target.copy(target)
     controls.current?.update()
-  }, [request, bricks, selectedId, camera])
+  }, [request, camera, viewportSize.width, viewportSize.height])
 
   return (
     <OrbitControls
@@ -176,7 +185,7 @@ function BuildCamera() {
       enableDamping
       dampingFactor={0.08}
       minDistance={3}
-      maxDistance={48}
+      maxDistance={180}
       maxPolarAngle={Math.PI / 2.02}
       mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
@@ -302,7 +311,7 @@ export default function BrickStudioScene() {
     <Canvas
       shadows={!compactRenderer}
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
-      camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 120 }}
+      camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => mode === 'build' && useBrickStore.getState().selectBrick(null)}
     >
