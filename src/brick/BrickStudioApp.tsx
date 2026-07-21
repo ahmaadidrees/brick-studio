@@ -24,6 +24,7 @@ import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import { requestExploreMode } from './modeCommands'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { useBrickStore } from './store'
+import { normalizeTouchStick } from './touchInput'
 import type { ViewPreset } from './types'
 import './brick-studio.css'
 
@@ -80,6 +81,18 @@ function useReactiveBrickBudget() {
       coarsePointer?.removeEventListener?.('change', updateBudget)
     }
   }, [setBudgetProfile])
+}
+
+function useReducedMotionPreference() {
+  const setReducedMotion = useBrickStore((state) => state.setReducedMotion)
+
+  useEffect(() => {
+    const preference = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    const updatePreference = () => setReducedMotion(preference?.matches ?? false)
+    updatePreference()
+    preference?.addEventListener?.('change', updatePreference)
+    return () => preference?.removeEventListener?.('change', updatePreference)
+  }, [setReducedMotion])
 }
 
 function Header() {
@@ -243,15 +256,26 @@ function Toast() {
 
 function TouchExploreControls() {
   const setMove = useBrickStore((state) => state.setTouchMove)
-  const addYaw = useBrickStore((state) => state.addTouchYaw)
+  const addLook = useBrickStore((state) => state.addTouchLook)
   const jump = useBrickStore((state) => state.requestJump)
   const setMode = useBrickStore((state) => state.setMode)
   const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
-  const look = useRef<{ id: number; x: number } | null>(null)
+  const joystickKnob = useRef<HTMLSpanElement>(null)
+  const look = useRef<{ id: number; x: number; y: number } | null>(null)
   const resetTouchControls = useCallback(() => {
     joystick.current = null
     look.current = null
     setMove(0, 0)
+    if (joystickKnob.current) joystickKnob.current.style.transform = 'translate3d(0, 0, 0)'
+  }, [setMove])
+
+  const updateJoystick = useCallback((clientX: number, clientY: number) => {
+    if (!joystick.current) return
+    const move = normalizeTouchStick(clientX - joystick.current.x, clientY - joystick.current.y, 42)
+    setMove(move.x, move.z, move.magnitude, move.running)
+    if (joystickKnob.current) {
+      joystickKnob.current.style.transform = `translate3d(${move.x * 42}px, ${-move.z * 42}px, 0)`
+    }
   }, [setMove])
 
   useEffect(() => {
@@ -270,25 +294,33 @@ function TouchExploreControls() {
     <div className="explore-controls">
       <div
         className="look-zone"
-        onPointerDown={(event) => { look.current = { id: event.pointerId, x: event.clientX }; event.currentTarget.setPointerCapture(event.pointerId) }}
-        onPointerMove={(event) => { if (look.current?.id !== event.pointerId) return; addYaw((look.current.x - event.clientX) * 0.012); look.current.x = event.clientX }}
+        onPointerDown={(event) => { look.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture?.(event.pointerId) }}
+        onPointerMove={(event) => {
+          if (look.current?.id !== event.pointerId) return
+          addLook((look.current.x - event.clientX) * 0.012, (look.current.y - event.clientY) * 0.009)
+          look.current.x = event.clientX
+          look.current.y = event.clientY
+        }}
         onPointerUp={() => { look.current = null }}
         onPointerCancel={() => { look.current = null }}
         onLostPointerCapture={() => { look.current = null }}
+        aria-hidden="true"
       />
       <div
         className="virtual-stick"
         role="application"
-        onPointerDown={(event) => { joystick.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture(event.pointerId) }}
-        onPointerMove={(event) => { if (joystick.current?.id !== event.pointerId) return; setMove(Math.max(-1, Math.min(1, (event.clientX - joystick.current.x) / 42)), Math.max(-1, Math.min(1, (event.clientY - joystick.current.y) / 42))) }}
+        onPointerDown={(event) => { joystick.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture?.(event.pointerId); updateJoystick(event.clientX, event.clientY) }}
+        onPointerMove={(event) => { if (joystick.current?.id !== event.pointerId) return; updateJoystick(event.clientX, event.clientY) }}
         onPointerUp={resetTouchControls}
         onPointerCancel={resetTouchControls}
         onLostPointerCapture={resetTouchControls}
         aria-label="Movement joystick"
-      ><span /></div>
-      <button className="jump-button" onClick={jump}>Jump</button>
+        aria-describedby="touch-explore-hint"
+      ><span ref={joystickKnob} aria-hidden="true" /></div>
+      <button className="jump-button" onClick={jump} aria-label="Jump; tap again in the air to double jump">Jump</button>
       <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>
-      <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Space</kbd> Jump</span><span><kbd>Esc</kbd> Build</span></div>
+      <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
+      <div className="touch-explore-hint" id="touch-explore-hint">Push farther to run · Tap Jump twice in the air to flip</div>
     </div>
   )
 }
@@ -300,9 +332,11 @@ function ShortcutBar() {
 export default function BrickStudioApp() {
   useBuilderShortcuts()
   useReactiveBrickBudget()
+  useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
+  const reducedMotion = useBrickStore((state) => state.reducedMotion)
   return (
-    <main className={`brick-studio brick-mode-${mode}`}>
+    <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}`}>
       <div className="brick-canvas"><BrickStudioScene /></div>
       <Header />
       {mode === 'build' ? <><PartLibrary /><Inspector /><ViewControls /><EmptyState /><ShortcutBar /></> : <TouchExploreControls />}

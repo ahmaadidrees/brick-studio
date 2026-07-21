@@ -25,7 +25,10 @@ function resetStore(bricks: BrickInstance[] = []) {
 }
 
 beforeEach(() => resetStore())
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 describe('keyboard construction loop', () => {
   it('places with Enter/Space, cancels with Escape, and never double-acts from a button', () => {
@@ -148,9 +151,11 @@ describe('Brick Studio responsive controls', () => {
     render(<BrickStudioApp />)
     const joystick = screen.getByRole('application', { name: 'Movement joystick' })
     const expectResetAfter = (event: () => void) => {
-      useBrickStore.setState({ touchMove: { x: 0.7, z: -0.4 } })
+      useBrickStore.setState({ touchMove: { x: 0.7, z: -0.4 }, touchMoveMagnitude: 0.8, touchRunning: true })
       event()
       expect(useBrickStore.getState().touchMove).toEqual({ x: 0, z: 0 })
+      expect(useBrickStore.getState().touchMoveMagnitude).toBe(0)
+      expect(useBrickStore.getState().touchRunning).toBe(false)
     }
 
     expectResetAfter(() => fireEvent.pointerUp(joystick))
@@ -162,7 +167,7 @@ describe('Brick Studio responsive controls', () => {
     expectResetAfter(() => fireEvent(document, new Event('visibilitychange')))
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
 
-    useBrickStore.setState({ touchMove: { x: 0.7, z: -0.4 } })
+    useBrickStore.setState({ touchMove: { x: 0.7, z: -0.4 }, touchMoveMagnitude: 0.8, touchRunning: true })
     fireEvent.click(screen.getByRole('button', { name: 'Return to Build' }))
     expect(useBrickStore.getState().touchMove).toEqual({ x: 0, z: 0 })
     expect(useBrickStore.getState().mode).toBe('build')
@@ -176,5 +181,59 @@ describe('Brick Studio responsive controls', () => {
     unmount()
 
     expect(useBrickStore.getState().touchMove).toEqual({ x: 0, z: 0 })
+  })
+
+  it('publishes normalized forward movement and high-stick auto-run without a render-driven knob', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore' })
+    const { container } = render(<BrickStudioApp />)
+    const joystick = screen.getByRole('application', { name: 'Movement joystick' })
+
+    fireEvent.pointerDown(joystick, { pointerId: 7, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(joystick, { pointerId: 7, clientX: 100, clientY: 58 })
+
+    expect(useBrickStore.getState().touchMove.x).toBeCloseTo(0)
+    expect(useBrickStore.getState().touchMove.z).toBeCloseTo(1)
+    expect(useBrickStore.getState().touchMoveMagnitude).toBeCloseTo(1)
+    expect(useBrickStore.getState().touchRunning).toBe(true)
+    expect(container.querySelector<HTMLElement>('.virtual-stick span')?.style.transform).toBe('translate3d(0px, -42px, 0)')
+
+    fireEvent.pointerUp(joystick, { pointerId: 7 })
+    expect(useBrickStore.getState().touchMove).toEqual({ x: 0, z: 0 })
+  })
+
+  it('updates yaw and clamped pitch from two-axis look drag', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore', touchYaw: 0, touchPitch: 1 })
+    const { container } = render(<BrickStudioApp />)
+    const lookZone = container.querySelector<HTMLElement>('.look-zone')!
+
+    fireEvent.pointerDown(lookZone, { pointerId: 8, clientX: 200, clientY: 200 })
+    fireEvent.pointerMove(lookZone, { pointerId: 8, clientX: 180, clientY: 100 })
+
+    expect(useBrickStore.getState().touchYaw).toBeCloseTo(0.24)
+    expect(useBrickStore.getState().touchPitch).toBe(1.1)
+  })
+
+  it('reacts to reduced-motion preference without disabling touch controls', () => {
+    const addEventListener = vi.fn()
+    const removeEventListener = vi.fn()
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      onchange: null,
+      addEventListener,
+      removeEventListener,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })))
+    useBrickStore.setState({ bricks: [brick], mode: 'explore' })
+
+    const { container } = render(<BrickStudioApp />)
+
+    expect(useBrickStore.getState().reducedMotion).toBe(true)
+    expect(container.querySelector('.brick-studio')).toHaveClass('brick-reduced-motion')
+    expect(screen.getByRole('application', { name: 'Movement joystick' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' })).toBeEnabled()
+    expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function))
   })
 })

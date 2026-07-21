@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { BRICK_BUDGETS } from './budgets'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize } from './parts'
+import { clampExplorePitch } from './touchInput'
 import type { BrickBudgetProfile, BrickDraft, BrickInstance, BrickMode, ViewPreset } from './types'
 
 export const MAX_HISTORY_ENTRIES = 100
@@ -31,8 +32,12 @@ type BrickState = {
   brickBudget: number
   viewRequest: { preset: ViewPreset; nonce: number }
   touchMove: { x: number; z: number }
+  touchMoveMagnitude: number
+  touchRunning: boolean
   touchYaw: number
+  touchPitch: number
   jumpNonce: number
+  reducedMotion: boolean
   toast: string | null
   setMode: (mode: BrickMode) => void
   choosePart: (partId: string) => void
@@ -53,9 +58,11 @@ type BrickState = {
   redo: () => void
   setBudgetProfile: (profile: BrickBudgetProfile) => void
   requestView: (preset: ViewPreset) => void
-  setTouchMove: (x: number, z: number) => void
+  setTouchMove: (x: number, z: number, magnitude?: number, running?: boolean) => void
   addTouchYaw: (delta: number) => void
+  addTouchLook: (yawDelta: number, pitchDelta: number) => void
   requestJump: () => void
+  setReducedMotion: (reducedMotion: boolean) => void
   clearToast: () => void
 }
 
@@ -156,8 +163,12 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   brickBudget: BRICK_BUDGETS.desktop,
   viewRequest: { preset: 'home', nonce: 0 },
   touchMove: { x: 0, z: 0 },
+  touchMoveMagnitude: 0,
+  touchRunning: false,
   touchYaw: Math.PI,
+  touchPitch: 0.55,
   jumpNonce: 0,
+  reducedMotion: false,
   toast: 'Pick a brick, move over the plate, and tap to place it.',
 
   setMode: (mode) => set({
@@ -165,6 +176,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     selectedId: null,
     draft: mode === 'build' ? get().draft : null,
     movingId: mode === 'explore' ? null : get().movingId,
+    touchMove: { x: 0, z: 0 },
+    touchMoveMagnitude: 0,
+    touchRunning: false,
     toast: mode === 'explore' ? 'Walk around the exact world you built.' : 'Back at the build plate.',
   }),
   choosePart: (partId) => set((state) => ({
@@ -401,8 +415,17 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   },
   setBudgetProfile: (budgetProfile) => set({ budgetProfile, brickBudget: BRICK_BUDGETS[budgetProfile] }),
   requestView: (preset) => set((state) => ({ viewRequest: { preset, nonce: state.viewRequest.nonce + 1 } })),
-  setTouchMove: (x, z) => set({ touchMove: { x, z } }),
+  setTouchMove: (x, z, magnitude = Math.min(1, Math.hypot(x, z)), running = false) => set({
+    touchMove: { x, z },
+    touchMoveMagnitude: magnitude,
+    touchRunning: running,
+  }),
   addTouchYaw: (delta) => set((state) => ({ touchYaw: state.touchYaw + delta })),
+  addTouchLook: (yawDelta, pitchDelta) => set((state) => ({
+    touchYaw: state.touchYaw + yawDelta,
+    touchPitch: clampExplorePitch(state.touchPitch + pitchDelta),
+  })),
   requestJump: () => set((state) => ({ jumpNonce: state.jumpNonce + 1 })),
+  setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   clearToast: () => set({ toast: null }),
 }))

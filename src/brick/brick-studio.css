@@ -144,10 +144,12 @@
 .return-build { position: absolute; z-index: 4; top: max(92px, calc(env(safe-area-inset-top) + 76px)); left: 50%; min-height: 44px; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); padding: 0 14px; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; color: #3f5a64; background: rgba(255,255,255,.9); box-shadow: 0 8px 22px rgba(35,55,63,.14); font-size: 11px; font-weight: 900; pointer-events: auto; }
 .desktop-explore-hint { position: absolute; z-index: 3; bottom: 20px; left: 50%; display: flex; gap: 15px; transform: translateX(-50%); padding: 8px 11px; border-radius: 10px; color: #566b73; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(35,55,63,.12); font-size: 9px; font-weight: 900; }
 .desktop-explore-hint span { display: flex; align-items: center; gap: 3px; }.desktop-explore-hint kbd { min-width: 21px; height: 19px; padding: 0 4px; font-size: 8px; }
+.touch-explore-hint { position: absolute; z-index: 3; bottom: max(8px, env(safe-area-inset-bottom)); left: 50%; display: none; transform: translateX(-50%); max-width: min(360px, 58%); padding: 6px 9px; border-radius: 9px; color: white; background: rgba(35,54,62,.58); font-size: 9px; font-weight: 900; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.25); }
 
 @media (pointer: coarse), (max-width: 900px) {
   .virtual-stick, .jump-button { display: grid; }
   .desktop-explore-hint { display: none; }
+  .touch-explore-hint { display: block; }
 }
 
 @media (pointer: coarse) {
@@ -210,4 +212,9 @@
   .view-controls { top: auto; bottom: 8px; left: 320px; }
   .brick-mode-explore .return-build { top: 92px; }
   .brick-mode-explore .brick-toast { top: 144px; }
+  .touch-explore-hint { bottom: max(4px, env(safe-area-inset-bottom)); max-width: 42%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brick-studio *, .brick-studio *::before, .brick-studio *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
