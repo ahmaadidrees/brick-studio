@@ -50,6 +50,17 @@ describe('keyboard construction loop', () => {
     expect(useBrickStore.getState().draft).toBeNull()
   })
 
+  it('offers a semantic Place action after keyboard part selection', () => {
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByTitle('Door Frame'))
+    expect(screen.getAllByRole('button', { name: 'Place brick' })).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Place brick' })[0])
+
+    expect(useBrickStore.getState().bricks[0]?.partId).toBe('door_1x4')
+    expect(useBrickStore.getState().draft).toBeNull()
+  })
+
   it('selects semantically, keeps arrows native in the selector, and still supports edit/delete/undo', () => {
     const bricks: BrickInstance[] = [
       { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },

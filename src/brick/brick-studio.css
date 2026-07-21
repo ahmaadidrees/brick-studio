@@ -46,11 +46,11 @@
 .brick-mode-switch .active kbd { background: rgba(255,255,255,.18); }
 
 .brick-header-actions { justify-self: end; display: flex; align-items: center; gap: 6px; }
-.brick-header-actions > button { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(171,181,183,.38); border-radius: 12px; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); cursor: pointer; }
+.brick-header-actions > button { width: 44px; height: 44px; display: grid; place-items: center; flex: 0 0 44px; border: 1px solid rgba(171,181,183,.38); border-radius: 12px; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); cursor: pointer; }
 .brick-header-actions > button:disabled { opacity: .38; }
-.brick-count { height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border-radius: 12px; color: #586b73; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); font-size: 12px; font-weight: 900; }
+.brick-count { height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border-radius: 12px; color: #586b73; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); font-size: 12px; font-weight: 900; white-space: nowrap; }
 .brick-count i { font-style: normal; }
-.rover-link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #6358b7; background: #eeecff; font-size: 11px; font-weight: 900; text-decoration: none; }
+.rover-link { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 12px; color: #6358b7; background: #eeecff; font-size: 11px; font-weight: 900; text-decoration: none; white-space: nowrap; }
 
 .part-library {
   position: absolute;
@@ -132,6 +132,7 @@
 .empty-guide svg { color: var(--studio-blue); flex: 0 0 auto; }
 .empty-guide div { display: flex; flex-direction: column; }.empty-guide strong { font-size: 12px; }.empty-guide span { margin-top: 2px; font-size: 10px; }
 .brick-toast { position: absolute; z-index: 50; top: 84px; left: 50%; transform: translateX(-50%); padding: 9px 13px; border-radius: 11px; color: #4f686f; background: rgba(255,255,255,.95); box-shadow: 0 8px 22px rgba(47,62,68,.13); font-size: 11px; font-weight: 900; pointer-events: none; }
+.brick-mode-explore .brick-toast { top: 144px; }
 .shortcut-bar { position: absolute; z-index: 10; right: 280px; bottom: 12px; left: 280px; display: flex; justify-content: center; gap: 15px; color: #6f7e83; font-size: 9px; font-weight: 800; pointer-events: none; }
 .shortcut-bar span { display: flex; align-items: center; gap: 4px; }.shortcut-bar kbd { min-width: 20px; height: 19px; padding: 0 4px; font-size: 8px; }
 
@@ -157,7 +158,7 @@
 }
 
 @media (max-width: 900px) {
-  .brick-header { grid-template-columns: minmax(150px, 1fr) auto minmax(212px, 1fr); }
+  .brick-header { grid-template-columns: minmax(150px, 1fr) auto minmax(300px, 1fr); }
   .part-library { top: auto; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); left: max(10px, env(safe-area-inset-left)); width: auto; height: 168px; padding: 11px 12px; border-radius: 18px; }
   .library-title { margin-bottom: 7px; }.library-title h2 { font-size: 14px; }.library-title > button { display: grid; }.part-library.collapsed { height: 58px; }.part-library.collapsed .part-grid { display: none; }.part-library.collapsed .library-title > button { transform: rotate(180deg); }
   .part-grid { display: flex; gap: 7px; overflow-x: auto; overflow-y: hidden; padding-bottom: 3px; }
@@ -199,6 +200,7 @@
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
+  .brick-count i { display: none; }
   .part-library { left: 8px; right: auto; bottom: 8px; width: 300px; height: 138px; }.library-part { min-width: 72px; min-height: 73px; }.part-shape { width: 42px; height: 25px; }
   .brick-inspector { top: 68px; right: 8px; bottom: auto; left: auto; width: 292px; max-height: calc(100% - 76px); overflow-y: auto; padding: 8px; }
   .inspector-toolbar { min-height: 44px; }.inspector-heading { flex: 1; margin-bottom: 0; }.inspector-heading h2 { max-width: 108px; }.inspector-cube { width: 40px; height: 40px; }

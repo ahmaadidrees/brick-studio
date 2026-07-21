@@ -21,20 +21,11 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import BrickStudioScene from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
+import { requestExploreMode } from './modeCommands'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { useBrickStore } from './store'
 import type { ViewPreset } from './types'
 import './brick-studio.css'
-
-export function requestExploreMode() {
-  const state = useBrickStore.getState()
-  if (state.bricks.length === 0) {
-    useBrickStore.setState({ toast: 'Place at least one brick before entering Explore.' })
-    return false
-  }
-  state.setMode('explore')
-  return true
-}
 
 function useBuilderShortcuts() {
   useEffect(() => {
@@ -49,8 +40,8 @@ function useBuilderShortcuts() {
       if (command && event.key.toLowerCase() === 'c') { event.preventDefault(); state.copy(); return }
       if (command && event.key.toLowerCase() === 'v') { event.preventDefault(); state.paste(); return }
       if (command && event.key.toLowerCase() === 'd') { event.preventDefault(); state.duplicate(); return }
-      if (event.key === '1') state.setMode('build')
-      if (event.key === '2') requestExploreMode()
+      if (event.key === '1') { state.setMode('build'); return }
+      if (event.key === '2') { requestExploreMode(); return }
       if (state.mode !== 'build') return
       if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
       if ((event.key === 'Enter' || event.key === ' ') && state.draft) { event.preventDefault(); state.placeDraft(); return }
@@ -188,6 +179,7 @@ function Inspector() {
   const duplicate = useBrickStore((state) => state.duplicate)
   const copy = useBrickStore((state) => state.copy)
   const paste = useBrickStore((state) => state.paste)
+  const placeDraft = useBrickStore((state) => state.placeDraft)
   const deleteSelected = useBrickStore((state) => state.deleteSelected)
   const requestView = useBrickStore((state) => state.requestView)
   const [detailsExpanded, setDetailsExpanded] = useState(false)
@@ -202,6 +194,7 @@ function Inspector() {
       <div className="inspector-toolbar">
         <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{part.name}</h2></div></div>
         <div className="inspector-quick-actions">
+          {draft && <button aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /></button>}
           <button aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /></button>
           {selected && <button aria-label="Move brick" onClick={startMove}><Move size={18} /></button>}
           <button className="inspector-sheet-toggle" aria-controls="brick-inspector-properties" aria-expanded={detailsExpanded} aria-label={detailsExpanded ? 'Hide brick properties' : 'Show brick properties'} onClick={() => setDetailsExpanded((expanded) => !expanded)}><ChevronDown size={19} /></button>
@@ -210,6 +203,7 @@ function Inspector() {
       <div className="inspector-sheet" id="brick-inspector-properties">
         <section><label><Palette size={15} /> Color</label><ColorPalette /></section>
         <div className="inspector-actions">
+          {draft && <button className="inspector-sheet-primary" aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /><span>{moving ? 'Place move' : 'Place'}</span><kbd>Enter</kbd></button>}
           <button className="inspector-sheet-primary" aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
           {selected && <button className="inspector-sheet-primary" aria-label="Move brick" onClick={startMove}><Move size={18} /><span>Move</span></button>}
           {selected && <button aria-label="Duplicate brick" onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>}

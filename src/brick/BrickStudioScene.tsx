@@ -17,6 +17,7 @@ import {
   type PhysicalShape,
 } from './parts'
 import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
+import { usesCompactRenderer } from './rendererQuality'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
@@ -379,9 +380,29 @@ function ExploreScene() {
   )
 }
 
+function readCompactRenderer() {
+  return usesCompactRenderer(window.innerWidth, window.innerHeight)
+}
+
+function useCompactRenderer() {
+  const [compactRenderer, setCompactRenderer] = useState(readCompactRenderer)
+
+  useEffect(() => {
+    const updateRenderer = () => setCompactRenderer(readCompactRenderer())
+    window.addEventListener('resize', updateRenderer)
+    window.addEventListener('orientationchange', updateRenderer)
+    return () => {
+      window.removeEventListener('resize', updateRenderer)
+      window.removeEventListener('orientationchange', updateRenderer)
+    }
+  }, [])
+
+  return compactRenderer
+}
+
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
-  const compactRenderer = window.innerWidth < 600
+  const compactRenderer = useCompactRenderer()
   return (
     <Canvas
       shadows={!compactRenderer}
