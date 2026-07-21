@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
-import { PLATE_HEIGHT, STUD } from './parts'
+import { DOOR_FRAME_MEMBER, PLATE_HEIGHT, STUD, WINDOW_FRAME_MEMBER } from './parts'
 import type { BrickPart } from './types'
 
 const geometryCache = new Map<string, THREE.BufferGeometry>()
@@ -21,15 +21,15 @@ export function createBrickGeometry(part: BrickPart) {
   const geometries: THREE.BufferGeometry[] = []
 
   if (part.kind === 'window') {
-    const frame = 0.13
+    const frame = WINDOW_FRAME_MEMBER
     geometries.push(box(width, frame, depth, 0, frame / 2, 0))
     geometries.push(box(width, frame, depth, 0, height - frame / 2, 0))
-    geometries.push(box(frame, height - frame * 2, depth, -width / 2 + frame / 2, height / 2, 0))
-    geometries.push(box(frame, height - frame * 2, depth, width / 2 - frame / 2, height / 2, 0))
+    geometries.push(box(width, height - frame * 2, frame, 0, height / 2, -depth / 2 + frame / 2))
+    geometries.push(box(width, height - frame * 2, frame, 0, height / 2, depth / 2 - frame / 2))
   } else if (part.kind === 'door') {
-    const frame = 0.16
-    geometries.push(box(frame, height, depth, -width / 2 + frame / 2, height / 2, 0))
-    geometries.push(box(frame, height, depth, width / 2 - frame / 2, height / 2, 0))
+    const frame = DOOR_FRAME_MEMBER
+    geometries.push(box(width, height, frame, 0, height / 2, -depth / 2 + frame / 2))
+    geometries.push(box(width, height, frame, 0, height / 2, depth / 2 - frame / 2))
     geometries.push(box(width, frame, depth, 0, height - frame / 2, 0))
   } else if (part.kind === 'stair') {
     for (let step = 0; step < part.depth; step += 1) {

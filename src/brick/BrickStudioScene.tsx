@@ -1,15 +1,27 @@
 import { Edges, OrbitControls, RoundedBox } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
-import { CapsuleCollider, CuboidCollider, Physics, RigidBody, useRapier, type RapierRigidBody } from '@react-three/rapier'
-import { useEffect, useMemo, useRef } from 'react'
+import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierRigidBody } from '@react-three/rapier'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { getBuildBounds, getFrameDistance } from './bounds'
 import { createBrickGeometry } from './geometry'
-import { BRICK_PART_MAP, GRID_SIZE, PLATE_HEIGHT, STUD, brickWorldPosition, rotatedSize } from './parts'
+import {
+  BRICK_PART_MAP,
+  EXPLORER_CAPSULE_HALF_HEIGHT,
+  EXPLORER_CAPSULE_RADIUS,
+  GRID_SIZE,
+  STUD,
+  brickPhysicalShapes,
+  brickWorldPosition,
+  rotatedSize,
+  type PhysicalShape,
+} from './parts'
+import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
 const gridWorldSize = GRID_SIZE * STUD
+const PART_COLLIDER_FRICTION = 0.5
 
 function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) {
   const part = BRICK_PART_MAP[draft.partId]
@@ -211,16 +223,37 @@ function BuildScene() {
   )
 }
 
+function PhysicalCollider({ shape }: { shape: PhysicalShape }) {
+  if (shape.shape === 'convexHull') {
+    return <ConvexHullCollider args={[shape.vertices.flat()]} friction={PART_COLLIDER_FRICTION} />
+  }
+  if (shape.shape === 'roundCuboid') {
+    const { borderRadius } = shape
+    return (
+      <RoundCuboidCollider
+        args={[
+          shape.halfExtents[0] - borderRadius,
+          shape.halfExtents[1] - borderRadius,
+          shape.halfExtents[2] - borderRadius,
+          borderRadius,
+        ]}
+        position={shape.center}
+        friction={PART_COLLIDER_FRICTION}
+      />
+    )
+  }
+  return <CuboidCollider args={shape.halfExtents} position={shape.center} friction={PART_COLLIDER_FRICTION} />
+}
+
 function BrickCollider({ brick }: { brick: BrickInstance }) {
-  const part = BRICK_PART_MAP[brick.partId]
-  const size = rotatedSize(part, brick.rotation)
-  const position = brickWorldPosition(brick)
-  const height = part.height * PLATE_HEIGHT
+  const shapes = useMemo(() => brickPhysicalShapes(brick), [brick])
   return (
-    <RigidBody type="fixed" colliders={false}>
-      <CuboidCollider args={[size.width * STUD / 2 - 0.02, height / 2, size.depth * STUD / 2 - 0.02]} position={[position[0], position[1] + height / 2, position[2]]} />
+    <>
+      <RigidBody type="fixed" colliders={false}>
+        {shapes.map((shape, index) => <PhysicalCollider key={index} shape={shape} />)}
+      </RigidBody>
       <BrickObject brick={brick} explore />
-    </RigidBody>
+    </>
   )
 }
 
@@ -236,6 +269,8 @@ function ExplorerAvatar() {
   const setMode = useBrickStore((state) => state.setMode)
   const { world, rapier } = useRapier()
   const { camera } = useThree()
+  const cameraProbe = useMemo(() => new rapier.Ball(CAMERA_PROBE_RADIUS), [rapier])
+  const boomDistance = useRef<number | null>(null)
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -264,7 +299,8 @@ function ExplorerAvatar() {
     if (input.lengthSq() > 0.02 && visual.current) visual.current.rotation.y = Math.atan2(move.x, move.z)
     const position = body.current.translation()
     const ray = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 })
-    const grounded = Boolean(world.castRay(ray, 0.95, true, undefined, undefined, undefined, body.current))
+    const groundedDistance = EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.12
+    const grounded = Boolean(world.castRay(ray, groundedDistance, true, undefined, undefined, undefined, body.current))
     const wantsJump = keys.current.has(' ') || jumpNonce !== lastJump.current
     if (wantsJump && grounded) {
       body.current.setLinvel({ x: move.x, y: 5, z: move.z }, true)
@@ -274,20 +310,59 @@ function ExplorerAvatar() {
 
     const target = new THREE.Vector3(position.x, position.y + 0.45, position.z)
     const desired = target.clone().add(new THREE.Vector3(-Math.sin(yaw.current) * 5.2, 3.2, -Math.cos(yaw.current) * 5.2))
-    camera.position.lerp(desired, 1 - Math.pow(0.002, delta))
+    const boom = desired.clone().sub(target)
+    const desiredDistance = boom.length()
+    const direction = boom.normalize()
+    const obstruction = world.castShape(
+      target,
+      { x: 0, y: 0, z: 0, w: 1 },
+      direction,
+      cameraProbe,
+      CAMERA_SURFACE_PADDING,
+      desiredDistance,
+      true,
+      undefined,
+      undefined,
+      undefined,
+      body.current,
+    )
+    boomDistance.current = resolveCameraBoomDistance(
+      boomDistance.current,
+      desiredDistance,
+      obstruction?.time_of_impact ?? null,
+      delta,
+    )
+    const resolved = target.clone().addScaledVector(direction, boomDistance.current)
+    if (obstruction) camera.position.copy(resolved)
+    else camera.position.lerp(resolved, 1 - Math.pow(0.002, delta))
     camera.lookAt(target)
   })
 
   return (
-    <RigidBody ref={body} colliders={false} position={[0, 2.2, 5]} enabledRotations={[false, false, false]} linearDamping={4}>
-      <CapsuleCollider args={[0.42, 0.28]} friction={0.2} />
-      <group ref={visual} position={[0, -0.7, 0]}>
+    <RigidBody ref={body} colliders={false} position={[0, 2.2, 5]} enabledRotations={[false, false, false]} linearDamping={4} ccd>
+      <CapsuleCollider args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
+      <group ref={visual} position={[0, -0.3, 0]} scale={0.4}>
         <RoundedBox args={[0.58, 0.7, 0.42]} radius={0.1} smoothness={3} position={[0, 0.72, 0]} castShadow><meshStandardMaterial color="#ef6f54" /></RoundedBox>
         <RoundedBox args={[0.62, 0.58, 0.5]} radius={0.13} smoothness={3} position={[0, 1.35, 0]} castShadow><meshStandardMaterial color="#f2c37f" /></RoundedBox>
         {[-0.19, 0.19].map((x) => <RoundedBox key={x} args={[0.2, 0.52, 0.22]} radius={0.06} smoothness={2} position={[x, 0.12, 0]} castShadow><meshStandardMaterial color="#356c89" /></RoundedBox>)}
       </group>
     </RigidBody>
   )
+}
+
+function PhysicsPreload() {
+  const [preload, setPreload] = useState(false)
+
+  useEffect(() => {
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(() => setPreload(true), { timeout: 1500 })
+      return () => window.cancelIdleCallback(idleId)
+    }
+    const timeoutId = globalThis.setTimeout(() => setPreload(true), 250)
+    return () => globalThis.clearTimeout(timeoutId)
+  }, [])
+
+  return preload ? <Physics paused>{null}</Physics> : null
 }
 
 function ExploreScene() {
@@ -320,7 +395,9 @@ export default function BrickStudioScene() {
       <ambientLight intensity={1.35} />
       <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
       <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
-      {mode === 'build' ? <BuildScene /> : <ExploreScene />}
+      {mode === 'build'
+        ? <><BuildScene /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
+        : <Suspense fallback={null}><ExploreScene /></Suspense>}
     </Canvas>
   )
 }
