@@ -1,10 +1,29 @@
-import { Edges, OrbitControls, RoundedBox } from '@react-three/drei'
+import { Edges, OrbitControls } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
-import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierRigidBody } from '@react-three/rapier'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
+import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { BlockAvatar } from './BlockAvatar'
+import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds, getFrameDistance } from './bounds'
+import {
+  CHARACTER_FIXED_STEP,
+  CHARACTER_CONTROLLER_OFFSET,
+  accumulateCharacterTranslation,
+  applyKinematicCharacterStep,
+  bufferCharacterJump,
+  configureKinematicCharacterController,
+  consumeCharacterFixedSteps,
+  createCharacterMotionState,
+  createCharacterStepResult,
+  createFixedStepClock,
+  resetCharacterFrameTranslation,
+  stepCharacterMotion,
+} from './characterController'
+import { cameraRelativeMove, combineMoveAxes, readKeyboardMove } from './characterInput'
 import { createBrickGeometry } from './geometry'
+import { clampPitch, computeOrbitBoom, createOrbitState, stepOrbit } from './orbitCamera'
 import {
   BRICK_PART_MAP,
   EXPLORER_CAPSULE_HALF_HEIGHT,
@@ -260,13 +279,28 @@ function BrickCollider({ brick }: { brick: BrickInstance }) {
 
 function ExplorerAvatar() {
   const body = useRef<RapierRigidBody>(null)
-  const visual = useRef<THREE.Group>(null)
+  const collider = useRef<RapierCollider>(null)
+  const controller = useRef<KinematicCharacterController | null>(null)
   const keys = useRef(new Set<string>())
-  const yaw = useRef(Math.PI)
-  const lastJump = useRef(0)
-  const touchMove = useBrickStore((state) => state.touchMove)
-  const touchYaw = useBrickStore((state) => state.touchYaw)
-  const jumpNonce = useBrickStore((state) => state.jumpNonce)
+  const lastTouchJump = useRef(useBrickStore.getState().jumpNonce)
+  const observedGrounded = useRef(false)
+  const character = useRef(createCharacterMotionState(false))
+  const characterStep = useRef(createCharacterStepResult())
+  const fixedClock = useRef(createFixedStepClock())
+  const keyboardMove = useRef({ x: 0, z: 0 })
+  const combinedMove = useRef({ x: 0, z: 0 })
+  const worldMove = useRef({ x: 0, z: 0 })
+  const motionInput = useRef({ worldX: 0, worldZ: 0, running: false })
+  const frameTranslation = useRef({ x: 0, y: 0, z: 0 })
+  const nextPosition = useRef({ x: 0, y: 0, z: 0 })
+  const motion = useRef(createMotionSnapshot({ grounded: false, facingYaw: Math.PI }))
+  const orbit = useRef(createOrbitState())
+  const orbitBoom = useRef(new THREE.Vector3())
+  const cameraTarget = useRef(new THREE.Vector3())
+  const cameraDirection = useRef(new THREE.Vector3())
+  const resolvedCamera = useRef(new THREE.Vector3())
+  const cameraRotation = useRef({ x: 0, y: 0, z: 0, w: 1 })
+  const reducedMotion = useBrickStore((state) => state.reducedMotion)
   const setMode = useBrickStore((state) => state.setMode)
   const { world, rapier } = useRapier()
   const { camera } = useThree()
@@ -275,48 +309,118 @@ function ExplorerAvatar() {
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
-      keys.current.add(event.key.toLowerCase())
-      if (event.key === 'Escape') setMode('build')
+      const key = event.key.toLowerCase()
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' '].includes(key)) {
+        event.preventDefault()
+        keys.current.add(key)
+      }
+      if (key === ' ' && !event.repeat) bufferCharacterJump(character.current)
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMode('build')
+      }
     }
     const up = (event: KeyboardEvent) => keys.current.delete(event.key.toLowerCase())
+    const clearKeys = () => keys.current.clear()
+    const visibility = () => { if (document.visibilityState !== 'visible') clearKeys() }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+    window.addEventListener('blur', clearKeys)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', clearKeys)
+      document.removeEventListener('visibilitychange', visibility)
+      clearKeys()
+    }
   }, [setMode])
+
+  useEffect(() => {
+    const nextController = configureKinematicCharacterController(
+      world.createCharacterController(CHARACTER_CONTROLLER_OFFSET),
+    )
+    controller.current = nextController
+    return () => {
+      controller.current = null
+      world.removeCharacterController(nextController)
+    }
+  }, [world])
+
+  const advanceFixedStep = useCallback((delta: number) => {
+    const result = stepCharacterMotion(
+      character.current,
+      motionInput.current,
+      observedGrounded.current,
+      delta,
+      characterStep.current,
+    )
+    accumulateCharacterTranslation(frameTranslation.current, result)
+
+    const snapshot = motion.current
+    snapshot.grounded = result.grounded
+    snapshot.horizontalSpeed = result.horizontalSpeed
+    snapshot.maxSpeed = result.maxSpeed
+    snapshot.verticalVelocity = result.verticalVelocity
+    snapshot.facingYaw = result.facingYaw
+    snapshot.acceleration = THREE.MathUtils.clamp(result.acceleration / 12, -1, 1)
+    snapshot.turnSignal = THREE.MathUtils.clamp(result.turn / 6, -1, 1)
+    if (result.jump) snapshot.jumpSequence += 1
+    if (result.jump === 'air') snapshot.flipSequence += 1
+    if (result.landed) {
+      snapshot.landSequence += 1
+      snapshot.impact = result.impact
+    }
+  }, [])
+
+  useFrame((_, delta) => {
+    if (!body.current || !collider.current || !controller.current) return
+    const store = useBrickStore.getState()
+    if (store.jumpNonce !== lastTouchJump.current) {
+      bufferCharacterJump(character.current)
+      lastTouchJump.current = store.jumpNonce
+    }
+
+    readKeyboardMove(keys.current, keyboardMove.current)
+    combineMoveAxes(keyboardMove.current, store.touchMove, combinedMove.current)
+    cameraRelativeMove(
+      combinedMove.current.x,
+      combinedMove.current.z,
+      orbit.current.yaw,
+      worldMove.current,
+    )
+    motionInput.current.worldX = worldMove.current.x
+    motionInput.current.worldZ = worldMove.current.z
+    motionInput.current.running = keys.current.has('shift') || store.touchRunning
+
+    resetCharacterFrameTranslation(frameTranslation.current)
+    const steps = consumeCharacterFixedSteps(fixedClock.current, delta, advanceFixedStep)
+    if (steps > 0) {
+      observedGrounded.current = applyKinematicCharacterStep(
+        controller.current,
+        collider.current,
+        body.current,
+        frameTranslation.current,
+        nextPosition.current,
+      )
+    }
+  }, -1)
 
   useFrame((_, delta) => {
     if (!body.current) return
-    yaw.current = touchYaw
-    const keyboardX = Number(keys.current.has('d') || keys.current.has('arrowright')) - Number(keys.current.has('a') || keys.current.has('arrowleft'))
-    const keyboardZ = Number(keys.current.has('s') || keys.current.has('arrowdown')) - Number(keys.current.has('w') || keys.current.has('arrowup'))
-    const input = new THREE.Vector2(keyboardX + touchMove.x, keyboardZ + touchMove.z)
-    if (input.length() > 1) input.normalize()
-    const forward = new THREE.Vector3(Math.sin(yaw.current), 0, Math.cos(yaw.current))
-    const right = new THREE.Vector3(forward.z, 0, -forward.x)
-    const move = forward.multiplyScalar(input.y).add(right.multiplyScalar(input.x)).multiplyScalar(3.5)
-    const velocity = body.current.linvel()
-    body.current.setLinvel({ x: move.x, y: velocity.y, z: move.z }, true)
+    const store = useBrickStore.getState()
+    orbit.current.targetYaw = store.touchYaw
+    orbit.current.targetPitch = clampPitch(store.touchPitch)
+    stepOrbit(orbit.current, delta, store.reducedMotion ? 24 : undefined)
 
-    if (input.lengthSq() > 0.02 && visual.current) visual.current.rotation.y = Math.atan2(move.x, move.z)
     const position = body.current.translation()
-    const ray = new rapier.Ray({ x: position.x, y: position.y, z: position.z }, { x: 0, y: -1, z: 0 })
-    const groundedDistance = EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.12
-    const grounded = Boolean(world.castRay(ray, groundedDistance, true, undefined, undefined, undefined, body.current))
-    const wantsJump = keys.current.has(' ') || jumpNonce !== lastJump.current
-    if (wantsJump && grounded) {
-      body.current.setLinvel({ x: move.x, y: 5, z: move.z }, true)
-      keys.current.delete(' ')
-      lastJump.current = jumpNonce
-    }
-
-    const target = new THREE.Vector3(position.x, position.y + 0.45, position.z)
-    const desired = target.clone().add(new THREE.Vector3(-Math.sin(yaw.current) * 5.2, 3.2, -Math.cos(yaw.current) * 5.2))
-    const boom = desired.clone().sub(target)
-    const desiredDistance = boom.length()
-    const direction = boom.normalize()
+    const target = cameraTarget.current.set(position.x, position.y + 0.52, position.z)
+    const desiredDistance = 6.1
+    const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
+    const direction = cameraDirection.current.copy(boom).normalize()
     const obstruction = world.castShape(
       target,
-      { x: 0, y: 0, z: 0, w: 1 },
+      cameraRotation.current,
       direction,
       cameraProbe,
       CAMERA_SURFACE_PADDING,
@@ -331,22 +435,25 @@ function ExplorerAvatar() {
       boomDistance.current,
       desiredDistance,
       obstruction?.time_of_impact ?? null,
-      delta,
+      Math.min(delta, 0.05),
     )
-    const resolved = target.clone().addScaledVector(direction, boomDistance.current)
-    if (obstruction) camera.position.copy(resolved)
-    else camera.position.lerp(resolved, 1 - Math.pow(0.002, delta))
+    const resolved = resolvedCamera.current.copy(target).addScaledVector(direction, boomDistance.current)
+    camera.position.copy(resolved)
+    camera.up.set(0, 1, 0)
     camera.lookAt(target)
-  })
+  }, 0)
 
   return (
-    <RigidBody ref={body} colliders={false} position={[0, 2.2, 5]} enabledRotations={[false, false, false]} linearDamping={4} ccd>
-      <CapsuleCollider args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
-      <group ref={visual} position={[0, -0.3, 0]} scale={0.4}>
-        <RoundedBox args={[0.58, 0.7, 0.42]} radius={0.1} smoothness={3} position={[0, 0.72, 0]} castShadow><meshStandardMaterial color="#ef6f54" /></RoundedBox>
-        <RoundedBox args={[0.62, 0.58, 0.5]} radius={0.13} smoothness={3} position={[0, 1.35, 0]} castShadow><meshStandardMaterial color="#f2c37f" /></RoundedBox>
-        {[-0.19, 0.19].map((x) => <RoundedBox key={x} args={[0.2, 0.52, 0.22]} radius={0.06} smoothness={2} position={[x, 0.12, 0]} castShadow><meshStandardMaterial color="#356c89" /></RoundedBox>)}
-      </group>
+    <RigidBody
+      ref={body}
+      type="kinematicPosition"
+      colliders={false}
+      position={[0, EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.03, 5]}
+      enabledRotations={[false, false, false]}
+      ccd
+    >
+      <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
+      <BlockAvatar motion={motion} reducedMotion={reducedMotion} />
     </RigidBody>
   )
 }
@@ -369,7 +476,7 @@ function PhysicsPreload() {
 function ExploreScene() {
   const bricks = useBrickStore((state) => state.bricks)
   return (
-    <Physics gravity={[0, -9.81, 0]} timeStep="vary">
+    <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
         <Baseplate explore />

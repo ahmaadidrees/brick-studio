@@ -1,7 +1,9 @@
+import { ORBIT_MAX_PITCH, ORBIT_MIN_PITCH } from './orbitCamera'
+
 export const TOUCH_STICK_DEAD_ZONE = 0.12
 export const TOUCH_AUTO_RUN_THRESHOLD = 0.82
-export const EXPLORE_MIN_PITCH = -0.2
-export const EXPLORE_MAX_PITCH = 1.1
+export const EXPLORE_MIN_PITCH = ORBIT_MIN_PITCH
+export const EXPLORE_MAX_PITCH = ORBIT_MAX_PITCH
 
 export type NormalizedTouchMove = {
   x: number

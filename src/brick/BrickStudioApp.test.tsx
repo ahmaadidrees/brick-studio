@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { useBrickStore } from './store'
+import { EXPLORE_MAX_PITCH } from './touchInput'
 import type { BrickInstance } from './types'
 
 vi.mock('./BrickStudioScene', () => ({
@@ -210,7 +211,7 @@ describe('Brick Studio responsive controls', () => {
     fireEvent.pointerMove(lookZone, { pointerId: 8, clientX: 180, clientY: 100 })
 
     expect(useBrickStore.getState().touchYaw).toBeCloseTo(0.24)
-    expect(useBrickStore.getState().touchPitch).toBe(1.1)
+    expect(useBrickStore.getState().touchPitch).toBe(EXPLORE_MAX_PITCH)
   })
 
   it('reacts to reduced-motion preference without disabling touch controls', () => {
