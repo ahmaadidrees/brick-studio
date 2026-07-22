@@ -46,7 +46,13 @@ function useBuilderShortcuts() {
       if (state.mode !== 'build') return
       if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
       if ((event.key === 'Enter' || event.key === ' ') && state.draft) { event.preventDefault(); state.placeDraft(); return }
-      if (event.key === 'Escape') { event.preventDefault(); state.cancelInteraction(); return }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        if (state.draft) state.cancelInteraction()
+        else state.clearSelection()
+        if (state.selectionMode) state.setSelectionMode(false)
+        return
+      }
       if (event.key === '[') { event.preventDefault(); state.selectAdjacentBrick(-1); return }
       if (event.key === ']') { event.preventDefault(); state.selectAdjacentBrick(1); return }
       if (event.key.toLowerCase() === 'r') state.rotate()
@@ -183,6 +189,7 @@ function ColorPalette() {
 }
 
 function Inspector() {
+  const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
@@ -196,9 +203,26 @@ function Inspector() {
   const deleteSelected = useBrickStore((state) => state.deleteSelected)
   const requestView = useBrickStore((state) => state.requestView)
   const [detailsExpanded, setDetailsExpanded] = useState(false)
-  const selected = bricks.find((brick) => brick.id === selectedId)
+  const selected = selectedIds.length > 1 ? undefined : bricks.find((brick) => brick.id === selectedId)
   const moving = Boolean(movingId && draft)
   const target = moving ? draft : selected ?? draft
+  if (selectedIds.length > 1 && !draft) {
+    return (
+      <aside className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
+        <div className="inspector-heading">
+          <span className="inspector-cube multi-selection-cube"><Layers3 size={19} /></span>
+          <div><span className="brick-eyebrow">Selection</span><h2>{selectedIds.length} bricks selected</h2></div>
+        </div>
+        <p>Bulk actions preserve every brick's spacing, color, rotation, and part.</p>
+        <div className="inspector-actions multi-selection-actions">
+          <button aria-label={`Copy ${selectedIds.length} selected bricks`} onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>
+          <button aria-label={`Paste copied bricks`} onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>
+          <button aria-label={`Duplicate ${selectedIds.length} selected bricks`} onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>
+          <button aria-label={`Delete ${selectedIds.length} selected bricks`} className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>
+        </div>
+      </aside>
+    )
+  }
   if (!target) return null
   const part = BRICK_PART_MAP[target.partId]
 
@@ -238,6 +262,41 @@ function ViewControls() {
   ]
   return (
     <div className="view-controls"><button className="view-home" onClick={() => requestView('home')} title="Frame all"><Home size={17} /></button>{views.map((view) => <button key={view.id} onClick={() => requestView(view.id)}>{view.label}</button>)}</div>
+  )
+}
+
+function SelectionModeControl() {
+  const selectionMode = useBrickStore((state) => state.selectionMode)
+  const setSelectionMode = useBrickStore((state) => state.setSelectionMode)
+  return (
+    <button
+      className={`selection-mode-control ${selectionMode ? 'active' : ''}`}
+      aria-pressed={selectionMode}
+      aria-label={selectionMode ? 'Finish selecting bricks' : 'Select multiple bricks'}
+      onClick={() => setSelectionMode(!selectionMode)}
+    >
+      {selectionMode ? <Check size={18} /> : <MousePointer2 size={18} />}
+      <span>{selectionMode ? 'Done' : 'Select'}</span>
+    </button>
+  )
+}
+
+function MarqueeOverlay() {
+  const marquee = useBrickStore((state) => state.marquee)
+  if (!marquee?.dragging) return null
+  const left = Math.min(marquee.start.x, marquee.current.x)
+  const top = Math.min(marquee.start.y, marquee.current.y)
+  return (
+    <div
+      className="selection-marquee"
+      aria-hidden="true"
+      style={{
+        left,
+        top,
+        width: Math.abs(marquee.current.x - marquee.start.x),
+        height: Math.abs(marquee.current.y - marquee.start.y),
+      }}
+    />
   )
 }
 
@@ -326,7 +385,7 @@ function TouchExploreControls() {
 }
 
 function ShortcutBar() {
-  return <div className="shortcut-bar"><span><MousePointer2 size={14} /> Click to select</span><span><kbd>Enter</kbd> Place</span><span><kbd>[</kbd><kbd>]</kbd> Select bricks</span><span><kbd>Esc</kbd> Cancel</span><span><kbd>R</kbd> Rotate</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  return <div className="shortcut-bar"><span><MousePointer2 size={14} /> Click · ⌘Click toggle · Shift-drag marquee</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
 export default function BrickStudioApp() {
@@ -335,11 +394,12 @@ export default function BrickStudioApp() {
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  const selectionMode = useBrickStore((state) => state.selectionMode)
   return (
-    <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}`}>
-      <div className="brick-canvas"><BrickStudioScene /></div>
+    <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
+      <div className="brick-canvas"><BrickStudioScene /><MarqueeOverlay /></div>
       <Header />
-      {mode === 'build' ? <><PartLibrary /><Inspector /><ViewControls /><EmptyState /><ShortcutBar /></> : <TouchExploreControls />}
+      {mode === 'build' ? <><PartLibrary /><Inspector /><ViewControls /><SelectionModeControl /><EmptyState /><ShortcutBar /></> : <TouchExploreControls />}
       <Toast />
     </main>
   )

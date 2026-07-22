@@ -14,6 +14,8 @@
 }
 
 .brick-canvas { position: absolute; inset: 0; }
+.brick-select-mode .brick-canvas { cursor: crosshair; }
+.selection-marquee { position: absolute; z-index: 9; border: 2px solid #2f7fcf; border-radius: 3px; background: rgba(62,131,215,.18); box-shadow: 0 0 0 1px rgba(255,255,255,.7) inset; pointer-events: none; }
 
 .brick-header {
   position: absolute;
@@ -122,11 +124,16 @@
 .coordinates { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 12px; }
 .coordinates span { display: flex; justify-content: space-between; padding: 6px 7px; border-radius: 7px; color: #8a979a; background: #f3f5f4; font-size: 9px; font-weight: 800; }
 .coordinates strong { color: #4e656d; }
+.multi-selection-inspector p { margin: 2px 0 12px; color: #728187; font-size: 10px; line-height: 1.45; }
+.multi-selection-cube { background: linear-gradient(145deg, #39a6c5, #317bc3); }
+.multi-selection-actions { grid-template-columns: 1fr 1fr; }
 
 .view-controls { position: absolute; z-index: 11; right: max(14px, env(safe-area-inset-right)); bottom: 54px; display: flex; padding: 4px; border: 1px solid #d2d8d8; border-radius: 12px; background: rgba(255,255,255,.9); box-shadow: 0 8px 22px rgba(47,62,68,.12); }
 .view-controls button { min-width: 42px; height: 38px; border: 0; border-left: 1px solid #e1e5e4; color: #63757c; background: transparent; font-size: 9px; font-weight: 900; cursor: pointer; }
 .view-controls button:first-child { border-left: 0; }
 .view-controls button:hover { color: #2d70b4; background: #edf5fc; }
+.selection-mode-control { position: absolute; z-index: 13; bottom: 54px; left: 280px; min-width: 92px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 13px; border: 1px solid #cbd5d7; border-radius: 12px; color: #4f666f; background: rgba(255,255,255,.94); box-shadow: 0 8px 22px rgba(47,62,68,.12); font-size: 11px; font-weight: 900; cursor: pointer; }
+.selection-mode-control.active { border-color: #2f7fcf; color: white; background: linear-gradient(145deg, #4b8ed9, #3476c1); }
 
 .empty-guide { position: absolute; z-index: 8; top: 96px; left: 50%; display: flex; align-items: center; gap: 10px; transform: translateX(-50%); max-width: 350px; padding: 11px 14px; border: 1px solid rgba(171,181,183,.38); border-radius: 14px; color: #5d7279; background: rgba(255,255,255,.9); box-shadow: 0 9px 24px rgba(47,62,68,.11); pointer-events: none; }
 .empty-guide svg { color: var(--studio-blue); flex: 0 0 auto; }
@@ -174,6 +181,7 @@
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }.inspector-actions button { min-height: 44px; grid-template-columns: 1fr; justify-items: center; padding: 4px; text-align: center; }.inspector-actions button span, .inspector-actions kbd { display: none; }
   .coordinates { display: none; }
   .view-controls { right: auto; bottom: 186px; left: 10px; }
+  .selection-mode-control { bottom: 186px; left: 220px; }
   .shortcut-bar { display: none; }
   .empty-guide { top: 88px; max-width: 260px; }
 }
@@ -195,6 +203,8 @@
   .inspector-sheet-primary { display: none !important; }.details-expanded .coordinates { display: grid; }
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }
   .view-controls { top: 116px; bottom: auto; }.view-controls button { min-width: 38px; }.view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
+  .selection-mode-control { top: 116px; bottom: auto; left: 202px; min-width: 44px; width: 44px; padding: 0; }
+  .selection-mode-control span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .empty-guide { display: none; }
   .brick-toast { top: max(168px, calc(env(safe-area-inset-top) + 160px)); max-width: 80%; text-align: center; }
   .brick-mode-explore .return-build { top: max(116px, calc(env(safe-area-inset-top) + 108px)); }
@@ -210,6 +220,8 @@
   .inspector-sheet-primary { display: none !important; }.details-expanded .coordinates { display: grid; }
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }
   .view-controls { top: auto; bottom: 8px; left: 320px; }
+  .selection-mode-control { top: auto; bottom: 8px; left: 520px; width: auto; min-width: 82px; padding: 0 12px; }
+  .selection-mode-control span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
   .brick-mode-explore .return-build { top: 92px; }
   .brick-mode-explore .brick-toast { top: 144px; }
   .touch-explore-hint { bottom: max(4px, env(safe-area-inset-bottom)); max-width: 42%; }

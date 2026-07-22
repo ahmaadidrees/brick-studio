@@ -16,6 +16,7 @@ function resetStore(bricks: BrickInstance[] = []) {
   useBrickStore.setState({
     ...initialState,
     bricks: bricks.map((brick) => ({ ...brick })),
+    selectedIds: [],
     selectedId: null,
     draft: bricks.length ? null : initialState.draft ? { ...initialState.draft } : null,
     undoStack: [],
@@ -109,7 +110,7 @@ describe('live move feedback', () => {
     resetStore([
       { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },
     ])
-    useBrickStore.setState({ selectedId: 'one' })
+    useBrickStore.setState({ selectedIds: ['one'], selectedId: 'one' })
     const { container } = render(<BrickStudioApp />)
 
     fireEvent.click(screen.getAllByLabelText('Move brick')[0])
@@ -117,6 +118,40 @@ describe('live move feedback', () => {
 
     expect(screen.getByText('Moving')).toBeInTheDocument()
     expect(Array.from(container.querySelectorAll('.coordinates strong')).map((element) => element.textContent)).toEqual(['12', '3', '14'])
+  })
+})
+
+describe('multi-selection feedback and controls', () => {
+  const pair: BrickInstance[] = [
+    { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },
+    { id: 'two', partId: 'door_1x4', x: 12, y: 0, z: 12, rotation: 3, color: '#3e83d7' },
+  ]
+
+  it('shows a selection count and bulk actions without arbitrary single-brick editing', () => {
+    resetStore(pair)
+    useBrickStore.setState({ selectedIds: ['one', 'two'], selectedId: 'two' })
+    render(<BrickStudioApp />)
+
+    expect(screen.getByRole('complementary', { name: '2 bricks selected' })).toBeInTheDocument()
+    expect(screen.getByText('2 bricks selected', { selector: 'h2' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy 2 selected bricks' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rotate brick' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Brick color')).not.toBeInTheDocument()
+  })
+
+  it('exposes a touch-sized Select/Done mode and Escape clears the selection', () => {
+    resetStore(pair)
+    render(<BrickStudioApp />)
+    const selectMode = screen.getByRole('button', { name: 'Select multiple bricks' })
+
+    expect(selectMode).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(selectMode)
+    expect(screen.getByRole('button', { name: 'Finish selecting bricks' })).toHaveAttribute('aria-pressed', 'true')
+    act(() => useBrickStore.getState().selectBricks(['one', 'two']))
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: [], selectedId: null, selectionMode: false, marquee: null })
+    expect(screen.getByRole('button', { name: 'Select multiple bricks' })).toBeInTheDocument()
   })
 })
 

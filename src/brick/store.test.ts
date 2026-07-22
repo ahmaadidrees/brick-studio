@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { MAX_HISTORY_ENTRIES, draftIsValid, useBrickStore } from './store'
+import { MAX_HISTORY_ENTRIES, draftIsValid, useBrickStore, validateBrickGroup } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
 const base: BrickInstance = { id: 'a', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }
@@ -9,6 +9,7 @@ function resetStore() {
   useBrickStore.setState({
     ...initialState,
     bricks: [],
+    selectedIds: [],
     selectedId: null,
     draft: initialState.draft ? { ...initialState.draft } : null,
     undoStack: [],
@@ -210,5 +211,139 @@ describe('keyboard-oriented selection commands', () => {
     expect(useBrickStore.getState().movingId).toBeNull()
     expect(useBrickStore.getState().bricks[0]).toMatchObject({ x: 5, z: 5 })
     expect(useBrickStore.getState().undoStack).toHaveLength(historyLength)
+  })
+})
+
+describe('ordered multi-selection', () => {
+  beforeEach(() => {
+    useBrickStore.setState({
+      bricks: [
+        { ...base, id: 'a' },
+        { ...base, id: 'b', x: 20, partId: 'slope_2x2', rotation: 1, color: '#e7473c' },
+        { ...base, id: 'c', x: 30, partId: 'door_1x4', rotation: 3, color: '#3e83d7' },
+      ],
+      selectedIds: [],
+      selectedId: null,
+      draft: null,
+      undoStack: [],
+      redoStack: [],
+    })
+  })
+
+  it('replaces, toggles, clears, and keeps primary selection compatible', () => {
+    useBrickStore.getState().selectBrick('a')
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: ['a'], selectedId: 'a' })
+
+    useBrickStore.getState().toggleBrick('b')
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: ['a', 'b'], selectedId: 'b' })
+    useBrickStore.getState().toggleBrick('b')
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: ['a'], selectedId: 'a' })
+
+    useBrickStore.getState().selectBricks(['c', 'a', 'c', 'missing'])
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: ['c', 'a'], selectedId: 'a' })
+    useBrickStore.getState().clearSelection()
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: [], selectedId: null })
+  })
+
+  it('clears transient selection and Select mode when entering Explore', () => {
+    useBrickStore.getState().selectBricks(['a', 'b'])
+    useBrickStore.getState().setSelectionMode(true)
+    useBrickStore.getState().setMarquee({ start: { x: 2, y: 3 }, current: { x: 30, y: 40 }, dragging: true })
+
+    useBrickStore.getState().setMode('explore')
+
+    expect(useBrickStore.getState()).toMatchObject({ selectedIds: [], selectedId: null, selectionMode: false, marquee: null })
+    expect(useBrickStore.getState().bricks).toHaveLength(3)
+  })
+})
+
+describe('atomic group clipboard and history', () => {
+  const mixed: BrickInstance[] = [
+    { id: 'plain', partId: 'brick_1x2', x: 8, y: 0, z: 8, rotation: 0, color: '#fff' },
+    { id: 'slope', partId: 'slope_2x2', x: 14, y: 3, z: 11, rotation: 1, color: '#e7473c' },
+    { id: 'door', partId: 'door_1x4', x: 20, y: 0, z: 16, rotation: 3, color: '#3e83d7' },
+  ]
+
+  beforeEach(() => {
+    useBrickStore.setState({
+      bricks: mixed.map((brick) => ({ ...brick })),
+      selectedIds: mixed.map((brick) => brick.id),
+      selectedId: 'door',
+      draft: null,
+      clipboard: null,
+      undoStack: [],
+      redoStack: [],
+      brickBudget: 250,
+    })
+  })
+
+  it('preserves relative transforms and metadata and pastes in one undo step', () => {
+    useBrickStore.getState().copy()
+    const historyBefore = useBrickStore.getState().undoStack.length
+    useBrickStore.getState().paste()
+
+    const state = useBrickStore.getState()
+    const pasted = state.bricks.slice(mixed.length)
+    expect(pasted).toHaveLength(3)
+    expect(state.undoStack).toHaveLength(historyBefore + 1)
+    expect(pasted.map(({ id: _id, ...brick }) => ({ ...brick, x: brick.x - pasted[0].x, y: brick.y - pasted[0].y, z: brick.z - pasted[0].z })))
+      .toEqual(mixed.map(({ id: _id, ...brick }) => ({ ...brick, x: brick.x - mixed[0].x, y: brick.y - mixed[0].y, z: brick.z - mixed[0].z })))
+
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(mixed)
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().bricks.slice(mixed.length)).toEqual(pasted)
+  })
+
+  it('duplicates and deletes whole groups as single atomic commands', () => {
+    useBrickStore.getState().duplicate()
+    expect(useBrickStore.getState().bricks).toHaveLength(6)
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+
+    useBrickStore.getState().deleteSelected()
+    expect(useBrickStore.getState().bricks).toEqual(mixed)
+    expect(useBrickStore.getState().undoStack).toHaveLength(2)
+
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toHaveLength(6)
+    expect(useBrickStore.getState().selectedIds).toHaveLength(3)
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(mixed)
+  })
+
+  it.each([
+    ['phone', 75],
+    ['tablet', 150],
+    ['desktop', 250],
+  ] as const)('rejects an over-budget %s paste without partial mutation or history', (profile, budget) => {
+    const filler = Array.from({ length: budget - 2 }, (_, index): BrickInstance => ({
+      id: `filler-${index}`,
+      partId: 'brick_1x1',
+      x: index % 64,
+      y: 20 + Math.floor(index / 64) * 3,
+      z: Math.floor(index / 64),
+      rotation: 0,
+      color: '#fff',
+    }))
+    useBrickStore.setState({ bricks: filler, selectedIds: [], selectedId: null, brickBudget: budget, budgetProfile: profile })
+    useBrickStore.setState({ clipboard: { bricks: mixed.map(({ id: _id, ...brick }) => brick) } })
+    const before = useBrickStore.getState()
+
+    useBrickStore.getState().paste()
+
+    expect(useBrickStore.getState().bricks).toEqual(before.bricks)
+    expect(useBrickStore.getState().undoStack).toEqual(before.undoStack)
+    expect(useBrickStore.getState().toast).toContain(`${budget}-brick`)
+  })
+
+  it('rejects an invalid group as a whole, including candidate-to-candidate collision', () => {
+    const colliding = [
+      { partId: 'brick_2x2', x: 2, y: 0, z: 2, rotation: 0, color: '#fff' },
+      { partId: 'brick_1x1', x: 3, y: 0, z: 3, rotation: 0, color: '#e7473c' },
+    ] satisfies BrickDraft[]
+    const outside = mixed.map(({ id: _id, ...brick }) => ({ ...brick, x: brick.x + 60 }))
+
+    expect(validateBrickGroup(colliding, [], 250)).toEqual({ valid: false, reason: 'placement' })
+    expect(validateBrickGroup(outside, [], 250)).toEqual({ valid: false, reason: 'placement' })
   })
 })

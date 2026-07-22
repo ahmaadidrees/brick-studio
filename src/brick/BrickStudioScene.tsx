@@ -23,6 +23,14 @@ import {
 } from './characterController'
 import { cameraRelativeMove, combineMoveAxes, readKeyboardMove } from './characterInput'
 import { createBrickGeometry } from './geometry'
+import {
+  beginMarqueeGesture,
+  finishMarqueeGesture,
+  selectBricksInMarquee,
+  shouldCaptureSelectionGesture,
+  updateMarqueeGesture,
+  type MarqueeGesture,
+} from './marqueeSelection'
 import { clampPitch, computeOrbitBoom, createOrbitState, stepOrbit } from './orbitCamera'
 import {
   BRICK_PART_MAP,
@@ -113,6 +121,7 @@ function Baseplate({ explore = false }: { explore?: boolean }) {
 }
 
 function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore?: boolean }) {
+  const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
@@ -122,6 +131,7 @@ function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore
   const part = BRICK_PART_MAP[brick.partId]
   const position = brickWorldPosition(brick)
   const geometry = useMemo(() => createBrickGeometry(part), [part])
+  const userData = useMemo(() => ({ brickId: brick.id }), [brick.id])
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!draft || explore) return
@@ -133,6 +143,7 @@ function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore
   return (
     <group position={position} rotation={[0, brick.rotation * Math.PI / 2, 0]}>
       <mesh
+        userData={userData}
         geometry={geometry}
         castShadow
         receiveShadow
@@ -140,12 +151,15 @@ function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore
         onClick={(event) => {
           event.stopPropagation()
           if (draft && !explore) placeDraft()
-          else if (!explore) selectBrick(brick.id)
+          else if (!explore) {
+            const nativeEvent = event.nativeEvent as MouseEvent
+            selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || useBrickStore.getState().selectionMode)
+          }
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
         <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
-        {selectedId === brick.id && !explore && <Edges scale={1.025} color="#263e4b" threshold={15} />}
+        {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
   )
@@ -176,6 +190,8 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
 function BuildCamera() {
   const controls = useRef<any>(null)
   const request = useBrickStore((state) => state.viewRequest)
+  const selectionMode = useBrickStore((state) => state.selectionMode)
+  const marquee = useBrickStore((state) => state.marquee)
   const { camera, size: viewportSize } = useThree()
 
   useEffect(() => {
@@ -213,6 +229,7 @@ function BuildCamera() {
     <OrbitControls
       ref={controls}
       makeDefault
+      enabled={!selectionMode && !marquee}
       target={[0, 0, 0]}
       enableDamping
       dampingFactor={0.08}
@@ -225,6 +242,168 @@ function BuildCamera() {
   )
 }
 
+type ActiveSelectionGesture = {
+  pointerId: number
+  brickId: string | null
+  explicitMode: boolean
+  gesture: MarqueeGesture
+}
+
+function findBrickAtPointer(
+  event: PointerEvent,
+  canvas: HTMLCanvasElement,
+  camera: THREE.Camera,
+  scene: THREE.Scene,
+  raycaster: THREE.Raycaster,
+  pointer: THREE.Vector2,
+) {
+  const rect = canvas.getBoundingClientRect()
+  pointer.set(
+    ((event.clientX - rect.left) / rect.width) * 2 - 1,
+    -((event.clientY - rect.top) / rect.height) * 2 + 1,
+  )
+  raycaster.setFromCamera(pointer, camera)
+  for (const intersection of raycaster.intersectObjects(scene.children, true)) {
+    let object: THREE.Object3D | null = intersection.object
+    while (object) {
+      if (typeof object.userData.brickId === 'string') return object.userData.brickId as string
+      object = object.parent
+    }
+  }
+  return null
+}
+
+function BuildSelectionInput() {
+  const { camera, gl, scene } = useThree()
+  const active = useRef<ActiveSelectionGesture | null>(null)
+  const suppressClick = useRef(false)
+  const suppressTimer = useRef<number | null>(null)
+  const raycaster = useRef(new THREE.Raycaster())
+  const pointer = useRef(new THREE.Vector2())
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const localPoint = (event: PointerEvent) => {
+      const rect = canvas.getBoundingClientRect()
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top }
+    }
+    const consume = (event: Event) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    const clearSuppressTimer = () => {
+      if (suppressTimer.current !== null) window.clearTimeout(suppressTimer.current)
+      suppressTimer.current = null
+    }
+    const reset = () => {
+      const gesture = active.current
+      active.current = null
+      if (gesture && canvas.hasPointerCapture?.(gesture.pointerId)) canvas.releasePointerCapture?.(gesture.pointerId)
+      useBrickStore.getState().setMarquee(null)
+    }
+    const pointerDown = (event: PointerEvent) => {
+      const state = useBrickStore.getState()
+      if (!shouldCaptureSelectionGesture({
+        mode: state.mode,
+        button: event.button,
+        pointerType: event.pointerType,
+        shiftKey: event.shiftKey,
+        selectionMode: state.selectionMode,
+      })) return
+      consume(event)
+      const point = localPoint(event)
+      active.current = {
+        pointerId: event.pointerId,
+        brickId: findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current),
+        explicitMode: state.selectionMode,
+        gesture: beginMarqueeGesture(point),
+      }
+      canvas.setPointerCapture?.(event.pointerId)
+    }
+    const pointerMove = (event: PointerEvent) => {
+      const current = active.current
+      if (!current || current.pointerId !== event.pointerId) return
+      consume(event)
+      updateMarqueeGesture(current.gesture, localPoint(event))
+      if (!current.brickId) {
+        useBrickStore.getState().setMarquee({
+          start: { ...current.gesture.start },
+          current: { ...current.gesture.current },
+          dragging: current.gesture.dragging,
+        })
+      }
+    }
+    const pointerUp = (event: PointerEvent) => {
+      const current = active.current
+      if (!current || current.pointerId !== event.pointerId) return
+      consume(event)
+      updateMarqueeGesture(current.gesture, localPoint(event))
+      const finished = finishMarqueeGesture(current.gesture)
+      const state = useBrickStore.getState()
+      if (state.mode !== 'build') {
+        reset()
+        return
+      }
+      if (current.gesture.dragging && !current.brickId) {
+        const rect = canvas.getBoundingClientRect()
+        state.selectBricks(selectBricksInMarquee(state.bricks, camera, rect.width, rect.height, finished.rectangle))
+      } else if (!current.gesture.dragging && current.brickId) {
+        state.toggleBrick(current.brickId)
+      } else if (!current.gesture.dragging && state.selectionMode) {
+        state.clearSelection()
+      }
+      suppressClick.current = true
+      clearSuppressTimer()
+      suppressTimer.current = window.setTimeout(() => { suppressClick.current = false }, 250)
+      reset()
+    }
+    const pointerCancel = (event: PointerEvent) => {
+      if (active.current?.pointerId !== event.pointerId) return
+      consume(event)
+      reset()
+    }
+    const click = (event: MouseEvent) => {
+      if (!suppressClick.current) return
+      consume(event)
+      suppressClick.current = false
+      clearSuppressTimer()
+    }
+    const blur = () => reset()
+    const visibility = () => { if (document.visibilityState !== 'visible') reset() }
+    const unsubscribe = useBrickStore.subscribe((state) => {
+      if (state.mode !== 'build' || (active.current?.explicitMode && !state.selectionMode)) reset()
+    })
+
+    canvas.addEventListener('pointerdown', pointerDown, true)
+    canvas.addEventListener('pointermove', pointerMove, true)
+    canvas.addEventListener('pointerup', pointerUp, true)
+    canvas.addEventListener('pointercancel', pointerCancel, true)
+    canvas.addEventListener('lostpointercapture', pointerCancel, true)
+    canvas.addEventListener('click', click, true)
+    window.addEventListener('blur', blur)
+    window.addEventListener('resize', reset)
+    window.addEventListener('orientationchange', reset)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      canvas.removeEventListener('pointerdown', pointerDown, true)
+      canvas.removeEventListener('pointermove', pointerMove, true)
+      canvas.removeEventListener('pointerup', pointerUp, true)
+      canvas.removeEventListener('pointercancel', pointerCancel, true)
+      canvas.removeEventListener('lostpointercapture', pointerCancel, true)
+      canvas.removeEventListener('click', click, true)
+      window.removeEventListener('blur', blur)
+      window.removeEventListener('resize', reset)
+      window.removeEventListener('orientationchange', reset)
+      document.removeEventListener('visibilitychange', visibility)
+      unsubscribe()
+      clearSuppressTimer()
+      reset()
+    }
+  }, [camera, gl, scene])
+
+  return null
+}
+
 function BuildScene() {
   const bricks = useBrickStore((state) => state.bricks)
   const selectBrick = useBrickStore((state) => state.selectBrick)
@@ -234,6 +413,7 @@ function BuildScene() {
       {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} />)}
       <DraftBrick />
       <BuildCamera />
+      <BuildSelectionInput />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#f5f2ec" roughness={1} />
