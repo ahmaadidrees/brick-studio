@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { useBrickStore } from './store'
+import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW } from './orbitCamera'
 import { EXPLORE_MAX_PITCH } from './touchInput'
 import type { BrickInstance } from './types'
 
@@ -247,6 +248,67 @@ describe('Brick Studio responsive controls', () => {
 
     expect(useBrickStore.getState().touchYaw).toBeCloseTo(0.24)
     expect(useBrickStore.getState().touchPitch).toBe(EXPLORE_MAX_PITCH)
+  })
+
+  it('makes camera drag/zoom discoverable and supports wheel, pinch, and recenter', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore', touchYaw: 0, touchPitch: 0.8, touchCameraDistance: 6.1 })
+    const { container } = render(<BrickStudioApp />)
+    const lookZone = container.querySelector<HTMLElement>('.look-zone')!
+
+    expect(screen.getByText('Drag: Camera')).toBeInTheDocument()
+    expect(screen.getByText('Scroll: Zoom')).toBeInTheDocument()
+    expect(screen.getByText(/Drag to look · Pinch to zoom/)).toBeInTheDocument()
+    fireEvent.wheel(lookZone, { deltaY: 120, deltaMode: 0 })
+    expect(useBrickStore.getState().touchCameraDistance).toBeCloseTo(7.06)
+
+    fireEvent.pointerDown(lookZone, { pointerId: 21, pointerType: 'touch', clientX: 100, clientY: 100 })
+    fireEvent.pointerDown(lookZone, { pointerId: 22, pointerType: 'touch', clientX: 200, clientY: 100 })
+    fireEvent.pointerMove(lookZone, { pointerId: 22, pointerType: 'touch', clientX: 250, clientY: 100 })
+    expect(useBrickStore.getState().touchCameraDistance).toBeCloseTo(7.06 * 100 / 150)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recenter camera' }))
+    expect(useBrickStore.getState()).toMatchObject({
+      touchYaw: ORBIT_DEFAULT_YAW,
+      touchPitch: ORBIT_DEFAULT_PITCH,
+      touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
+    })
+  })
+
+  it('cancels look on interruption and keeps Jump/Return outside the look gesture', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore', touchYaw: 0, touchPitch: 0.6 })
+    const { container } = render(<BrickStudioApp />)
+    const lookZone = container.querySelector<HTMLElement>('.look-zone')!
+
+    fireEvent.pointerDown(lookZone, { pointerId: 31, clientX: 200, clientY: 200 })
+    fireEvent.pointerMove(lookZone, { pointerId: 31, clientX: 180, clientY: 180 })
+    const yawAfterDrag = useBrickStore.getState().touchYaw
+    fireEvent.pointerCancel(lookZone, { pointerId: 31 })
+    fireEvent.pointerMove(lookZone, { pointerId: 31, clientX: 100, clientY: 100 })
+    expect(useBrickStore.getState().touchYaw).toBe(yawAfterDrag)
+
+    const jumpBefore = useBrickStore.getState().jumpNonce
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' }), { pointerId: 32 })
+    fireEvent.click(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' }))
+    expect(useBrickStore.getState().jumpNonce).toBe(jumpBefore + 1)
+    expect(screen.getByRole('button', { name: 'Return to Build' })).toBeEnabled()
+  })
+
+  it('resets an active look gesture on viewport and orientation changes', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore', touchYaw: 0, touchPitch: 0.6 })
+    const { container } = render(<BrickStudioApp />)
+    const lookZone = container.querySelector<HTMLElement>('.look-zone')!
+
+    fireEvent.pointerDown(lookZone, { pointerId: 41, clientX: 200, clientY: 200 })
+    fireEvent.pointerMove(lookZone, { pointerId: 41, clientX: 180, clientY: 180 })
+    fireEvent(window, new Event('resize'))
+    const yawAfterResize = useBrickStore.getState().touchYaw
+    fireEvent.pointerMove(lookZone, { pointerId: 41, clientX: 100, clientY: 100 })
+    expect(useBrickStore.getState().touchYaw).toBe(yawAfterResize)
+
+    fireEvent.pointerDown(lookZone, { pointerId: 42, clientX: 200, clientY: 200 })
+    fireEvent(window, new Event('orientationchange'))
+    fireEvent.pointerMove(lookZone, { pointerId: 42, clientX: 100, clientY: 100 })
+    expect(useBrickStore.getState().touchYaw).toBe(yawAfterResize)
   })
 
   it('reacts to reduced-motion preference without disabling touch controls', () => {

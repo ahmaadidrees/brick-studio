@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
   ORBIT_DEFAULT_PITCH,
+  ORBIT_DEFAULT_DISTANCE,
+  ORBIT_DEFAULT_YAW,
+  ORBIT_MAX_DISTANCE,
   ORBIT_MAX_PITCH,
+  ORBIT_MIN_DISTANCE,
   ORBIT_MIN_PITCH,
   addOrbitLook,
+  clampOrbitDistance,
   computeOrbitBoom,
   createOrbitState,
+  recenterOrbit,
   shortestAngleDelta,
   stepOrbit,
 } from './orbitCamera'
@@ -49,5 +55,16 @@ describe('damped orbit camera', () => {
     stepOrbit(orbit, 5)
     expect(orbit.yaw).toBeLessThan(Math.PI + 1)
     expect(orbit.yaw).toBeGreaterThan(Math.PI)
+  })
+
+  it('clamps zoom and recenters yaw/pitch without adding roll state', () => {
+    expect(clampOrbitDistance(-100)).toBe(ORBIT_MIN_DISTANCE)
+    expect(clampOrbitDistance(100)).toBe(ORBIT_MAX_DISTANCE)
+    expect(clampOrbitDistance(ORBIT_DEFAULT_DISTANCE)).toBe(ORBIT_DEFAULT_DISTANCE)
+    const orbit = createOrbitState(0.2, ORBIT_MAX_PITCH)
+    recenterOrbit(orbit)
+    expect(orbit.targetYaw).toBe(ORBIT_DEFAULT_YAW)
+    expect(orbit.targetPitch).toBe(ORBIT_DEFAULT_PITCH)
+    expect(Object.keys(orbit)).not.toContain('roll')
   })
 })

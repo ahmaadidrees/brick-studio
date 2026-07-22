@@ -5,6 +5,9 @@ export const ORBIT_MAX_PITCH = 1.08
 export const ORBIT_DEFAULT_PITCH = 0.55
 export const ORBIT_DEFAULT_YAW = Math.PI
 export const ORBIT_DAMPING = 15
+export const ORBIT_MIN_DISTANCE = 3.4
+export const ORBIT_MAX_DISTANCE = 10.5
+export const ORBIT_DEFAULT_DISTANCE = 6.1
 
 const TWO_PI = Math.PI * 2
 
@@ -29,6 +32,16 @@ export function createOrbitState(
 
 export function clampPitch(pitch: number) {
   return Math.max(ORBIT_MIN_PITCH, Math.min(ORBIT_MAX_PITCH, pitch))
+}
+
+export function clampOrbitDistance(distance: number) {
+  return Math.max(ORBIT_MIN_DISTANCE, Math.min(ORBIT_MAX_DISTANCE, distance))
+}
+
+export function recenterOrbit(state: OrbitState) {
+  state.targetYaw = ORBIT_DEFAULT_YAW
+  state.targetPitch = ORBIT_DEFAULT_PITCH
+  return state
 }
 
 /** Adds look deltas to targets; pitch is clamped before the damping step. */

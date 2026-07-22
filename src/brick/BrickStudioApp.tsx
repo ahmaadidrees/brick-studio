@@ -21,6 +21,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react'
 import BrickStudioScene from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
+import {
+  beginExploreCameraPointer,
+  cancelExploreCameraGesture,
+  createExploreCameraGesture,
+  endExploreCameraPointer,
+  normalizeWheelZoom,
+  updateExploreCameraPointer,
+} from './exploreCameraInput'
 import { requestExploreMode } from './modeCommands'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { useBrickStore } from './store'
@@ -316,17 +324,35 @@ function Toast() {
 function TouchExploreControls() {
   const setMove = useBrickStore((state) => state.setTouchMove)
   const addLook = useBrickStore((state) => state.addTouchLook)
+  const setCameraDistance = useBrickStore((state) => state.setTouchCameraDistance)
+  const adjustCameraDistance = useBrickStore((state) => state.adjustTouchCameraDistance)
+  const recenterCamera = useBrickStore((state) => state.recenterCamera)
   const jump = useBrickStore((state) => state.requestJump)
   const setMode = useBrickStore((state) => state.setMode)
   const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
+  const joystickSurface = useRef<HTMLDivElement>(null)
   const joystickKnob = useRef<HTMLSpanElement>(null)
-  const look = useRef<{ id: number; x: number; y: number } | null>(null)
-  const resetTouchControls = useCallback(() => {
+  const lookZone = useRef<HTMLDivElement>(null)
+  const cameraGesture = useRef(createExploreCameraGesture())
+  const resetJoystick = useCallback(() => {
+    const pointerId = joystick.current?.id
     joystick.current = null
-    look.current = null
+    if (pointerId !== undefined && joystickSurface.current?.hasPointerCapture?.(pointerId)) joystickSurface.current.releasePointerCapture?.(pointerId)
     setMove(0, 0)
     if (joystickKnob.current) joystickKnob.current.style.transform = 'translate3d(0, 0, 0)'
   }, [setMove])
+  const resetLook = useCallback(() => {
+    const pointerIds = [...cameraGesture.current.pointers.keys()]
+    cancelExploreCameraGesture(cameraGesture.current)
+    for (const pointerId of pointerIds) {
+      if (lookZone.current?.hasPointerCapture?.(pointerId)) lookZone.current.releasePointerCapture?.(pointerId)
+    }
+    lookZone.current?.classList.remove('dragging')
+  }, [])
+  const resetTouchControls = useCallback(() => {
+    resetJoystick()
+    resetLook()
+  }, [resetJoystick, resetLook])
 
   const updateJoystick = useCallback((clientX: number, clientY: number) => {
     if (!joystick.current) return
@@ -341,9 +367,13 @@ function TouchExploreControls() {
     const handleBlur = () => resetTouchControls()
     const handleVisibility = () => { if (document.visibilityState !== 'visible') resetTouchControls() }
     window.addEventListener('blur', handleBlur)
+    window.addEventListener('resize', resetTouchControls)
+    window.addEventListener('orientationchange', resetTouchControls)
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('resize', resetTouchControls)
+      window.removeEventListener('orientationchange', resetTouchControls)
       document.removeEventListener('visibilitychange', handleVisibility)
       resetTouchControls()
     }
@@ -352,34 +382,49 @@ function TouchExploreControls() {
   return (
     <div className="explore-controls">
       <div
+        ref={lookZone}
         className="look-zone"
-        onPointerDown={(event) => { look.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture?.(event.pointerId) }}
-        onPointerMove={(event) => {
-          if (look.current?.id !== event.pointerId) return
-          addLook((look.current.x - event.clientX) * 0.012, (look.current.y - event.clientY) * 0.009)
-          look.current.x = event.clientX
-          look.current.y = event.clientY
+        onPointerDown={(event) => {
+          if (event.pointerType === 'mouse' && event.button !== 0) return
+          if (!beginExploreCameraPointer(cameraGesture.current, event.pointerId, event.clientX, event.clientY, useBrickStore.getState().touchCameraDistance)) return
+          event.preventDefault()
+          event.currentTarget.setPointerCapture?.(event.pointerId)
         }}
-        onPointerUp={() => { look.current = null }}
-        onPointerCancel={() => { look.current = null }}
-        onLostPointerCapture={() => { look.current = null }}
+        onPointerMove={(event) => {
+          const update = updateExploreCameraPointer(cameraGesture.current, event.pointerId, event.clientX, event.clientY)
+          if (update.yawDelta || update.pitchDelta) addLook(update.yawDelta, update.pitchDelta)
+          if (update.zoom !== null) setCameraDistance(update.zoom)
+          event.currentTarget.classList.toggle('dragging', cameraGesture.current.dragging || cameraGesture.current.pointers.size === 2)
+        }}
+        onPointerUp={(event) => {
+          endExploreCameraPointer(cameraGesture.current, event.pointerId)
+          if (!cameraGesture.current.dragging) event.currentTarget.classList.remove('dragging')
+        }}
+        onPointerCancel={resetLook}
+        onLostPointerCapture={(event) => { if (cameraGesture.current.pointers.has(event.pointerId)) resetLook() }}
+        onWheel={(event) => {
+          event.preventDefault()
+          adjustCameraDistance(normalizeWheelZoom(event.deltaY, event.deltaMode))
+        }}
         aria-hidden="true"
       />
       <div
+        ref={joystickSurface}
         className="virtual-stick"
         role="application"
         onPointerDown={(event) => { joystick.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture?.(event.pointerId); updateJoystick(event.clientX, event.clientY) }}
         onPointerMove={(event) => { if (joystick.current?.id !== event.pointerId) return; updateJoystick(event.clientX, event.clientY) }}
-        onPointerUp={resetTouchControls}
-        onPointerCancel={resetTouchControls}
-        onLostPointerCapture={resetTouchControls}
+        onPointerUp={resetJoystick}
+        onPointerCancel={resetJoystick}
+        onLostPointerCapture={resetJoystick}
         aria-label="Movement joystick"
         aria-describedby="touch-explore-hint"
       ><span ref={joystickKnob} aria-hidden="true" /></div>
       <button className="jump-button" onClick={jump} aria-label="Jump; tap again in the air to double jump">Jump</button>
+      <button className="recenter-camera" onClick={recenterCamera} aria-label="Recenter camera"><Focus size={18} /><span>Recenter</span></button>
       <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>
-      <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
-      <div className="touch-explore-hint" id="touch-explore-hint">Push farther to run · Tap Jump twice in the air to flip</div>
+      <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span>Drag: Camera</span><span>Scroll: Zoom</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
+      <div className="touch-explore-hint" id="touch-explore-hint">Push farther to run · Drag to look · Pinch to zoom · Jump twice to flip</div>
     </div>
   )
 }

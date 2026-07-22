@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { BRICK_BUDGETS } from './budgets'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize } from './parts'
+import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
 import { clampExplorePitch } from './touchInput'
 import type { BrickBudgetProfile, BrickDraft, BrickInstance, BrickMode, ViewPreset } from './types'
 
@@ -53,6 +54,7 @@ type BrickState = {
   touchRunning: boolean
   touchYaw: number
   touchPitch: number
+  touchCameraDistance: number
   jumpNonce: number
   reducedMotion: boolean
   selectionMode: boolean
@@ -83,6 +85,9 @@ type BrickState = {
   setTouchMove: (x: number, z: number, magnitude?: number, running?: boolean) => void
   addTouchYaw: (delta: number) => void
   addTouchLook: (yawDelta: number, pitchDelta: number) => void
+  setTouchCameraDistance: (distance: number) => void
+  adjustTouchCameraDistance: (delta: number) => void
+  recenterCamera: () => void
   requestJump: () => void
   setReducedMotion: (reducedMotion: boolean) => void
   setSelectionMode: (selectionMode: boolean) => void
@@ -287,8 +292,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   touchMove: { x: 0, z: 0 },
   touchMoveMagnitude: 0,
   touchRunning: false,
-  touchYaw: Math.PI,
-  touchPitch: 0.55,
+  touchYaw: ORBIT_DEFAULT_YAW,
+  touchPitch: ORBIT_DEFAULT_PITCH,
+  touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
   jumpNonce: 0,
   reducedMotion: false,
   selectionMode: false,
@@ -618,6 +624,14 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     touchYaw: state.touchYaw + yawDelta,
     touchPitch: clampExplorePitch(state.touchPitch + pitchDelta),
   })),
+  setTouchCameraDistance: (touchCameraDistance) => set({ touchCameraDistance: clampOrbitDistance(touchCameraDistance) }),
+  adjustTouchCameraDistance: (delta) => set((state) => ({ touchCameraDistance: clampOrbitDistance(state.touchCameraDistance + delta) })),
+  recenterCamera: () => set({
+    touchYaw: ORBIT_DEFAULT_YAW,
+    touchPitch: ORBIT_DEFAULT_PITCH,
+    touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
+    toast: 'Camera recentered.',
+  }),
   requestJump: () => set((state) => ({ jumpNonce: state.jumpNonce + 1 })),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   setSelectionMode: (selectionMode) => set({
@@ -626,6 +640,6 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     ...(selectionMode ? { draft: null, movingId: null, activePartId: null } : {}),
     toast: selectionMode ? 'Select mode: tap bricks or drag empty space. Tap Done when finished.' : 'Select mode finished.',
   }),
-  setMarquee: (marquee) => set({ marquee }),
+  setMarquee: (marquee) => set((state) => state.marquee === marquee ? state : { marquee }),
   clearToast: () => set({ toast: null }),
 }))

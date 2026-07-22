@@ -297,9 +297,11 @@ function BuildSelectionInput() {
     }
     const reset = () => {
       const gesture = active.current
+      const hasMarquee = useBrickStore.getState().marquee !== null
+      if (!gesture && !hasMarquee) return
       active.current = null
       if (gesture && canvas.hasPointerCapture?.(gesture.pointerId)) canvas.releasePointerCapture?.(gesture.pointerId)
-      useBrickStore.getState().setMarquee(null)
+      if (hasMarquee) useBrickStore.getState().setMarquee(null)
     }
     const pointerDown = (event: PointerEvent) => {
       const state = useBrickStore.getState()
@@ -371,7 +373,7 @@ function BuildSelectionInput() {
     const blur = () => reset()
     const visibility = () => { if (document.visibilityState !== 'visible') reset() }
     const unsubscribe = useBrickStore.subscribe((state) => {
-      if (state.mode !== 'build' || (active.current?.explicitMode && !state.selectionMode)) reset()
+      if ((state.mode !== 'build' && (active.current || state.marquee)) || (active.current?.explicitMode && !state.selectionMode)) reset()
     })
 
     canvas.addEventListener('pointerdown', pointerDown, true)
@@ -595,7 +597,7 @@ function ExplorerAvatar() {
 
     const position = body.current.translation()
     const target = cameraTarget.current.set(position.x, position.y + 0.52, position.z)
-    const desiredDistance = 6.1
+    const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
     const direction = cameraDirection.current.copy(boom).normalize()
     const obstruction = world.castShape(

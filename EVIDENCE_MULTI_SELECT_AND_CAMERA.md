@@ -8,6 +8,8 @@ User checkout and server boundaries: `/Users/ahmaadidrees/Documents/Virtual Lego
 
 ## Commit 1 — Drag/marquee multi-selection and atomic bulk actions
 
+Commit: `f117f373ddd21209e4ee6ed337215a9e5f504b4d`
+
 ### Automated verification
 
 - `npm test -- --run`: 14 files, 93 tests passed.
@@ -32,4 +34,36 @@ Local Vite preview: `http://127.0.0.1:4187/`.
 
 ## Commit 2 — Explore Camera Controls V1
 
-Pending implementation on top of Commit 1.
+Implementation is layered directly on Commit 1 and intentionally reconciles the shared pointer/store paths in a separate reviewable change.
+
+### Automated verification
+
+- `npm test -- --run`: 15 files, 102 tests passed.
+- `npm run build`: TypeScript and Vite production build passed.
+- `git diff --check`: passed.
+- Focused coverage includes yaw/pitch/distance clamping, default recenter values, line/page/pixel wheel normalization, drag threshold, pinch-distance zoom, pointer cancellation, lost capture, resize/orientation resets, visible desktop/touch help, control hit isolation, and the idempotent marquee reset used during Build/Explore transitions.
+
+### Browser verification
+
+Local Vite preview: `http://127.0.0.1:4187/` (stopped after verification).
+
+- Desktop `1280 × 720`: primary drag rotated the camera from unobstructed left, center, and right viewport regions; the released orientation remained stable after 1.2 seconds; wheel/trackpad input visibly zoomed both directions; Recenter restored default yaw, pitch, and boom distance.
+- Camera continuity: the avatar remained the follow target, obstruction shortening/recovery remained active in a dense scene, and no roll or automatic yaw snap was observed.
+- Responsive emulation measured the full look surface and control separation at phone portrait `390 × 844`, phone landscape `844 × 390`, tablet portrait `820 × 1180`, and tablet landscape `1180 × 820`. Return, Recenter, joystick, Jump, and help text remained reachable without overlap.
+- Touch-emulated one-finger look worked at phone and tablet viewports. Reduced-motion emulation retained responsive look/zoom controls while the existing reduced-motion class remained active.
+- Ten rapid Build/Explore switches ended in Build with one canvas and no console errors. A second clean pass repeated the ten switches after final pointer-capture cleanup with the same result.
+- Stress smoke: duplicated to 50 desktop bricks, entered Explore, orbited and zoomed through the dense scene, and observed one canvas and no application errors. `/rover` loaded its existing mission UI without errors.
+- Runtime console: no application errors after the final fix. Only existing upstream Three/Rapier deprecation warnings were observed.
+
+### Shared-input reconciliation
+
+- Build marquee handling remains a capture-phase canvas listener so unmodified OrbitControls behavior is preserved while marquee gestures can suppress their trailing click.
+- Explore has one coherent yaw/pitch/distance source in the store. The visual camera continues to apply its existing damped orbit and collision boom logic; the input layer only changes desired values.
+- Browser mode-switch testing exposed a recursive `setMarquee(null)` subscription when leaving Build. The reset is now idempotent in both the listener and store, with a regression test; ten rapid switches were then repeated successfully.
+
+### Evidence boundaries
+
+- Phone/tablet checks are browser touch and viewport emulation, not physical-device certification.
+- The in-app browser could not dispatch raw two-finger CDP touch events. Pinch is covered through pure gesture tests and component pointer tests, but still needs physical-device adversarial QA.
+- The browser harness could not maintain a reliable held-key input after an orbit. Camera-relative movement remains covered by existing multi-yaw controller/math tests, but sustained keyboard movement after manual rotation should be retested by QA.
+- The 50-brick browser smoke and automated 200-brick store/history check are not a GPU performance certification.

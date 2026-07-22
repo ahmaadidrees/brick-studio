@@ -255,6 +255,17 @@ describe('ordered multi-selection', () => {
     expect(useBrickStore.getState()).toMatchObject({ selectedIds: [], selectedId: null, selectionMode: false, marquee: null })
     expect(useBrickStore.getState().bricks).toHaveLength(3)
   })
+
+  it('treats an already-cleared marquee reset as an idempotent no-op', () => {
+    useBrickStore.setState({ marquee: null })
+    const listener = vi.fn()
+    const unsubscribe = useBrickStore.subscribe(listener)
+
+    useBrickStore.getState().setMarquee(null)
+
+    expect(listener).not.toHaveBeenCalled()
+    unsubscribe()
+  })
 })
 
 describe('atomic group clipboard and history', () => {
