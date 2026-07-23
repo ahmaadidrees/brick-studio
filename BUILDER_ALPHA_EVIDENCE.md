@@ -186,3 +186,66 @@ Regression smoke:
 Physical iPad/phone testing, Safari scrollbar/pointer behavior, notch safe-area geometry, and actual browser-chrome effects remain a planning/user device gate. No result above is presented as real-device certification.
 
 The P2 closure runtime candidate is ready for the targeted independent QA retest.
+
+## Final disclosure micro-closure — 2026-07-22
+
+### Candidate and exact delta
+
+- Targeted-QA starting candidate: `f8d08085dbab5349c284e907e9f05ab5cf3ebb1e`.
+- Previous runtime closure: `af67e1ce9b8b25740e3904dfadfb00ecaafa019e`.
+- Final disclosure runtime commit: `a2816abd98abcd3b3d11245762145d21bd8ff9da`.
+- Exact micro-delta: `f8d08085dbab5349c284e907e9f05ab5cf3ebb1e..a2816abd98abcd3b3d11245762145d21bd8ff9da`.
+- Exact combined range from immutable main: `9b8da5ab33ad3800b91d5209528be41510edb44f..a2816abd98abcd3b3d11245762145d21bd8ff9da`.
+- Runtime files changed: `BrickStudioApp.tsx`, `BrickStudioApp.test.tsx`, and `brick-studio.css`.
+
+### Fix and focused coverage
+
+- `Inspector` now owns a sheet ref and resets `scrollTop` to 0 in a layout effect on every collapsed-to-expanded transition.
+- The action group now precedes the scroll cue, Color palette, and coordinates in DOM order. CSS `order` properties were removed, so sequential focus and visual presentation share one action-first order at every breakpoint.
+- Added a component regression that sets `scrollTop=143`, collapses, reopens, and asserts `scrollTop=0`.
+- Added a DOM-order assertion proving the action group precedes the first palette control.
+- Palette `aria-pressed`, selected/restored target color, and recolor history coverage remain intact.
+
+### Automated verification
+
+- Focused: `npm test -- --run src/brick/BrickStudioApp.test.tsx` — 1 file, 30 tests passed.
+- Full: `npm test -- --run` — 19 files, 146 tests passed.
+- `npm run build` — passed, including `tsc -b`; only the existing Rapier chunk-size advisory remains.
+- `git diff --check` — passed.
+
+### Live stop-condition verification
+
+The old 4191 preview was unavailable at preflight. A fresh dedicated Vite server was launched from the exact execution worktree on `http://127.0.0.1:4192/`; port 5173 was not used or modified. Coarse-pointer checks used Chromium touch emulation and remain emulation rather than physical-device proof.
+
+Frozen-candidate reproduction at coarse 390×844:
+
+- Actual wheel scrolling reached `scrollTop=143`.
+- Collapse and reopen retained `scrollTop=143`; the action group began at y=430 while the visible region began at y=561.
+- DOM children were Color section, action group, scroll cue, coordinates.
+
+Post-fix coarse 390×844:
+
+- Drawer collapsed: actual scroll `143 → collapse → reopen → 0`; inspector x=8, y=508, 374×264; drawer y=778, 374×58; 6 px gap.
+- Drawer expanded: actual scroll `143 → collapse → reopen → 0`; inspector x=8, y=402, 374×264; drawer y=672, 374×164; 6 px gap.
+- In both states, Rotate/Move/disclosure remained 44×44, Duplicate/Focus/Copy remained 112.7×50, and Delete remained 112.7×50. Every action was inside the inspector.
+
+Post-fix coarse 844×390:
+
+- Expanded drawer: actual maximum scroll `93 → collapse → reopen → 0`; inspector x=544, y=68, 292×314; drawer x=8, y=244, 300×138; overlap area 0.
+- Collapsed drawer: actual maximum scroll `93 → collapse → reopen → 0`; drawer x=8, y=324, 300×58; overlap area 0.
+- In both states, quick actions remained 44×44, bulk actions remained 85.3×50, and every action was inside the inspector.
+
+Semantic and regression smoke:
+
+- Live DOM order is action group, scroll cue, Color section, coordinates; accessibility snapshots list Duplicate/Focus/Copy/Delete before all palette buttons.
+- Fine 1440×900 retained the keyboard/mouse guidance, blue selected palette state, red recolor, and Undo back to blue.
+- Coarse 1194×834 retained zero keyboard/mouse shortcut notes.
+- Build→Explore→Build preserved the one-brick build and exposed Recenter/Return.
+- `/rover` loaded the mission, parts tray, and four modes.
+- Brick Studio and Rover reported zero error-level console entries and zero Vite overlays.
+
+### Remaining gate
+
+Physical phone/iPad and Safari verification remains outside this micro-closure. No unrelated P2/P3 backlog was added to the patch.
+
+The disclosure stop condition is closed and the runtime commit is ready for the final targeted independent retest.
