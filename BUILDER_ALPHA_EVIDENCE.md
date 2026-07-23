@@ -114,3 +114,75 @@ Selected screenshots were captured under `/tmp/brick-alpha-*.png`, including des
 - React quality review found cleanup on new subscriptions/timers, a memoized/cached thumbnail path, no per-card live canvases, and no new per-frame React state.
 
 The candidate is ready for independent adversarial QA, with real-device certification explicitly outstanding.
+
+## Surgical P2 closure pass — 2026-07-22
+
+This section supersedes the earlier candidate pointer for the targeted responsive-inspector retest only.
+
+### Candidate and scope
+
+- QA-reviewed starting candidate: `55c278ed82763a3a844b5e8ac594c3a57e58299e`.
+- P2 closure runtime candidate: `af67e1ce9b8b25740e3904dfadfb00ecaafa019e`.
+- Exact closure range: `55c278ed82763a3a844b5e8ac594c3a57e58299e..af67e1ce9b8b25740e3904dfadfb00ecaafa019e`.
+- Exact combined range from immutable main baseline: `9b8da5ab33ad3800b91d5209528be41510edb44f..af67e1ce9b8b25740e3904dfadfb00ecaafa019e`.
+- The closure changed only `BrickStudioApp.tsx`, `BrickStudioApp.test.tsx`, `brick-studio.css`, and the pointer-neutral initial toast in `store.ts`.
+- Main remained clean at `9b8da5ab33ad3800b91d5209528be41510edb44f`. No deployment, push, PR, remote mutation, or main merge occurred.
+
+### Closed P2 findings
+
+- Phone properties now keep Rotate, Move, Duplicate, Focus, Copy, and Delete above the fold in an actions-first layout. The remaining color/coordinate properties use a focusable, visibly scrollable region with a plain-language scroll cue.
+- Phone bulk action labels remain visible instead of reducing the controls to unexplained icons. Quick actions remain 44×44 px; inspector action buttons are at least 50 px high.
+- The palette derives its selected state from the actual draft or sole selected brick and exposes `aria-pressed`. Recolor remains one undoable history command.
+- The keyboard/mouse shortcut bar is reactively omitted for `(pointer: coarse)` even at wide tablet dimensions and remains present for a fine-pointer desktop.
+- Initial placement status is pointer-neutral: `Pick a brick, position it over the plate, then place it.`
+
+### Automated verification
+
+- Focused: `npm test -- --run src/brick/BrickStudioApp.test.tsx src/brick/store.test.ts` — 2 files, 56 tests passed.
+- Full: `npm test -- --run` — 19 files, 145 tests passed.
+- `npm run build` — passed, including `tsc -b`; only the pre-existing Rapier chunk-size advisory remains.
+- `git diff --check` — passed.
+- Added regression coverage for selected/restored palette state and recolor history, phone properties in both drawer states, wide coarse-pointer guidance, fine-pointer keyboard guidance, and pointer-neutral status text.
+
+### Browser verification and measured geometry
+
+The dedicated preview remained `http://127.0.0.1:4191/`, served from the execution worktree at the closure runtime candidate. Port 5173 was not used. Coarse-pointer checks used Chromium DevTools touch emulation plus explicit viewports and verified `(pointer: coarse) === true`; they remain emulation, not physical-device proof.
+
+Pre-fix reproduction at coarse 390×844 with the drawer collapsed:
+
+- Inspector: x=8, y=508, 374×264, bottom=772.
+- Duplicate/Focus/Copy began at y=750 and Delete began at y=800; the actions extended outside the inspector and into the drawer region.
+
+Post-fix coarse 390×844 with properties expanded:
+
+- Drawer collapsed: inspector x=8, y=508, 374×264; drawer y=778, 374×58; 6 px separation.
+- Drawer expanded: inspector x=8, y=402, 374×264; drawer y=672, 374×164; 6 px separation.
+- Rotate, Move, and disclosure are 44×44. Duplicate/Focus/Copy are 112.7×50; Delete is 112.7×50.
+- Collapsed drawer: quick actions y=517–561, first action row y=573–623, Delete y=629–679; every action is inside the inspector ending at y=772.
+- Expanded drawer: quick actions y=411–455, first action row y=467–517, Delete y=523–573; every action is inside the inspector ending at y=666.
+- The scroll region was 202 px high with 333 px scroll content, `overflow-y: auto`, an 8 px scrollbar, keyboard focus styling, and the visible cue `Editing actions are first. Scroll for color and position.`
+
+Post-fix coarse 844×390 landscape:
+
+- Expanded drawer: inspector x=544, y=68, 292×314; drawer x=8, y=244, 300×138; rectangle overlap area 0.
+- Collapsed drawer: drawer x=8, y=324, 300×58; rectangle overlap area 0.
+- Quick actions are 44×44; Duplicate/Focus/Copy are 85.3×50 and Delete is 85.3×50. All seven controls are within the inspector; Delete ends at y=239 versus inspector bottom y=382.
+
+Modality and palette:
+
+- Coarse 1194×834 reported coarse=true/fine=false and rendered zero keyboard/mouse shortcut notes.
+- Fine 1440×900 reported coarse=false/fine=true and rendered one visible keyboard/mouse shortcut note.
+- A selected brick was recolored red, autosaved, reloaded, and selected again. Red restored with `aria-pressed="true"` while stale global blue was `false`; the browser test build was then returned to blue.
+
+Regression smoke:
+
+- Desktop 1440×900 Build→Explore→Recenter→Build retained six bricks and returned Build to active state.
+- Reload restored the exact six-brick local build.
+- `/rover` loaded the mission, parts tray, and four project modes.
+- Final Brick Studio and Rover sessions reported zero error-level console entries and zero Vite error overlays.
+
+### Remaining gate
+
+Physical iPad/phone testing, Safari scrollbar/pointer behavior, notch safe-area geometry, and actual browser-chrome effects remain a planning/user device gate. No result above is presented as real-device certification.
+
+The P2 closure runtime candidate is ready for the targeted independent QA retest.
