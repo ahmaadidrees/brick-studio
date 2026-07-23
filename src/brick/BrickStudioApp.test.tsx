@@ -1,6 +1,8 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
+import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
+import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
 import { createBrickGeometry } from './geometry'
 import { useBrickStore } from './store'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW } from './orbitCamera'
@@ -14,6 +16,8 @@ vi.mock('./BrickStudioScene', () => ({
 
 const initialState = useBrickStore.getInitialState()
 const brick: BrickInstance = { id: 'brick-a', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }
+const originalCreateObjectUrl = Object.getOwnPropertyDescriptor(URL, 'createObjectURL')
+const originalRevokeObjectUrl = Object.getOwnPropertyDescriptor(URL, 'revokeObjectURL')
 
 function resetStore(bricks: BrickInstance[] = []) {
   useBrickStore.setState({
@@ -44,7 +48,12 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
+  if (originalCreateObjectUrl) Object.defineProperty(URL, 'createObjectURL', originalCreateObjectUrl)
+  else Reflect.deleteProperty(URL, 'createObjectURL')
+  if (originalRevokeObjectUrl) Object.defineProperty(URL, 'revokeObjectURL', originalRevokeObjectUrl)
+  else Reflect.deleteProperty(URL, 'revokeObjectURL')
 })
 
 describe('keyboard construction loop', () => {
@@ -418,5 +427,74 @@ describe('Builder Experience Alpha shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Place positioned brick' }))
     expect(useBrickStore.getState().bricks).toHaveLength(1)
     expect(screen.queryByRole('group', { name: 'Positioned brick actions' })).not.toBeInTheDocument()
+  })
+
+  it('restores the exact committed local build before autosave begins', async () => {
+    const restored: BrickInstance[] = [
+      { ...brick, id: 'saved-brick', partId: 'door_1x4', rotation: 3, color: '#6857d9' },
+    ]
+    window.localStorage.setItem(
+      BRICK_STUDIO_LOCAL_STORAGE_KEY,
+      serializeBrickStudioDocument(createBrickStudioDocument(restored)),
+    )
+
+    render(<BrickStudioApp />)
+
+    await waitFor(() => expect(useBrickStore.getState().bricks).toEqual(restored))
+    expect(useBrickStore.getState()).toMatchObject({
+      selectedIds: [],
+      selectedId: null,
+      undoStack: [],
+      redoStack: [],
+    })
+  })
+
+  it('requires confirmation for New Build and keeps the clear recoverable', () => {
+    resetStore([brick])
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
+    expect(useBrickStore.getState().bricks).toEqual([brick])
+    expect(screen.getByRole('status')).toHaveTextContent('unchanged')
+
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
+    expect(useBrickStore.getState().bricks).toEqual([])
+    act(() => useBrickStore.getState().undo())
+    expect(useBrickStore.getState().bricks).toEqual([brick])
+  })
+
+  it('rejects a malformed confirmed import without replacing the current build', async () => {
+    resetStore([brick])
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<BrickStudioApp />)
+    const file = new File(['{bad'], 'broken.brickstudio.json', { type: 'application/json' })
+    Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue('{bad') })
+
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('not valid JSON'))
+    expect(useBrickStore.getState().bricks).toEqual([brick])
+  })
+
+  it('downloads the current durable document through the default Export command', () => {
+    resetStore([brick])
+    const createObjectURL = vi.fn(() => 'blob:brick-studio')
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: createObjectURL })
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: revokeObjectURL })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Export/ }))
+
+    expect(createObjectURL).toHaveBeenCalledOnce()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:brick-studio')
+    expect(screen.getByRole('status')).toHaveTextContent('Project exported')
   })
 })

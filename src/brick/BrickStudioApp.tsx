@@ -36,6 +36,7 @@ import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { ViewPreset } from './types'
+import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import './brick-studio.css'
 
 function useBuilderShortcuts() {
@@ -524,14 +525,13 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const [drawerExpanded, setDrawerExpanded] = useResponsiveDrawer()
   const onboarding = useBuilderOnboarding()
+  const documentCommands = useBrickStudioDocuments({ onNewBuild, onImportProject, onExportProject })
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
   return (
     <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
       <div className="brick-canvas"><BrickStudioScene /><MarqueeOverlay /></div>
       <Header
-        onNewBuild={onNewBuild}
-        onImportProject={onImportProject}
-        onExportProject={onExportProject}
+        {...documentCommands}
         onOpenHelp={onboarding.reopen}
       />
       {mode === 'build' ? (
