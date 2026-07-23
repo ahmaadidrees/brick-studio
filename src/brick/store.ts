@@ -355,7 +355,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   reducedMotion: false,
   selectionMode: false,
   marquee: null,
-  toast: 'Pick a brick, move over the plate, and tap to place it.',
+  toast: 'Pick a brick, position it over the plate, then place it.',
 
   setMode: (mode) => set({
     mode,

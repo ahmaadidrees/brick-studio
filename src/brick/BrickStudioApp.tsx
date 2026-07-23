@@ -112,6 +112,20 @@ function useReducedMotionPreference() {
   }, [setReducedMotion])
 }
 
+function useCoarsePointerPreference() {
+  const [coarsePointer, setCoarsePointer] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false)
+
+  useEffect(() => {
+    const preference = window.matchMedia?.('(pointer: coarse)')
+    const updatePreference = () => setCoarsePointer(preference?.matches ?? false)
+    updatePreference()
+    preference?.addEventListener?.('change', updatePreference)
+    return () => preference?.removeEventListener?.('change', updatePreference)
+  }, [])
+
+  return coarsePointer
+}
+
 function useResponsiveDrawer() {
   const [phoneQuery] = useState(() => window.matchMedia?.('(max-width: 600px)') ?? null)
   const [expanded, setExpanded] = useState(() => !(phoneQuery?.matches ?? window.innerWidth <= 600))
@@ -215,12 +229,29 @@ function PartLibrary({ expanded, onToggle }: PartLibraryProps) {
   )
 }
 
-function ColorPalette() {
-  const activeColor = useBrickStore((state) => state.activeColor)
+type ColorPaletteProps = {
+  targetColor: string
+}
+
+function ColorPalette({ targetColor }: ColorPaletteProps) {
   const setColor = useBrickStore((state) => state.setActiveColor)
   return (
     <div className="color-grid" aria-label="Brick color">
-      {BRICK_COLORS.map((color) => <button key={color} className={activeColor === color ? 'active' : ''} style={{ background: color }} onClick={() => setColor(color)} aria-label={`Use color ${color}`}>{activeColor === color && <Check size={13} />}</button>)}
+      {BRICK_COLORS.map((color) => {
+        const selected = targetColor === color
+        return (
+          <button
+            key={color}
+            className={selected ? 'active' : ''}
+            style={{ background: color }}
+            onClick={() => setColor(color)}
+            aria-label={`Use color ${color}`}
+            aria-pressed={selected}
+          >
+            {selected && <Check size={13} />}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -274,9 +305,15 @@ function Inspector() {
           <button className="inspector-sheet-toggle" aria-controls="brick-inspector-properties" aria-expanded={detailsExpanded} aria-label={detailsExpanded ? 'Hide brick properties' : 'Show brick properties'} onClick={() => setDetailsExpanded((expanded) => !expanded)}><ChevronDown size={19} /></button>
         </div>
       </div>
-      <div className="inspector-sheet" id="brick-inspector-properties">
-        <section><label><Palette size={15} /> Color</label><ColorPalette /></section>
-        <div className="inspector-actions">
+      <div
+        className="inspector-sheet"
+        id="brick-inspector-properties"
+        role="region"
+        aria-label="Brick properties and editing actions"
+        tabIndex={detailsExpanded ? 0 : -1}
+      >
+        <section><label><Palette size={15} /> Color</label><ColorPalette targetColor={target.color} /></section>
+        <div className="inspector-actions" role="group" aria-label="Brick editing actions">
           {draft && <button className="inspector-sheet-primary" aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /><span>{moving ? 'Place move' : 'Place'}</span><kbd>Enter</kbd></button>}
           <button className="inspector-sheet-primary" aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
           {selected && <button className="inspector-sheet-primary" aria-label="Move brick" onClick={startMove}><Move size={18} /><span>Move</span></button>}
@@ -286,6 +323,7 @@ function Inspector() {
           {!selected && <button aria-label="Paste brick" onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>}
           {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
         </div>
+        <p className="inspector-scroll-hint">Editing actions are first. Scroll for color and position.</p>
         <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
       </div>
     </aside>
@@ -506,7 +544,9 @@ function TouchExploreControls() {
 }
 
 function ShortcutBar() {
-  return <div className="shortcut-bar"><span><MousePointer2 size={14} /> Click · ⌘Click toggle · Shift-drag marquee</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  const coarsePointer = useCoarsePointerPreference()
+  if (coarsePointer) return null
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Click · ⌘Click toggle · Shift-drag marquee</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands

@@ -6,7 +6,7 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
 import { createBrickGeometry } from './geometry'
 import { useBrickStore } from './store'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW } from './orbitCamera'
-import { BRICK_PARTS } from './parts'
+import { BRICK_COLORS, BRICK_PARTS } from './parts'
 import { EXPLORE_MAX_PITCH } from './touchInput'
 import type { BrickInstance } from './types'
 
@@ -31,6 +31,19 @@ function resetStore(bricks: BrickInstance[] = []) {
     viewRequest: { ...initialState.viewRequest },
     touchMove: { ...initialState.touchMove },
   }, true)
+}
+
+function stubPointerModality(coarse: boolean) {
+  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+    matches: query === '(pointer: coarse)' ? coarse : false,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(() => true),
+  })))
 }
 
 beforeEach(() => {
@@ -145,6 +158,35 @@ describe('live move feedback', () => {
   })
 })
 
+describe('single-brick inspector', () => {
+  it('derives palette selection from the selected or restored brick and preserves recolor history', () => {
+    const redBrick: BrickInstance = { ...brick, id: 'red-brick', color: BRICK_COLORS[0] }
+    resetStore([redBrick])
+    useBrickStore.setState({ activeColor: BRICK_COLORS[5], selectedIds: [redBrick.id], selectedId: redBrick.id })
+    render(<BrickStudioApp />)
+
+    const red = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
+    const blue = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })
+    expect(red).toHaveAttribute('aria-pressed', 'true')
+    expect(blue).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(blue)
+    expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[5])
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    act(() => useBrickStore.getState().undo())
+    expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[0])
+    expect(red).toHaveAttribute('aria-pressed', 'true')
+
+    const restored = { ...redBrick, id: 'restored-red' }
+    act(() => {
+      expect(useBrickStore.getState().restoreDocument(createBrickStudioDocument([restored]))).toEqual({ ok: true })
+      useBrickStore.getState().selectBrick(restored.id)
+    })
+    expect(screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
 describe('multi-selection feedback and controls', () => {
   const pair: BrickInstance[] = [
     { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },
@@ -193,6 +235,46 @@ describe('Brick Studio responsive controls', () => {
     expect(properties).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(properties)
     expect(screen.getByRole('button', { name: 'Hide brick properties' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('keeps the complete editing action set discoverable when phone properties and either drawer state are open', () => {
+    resetStore([brick])
+    useBrickStore.setState({ selectedIds: [brick.id], selectedId: brick.id })
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
+    const properties = screen.getByRole('region', { name: 'Brick properties and editing actions' })
+    expect(properties).toHaveAttribute('tabindex', '0')
+    expect(screen.getByText('Editing actions are first. Scroll for color and position.')).toBeInTheDocument()
+
+    const actions = screen.getByRole('group', { name: 'Brick editing actions' })
+    for (const name of ['Duplicate brick', 'Focus selected brick', 'Copy brick', 'Delete brick']) {
+      expect(actions).toContainElement(screen.getByRole('button', { name }))
+    }
+    expect(screen.getAllByRole('button', { name: 'Rotate brick' })).not.toHaveLength(0)
+    expect(screen.getAllByRole('button', { name: 'Move brick' })).not.toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
+    expect(screen.getByRole('group', { name: 'Brick editing actions' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete brick' })).toBeInTheDocument()
+  })
+
+  it('hides mouse and Command guidance on a wide coarse-pointer layout', () => {
+    vi.stubGlobal('innerWidth', 1194)
+    stubPointerModality(true)
+    render(<BrickStudioApp />)
+
+    expect(screen.queryByRole('note', { name: 'Keyboard and mouse shortcuts' })).not.toBeInTheDocument()
+  })
+
+  it('keeps keyboard guidance on a fine-pointer desktop and uses pointer-neutral initial status', () => {
+    vi.stubGlobal('innerWidth', 1440)
+    stubPointerModality(false)
+    render(<BrickStudioApp />)
+
+    expect(screen.getByRole('note', { name: 'Keyboard and mouse shortcuts' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Pick a brick, position it over the plate, then place it.')
+    expect(screen.getByRole('status')).not.toHaveTextContent('tap')
   })
 
   it('uses the same zero-brick Explore guard for the button and 2 shortcut', () => {

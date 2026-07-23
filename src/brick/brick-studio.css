@@ -155,6 +155,7 @@
 .inspector-actions button { min-height: 48px; display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 4px; padding: 0 9px; border: 0; border-radius: 11px; color: #526970; background: #eef1f1; font-size: 10px; font-weight: 900; text-align: left; cursor: pointer; }
 .inspector-actions button.danger { color: #b04f49; background: #fae9e7; }
 .inspector-actions kbd { min-width: 18px; height: 17px; padding: 0 3px; border: 0; border-radius: 4px; background: rgba(0,0,0,.07); font-size: 8px; }
+.inspector-scroll-hint { display: none; }
 .coordinates { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 12px; }
 .coordinates span { display: flex; justify-content: space-between; padding: 6px 7px; border-radius: 7px; color: #8a979a; background: #f3f5f4; font-size: 9px; font-weight: 800; }
 .coordinates strong { color: #4e656d; }
@@ -210,6 +211,7 @@
 @media (pointer: coarse) {
   .fine-pointer-copy { display: none; }
   .coarse-pointer-copy { display: inline; }
+  .shortcut-bar { display: none; }
   .color-grid { grid-template-columns: repeat(4, 1fr); }
   .color-grid button { min-width: 44px; width: 44px; height: 44px; }
   .view-controls button { min-width: 44px; height: 44px; }
@@ -301,6 +303,31 @@
   .brick-mode-explore .recenter-camera { top: 92px; }
   .brick-mode-explore .brick-toast { top: 144px; }
   .touch-explore-hint { bottom: max(4px, env(safe-area-inset-bottom)); max-width: 42%; }
+}
+
+@media (max-width: 600px), (max-height: 520px) and (orientation: landscape) {
+  .brick-inspector.details-expanded { display: flex; flex-direction: column; overflow: hidden; }
+  .details-expanded .inspector-toolbar { flex: 0 0 auto; }
+  .details-expanded .inspector-sheet {
+    min-height: 0;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+    scrollbar-color: #9aafb7 rgba(214,223,225,.55);
+    scrollbar-gutter: stable;
+    scrollbar-width: auto;
+  }
+  .details-expanded .inspector-sheet:focus-visible { outline: 3px solid rgba(62,131,215,.38); outline-offset: -3px; border-radius: 10px; }
+  .details-expanded .inspector-sheet::-webkit-scrollbar { width: 8px; }
+  .details-expanded .inspector-sheet::-webkit-scrollbar-track { border-radius: 8px; background: rgba(214,223,225,.55); }
+  .details-expanded .inspector-sheet::-webkit-scrollbar-thumb { border-radius: 8px; background: #9aafb7; }
+  .details-expanded .inspector-actions { order: -2; flex: 0 0 auto; margin-top: 0; }
+  .details-expanded .inspector-actions button { min-height: 50px; grid-template-rows: 18px auto; gap: 2px; }
+  .details-expanded .inspector-actions button span { display: block; font-size: 8px; line-height: 1; }
+  .details-expanded .inspector-scroll-hint { order: -1; display: block; margin: 7px 2px 9px; color: #71838a; font-size: 9px; font-weight: 800; line-height: 1.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {
