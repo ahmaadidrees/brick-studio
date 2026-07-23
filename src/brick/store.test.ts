@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
 import { MAX_HISTORY_ENTRIES, draftIsValid, useBrickStore, validateBrickGroup } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
@@ -356,5 +357,118 @@ describe('atomic group clipboard and history', () => {
 
     expect(validateBrickGroup(colliding, [], 250)).toEqual({ valid: false, reason: 'placement' })
     expect(validateBrickGroup(outside, [], 250)).toEqual({ valid: false, reason: 'placement' })
+  })
+})
+
+describe('document replacement commands', () => {
+  const project: BrickInstance[] = [
+    { id: 'roundtrip-plain', partId: 'brick_2x3', x: 3, y: 0, z: 5, rotation: 1, color: '#f4ca3a' },
+    { id: 'roundtrip-slope', partId: 'slope_2x2', x: 18, y: 3, z: 20, rotation: 3, color: '#6857d9' },
+    { id: 'roundtrip-door', partId: 'door_1x4', x: 30, y: 0, z: 31, rotation: 0, color: '#3e83d7' },
+  ]
+
+  beforeEach(() => {
+    useBrickStore.setState({
+      bricks: project.map((brick) => ({ ...brick })),
+      selectedIds: ['roundtrip-door'],
+      selectedId: 'roundtrip-door',
+      draft: null,
+      undoStack: [],
+      redoStack: [],
+      brickBudget: 250,
+      budgetProfile: 'desktop',
+    })
+  })
+
+  it('exports, starts a recoverable New Build, and imports the exact build atomically', () => {
+    const serialized = useBrickStore.getState().exportDocument()
+
+    expect(useBrickStore.getState().newBuild()).toBe(true)
+    expect(useBrickStore.getState().bricks).toEqual([])
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(project)
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().bricks).toEqual([])
+
+    expect(useBrickStore.getState().importDocument(serialized)).toEqual({ ok: true })
+    expect(useBrickStore.getState().bricks).toEqual(project)
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Import project')
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual([])
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().bricks).toEqual(project)
+  })
+
+  it('rejects malformed, incompatible, invalid, and over-budget imports without mutation', () => {
+    useBrickStore.setState({ brickBudget: 2, budgetProfile: 'phone' })
+    const before = useBrickStore.getState()
+    const attempts = [
+      '{bad',
+      JSON.stringify({ schemaVersion: 99, partLibraryVersion: 1, bricks: [] }),
+      serializeBrickStudioDocument(createBrickStudioDocument([{ ...project[0], partId: 'unknown' }])),
+      serializeBrickStudioDocument(createBrickStudioDocument(project)),
+    ]
+
+    for (const serialized of attempts) {
+      const result = useBrickStore.getState().importDocument(serialized)
+      expect(result.ok).toBe(false)
+      expect(useBrickStore.getState().bricks).toEqual(before.bricks)
+      expect(useBrickStore.getState().undoStack).toEqual(before.undoStack)
+      expect(useBrickStore.getState().redoStack).toEqual(before.redoStack)
+      expect(useBrickStore.getState().selectedIds).toEqual(before.selectedIds)
+    }
+  })
+
+  it('restores a valid universal document even under a lower device budget and clears transient state/history', () => {
+    const restored = Array.from({ length: 80 }, (_, index): BrickInstance => ({
+      id: `restored-${index}`,
+      partId: 'brick_1x1',
+      x: index % 64,
+      y: Math.floor(index / 64) * 3,
+      z: Math.floor(index / 64),
+      rotation: 0,
+      color: '#65b85a',
+    }))
+    useBrickStore.setState({
+      brickBudget: 75,
+      budgetProfile: 'phone',
+      selectedIds: ['roundtrip-door'],
+      selectedId: 'roundtrip-door',
+      selectionMode: true,
+      marquee: { start: { x: 1, y: 1 }, current: { x: 5, y: 5 }, dragging: true },
+      clipboard: { bricks: [project[0]] },
+      undoStack: useBrickStore.getState().undoStack,
+      redoStack: useBrickStore.getState().redoStack,
+    })
+
+    expect(useBrickStore.getState().restoreDocument(createBrickStudioDocument(restored))).toEqual({ ok: true })
+    expect(useBrickStore.getState()).toMatchObject({
+      bricks: restored,
+      selectedIds: [],
+      selectedId: null,
+      selectionMode: false,
+      marquee: null,
+      clipboard: null,
+      undoStack: [],
+      redoStack: [],
+      mode: 'build',
+      brickBudget: 75,
+    })
+  })
+
+  it('does not mutate the live build when startup restoration receives an invalid document', () => {
+    const before = useBrickStore.getState()
+    const invalid = {
+      schemaVersion: 1,
+      partLibraryVersion: 1,
+      bricks: [{ ...project[0], rotation: 9 }],
+    }
+
+    const result = useBrickStore.getState().restoreDocument(invalid as never)
+
+    expect(result.ok).toBe(false)
+    expect(useBrickStore.getState().bricks).toEqual(before.bricks)
+    expect(useBrickStore.getState().undoStack).toEqual(before.undoStack)
   })
 })

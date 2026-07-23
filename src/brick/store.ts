@@ -1,4 +1,13 @@
 import { create } from 'zustand'
+import {
+  BRICK_STUDIO_MAX_BRICKS,
+  createBrickStudioDocument,
+  parseBrickStudioDocument,
+  serializeBrickStudioDocument,
+  validateBrickStudioDocument,
+  type BrickStudioDocument,
+  type BrickStudioDocumentError,
+} from './brickDocument'
 import { BRICK_BUDGETS } from './budgets'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize } from './parts'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
@@ -34,7 +43,11 @@ export type MarqueeState = {
   dragging: boolean
 }
 
-type BrickState = {
+export type BrickDocumentCommandResult =
+  | { ok: true }
+  | { ok: false; error: BrickStudioDocumentError }
+
+export type BrickState = {
   mode: BrickMode
   bricks: BrickInstance[]
   selectedIds: string[]
@@ -78,6 +91,10 @@ type BrickState = {
   copy: () => void
   paste: () => void
   duplicate: () => void
+  newBuild: () => boolean
+  exportDocument: () => string
+  importDocument: (serialized: string) => BrickDocumentCommandResult
+  restoreDocument: (document: BrickStudioDocument) => BrickDocumentCommandResult
   undo: () => void
   redo: () => void
   setBudgetProfile: (profile: BrickBudgetProfile) => void
@@ -176,6 +193,45 @@ function singleHistoryEntry(
   group: string | null = null,
 ) {
   return historyEntry([{ before, after, beforeIndex, afterIndex }], label, group)
+}
+
+function replacementHistoryEntry(
+  before: BrickInstance[],
+  after: BrickInstance[],
+  label: string,
+): BrickHistoryEntry {
+  const beforeById = new Map(before.map((brick, index) => [brick.id, { brick, index }]))
+  const afterById = new Map(after.map((brick, index) => [brick.id, { brick, index }]))
+  const orderedIds = [
+    ...before.map((brick) => brick.id),
+    ...after.filter((brick) => !beforeById.has(brick.id)).map((brick) => brick.id),
+  ]
+  const deltas = orderedIds.map((id) => {
+    const previous = beforeById.get(id)
+    const next = afterById.get(id)
+    return {
+      before: previous?.brick ?? null,
+      after: next?.brick ?? null,
+      beforeIndex: previous?.index ?? null,
+      afterIndex: next?.index ?? null,
+    }
+  })
+  return historyEntry(deltas, label, null, [], [])
+}
+
+function buildsAreEqual(first: BrickInstance[], second: BrickInstance[]) {
+  return first.length === second.length
+    && first.every((brick, index) => {
+      const other = second[index]
+      return other
+        && brick.id === other.id
+        && brick.partId === other.partId
+        && brick.x === other.x
+        && brick.y === other.y
+        && brick.z === other.z
+        && brick.rotation === other.rotation
+        && brick.color === other.color
+    })
 }
 
 function selectedBricks(state: Pick<BrickState, 'bricks' | 'selectedIds' | 'selectedId'>) {
@@ -579,6 +635,92 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     })
   },
   duplicate: () => { get().copy(); get().paste() },
+  newBuild: () => {
+    const state = get()
+    const hadBuild = state.bricks.length > 0
+    set({
+      mode: 'build',
+      bricks: [],
+      ...selectionPatch([]),
+      activePartId: null,
+      draft: null,
+      movingId: null,
+      clipboard: null,
+      redoStack: hadBuild ? [] : state.redoStack,
+      undoStack: hadBuild
+        ? appendHistory(state.undoStack, replacementHistoryEntry(state.bricks, [], 'New Build'))
+        : state.undoStack,
+      viewRequest: { preset: 'home', nonce: state.viewRequest.nonce + 1 },
+      selectionMode: false,
+      marquee: null,
+      touchMove: { x: 0, z: 0 },
+      touchMoveMagnitude: 0,
+      touchRunning: false,
+      toast: hadBuild ? 'Started a new blank build. Undo can restore the previous build.' : 'This build is already blank.',
+    })
+    return hadBuild
+  },
+  exportDocument: () => serializeBrickStudioDocument(createBrickStudioDocument(get().bricks)),
+  importDocument: (serialized) => {
+    const state = get()
+    const result = parseBrickStudioDocument(serialized, { maxBricks: state.brickBudget })
+    if (!result.ok) {
+      set({ toast: result.error.message })
+      return result
+    }
+    const nextBricks = result.document.bricks.map(cloneBrick)
+    const changed = !buildsAreEqual(state.bricks, nextBricks)
+    set({
+      mode: 'build',
+      bricks: nextBricks,
+      ...selectionPatch([]),
+      activePartId: null,
+      draft: null,
+      movingId: null,
+      clipboard: null,
+      redoStack: changed ? [] : state.redoStack,
+      undoStack: changed
+        ? appendHistory(state.undoStack, replacementHistoryEntry(state.bricks, nextBricks, 'Import project'))
+        : state.undoStack,
+      viewRequest: { preset: 'home', nonce: state.viewRequest.nonce + 1 },
+      selectionMode: false,
+      marquee: null,
+      touchMove: { x: 0, z: 0 },
+      touchMoveMagnitude: 0,
+      touchRunning: false,
+      toast: changed ? `Imported ${nextBricks.length} bricks.` : 'The imported project already matches this build.',
+    })
+    return { ok: true }
+  },
+  restoreDocument: (document) => {
+    const result = validateBrickStudioDocument(document, { maxBricks: BRICK_STUDIO_MAX_BRICKS })
+    if (!result.ok) {
+      set({ toast: result.error.message })
+      return result
+    }
+    const restoredBricks = result.document.bricks.map(cloneBrick)
+    set((state) => ({
+      mode: 'build',
+      bricks: restoredBricks,
+      ...selectionPatch([]),
+      activePartId: null,
+      draft: null,
+      movingId: null,
+      clipboard: null,
+      undoStack: [],
+      redoStack: [],
+      viewRequest: { preset: 'home', nonce: state.viewRequest.nonce + 1 },
+      touchMove: { x: 0, z: 0 },
+      touchMoveMagnitude: 0,
+      touchRunning: false,
+      selectionMode: false,
+      marquee: null,
+      toast: restoredBricks.length
+        ? `Restored ${restoredBricks.length} locally saved bricks.`
+        : 'Restored a blank local project.',
+    }))
+    return { ok: true }
+  },
   undo: () => {
     const state = get()
     const previous = state.undoStack.at(-1)
