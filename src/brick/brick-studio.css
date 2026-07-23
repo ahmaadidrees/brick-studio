@@ -232,7 +232,8 @@
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }.inspector-actions button { min-height: 44px; grid-template-columns: 1fr; justify-items: center; padding: 4px; text-align: center; }.inspector-actions button span, .inspector-actions kbd { display: none; }
   .coordinates { display: none; }
   .view-controls { right: auto; bottom: 186px; left: 10px; }
-  .selection-mode-control { bottom: 186px; left: 220px; }
+  .view-controls button { min-width: 44px; height: 44px; }
+  .selection-mode-control { bottom: 186px; left: 248px; }
   .drawer-collapsed .view-controls, .drawer-collapsed .selection-mode-control { bottom: 76px; }
   .touch-placement-bar { position: absolute; z-index: 14; right: max(10px, env(safe-area-inset-right)); bottom: 186px; left: auto; display: flex; gap: 6px; transform: none; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
   .drawer-collapsed .touch-placement-bar { bottom: 76px; }
@@ -264,7 +265,7 @@
   .touch-placement-bar, .drawer-collapsed .touch-placement-bar { position: relative; inset: auto; order: 2; width: 100%; box-sizing: border-box; transform: none; }
   .touch-placement-bar .studio-button:not(.touch-place-button) { flex: 1; padding: 0 9px; }
   .touch-place-button { flex: 1.7; min-width: 0; }
-  .view-controls { position: fixed; top: 116px; bottom: auto; left: max(8px, env(safe-area-inset-left)); height: 52px; box-sizing: border-box; align-self: flex-start; }.view-controls button { min-width: 38px; }.view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
+  .view-controls { position: fixed; top: 116px; bottom: auto; left: max(8px, env(safe-area-inset-left)); height: 54px; box-sizing: border-box; align-self: flex-start; }.view-controls button { min-width: 44px; height: 44px; }.view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
   .selection-mode-control, .drawer-collapsed .selection-mode-control { position: fixed; top: 116px; bottom: auto; left: 202px; min-width: 44px; width: 44px; padding: 0; }
   .selection-mode-control span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .empty-guide { display: none; }
@@ -290,7 +291,7 @@
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }
   .view-controls { position: absolute; top: auto; bottom: 8px; left: 320px; }
   .view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
-  .selection-mode-control, .drawer-collapsed .selection-mode-control { position: absolute; top: auto; bottom: 8px; left: 460px; width: auto; min-width: 82px; padding: 0 12px; }
+  .selection-mode-control, .drawer-collapsed .selection-mode-control { position: absolute; top: auto; bottom: 8px; left: 466px; width: auto; min-width: 82px; padding: 0 12px; }
   .touch-placement-bar, .drawer-collapsed .touch-placement-bar { position: absolute; top: auto; right: 8px; bottom: 8px; left: auto; width: 292px; transform: none; }
   .selection-mode-control span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
   .empty-guide { display: none; }
