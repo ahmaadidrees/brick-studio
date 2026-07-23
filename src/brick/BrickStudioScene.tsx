@@ -2,11 +2,30 @@ import { Edges, OrbitControls } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
 import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { BlockAvatar } from './BlockAvatar'
 import { createMotionSnapshot } from './avatarMotion'
-import { getBuildBounds, getFrameDistance } from './bounds'
+import { getBuildBounds } from './bounds'
+import {
+  clampBuildCameraTarget,
+  createBuildFramePose,
+  getBuildCameraLimits,
+} from './buildCamera'
+import {
+  beginBuildPointer,
+  cancelBuildPointer,
+  createBuildGestureState,
+  finishBuildPointer,
+  interruptBuildPointers,
+  isConfirmationPlacementPointer,
+  resetBuildPointers,
+  shouldSuppressBuildTouchClick,
+  takeBuildPointerCompletion,
+  updateBuildPointer,
+  type BuildGestureState,
+} from './buildInput'
 import {
   CHARACTER_FIXED_STEP,
   CHARACTER_CONTROLLER_OFFSET,
@@ -86,17 +105,31 @@ function BaseplateStuds() {
   )
 }
 
-function Baseplate({ explore = false }: { explore?: boolean }) {
+function Baseplate({ explore = false, buildGesture }: { explore?: boolean; buildGesture?: BuildGestureState }) {
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
   const selectBrick = useBrickStore((state) => state.selectBrick)
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
-    if (!draft || explore) return
+    if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
     event.stopPropagation()
     const next = gridDraftFromPoint(event.point, 0, draft)
     setDraftPosition(next.x, next.y, next.z)
+  }
+
+  const positionTouchDraft = (event: ThreeEvent<PointerEvent>) => {
+    if (explore || !buildGesture || !isConfirmationPlacementPointer(event.pointerType)) return
+    const completion = takeBuildPointerCompletion(buildGesture, event.pointerId)
+    if (completion?.intent !== 'position') return
+    event.stopPropagation()
+    const state = useBrickStore.getState()
+    if (state.draft) {
+      const next = gridDraftFromPoint(event.point, 0, state.draft)
+      state.setDraftPosition(next.x, next.y, next.z)
+    } else {
+      state.selectBrick(null)
+    }
   }
 
   return (
@@ -105,8 +138,11 @@ function Baseplate({ explore = false }: { explore?: boolean }) {
         position={[0, -0.09, 0]}
         receiveShadow
         onPointerMove={moveDraft}
+        onPointerUp={positionTouchDraft}
         onClick={(event) => {
           event.stopPropagation()
+          const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
+          if (isConfirmationPlacementPointer(pointerType)) return
           if (draft && !explore) placeDraft()
           else if (!explore) selectBrick(null)
         }}
@@ -120,7 +156,7 @@ function Baseplate({ explore = false }: { explore?: boolean }) {
   )
 }
 
-function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore?: boolean }) {
+function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
@@ -134,10 +170,24 @@ function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore
   const userData = useMemo(() => ({ brickId: brick.id }), [brick.id])
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
-    if (!draft || explore) return
+    if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
     event.stopPropagation()
     const next = gridDraftFromPoint(event.point, brick.y + part.height, draft)
     setDraftPosition(next.x, next.y, next.z)
+  }
+
+  const positionTouchDraft = (event: ThreeEvent<PointerEvent>) => {
+    if (explore || !buildGesture || !isConfirmationPlacementPointer(event.pointerType)) return
+    const completion = takeBuildPointerCompletion(buildGesture, event.pointerId)
+    if (completion?.intent !== 'position') return
+    event.stopPropagation()
+    const state = useBrickStore.getState()
+    if (state.draft) {
+      const next = gridDraftFromPoint(event.point, brick.y + part.height, state.draft)
+      state.setDraftPosition(next.x, next.y, next.z)
+    } else {
+      state.selectBrick(brick.id)
+    }
   }
 
   return (
@@ -148,8 +198,11 @@ function BrickObject({ brick, explore = false }: { brick: BrickInstance; explore
         castShadow
         receiveShadow
         onPointerMove={moveDraft}
+        onPointerUp={positionTouchDraft}
         onClick={(event) => {
           event.stopPropagation()
+          const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
+          if (isConfirmationPlacementPointer(pointerType)) return
           if (draft && !explore) placeDraft()
           else if (!explore) {
             const nativeEvent = event.nativeEvent as MouseEvent
@@ -188,56 +241,70 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
 }
 
 function BuildCamera() {
-  const controls = useRef<any>(null)
+  const controls = useRef<OrbitControlsImpl | null>(null)
   const request = useBrickStore((state) => state.viewRequest)
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const marquee = useBrickStore((state) => state.marquee)
+  const bricks = useBrickStore((state) => state.bricks)
   const { camera, size: viewportSize } = useThree()
+  const unclampedTarget = useRef(new THREE.Vector3())
+  const clampedTarget = useRef(new THREE.Vector3())
+  const targetCorrection = useRef(new THREE.Vector3())
+  const perspectiveCamera = camera as THREE.PerspectiveCamera
+  const bounds = useMemo(() => getBuildBounds(bricks), [bricks])
+  const limits = useMemo(
+    () => getBuildCameraLimits(bounds, perspectiveCamera.fov, perspectiveCamera.aspect),
+    [bounds, perspectiveCamera.fov, perspectiveCamera.aspect, viewportSize.width, viewportSize.height],
+  )
+
+  const clampCameraNavigation = useCallback(() => {
+    const control = controls.current
+    if (!control) return
+    const previous = unclampedTarget.current.copy(control.target)
+    clampBuildCameraTarget(previous, limits, clampedTarget.current)
+    if (clampedTarget.current.equals(previous)) return
+    targetCorrection.current.subVectors(clampedTarget.current, previous)
+    control.target.copy(clampedTarget.current)
+    camera.position.add(targetCorrection.current)
+  }, [camera, limits])
 
   useEffect(() => {
     const { bricks, selectedId } = useBrickStore.getState()
-    const target = new THREE.Vector3(0, 0, 0)
     const selected = bricks.find((brick) => brick.id === selectedId)
-    const perspectiveCamera = camera as THREE.PerspectiveCamera
     const frameBounds = getBuildBounds(bricks)
-    if (request.preset === 'selection' && selected) {
-      const position = brickWorldPosition(selected)
-      target.set(position[0], position[1] + 0.5, position[2])
-    } else if (request.preset === 'home') {
-      target.fromArray(frameBounds.center)
-    }
-    const distance = request.preset === 'selection'
-      ? 6
-      : request.preset === 'home'
-        ? getFrameDistance(frameBounds, perspectiveCamera.fov, perspectiveCamera.aspect)
-        : 24
-    const homeDirection = new THREE.Vector3(14, 12, 16).normalize()
-    const positions: Record<string, THREE.Vector3> = {
-      top: new THREE.Vector3(target.x, distance, target.z + 0.01),
-      front: new THREE.Vector3(target.x, target.y + 5, target.z + distance),
-      right: new THREE.Vector3(target.x + distance, target.y + 5, target.z),
-      perspective: new THREE.Vector3(target.x + 14, target.y + 12, target.z + 16),
-      home: target.clone().add(homeDirection.multiplyScalar(distance)),
-      selection: new THREE.Vector3(target.x + 5, target.y + 4, target.z + 6),
-    }
-    camera.position.copy(positions[request.preset] ?? positions.home)
-    controls.current?.target.copy(target)
+    const selectedPosition = selected ? brickWorldPosition(selected) : null
+    const pose = createBuildFramePose(
+      frameBounds,
+      request.preset,
+      perspectiveCamera.fov,
+      perspectiveCamera.aspect,
+      selectedPosition
+        ? { x: selectedPosition[0], y: selectedPosition[1] + 0.5, z: selectedPosition[2] }
+        : null,
+    )
+    camera.position.set(pose.position.x, pose.position.y, pose.position.z)
+    controls.current?.target.set(pose.target.x, pose.target.y, pose.target.z)
     controls.current?.update()
   }, [request, camera, viewportSize.width, viewportSize.height])
+
+  useEffect(() => {
+    clampCameraNavigation()
+    controls.current?.update()
+  }, [clampCameraNavigation])
 
   return (
     <OrbitControls
       ref={controls}
       makeDefault
       enabled={!selectionMode && !marquee}
-      target={[0, 0, 0]}
       enableDamping
       dampingFactor={0.08}
-      minDistance={3}
-      maxDistance={180}
+      minDistance={limits.minDistance}
+      maxDistance={limits.maxDistance}
       maxPolarAngle={Math.PI / 2.02}
       mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+      onChange={clampCameraNavigation}
     />
   )
 }
@@ -406,16 +473,77 @@ function BuildSelectionInput() {
   return null
 }
 
+function BuildTouchInput({ gesture }: { gesture: BuildGestureState }) {
+  const { gl } = useThree()
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const now = () => performance.now()
+    const pointerDown = (event: PointerEvent) => {
+      beginBuildPointer(gesture, event.pointerId, event.pointerType, event.clientX, event.clientY)
+    }
+    const pointerMove = (event: PointerEvent) => {
+      updateBuildPointer(gesture, event.pointerId, event.clientX, event.clientY)
+    }
+    const pointerUp = (event: PointerEvent) => {
+      finishBuildPointer(gesture, event.pointerId, event.clientX, event.clientY, now())
+    }
+    const pointerCancel = (event: PointerEvent) => {
+      cancelBuildPointer(gesture, event.pointerId, now())
+    }
+    const click = (event: MouseEvent) => {
+      if (!shouldSuppressBuildTouchClick(gesture, now())) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    const interrupt = () => interruptBuildPointers(gesture, now())
+    const reset = () => resetBuildPointers(gesture)
+    const visibility = () => { if (document.visibilityState !== 'visible') interrupt() }
+    const unsubscribe = useBrickStore.subscribe((state) => {
+      if (state.mode !== 'build') reset()
+    })
+
+    canvas.addEventListener('pointerdown', pointerDown, true)
+    canvas.addEventListener('pointermove', pointerMove, true)
+    canvas.addEventListener('pointerup', pointerUp, true)
+    canvas.addEventListener('pointercancel', pointerCancel, true)
+    canvas.addEventListener('lostpointercapture', pointerCancel, true)
+    canvas.addEventListener('click', click, true)
+    window.addEventListener('blur', interrupt)
+    window.addEventListener('resize', interrupt)
+    window.addEventListener('orientationchange', interrupt)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      canvas.removeEventListener('pointerdown', pointerDown, true)
+      canvas.removeEventListener('pointermove', pointerMove, true)
+      canvas.removeEventListener('pointerup', pointerUp, true)
+      canvas.removeEventListener('pointercancel', pointerCancel, true)
+      canvas.removeEventListener('lostpointercapture', pointerCancel, true)
+      canvas.removeEventListener('click', click, true)
+      window.removeEventListener('blur', interrupt)
+      window.removeEventListener('resize', interrupt)
+      window.removeEventListener('orientationchange', interrupt)
+      document.removeEventListener('visibilitychange', visibility)
+      unsubscribe()
+      reset()
+    }
+  }, [gesture, gl])
+
+  return null
+}
+
 function BuildScene() {
   const bricks = useBrickStore((state) => state.bricks)
   const selectBrick = useBrickStore((state) => state.selectBrick)
+  const gesture = useRef(createBuildGestureState())
   return (
     <>
-      <Baseplate />
-      {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} />)}
+      <Baseplate buildGesture={gesture.current} />
+      {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} />)}
       <DraftBrick />
       <BuildCamera />
       <BuildSelectionInput />
+      <BuildTouchInput gesture={gesture.current} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#f5f2ec" roughness={1} />
