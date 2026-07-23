@@ -248,6 +248,8 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByText('Editing actions are first. Scroll for color and position.')).toBeInTheDocument()
 
     const actions = screen.getByRole('group', { name: 'Brick editing actions' })
+    const firstPaletteControl = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
+    expect(actions.compareDocumentPosition(firstPaletteControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     for (const name of ['Duplicate brick', 'Focus selected brick', 'Copy brick', 'Delete brick']) {
       expect(actions).toContainElement(screen.getByRole('button', { name }))
     }
@@ -257,6 +259,25 @@ describe('Brick Studio responsive controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
     expect(screen.getByRole('group', { name: 'Brick editing actions' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete brick' })).toBeInTheDocument()
+  })
+
+  it('resets the phone properties scroll position whenever the disclosure reopens', () => {
+    resetStore([brick])
+    useBrickStore.setState({ selectedIds: [brick.id], selectedId: brick.id })
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
+    const properties = screen.getByRole('region', { name: 'Brick properties and editing actions' })
+    properties.scrollTop = 143
+    expect(properties.scrollTop).toBe(143)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide brick properties' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
+
+    expect(properties.scrollTop).toBe(0)
+    const actions = screen.getByRole('group', { name: 'Brick editing actions' })
+    const firstPaletteControl = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
+    expect(actions.compareDocumentPosition(firstPaletteControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('hides mouse and Command guidance on a wide coarse-pointer layout', () => {

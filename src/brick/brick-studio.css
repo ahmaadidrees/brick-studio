@@ -324,10 +324,10 @@
   .details-expanded .inspector-sheet::-webkit-scrollbar { width: 8px; }
   .details-expanded .inspector-sheet::-webkit-scrollbar-track { border-radius: 8px; background: rgba(214,223,225,.55); }
   .details-expanded .inspector-sheet::-webkit-scrollbar-thumb { border-radius: 8px; background: #9aafb7; }
-  .details-expanded .inspector-actions { order: -2; flex: 0 0 auto; margin-top: 0; }
+  .details-expanded .inspector-actions { flex: 0 0 auto; margin-top: 0; }
   .details-expanded .inspector-actions button { min-height: 50px; grid-template-rows: 18px auto; gap: 2px; }
   .details-expanded .inspector-actions button span { display: block; font-size: 8px; line-height: 1; }
-  .details-expanded .inspector-scroll-hint { order: -1; display: block; margin: 7px 2px 9px; color: #71838a; font-size: 9px; font-weight: 800; line-height: 1.35; }
+  .details-expanded .inspector-scroll-hint { display: block; margin: 7px 2px 9px; color: #71838a; font-size: 9px; font-weight: 800; line-height: 1.35; }
 }
 
 @media (prefers-reduced-motion: reduce) {

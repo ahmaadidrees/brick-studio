@@ -17,7 +17,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import BrickStudioScene from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import {
@@ -271,9 +271,15 @@ function Inspector() {
   const deleteSelected = useBrickStore((state) => state.deleteSelected)
   const requestView = useBrickStore((state) => state.requestView)
   const [detailsExpanded, setDetailsExpanded] = useState(false)
+  const inspectorSheet = useRef<HTMLDivElement>(null)
   const selected = selectedIds.length > 1 ? undefined : bricks.find((brick) => brick.id === selectedId)
   const moving = Boolean(movingId && draft)
   const target = moving ? draft : selected ?? draft
+
+  useLayoutEffect(() => {
+    if (detailsExpanded && inspectorSheet.current) inspectorSheet.current.scrollTop = 0
+  }, [detailsExpanded])
+
   if (selectedIds.length > 1 && !draft) {
     return (
       <aside className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
@@ -306,13 +312,13 @@ function Inspector() {
         </div>
       </div>
       <div
+        ref={inspectorSheet}
         className="inspector-sheet"
         id="brick-inspector-properties"
         role="region"
         aria-label="Brick properties and editing actions"
         tabIndex={detailsExpanded ? 0 : -1}
       >
-        <section><label><Palette size={15} /> Color</label><ColorPalette targetColor={target.color} /></section>
         <div className="inspector-actions" role="group" aria-label="Brick editing actions">
           {draft && <button className="inspector-sheet-primary" aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /><span>{moving ? 'Place move' : 'Place'}</span><kbd>Enter</kbd></button>}
           <button className="inspector-sheet-primary" aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
@@ -324,6 +330,7 @@ function Inspector() {
           {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
         </div>
         <p className="inspector-scroll-hint">Editing actions are first. Scroll for color and position.</p>
+        <section><label><Palette size={15} /> Color</label><ColorPalette targetColor={target.color} /></section>
         <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
       </div>
     </aside>
