@@ -9,7 +9,6 @@ import {
   Gamepad2,
   Home,
   Layers3,
-  Maximize2,
   Move,
   MousePointer2,
   Palette,
@@ -30,7 +29,10 @@ import {
   updateExploreCameraPointer,
 } from './exploreCameraInput'
 import { requestExploreMode } from './modeCommands'
+import { OnboardingGuide, useBuilderOnboarding } from './OnboardingGuide'
+import { PartThumbnail } from './PartThumbnail'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
+import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { ViewPreset } from './types'
@@ -109,7 +111,24 @@ function useReducedMotionPreference() {
   }, [setReducedMotion])
 }
 
-function Header() {
+function useResponsiveDrawer() {
+  const [phoneQuery] = useState(() => window.matchMedia?.('(max-width: 600px)') ?? null)
+  const [expanded, setExpanded] = useState(() => !(phoneQuery?.matches ?? window.innerWidth <= 600))
+
+  useEffect(() => {
+    const adaptToViewport = () => setExpanded(!(phoneQuery?.matches ?? window.innerWidth <= 600))
+    phoneQuery?.addEventListener?.('change', adaptToViewport)
+    return () => phoneQuery?.removeEventListener?.('change', adaptToViewport)
+  }, [phoneQuery])
+
+  return [expanded, setExpanded] as const
+}
+
+type HeaderProps = StudioDocumentCommands & {
+  onOpenHelp: () => void
+}
+
+function Header({ onNewBuild, onImportProject, onExportProject, onOpenHelp }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const bricks = useBrickStore((state) => state.bricks)
@@ -133,32 +152,41 @@ function Header() {
       <div className="brick-header-actions">
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick budget for ${budgetProfile}`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks · {budgetProfile}</i></span>
         {mode === 'build' && <>
-          <button onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
-          <button onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
+          <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
+          <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
         </>}
-        <a className="rover-link" href="/rover">Rover Lab</a>
+        <StudioMenu
+          onNewBuild={onNewBuild}
+          onImportProject={onImportProject}
+          onExportProject={onExportProject}
+          onOpenHelp={onOpenHelp}
+        />
       </div>
     </header>
   )
 }
 
-function PartLibrary() {
+type PartLibraryProps = {
+  expanded: boolean
+  onToggle: () => void
+}
+
+function PartLibrary({ expanded, onToggle }: PartLibraryProps) {
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
   const bricks = useBrickStore((state) => state.bricks)
   const selectedId = useBrickStore((state) => state.selectedId)
   const selectBrick = useBrickStore((state) => state.selectBrick)
-  const [expanded, setExpanded] = useState(true)
   return (
     <aside className={`part-library ${expanded ? 'expanded' : 'collapsed'}`}>
       <div className="library-title">
         <div><span className="brick-eyebrow">Brick drawer</span><h2>Choose a shape</h2></div>
-        <button onClick={() => setExpanded((value) => !value)} aria-label="Toggle brick drawer"><ChevronDown size={19} /></button>
+        <button className="studio-icon-button" onClick={onToggle} aria-label={expanded ? 'Collapse brick drawer' : 'Expand brick drawer'} aria-expanded={expanded}><ChevronDown size={19} /></button>
       </div>
       <div className="part-grid">
         {BRICK_PARTS.map((part) => (
           <button key={part.id} className={`library-part ${activePartId === part.id ? 'active' : ''}`} onClick={() => choosePart(part.id)} title={part.name}>
-            <span className={`part-shape kind-${part.kind}`}><i>{part.icon}</i></span>
+            <PartThumbnail part={part} />
             <span>{part.name}</span>
           </button>
         ))}
@@ -269,7 +297,10 @@ function ViewControls() {
     { id: 'top', label: 'Top' }, { id: 'front', label: 'Front' }, { id: 'right', label: 'Side' }, { id: 'perspective', label: '3D' },
   ]
   return (
-    <div className="view-controls"><button className="view-home" onClick={() => requestView('home')} title="Frame all"><Home size={17} /></button>{views.map((view) => <button key={view.id} onClick={() => requestView(view.id)}>{view.label}</button>)}</div>
+    <div className="view-controls" aria-label="Build camera views">
+      <button className="view-home" onClick={() => requestView('home')} title="Frame Build" aria-label="Frame Build"><Home size={17} /></button>
+      {views.map((view) => <button key={view.id} onClick={() => requestView(view.id)}>{view.label}</button>)}
+    </div>
   )
 }
 
@@ -311,7 +342,51 @@ function MarqueeOverlay() {
 function EmptyState() {
   const count = useBrickStore((state) => state.bricks.length)
   if (count) return null
-  return <div className="empty-guide"><MousePointer2 size={22} /><div><strong>Start with one brick</strong><span>Move the blue preview anywhere on the plate, then click or tap.</span></div></div>
+  return (
+    <div className="empty-guide">
+      <MousePointer2 size={22} />
+      <div>
+        <strong>Start with one brick</strong>
+        <span className="fine-pointer-copy">Choose a shape, position the blue preview, then click to place.</span>
+        <span className="coarse-pointer-copy">Choose a shape, tap to position the blue preview, then use Place.</span>
+      </div>
+    </div>
+  )
+}
+
+function TouchPlacementBar() {
+  const draft = useBrickStore((state) => state.draft)
+  const movingId = useBrickStore((state) => state.movingId)
+  const placeDraft = useBrickStore((state) => state.placeDraft)
+  const rotate = useBrickStore((state) => state.rotate)
+  const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
+  if (!draft) return null
+  return (
+    <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
+      <button className="studio-button" type="button" onClick={cancelInteraction}>Cancel</button>
+      <button className="studio-button" type="button" onClick={rotate}><RotateCw size={18} /> Rotate</button>
+      <button className="studio-button studio-button-primary touch-place-button" type="button" aria-label={movingId ? 'Place moved brick from touch controls' : 'Place positioned brick'} onClick={() => placeDraft()}>
+        <Check size={20} /> {movingId ? 'Place move' : 'Place'}
+      </button>
+    </div>
+  )
+}
+
+type BuildShellProps = {
+  drawerExpanded: boolean
+  onToggleDrawer: () => void
+}
+
+function BuildShell({ drawerExpanded, onToggleDrawer }: BuildShellProps) {
+  return (
+    <div className={`build-shell ${drawerExpanded ? 'drawer-expanded' : 'drawer-collapsed'}`}>
+      <PartLibrary expanded={drawerExpanded} onToggle={onToggleDrawer} />
+      <Inspector />
+      <ViewControls />
+      <SelectionModeControl />
+      <TouchPlacementBar />
+    </div>
+  )
 }
 
 function Toast() {
@@ -433,18 +508,40 @@ function ShortcutBar() {
   return <div className="shortcut-bar"><span><MousePointer2 size={14} /> Click · ⌘Click toggle · Shift-drag marquee</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
-export default function BrickStudioApp() {
+export type BrickStudioAppProps = StudioDocumentCommands
+
+export default function BrickStudioApp({
+  onNewBuild,
+  onImportProject,
+  onExportProject,
+}: BrickStudioAppProps = {}) {
   useBuilderShortcuts()
   useReactiveBrickBudget()
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
+  const brickCount = useBrickStore((state) => state.bricks.length)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
   const selectionMode = useBrickStore((state) => state.selectionMode)
+  const [drawerExpanded, setDrawerExpanded] = useResponsiveDrawer()
+  const onboarding = useBuilderOnboarding()
+  const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
   return (
     <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
       <div className="brick-canvas"><BrickStudioScene /><MarqueeOverlay /></div>
-      <Header />
-      {mode === 'build' ? <><PartLibrary /><Inspector /><ViewControls /><SelectionModeControl /><EmptyState /><ShortcutBar /></> : <TouchExploreControls />}
+      <Header
+        onNewBuild={onNewBuild}
+        onImportProject={onImportProject}
+        onExportProject={onExportProject}
+        onOpenHelp={onboarding.reopen}
+      />
+      {mode === 'build' ? (
+        <>
+          <BuildShell drawerExpanded={drawerExpanded} onToggleDrawer={() => setDrawerExpanded((expanded) => !expanded)} />
+          <EmptyState />
+          <ShortcutBar />
+          {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
+        </>
+      ) : <TouchExploreControls />}
       <Toast />
     </main>
   )

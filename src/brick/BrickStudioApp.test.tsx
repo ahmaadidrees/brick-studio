@@ -1,8 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
+import { createBrickGeometry } from './geometry'
 import { useBrickStore } from './store'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW } from './orbitCamera'
+import { BRICK_PARTS } from './parts'
 import { EXPLORE_MAX_PITCH } from './touchInput'
 import type { BrickInstance } from './types'
 
@@ -27,7 +29,19 @@ function resetStore(bricks: BrickInstance[] = []) {
   }, true)
 }
 
-beforeEach(() => resetStore())
+beforeEach(() => {
+  const values = new Map<string, string>()
+  Object.defineProperty(window, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+      clear: () => values.clear(),
+    },
+  })
+  resetStore()
+})
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -163,7 +177,8 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
     expect(screen.getByLabelText('0 of 250 brick budget for desktop')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Rover Lab' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    expect(screen.getByRole('menuitem', { name: 'Rover Lab' })).toHaveAttribute('href', '/rover')
 
     const properties = screen.getByRole('button', { name: 'Show brick properties' })
     expect(properties).toHaveAttribute('aria-expanded', 'false')
@@ -333,5 +348,75 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('application', { name: 'Movement joystick' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' })).toBeEnabled()
     expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+  })
+})
+
+describe('Builder Experience Alpha shell', () => {
+  it('renders every part from the runtime geometry without per-card canvases', () => {
+    const { container } = render(<BrickStudioApp />)
+    const thumbnails = Array.from(container.querySelectorAll<SVGElement>('.part-thumbnail'))
+
+    expect(thumbnails).toHaveLength(BRICK_PARTS.length)
+    expect(container.querySelectorAll('.library-part canvas')).toHaveLength(0)
+    BRICK_PARTS.forEach((part) => {
+      const thumbnail = container.querySelector<SVGElement>(`.part-thumbnail[data-part-id="${part.id}"]`)
+      expect(thumbnail).not.toBeNull()
+      expect(Number(thumbnail?.dataset.vertexCount)).toBe(createBrickGeometry(part).getAttribute('position').count)
+      expect(thumbnail?.querySelectorAll('polygon').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('dismisses first-run onboarding once and reopens it from Help', () => {
+    const firstRender = render(<BrickStudioApp />)
+    expect(screen.getByRole('dialog', { name: 'Build something you can explore' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start building' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    firstRender.unmount()
+
+    render(<BrickStudioApp />)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Help/ }))
+    expect(screen.getByRole('dialog', { name: 'Build something you can explore' })).toBeInTheDocument()
+  })
+
+  it('exposes callback-only document actions and forwards the chosen import file', () => {
+    const onNewBuild = vi.fn()
+    const onExportProject = vi.fn()
+    const onImportProject = vi.fn()
+    render(
+      <BrickStudioApp
+        onNewBuild={onNewBuild}
+        onImportProject={onImportProject}
+        onExportProject={onExportProject}
+      />,
+    )
+
+    const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
+    expect(onNewBuild).toHaveBeenCalledOnce()
+
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /Export/ }))
+    expect(onExportProject).toHaveBeenCalledOnce()
+
+    openMenu()
+    const file = new File(['{"schemaVersion":1}'], 'world.brickstudio.json', { type: 'application/json' })
+    fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
+    expect(onImportProject).toHaveBeenCalledWith(file)
+  })
+
+  it('coordinates the collapsed dock state and provides an explicit touch Place action', () => {
+    const { container } = render(<BrickStudioApp />)
+    expect(container.querySelector('.build-shell')).toHaveClass('drawer-expanded')
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
+    expect(container.querySelector('.build-shell')).toHaveClass('drawer-collapsed')
+    expect(screen.getByRole('button', { name: 'Expand brick drawer' })).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Place positioned brick' }))
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+    expect(screen.queryByRole('group', { name: 'Positioned brick actions' })).not.toBeInTheDocument()
   })
 })
