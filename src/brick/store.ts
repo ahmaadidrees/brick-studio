@@ -75,6 +75,8 @@ export type BrickState = {
   toast: string | null
   /** Screen-reader-only channel: successes announce here, not as a toast. */
   announcement: string | null
+  placeFeedback: { id: string; nonce: number } | null
+  blockedNonce: number
   setMode: (mode: BrickMode) => void
   choosePart: (partId: string) => void
   setActiveColor: (color: string) => void
@@ -375,6 +377,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   marquee: null,
   toast: 'Pick a brick, position it over the plate, then place it.',
   announcement: null,
+  placeFeedback: null,
+  blockedNonce: 0,
 
   setMode: (mode) => {
     const state = get()
@@ -436,7 +440,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   placeDraft: () => {
     const state = get()
     if (!state.draft || !draftIsValid(state.draft, state.bricks, state.movingId)) {
-      set({ toast: 'That placement overlaps another brick or falls outside the plate.' })
+      // blockedNonce marks a discrete rejected placement (overlap/out-of-bounds
+      // only, not budget) so the ghost shake never keys off continuous validity.
+      set({ toast: 'That placement overlaps another brick or falls outside the plate.', blockedNonce: state.blockedNonce + 1 })
       return false
     }
     if (!state.movingId && state.bricks.length >= state.brickBudget) {
@@ -458,6 +464,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
         undoStack: appendHistory(state.undoStack, singleHistoryEntry(before, after, index, index, 'Move brick')),
         redoStack: [],
         announcement: `Moved ${BRICK_PART_MAP[after.partId].name} to X ${after.x}, Y ${after.y}, Z ${after.z}.`,
+        placeFeedback: { id: before.id, nonce: (state.placeFeedback?.nonce ?? 0) + 1 },
       })
     } else {
       const id = createBrickId()
@@ -474,6 +481,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
         undoStack: appendHistory(state.undoStack, historyEntry([{ before: null, after: brick, beforeIndex: null, afterIndex: index }], 'Place brick', null, [], [])),
         redoStack: [],
         announcement: `Placed ${BRICK_PART_MAP[brick.partId].name} at X ${brick.x}, Y ${brick.y}, Z ${brick.z}.`,
+        placeFeedback: { id, nonce: (state.placeFeedback?.nonce ?? 0) + 1 },
       })
     }
     return true

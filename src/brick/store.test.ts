@@ -293,6 +293,51 @@ describe('group recolor', () => {
   })
 })
 
+describe('placement feedback signals', () => {
+  it('records place feedback for new placements and completed moves', () => {
+    expect(placeAt(5, 5)).toBe(true)
+    const placedId = useBrickStore.getState().bricks[0].id
+    expect(useBrickStore.getState().placeFeedback).toEqual({ id: placedId, nonce: 1 })
+    expect(useBrickStore.getState().blockedNonce).toBe(0)
+
+    useBrickStore.getState().selectBrick(placedId)
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(9, 0, 9)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().placeFeedback).toEqual({ id: placedId, nonce: 2 })
+    expect(useBrickStore.getState().blockedNonce).toBe(0)
+  })
+
+  it('increments blockedNonce for out-of-bounds and overlap rejections without place feedback', () => {
+    useBrickStore.getState().choosePart('brick_2x4')
+    useBrickStore.getState().setDraftPosition(63, 0, 63)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().blockedNonce).toBe(1)
+    expect(useBrickStore.getState().placeFeedback).toBeNull()
+
+    expect(placeAt(10, 10, 'brick_2x2')).toBe(true)
+    const placedId = useBrickStore.getState().bricks[0].id
+    useBrickStore.getState().setDraftPosition(10, 0, 10)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().blockedNonce).toBe(2)
+    expect(useBrickStore.getState().placeFeedback).toEqual({ id: placedId, nonce: 1 })
+  })
+
+  it('leaves blockedNonce untouched when only the budget rejects the placement', () => {
+    useBrickStore.getState().setBudgetProfile('phone')
+    for (let index = 0; index < 75; index += 1) {
+      expect(placeAt(index % 64, Math.floor(index / 64))).toBe(true)
+    }
+    useBrickStore.getState().choosePart('brick_1x1')
+    useBrickStore.getState().setDraftPosition(20, 0, 20)
+    const feedbackBefore = useBrickStore.getState().placeFeedback
+
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().blockedNonce).toBe(0)
+    expect(useBrickStore.getState().placeFeedback).toBe(feedbackBefore)
+  })
+})
+
 describe('keyboard-oriented selection commands', () => {
   it('enumerates placed bricks in both directions and announces coordinates', () => {
     placeAt(2, 3)

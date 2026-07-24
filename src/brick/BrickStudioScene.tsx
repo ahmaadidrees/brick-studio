@@ -71,11 +71,17 @@ import {
 } from './parts'
 import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
 import { usesCompactRenderer } from './rendererQuality'
+import { playPlaceClick } from './soundFeedback'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
 const gridWorldSize = GRID_SIZE * STUD
 const PART_COLLIDER_FRICTION = 0.5
+const HOVER_GLOW_INTENSITY = 0.16
+const PLACE_POP_START_SCALE = 0.86
+const PLACE_POP_DURATION = 0.15
+const BLOCKED_SHAKE_DURATION = 0.22
+const BLOCKED_SHAKE_AMPLITUDE = STUD * 0.16
 
 function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) {
   const part = BRICK_PART_MAP[draft.partId]
@@ -172,6 +178,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
+  const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const selectBrick = useBrickStore((state) => state.selectBrick)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -179,6 +186,26 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
   const position = brickWorldPosition(brick)
   const geometry = useMemo(() => createBrickGeometry(part), [part])
   const userData = useMemo(() => ({ brickId: brick.id }), [brick.id])
+  const [hovered, setHovered] = useState(false)
+  const groupRef = useRef<THREE.Group>(null)
+  const popElapsed = useRef<number | null>(null)
+  const popNonce = !explore && placeFeedback?.id === brick.id ? placeFeedback.nonce : null
+
+  useEffect(() => {
+    if (popNonce === null || useBrickStore.getState().reducedMotion) return
+    popElapsed.current = 0
+    groupRef.current?.scale.setScalar(PLACE_POP_START_SCALE)
+  }, [popNonce])
+
+  useFrame((_, delta) => {
+    const group = groupRef.current
+    if (!group || popElapsed.current === null) return
+    popElapsed.current += delta
+    const progress = Math.min(popElapsed.current / PLACE_POP_DURATION, 1)
+    const eased = 1 - (1 - progress) ** 3
+    group.scale.setScalar(PLACE_POP_START_SCALE + (1 - PLACE_POP_START_SCALE) * eased)
+    if (progress >= 1) popElapsed.current = null
+  })
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
@@ -202,8 +229,9 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
     }
   }
 
+  const hoverGlow = hovered && !explore && !draft
   return (
-    <group position={position} rotation={[0, brick.rotation * Math.PI / 2, 0]}>
+    <group ref={groupRef} position={position} rotation={[0, brick.rotation * Math.PI / 2, 0]}>
       <mesh
         userData={userData}
         geometry={geometry}
@@ -211,6 +239,11 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
         receiveShadow
         onPointerMove={moveDraft}
         onPointerUp={positionTouchDraft}
+        onPointerOver={(event) => {
+          if (explore || draft || isConfirmationPlacementPointer(event.pointerType)) return
+          setHovered(true)
+        }}
+        onPointerOut={() => setHovered(false)}
         onClick={(event) => {
           event.stopPropagation()
           const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
@@ -224,7 +257,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -243,12 +276,42 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
   const part = BRICK_PART_MAP[draft.partId]
   const geometry = useMemo(() => createBrickGeometry(part), [part])
   const position = brickWorldPosition(draft)
+  const blockedNonce = useBrickStore((state) => state.blockedNonce)
+  const shakeRef = useRef<THREE.Group>(null)
+  const shakeElapsed = useRef<number | null>(null)
+  const lastBlockedNonce = useRef(blockedNonce)
+
+  useEffect(() => {
+    // Key strictly off blockedNonce (a discrete rejected placeDraft). The
+    // re-armed ghost can sit invalid for long stretches — continuous
+    // invalidity must never shake, and neither may a fresh mount.
+    if (blockedNonce === lastBlockedNonce.current) return
+    lastBlockedNonce.current = blockedNonce
+    if (useBrickStore.getState().reducedMotion) return
+    shakeElapsed.current = 0
+  }, [blockedNonce])
+
+  useFrame((_, delta) => {
+    const group = shakeRef.current
+    if (!group || shakeElapsed.current === null) return
+    shakeElapsed.current += delta
+    const progress = shakeElapsed.current / BLOCKED_SHAKE_DURATION
+    if (progress >= 1) {
+      group.position.x = 0
+      shakeElapsed.current = null
+      return
+    }
+    group.position.x = Math.sin(progress * Math.PI * 6) * (1 - progress) * BLOCKED_SHAKE_AMPLITUDE
+  })
+
   return (
     <group position={position} rotation={[0, draft.rotation * Math.PI / 2, 0]}>
-      <mesh geometry={geometry}>
-        <meshStandardMaterial color={valid ? draft.color : '#ef5350'} transparent opacity={0.62} roughness={0.45} depthWrite={false} />
-        <Edges scale={1.02} color={valid ? '#2a8f78' : '#b5222c'} />
-      </mesh>
+      <group ref={shakeRef}>
+        <mesh geometry={geometry}>
+          <meshStandardMaterial color={valid ? draft.color : '#ef5350'} transparent opacity={0.62} roughness={0.45} depthWrite={false} />
+          <Edges scale={1.02} color={valid ? '#2a8f78' : '#b5222c'} />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -867,8 +930,14 @@ function useCompactRenderer() {
 
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
+  const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const compactRenderer = useCompactRenderer()
   const mouseTravel = useRef(createPointerTravel())
+
+  // Audible confirmation is orthogonal to reduced motion — always play it.
+  useEffect(() => {
+    if (placeFeedback) playPlaceClick()
+  }, [placeFeedback])
   return (
     <Canvas
       shadows={!compactRenderer}
