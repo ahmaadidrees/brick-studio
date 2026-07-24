@@ -1,0 +1,14 @@
+{
+  "name": "brick-studio-multiplayer-relay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local-first WebSocket relay for the Brick Studio multiplayer spike. Protocol and design live in MULTIPLAYER_SPIKE.md at the repo root.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test.mjs"
+  },
+  "dependencies": {
+    "ws": "8.18.0"
+  }
+}

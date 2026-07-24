@@ -5,6 +5,7 @@ import {
   downloadBrickStudioDocument,
   loadLocalBrickStudioProject,
 } from './documentPersistence'
+import { getMultiplayerRoomCode } from './multiplayerSync'
 import type { StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 
@@ -34,6 +35,12 @@ export function useBrickStudioDocuments(
     } else {
       showDocumentMessage(loaded.error.message)
     }
+
+    // Multiplayer experiment: while a shared ?room=CODE session is active the
+    // room document must not overwrite the builder's saved solo project, so
+    // the local build is restored (it can seed an empty room) but autosave
+    // stays off for the session.
+    if (getMultiplayerRoomCode(window.location.search)) return
 
     const autosave = connectBrickStudioAutosave({
       store: useBrickStore,

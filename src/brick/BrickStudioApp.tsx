@@ -29,6 +29,7 @@ import {
   updateExploreCameraPointer,
 } from './exploreCameraInput'
 import { requestExploreMode } from './modeCommands'
+import { useMultiplayerSync, type MultiplayerConnection } from './multiplayerSync'
 import { OnboardingGuide, useBuilderOnboarding } from './OnboardingGuide'
 import { PartThumbnail } from './PartThumbnail'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
@@ -558,6 +559,35 @@ function ShortcutBar() {
 
 export type BrickStudioAppProps = StudioDocumentCommands
 
+const MULTIPLAYER_CONNECTION_LABELS: Record<MultiplayerConnection, string> = {
+  connecting: 'Connecting…',
+  online: 'Live',
+  reconnecting: 'Reconnecting…',
+  offline: 'Offline',
+}
+
+/**
+ * Experiment: shows shared-room status when the page was opened with
+ * ?room=CODE. Renders nothing at all otherwise (useMultiplayerSync stays
+ * inert), so the default experience and its tests are untouched.
+ */
+function MultiplayerBadge() {
+  const status = useMultiplayerSync()
+  if (!status) return null
+  const peersLabel = status.connection !== 'online'
+    ? MULTIPLAYER_CONNECTION_LABELS[status.connection]
+    : status.peers > 1
+      ? `${status.peers} builders together`
+      : 'Just you so far — share this link!'
+  return (
+    <div className={`multiplayer-badge multiplayer-${status.connection}`} role="status">
+      <span className="multiplayer-dot" aria-hidden="true" />
+      <strong>Room {status.room}</strong>
+      <span>{peersLabel}</span>
+    </div>
+  )
+}
+
 export default function BrickStudioApp({
   onNewBuild,
   onImportProject,
@@ -589,6 +619,7 @@ export default function BrickStudioApp({
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
       ) : <TouchExploreControls />}
+      <MultiplayerBadge />
       <Toast />
     </main>
   )
