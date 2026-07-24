@@ -9,7 +9,7 @@ import {
   type BrickStudioDocumentError,
 } from './brickDocument'
 import { BRICK_BUDGETS } from './budgets'
-import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize } from './parts'
+import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize, supportHeightForFootprint } from './parts'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
 import { clampExplorePitch } from './touchInput'
 import type { BrickBudgetProfile, BrickDraft, BrickInstance, BrickMode, ViewPreset } from './types'
@@ -72,6 +72,8 @@ export type BrickState = {
   reducedMotion: boolean
   selectionMode: boolean
   marquee: MarqueeState | null
+  /** Grid coordinates of the build camera focus, published by the scene. */
+  viewTarget: { x: number; z: number } | null
   toast: string | null
   /** Screen-reader-only channel: successes announce here, not as a toast. */
   announcement: string | null
@@ -113,6 +115,7 @@ export type BrickState = {
   setReducedMotion: (reducedMotion: boolean) => void
   setSelectionMode: (selectionMode: boolean) => void
   setMarquee: (marquee: MarqueeState | null) => void
+  setViewTarget: (x: number, z: number) => void
   clearToast: () => void
 }
 
@@ -341,9 +344,18 @@ function centerPivotRotation(target: Pick<BrickDraft, 'partId' | 'x' | 'z' | 'ro
   }
 }
 
-function suggestedDraft(partId: string, color: string): BrickDraft {
+function suggestedDraft(
+  partId: string,
+  color: string,
+  origin: { x: number; z: number } | null = null,
+  bricks: BrickInstance[] = [],
+): BrickDraft {
   const part = BRICK_PART_MAP[partId]
-  return { partId, x: Math.floor(GRID_SIZE / 2 - part.width / 2), y: 0, z: Math.floor(GRID_SIZE / 2 - part.depth / 2), rotation: 0, color }
+  const centerX = origin?.x ?? GRID_SIZE / 2
+  const centerZ = origin?.z ?? GRID_SIZE / 2
+  const x = Math.max(0, Math.min(GRID_SIZE - part.width, Math.floor(centerX - part.width / 2)))
+  const z = Math.max(0, Math.min(GRID_SIZE - part.depth, Math.floor(centerZ - part.depth / 2)))
+  return { partId, x, y: supportHeightForFootprint(bricks, x, z, part.width, part.depth), z, rotation: 0, color }
 }
 
 function describeBrick(brick: BrickInstance, index: number, count: number) {
@@ -375,6 +387,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   reducedMotion: false,
   selectionMode: false,
   marquee: null,
+  viewTarget: null,
   toast: 'Pick a brick, position it over the plate, then place it.',
   announcement: null,
   placeFeedback: null,
@@ -382,7 +395,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
 
   setMode: (mode) => {
     const state = get()
-    const rearmed = state.activePartId ? suggestedDraft(state.activePartId, state.activeColor) : null
+    const rearmed = state.activePartId ? suggestedDraft(state.activePartId, state.activeColor, state.viewTarget, state.bricks) : null
     set({
       mode,
       selectedIds: [],
@@ -402,7 +415,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     selectedIds: [],
     selectedId: null,
     movingId: null,
-    draft: suggestedDraft(partId, state.activeColor),
+    draft: suggestedDraft(partId, state.activeColor, state.viewTarget, state.bricks),
     announcement: `${BRICK_PART_MAP[partId].name} ready to place.`,
   })),
   setActiveColor: (color) => {
@@ -840,5 +853,12 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     announcement: selectionMode ? 'Select mode on.' : 'Select mode finished.',
   }),
   setMarquee: (marquee) => set((state) => state.marquee === marquee ? state : { marquee }),
+  setViewTarget: (x, z) => set((state) => {
+    const clampedX = Math.max(0, Math.min(GRID_SIZE, Math.round(x)))
+    const clampedZ = Math.max(0, Math.min(GRID_SIZE, Math.round(z)))
+    return state.viewTarget?.x === clampedX && state.viewTarget?.z === clampedZ
+      ? state
+      : { viewTarget: { x: clampedX, z: clampedZ } }
+  }),
   clearToast: () => set({ toast: null }),
 }))

@@ -338,6 +338,24 @@ describe('placement feedback signals', () => {
   })
 })
 
+describe('view-aware brush spawning', () => {
+  it('spawns the ghost near the published camera focus, clamped and resting on support', () => {
+    placeAt(20, 20, 'brick_2x2')
+    useBrickStore.getState().setViewTarget(21, 21)
+    useBrickStore.getState().choosePart('brick_2x2')
+    expect(useBrickStore.getState().draft).toMatchObject({ x: 20, y: 3, z: 20 })
+
+    useBrickStore.getState().setViewTarget(63.7, 0)
+    useBrickStore.getState().choosePart('brick_2x4')
+    expect(useBrickStore.getState().draft).toMatchObject({ x: 62, y: 0, z: 0 })
+  })
+
+  it('falls back to plate center when no view target has been published', () => {
+    useBrickStore.getState().choosePart('brick_2x4')
+    expect(useBrickStore.getState().draft).toMatchObject({ x: 31, y: 0, z: 30 })
+  })
+})
+
 describe('keyboard-oriented selection commands', () => {
   it('enumerates placed bricks in both directions and announces coordinates', () => {
     placeAt(2, 3)

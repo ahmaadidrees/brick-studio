@@ -331,6 +331,7 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const marquee = useBrickStore((state) => state.marquee)
   const bricks = useBrickStore((state) => state.bricks)
+  const setViewTarget = useBrickStore((state) => state.setViewTarget)
   const { camera, gl, size: viewportSize } = useThree()
   const unclampedTarget = useRef(new THREE.Vector3())
   const clampedTarget = useRef(new THREE.Vector3())
@@ -341,6 +342,12 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     () => getBuildCameraLimits(bounds, perspectiveCamera.fov, perspectiveCamera.aspect),
     [bounds, perspectiveCamera.fov, perspectiveCamera.aspect, viewportSize.width, viewportSize.height],
   )
+
+  const publishViewTarget = useCallback(() => {
+    const target = controls.current?.target
+    if (!target) return
+    setViewTarget(target.x / STUD + GRID_SIZE / 2, target.z / STUD + GRID_SIZE / 2)
+  }, [setViewTarget])
 
   const clampCameraNavigation = useCallback(() => {
     const control = controls.current
@@ -370,7 +377,8 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     camera.position.set(pose.position.x, pose.position.y, pose.position.z)
     controls.current?.target.set(pose.target.x, pose.target.y, pose.target.z)
     controls.current?.update()
-  }, [request, camera, viewportSize.width, viewportSize.height])
+    publishViewTarget()
+  }, [request, camera, viewportSize.width, viewportSize.height, publishViewTarget])
 
   useEffect(() => {
     clampCameraNavigation()
@@ -401,7 +409,7 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
       mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
       onStart={() => { gestureActive.current = true }}
-      onEnd={() => { gestureActive.current = false }}
+      onEnd={() => { gestureActive.current = false; publishViewTarget() }}
       onChange={clampCameraNavigation}
     />
   )
