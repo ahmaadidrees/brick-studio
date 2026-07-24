@@ -73,6 +73,8 @@ export type BrickState = {
   selectionMode: boolean
   marquee: MarqueeState | null
   toast: string | null
+  placeFeedback: { id: string; nonce: number } | null
+  blockedNonce: number
   setMode: (mode: BrickMode) => void
   choosePart: (partId: string) => void
   setActiveColor: (color: string) => void
@@ -356,6 +358,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   selectionMode: false,
   marquee: null,
   toast: 'Pick a brick, position it over the plate, then place it.',
+  placeFeedback: null,
+  blockedNonce: 0,
 
   setMode: (mode) => {
     const state = get()
@@ -406,7 +410,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   placeDraft: () => {
     const state = get()
     if (!state.draft || !draftIsValid(state.draft, state.bricks, state.movingId)) {
-      set({ toast: 'That placement overlaps another brick or falls outside the plate.' })
+      // blockedNonce marks a discrete rejected placement (overlap/out-of-bounds
+      // only, not budget) so the ghost shake never keys off continuous validity.
+      set({ toast: 'That placement overlaps another brick or falls outside the plate.', blockedNonce: state.blockedNonce + 1 })
       return false
     }
     if (!state.movingId && state.bricks.length >= state.brickBudget) {
@@ -428,6 +434,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
         undoStack: appendHistory(state.undoStack, singleHistoryEntry(before, after, index, index, 'Move brick')),
         redoStack: [],
         toast: 'Brick moved.',
+        placeFeedback: { id: before.id, nonce: (state.placeFeedback?.nonce ?? 0) + 1 },
       })
     } else {
       const id = createBrickId()
@@ -444,6 +451,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
         undoStack: appendHistory(state.undoStack, historyEntry([{ before: null, after: brick, beforeIndex: null, afterIndex: index }], 'Place brick', null, [], [])),
         redoStack: [],
         toast: 'Brick snapped into place.',
+        placeFeedback: { id, nonce: (state.placeFeedback?.nonce ?? 0) + 1 },
       })
     }
     return true
