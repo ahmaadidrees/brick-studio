@@ -10,6 +10,11 @@ import {
 export type BlockAvatarProps = {
   motion: MotionSnapshotRef
   reducedMotion?: boolean
+  /**
+   * Explore "toy photography" tier: clearcoat minifig plastic. Off by default
+   * so compact renderers keep the cheaper standard materials.
+   */
+  premiumMaterials?: boolean
   /** Matches the current 0.72 m tall Explore capsule by default. */
   scale?: number
 }
@@ -23,14 +28,22 @@ type AvatarAssets = {
   accent: THREE.MeshStandardMaterial
 }
 
-function createAvatarAssets(): AvatarAssets {
+function createAvatarAssets(premium: boolean): AvatarAssets {
+  const material = (color: string, roughness: number) => premium
+    ? new THREE.MeshPhysicalMaterial({
+      color,
+      roughness: Math.max(0.3, roughness - 0.14),
+      clearcoat: 0.65,
+      clearcoatRoughness: 0.3,
+    })
+    : new THREE.MeshStandardMaterial({ color, roughness })
   return {
     geometry: new THREE.BoxGeometry(1, 1, 1),
-    torso: new THREE.MeshStandardMaterial({ color: '#ef6f54', roughness: 0.6 }),
-    skin: new THREE.MeshStandardMaterial({ color: '#f2c37f', roughness: 0.64 }),
-    pants: new THREE.MeshStandardMaterial({ color: '#356c89', roughness: 0.65 }),
-    shoes: new THREE.MeshStandardMaterial({ color: '#263e4b', roughness: 0.72 }),
-    accent: new THREE.MeshStandardMaterial({ color: '#f4d35e', roughness: 0.58 }),
+    torso: material('#ef6f54', 0.6),
+    skin: material('#f2c37f', 0.64),
+    pants: material('#356c89', 0.65),
+    shoes: material('#263e4b', 0.72),
+    accent: material('#f4d35e', 0.58),
   }
 }
 
@@ -51,6 +64,7 @@ function disposeAvatarAssets(assets: AvatarAssets) {
 export const BlockAvatar = memo(function BlockAvatar({
   motion,
   reducedMotion = false,
+  premiumMaterials = false,
   scale = 0.36,
 }: BlockAvatarProps) {
   const physicsFollow = useRef<THREE.Group>(null)
@@ -64,7 +78,7 @@ export const BlockAvatar = memo(function BlockAvatar({
   const leftHip = useRef<THREE.Group>(null)
   const rightHip = useRef<THREE.Group>(null)
   const runtime = useRef(createAvatarAnimationRuntime(motion.current))
-  const assets = useMemo(createAvatarAssets, [])
+  const assets = useMemo(() => createAvatarAssets(premiumMaterials), [premiumMaterials])
 
   useEffect(() => () => disposeAvatarAssets(assets), [assets])
 

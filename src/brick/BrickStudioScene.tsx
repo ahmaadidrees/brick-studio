@@ -41,7 +41,15 @@ import {
   stepCharacterMotion,
 } from './characterController'
 import { cameraRelativeMove, combineMoveAxes, readKeyboardMove } from './characterInput'
+import { ExploreEnvironment } from './ExploreLookdev'
 import { createBrickGeometry } from './geometry'
+import {
+  EXPLORE_BRICK_CLEARCOAT,
+  EXPLORE_BRICK_CLEARCOAT_ROUGHNESS,
+  EXPLORE_PLATE_COLOR,
+  exploreBrickRoughness,
+  exploreLookdevFeatures,
+} from './lookdev'
 import {
   beginMarqueeGesture,
   finishMarqueeGesture,
@@ -105,7 +113,7 @@ function BaseplateStuds() {
   )
 }
 
-function Baseplate({ explore = false, buildGesture }: { explore?: boolean; buildGesture?: BuildGestureState }) {
+function Baseplate({ explore = false, premium = false, buildGesture }: { explore?: boolean; premium?: boolean; buildGesture?: BuildGestureState }) {
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -148,15 +156,19 @@ function Baseplate({ explore = false, buildGesture }: { explore?: boolean; build
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        {explore
+          ? premium
+            ? <meshPhysicalMaterial color={EXPLORE_PLATE_COLOR} roughness={0.52} metalness={0} clearcoat={0.5} clearcoatRoughness={0.35} />
+            : <meshStandardMaterial color={EXPLORE_PLATE_COLOR} roughness={0.62} />
+          : <meshStandardMaterial color="#e7ebed" roughness={0.9} />}
       </mesh>
       {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
   )
 }
 
-function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState }) {
+function BrickObject({ brick, explore = false, premium = false, buildGesture }: { brick: BrickInstance; explore?: boolean; premium?: boolean; buildGesture?: BuildGestureState }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
@@ -211,7 +223,19 @@ function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickIns
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        {explore
+          ? premium
+            ? (
+              <meshPhysicalMaterial
+                color={brick.color}
+                roughness={exploreBrickRoughness(brick.id)}
+                metalness={0}
+                clearcoat={EXPLORE_BRICK_CLEARCOAT}
+                clearcoatRoughness={EXPLORE_BRICK_CLEARCOAT_ROUGHNESS}
+              />
+            )
+            : <meshStandardMaterial color={brick.color} roughness={0.45} metalness={0.02} />
+          : <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />}
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -575,19 +599,19 @@ function PhysicalCollider({ shape }: { shape: PhysicalShape }) {
   return <CuboidCollider args={shape.halfExtents} position={shape.center} friction={PART_COLLIDER_FRICTION} />
 }
 
-function BrickCollider({ brick }: { brick: BrickInstance }) {
+function BrickCollider({ brick, premium }: { brick: BrickInstance; premium: boolean }) {
   const shapes = useMemo(() => brickPhysicalShapes(brick), [brick])
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
         {shapes.map((shape, index) => <PhysicalCollider key={index} shape={shape} />)}
       </RigidBody>
-      <BrickObject brick={brick} explore />
+      <BrickObject brick={brick} explore premium={premium} />
     </>
   )
 }
 
-function ExplorerAvatar() {
+function ExplorerAvatar({ premium }: { premium: boolean }) {
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
   const controller = useRef<KinematicCharacterController | null>(null)
@@ -763,7 +787,7 @@ function ExplorerAvatar() {
       ccd
     >
       <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
-      <BlockAvatar motion={motion} reducedMotion={reducedMotion} />
+      <BlockAvatar motion={motion} reducedMotion={reducedMotion} premiumMaterials={premium} />
     </RigidBody>
   )
 }
@@ -783,16 +807,20 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ compactRenderer }: { compactRenderer: boolean }) {
   const bricks = useBrickStore((state) => state.bricks)
+  const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  const premium = exploreLookdevFeatures(compactRenderer, reducedMotion).premiumMaterials
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
-        <Baseplate explore />
+        {/* Walkable studio sweep under the plate, so stepping off the edge lands on the floor instead of falling forever. */}
+        <CuboidCollider args={[220, 0.09, 220]} position={[0, -0.27, 0]} />
+        <Baseplate explore premium={premium} />
       </RigidBody>
-      {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
-      <ExplorerAvatar />
+      {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} premium={premium} />)}
+      <ExplorerAvatar premium={premium} />
     </Physics>
   )
 }
@@ -817,6 +845,19 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
+/** The original Build-mode light rig, unchanged — Explore has its own stage. */
+function BuildEnvironment({ compactRenderer }: { compactRenderer: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#f4f2ed']} />
+      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+      <ambientLight intensity={1.35} />
+      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+    </>
+  )
+}
+
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
   const compactRenderer = useCompactRenderer()
@@ -828,14 +869,12 @@ export default function BrickStudioScene() {
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => mode === 'build' && useBrickStore.getState().selectBrick(null)}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+      {mode === 'build'
+        ? <BuildEnvironment compactRenderer={compactRenderer} />
+        : <Suspense fallback={null}><ExploreEnvironment compactRenderer={compactRenderer} /></Suspense>}
       {mode === 'build'
         ? <><BuildScene /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : <Suspense fallback={null}><ExploreScene compactRenderer={compactRenderer} /></Suspense>}
     </Canvas>
   )
 }
