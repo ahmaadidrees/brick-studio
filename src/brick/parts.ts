@@ -65,6 +65,25 @@ export function rotatedSize(part: BrickPart, rotation: number) {
     : { width: part.depth, depth: part.width }
 }
 
+/** Top of the tallest brick whose footprint intersects [x, x+width) × [z, z+depth), in plate units; 0 when unsupported. */
+export function supportHeightForFootprint(
+  bricks: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>[],
+  x: number,
+  z: number,
+  width: number,
+  depth: number,
+): number {
+  let top = 0
+  for (const brick of bricks) {
+    const part = BRICK_PART_MAP[brick.partId]
+    const size = rotatedSize(part, brick.rotation)
+    const overlapX = x < brick.x + size.width && x + width > brick.x
+    const overlapZ = z < brick.z + size.depth && z + depth > brick.z
+    if (overlapX && overlapZ) top = Math.max(top, brick.y + part.height)
+  }
+  return top
+}
+
 export function brickWorldPosition(brick: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>) {
   const part = BRICK_PART_MAP[brick.partId]
   const size = rotatedSize(part, brick.rotation)

@@ -67,6 +67,7 @@ import {
   brickPhysicalShapes,
   brickWorldPosition,
   rotatedSize,
+  supportHeightForFootprint,
   type PhysicalShape,
 } from './parts'
 import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
@@ -91,6 +92,14 @@ function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) 
     y,
     z: Math.round(point.z / STUD + GRID_SIZE / 2 - size.depth / 2),
   }
+}
+
+/** Grid position with y resting on the tallest brick under the ghost footprint. */
+function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft) {
+  const next = gridDraftFromPoint(point, 0, draft)
+  const size = rotatedSize(BRICK_PART_MAP[draft.partId], draft.rotation)
+  next.y = supportHeightForFootprint(useBrickStore.getState().bricks, next.x, next.z, size.width, size.depth)
+  return next
 }
 
 function BaseplateStuds() {
@@ -130,7 +139,7 @@ function Baseplate({ explore = false, buildGesture, cameraActive }: { explore?: 
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
     if (cameraActive?.current) return
     event.stopPropagation()
-    const next = gridDraftFromPoint(event.point, 0, draft)
+    const next = supportedDraftFromPoint(event.point, draft)
     setDraftPosition(next.x, next.y, next.z)
   }
 
@@ -141,7 +150,7 @@ function Baseplate({ explore = false, buildGesture, cameraActive }: { explore?: 
     event.stopPropagation()
     const state = useBrickStore.getState()
     if (state.draft) {
-      const next = gridDraftFromPoint(event.point, 0, state.draft)
+      const next = supportedDraftFromPoint(event.point, state.draft)
       state.setDraftPosition(next.x, next.y, next.z)
     } else {
       state.selectBrick(null)
@@ -211,7 +220,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
     if (cameraActive?.current) return
     event.stopPropagation()
-    const next = gridDraftFromPoint(event.point, brick.y + part.height, draft)
+    const next = supportedDraftFromPoint(event.point, draft)
     setDraftPosition(next.x, next.y, next.z)
   }
 
@@ -222,7 +231,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
     event.stopPropagation()
     const state = useBrickStore.getState()
     if (state.draft) {
-      const next = gridDraftFromPoint(event.point, brick.y + part.height, state.draft)
+      const next = supportedDraftFromPoint(event.point, state.draft)
       state.setDraftPosition(next.x, next.y, next.z)
     } else {
       state.selectBrick(brick.id)
