@@ -3,9 +3,11 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
 import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { BlockAvatar } from './BlockAvatar'
+import { ExploreCompactContext, GoldenHourLook } from './GoldenHourLook'
+import { GOLDEN_HOUR } from './goldenHour'
 import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds } from './bounds'
 import {
@@ -148,11 +150,34 @@ function Baseplate({ explore = false, buildGesture }: { explore?: boolean; build
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        {explore
+          ? <meshStandardMaterial color={GOLDEN_HOUR.plateColor} roughness={0.86} />
+          : <meshStandardMaterial color="#e7ebed" roughness={0.9} />}
       </mesh>
       {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
+  )
+}
+
+/**
+ * Explore-mode brick finish. Non-compact renderers get clearcoat "toy plastic"
+ * that reads under the golden-hour rig; compact renderers keep a plain (but
+ * slightly glossier) standard material. Build mode is untouched.
+ */
+function ExploreBrickMaterial({ color }: { color: string }) {
+  const compact = useContext(ExploreCompactContext)
+  if (compact) return <meshStandardMaterial color={color} roughness={0.46} metalness={0.02} />
+  return (
+    <meshPhysicalMaterial
+      color={color}
+      roughness={0.36}
+      metalness={0}
+      clearcoat={0.7}
+      clearcoatRoughness={0.32}
+      specularIntensity={0.9}
+      envMapIntensity={0.8}
+    />
   )
 }
 
@@ -211,7 +236,9 @@ function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickIns
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        {explore
+          ? <ExploreBrickMaterial color={brick.color} />
+          : <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />}
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -817,6 +844,19 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
+/** The original neutral studio rig. Build mode renders exactly what it always did. */
+function BuildStudioRig({ compactRenderer }: { compactRenderer: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#f4f2ed']} />
+      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+      <ambientLight intensity={1.35} />
+      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+    </>
+  )
+}
+
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
   const compactRenderer = useCompactRenderer()
@@ -828,14 +868,16 @@ export default function BrickStudioScene() {
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => mode === 'build' && useBrickStore.getState().selectBrick(null)}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+      {mode === 'build'
+        ? <BuildStudioRig compactRenderer={compactRenderer} />
+        : <GoldenHourLook compact={compactRenderer} />}
       {mode === 'build'
         ? <><BuildScene /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : (
+          <ExploreCompactContext.Provider value={compactRenderer}>
+            <Suspense fallback={null}><ExploreScene /></Suspense>
+          </ExploreCompactContext.Provider>
+        )}
     </Canvas>
   )
 }

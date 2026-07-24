@@ -16,21 +16,26 @@ export type BlockAvatarProps = {
 
 type AvatarAssets = {
   geometry: THREE.BoxGeometry
-  torso: THREE.MeshStandardMaterial
-  skin: THREE.MeshStandardMaterial
-  pants: THREE.MeshStandardMaterial
-  shoes: THREE.MeshStandardMaterial
-  accent: THREE.MeshStandardMaterial
+  torso: THREE.MeshPhysicalMaterial
+  skin: THREE.MeshPhysicalMaterial
+  pants: THREE.MeshPhysicalMaterial
+  shoes: THREE.MeshPhysicalMaterial
+  accent: THREE.MeshPhysicalMaterial
 }
 
+/**
+ * Toy-plastic PBR finish for the explore avatar (its only consumer). A light
+ * clearcoat over a dozen tiny boxes costs next to nothing and lets the figure
+ * catch the golden-hour key and rim light like molded plastic.
+ */
 function createAvatarAssets(): AvatarAssets {
   return {
     geometry: new THREE.BoxGeometry(1, 1, 1),
-    torso: new THREE.MeshStandardMaterial({ color: '#ef6f54', roughness: 0.6 }),
-    skin: new THREE.MeshStandardMaterial({ color: '#f2c37f', roughness: 0.64 }),
-    pants: new THREE.MeshStandardMaterial({ color: '#356c89', roughness: 0.65 }),
-    shoes: new THREE.MeshStandardMaterial({ color: '#263e4b', roughness: 0.72 }),
-    accent: new THREE.MeshStandardMaterial({ color: '#f4d35e', roughness: 0.58 }),
+    torso: new THREE.MeshPhysicalMaterial({ color: '#ef6f54', roughness: 0.38, clearcoat: 0.65, clearcoatRoughness: 0.3, envMapIntensity: 0.8 }),
+    skin: new THREE.MeshPhysicalMaterial({ color: '#f2c37f', roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.38, envMapIntensity: 0.7 }),
+    pants: new THREE.MeshPhysicalMaterial({ color: '#356c89', roughness: 0.42, clearcoat: 0.55, clearcoatRoughness: 0.32, envMapIntensity: 0.75 }),
+    shoes: new THREE.MeshPhysicalMaterial({ color: '#263e4b', roughness: 0.52, clearcoat: 0.5, clearcoatRoughness: 0.34, envMapIntensity: 0.7 }),
+    accent: new THREE.MeshPhysicalMaterial({ color: '#f4d35e', roughness: 0.34, clearcoat: 0.7, clearcoatRoughness: 0.26, envMapIntensity: 0.85 }),
   }
 }
 
