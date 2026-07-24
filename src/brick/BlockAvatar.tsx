@@ -12,6 +12,8 @@ export type BlockAvatarProps = {
   reducedMotion?: boolean
   /** Matches the current 0.72 m tall Explore capsule by default. */
   scale?: number
+  /** Showcase path: glossy clearcoat minifig plastic instead of the flat matte set. */
+  showcase?: boolean
 }
 
 type AvatarAssets = {
@@ -23,9 +25,31 @@ type AvatarAssets = {
   accent: THREE.MeshStandardMaterial
 }
 
-function createAvatarAssets(): AvatarAssets {
+function glossy(color: string, roughness: number) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    roughness,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 0.35,
+  })
+}
+
+function createAvatarAssets(showcase: boolean): AvatarAssets {
+  const geometry = new THREE.BoxGeometry(1, 1, 1)
+  if (showcase) {
+    return {
+      geometry,
+      torso: glossy('#ef6f54', 0.34),
+      skin: glossy('#f2c37f', 0.4),
+      pants: glossy('#356c89', 0.38),
+      shoes: glossy('#263e4b', 0.46),
+      accent: glossy('#f4d35e', 0.3),
+    }
+  }
   return {
-    geometry: new THREE.BoxGeometry(1, 1, 1),
+    geometry,
     torso: new THREE.MeshStandardMaterial({ color: '#ef6f54', roughness: 0.6 }),
     skin: new THREE.MeshStandardMaterial({ color: '#f2c37f', roughness: 0.64 }),
     pants: new THREE.MeshStandardMaterial({ color: '#356c89', roughness: 0.65 }),
@@ -52,6 +76,7 @@ export const BlockAvatar = memo(function BlockAvatar({
   motion,
   reducedMotion = false,
   scale = 0.36,
+  showcase = false,
 }: BlockAvatarProps) {
   const physicsFollow = useRef<THREE.Group>(null)
   const facing = useRef<THREE.Group>(null)
@@ -64,7 +89,7 @@ export const BlockAvatar = memo(function BlockAvatar({
   const leftHip = useRef<THREE.Group>(null)
   const rightHip = useRef<THREE.Group>(null)
   const runtime = useRef(createAvatarAnimationRuntime(motion.current))
-  const assets = useMemo(createAvatarAssets, [])
+  const assets = useMemo(() => createAvatarAssets(showcase), [showcase])
 
   useEffect(() => () => disposeAvatarAssets(assets), [assets])
 

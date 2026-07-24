@@ -63,6 +63,8 @@ import {
   type PhysicalShape,
 } from './parts'
 import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
+import { ShowcaseEnvironment } from './ExploreShowcase'
+import { EXPLORE_SHOWCASE, SHOWCASE_BRICK_MATERIAL, shouldUseExploreShowcase } from './exploreLookdev'
 import { usesCompactRenderer } from './rendererQuality'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
@@ -80,7 +82,7 @@ function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) 
   }
 }
 
-function BaseplateStuds() {
+function BaseplateStuds({ showcase = false }: { showcase?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const geometry = useMemo(() => new THREE.CylinderGeometry(STUD * 0.18, STUD * 0.18, 0.075, 10), [])
 
@@ -100,12 +102,14 @@ function BaseplateStuds() {
 
   return (
     <instancedMesh ref={ref} args={[geometry, undefined, GRID_SIZE * GRID_SIZE]} receiveShadow>
-      <meshStandardMaterial color="#d5dce0" roughness={0.82} />
+      {showcase
+        ? <meshPhysicalMaterial color={EXPLORE_SHOWCASE.plate.studColor} roughness={0.24} metalness={0} clearcoat={1} clearcoatRoughness={0.12} envMapIntensity={0.4} />
+        : <meshStandardMaterial color="#d5dce0" roughness={0.82} />}
     </instancedMesh>
   )
 }
 
-function Baseplate({ explore = false, buildGesture }: { explore?: boolean; buildGesture?: BuildGestureState }) {
+function Baseplate({ explore = false, showcase = false, buildGesture }: { explore?: boolean; showcase?: boolean; buildGesture?: BuildGestureState }) {
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -148,15 +152,17 @@ function Baseplate({ explore = false, buildGesture }: { explore?: boolean; build
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        {explore && showcase
+          ? <meshPhysicalMaterial color={EXPLORE_SHOWCASE.plate.color} roughness={0.32} metalness={0} clearcoat={1} clearcoatRoughness={0.24} envMapIntensity={0.4} />
+          : <meshStandardMaterial color="#e7ebed" roughness={0.9} />}
       </mesh>
-      {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      {(!explore || showcase) && <BaseplateStuds showcase={explore && showcase} />}
+      {!(explore && showcase) && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
   )
 }
 
-function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState }) {
+function BrickObject({ brick, explore = false, showcase = false, buildGesture }: { brick: BrickInstance; explore?: boolean; showcase?: boolean; buildGesture?: BuildGestureState }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
@@ -211,7 +217,9 @@ function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickIns
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        {explore && showcase
+          ? <meshPhysicalMaterial color={brick.color} {...SHOWCASE_BRICK_MATERIAL} />
+          : <meshStandardMaterial color={brick.color} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />}
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -575,19 +583,19 @@ function PhysicalCollider({ shape }: { shape: PhysicalShape }) {
   return <CuboidCollider args={shape.halfExtents} position={shape.center} friction={PART_COLLIDER_FRICTION} />
 }
 
-function BrickCollider({ brick }: { brick: BrickInstance }) {
+function BrickCollider({ brick, showcase = false }: { brick: BrickInstance; showcase?: boolean }) {
   const shapes = useMemo(() => brickPhysicalShapes(brick), [brick])
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
         {shapes.map((shape, index) => <PhysicalCollider key={index} shape={shape} />)}
       </RigidBody>
-      <BrickObject brick={brick} explore />
+      <BrickObject brick={brick} explore showcase={showcase} />
     </>
   )
 }
 
-function ExplorerAvatar() {
+function ExplorerAvatar({ showcase = false }: { showcase?: boolean }) {
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
   const controller = useRef<KinematicCharacterController | null>(null)
@@ -763,7 +771,7 @@ function ExplorerAvatar() {
       ccd
     >
       <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
-      <BlockAvatar motion={motion} reducedMotion={reducedMotion} />
+      <BlockAvatar motion={motion} reducedMotion={reducedMotion} showcase={showcase} />
     </RigidBody>
   )
 }
@@ -783,16 +791,16 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ showcase = false }: { showcase?: boolean }) {
   const bricks = useBrickStore((state) => state.bricks)
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
-        <Baseplate explore />
+        <Baseplate explore showcase={showcase} />
       </RigidBody>
-      {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
-      <ExplorerAvatar />
+      {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} showcase={showcase} />)}
+      <ExplorerAvatar showcase={showcase} />
     </Physics>
   )
 }
@@ -817,9 +825,23 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
+/** The original warm workshop presentation — Build mode and compact Explore keep this verbatim. */
+function ClassicEnvironment({ compactRenderer }: { compactRenderer: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#f4f2ed']} />
+      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+      <ambientLight intensity={1.35} />
+      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+    </>
+  )
+}
+
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
   const compactRenderer = useCompactRenderer()
+  const showcase = shouldUseExploreShowcase(mode, compactRenderer)
   return (
     <Canvas
       shadows={!compactRenderer}
@@ -828,14 +850,10 @@ export default function BrickStudioScene() {
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => mode === 'build' && useBrickStore.getState().selectBrick(null)}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+      {showcase ? <ShowcaseEnvironment /> : <ClassicEnvironment compactRenderer={compactRenderer} />}
       {mode === 'build'
         ? <><BuildScene /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : <Suspense fallback={null}><ExploreScene showcase={showcase} /></Suspense>}
     </Canvas>
   )
 }
