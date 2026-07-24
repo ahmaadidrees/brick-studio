@@ -8,6 +8,20 @@ const TARGET_HORIZONTAL_MARGIN = STUD * 4
 const TARGET_VERTICAL_MARGIN = STUD * 6
 const HOME_DIRECTION = [14, 12, 16] as const
 
+// Empty plate: non-selection presets frame a ~16-stud working area instead of the
+// whole plate so the first brick lands at a readable zoom. Mirrors the getBuildBounds
+// shape and padding (STUD * 2 horizontal, PLATE_HEIGHT * 3 vertical) so
+// getFrameDistance treats it like real bounds. Camera limits still span the plate.
+const WORKING_HALF_EXTENT = STUD * 8 + STUD * 2
+const WORKING_HALF_HEIGHT = PLATE_HEIGHT + PLATE_HEIGHT * 3
+const WORKING_AREA_BOUNDS: BuildBounds = {
+  min: [-WORKING_HALF_EXTENT, -WORKING_HALF_HEIGHT, -WORKING_HALF_EXTENT],
+  max: [WORKING_HALF_EXTENT, WORKING_HALF_HEIGHT, WORKING_HALF_EXTENT],
+  center: [0, 0, 0],
+  size: [WORKING_HALF_EXTENT * 2, WORKING_HALF_HEIGHT * 2, WORKING_HALF_EXTENT * 2],
+  empty: true,
+}
+
 export type BuildCameraLimits = {
   targetMin: [number, number, number]
   targetMax: [number, number, number]
@@ -76,12 +90,13 @@ export function createBuildFramePose(
   aspect: number,
   selectedTarget: BuildCameraPoint | null = null,
 ): BuildFramePose {
+  const frameBounds = bounds.empty && preset !== 'selection' ? WORKING_AREA_BOUNDS : bounds
   const target = preset === 'selection' && selectedTarget
     ? { ...selectedTarget }
-    : { x: bounds.center[0], y: bounds.center[1], z: bounds.center[2] }
+    : { x: frameBounds.center[0], y: frameBounds.center[1], z: frameBounds.center[2] }
   const distance = preset === 'selection'
     ? 6
-    : getFrameDistance(bounds, verticalFovDegrees, aspect)
+    : getFrameDistance(frameBounds, verticalFovDegrees, aspect)
 
   if (preset === 'top') {
     return {
