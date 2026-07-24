@@ -357,19 +357,23 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   marquee: null,
   toast: 'Pick a brick, position it over the plate, then place it.',
 
-  setMode: (mode) => set({
-    mode,
-    selectedIds: [],
-    selectedId: null,
-    draft: mode === 'build' ? get().draft : null,
-    movingId: mode === 'explore' ? null : get().movingId,
-    touchMove: { x: 0, z: 0 },
-    touchMoveMagnitude: 0,
-    touchRunning: false,
-    selectionMode: false,
-    marquee: null,
-    toast: mode === 'explore' ? 'Walk around the exact world you built.' : 'Back at the build plate.',
-  }),
+  setMode: (mode) => {
+    const state = get()
+    const rearmed = state.activePartId ? suggestedDraft(state.activePartId, state.activeColor) : null
+    set({
+      mode,
+      selectedIds: [],
+      selectedId: null,
+      draft: mode === 'build' ? state.draft ?? rearmed : null,
+      movingId: mode === 'explore' ? null : state.movingId,
+      touchMove: { x: 0, z: 0 },
+      touchMoveMagnitude: 0,
+      touchRunning: false,
+      selectionMode: false,
+      marquee: null,
+      toast: mode === 'explore' ? 'Walk around the exact world you built.' : 'Back at the build plate.',
+    })
+  },
   choosePart: (partId) => set((state) => ({
     activePartId: partId,
     selectedIds: [],
@@ -429,12 +433,15 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       const id = createBrickId()
       const brick = { ...state.draft, id }
       const index = state.bricks.length
+      const part = BRICK_PART_MAP[brick.partId]
       set({
         bricks: [...state.bricks, brick],
-        ...selectionPatch([id]),
-        activePartId: null,
-        draft: null,
-        undoStack: appendHistory(state.undoStack, singleHistoryEntry(null, brick, null, index, 'Place brick')),
+        ...selectionPatch([]),
+        // The brush stays loaded: the same part/color/rotation re-arms, offered
+        // on top of the just-placed brick so the fresh ghost spawns valid.
+        // History selections stay empty so redo cannot re-select the brick.
+        draft: { ...state.draft, y: brick.y + part.height },
+        undoStack: appendHistory(state.undoStack, historyEntry([{ before: null, after: brick, beforeIndex: null, afterIndex: index }], 'Place brick', null, [], [])),
         redoStack: [],
         toast: 'Brick snapped into place.',
       })
@@ -725,13 +732,16 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     const state = get()
     const previous = state.undoStack.at(-1)
     if (!previous) return
+    // An armed brush survives undo; a restored selection would fight it, so
+    // the selection restore only applies while no brush is armed.
+    const brushArmed = Boolean(state.draft && !state.movingId)
     set({
       bricks: applyHistoryEntry(state.bricks, previous, 'undo'),
       undoStack: state.undoStack.slice(0, -1),
       redoStack: appendHistory(state.redoStack, previous),
-      ...selectionPatch(previous.selectionBefore),
+      ...selectionPatch(brushArmed ? [] : previous.selectionBefore),
       movingId: null,
-      draft: null,
+      draft: brushArmed ? state.draft : null,
       toast: `Undid: ${previous.label}.`,
     })
   },
@@ -744,13 +754,14 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       set({ toast: `Redo would exceed this device's ${state.brickBudget}-brick budget.` })
       return
     }
+    const brushArmed = Boolean(state.draft && !state.movingId)
     set({
       bricks: applyHistoryEntry(state.bricks, next, 'redo'),
       undoStack: appendHistory(state.undoStack, next),
       redoStack: state.redoStack.slice(0, -1),
-      ...selectionPatch(next.selectionAfter),
+      ...selectionPatch(brushArmed ? [] : next.selectionAfter),
       movingId: null,
-      draft: null,
+      draft: brushArmed ? state.draft : null,
       toast: `Redid: ${next.label}.`,
     })
   },

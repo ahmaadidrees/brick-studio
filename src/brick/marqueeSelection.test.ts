@@ -37,12 +37,13 @@ describe('marquee geometry', () => {
     expect(finished.rectangle).toEqual({ left: 100, top: 100, right: 108, bottom: 106 })
   })
 
-  it('leaves ordinary camera dragging untouched and captures touch only in Select mode', () => {
-    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', shiftKey: false, selectionMode: false })).toBe(false)
-    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', shiftKey: true, selectionMode: false })).toBe(true)
-    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'touch', shiftKey: true, selectionMode: false })).toBe(false)
-    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'touch', shiftKey: false, selectionMode: true })).toBe(true)
-    expect(shouldCaptureSelectionGesture({ mode: 'explore', button: 0, pointerType: 'mouse', shiftKey: true, selectionMode: true })).toBe(false)
+  it('captures marquee gestures only in Select mode so every ordinary drag stays camera', () => {
+    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', selectionMode: false })).toBe(false)
+    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', selectionMode: true })).toBe(true)
+    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'touch', selectionMode: false })).toBe(false)
+    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'touch', selectionMode: true })).toBe(true)
+    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 2, pointerType: 'mouse', selectionMode: true })).toBe(false)
+    expect(shouldCaptureSelectionGesture({ mode: 'explore', button: 0, pointerType: 'mouse', selectionMode: true })).toBe(false)
   })
 
   it('projects rotated and nonstandard brick bounds at multiple camera orientations', () => {

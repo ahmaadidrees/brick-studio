@@ -64,7 +64,8 @@ describe('brick placement', () => {
 describe('bounded command history', () => {
   it('undoes and redoes place, rotate, recolor, move, and delete commands', () => {
     expect(placeAt(4, 4, 'brick_1x2')).toBe(true)
-    const id = useBrickStore.getState().selectedId!
+    const id = useBrickStore.getState().bricks[0].id
+    useBrickStore.getState().selectBrick(id)
 
     useBrickStore.getState().rotate()
     expect(useBrickStore.getState().bricks[0].rotation).toBe(1)
@@ -96,6 +97,7 @@ describe('bounded command history', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-20T12:00:00Z'))
     expect(placeAt(10, 10)).toBe(true)
+    useBrickStore.getState().selectBrick(useBrickStore.getState().bricks[0].id)
     useBrickStore.getState().nudge(1, 0, 0)
     vi.advanceTimersByTime(100)
     useBrickStore.getState().nudge(1, 0, 0)
@@ -110,6 +112,7 @@ describe('bounded command history', () => {
 
   it('rejects an invalid selected rotation without adding history', () => {
     expect(placeAt(63, 60, 'brick_1x4')).toBe(true)
+    useBrickStore.getState().selectBrick(useBrickStore.getState().bricks[0].id)
     const historyLength = useBrickStore.getState().undoStack.length
     useBrickStore.getState().rotate()
 
@@ -185,12 +188,49 @@ describe('budget and continuity gates', () => {
   })
 })
 
+describe('loaded brush placement', () => {
+  it('keeps the part armed and re-arms a stacked ghost after placing', () => {
+    expect(placeAt(6, 6)).toBe(true)
+    const state = useBrickStore.getState()
+    expect(state.activePartId).toBe('brick_1x1')
+    expect(state.selectedId).toBeNull()
+    expect(state.selectedIds).toEqual([])
+    expect(state.draft).toMatchObject({ partId: 'brick_1x1', x: 6, y: 3, z: 6 })
+
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().bricks).toHaveLength(2)
+    expect(useBrickStore.getState().draft).toMatchObject({ x: 6, y: 6, z: 6 })
+  })
+
+  it('keeps the armed brush through undo and redo without re-selecting bricks', () => {
+    expect(placeAt(4, 4)).toBe(true)
+    useBrickStore.getState().undo()
+
+    expect(useBrickStore.getState().bricks).toHaveLength(0)
+    expect(useBrickStore.getState().activePartId).toBe('brick_1x1')
+    expect(useBrickStore.getState().draft).toMatchObject({ partId: 'brick_1x1' })
+
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+    expect(useBrickStore.getState().selectedId).toBeNull()
+    expect(useBrickStore.getState().draft).not.toBeNull()
+  })
+
+  it('re-arms the brush when returning from Explore with a part still active', () => {
+    expect(placeAt(3, 3)).toBe(true)
+    useBrickStore.getState().setMode('explore')
+    expect(useBrickStore.getState().draft).toBeNull()
+
+    useBrickStore.getState().setMode('build')
+    expect(useBrickStore.getState().draft).toMatchObject({ partId: 'brick_1x1' })
+  })
+})
+
 describe('keyboard-oriented selection commands', () => {
   it('enumerates placed bricks in both directions and announces coordinates', () => {
     placeAt(2, 3)
-    const firstId = useBrickStore.getState().selectedId!
     placeAt(7, 8)
-    const secondId = useBrickStore.getState().selectedId!
+    const [firstId, secondId] = useBrickStore.getState().bricks.map((brick) => brick.id)
     useBrickStore.getState().selectBrick(null)
 
     useBrickStore.getState().selectAdjacentBrick(1)

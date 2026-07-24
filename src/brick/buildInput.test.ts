@@ -1,16 +1,22 @@
 import { describe, expect, it } from 'vitest'
 import {
   BUILD_TOUCH_DRAG_THRESHOLD,
+  MOUSE_CLICK_DRAG_THRESHOLD,
   beginBuildPointer,
+  beginPointerTravel,
   cancelBuildPointer,
   createBuildGestureState,
+  createPointerTravel,
+  endPointerTravel,
   finishBuildPointer,
   interruptBuildPointers,
   isConfirmationPlacementPointer,
+  pointerTravelExceeds,
   resetBuildPointers,
   shouldSuppressBuildTouchClick,
   takeBuildPointerCompletion,
   updateBuildPointer,
+  updatePointerTravel,
 } from './buildInput'
 
 describe('device-adaptive Build input', () => {
@@ -68,5 +74,46 @@ describe('device-adaptive Build input', () => {
     expect(interruptBuildPointers(state, 100)).toBe(true)
     expect(state.pointers.size).toBe(0)
     expect(shouldSuppressBuildTouchClick(state, 101)).toBe(true)
+  })
+})
+
+describe('mouse click drag guard', () => {
+  it('lets a steady click through and guards one that travelled past the threshold', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 100, 100)
+    updatePointerTravel(travel, 103, 100)
+    expect(pointerTravelExceeds(travel)).toBe(false)
+
+    updatePointerTravel(travel, 100 + MOUSE_CLICK_DRAG_THRESHOLD + 1, 100)
+    endPointerTravel(travel)
+    expect(pointerTravelExceeds(travel)).toBe(true)
+  })
+
+  it('remembers peak travel for the trailing click even after returning to the origin', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 50, 50)
+    updatePointerTravel(travel, 90, 50)
+    updatePointerTravel(travel, 50, 50)
+    endPointerTravel(travel)
+    expect(pointerTravelExceeds(travel)).toBe(true)
+  })
+
+  it('re-arms a clean click on the next pointer down', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 0, 0)
+    updatePointerTravel(travel, 40, 0)
+    endPointerTravel(travel)
+
+    beginPointerTravel(travel, 10, 10)
+    updatePointerTravel(travel, 12, 10)
+    expect(pointerTravelExceeds(travel)).toBe(false)
+  })
+
+  it('ignores movement while no pointer is down', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 0, 0)
+    endPointerTravel(travel)
+    updatePointerTravel(travel, 100, 100)
+    expect(pointerTravelExceeds(travel)).toBe(false)
   })
 })

@@ -1,5 +1,44 @@
 export const BUILD_TOUCH_DRAG_THRESHOLD = 8
 export const BUILD_TOUCH_CLICK_GUARD_MS = 450
+export const MOUSE_CLICK_DRAG_THRESHOLD = 5
+
+/**
+ * Tracks how far a mouse pointer travelled since it went down. Camera drags end
+ * with a native click; consumers compare travel against
+ * MOUSE_CLICK_DRAG_THRESHOLD to keep those clicks from placing or selecting.
+ * Travel persists after the pointer lifts so the trailing click can read it;
+ * the next pointer-down resets it.
+ */
+export type PointerTravel = {
+  originX: number
+  originY: number
+  maxTravel: number
+  active: boolean
+}
+
+export function createPointerTravel(): PointerTravel {
+  return { originX: 0, originY: 0, maxTravel: 0, active: false }
+}
+
+export function beginPointerTravel(travel: PointerTravel, x: number, y: number) {
+  travel.originX = x
+  travel.originY = y
+  travel.maxTravel = 0
+  travel.active = true
+}
+
+export function updatePointerTravel(travel: PointerTravel, x: number, y: number) {
+  if (!travel.active) return
+  travel.maxTravel = Math.max(travel.maxTravel, Math.hypot(x - travel.originX, y - travel.originY))
+}
+
+export function endPointerTravel(travel: PointerTravel) {
+  travel.active = false
+}
+
+export function pointerTravelExceeds(travel: PointerTravel, threshold = MOUSE_CLICK_DRAG_THRESHOLD) {
+  return travel.maxTravel > threshold
+}
 
 type ActiveBuildPointer = {
   startX: number

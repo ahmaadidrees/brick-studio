@@ -23,13 +23,16 @@ export type SelectionPointerIntent = {
   mode: 'build' | 'explore'
   button: number
   pointerType: string
-  shiftKey: boolean
   selectionMode: boolean
 }
 
+/**
+ * Marquee capture belongs to the explicit Select tool only. Shift-drag is a
+ * camera pan and Shift-click stays additive selection, so neither may start
+ * a marquee outside Select mode.
+ */
 export function shouldCaptureSelectionGesture(intent: SelectionPointerIntent) {
-  if (intent.mode !== 'build' || intent.button !== 0) return false
-  return intent.selectionMode || (intent.pointerType !== 'touch' && intent.shiftKey)
+  return intent.mode === 'build' && intent.button === 0 && intent.selectionMode
 }
 
 export function normalizeScreenRect(start: ScreenPoint, end: ScreenPoint): ScreenRect {

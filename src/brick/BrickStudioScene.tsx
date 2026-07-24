@@ -14,17 +14,24 @@ import {
   getBuildCameraLimits,
 } from './buildCamera'
 import {
+  MOUSE_CLICK_DRAG_THRESHOLD,
   beginBuildPointer,
+  beginPointerTravel,
   cancelBuildPointer,
   createBuildGestureState,
+  createPointerTravel,
+  endPointerTravel,
   finishBuildPointer,
   interruptBuildPointers,
   isConfirmationPlacementPointer,
+  pointerTravelExceeds,
   resetBuildPointers,
   shouldSuppressBuildTouchClick,
   takeBuildPointerCompletion,
   updateBuildPointer,
+  updatePointerTravel,
   type BuildGestureState,
+  type PointerTravel,
 } from './buildInput'
 import {
   CHARACTER_FIXED_STEP,
@@ -105,7 +112,9 @@ function BaseplateStuds() {
   )
 }
 
-function Baseplate({ explore = false, buildGesture }: { explore?: boolean; buildGesture?: BuildGestureState }) {
+type CameraGestureFlag = { current: boolean }
+
+function Baseplate({ explore = false, buildGesture, cameraActive }: { explore?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag }) {
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -113,6 +122,7 @@ function Baseplate({ explore = false, buildGesture }: { explore?: boolean; build
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
+    if (cameraActive?.current) return
     event.stopPropagation()
     const next = gridDraftFromPoint(event.point, 0, draft)
     setDraftPosition(next.x, next.y, next.z)
@@ -143,6 +153,7 @@ function Baseplate({ explore = false, buildGesture }: { explore?: boolean; build
           event.stopPropagation()
           const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
           if (isConfirmationPlacementPointer(pointerType)) return
+          if (event.delta > MOUSE_CLICK_DRAG_THRESHOLD) return
           if (draft && !explore) placeDraft()
           else if (!explore) selectBrick(null)
         }}
@@ -156,7 +167,7 @@ function Baseplate({ explore = false, buildGesture }: { explore?: boolean; build
   )
 }
 
-function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState }) {
+function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
@@ -171,6 +182,7 @@ function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickIns
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
+    if (cameraActive?.current) return
     event.stopPropagation()
     const next = gridDraftFromPoint(event.point, brick.y + part.height, draft)
     setDraftPosition(next.x, next.y, next.z)
@@ -203,6 +215,7 @@ function BrickObject({ brick, explore = false, buildGesture }: { brick: BrickIns
           event.stopPropagation()
           const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
           if (isConfirmationPlacementPointer(pointerType)) return
+          if (event.delta > MOUSE_CLICK_DRAG_THRESHOLD) return
           if (draft && !explore) placeDraft()
           else if (!explore) {
             const nativeEvent = event.nativeEvent as MouseEvent
@@ -240,13 +253,13 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
   )
 }
 
-function BuildCamera() {
+function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const controls = useRef<OrbitControlsImpl | null>(null)
   const request = useBrickStore((state) => state.viewRequest)
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const marquee = useBrickStore((state) => state.marquee)
   const bricks = useBrickStore((state) => state.bricks)
-  const { camera, size: viewportSize } = useThree()
+  const { camera, gl, size: viewportSize } = useThree()
   const unclampedTarget = useRef(new THREE.Vector3())
   const clampedTarget = useRef(new THREE.Vector3())
   const targetCorrection = useRef(new THREE.Vector3())
@@ -292,6 +305,17 @@ function BuildCamera() {
     controls.current?.update()
   }, [clampCameraNavigation])
 
+  useEffect(() => {
+    const canvas = gl.domElement
+    const applyPanModifier = (event: PointerEvent) => {
+      const control = controls.current
+      if (!control || event.pointerType !== 'mouse') return
+      control.mouseButtons.LEFT = event.shiftKey ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE
+    }
+    canvas.addEventListener('pointerdown', applyPanModifier, true)
+    return () => canvas.removeEventListener('pointerdown', applyPanModifier, true)
+  }, [gl])
+
   return (
     <OrbitControls
       ref={controls}
@@ -302,8 +326,10 @@ function BuildCamera() {
       minDistance={limits.minDistance}
       maxDistance={limits.maxDistance}
       maxPolarAngle={Math.PI / 2.02}
-      mouseButtons={{ LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
+      mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+      onStart={() => { gestureActive.current = true }}
+      onEnd={() => { gestureActive.current = false }}
       onChange={clampCameraNavigation}
     />
   )
@@ -376,7 +402,6 @@ function BuildSelectionInput() {
         mode: state.mode,
         button: event.button,
         pointerType: event.pointerType,
-        shiftKey: event.shiftKey,
         selectionMode: state.selectionMode,
       })) return
       consume(event)
@@ -532,23 +557,46 @@ function BuildTouchInput({ gesture }: { gesture: BuildGestureState }) {
   return null
 }
 
-function BuildScene() {
+function MouseTravelTracker({ travel }: { travel: PointerTravel }) {
+  const { gl } = useThree()
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const down = (event: PointerEvent) => { if (event.pointerType === 'mouse') beginPointerTravel(travel, event.clientX, event.clientY) }
+    const move = (event: PointerEvent) => { if (event.pointerType === 'mouse') updatePointerTravel(travel, event.clientX, event.clientY) }
+    const up = (event: PointerEvent) => { if (event.pointerType === 'mouse') endPointerTravel(travel) }
+    canvas.addEventListener('pointerdown', down, true)
+    canvas.addEventListener('pointermove', move, true)
+    canvas.addEventListener('pointerup', up, true)
+    canvas.addEventListener('pointercancel', up, true)
+    return () => {
+      canvas.removeEventListener('pointerdown', down, true)
+      canvas.removeEventListener('pointermove', move, true)
+      canvas.removeEventListener('pointerup', up, true)
+      canvas.removeEventListener('pointercancel', up, true)
+    }
+  }, [gl, travel])
+
+  return null
+}
+
+function BuildScene({ mouseTravel }: { mouseTravel: PointerTravel }) {
   const bricks = useBrickStore((state) => state.bricks)
-  const selectBrick = useBrickStore((state) => state.selectBrick)
   const gesture = useRef(createBuildGestureState())
+  const cameraGestureActive = useRef(false)
   return (
     <>
-      <Baseplate buildGesture={gesture.current} />
-      {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} />)}
+      <Baseplate buildGesture={gesture.current} cameraActive={cameraGestureActive} />
+      {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} />)}
       <DraftBrick />
-      <BuildCamera />
+      <BuildCamera gestureActive={cameraGestureActive} />
       <BuildSelectionInput />
       <BuildTouchInput gesture={gesture.current} />
+      <MouseTravelTracker travel={mouseTravel} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial color="#f5f2ec" roughness={1} />
       </mesh>
-      <group onClick={() => selectBrick(null)} />
     </>
   )
 }
@@ -820,13 +868,18 @@ function useCompactRenderer() {
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
   const compactRenderer = useCompactRenderer()
+  const mouseTravel = useRef(createPointerTravel())
   return (
     <Canvas
       shadows={!compactRenderer}
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
       camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-      onPointerMissed={() => mode === 'build' && useBrickStore.getState().selectBrick(null)}
+      onPointerMissed={() => {
+        if (mode !== 'build') return
+        if (pointerTravelExceeds(mouseTravel.current)) return
+        useBrickStore.getState().selectBrick(null)
+      }}
     >
       <color attach="background" args={['#f4f2ed']} />
       <fog attach="fog" args={['#f4f2ed', 42, 90]} />
@@ -834,7 +887,7 @@ export default function BrickStudioScene() {
       <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
       <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
       {mode === 'build'
-        ? <><BuildScene /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
+        ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
         : <Suspense fallback={null}><ExploreScene /></Suspense>}
     </Canvas>
   )

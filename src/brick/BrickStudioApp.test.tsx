@@ -100,7 +100,8 @@ describe('keyboard construction loop', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Place brick' })[0])
 
     expect(useBrickStore.getState().bricks[0]?.partId).toBe('door_1x4')
-    expect(useBrickStore.getState().draft).toBeNull()
+    expect(useBrickStore.getState().draft).toMatchObject({ partId: 'door_1x4' })
+    expect(useBrickStore.getState().activePartId).toBe('door_1x4')
   })
 
   it('selects semantically, keeps arrows native in the selector, and still supports edit/delete/undo', () => {
@@ -529,6 +530,9 @@ describe('Builder Experience Alpha shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Place positioned brick' }))
     expect(useBrickStore.getState().bricks).toHaveLength(1)
+    expect(screen.getByRole('group', { name: 'Positioned brick actions' })).toBeInTheDocument()
+
+    act(() => useBrickStore.getState().cancelInteraction())
     expect(screen.queryByRole('group', { name: 'Positioned brick actions' })).not.toBeInTheDocument()
   })
 
