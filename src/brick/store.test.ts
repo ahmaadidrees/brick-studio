@@ -226,6 +226,35 @@ describe('loaded brush placement', () => {
   })
 })
 
+describe('group recolor', () => {
+  it('recolors every selected brick as a single undo step and restores selection on undo', () => {
+    placeAt(2, 2)
+    placeAt(6, 6)
+    const ids = useBrickStore.getState().bricks.map((brick) => brick.id)
+    useBrickStore.getState().selectBricks(ids)
+    useBrickStore.getState().setActiveColor('#e7473c')
+
+    expect(useBrickStore.getState().bricks.every((brick) => brick.color === '#e7473c')).toBe(true)
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Recolor 2 bricks')
+
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks.some((brick) => brick.color === '#e7473c')).toBe(false)
+    expect(useBrickStore.getState().selectedIds).toEqual(ids)
+  })
+
+  it('skips same-color bricks so undo entries never contain identity deltas', () => {
+    placeAt(2, 2)
+    placeAt(6, 6)
+    const ids = useBrickStore.getState().bricks.map((brick) => brick.id)
+    useBrickStore.getState().selectBricks(ids)
+    useBrickStore.getState().setActiveColor('#e7473c')
+    const historyLength = useBrickStore.getState().undoStack.length
+
+    useBrickStore.getState().setActiveColor('#e7473c')
+    expect(useBrickStore.getState().undoStack).toHaveLength(historyLength)
+  })
+})
+
 describe('keyboard-oriented selection commands', () => {
   it('enumerates placed bricks in both directions and announces coordinates', () => {
     placeAt(2, 3)

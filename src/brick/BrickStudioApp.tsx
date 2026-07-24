@@ -259,6 +259,7 @@ function ColorPalette({ targetColor }: ColorPaletteProps) {
 function Inspector() {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
+  const activeColor = useBrickStore((state) => state.activeColor)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
   const bricks = useBrickStore((state) => state.bricks)
@@ -294,6 +295,7 @@ function Inspector() {
           <button aria-label={`Duplicate ${selectedIds.length} selected bricks`} onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>
           <button aria-label={`Delete ${selectedIds.length} selected bricks`} className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>
         </div>
+        <section><label><Palette size={15} /> Color all {selectedIds.length}</label><ColorPalette targetColor={activeColor} /></section>
       </aside>
     )
   }

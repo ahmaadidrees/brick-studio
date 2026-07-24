@@ -194,7 +194,7 @@ describe('multi-selection feedback and controls', () => {
     { id: 'two', partId: 'door_1x4', x: 12, y: 0, z: 12, rotation: 3, color: '#3e83d7' },
   ]
 
-  it('shows a selection count and bulk actions without arbitrary single-brick editing', () => {
+  it('shows a selection count, bulk actions, and group recolor without single-brick editing', () => {
     resetStore(pair)
     useBrickStore.setState({ selectedIds: ['one', 'two'], selectedId: 'two' })
     render(<BrickStudioApp />)
@@ -203,7 +203,10 @@ describe('multi-selection feedback and controls', () => {
     expect(screen.getByText('2 bricks selected', { selector: 'h2' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Copy 2 selected bricks' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Rotate brick' })).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Brick color')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use color #e7473c' }))
+    expect(useBrickStore.getState().bricks.every((brick) => brick.color === '#e7473c')).toBe(true)
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Recolor 2 bricks')
   })
 
   it('exposes a touch-sized Select/Done mode and Escape clears the selection', () => {

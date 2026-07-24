@@ -389,21 +389,32 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     const state = get()
     if (state.draft) {
       set({ activeColor: color, draft: { ...state.draft, color } })
-    } else if (effectiveSelectedIds(state).length === 1 && state.selectedId) {
-      const index = state.bricks.findIndex((brick) => brick.id === state.selectedId)
-      const before = state.bricks[index]
-      if (!before || before.color === color) {
-        set({ activeColor: color })
-        return
-      }
-      const after = { ...before, color }
-      set({
-        bricks: state.bricks.map((brick) => brick.id === before.id ? after : brick),
-        activeColor: color,
-        undoStack: appendHistory(state.undoStack, singleHistoryEntry(before, after, index, index, 'Change brick color')),
-        redoStack: [],
-      })
-    } else set({ activeColor: color })
+      return
+    }
+    const targets = selectedBricks(state).filter((brick) => brick.color !== color)
+    if (!targets.length) {
+      set({ activeColor: color })
+      return
+    }
+    const deltas = targets.map((brick) => {
+      const index = state.bricks.findIndex((candidate) => candidate.id === brick.id)
+      return { before: brick, after: { ...brick, color }, beforeIndex: index, afterIndex: index }
+    })
+    const targetIds = new Set(targets.map((brick) => brick.id))
+    const selectedNow = effectiveSelectedIds(state)
+    set({
+      bricks: state.bricks.map((brick) => targetIds.has(brick.id) ? { ...brick, color } : brick),
+      activeColor: color,
+      undoStack: appendHistory(state.undoStack, historyEntry(
+        deltas,
+        targets.length === 1 ? 'Change brick color' : `Recolor ${targets.length} bricks`,
+        null,
+        selectedNow,
+        selectedNow,
+      )),
+      redoStack: [],
+      announcement: targets.length === 1 ? 'Brick recolored.' : `${targets.length} bricks recolored.`,
+    })
   },
   setDraftPosition: (x, y, z) => set((state) => ({ draft: state.draft ? { ...state.draft, x, y, z } : state.draft })),
   placeDraft: () => {
