@@ -323,6 +323,22 @@ function createBrickId() {
   return `brick-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+// Shared by draft and placed rotation so the rounding bias is identical.
+// Math.trunc (round half toward zero) rather than Math.round: round(1.5)=2 but
+// round(-1.5)=-1, which would drift odd-delta parts by +2 studs per four turns.
+function centerPivotRotation(target: Pick<BrickDraft, 'partId' | 'x' | 'z' | 'rotation'>) {
+  const part = BRICK_PART_MAP[target.partId]
+  const rotation = ((target.rotation + 1) % 4) as BrickDraft['rotation']
+  const oldSize = rotatedSize(part, target.rotation)
+  const newSize = rotatedSize(part, rotation)
+  return {
+    rotation,
+    x: target.x + Math.trunc((oldSize.width - newSize.width) / 2),
+    z: target.z + Math.trunc((oldSize.depth - newSize.depth) / 2),
+    size: newSize,
+  }
+}
+
 function suggestedDraft(partId: string, color: string): BrickDraft {
   const part = BRICK_PART_MAP[partId]
   return { partId, x: Math.floor(GRID_SIZE / 2 - part.width / 2), y: 0, z: Math.floor(GRID_SIZE / 2 - part.depth / 2), rotation: 0, color }
@@ -565,12 +581,19 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   rotate: () => {
     const state = get()
     if (state.draft) {
-      set({ draft: { ...state.draft, rotation: ((state.draft.rotation + 1) % 4) as BrickDraft['rotation'] } })
+      const next = centerPivotRotation(state.draft)
+      set({ draft: { ...state.draft, rotation: next.rotation, x: next.x, z: next.z } })
     } else if (effectiveSelectedIds(state).length === 1 && state.selectedId) {
       const index = state.bricks.findIndex((item) => item.id === state.selectedId)
       const before = state.bricks[index]
       if (!before) return
-      const after = { ...before, rotation: ((before.rotation + 1) % 4) as BrickInstance['rotation'] }
+      const next = centerPivotRotation(before)
+      const after = {
+        ...before,
+        rotation: next.rotation,
+        x: Math.min(Math.max(next.x, 0), GRID_SIZE - next.size.width),
+        z: Math.min(Math.max(next.z, 0), GRID_SIZE - next.size.depth),
+      }
       if (draftIsValid(after, state.bricks, before.id)) {
         set({
           bricks: state.bricks.map((item) => item.id === before.id ? after : item),

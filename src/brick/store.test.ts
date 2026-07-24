@@ -111,14 +111,52 @@ describe('bounded command history', () => {
   })
 
   it('rejects an invalid selected rotation without adding history', () => {
-    expect(placeAt(63, 60, 'brick_1x4')).toBe(true)
-    useBrickStore.getState().selectBrick(useBrickStore.getState().bricks[0].id)
+    expect(placeAt(10, 10, 'brick_1x4')).toBe(true)
+    const id = useBrickStore.getState().bricks[0].id
+    // 1x1 inside the center-pivot footprint (x 9..13, z 11..12) of the rotated 1x4
+    expect(placeAt(12, 11)).toBe(true)
+    useBrickStore.getState().selectBrick(id)
     const historyLength = useBrickStore.getState().undoStack.length
     useBrickStore.getState().rotate()
 
-    expect(useBrickStore.getState().bricks[0].rotation).toBe(0)
+    expect(useBrickStore.getState().bricks[0]).toMatchObject({ x: 10, z: 10, rotation: 0 })
     expect(useBrickStore.getState().undoStack).toHaveLength(historyLength)
     expect(useBrickStore.getState().toast).toContain('Not enough room')
+  })
+
+  it('returns a 2x3 brick exactly to its origin after four rotations', () => {
+    expect(placeAt(20, 20, 'brick_2x3')).toBe(true)
+    useBrickStore.getState().selectBrick(useBrickStore.getState().bricks[0].id)
+    for (let turn = 0; turn < 4; turn += 1) useBrickStore.getState().rotate()
+
+    expect(useBrickStore.getState().bricks[0]).toMatchObject({ x: 20, z: 20, rotation: 0 })
+  })
+
+  it('keeps a 1x4 centered on one rotation and returns it after four', () => {
+    expect(placeAt(30, 30, 'brick_1x4')).toBe(true)
+    useBrickStore.getState().selectBrick(useBrickStore.getState().bricks[0].id)
+    useBrickStore.getState().rotate()
+    expect(useBrickStore.getState().bricks[0]).toMatchObject({ x: 29, z: 31, rotation: 1 })
+
+    for (let turn = 0; turn < 3; turn += 1) useBrickStore.getState().rotate()
+    expect(useBrickStore.getState().bricks[0]).toMatchObject({ x: 30, z: 30, rotation: 0 })
+  })
+
+  it('applies center-pivot compensation to the draft without clamping it', () => {
+    useBrickStore.getState().choosePart('brick_1x4')
+    useBrickStore.getState().setDraftPosition(63, 0, 30)
+    useBrickStore.getState().rotate()
+
+    expect(useBrickStore.getState().draft).toMatchObject({ x: 62, z: 31, rotation: 1 })
+  })
+
+  it('clamps a placed center-pivot rotation onto the plate before validating', () => {
+    expect(placeAt(63, 30, 'brick_1x4')).toBe(true)
+    useBrickStore.getState().selectBrick(useBrickStore.getState().bricks[0].id)
+    useBrickStore.getState().rotate()
+
+    expect(useBrickStore.getState().bricks[0]).toMatchObject({ x: 60, z: 31, rotation: 1 })
+    expect(useBrickStore.getState().announcement).toBe('Brick rotated.')
   })
 
   it('caps delta history while preserving a 200-brick desktop build', () => {
