@@ -49,13 +49,13 @@ export function OnboardingGuide({ onDismiss }: OnboardingGuideProps) {
       <span className="brick-eyebrow">Quick start</span>
       <h2 id="onboarding-title">Build something you can explore</h2>
       <p className="onboarding-intro">
-        <span className="fine-pointer-copy">Click to build quickly. Drag empty space to orbit.</span>
+        <span className="fine-pointer-copy">Click to build quickly. Drag to orbit, Shift-drag to pan.</span>
         <span className="coarse-pointer-copy">Tap to position safely. Drag empty space to orbit, then use the large Place button.</span>
       </p>
       <ol>
         <li><span><Shapes size={18} /></span><div><strong>Choose a brick</strong><small>Pick any shape from the drawer.</small></div></li>
         <li><span><MousePointer2 size={18} /></span><div><strong>Position the preview</strong><small>Move it onto the plate or another brick.</small></div></li>
-        <li><span><Check size={18} /></span><div><strong>Place it</strong><small><span className="fine-pointer-copy">Click or press Enter.</span><span className="coarse-pointer-copy">Tap the blue Place button.</span></small></div></li>
+        <li><span><Check size={18} /></span><div><strong>Place it</strong><small><span className="fine-pointer-copy">Click or press Enter — the brush stays loaded, so keep placing.</span><span className="coarse-pointer-copy">Tap the blue Place button — the brush stays loaded, so keep placing.</span></small></div></li>
         <li><span><Gamepad2 size={18} /></span><div><strong>Explore</strong><small>Switch modes when your world is ready.</small></div></li>
       </ol>
       <button className="studio-button studio-button-primary onboarding-start" type="button" onClick={onDismiss}>Start building</button>

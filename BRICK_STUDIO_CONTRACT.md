@@ -7,7 +7,7 @@ A student can open a blank studded baseplate, make a recognizable brick creation
 ## Included in this slice
 
 - 64 x 64-stud build plate and an original procedural brick library
-- Tap/click placement with grid snapping, stacking, overlap feedback, and a placement ghost
+- Tap/click placement with grid snapping, stacking, overlap feedback, and a placement ghost that stays loaded for continuous placement
 - Select, recolor, rotate, move, copy, paste, duplicate, delete, undo, and redo
 - Orbit, pan, zoom, reset, and orthographic-style camera shortcuts
 - Explore mode with gravity, jumping, third-person camera, and collision against placed bricks

@@ -115,7 +115,7 @@ describe('keyboard construction loop', () => {
 
     fireEvent.change(selector, { target: { value: 'two' } })
     expect(useBrickStore.getState().selectedId).toBe('two')
-    expect(screen.getByRole('status')).toHaveTextContent('brick 2 of 2')
+    expect(screen.getByTestId('builder-announcer')).toHaveTextContent('brick 2 of 2')
 
     const beforeArrow = useBrickStore.getState().bricks[1]
     expect(fireEvent.keyDown(selector, { key: 'ArrowRight' })).toBe(true)
@@ -138,7 +138,7 @@ describe('keyboard construction loop', () => {
 
     expect(fireEvent.keyDown(document.body, { key: ']' })).toBe(false)
     expect(useBrickStore.getState().selectedId).toBe('one')
-    expect(screen.getByRole('status')).toHaveTextContent('brick 1 of 2')
+    expect(screen.getByTestId('builder-announcer')).toHaveTextContent('brick 1 of 2')
     expect(screen.getByText('1 × 1 Brick', { selector: '.brick-inspector h2' })).toBeInTheDocument()
   })
 })

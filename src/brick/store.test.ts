@@ -235,10 +235,10 @@ describe('keyboard-oriented selection commands', () => {
 
     useBrickStore.getState().selectAdjacentBrick(1)
     expect(useBrickStore.getState().selectedId).toBe(firstId)
-    expect(useBrickStore.getState().toast).toContain('brick 1 of 2')
+    expect(useBrickStore.getState().announcement).toContain('brick 1 of 2')
     useBrickStore.getState().selectAdjacentBrick(-1)
     expect(useBrickStore.getState().selectedId).toBe(secondId)
-    expect(useBrickStore.getState().toast).toContain('X 7, Y 0, Z 8')
+    expect(useBrickStore.getState().announcement).toContain('X 7, Y 0, Z 8')
   })
 
   it('cancels a draft or move without creating history', () => {

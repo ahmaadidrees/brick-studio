@@ -442,6 +442,11 @@ function Toast() {
   return toast ? <div className="brick-toast" role="status">{toast}</div> : null
 }
 
+function Announcer() {
+  const announcement = useBrickStore((state) => state.announcement)
+  return <div className="visually-hidden" data-testid="builder-announcer" aria-live="polite" aria-atomic="true">{announcement}</div>
+}
+
 function TouchExploreControls() {
   const setMove = useBrickStore((state) => state.setTouchMove)
   const addLook = useBrickStore((state) => state.addTouchLook)
@@ -553,7 +558,7 @@ function TouchExploreControls() {
 function ShortcutBar() {
   const coarsePointer = useCoarsePointerPreference()
   if (coarsePointer) return null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Click · ⌘Click toggle · Shift-drag marquee</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Click place · Drag orbit · ⇧Drag pan</span><span>⌘Click multi-select</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands
@@ -590,6 +595,7 @@ export default function BrickStudioApp({
         </>
       ) : <TouchExploreControls />}
       <Toast />
+      <Announcer />
     </main>
   )
 }
