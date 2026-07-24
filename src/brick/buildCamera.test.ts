@@ -14,6 +14,12 @@ const edgeBuild: BrickInstance[] = [
   { id: 'edge', partId: 'brick_1x4', x: 60, y: 9, z: 31, rotation: 1, color: '#fff' },
 ]
 
+// Footprint spans 24 studs — wider than the empty-plate 16-stud working area.
+const wideBuild: BrickInstance[] = [
+  { id: 'wide-a', partId: 'brick_1x1', x: 20, y: 0, z: 20, rotation: 0, color: '#fff' },
+  { id: 'wide-b', partId: 'brick_1x1', x: 43, y: 0, z: 43, rotation: 0, color: '#fff' },
+]
+
 describe('bounded Build camera', () => {
   it('keeps the plate in the target envelope and derives bounded zoom from the build and viewport', () => {
     const bounds = getBuildBounds([])
@@ -39,16 +45,22 @@ describe('bounded Build camera', () => {
     })
   })
 
-  it('frames placed-brick bounds and falls back to the plate for an empty build', () => {
+  it('frames placed-brick bounds and a ~16-stud working area for an empty build', () => {
     const buildBounds = getBuildBounds(edgeBuild)
     const buildPose = createBuildFramePose(buildBounds, 'home', 45, 16 / 9)
     const emptyPose = createBuildFramePose(getBuildBounds([]), 'home', 45, 16 / 9)
+    const widePose = createBuildFramePose(getBuildBounds(wideBuild), 'home', 45, 16 / 9)
 
     expect(buildPose.target.x).toBeCloseTo(buildBounds.center[0])
     expect(buildPose.target.y).toBeCloseTo(buildBounds.center[1])
     expect(buildPose.target.z).toBeCloseTo(buildBounds.center[2])
     expect(emptyPose.target).toEqual({ x: 0, y: 0, z: 0 })
-    expect(emptyPose.distance).toBeGreaterThan(buildPose.distance)
+    // Empty home frames the 16-stud working area, far tighter than framing the
+    // full 64-stud plate (~46.4 world units at 45deg / 16:9).
+    expect(emptyPose.distance).toBeGreaterThan(10)
+    expect(emptyPose.distance).toBeLessThan(20)
+    // A build spanning more than the working area still frames wider than empty.
+    expect(widePose.distance).toBeGreaterThan(emptyPose.distance)
   })
 
   it('focuses a selection without changing the requested target', () => {
