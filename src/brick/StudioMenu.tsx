@@ -1,5 +1,7 @@
 import { Download, FilePlus2, HelpCircle, MoreHorizontal, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { BRICK_PART_MAP } from './parts'
+import { useBrickStore } from './store'
 
 export type StudioDocumentCommands = {
   onNewBuild?: () => void
@@ -11,6 +13,33 @@ type StudioMenuProps = StudioDocumentCommands & {
   onOpenHelp: () => void
 }
 
+function PlacedBrickNavigator() {
+  const bricks = useBrickStore((state) => state.bricks)
+  const selectedId = useBrickStore((state) => state.selectedId)
+  const selectBrick = useBrickStore((state) => state.selectBrick)
+  return (
+    <div className="studio-menu-section" role="group" aria-label="Placed brick navigator">
+      <label htmlFor="placed-brick-select">Placed bricks</label>
+      <select
+        id="placed-brick-select"
+        value={selectedId ?? ''}
+        onChange={(event) => selectBrick(event.target.value || null)}
+        disabled={bricks.length === 0}
+        aria-describedby="placed-brick-help"
+        aria-keyshortcuts="BracketLeft BracketRight"
+      >
+        <option value="">{bricks.length ? `Choose 1 of ${bricks.length}` : 'No placed bricks'}</option>
+        {bricks.map((brick, index) => (
+          <option key={brick.id} value={brick.id}>
+            {index + 1}. {BRICK_PART_MAP[brick.partId].name} — X {brick.x}, Y {brick.y}, Z {brick.z}
+          </option>
+        ))}
+      </select>
+      <span id="placed-brick-help">Use this list or [ and ] to select each placed brick.</span>
+    </div>
+  )
+}
+
 export function StudioMenu({
   onNewBuild,
   onImportProject,
@@ -20,6 +49,7 @@ export function StudioMenu({
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
+  const buildMode = useBrickStore((state) => state.mode === 'build')
 
   useEffect(() => {
     if (!open) return
@@ -56,6 +86,7 @@ export function StudioMenu({
       </button>
       {open && (
         <div className="studio-menu-popover" role="menu" aria-label="Studio actions">
+          {buildMode && <PlacedBrickNavigator />}
           <a role="menuitem" href="/rover" aria-label="Rover Lab"><span className="studio-menu-icon" aria-hidden="true">R</span><span><strong>Rover Lab</strong><small>Open the coding mission</small></span></a>
           <button role="menuitem" type="button" disabled={!onNewBuild} onClick={() => runAndClose(onNewBuild)}>
             <FilePlus2 size={18} /><span><strong>New Build</strong><small>Start with a blank plate</small></span>

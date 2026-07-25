@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
@@ -115,6 +115,7 @@ describe('keyboard construction loop', () => {
     ]
     resetStore(bricks)
     render(<BrickStudioApp />)
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
     const selector = screen.getByLabelText('Placed bricks')
 
     fireEvent.change(selector, { target: { value: 'two' } })
@@ -158,7 +159,7 @@ describe('live move feedback', () => {
     fireEvent.click(screen.getAllByLabelText('Move brick')[0])
     act(() => useBrickStore.getState().setDraftPosition(12, 3, 14))
 
-    expect(screen.getByText('Moving')).toBeInTheDocument()
+    expect(screen.getByText('Moving', { selector: '.brick-inspector .brick-eyebrow' })).toBeInTheDocument()
     expect(Array.from(container.querySelectorAll('.coordinates strong')).map((element) => element.textContent)).toEqual(['12', '3', '14'])
   })
 })
@@ -245,7 +246,7 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('button', { name: 'Hide brick properties' })).toHaveAttribute('aria-expanded', 'true')
   })
 
-  it('keeps the complete editing action set discoverable when phone properties and either drawer state are open', () => {
+  it('keeps the complete editing action set discoverable when phone properties are open', () => {
     resetStore([brick])
     useBrickStore.setState({ selectedIds: [brick.id], selectedId: brick.id })
     render(<BrickStudioApp />)
@@ -263,10 +264,6 @@ describe('Brick Studio responsive controls', () => {
     }
     expect(screen.getAllByRole('button', { name: 'Rotate brick' })).not.toHaveLength(0)
     expect(screen.getAllByRole('button', { name: 'Move brick' })).not.toHaveLength(0)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
-    expect(screen.getByRole('group', { name: 'Brick editing actions' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Delete brick' })).toBeInTheDocument()
   })
 
   it('resets the phone properties scroll position whenever the disclosure reopens', () => {
@@ -474,42 +471,97 @@ describe('Brick Studio responsive controls', () => {
 describe('compact touch layout', () => {
   const COMPACT_LAYOUT = '(max-width: 900px)'
 
-  it('collapses the drawer while a brick is selected, restores it, and yields to a manual toggle', () => {
+  const openSheet = () => {
+    const fab = screen.getByRole('button', { name: 'Open brick drawer' })
+    fab.focus()
+    fireEvent.click(fab)
+    return fab
+  }
+
+  it('swaps the docked drawer for a (+) button that opens a modal part-and-color sheet', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    const { container } = render(<BrickStudioApp />)
+
+    expect(container.querySelector('.part-library')).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    const fab = openSheet()
+
+    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    expect(sheet).toHaveAttribute('aria-modal', 'true')
+    expect(fab).toHaveAttribute('aria-expanded', 'true')
+    expect(document.activeElement).toBe(sheet)
+    expect(within(sheet).getAllByRole('button', { name: /Use color/ })).toHaveLength(BRICK_COLORS.length)
+
+    fireEvent.click(within(sheet).getByTitle('Door Frame'))
+    expect(useBrickStore.getState().draft).toMatchObject({ partId: 'door_1x4' })
+    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    expect(document.activeElement).toBe(fab)
+  })
+
+  it('closes the sheet on Escape and on a backdrop tap without cancelling the armed brush', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    render(<BrickStudioApp />)
+    const fab = openSheet()
+    const armed = useBrickStore.getState().draft
+
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    expect(useBrickStore.getState().draft).toEqual(armed)
+    expect(document.activeElement).toBe(fab)
+
+    fireEvent.click(fab)
+    fireEvent.pointerDown(screen.getByTestId('brick-sheet-backdrop'))
+    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+  })
+
+  it('recolors the live selection from the sheet palette', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    resetStore([brick])
+    render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+    openSheet()
+
+    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    fireEvent.click(within(sheet).getByRole('button', { name: `Use color ${BRICK_COLORS[3]}` }))
+    expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[3])
+  })
+
+  it('hands an armed draft to the placement bar alone and keeps selection cards', () => {
     stubMediaQueries([COMPACT_LAYOUT])
     resetStore([brick])
     const { container } = render(<BrickStudioApp />)
-    const shell = () => container.querySelector('.build-shell')
-    const selector = screen.getByLabelText('Placed bricks')
-    expect(shell()).toHaveClass('drawer-expanded')
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+    expect(container.querySelector('.brick-inspector')).not.toBeNull()
 
-    fireEvent.change(selector, { target: { value: brick.id } })
-    expect(shell()).toHaveClass('drawer-collapsed')
-    fireEvent.change(selector, { target: { value: '' } })
-    expect(shell()).toHaveClass('drawer-expanded')
+    act(() => useBrickStore.getState().startMove())
+    expect(container.querySelector('.brick-inspector')).toBeNull()
+    const bar = screen.getByRole('group', { name: 'Positioned brick actions' })
+    expect(within(bar).getByText('Moving')).toBeInTheDocument()
+    expect(within(bar).getByText('2 × 4 Brick')).toBeInTheDocument()
+    expect(within(bar).getByRole('button', { name: 'Place moved brick from touch controls' })).toBeInTheDocument()
 
-    fireEvent.change(selector, { target: { value: brick.id } })
-    fireEvent.click(screen.getByRole('button', { name: 'Expand brick drawer' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
-    fireEvent.change(selector, { target: { value: '' } })
-    expect(shell()).toHaveClass('drawer-collapsed')
+    act(() => useBrickStore.getState().cancelInteraction())
+    expect(container.querySelector('.brick-inspector')).not.toBeNull()
   })
 
-  it('leaves the drawer open on a wide layout where it is not in the way', () => {
+  it('keeps the docked drawer and no (+) button on a wide fine-pointer layout', () => {
     stubMediaQueries([])
     resetStore([brick])
     const { container } = render(<BrickStudioApp />)
 
-    fireEvent.change(screen.getByLabelText('Placed bricks'), { target: { value: brick.id } })
-    expect(useBrickStore.getState().selectedId).toBe(brick.id)
-    expect(container.querySelector('.build-shell')).toHaveClass('drawer-expanded')
+    expect(container.querySelector('.part-library')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open brick drawer' })).not.toBeInTheDocument()
   })
 
   it('gives touch a layer step for the ghost between Rotate and Place', () => {
     stubMediaQueries([COMPACT_LAYOUT])
     render(<BrickStudioApp />)
 
+    openSheet()
     fireEvent.click(screen.getByTitle('1 × 1 Brick'))
     const bar = screen.getByRole('group', { name: 'Positioned brick actions' })
+    expect(within(bar).getByText('Placing')).toBeInTheDocument()
+    expect(within(bar).getByText('1 × 1 Brick')).toBeInTheDocument()
     expect(Array.from(bar.querySelectorAll('button')).map((button) => button.getAttribute('aria-label') ?? button.textContent?.trim()))
       .toEqual(['Cancel', 'Rotate', 'Raise brick one layer', 'Lower brick one layer', 'Place positioned brick'])
     expect(useBrickStore.getState().draft?.y).toBe(0)
@@ -578,12 +630,26 @@ describe('Builder Experience Alpha shell', () => {
     expect(onImportProject).toHaveBeenCalledWith(file)
   })
 
-  it('coordinates the collapsed dock state and provides an explicit touch Place action', () => {
-    const { container } = render(<BrickStudioApp />)
-    expect(container.querySelector('.build-shell')).toHaveClass('drawer-expanded')
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
-    expect(container.querySelector('.build-shell')).toHaveClass('drawer-collapsed')
-    expect(screen.getByRole('button', { name: 'Expand brick drawer' })).toHaveAttribute('aria-expanded', 'false')
+  it('keeps the placed-brick navigator and its shortcut wiring inside the studio menu', () => {
+    const second: BrickInstance = { ...brick, id: 'brick-b', x: 20 }
+    resetStore([brick, second])
+    render(<BrickStudioApp />)
+    expect(screen.queryByLabelText('Placed bricks')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    const selector = screen.getByLabelText('Placed bricks')
+    expect(selector).toHaveAttribute('aria-keyshortcuts', 'BracketLeft BracketRight')
+    expect(selector).toHaveAccessibleDescription('Use this list or [ and ] to select each placed brick.')
+
+    fireEvent.change(selector, { target: { value: second.id } })
+    expect(useBrickStore.getState().selectedId).toBe(second.id)
+    fireEvent.keyDown(document.body, { key: '[' })
+    expect(useBrickStore.getState().selectedId).toBe(brick.id)
+    expect(selector).toHaveValue(brick.id)
+  })
+
+  it('provides an explicit touch Place action that keeps the brush loaded', () => {
+    render(<BrickStudioApp />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Place positioned brick' }))
     expect(useBrickStore.getState().bricks).toHaveLength(1)

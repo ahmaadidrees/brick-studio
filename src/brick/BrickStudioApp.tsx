@@ -13,10 +13,12 @@ import {
   Move,
   MousePointer2,
   Palette,
+  Plus,
   Redo2,
   RotateCw,
   Trash2,
   Undo2,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import BrickStudioScene from './BrickStudioScene'
@@ -127,39 +129,28 @@ function useCoarsePointerPreference() {
   return coarsePointer
 }
 
-function useResponsiveDrawer() {
-  const [phoneQuery] = useState(() => window.matchMedia?.('(max-width: 600px)') ?? null)
-  const [compactQuery] = useState(() => window.matchMedia?.('(max-width: 900px)') ?? null)
-  const [expanded, setExpanded] = useState(() => !(phoneQuery?.matches ?? window.innerWidth <= 600))
-  const hasSelection = useBrickStore((state) => Boolean(state.selectedId) || state.selectedIds.length > 0)
-  const autoCollapsed = useRef(false)
+// The canvas-first shell: no docked drawer, a (+) sheet instead, and the placement bar as the
+// only control surface while a draft is armed. Mirrors the CSS compact query exactly; the
+// innerWidth fallback only covers environments without matchMedia.
+function useCompactLayout() {
+  const [queries] = useState(() => ['(max-width: 900px)', '(pointer: coarse)'].map((query) => window.matchMedia?.(query) ?? null))
+  const matchesCompact = useCallback(() => queries.some((query) => query?.matches) || window.innerWidth <= 900, [queries])
+  const [compact, setCompact] = useState(matchesCompact)
 
   useEffect(() => {
-    const adaptToViewport = () => setExpanded(!(phoneQuery?.matches ?? window.innerWidth <= 600))
-    phoneQuery?.addEventListener?.('change', adaptToViewport)
-    return () => phoneQuery?.removeEventListener?.('change', adaptToViewport)
-  }, [phoneQuery])
-
-  // Compact layouts dock the drawer under the inspector, where it is dead weight while a
-  // brick is being edited. Selection edges only: re-running on `expanded` would fight a
-  // manual re-open, and the toggle below drops the restore so the user always wins.
-  useEffect(() => {
-    if (hasSelection) {
-      if (!expanded || !(compactQuery?.matches ?? false)) return
-      autoCollapsed.current = true
-      setExpanded(false)
-    } else if (autoCollapsed.current) {
-      autoCollapsed.current = false
-      setExpanded(true)
+    const update = () => setCompact(matchesCompact())
+    update()
+    for (const query of queries) query?.addEventListener?.('change', update)
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      for (const query of queries) query?.removeEventListener?.('change', update)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
     }
-  }, [hasSelection])
+  }, [queries, matchesCompact])
 
-  const toggle = useCallback(() => {
-    autoCollapsed.current = false
-    setExpanded((current) => !current)
-  }, [])
-
-  return [expanded, toggle] as const
+  return compact
 }
 
 type HeaderProps = StudioDocumentCommands & {
@@ -204,51 +195,88 @@ function Header({ onNewBuild, onImportProject, onExportProject, onOpenHelp }: He
   )
 }
 
-type PartLibraryProps = {
-  expanded: boolean
-  onToggle: () => void
-}
-
-function PartLibrary({ expanded, onToggle }: PartLibraryProps) {
+function PartGrid({ onChoose }: { onChoose?: () => void }) {
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
-  const bricks = useBrickStore((state) => state.bricks)
-  const selectedId = useBrickStore((state) => state.selectedId)
-  const selectBrick = useBrickStore((state) => state.selectBrick)
   return (
-    <aside className={`part-library ${expanded ? 'expanded' : 'collapsed'}`}>
+    <div className="part-grid">
+      {BRICK_PARTS.map((part) => (
+        <button
+          key={part.id}
+          className={`library-part ${activePartId === part.id ? 'active' : ''}`}
+          type="button"
+          onClick={() => { choosePart(part.id); onChoose?.() }}
+          title={part.name}
+        >
+          <PartThumbnail part={part} />
+          <span>{part.name}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PartLibrary() {
+  return (
+    <aside className="part-library">
       <div className="library-title">
         <div><span className="brick-eyebrow">Brick drawer</span><h2>Choose a shape</h2></div>
-        <button className="studio-icon-button" onClick={onToggle} aria-label={expanded ? 'Collapse brick drawer' : 'Expand brick drawer'} aria-expanded={expanded}><ChevronDown size={19} /></button>
       </div>
-      <div className="part-grid">
-        {BRICK_PARTS.map((part) => (
-          <button key={part.id} className={`library-part ${activePartId === part.id ? 'active' : ''}`} onClick={() => choosePart(part.id)} title={part.name}>
-            <PartThumbnail part={part} />
-            <span>{part.name}</span>
-          </button>
-        ))}
-      </div>
-      <div className="placed-brick-navigator">
-        <label htmlFor="placed-brick-select">Placed bricks</label>
-        <select
-          id="placed-brick-select"
-          value={selectedId ?? ''}
-          onChange={(event) => selectBrick(event.target.value || null)}
-          disabled={bricks.length === 0}
-          aria-describedby="placed-brick-help"
-          aria-keyshortcuts="BracketLeft BracketRight"
-        >
-          <option value="">{bricks.length ? `Choose 1 of ${bricks.length}` : 'No placed bricks'}</option>
-          {bricks.map((brick, index) => (
-            <option key={brick.id} value={brick.id}>
-              {index + 1}. {BRICK_PART_MAP[brick.partId].name} — X {brick.x}, Y {brick.y}, Z {brick.z}
-            </option>
-          ))}
-        </select>
-        <span id="placed-brick-help">Use this list or [ and ] to select each placed brick.</span>
-      </div>
+      <PartGrid />
     </aside>
+  )
+}
+
+/** The color the palette is editing: the armed draft, a single selection, or the loaded brush. */
+function usePaletteTarget() {
+  const draft = useBrickStore((state) => state.draft)
+  const bricks = useBrickStore((state) => state.bricks)
+  const selectedId = useBrickStore((state) => state.selectedId)
+  const selectedIds = useBrickStore((state) => state.selectedIds)
+  const activeColor = useBrickStore((state) => state.activeColor)
+  if (draft) return draft.color
+  if (selectedIds.length === 1) return bricks.find((brick) => brick.id === selectedId)?.color ?? activeColor
+  return activeColor
+}
+
+function BrickDrawerSheet({ onClose }: { onClose: () => void }) {
+  const selectionCount = useBrickStore((state) => state.selectedIds.length)
+  const targetColor = usePaletteTarget()
+  const panel = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    panel.current?.focus()
+    // Capture phase: Escape must close the sheet without also reaching the global builder
+    // shortcut that cancels the armed brush.
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      onClose()
+    }
+    window.addEventListener('keydown', closeOnEscape, true)
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape, true)
+      restoreTo?.focus()
+    }
+  }, [onClose])
+
+  return (
+    <>
+      <div className="brick-sheet-backdrop" data-testid="brick-sheet-backdrop" onPointerDown={onClose} aria-hidden="true" />
+      <div ref={panel} className="brick-sheet" role="dialog" aria-modal="true" aria-labelledby="brick-sheet-title" tabIndex={-1}>
+        <span className="brick-sheet-grip" aria-hidden="true" />
+        <div className="library-title">
+          <div><span className="brick-eyebrow">Brick drawer</span><h2 id="brick-sheet-title">Choose a shape</h2></div>
+          <button className="studio-icon-button" type="button" aria-label="Close brick drawer" onClick={onClose}><X size={18} /></button>
+        </div>
+        <PartGrid onChoose={onClose} />
+        <section className="brick-sheet-colors">
+          <label><Palette size={15} /> {selectionCount > 1 ? `Color all ${selectionCount}` : 'Color'}</label>
+          <ColorPalette targetColor={targetColor} />
+        </section>
+      </div>
+    </>
   )
 }
 
@@ -279,7 +307,7 @@ function ColorPalette({ targetColor }: ColorPaletteProps) {
   )
 }
 
-function Inspector() {
+function Inspector({ compact }: { compact: boolean }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const activeColor = useBrickStore((state) => state.activeColor)
@@ -304,6 +332,9 @@ function Inspector() {
     if (detailsExpanded && inspectorSheet.current) inspectorSheet.current.scrollTop = 0
   }, [detailsExpanded])
 
+  // Compact layouts hand the whole draft to the placement bar: two stacked control surfaces
+  // do not fit beside the canvas, and the bar already carries the part name.
+  if (compact && draft) return null
   if (selectedIds.length > 1 && !draft) {
     return (
       <aside className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
@@ -419,7 +450,7 @@ function EmptyState() {
       <div>
         <strong>Start with one brick</strong>
         <span className="fine-pointer-copy">Choose a shape, position the blue preview, then click to place.</span>
-        <span className="coarse-pointer-copy">Choose a shape, tap to position the blue preview, then use Place.</span>
+        <span className="coarse-pointer-copy">Tap + to choose a shape, tap to position the blue preview, then use Place.</span>
       </div>
     </div>
   )
@@ -433,15 +464,17 @@ function TouchPlacementBar() {
   const nudge = useBrickStore((state) => state.nudge)
   const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
   if (!draft) return null
+  const part = BRICK_PART_MAP[draft.partId]
   // A layer is the part's own height, matching how placeDraft re-arms the brush on top of
   // the brick just placed; nudge validates the move and toasts when it is blocked.
-  const layer = BRICK_PART_MAP[draft.partId].height
+  const layer = part.height
   return (
     <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
-      <button className="studio-button" type="button" onClick={cancelInteraction}>Cancel</button>
-      <button className="studio-button" type="button" onClick={rotate}><RotateCw size={18} /> Rotate</button>
-      <button className="studio-button layer-button" type="button" aria-label="Raise brick one layer" onClick={() => nudge(0, layer, 0)}><ChevronUp size={18} /></button>
-      <button className="studio-button layer-button" type="button" aria-label="Lower brick one layer" onClick={() => nudge(0, -layer, 0)}><ChevronDown size={18} /></button>
+      <span className="placement-part-chip"><span className="brick-eyebrow">{movingId ? 'Moving' : 'Placing'}</span><strong>{part.name}</strong></span>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Cancel" onClick={cancelInteraction}><X size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate" onClick={rotate}><RotateCw size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Raise brick one layer" onClick={() => nudge(0, layer, 0)}><ChevronUp size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Lower brick one layer" onClick={() => nudge(0, -layer, 0)}><ChevronDown size={19} /></button>
       <button className="studio-button studio-button-primary touch-place-button" type="button" aria-label={movingId ? 'Place moved brick from touch controls' : 'Place positioned brick'} onClick={() => placeDraft()}>
         <Check size={20} /> {movingId ? 'Place move' : 'Place'}
       </button>
@@ -449,16 +482,30 @@ function TouchPlacementBar() {
   )
 }
 
-type BuildShellProps = {
-  drawerExpanded: boolean
-  onToggleDrawer: () => void
-}
+function BuildShell({ compact }: { compact: boolean }) {
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const closeSheet = useCallback(() => setSheetOpen(false), [])
 
-function BuildShell({ drawerExpanded, onToggleDrawer }: BuildShellProps) {
+  useEffect(() => { if (!compact) setSheetOpen(false) }, [compact])
+
   return (
-    <div className={`build-shell ${drawerExpanded ? 'drawer-expanded' : 'drawer-collapsed'}`}>
-      <PartLibrary expanded={drawerExpanded} onToggle={onToggleDrawer} />
-      <Inspector />
+    <div className="build-shell">
+      {compact ? (
+        <>
+          <button
+            className="brick-drawer-fab"
+            type="button"
+            aria-label="Open brick drawer"
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
+            onClick={() => setSheetOpen(true)}
+          >
+            <Plus size={27} />
+          </button>
+          {sheetOpen && <BrickDrawerSheet onClose={closeSheet} />}
+        </>
+      ) : <PartLibrary />}
+      <Inspector compact={compact} />
       <ViewControls />
       <SelectionModeControl />
       <TouchPlacementBar />
@@ -606,7 +653,7 @@ export default function BrickStudioApp({
   const brickCount = useBrickStore((state) => state.bricks.length)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
   const selectionMode = useBrickStore((state) => state.selectionMode)
-  const [drawerExpanded, toggleDrawer] = useResponsiveDrawer()
+  const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
   const documentCommands = useBrickStudioDocuments({ onNewBuild, onImportProject, onExportProject })
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
@@ -619,7 +666,7 @@ export default function BrickStudioApp({
       />
       {mode === 'build' ? (
         <>
-          <BuildShell drawerExpanded={drawerExpanded} onToggleDrawer={toggleDrawer} />
+          <BuildShell compact={compact} />
           <EmptyState />
           <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}

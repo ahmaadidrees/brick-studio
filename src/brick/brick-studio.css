@@ -80,7 +80,9 @@
 .brick-count { height: 44px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border-radius: 12px; color: #586b73; background: rgba(255,255,255,.9); box-shadow: 0 7px 20px rgba(45,61,67,.1); font-size: 12px; font-weight: 900; white-space: nowrap; }
 .brick-count i { font-style: normal; }
 .studio-menu { position: relative; }
-.studio-menu-popover { position: absolute; top: 52px; right: 0; width: 258px; display: grid; gap: 3px; padding: 8px; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: rgba(255,255,255,.98); box-shadow: 0 18px 48px rgba(35,51,58,.2); backdrop-filter: blur(18px); }
+/* The placed-brick section can push the menu past a short viewport, so it scrolls; the studio
+   root is touch-action: none, hence the explicit pan-y. */
+.studio-menu-popover { position: absolute; top: 52px; right: 0; width: 258px; max-height: calc(100vh - 76px); display: grid; gap: 3px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: rgba(255,255,255,.98); box-shadow: 0 18px 48px rgba(35,51,58,.2); backdrop-filter: blur(18px); touch-action: pan-y; }
 .studio-menu-popover button, .studio-menu-popover a { min-height: 52px; display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 8px; padding: 7px 9px; border: 0; border-radius: 11px; color: #435b64; background: transparent; text-align: left; text-decoration: none; cursor: pointer; }
 .studio-menu-popover button:hover:not(:disabled), .studio-menu-popover a:hover { color: #2869ad; background: #edf5fc; }
 .studio-menu-popover button:disabled { opacity: .42; cursor: default; }
@@ -89,6 +91,11 @@
 .studio-menu-popover span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .studio-menu-popover strong { font-size: 11px; }
 .studio-menu-popover small { overflow: hidden; color: #88969a; font-size: 9px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.studio-menu-section { display: grid; gap: 5px; margin-bottom: 5px; padding: 3px 9px 9px; border-bottom: 1px solid #e6eaea; }
+.studio-menu-section label { color: #6d7e84; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.studio-menu-section select { width: 100%; min-height: 44px; padding: 0 30px 0 9px; border: 1px solid #cdd6d7; border-radius: 10px; color: #405961; background: #f7f9f8; font: 800 10px/1.2 inherit; }
+.studio-menu-section select:focus-visible { outline: 3px solid rgba(62,131,215,.4); outline-offset: 2px; }
+.studio-menu-section > span { display: block; color: #829094; font-size: 9px; line-height: 1.35; }
 
 .part-library {
   position: absolute;
@@ -109,14 +116,8 @@
 }
 .library-title { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 12px; }
 .library-title h2, .brick-inspector h2 { margin: 2px 0 0; font: 700 17px/1.1 'Fredoka', sans-serif; }
-.library-title > button { display: none; }
 .brick-eyebrow { display: block; color: #89969a; font-size: 9px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
 .part-grid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 7px; overflow-y: auto; padding: 1px; }
-.placed-brick-navigator { flex: 0 0 auto; display: grid; gap: 5px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e3e7e6; }
-.placed-brick-navigator label { color: #6d7e84; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
-.placed-brick-navigator select { width: 100%; min-height: 40px; padding: 0 30px 0 9px; border: 1px solid #cdd6d7; border-radius: 10px; color: #405961; background: #f7f9f8; font: 800 10px/1.2 inherit; }
-.placed-brick-navigator select:focus-visible { outline: 3px solid rgba(62,131,215,.4); outline-offset: 2px; }
-.placed-brick-navigator > span { color: #829094; font-size: 9px; line-height: 1.35; }
 .library-part { min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 5px 6px 7px; border: 2px solid transparent; border-radius: 14px; color: #5f7279; background: #f1f3f2; font-size: 10px; font-weight: 800; text-align: center; cursor: pointer; }
 .library-part:hover { background: #edf4fb; }
 .library-part.active { border-color: var(--studio-blue); color: #2a659f; background: #e5f1fd; }
@@ -218,16 +219,89 @@
   .brick-mode-switch button { min-height: 44px; }
 }
 
+/* Canvas-first compact shell. The docked drawer is replaced by the (+) button and its modal
+   sheet, and the placement bar is the only control surface while a draft is armed, so this
+   query must stay identical to useCompactLayout's. */
+@media (max-width: 900px), (pointer: coarse) {
+  .brick-drawer-fab {
+    position: absolute;
+    z-index: 16;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: max(10px, env(safe-area-inset-left));
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    color: white;
+    background: linear-gradient(145deg, #4b91df, #2f70bc);
+    box-shadow: 0 12px 30px rgba(38,92,150,.36);
+    cursor: pointer;
+  }
+  .brick-drawer-fab:focus-visible { outline: 3px solid rgba(62,131,215,.5); outline-offset: 3px; }
+  .brick-drawer-fab:active { background: linear-gradient(145deg, #3d84d2, #2a67ae); }
+
+  .brick-sheet-backdrop { position: absolute; z-index: 30; inset: 0; background: rgba(28,44,52,.34); animation: brick-fade-in 150ms ease; }
+  .brick-sheet {
+    position: absolute;
+    z-index: 31;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(72%, 460px);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: 10px 15px calc(15px + env(safe-area-inset-bottom));
+    border-radius: 24px 24px 0 0;
+    background: rgba(255,255,255,.97);
+    box-shadow: 0 -14px 44px rgba(36,54,62,.24);
+    backdrop-filter: blur(18px);
+    /* The studio root is touch-action: none for the canvas, so the sheet has to re-allow the
+       vertical pan that scrolls a long part list. */
+    touch-action: pan-y;
+    animation: brick-sheet-rise 220ms cubic-bezier(.2,.9,.3,1);
+  }
+  .brick-sheet:focus { outline: none; }
+  .brick-sheet-grip { flex: 0 0 auto; width: 46px; height: 5px; margin: 0 auto 9px; border-radius: 3px; background: #d5dcde; }
+  .brick-sheet .library-title { flex: 0 0 auto; margin-bottom: 10px; }
+  .brick-sheet .library-title h2 { font-size: 15px; }
+  .brick-sheet .part-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; overscroll-behavior: contain; touch-action: pan-y; }
+  .brick-sheet .library-part { min-height: 102px; }
+  .brick-sheet .part-thumbnail { width: 58px; height: 58px; }
+  .brick-sheet-colors { flex: 0 0 auto; margin-top: 12px; padding-top: 11px; border-top: 1px solid #e4e8e7; }
+  .brick-sheet-colors > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: #6d7e84; font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+  .brick-sheet .color-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); }
+
+  /* One floating pill: part chip, four icon-only steps, one filled Place. */
+  .touch-placement-bar {
+    position: absolute;
+    z-index: 14;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    left: auto;
+    max-width: calc(100% - 90px);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    box-sizing: border-box;
+    padding: 6px;
+    border: 1px solid var(--studio-panel-border);
+    border-radius: 32px;
+    background: var(--studio-panel);
+    box-shadow: var(--studio-panel-shadow);
+    backdrop-filter: blur(16px);
+    animation: brick-bar-rise 220ms cubic-bezier(.2,.9,.3,1);
+  }
+  .placement-part-chip { min-width: 0; display: flex; flex: 0 1 auto; flex-direction: column; justify-content: center; gap: 2px; padding: 0 10px 0 12px; }
+  .placement-part-chip strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+  .placement-icon-button { flex: 0 0 auto; border-radius: 50%; box-shadow: none; }
+  .touch-place-button { flex: 0 0 auto; min-width: 118px; min-height: 48px; border-radius: 26px; font-size: 13px; }
+}
+
 @media (max-width: 900px) {
   .brick-header { grid-template-columns: minmax(150px, 1fr) auto minmax(300px, 1fr); }
-  .part-library { top: auto; right: max(10px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); left: max(10px, env(safe-area-inset-left)); width: auto; height: 168px; padding: 11px 12px; border-radius: 18px; }
-  .library-title { margin-bottom: 7px; }.library-title h2 { font-size: 14px; }.library-title > button { display: grid; }.part-library.collapsed { height: 58px; }.part-library.collapsed .part-grid { display: none; }.part-library.collapsed .library-title > button { transform: rotate(180deg); }
-  .part-grid { display: flex; gap: 7px; overflow-x: auto; overflow-y: hidden; padding-bottom: 3px; }
-  .placed-brick-navigator { position: absolute; top: 8px; right: 64px; width: min(180px, 40%); margin: 0; padding: 0; border: 0; }
-  .placed-brick-navigator label, .placed-brick-navigator > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .placed-brick-navigator select { min-height: 44px; }
-  .library-part { min-width: 92px; min-height: 94px; }
-  .part-thumbnail { width: 60px; height: 60px; }
   .brick-inspector { top: 86px; right: max(10px, env(safe-area-inset-right)); width: 218px; padding: 12px; border-radius: 16px; }
   .brick-inspector h2 { font-size: 14px; }.inspector-heading { margin-bottom: 9px; }.inspector-cube { width: 34px; height: 34px; }
   .color-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }.color-grid button { min-width: 44px; width: 44px; height: 44px; }
@@ -235,15 +309,11 @@
   .coordinates { display: none; }
   /* Zero padding keeps the pill exactly one 44px control tall so it lines up with Select.
      Pill width = 2px border + 5 x 44px buttons (each button's 1px divider is inside its
-     border-box width) = 222px, so Select starts 6px after 10 + 222. */
-  .view-controls { right: auto; bottom: 186px; left: 10px; height: 44px; padding: 0; }
+     border-box width) = 222px, so Select starts 6px after 10 + 222. Both sit one 12px gap
+     above the 56px (+) button, which owns the bottom-left corner at a 10px inset. */
+  .view-controls { right: auto; bottom: 78px; left: 10px; height: 44px; padding: 0; }
   .view-controls button { min-width: 44px; height: 100%; }
-  .selection-mode-control { bottom: 186px; left: 238px; }
-  .drawer-collapsed .view-controls, .drawer-collapsed .selection-mode-control { bottom: 76px; }
-  .touch-placement-bar { position: absolute; z-index: 14; right: max(10px, env(safe-area-inset-right)); bottom: 186px; left: auto; display: flex; gap: 6px; transform: none; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-  .drawer-collapsed .touch-placement-bar { bottom: 76px; }
-  .layer-button { flex: 0 0 auto; width: 46px; padding: 0; justify-content: center; }
-  .touch-place-button { min-width: 128px; min-height: 50px; font-size: 13px; }
+  .selection-mode-control { bottom: 78px; left: 238px; }
   .shortcut-bar { display: none; }
   .empty-guide { top: 88px; max-width: 260px; }
 }
@@ -268,24 +338,24 @@
      tightens to ~45px to keep the whole row inside a 360px screen. Its aria-label is unchanged. */
   .brick-count { min-width: 0; overflow: hidden; padding: 0 6px; font-size: 10px; }.brick-count svg, .brick-count i { display: none; }
   .studio-menu-popover { top: 49px; width: min(258px, calc(100vw - 20px)); }
-  .build-shell { top: auto; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 6px; }
-  .build-shell .part-library { position: relative; inset: auto; order: 3; width: 100%; height: 164px; box-sizing: border-box; }
-  .build-shell .part-library.collapsed { height: 58px; }
-  .brick-inspector { position: relative; inset: auto; order: 1; width: 100%; max-height: min(264px, calc(100vh - 330px)); box-sizing: border-box; overflow-y: auto; padding: 8px; border-radius: 16px; }
+  /* The (+) button owns the bottom-left corner, so the selection card and the placement pill
+     both float one 8px gap above it (8px inset + 56px button). They never coexist: an armed
+     draft hides the card. */
+  .brick-drawer-fab { bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); }
+  .brick-inspector { top: auto; right: max(8px, env(safe-area-inset-right)); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 64px); left: max(8px, env(safe-area-inset-left)); width: auto; max-height: min(264px, calc(100vh - 330px)); box-sizing: border-box; overflow-y: auto; padding: 8px; border-radius: 16px; }
   .inspector-toolbar { min-height: 44px; }.inspector-heading { flex: 1; margin-bottom: 0; }.inspector-heading h2 { max-width: 108px; }.inspector-cube { width: 40px; height: 40px; }
   .inspector-quick-actions { display: flex; }.details-collapsed .inspector-sheet { display: none; }.details-expanded .inspector-sheet { padding-top: 12px; }
   .inspector-sheet-primary { display: none !important; }.details-expanded .coordinates { display: grid; }
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }
-  .touch-placement-bar, .drawer-collapsed .touch-placement-bar { position: relative; inset: auto; order: 2; width: 100%; box-sizing: border-box; transform: none; }
-  .touch-placement-bar .studio-button:not(.touch-place-button):not(.layer-button) { flex: 1; padding: 0 9px; }
-  .layer-button { flex: 0 0 auto; width: 46px; padding: 0; justify-content: center; }
-  .touch-place-button { flex: 1.7; min-width: 0; }
+  /* Phone width cannot fit the chip beside five controls, so the chip takes its own row. */
+  .touch-placement-bar { right: max(8px, env(safe-area-inset-right)); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 64px); left: max(8px, env(safe-area-inset-left)); max-width: none; flex-wrap: wrap; row-gap: 3px; border-radius: 24px; }
+  .placement-part-chip { flex: 1 0 100%; flex-direction: row; align-items: center; gap: 8px; padding: 2px 8px 0 12px; }
+  .touch-place-button { flex: 1 1 auto; min-width: 104px; }
   /* Row 2 left group: Home + Top only. Pill = 2px border + two 45px buttons = 92px, so
-     Select lands 6px later at 98px past the shared 8px screen margin. The .drawer-collapsed
-     variants are listed so the ≤900 drawer offsets cannot outrank these. */
-  .view-controls, .drawer-collapsed .view-controls { position: fixed; top: calc(max(7px, env(safe-area-inset-top)) + 52px); right: auto; bottom: auto; left: max(8px, env(safe-area-inset-left)); width: 92px; height: 44px; box-sizing: border-box; }
+     Select lands 6px later at 98px past the shared 8px screen margin. */
+  .view-controls { position: fixed; top: calc(max(7px, env(safe-area-inset-top)) + 52px); right: auto; bottom: auto; left: max(8px, env(safe-area-inset-left)); width: 92px; height: 44px; box-sizing: border-box; }
   .view-controls button { flex: 1; height: 100%; }.view-controls button:not(.view-home):nth-last-child(-n+3) { display: none; }
-  .selection-mode-control, .drawer-collapsed .selection-mode-control { position: fixed; top: calc(max(7px, env(safe-area-inset-top)) + 52px); bottom: auto; left: calc(max(8px, env(safe-area-inset-left)) + 98px); min-width: 44px; width: 44px; height: 44px; padding: 0; }
+  .selection-mode-control { position: fixed; top: calc(max(7px, env(safe-area-inset-top)) + 52px); bottom: auto; left: calc(max(8px, env(safe-area-inset-left)) + 98px); min-width: 44px; width: 44px; height: 44px; padding: 0; }
   .selection-mode-control span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .empty-guide { display: none; }
   /* 113px clears the 96px header grid (top 7px + 96px) by 10px. */
@@ -302,8 +372,11 @@
 @media (max-height: 520px) and (orientation: landscape) {
   .brick-count i { display: none; }
   .build-shell { inset: 0; display: block; }
+  /* Wide fine-pointer windows that are simply short keep the docked drawer; compact layouts
+     never render it, so these rules only ever apply to the desktop shell. */
   .build-shell .part-library { position: absolute; top: auto; left: 8px; right: auto; bottom: 8px; width: 300px; height: 138px; }.library-part { min-width: 78px; min-height: 76px; }.part-thumbnail { width: 48px; height: 48px; }
-  .build-shell .part-library.collapsed { height: 58px; }
+  .brick-drawer-fab { bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); }
+  .brick-sheet { max-height: calc(100% - 56px); }
   .brick-inspector { position: absolute; top: 68px; right: 8px; bottom: auto; left: auto; width: 292px; max-height: calc(100% - 76px); overflow-y: auto; padding: 8px; }
   .inspector-toolbar { min-height: 44px; }.inspector-heading { flex: 1; margin-bottom: 0; }.inspector-heading h2 { max-width: 108px; }.inspector-cube { width: 40px; height: 40px; }
   .inspector-quick-actions { display: flex; }.details-collapsed .inspector-sheet { display: none; }.details-expanded .inspector-sheet { padding-top: 12px; }
@@ -311,15 +384,16 @@
   .inspector-actions { grid-template-columns: repeat(3, 1fr); }
   /* Landscape keeps Home + Top + Front at any width: the last line re-shows Front when the
      ≤600px portrait rule has hidden it, so the pill is always 2px border + 3 x 44px = 134px
-     and Select can sit at a fixed 320 + 134 + 6. */
-  .view-controls, .drawer-collapsed .view-controls { position: absolute; top: auto; bottom: 8px; left: 320px; width: auto; height: 44px; padding: 0; }
+     and Select can sit at a fixed 76 + 134 + 6. The row starts 12px past the (+) button. */
+  .view-controls { position: absolute; top: auto; bottom: 8px; left: 76px; width: auto; height: 44px; padding: 0; }
   .view-controls button { flex: 0 0 auto; height: 100%; }
   .view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
   .view-controls button:not(.view-home):nth-last-child(3) { display: block; }
-  .selection-mode-control, .drawer-collapsed .selection-mode-control { position: absolute; top: auto; bottom: 8px; left: 460px; width: auto; min-width: 82px; padding: 0 12px; }
-  /* Landscape keeps the bar in its 292px slot beside the view controls, so the layer buttons wrap onto a second row rather than spilling over them. */
-  .touch-placement-bar, .drawer-collapsed .touch-placement-bar { position: absolute; top: auto; right: 8px; bottom: 8px; left: auto; width: 292px; flex-wrap: wrap; justify-content: flex-end; transform: none; }
-  .layer-button { flex: 0 0 auto; width: 46px; padding: 0; justify-content: center; }
+  .selection-mode-control { position: absolute; top: auto; bottom: 8px; left: 216px; width: auto; min-width: 82px; padding: 0 12px; }
+  /* The pill hugs the right edge on one row; 320px keeps it clear of Select's 298px end. */
+  .touch-placement-bar { top: auto; right: 8px; bottom: 8px; left: auto; max-width: calc(100% - 320px); flex-wrap: nowrap; }
+  .placement-part-chip { flex: 0 1 auto; flex-direction: column; align-items: stretch; padding: 0 10px 0 12px; }
+  .touch-place-button { flex: 0 0 auto; }
   .selection-mode-control span { position: static; width: auto; height: auto; overflow: visible; clip-path: none; white-space: normal; }
   .empty-guide { display: none; }
   .brick-mode-build .brick-toast { top: 82px; max-width: 240px; text-align: center; }
@@ -355,6 +429,14 @@
   .details-expanded .inspector-scroll-hint { display: block; margin: 7px 2px 9px; color: #71838a; font-size: 9px; font-weight: 800; line-height: 1.35; }
 }
 
+@keyframes brick-fade-in { from { opacity: 0; } }
+@keyframes brick-sheet-rise { from { opacity: .4; transform: translate3d(0, 100%, 0); } }
+@keyframes brick-bar-rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } }
+
+/* The store flag mirrors the media query for canvases and anything mounted before it resolves. */
+.brick-reduced-motion .brick-sheet, .brick-reduced-motion .brick-sheet-backdrop, .brick-reduced-motion .touch-placement-bar { animation: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .brick-studio *, .brick-studio *::before, .brick-studio *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .brick-sheet, .brick-sheet-backdrop, .touch-placement-bar { animation: none !important; }
 }

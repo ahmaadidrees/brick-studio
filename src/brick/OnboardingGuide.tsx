@@ -53,7 +53,7 @@ export function OnboardingGuide({ onDismiss }: OnboardingGuideProps) {
         <span className="coarse-pointer-copy">Tap to position safely. Drag empty space to orbit, then use the large Place button.</span>
       </p>
       <ol>
-        <li><span><Shapes size={18} /></span><div><strong>Choose a brick</strong><small>Pick any shape from the drawer.</small></div></li>
+        <li><span><Shapes size={18} /></span><div><strong>Choose a brick</strong><small><span className="fine-pointer-copy">Pick any shape from the drawer.</span><span className="coarse-pointer-copy">Tap + to open the drawer and pick a shape.</span></small></div></li>
         <li><span><MousePointer2 size={18} /></span><div><strong>Position the preview</strong><small>Move it onto the plate or another brick.</small></div></li>
         <li><span><Check size={18} /></span><div><strong>Place it</strong><small><span className="fine-pointer-copy">Click or press Enter — the brush stays loaded, so keep placing.</span><span className="coarse-pointer-copy">Tap the blue Place button — the brush stays loaded, so keep placing.</span></small></div></li>
         <li><span><Gamepad2 size={18} /></span><div><strong>Explore</strong><small>Switch modes when your world is ready.</small></div></li>
