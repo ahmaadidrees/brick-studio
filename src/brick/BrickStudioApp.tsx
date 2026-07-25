@@ -2,6 +2,7 @@ import {
   Box,
   Check,
   ChevronDown,
+  ChevronUp,
   Clipboard,
   Copy,
   Cuboid,
@@ -128,7 +129,10 @@ function useCoarsePointerPreference() {
 
 function useResponsiveDrawer() {
   const [phoneQuery] = useState(() => window.matchMedia?.('(max-width: 600px)') ?? null)
+  const [compactQuery] = useState(() => window.matchMedia?.('(max-width: 900px)') ?? null)
   const [expanded, setExpanded] = useState(() => !(phoneQuery?.matches ?? window.innerWidth <= 600))
+  const hasSelection = useBrickStore((state) => Boolean(state.selectedId) || state.selectedIds.length > 0)
+  const autoCollapsed = useRef(false)
 
   useEffect(() => {
     const adaptToViewport = () => setExpanded(!(phoneQuery?.matches ?? window.innerWidth <= 600))
@@ -136,7 +140,26 @@ function useResponsiveDrawer() {
     return () => phoneQuery?.removeEventListener?.('change', adaptToViewport)
   }, [phoneQuery])
 
-  return [expanded, setExpanded] as const
+  // Compact layouts dock the drawer under the inspector, where it is dead weight while a
+  // brick is being edited. Selection edges only: re-running on `expanded` would fight a
+  // manual re-open, and the toggle below drops the restore so the user always wins.
+  useEffect(() => {
+    if (hasSelection) {
+      if (!expanded || !(compactQuery?.matches ?? false)) return
+      autoCollapsed.current = true
+      setExpanded(false)
+    } else if (autoCollapsed.current) {
+      autoCollapsed.current = false
+      setExpanded(true)
+    }
+  }, [hasSelection])
+
+  const toggle = useCallback(() => {
+    autoCollapsed.current = false
+    setExpanded((current) => !current)
+  }, [])
+
+  return [expanded, toggle] as const
 }
 
 type HeaderProps = StudioDocumentCommands & {
@@ -407,12 +430,18 @@ function TouchPlacementBar() {
   const movingId = useBrickStore((state) => state.movingId)
   const placeDraft = useBrickStore((state) => state.placeDraft)
   const rotate = useBrickStore((state) => state.rotate)
+  const nudge = useBrickStore((state) => state.nudge)
   const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
   if (!draft) return null
+  // A layer is the part's own height, matching how placeDraft re-arms the brush on top of
+  // the brick just placed; nudge validates the move and toasts when it is blocked.
+  const layer = BRICK_PART_MAP[draft.partId].height
   return (
     <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
       <button className="studio-button" type="button" onClick={cancelInteraction}>Cancel</button>
       <button className="studio-button" type="button" onClick={rotate}><RotateCw size={18} /> Rotate</button>
+      <button className="studio-button layer-button" type="button" aria-label="Raise brick one layer" onClick={() => nudge(0, layer, 0)}><ChevronUp size={18} /></button>
+      <button className="studio-button layer-button" type="button" aria-label="Lower brick one layer" onClick={() => nudge(0, -layer, 0)}><ChevronDown size={18} /></button>
       <button className="studio-button studio-button-primary touch-place-button" type="button" aria-label={movingId ? 'Place moved brick from touch controls' : 'Place positioned brick'} onClick={() => placeDraft()}>
         <Check size={20} /> {movingId ? 'Place move' : 'Place'}
       </button>
@@ -577,7 +606,7 @@ export default function BrickStudioApp({
   const brickCount = useBrickStore((state) => state.bricks.length)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
   const selectionMode = useBrickStore((state) => state.selectionMode)
-  const [drawerExpanded, setDrawerExpanded] = useResponsiveDrawer()
+  const [drawerExpanded, toggleDrawer] = useResponsiveDrawer()
   const onboarding = useBuilderOnboarding()
   const documentCommands = useBrickStudioDocuments({ onNewBuild, onImportProject, onExportProject })
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
@@ -590,7 +619,7 @@ export default function BrickStudioApp({
       />
       {mode === 'build' ? (
         <>
-          <BuildShell drawerExpanded={drawerExpanded} onToggleDrawer={() => setDrawerExpanded((expanded) => !expanded)} />
+          <BuildShell drawerExpanded={drawerExpanded} onToggleDrawer={toggleDrawer} />
           <EmptyState />
           <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}

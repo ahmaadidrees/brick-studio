@@ -33,9 +33,9 @@ function resetStore(bricks: BrickInstance[] = []) {
   }, true)
 }
 
-function stubPointerModality(coarse: boolean) {
+function stubMediaQueries(matching: string[]) {
   vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
-    matches: query === '(pointer: coarse)' ? coarse : false,
+    matches: matching.includes(query),
     media: query,
     onchange: null,
     addEventListener: vi.fn(),
@@ -44,6 +44,10 @@ function stubPointerModality(coarse: boolean) {
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(() => true),
   })))
+}
+
+function stubPointerModality(coarse: boolean) {
+  stubMediaQueries(coarse ? ['(pointer: coarse)'] : [])
 }
 
 beforeEach(() => {
@@ -464,6 +468,56 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('application', { name: 'Movement joystick' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' })).toBeEnabled()
     expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function))
+  })
+})
+
+describe('compact touch layout', () => {
+  const COMPACT_LAYOUT = '(max-width: 900px)'
+
+  it('collapses the drawer while a brick is selected, restores it, and yields to a manual toggle', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    resetStore([brick])
+    const { container } = render(<BrickStudioApp />)
+    const shell = () => container.querySelector('.build-shell')
+    const selector = screen.getByLabelText('Placed bricks')
+    expect(shell()).toHaveClass('drawer-expanded')
+
+    fireEvent.change(selector, { target: { value: brick.id } })
+    expect(shell()).toHaveClass('drawer-collapsed')
+    fireEvent.change(selector, { target: { value: '' } })
+    expect(shell()).toHaveClass('drawer-expanded')
+
+    fireEvent.change(selector, { target: { value: brick.id } })
+    fireEvent.click(screen.getByRole('button', { name: 'Expand brick drawer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
+    fireEvent.change(selector, { target: { value: '' } })
+    expect(shell()).toHaveClass('drawer-collapsed')
+  })
+
+  it('leaves the drawer open on a wide layout where it is not in the way', () => {
+    stubMediaQueries([])
+    resetStore([brick])
+    const { container } = render(<BrickStudioApp />)
+
+    fireEvent.change(screen.getByLabelText('Placed bricks'), { target: { value: brick.id } })
+    expect(useBrickStore.getState().selectedId).toBe(brick.id)
+    expect(container.querySelector('.build-shell')).toHaveClass('drawer-expanded')
+  })
+
+  it('gives touch a layer step for the ghost between Rotate and Place', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByTitle('1 × 1 Brick'))
+    const bar = screen.getByRole('group', { name: 'Positioned brick actions' })
+    expect(Array.from(bar.querySelectorAll('button')).map((button) => button.getAttribute('aria-label') ?? button.textContent?.trim()))
+      .toEqual(['Cancel', 'Rotate', 'Raise brick one layer', 'Lower brick one layer', 'Place positioned brick'])
+    expect(useBrickStore.getState().draft?.y).toBe(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Raise brick one layer' }))
+    expect(useBrickStore.getState().draft?.y).toBe(3)
+    fireEvent.click(screen.getByRole('button', { name: 'Lower brick one layer' }))
+    expect(useBrickStore.getState().draft?.y).toBe(0)
   })
 })
 
