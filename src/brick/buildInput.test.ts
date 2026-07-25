@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BUILD_TOUCH_DRAG_THRESHOLD,
+  GHOST_DRAG_SLOP_PX,
   MOUSE_CLICK_DRAG_THRESHOLD,
   beginBuildPointer,
   beginPointerTravel,
@@ -11,6 +12,8 @@ import {
   finishBuildPointer,
   interruptBuildPointers,
   isConfirmationPlacementPointer,
+  isGhostDropTarget,
+  pointWithinInflatedRect,
   pointerTravelExceeds,
   resetBuildPointers,
   shouldSuppressBuildTouchClick,
@@ -115,5 +118,43 @@ describe('mouse click drag guard', () => {
     endPointerTravel(travel)
     updatePointerTravel(travel, 100, 100)
     expect(pointerTravelExceeds(travel)).toBe(false)
+  })
+})
+
+describe('ghost drag grab test', () => {
+  const ghost = { left: 100, top: 80, right: 140, bottom: 130 }
+
+  it('grabs a touch inside the projected ghost box', () => {
+    expect(pointWithinInflatedRect(ghost, 120, 100)).toBe(true)
+    expect(pointWithinInflatedRect(ghost, 100, 80)).toBe(true)
+    expect(pointWithinInflatedRect(ghost, 140, 130)).toBe(true)
+  })
+
+  it('keeps a near miss grabbable so small bricks stay fingertip-sized', () => {
+    expect(pointWithinInflatedRect(ghost, 100 - GHOST_DRAG_SLOP_PX, 80 - GHOST_DRAG_SLOP_PX)).toBe(true)
+    expect(pointWithinInflatedRect(ghost, 140 + GHOST_DRAG_SLOP_PX, 130 + GHOST_DRAG_SLOP_PX)).toBe(true)
+  })
+
+  it('leaves touches beyond the slop to the camera', () => {
+    expect(pointWithinInflatedRect(ghost, 100 - GHOST_DRAG_SLOP_PX - 1, 100)).toBe(false)
+    expect(pointWithinInflatedRect(ghost, 120, 130 + GHOST_DRAG_SLOP_PX + 1)).toBe(false)
+    expect(pointWithinInflatedRect(ghost, 400, 400)).toBe(false)
+  })
+
+  it('never grabs a ghost that projected off-screen', () => {
+    expect(pointWithinInflatedRect(null, 120, 100)).toBe(false)
+  })
+
+  it('honours an explicit slop override', () => {
+    expect(pointWithinInflatedRect(ghost, 96, 100, 0)).toBe(false)
+    expect(pointWithinInflatedRect(ghost, 96, 100, 4)).toBe(true)
+  })
+
+  it('drops onto placed bricks and the build plate but never the untagged ghost', () => {
+    expect(isGhostDropTarget({ brickId: 'brick-3' })).toBe(true)
+    expect(isGhostDropTarget({ isBaseplate: true })).toBe(true)
+    expect(isGhostDropTarget({})).toBe(false)
+    expect(isGhostDropTarget({ brickId: 7 })).toBe(false)
+    expect(isGhostDropTarget({ isBaseplate: false })).toBe(false)
   })
 })
