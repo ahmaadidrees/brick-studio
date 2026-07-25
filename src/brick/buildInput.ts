@@ -1,6 +1,10 @@
 export const BUILD_TOUCH_DRAG_THRESHOLD = 8
 export const BUILD_TOUCH_CLICK_GUARD_MS = 450
 export const MOUSE_CLICK_DRAG_THRESHOLD = 5
+/** Inflates the ghost's projected box so a small brick stays a fingertip-sized grab target. */
+export const GHOST_DRAG_SLOP_PX = 24
+/** Ghost rides this far above the fingertip so the hand never covers the drop target. */
+export const GHOST_DRAG_FINGER_OFFSET_PX = 44
 
 /**
  * Tracks how far a mouse pointer travelled since it went down. Camera drags end
@@ -153,4 +157,22 @@ export function resetBuildPointers(state: BuildGestureState) {
 
 export function shouldSuppressBuildTouchClick(state: BuildGestureState, now: number) {
   return now <= state.suppressClickUntil
+}
+
+export type ScreenBox = { left: number; top: number; right: number; bottom: number }
+
+/** A null box means the ghost projected off-screen, which can never be grabbed. */
+export function pointWithinInflatedRect(
+  rect: ScreenBox | null,
+  x: number,
+  y: number,
+  slop = GHOST_DRAG_SLOP_PX,
+) {
+  if (!rect) return false
+  return x >= rect.left - slop && x <= rect.right + slop && y >= rect.top - slop && y <= rect.bottom + slop
+}
+
+/** Ghost drops land on placed bricks or the build plate; the ghost mesh itself is untagged. */
+export function isGhostDropTarget(userData: { brickId?: unknown; isBaseplate?: unknown }) {
+  return typeof userData.brickId === 'string' || userData.isBaseplate === true
 }

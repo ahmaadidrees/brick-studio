@@ -14,6 +14,7 @@ import {
   getBuildCameraLimits,
 } from './buildCamera'
 import {
+  GHOST_DRAG_FINGER_OFFSET_PX,
   MOUSE_CLICK_DRAG_THRESHOLD,
   beginBuildPointer,
   beginPointerTravel,
@@ -24,6 +25,8 @@ import {
   finishBuildPointer,
   interruptBuildPointers,
   isConfirmationPlacementPointer,
+  isGhostDropTarget,
+  pointWithinInflatedRect,
   pointerTravelExceeds,
   resetBuildPointers,
   shouldSuppressBuildTouchClick,
@@ -52,6 +55,7 @@ import { createBrickGeometry } from './geometry'
 import {
   beginMarqueeGesture,
   finishMarqueeGesture,
+  projectBrickScreenBounds,
   selectBricksInMarquee,
   shouldCaptureSelectionGesture,
   updateMarqueeGesture,
@@ -134,6 +138,7 @@ function Baseplate({ explore = false, buildGesture, cameraActive }: { explore?: 
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
   const selectBrick = useBrickStore((state) => state.selectBrick)
+  const plateUserData = useMemo(() => ({ isBaseplate: true }), [])
 
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
@@ -160,6 +165,7 @@ function Baseplate({ explore = false, buildGesture, cameraActive }: { explore?: 
   return (
     <group>
       <mesh
+        userData={plateUserData}
         position={[0, -0.09, 0]}
         receiveShadow
         onPointerMove={moveDraft}
@@ -578,6 +584,104 @@ function BuildSelectionInput() {
   return null
 }
 
+/**
+ * Drag-the-ghost repositioning for touch. Mounted first in BuildScene so these
+ * capture listeners register before drei's OrbitControls attaches: at-target
+ * listeners fire in registration order, so consuming a drag that started on the
+ * armed ghost starves the camera while every other touch still orbits.
+ */
+function GhostDragInput() {
+  const { camera, gl, scene } = useThree()
+  const activePointer = useRef<number | null>(null)
+  const raycaster = useRef(new THREE.Raycaster())
+  const pointer = useRef(new THREE.Vector2())
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const consume = (event: Event) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    const release = () => {
+      const pointerId = activePointer.current
+      if (pointerId === null) return
+      activePointer.current = null
+      if (canvas.hasPointerCapture?.(pointerId)) canvas.releasePointerCapture?.(pointerId)
+    }
+    const reposition = (event: PointerEvent) => {
+      const state = useBrickStore.getState()
+      if (!state.draft) return
+      const rect = canvas.getBoundingClientRect()
+      pointer.current.set(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - GHOST_DRAG_FINGER_OFFSET_PX - rect.top) / rect.height) * 2 + 1,
+      )
+      raycaster.current.setFromCamera(pointer.current, camera)
+      // First tagged hit wins. A finger dragged past the plate hits nothing and
+      // the ghost holds its last supported position rather than snapping away.
+      for (const hit of raycaster.current.intersectObjects(scene.children, true)) {
+        if (!isGhostDropTarget(hit.object.userData)) continue
+        const next = supportedDraftFromPoint(hit.point, state.draft)
+        state.setDraftPosition(next.x, next.y, next.z)
+        return
+      }
+    }
+    const pointerDown = (event: PointerEvent) => {
+      if (!isConfirmationPlacementPointer(event.pointerType)) return
+      if (activePointer.current !== null) {
+        // A second finger mid-drag must not hand the gesture back to the camera.
+        consume(event)
+        return
+      }
+      const state = useBrickStore.getState()
+      if (state.mode !== 'build' || state.selectionMode || !state.draft) return
+      const rect = canvas.getBoundingClientRect()
+      const bounds = projectBrickScreenBounds({ ...state.draft, id: 'ghost-drag' }, camera, rect.width, rect.height)
+      if (!pointWithinInflatedRect(bounds, event.clientX - rect.left, event.clientY - rect.top)) return
+      consume(event)
+      activePointer.current = event.pointerId
+      canvas.setPointerCapture?.(event.pointerId)
+    }
+    const pointerMove = (event: PointerEvent) => {
+      if (activePointer.current !== event.pointerId) return
+      consume(event)
+      reposition(event)
+    }
+    const pointerUp = (event: PointerEvent) => {
+      if (activePointer.current !== event.pointerId) return
+      consume(event)
+      release()
+    }
+    const visibility = () => { if (document.visibilityState !== 'visible') release() }
+    // A stranded pointer id would consume every later touch, so abort whenever
+    // the drag loses its subject (Cancel, placement, or leaving Build).
+    const unsubscribe = useBrickStore.subscribe((state) => {
+      if (activePointer.current !== null && (state.mode !== 'build' || !state.draft)) release()
+    })
+
+    canvas.addEventListener('pointerdown', pointerDown, true)
+    canvas.addEventListener('pointermove', pointerMove, true)
+    canvas.addEventListener('pointerup', pointerUp, true)
+    canvas.addEventListener('pointercancel', pointerUp, true)
+    canvas.addEventListener('lostpointercapture', pointerUp, true)
+    window.addEventListener('blur', release)
+    document.addEventListener('visibilitychange', visibility)
+    return () => {
+      canvas.removeEventListener('pointerdown', pointerDown, true)
+      canvas.removeEventListener('pointermove', pointerMove, true)
+      canvas.removeEventListener('pointerup', pointerUp, true)
+      canvas.removeEventListener('pointercancel', pointerUp, true)
+      canvas.removeEventListener('lostpointercapture', pointerUp, true)
+      window.removeEventListener('blur', release)
+      document.removeEventListener('visibilitychange', visibility)
+      unsubscribe()
+      release()
+    }
+  }, [camera, gl, scene])
+
+  return null
+}
+
 function BuildTouchInput({ gesture }: { gesture: BuildGestureState }) {
   const { gl } = useThree()
 
@@ -666,6 +770,8 @@ function BuildScene({ mouseTravel }: { mouseTravel: PointerTravel }) {
   const cameraGestureActive = useRef(false)
   return (
     <>
+      {/* First child on purpose: its listeners must beat OrbitControls to the canvas. */}
+      <GhostDragInput />
       <Baseplate buildGesture={gesture.current} cameraActive={cameraGestureActive} />
       {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} />)}
       <DraftBrick />
