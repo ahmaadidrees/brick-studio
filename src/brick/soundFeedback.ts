@@ -6,6 +6,10 @@ const PLACE_CLICK_TONES: Tone[] = [
   { frequency: 560, offset: 0.03, duration: 0.08, volume: 0.05 },
 ]
 
+// Lower and quieter than the place snap so picking a brick up never reads as a
+// confirmed placement.
+const GRAB_TICK_TONES: Tone[] = [{ frequency: 210, offset: 0, duration: 0.07, volume: 0.03 }]
+
 // One shared context: browsers cap live AudioContext instances, and reusing it
 // avoids per-click construction. Placement always follows a user gesture, so
 // resume() is allowed to lift the autoplay suspension.
@@ -19,12 +23,12 @@ function ensureAudioContext() {
   return sharedContext
 }
 
-export function playPlaceClick() {
+function playTones(tones: Tone[]) {
   const context = ensureAudioContext()
   if (!context) return
   const now = context.currentTime
 
-  for (const tone of PLACE_CLICK_TONES) {
+  for (const tone of tones) {
     const oscillator = context.createOscillator()
     const gain = context.createGain()
     const start = now + tone.offset
@@ -38,4 +42,12 @@ export function playPlaceClick() {
     oscillator.start(start)
     oscillator.stop(start + tone.duration + 0.02)
   }
+}
+
+export function playPlaceClick() {
+  playTones(PLACE_CLICK_TONES)
+}
+
+export function playGrabTick() {
+  playTones(GRAB_TICK_TONES)
 }

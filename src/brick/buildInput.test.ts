@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
   BUILD_TOUCH_DRAG_THRESHOLD,
+  DOUBLE_TAP_MS,
+  DOUBLE_TAP_RADIUS_PX,
   GHOST_DRAG_SLOP_PX,
+  LONG_PRESS_MOVE_TOLERANCE_PX,
+  LONG_PRESS_MS,
   MOUSE_CLICK_DRAG_THRESHOLD,
   beginBuildPointer,
+  beginLongPress,
   beginPointerTravel,
   cancelBuildPointer,
+  cancelLongPress,
   createBuildGestureState,
+  createLongPressState,
   createPointerTravel,
   endPointerTravel,
   finishBuildPointer,
@@ -18,7 +25,10 @@ import {
   resetBuildPointers,
   shouldSuppressBuildTouchClick,
   takeBuildPointerCompletion,
+  takeDoubleTapPlacement,
+  takeLongPressGrab,
   updateBuildPointer,
+  updateLongPress,
   updatePointerTravel,
 } from './buildInput'
 
@@ -156,5 +166,146 @@ describe('ghost drag grab test', () => {
     expect(isGhostDropTarget({})).toBe(false)
     expect(isGhostDropTarget({ brickId: 7 })).toBe(false)
     expect(isGhostDropTarget({ isBaseplate: false })).toBe(false)
+  })
+
+  it('never drops the moving brick onto its own original', () => {
+    expect(isGhostDropTarget({ brickId: 'brick-3' }, 'brick-3')).toBe(false)
+    expect(isGhostDropTarget({ brickId: 'brick-4' }, 'brick-3')).toBe(true)
+    expect(isGhostDropTarget({ isBaseplate: true }, 'brick-3')).toBe(true)
+  })
+})
+
+describe('long press to grab a placed brick', () => {
+  const arm = (now = 0) => {
+    const state = createLongPressState()
+    expect(beginLongPress(state, 1, 'touch', 'brick-1', 100, 100, now)).toBe(true)
+    return state
+  }
+
+  it('fires once the hold threshold passes with a still pointer', () => {
+    const state = arm()
+    expect(takeLongPressGrab(state, 1, LONG_PRESS_MS)).toMatchObject({ pointerId: 1, brickId: 'brick-1' })
+    expect(state.hold).toBeNull()
+  })
+
+  it('stays pending until the threshold so a quick tap still belongs to the camera', () => {
+    const state = arm(1000)
+    expect(takeLongPressGrab(state, 1, 1000 + LONG_PRESS_MS - 1)).toBeNull()
+    expect(state.hold).not.toBeNull()
+    expect(takeLongPressGrab(state, 1, 1000 + LONG_PRESS_MS)).not.toBeNull()
+  })
+
+  it('survives a tremor but is cancelled by a real drag', () => {
+    const state = arm()
+    expect(updateLongPress(state, 1, 100 + LONG_PRESS_MOVE_TOLERANCE_PX - 1, 100)).toBe(true)
+    expect(updateLongPress(state, 1, 100, 100 + LONG_PRESS_MOVE_TOLERANCE_PX)).toBe(false)
+    expect(state.hold).toBeNull()
+    expect(takeLongPressGrab(state, 1, LONG_PRESS_MS)).toBeNull()
+  })
+
+  it('ignores movement reported for another pointer', () => {
+    const state = arm()
+    expect(updateLongPress(state, 2, 900, 900)).toBe(false)
+    expect(state.hold).not.toBeNull()
+  })
+
+  it('is cancelled by a lift before the threshold', () => {
+    const state = arm()
+    expect(cancelLongPress(state)).toBe(true)
+    expect(cancelLongPress(state)).toBe(false)
+    expect(takeLongPressGrab(state, 1, LONG_PRESS_MS)).toBeNull()
+  })
+
+  it('is cancelled by a second pointer landing, which never arms its own hold', () => {
+    const state = arm()
+    expect(beginLongPress(state, 2, 'touch', 'brick-2', 300, 300, 10)).toBe(false)
+    expect(state.hold).toBeNull()
+    expect(takeLongPressGrab(state, 1, LONG_PRESS_MS)).toBeNull()
+    expect(takeLongPressGrab(state, 2, LONG_PRESS_MS)).toBeNull()
+  })
+
+  it('ignores the mouse, which has its own drag-to-move affordances', () => {
+    const state = createLongPressState()
+    expect(beginLongPress(state, 1, 'mouse', 'brick-1', 10, 10, 0)).toBe(false)
+    expect(beginLongPress(state, 1, '', 'brick-1', 10, 10, 0)).toBe(false)
+    expect(state.hold).toBeNull()
+    expect(beginLongPress(state, 1, 'pen', 'brick-1', 10, 10, 0)).toBe(true)
+  })
+
+  it('only hands the grab to the pointer that held it', () => {
+    const state = arm()
+    expect(takeLongPressGrab(state, 2, LONG_PRESS_MS)).toBeNull()
+    expect(state.hold).not.toBeNull()
+  })
+})
+
+describe('double tap to place', () => {
+  const firstTap = (state = createBuildGestureState(), x = 200, y = 300, at = 1000) => {
+    expect(takeDoubleTapPlacement(state, x, y, at)).toBe(false)
+    return state
+  }
+
+  it('places on a quick repeat tap in the same spot and re-arms for the next pair', () => {
+    const state = firstTap()
+    expect(takeDoubleTapPlacement(state, 204, 306, 1000 + DOUBLE_TAP_MS)).toBe(true)
+    expect(state.lastTap).toBeNull()
+    // The confirming tap is consumed, so a third tap opens a fresh pair.
+    expect(takeDoubleTapPlacement(state, 204, 306, 1000 + DOUBLE_TAP_MS + 10)).toBe(false)
+  })
+
+  it('repositions instead when the second tap lands outside the radius', () => {
+    const state = firstTap()
+    expect(takeDoubleTapPlacement(state, 200 + DOUBLE_TAP_RADIUS_PX, 300, 1100)).toBe(true)
+
+    const moved = firstTap()
+    expect(takeDoubleTapPlacement(moved, 200 + DOUBLE_TAP_RADIUS_PX + 1, 300, 1100)).toBe(false)
+    expect(moved.lastTap).toMatchObject({ x: 200 + DOUBLE_TAP_RADIUS_PX + 1, y: 300, at: 1100 })
+  })
+
+  it('repositions instead when the double tap window has expired', () => {
+    const state = firstTap()
+    expect(takeDoubleTapPlacement(state, 200, 300, 1000 + DOUBLE_TAP_MS + 1)).toBe(false)
+    // The expired tap becomes the opener, so the next quick tap places.
+    expect(takeDoubleTapPlacement(state, 200, 300, 1000 + DOUBLE_TAP_MS + 2)).toBe(true)
+  })
+
+  it('never counts a camera completion, so a tap after an orbit repositions', () => {
+    const state = firstTap()
+    beginBuildPointer(state, 1, 'touch', 400, 400)
+    updateBuildPointer(state, 1, 400 + BUILD_TOUCH_DRAG_THRESHOLD, 400)
+    expect(finishBuildPointer(state, 1, 400 + BUILD_TOUCH_DRAG_THRESHOLD, 400, 1050)?.intent).toBe('camera')
+    expect(state.lastTap).toBeNull()
+    expect(takeDoubleTapPlacement(state, 200, 300, 1100)).toBe(false)
+  })
+
+  it('keeps a pending first tap across a plain single-finger tap completion', () => {
+    const state = firstTap()
+    beginBuildPointer(state, 1, 'touch', 200, 300)
+    expect(finishBuildPointer(state, 1, 200, 300, 1050)?.intent).toBe('position')
+    expect(state.lastTap).not.toBeNull()
+  })
+
+  it('resets when a second finger lands, so a pinch never confirms a placement', () => {
+    const state = firstTap()
+    beginBuildPointer(state, 1, 'touch', 200, 300)
+    beginBuildPointer(state, 2, 'touch', 260, 300)
+    expect(state.lastTap).toBeNull()
+    expect(takeDoubleTapPlacement(state, 200, 300, 1100)).toBe(false)
+  })
+
+  it('resets when a touch is cancelled, interrupted, or the gesture state is reset', () => {
+    const cancelled = firstTap()
+    beginBuildPointer(cancelled, 1, 'touch', 200, 300)
+    cancelBuildPointer(cancelled, 1, 1050)
+    expect(cancelled.lastTap).toBeNull()
+
+    const interrupted = firstTap()
+    beginBuildPointer(interrupted, 1, 'touch', 200, 300)
+    interruptBuildPointers(interrupted, 1050)
+    expect(interrupted.lastTap).toBeNull()
+
+    const reset = firstTap()
+    resetBuildPointers(reset)
+    expect(reset.lastTap).toBeNull()
   })
 })

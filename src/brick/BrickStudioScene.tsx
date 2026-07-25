@@ -14,12 +14,17 @@ import {
   getBuildCameraLimits,
 } from './buildCamera'
 import {
+  BUILD_TOUCH_DRAG_THRESHOLD,
   GHOST_DRAG_FINGER_OFFSET_PX,
+  LONG_PRESS_MS,
   MOUSE_CLICK_DRAG_THRESHOLD,
   beginBuildPointer,
+  beginLongPress,
   beginPointerTravel,
   cancelBuildPointer,
+  cancelLongPress,
   createBuildGestureState,
+  createLongPressState,
   createPointerTravel,
   endPointerTravel,
   finishBuildPointer,
@@ -31,7 +36,10 @@ import {
   resetBuildPointers,
   shouldSuppressBuildTouchClick,
   takeBuildPointerCompletion,
+  takeDoubleTapPlacement,
+  takeLongPressGrab,
   updateBuildPointer,
+  updateLongPress,
   updatePointerTravel,
   type BuildGestureState,
   type PointerTravel,
@@ -76,7 +84,7 @@ import {
 } from './parts'
 import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
 import { usesCompactRenderer } from './rendererQuality'
-import { playPlaceClick } from './soundFeedback'
+import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
@@ -102,8 +110,36 @@ function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) 
 function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft) {
   const next = gridDraftFromPoint(point, 0, draft)
   const size = rotatedSize(BRICK_PART_MAP[draft.partId], draft.rotation)
-  next.y = supportHeightForFootprint(useBrickStore.getState().bricks, next.x, next.z, size.width, size.depth)
+  const { bricks, movingId } = useBrickStore.getState()
+  // The brick being moved is still in `bricks`; counting it as support would
+  // stack the ghost on top of its own original the moment a move drag starts.
+  const support = movingId ? bricks.filter((brick) => brick.id !== movingId) : bricks
+  next.y = supportHeightForFootprint(support, next.x, next.z, size.width, size.depth)
   return next
+}
+
+/**
+ * A single-finger tap with a draft armed positions the ghost; a quick repeat tap
+ * in the same spot confirms it instead. The Place button stays the discoverable
+ * path — this is only an accelerator.
+ */
+function applyTouchPositionIntent(
+  gesture: BuildGestureState,
+  event: ThreeEvent<PointerEvent>,
+  fallbackSelectionId: string | null,
+) {
+  const state = useBrickStore.getState()
+  if (!state.draft) {
+    state.selectBrick(fallbackSelectionId)
+    return
+  }
+  const { clientX, clientY } = event.nativeEvent
+  if (takeDoubleTapPlacement(gesture, clientX, clientY, performance.now())) {
+    state.placeDraft()
+    return
+  }
+  const next = supportedDraftFromPoint(event.point, state.draft)
+  state.setDraftPosition(next.x, next.y, next.z)
 }
 
 function BaseplateStuds() {
@@ -153,13 +189,7 @@ function Baseplate({ explore = false, buildGesture, cameraActive }: { explore?: 
     const completion = takeBuildPointerCompletion(buildGesture, event.pointerId)
     if (completion?.intent !== 'position') return
     event.stopPropagation()
-    const state = useBrickStore.getState()
-    if (state.draft) {
-      const next = supportedDraftFromPoint(event.point, state.draft)
-      state.setDraftPosition(next.x, next.y, next.z)
-    } else {
-      state.selectBrick(null)
-    }
+    applyTouchPositionIntent(buildGesture, event, null)
   }
 
   return (
@@ -235,13 +265,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive }: { b
     const completion = takeBuildPointerCompletion(buildGesture, event.pointerId)
     if (completion?.intent !== 'position') return
     event.stopPropagation()
-    const state = useBrickStore.getState()
-    if (state.draft) {
-      const next = supportedDraftFromPoint(event.point, state.draft)
-      state.setDraftPosition(next.x, next.y, next.z)
-    } else {
-      state.selectBrick(brick.id)
-    }
+    applyTouchPositionIntent(buildGesture, event, brick.id)
   }
 
   const hoverGlow = hovered && !explore && !draft
@@ -585,14 +609,26 @@ function BuildSelectionInput() {
 }
 
 /**
- * Drag-the-ghost repositioning for touch. Mounted first in BuildScene so these
- * capture listeners register before drei's OrbitControls attaches: at-target
- * listeners fire in registration order, so consuming a drag that started on the
- * armed ghost starves the camera while every other touch still orbits.
+ * The grab's synthetic pointercancel must not re-enter our own release path.
+ * A module flag rather than event.isTrusted: that reads false for any
+ * dispatched event, which would also swallow cancels raised by a test harness.
  */
-function GhostDragInput() {
+let dispatchingGrabCancel = false
+
+/**
+ * Drag-the-ghost repositioning and long-press-to-grab for touch. Mounted first
+ * in BuildScene so these capture listeners register before drei's OrbitControls
+ * attaches: at-target listeners fire in registration order, so consuming a drag
+ * that started on the armed ghost starves the camera while every other touch
+ * still orbits.
+ */
+function GhostDragInput({ cameraActive, gesture }: { cameraActive: CameraGestureFlag; gesture: BuildGestureState }) {
   const { camera, gl, scene } = useThree()
   const activePointer = useRef<number | null>(null)
+  const grabbedBrick = useRef(false)
+  const ghostTravel = useRef(createPointerTravel())
+  const longPress = useRef(createLongPressState())
+  const holdTimer = useRef<number | null>(null)
   const raycaster = useRef(new THREE.Raycaster())
   const pointer = useRef(new THREE.Vector2())
 
@@ -602,11 +638,23 @@ function GhostDragInput() {
       event.preventDefault()
       event.stopImmediatePropagation()
     }
+    const abortHold = () => {
+      if (holdTimer.current !== null) window.clearTimeout(holdTimer.current)
+      holdTimer.current = null
+      cancelLongPress(longPress.current)
+    }
     const release = () => {
       const pointerId = activePointer.current
       if (pointerId === null) return
       activePointer.current = null
+      grabbedBrick.current = false
       if (canvas.hasPointerCapture?.(pointerId)) canvas.releasePointerCapture?.(pointerId)
+    }
+    /** Losing the gesture outright springs a grabbed brick back home. */
+    const abandon = () => {
+      if (grabbedBrick.current) useBrickStore.getState().cancelInteraction()
+      abortHold()
+      release()
     }
     const reposition = (event: PointerEvent) => {
       const state = useBrickStore.getState()
@@ -620,11 +668,38 @@ function GhostDragInput() {
       // First tagged hit wins. A finger dragged past the plate hits nothing and
       // the ghost holds its last supported position rather than snapping away.
       for (const hit of raycaster.current.intersectObjects(scene.children, true)) {
-        if (!isGhostDropTarget(hit.object.userData)) continue
+        if (!isGhostDropTarget(hit.object.userData, state.movingId)) continue
         const next = supportedDraftFromPoint(hit.point, state.draft)
         state.setDraftPosition(next.x, next.y, next.z)
         return
       }
+    }
+    const grab = (pointerId: number, pointerType: string) => {
+      const hold = takeLongPressGrab(longPress.current, pointerId, performance.now())
+      if (!hold) return
+      const store = useBrickStore.getState()
+      if (store.mode !== 'build' || store.selectionMode) return
+      if (!store.bricks.some((brick) => brick.id === hold.brickId)) return
+      // Every later-registered listener still believes it owns this pointer;
+      // a cancel is how OrbitControls and friends drop it cleanly. The flag must
+      // survive a throwing listener or every later release would be swallowed.
+      dispatchingGrabCancel = true
+      try {
+        canvas.dispatchEvent(new PointerEvent('pointercancel', { pointerId, pointerType, bubbles: true }))
+      } finally {
+        dispatchingGrabCancel = false
+      }
+      // OrbitControls raises no end event for a cancel, so clear its flag here.
+      cameraActive.current = false
+      store.selectBrick(hold.brickId)
+      // startMove overwrites activePartId by design: an armed brush is
+      // superseded so a kid never has to park it before moving a brick.
+      store.startMove()
+      if (!useBrickStore.getState().draft) return
+      activePointer.current = pointerId
+      grabbedBrick.current = true
+      canvas.setPointerCapture?.(pointerId)
+      playGrabTick()
     }
     const pointerDown = (event: PointerEvent) => {
       if (!isConfirmationPlacementPointer(event.pointerType)) return
@@ -633,29 +708,70 @@ function GhostDragInput() {
         consume(event)
         return
       }
+      abortHold()
       const state = useBrickStore.getState()
-      if (state.mode !== 'build' || state.selectionMode || !state.draft) return
+      if (state.mode !== 'build' || state.selectionMode) return
       const rect = canvas.getBoundingClientRect()
-      const bounds = projectBrickScreenBounds({ ...state.draft, id: 'ghost-drag' }, camera, rect.width, rect.height)
-      if (!pointWithinInflatedRect(bounds, event.clientX - rect.left, event.clientY - rect.top)) return
-      consume(event)
-      activePointer.current = event.pointerId
-      canvas.setPointerCapture?.(event.pointerId)
+      if (state.draft) {
+        const bounds = projectBrickScreenBounds({ ...state.draft, id: 'ghost-drag' }, camera, rect.width, rect.height)
+        if (pointWithinInflatedRect(bounds, event.clientX - rect.left, event.clientY - rect.top)) {
+          consume(event)
+          activePointer.current = event.pointerId
+          beginPointerTravel(ghostTravel.current, event.clientX, event.clientY)
+          canvas.setPointerCapture?.(event.pointerId)
+          return
+        }
+      }
+      // Off the ghost: arm a hold over whatever brick is under the finger.
+      // Deliberately not consumed — until the hold fires this is still an
+      // ordinary camera gesture.
+      const brickId = findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current)
+      if (!brickId) return
+      const { pointerId, pointerType } = event
+      if (!beginLongPress(longPress.current, pointerId, pointerType, brickId, event.clientX, event.clientY, performance.now())) return
+      holdTimer.current = window.setTimeout(() => {
+        holdTimer.current = null
+        grab(pointerId, pointerType)
+      }, LONG_PRESS_MS)
     }
     const pointerMove = (event: PointerEvent) => {
-      if (activePointer.current !== event.pointerId) return
-      consume(event)
-      reposition(event)
+      if (activePointer.current === event.pointerId) {
+        consume(event)
+        if (!grabbedBrick.current) updatePointerTravel(ghostTravel.current, event.clientX, event.clientY)
+        reposition(event)
+        return
+      }
+      if (longPress.current.hold?.pointerId !== event.pointerId) return
+      if (!updateLongPress(longPress.current, event.pointerId, event.clientX, event.clientY)) abortHold()
     }
     const pointerUp = (event: PointerEvent) => {
+      if (dispatchingGrabCancel) return
+      abortHold()
       if (activePointer.current !== event.pointerId) return
       consume(event)
+      endPointerTravel(ghostTravel.current)
+      const store = useBrickStore.getState()
+      const lifted = event.type === 'pointerup'
+      if (grabbedBrick.current) {
+        // Drop it where it sits. A blocked drop already shook and toasted, so
+        // the brick springs back to where the grab picked it up.
+        if (!lifted || !store.placeDraft()) store.cancelInteraction()
+      } else if (
+        lifted
+        && !pointerTravelExceeds(ghostTravel.current, BUILD_TOUCH_DRAG_THRESHOLD)
+        && takeDoubleTapPlacement(gesture, event.clientX, event.clientY, performance.now())
+      ) {
+        // A tap that lands on the ghost is swallowed here rather than reaching
+        // the plate, so the second tap of a double tap is recognised here too.
+        store.placeDraft()
+      }
       release()
     }
-    const visibility = () => { if (document.visibilityState !== 'visible') release() }
+    const visibility = () => { if (document.visibilityState !== 'visible') abandon() }
     // A stranded pointer id would consume every later touch, so abort whenever
     // the drag loses its subject (Cancel, placement, or leaving Build).
     const unsubscribe = useBrickStore.subscribe((state) => {
+      if (state.mode !== 'build' || state.selectionMode) abortHold()
       if (activePointer.current !== null && (state.mode !== 'build' || !state.draft)) release()
     })
 
@@ -664,7 +780,7 @@ function GhostDragInput() {
     canvas.addEventListener('pointerup', pointerUp, true)
     canvas.addEventListener('pointercancel', pointerUp, true)
     canvas.addEventListener('lostpointercapture', pointerUp, true)
-    window.addEventListener('blur', release)
+    window.addEventListener('blur', abandon)
     document.addEventListener('visibilitychange', visibility)
     return () => {
       canvas.removeEventListener('pointerdown', pointerDown, true)
@@ -672,12 +788,13 @@ function GhostDragInput() {
       canvas.removeEventListener('pointerup', pointerUp, true)
       canvas.removeEventListener('pointercancel', pointerUp, true)
       canvas.removeEventListener('lostpointercapture', pointerUp, true)
-      window.removeEventListener('blur', release)
+      window.removeEventListener('blur', abandon)
       document.removeEventListener('visibilitychange', visibility)
       unsubscribe()
+      abortHold()
       release()
     }
-  }, [camera, gl, scene])
+  }, [camera, cameraActive, gesture, gl, scene])
 
   return null
 }
@@ -771,7 +888,7 @@ function BuildScene({ mouseTravel }: { mouseTravel: PointerTravel }) {
   return (
     <>
       {/* First child on purpose: its listeners must beat OrbitControls to the canvas. */}
-      <GhostDragInput />
+      <GhostDragInput cameraActive={cameraGestureActive} gesture={gesture.current} />
       <Baseplate buildGesture={gesture.current} cameraActive={cameraGestureActive} />
       {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} />)}
       <DraftBrick />
