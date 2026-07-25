@@ -1,6 +1,21 @@
 export const BUILD_TOUCH_DRAG_THRESHOLD = 8
 export const BUILD_TOUCH_CLICK_GUARD_MS = 450
 export const MOUSE_CLICK_DRAG_THRESHOLD = 5
+export const GHOST_DRAG_SLOP_PX = 28
+export const GHOST_DRAG_FINGER_OFFSET_PX = 56
+
+export type ScreenBox = { left: number; top: number; right: number; bottom: number }
+
+/** Grab test for the touch ghost: generous slop keeps small ghosts draggable. */
+export function pointWithinInflatedRect(
+  rect: ScreenBox | null,
+  x: number,
+  y: number,
+  slop = GHOST_DRAG_SLOP_PX,
+) {
+  if (!rect) return false
+  return x >= rect.left - slop && x <= rect.right + slop && y >= rect.top - slop && y <= rect.bottom + slop
+}
 
 /**
  * Tracks how far a mouse pointer travelled since it went down. Camera drags end
