@@ -6,6 +6,8 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { BlockAvatar } from './BlockAvatar'
+import { HeroAvatar } from './HeroAvatar'
+import { preloadHeroAvatar } from './heroModel'
 import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds } from './bounds'
 import {
@@ -971,7 +973,7 @@ function BrickCollider({ brick }: { brick: BrickInstance }) {
   )
 }
 
-function ExplorerAvatar() {
+function ExplorerAvatar({ compact }: { compact: boolean }) {
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
   const controller = useRef<KinematicCharacterController | null>(null)
@@ -1147,7 +1149,10 @@ function ExplorerAvatar() {
       ccd
     >
       <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
-      <BlockAvatar motion={motion} reducedMotion={reducedMotion} />
+      {/* The block figure is the loading stand-in, so Explore is playable before the model lands. */}
+      <Suspense fallback={<BlockAvatar motion={motion} reducedMotion={reducedMotion} />}>
+        <HeroAvatar motion={motion} reducedMotion={reducedMotion} compact={compact} />
+      </Suspense>
     </RigidBody>
   )
 }
@@ -1156,18 +1161,22 @@ function PhysicsPreload() {
   const [preload, setPreload] = useState(false)
 
   useEffect(() => {
+    const warm = () => {
+      preloadHeroAvatar()
+      setPreload(true)
+    }
     if (typeof window.requestIdleCallback === 'function') {
-      const idleId = window.requestIdleCallback(() => setPreload(true), { timeout: 1500 })
+      const idleId = window.requestIdleCallback(warm, { timeout: 1500 })
       return () => window.cancelIdleCallback(idleId)
     }
-    const timeoutId = globalThis.setTimeout(() => setPreload(true), 250)
+    const timeoutId = globalThis.setTimeout(warm, 250)
     return () => globalThis.clearTimeout(timeoutId)
   }, [])
 
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ compact }: { compact: boolean }) {
   const bricks = useBrickStore((state) => state.bricks)
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
@@ -1176,7 +1185,7 @@ function ExploreScene() {
         <Baseplate explore />
       </RigidBody>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
-      <ExplorerAvatar />
+      <ExplorerAvatar compact={compact} />
     </Physics>
   )
 }
@@ -1230,7 +1239,7 @@ export default function BrickStudioScene() {
       <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : <Suspense fallback={null}><ExploreScene compact={compactRenderer} /></Suspense>}
     </Canvas>
   )
 }
