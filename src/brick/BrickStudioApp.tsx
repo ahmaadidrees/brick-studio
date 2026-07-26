@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clipboard,
+  ClipboardPaste,
   Copy,
   Cuboid,
   Focus,
@@ -307,7 +308,8 @@ function ColorPalette({ targetColor }: ColorPaletteProps) {
   )
 }
 
-function Inspector({ compact }: { compact: boolean }) {
+/** Desktop-only. Compact layouts get TouchSelectionBar instead. */
+function Inspector() {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const activeColor = useBrickStore((state) => state.activeColor)
@@ -332,9 +334,6 @@ function Inspector({ compact }: { compact: boolean }) {
     if (detailsExpanded && inspectorSheet.current) inspectorSheet.current.scrollTop = 0
   }, [detailsExpanded])
 
-  // Compact layouts hand the whole draft to the placement bar: two stacked control surfaces
-  // do not fit beside the canvas, and the bar already carries the part name.
-  if (compact && draft) return null
   if (selectedIds.length > 1 && !draft) {
     return (
       <aside className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
@@ -456,14 +455,72 @@ function EmptyState() {
   )
 }
 
+/**
+ * The compact selection pill: same shape, position, and slide-in as the placement pill, so the
+ * two read as one control surface swapping states. Coordinates live on in the desktop inspector
+ * only — there is no room for them beside six 44px targets.
+ */
+function TouchSelectionBar({ onRecolor }: { onRecolor: () => void }) {
+  const bricks = useBrickStore((state) => state.bricks)
+  const selectedId = useBrickStore((state) => state.selectedId)
+  const selectedIds = useBrickStore((state) => state.selectedIds)
+  const draft = useBrickStore((state) => state.draft)
+  const grabInProgress = useBrickStore((state) => state.grabInProgress)
+  const rotate = useBrickStore((state) => state.rotate)
+  const startMove = useBrickStore((state) => state.startMove)
+  const duplicate = useBrickStore((state) => state.duplicate)
+  const copy = useBrickStore((state) => state.copy)
+  const paste = useBrickStore((state) => state.paste)
+  const deleteSelected = useBrickStore((state) => state.deleteSelected)
+  const requestView = useBrickStore((state) => state.requestView)
+
+  // An armed draft hands the row to the placement pill; a captured drag freezes both pills so
+  // the only thing that animates on release is the placement pill sliding in as Moving.
+  if (draft || grabInProgress) return null
+  const count = selectedIds.length
+  if (count > 1) {
+    return (
+      <div className="touch-selection-bar" role="group" aria-label={`${count} bricks selected`}>
+        <span className="selection-part-chip">
+          <span className="selection-swatch selection-swatch-multi" aria-hidden="true"><Layers3 size={17} /></span>
+          <span className="selection-chip-text"><span className="brick-eyebrow">Selection</span><strong>{count} bricks</strong></span>
+        </span>
+        <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Copy ${count} selected bricks`} onClick={copy}><Clipboard size={19} /></button>
+        <button className="studio-icon-button placement-icon-button" type="button" aria-label="Paste copied bricks" onClick={paste}><ClipboardPaste size={19} /></button>
+        <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Duplicate ${count} selected bricks`} onClick={duplicate}><Copy size={19} /></button>
+        <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Recolor ${count} selected bricks`} onClick={onRecolor}><Palette size={19} /></button>
+        <button className="studio-icon-button placement-icon-button danger" type="button" aria-label={`Delete ${count} selected bricks`} onClick={deleteSelected}><Trash2 size={19} /></button>
+      </div>
+    )
+  }
+  const selected = bricks.find((brick) => brick.id === selectedId)
+  if (!selected) return null
+  const part = BRICK_PART_MAP[selected.partId]
+  return (
+    <div className="touch-selection-bar" role="group" aria-label="Selected brick actions">
+      <span className="selection-part-chip">
+        <span className="selection-swatch" style={{ background: selected.color }} aria-hidden="true" />
+        <span className="selection-chip-text"><span className="brick-eyebrow">Selected</span><strong>{part.name}</strong></span>
+      </span>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate brick" onClick={rotate}><RotateCw size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Move brick" onClick={startMove}><Move size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Recolor brick" onClick={onRecolor}><Palette size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Duplicate brick" onClick={duplicate}><Copy size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={19} /></button>
+      <button className="studio-icon-button placement-icon-button danger" type="button" aria-label="Delete brick" onClick={deleteSelected}><Trash2 size={19} /></button>
+    </div>
+  )
+}
+
 function TouchPlacementBar() {
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
+  const grabInProgress = useBrickStore((state) => state.grabInProgress)
   const placeDraft = useBrickStore((state) => state.placeDraft)
   const rotate = useBrickStore((state) => state.rotate)
   const nudge = useBrickStore((state) => state.nudge)
   const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
-  if (!draft) return null
+  if (!draft || grabInProgress) return null
   const part = BRICK_PART_MAP[draft.partId]
   // A layer is the part's own height, matching how placeDraft re-arms the brush on top of
   // the brick just placed; nudge validates the move and toasts when it is blocked.
@@ -485,6 +542,9 @@ function TouchPlacementBar() {
 function BuildShell({ compact }: { compact: boolean }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
+  // One open state: the (+) FAB and the pill's Recolor reach the same sheet, whose palette
+  // already recolors whatever is selected.
+  const openSheet = useCallback(() => setSheetOpen(true), [])
 
   useEffect(() => { if (!compact) setSheetOpen(false) }, [compact])
 
@@ -498,14 +558,14 @@ function BuildShell({ compact }: { compact: boolean }) {
             aria-label="Open brick drawer"
             aria-haspopup="dialog"
             aria-expanded={sheetOpen}
-            onClick={() => setSheetOpen(true)}
+            onClick={openSheet}
           >
             <Plus size={27} />
           </button>
+          <TouchSelectionBar onRecolor={openSheet} />
           {sheetOpen && <BrickDrawerSheet onClose={closeSheet} />}
         </>
-      ) : <PartLibrary />}
-      <Inspector compact={compact} />
+      ) : <><PartLibrary /><Inspector /></>}
       <ViewControls />
       <SelectionModeControl />
       <TouchPlacementBar />
