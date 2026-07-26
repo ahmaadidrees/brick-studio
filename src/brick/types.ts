@@ -2,7 +2,9 @@ export type BrickMode = 'build' | 'explore'
 
 export type BrickBudgetProfile = 'desktop' | 'tablet' | 'phone'
 
-export type BrickKind = 'brick' | 'plate' | 'slope' | 'stair' | 'window' | 'door'
+export type BrickKind =
+  | 'brick' | 'plate' | 'slope' | 'stair' | 'window' | 'door'
+  | 'corner' | 'round' | 'cone' | 'arch' | 'invertedSlope'
 
 export type BrickPart = {
   id: string

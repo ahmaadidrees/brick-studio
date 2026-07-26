@@ -1,12 +1,18 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { beforeAll, describe, expect, it } from 'vitest'
 import {
+  BRICK_PARTS,
   BRICK_PART_MAP,
   EXPLORER_CAPSULE_HALF_HEIGHT,
   EXPLORER_CAPSULE_RADIUS,
+  ROUND_COLLIDER_SIDES,
+  archProfile,
   brickPhysicalShapes,
+  conePartBaseHeight,
   frameOpening,
   partPhysicalShapes,
+  partWorldSize,
+  roundPartRadius,
   rotateLocalPoint,
   walkableSurfaceHeight,
   type PhysicalShape,
@@ -84,6 +90,31 @@ function simulateWalk(
   return { position, maximumY }
 }
 
+/** Settles a capsule dropped at a point and reports where it comes to rest. */
+function simulateDrop(shapes: PhysicalShape[], start: { x: number; y: number; z: number }, steps = 150) {
+  return simulateWalk(shapes, start, { x: 0, z: 0 }, steps)
+}
+
+function shapeBounds(shapes: PhysicalShape[]) {
+  const min = [Infinity, Infinity, Infinity]
+  const max = [-Infinity, -Infinity, -Infinity]
+  for (const shape of shapes) {
+    const points = shape.shape === 'convexHull'
+      ? shape.vertices
+      : [
+          shape.center.map((value, axis) => value - shape.halfExtents[axis]) as [number, number, number],
+          shape.center.map((value, axis) => value + shape.halfExtents[axis]) as [number, number, number],
+        ]
+    for (const point of points) {
+      for (let axis = 0; axis < 3; axis += 1) {
+        min[axis] = Math.min(min[axis], point[axis])
+        max[axis] = Math.max(max[axis], point[axis])
+      }
+    }
+  }
+  return { min, max }
+}
+
 function pointInFrameMember(point: [number, number, number], shapes: PhysicalShape[]) {
   return shapes.some((shape) => {
     if (shape.shape === 'convexHull') return false
@@ -154,6 +185,130 @@ describe('part-aware physical shapes', () => {
     const result = simulateWalk(shapes, { x: 0, y: 0.37, z: -1.4 }, { x: 0, z: 1 }, 140)
     expect(result.position.z).toBeGreaterThan(1)
     expect(result.maximumY).toBeGreaterThan(0.8)
+  })
+
+  it('keeps every catalogue part inside its footprint with a sane walkable surface', () => {
+    for (const part of BRICK_PARTS) {
+      const shapes = partPhysicalShapes(part)
+      expect(shapes.length, part.id).toBeGreaterThan(0)
+
+      const { width, depth, height } = partWorldSize(part)
+      const box = shapeBounds(shapes)
+      // Stair treads use the narrower STEP_INSET, and the first riser ramp deliberately
+      // runs one capsule radius ahead of the tread so the Explorer can start the climb.
+      const depthSlack = part.kind === 'stair' ? EXPLORER_CAPSULE_RADIUS + 0.005 : 0.005
+      expect(box.min[0], part.id).toBeGreaterThanOrEqual(-width / 2 - 0.005)
+      expect(box.max[0], part.id).toBeLessThanOrEqual(width / 2 + 0.005)
+      expect(box.min[1], part.id).toBeGreaterThanOrEqual(-0.001)
+      expect(box.max[1], part.id).toBeLessThanOrEqual(height + 0.001)
+      expect(box.min[2], part.id).toBeGreaterThanOrEqual(-depth / 2 - depthSlack)
+      expect(box.max[2], part.id).toBeLessThanOrEqual(depth / 2 + depthSlack)
+
+      for (const localZ of [-depth / 2, -depth / 4, 0, depth / 4, depth / 2]) {
+        const surface = walkableSurfaceHeight(part, localZ)
+        expect(surface, `${part.id} @ ${localZ}`).toBeGreaterThanOrEqual(0)
+        expect(surface, `${part.id} @ ${localZ}`).toBeLessThanOrEqual(height + 0.001)
+      }
+    }
+  })
+
+  it('builds the corner from two overlapping arms that leave the diagonal cell open', () => {
+    const part = BRICK_PART_MAP.corner_2x2
+    const shapes = partPhysicalShapes(part)
+    expect(shapes).toHaveLength(2)
+    expect(shapes.every((shape) => shape.shape === 'cuboid')).toBe(true)
+
+    const { height } = partWorldSize(part)
+    const midHeight = height / 2
+    expect(pointInFrameMember([-0.31, midHeight, -0.31], shapes)).toBe(true)
+    expect(pointInFrameMember([-0.31, midHeight, 0.31], shapes)).toBe(true)
+    expect(pointInFrameMember([0.31, midHeight, -0.31], shapes)).toBe(true)
+    expect(pointInFrameMember([0.31, midHeight, 0.31], shapes)).toBe(false)
+    expect(walkableSurfaceHeight(part, 0)).toBeCloseTo(height)
+  })
+
+  it('wraps round bricks in a prism hull that stays inside the stud circle', () => {
+    const part = BRICK_PART_MAP.round_1x1
+    const shapes = partPhysicalShapes(part)
+    expect(shapes).toHaveLength(1)
+    expect(shapes[0].shape).toBe('convexHull')
+
+    const hull = shapes[0] as Extract<PhysicalShape, { shape: 'convexHull' }>
+    const radius = roundPartRadius(part)
+    const { height } = partWorldSize(part)
+    expect(hull.vertices).toHaveLength(ROUND_COLLIDER_SIDES * 2)
+    for (const [x, y, z] of hull.vertices) {
+      expect(Math.hypot(x, z)).toBeCloseTo(radius, 5)
+      expect(y === 0 || Math.abs(y - height) < 1e-9).toBe(true)
+    }
+    expect(walkableSurfaceHeight(part, 0)).toBeCloseTo(height)
+
+    const result = simulateDrop(shapes, { x: 0, y: 1.4, z: 0 })
+    expect(result.position.y).toBeCloseTo(height + EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS, 1)
+  })
+
+  it('caps the cone with an apex and slopes its walkable surface to the collar rim', () => {
+    const part = BRICK_PART_MAP.cone_1x1
+    const shapes = partPhysicalShapes(part)
+    expect(shapes).toHaveLength(1)
+
+    const hull = shapes[0] as Extract<PhysicalShape, { shape: 'convexHull' }>
+    const { height } = partWorldSize(part)
+    const base = conePartBaseHeight(part)
+    const radius = roundPartRadius(part)
+    expect(hull.vertices).toHaveLength(ROUND_COLLIDER_SIDES * 2 + 1)
+    expect(hull.vertices.at(-1)).toEqual([0, height, 0])
+    expect(hull.vertices.filter(([, y]) => Math.abs(y - base) < 1e-9)).toHaveLength(ROUND_COLLIDER_SIDES)
+
+    expect(walkableSurfaceHeight(part, 0)).toBeCloseTo(height)
+    expect(walkableSurfaceHeight(part, radius)).toBeCloseTo(base)
+    expect(walkableSurfaceHeight(part, radius / 2)).toBeCloseTo(base + (height - base) / 2)
+    expect(walkableSurfaceHeight(part, radius * 2)).toBeCloseTo(base)
+  })
+
+  it('hangs the overhang wedge from a flat top over an open front', () => {
+    const part = BRICK_PART_MAP.slope_inv_2x2
+    const shapes = partPhysicalShapes(part)
+    expect(shapes).toHaveLength(1)
+    expect(shapes[0].shape).toBe('convexHull')
+
+    const hull = shapes[0] as Extract<PhysicalShape, { shape: 'convexHull' }>
+    const { depth, height } = partWorldSize(part)
+    expect(hull.vertices.filter(([, y]) => Math.abs(y - height) < 1e-9)).toHaveLength(4)
+    expect(hull.vertices.filter(([, y]) => y === 0)).toHaveLength(2)
+    // The two ground-level vertices sit on the solid +z end; −z is the thin edge.
+    expect(hull.vertices.filter(([, y]) => y === 0).every(([, , z]) => z > 0)).toBe(true)
+
+    expect(walkableSurfaceHeight(part, -depth / 2)).toBeCloseTo(height)
+    expect(walkableSurfaceHeight(part, depth / 2)).toBeCloseTo(height)
+
+    const rest = height + EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS
+    expect(simulateDrop(shapes, { x: 0, y: 1.6, z: -0.3 }).position.y).toBeCloseTo(rest, 1)
+    expect(simulateDrop(shapes, { x: 0, y: 1.6, z: 0.3 }).position.y).toBeCloseTo(rest, 1)
+  })
+
+  it('leaves the archway wide enough to walk through under its chamfered soffit', () => {
+    const part = BRICK_PART_MAP.arch_1x4
+    const shapes = partPhysicalShapes(part)
+    expect(shapes.filter((shape) => shape.shape === 'cuboid')).toHaveLength(3)
+    expect(shapes.filter((shape) => shape.shape === 'convexHull')).toHaveLength(2)
+
+    const capsuleHeight = (EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS) * 2
+    const opening = frameOpening(part)
+    expect(opening).not.toBeNull()
+    expect(opening!.sillHeight).toBe(0)
+    expect(opening!.width).toBeGreaterThan(EXPLORER_CAPSULE_RADIUS * 2)
+    expect(opening!.height).toBeGreaterThan(capsuleHeight)
+    expect(pointInFrameMember([0, opening!.height / 2, 0], shapes)).toBe(false)
+
+    const profile = archProfile(part)
+    expect(profile.springHeight).toBeGreaterThan(0)
+    expect(profile.soffitHeight).toBeCloseTo(profile.springHeight + profile.chamfer)
+    expect(walkableSurfaceHeight(part, 0)).toBeCloseTo(partWorldSize(part).height)
+
+    const result = simulateWalk(shapes, { x: -1, y: 0.37, z: 0 }, { x: 1, z: 0 })
+    expect(result.position.x).toBeGreaterThan(0.8)
+    expect(result.maximumY).toBeLessThan(0.7)
   })
 
   it('rotates collider offsets and a full stair traversal by quarter turns', () => {
