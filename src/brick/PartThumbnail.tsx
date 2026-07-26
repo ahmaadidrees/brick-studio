@@ -1,5 +1,7 @@
 import { memo } from 'react'
+import { renderPartThumbnail } from './brickThumbnails'
 import { createBrickGeometry } from './geometry'
+import { useBrickStore } from './store'
 import type { BrickPart } from './types'
 
 type ThumbnailPolygon = {
@@ -138,6 +140,24 @@ type PartThumbnailProps = {
 }
 
 export const PartThumbnail = memo(function PartThumbnail({ part }: PartThumbnailProps) {
+  const activeColor = useBrickStore((state) => state.activeColor)
+  const rendered = renderPartThumbnail(part, activeColor)
+
+  // Same element type across colour changes, so React swaps src instead of remounting.
+  if (rendered) {
+    return (
+      <img
+        className="part-thumbnail"
+        src={rendered}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        data-part-id={part.id}
+        data-vertex-count={createBrickGeometry(part).getAttribute('position').count}
+      />
+    )
+  }
+
   const model = createPartThumbnailModel(part)
   return (
     <svg
