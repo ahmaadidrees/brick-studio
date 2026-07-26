@@ -526,22 +526,123 @@ describe('compact touch layout', () => {
     expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[3])
   })
 
-  it('hands an armed draft to the placement bar alone and keeps selection cards', () => {
+  it('hands an armed draft to the placement pill alone and restores the selection pill on cancel', () => {
     stubMediaQueries([COMPACT_LAYOUT])
     resetStore([brick])
     const { container } = render(<BrickStudioApp />)
     act(() => useBrickStore.getState().selectBrick(brick.id))
-    expect(container.querySelector('.brick-inspector')).not.toBeNull()
+    expect(screen.getByRole('group', { name: 'Selected brick actions' })).toBeInTheDocument()
 
     act(() => useBrickStore.getState().startMove())
-    expect(container.querySelector('.brick-inspector')).toBeNull()
+    expect(container.querySelector('.touch-selection-bar')).toBeNull()
     const bar = screen.getByRole('group', { name: 'Positioned brick actions' })
     expect(within(bar).getByText('Moving')).toBeInTheDocument()
     expect(within(bar).getByText('2 × 4 Brick')).toBeInTheDocument()
     expect(within(bar).getByRole('button', { name: 'Place moved brick from touch controls' })).toBeInTheDocument()
 
     act(() => useBrickStore.getState().cancelInteraction())
+    expect(screen.getByRole('group', { name: 'Selected brick actions' })).toBeInTheDocument()
+  })
+
+  it('replaces the compact inspector card with an icon-only selection pill', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    const colored = { ...brick, color: BRICK_COLORS[2] }
+    resetStore([colored])
+    const { container } = render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(colored.id))
+
+    expect(container.querySelector('.brick-inspector')).toBeNull()
+    expect(container.querySelector('.coordinates')).toBeNull()
+    const pill = screen.getByRole('group', { name: 'Selected brick actions' })
+    expect(within(pill).getByText('2 × 4 Brick')).toBeInTheDocument()
+    const probe = document.createElement('span')
+    probe.style.background = BRICK_COLORS[2]
+    expect(pill.querySelector<HTMLElement>('.selection-swatch')?.style.background).toBe(probe.style.background)
+    expect(Array.from(pill.querySelectorAll('button')).map((button) => button.getAttribute('aria-label')))
+      .toEqual(['Rotate brick', 'Move brick', 'Recolor brick', 'Duplicate brick', 'Focus selected brick', 'Delete brick'])
+
+    fireEvent.click(within(pill).getByRole('button', { name: 'Rotate brick' }))
+    expect(useBrickStore.getState().bricks[0].rotation).toBe(1)
+    fireEvent.click(within(pill).getByRole('button', { name: 'Duplicate brick' }))
+    expect(useBrickStore.getState().bricks).toHaveLength(2)
+    const framing = useBrickStore.getState().viewRequest.nonce
+    fireEvent.click(screen.getByRole('button', { name: 'Focus selected brick' }))
+    expect(useBrickStore.getState().viewRequest).toMatchObject({ preset: 'selection', nonce: framing + 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete brick' }))
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+  })
+
+  it('reaches the shared sheet from the pill and recolors the live selection', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    resetStore([brick])
+    render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recolor brick' }))
+    expect(screen.getByRole('button', { name: 'Open brick drawer' })).toHaveAttribute('aria-expanded', 'true')
+    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    fireEvent.click(within(sheet).getByRole('button', { name: `Use color ${BRICK_COLORS[3]}` }))
+
+    expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[3])
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Change brick color')
+  })
+
+  it('gives multi-selection the same pill with bulk actions and a group recolor path', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    resetStore([
+      { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },
+      { id: 'two', partId: 'door_1x4', x: 12, y: 0, z: 12, rotation: 3, color: '#3e83d7' },
+    ])
+    render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBricks(['one', 'two']))
+
+    const pill = screen.getByRole('group', { name: '2 bricks selected' })
+    expect(within(pill).getByText('2 bricks')).toBeInTheDocument()
+    expect(Array.from(pill.querySelectorAll('button')).map((button) => button.getAttribute('aria-label')))
+      .toEqual(['Copy 2 selected bricks', 'Paste copied bricks', 'Duplicate 2 selected bricks', 'Recolor 2 selected bricks', 'Delete 2 selected bricks'])
+
+    fireEvent.click(within(pill).getByRole('button', { name: 'Recolor 2 selected bricks' }))
+    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    expect(within(sheet).getByText('Color all 2')).toBeInTheDocument()
+    fireEvent.click(within(sheet).getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` }))
+
+    expect(useBrickStore.getState().bricks.every((item) => item.color === BRICK_COLORS[0])).toBe(true)
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Recolor 2 bricks')
+  })
+
+  it('freezes both pills while a grab is captured and slides the placement pill back on release', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    resetStore([brick])
+    render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+    expect(screen.getByRole('group', { name: 'Selected brick actions' })).toBeInTheDocument()
+
+    // The grab sibling raises the flag before startMove, so neither pill ever flashes mid-drag.
+    act(() => useBrickStore.getState().setGrabInProgress(true))
+    expect(screen.queryByRole('group', { name: 'Selected brick actions' })).not.toBeInTheDocument()
+    act(() => useBrickStore.getState().startMove())
+    expect(screen.queryByRole('group', { name: 'Positioned brick actions' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open brick drawer' })).toBeInTheDocument()
+
+    act(() => useBrickStore.getState().setGrabInProgress(false))
+    const bar = screen.getByRole('group', { name: 'Positioned brick actions' })
+    expect(within(bar).getByText('Moving')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Selected brick actions' })).not.toBeInTheDocument()
+  })
+
+  it('leaves the desktop inspector card, its disclosure, and coordinates untouched', () => {
+    stubMediaQueries([])
+    resetStore([brick])
+    const { container } = render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+
+    expect(container.querySelector('.touch-selection-bar')).toBeNull()
     expect(container.querySelector('.brick-inspector')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Show brick properties' })).toHaveAttribute('aria-expanded', 'false')
+    expect(Array.from(container.querySelectorAll('.coordinates strong')).map((element) => element.textContent)).toEqual(['10', '0', '10'])
+
+    act(() => useBrickStore.getState().startMove())
+    expect(screen.getByText('Moving', { selector: '.brick-inspector .brick-eyebrow' })).toBeInTheDocument()
   })
 
   it('keeps the docked drawer and no (+) button on a wide fine-pointer layout', () => {
