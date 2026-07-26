@@ -74,6 +74,8 @@ export type BrickState = {
   marquee: MarqueeState | null
   /** Grid coordinates of the build camera focus, published by the scene. */
   viewTarget: { x: number; z: number } | null
+  /** True while a pointer is captured dragging the ghost or a grabbed brick; UI chrome freezes. */
+  grabInProgress: boolean
   toast: string | null
   /** Screen-reader-only channel: successes announce here, not as a toast. */
   announcement: string | null
@@ -116,6 +118,7 @@ export type BrickState = {
   setSelectionMode: (selectionMode: boolean) => void
   setMarquee: (marquee: MarqueeState | null) => void
   setViewTarget: (x: number, z: number) => void
+  setGrabInProgress: (grabInProgress: boolean) => void
   clearToast: () => void
 }
 
@@ -388,6 +391,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   selectionMode: false,
   marquee: null,
   viewTarget: null,
+  grabInProgress: false,
   toast: 'Pick a brick, position it over the plate, then place it.',
   announcement: null,
   placeFeedback: null,
@@ -853,6 +857,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     announcement: selectionMode ? 'Select mode on.' : 'Select mode finished.',
   }),
   setMarquee: (marquee) => set((state) => state.marquee === marquee ? state : { marquee }),
+  setGrabInProgress: (grabInProgress) => set((state) => state.grabInProgress === grabInProgress ? state : { grabInProgress }),
   setViewTarget: (x, z) => set((state) => {
     const clampedX = Math.max(0, Math.min(GRID_SIZE, Math.round(x)))
     const clampedZ = Math.max(0, Math.min(GRID_SIZE, Math.round(z)))
