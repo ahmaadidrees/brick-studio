@@ -427,6 +427,14 @@ describe('ordered multi-selection', () => {
     expect(useBrickStore.getState().bricks).toHaveLength(3)
   })
 
+  it('drops a grab flag stranded by a mode switch, which outlives any pointer capture', () => {
+    useBrickStore.getState().setGrabInProgress(true)
+
+    useBrickStore.getState().setMode('explore')
+
+    expect(useBrickStore.getState().grabInProgress).toBe(false)
+  })
+
   it('treats an already-cleared marquee reset as an idempotent no-op', () => {
     useBrickStore.setState({ marquee: null })
     const listener = vi.fn()

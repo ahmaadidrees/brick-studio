@@ -411,6 +411,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       touchRunning: false,
       selectionMode: false,
       marquee: null,
+      // A mode switch outlives any pointer capture; a stranded true would freeze the chrome.
+      grabInProgress: false,
       announcement: mode === 'explore' ? 'Explore mode: walk around the world you built.' : 'Build mode: back at the build plate.',
     })
   },

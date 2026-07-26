@@ -20,6 +20,7 @@ import {
   interruptBuildPointers,
   isConfirmationPlacementPointer,
   isGhostDropTarget,
+  markPointerTravelDragged,
   pointWithinInflatedRect,
   pointerTravelExceeds,
   resetBuildPointers,
@@ -129,6 +130,34 @@ describe('mouse click drag guard', () => {
     updatePointerTravel(travel, 100, 100)
     expect(pointerTravelExceeds(travel)).toBe(false)
   })
+
+  it('guards the click trailing a mouse grab that never moved', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 200, 200)
+    expect(pointerTravelExceeds(travel)).toBe(false)
+
+    markPointerTravelDragged(travel)
+    endPointerTravel(travel)
+    expect(pointerTravelExceeds(travel)).toBe(true)
+  })
+
+  it('re-arms after a grab so the next press can still place the parked ghost', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 200, 200)
+    markPointerTravelDragged(travel)
+    endPointerTravel(travel)
+
+    beginPointerTravel(travel, 260, 240)
+    expect(pointerTravelExceeds(travel)).toBe(false)
+  })
+
+  it('never lowers travel a real drag already recorded', () => {
+    const travel = createPointerTravel()
+    beginPointerTravel(travel, 0, 0)
+    updatePointerTravel(travel, 400, 0)
+    markPointerTravelDragged(travel)
+    expect(travel.maxTravel).toBe(400)
+  })
 })
 
 describe('ghost drag grab test', () => {
@@ -224,12 +253,25 @@ describe('long press to grab a placed brick', () => {
     expect(takeLongPressGrab(state, 2, LONG_PRESS_MS)).toBeNull()
   })
 
-  it('ignores the mouse, which has its own drag-to-move affordances', () => {
+  it('arms for every real device so the mouse holds to grab too', () => {
+    for (const pointerType of ['mouse', 'pen', 'touch']) {
+      const state = createLongPressState()
+      expect(beginLongPress(state, 1, pointerType, 'brick-1', 10, 10, 0)).toBe(true)
+      expect(takeLongPressGrab(state, 1, LONG_PRESS_MS)).toMatchObject({ brickId: 'brick-1' })
+    }
+  })
+
+  it('still refuses an untyped pointer, which is synthetic rather than a held hand', () => {
     const state = createLongPressState()
-    expect(beginLongPress(state, 1, 'mouse', 'brick-1', 10, 10, 0)).toBe(false)
     expect(beginLongPress(state, 1, '', 'brick-1', 10, 10, 0)).toBe(false)
     expect(state.hold).toBeNull()
-    expect(beginLongPress(state, 1, 'pen', 'brick-1', 10, 10, 0)).toBe(true)
+  })
+
+  it('holds the mouse to the same drift tolerance, so a camera drag never grabs', () => {
+    const state = createLongPressState()
+    beginLongPress(state, 1, 'mouse', 'brick-1', 100, 100, 0)
+    expect(updateLongPress(state, 1, 100 + LONG_PRESS_MOVE_TOLERANCE_PX, 100)).toBe(false)
+    expect(takeLongPressGrab(state, 1, LONG_PRESS_MS)).toBeNull()
   })
 
   it('only hands the grab to the pointer that held it', () => {

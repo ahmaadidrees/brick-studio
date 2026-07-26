@@ -46,6 +46,15 @@ export function endPointerTravel(travel: PointerTravel) {
   travel.active = false
 }
 
+/**
+ * Forces the trailing click to read as a drag. A hold-to-grab consumes its own
+ * moves, and a grab that never moved records none at all, so without this the
+ * click that follows the release would look like a fresh click and commit.
+ */
+export function markPointerTravelDragged(travel: PointerTravel, threshold = MOUSE_CLICK_DRAG_THRESHOLD) {
+  travel.maxTravel = Math.max(travel.maxTravel, threshold + 1)
+}
+
 export function pointerTravelExceeds(travel: PointerTravel, threshold = MOUSE_CLICK_DRAG_THRESHOLD) {
   return travel.maxTravel > threshold
 }
@@ -227,9 +236,11 @@ export function isGhostDropTarget(
 }
 
 /**
- * Hold-to-grab tracker. The hold is armed on a touch/pen down over a placed
- * brick but deliberately does not consume the event: until it fires the gesture
- * still belongs to the camera, so any drift, lift, or second finger voids it.
+ * Hold-to-grab tracker, armed for every real pointer including the mouse. The
+ * hold starts on a pointer down over a placed brick but deliberately does not
+ * consume the event: until it fires the gesture still belongs to the camera, so
+ * any drift, lift, or second pointer voids it. A still hold produces no camera
+ * movement, which is what makes leaving that down unconsumed safe.
  */
 export type LongPressHold = {
   pointerId: number
@@ -259,7 +270,8 @@ export function beginLongPress(
     state.hold = null
     return false
   }
-  if (!isConfirmationPlacementPointer(pointerType)) return false
+  // An untyped pointer is synthetic, never a hand deliberately holding still.
+  if (pointerType === '') return false
   state.hold = { pointerId, brickId, startX: x, startY: y, startedAt: now }
   return true
 }
