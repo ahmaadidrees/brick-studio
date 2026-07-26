@@ -85,6 +85,8 @@ import {
 } from './parts'
 import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
 import { usesCompactRenderer } from './rendererQuality'
+import { ToyRoomAtmosphere, ToyRoomColliders, ToyRoomWorld, useToyRoomFeatures } from './ToyRoomWorld'
+import { EXPLORE_PLATE_COLOR } from './toyRoom'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
@@ -143,27 +145,41 @@ function applyTouchPositionIntent(
   state.setDraftPosition(next.x, next.y, next.z)
 }
 
-function BaseplateStuds() {
+/**
+ * Explore keeps the studs low and seated on the slab so a minifig-scale explorer
+ * wades through ankle-high bumps rather than a floating forest; Build keeps the
+ * original height and segment count untouched.
+ */
+const EXPLORE_STUD_HEIGHT = 0.06
+
+function BaseplateStuds({ explore = false }: { explore?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null)
-  const geometry = useMemo(() => new THREE.CylinderGeometry(STUD * 0.18, STUD * 0.18, 0.075, 10), [])
+  const height = explore ? EXPLORE_STUD_HEIGHT : 0.075
+  const geometry = useMemo(
+    () => new THREE.CylinderGeometry(STUD * 0.18, STUD * 0.18, height, explore ? 8 : 10),
+    [explore, height],
+  )
 
   useEffect(() => {
     if (!ref.current) return
     const matrix = new THREE.Matrix4()
+    const y = explore ? height / 2 : 0.075
     let index = 0
     for (let x = 0; x < GRID_SIZE; x += 1) {
       for (let z = 0; z < GRID_SIZE; z += 1) {
-        matrix.makeTranslation((x + 0.5 - GRID_SIZE / 2) * STUD, 0.075, (z + 0.5 - GRID_SIZE / 2) * STUD)
+        matrix.makeTranslation((x + 0.5 - GRID_SIZE / 2) * STUD, y, (z + 0.5 - GRID_SIZE / 2) * STUD)
         ref.current.setMatrixAt(index, matrix)
         index += 1
       }
     }
     ref.current.instanceMatrix.needsUpdate = true
-  }, [])
+  }, [explore, height])
 
   return (
-    <instancedMesh ref={ref} args={[geometry, undefined, GRID_SIZE * GRID_SIZE]} receiveShadow>
-      <meshStandardMaterial color="#d5dce0" roughness={0.82} />
+    <instancedMesh ref={ref} args={[geometry, undefined, GRID_SIZE * GRID_SIZE]} receiveShadow castShadow={explore}>
+      {explore
+        ? <meshStandardMaterial color={EXPLORE_PLATE_COLOR} roughness={0.44} metalness={0.02} />
+        : <meshStandardMaterial color="#d5dce0" roughness={0.82} />}
     </instancedMesh>
   )
 }
@@ -179,7 +195,7 @@ function isDragTrailingClick(delta: number, mouseTravel?: PointerTravel) {
   return delta > MOUSE_CLICK_DRAG_THRESHOLD || (mouseTravel ? pointerTravelExceeds(mouseTravel) : false)
 }
 
-function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }: { explore?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag; mouseTravel?: PointerTravel }) {
+function Baseplate({ explore = false, premium = false, buildGesture, cameraActive, mouseTravel }: { explore?: boolean; premium?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag; mouseTravel?: PointerTravel }) {
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -220,15 +236,20 @@ function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }:
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        {explore
+          ? premium
+            ? <meshPhysicalMaterial color={EXPLORE_PLATE_COLOR} roughness={0.42} metalness={0} clearcoat={0.55} clearcoatRoughness={0.28} />
+            : <meshStandardMaterial color={EXPLORE_PLATE_COLOR} roughness={0.52} />
+          : <meshStandardMaterial color="#e7ebed" roughness={0.9} />}
       </mesh>
-      {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      <BaseplateStuds explore={explore} />
+      {/* The build grid is a Build-mode affordance; in Explore the studs are the reference. */}
+      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
   )
 }
 
-function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouseTravel }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag; mouseTravel?: PointerTravel }) {
+function BrickObject({ brick, explore = false, premium = false, buildGesture, cameraActive, mouseTravel }: { brick: BrickInstance; explore?: boolean; premium?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag; mouseTravel?: PointerTravel }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
@@ -306,7 +327,10 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        {/* Explore gets injection-moulded plastic: a clearcoat lobe over the diffuse. */}
+        {explore && premium
+          ? <meshPhysicalMaterial color={brick.color} roughness={0.36} metalness={0} clearcoat={0.9} clearcoatRoughness={0.12} />
+          : <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={explore ? 0.46 : 0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />}
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -959,14 +983,14 @@ function PhysicalCollider({ shape }: { shape: PhysicalShape }) {
   return <CuboidCollider args={shape.halfExtents} position={shape.center} friction={PART_COLLIDER_FRICTION} />
 }
 
-function BrickCollider({ brick }: { brick: BrickInstance }) {
+function BrickCollider({ brick, premium }: { brick: BrickInstance; premium: boolean }) {
   const shapes = useMemo(() => brickPhysicalShapes(brick), [brick])
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
         {shapes.map((shape, index) => <PhysicalCollider key={index} shape={shape} />)}
       </RigidBody>
-      <BrickObject brick={brick} explore />
+      <BrickObject brick={brick} explore premium={premium} />
     </>
   )
 }
@@ -1167,15 +1191,19 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ compactRenderer }: { compactRenderer: boolean }) {
   const bricks = useBrickStore((state) => state.bricks)
+  const features = useToyRoomFeatures(compactRenderer)
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
-        <Baseplate explore />
+        {/* The table the plate stands on: walking off the plate is a 0.18 drop. */}
+        <ToyRoomColliders />
+        <Baseplate explore premium={features.clearcoat} />
       </RigidBody>
-      {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
+      <ToyRoomWorld features={features} />
+      {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} premium={features.clearcoat} />)}
       <ExplorerAvatar />
     </Physics>
   )
@@ -1223,14 +1251,23 @@ export default function BrickStudioScene() {
         useBrickStore.getState().selectBrick(null)
       }}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
-      {mode === 'build'
-        ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+      {/* Build's rig is untouched and simply unmounts in Explore, which brings its own. */}
+      {mode === 'build' ? (
+        <>
+          <color attach="background" args={['#f4f2ed']} />
+          <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+          <ambientLight intensity={1.35} />
+          <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+          <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+          <BuildScene mouseTravel={mouseTravel.current} />
+          <Suspense fallback={null}><PhysicsPreload /></Suspense>
+        </>
+      ) : (
+        <>
+          <ToyRoomAtmosphere />
+          <Suspense fallback={null}><ExploreScene compactRenderer={compactRenderer} /></Suspense>
+        </>
+      )}
     </Canvas>
   )
 }
