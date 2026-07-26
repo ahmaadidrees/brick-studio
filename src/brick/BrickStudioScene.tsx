@@ -3,9 +3,11 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
 import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { BlockAvatar } from './BlockAvatar'
+import { ExploreCompactContext, SkyIslandRig, SkyIslandWorld } from './SkyIslandWorld'
+import { SKY_ISLAND, SKY_PALETTE } from './skyIsland'
 import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds } from './bounds'
 import {
@@ -220,11 +222,34 @@ function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }:
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        {explore
+          ? <meshStandardMaterial color={SKY_PALETTE.plate} roughness={0.82} metalness={0.02} envMapIntensity={0.4} />
+          : <meshStandardMaterial color="#e7ebed" roughness={0.9} />}
       </mesh>
       {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
+  )
+}
+
+/**
+ * Explore-mode brick finish. Desktop gets clearcoat "toy plastic" that catches
+ * the sky-island Lightformer environment; compact renderers keep a cheaper
+ * standard material. Build mode is untouched.
+ */
+function ExploreBrickMaterial({ color }: { color: string }) {
+  const compact = useContext(ExploreCompactContext)
+  if (compact) return <meshStandardMaterial color={color} roughness={0.46} metalness={0.02} />
+  return (
+    <meshPhysicalMaterial
+      color={color}
+      roughness={0.34}
+      metalness={0}
+      clearcoat={0.72}
+      clearcoatRoughness={0.3}
+      specularIntensity={0.9}
+      envMapIntensity={0.85}
+    />
   )
 }
 
@@ -306,7 +331,9 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        {explore
+          ? <ExploreBrickMaterial color={brick.color} />
+          : <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />}
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -971,6 +998,12 @@ function BrickCollider({ brick }: { brick: BrickInstance }) {
   )
 }
 
+const EXPLORER_SPAWN = {
+  x: 0,
+  y: EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.03,
+  z: 5,
+}
+
 function ExplorerAvatar() {
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
@@ -1069,6 +1102,14 @@ function ExplorerAvatar() {
 
   useFrame((_, delta) => {
     if (!body.current || !collider.current || !controller.current) return
+    // Falling past the cloud sea flies you back to the plate. Purely positional:
+    // the controller's tuning (capsule, speeds, jump feel) is never touched.
+    if (body.current.translation().y < SKY_ISLAND.respawnY) {
+      body.current.setTranslation(EXPLORER_SPAWN, true)
+      body.current.setNextKinematicTranslation(EXPLORER_SPAWN)
+      character.current = createCharacterMotionState(false)
+      fixedClock.current = createFixedStepClock()
+    }
     const store = useBrickStore.getState()
     if (store.jumpNonce !== lastTouchJump.current) {
       bufferCharacterJump(character.current)
@@ -1142,7 +1183,7 @@ function ExplorerAvatar() {
       ref={body}
       type="kinematicPosition"
       colliders={false}
-      position={[0, EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.03, 5]}
+      position={[EXPLORER_SPAWN.x, EXPLORER_SPAWN.y, EXPLORER_SPAWN.z]}
       enabledRotations={[false, false, false]}
       ccd
     >
@@ -1167,7 +1208,7 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ compactRenderer }: { compactRenderer: boolean }) {
   const bricks = useBrickStore((state) => state.bricks)
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
@@ -1175,6 +1216,7 @@ function ExploreScene() {
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
         <Baseplate explore />
       </RigidBody>
+      <SkyIslandWorld compact={compactRenderer} />
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
       <ExplorerAvatar />
     </Physics>
@@ -1201,6 +1243,19 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
+/** The original neutral studio rig. Build mode renders exactly what it always did. */
+function BuildStudioRig({ compactRenderer }: { compactRenderer: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#f4f2ed']} />
+      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+      <ambientLight intensity={1.35} />
+      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+    </>
+  )
+}
+
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
@@ -1223,14 +1278,16 @@ export default function BrickStudioScene() {
         useBrickStore.getState().selectBrick(null)
       }}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+      {mode === 'build'
+        ? <BuildStudioRig compactRenderer={compactRenderer} />
+        : <SkyIslandRig compact={compactRenderer} />}
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : (
+          <ExploreCompactContext.Provider value={compactRenderer}>
+            <Suspense fallback={null}><ExploreScene compactRenderer={compactRenderer} /></Suspense>
+          </ExploreCompactContext.Provider>
+        )}
     </Canvas>
   )
 }
