@@ -418,10 +418,16 @@ describe('Brick Studio responsive controls', () => {
     fireEvent.pointerMove(lookZone, { pointerId: 31, clientX: 100, clientY: 100 })
     expect(useBrickStore.getState().touchYaw).toBe(yawAfterDrag)
 
+    const jumpButton = screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' })
     const jumpBefore = useBrickStore.getState().jumpNonce
-    fireEvent.pointerDown(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' }), { pointerId: 32 })
-    fireEvent.click(screen.getByRole('button', { name: 'Jump; tap again in the air to double jump' }))
+    // A second concurrent touch never synthesizes a click on iOS, so the tap
+    // itself must jump on pointer-down; the trailing click (detail >= 1) is
+    // ignored and keyboard activation (detail 0) still works.
+    fireEvent.pointerDown(jumpButton, { pointerId: 32, pointerType: 'touch' })
+    fireEvent.click(jumpButton, { detail: 1 })
     expect(useBrickStore.getState().jumpNonce).toBe(jumpBefore + 1)
+    fireEvent.click(jumpButton, { detail: 0 })
+    expect(useBrickStore.getState().jumpNonce).toBe(jumpBefore + 2)
     expect(screen.getByRole('button', { name: 'Return to Build' })).toBeEnabled()
   })
 

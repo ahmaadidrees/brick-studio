@@ -684,7 +684,15 @@ function TouchExploreControls() {
         aria-label="Movement joystick"
         aria-describedby="touch-explore-hint"
       ><span ref={joystickKnob} aria-hidden="true" /></div>
-      <button className="jump-button" onClick={jump} aria-label="Jump; tap again in the air to double jump">Jump</button>
+      <button
+        className="jump-button"
+        // iOS only synthesizes click for the PRIMARY touch, so a Jump tap while
+        // the joystick finger is down never clicked. Pointer-down fires for
+        // every touch; onClick stays for keyboard activation only (detail 0).
+        onPointerDown={(event) => { event.preventDefault(); jump() }}
+        onClick={(event) => { if (event.detail === 0) jump() }}
+        aria-label="Jump; tap again in the air to double jump"
+      >Jump</button>
       <button className="recenter-camera" onClick={recenterCamera} aria-label="Recenter camera"><Focus size={18} /><span>Recenter</span></button>
       <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>
       <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span>Drag: Camera</span><span>Scroll: Zoom</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
