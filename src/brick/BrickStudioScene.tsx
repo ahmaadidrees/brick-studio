@@ -6,6 +6,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { BlockAvatar } from './BlockAvatar'
+import { BrickValley, SceneAtmosphere } from './BrickValleyScene'
 import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds } from './bounds'
 import {
@@ -143,7 +144,7 @@ function applyTouchPositionIntent(
   state.setDraftPosition(next.x, next.y, next.z)
 }
 
-function BaseplateStuds() {
+function BaseplateStuds({ explore = false }: { explore?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const geometry = useMemo(() => new THREE.CylinderGeometry(STUD * 0.18, STUD * 0.18, 0.075, 10), [])
 
@@ -163,7 +164,9 @@ function BaseplateStuds() {
 
   return (
     <instancedMesh ref={ref} args={[geometry, undefined, GRID_SIZE * GRID_SIZE]} receiveShadow>
-      <meshStandardMaterial color="#d5dce0" roughness={0.82} />
+      {explore
+        ? <meshPhysicalMaterial color="#dfe6ea" roughness={0.44} metalness={0} clearcoat={0.65} clearcoatRoughness={0.26} />
+        : <meshStandardMaterial color="#d5dce0" roughness={0.82} />}
     </instancedMesh>
   )
 }
@@ -208,6 +211,9 @@ function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }:
         userData={plateUserData}
         position={[0, -0.09, 0]}
         receiveShadow
+        // In explore the plate is an object sitting in a meadow, so it has to
+        // throw its own shadow or it reads as a decal on the ground.
+        castShadow={explore}
         onPointerMove={moveDraft}
         onPointerUp={positionTouchDraft}
         onClick={(event) => {
@@ -220,10 +226,14 @@ function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }:
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        {explore
+          ? <meshPhysicalMaterial color="#e9edef" roughness={0.42} metalness={0} clearcoat={0.72} clearcoatRoughness={0.22} />
+          : <meshStandardMaterial color="#e7ebed" roughness={0.9} />}
       </mesh>
-      {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      <BaseplateStuds explore={explore} />
+      {/* The build grid is an editing aid; in the valley it would be a ruler
+          drawn across the world. */}
+      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
   )
 }
@@ -306,7 +316,11 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
         }}
         scale={movingId === brick.id ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        {/* Explore swaps in the same clearcoat plastic the valley is moulded
+            from, so a kid's build belongs to the world it stands in. */}
+        {explore
+          ? <meshPhysicalMaterial color={brick.color} roughness={0.4} metalness={0} clearcoat={0.75} clearcoatRoughness={0.22} />
+          : <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />}
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -1167,10 +1181,11 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ compact }: { compact: boolean }) {
   const bricks = useBrickStore((state) => state.bricks)
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
+      <BrickValley compact={compact} />
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
         <Baseplate explore />
@@ -1201,6 +1216,13 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
+/**
+ * Hoisted so its identity never changes: explore retunes `camera.far` for the
+ * valley horizon, and a fresh literal each render would invite r3f to reapply
+ * the build value on top of it.
+ */
+const SCENE_CAMERA = { position: [14, 12, 16] as [number, number, number], fov: 45, near: 0.05, far: 240 }
+
 export default function BrickStudioScene() {
   const mode = useBrickStore((state) => state.mode)
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
@@ -1215,7 +1237,7 @@ export default function BrickStudioScene() {
     <Canvas
       shadows={!compactRenderer}
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
-      camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
+      camera={SCENE_CAMERA}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       onPointerMissed={() => {
         if (mode !== 'build') return
@@ -1223,14 +1245,19 @@ export default function BrickStudioScene() {
         useBrickStore.getState().selectBrick(null)
       }}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+      <SceneAtmosphere explore={mode !== 'build'} />
+      {/* Build keeps its flat, shadow-light studio rig exactly as it was; the
+          valley brings its own three-point rig. */}
+      {mode === 'build' && (
+        <>
+          <ambientLight intensity={1.35} />
+          <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+          <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
+        </>
+      )}
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : <Suspense fallback={null}><ExploreScene compact={compactRenderer} /></Suspense>}
     </Canvas>
   )
 }
