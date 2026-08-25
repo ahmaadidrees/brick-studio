@@ -42,9 +42,11 @@ const json = (value: unknown, status = 200, headers?: HeadersInit) =>
 
 function allowedOrigin(origin: string | null): string | null {
   if (!origin) return null;
-  if (origin === "https://virtual-legos.vercel.app") return origin;
   try {
     const url = new URL(origin);
+    if (url.protocol === "https:" &&
+        (url.hostname === "virtual-legos.vercel.app" ||
+         /^virtual-legos-[a-z0-9-]+\.vercel\.app$/.test(url.hostname))) return origin;
     if ((url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
         (url.protocol === "http:" || url.protocol === "https:")) return origin;
   } catch { /* invalid origin */ }
