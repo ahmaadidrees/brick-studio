@@ -184,12 +184,12 @@ export class RaceClient {
     this.state = { connection: 'idle', selfId: identity.id, players: {}, status: DEFAULT_STATUS }
     this.options = {
       ...options,
-      now: options.now ?? Date.now,
+      now: options.now ?? (() => Date.now()),
       random: options.random ?? Math.random,
       reconnectDelays: options.reconnectDelays ?? [250, 500, 1_000, 2_000, 5_000],
       poseIntervalMs: options.poseIntervalMs ?? 75,
-      setTimeout: options.setTimeout ?? globalThis.setTimeout,
-      clearTimeout: options.clearTimeout ?? globalThis.clearTimeout,
+      setTimeout: options.setTimeout ?? ((handler, timeout) => globalThis.setTimeout(handler, timeout)),
+      clearTimeout: options.clearTimeout ?? ((timer) => globalThis.clearTimeout(timer)),
     }
   }
 
