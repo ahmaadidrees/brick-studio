@@ -5,9 +5,13 @@ import './styles.css'
 const RoverLabApp = lazy(() => import('./App'))
 const BrickStudioApp = lazy(() => import('./brick/BrickStudioApp'))
 const PublishedWorldPage = lazy(() => import('./brick/PublishedWorldPage'))
+const RaceWorldPage = lazy(() => import('./brick/RaceWorldPage'))
 const publishedWorldMatch = /^\/world\/?$/.test(window.location.pathname)
+const raceWorldMatch = /^\/race\/[^/]+\/?$/.test(window.location.pathname)
 const experience = window.location.pathname.startsWith('/rover')
   ? <RoverLabApp />
+  : raceWorldMatch
+    ? <RaceWorldPage />
   : publishedWorldMatch
     ? <PublishedWorldPage />
     : <BrickStudioApp />

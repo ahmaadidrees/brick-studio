@@ -21,8 +21,8 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import BrickStudioScene from './BrickStudioScene'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import {
   beginExploreCameraPointer,
@@ -714,6 +714,9 @@ function ShortcutBar() {
 export type BrickStudioAppProps = StudioDocumentCommands & {
   publishedWorld?: { title: string; document: BrickStudioDocument }
   onRemix?: () => void
+  onStartRace?: () => void
+  raceScene?: BrickStudioSceneProps
+  raceOverlay?: ReactNode
 }
 
 export default function BrickStudioApp({
@@ -723,6 +726,9 @@ export default function BrickStudioApp({
   onPublishWorld,
   publishedWorld,
   onRemix,
+  onStartRace,
+  raceScene,
+  raceOverlay,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
   useBuilderShortcuts(!readOnly)
@@ -755,11 +761,14 @@ export default function BrickStudioApp({
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
   return (
     <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
-      <div className="brick-canvas"><BrickStudioScene /><MarqueeOverlay /></div>
+      <div className="brick-canvas"><BrickStudioScene {...raceScene} /><MarqueeOverlay /></div>
       {readOnly ? (
-        <div className="published-world-bar">
+        !raceOverlay && <div className="published-world-bar">
           <div><span>Published world</span><strong>{publishedWorld?.title}</strong></div>
-          <button type="button" onClick={onRemix}>Remix this world</button>
+          <div className="published-world-actions">
+            {onStartRace && <button className="race-primary-button" type="button" onClick={onStartRace}>Start a race</button>}
+            {onRemix && <button type="button" onClick={onRemix}>Remix this world</button>}
+          </div>
         </div>
       ) : <Header {...documentCommands} onOpenHelp={onboarding.reopen} />}
       {mode === 'build' ? (
@@ -772,6 +781,7 @@ export default function BrickStudioApp({
       ) : <TouchExploreControls readOnly={readOnly} />}
       <Toast />
       <Announcer />
+      {raceOverlay}
     </main>
   )
 }

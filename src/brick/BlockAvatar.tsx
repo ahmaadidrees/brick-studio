@@ -12,6 +12,8 @@ export type BlockAvatarProps = {
   reducedMotion?: boolean
   /** Matches the current 0.72 m tall Explore capsule by default. */
   scale?: number
+  /** Lets multiplayer racers be distinguished without duplicating the avatar. */
+  color?: string
 }
 
 type AvatarAssets = {
@@ -23,10 +25,10 @@ type AvatarAssets = {
   accent: THREE.MeshStandardMaterial
 }
 
-function createAvatarAssets(): AvatarAssets {
+function createAvatarAssets(color = '#ef6f54'): AvatarAssets {
   return {
     geometry: new THREE.BoxGeometry(1, 1, 1),
-    torso: new THREE.MeshStandardMaterial({ color: '#ef6f54', roughness: 0.6 }),
+    torso: new THREE.MeshStandardMaterial({ color, roughness: 0.6 }),
     skin: new THREE.MeshStandardMaterial({ color: '#f2c37f', roughness: 0.64 }),
     pants: new THREE.MeshStandardMaterial({ color: '#356c89', roughness: 0.65 }),
     shoes: new THREE.MeshStandardMaterial({ color: '#263e4b', roughness: 0.72 }),
@@ -52,6 +54,7 @@ export const BlockAvatar = memo(function BlockAvatar({
   motion,
   reducedMotion = false,
   scale = 0.36,
+  color,
 }: BlockAvatarProps) {
   const physicsFollow = useRef<THREE.Group>(null)
   const facing = useRef<THREE.Group>(null)
@@ -64,7 +67,7 @@ export const BlockAvatar = memo(function BlockAvatar({
   const leftHip = useRef<THREE.Group>(null)
   const rightHip = useRef<THREE.Group>(null)
   const runtime = useRef(createAvatarAnimationRuntime(motion.current))
-  const assets = useMemo(createAvatarAssets, [])
+  const assets = useMemo(() => createAvatarAssets(color), [color])
 
   useEffect(() => () => disposeAvatarAssets(assets), [assets])
 

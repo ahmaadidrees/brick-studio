@@ -89,6 +89,24 @@ import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { draftIsValid, useBrickStore } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
+export type RaceAvatarPose = {
+  position: [number, number, number]
+  facingYaw: number
+  horizontalSpeed: number
+  grounded: boolean
+}
+
+export type RemoteRaceAvatar = RaceAvatarPose & {
+  id: string
+  color: string
+  name?: string
+}
+
+export type BrickStudioSceneProps = {
+  onLocalAvatarPose?: (pose: RaceAvatarPose) => void
+  remoteAvatars?: RemoteRaceAvatar[]
+}
+
 const gridWorldSize = GRID_SIZE * STUD
 const PART_COLLIDER_FRICTION = 0.5
 const HOVER_GLOW_INTENSITY = 0.16
@@ -971,7 +989,7 @@ function BrickCollider({ brick }: { brick: BrickInstance }) {
   )
 }
 
-function ExplorerAvatar() {
+function ExplorerAvatar({ onPose }: { onPose?: (pose: RaceAvatarPose) => void }) {
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
   const controller = useRef<KinematicCharacterController | null>(null)
@@ -1000,6 +1018,7 @@ function ExplorerAvatar() {
   const { camera } = useThree()
   const cameraProbe = useMemo(() => new rapier.Ball(CAMERA_PROBE_RADIUS), [rapier])
   const boomDistance = useRef<number | null>(null)
+  const outgoingPose = useRef<RaceAvatarPose>({ position: [0, 0, 0], facingYaw: Math.PI, horizontalSpeed: 0, grounded: false })
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -1108,6 +1127,16 @@ function ExplorerAvatar() {
     stepOrbit(orbit.current, delta, store.reducedMotion ? 24 : undefined)
 
     const position = body.current.translation()
+    if (onPose) {
+      const pose = outgoingPose.current
+      pose.position[0] = position.x
+      pose.position[1] = position.y
+      pose.position[2] = position.z
+      pose.facingYaw = motion.current.facingYaw
+      pose.horizontalSpeed = motion.current.horizontalSpeed
+      pose.grounded = motion.current.grounded
+      onPose(pose)
+    }
     const target = cameraTarget.current.set(position.x, position.y + 0.52, position.z)
     const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
@@ -1152,6 +1181,35 @@ function ExplorerAvatar() {
   )
 }
 
+function RemoteAvatar({ avatar }: { avatar: RemoteRaceAvatar }) {
+  const group = useRef<THREE.Group>(null)
+  const target = useRef(new THREE.Vector3(...avatar.position))
+  const motion = useRef(createMotionSnapshot({
+    grounded: avatar.grounded,
+    facingYaw: avatar.facingYaw,
+    horizontalSpeed: avatar.horizontalSpeed,
+    maxSpeed: 4,
+  }))
+
+  useEffect(() => {
+    target.current.set(...avatar.position)
+    motion.current.grounded = avatar.grounded
+    motion.current.facingYaw = avatar.facingYaw
+    motion.current.horizontalSpeed = avatar.horizontalSpeed
+  }, [avatar])
+
+  useFrame((_, delta) => {
+    if (!group.current) return
+    group.current.position.lerp(target.current, 1 - Math.exp(-14 * Math.min(delta, 0.05)))
+  })
+
+  return (
+    <group ref={group} position={avatar.position}>
+      <BlockAvatar motion={motion} color={avatar.color} />
+    </group>
+  )
+}
+
 function PhysicsPreload() {
   const [preload, setPreload] = useState(false)
 
@@ -1167,7 +1225,7 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene() {
+function ExploreScene({ onLocalAvatarPose, remoteAvatars = [] }: BrickStudioSceneProps) {
   const bricks = useBrickStore((state) => state.bricks)
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
@@ -1176,7 +1234,8 @@ function ExploreScene() {
         <Baseplate explore />
       </RigidBody>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
-      <ExplorerAvatar />
+      {remoteAvatars.map((avatar) => <RemoteAvatar key={avatar.id} avatar={avatar} />)}
+      <ExplorerAvatar onPose={onLocalAvatarPose} />
     </Physics>
   )
 }
@@ -1201,7 +1260,7 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
-export default function BrickStudioScene() {
+export default function BrickStudioScene({ onLocalAvatarPose, remoteAvatars }: BrickStudioSceneProps = {}) {
   const mode = useBrickStore((state) => state.mode)
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const compactRenderer = useCompactRenderer()
@@ -1230,7 +1289,7 @@ export default function BrickStudioScene() {
       <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene /></Suspense>}
+        : <Suspense fallback={null}><ExploreScene onLocalAvatarPose={onLocalAvatarPose} remoteAvatars={remoteAvatars} /></Suspense>}
     </Canvas>
   )
 }

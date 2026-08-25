@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import BrickStudioApp from './BrickStudioApp'
 import { saveLocalBrickStudioProject } from './documentPersistence'
 import { loadPublishedWorld, type PublishedWorld } from './publishedWorlds'
+import { createRaceRoom } from './raceClient'
 
 export default function PublishedWorldPage() {
   const [world, setWorld] = useState<PublishedWorld | null>(null)
   const [error, setError] = useState('')
   const [remixed, setRemixed] = useState(false)
+  const [startingRace, setStartingRace] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -41,5 +43,18 @@ export default function PublishedWorldPage() {
     setRemixed(true)
   }
 
-  return <BrickStudioApp publishedWorld={world} onRemix={remix} />
+  const startRace = async () => {
+    if (startingRace) return
+    setStartingRace(true)
+    try {
+      const room = await createRaceRoom(world)
+      const host = new URLSearchParams({ host: room.hostToken })
+      window.location.assign(`/race/${encodeURIComponent(room.roomId)}#${host}`)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not start the race room.')
+      setStartingRace(false)
+    }
+  }
+
+  return <BrickStudioApp publishedWorld={world} onRemix={remix} onStartRace={startRace} />
 }
