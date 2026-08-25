@@ -23,8 +23,10 @@ function getLocalStorage() {
 
 export function useBrickStudioDocuments(
   overrides: StudioDocumentCommands = {},
+  enabled = true,
 ): Required<StudioDocumentCommands> {
   useEffect(() => {
+    if (!enabled) return
     const storage = getLocalStorage()
     if (!storage) return
 
@@ -41,7 +43,7 @@ export function useBrickStudioDocuments(
       onError: (error) => showDocumentMessage(error.message),
     })
     return () => autosave.dispose()
-  }, [])
+  }, [enabled])
 
   const newBuild = useCallback(() => {
     if (!window.confirm('Start a new blank build? You can Undo during this session to restore the current build.')) {
@@ -73,5 +75,6 @@ export function useBrickStudioDocuments(
     onNewBuild: overrides.onNewBuild ?? newBuild,
     onImportProject: overrides.onImportProject ?? importProject,
     onExportProject: overrides.onExportProject ?? exportProject,
+    onPublishWorld: overrides.onPublishWorld ?? (() => {}),
   }
 }

@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Upload } from 'lucide-react'
+import { Download, FilePlus2, HelpCircle, MoreHorizontal, Share2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
@@ -7,6 +7,7 @@ export type StudioDocumentCommands = {
   onNewBuild?: () => void
   onImportProject?: (file: File) => void | Promise<void>
   onExportProject?: () => void
+  onPublishWorld?: () => void
 }
 
 type StudioMenuProps = StudioDocumentCommands & {
@@ -44,6 +45,7 @@ export function StudioMenu({
   onNewBuild,
   onImportProject,
   onExportProject,
+  onPublishWorld,
   onOpenHelp,
 }: StudioMenuProps) {
   const [open, setOpen] = useState(false)
@@ -96,6 +98,9 @@ export function StudioMenu({
           </button>
           <button role="menuitem" type="button" disabled={!onExportProject} onClick={() => runAndClose(onExportProject)}>
             <Download size={18} /><span><strong>Export</strong><small>Download this build</small></span>
+          </button>
+          <button role="menuitem" type="button" disabled={!onPublishWorld} onClick={() => runAndClose(onPublishWorld)}>
+            <Share2 size={18} /><span><strong>Publish</strong><small>Create a read-only Explore link</small></span>
           </button>
           <button role="menuitem" type="button" onClick={() => runAndClose(onOpenHelp)}>
             <HelpCircle size={18} /><span><strong>Help</strong><small>Show the quick start guide</small></span>

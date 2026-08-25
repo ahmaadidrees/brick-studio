@@ -35,16 +35,19 @@ import {
 import { requestExploreMode } from './modeCommands'
 import { OnboardingGuide, useBuilderOnboarding } from './OnboardingGuide'
 import { PartThumbnail } from './PartThumbnail'
+import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
+import { createPublishedWorldUrl } from './publishedWorlds'
 import './brick-studio.css'
 
-function useBuilderShortcuts() {
+function useBuilderShortcuts(enabled = true) {
   useEffect(() => {
+    if (!enabled) return
     const handler = (event: KeyboardEvent) => {
       const target = event.target
       if (target instanceof HTMLElement && target.matches('input, textarea, [contenteditable="true"]')) return
@@ -83,7 +86,7 @@ function useBuilderShortcuts() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [enabled])
 }
 
 function useReactiveBrickBudget() {
@@ -158,7 +161,7 @@ type HeaderProps = StudioDocumentCommands & {
   onOpenHelp: () => void
 }
 
-function Header({ onNewBuild, onImportProject, onExportProject, onOpenHelp }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onPublishWorld, onOpenHelp }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const bricks = useBrickStore((state) => state.bricks)
@@ -189,6 +192,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onOpenHelp }: He
           onNewBuild={onNewBuild}
           onImportProject={onImportProject}
           onExportProject={onExportProject}
+          onPublishWorld={onPublishWorld}
           onOpenHelp={onOpenHelp}
         />
       </div>
@@ -585,7 +589,7 @@ function Announcer() {
   return <div className="visually-hidden" data-testid="builder-announcer" aria-live="polite" aria-atomic="true">{announcement}</div>
 }
 
-function TouchExploreControls() {
+function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
   const setMove = useBrickStore((state) => state.setTouchMove)
   const addLook = useBrickStore((state) => state.addTouchLook)
   const setCameraDistance = useBrickStore((state) => state.setTouchCameraDistance)
@@ -694,7 +698,7 @@ function TouchExploreControls() {
         aria-label="Jump; tap again in the air to double jump"
       >Jump</button>
       <button className="recenter-camera" onClick={recenterCamera} aria-label="Recenter camera"><Focus size={18} /><span>Recenter</span></button>
-      <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>
+      {!readOnly && <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>}
       <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span>Drag: Camera</span><span>Scroll: Zoom</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
       <div className="touch-explore-hint" id="touch-explore-hint">Push farther to run · Drag to look · Pinch to zoom · Jump twice to flip</div>
     </div>
@@ -707,14 +711,21 @@ function ShortcutBar() {
   return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Click place · Drag orbit · ⇧Drag pan</span><span>⌘Click multi-select</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
-export type BrickStudioAppProps = StudioDocumentCommands
+export type BrickStudioAppProps = StudioDocumentCommands & {
+  publishedWorld?: { title: string; document: BrickStudioDocument }
+  onRemix?: () => void
+}
 
 export default function BrickStudioApp({
   onNewBuild,
   onImportProject,
   onExportProject,
+  onPublishWorld,
+  publishedWorld,
+  onRemix,
 }: BrickStudioAppProps = {}) {
-  useBuilderShortcuts()
+  const readOnly = Boolean(publishedWorld)
+  useBuilderShortcuts(!readOnly)
   useReactiveBrickBudget()
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
@@ -723,15 +734,34 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
-  const documentCommands = useBrickStudioDocuments({ onNewBuild, onImportProject, onExportProject })
+  const publishCurrentWorld = useCallback(async () => {
+    const title = window.prompt('Name this world', 'My Brick World')?.trim()
+    if (title === undefined) return
+    try {
+      const shareUrl = createPublishedWorldUrl(createBrickStudioDocument(useBrickStore.getState().bricks), title || undefined)
+      try { await navigator.clipboard.writeText(shareUrl) } catch { /* The link is still shown below. */ }
+      window.prompt('Share this read-only Explore link:', shareUrl)
+      useBrickStore.setState({ toast: 'Explore snapshot link copied.' })
+    } catch (error) {
+      useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not publish this world.' })
+    }
+  }, [])
+  const documentCommands = useBrickStudioDocuments({ onNewBuild, onImportProject, onExportProject, onPublishWorld: onPublishWorld ?? publishCurrentWorld }, !readOnly)
+  useLayoutEffect(() => {
+    if (!publishedWorld) return
+    useBrickStore.getState().restoreDocument(publishedWorld.document)
+    useBrickStore.getState().setMode('explore')
+  }, [publishedWorld])
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
   return (
     <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
       <div className="brick-canvas"><BrickStudioScene /><MarqueeOverlay /></div>
-      <Header
-        {...documentCommands}
-        onOpenHelp={onboarding.reopen}
-      />
+      {readOnly ? (
+        <div className="published-world-bar">
+          <div><span>Published world</span><strong>{publishedWorld?.title}</strong></div>
+          <button type="button" onClick={onRemix}>Remix this world</button>
+        </div>
+      ) : <Header {...documentCommands} onOpenHelp={onboarding.reopen} />}
       {mode === 'build' ? (
         <>
           <BuildShell compact={compact} />
@@ -739,7 +769,7 @@ export default function BrickStudioApp({
           <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
-      ) : <TouchExploreControls />}
+      ) : <TouchExploreControls readOnly={readOnly} />}
       <Toast />
       <Announcer />
     </main>
