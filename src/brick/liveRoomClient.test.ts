@@ -225,6 +225,34 @@ describe('live room synchronization', () => {
     expect(callbacks.presence.at(-1)).toHaveLength(2)
   })
 
+  it('survives synchronous socket construction failure and retries without leaking its client handle', () => {
+    vi.useFakeTimers()
+    let attempts = 0
+    const sockets: FakeSocket[] = []
+    const client = createLiveRoomClient({
+      roomId: 'ROOM1234',
+      profile: { displayName: 'Ada' },
+      clientId: 'live-test-client',
+      baseUrl: 'https://live.example',
+      store: useBrickStore,
+      reconnectDelaysMs: [25],
+      createSocket: (url) => {
+        attempts += 1
+        if (attempts === 1) throw new Error('WebSocket unavailable')
+        const socket = new FakeSocket(url)
+        sockets.push(socket)
+        return socket
+      },
+    })
+    activeClients.push(client)
+
+    expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', error: { code: 'connection_error' } })
+    vi.advanceTimersByTime(25)
+    expect(attempts).toBe(2)
+    welcome(sockets[0])
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online' })
+  })
+
   it('diffs every local brick transition with monotonic opIds and consumes its own echoes', () => {
     const { client, socket } = createHarness()
     welcome(socket())

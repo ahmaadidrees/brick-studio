@@ -577,9 +577,28 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   })
   poseSender.activate()
 
+  const scheduleReconnect = () => {
+    if (disposed || reconnectTimer !== undefined) return
+    const delay = reconnectDelays[Math.min(reconnectAttempt, reconnectDelays.length - 1)] ?? 1_000
+    reconnectAttempt += 1
+    publish({ connection: 'reconnecting' })
+    if (everOnline) options.onError?.({ code: 'reconnecting', message: 'Connection lost. Rejoining the live world…' })
+    reconnectTimer = setTimer(() => {
+      reconnectTimer = undefined
+      connect()
+    }, delay)
+  }
+
   const connect = () => {
     if (disposed) return
-    const nextSocket = createSocket(liveWebSocketUrl(baseUrl, roomId, clientId, options.ownerToken))
+    let nextSocket: LiveRoomSocketLike
+    try {
+      nextSocket = createSocket(liveWebSocketUrl(baseUrl, roomId, clientId, options.ownerToken))
+    } catch {
+      reportError('connection_error', 'The live world connection could not be opened.')
+      scheduleReconnect()
+      return
+    }
     socket = nextSocket
     socketOpen = false
     nextSocket.onopen = () => {
@@ -601,14 +620,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       socketOpen = false
       poseSender.transportClosed()
       if (disposed) return
-      const delay = reconnectDelays[Math.min(reconnectAttempt, reconnectDelays.length - 1)] ?? 1_000
-      reconnectAttempt += 1
-      publish({ connection: 'reconnecting' })
-      if (everOnline) options.onError?.({ code: 'reconnecting', message: 'Connection lost. Rejoining the live world…' })
-      reconnectTimer = setTimer(() => {
-        reconnectTimer = undefined
-        connect()
-      }, delay)
+      scheduleReconnect()
     }
   }
 
