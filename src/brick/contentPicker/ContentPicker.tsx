@@ -37,6 +37,8 @@ export type ContentPickerProps = {
   onPaletteChange?: (palette: CharacterPalette) => void
   title?: string
   description?: string
+  /** Hosts that provide their own labelled chrome (e.g. WorldAndCharacterSheet) hide the built-in header; `title` then labels the region invisibly. */
+  hideHeader?: boolean
   className?: string
 }
 
@@ -180,6 +182,7 @@ export function ContentPicker({
   onPaletteChange,
   title = 'Choose your world',
   description = 'Pick a place to build, then choose who you will explore it as.',
+  hideHeader = false,
   className,
 }: ContentPickerProps) {
   const headingId = useId()
@@ -189,13 +192,16 @@ export function ContentPicker({
   return (
     <section
       className={['content-picker', className].filter(Boolean).join(' ')}
-      aria-labelledby={headingId}
+      aria-labelledby={hideHeader ? undefined : headingId}
+      aria-label={hideHeader ? title : undefined}
     >
-      <header className="content-picker-heading">
-        <span className="content-picker-eyebrow">World setup</span>
-        <h2 id={headingId}>{title}</h2>
-        <p>{description}</p>
-      </header>
+      {!hideHeader && (
+        <header className="content-picker-heading">
+          <span className="content-picker-eyebrow">World setup</span>
+          <h2 id={headingId}>{title}</h2>
+          <p>{description}</p>
+        </header>
+      )}
 
       <div className="content-picker-section">
         <SectionHeading eyebrow="Step 1" title="Environment">

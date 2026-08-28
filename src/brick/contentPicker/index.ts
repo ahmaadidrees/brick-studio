@@ -1,4 +1,6 @@
 export { ContentPicker, default } from './ContentPicker'
+export { WorldAndCharacterSheet } from './WorldAndCharacterSheet'
+export type { WorldAndCharacterSheetProps } from './WorldAndCharacterSheet'
 export type {
   CharacterPaletteGroup,
   CharacterPaletteSwatch,
