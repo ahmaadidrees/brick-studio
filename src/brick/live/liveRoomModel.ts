@@ -4,6 +4,7 @@ import {
   LIVE_MAX_PLAYERS,
   type LiveConnectionState,
   type LivePlayer,
+  type LivePose,
   type LiveWorldMode,
 } from '../liveProtocol'
 import type { PlayerProfile } from '../types'
@@ -72,6 +73,11 @@ export type LiveRoomNotice = {
   message: string
 }
 
+export type LiveRoomRemotePose = LivePose & {
+  playerId: string
+  at: number
+}
+
 /**
  * The one snapshot the live UI renders. A `LiveRoomController` keeps this in
  * sync from server messages (`welcome`, `players`, `modeChanged`, `locked`,
@@ -90,6 +96,8 @@ export type LiveRoomSnapshot = {
   locked: boolean
   document: BrickStudioDocument | null
   players: LivePlayer[]
+  /** Latest transient exploration pose for each connected remote player. */
+  remotePoses: LiveRoomRemotePose[]
   /** Latest `reject`/`error` surfaced to the user, if any. */
   notice: LiveRoomNotice | null
 }
@@ -106,6 +114,7 @@ export function createInitialLiveRoomSnapshot(roomId: string, isOwner = false): 
     locked: false,
     document: null,
     players: [],
+    remotePoses: [],
     notice: null,
   }
 }
@@ -115,6 +124,7 @@ export type LiveRoomActions = {
   setMode: (mode: LiveWorldMode) => void
   setLocked: (locked: boolean) => void
   setProfile: (profile: PlayerProfile) => void
+  sendPose: (pose: LivePose) => void
   requestResync: () => void
   reconnect?: () => void
 }

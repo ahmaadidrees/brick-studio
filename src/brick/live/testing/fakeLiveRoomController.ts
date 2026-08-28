@@ -1,4 +1,5 @@
 import type { LiveWorldMode } from '../../liveProtocol'
+import type { LivePose } from '../../liveProtocol'
 import type { PlayerProfile } from '../../types'
 import {
   createInitialLiveRoomSnapshot,
@@ -12,6 +13,7 @@ export type FakeLiveRoomCalls = {
   setMode: LiveWorldMode[]
   setLocked: boolean[]
   setProfile: PlayerProfile[]
+  sendPose: LivePose[]
   resync: number
   reconnect: number
   disconnect: number
@@ -43,7 +45,7 @@ export function createFakeLiveRoomConnector(initial: Partial<LiveRoomSnapshot> =
       ...initial,
     }
     const listeners = new Set<() => void>()
-    const calls: FakeLiveRoomCalls = { setMode: [], setLocked: [], setProfile: [], resync: 0, reconnect: 0, disconnect: 0 }
+    const calls: FakeLiveRoomCalls = { setMode: [], setLocked: [], setProfile: [], sendPose: [], resync: 0, reconnect: 0, disconnect: 0 }
     const controller: LiveRoomController = {
       getSnapshot: () => snapshot,
       subscribe: (listener) => {
@@ -54,6 +56,7 @@ export function createFakeLiveRoomConnector(initial: Partial<LiveRoomSnapshot> =
         setMode: (mode) => { calls.setMode.push(mode) },
         setLocked: (locked) => { calls.setLocked.push(locked) },
         setProfile: (profile) => { calls.setProfile.push(profile) },
+        sendPose: (pose) => { calls.sendPose.push(pose) },
         requestResync: () => { calls.resync += 1 },
         reconnect: () => { calls.reconnect += 1 },
       },
