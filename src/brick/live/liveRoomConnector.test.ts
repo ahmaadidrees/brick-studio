@@ -178,6 +178,35 @@ describe('live room controller adapter', () => {
     expect(controller.getSnapshot().notice).toEqual({ seq: 2, code: 'room_busy', message: 'Wait for sync.' })
   })
 
+  it('clears a stale reconnect warning on recovery but preserves real errors', () => {
+    const harness = createClientHarness()
+    const controller = createLiveRoomConnector(harness.createClient)({
+      roomId: 'ROOM1234',
+      profile: { displayName: 'Ada' },
+    })
+    const listener = vi.fn()
+    controller.subscribe(listener)
+
+    harness.emitStatus({ connection: 'reconnecting' })
+    harness.emitError('reconnecting', 'Connection lost. Rejoining the live world…')
+    expect(controller.getSnapshot()).toMatchObject({
+      connection: 'reconnecting',
+      notice: { seq: 1, code: 'reconnecting' },
+    })
+
+    harness.emitStatus({ connection: 'online' })
+    expect(controller.getSnapshot()).toMatchObject({ connection: 'online', notice: null })
+
+    harness.emitError('edit_rejected', 'That brick was changed by another builder.')
+    harness.emitStatus({ connection: 'online', revision: 5 })
+    expect(controller.getSnapshot().notice).toEqual({
+      seq: 2,
+      code: 'edit_rejected',
+      message: 'That brick was changed by another builder.',
+    })
+    expect(listener).toHaveBeenCalledTimes(5)
+  })
+
   it('disconnects idempotently and ignores late callbacks or actions', () => {
     const harness = createClientHarness()
     const controller = createLiveRoomConnector(harness.createClient)({

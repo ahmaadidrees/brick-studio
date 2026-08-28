@@ -55,6 +55,12 @@ export function createLiveRoomConnector(
       }
       const remotePoses = posesChanged ? [...poses.values()] : snapshot.remotePoses
       const syncing = source.document === null || source.awaitingSnapshot
+      // `reconnecting` is a transient transport notice. The status chip announces
+      // the online recovery, so do not leave the old warning over a healthy room.
+      // All server/rejection errors remain visible until the user dismisses them.
+      const notice = source.connection === 'online' && snapshot.notice?.code === 'reconnecting'
+        ? null
+        : snapshot.notice
 
       if (
         source.connection === snapshot.connection
@@ -68,6 +74,7 @@ export function createLiveRoomConnector(
         && source.document === snapshot.document
         && samePlayers(source.players, snapshot.players)
         && remotePoses === snapshot.remotePoses
+        && notice === snapshot.notice
       ) return
 
       commit({
@@ -83,6 +90,7 @@ export function createLiveRoomConnector(
         document: source.document,
         players: source.players,
         remotePoses,
+        notice,
       })
     }
 
