@@ -39,6 +39,7 @@ export type LiveClientMessage = VersionedMessage & (
   | { type: 'replaceDocument'; opId: string; document: BrickStudioDocument }
   | { type: 'resync' }
   | { type: 'setMode'; mode: LiveWorldMode }
+  | { type: 'setLocked'; locked: boolean }
   | { type: 'setProfile'; profile: PlayerProfile }
   | ({ type: 'pose' } & LivePose)
 )
@@ -62,7 +63,7 @@ export type LiveServerMessage = VersionedMessage & (
       revision: number
       commands: LiveBrickCommand[]
     }
-  | { type: 'snapshot'; revision: number; mode: LiveWorldMode; document: BrickStudioDocument }
+  | { type: 'snapshot'; opId?: string; revision: number; mode: LiveWorldMode; document: BrickStudioDocument }
   | { type: 'reject'; opId?: string; code: string; message: string; revision: number; document: BrickStudioDocument }
   | { type: 'modeChanged'; mode: LiveWorldMode; revision: number }
   | { type: 'players'; players: LivePlayer[] }

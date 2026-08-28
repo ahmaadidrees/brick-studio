@@ -15,7 +15,7 @@ The executable types, limits, and validation rules live in `packages/brick-core`
 
 - Room links use an unguessable room id. Accounts are not required for the classroom pilot.
 - Room creation returns a separate owner capability. Guest links never contain that capability.
-- Only the owner may change Build/Explore mode, lock the room, replace the complete document, or end the room.
+- Only the owner may change Build/Explore mode, lock the room, replace the complete document, or end the room. The owner sends `setLocked` for the lock state.
 - Any connected participant may edit while the authoritative room mode is Build. No edits are accepted during Explore.
 - Profiles are guest metadata. The worker validates their size and character set but does not hardcode character catalog membership.
 
@@ -31,7 +31,7 @@ The executable types, limits, and validation rules live in `packages/brick-core`
 ## Message budgets
 
 - `commands`: at most 64 KiB serialized, at most 500 commands, and at most one command per brick id. The batch is atomic.
-- `replaceDocument`: owner-only, at most 800,000 bytes and 250 bricks, fully validated before replacement.
+- `replaceDocument`: owner-only, at most 800,000 bytes and 250 bricks, fully validated before replacement. Acceptance broadcasts the normal snapshot message with the operation id so reconnecting clients can clear the pending replacement without a second apply path.
 - `pose`: at most 2 KiB. Stationary clients send only a slow heartbeat.
 - Oversize or malformed frames receive typed errors and never partially apply.
 
