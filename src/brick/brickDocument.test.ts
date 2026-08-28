@@ -23,6 +23,8 @@ describe('Brick Studio document schema', () => {
     expect(document).toEqual({
       schemaVersion: BRICK_STUDIO_SCHEMA_VERSION,
       partLibraryVersion: BRICK_STUDIO_PART_LIBRARY_VERSION,
+      environmentId: 'classic',
+      customParts: [],
       bricks: mixed,
     })
     expect(parseBrickStudioDocument(serializeBrickStudioDocument(document))).toEqual({
@@ -34,12 +36,46 @@ describe('Brick Studio document schema', () => {
   it.each([
     ['malformed JSON', '{ nope', 'invalid-json'],
     ['oversized text', ' '.repeat(BRICK_STUDIO_MAX_JSON_LENGTH + 1), 'invalid-json'],
-    ['unsupported schema', JSON.stringify({ schemaVersion: 2, partLibraryVersion: 1, bricks: [] }), 'unsupported-schema'],
+    ['unsupported schema', JSON.stringify({ schemaVersion: 3, partLibraryVersion: 1, bricks: [] }), 'unsupported-schema'],
     ['unsupported library', JSON.stringify({ schemaVersion: 1, partLibraryVersion: 2, bricks: [] }), 'unsupported-library'],
   ])('rejects %s', (_label, serialized, code) => {
     const result = parseBrickStudioDocument(serialized)
     expect(result.ok).toBe(false)
     if (!result.ok) expect(result.error.code).toBe(code)
+  })
+
+  it('normalizes schema-v1 documents to schema v2 without losing bricks', () => {
+    const result = validateBrickStudioDocument({
+      schemaVersion: 1,
+      partLibraryVersion: 1,
+      bricks: mixed,
+    })
+
+    expect(result).toEqual({
+      ok: true,
+      document: createBrickStudioDocument(mixed),
+    })
+  })
+
+  it('validates custom definitions and permits bricks to reference them', () => {
+    const customParts = [{
+      id: 'custom_wide_ramp',
+      name: 'Wide ramp',
+      template: 'slope' as const,
+      width: 4,
+      depth: 4,
+      height: 6,
+      studs: 'auto' as const,
+    }]
+    const result = validateBrickStudioDocument(createBrickStudioDocument([
+      { ...mixed[0], id: 'custom-brick', partId: customParts[0].id },
+    ], { environmentId: 'toy-room', customParts }))
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.document.environmentId).toBe('toy-room')
+      expect(result.document.customParts).toEqual(customParts)
+    }
   })
 
   it.each([

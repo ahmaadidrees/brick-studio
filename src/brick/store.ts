@@ -9,6 +9,7 @@ import {
   type BrickStudioDocumentError,
 } from './brickDocument'
 import { BRICK_BUDGETS } from './budgets'
+import { draftIsValid as coreDraftIsValid } from './brickRules'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize, supportHeightForFootprint } from './parts'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
 import { clampExplorePitch } from './touchInput'
@@ -258,20 +259,7 @@ function selectionPatch(ids: string[]) {
 }
 
 export function draftIsValid(draft: BrickDraft, bricks: BrickInstance[], ignoredId: string | null = null) {
-  const part = BRICK_PART_MAP[draft.partId]
-  const size = rotatedSize(part, draft.rotation)
-  if (draft.x < 0 || draft.z < 0 || draft.y < 0 || draft.x + size.width > GRID_SIZE || draft.z + size.depth > GRID_SIZE) return false
-
-  for (const brick of bricks) {
-    if (brick.id === ignoredId) continue
-    const other = BRICK_PART_MAP[brick.partId]
-    const otherSize = rotatedSize(other, brick.rotation)
-    const overlapX = draft.x < brick.x + otherSize.width && draft.x + size.width > brick.x
-    const overlapZ = draft.z < brick.z + otherSize.depth && draft.z + size.depth > brick.z
-    const overlapY = draft.y < brick.y + other.height && draft.y + part.height > brick.y
-    if (overlapX && overlapZ && overlapY) return false
-  }
-  return true
+  return coreDraftIsValid(draft, bricks, ignoredId)
 }
 
 export type BrickGroupValidation = {

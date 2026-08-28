@@ -1,0 +1,15 @@
+{
+  "name": "@brick-studio/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./document": "./src/brickDocument.ts",
+    "./parts": "./src/parts.ts",
+    "./protocol": "./src/protocol.ts",
+    "./registries": "./src/registries.ts",
+    "./rules": "./src/brickRules.ts",
+    "./types": "./src/types.ts"
+  }
+}

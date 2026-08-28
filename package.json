@@ -3,11 +3,18 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": [
+    "packages/*",
+    "multiplayer/worker"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "typecheck:brick-core": "tsc -p packages/brick-core/tsconfig.json",
+    "typecheck:worker": "npm run typecheck --workspace brick-studio-race-worker",
+    "check": "npm test && npm run typecheck:brick-core && npm run typecheck:worker && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {

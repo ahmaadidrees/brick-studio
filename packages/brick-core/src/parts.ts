@@ -1,0 +1,481 @@
+import type { BrickInstance, BrickKind, BrickPart, CustomPartDefinition, CustomPartTemplate } from './types'
+
+export const STUD = 0.62
+export const PLATE_HEIGHT = 0.18
+export const GRID_SIZE = 64
+export const WINDOW_FRAME_MEMBER = 0.13
+export const DOOR_FRAME_MEMBER = 0.16
+export const EXPLORER_CAPSULE_HALF_HEIGHT = 0.18
+export const EXPLORER_CAPSULE_RADIUS = 0.18
+
+export const ARCH_LEG_MEMBER = 0.62
+export const ARCH_BEAM_MEMBER = 0.34
+export const ARCH_CHAMFER = 0.34
+export const ROUND_COLLIDER_SIDES = 12
+
+const COLLIDER_INSET = 0.035
+const PART_HEIGHT_INSET = 0.015
+const STEP_INSET = 0.03
+const STAIR_RISER_RUN = EXPLORER_CAPSULE_RADIUS
+
+export type PhysicalCuboid = {
+  shape: 'cuboid'
+  center: [number, number, number]
+  halfExtents: [number, number, number]
+}
+
+export type PhysicalConvexHull = {
+  shape: 'convexHull'
+  vertices: [number, number, number][]
+}
+
+export type PhysicalRoundCuboid = Omit<PhysicalCuboid, 'shape'> & {
+  shape: 'roundCuboid'
+  borderRadius: number
+}
+
+export type PhysicalShape = PhysicalCuboid | PhysicalRoundCuboid | PhysicalConvexHull
+
+export type FrameOpening = {
+  width: number
+  height: number
+  sillHeight: number
+}
+
+// store.ts seeds the first-run draft from BRICK_PARTS[5]; keep brick_2x4 at that index.
+export const BRICK_PARTS: BrickPart[] = [
+  { id: 'brick_1x1', name: '1 × 1 Brick', width: 1, depth: 1, height: 3, kind: 'brick', icon: '1×1' },
+  { id: 'brick_1x2', name: '1 × 2 Brick', width: 1, depth: 2, height: 3, kind: 'brick', icon: '1×2' },
+  { id: 'brick_1x4', name: '1 × 4 Brick', width: 1, depth: 4, height: 3, kind: 'brick', icon: '1×4' },
+  { id: 'brick_2x2', name: '2 × 2 Brick', width: 2, depth: 2, height: 3, kind: 'brick', icon: '2×2' },
+  { id: 'brick_2x3', name: '2 × 3 Brick', width: 2, depth: 3, height: 3, kind: 'brick', icon: '2×3' },
+  { id: 'brick_2x4', name: '2 × 4 Brick', width: 2, depth: 4, height: 3, kind: 'brick', icon: '2×4' },
+  { id: 'brick_1x3', name: '1 × 3 Brick', width: 1, depth: 3, height: 3, kind: 'brick', icon: '1×3' },
+  { id: 'brick_1x6', name: '1 × 6 Brick', width: 1, depth: 6, height: 3, kind: 'brick', icon: '1×6' },
+  { id: 'brick_2x6', name: '2 × 6 Brick', width: 2, depth: 6, height: 3, kind: 'brick', icon: '2×6' },
+  { id: 'brick_4x4', name: '4 × 4 Brick', width: 4, depth: 4, height: 3, kind: 'brick', icon: '4×4' },
+  { id: 'plate_2x4', name: '2 × 4 Plate', width: 2, depth: 4, height: 1, kind: 'plate', icon: '▱' },
+  { id: 'plate_4x6', name: '4 × 6 Plate', width: 4, depth: 6, height: 1, kind: 'plate', icon: '4×6' },
+  { id: 'plate_6x8', name: '6 × 8 Plate', width: 6, depth: 8, height: 1, kind: 'plate', icon: '6×8' },
+  { id: 'pillar_1x1', name: 'Tall Pillar', width: 1, depth: 1, height: 9, kind: 'brick', icon: '▥' },
+  { id: 'corner_2x2', name: 'Corner Brick', width: 2, depth: 2, height: 3, kind: 'corner', icon: '⌐' },
+  { id: 'round_1x1', name: 'Round Brick', width: 1, depth: 1, height: 3, kind: 'round', icon: '●' },
+  { id: 'cone_1x1', name: 'Cone', width: 1, depth: 1, height: 3, kind: 'cone', icon: '▲' },
+  { id: 'slope_2x2', name: '2 × 2 Slope', width: 2, depth: 2, height: 3, kind: 'slope', icon: '◢' },
+  { id: 'slope_inv_2x2', name: 'Overhang Wedge', width: 2, depth: 2, height: 3, kind: 'invertedSlope', icon: '◤' },
+  { id: 'stair_2x3', name: 'Three Steps', width: 2, depth: 3, height: 3, kind: 'stair', icon: '▟' },
+  { id: 'arch_1x4', name: 'Archway', width: 1, depth: 4, height: 9, kind: 'arch', icon: '∩' },
+  { id: 'window_1x4', name: 'Window Frame', width: 1, depth: 4, height: 6, kind: 'window', icon: '▣' },
+  { id: 'door_1x4', name: 'Door Frame', width: 1, depth: 4, height: 9, kind: 'door', icon: '▯' },
+]
+
+export const BRICK_PART_MAP = Object.fromEntries(BRICK_PARTS.map((part) => [part.id, part])) as Record<string, BrickPart>
+
+const CUSTOM_TEMPLATE_KIND: Record<CustomPartTemplate, BrickKind> = {
+  solid: 'brick',
+  slope: 'slope',
+  invertedSlope: 'invertedSlope',
+  corner: 'corner',
+  round: 'round',
+  cone: 'cone',
+  stairs: 'stair',
+  arch: 'arch',
+  window: 'window',
+  door: 'door',
+}
+
+export function customPartToBrickPart(definition: CustomPartDefinition): BrickPart {
+  return {
+    id: definition.id,
+    name: definition.name,
+    width: definition.width,
+    depth: definition.depth,
+    height: definition.height,
+    kind: CUSTOM_TEMPLATE_KIND[definition.template],
+    icon: '◆',
+  }
+}
+
+export function createPartMap(customParts: CustomPartDefinition[] = []): Record<string, BrickPart> {
+  return {
+    ...BRICK_PART_MAP,
+    ...Object.fromEntries(customParts.map((definition) => [definition.id, customPartToBrickPart(definition)])),
+  }
+}
+
+export const BRICK_COLORS = [
+  '#e7473c', '#ef8d32', '#f4ca3a', '#65b85a', '#2eaa9d', '#3e83d7',
+  '#6857d9', '#d765ae', '#f5eee0', '#a9b7bd', '#52636c', '#7b5238',
+]
+
+/** Rendered/collided extents of a part in world units. Both are inset so neighbours never z-fight. */
+export function partWorldSize(part: BrickPart) {
+  return {
+    width: part.width * STUD - COLLIDER_INSET,
+    depth: part.depth * STUD - COLLIDER_INSET,
+    height: part.height * PLATE_HEIGHT - PART_HEIGHT_INSET,
+  }
+}
+
+/** Thickness of a corner arm: one stud column, inset like every other outer face. */
+export function cornerArmThickness() {
+  return STUD - COLLIDER_INSET
+}
+
+/** Silhouette radius of round-profile parts: the inscribed circle of the inset footprint. */
+export function roundPartRadius(part: BrickPart) {
+  return (Math.min(part.width, part.depth) * STUD - COLLIDER_INSET) / 2
+}
+
+/** Height of the straight collar a cone stands on so it still reads as a stackable brick. */
+export function conePartBaseHeight(part: BrickPart) {
+  return Math.min(PLATE_HEIGHT, partWorldSize(part).height * 0.4)
+}
+
+/**
+ * Chamfered archway profile in part-local (z, y). The legs run full height at both
+ * depth ends; above `springHeight` a 45° chamfer narrows the opening up to the flat
+ * soffit, and the beam fills soffit → top.
+ */
+export function archProfile(part: BrickPart) {
+  const { depth, height } = partWorldSize(part)
+  const innerHalf = depth / 2 - ARCH_LEG_MEMBER
+  const soffitHeight = height - ARCH_BEAM_MEMBER
+  const chamfer = Math.min(ARCH_CHAMFER, innerHalf * 0.6, soffitHeight * 0.4)
+  return { leg: ARCH_LEG_MEMBER, innerHalf, chamfer, springHeight: soffitHeight - chamfer, soffitHeight }
+}
+
+/** Footprint cells a part actually fills, as [x, z] grid indices. Only corners skip one. */
+export function partFootprintCells(part: BrickPart): [number, number][] {
+  const cells: [number, number][] = []
+  for (let x = 0; x < part.width; x += 1) {
+    for (let z = 0; z < part.depth; z += 1) {
+      // The corner's arms cover column 0 and row 0; the far diagonal cell stays empty.
+      if (part.kind === 'corner' && x > 0 && z > 0) continue
+      cells.push([x, z])
+    }
+  }
+  return cells
+}
+
+export function rotatedSize(part: BrickPart, rotation: number) {
+  return rotation % 2 === 0
+    ? { width: part.width, depth: part.depth }
+    : { width: part.depth, depth: part.width }
+}
+
+/** Top of the tallest brick whose footprint intersects [x, x+width) × [z, z+depth), in plate units; 0 when unsupported. */
+export function supportHeightForFootprint(
+  bricks: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>[],
+  x: number,
+  z: number,
+  width: number,
+  depth: number,
+): number {
+  let top = 0
+  for (const brick of bricks) {
+    const part = BRICK_PART_MAP[brick.partId]
+    const size = rotatedSize(part, brick.rotation)
+    const overlapX = x < brick.x + size.width && x + width > brick.x
+    const overlapZ = z < brick.z + size.depth && z + depth > brick.z
+    if (overlapX && overlapZ) top = Math.max(top, brick.y + part.height)
+  }
+  return top
+}
+
+export function brickWorldPosition(brick: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>) {
+  const part = BRICK_PART_MAP[brick.partId]
+  const size = rotatedSize(part, brick.rotation)
+  return [
+    (brick.x + size.width / 2 - GRID_SIZE / 2) * STUD,
+    brick.y * PLATE_HEIGHT,
+    (brick.z + size.depth / 2 - GRID_SIZE / 2) * STUD,
+  ] as [number, number, number]
+}
+
+function cuboid(
+  width: number,
+  height: number,
+  depth: number,
+  x = 0,
+  y = height / 2,
+  z = 0,
+): PhysicalCuboid {
+  return {
+    shape: 'cuboid',
+    center: [x, y, z],
+    halfExtents: [width / 2, height / 2, depth / 2],
+  }
+}
+
+function roundCuboid(
+  width: number,
+  height: number,
+  depth: number,
+  borderRadius: number,
+  x = 0,
+  y = height / 2,
+  z = 0,
+): PhysicalRoundCuboid {
+  return {
+    shape: 'roundCuboid',
+    center: [x, y, z],
+    halfExtents: [width / 2, height / 2, depth / 2],
+    borderRadius,
+  }
+}
+
+/** A ring of hull vertices on the round-profile silhouette at height `y`. */
+function roundRingVertices(radius: number, y: number): [number, number, number][] {
+  return Array.from({ length: ROUND_COLLIDER_SIDES }, (_, index): [number, number, number] => {
+    const angle = (index / ROUND_COLLIDER_SIDES) * Math.PI * 2
+    return [radius * Math.cos(angle), y, radius * Math.sin(angle)]
+  })
+}
+
+/** Solid wedge between the arch opening and one leg/soffit corner. */
+function archChamferShape(
+  width: number,
+  profile: ReturnType<typeof archProfile>,
+  side: 1 | -1,
+): PhysicalConvexHull {
+  const outer = profile.innerHalf * side
+  const inner = (profile.innerHalf - profile.chamfer) * side
+  const { springHeight, soffitHeight } = profile
+  return {
+    shape: 'convexHull',
+    vertices: [
+      [-width / 2, springHeight, outer], [-width / 2, soffitHeight, outer], [-width / 2, soffitHeight, inner],
+      [width / 2, springHeight, outer], [width / 2, soffitHeight, outer], [width / 2, soffitHeight, inner],
+    ],
+  }
+}
+
+function riserRamp(
+  width: number,
+  previousHeight: number,
+  nextHeight: number,
+  front: number,
+): PhysicalConvexHull {
+  const x0 = -width / 2
+  const x1 = width / 2
+  const z0 = front - STAIR_RISER_RUN
+  const z1 = front + STEP_INSET / 2
+  return {
+    shape: 'convexHull',
+    vertices: [
+      [x0, previousHeight, z0], [x0, previousHeight, z1], [x0, nextHeight, z1],
+      [x1, previousHeight, z0], [x1, previousHeight, z1], [x1, nextHeight, z1],
+    ],
+  }
+}
+
+/**
+ * Returns the collision pieces in part-local coordinates. The local origin is
+ * the center of the part footprint at its bottom face, matching the rendered
+ * brick geometry.
+ */
+export function partPhysicalShapes(part: BrickPart): PhysicalShape[] {
+  const { width, depth, height } = partWorldSize(part)
+
+  if (part.kind === 'corner') {
+    // Two bars that overlap in the shared cell, so the L has no seam down its elbow.
+    const arm = cornerArmThickness()
+    return [
+      cuboid(arm, height, depth, -(width - arm) / 2, height / 2, 0),
+      cuboid(width, height, arm, 0, height / 2, -(depth - arm) / 2),
+    ]
+  }
+
+  if (part.kind === 'round') {
+    const radius = roundPartRadius(part)
+    return [{
+      shape: 'convexHull',
+      vertices: [...roundRingVertices(radius, 0), ...roundRingVertices(radius, height)],
+    }]
+  }
+
+  if (part.kind === 'cone') {
+    const radius = roundPartRadius(part)
+    const base = conePartBaseHeight(part)
+    return [{
+      shape: 'convexHull',
+      vertices: [
+        ...roundRingVertices(radius, 0),
+        ...roundRingVertices(radius, base),
+        [0, height, 0],
+      ],
+    }]
+  }
+
+  if (part.kind === 'arch') {
+    const profile = archProfile(part)
+    const legZ = depth / 2 - profile.leg / 2
+    return [
+      cuboid(width, height, profile.leg, 0, height / 2, -legZ),
+      cuboid(width, height, profile.leg, 0, height / 2, legZ),
+      cuboid(width, height - profile.soffitHeight, depth, 0, (height + profile.soffitHeight) / 2, 0),
+      archChamferShape(width, profile, 1),
+      archChamferShape(width, profile, -1),
+    ]
+  }
+
+  if (part.kind === 'invertedSlope') {
+    const x0 = -width / 2
+    const x1 = width / 2
+    const z0 = -depth / 2
+    const z1 = depth / 2
+    return [{
+      shape: 'convexHull',
+      vertices: [
+        [x0, height, z0], [x0, height, z1], [x0, 0, z1],
+        [x1, height, z0], [x1, height, z1], [x1, 0, z1],
+      ],
+    }]
+  }
+
+  if (part.kind === 'window') {
+    const member = WINDOW_FRAME_MEMBER
+    return [
+      roundCuboid(width, member, depth, Math.min(0.055, member / 2 - 0.005), 0, member / 2, 0),
+      cuboid(width, member, depth, 0, height - member / 2, 0),
+      cuboid(width, height - member * 2, member, 0, height / 2, -depth / 2 + member / 2),
+      cuboid(width, height - member * 2, member, 0, height / 2, depth / 2 - member / 2),
+    ]
+  }
+
+  if (part.kind === 'door') {
+    const member = DOOR_FRAME_MEMBER
+    return [
+      cuboid(width, height, member, 0, height / 2, -depth / 2 + member / 2),
+      cuboid(width, height, member, 0, height / 2, depth / 2 - member / 2),
+      cuboid(width, member, depth, 0, height - member / 2, 0),
+    ]
+  }
+
+  if (part.kind === 'stair') {
+    return Array.from({ length: part.depth }, (_, step): PhysicalShape[] => {
+      const stepHeight = ((step + 1) / part.depth) * height
+      const stepZ = (step - (part.depth - 1) / 2) * STUD
+      const stepCollider = cuboid(
+        width,
+        stepHeight,
+        STUD - STEP_INSET,
+        0,
+        stepHeight / 2,
+        stepZ,
+      )
+      const ramp = riserRamp(
+        width,
+        (step / part.depth) * height,
+        stepHeight,
+        stepZ - (STUD - STEP_INSET) / 2,
+      )
+      return [stepCollider, ramp]
+    }).flat()
+  }
+
+  if (part.kind === 'slope') {
+    const x0 = -width / 2
+    const x1 = width / 2
+    const z0 = -depth / 2
+    const z1 = depth / 2
+    return [{
+      shape: 'convexHull',
+      vertices: [
+        [x0, 0, z0], [x0, 0, z1], [x0, height, z1],
+        [x1, 0, z0], [x1, 0, z1], [x1, height, z1],
+      ],
+    }]
+  }
+
+  return [cuboid(width, height, depth)]
+}
+
+export function frameOpening(part: BrickPart): FrameOpening | null {
+  const { depth, height } = partWorldSize(part)
+  if (part.kind === 'arch') {
+    const profile = archProfile(part)
+    // The full-span rectangle under the chamfers; above the spring line the arch narrows.
+    return { width: profile.innerHalf * 2, height: profile.springHeight, sillHeight: 0 }
+  }
+  if (part.kind === 'window') {
+    return {
+      width: depth - WINDOW_FRAME_MEMBER * 2,
+      height: height - WINDOW_FRAME_MEMBER * 2,
+      sillHeight: WINDOW_FRAME_MEMBER,
+    }
+  }
+  if (part.kind === 'door') {
+    return {
+      width: depth - DOOR_FRAME_MEMBER * 2,
+      height: height - DOOR_FRAME_MEMBER,
+      sillHeight: 0,
+    }
+  }
+  return null
+}
+
+export function rotateLocalPoint(
+  point: [number, number, number],
+  rotation: BrickInstance['rotation'],
+): [number, number, number] {
+  const quarterTurn = rotation * Math.PI / 2
+  const cosine = Math.round(Math.cos(quarterTurn))
+  const sine = Math.round(Math.sin(quarterTurn))
+  const x = point[0] * cosine + point[2] * sine
+  const z = -point[0] * sine + point[2] * cosine
+  return [
+    Object.is(x, -0) ? 0 : x,
+    point[1],
+    Object.is(z, -0) ? 0 : z,
+  ]
+}
+
+/** Converts local collision pieces into axis-aligned world-space pieces. */
+export function brickPhysicalShapes(brick: BrickInstance): PhysicalShape[] {
+  const origin = brickWorldPosition(brick)
+  const rotated = brick.rotation % 2 === 1
+
+  return partPhysicalShapes(BRICK_PART_MAP[brick.partId]).map((shape) => {
+    if (shape.shape === 'convexHull') {
+      return {
+        shape: 'convexHull',
+        vertices: shape.vertices.map((vertex) => {
+          const point = rotateLocalPoint(vertex, brick.rotation)
+          return [point[0] + origin[0], point[1] + origin[1], point[2] + origin[2]]
+        }),
+      }
+    }
+
+    const center = rotateLocalPoint(shape.center, brick.rotation)
+    const halfExtents: PhysicalCuboid['halfExtents'] = rotated
+      ? [shape.halfExtents[2], shape.halfExtents[1], shape.halfExtents[0]]
+      : [...shape.halfExtents]
+    return {
+      ...shape,
+      center: [center[0] + origin[0], center[1] + origin[1], center[2] + origin[2]],
+      halfExtents,
+    }
+  })
+}
+
+/** Height of a walkable special-part surface at a local z coordinate. */
+export function walkableSurfaceHeight(part: BrickPart, localZ: number) {
+  const height = partWorldSize(part).height
+  if (part.kind === 'slope') {
+    const depth = partWorldSize(part).depth
+    return Math.min(height, Math.max(0, ((localZ + depth / 2) / depth) * height))
+  }
+  if (part.kind === 'cone') {
+    // Along the cone's centre line: apex at the axis, falling to the collar rim.
+    const base = conePartBaseHeight(part)
+    const toAxis = Math.max(0, 1 - Math.abs(localZ) / roundPartRadius(part))
+    return base + (height - base) * toAxis
+  }
+  if (part.kind === 'stair') {
+    const step = Math.min(part.depth - 1, Math.max(0, Math.floor(localZ / STUD + part.depth / 2)))
+    return ((step + 1) / part.depth) * height
+  }
+  return height
+}
