@@ -189,6 +189,21 @@ describe('live brick command helpers', () => {
       'explore',
     )).toMatchObject({ selectedIds: ['a'], selectedId: 'a', movingId: null, draft: null, mode: 'explore' })
   })
+
+  it('applies field-specific commands without clobbering concurrent brick properties', () => {
+    const current = brick('a', { x: 2, y: 3, z: 4, rotation: 1, color: '#65b85a' })
+    const stale = brick('a', { x: 20, y: 6, z: 22, rotation: 0, color: '#e7473c' })
+
+    expect(applyLiveCommands([current], [{ op: 'move', brick: stale }])).toEqual([
+      { ...current, x: 20, y: 6, z: 22 },
+    ])
+    expect(applyLiveCommands([current], [{ op: 'rotate', brick: stale }])).toEqual([
+      { ...current, rotation: 0 },
+    ])
+    expect(applyLiveCommands([current], [{ op: 'recolor', brick: stale }])).toEqual([
+      { ...current, color: '#e7473c' },
+    ])
+  })
 })
 
 describe('live room synchronization', () => {
@@ -229,9 +244,28 @@ describe('live room synchronization', () => {
   it('applies remote commands without echoing and resyncs a revision gap', () => {
     const { client, socket } = createHarness()
     welcome(socket())
+    useBrickStore.setState({
+      undoStack: [{
+        deltas: [],
+        selectionBefore: [],
+        selectionAfter: [],
+        label: 'Local edit',
+        group: null,
+        recordedAt: 1,
+      }],
+      redoStack: [{
+        deltas: [],
+        selectionBefore: [],
+        selectionAfter: [],
+        label: 'Local redo',
+        group: null,
+        recordedAt: 1,
+      }],
+    })
     const sentBefore = socket().sent.length
     socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer-client#1', revision: 1, commands: [{ op: 'place', brick: brick('remote') }] })
     expect(useBrickStore.getState().bricks).toEqual([brick('remote')])
+    expect(useBrickStore.getState()).toMatchObject({ undoStack: [], redoStack: [] })
     expect(socket().sent).toHaveLength(sentBefore)
 
     socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer-client#3', revision: 3, commands: [{ op: 'place', brick: brick('skipped', { x: 30, z: 30 }) }] })

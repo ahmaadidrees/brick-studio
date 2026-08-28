@@ -201,9 +201,18 @@ export function applyLiveCommands(bricks: BrickInstance[], commands: LiveBrickCo
     }
     const incoming = cloneBrick(command.brick)
     const index = next.findIndex((brick) => brick.id === incoming.id)
-    next = index < 0
-      ? [...next, incoming]
-      : next.map((brick, position) => position === index ? incoming : brick)
+    if (index < 0 || command.op === 'place' || command.op === 'update') {
+      next = index < 0
+        ? [...next, incoming]
+        : next.map((brick, position) => position === index ? incoming : brick)
+      continue
+    }
+    next = next.map((brick, position) => {
+      if (position !== index) return brick
+      if (command.op === 'move') return { ...brick, x: incoming.x, y: incoming.y, z: incoming.z }
+      if (command.op === 'rotate') return { ...brick, rotation: incoming.rotation }
+      return { ...brick, color: incoming.color }
+    })
   }
   return next
 }
@@ -484,7 +493,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           bricks: applyLiveCommands(canonicalDocument.bricks, message.commands),
         }
         publish({ revision: message.revision, pendingOperations: pending.size })
-        refreshFromCanonical(own ? 'local' : 'remote')
+        refreshFromCanonical(own ? 'local' : 'remote', !own)
         return
       }
       case 'snapshot': {
