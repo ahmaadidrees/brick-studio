@@ -1,6 +1,20 @@
-export interface Env {
+import { LIVE_MAX_DOCUMENT_BYTES } from "@brick-studio/core";
+import { DurableObject } from "cloudflare:workers";
+import {
+  WorldRoom,
+  newOwnerToken,
+  newWorldId,
+  ownerTokenVerifier,
+  validWorldId,
+  validateCreateWorldRequest,
+  type WorldRoomEnv,
+} from "./worldRoom";
+
+export interface Env extends WorldRoomEnv {
   RACE_ROOMS: DurableObjectNamespace<RaceRoom>;
 }
+
+export { WorldRoom };
 
 type RoomStatus = "waiting" | "countdown" | "racing";
 
@@ -29,6 +43,7 @@ interface SocketAttachment {
 
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 800_000;
+const MAX_WORLD_CREATE_BODY_BYTES = LIVE_MAX_DOCUMENT_BYTES + 16 * 1024;
 const MAX_MESSAGE_BYTES = 2_048;
 const MAX_PLAYERS = 30;
 const MAX_MESSAGES_PER_SECOND = 30;
@@ -83,11 +98,16 @@ function roomRoute(pathname: string): { roomId: string; connect: boolean } | nul
   return match ? { roomId: match[1], connect: Boolean(match[2]) } : null;
 }
 
-async function readJson(request: Request): Promise<unknown> {
+function worldRoute(pathname: string): { roomId: string; connect: boolean } | null {
+  const match = pathname.match(/^\/worlds\/([a-f0-9]{32})(\/connect)?$/);
+  return match ? { roomId: match[1], connect: Boolean(match[2]) } : null;
+}
+
+async function readJson(request: Request, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
   const length = Number(request.headers.get("content-length") || 0);
-  if (length > MAX_BODY_BYTES) throw new Error("payload_too_large");
+  if (length > maxBytes) throw new Error("payload_too_large");
   const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) throw new Error("payload_too_large");
+  if (new TextEncoder().encode(text).byteLength > maxBytes) throw new Error("payload_too_large");
   return JSON.parse(text);
 }
 
@@ -98,6 +118,47 @@ export default {
     const cors = corsHeaders(origin);
     if (origin && !allowedOrigin(origin)) return json({ error: "origin_not_allowed" }, 403);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+    if (request.method === "POST" && url.pathname === "/worlds") {
+      let input: unknown;
+      try { input = await readJson(request, MAX_WORLD_CREATE_BODY_BYTES); }
+      catch (error) {
+        return json({ error: error instanceof Error ? error.message : "invalid_json" }, 400, cors);
+      }
+      const validated = validateCreateWorldRequest(input);
+      if (!validated.ok) return json({ error: validated.code, message: validated.message }, 400, cors);
+      const roomId = newWorldId();
+      const ownerToken = newOwnerToken();
+      const verifier = await ownerTokenVerifier(ownerToken);
+      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(roomId));
+      const response = await stub.fetch("https://world.internal/init", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-world-init": "1" },
+        body: JSON.stringify({
+          roomId,
+          title: validated.value.title,
+          document: validated.value.document,
+          initialOwnerProfile: validated.value.profile,
+          ownerTokenVerifier: verifier,
+        }),
+      });
+      if (!response.ok) return json({ error: "world_creation_failed" }, 500, cors);
+      return json({ roomId, ownerToken }, 201, cors);
+    }
+
+    const liveRoute = worldRoute(url.pathname);
+    if (liveRoute) {
+      if (!validWorldId(liveRoute.roomId)) return json({ error: "not_found" }, 404, cors);
+      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, cors);
+      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(liveRoute.roomId));
+      const internalUrl = new URL(request.url);
+      internalUrl.hostname = "world.internal";
+      const response = await stub.fetch(new Request(internalUrl, request));
+      if (response.status === 101) return response;
+      const outgoing = new Response(response.body, response);
+      for (const [key, value] of Object.entries(cors)) outgoing.headers.set(key, String(value));
+      return outgoing;
+    }
 
     if (request.method === "POST" && url.pathname === "/rooms") {
       let input: unknown;
@@ -364,4 +425,3 @@ export class RaceRoom extends DurableObject<Env> {
     if (scheduleAlarm) await this.ctx.storage.setAlarm(this.record.expiresAt);
   }
 }
-import { DurableObject } from "cloudflare:workers";

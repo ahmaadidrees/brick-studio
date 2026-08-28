@@ -2,14 +2,28 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "brick-studio-multiplayer",
   "main": "src/index.ts",
-  "compatibility_date": "2026-08-24",
+  "compatibility_date": "2026-08-27",
   "durable_objects": {
     "bindings": [
-      { "name": "RACE_ROOMS", "class_name": "RaceRoom" }
+      { "name": "RACE_ROOMS", "class_name": "RaceRoom" },
+      { "name": "WORLD_ROOMS", "class_name": "WorldRoom" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["RaceRoom"] }
+    { "tag": "v1", "new_sqlite_classes": ["RaceRoom"] },
+    { "tag": "v2", "new_sqlite_classes": ["WorldRoom"] }
   ],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  "env": {
+    "staging": {
+      "name": "brick-studio-multiplayer-staging",
+      "durable_objects": {
+        "bindings": [
+          { "name": "RACE_ROOMS", "class_name": "RaceRoom" },
+          { "name": "WORLD_ROOMS", "class_name": "WorldRoom" }
+        ]
+      },
+      "observability": { "enabled": true }
+    }
+  }
 }

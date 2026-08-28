@@ -6,11 +6,19 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "test": "vitest run --config vitest.config.ts --max-workers=1 --no-isolate",
+    "test:watch": "vitest --config vitest.config.ts --max-workers=1 --no-isolate",
+    "typecheck": "tsc --noEmit && tsc -p test/tsconfig.json --noEmit",
+    "dry-run": "wrangler deploy --dry-run"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.1.1",
     "@cloudflare/workers-types": "^5.20260825.1",
     "typescript": "^5.9.2",
+    "vitest": "^4.1.10",
     "wrangler": "^4.126.0"
+  },
+  "dependencies": {
+    "@brick-studio/core": "0.1.0"
   }
 }

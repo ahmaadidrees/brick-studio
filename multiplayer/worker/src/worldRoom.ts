@@ -1,0 +1,763 @@
+import {
+  BRICK_STUDIO_MAX_BRICKS,
+  LIVE_MAX_COMMAND_BYTES,
+  LIVE_MAX_COMMANDS,
+  LIVE_MAX_DISPLAY_NAME_LENGTH,
+  LIVE_MAX_DOCUMENT_BYTES,
+  LIVE_MAX_PLAYERS,
+  LIVE_MAX_POSE_BYTES,
+  LIVE_OP_ID_PATTERN,
+  LIVE_PROTOCOL_VERSION,
+  validateBrickStudioDocument,
+  type BrickInstance,
+  type BrickStudioDocument,
+  type CreateLiveWorldRequest,
+  type LiveBrickCommand,
+  type LivePlayer,
+  type LivePose,
+  type LiveServerMessage,
+  type LiveWorldMode,
+  type PlayerProfile,
+} from "@brick-studio/core";
+import { DurableObject } from "cloudflare:workers";
+
+export interface WorldRoomEnv {
+  WORLD_ROOMS: DurableObjectNamespace<WorldRoom>;
+}
+
+type CachedOperationOutcome =
+  | { opId: string; type: "apply"; revision: number }
+  | { opId: string; type: "replace"; revision: number }
+  | { opId: string; type: "reject"; code: string; message: string };
+
+type WorldRoomRecord = {
+  roomId: string;
+  title: string;
+  document: BrickStudioDocument;
+  revision: number;
+  mode: LiveWorldMode;
+  locked: boolean;
+  ownerTokenVerifier: string;
+  initialOwnerProfile: PlayerProfile;
+  profiles: Record<string, PlayerProfile>;
+  operationOutcomes: Record<string, CachedOperationOutcome[]>;
+  expiresAt: number;
+};
+
+type WorldSocketAttachment = {
+  playerId: string;
+  isOwner: boolean;
+  connectedAt: number;
+  lastPoseAt: number;
+  messageWindowAt: number;
+  messageCount: number;
+};
+
+type SnapshotMessage = Extract<LiveServerMessage, { type: "snapshot" }>;
+
+type ValidationResult<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
+
+const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+const MAX_MESSAGES_PER_SECOND = 30;
+const MIN_POSE_INTERVAL_MS = 45;
+const MAX_PROFILE_BYTES = 2 * 1024;
+const MAX_PROFILE_PALETTE_ENTRIES = 16;
+const MAX_PROFILE_CACHE = 64;
+const MAX_OUTCOMES_PER_PLAYER = 128;
+const MAX_FRAME_BYTES = LIVE_MAX_DOCUMENT_BYTES + 4 * 1024;
+const PLAYER_ID_PATTERN = /^[A-Za-z0-9_-]{6,48}$/;
+const PROFILE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
+const PALETTE_KEY_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
+const COLOR_PATTERN = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
+const DISPLAY_NAME_PATTERN = /^[\p{L}\p{N} .,'’_-]+$/u;
+const WORLD_ID_PATTERN = /^[a-f0-9]{32}$/;
+
+const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
+  status,
+  headers: { "content-type": "application/json; charset=utf-8" },
+});
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function encodedBytes(value: unknown): number {
+  return new TextEncoder().encode(typeof value === "string" ? value : JSON.stringify(value)).byteLength;
+}
+
+function cloneDocument(document: BrickStudioDocument): BrickStudioDocument {
+  return {
+    ...document,
+    customParts: document.customParts.map((part) => ({ ...part })),
+    bricks: document.bricks.map((brick) => ({ ...brick })),
+  };
+}
+
+function fail<T>(code: string, message: string): ValidationResult<T> {
+  return { ok: false, code, message };
+}
+
+export function validWorldId(value: string): boolean {
+  return WORLD_ID_PATTERN.test(value);
+}
+
+export function newWorldId(): string {
+  return randomHex(16);
+}
+
+export function newOwnerToken(): string {
+  return randomHex(32);
+}
+
+function randomHex(bytes: number): string {
+  const data = crypto.getRandomValues(new Uint8Array(bytes));
+  return Array.from(data, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function ownerTokenVerifier(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function safeVerifierEqual(first: string, second: string): boolean {
+  if (first.length !== second.length) return false;
+  let difference = 0;
+  for (let index = 0; index < first.length; index += 1) {
+    difference |= first.charCodeAt(index) ^ second.charCodeAt(index);
+  }
+  return difference === 0;
+}
+
+export function sanitizeProfile(value: unknown): ValidationResult<PlayerProfile> {
+  if (!isRecord(value) || encodedBytes(value) > MAX_PROFILE_BYTES) {
+    return fail("invalid_profile", "The player profile is missing or too large.");
+  }
+  if (typeof value.displayName !== "string") {
+    return fail("invalid_profile", "A display name is required.");
+  }
+  const displayName = value.displayName.normalize("NFKC").replace(/\s+/g, " ").trim();
+  if (!displayName
+      || [...displayName].length > LIVE_MAX_DISPLAY_NAME_LENGTH
+      || !DISPLAY_NAME_PATTERN.test(displayName)) {
+    return fail("invalid_profile", "The display name contains unsupported characters or is too long.");
+  }
+
+  let characterId: string | undefined;
+  if (value.characterId !== undefined) {
+    if (typeof value.characterId !== "string" || !PROFILE_ID_PATTERN.test(value.characterId)) {
+      return fail("invalid_profile", "The character id is invalid.");
+    }
+    characterId = value.characterId;
+  }
+
+  let palette: Record<string, string> | undefined;
+  if (value.palette !== undefined) {
+    if (!isRecord(value.palette)) return fail("invalid_profile", "The profile palette is invalid.");
+    const entries = Object.entries(value.palette);
+    if (entries.length > MAX_PROFILE_PALETTE_ENTRIES) {
+      return fail("invalid_profile", "The profile palette has too many entries.");
+    }
+    palette = {};
+    for (const [key, color] of entries) {
+      if (!PALETTE_KEY_PATTERN.test(key) || typeof color !== "string" || !COLOR_PATTERN.test(color)) {
+        return fail("invalid_profile", "The profile palette contains an invalid entry.");
+      }
+      palette[key] = color.toLowerCase();
+    }
+  }
+
+  return {
+    ok: true,
+    value: {
+      displayName,
+      ...(characterId ? { characterId } : {}),
+      ...(palette ? { palette } : {}),
+    },
+  };
+}
+
+export function validateCreateWorldRequest(value: unknown): ValidationResult<{
+  title: string;
+  document: BrickStudioDocument;
+  profile: PlayerProfile;
+}> {
+  if (!isRecord(value)) return fail("invalid_world", "The live world request must be an object.");
+  const request = value as Partial<CreateLiveWorldRequest>;
+  if (typeof request.title !== "string") return fail("invalid_world", "A world title is required.");
+  const title = request.title.normalize("NFKC").replace(/\s+/g, " ").trim();
+  if (!title || [...title].length > 100) return fail("invalid_world", "The world title is invalid.");
+  if (encodedBytes(request.document) > LIVE_MAX_DOCUMENT_BYTES) {
+    return fail("payload_too_large", "The world document exceeds the live-room byte limit.");
+  }
+  const document = validateBrickStudioDocument(request.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
+  if (!document.ok) return fail(document.error.code, document.error.message);
+  const profile = sanitizeProfile(request.profile);
+  if (!profile.ok) return profile;
+  return { ok: true, value: { title, document: document.document, profile: profile.value } };
+}
+
+function validateCommands(value: unknown, document: BrickStudioDocument): ValidationResult<{
+  commands: LiveBrickCommand[];
+  document: BrickStudioDocument;
+}> {
+  if (!Array.isArray(value) || value.length === 0 || value.length > LIVE_MAX_COMMANDS) {
+    return fail("invalid_batch", `Command batches must contain 1-${LIVE_MAX_COMMANDS} commands.`);
+  }
+
+  const existing = new Map(document.bricks.map((brick) => [brick.id, brick]));
+  const touched = new Set<string>();
+  const deleted = new Set<string>();
+  const replacements = new Map<string, BrickInstance>();
+  const additions: BrickInstance[] = [];
+  const commands: LiveBrickCommand[] = [];
+
+  for (const raw of value) {
+    if (!isRecord(raw) || typeof raw.op !== "string") {
+      return fail("invalid_command", "A command in the batch is malformed.");
+    }
+    if (raw.op === "delete") {
+      if (typeof raw.id !== "string" || !raw.id || raw.id.length > 128) {
+        return fail("invalid_command", "A delete command has an invalid brick id.");
+      }
+      if (touched.has(raw.id)) return fail("conflicting_batch", "A batch may only touch each brick once.");
+      if (!existing.has(raw.id)) return fail("unknown_brick", "That brick was removed by another builder.");
+      touched.add(raw.id);
+      deleted.add(raw.id);
+      commands.push({ op: "delete", id: raw.id });
+      continue;
+    }
+    if (!["place", "move", "rotate", "recolor", "update"].includes(raw.op)
+        || !isRecord(raw.brick)
+        || typeof raw.brick.id !== "string") {
+      return fail("invalid_command", "A command in the batch is malformed.");
+    }
+    const op = raw.op as Exclude<LiveBrickCommand["op"], "delete">;
+    const id = raw.brick.id;
+    if (touched.has(id)) return fail("conflicting_batch", "A batch may only touch each brick once.");
+    touched.add(id);
+    const brick = { ...raw.brick } as unknown as BrickInstance;
+    if (op === "place") {
+      if (existing.has(id)) return fail("duplicate_id", "A placed brick reuses an existing id.");
+      additions.push(brick);
+    } else {
+      if (!existing.has(id)) return fail("unknown_brick", "That brick was removed by another builder.");
+      replacements.set(id, brick);
+    }
+    commands.push({ op, brick });
+  }
+
+  const nextBricks = document.bricks
+    .filter((brick) => !deleted.has(brick.id))
+    .map((brick) => replacements.get(brick.id) ?? { ...brick });
+  nextBricks.push(...additions);
+  const validated = validateBrickStudioDocument({ ...document, bricks: nextBricks }, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
+  if (!validated.ok) return fail(validated.error.code, validated.error.message);
+  const normalizedById = new Map(validated.document.bricks.map((brick) => [brick.id, brick]));
+  const normalizedCommands = commands.map((command): LiveBrickCommand => command.op === "delete"
+    ? command
+    : { op: command.op, brick: { ...normalizedById.get(command.brick.id)! } });
+  return { ok: true, value: { commands: normalizedCommands, document: validated.document } };
+}
+
+export class WorldRoom extends DurableObject<WorldRoomEnv> {
+  private record: WorldRoomRecord | null = null;
+  private lastPersistedTouch = 0;
+
+  constructor(ctx: DurableObjectState, env: WorldRoomEnv) {
+    super(ctx, env);
+    this.ctx.blockConcurrencyWhile(async () => {
+      this.record = (await this.ctx.storage.get<WorldRoomRecord>("world")) ?? null;
+      this.lastPersistedTouch = Date.now();
+    });
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const url = new URL(request.url);
+    if (request.method === "POST" && url.pathname === "/init" && request.headers.get("x-world-init") === "1") {
+      if (this.record) return json({ error: "already_exists" }, 409);
+      const input = await request.json() as Partial<WorldRoomRecord>;
+      const initial = validateCreateWorldRequest({
+        title: input.title,
+        document: input.document,
+        profile: input.initialOwnerProfile,
+      });
+      if (!initial.ok
+          || typeof input.roomId !== "string"
+          || !validWorldId(input.roomId)
+          || typeof input.ownerTokenVerifier !== "string"
+          || !/^[a-f0-9]{64}$/.test(input.ownerTokenVerifier)) {
+        return json({ error: initial.ok ? "invalid_world" : initial.code }, 400);
+      }
+      this.record = {
+        roomId: input.roomId,
+        title: initial.value.title,
+        document: initial.value.document,
+        revision: 0,
+        mode: "build",
+        locked: false,
+        ownerTokenVerifier: input.ownerTokenVerifier,
+        initialOwnerProfile: initial.value.profile,
+        profiles: {},
+        operationOutcomes: {},
+        expiresAt: Date.now() + ROOM_TTL_MS,
+      };
+      await this.persist();
+      return json({ ok: true }, 201);
+    }
+    if (!this.record) return json({ error: "world_not_found" }, 404);
+    if (url.pathname.endsWith("/connect")) return this.connectSocket(request, url);
+    if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+    return json(this.publicState());
+  }
+
+  private async connectSocket(request: Request, url: URL): Promise<Response> {
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+      return json({ error: "websocket_required" }, 426);
+    }
+    const playerId = url.searchParams.get("playerId") ?? "";
+    if (!PLAYER_ID_PATTERN.test(playerId)) return json({ error: "invalid_player_id" }, 400);
+    const suppliedToken = url.searchParams.get("ownerToken") ?? "";
+    const suppliedVerifier = suppliedToken ? await ownerTokenVerifier(suppliedToken) : "";
+    const isOwner = Boolean(suppliedVerifier && safeVerifierEqual(suppliedVerifier, this.record!.ownerTokenVerifier));
+    const existing = this.openSockets().find((socket) => this.attachment(socket)?.playerId === playerId);
+    const returningPlayer = Boolean(this.record!.profiles[playerId]);
+    if (this.record!.locked && !isOwner && !existing && !returningPlayer) {
+      return json({ error: "world_locked" }, 403);
+    }
+    if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existing) return json({ error: "world_full" }, 429);
+    if (existing) existing.close(4001, "Reconnected elsewhere");
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    const now = Date.now();
+    const attachment: WorldSocketAttachment = {
+      playerId,
+      isOwner,
+      connectedAt: now,
+      lastPoseAt: 0,
+      messageWindowAt: now,
+      messageCount: 0,
+    };
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment(attachment);
+    if (!this.record!.profiles[playerId]) {
+      this.record!.profiles[playerId] = isOwner
+        ? { ...this.record!.initialOwnerProfile }
+        : { displayName: "Builder" };
+      this.pruneProfileCache();
+    }
+    await this.persist();
+    this.send(server, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "welcome",
+      roomId: this.record!.roomId,
+      playerId,
+      isOwner,
+      revision: this.record!.revision,
+      mode: this.record!.mode,
+      locked: this.record!.locked,
+      document: cloneDocument(this.record!.document),
+      players: this.players(),
+    });
+    this.broadcastPlayers();
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    const bytes = typeof message === "string" ? encodedBytes(message) : message.byteLength;
+    if (bytes > MAX_FRAME_BYTES) return this.sendError(socket, "message_too_large", "The live-world message is too large.");
+    if (typeof message !== "string") return this.sendError(socket, "text_messages_only", "Only JSON text messages are accepted.");
+    const attachment = this.attachment(socket);
+    if (!attachment || !this.record) return socket.close(1011, "Missing live-world session");
+    const now = Date.now();
+    if (now - attachment.messageWindowAt >= 1000) {
+      attachment.messageWindowAt = now;
+      attachment.messageCount = 0;
+    }
+    attachment.messageCount += 1;
+    socket.serializeAttachment(attachment);
+    if (attachment.messageCount > MAX_MESSAGES_PER_SECOND) {
+      return this.sendError(socket, "rate_limited", "Too many messages were sent in one second.");
+    }
+
+    let data: Record<string, unknown>;
+    try { data = JSON.parse(message) as Record<string, unknown>; }
+    catch { return this.sendError(socket, "invalid_json", "Messages must be valid JSON."); }
+    if (!isRecord(data) || data.v !== LIVE_PROTOCOL_VERSION || typeof data.type !== "string") {
+      return this.sendError(socket, "unsupported_protocol", `This room uses live protocol v${LIVE_PROTOCOL_VERSION}.`);
+    }
+
+    switch (data.type) {
+      case "commands":
+        await this.handleCommands(socket, attachment, data, bytes);
+        break;
+      case "replaceDocument":
+        await this.handleReplaceDocument(socket, attachment, data, bytes);
+        break;
+      case "resync":
+        this.sendSnapshot(socket);
+        break;
+      case "setMode":
+        await this.handleSetMode(socket, attachment, data);
+        break;
+      case "setLocked":
+        await this.handleSetLocked(socket, attachment, data);
+        break;
+      case "setProfile":
+        await this.handleSetProfile(socket, attachment, data);
+        break;
+      case "pose":
+        this.handlePose(socket, attachment, data, bytes, now);
+        break;
+      default:
+        this.sendError(socket, "unknown_message", "The live-world message type is unknown.");
+        return;
+    }
+    await this.touch();
+  }
+
+  async webSocketClose(_socket: WebSocket, _code: number, _reason: string): Promise<void> {
+    if (!this.record) return;
+    this.broadcastPlayers();
+    await this.touch();
+  }
+
+  async webSocketError(socket: WebSocket): Promise<void> {
+    socket.close(1011, "WebSocket error");
+    if (this.record) this.broadcastPlayers();
+  }
+
+  async alarm(): Promise<void> {
+    if (!this.record) return;
+    if (Date.now() >= this.record.expiresAt) {
+      for (const socket of this.ctx.getWebSockets()) socket.close(4000, "Live world expired");
+      await this.ctx.storage.deleteAll();
+      this.record = null;
+      return;
+    }
+    await this.ctx.storage.setAlarm(this.record.expiresAt);
+  }
+
+  private async handleCommands(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    data: Record<string, unknown>,
+    bytes: number,
+  ): Promise<void> {
+    const opId = typeof data.opId === "string" ? data.opId : "";
+    if (!this.validOperationId(opId, attachment.playerId)) {
+      return this.rejectOperation(socket, attachment.playerId, opId, "invalid_op_id", "The operation id is invalid.");
+    }
+    const cached = this.cachedOutcome(attachment.playerId, opId);
+    if (cached) return this.sendCachedOutcome(socket, attachment.playerId, cached);
+    if (bytes > LIVE_MAX_COMMAND_BYTES) {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "commands_too_large", "The command batch exceeds 64 KiB.");
+    }
+    if (this.record!.mode !== "build") {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "explore_mode", "Building is paused while the room is in Explore mode.");
+    }
+    const result = validateCommands(data.commands, this.record!.document);
+    if (!result.ok) return this.cacheAndReject(socket, attachment.playerId, opId, result.code, result.message);
+
+    this.record!.document = result.value.document;
+    this.record!.revision += 1;
+    const outcome: CachedOperationOutcome = { opId, type: "apply", revision: this.record!.revision };
+    this.rememberOutcome(attachment.playerId, outcome);
+    await this.persist();
+    this.broadcast({
+      v: LIVE_PROTOCOL_VERSION,
+      type: "apply",
+      from: attachment.playerId,
+      opId,
+      revision: this.record!.revision,
+      commands: result.value.commands,
+    });
+  }
+
+  private async handleReplaceDocument(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    data: Record<string, unknown>,
+    bytes: number,
+  ): Promise<void> {
+    const opId = typeof data.opId === "string" ? data.opId : "";
+    if (!this.validOperationId(opId, attachment.playerId)) {
+      return this.rejectOperation(socket, attachment.playerId, opId, "invalid_op_id", "The operation id is invalid.");
+    }
+    const cached = this.cachedOutcome(attachment.playerId, opId);
+    if (cached) return this.sendCachedOutcome(socket, attachment.playerId, cached);
+    if (!attachment.isOwner) {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "owner_only", "Only the room owner can replace the world.");
+    }
+    if (this.record!.mode !== "build") {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "explore_mode", "The world cannot be replaced during Explore mode.");
+    }
+    if (bytes > MAX_FRAME_BYTES || encodedBytes(data.document) > LIVE_MAX_DOCUMENT_BYTES) {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "document_too_large", "The replacement document is too large.");
+    }
+    const document = validateBrickStudioDocument(data.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
+    if (!document.ok) return this.cacheAndReject(socket, attachment.playerId, opId, document.error.code, document.error.message);
+    this.record!.document = document.document;
+    this.record!.revision += 1;
+    const outcome: CachedOperationOutcome = { opId, type: "replace", revision: this.record!.revision };
+    this.rememberOutcome(attachment.playerId, outcome);
+    await this.persist();
+    this.broadcastSnapshot(opId);
+  }
+
+  private async handleSetMode(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    if (!attachment.isOwner) return this.sendError(socket, "owner_only", "Only the room owner can change modes.");
+    if (data.mode !== "build" && data.mode !== "explore") {
+      return this.sendError(socket, "invalid_mode", "The room mode must be Build or Explore.");
+    }
+    if (this.record!.mode === data.mode) {
+      this.send(socket, { v: LIVE_PROTOCOL_VERSION, type: "modeChanged", mode: data.mode, revision: this.record!.revision });
+      return;
+    }
+    this.record!.mode = data.mode;
+    this.record!.revision += 1;
+    await this.persist();
+    this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "modeChanged", mode: data.mode, revision: this.record!.revision });
+  }
+
+  private async handleSetLocked(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    if (!attachment.isOwner) return this.sendError(socket, "owner_only", "Only the room owner can lock the room.");
+    if (typeof data.locked !== "boolean") return this.sendError(socket, "invalid_lock", "The lock value must be true or false.");
+    this.record!.locked = data.locked;
+    await this.persist();
+    this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "locked", locked: data.locked });
+  }
+
+  private async handleSetProfile(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    data: Record<string, unknown>,
+  ): Promise<void> {
+    const profile = sanitizeProfile(data.profile);
+    if (!profile.ok) return this.sendError(socket, profile.code, profile.message);
+    this.record!.profiles[attachment.playerId] = profile.value;
+    this.pruneProfileCache();
+    await this.persist();
+    this.broadcastPlayers();
+  }
+
+  private handlePose(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    data: Record<string, unknown>,
+    bytes: number,
+    now: number,
+  ): void {
+    if (bytes > LIVE_MAX_POSE_BYTES) return this.sendError(socket, "pose_too_large", "The pose message exceeds 2 KiB.");
+    if (now - attachment.lastPoseAt < MIN_POSE_INTERVAL_MS) return;
+    const keys = ["x", "y", "z", "yaw"] as const;
+    if (!keys.every((key) => typeof data[key] === "number" && Number.isFinite(data[key]) && Math.abs(data[key] as number) <= 100_000)
+        || typeof data.moving !== "boolean"
+        || typeof data.jumping !== "boolean") {
+      return this.sendError(socket, "invalid_pose", "The pose message is invalid.");
+    }
+    attachment.lastPoseAt = now;
+    socket.serializeAttachment(attachment);
+    const pose = data as unknown as LivePose;
+    this.broadcast({
+      v: LIVE_PROTOCOL_VERSION,
+      type: "pose",
+      playerId: attachment.playerId,
+      x: pose.x,
+      y: pose.y,
+      z: pose.z,
+      yaw: pose.yaw,
+      moving: pose.moving,
+      jumping: pose.jumping,
+      at: now,
+    }, socket);
+  }
+
+  private validOperationId(opId: string, playerId: string): boolean {
+    return LIVE_OP_ID_PATTERN.test(opId) && opId.startsWith(`${playerId}#`);
+  }
+
+  private cachedOutcome(playerId: string, opId: string): CachedOperationOutcome | undefined {
+    return this.record!.operationOutcomes[playerId]?.find((outcome) => outcome.opId === opId);
+  }
+
+  private rememberOutcome(playerId: string, outcome: CachedOperationOutcome): void {
+    const previous = this.record!.operationOutcomes[playerId] ?? [];
+    this.record!.operationOutcomes[playerId] = [...previous, outcome].slice(-MAX_OUTCOMES_PER_PLAYER);
+  }
+
+  private sendCachedOutcome(socket: WebSocket, playerId: string, outcome: CachedOperationOutcome): void {
+    if (outcome.type === "apply") {
+      this.send(socket, {
+        v: LIVE_PROTOCOL_VERSION,
+        type: "apply",
+        from: playerId,
+        opId: outcome.opId,
+        revision: outcome.revision,
+        commands: [],
+      });
+      return;
+    }
+    if (outcome.type === "replace") {
+      this.sendSnapshot(socket, outcome.opId);
+      return;
+    }
+    this.send(socket, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "reject",
+      opId: outcome.opId,
+      code: outcome.code,
+      message: outcome.message,
+      revision: this.record!.revision,
+      document: cloneDocument(this.record!.document),
+    });
+  }
+
+  private rejectOperation(
+    socket: WebSocket,
+    _playerId: string,
+    opId: string,
+    code: string,
+    message: string,
+  ): void {
+    this.send(socket, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "reject",
+      ...(opId ? { opId } : {}),
+      code,
+      message,
+      revision: this.record!.revision,
+      document: cloneDocument(this.record!.document),
+    });
+  }
+
+  private async cacheAndReject(
+    socket: WebSocket,
+    playerId: string,
+    opId: string,
+    code: string,
+    message: string,
+  ): Promise<void> {
+    const outcome: CachedOperationOutcome = { opId, type: "reject", code, message };
+    this.rememberOutcome(playerId, outcome);
+    await this.persist();
+    this.rejectOperation(socket, playerId, opId, code, message);
+  }
+
+  private publicState() {
+    return {
+      roomId: this.record!.roomId,
+      title: this.record!.title,
+      revision: this.record!.revision,
+      mode: this.record!.mode,
+      locked: this.record!.locked,
+      document: cloneDocument(this.record!.document),
+      players: this.players(),
+    };
+  }
+
+  private players(): LivePlayer[] {
+    if (!this.record) return [];
+    return this.openSockets().flatMap((socket) => {
+      const attachment = this.attachment(socket);
+      if (!attachment) return [];
+      return [{
+        playerId: attachment.playerId,
+        isOwner: attachment.isOwner,
+        profile: { ...(this.record!.profiles[attachment.playerId] ?? { displayName: "Builder" }) },
+      }];
+    });
+  }
+
+  private pruneProfileCache(): void {
+    const entries = Object.entries(this.record!.profiles);
+    if (entries.length <= MAX_PROFILE_CACHE) return;
+    const connected = new Set(this.openSockets().flatMap((socket) => {
+      const attachment = this.attachment(socket);
+      return attachment ? [attachment.playerId] : [];
+    }));
+    for (const [playerId] of entries) {
+      if (Object.keys(this.record!.profiles).length <= MAX_PROFILE_CACHE) break;
+      if (!connected.has(playerId)) {
+        delete this.record!.profiles[playerId];
+        delete this.record!.operationOutcomes[playerId];
+      }
+    }
+  }
+
+  private attachment(socket: WebSocket): WorldSocketAttachment | null {
+    return socket.deserializeAttachment() as WorldSocketAttachment | null;
+  }
+
+  private openSockets(): WebSocket[] {
+    return this.ctx.getWebSockets().filter((socket) => socket.readyState === WebSocket.OPEN);
+  }
+
+  private broadcastPlayers(): void {
+    if (!this.record) return;
+    this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "players", players: this.players() });
+  }
+
+  private broadcastSnapshot(opId?: string): void {
+    const message: SnapshotMessage = {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "snapshot",
+      ...(opId ? { opId } : {}),
+      revision: this.record!.revision,
+      mode: this.record!.mode,
+      document: cloneDocument(this.record!.document),
+    };
+    this.broadcast(message);
+  }
+
+  private sendSnapshot(socket: WebSocket, opId?: string): void {
+    const message: SnapshotMessage = {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "snapshot",
+      ...(opId ? { opId } : {}),
+      revision: this.record!.revision,
+      mode: this.record!.mode,
+      document: cloneDocument(this.record!.document),
+    };
+    this.send(socket, message);
+  }
+
+  private sendError(socket: WebSocket, code: string, message: string): void {
+    this.send(socket, { v: LIVE_PROTOCOL_VERSION, type: "error", code, message });
+  }
+
+  private send(socket: WebSocket, value: LiveServerMessage): void {
+    if (socket.readyState !== WebSocket.OPEN) return;
+    try { socket.send(JSON.stringify(value)); } catch { /* close/error handlers perform cleanup */ }
+  }
+
+  private broadcast(value: LiveServerMessage, exclude?: WebSocket): void {
+    const message = JSON.stringify(value);
+    for (const socket of this.openSockets()) {
+      if (socket === exclude) continue;
+      try { socket.send(message); } catch { /* close/error handlers perform cleanup */ }
+    }
+  }
+
+  private async touch(): Promise<void> {
+    if (!this.record) return;
+    this.record.expiresAt = Date.now() + ROOM_TTL_MS;
+    if (Date.now() - this.lastPersistedTouch >= 60_000) await this.persist();
+  }
+
+  private async persist(): Promise<void> {
+    if (!this.record) return;
+    this.record.expiresAt = Date.now() + ROOM_TTL_MS;
+    await this.ctx.storage.put("world", this.record);
+    this.lastPersistedTouch = Date.now();
+    await this.ctx.storage.setAlarm(this.record.expiresAt);
+  }
+}
