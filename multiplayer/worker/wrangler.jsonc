@@ -6,12 +6,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "RACE_ROOMS", "class_name": "RaceRoom" },
-      { "name": "WORLD_ROOMS", "class_name": "WorldRoom" }
+      { "name": "WORLD_ROOMS", "class_name": "WorldRoom" },
+      { "name": "WORLD_CREATION_LIMITER", "class_name": "WorldCreationLimiter" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["RaceRoom"] },
-    { "tag": "v2", "new_sqlite_classes": ["WorldRoom"] }
+    { "tag": "v2", "new_sqlite_classes": ["WorldRoom"] },
+    { "tag": "v3", "new_sqlite_classes": ["WorldCreationLimiter"] }
   ],
   "observability": { "enabled": true },
   "env": {
@@ -20,7 +22,8 @@
       "durable_objects": {
         "bindings": [
           { "name": "RACE_ROOMS", "class_name": "RaceRoom" },
-          { "name": "WORLD_ROOMS", "class_name": "WorldRoom" }
+          { "name": "WORLD_ROOMS", "class_name": "WorldRoom" },
+          { "name": "WORLD_CREATION_LIMITER", "class_name": "WorldCreationLimiter" }
         ]
       },
       "observability": { "enabled": true }

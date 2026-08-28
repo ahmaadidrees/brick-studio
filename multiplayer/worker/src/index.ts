@@ -9,12 +9,17 @@ import {
   validateCreateWorldRequest,
   type WorldRoomEnv,
 } from "./worldRoom";
+import {
+  WorldCreationLimiter,
+  worldCreationLimiterKey,
+} from "./worldCreationLimiter";
 
 export interface Env extends WorldRoomEnv {
   RACE_ROOMS: DurableObjectNamespace<RaceRoom>;
+  WORLD_CREATION_LIMITER: DurableObjectNamespace<WorldCreationLimiter>;
 }
 
-export { WorldRoom };
+export { WorldCreationLimiter, WorldRoom };
 
 type RoomStatus = "waiting" | "countdown" | "racing";
 
@@ -120,6 +125,24 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
     if (request.method === "POST" && url.pathname === "/worlds") {
+      const limiter = env.WORLD_CREATION_LIMITER.get(env.WORLD_CREATION_LIMITER.idFromName(
+        worldCreationLimiterKey(request.headers.get("cf-connecting-ip")),
+      ));
+      const limitResponse = await limiter.fetch("https://limiter.internal/consume", { method: "POST" });
+      if (limitResponse.status === 429) {
+        const limit = await limitResponse.json<{ retryAfterSeconds: number }>();
+        return json(
+          { error: "creation_rate_limited", retryAfterSeconds: limit.retryAfterSeconds },
+          429,
+          {
+            ...cors,
+            "access-control-expose-headers": "retry-after",
+            "retry-after": String(limit.retryAfterSeconds),
+          },
+        );
+      }
+      if (!limitResponse.ok) return json({ error: "creation_limiter_unavailable" }, 503, cors);
+
       let input: unknown;
       try { input = await readJson(request, MAX_WORLD_CREATE_BODY_BYTES); }
       catch (error) {

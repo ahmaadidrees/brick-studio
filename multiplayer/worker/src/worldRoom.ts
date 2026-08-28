@@ -38,9 +38,11 @@ type WorldRoomRecord = {
   mode: LiveWorldMode;
   locked: boolean;
   ownerTokenVerifier: string;
+  reconnectTokenVerifiers: Record<string, string>;
   initialOwnerProfile: PlayerProfile;
   profiles: Record<string, PlayerProfile>;
   operationOutcomes: Record<string, CachedOperationOutcome[]>;
+  operationHighWater: Record<string, string>;
   expiresAt: number;
 };
 
@@ -51,15 +53,26 @@ type WorldSocketAttachment = {
   lastPoseAt: number;
   messageWindowAt: number;
   messageCount: number;
+  messageRateViolations: number;
+  profileWindowAt: number;
+  profileMutationCount: number;
+  controlWindowAt: number;
+  controlMutationCount: number;
 };
 
 type SnapshotMessage = Extract<LiveServerMessage, { type: "snapshot" }>;
 
 type ValidationResult<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
 
-const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+export const WORLD_ROOM_TTL_MS = 2 * 60 * 60 * 1000;
+export const WORLD_ROOM_EXPIRY_GRACE_MS = 90 * 1000;
+const EXPIRY_PERSIST_INTERVAL_MS = 60 * 1000;
 const MAX_MESSAGES_PER_SECOND = 30;
+const MAX_MESSAGE_RATE_VIOLATIONS = 3;
 const MIN_POSE_INTERVAL_MS = 45;
+const MUTATION_WINDOW_MS = 10 * 1000;
+const MAX_PROFILE_MUTATIONS_PER_WINDOW = 6;
+const MAX_CONTROL_MUTATIONS_PER_WINDOW = 12;
 const MAX_PROFILE_BYTES = 2 * 1024;
 const MAX_PROFILE_PALETTE_ENTRIES = 16;
 const MAX_PROFILE_CACHE = 64;
@@ -71,6 +84,7 @@ const PALETTE_KEY_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
 const COLOR_PATTERN = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
 const DISPLAY_NAME_PATTERN = /^[\p{L}\p{N} .,'’_-]+$/u;
 const WORLD_ID_PATTERN = /^[a-f0-9]{32}$/;
+const CAPABILITY_TOKEN_PATTERN = /^[a-f0-9]{64}$/;
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), {
   status,
@@ -109,6 +123,10 @@ export function newOwnerToken(): string {
   return randomHex(32);
 }
 
+export function newReconnectToken(): string {
+  return randomHex(32);
+}
+
 function randomHex(bytes: number): string {
   const data = crypto.getRandomValues(new Uint8Array(bytes));
   return Array.from(data, (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -119,6 +137,8 @@ export async function ownerTokenVerifier(token: string): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+export const reconnectTokenVerifier = ownerTokenVerifier;
+
 function safeVerifierEqual(first: string, second: string): boolean {
   if (first.length !== second.length) return false;
   let difference = 0;
@@ -126,6 +146,25 @@ function safeVerifierEqual(first: string, second: string): boolean {
     difference |= first.charCodeAt(index) ^ second.charCodeAt(index);
   }
   return difference === 0;
+}
+
+function profileEqual(first: PlayerProfile, second: PlayerProfile): boolean {
+  if (first.displayName !== second.displayName || first.characterId !== second.characterId) return false;
+  const firstPalette = Object.entries(first.palette ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const secondPalette = Object.entries(second.palette ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  return firstPalette.length === secondPalette.length
+    && firstPalette.every(([key, color], index) => (
+      key === secondPalette[index]?.[0] && color === secondPalette[index]?.[1]
+    ));
+}
+
+function decimalSequenceAtMost(value: string, highWater: string): boolean {
+  return value.length < highWater.length || (value.length === highWater.length && value <= highWater);
+}
+
+function maxDecimalSequence(first: string | undefined, second: string): string {
+  if (!first || !decimalSequenceAtMost(second, first)) return second;
+  return first;
 }
 
 export function sanitizeProfile(value: unknown): ValidationResult<PlayerProfile> {
@@ -235,12 +274,29 @@ function validateCommands(value: unknown, document: BrickStudioDocument): Valida
     const id = raw.brick.id;
     if (touched.has(id)) return fail("conflicting_batch", "A batch may only touch each brick once.");
     touched.add(id);
-    const brick = { ...raw.brick } as unknown as BrickInstance;
+    const submitted = { ...raw.brick } as unknown as BrickInstance;
+    let brick: BrickInstance;
     if (op === "place") {
       if (existing.has(id)) return fail("duplicate_id", "A placed brick reuses an existing id.");
+      brick = submitted;
       additions.push(brick);
     } else {
-      if (!existing.has(id)) return fail("unknown_brick", "That brick was removed by another builder.");
+      const current = existing.get(id);
+      if (!current) return fail("unknown_brick", "That brick was removed by another builder.");
+      switch (op) {
+        case "move":
+          brick = { ...current, x: submitted.x, y: submitted.y, z: submitted.z };
+          break;
+        case "rotate":
+          brick = { ...current, rotation: submitted.rotation };
+          break;
+        case "recolor":
+          brick = { ...current, color: submitted.color };
+          break;
+        case "update":
+          brick = submitted;
+          break;
+      }
       replacements.set(id, brick);
     }
     commands.push({ op, brick });
@@ -266,8 +322,26 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   constructor(ctx: DurableObjectState, env: WorldRoomEnv) {
     super(ctx, env);
     this.ctx.blockConcurrencyWhile(async () => {
-      this.record = (await this.ctx.storage.get<WorldRoomRecord>("world")) ?? null;
-      this.lastPersistedTouch = Date.now();
+      const stored = (await this.ctx.storage.get<WorldRoomRecord>("world")) ?? null;
+      if (stored) {
+        stored.reconnectTokenVerifiers ??= {};
+        stored.operationHighWater ??= {};
+        for (const [playerId, outcomes] of Object.entries(stored.operationOutcomes ?? {})) {
+          for (const outcome of outcomes) {
+            const sequence = this.operationSequence(outcome.opId, playerId);
+            if (sequence) {
+              stored.operationHighWater[playerId] = maxDecimalSequence(
+                stored.operationHighWater[playerId],
+                sequence,
+              );
+            }
+          }
+        }
+      }
+      this.record = stored;
+      // A hibernated object has no trustworthy in-memory persistence clock. The
+      // first authenticated activity after rehydrate must durably renew expiry.
+      this.lastPersistedTouch = 0;
     });
   }
 
@@ -296,10 +370,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         mode: "build",
         locked: false,
         ownerTokenVerifier: input.ownerTokenVerifier,
+        reconnectTokenVerifiers: {},
         initialOwnerProfile: initial.value.profile,
         profiles: {},
         operationOutcomes: {},
-        expiresAt: Date.now() + ROOM_TTL_MS,
+        operationHighWater: {},
+        expiresAt: Date.now() + WORLD_ROOM_TTL_MS,
       };
       await this.persist();
       return json({ ok: true }, 201);
@@ -316,16 +392,42 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
     const playerId = url.searchParams.get("playerId") ?? "";
     if (!PLAYER_ID_PATTERN.test(playerId)) return json({ error: "invalid_player_id" }, 400);
-    const suppliedToken = url.searchParams.get("ownerToken") ?? "";
-    const suppliedVerifier = suppliedToken ? await ownerTokenVerifier(suppliedToken) : "";
-    const isOwner = Boolean(suppliedVerifier && safeVerifierEqual(suppliedVerifier, this.record!.ownerTokenVerifier));
+    const suppliedOwnerToken = url.searchParams.get("ownerToken") ?? "";
+    const suppliedOwnerVerifier = CAPABILITY_TOKEN_PATTERN.test(suppliedOwnerToken)
+      ? await ownerTokenVerifier(suppliedOwnerToken)
+      : "";
+    const isOwner = Boolean(
+      suppliedOwnerVerifier && safeVerifierEqual(suppliedOwnerVerifier, this.record!.ownerTokenVerifier),
+    );
+    const suppliedReconnectToken = url.searchParams.get("reconnectToken") ?? "";
+    const knownReconnectVerifier = this.record!.reconnectTokenVerifiers[playerId];
+    const suppliedReconnectVerifier = CAPABILITY_TOKEN_PATTERN.test(suppliedReconnectToken)
+      ? await reconnectTokenVerifier(suppliedReconnectToken)
+      : "";
+    const validReconnect = Boolean(
+      knownReconnectVerifier
+      && suppliedReconnectVerifier
+      && safeVerifierEqual(suppliedReconnectVerifier, knownReconnectVerifier),
+    );
     const existing = this.openSockets().find((socket) => this.attachment(socket)?.playerId === playerId);
-    const returningPlayer = Boolean(this.record!.profiles[playerId]);
-    if (this.record!.locked && !isOwner && !existing && !returningPlayer) {
+    const knownPlayer = Boolean(existing || this.record!.profiles[playerId] || knownReconnectVerifier);
+    if (!isOwner && knownPlayer && !validReconnect) {
+      return json({ error: "reconnect_token_required" }, 403);
+    }
+    if (this.record!.locked && !isOwner && !validReconnect) {
       return json({ error: "world_locked" }, 403);
     }
     if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existing) return json({ error: "world_full" }, 429);
-    if (existing) existing.close(4001, "Reconnected elsewhere");
+
+    let issuedReconnectToken: string | undefined;
+    if (!isOwner && !knownPlayer) {
+      issuedReconnectToken = newReconnectToken();
+      this.record!.reconnectTokenVerifiers[playerId] = await reconnectTokenVerifier(issuedReconnectToken);
+    } else if (isOwner && knownReconnectVerifier) {
+      // The owner capability is authoritative. If the owner deliberately claims
+      // a guest id, revoke the weaker guest capability for that id.
+      delete this.record!.reconnectTokenVerifiers[playerId];
+    }
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -337,9 +439,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       lastPoseAt: 0,
       messageWindowAt: now,
       messageCount: 0,
+      messageRateViolations: 0,
+      profileWindowAt: now,
+      profileMutationCount: 0,
+      controlWindowAt: now,
+      controlMutationCount: 0,
     };
-    this.ctx.acceptWebSocket(server);
-    server.serializeAttachment(attachment);
     if (!this.record!.profiles[playerId]) {
       this.record!.profiles[playerId] = isOwner
         ? { ...this.record!.initialOwnerProfile }
@@ -347,6 +452,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       this.pruneProfileCache();
     }
     await this.persist();
+    if (existing) existing.close(4001, "Reconnected elsewhere");
+    this.ctx.acceptWebSocket(server);
+    server.serializeAttachment(attachment);
     this.send(server, {
       v: LIVE_PROTOCOL_VERSION,
       type: "welcome",
@@ -358,6 +466,10 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       locked: this.record!.locked,
       document: cloneDocument(this.record!.document),
       players: this.players(),
+      ...(issuedReconnectToken ? { reconnectToken: issuedReconnectToken } : {}),
+      ...(this.record!.operationHighWater[playerId]
+        ? { operationHighWater: this.record!.operationHighWater[playerId] }
+        : {}),
     });
     this.broadcastPlayers();
     return new Response(null, { status: 101, webSocket: client });
@@ -370,14 +482,26 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const attachment = this.attachment(socket);
     if (!attachment || !this.record) return socket.close(1011, "Missing live-world session");
     const now = Date.now();
+    attachment.messageRateViolations ??= 0;
+    attachment.profileWindowAt ??= now;
+    attachment.profileMutationCount ??= 0;
+    attachment.controlWindowAt ??= now;
+    attachment.controlMutationCount ??= 0;
     if (now - attachment.messageWindowAt >= 1000) {
       attachment.messageWindowAt = now;
       attachment.messageCount = 0;
+      attachment.messageRateViolations = 0;
     }
     attachment.messageCount += 1;
     socket.serializeAttachment(attachment);
     if (attachment.messageCount > MAX_MESSAGES_PER_SECOND) {
-      return this.sendError(socket, "rate_limited", "Too many messages were sent in one second.");
+      attachment.messageRateViolations += 1;
+      socket.serializeAttachment(attachment);
+      this.sendError(socket, "rate_limited", "Too many messages were sent in one second.");
+      if (attachment.messageRateViolations >= MAX_MESSAGE_RATE_VIOLATIONS) {
+        socket.close(1008, "Persistent message-rate violation");
+      }
+      return;
     }
 
     let data: Record<string, unknown>;
@@ -429,13 +553,14 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   async alarm(): Promise<void> {
     if (!this.record) return;
-    if (Date.now() >= this.record.expiresAt) {
+    const deleteAt = this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS;
+    if (Date.now() >= deleteAt) {
       for (const socket of this.ctx.getWebSockets()) socket.close(4000, "Live world expired");
       await this.ctx.storage.deleteAll();
       this.record = null;
       return;
     }
-    await this.ctx.storage.setAlarm(this.record.expiresAt);
+    await this.ctx.storage.setAlarm(deleteAt);
   }
 
   private async handleCommands(
@@ -445,11 +570,16 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     bytes: number,
   ): Promise<void> {
     const opId = typeof data.opId === "string" ? data.opId : "";
-    if (!this.validOperationId(opId, attachment.playerId)) {
+    const sequence = this.operationSequence(opId, attachment.playerId);
+    if (!sequence) {
       return this.rejectOperation(socket, attachment.playerId, opId, "invalid_op_id", "The operation id is invalid.");
     }
     const cached = this.cachedOutcome(attachment.playerId, opId);
     if (cached) return this.sendCachedOutcome(socket, attachment.playerId, cached);
+    if (this.isConsumedOperation(attachment.playerId, sequence)) {
+      this.sendSnapshot(socket, opId);
+      return;
+    }
     if (bytes > LIVE_MAX_COMMAND_BYTES) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "commands_too_large", "The command batch exceeds 64 KiB.");
     }
@@ -481,11 +611,16 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     bytes: number,
   ): Promise<void> {
     const opId = typeof data.opId === "string" ? data.opId : "";
-    if (!this.validOperationId(opId, attachment.playerId)) {
+    const sequence = this.operationSequence(opId, attachment.playerId);
+    if (!sequence) {
       return this.rejectOperation(socket, attachment.playerId, opId, "invalid_op_id", "The operation id is invalid.");
     }
     const cached = this.cachedOutcome(attachment.playerId, opId);
     if (cached) return this.sendCachedOutcome(socket, attachment.playerId, cached);
+    if (this.isConsumedOperation(attachment.playerId, sequence)) {
+      this.sendSnapshot(socket, opId);
+      return;
+    }
     if (!attachment.isOwner) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "owner_only", "Only the room owner can replace the world.");
     }
@@ -497,6 +632,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
     const document = validateBrickStudioDocument(data.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
     if (!document.ok) return this.cacheAndReject(socket, attachment.playerId, opId, document.error.code, document.error.message);
+    if (!this.consumeMutationBudget(socket, attachment, "control")) return;
     this.record!.document = document.document;
     this.record!.revision += 1;
     const outcome: CachedOperationOutcome = { opId, type: "replace", revision: this.record!.revision };
@@ -518,6 +654,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       this.send(socket, { v: LIVE_PROTOCOL_VERSION, type: "modeChanged", mode: data.mode, revision: this.record!.revision });
       return;
     }
+    if (!this.consumeMutationBudget(socket, attachment, "control")) return;
     this.record!.mode = data.mode;
     this.record!.revision += 1;
     await this.persist();
@@ -531,6 +668,11 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   ): Promise<void> {
     if (!attachment.isOwner) return this.sendError(socket, "owner_only", "Only the room owner can lock the room.");
     if (typeof data.locked !== "boolean") return this.sendError(socket, "invalid_lock", "The lock value must be true or false.");
+    if (this.record!.locked === data.locked) {
+      this.send(socket, { v: LIVE_PROTOCOL_VERSION, type: "locked", locked: data.locked });
+      return;
+    }
+    if (!this.consumeMutationBudget(socket, attachment, "control")) return;
     this.record!.locked = data.locked;
     await this.persist();
     this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "locked", locked: data.locked });
@@ -543,6 +685,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   ): Promise<void> {
     const profile = sanitizeProfile(data.profile);
     if (!profile.ok) return this.sendError(socket, profile.code, profile.message);
+    const current = this.record!.profiles[attachment.playerId];
+    if (current && profileEqual(current, profile.value)) {
+      this.send(socket, { v: LIVE_PROTOCOL_VERSION, type: "players", players: this.players() });
+      return;
+    }
+    if (!this.consumeMutationBudget(socket, attachment, "profile")) return;
     this.record!.profiles[attachment.playerId] = profile.value;
     this.pruneProfileCache();
     await this.persist();
@@ -581,8 +729,14 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }, socket);
   }
 
-  private validOperationId(opId: string, playerId: string): boolean {
-    return LIVE_OP_ID_PATTERN.test(opId) && opId.startsWith(`${playerId}#`);
+  private operationSequence(opId: string, playerId: string): string | null {
+    if (!LIVE_OP_ID_PATTERN.test(opId) || !opId.startsWith(`${playerId}#`)) return null;
+    return opId.slice(playerId.length + 1);
+  }
+
+  private isConsumedOperation(playerId: string, sequence: string): boolean {
+    const highWater = this.record!.operationHighWater[playerId];
+    return Boolean(highWater && decimalSequenceAtMost(sequence, highWater));
   }
 
   private cachedOutcome(playerId: string, opId: string): CachedOperationOutcome | undefined {
@@ -592,6 +746,39 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   private rememberOutcome(playerId: string, outcome: CachedOperationOutcome): void {
     const previous = this.record!.operationOutcomes[playerId] ?? [];
     this.record!.operationOutcomes[playerId] = [...previous, outcome].slice(-MAX_OUTCOMES_PER_PLAYER);
+    const sequence = this.operationSequence(outcome.opId, playerId);
+    if (sequence) {
+      this.record!.operationHighWater[playerId] = maxDecimalSequence(
+        this.record!.operationHighWater[playerId],
+        sequence,
+      );
+    }
+  }
+
+  private consumeMutationBudget(
+    socket: WebSocket,
+    attachment: WorldSocketAttachment,
+    kind: "profile" | "control",
+  ): boolean {
+    const now = Date.now();
+    const windowKey = kind === "profile" ? "profileWindowAt" : "controlWindowAt";
+    const countKey = kind === "profile" ? "profileMutationCount" : "controlMutationCount";
+    const limit = kind === "profile" ? MAX_PROFILE_MUTATIONS_PER_WINDOW : MAX_CONTROL_MUTATIONS_PER_WINDOW;
+    if (now - attachment[windowKey] >= MUTATION_WINDOW_MS) {
+      attachment[windowKey] = now;
+      attachment[countKey] = 0;
+    }
+    if (attachment[countKey] >= limit) {
+      this.sendError(
+        socket,
+        `${kind}_rate_limited`,
+        `Too many ${kind} changes were sent in a short period.`,
+      );
+      return false;
+    }
+    attachment[countKey] += 1;
+    socket.serializeAttachment(attachment);
+    return true;
   }
 
   private sendCachedOutcome(socket: WebSocket, playerId: string, outcome: CachedOperationOutcome): void {
@@ -688,7 +875,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       if (Object.keys(this.record!.profiles).length <= MAX_PROFILE_CACHE) break;
       if (!connected.has(playerId)) {
         delete this.record!.profiles[playerId];
+        delete this.record!.reconnectTokenVerifiers[playerId];
         delete this.record!.operationOutcomes[playerId];
+        delete this.record!.operationHighWater[playerId];
       }
     }
   }
@@ -749,15 +938,16 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   private async touch(): Promise<void> {
     if (!this.record) return;
-    this.record.expiresAt = Date.now() + ROOM_TTL_MS;
-    if (Date.now() - this.lastPersistedTouch >= 60_000) await this.persist();
+    const now = Date.now();
+    this.record.expiresAt = now + WORLD_ROOM_TTL_MS;
+    if (now - this.lastPersistedTouch >= EXPIRY_PERSIST_INTERVAL_MS) await this.persist();
   }
 
   private async persist(): Promise<void> {
     if (!this.record) return;
-    this.record.expiresAt = Date.now() + ROOM_TTL_MS;
+    this.record.expiresAt = Date.now() + WORLD_ROOM_TTL_MS;
     await this.ctx.storage.put("world", this.record);
     this.lastPersistedTouch = Date.now();
-    await this.ctx.storage.setAlarm(this.record.expiresAt);
+    await this.ctx.storage.setAlarm(this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS);
   }
 }

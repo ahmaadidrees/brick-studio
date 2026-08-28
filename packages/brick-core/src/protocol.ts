@@ -55,6 +55,8 @@ export type LiveServerMessage = VersionedMessage & (
       locked: boolean
       document: BrickStudioDocument
       players: LivePlayer[]
+      reconnectToken?: string
+      operationHighWater?: string
     }
   | {
       type: 'apply'

@@ -10,7 +10,16 @@ import { env, exports } from "cloudflare:workers";
 import { evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Env as WorkerEnv } from "../src/index";
-import type { WorldRoom } from "../src/worldRoom";
+import {
+  WORLD_ROOM_EXPIRY_GRACE_MS,
+  WORLD_ROOM_TTL_MS,
+  type WorldRoom,
+} from "../src/worldRoom";
+import {
+  WORLD_CREATION_LIMIT,
+  worldCreationLimiterKey,
+  type WorldCreationLimiter,
+} from "../src/worldCreationLimiter";
 
 type Message = Record<string, unknown> & { type: string };
 
@@ -70,10 +79,11 @@ class Inbox {
   }
 }
 
-async function connectWorld(roomId: string, playerId: string, ownerToken?: string) {
+async function connectWorld(roomId: string, playerId: string, ownerToken?: string, reconnectToken?: string) {
   const url = new URL(`https://worker.test/worlds/${roomId}/connect`);
   url.searchParams.set("playerId", playerId);
   if (ownerToken) url.searchParams.set("ownerToken", ownerToken);
+  if (reconnectToken) url.searchParams.set("reconnectToken", reconnectToken);
   const response = await workerFetch(url.toString(), {
     headers: { Upgrade: "websocket", origin: "https://virtual-legos.vercel.app" },
   });
@@ -88,6 +98,16 @@ async function connectWorld(roomId: string, playerId: string, ownerToken?: strin
 
 function send(socket: WebSocket, value: unknown) {
   socket.send(JSON.stringify(value));
+}
+
+function nextClose(socket: WebSocket, timeoutMs = 3_000): Promise<CloseEvent> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error("Timed out waiting for socket close")), timeoutMs);
+    socket.addEventListener("close", (event) => {
+      clearTimeout(timeout);
+      resolve(event);
+    }, { once: true });
+  });
 }
 
 async function getWorld(roomId: string) {
@@ -122,6 +142,7 @@ describe("WorldRoom", () => {
     const owner = await connectWorld(roomId, "owner_001", ownerToken);
     expect(owner.response.status).toBe(101);
     expect(owner.welcome).toMatchObject({ playerId: "owner_001", isOwner: true, revision: 0, mode: "build" });
+    expect(owner.welcome).not.toHaveProperty("reconnectToken");
     expect((owner.welcome!.players as Array<Record<string, unknown>>)[0]).toMatchObject({
       playerId: "owner_001",
       profile: { displayName: "Ada Builder", characterId: "future-character" },
@@ -130,6 +151,15 @@ describe("WorldRoom", () => {
     const guest = await connectWorld(roomId, "guest_001");
     expect(guest.response.status).toBe(101);
     expect(guest.welcome).toMatchObject({ playerId: "guest_001", isOwner: false });
+    const reconnectToken = guest.welcome!.reconnectToken as string;
+    expect(reconnectToken).toMatch(/^[a-f0-9]{64}$/);
+    const storedAfterGuest = await runInDurableObject(stub, async (_instance: WorldRoom, durableState) =>
+      durableState.storage.get<Record<string, unknown>>("world"));
+    expect((storedAfterGuest?.reconnectTokenVerifiers as Record<string, string>).guest_001)
+      .toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(storedAfterGuest)).not.toContain(reconnectToken);
+    const ownerPlayers = await owner.inbox!.next("players");
+    expect(JSON.stringify(ownerPlayers)).not.toContain(reconnectToken);
     send(guest.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "  Grace   Hopper ", palette: { shirt: "#ABC" } } });
     let players = await guest.inbox!.next("players");
     while (!(players.players as Array<{ playerId: string; profile: { displayName: string } }>).some(
@@ -138,6 +168,32 @@ describe("WorldRoom", () => {
     expect(players.players).toEqual(expect.arrayContaining([
       expect.objectContaining({ playerId: "guest_001", profile: { displayName: "Grace Hopper", palette: { shirt: "#abc" } } }),
     ]));
+  });
+
+  it("rejects observed-id hijacks without evicting the legitimate player and permits capability reconnect", async () => {
+    const { roomId } = await createWorld();
+    const legitimate = await connectWorld(roomId, "guest_secure");
+    const reconnectToken = legitimate.welcome!.reconnectToken as string;
+
+    const observedIdAttack = await connectWorld(roomId, "guest_secure");
+    expect(observedIdAttack.response.status).toBe(403);
+    expect(await observedIdAttack.response.json()).toEqual({ error: "reconnect_token_required" });
+    const invalidCapability = await connectWorld(roomId, "guest_secure", undefined, "a".repeat(64));
+    expect(invalidCapability.response.status).toBe(403);
+    expect(await invalidCapability.response.json()).toEqual({ error: "reconnect_token_required" });
+
+    send(legitimate.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "guest_secure#1",
+      commands: [{ op: "place", brick: brick("still-connected") }],
+    });
+    expect(await legitimate.inbox!.next("apply")).toMatchObject({ opId: "guest_secure#1", revision: 1 });
+
+    const reconnected = await connectWorld(roomId, "guest_secure", undefined, reconnectToken);
+    expect(reconnected.response.status).toBe(101);
+    expect(reconnected.welcome).toMatchObject({ playerId: "guest_secure", revision: 1 });
+    expect(reconnected.welcome).not.toHaveProperty("reconnectToken");
   });
 
   it("applies atomic guest edits and rejects structural conflicts with a canonical snapshot", async () => {
@@ -175,6 +231,74 @@ describe("WorldRoom", () => {
     });
   });
 
+  it("merges semantic move fields onto the authoritative brick without clobbering peer rotation or color", async () => {
+    const seed = brick("shared");
+    const { roomId } = await createWorld(worldDocument([seed]));
+    const first = await connectWorld(roomId, "builder_alpha");
+    const second = await connectWorld(roomId, "builder_beta");
+
+    send(first.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "builder_alpha#1",
+      commands: [{
+        op: "rotate",
+        brick: { ...seed, x: 6, rotation: 1, color: "#000000" },
+      }],
+    });
+    expect((await second.inbox!.next("apply")).commands).toEqual([{
+      op: "rotate",
+      brick: { ...seed, rotation: 1 },
+    }]);
+    send(first.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "builder_alpha#2",
+      commands: [{
+        op: "recolor",
+        brick: { ...seed, x: 8, rotation: 3, color: "#ff0000" },
+      }],
+    });
+    expect((await second.inbox!.next("apply")).commands).toEqual([{
+      op: "recolor",
+      brick: { ...seed, rotation: 1, color: "#ff0000" },
+    }]);
+
+    send(second.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "builder_beta#1",
+      commands: [{ op: "move", brick: { ...seed, x: 10, z: 10 } }],
+    });
+    const applied = await second.inbox!.next("apply");
+    expect(applied.commands).toEqual([{
+      op: "move",
+      brick: { ...seed, x: 10, z: 10, rotation: 1, color: "#ff0000" },
+    }]);
+    expect(await getWorld(roomId)).toMatchObject({
+      revision: 3,
+      document: { bricks: [{ ...seed, x: 10, z: 10, rotation: 1, color: "#ff0000" }] },
+    });
+
+    const replacement = {
+      ...seed,
+      partId: "brick_2x2",
+      x: 12,
+      y: 3,
+      z: 12,
+      rotation: 3 as const,
+      color: "#0000ff",
+    };
+    send(second.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "builder_beta#2",
+      commands: [{ op: "update", brick: replacement }],
+    });
+    expect((await second.inbox!.next("apply")).commands).toEqual([{ op: "update", brick: replacement }]);
+    expect(await getWorld(roomId)).toMatchObject({ revision: 4, document: { bricks: [replacement] } });
+  });
+
   it("enforces owner mode, lock, replace permissions, and lets known players reconnect while locked", async () => {
     const { roomId, ownerToken } = await createWorld(worldDocument([brick("seed")]));
     const owner = await connectWorld(roomId, "owner_201", ownerToken);
@@ -203,7 +327,8 @@ describe("WorldRoom", () => {
     expect(await stranger.response.json()).toEqual({ error: "world_locked" });
 
     guest.socket!.close(1000, "reconnect");
-    const returning = await connectWorld(roomId, "guest_201");
+    const reconnectToken = guest.welcome!.reconnectToken as string;
+    const returning = await connectWorld(roomId, "guest_201", undefined, reconnectToken);
     expect(returning.response.status).toBe(101);
     expect(returning.welcome).toMatchObject({ locked: true, isOwner: false, mode: "explore" });
 
@@ -270,6 +395,51 @@ describe("WorldRoom", () => {
     expect((await getWorld(roomId)).revision).toBe(2);
   });
 
+  it("never reapplies an operation below the persisted high-water after detailed outcomes are pruned", async () => {
+    const seed = brick("high-water");
+    const { roomId } = await createWorld(worldDocument([seed]));
+    const guest = await connectWorld(roomId, "guest_replay");
+    const reconnectToken = guest.welcome!.reconnectToken as string;
+
+    for (let sequence = 1; sequence <= 130; sequence += 1) {
+      send(guest.socket!, {
+        v: LIVE_PROTOCOL_VERSION,
+        type: "commands",
+        opId: `guest_replay#${sequence}`,
+        commands: [{
+          op: "recolor",
+          brick: { ...seed, color: sequence % 2 === 0 ? "#00ff00" : "#ff0000" },
+        }],
+      });
+      expect(await guest.inbox!.next("apply")).toMatchObject({ revision: sequence });
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+
+    guest.socket!.close(1000, "reload");
+    const reconnected = await connectWorld(roomId, "guest_replay", undefined, reconnectToken);
+    expect(reconnected.welcome).toMatchObject({ operationHighWater: "130", revision: 130 });
+    send(reconnected.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "guest_replay#1",
+      commands: [{ op: "recolor", brick: { ...seed, color: "#0000ff" } }],
+    });
+    const duplicate = await reconnected.inbox!.next("snapshot");
+    expect(duplicate).toMatchObject({ opId: "guest_replay#1", revision: 130 });
+    expect((duplicate.document as BrickStudioDocument).bricks[0]?.color).toBe("#00ff00");
+
+    const workerEnv = env as unknown as WorkerEnv;
+    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    const stored = await runInDurableObject(stub, async (_instance: WorldRoom, durableState) =>
+      durableState.storage.get<{
+        operationHighWater: Record<string, string>;
+        operationOutcomes: Record<string, unknown[]>;
+      }>("world"));
+    expect(stored?.operationHighWater.guest_replay).toBe("130");
+    expect(stored?.operationOutcomes.guest_replay).toHaveLength(128);
+    expect((await getWorld(roomId)).revision).toBe(130);
+  }, 20_000);
+
   it("enforces command, pose, and absolute frame byte limits without partially applying", async () => {
     const { roomId } = await createWorld();
     const guest = await connectWorld(roomId, "guest_401");
@@ -313,12 +483,95 @@ describe("WorldRoom", () => {
     await guest.inbox!.next("apply");
     const workerEnv = env as unknown as WorkerEnv;
     const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    const staleExpiry = Date.now() + 5_000;
+    await runInDurableObject(stub, async (_instance: WorldRoom, durableState) => {
+      const stored = (await durableState.storage.get<Record<string, unknown>>("world"))!;
+      stored.expiresAt = staleExpiry;
+      await durableState.storage.put("world", stored);
+      await durableState.storage.setAlarm(staleExpiry);
+    });
     await evictDurableObject(stub);
 
     send(guest.socket!, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
     const snapshot = await guest.inbox!.next("snapshot");
     expect(snapshot).toMatchObject({ revision: 1, mode: "build" });
     expect((snapshot.document as BrickStudioDocument).bricks).toEqual([brick("durable", 9, 9)]);
+    const renewed = await runInDurableObject(stub, async (_instance: WorldRoom, durableState) =>
+      durableState.storage.get<{ expiresAt: number }>("world"));
+    expect(renewed!.expiresAt).toBeGreaterThan(Date.now() + WORLD_ROOM_TTL_MS - 5_000);
+  });
+
+  it("uses a bounded expiry grace before deleting an inactive rehydrated room", async () => {
+    const { roomId } = await createWorld();
+    const workerEnv = env as unknown as WorkerEnv;
+    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    const justExpired = Date.now() - 1_000;
+    await runInDurableObject(stub, async (_instance: WorldRoom, durableState) => {
+      const stored = (await durableState.storage.get<Record<string, unknown>>("world"))!;
+      stored.expiresAt = justExpired;
+      await durableState.storage.put("world", stored);
+    });
+    await evictDurableObject(stub);
+    await runInDurableObject(stub, async (instance: WorldRoom, durableState) => {
+      await instance.alarm();
+      expect(await durableState.storage.get("world")).toBeTruthy();
+      expect(await durableState.storage.getAlarm()).toBeGreaterThanOrEqual(
+        justExpired + WORLD_ROOM_EXPIRY_GRACE_MS,
+      );
+    });
+
+    const graceElapsed = Date.now() - WORLD_ROOM_EXPIRY_GRACE_MS - 1_000;
+    await runInDurableObject(stub, async (_instance: WorldRoom, durableState) => {
+      const stored = (await durableState.storage.get<Record<string, unknown>>("world"))!;
+      stored.expiresAt = graceElapsed;
+      await durableState.storage.put("world", stored);
+    });
+    await evictDurableObject(stub);
+    await runInDurableObject(stub, async (instance: WorldRoom, durableState) => {
+      await instance.alarm();
+      expect(await durableState.storage.get("world")).toBeUndefined();
+    });
+  });
+
+  it("bounds profile and owner-control mutations without penalizing normal changes", async () => {
+    const { roomId, ownerToken } = await createWorld();
+    const guest = await connectWorld(roomId, "guest_rates");
+    for (let index = 0; index < 6; index += 1) {
+      send(guest.socket!, {
+        v: LIVE_PROTOCOL_VERSION,
+        type: "setProfile",
+        profile: { displayName: `Builder ${index}` },
+      });
+      await guest.inbox!.next("players");
+    }
+    send(guest.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "setProfile",
+      profile: { displayName: "Builder blocked" },
+    });
+    expect(await guest.inbox!.next("error")).toMatchObject({ code: "profile_rate_limited" });
+
+    const owner = await connectWorld(roomId, "owner_rates", ownerToken);
+    for (let index = 0; index < 12; index += 1) {
+      send(owner.socket!, {
+        v: LIVE_PROTOCOL_VERSION,
+        type: "setLocked",
+        locked: index % 2 === 0,
+      });
+      await owner.inbox!.next("locked");
+    }
+    send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setLocked", locked: true });
+    expect(await owner.inbox!.next("error")).toMatchObject({ code: "control_rate_limited" });
+  });
+
+  it("closes clients that persist after repeated per-second message-rate violations", async () => {
+    const { roomId } = await createWorld();
+    const guest = await connectWorld(roomId, "guest_flood");
+    const closed = nextClose(guest.socket!);
+    for (let index = 0; index < 33; index += 1) {
+      send(guest.socket!, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+    }
+    expect((await closed).code).toBe(1008);
   });
 
   it("caps a room at 30 concurrent players and rejects player 31", async () => {
@@ -332,6 +585,64 @@ describe("WorldRoom", () => {
     const overflow = await connectWorld(roomId, "guest_999");
     expect(overflow.response.status).toBe(429);
     expect(await overflow.response.json()).toEqual({ error: "world_full" });
+  });
+});
+
+describe("World creation limiter", () => {
+  it("returns a clean per-IP 429 while leaving another IP and legacy race creation available", async () => {
+    const workerEnv = env as unknown as WorkerEnv;
+    const limitedIp = "203.0.113.10";
+    const limiterStub = workerEnv.WORLD_CREATION_LIMITER.get(
+      workerEnv.WORLD_CREATION_LIMITER.idFromName(worldCreationLimiterKey(limitedIp)),
+    );
+    await runInDurableObject(limiterStub, async (_instance: WorldCreationLimiter, durableState) => {
+      await durableState.storage.put("window", {
+        windowStartedAt: Date.now(),
+        count: WORLD_CREATION_LIMIT,
+      });
+    });
+    const body = JSON.stringify({
+      title: "Limited world",
+      document: worldDocument(),
+      profile: { displayName: "Ada Builder" },
+    });
+    const limited = await workerFetch("https://worker.test/worlds", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://virtual-legos.vercel.app",
+        "cf-connecting-ip": limitedIp,
+      },
+      body,
+    });
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toMatch(/^\d+$/);
+    expect(await limited.json()).toMatchObject({
+      error: "creation_rate_limited",
+      retryAfterSeconds: expect.any(Number),
+    });
+
+    const otherIp = await workerFetch("https://worker.test/worlds", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://virtual-legos.vercel.app",
+        "cf-connecting-ip": "203.0.113.11",
+      },
+      body,
+    });
+    expect(otherIp.status).toBe(201);
+
+    const race = await workerFetch("https://worker.test/rooms", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: "https://virtual-legos.vercel.app",
+        "cf-connecting-ip": limitedIp,
+      },
+      body: JSON.stringify({ title: "Legacy race", document: { bricks: [] } }),
+    });
+    expect(race.status).toBe(201);
   });
 });
 
