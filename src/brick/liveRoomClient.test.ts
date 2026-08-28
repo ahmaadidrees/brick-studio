@@ -469,6 +469,112 @@ describe('live room synchronization', () => {
     expect(useBrickStore.getState().bricks[0].color).toBe('#3e83d7')
   })
 
+  it('reconnects and replays the same optimistic operation when socket.send throws', () => {
+    vi.useFakeTimers()
+    const { client, sockets, socket, callbacks } = createHarness({ reconnectDelaysMs: [25] })
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    const firstSocket = socket()
+    const originalSend = firstSocket.send.bind(firstSocket)
+    firstSocket.send = (data) => {
+      const message = JSON.parse(data) as LiveClientMessage
+      if (message.type === 'commands') throw new Error('socket entered CLOSING state')
+      originalSend(data)
+    }
+
+    useBrickStore.setState({ bricks: [brick('a'), brick('b', { x: 20, z: 20 })] })
+    expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', pendingOperations: 1 })
+    expect(firstSocket.closed).toBe(true)
+    expect(callbacks.errors).toContain('connection_error')
+
+    vi.advanceTimersByTime(25)
+    expect(sockets).toHaveLength(2)
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    const replay = socket().commandMessages()[0]
+    expect(replay.opId).toBe('live-test-client#1')
+    socket().receive({
+      v: 1,
+      type: 'apply',
+      from: 'live-test-client',
+      opId: replay.opId,
+      revision: 2,
+      commands: replay.commands,
+    })
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online', revision: 2, pendingOperations: 0 })
+    expect(useBrickStore.getState().bricks).toEqual([brick('a'), brick('b', { x: 20, z: 20 })])
+  })
+
+  it('forces a reconnect when an optimistic operation is never acknowledged, then rolls it back from an authoritative outcome', () => {
+    vi.useFakeTimers()
+    const canonical = documentWith(brick('a'))
+    const { client, sockets, socket, callbacks } = createHarness({
+      reconnectDelaysMs: [25],
+      syncTimeoutMs: 100,
+    })
+    welcome(socket(), { revision: 1, document: canonical })
+    useBrickStore.setState({ bricks: [brick('a'), brick('b', { x: 20, z: 20 })] })
+    const operation = socket().commandMessages()[0]
+
+    vi.advanceTimersByTime(99)
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online', pendingOperations: 1 })
+    vi.advanceTimersByTime(1)
+    expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', pendingOperations: 1 })
+    expect(callbacks.errors).toContain('sync_timeout')
+
+    vi.advanceTimersByTime(25)
+    expect(sockets).toHaveLength(2)
+    welcome(socket(), { revision: 1, document: canonical })
+    expect(socket().commandMessages().at(-1)?.opId).toBe(operation.opId)
+    expect(useBrickStore.getState().bricks).toHaveLength(2)
+
+    socket().receive({
+      v: 1,
+      type: 'snapshot',
+      opId: operation.opId,
+      revision: 1,
+      mode: 'build',
+      document: canonical,
+    })
+    expect(client.getSnapshot()).toMatchObject({
+      connection: 'online',
+      awaitingSnapshot: false,
+      pendingOperations: 0,
+    })
+    expect(useBrickStore.getState().bricks).toEqual(canonical.bricks)
+
+    vi.advanceTimersByTime(100)
+    expect(sockets).toHaveLength(2)
+  })
+
+  it('escapes an indefinitely unanswered resync by reconnecting to a fresh welcome snapshot', () => {
+    vi.useFakeTimers()
+    const { client, sockets, socket, callbacks } = createHarness({
+      reconnectDelaysMs: [25],
+      syncTimeoutMs: 100,
+    })
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    socket().receive({
+      v: 1,
+      type: 'apply',
+      from: 'peer-client',
+      opId: 'peer-client#3',
+      revision: 3,
+      commands: [{ op: 'place', brick: brick('gap') }],
+    })
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online', awaitingSnapshot: true })
+    expect(socket().messages().at(-1)).toEqual({ v: 1, type: 'resync' })
+
+    vi.advanceTimersByTime(100)
+    expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', awaitingSnapshot: true })
+    expect(callbacks.errors).toContain('sync_timeout')
+    vi.advanceTimersByTime(25)
+
+    const healed = documentWith(brick('healed'))
+    welcome(socket(), { revision: 3, document: healed })
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online', revision: 3, awaitingSnapshot: false })
+    expect(useBrickStore.getState().bricks).toEqual(healed.bricks)
+    expect(sockets).toHaveLength(2)
+  })
+
   it('clears stale cached replace and reject outcomes without regressing the newer welcome snapshot', () => {
     vi.useFakeTimers()
     const { client, sockets, socket, callbacks } = createHarness({ reconnectDelaysMs: [50] })

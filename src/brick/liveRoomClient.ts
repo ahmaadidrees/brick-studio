@@ -25,6 +25,7 @@ import type { BrickInstance, PlayerProfile } from './types'
 export const DEFAULT_LIVE_RECONNECT_DELAYS_MS = [500, 1_000, 2_000, 5_000, 10_000]
 export const DEFAULT_LIVE_POSE_INTERVAL_MS = 75
 export const DEFAULT_LIVE_POSE_HEARTBEAT_MS = 1_500
+export const DEFAULT_LIVE_SYNC_TIMEOUT_MS = 5_000
 /** Stays below the Worker's retained outcome window so reconnect replay can never outrun dedupe history. */
 export const LIVE_MAX_PENDING_OPERATIONS = 96
 export const LIVE_ROOM_IDENTITY_STORAGE_PREFIX = 'brick-studio.live-room-identity.v1:'
@@ -102,6 +103,8 @@ export type LiveRoomClientOptions = {
   store?: LiveRoomStore
   createSocket?: (url: string) => LiveRoomSocketLike
   reconnectDelaysMs?: number[]
+  /** Maximum time an edit acknowledgement or resync response may remain silent before reconnecting. */
+  syncTimeoutMs?: number
   poseIntervalMs?: number
   poseHeartbeatMs?: number
   visibility?: PoseVisibilitySource
@@ -394,6 +397,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   const store = options.store ?? useBrickStore
   const createSocket = options.createSocket ?? defaultCreateSocket
   const reconnectDelays = options.reconnectDelaysMs ?? DEFAULT_LIVE_RECONNECT_DELAYS_MS
+  const syncTimeoutMs = options.syncTimeoutMs ?? DEFAULT_LIVE_SYNC_TIMEOUT_MS
   const now = options.now ?? (() => Date.now())
   const setTimer = options.setTimeout ?? ((handler, timeout) => globalThis.setTimeout(handler, timeout))
   const clearTimer = options.clearTimeout ?? ((timer) => globalThis.clearTimeout(timer))
@@ -408,6 +412,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   let reconnectAttempt = 0
   let everOnline = false
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+  let syncTimer: ReturnType<typeof setTimeout> | undefined
   let operationSequence = 0n
   let reconnectToken = reusableGuestIdentity?.reconnectToken
   let canonicalDocument: BrickStudioDocument | null = null
@@ -442,8 +447,12 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
 
   const send = (message: LiveClientMessage) => {
     if (!socket || !socketOpen) return false
-    socket.send(JSON.stringify(message))
-    return true
+    try {
+      socket.send(JSON.stringify(message))
+      return true
+    } catch {
+      return false
+    }
   }
 
   const nextOpId = () => `${clientId}#${++operationSequence}`
@@ -495,21 +504,76 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     options.onPresence?.(clonePlayers(next))
   }
 
+  const clearSyncWatchdog = () => {
+    if (syncTimer === undefined) return
+    clearTimer(syncTimer)
+    syncTimer = undefined
+  }
+
+  const hasOutstandingSync = () => pending.size > 0 || snapshot.awaitingSnapshot
+
+  const armSyncWatchdog = (reset = false) => {
+    if (reset) clearSyncWatchdog()
+    if (!hasOutstandingSync()) {
+      clearSyncWatchdog()
+      return
+    }
+    if (
+      syncTimer !== undefined
+      || disposed
+      || !socketOpen
+      || snapshot.connection !== 'online'
+    ) return
+    syncTimer = setTimer(() => {
+      syncTimer = undefined
+      if (!hasOutstandingSync() || disposed) return
+      restartConnection(
+        'sync_timeout',
+        'Live sync stopped responding. Rejoining the world to safely retry your change…',
+      )
+    }, syncTimeoutMs)
+  }
+
   const replayPending = () => {
     if (snapshot.connection !== 'online') return
-    for (const operation of pending.values()) send(operation)
+    for (const operation of pending.values()) {
+      if (!send(operation)) {
+        restartConnection(
+          'connection_error',
+          'The live world connection closed while retrying your change.',
+        )
+        return
+      }
+    }
+    armSyncWatchdog(true)
   }
 
   const enqueue = (operation: PendingOperation) => {
     pending.set(operation.opId, operation)
     publish({ pendingOperations: pending.size })
-    if (snapshot.connection === 'online') send(operation)
+    if (snapshot.connection !== 'online') return
+    if (!send(operation)) {
+      restartConnection(
+        'connection_error',
+        'The live world connection closed before your change could be confirmed.',
+      )
+      return
+    }
+    armSyncWatchdog()
   }
 
   const requestResync = () => {
     if (snapshot.awaitingSnapshot || !socketOpen) return false
     publish({ awaitingSnapshot: true })
-    return send({ v: LIVE_PROTOCOL_VERSION, type: 'resync' })
+    if (!send({ v: LIVE_PROTOCOL_VERSION, type: 'resync' })) {
+      restartConnection(
+        'connection_error',
+        'The live world connection closed while requesting the latest world.',
+      )
+      return false
+    }
+    armSyncWatchdog()
+    return true
   }
 
   const acceptDocument = (
@@ -583,6 +647,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           if (own) {
             publish({ pendingOperations: pending.size })
             refreshFromCanonical('remote')
+            armSyncWatchdog(true)
           }
           return
         }
@@ -597,6 +662,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         }
         publish({ revision: message.revision, pendingOperations: pending.size })
         refreshFromCanonical(own ? 'local' : 'remote', !own)
+        if (own) armSyncWatchdog(true)
         return
       }
       case 'snapshot': {
@@ -605,12 +671,14 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           if (acknowledged) {
             publish({ pendingOperations: pending.size })
             refreshFromCanonical('remote')
+            armSyncWatchdog(true)
           }
           return
         }
         adoptMode(message.mode)
         if (!acceptDocument(message.document, 'snapshot', message.revision, true)) return
         publish({ pendingOperations: pending.size, mode: message.mode })
+        armSyncWatchdog(true)
         return
       }
       case 'reject': {
@@ -621,12 +689,14 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
             refreshFromCanonical('reject', true)
           }
           reportError(message.code, message.message)
+          armSyncWatchdog(true)
           return
         }
         if (!message.opId) pending.clear()
         if (!acceptDocument(message.document, 'reject', message.revision, true)) return
         publish({ pendingOperations: pending.size })
         reportError(message.code, message.message)
+        armSyncWatchdog(true)
         return
       }
       case 'modeChanged': {
@@ -690,6 +760,21 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     }, delay)
   }
 
+  const restartConnection = (code: string, message: string) => {
+    if (disposed) return
+    const staleSocket = socket
+    socket = null
+    socketOpen = false
+    clearSyncWatchdog()
+    poseSender.transportClosed()
+    if (staleSocket) {
+      try { staleSocket.close() }
+      catch { /* reconnect below even if the browser rejects close() */ }
+    }
+    reportError(code, message)
+    scheduleReconnect()
+  }
+
   const connect = () => {
     if (disposed) return
     let nextSocket: LiveRoomSocketLike
@@ -711,7 +796,10 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     nextSocket.onopen = () => {
       if (disposed || socket !== nextSocket) return
       socketOpen = true
-      send({ v: LIVE_PROTOCOL_VERSION, type: 'setProfile', profile: desiredProfile })
+      if (!send({ v: LIVE_PROTOCOL_VERSION, type: 'setProfile', profile: desiredProfile })) {
+        restartConnection('connection_error', 'The live world connection closed while joining.')
+        return
+      }
       poseSender.transportOpened()
     }
     nextSocket.onmessage = (event) => {
@@ -719,12 +807,15 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       handleMessage(event.data)
     }
     nextSocket.onerror = () => {
-      if (socket === nextSocket) reportError('connection_error', 'The live world connection encountered an error.')
+      if (socket === nextSocket) {
+        restartConnection('connection_error', 'The live world connection encountered an error.')
+      }
     }
     nextSocket.onclose = () => {
       if (socket !== nextSocket) return
       socket = null
       socketOpen = false
+      clearSyncWatchdog()
       poseSender.transportClosed()
       if (disposed) return
       scheduleReconnect()
@@ -821,6 +912,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       disposed = true
       unsubscribeStore()
       if (reconnectTimer !== undefined) clearTimer(reconnectTimer)
+      clearSyncWatchdog()
       poseSender.deactivate()
       socket?.close()
       socket = null
