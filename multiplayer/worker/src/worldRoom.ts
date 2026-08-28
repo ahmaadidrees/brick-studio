@@ -50,6 +50,8 @@ type WorldSocketAttachment = {
   playerId: string;
   isOwner: boolean;
   connectedAt: number;
+  connectionId?: string;
+  superseded?: boolean;
   lastPoseAt: number;
   messageWindowAt: number;
   messageCount: number;
@@ -318,6 +320,7 @@ function validateCommands(value: unknown, document: BrickStudioDocument): Valida
 export class WorldRoom extends DurableObject<WorldRoomEnv> {
   private record: WorldRoomRecord | null = null;
   private lastPersistedTouch = 0;
+  private admissionTail: Promise<void> = Promise.resolve();
 
   constructor(ctx: DurableObjectState, env: WorldRoomEnv) {
     super(ctx, env);
@@ -381,12 +384,15 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return json({ ok: true }, 201);
     }
     if (!this.record) return json({ error: "world_not_found" }, 404);
-    if (url.pathname.endsWith("/connect")) return this.connectSocket(request, url);
+    if (url.pathname.endsWith("/connect")) {
+      return this.withSerializedAdmission(() => this.connectSocket(request, url));
+    }
     if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
     return json(this.publicState());
   }
 
   private async connectSocket(request: Request, url: URL): Promise<Response> {
+    if (!this.record) return json({ error: "world_not_found" }, 404);
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return json({ error: "websocket_required" }, 426);
     }
@@ -410,6 +416,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       && safeVerifierEqual(suppliedReconnectVerifier, knownReconnectVerifier),
     );
     const existing = this.openSockets().find((socket) => this.attachment(socket)?.playerId === playerId);
+    const existingIdentity = isOwner
+      ? this.openSockets().find((socket) => this.attachment(socket)?.isOwner)
+      : existing;
     const knownPlayer = Boolean(existing || this.record!.profiles[playerId] || knownReconnectVerifier);
     if (!isOwner && knownPlayer && !validReconnect) {
       return json({ error: "reconnect_token_required" }, 403);
@@ -417,7 +426,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (this.record!.locked && !isOwner && !validReconnect) {
       return json({ error: "world_locked" }, 403);
     }
-    if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existing) return json({ error: "world_full" }, 429);
+    if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existingIdentity) return json({ error: "world_full" }, 429);
 
     let issuedReconnectToken: string | undefined;
     if (!isOwner && !knownPlayer) {
@@ -436,6 +445,8 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       playerId,
       isOwner,
       connectedAt: now,
+      connectionId: randomHex(8),
+      superseded: false,
       lastPoseAt: 0,
       messageWindowAt: now,
       messageCount: 0,
@@ -452,7 +463,13 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       this.pruneProfileCache();
     }
     await this.persist();
-    if (existing) existing.close(4001, "Reconnected elsewhere");
+    for (const previous of this.sessionSockets()) {
+      const previousAttachment = this.attachment(previous);
+      if (previousAttachment
+          && (previousAttachment.playerId === playerId || (isOwner && previousAttachment.isOwner))) {
+        this.supersedeSocket(previous);
+      }
+    }
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment(attachment);
     this.send(server, {
@@ -475,12 +492,28 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
+  private async withSerializedAdmission<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.admissionTail;
+    let release!: () => void;
+    this.admissionTail = new Promise<void>((resolve) => { release = resolve; });
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
+  }
+
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const bytes = typeof message === "string" ? encodedBytes(message) : message.byteLength;
     if (bytes > MAX_FRAME_BYTES) return this.sendError(socket, "message_too_large", "The live-world message is too large.");
     if (typeof message !== "string") return this.sendError(socket, "text_messages_only", "Only JSON text messages are accepted.");
     const attachment = this.attachment(socket);
     if (!attachment || !this.record) return socket.close(1011, "Missing live-world session");
+    if (attachment.superseded || this.currentSocket(attachment) !== socket) {
+      this.supersedeSocket(socket);
+      return;
+    }
     const now = Date.now();
     attachment.messageRateViolations ??= 0;
     attachment.profileWindowAt ??= now;
@@ -886,8 +919,49 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     return socket.deserializeAttachment() as WorldSocketAttachment | null;
   }
 
+  private sessionSockets(): WebSocket[] {
+    return this.ctx.getWebSockets().filter((socket) => {
+      if (socket.readyState !== WebSocket.OPEN) return false;
+      return !this.attachment(socket)?.superseded;
+    });
+  }
+
   private openSockets(): WebSocket[] {
-    return this.ctx.getWebSockets().filter((socket) => socket.readyState === WebSocket.OPEN);
+    const latestByIdentity = new Map<string, WebSocket>();
+    for (const socket of this.sessionSockets()) {
+      const attachment = this.attachment(socket);
+      if (!attachment) continue;
+      const identity = this.socketIdentity(attachment);
+      const previous = latestByIdentity.get(identity);
+      const previousAttachment = previous ? this.attachment(previous) : null;
+      const isNewer = !previousAttachment
+        || attachment.connectedAt > previousAttachment.connectedAt
+        || (attachment.connectedAt === previousAttachment.connectedAt
+          && (attachment.connectionId ?? "") >= (previousAttachment.connectionId ?? ""));
+      if (isNewer) latestByIdentity.set(identity, socket);
+    }
+    return [...latestByIdentity.values()];
+  }
+
+  private socketIdentity(attachment: WorldSocketAttachment): string {
+    return attachment.isOwner ? "owner" : `player:${attachment.playerId}`;
+  }
+
+  private currentSocket(attachment: WorldSocketAttachment): WebSocket | undefined {
+    const identity = this.socketIdentity(attachment);
+    return this.openSockets().find((socket) => {
+      const candidate = this.attachment(socket);
+      return candidate ? this.socketIdentity(candidate) === identity : false;
+    });
+  }
+
+  private supersedeSocket(socket: WebSocket): void {
+    const attachment = this.attachment(socket);
+    if (attachment && !attachment.superseded) {
+      attachment.superseded = true;
+      socket.serializeAttachment(attachment);
+    }
+    if (socket.readyState === WebSocket.OPEN) socket.close(4001, "Reconnected elsewhere");
   }
 
   private broadcastPlayers(): void {

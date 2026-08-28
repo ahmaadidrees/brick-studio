@@ -196,6 +196,87 @@ describe("WorldRoom", () => {
     expect(reconnected.welcome).not.toHaveProperty("reconnectToken");
   });
 
+  it("atomically replaces an owner session without ever duplicating its roster identity", async () => {
+    const { roomId, ownerToken } = await createWorld(worldDocument(), "Teacher");
+    const owner = await connectWorld(roomId, "owner_stable", ownerToken);
+    const guest = await connectWorld(roomId, "guest_stable");
+
+    const attacker = await connectWorld(roomId, "owner_stable");
+    expect(attacker.response.status).toBe(403);
+    expect(await attacker.response.json()).toEqual({ error: "reconnect_token_required" });
+    send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setLocked", locked: true });
+    expect(await guest.inbox!.next("locked")).toMatchObject({ locked: true });
+
+    const originalClosed = nextClose(owner.socket!);
+    const replacement = await connectWorld(roomId, "owner_stable", ownerToken);
+    expect(replacement.response.status).toBe(101);
+    expect((await originalClosed).code).toBe(4001);
+    const welcomePlayers = replacement.welcome!.players as Array<{ playerId: string; isOwner: boolean }>;
+    expect(welcomePlayers).toHaveLength(2);
+    expect(welcomePlayers.filter((player) => player.playerId === "owner_stable")).toEqual([
+      expect.objectContaining({ isOwner: true }),
+    ]);
+
+    send(replacement.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "setProfile",
+      profile: { displayName: "Teacher Rejoined" },
+    });
+    let roster = await guest.inbox!.next("players");
+    while (!(roster.players as Array<{ playerId: string; profile: { displayName: string } }>).some(
+      (player) => player.playerId === "owner_stable" && player.profile.displayName === "Teacher Rejoined",
+    )) roster = await guest.inbox!.next("players");
+    const rosterPlayers = roster.players as Array<{ playerId: string; isOwner: boolean }>;
+    expect(rosterPlayers).toHaveLength(2);
+    expect(new Set(rosterPlayers.map((player) => player.playerId)).size).toBe(2);
+    expect(rosterPlayers.filter((player) => player.playerId === "owner_stable")).toHaveLength(1);
+
+    const publicPlayers = (await getWorld(roomId)).players as Array<{ playerId: string; isOwner: boolean }>;
+    expect(publicPlayers).toHaveLength(2);
+    expect(publicPlayers.filter((player) => player.playerId === "owner_stable")).toHaveLength(1);
+
+    const replacementClosed = nextClose(replacement.socket!);
+    const changedPlayerId = await connectWorld(roomId, "owner_new_id", ownerToken);
+    expect(changedPlayerId.response.status).toBe(101);
+    expect((await replacementClosed).code).toBe(4001);
+    const changedIdPlayers = changedPlayerId.welcome!.players as Array<{ playerId: string; isOwner: boolean }>;
+    expect(changedIdPlayers).toHaveLength(2);
+    expect(changedIdPlayers.filter((player) => player.isOwner)).toEqual([
+      expect.objectContaining({ playerId: "owner_new_id" }),
+    ]);
+
+    const rapidUrl = new URL(`https://worker.test/worlds/${roomId}/connect`);
+    rapidUrl.searchParams.set("playerId", "owner_stable");
+    rapidUrl.searchParams.set("ownerToken", ownerToken);
+    const rapidRequests = [1, 2].map(() => workerFetch(rapidUrl.toString(), {
+      headers: { Upgrade: "websocket", origin: "https://virtual-legos.vercel.app" },
+    }));
+    const rapidResponses = await Promise.all(rapidRequests);
+    expect(rapidResponses.map((response) => response.status)).toEqual([101, 101]);
+    for (const response of rapidResponses) {
+      const socket = response.webSocket!;
+      sockets.push(socket);
+      socket.accept();
+    }
+    const afterRapidReconnects = (await getWorld(roomId)).players as Array<{ playerId: string }>;
+    expect(afterRapidReconnects).toHaveLength(2);
+    expect(new Set(afterRapidReconnects.map((player) => player.playerId)).size).toBe(2);
+    expect(afterRapidReconnects.filter((player) => player.playerId === "owner_stable")).toHaveLength(1);
+
+    const workerEnv = env as unknown as WorkerEnv;
+    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    await runInDurableObject(stub, async (_instance: WorldRoom, durableState) => {
+      const ownerAttachments = durableState.getWebSockets()
+        .map((socket) => socket.deserializeAttachment() as {
+          playerId?: string;
+          isOwner?: boolean;
+          superseded?: boolean;
+        } | null)
+        .filter((attachment) => attachment?.isOwner);
+      expect(ownerAttachments.filter((attachment) => !attachment?.superseded)).toHaveLength(1);
+    });
+  });
+
   it("applies atomic guest edits and rejects structural conflicts with a canonical snapshot", async () => {
     const { roomId } = await createWorld();
     const guest = await connectWorld(roomId, "guest_101");
@@ -331,6 +412,9 @@ describe("WorldRoom", () => {
     const returning = await connectWorld(roomId, "guest_201", undefined, reconnectToken);
     expect(returning.response.status).toBe(101);
     expect(returning.welcome).toMatchObject({ locked: true, isOwner: false, mode: "explore" });
+    const returningPlayers = returning.welcome!.players as Array<{ playerId: string }>;
+    expect(returningPlayers).toHaveLength(2);
+    expect(new Set(returningPlayers.map((player) => player.playerId)).size).toBe(2);
 
     send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setMode", mode: "build" });
     await owner.inbox!.next("modeChanged");
