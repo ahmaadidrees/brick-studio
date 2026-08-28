@@ -43,9 +43,17 @@ import { normalizeTouchStick } from './touchInput'
 import type { ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { createPublishedWorldUrl } from './publishedWorlds'
+import { createLiveOwnerUrl, readSavedLiveDisplayName, saveLiveDisplayName } from './liveLinks'
+import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
 import './brick-studio.css'
 
-function useBuilderShortcuts(enabled = true) {
+export type BrickStudioLivePolicy = {
+  connection: LiveConnectionState
+  isOwner: boolean
+  onRequestMode: (mode: LiveWorldMode) => void
+}
+
+function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy) {
   useEffect(() => {
     if (!enabled) return
     const handler = (event: KeyboardEvent) => {
@@ -59,8 +67,18 @@ function useBuilderShortcuts(enabled = true) {
       if (command && event.key.toLowerCase() === 'c') { event.preventDefault(); state.copy(); return }
       if (command && event.key.toLowerCase() === 'v') { event.preventDefault(); state.paste(); return }
       if (command && event.key.toLowerCase() === 'd') { event.preventDefault(); state.duplicate(); return }
-      if (event.key === '1') { state.setMode('build'); return }
-      if (event.key === '2') { requestExploreMode(); return }
+      if (event.key === '1') {
+        if (livePolicy) {
+          if (livePolicy.isOwner && livePolicy.connection === 'online') livePolicy.onRequestMode('build')
+        } else state.setMode('build')
+        return
+      }
+      if (event.key === '2') {
+        if (livePolicy) {
+          if (livePolicy.isOwner && livePolicy.connection === 'online' && state.bricks.length > 0) livePolicy.onRequestMode('explore')
+        } else requestExploreMode()
+        return
+      }
       if (state.mode !== 'build') return
       if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
       if ((event.key === 'Enter' || event.key === ' ') && state.draft) { event.preventDefault(); state.placeDraft(); return }
@@ -86,7 +104,7 @@ function useBuilderShortcuts(enabled = true) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [enabled])
+  }, [enabled, livePolicy])
 }
 
 function useReactiveBrickBudget() {
@@ -158,10 +176,11 @@ function useCompactLayout() {
 }
 
 type HeaderProps = StudioDocumentCommands & {
+  livePolicy?: BrickStudioLivePolicy
   onOpenHelp: () => void
 }
 
-function Header({ onNewBuild, onImportProject, onExportProject, onPublishWorld, onOpenHelp }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const bricks = useBrickStore((state) => state.bricks)
@@ -171,6 +190,9 @@ function Header({ onNewBuild, onImportProject, onExportProject, onPublishWorld, 
   const redoCount = useBrickStore((state) => state.redoStack.length)
   const brickBudget = useBrickStore((state) => state.brickBudget)
   const budgetProfile = useBrickStore((state) => state.budgetProfile)
+  const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
+  const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
+  const requestExplore = () => livePolicy ? livePolicy.onRequestMode('explore') : requestExploreMode()
 
   return (
     <header className="brick-header">
@@ -179,8 +201,8 @@ function Header({ onNewBuild, onImportProject, onExportProject, onPublishWorld, 
         <div><strong>Brick Studio</strong><span>Build your world</span></div>
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
-        <button aria-label="Build mode" className={mode === 'build' ? 'active' : ''} onClick={() => setMode('build')}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
-        <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={requestExploreMode} disabled={bricks.length === 0}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
+        <button aria-label="Build mode" className={mode === 'build' ? 'active' : ''} onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
+        <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
       </nav>
       <div className="brick-header-actions">
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick budget for ${budgetProfile}`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks · {budgetProfile}</i></span>
@@ -192,6 +214,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onPublishWorld, 
           onNewBuild={onNewBuild}
           onImportProject={onImportProject}
           onExportProject={onExportProject}
+          onStartLiveWorld={onStartLiveWorld}
           onPublishWorld={onPublishWorld}
           onOpenHelp={onOpenHelp}
         />
@@ -717,21 +740,26 @@ export type BrickStudioAppProps = StudioDocumentCommands & {
   onStartRace?: () => void
   raceScene?: BrickStudioSceneProps
   raceOverlay?: ReactNode
+  livePolicy?: BrickStudioLivePolicy
+  liveOverlay?: ReactNode
 }
 
 export default function BrickStudioApp({
   onNewBuild,
   onImportProject,
   onExportProject,
+  onStartLiveWorld,
   onPublishWorld,
   publishedWorld,
   onRemix,
   onStartRace,
   raceScene,
   raceOverlay,
+  livePolicy,
+  liveOverlay,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
-  useBuilderShortcuts(!readOnly)
+  useBuilderShortcuts(!readOnly && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
@@ -740,6 +768,29 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
+  const startCurrentWorldLive = useCallback(async () => {
+    const title = window.prompt('Name this live world', 'My Live Brick World')?.trim()
+    if (title === undefined) return
+    const savedName = readSavedLiveDisplayName()
+    const displayName = window.prompt('What should other builders call you?', savedName || 'Builder')?.trim()
+    if (!displayName) {
+      useBrickStore.setState({ toast: 'A display name is needed to start a live world.' })
+      return
+    }
+    useBrickStore.setState({ toast: 'Starting your live world…' })
+    try {
+      const { createLiveWorld } = await import('./liveRoomClient')
+      const { roomId, ownerToken } = await createLiveWorld({
+        title: title || 'My Live Brick World',
+        document: createBrickStudioDocument(useBrickStore.getState().bricks),
+        profile: { displayName },
+      })
+      saveLiveDisplayName(displayName)
+      window.location.assign(createLiveOwnerUrl(roomId, ownerToken))
+    } catch (error) {
+      useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not start the live world.' })
+    }
+  }, [])
   const publishCurrentWorld = useCallback(async () => {
     const title = window.prompt('Name this world', 'My Brick World')?.trim()
     if (title === undefined) return
@@ -752,7 +803,13 @@ export default function BrickStudioApp({
       useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not publish this world.' })
     }
   }, [])
-  const documentCommands = useBrickStudioDocuments({ onNewBuild, onImportProject, onExportProject, onPublishWorld: onPublishWorld ?? publishCurrentWorld }, !readOnly)
+  const documentCommands = useBrickStudioDocuments({
+    onNewBuild,
+    onImportProject,
+    onExportProject,
+    onStartLiveWorld: onStartLiveWorld ?? startCurrentWorldLive,
+    onPublishWorld: onPublishWorld ?? publishCurrentWorld,
+  }, !readOnly)
   useLayoutEffect(() => {
     if (!publishedWorld) return
     useBrickStore.getState().restoreDocument(publishedWorld.document)
@@ -770,7 +827,7 @@ export default function BrickStudioApp({
             {onRemix && <button type="button" onClick={onRemix}>Remix this world</button>}
           </div>
         </div>
-      ) : <Header {...documentCommands} onOpenHelp={onboarding.reopen} />}
+      ) : <Header {...documentCommands} livePolicy={livePolicy} onOpenHelp={onboarding.reopen} />}
       {mode === 'build' ? (
         <>
           <BuildShell compact={compact} />
@@ -782,6 +839,7 @@ export default function BrickStudioApp({
       <Toast />
       <Announcer />
       {raceOverlay}
+      {liveOverlay}
     </main>
   )
 }

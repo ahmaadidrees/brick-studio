@@ -315,6 +315,25 @@ describe('Brick Studio responsive controls', () => {
     expect(useBrickStore.getState().mode).toBe('explore')
   })
 
+  it('lets only an online live-world owner request a shared mode change', () => {
+    resetStore([brick])
+    const onRequestMode = vi.fn()
+    const { rerender } = render(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: false, onRequestMode }} />)
+
+    expect(screen.getByRole('button', { name: 'Build mode' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
+    fireEvent.keyDown(document.body, { key: '2' })
+    expect(onRequestMode).not.toHaveBeenCalled()
+
+    rerender(<BrickStudioApp livePolicy={{ connection: 'reconnecting', isOwner: true, onRequestMode }} />)
+    expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
+
+    rerender(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: true, onRequestMode }} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Explore mode' }))
+    expect(onRequestMode).toHaveBeenCalledWith('explore')
+    expect(useBrickStore.getState().mode).toBe('build')
+  })
+
   it('resets touch movement on pointer interruptions, blur, visibility loss, and return to Build', () => {
     useBrickStore.setState({ bricks: [brick], mode: 'explore' })
     render(<BrickStudioApp />)
@@ -714,11 +733,13 @@ describe('Builder Experience Alpha shell', () => {
     const onNewBuild = vi.fn()
     const onExportProject = vi.fn()
     const onImportProject = vi.fn()
+    const onStartLiveWorld = vi.fn()
     render(
       <BrickStudioApp
         onNewBuild={onNewBuild}
         onImportProject={onImportProject}
         onExportProject={onExportProject}
+        onStartLiveWorld={onStartLiveWorld}
       />,
     )
 
@@ -730,6 +751,10 @@ describe('Builder Experience Alpha shell', () => {
     openMenu()
     fireEvent.click(screen.getByRole('menuitem', { name: /Export/ }))
     expect(onExportProject).toHaveBeenCalledOnce()
+
+    openMenu()
+    fireEvent.click(screen.getByRole('menuitem', { name: /Build together/ }))
+    expect(onStartLiveWorld).toHaveBeenCalledOnce()
 
     openMenu()
     const file = new File(['{"schemaVersion":1}'], 'world.brickstudio.json', { type: 'application/json' })

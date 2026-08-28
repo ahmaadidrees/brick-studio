@@ -75,6 +75,7 @@ export function useBrickStudioDocuments(
     onNewBuild: overrides.onNewBuild ?? newBuild,
     onImportProject: overrides.onImportProject ?? importProject,
     onExportProject: overrides.onExportProject ?? exportProject,
+    onStartLiveWorld: overrides.onStartLiveWorld ?? (() => {}),
     onPublishWorld: overrides.onPublishWorld ?? (() => {}),
   }
 }

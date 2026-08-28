@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Share2, Upload } from 'lucide-react'
+import { Download, FilePlus2, HelpCircle, MoreHorizontal, Radio, Share2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
@@ -7,6 +7,7 @@ export type StudioDocumentCommands = {
   onNewBuild?: () => void
   onImportProject?: (file: File) => void | Promise<void>
   onExportProject?: () => void
+  onStartLiveWorld?: () => void
   onPublishWorld?: () => void
 }
 
@@ -45,6 +46,7 @@ export function StudioMenu({
   onNewBuild,
   onImportProject,
   onExportProject,
+  onStartLiveWorld,
   onPublishWorld,
   onOpenHelp,
 }: StudioMenuProps) {
@@ -98,6 +100,9 @@ export function StudioMenu({
           </button>
           <button role="menuitem" type="button" disabled={!onExportProject} onClick={() => runAndClose(onExportProject)}>
             <Download size={18} /><span><strong>Export</strong><small>Download this build</small></span>
+          </button>
+          <button role="menuitem" type="button" disabled={!onStartLiveWorld} onClick={() => runAndClose(onStartLiveWorld)}>
+            <Radio size={18} /><span><strong>Build together</strong><small>Start a live multiplayer world</small></span>
           </button>
           <button role="menuitem" type="button" disabled={!onPublishWorld} onClick={() => runAndClose(onPublishWorld)}>
             <Share2 size={18} /><span><strong>Publish</strong><small>Create a read-only Explore link</small></span>
