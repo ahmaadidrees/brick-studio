@@ -8,6 +8,7 @@ import {
   createLiveWorld,
   diffBricksToLiveCommands,
   getLiveWorld,
+  LIVE_MAX_PENDING_OPERATIONS,
   type LiveRoomClient,
   type LiveRoomClientOptions,
   type LiveRoomSocketLike,
@@ -239,6 +240,23 @@ describe('live room synchronization', () => {
     expect(socket().sent).toHaveLength(sentBeforeEcho)
     expect(client.getSnapshot()).toMatchObject({ revision: 2, pendingOperations: 0 })
     expect(useBrickStore.getState().bricks[0].color).toBe('#65b85a')
+  })
+
+  it('bounds unacknowledged operations below the server dedupe window', () => {
+    const { client, socket, callbacks } = createHarness()
+    welcome(socket(), { document: documentWith(brick('a')) })
+
+    for (let index = 0; index < LIVE_MAX_PENDING_OPERATIONS; index += 1) {
+      useBrickStore.setState({ bricks: [brick('a', { x: 10 + index + 1 })] })
+    }
+    expect(client.getSnapshot().pendingOperations).toBe(LIVE_MAX_PENDING_OPERATIONS)
+    expect(socket().commandMessages()).toHaveLength(LIVE_MAX_PENDING_OPERATIONS)
+
+    useBrickStore.setState({ bricks: [brick('a', { x: 999 })] })
+    expect(socket().commandMessages()).toHaveLength(LIVE_MAX_PENDING_OPERATIONS)
+    expect(client.getSnapshot().pendingOperations).toBe(LIVE_MAX_PENDING_OPERATIONS)
+    expect(callbacks.errors).toContain('too_many_pending_operations')
+    expect(useBrickStore.getState().bricks[0].x).not.toBe(999)
   })
 
   it('applies remote commands without echoing and resyncs a revision gap', () => {

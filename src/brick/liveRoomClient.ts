@@ -25,6 +25,8 @@ import type { BrickInstance, PlayerProfile } from './types'
 export const DEFAULT_LIVE_RECONNECT_DELAYS_MS = [500, 1_000, 2_000, 5_000, 10_000]
 export const DEFAULT_LIVE_POSE_INTERVAL_MS = 75
 export const DEFAULT_LIVE_POSE_HEARTBEAT_MS = 1_500
+/** Stays below the Worker's retained outcome window so reconnect replay can never outrun dedupe history. */
+export const LIVE_MAX_PENDING_OPERATIONS = 96
 
 export type LiveWorldResource = {
   roomId: string
@@ -631,6 +633,11 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     }
     const commands = diffBricksToLiveCommands(previous.bricks, state.bricks)
     if (commands.length === 0) return
+    if (pending.size >= LIVE_MAX_PENDING_OPERATIONS) {
+      reportError('too_many_pending_operations', 'Live sync is catching up. Wait a moment before making more changes.')
+      refreshFromCanonical('reject', true)
+      return
+    }
     const opId = nextOpId()
     const operation: PendingOperation = { v: LIVE_PROTOCOL_VERSION, type: 'commands', opId, commands }
     if (commands.length > LIVE_MAX_COMMANDS || new TextEncoder().encode(JSON.stringify(operation)).byteLength > LIVE_MAX_COMMAND_BYTES) {
@@ -664,6 +671,10 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       && send({ v: LIVE_PROTOCOL_VERSION, type: 'setLocked', locked }),
     replaceDocument: (document) => {
       if (!snapshot.isOwner || snapshot.connection !== 'online') return null
+      if (pending.size >= LIVE_MAX_PENDING_OPERATIONS) {
+        reportError('too_many_pending_operations', 'Live sync is catching up. Wait a moment before replacing the world.')
+        return null
+      }
       const validated = normalizeBrickStudioDocument(document)
       if (!validated.ok) {
         reportError(validated.error.code, validated.error.message)
@@ -676,7 +687,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         opId,
         document: validated.document,
       }
-      if (new TextEncoder().encode(JSON.stringify(operation)).byteLength > LIVE_MAX_DOCUMENT_BYTES) {
+      if (new TextEncoder().encode(JSON.stringify(validated.document)).byteLength > LIVE_MAX_DOCUMENT_BYTES) {
         reportError('document_too_large', 'That document is too large to replace the live world.')
         return null
       }
