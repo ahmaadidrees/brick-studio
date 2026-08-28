@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import BrickStudioApp from './BrickStudioApp'
+import type { RaceAvatarPose, RemoteRaceAvatar } from './BrickStudioScene'
 import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { loadLocalBrickStudioProject, saveLocalBrickStudioProject } from './documentPersistence'
-import type { LiveWorldMode } from './liveProtocol'
+import { LIVE_MAX_PLAYERS, type LiveWorldMode } from './liveProtocol'
 import { createPublishedWorldUrl } from './publishedWorlds'
+import { hasSavedLiveRoomIdentity } from './liveRoomClient'
 import type { PlayerProfile } from './types'
 import { CopyInviteButton } from './live/CopyInviteButton'
 import { LiveStatusChip } from './live/LiveStatusChip'
@@ -14,9 +16,11 @@ import { loadStoredLiveProfile, saveStoredLiveProfile } from './live/liveProfile
 import { defaultConnectLiveRoom } from './live/liveRoomConnector'
 import {
   liveGuestLink,
+  livePlayerColor,
   liveOwnerLocation,
   parseLiveWorldLocation,
   type ConnectLiveRoom,
+  type LiveRoomActions,
   type LiveRoomSnapshot,
 } from './live/liveRoomModel'
 import {
@@ -100,17 +104,53 @@ function loadSeedDocument(): BrickStudioDocument | null {
 }
 
 /**
- * Placeholder scene until the live-synced one is wired in: renders the shared
- * document read-only through the published-world path. `publishedWorld` is
- * memoized on the document reference because `BrickStudioApp` restores the
- * store document whenever that object identity changes.
+ * Default live scene. The transport owns the Brick Studio store while this is
+ * mounted, so document persistence is disabled and every local edit flows
+ * through the authoritative room client.
  */
-function DefaultLiveWorldScene({ view }: { view: LiveWorldSceneView }) {
-  const publishedWorld = useMemo(
-    () => ({ title: view.roomTitle, document: view.document }),
-    [view.roomTitle, view.document],
+function DefaultLiveWorldScene({
+  view,
+  snapshot,
+  actions,
+}: {
+  view: LiveWorldSceneView
+  snapshot: LiveRoomSnapshot
+  actions: LiveRoomActions
+}) {
+  const sendPose = useCallback((pose: RaceAvatarPose) => {
+    actions.sendPose({
+      x: pose.position[0],
+      y: pose.position[1],
+      z: pose.position[2],
+      yaw: pose.facingYaw,
+      moving: pose.horizontalSpeed > 0.1,
+      jumping: !pose.grounded,
+    })
+  }, [actions])
+  const remoteAvatars = useMemo<RemoteRaceAvatar[]>(() => snapshot.remotePoses.map((pose) => {
+    const player = snapshot.players.find((candidate) => candidate.playerId === pose.playerId)
+    return {
+      id: pose.playerId,
+      name: player?.profile.displayName || 'Builder',
+      color: livePlayerColor(pose.playerId),
+      position: [pose.x, pose.y, pose.z],
+      facingYaw: pose.yaw,
+      horizontalSpeed: pose.moving ? 1 : 0,
+      grounded: !pose.jumping,
+    }
+  }), [snapshot.players, snapshot.remotePoses])
+  const livePolicy = useMemo(() => ({
+    connection: snapshot.connection,
+    isOwner: snapshot.isOwner,
+    onRequestMode: actions.setMode,
+  }), [actions.setMode, snapshot.connection, snapshot.isOwner])
+  return (
+    <BrickStudioApp
+      raceScene={{ onLocalAvatarPose: sendPose, remoteAvatars }}
+      livePolicy={livePolicy}
+      liveOverlay={view.overlay}
+    />
   )
-  return <BrickStudioApp publishedWorld={publishedWorld} raceOverlay={view.overlay} />
 }
 
 function BlockedView({ heading, message, onRetry }: { heading: string; message: string; onRetry?: () => void }) {
@@ -140,6 +180,10 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const storedProfile = useMemo(() => loadStoredLiveProfile(), [])
+  const returningGuest = useMemo(
+    () => parsed.kind === 'join' && !parsed.ownerToken && hasSavedLiveRoomIdentity(parsed.roomId),
+    [parsed],
+  )
   const seedDocument = useMemo(() => (parsed.kind === 'create' ? loadSeedDocument() : null), [parsed])
 
   const [room, setRoom] = useState<RoomHandle | null>(() => (
@@ -284,6 +328,29 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
         />
       )
     }
+    if (preflight.summary.locked && !parsed.ownerToken && !returningGuest) {
+      return (
+        <BlockedView
+          heading="This room is closed to new joins"
+          message="The owner paused new arrivals. Ask them to reopen the room, then try this invite again. Everyone already inside can keep playing."
+          onRetry={() => setPreflightNonce((nonce) => nonce + 1)}
+        />
+      )
+    }
+    if (
+      preflight.summary.playerCount !== null
+      && preflight.summary.playerCount >= LIVE_MAX_PLAYERS
+      && !parsed.ownerToken
+      && !returningGuest
+    ) {
+      return (
+        <BlockedView
+          heading="This room is full"
+          message="This live world already has 30 builders. Try again after someone leaves."
+          onRetry={() => setPreflightNonce((nonce) => nonce + 1)}
+        />
+      )
+    }
     return (
       <main className="live-world-page">
         <LiveWorldGate
@@ -334,7 +401,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
         roomTitle={room.title}
         shareLink={shareLink}
         copyText={copyText}
-        editingIntegrated={Boolean(props.renderWorld)}
+        editingIntegrated
         actions={session.actions}
         onLeave={leaveRoom}
         onPublishSnapshot={snapshot.isOwner ? () => publishWorld(exportWorld()) : undefined}
@@ -366,7 +433,9 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
       revision: snapshot.revision,
       overlay,
     }
-    return props.renderWorld ? <>{props.renderWorld(view)}</> : <DefaultLiveWorldScene view={view} />
+    return props.renderWorld
+      ? <>{props.renderWorld(view)}</>
+      : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={session.actions} />
   }
 
   return (

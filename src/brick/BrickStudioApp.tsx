@@ -210,11 +210,11 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
           <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
         </>}
         <StudioMenu
-          onNewBuild={onNewBuild}
-          onImportProject={onImportProject}
+          onNewBuild={livePolicy ? undefined : onNewBuild}
+          onImportProject={livePolicy ? undefined : onImportProject}
           onExportProject={onExportProject}
-          onStartLiveWorld={onStartLiveWorld}
-          onPublishWorld={onPublishWorld}
+          onStartLiveWorld={livePolicy ? undefined : onStartLiveWorld}
+          onPublishWorld={livePolicy ? undefined : onPublishWorld}
           onOpenHelp={onOpenHelp}
         />
       </div>
@@ -788,7 +788,7 @@ export default function BrickStudioApp({
     onExportProject,
     onStartLiveWorld: onStartLiveWorld ?? startCurrentWorldLive,
     onPublishWorld: onPublishWorld ?? publishCurrentWorld,
-  }, !readOnly)
+  }, !readOnly && !livePolicy)
   useLayoutEffect(() => {
     if (!publishedWorld) return
     useBrickStore.getState().restoreDocument(publishedWorld.document)

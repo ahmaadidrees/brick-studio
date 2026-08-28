@@ -93,9 +93,8 @@ describe('liveEditPermission', () => {
     expect(liveEditPermission({ ...base, mode: 'explore', isOwner: true }).reason).toMatch(/switch to build/i)
   })
 
-  it('locks guests but never the owner', () => {
-    expect(liveEditPermission({ ...base, locked: true }).canEdit).toBe(false)
-    expect(liveEditPermission({ ...base, locked: true }).reason).toMatch(/locked/i)
+  it('keeps admitted guests building when the owner locks new joins', () => {
+    expect(liveEditPermission({ ...base, locked: true })).toEqual({ canEdit: true, reason: null })
     expect(liveEditPermission({ ...base, locked: true, isOwner: true }).canEdit).toBe(true)
   })
 

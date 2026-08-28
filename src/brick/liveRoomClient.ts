@@ -296,6 +296,14 @@ function readGuestIdentity(storage: LiveRoomIdentityStorage | undefined, roomId:
   }
 }
 
+/** True when this browser has the private capability required to rejoin a locked room. */
+export function hasSavedLiveRoomIdentity(
+  roomId: string,
+  storage: LiveRoomIdentityStorage | undefined = defaultIdentityStorage(),
+) {
+  return Boolean(readGuestIdentity(storage, roomId))
+}
+
 function saveGuestIdentity(
   storage: LiveRoomIdentityStorage | undefined,
   roomId: string,

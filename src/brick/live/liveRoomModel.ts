@@ -149,8 +149,8 @@ export type ConnectLiveRoom = (options: ConnectLiveRoomOptions) => LiveRoomContr
 export type LiveEditPermission = { canEdit: boolean; reason: string | null }
 
 /**
- * UI mirror of the authority rules: everyone edits in Build, nobody edits in
- * Explore, and a locked room pauses guests. The server stays authoritative —
+ * UI mirror of the authority rules: everyone already admitted edits in Build
+ * and nobody edits in Explore. `locked` controls new admission only. The server stays authoritative —
  * a stale UI guess just earns a `reject` that flows back through `notice`.
  */
 export function liveEditPermission(
@@ -166,9 +166,6 @@ export function liveEditPermission(
         ? 'Switch to Build to edit bricks.'
         : 'The owner switched everyone to Explore.',
     }
-  }
-  if (snapshot.locked && !snapshot.isOwner) {
-    return { canEdit: false, reason: 'The owner locked building, so only they can edit right now.' }
   }
   return { canEdit: true, reason: null }
 }

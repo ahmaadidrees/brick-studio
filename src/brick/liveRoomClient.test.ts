@@ -8,6 +8,7 @@ import {
   createLiveWorld,
   diffBricksToLiveCommands,
   getLiveWorld,
+  hasSavedLiveRoomIdentity,
   LIVE_MAX_PENDING_OPERATIONS,
   LIVE_ROOM_IDENTITY_STORAGE_PREFIX,
   type LiveRoomClient,
@@ -318,6 +319,8 @@ describe('live room synchronization', () => {
     const otherUrl = new URL(otherRoom.socket().url)
     expect(otherRoom.client.getSnapshot().clientId).not.toBe(firstPlayerId)
     expect(otherUrl.searchParams.get('reconnectToken')).toBeNull()
+    expect(hasSavedLiveRoomIdentity('ROOM1234', storage)).toBe(true)
+    expect(hasSavedLiveRoomIdentity('OTHER123', storage)).toBe(false)
   })
 
   it('keeps owner connections on the owner capability instead of guest identity', () => {

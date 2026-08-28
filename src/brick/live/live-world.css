@@ -380,6 +380,19 @@
   white-space: nowrap !important;
 }
 
+/* Keep collaboration chrome out of the desktop brick drawer, inspector, and
+   header. The room controls may cover a small piece of the 3D canvas, but all
+   building controls stay fully visible and clickable. */
+@media (min-width: 1000px) {
+  .live-hud {
+    padding:
+      max(72px, env(safe-area-inset-top))
+      max(272px, env(safe-area-inset-right))
+      max(54px, env(safe-area-inset-bottom))
+      max(272px, env(safe-area-inset-left));
+  }
+}
+
 /* ------------------------------------------------------- small screens --- */
 
 @media (max-width: 720px) {
