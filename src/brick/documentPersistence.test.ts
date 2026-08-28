@@ -9,6 +9,7 @@ import {
   type BrickStudioAutosaveStore,
   type BrickStudioStorage,
 } from './documentPersistence'
+import { suspendBrickStudioAutosave } from './liveAutosaveGuard'
 import type { BrickInstance } from './types'
 
 const brick: BrickInstance = {
@@ -128,6 +129,42 @@ describe('local Brick Studio persistence', () => {
 
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: 'storage-write' }))
     expect(state.bricks).toEqual([brick])
+    controller.dispose()
+  })
+
+  it('cancels pending writes while a live room owns the store and resumes afterward', () => {
+    const storage = memoryStorage()
+    let state = { bricks: [] as BrickInstance[] }
+    const listeners = new Set<(next: typeof state, previous: typeof state) => void>()
+    const controller = connectBrickStudioAutosave({
+      store: {
+        getState: () => state,
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return () => listeners.delete(listener)
+        },
+      },
+      storage,
+      delayMs: 100,
+    })
+    const notify = (next: typeof state) => {
+      const previous = state
+      state = next
+      listeners.forEach((listener) => listener(state, previous))
+    }
+
+    notify({ bricks: [brick] })
+    const release = suspendBrickStudioAutosave()
+    vi.advanceTimersByTime(100)
+    expect(storage.entries.size).toBe(0)
+    expect(controller.flush()).toEqual({ ok: true })
+    expect(storage.entries.size).toBe(0)
+
+    release()
+    release()
+    notify({ bricks: [] })
+    vi.advanceTimersByTime(100)
+    expect(storage.entries.get(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toContain('"bricks": []')
     controller.dispose()
   })
 })

@@ -1,3 +1,5 @@
+import { createEfficientPoseSender, type EfficientPoseSender, type PoseVisibilitySource } from './efficientPoseSender'
+
 export type RaceConnection = 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'error'
 
 export type RacePhase = 'lobby' | 'countdown' | 'racing' | 'finished'
@@ -78,6 +80,8 @@ export interface RaceClientOptions {
   random?: () => number
   reconnectDelays?: number[]
   poseIntervalMs?: number
+  poseHeartbeatMs?: number
+  visibility?: PoseVisibilitySource
   setTimeout?: typeof globalThis.setTimeout
   clearTimeout?: typeof globalThis.clearTimeout
   title?: string
@@ -87,6 +91,7 @@ const PLAYER_ID_KEY = 'brick-studio-race-player-id'
 const PLAYER_COLOR_KEY = 'brick-studio-race-player-color'
 const COLORS = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#a855f7', '#06b6d4', '#ec4899', '#84cc16']
 const DEFAULT_STATUS: RaceStatus = { phase: 'lobby' }
+const DEFAULT_POSE_HEARTBEAT_MS = 1_500
 
 function runtimeBaseUrl(): string {
   const configured = import.meta.env.VITE_RACE_SERVER_URL as string | undefined
@@ -103,6 +108,25 @@ function colorFor(id: string): string {
   let hash = 0
   for (let index = 0; index < id.length; index += 1) hash = (hash * 31 + id.charCodeAt(index)) | 0
   return COLORS[Math.abs(hash) % COLORS.length] ?? COLORS[0]
+}
+
+function poseIsMoving(pose: RacePose) {
+  return pose.animation === 'moving'
+    || pose.animation === 'jumping'
+    || Boolean(pose.velocity?.some((value) => Math.abs(value) > 0.01))
+}
+
+function poseIsJumping(pose: RacePose) {
+  return pose.animation === 'jumping'
+}
+
+function racePoseEquals(first: RacePose, second: RacePose) {
+  return Math.abs(first.position[0] - second.position[0]) < 0.01
+    && Math.abs(first.position[1] - second.position[1]) < 0.01
+    && Math.abs(first.position[2] - second.position[2]) < 0.01
+    && Math.abs(first.rotation - second.rotation) < 0.01
+    && poseIsMoving(first) === poseIsMoving(second)
+    && poseIsJumping(first) === poseIsJumping(second)
 }
 
 function backendPlayers(players: BackendPlayer[]): Record<string, RacePlayer> {
@@ -164,7 +188,7 @@ export async function getRaceRoom<TWorld>(roomId: string, options: RaceClientOpt
 }
 
 export class RaceClient {
-  private readonly options: Required<Pick<RaceClientOptions, 'now' | 'random' | 'reconnectDelays' | 'poseIntervalMs' | 'setTimeout' | 'clearTimeout'>> & RaceClientOptions
+  private readonly options: Required<Pick<RaceClientOptions, 'now' | 'random' | 'reconnectDelays' | 'poseIntervalMs' | 'poseHeartbeatMs' | 'setTimeout' | 'clearTimeout'>> & RaceClientOptions
   private state: RaceClientState
   private listeners = new Set<() => void>()
   private socket?: WebSocket
@@ -172,10 +196,8 @@ export class RaceClient {
   private hostToken?: string
   private reconnectAttempt = 0
   private reconnectTimer?: ReturnType<typeof setTimeout>
-  private lastPoseAt = -Infinity
-  private pendingPose?: RacePose
-  private poseTimer?: ReturnType<typeof setTimeout>
   private intentionallyClosed = false
+  private readonly poseSender: EfficientPoseSender<RacePose>
   readonly color: string
 
   constructor(options: RaceClientOptions = {}) {
@@ -188,9 +210,35 @@ export class RaceClient {
       random: options.random ?? Math.random,
       reconnectDelays: options.reconnectDelays ?? [250, 500, 1_000, 2_000, 5_000],
       poseIntervalMs: options.poseIntervalMs ?? 75,
+      poseHeartbeatMs: options.poseHeartbeatMs ?? DEFAULT_POSE_HEARTBEAT_MS,
       setTimeout: options.setTimeout ?? ((handler, timeout) => globalThis.setTimeout(handler, timeout)),
       clearTimeout: options.clearTimeout ?? ((timer) => globalThis.clearTimeout(timer)),
     }
+    this.poseSender = createEfficientPoseSender<RacePose>({
+      send: (pose) => this.send({
+        type: 'pose',
+        x: pose.position[0],
+        y: pose.position[1],
+        z: pose.position[2],
+        yaw: pose.rotation,
+        moving: poseIsMoving(pose),
+        jumping: poseIsJumping(pose),
+      }),
+      clone: (pose) => ({
+        ...pose,
+        position: [...pose.position],
+        ...(pose.velocity ? { velocity: [...pose.velocity] } : {}),
+      }),
+      equals: racePoseEquals,
+      isMoving: poseIsMoving,
+      stop: (pose) => ({ ...pose, velocity: [0, 0, 0], animation: 'idle', at: this.options.now() }),
+      intervalMs: this.options.poseIntervalMs,
+      heartbeatMs: this.options.poseHeartbeatMs,
+      now: this.options.now,
+      setTimeout: this.options.setTimeout,
+      clearTimeout: this.options.clearTimeout,
+      visibility: this.options.visibility,
+    })
   }
 
   getSnapshot = (): RaceClientState => this.state
@@ -206,15 +254,16 @@ export class RaceClient {
     this.hostToken = hostToken
     this.intentionallyClosed = false
     this.reconnectAttempt = 0
+    this.poseSender.activate()
     this.openSocket('connecting')
   }
 
   disconnect(permanent = true): void {
     this.intentionallyClosed = permanent
     if (this.reconnectTimer) this.options.clearTimeout(this.reconnectTimer)
-    if (this.poseTimer) this.options.clearTimeout(this.poseTimer)
     this.reconnectTimer = undefined
-    this.poseTimer = undefined
+    this.poseSender.transportClosed()
+    if (permanent) this.poseSender.deactivate()
     const socket = this.socket
     this.socket = undefined
     socket?.close()
@@ -222,13 +271,7 @@ export class RaceClient {
   }
 
   sendPose(pose: RacePose): void {
-    this.pendingPose = { ...pose, at: pose.at ?? this.options.now() }
-    const wait = this.options.poseIntervalMs - (this.options.now() - this.lastPoseAt)
-    if (wait <= 0) this.flushPose()
-    else if (!this.poseTimer) this.poseTimer = this.options.setTimeout(() => {
-      this.poseTimer = undefined
-      this.flushPose()
-    }, wait)
+    this.poseSender.update({ ...pose, at: pose.at ?? this.options.now() })
   }
 
   startRace(countdownMs = 3_000): boolean {
@@ -258,6 +301,7 @@ export class RaceClient {
       if (socket !== this.socket) return
       this.reconnectAttempt = 0
       this.update({ connection: 'connected' })
+      this.poseSender.transportOpened()
     })
     socket.addEventListener('message', (event) => this.handleMessage(event.data))
     socket.addEventListener('error', () => {
@@ -266,6 +310,7 @@ export class RaceClient {
     socket.addEventListener('close', () => {
       if (socket !== this.socket || this.intentionallyClosed) return
       this.socket = undefined
+      this.poseSender.transportClosed()
       this.scheduleReconnect()
     })
   }
@@ -326,19 +371,6 @@ export class RaceClient {
       }
     } catch {
       this.update({ error: 'Race server sent an invalid message' })
-    }
-  }
-
-  private flushPose(): void {
-    if (!this.pendingPose) return
-    const pose = this.pendingPose
-    if (this.send({
-      type: 'pose', x: pose.position[0], y: pose.position[1], z: pose.position[2], yaw: pose.rotation,
-      moving: pose.animation === 'moving' || Boolean(pose.velocity?.some((value) => Math.abs(value) > 0.01)),
-      jumping: pose.animation === 'jumping',
-    })) {
-      this.pendingPose = undefined
-      this.lastPoseAt = this.options.now()
     }
   }
 

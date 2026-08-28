@@ -17,6 +17,20 @@ class FakeSocket {
   message(value: object) { this.emit('message', JSON.stringify(value)) }
 }
 
+class FakeVisibility {
+  visible = true
+  listeners = new Set<() => void>()
+  isVisible = () => this.visible
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+  setVisible(visible: boolean) {
+    this.visible = visible
+    this.listeners.forEach((listener) => listener())
+  }
+}
+
 describe('race REST client', () => {
   it('creates and fetches rooms using the configured server', async () => {
     const fetcher = vi.fn()
@@ -86,6 +100,63 @@ describe('RaceClient', () => {
     expect(race.startRace()).toBe(true)
     expect(race.resetRace()).toBe(true)
     expect(sockets[0].sent.map((raw) => JSON.parse(raw)).slice(-2)).toEqual([{ type: 'start', countdownMs: 3000 }, { type: 'reset' }])
+    vi.useRealTimers()
+  })
+
+  it('suppresses unchanged poses, sends a final stop, and keeps a slow stationary heartbeat', () => {
+    vi.useFakeTimers()
+    let now = 1_000
+    const race = client({ now: () => now, poseIntervalMs: 100, poseHeartbeatMs: 1_500 })
+    race.connect('ROOM')
+    sockets[0].open()
+    const moving = { position: [0, 0, 0] as [number, number, number], rotation: 0, velocity: [0, 0, 1] as [number, number, number], animation: 'moving' }
+    race.sendPose(moving)
+    now += 10
+    race.sendPose(moving)
+    expect(sockets[0].sent.filter((raw) => JSON.parse(raw).type === 'pose')).toHaveLength(1)
+
+    race.sendPose({ ...moving, velocity: [0, 0, 0], animation: 'idle' })
+    let poses = sockets[0].sent.map((raw) => JSON.parse(raw)).filter((message) => message.type === 'pose')
+    expect(poses).toHaveLength(2)
+    expect(poses.at(-1)).toMatchObject({ moving: false, jumping: false })
+
+    for (let frame = 0; frame < 10; frame += 1) {
+      now += 100
+      race.sendPose({ ...moving, velocity: [0, 0, 0], animation: 'idle' })
+      vi.advanceTimersByTime(100)
+    }
+    expect(sockets[0].sent.map((raw) => JSON.parse(raw)).filter((message) => message.type === 'pose')).toHaveLength(2)
+    now += 500
+    vi.advanceTimersByTime(500)
+    poses = sockets[0].sent.map((raw) => JSON.parse(raw)).filter((message) => message.type === 'pose')
+    expect(poses).toHaveLength(3)
+    race.disconnect()
+    vi.useRealTimers()
+  })
+
+  it('sends a final stop and suspends pose traffic while the tab is hidden', () => {
+    vi.useFakeTimers()
+    let now = 1_000
+    const visibility = new FakeVisibility()
+    const race = client({ now: () => now, poseIntervalMs: 100, poseHeartbeatMs: 1_500, visibility })
+    race.connect('ROOM')
+    sockets[0].open()
+    race.sendPose({ position: [2, 0, 3], rotation: 1, velocity: [0, 0, 1], animation: 'moving' })
+    visibility.setVisible(false)
+    let poses = sockets[0].sent.map((raw) => JSON.parse(raw)).filter((message) => message.type === 'pose')
+    expect(poses).toHaveLength(2)
+    expect(poses.at(-1)).toMatchObject({ x: 2, y: 0, z: 3, moving: false, jumping: false })
+
+    race.sendPose({ position: [5, 0, 6], rotation: 1, velocity: [0, 0, 1], animation: 'moving' })
+    now += 5_000
+    vi.advanceTimersByTime(5_000)
+    expect(sockets[0].sent.map((raw) => JSON.parse(raw)).filter((message) => message.type === 'pose')).toHaveLength(2)
+
+    visibility.setVisible(true)
+    poses = sockets[0].sent.map((raw) => JSON.parse(raw)).filter((message) => message.type === 'pose')
+    expect(poses).toHaveLength(3)
+    expect(poses.at(-1)).toMatchObject({ x: 5, z: 6, moving: true })
+    race.disconnect()
     vi.useRealTimers()
   })
 

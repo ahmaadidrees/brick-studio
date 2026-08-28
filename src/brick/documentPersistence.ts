@@ -7,6 +7,10 @@ import {
   type BrickStudioDocumentError,
 } from './brickDocument'
 import type { BrickInstance } from './types'
+import {
+  isBrickStudioAutosaveSuspended,
+  subscribeBrickStudioAutosaveGuard,
+} from './liveAutosaveGuard'
 
 export const BRICK_STUDIO_LOCAL_STORAGE_KEY = 'brick-studio.current-project.v1'
 export const BRICK_STUDIO_AUTOSAVE_DELAY_MS = 400
@@ -96,16 +100,21 @@ export function connectBrickStudioAutosave({
   }
   const flush = () => {
     cancel()
+    if (isBrickStudioAutosaveSuspended()) return { ok: true } as const
     const result = saveLocalBrickStudioProject(storage, store.getState().bricks)
     if (!result.ok) onError?.(result.error)
     return result
   }
   const schedule = () => {
     cancel()
+    if (isBrickStudioAutosaveSuspended()) return
     timer = setTimeout(flush, Math.max(0, delayMs))
   }
   const unsubscribe = store.subscribe((state, previous) => {
     if (state.bricks !== previous.bricks) schedule()
+  })
+  const unsubscribeGuard = subscribeBrickStudioAutosaveGuard(() => {
+    if (isBrickStudioAutosaveSuspended()) cancel()
   })
 
   return {
@@ -113,6 +122,7 @@ export function connectBrickStudioAutosave({
     cancel,
     dispose: () => {
       unsubscribe()
+      unsubscribeGuard()
       if (timer !== null) flush()
       else cancel()
     },
