@@ -9,8 +9,10 @@ import {
   diffBricksToLiveCommands,
   getLiveWorld,
   LIVE_MAX_PENDING_OPERATIONS,
+  LIVE_ROOM_IDENTITY_STORAGE_PREFIX,
   type LiveRoomClient,
   type LiveRoomClientOptions,
+  type LiveRoomIdentityStorage,
   type LiveRoomSocketLike,
 } from './liveRoomClient'
 import type { LiveClientMessage, LivePlayer, LiveServerMessage } from './liveProtocol'
@@ -75,6 +77,15 @@ class FakeVisibility implements PoseVisibilitySource {
   setVisible(visible: boolean) { this.visible = visible; this.listeners.forEach((listener) => listener()) }
 }
 
+function memoryIdentityStorage(): LiveRoomIdentityStorage & { entries: Map<string, string> } {
+  const entries = new Map<string, string>()
+  return {
+    entries,
+    getItem: (key) => entries.get(key) ?? null,
+    setItem: (key, value) => { entries.set(key, value) },
+  }
+}
+
 const activeClients: LiveRoomClient[] = []
 
 function createHarness(overrides: Partial<LiveRoomClientOptions> = {}) {
@@ -93,6 +104,7 @@ function createHarness(overrides: Partial<LiveRoomClientOptions> = {}) {
     clientId: 'live-test-client',
     baseUrl: 'https://live.example',
     store: useBrickStore,
+    identityStorage: null,
     createSocket: (url) => {
       const socket = new FakeSocket(url)
       sockets.push(socket)
@@ -110,7 +122,12 @@ function createHarness(overrides: Partial<LiveRoomClientOptions> = {}) {
   return { client, sockets, socket: () => sockets.at(-1)!, callbacks }
 }
 
-function welcome(socket: FakeSocket, overrides: Partial<Extract<LiveServerMessage, { type: 'welcome' }>> = {}) {
+type TestWelcome = Extract<LiveServerMessage, { type: 'welcome' }> & {
+  reconnectToken?: string
+  operationHighWater?: string
+}
+
+function welcome(socket: FakeSocket, overrides: Partial<TestWelcome> = {}) {
   socket.open()
   socket.receive({
     v: 1,
@@ -124,7 +141,7 @@ function welcome(socket: FakeSocket, overrides: Partial<Extract<LiveServerMessag
     document: documentWith(),
     players: [player('live-test-client')],
     ...overrides,
-  })
+  } as LiveServerMessage)
 }
 
 beforeEach(() => {
@@ -251,6 +268,90 @@ describe('live room synchronization', () => {
     expect(attempts).toBe(2)
     welcome(sockets[0])
     expect(client.getSnapshot()).toMatchObject({ connection: 'online' })
+  })
+
+  it('persists a first-join guest capability and uses it only on reconnect', () => {
+    vi.useFakeTimers()
+    const storage = memoryIdentityStorage()
+    const reconnectToken = 'guest_reconnect_capability_123456789'
+    const { client, sockets, socket } = createHarness({
+      identityStorage: storage,
+      reconnectDelaysMs: [25],
+    })
+
+    expect(new URL(socket().url).searchParams.get('reconnectToken')).toBeNull()
+    welcome(socket(), { reconnectToken })
+
+    expect(storage.entries.get(`${LIVE_ROOM_IDENTITY_STORAGE_PREFIX}ROOM1234`)).toBe(JSON.stringify({
+      playerId: 'live-test-client',
+      reconnectToken,
+    }))
+    expect(JSON.stringify(client.getSnapshot())).not.toContain(reconnectToken)
+
+    socket().drop()
+    vi.advanceTimersByTime(25)
+    expect(sockets).toHaveLength(2)
+    const reconnectUrl = new URL(socket().url)
+    expect(reconnectUrl.searchParams.get('playerId')).toBe('live-test-client')
+    expect(reconnectUrl.searchParams.get('reconnectToken')).toBe(reconnectToken)
+  })
+
+  it('restores a guest identity after reload while keeping identities room-scoped', () => {
+    const storage = memoryIdentityStorage()
+    const reconnectToken = 'guest_reconnect_capability_987654321'
+    const first = createHarness({ identityStorage: storage, clientId: undefined })
+    const firstPlayerId = first.client.getSnapshot().clientId
+    welcome(first.socket(), {
+      playerId: firstPlayerId,
+      players: [player(firstPlayerId)],
+      reconnectToken,
+    })
+    first.client.dispose()
+
+    const reloaded = createHarness({ identityStorage: storage, clientId: undefined })
+    const reloadedUrl = new URL(reloaded.socket().url)
+    expect(reloaded.client.getSnapshot().clientId).toBe(firstPlayerId)
+    expect(reloadedUrl.searchParams.get('playerId')).toBe(firstPlayerId)
+    expect(reloadedUrl.searchParams.get('reconnectToken')).toBe(reconnectToken)
+
+    const otherRoom = createHarness({ roomId: 'OTHER123', identityStorage: storage, clientId: undefined })
+    const otherUrl = new URL(otherRoom.socket().url)
+    expect(otherRoom.client.getSnapshot().clientId).not.toBe(firstPlayerId)
+    expect(otherUrl.searchParams.get('reconnectToken')).toBeNull()
+  })
+
+  it('keeps owner connections on the owner capability instead of guest identity', () => {
+    const storage = memoryIdentityStorage()
+    const reconnectToken = 'guest_reconnect_capability_555555555'
+    storage.setItem(`${LIVE_ROOM_IDENTITY_STORAGE_PREFIX}ROOM1234`, JSON.stringify({
+      playerId: 'saved-guest',
+      reconnectToken,
+    }))
+
+    const { client, socket } = createHarness({
+      clientId: 'owner-client',
+      ownerToken: 'owner-capability',
+      identityStorage: storage,
+    })
+    const ownerUrl = new URL(socket().url)
+    expect(ownerUrl.searchParams.get('playerId')).toBe('owner-client')
+    expect(ownerUrl.searchParams.get('ownerToken')).toBe('owner-capability')
+    expect(ownerUrl.searchParams.get('reconnectToken')).toBeNull()
+
+    welcome(socket(), {
+      playerId: 'owner-client',
+      isOwner: true,
+      reconnectToken: 'unexpected_guest_capability_555555',
+    })
+    expect(storage.entries.get(`${LIVE_ROOM_IDENTITY_STORAGE_PREFIX}ROOM1234`)).toContain(reconnectToken)
+    expect(JSON.stringify(client.getSnapshot())).not.toContain(reconnectToken)
+  })
+
+  it('continues operation ids above the server high-water after a reload', () => {
+    const { socket } = createHarness()
+    welcome(socket(), { operationHighWater: '41' })
+    useBrickStore.setState({ bricks: [brick('a')] })
+    expect(socket().commandMessages()[0].opId).toBe('live-test-client#42')
   })
 
   it('diffs every local brick transition with monotonic opIds and consumes its own echoes', () => {

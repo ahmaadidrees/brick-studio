@@ -27,6 +27,10 @@ export const DEFAULT_LIVE_POSE_INTERVAL_MS = 75
 export const DEFAULT_LIVE_POSE_HEARTBEAT_MS = 1_500
 /** Stays below the Worker's retained outcome window so reconnect replay can never outrun dedupe history. */
 export const LIVE_MAX_PENDING_OPERATIONS = 96
+export const LIVE_ROOM_IDENTITY_STORAGE_PREFIX = 'brick-studio.live-room-identity.v1:'
+
+const LIVE_PLAYER_ID_PATTERN = /^[A-Za-z0-9_-]{6,48}$/
+const LIVE_RECONNECT_TOKEN_PATTERN = /^[A-Za-z0-9_-]{16,512}$/
 
 export type LiveWorldResource = {
   roomId: string
@@ -85,12 +89,16 @@ type LiveRoomStore = {
   subscribe: (listener: (state: BrickState, previous: BrickState) => void) => () => void
 }
 
+export type LiveRoomIdentityStorage = Pick<Storage, 'getItem' | 'setItem'>
+
 export type LiveRoomClientOptions = {
   roomId: string
   profile: PlayerProfile
   ownerToken?: string
   baseUrl?: string
   clientId?: string
+  /** Pass null to opt out. Guests otherwise persist their reconnect capability in localStorage. */
+  identityStorage?: LiveRoomIdentityStorage | null
   store?: LiveRoomStore
   createSocket?: (url: string) => LiveRoomSocketLike
   reconnectDelaysMs?: number[]
@@ -249,11 +257,68 @@ function createLiveClientId() {
   return `live_${random}`.slice(0, 48)
 }
 
-function liveWebSocketUrl(baseUrl: string, roomId: string, clientId: string, ownerToken?: string) {
+type LiveGuestIdentity = {
+  playerId: string
+  reconnectToken: string
+}
+
+function identityStorageKey(roomId: string) {
+  return `${LIVE_ROOM_IDENTITY_STORAGE_PREFIX}${encodeURIComponent(roomId)}`
+}
+
+function defaultIdentityStorage(): LiveRoomIdentityStorage | undefined {
+  try {
+    return typeof window === 'undefined' ? undefined : window.localStorage
+  } catch {
+    return undefined
+  }
+}
+
+function validReconnectToken(value: unknown): value is string {
+  return typeof value === 'string' && LIVE_RECONNECT_TOKEN_PATTERN.test(value)
+}
+
+function readGuestIdentity(storage: LiveRoomIdentityStorage | undefined, roomId: string): LiveGuestIdentity | undefined {
+  if (!storage) return undefined
+  try {
+    const raw = storage.getItem(identityStorageKey(roomId))
+    if (!raw) return undefined
+    const parsed = JSON.parse(raw) as Partial<LiveGuestIdentity> | null
+    if (
+      !parsed
+      || typeof parsed.playerId !== 'string'
+      || !LIVE_PLAYER_ID_PATTERN.test(parsed.playerId)
+      || !validReconnectToken(parsed.reconnectToken)
+    ) return undefined
+    return { playerId: parsed.playerId, reconnectToken: parsed.reconnectToken }
+  } catch {
+    return undefined
+  }
+}
+
+function saveGuestIdentity(
+  storage: LiveRoomIdentityStorage | undefined,
+  roomId: string,
+  identity: LiveGuestIdentity,
+) {
+  if (!storage) return
+  try {
+    storage.setItem(identityStorageKey(roomId), JSON.stringify(identity))
+  } catch { /* live collaboration must still work when storage is unavailable */ }
+}
+
+function liveWebSocketUrl(
+  baseUrl: string,
+  roomId: string,
+  clientId: string,
+  ownerToken?: string,
+  reconnectToken?: string,
+) {
   const url = new URL(`${baseUrl}/worlds/${encodeURIComponent(roomId)}/connect`)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   url.searchParams.set('playerId', clientId)
   if (ownerToken) url.searchParams.set('ownerToken', ownerToken)
+  else if (reconnectToken) url.searchParams.set('reconnectToken', reconnectToken)
   return url.toString()
 }
 
@@ -310,7 +375,14 @@ function livePoseEquals(first: LivePose, second: LivePose) {
 
 export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomClient {
   const roomId = options.roomId
-  const clientId = options.clientId ?? createLiveClientId()
+  const identityStorage = options.identityStorage === null
+    ? undefined
+    : options.identityStorage ?? defaultIdentityStorage()
+  const savedGuestIdentity = options.ownerToken ? undefined : readGuestIdentity(identityStorage, roomId)
+  const reusableGuestIdentity = !options.clientId || options.clientId === savedGuestIdentity?.playerId
+    ? savedGuestIdentity
+    : undefined
+  const clientId = options.clientId ?? reusableGuestIdentity?.playerId ?? createLiveClientId()
   const store = options.store ?? useBrickStore
   const createSocket = options.createSocket ?? defaultCreateSocket
   const reconnectDelays = options.reconnectDelaysMs ?? DEFAULT_LIVE_RECONNECT_DELAYS_MS
@@ -328,7 +400,8 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   let reconnectAttempt = 0
   let everOnline = false
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
-  let operationSequence = 0
+  let operationSequence = 0n
+  let reconnectToken = reusableGuestIdentity?.reconnectToken
   let canonicalDocument: BrickStudioDocument | null = null
   const pending = new Map<string, PendingOperation>()
   const listeners = new Set<() => void>()
@@ -459,6 +532,26 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     switch (message.type) {
       case 'welcome': {
         if (!acceptDocument(message.document, 'welcome', message.revision, true)) return
+        const reconnectWelcome = message as typeof message & {
+          reconnectToken?: unknown
+          operationHighWater?: unknown
+        }
+        const issuedReconnectToken = reconnectWelcome.reconnectToken
+        if (
+          !options.ownerToken
+          && message.playerId === clientId
+          && validReconnectToken(issuedReconnectToken)
+        ) {
+          reconnectToken = issuedReconnectToken
+          saveGuestIdentity(identityStorage, roomId, { playerId: clientId, reconnectToken })
+        }
+        if (
+          typeof reconnectWelcome.operationHighWater === 'string'
+          && /^(?:0|[1-9]\d{0,15})$/.test(reconnectWelcome.operationHighWater)
+        ) {
+          const operationHighWater = BigInt(reconnectWelcome.operationHighWater)
+          if (operationHighWater > operationSequence) operationSequence = operationHighWater
+        }
         reconnectAttempt = 0
         everOnline = true
         adoptMode(message.mode)
@@ -593,7 +686,13 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     if (disposed) return
     let nextSocket: LiveRoomSocketLike
     try {
-      nextSocket = createSocket(liveWebSocketUrl(baseUrl, roomId, clientId, options.ownerToken))
+      nextSocket = createSocket(liveWebSocketUrl(
+        baseUrl,
+        roomId,
+        clientId,
+        options.ownerToken,
+        reconnectToken,
+      ))
     } catch {
       reportError('connection_error', 'The live world connection could not be opened.')
       scheduleReconnect()
