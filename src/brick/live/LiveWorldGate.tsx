@@ -87,7 +87,7 @@ export function LiveWorldGate({
         <ul className="live-gate-points">
           <li><Link2 size={14} aria-hidden="true" />Friends join instantly from one shared link — no accounts.</li>
           <li><Users size={14} aria-hidden="true" />Up to {LIVE_MAX_PLAYERS} builders can be in the room together.</li>
-          <li><Crown size={14} aria-hidden="true" />You stay in charge of Build/Explore mode and the room lock.</li>
+          <li><Crown size={14} aria-hidden="true" />You stay in charge of Build/Explore mode and whether new people can join.</li>
         </ul>
       ) : (
         <p className="live-gate-subline">

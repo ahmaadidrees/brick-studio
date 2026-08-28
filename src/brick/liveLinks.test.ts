@@ -25,14 +25,16 @@ describe('live world links', () => {
     expect(liveRoomIdFromPath('/race/abc123')).toBe('')
   })
 
-  it('persists only the optional display name', () => {
+  it('persists a profile-compatible display name and reads the legacy plain string', () => {
     const values = new Map<string, string>()
     const storage = {
       getItem: (key: string) => values.get(key) ?? null,
       setItem: (key: string, value: string) => values.set(key, value),
     }
     saveLiveDisplayName('  Ada Builder  ', storage)
-    expect(values.get(BRICK_STUDIO_LIVE_PROFILE_KEY)).toBe('Ada Builder')
+    expect(values.get(BRICK_STUDIO_LIVE_PROFILE_KEY)).toBe(JSON.stringify({ displayName: 'Ada Builder' }))
     expect(readSavedLiveDisplayName(storage)).toBe('Ada Builder')
+    values.set(BRICK_STUDIO_LIVE_PROFILE_KEY, 'Legacy Builder')
+    expect(readSavedLiveDisplayName(storage)).toBe('Legacy Builder')
   })
 })

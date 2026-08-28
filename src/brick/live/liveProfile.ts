@@ -18,7 +18,15 @@ export function loadStoredLiveProfile(storage: ProfileStorage | undefined = defa
   try {
     const serialized = storage?.getItem(LIVE_PROFILE_STORAGE_KEY)
     if (!serialized) return null
-    const parsed: unknown = JSON.parse(serialized)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(serialized)
+    } catch {
+      // The original launcher stored just the display name. Keep existing
+      // builders remembered while migrating them to the JSON profile format.
+      const displayName = normalizeDisplayName(serialized)
+      return displayName ? { displayName } : null
+    }
     if (typeof parsed !== 'object' || parsed === null) return null
     const record = parsed as Record<string, unknown>
     const displayName = normalizeDisplayName(typeof record.displayName === 'string' ? record.displayName : '')

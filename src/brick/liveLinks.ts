@@ -22,9 +22,23 @@ export function createLiveOwnerUrl(roomId: string, ownerToken: string, origin = 
 }
 
 export function readSavedLiveDisplayName(storage: Pick<Storage, 'getItem'> = window.localStorage) {
-  try { return storage.getItem(BRICK_STUDIO_LIVE_PROFILE_KEY)?.trim() || '' } catch { return '' }
+  try {
+    const stored = storage.getItem(BRICK_STUDIO_LIVE_PROFILE_KEY)?.trim()
+    if (!stored) return ''
+    try {
+      const parsed = JSON.parse(stored) as { displayName?: unknown }
+      return typeof parsed?.displayName === 'string' ? parsed.displayName.trim() : ''
+    } catch {
+      // Migrate the original plain-string profile format on the next save.
+      return stored
+    }
+  } catch {
+    return ''
+  }
 }
 
 export function saveLiveDisplayName(displayName: string, storage: Pick<Storage, 'setItem'> = window.localStorage) {
-  try { storage.setItem(BRICK_STUDIO_LIVE_PROFILE_KEY, displayName.trim()) } catch { /* profile persistence is optional */ }
+  try {
+    storage.setItem(BRICK_STUDIO_LIVE_PROFILE_KEY, JSON.stringify({ displayName: displayName.trim() }))
+  } catch { /* profile persistence is optional */ }
 }

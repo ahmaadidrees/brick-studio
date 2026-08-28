@@ -26,7 +26,8 @@ describe('stored live profile', () => {
 
   it('reads damaged or empty data as null', () => {
     expect(loadStoredLiveProfile(memoryStorage())).toBeNull()
-    expect(loadStoredLiveProfile(memoryStorage({ [LIVE_PROFILE_STORAGE_KEY]: 'not json {' }))).toBeNull()
+    expect(loadStoredLiveProfile(memoryStorage({ [LIVE_PROFILE_STORAGE_KEY]: 'Legacy Builder' }))).toEqual({ displayName: 'Legacy Builder' })
+    expect(loadStoredLiveProfile(memoryStorage({ [LIVE_PROFILE_STORAGE_KEY]: '   ' }))).toBeNull()
     expect(loadStoredLiveProfile(memoryStorage({ [LIVE_PROFILE_STORAGE_KEY]: JSON.stringify({ displayName: '   ' }) }))).toBeNull()
     expect(loadStoredLiveProfile(undefined)).toBeNull()
   })

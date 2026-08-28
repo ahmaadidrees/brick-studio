@@ -43,7 +43,6 @@ import { normalizeTouchStick } from './touchInput'
 import type { ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { createPublishedWorldUrl } from './publishedWorlds'
-import { createLiveOwnerUrl, readSavedLiveDisplayName, saveLiveDisplayName } from './liveLinks'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
 import './brick-studio.css'
 
@@ -768,28 +767,8 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
-  const startCurrentWorldLive = useCallback(async () => {
-    const title = window.prompt('Name this live world', 'My Live Brick World')?.trim()
-    if (title === undefined) return
-    const savedName = readSavedLiveDisplayName()
-    const displayName = window.prompt('What should other builders call you?', savedName || 'Builder')?.trim()
-    if (!displayName) {
-      useBrickStore.setState({ toast: 'A display name is needed to start a live world.' })
-      return
-    }
-    useBrickStore.setState({ toast: 'Starting your live world…' })
-    try {
-      const { createLiveWorld } = await import('./liveRoomClient')
-      const { roomId, ownerToken } = await createLiveWorld({
-        title: title || 'My Live Brick World',
-        document: createBrickStudioDocument(useBrickStore.getState().bricks),
-        profile: { displayName },
-      })
-      saveLiveDisplayName(displayName)
-      window.location.assign(createLiveOwnerUrl(roomId, ownerToken))
-    } catch (error) {
-      useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not start the live world.' })
-    }
+  const startCurrentWorldLive = useCallback(() => {
+    window.location.assign('/live/new')
   }, [])
   const publishCurrentWorld = useCallback(async () => {
     const title = window.prompt('Name this world', 'My Brick World')?.trim()

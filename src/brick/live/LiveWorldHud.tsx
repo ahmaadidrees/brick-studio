@@ -71,7 +71,7 @@ export function LiveWorldHud({
       messages.push(mode === 'build' ? 'Everyone can build now.' : 'Everyone is exploring now.')
     }
     if (locked !== previous.locked) {
-      messages.push(locked ? 'The owner locked guest building.' : 'The owner unlocked guest building.')
+      messages.push(locked ? 'The owner closed the room to new joins.' : 'The owner opened the room to new joins.')
     }
     if (previous.names.size > 0) {
       // The first roster fill is the welcome payload, not people arriving.
@@ -154,11 +154,11 @@ export function LiveWorldHud({
           onClick={() => controlsEnabled && actions.setLocked(!locked)}
         >
           {locked ? <Lock size={14} aria-hidden="true" /> : <Unlock size={14} aria-hidden="true" />}
-          {locked ? 'Guest building locked' : 'Guests can build'}
+          {locked ? 'New joins locked' : 'New joins allowed'}
         </button>
         {!isOwner && (
           <p className="live-control-note" id={guestNoteId}>
-            Only the room owner{ownerName ? ` (${ownerName})` : ''} can change the mode or lock building.
+            Only the room owner{ownerName ? ` (${ownerName})` : ''} can change the mode or close the room to new joins.
           </p>
         )}
         <p className="live-mode-detail">{permission.canEdit ? modeInfo.detail : permission.reason}</p>
@@ -187,12 +187,12 @@ export function LiveWorldHud({
       </section>
 
       <div className="live-hud-bottom">
-        {!isOwner && locked && mode === 'build' && (
-          <p className="live-lock-banner" role="status">
-            <Lock size={13} aria-hidden="true" />
-            The owner locked building for now — you can still look around and plan your next brick.
-          </p>
-        )}
+      {!isOwner && locked && (
+        <p className="live-lock-banner" role="status">
+          <Lock size={13} aria-hidden="true" />
+          New builders cannot join right now. Everyone already here can keep building or exploring together.
+        </p>
+      )}
         {visibleNotice && (
           <div className="live-notice" role="alert">
             <AlertCircle size={15} aria-hidden="true" />
