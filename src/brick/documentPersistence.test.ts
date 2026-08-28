@@ -38,12 +38,13 @@ describe('local Brick Studio persistence', () => {
 
   it('saves and loads durable document state under the versioned local key', () => {
     const storage = memoryStorage()
+    const document = createBrickStudioDocument([brick], { environmentId: 'sky-island' })
 
-    expect(saveLocalBrickStudioProject(storage, [brick])).toEqual({ ok: true })
+    expect(saveLocalBrickStudioProject(storage, document)).toEqual({ ok: true })
     expect(storage.entries.has(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBe(true)
     expect(loadLocalBrickStudioProject(storage)).toEqual({
       ok: true,
-      document: createBrickStudioDocument([brick]),
+      document,
     })
     expect(clearLocalBrickStudioProject(storage)).toEqual({ ok: true })
     expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: null })
@@ -129,6 +130,37 @@ describe('local Brick Studio persistence', () => {
 
     expect(onError).toHaveBeenCalledWith(expect.objectContaining({ code: 'storage-write' }))
     expect(state.bricks).toEqual([brick])
+    controller.dispose()
+  })
+
+  it('persists metadata-only changes through the complete-document factory', () => {
+    const storage = memoryStorage()
+    const state = { bricks: [brick] }
+    let environmentId: 'toy-room' | 'brick-valley' = 'toy-room'
+    const controller = connectBrickStudioAutosave({
+      store: {
+        getState: () => state,
+        subscribe: () => () => undefined,
+      },
+      storage,
+      delayMs: 50,
+      createDocument: (bricks) => createBrickStudioDocument(bricks, { environmentId }),
+    })
+
+    controller.schedule()
+    vi.advanceTimersByTime(50)
+    expect(loadLocalBrickStudioProject(storage)).toEqual({
+      ok: true,
+      document: createBrickStudioDocument([brick], { environmentId: 'toy-room' }),
+    })
+
+    environmentId = 'brick-valley'
+    controller.schedule()
+    vi.advanceTimersByTime(50)
+    expect(loadLocalBrickStudioProject(storage)).toEqual({
+      ok: true,
+      document: createBrickStudioDocument([brick], { environmentId: 'brick-valley' }),
+    })
     controller.dispose()
   })
 

@@ -5,6 +5,7 @@ import {
   serializeBrickStudioDocument,
   type BrickStudioDocument,
   type BrickStudioDocumentError,
+  type CreateBrickStudioDocumentOptions,
 } from './brickDocument'
 import type { BrickInstance } from './types'
 import {
@@ -37,6 +38,8 @@ export type BrickStudioAutosaveStore = {
 
 export type BrickStudioAutosaveController = {
   flush: () => BrickStudioPersistenceResult
+  /** Queues a save when document metadata changes without changing the brick array. */
+  schedule: () => void
   cancel: () => void
   dispose: () => void
 }
@@ -47,12 +50,16 @@ function storageFailure(code: BrickStudioPersistenceError['code'], message: stri
 
 export function saveLocalBrickStudioProject(
   storage: BrickStudioStorage,
-  bricks: BrickInstance[],
+  project: BrickStudioDocument | BrickInstance[],
+  options: CreateBrickStudioDocumentOptions = {},
 ): BrickStudioPersistenceResult {
   try {
+    const document = Array.isArray(project)
+      ? createBrickStudioDocument(project, options)
+      : project
     storage.setItem(
       BRICK_STUDIO_LOCAL_STORAGE_KEY,
-      serializeBrickStudioDocument(createBrickStudioDocument(bricks)),
+      serializeBrickStudioDocument(document),
     )
     return { ok: true }
   } catch {
@@ -85,11 +92,14 @@ export function connectBrickStudioAutosave({
   store,
   storage,
   delayMs = BRICK_STUDIO_AUTOSAVE_DELAY_MS,
+  createDocument = (bricks) => createBrickStudioDocument(bricks),
   onError,
 }: {
   store: BrickStudioAutosaveStore
   storage: BrickStudioStorage
   delayMs?: number
+  /** Builds the complete project at flush time, including current document metadata. */
+  createDocument?: (bricks: BrickInstance[]) => BrickStudioDocument
   onError?: (error: BrickStudioPersistenceError) => void
 }): BrickStudioAutosaveController {
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -101,7 +111,7 @@ export function connectBrickStudioAutosave({
   const flush = () => {
     cancel()
     if (isBrickStudioAutosaveSuspended()) return { ok: true } as const
-    const result = saveLocalBrickStudioProject(storage, store.getState().bricks)
+    const result = saveLocalBrickStudioProject(storage, createDocument(store.getState().bricks))
     if (!result.ok) onError?.(result.error)
     return result
   }
@@ -119,6 +129,7 @@ export function connectBrickStudioAutosave({
 
   return {
     flush,
+    schedule,
     cancel,
     dispose: () => {
       unsubscribe()

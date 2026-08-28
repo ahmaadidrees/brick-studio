@@ -4,7 +4,7 @@ import { createPublishedWorldUrl, loadPublishedWorld } from './publishedWorlds'
 
 describe('published world snapshot links', () => {
   it('round trips a validated document and unicode title', () => {
-    const document = createBrickStudioDocument([])
+    const document = createBrickStudioDocument([], { environmentId: 'brick-valley' })
     const url = new URL(createPublishedWorldUrl(document, 'Zoë’s world'))
 
     expect(url.pathname).toBe('/world')

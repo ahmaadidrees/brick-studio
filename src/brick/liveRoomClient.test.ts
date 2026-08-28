@@ -243,6 +243,38 @@ describe('live room synchronization', () => {
     expect(callbacks.presence.at(-1)).toHaveLength(2)
   })
 
+  it('preserves character palettes through initial and updated profile messages', () => {
+    const initialPalette = { primary: '#e7473c', accent: '#ffd34e' }
+    const { client, socket } = createHarness({
+      profile: { displayName: 'Ada', characterId: 'toy-figure', palette: initialPalette },
+    })
+    welcome(socket(), {
+      players: [{
+        playerId: 'live-test-client',
+        isOwner: false,
+        profile: { displayName: 'Ada', characterId: 'toy-figure', palette: initialPalette },
+      }],
+    })
+    expect(socket().messages()[0]).toEqual({
+      v: 1,
+      type: 'setProfile',
+      profile: { displayName: 'Ada', characterId: 'toy-figure', palette: initialPalette },
+    })
+
+    const updatedPalette = { primary: '#3e83d7' }
+    expect(client.setProfile({
+      displayName: 'Ada',
+      characterId: 'cc0-hero',
+      palette: updatedPalette,
+    })).toBe(true)
+    updatedPalette.primary = '#000000'
+    expect(socket().messages().at(-1)).toEqual({
+      v: 1,
+      type: 'setProfile',
+      profile: { displayName: 'Ada', characterId: 'cc0-hero', palette: { primary: '#3e83d7' } },
+    })
+  })
+
   it('survives synchronous socket construction failure and retries without leaking its client handle', () => {
     vi.useFakeTimers()
     let attempts = 0

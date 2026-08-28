@@ -30,7 +30,7 @@ export default function PublishedWorldPage() {
   const remix = () => {
     let saved
     try {
-      saved = saveLocalBrickStudioProject(window.localStorage, world.document.bricks)
+      saved = saveLocalBrickStudioProject(window.localStorage, world.document)
     } catch {
       setError('This browser blocked local storage, so the remix could not be saved.')
       return

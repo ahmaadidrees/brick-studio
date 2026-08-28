@@ -12,7 +12,12 @@ import { CopyInviteButton } from './live/CopyInviteButton'
 import { LiveStatusChip } from './live/LiveStatusChip'
 import { LiveWorldGate, type LiveWorldGateSubmit } from './live/LiveWorldGate'
 import { LiveWorldHud } from './live/LiveWorldHud'
-import { loadStoredLiveProfile, saveStoredLiveProfile } from './live/liveProfile'
+import {
+  liveProfileWithDisplayName,
+  normalizeLiveProfile,
+  loadStoredLiveProfile,
+  saveStoredLiveProfile,
+} from './live/liveProfile'
 import { defaultConnectLiveRoom } from './live/liveRoomConnector'
 import {
   liveGuestLink,
@@ -49,6 +54,9 @@ export type LiveWorldSceneView = {
   document: BrickStudioDocument
   mode: LiveWorldMode
   revision: number
+  /** Current local identity and the one mutation path that persists and broadcasts it. */
+  selfProfile: PlayerProfile
+  setProfile: (profile: PlayerProfile) => void
   /** The HUD; whatever renders the scene must layer this on top. */
   overlay: ReactNode
 }
@@ -233,9 +241,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
 
   const handleCreate = ({ displayName, title, seedFromCurrentBuild }: LiveWorldGateSubmit) => {
     if (gateBusy) return
-    const nextProfile: PlayerProfile = storedProfile?.characterId
-      ? { displayName, characterId: storedProfile.characterId }
-      : { displayName }
+    const nextProfile = liveProfileWithDisplayName(displayName, storedProfile)
     const document = seedFromCurrentBuild && seedDocument ? seedDocument : createBrickStudioDocument([])
     setGateBusy(true)
     setGateError(null)
@@ -258,9 +264,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   }
 
   const handleJoin = ({ displayName }: LiveWorldGateSubmit) => {
-    const nextProfile: PlayerProfile = storedProfile?.characterId
-      ? { displayName, characterId: storedProfile.characterId }
-      : { displayName }
+    const nextProfile = liveProfileWithDisplayName(displayName, storedProfile)
     saveStoredLiveProfile(nextProfile)
     setProfile(nextProfile)
   }
@@ -275,7 +279,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   })
 
   const remixWorld = props.remixWorld ?? (async (world: LiveWorldSnapshotExport) => {
-    const saved = saveLocalBrickStudioProject(window.localStorage, world.document.bricks)
+    const saved = saveLocalBrickStudioProject(window.localStorage, world.document)
     if (!saved.ok) throw new Error(saved.error.message)
     return 'Copy saved to your studio — open Brick Studio to keep building it.'
   })
@@ -391,6 +395,16 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
 
   if (session.status === 'active') {
     const snapshot: LiveRoomSnapshot = session.snapshot
+    const setLiveProfile = (nextProfile: PlayerProfile) => {
+      const normalized = normalizeLiveProfile(nextProfile)
+      saveStoredLiveProfile(normalized)
+      setProfile(normalized)
+      session.actions.setProfile(normalized)
+    }
+    const liveActions: LiveRoomActions = {
+      ...session.actions,
+      setProfile: setLiveProfile,
+    }
     const exportWorld = (): LiveWorldSnapshotExport => {
       if (!snapshot.document) throw new Error('The world has not finished loading yet.')
       return { title: room.title, document: snapshot.document }
@@ -402,7 +416,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
         shareLink={shareLink}
         copyText={copyText}
         editingIntegrated
-        actions={session.actions}
+        actions={liveActions}
         onLeave={leaveRoom}
         onPublishSnapshot={snapshot.isOwner ? () => publishWorld(exportWorld()) : undefined}
         onRemixWorld={() => remixWorld(exportWorld())}
@@ -431,11 +445,13 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
       document: snapshot.document,
       mode: snapshot.mode,
       revision: snapshot.revision,
+      selfProfile: profile,
+      setProfile: setLiveProfile,
       overlay,
     }
     return props.renderWorld
       ? <>{props.renderWorld(view)}</>
-      : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={session.actions} />
+      : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={liveActions} />
   }
 
   return (
