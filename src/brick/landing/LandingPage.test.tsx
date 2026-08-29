@@ -1,13 +1,12 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import LandingPage from './LandingPage'
 
 afterEach(cleanup)
 
 function sourceOf(relativePath: string): string {
-  return readFileSync(fileURLToPath(new URL(relativePath, import.meta.url)), 'utf8')
+  return readFileSync(decodeURIComponent(new URL(relativePath, import.meta.url).pathname), 'utf8')
 }
 
 describe('semantics and structure', () => {
