@@ -21,7 +21,7 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import {
@@ -40,10 +40,19 @@ import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
-import type { ViewPreset } from './types'
+import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { createPublishedWorldUrl } from './publishedWorlds'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
+import {
+  CHARACTER_DESCRIPTORS,
+  CHARACTER_PALETTE_GROUPS,
+  ENVIRONMENT_DESCRIPTORS,
+  resolveCharacterId,
+} from './contentCatalog'
+import { WorldAndCharacterSheet, type ContentPickerSelection } from './contentPicker'
+import { loadCharacterPreferences, saveCharacterPreferences } from './contentPreferences'
+import type { CharacterPalette } from './characters/types'
 import './brick-studio.css'
 
 export type BrickStudioLivePolicy = {
@@ -177,9 +186,10 @@ function useCompactLayout() {
 type HeaderProps = StudioDocumentCommands & {
   livePolicy?: BrickStudioLivePolicy
   onOpenHelp: () => void
+  onOpenWorldSetup: () => void
 }
 
-function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const bricks = useBrickStore((state) => state.bricks)
@@ -216,6 +226,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
           onStartLiveWorld={livePolicy ? undefined : onStartLiveWorld}
           onPublishWorld={livePolicy ? undefined : onPublishWorld}
           onOpenHelp={onOpenHelp}
+          onOpenWorldSetup={onOpenWorldSetup}
         />
       </div>
     </header>
@@ -741,6 +752,14 @@ export type BrickStudioAppProps = StudioDocumentCommands & {
   raceOverlay?: ReactNode
   livePolicy?: BrickStudioLivePolicy
   liveOverlay?: ReactNode
+  contentPolicy?: {
+    environmentId: EnvironmentId
+    characterId?: string
+    palette?: CharacterPalette
+    canChangeEnvironment: boolean
+    environmentHelp?: string
+    onApply: (selection: ContentPickerSelection) => void
+  }
 }
 
 export default function BrickStudioApp({
@@ -756,8 +775,45 @@ export default function BrickStudioApp({
   raceOverlay,
   livePolicy,
   liveOverlay,
+  contentPolicy,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
+  const [localEnvironmentId, setLocalEnvironmentId] = useState<EnvironmentId>(
+    () => publishedWorld?.document.environmentId ?? 'classic',
+  )
+  const [localCustomParts, setLocalCustomParts] = useState<CustomPartDefinition[]>(
+    () => publishedWorld?.document.customParts ?? [],
+  )
+  const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
+  const [worldSetupOpen, setWorldSetupOpen] = useState(false)
+  const environmentId = contentPolicy?.environmentId ?? localEnvironmentId
+  const characterId: CharacterId = contentPolicy
+    ? resolveCharacterId(contentPolicy.characterId)
+    : localAppearance.characterId
+  const characterPalette = contentPolicy?.palette ?? localAppearance.palette
+  const contentSelection = useMemo<ContentPickerSelection>(() => ({
+    environmentId,
+    characterId,
+    palette: characterPalette,
+  }), [characterId, characterPalette, environmentId])
+  const selectableEnvironments = useMemo(() => {
+    if (!contentPolicy || contentPolicy.canChangeEnvironment) return ENVIRONMENT_DESCRIPTORS
+    return ENVIRONMENT_DESCRIPTORS.filter(({ id }) => id === environmentId)
+  }, [contentPolicy, environmentId])
+  const applyContentSelection = useCallback((selection: ContentPickerSelection) => {
+    if (!selection.environmentId || !selection.characterId) return
+    const nextAppearance = {
+      characterId: selection.characterId,
+      palette: { ...selection.palette },
+    }
+    saveCharacterPreferences(nextAppearance, undefined, selection.environmentId)
+    if (contentPolicy) contentPolicy.onApply({ ...selection, palette: nextAppearance.palette })
+    else {
+      setLocalEnvironmentId(selection.environmentId)
+      setLocalAppearance(nextAppearance)
+    }
+    setWorldSetupOpen(false)
+  }, [contentPolicy])
   useBuilderShortcuts(!readOnly && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
   useReducedMotionPreference()
@@ -774,30 +830,50 @@ export default function BrickStudioApp({
     const title = window.prompt('Name this world', 'My Brick World')?.trim()
     if (title === undefined) return
     try {
-      const shareUrl = createPublishedWorldUrl(createBrickStudioDocument(useBrickStore.getState().bricks), title || undefined)
+      const shareUrl = createPublishedWorldUrl(createBrickStudioDocument(
+        useBrickStore.getState().bricks,
+        { environmentId, customParts: localCustomParts },
+      ), title || undefined)
       try { await navigator.clipboard.writeText(shareUrl) } catch { /* The link is still shown below. */ }
       window.prompt('Share this read-only Explore link:', shareUrl)
       useBrickStore.setState({ toast: 'Explore snapshot link copied.' })
     } catch (error) {
       useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not publish this world.' })
     }
-  }, [])
+  }, [environmentId, localCustomParts])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild,
     onImportProject,
     onExportProject,
     onStartLiveWorld: onStartLiveWorld ?? startCurrentWorldLive,
     onPublishWorld: onPublishWorld ?? publishCurrentWorld,
-  }, !readOnly && !livePolicy)
+  }, !readOnly && !livePolicy, {
+    environmentId,
+    customParts: localCustomParts,
+    onDocumentLoaded: (document) => {
+      setLocalEnvironmentId(document.environmentId)
+      setLocalCustomParts(document.customParts)
+    },
+  })
   useLayoutEffect(() => {
     if (!publishedWorld) return
     useBrickStore.getState().restoreDocument(publishedWorld.document)
+    setLocalEnvironmentId(publishedWorld.document.environmentId)
+    setLocalCustomParts(publishedWorld.document.customParts)
     useBrickStore.getState().setMode('explore')
   }, [publishedWorld])
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
   return (
     <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
-      <div className="brick-canvas"><BrickStudioScene {...raceScene} /><MarqueeOverlay /></div>
+      <div className="brick-canvas">
+        <BrickStudioScene
+          {...raceScene}
+          environmentId={environmentId}
+          localCharacterId={characterId}
+          localCharacterPalette={characterPalette}
+        />
+        <MarqueeOverlay />
+      </div>
       {readOnly ? (
         !raceOverlay && <div className="published-world-bar">
           <div><span>Published world</span><strong>{publishedWorld?.title}</strong></div>
@@ -806,7 +882,14 @@ export default function BrickStudioApp({
             {onRemix && <button type="button" onClick={onRemix}>Remix this world</button>}
           </div>
         </div>
-      ) : <Header {...documentCommands} livePolicy={livePolicy} onOpenHelp={onboarding.reopen} />}
+      ) : (
+        <Header
+          {...documentCommands}
+          livePolicy={livePolicy}
+          onOpenHelp={onboarding.reopen}
+          onOpenWorldSetup={() => setWorldSetupOpen(true)}
+        />
+      )}
       {mode === 'build' ? (
         <>
           <BuildShell compact={compact} />
@@ -817,6 +900,18 @@ export default function BrickStudioApp({
       ) : <TouchExploreControls readOnly={readOnly} />}
       <Toast />
       <Announcer />
+      <WorldAndCharacterSheet
+        open={worldSetupOpen}
+        environmentDescriptors={selectableEnvironments}
+        characterDescriptors={CHARACTER_DESCRIPTORS}
+        selection={contentSelection}
+        paletteGroups={CHARACTER_PALETTE_GROUPS}
+        description={contentPolicy && !contentPolicy.canChangeEnvironment
+          ? contentPolicy.environmentHelp ?? 'Choose your character and colors. The room owner controls the shared environment.'
+          : 'Choose where your world lives and customize the character you explore as.'}
+        onApply={applyContentSelection}
+        onClose={() => setWorldSetupOpen(false)}
+      />
       {raceOverlay}
       {liveOverlay}
     </main>

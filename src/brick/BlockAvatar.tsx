@@ -6,6 +6,7 @@ import {
   stepAvatarAnimation,
   type MotionSnapshotRef,
 } from './avatarMotion'
+import type { CharacterPalette } from './characters/types'
 
 export type BlockAvatarProps = {
   motion: MotionSnapshotRef
@@ -14,6 +15,8 @@ export type BlockAvatarProps = {
   scale?: number
   /** Lets multiplayer racers be distinguished without duplicating the avatar. */
   color?: string
+  /** Optional player-selected colors. `color` remains the legacy primary fallback. */
+  palette?: Readonly<CharacterPalette>
 }
 
 type AvatarAssets = {
@@ -25,14 +28,18 @@ type AvatarAssets = {
   accent: THREE.MeshStandardMaterial
 }
 
-function createAvatarAssets(color = '#ef6f54'): AvatarAssets {
+function createAvatarAssets(
+  primary = '#ef6f54',
+  secondary = '#356c89',
+  accentColor = '#f4d35e',
+): AvatarAssets {
   return {
     geometry: new THREE.BoxGeometry(1, 1, 1),
-    torso: new THREE.MeshStandardMaterial({ color, roughness: 0.6 }),
+    torso: new THREE.MeshStandardMaterial({ color: primary, roughness: 0.6 }),
     skin: new THREE.MeshStandardMaterial({ color: '#f2c37f', roughness: 0.64 }),
-    pants: new THREE.MeshStandardMaterial({ color: '#356c89', roughness: 0.65 }),
+    pants: new THREE.MeshStandardMaterial({ color: secondary, roughness: 0.65 }),
     shoes: new THREE.MeshStandardMaterial({ color: '#263e4b', roughness: 0.72 }),
-    accent: new THREE.MeshStandardMaterial({ color: '#f4d35e', roughness: 0.58 }),
+    accent: new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.58 }),
   }
 }
 
@@ -55,6 +62,7 @@ export const BlockAvatar = memo(function BlockAvatar({
   reducedMotion = false,
   scale = 0.36,
   color,
+  palette,
 }: BlockAvatarProps) {
   const physicsFollow = useRef<THREE.Group>(null)
   const facing = useRef<THREE.Group>(null)
@@ -67,7 +75,13 @@ export const BlockAvatar = memo(function BlockAvatar({
   const leftHip = useRef<THREE.Group>(null)
   const rightHip = useRef<THREE.Group>(null)
   const runtime = useRef(createAvatarAnimationRuntime(motion.current))
-  const assets = useMemo(() => createAvatarAssets(color), [color])
+  const primary = palette?.primary ?? color
+  const secondary = palette?.secondary
+  const accentColor = palette?.accent
+  const assets = useMemo(
+    () => createAvatarAssets(primary, secondary, accentColor),
+    [accentColor, primary, secondary],
+  )
 
   useEffect(() => () => disposeAvatarAssets(assets), [assets])
 

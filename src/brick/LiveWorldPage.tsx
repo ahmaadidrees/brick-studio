@@ -37,6 +37,10 @@ import {
   type LiveWorldSummary,
 } from './live/liveWorldGateway'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
+import { resolveCharacterId } from './contentCatalog'
+import { loadCharacterPreferences } from './contentPreferences'
+import type { ContentPickerSelection } from './contentPicker'
+import { useBrickStore } from './store'
 import './live/live-world.css'
 
 /**
@@ -141,6 +145,8 @@ function DefaultLiveWorldScene({
       id: pose.playerId,
       name: player?.profile.displayName || 'Builder',
       color: livePlayerColor(pose.playerId),
+      characterId: resolveCharacterId(player?.profile.characterId),
+      palette: player?.profile.palette,
       position: [pose.x, pose.y, pose.z],
       facingYaw: pose.yaw,
       horizontalSpeed: pose.moving ? 1 : 0,
@@ -152,11 +158,44 @@ function DefaultLiveWorldScene({
     isOwner: snapshot.isOwner,
     onRequestMode: actions.setMode,
   }), [actions.setMode, snapshot.connection, snapshot.isOwner])
+  const contentPolicy = useMemo(() => ({
+    environmentId: view.document.environmentId,
+    characterId: view.selfProfile.characterId,
+    palette: view.selfProfile.palette,
+    canChangeEnvironment: snapshot.isOwner
+      && snapshot.connection === 'online'
+      && snapshot.mode === 'build'
+      && Boolean(actions.replaceDocument),
+    environmentHelp: snapshot.isOwner
+      ? 'Switch everyone to Build before changing the shared environment. You can still customize your character now.'
+      : 'Choose your character and colors. The room owner controls the shared environment.',
+    onApply: (selection: ContentPickerSelection) => {
+      view.setProfile({
+        ...view.selfProfile,
+        characterId: selection.characterId ?? 'classic',
+        palette: { ...selection.palette },
+      })
+      if (
+        selection.environmentId
+        && selection.environmentId !== view.document.environmentId
+        && snapshot.isOwner
+      ) {
+        const opId = actions.replaceDocument?.({
+          ...view.document,
+          environmentId: selection.environmentId,
+        })
+        if (!opId) {
+          useBrickStore.setState({ toast: 'The shared world is still reconnecting. Try the environment change again.' })
+        }
+      }
+    },
+  }), [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view])
   return (
     <BrickStudioApp
       raceScene={{ onLocalAvatarPose: sendPose, remoteAvatars }}
       livePolicy={livePolicy}
       liveOverlay={view.overlay}
+      contentPolicy={contentPolicy}
     />
   )
 }
@@ -188,6 +227,12 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const storedProfile = useMemo(() => loadStoredLiveProfile(), [])
+  const storedAppearance = useMemo(() => loadCharacterPreferences(), [])
+  const preferredProfile = useMemo<PlayerProfile>(() => ({
+    displayName: storedProfile?.displayName ?? '',
+    characterId: storedProfile?.characterId ?? storedAppearance.characterId,
+    palette: storedProfile?.palette ?? storedAppearance.palette,
+  }), [storedAppearance, storedProfile])
   const returningGuest = useMemo(
     () => parsed.kind === 'join' && !parsed.ownerToken && hasSavedLiveRoomIdentity(parsed.roomId),
     [parsed],
@@ -241,7 +286,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
 
   const handleCreate = ({ displayName, title, seedFromCurrentBuild }: LiveWorldGateSubmit) => {
     if (gateBusy) return
-    const nextProfile = liveProfileWithDisplayName(displayName, storedProfile)
+    const nextProfile = liveProfileWithDisplayName(displayName, preferredProfile)
     const document = seedFromCurrentBuild && seedDocument ? seedDocument : createBrickStudioDocument([])
     setGateBusy(true)
     setGateError(null)
@@ -264,7 +309,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   }
 
   const handleJoin = ({ displayName }: LiveWorldGateSubmit) => {
-    const nextProfile = liveProfileWithDisplayName(displayName, storedProfile)
+    const nextProfile = liveProfileWithDisplayName(displayName, preferredProfile)
     saveStoredLiveProfile(nextProfile)
     setProfile(nextProfile)
   }

@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Radio, Share2, Upload } from 'lucide-react'
+import { Download, FilePlus2, HelpCircle, MoreHorizontal, Palette, Radio, Share2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
@@ -13,6 +13,7 @@ export type StudioDocumentCommands = {
 
 type StudioMenuProps = StudioDocumentCommands & {
   onOpenHelp: () => void
+  onOpenWorldSetup: () => void
 }
 
 function PlacedBrickNavigator() {
@@ -49,6 +50,7 @@ export function StudioMenu({
   onStartLiveWorld,
   onPublishWorld,
   onOpenHelp,
+  onOpenWorldSetup,
 }: StudioMenuProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -92,6 +94,9 @@ export function StudioMenu({
         <div className="studio-menu-popover" role="menu" aria-label="Studio actions">
           {buildMode && <PlacedBrickNavigator />}
           <a role="menuitem" href="/rover" aria-label="Rover Lab"><span className="studio-menu-icon" aria-hidden="true">R</span><span><strong>Rover Lab</strong><small>Open the coding mission</small></span></a>
+          <button role="menuitem" type="button" onClick={() => runAndClose(onOpenWorldSetup)}>
+            <Palette size={18} /><span><strong>World &amp; character</strong><small>Choose a scene and customize your explorer</small></span>
+          </button>
           <button role="menuitem" type="button" disabled={!onNewBuild} onClick={() => runAndClose(onNewBuild)}>
             <FilePlus2 size={18} /><span><strong>New Build</strong><small>Start with a blank plate</small></span>
           </button>

@@ -132,6 +132,7 @@ export function createLiveRoomConnector(
         setMode: (mode) => { if (!disconnected) client?.setMode(mode) },
         setLocked: (locked) => { if (!disconnected) client?.setLocked(locked) },
         setProfile: (profile) => { if (!disconnected) client?.setProfile(profile) },
+        replaceDocument: (document) => disconnected ? null : client?.replaceDocument(document) ?? null,
         sendPose: (pose) => { if (!disconnected) client?.sendPose(pose) },
         requestResync: () => { if (!disconnected) client?.requestResync() },
       },

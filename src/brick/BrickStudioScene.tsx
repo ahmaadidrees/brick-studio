@@ -5,7 +5,6 @@ import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { BlockAvatar } from './BlockAvatar'
 import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds } from './bounds'
 import {
@@ -87,7 +86,13 @@ import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance 
 import { usesCompactRenderer } from './rendererQuality'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { draftIsValid, useBrickStore } from './store'
-import type { BrickDraft, BrickInstance } from './types'
+import {
+  RuntimeCharacterAvatar,
+  useRuntimeEnvironment,
+  type RuntimeEnvironment,
+} from './runtimeContent'
+import type { CharacterPalette } from './characters/types'
+import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -100,11 +105,16 @@ export type RemoteRaceAvatar = RaceAvatarPose & {
   id: string
   color: string
   name?: string
+  characterId?: CharacterId
+  palette?: CharacterPalette
 }
 
 export type BrickStudioSceneProps = {
   onLocalAvatarPose?: (pose: RaceAvatarPose) => void
   remoteAvatars?: RemoteRaceAvatar[]
+  environmentId?: EnvironmentId
+  localCharacterId?: CharacterId
+  localCharacterPalette?: CharacterPalette
 }
 
 const gridWorldSize = GRID_SIZE * STUD
@@ -197,7 +207,19 @@ function isDragTrailingClick(delta: number, mouseTravel?: PointerTravel) {
   return delta > MOUSE_CLICK_DRAG_THRESHOLD || (mouseTravel ? pointerTravelExceeds(mouseTravel) : false)
 }
 
-function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }: { explore?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag; mouseTravel?: PointerTravel }) {
+function Baseplate({
+  surface,
+  explore = false,
+  buildGesture,
+  cameraActive,
+  mouseTravel,
+}: {
+  surface: RuntimeEnvironment['surface']
+  explore?: boolean
+  buildGesture?: BuildGestureState
+  cameraActive?: CameraGestureFlag
+  mouseTravel?: PointerTravel
+}) {
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -238,10 +260,15 @@ function Baseplate({ explore = false, buildGesture, cameraActive, mouseTravel }:
         }}
       >
         <boxGeometry args={[gridWorldSize + 0.35, 0.18, gridWorldSize + 0.35]} />
-        <meshStandardMaterial color="#e7ebed" roughness={0.9} />
+        <meshPhysicalMaterial
+          color={surface.plateColor}
+          roughness={surface.finish === 'clearcoat' ? 0.58 : 0.9}
+          clearcoat={surface.finish === 'clearcoat' ? 0.42 : 0}
+          clearcoatRoughness={0.42}
+        />
       </mesh>
-      {!explore && <BaseplateStuds />}
-      <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />
+      {surface.showStuds && <BaseplateStuds />}
+      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
   )
 }
@@ -932,7 +959,13 @@ function MouseTravelTracker({ travel }: { travel: PointerTravel }) {
   return null
 }
 
-function BuildScene({ mouseTravel }: { mouseTravel: PointerTravel }) {
+function BuildScene({
+  mouseTravel,
+  surface,
+}: {
+  mouseTravel: PointerTravel
+  surface: RuntimeEnvironment['surface']
+}) {
   const bricks = useBrickStore((state) => state.bricks)
   const gesture = useRef(createBuildGestureState())
   const cameraGestureActive = useRef(false)
@@ -940,7 +973,7 @@ function BuildScene({ mouseTravel }: { mouseTravel: PointerTravel }) {
     <>
       {/* First child on purpose: its listeners must beat OrbitControls to the canvas. */}
       <GhostDragInput cameraActive={cameraGestureActive} gesture={gesture.current} mouseTravel={mouseTravel} />
-      <Baseplate buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />
+      <Baseplate surface={surface} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />
       {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />)}
       <DraftBrick />
       <BuildCamera gestureActive={cameraGestureActive} />
@@ -989,7 +1022,19 @@ function BrickCollider({ brick }: { brick: BrickInstance }) {
   )
 }
 
-function ExplorerAvatar({ onPose }: { onPose?: (pose: RaceAvatarPose) => void }) {
+function ExplorerAvatar({
+  onPose,
+  characterId,
+  palette,
+  compact,
+  respawnBelowY = -30,
+}: {
+  onPose?: (pose: RaceAvatarPose) => void
+  characterId: CharacterId
+  palette?: CharacterPalette
+  compact: boolean
+  respawnBelowY?: number
+}) {
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
   const controller = useRef<KinematicCharacterController | null>(null)
@@ -1127,6 +1172,17 @@ function ExplorerAvatar({ onPose }: { onPose?: (pose: RaceAvatarPose) => void })
     stepOrbit(orbit.current, delta, store.reducedMotion ? 24 : undefined)
 
     const position = body.current.translation()
+    if (position.y < respawnBelowY) {
+      const spawn = { x: 0, y: EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.03, z: 5 }
+      body.current.setNextKinematicTranslation(spawn)
+      character.current = createCharacterMotionState(false)
+      fixedClock.current = createFixedStepClock()
+      motion.current.grounded = false
+      motion.current.horizontalSpeed = 0
+      motion.current.verticalVelocity = 0
+      camera.position.set(spawn.x + 6, spawn.y + 5, spawn.z + 8)
+      return
+    }
     if (onPose) {
       const pose = outgoingPose.current
       pose.position[0] = position.x
@@ -1176,14 +1232,26 @@ function ExplorerAvatar({ onPose }: { onPose?: (pose: RaceAvatarPose) => void })
       ccd
     >
       <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
-      <BlockAvatar motion={motion} reducedMotion={reducedMotion} />
+      <RuntimeCharacterAvatar
+        characterId={characterId}
+        motion={motion}
+        palette={palette}
+        reducedMotion={reducedMotion}
+        compact={compact}
+      />
     </RigidBody>
   )
 }
 
-function RemoteAvatar({ avatar }: { avatar: RemoteRaceAvatar }) {
+function RemoteAvatar({ avatar, compact }: { avatar: RemoteRaceAvatar; compact: boolean }) {
   const group = useRef<THREE.Group>(null)
   const target = useRef(new THREE.Vector3(...avatar.position))
+  const palette = useMemo(
+    () => avatar.palette && Object.keys(avatar.palette).length
+      ? avatar.palette
+      : { primary: avatar.color },
+    [avatar.color, avatar.palette],
+  )
   const motion = useRef(createMotionSnapshot({
     grounded: avatar.grounded,
     facingYaw: avatar.facingYaw,
@@ -1205,7 +1273,12 @@ function RemoteAvatar({ avatar }: { avatar: RemoteRaceAvatar }) {
 
   return (
     <group ref={group} position={avatar.position}>
-      <BlockAvatar motion={motion} color={avatar.color} />
+      <RuntimeCharacterAvatar
+        characterId={avatar.characterId ?? 'classic'}
+        motion={motion}
+        palette={palette}
+        compact={compact}
+      />
     </group>
   )
 }
@@ -1225,17 +1298,39 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
-function ExploreScene({ onLocalAvatarPose, remoteAvatars = [] }: BrickStudioSceneProps) {
+function ExploreScene({
+  onLocalAvatarPose,
+  remoteAvatars = [],
+  environment,
+  localCharacterId,
+  localCharacterPalette,
+  compact,
+}: BrickStudioSceneProps & {
+  environment: RuntimeEnvironment
+  localCharacterId: CharacterId
+  compact: boolean
+}) {
   const bricks = useBrickStore((state) => state.bricks)
+  const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  const EnvironmentWorld = environment.World
   return (
     <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
-        <Baseplate explore />
+        <Baseplate surface={environment.surface} explore />
       </RigidBody>
+      <Suspense fallback={null}>
+        <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
+      </Suspense>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
-      {remoteAvatars.map((avatar) => <RemoteAvatar key={avatar.id} avatar={avatar} />)}
-      <ExplorerAvatar onPose={onLocalAvatarPose} />
+      {remoteAvatars.map((avatar) => <RemoteAvatar key={avatar.id} avatar={avatar} compact={compact} />)}
+      <ExplorerAvatar
+        onPose={onLocalAvatarPose}
+        characterId={localCharacterId}
+        palette={localCharacterPalette}
+        compact={compact}
+        respawnBelowY={environment.respawnBelowY}
+      />
     </Physics>
   )
 }
@@ -1260,7 +1355,85 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
-export default function BrickStudioScene({ onLocalAvatarPose, remoteAvatars }: BrickStudioSceneProps = {}) {
+function ClassicStudioRig({ compact }: { compact: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#f4f2ed']} />
+      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+      <ambientLight intensity={1.35} />
+      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
+      <directionalLight
+        castShadow={!compact}
+        position={[14, 22, 12]}
+        intensity={2.3}
+        shadow-mapSize={[compact ? 512 : 1024, compact ? 512 : 1024]}
+        shadow-camera-left={-25}
+        shadow-camera-right={25}
+        shadow-camera-top={25}
+        shadow-camera-bottom={-25}
+      />
+    </>
+  )
+}
+
+function RuntimeSceneContent({
+  environmentId,
+  localCharacterId,
+  localCharacterPalette,
+  onLocalAvatarPose,
+  remoteAvatars,
+  compact,
+  mouseTravel,
+}: BrickStudioSceneProps & {
+  environmentId: EnvironmentId
+  localCharacterId: CharacterId
+  compact: boolean
+  mouseTravel: PointerTravel
+}) {
+  const mode = useBrickStore((state) => state.mode)
+  const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  const environment = useRuntimeEnvironment(environmentId)
+  const EnvironmentRig = environment.Rig
+
+  useEffect(() => {
+    if (!environment.error) return
+    useBrickStore.setState({ toast: 'That world could not load, so Classic Studio is showing instead.' })
+  }, [environment.error])
+
+  return (
+    <>
+      {mode === 'build' || environment.resolvedId === 'classic'
+        ? <ClassicStudioRig compact={compact} />
+        : (
+            <Suspense fallback={<ClassicStudioRig compact={compact} />}>
+              <EnvironmentRig compact={compact} reducedMotion={reducedMotion} />
+            </Suspense>
+          )}
+      {mode === 'build'
+        ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
+        : (
+            <Suspense fallback={null}>
+              <ExploreScene
+                onLocalAvatarPose={onLocalAvatarPose}
+                remoteAvatars={remoteAvatars}
+                environment={environment}
+                localCharacterId={localCharacterId}
+                localCharacterPalette={localCharacterPalette}
+                compact={compact}
+              />
+            </Suspense>
+          )}
+    </>
+  )
+}
+
+export default function BrickStudioScene({
+  onLocalAvatarPose,
+  remoteAvatars,
+  environmentId = 'classic',
+  localCharacterId = 'classic',
+  localCharacterPalette,
+}: BrickStudioSceneProps = {}) {
   const mode = useBrickStore((state) => state.mode)
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const compactRenderer = useCompactRenderer()
@@ -1282,14 +1455,15 @@ export default function BrickStudioScene({ onLocalAvatarPose, remoteAvatars }: B
         useBrickStore.getState().selectBrick(null)
       }}
     >
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
-      <ambientLight intensity={1.35} />
-      <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
-      <directionalLight castShadow={!compactRenderer} position={[14, 22, 12]} intensity={2.3} shadow-mapSize={[compactRenderer ? 512 : 1024, compactRenderer ? 512 : 1024]} shadow-camera-left={-25} shadow-camera-right={25} shadow-camera-top={25} shadow-camera-bottom={-25} />
-      {mode === 'build'
-        ? <><BuildScene mouseTravel={mouseTravel.current} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
-        : <Suspense fallback={null}><ExploreScene onLocalAvatarPose={onLocalAvatarPose} remoteAvatars={remoteAvatars} /></Suspense>}
+      <RuntimeSceneContent
+        environmentId={environmentId}
+        localCharacterId={localCharacterId}
+        localCharacterPalette={localCharacterPalette}
+        onLocalAvatarPose={onLocalAvatarPose}
+        remoteAvatars={remoteAvatars}
+        compact={compactRenderer}
+        mouseTravel={mouseTravel.current}
+      />
     </Canvas>
   )
 }

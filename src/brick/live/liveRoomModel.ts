@@ -124,6 +124,8 @@ export type LiveRoomActions = {
   setMode: (mode: LiveWorldMode) => void
   setLocked: (locked: boolean) => void
   setProfile: (profile: PlayerProfile) => void
+  /** Owner-only full-world metadata/document replacement; absent on legacy/test controllers. */
+  replaceDocument?: (document: BrickStudioDocument) => string | null
   sendPose: (pose: LivePose) => void
   requestResync: () => void
   reconnect?: () => void

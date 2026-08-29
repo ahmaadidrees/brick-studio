@@ -31,6 +31,7 @@ function ClassicAvatar({
       reducedMotion={reducedMotion}
       scale={scale}
       color={palette?.primary}
+      palette={palette}
     />
   )
 }
