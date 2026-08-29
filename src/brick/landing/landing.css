@@ -447,6 +447,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .brick-landing { scroll-behavior: auto; }
-  .landing-drift, .landing-twinkle, .landing-roster-pulse { animation: none; }
+  .landing-drift-a, .landing-drift-b, .landing-drift-c, .landing-twinkle, .landing-roster-pulse { animation: none; }
   .landing-cta, .landing-cta:hover, .landing-cta:active { transform: none; transition: none; }
 }
