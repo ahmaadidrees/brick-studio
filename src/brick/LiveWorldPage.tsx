@@ -41,6 +41,7 @@ import { resolveCharacterId } from './contentCatalog'
 import { loadCharacterPreferences } from './contentPreferences'
 import type { ContentPickerSelection } from './contentPicker'
 import { useBrickStore } from './store'
+import { registerCustomParts } from './parts'
 import './live/live-world.css'
 
 /**
@@ -129,6 +130,9 @@ function DefaultLiveWorldScene({
   snapshot: LiveRoomSnapshot
   actions: LiveRoomActions
 }) {
+  // The scene and store share the runtime part map, so install the authoritative
+  // document definitions before rendering any custom-part meshes or controls.
+  registerCustomParts(view.document.customParts)
   const sendPose = useCallback((pose: RaceAvatarPose) => {
     actions.sendPose({
       x: pose.position[0],
@@ -190,12 +194,37 @@ function DefaultLiveWorldScene({
       }
     },
   }), [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view])
+  const customPartPolicy = useMemo(() => {
+    const canEdit = snapshot.isOwner
+      && snapshot.connection === 'online'
+      && snapshot.mode === 'build'
+      && Boolean(actions.replaceDocument)
+    return {
+      customParts: view.document.customParts,
+      canEdit,
+      help: snapshot.isOwner
+        ? 'Switch everyone to Build and wait for sync before changing the shared brick library.'
+        : 'The room owner controls custom brick shapes so every builder stays in sync.',
+      onReplaceDocument: (next: { bricks: BrickStudioDocument['bricks']; customParts: BrickStudioDocument['customParts'] }) => {
+        if (!canEdit) return false
+        try {
+          return Boolean(actions.replaceDocument?.(createBrickStudioDocument(next.bricks, {
+            environmentId: view.document.environmentId,
+            customParts: next.customParts,
+          })))
+        } catch {
+          return false
+        }
+      },
+    }
+  }, [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view.document])
   return (
     <BrickStudioApp
       raceScene={{ onLocalAvatarPose: sendPose, remoteAvatars }}
       livePolicy={livePolicy}
       liveOverlay={view.overlay}
       contentPolicy={contentPolicy}
+      customPartPolicy={customPartPolicy}
     />
   )
 }

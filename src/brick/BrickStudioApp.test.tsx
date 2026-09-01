@@ -615,7 +615,11 @@ describe('compact touch layout', () => {
     probe.style.background = BRICK_COLORS[2]
     expect(pill.querySelector<HTMLElement>('.selection-swatch')?.style.background).toBe(probe.style.background)
     expect(Array.from(pill.querySelectorAll('button')).map((button) => button.getAttribute('aria-label')))
-      .toEqual(['Rotate brick', 'Move brick', 'Recolor brick', 'Duplicate brick', 'Focus selected brick', 'Delete brick'])
+      .toEqual([
+        'Move brick left one stud', 'Move brick forward one stud', 'Move brick back one stud', 'Move brick right one stud',
+        'Raise brick one plate', 'Lower brick one plate', 'Rotate brick', 'Resize brick',
+        'Move brick', 'Recolor brick', 'Duplicate brick', 'Focus selected brick', 'Delete brick',
+      ])
 
     fireEvent.click(within(pill).getByRole('button', { name: 'Rotate brick' }))
     expect(useBrickStore.getState().bricks[0].rotation).toBe(1)
@@ -655,7 +659,11 @@ describe('compact touch layout', () => {
     const pill = screen.getByRole('group', { name: '2 bricks selected' })
     expect(within(pill).getByText('2 bricks')).toBeInTheDocument()
     expect(Array.from(pill.querySelectorAll('button')).map((button) => button.getAttribute('aria-label')))
-      .toEqual(['Copy 2 selected bricks', 'Paste copied bricks', 'Duplicate 2 selected bricks', 'Recolor 2 selected bricks', 'Delete 2 selected bricks'])
+      .toEqual([
+        'Move 2 bricks left one stud', 'Move 2 bricks forward one stud', 'Move 2 bricks back one stud', 'Move 2 bricks right one stud',
+        'Raise 2 bricks one plate', 'Lower 2 bricks one plate', 'Rotate 2 bricks', 'Resize 2 bricks',
+        'Copy 2 selected bricks', 'Paste copied bricks', 'Duplicate 2 selected bricks', 'Recolor 2 selected bricks', 'Delete 2 selected bricks',
+      ])
 
     fireEvent.click(within(pill).getByRole('button', { name: 'Recolor 2 selected bricks' }))
     const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
@@ -720,12 +728,12 @@ describe('compact touch layout', () => {
     expect(within(bar).getByText('Placing')).toBeInTheDocument()
     expect(within(bar).getByText('1 × 1 Brick')).toBeInTheDocument()
     expect(Array.from(bar.querySelectorAll('button')).map((button) => button.getAttribute('aria-label') ?? button.textContent?.trim()))
-      .toEqual(['Cancel', 'Rotate', 'Raise brick one layer', 'Lower brick one layer', 'Place positioned brick'])
+      .toEqual(['Cancel', 'Rotate', 'Raise brick one plate', 'Lower brick one plate', 'Place positioned brick'])
     expect(useBrickStore.getState().draft?.y).toBe(0)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Raise brick one layer' }))
-    expect(useBrickStore.getState().draft?.y).toBe(3)
-    fireEvent.click(screen.getByRole('button', { name: 'Lower brick one layer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Raise brick one plate' }))
+    expect(useBrickStore.getState().draft?.y).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Lower brick one plate' }))
     expect(useBrickStore.getState().draft?.y).toBe(0)
   })
 })

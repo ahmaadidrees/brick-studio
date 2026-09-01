@@ -39,7 +39,7 @@ import { requestExploreMode } from './modeCommands'
 import { OnboardingGuide, useBuilderOnboarding } from './OnboardingGuide'
 import { PartThumbnail } from './PartThumbnail'
 import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
-import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
+import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
@@ -56,12 +56,22 @@ import {
 import { WorldAndCharacterSheet, type ContentPickerSelection } from './contentPicker'
 import { loadCharacterPreferences, saveCharacterPreferences } from './contentPreferences'
 import type { CharacterPalette } from './characters/types'
+import { CreateBrickSheet } from './customParts/CreateBrickSheet'
+import { ResizeBrickSheet, type ResizeDelta } from './customParts/ResizeBrickSheet'
+import { resizeSelectionDefinitions } from './customParts/resize'
 import './brick-studio.css'
 
 export type BrickStudioLivePolicy = {
   connection: LiveConnectionState
   isOwner: boolean
   onRequestMode: (mode: LiveWorldMode) => void
+}
+
+export type BrickStudioCustomPartPolicy = {
+  customParts: CustomPartDefinition[]
+  canEdit: boolean
+  help?: string
+  onReplaceDocument: (next: { bricks: BrickStudioDocument['bricks']; customParts: CustomPartDefinition[] }) => boolean
 }
 
 function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy) {
@@ -236,28 +246,52 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
   )
 }
 
-function PartGrid({ onChoose }: { onChoose?: () => void }) {
+type PartGridProps = {
+  customParts: CustomPartDefinition[]
+  onChoose?: () => void
+  onCreatePart: () => void
+  canCreatePart: boolean
+  customPartHelp?: string
+}
+
+function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPartHelp }: PartGridProps) {
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
+  const parts = useMemo(() => [
+    ...BRICK_PARTS,
+    ...customParts.map(customPartToBrickPart),
+  ], [customParts])
   return (
-    <div className="part-grid">
-      {BRICK_PARTS.map((part) => (
-        <button
-          key={part.id}
-          className={`library-part ${activePartId === part.id ? 'active' : ''}`}
-          type="button"
-          onClick={() => { choosePart(part.id); onChoose?.() }}
-          title={part.name}
-        >
-          <PartThumbnail part={part} />
-          <span>{part.name}</span>
-        </button>
-      ))}
-    </div>
+    <>
+      <button
+        className="create-part-entry"
+        type="button"
+        onClick={onCreatePart}
+        disabled={!canCreatePart}
+        title={!canCreatePart ? customPartHelp : 'Create a reusable brick with snapped dimensions'}
+      >
+        <span className="create-part-entry-icon"><Plus size={19} /></span>
+        <span><strong>Create a brick</strong><small>{canCreatePart ? 'Choose its shape and size' : customPartHelp}</small></span>
+      </button>
+      <div className="part-grid">
+        {parts.map((part) => (
+          <button
+            key={part.id}
+            className={`library-part ${activePartId === part.id ? 'active' : ''}`}
+            type="button"
+            onClick={() => { choosePart(part.id); onChoose?.() }}
+            title={part.name}
+          >
+            <PartThumbnail part={part} />
+            <span>{part.name}</span>
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
 
-function PartLibrary({ onCollapse }: { onCollapse: () => void }) {
+function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse: () => void }) {
   return (
     <aside className="part-library" id="brick-part-library" aria-label="Brick drawer">
       <div className="library-title">
@@ -271,7 +305,7 @@ function PartLibrary({ onCollapse }: { onCollapse: () => void }) {
           onClick={onCollapse}
         ><PanelLeftClose size={18} /></button>
       </div>
-      <PartGrid />
+      <PartGrid {...gridProps} />
     </aside>
   )
 }
@@ -288,7 +322,8 @@ function usePaletteTarget() {
   return activeColor
 }
 
-function BrickDrawerSheet({ onClose }: { onClose: () => void }) {
+function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
+  const { onClose } = props
   const selectionCount = useBrickStore((state) => state.selectedIds.length)
   const targetColor = usePaletteTarget()
   const panel = useRef<HTMLDivElement>(null)
@@ -319,7 +354,7 @@ function BrickDrawerSheet({ onClose }: { onClose: () => void }) {
           <div><span className="brick-eyebrow">Brick drawer</span><h2 id="brick-sheet-title">Choose a shape</h2></div>
           <button className="studio-icon-button" type="button" aria-label="Close brick drawer" onClick={onClose}><X size={18} /></button>
         </div>
-        <PartGrid onChoose={onClose} />
+        <PartGrid {...props} onChoose={onClose} />
         <section className="brick-sheet-colors">
           <label><Palette size={15} /> {selectionCount > 1 ? `Color all ${selectionCount}` : 'Color'}</label>
           <ColorPalette targetColor={targetColor} />
@@ -356,8 +391,26 @@ function ColorPalette({ targetColor }: ColorPaletteProps) {
   )
 }
 
+function TransformControls({ count, onResize, compact = false }: { count: number; onResize: () => void; compact?: boolean }) {
+  const nudge = useBrickStore((state) => state.nudge)
+  const rotate = useBrickStore((state) => state.rotate)
+  const selectionLabel = count === 1 ? 'brick' : `${count} bricks`
+  return (
+    <div className={`transform-controls${compact ? ' transform-controls-compact' : ''}`} role="group" aria-label={`Position and size ${selectionLabel}`}>
+      <button type="button" aria-label={`Move ${selectionLabel} left one stud`} onClick={() => nudge(-1, 0, 0)}><span aria-hidden="true">←</span><small>Left</small></button>
+      <button type="button" aria-label={`Move ${selectionLabel} forward one stud`} onClick={() => nudge(0, 0, -1)}><span aria-hidden="true">↑</span><small>Forward</small></button>
+      <button type="button" aria-label={`Move ${selectionLabel} back one stud`} onClick={() => nudge(0, 0, 1)}><span aria-hidden="true">↓</span><small>Back</small></button>
+      <button type="button" aria-label={`Move ${selectionLabel} right one stud`} onClick={() => nudge(1, 0, 0)}><span aria-hidden="true">→</span><small>Right</small></button>
+      <button type="button" aria-label={`Raise ${selectionLabel} one plate`} onClick={() => nudge(0, 1, 0)}><ChevronUp size={18} /><small>Raise</small></button>
+      <button type="button" aria-label={`Lower ${selectionLabel} one plate`} onClick={() => nudge(0, -1, 0)}><ChevronDown size={18} /><small>Lower</small></button>
+      <button type="button" aria-label={`Rotate ${selectionLabel}`} onClick={rotate}><RotateCw size={18} /><small>Rotate</small></button>
+      <button type="button" aria-label={`Resize ${selectionLabel}`} onClick={onResize}><Cuboid size={18} /><small>Resize</small></button>
+    </div>
+  )
+}
+
 /** Desktop-only. Compact layouts get TouchSelectionBar instead. */
-function Inspector() {
+function Inspector({ onResize }: { onResize: () => void }) {
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const activeColor = useBrickStore((state) => state.activeColor)
@@ -390,6 +443,7 @@ function Inspector() {
           <div><span className="brick-eyebrow">Selection</span><h2>{selectedIds.length} bricks selected</h2></div>
         </div>
         <p>Bulk actions preserve every brick's spacing, color, rotation, and part.</p>
+        <section className="inspector-transform-section"><label><Move size={15} /> Position & size</label><TransformControls count={selectedIds.length} onResize={onResize} /></section>
         <div className="inspector-actions multi-selection-actions">
           <button aria-label={`Copy ${selectedIds.length} selected bricks`} onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>
           <button aria-label={`Paste copied bricks`} onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>
@@ -433,6 +487,7 @@ function Inspector() {
           {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
         </div>
         <p className="inspector-scroll-hint">Editing actions are first. Scroll for color and position.</p>
+        {(selected || moving) && <section className="inspector-transform-section"><label><Move size={15} /> Position & size</label><TransformControls count={1} onResize={onResize} /></section>}
         <section><label><Palette size={15} /> Color</label><ColorPalette targetColor={target.color} /></section>
         <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
       </div>
@@ -508,13 +563,12 @@ function EmptyState() {
  * two read as one control surface swapping states. Coordinates live on in the desktop inspector
  * only — there is no room for them beside six 44px targets.
  */
-function TouchSelectionBar({ onRecolor }: { onRecolor: () => void }) {
+function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onResize: () => void }) {
   const bricks = useBrickStore((state) => state.bricks)
   const selectedId = useBrickStore((state) => state.selectedId)
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const draft = useBrickStore((state) => state.draft)
   const grabInProgress = useBrickStore((state) => state.grabInProgress)
-  const rotate = useBrickStore((state) => state.rotate)
   const startMove = useBrickStore((state) => state.startMove)
   const duplicate = useBrickStore((state) => state.duplicate)
   const copy = useBrickStore((state) => state.copy)
@@ -533,6 +587,7 @@ function TouchSelectionBar({ onRecolor }: { onRecolor: () => void }) {
           <span className="selection-swatch selection-swatch-multi" aria-hidden="true"><Layers3 size={17} /></span>
           <span className="selection-chip-text"><span className="brick-eyebrow">Selection</span><strong>{count} bricks</strong></span>
         </span>
+        <TransformControls count={count} onResize={onResize} compact />
         <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Copy ${count} selected bricks`} onClick={copy}><Clipboard size={19} /></button>
         <button className="studio-icon-button placement-icon-button" type="button" aria-label="Paste copied bricks" onClick={paste}><ClipboardPaste size={19} /></button>
         <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Duplicate ${count} selected bricks`} onClick={duplicate}><Copy size={19} /></button>
@@ -550,7 +605,7 @@ function TouchSelectionBar({ onRecolor }: { onRecolor: () => void }) {
         <span className="selection-swatch" style={{ background: selected.color }} aria-hidden="true" />
         <span className="selection-chip-text"><span className="brick-eyebrow">Selected</span><strong>{part.name}</strong></span>
       </span>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate brick" onClick={rotate}><RotateCw size={19} /></button>
+      <TransformControls count={1} onResize={onResize} compact />
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Move brick" onClick={startMove}><Move size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Recolor brick" onClick={onRecolor}><Palette size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Duplicate brick" onClick={duplicate}><Copy size={19} /></button>
@@ -570,16 +625,13 @@ function TouchPlacementBar() {
   const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
   if (!draft || grabInProgress) return null
   const part = BRICK_PART_MAP[draft.partId]
-  // A layer is the part's own height, matching how placeDraft re-arms the brush on top of
-  // the brick just placed; nudge validates the move and toasts when it is blocked.
-  const layer = part.height
   return (
     <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
       <span className="placement-part-chip"><span className="brick-eyebrow">{movingId ? 'Moving' : 'Placing'}</span><strong>{part.name}</strong></span>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Cancel" onClick={cancelInteraction}><X size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate" onClick={rotate}><RotateCw size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Raise brick one layer" onClick={() => nudge(0, layer, 0)}><ChevronUp size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Lower brick one layer" onClick={() => nudge(0, -layer, 0)}><ChevronDown size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Raise brick one plate" onClick={() => nudge(0, 1, 0)}><ChevronUp size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Lower brick one plate" onClick={() => nudge(0, -1, 0)}><ChevronDown size={19} /></button>
       <button className="studio-button studio-button-primary touch-place-button" type="button" aria-label={movingId ? 'Place moved brick from touch controls' : 'Place positioned brick'} onClick={() => placeDraft()}>
         <Check size={20} /> {movingId ? 'Place move' : 'Place'}
       </button>
@@ -587,13 +639,37 @@ function TouchPlacementBar() {
   )
 }
 
-function BuildShell({ compact }: { compact: boolean }) {
+type BuildShellProps = {
+  compact: boolean
+  customParts: CustomPartDefinition[]
+  canEditCustomParts: boolean
+  customPartHelp?: string
+  onCreatePart: (definition: CustomPartDefinition) => boolean
+  onResizeSelection: (delta: ResizeDelta) => boolean
+}
+
+function BuildShell({
+  compact,
+  customParts,
+  canEditCustomParts,
+  customPartHelp,
+  onCreatePart,
+  onResizeSelection,
+}: BuildShellProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(true)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [resizeOpen, setResizeOpen] = useState(false)
+  const selectionCount = useBrickStore((state) => state.selectedIds.length)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
   // One open state: the (+) FAB and the pill's Recolor reach the same sheet, whose palette
   // already recolors whatever is selected.
   const openSheet = useCallback(() => setSheetOpen(true), [])
+  const openCreate = useCallback(() => {
+    setSheetOpen(false)
+    setCreateOpen(true)
+  }, [])
+  const openResize = useCallback(() => setResizeOpen(true), [])
 
   useEffect(() => { if (!compact) setSheetOpen(false) }, [compact])
 
@@ -612,11 +688,23 @@ function BuildShell({ compact }: { compact: boolean }) {
             <Plus size={22} />
             <span>Bricks</span>
           </button>
-          <TouchSelectionBar onRecolor={openSheet} />
-          {sheetOpen && <BrickDrawerSheet onClose={closeSheet} />}
+          <TouchSelectionBar onRecolor={openSheet} onResize={openResize} />
+          {sheetOpen && <BrickDrawerSheet
+            customParts={customParts}
+            canCreatePart={canEditCustomParts}
+            customPartHelp={customPartHelp}
+            onCreatePart={openCreate}
+            onClose={closeSheet}
+          />}
         </>
       ) : <>
-        {drawerOpen ? <PartLibrary onCollapse={() => setDrawerOpen(false)} /> : (
+        {drawerOpen ? <PartLibrary
+          customParts={customParts}
+          canCreatePart={canEditCustomParts}
+          customPartHelp={customPartHelp}
+          onCreatePart={openCreate}
+          onCollapse={() => setDrawerOpen(false)}
+        /> : (
           <button
             className="brick-drawer-toggle"
             type="button"
@@ -626,11 +714,24 @@ function BuildShell({ compact }: { compact: boolean }) {
             onClick={() => setDrawerOpen(true)}
           ><PanelLeftOpen size={18} /><span>Bricks</span></button>
         )}
-        <Inspector />
+        <Inspector onResize={openResize} />
       </>}
       <ViewControls />
       <SelectionModeControl />
       <TouchPlacementBar />
+      <CreateBrickSheet
+        open={createOpen}
+        onCreate={(definition) => {
+          if (onCreatePart(definition)) setCreateOpen(false)
+        }}
+        onClose={() => setCreateOpen(false)}
+      />
+      <ResizeBrickSheet
+        open={resizeOpen}
+        selectionCount={selectionCount}
+        onApply={onResizeSelection}
+        onClose={() => setResizeOpen(false)}
+      />
     </div>
   )
 }
@@ -790,6 +891,7 @@ export type BrickStudioAppProps = StudioDocumentCommands & {
   raceOverlay?: ReactNode
   livePolicy?: BrickStudioLivePolicy
   liveOverlay?: ReactNode
+  customPartPolicy?: BrickStudioCustomPartPolicy
   contentPolicy?: {
     environmentId: EnvironmentId
     characterId?: string
@@ -813,6 +915,7 @@ export default function BrickStudioApp({
   raceOverlay,
   livePolicy,
   liveOverlay,
+  customPartPolicy,
   contentPolicy,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
@@ -820,11 +923,16 @@ export default function BrickStudioApp({
     () => publishedWorld?.document.environmentId ?? 'classic',
   )
   const [localCustomParts, setLocalCustomParts] = useState<CustomPartDefinition[]>(
-    () => publishedWorld?.document.customParts ?? [],
+    () => {
+      const initial = publishedWorld?.document.customParts ?? []
+      registerCustomParts(initial)
+      return initial
+    },
   )
   const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
   const [worldSetupOpen, setWorldSetupOpen] = useState(false)
   const [contentPreview, setContentPreview] = useState<ContentPickerSelection | null>(null)
+  const customParts = customPartPolicy?.customParts ?? localCustomParts
   const environmentId = contentPolicy?.environmentId ?? localEnvironmentId
   const characterId: CharacterId = contentPolicy
     ? resolveCharacterId(contentPolicy.characterId)
@@ -857,6 +965,64 @@ export default function BrickStudioApp({
     setWorldSetupOpen(false)
     setContentPreview(null)
   }, [contentPolicy])
+  useLayoutEffect(() => {
+    registerCustomParts(customParts)
+  }, [customParts])
+  const canEditCustomParts = !readOnly && (livePolicy ? customPartPolicy?.canEdit === true : true)
+  const customPartHelp = readOnly
+    ? 'Remix this world before changing its brick library.'
+    : customPartPolicy?.help ?? (livePolicy ? 'The room owner can edit the shared brick library while everyone is in Build.' : undefined)
+  const createCustomPart = useCallback((definition: CustomPartDefinition) => {
+    const nextCustomParts = customParts.some((part) => part.id === definition.id)
+      ? customParts
+      : [...customParts, definition]
+    if (customPartPolicy && !customPartPolicy.onReplaceDocument({
+      bricks: useBrickStore.getState().bricks,
+      customParts: nextCustomParts,
+    })) {
+      useBrickStore.setState({ toast: 'The shared brick library is still syncing. Try again in a moment.' })
+      return false
+    }
+    registerCustomParts(nextCustomParts)
+    if (!customPartPolicy) setLocalCustomParts(nextCustomParts)
+    useBrickStore.getState().choosePart(definition.id)
+    useBrickStore.setState({ toast: `${definition.name} is ready to place.` })
+    return true
+  }, [customPartPolicy, customParts])
+  const resizeSelection = useCallback((delta: ResizeDelta) => {
+    const state = useBrickStore.getState()
+    const selected = state.bricks.filter((brick) => state.selectedIds.includes(brick.id))
+    const result = resizeSelectionDefinitions(selected, delta, customParts)
+    if (!result.ok) {
+      useBrickStore.setState({ toast: result.message })
+      return false
+    }
+    if (customPartPolicy) {
+      const nextBricks = state.bricks.map((brick) => {
+        const partId = result.partIdsByBrickId[brick.id]
+        return partId ? { ...brick, partId } : brick
+      })
+      const replaced = customPartPolicy.onReplaceDocument({
+        bricks: nextBricks,
+        customParts: result.definitions,
+      })
+      if (!replaced) {
+        useBrickStore.setState({ toast: 'The shared world is still syncing. Try the resize again in a moment.' })
+        return false
+      }
+      registerCustomParts(result.definitions)
+      useBrickStore.setState({ toast: `Resized ${selected.length === 1 ? 'brick' : `${selected.length} bricks`} together.` })
+      return true
+    }
+    registerCustomParts(result.definitions)
+    const resized = state.resizeSelectedParts(result.partIdsByBrickId)
+    if (!resized) {
+      registerCustomParts(customParts)
+      return false
+    }
+    setLocalCustomParts(result.definitions)
+    return true
+  }, [customPartPolicy, customParts])
   useBuilderShortcuts(!readOnly && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
   useReducedMotionPreference()
@@ -875,7 +1041,7 @@ export default function BrickStudioApp({
     try {
       const shareUrl = await createPublishedWorldUrl(createBrickStudioDocument(
         useBrickStore.getState().bricks,
-        { environmentId, customParts: localCustomParts },
+        { environmentId, customParts },
       ), title || undefined)
       try { await navigator.clipboard.writeText(shareUrl) } catch { /* The link is still shown below. */ }
       window.prompt('Share this read-only Explore link:', shareUrl)
@@ -883,7 +1049,7 @@ export default function BrickStudioApp({
     } catch (error) {
       useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not publish this world.' })
     }
-  }, [environmentId, localCustomParts])
+  }, [customParts, environmentId])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild,
     onImportProject,
@@ -892,14 +1058,16 @@ export default function BrickStudioApp({
     onPublishWorld: onPublishWorld ?? publishCurrentWorld,
   }, !readOnly && !livePolicy, {
     environmentId,
-    customParts: localCustomParts,
+    customParts,
     onDocumentLoaded: (document) => {
+      registerCustomParts(document.customParts)
       setLocalEnvironmentId(document.environmentId)
       setLocalCustomParts(document.customParts)
     },
   })
   useLayoutEffect(() => {
     if (!publishedWorld) return
+    registerCustomParts(publishedWorld.document.customParts)
     useBrickStore.getState().restoreDocument(publishedWorld.document)
     setLocalEnvironmentId(publishedWorld.document.environmentId)
     setLocalCustomParts(publishedWorld.document.customParts)
@@ -935,7 +1103,14 @@ export default function BrickStudioApp({
       )}
       {mode === 'build' ? (
         <>
-          <BuildShell compact={compact} />
+          <BuildShell
+            compact={compact}
+            customParts={customParts}
+            canEditCustomParts={canEditCustomParts}
+            customPartHelp={customPartHelp}
+            onCreatePart={createCustomPart}
+            onResizeSelection={resizeSelection}
+          />
           <EmptyState />
           <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
