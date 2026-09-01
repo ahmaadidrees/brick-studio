@@ -3,7 +3,7 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
 import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { createMotionSnapshot } from './avatarMotion'
 import { getBuildBounds } from './bounds'
@@ -44,6 +44,13 @@ import {
   type BuildGestureState,
   type PointerTravel,
 } from './buildInput'
+import {
+  brickIdForInstance,
+  partitionBuildBricks,
+  usesClassicEnvironmentRig,
+  usesStudioBuildLights,
+  type InstancedBrickGroup as InstancedBrickGroupData,
+} from './buildRenderGroups'
 import {
   CHARACTER_FIXED_STEP,
   CHARACTER_CONTROLLER_OFFSET,
@@ -372,6 +379,122 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
   )
 }
 
+function InstancedBrickGroup({
+  group,
+  buildGesture,
+  cameraActive,
+  mouseTravel,
+}: {
+  group: InstancedBrickGroupData
+  buildGesture: BuildGestureState
+  cameraActive: CameraGestureFlag
+  mouseTravel: PointerTravel
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const hoveredInstance = useRef<number | null>(null)
+  const part = BRICK_PART_MAP[group.partId]
+  const geometry = useMemo(() => createBrickGeometry(part), [part])
+  const brickIds = useMemo(() => group.bricks.map(({ id }) => id), [group.bricks])
+  const userData = useMemo(() => ({ brickIds }), [brickIds])
+  const matrix = useMemo(() => new THREE.Matrix4(), [])
+  const position = useMemo(() => new THREE.Vector3(), [])
+  const rotation = useMemo(() => new THREE.Quaternion(), [])
+  const scale = useMemo(() => new THREE.Vector3(1, 1, 1), [])
+  const instanceColor = useMemo(() => new THREE.Color(), [])
+  const hoverColor = useMemo(() => new THREE.Color('#ffffff'), [])
+
+  const paintInstance = useCallback((instanceId: number, hovered: boolean) => {
+    const mesh = ref.current
+    const brick = group.bricks[instanceId]
+    if (!mesh || !brick) return
+    instanceColor.set(brick.color)
+    if (hovered) instanceColor.lerp(hoverColor, HOVER_GLOW_INTENSITY)
+    mesh.setColorAt(instanceId, instanceColor)
+  }, [group.bricks, hoverColor, instanceColor])
+
+  useLayoutEffect(() => {
+    const mesh = ref.current
+    if (!mesh) return
+    hoveredInstance.current = null
+    for (let index = 0; index < group.bricks.length; index += 1) {
+      const brick = group.bricks[index]
+      position.fromArray(brickWorldPosition(brick))
+      rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, brick.rotation * Math.PI / 2)
+      matrix.compose(position, rotation, scale)
+      mesh.setMatrixAt(index, matrix)
+      paintInstance(index, false)
+    }
+    mesh.count = group.bricks.length
+    mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage)
+    mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+    mesh.computeBoundingBox()
+    mesh.computeBoundingSphere()
+  }, [group.bricks, matrix, paintInstance, position, rotation, scale])
+
+  const brickForEvent = (event: { instanceId?: number }) => (
+    event.instanceId === undefined ? null : group.bricks[event.instanceId] ?? null
+  )
+
+  const updateHoveredInstance = (next: number | null) => {
+    const mesh = ref.current
+    const previous = hoveredInstance.current
+    if (!mesh || previous === next) return
+    if (previous !== null) paintInstance(previous, false)
+    if (next !== null) paintInstance(next, true)
+    hoveredInstance.current = next
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+  }
+
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[geometry, undefined, group.capacity]}
+      count={group.bricks.length}
+      userData={userData}
+      castShadow
+      receiveShadow
+      onPointerMove={(event) => {
+        const state = useBrickStore.getState()
+        if (!state.draft || isConfirmationPlacementPointer(event.pointerType) || cameraActive.current) return
+        event.stopPropagation()
+        const next = supportedDraftFromPoint(event.point, state.draft)
+        state.setDraftPosition(next.x, next.y, next.z)
+      }}
+      onPointerUp={(event) => {
+        if (!isConfirmationPlacementPointer(event.pointerType)) return
+        const completion = takeBuildPointerCompletion(buildGesture, event.pointerId)
+        if (completion?.intent !== 'position') return
+        event.stopPropagation()
+        applyTouchPositionIntent(buildGesture, event, brickForEvent(event)?.id ?? null)
+      }}
+      onPointerOver={(event) => {
+        if (event.instanceId === undefined) return
+        const state = useBrickStore.getState()
+        if (state.draft || isConfirmationPlacementPointer(event.pointerType)) return
+        updateHoveredInstance(event.instanceId)
+      }}
+      onPointerOut={() => updateHoveredInstance(null)}
+      onClick={(event) => {
+        const brick = brickForEvent(event)
+        if (!brick) return
+        event.stopPropagation()
+        const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
+        if (isConfirmationPlacementPointer(pointerType)) return
+        if (isDragTrailingClick(event.delta, mouseTravel)) return
+        const state = useBrickStore.getState()
+        if (state.draft) state.placeDraft()
+        else {
+          const nativeEvent = event.nativeEvent as MouseEvent
+          state.selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || state.selectionMode)
+        }
+      }}
+    >
+      <meshStandardMaterial vertexColors roughness={0.58} metalness={0.02} />
+    </instancedMesh>
+  )
+}
+
 function DraftBrick() {
   const draft = useBrickStore((state) => state.draft)
   const bricks = useBrickStore((state) => state.bricks)
@@ -536,6 +659,11 @@ function findBrickAtPointer(
   )
   raycaster.setFromCamera(pointer, camera)
   for (const intersection of raycaster.intersectObjects(scene.children, true)) {
+    const instancedId = brickIdForInstance(
+      Array.isArray(intersection.object.userData.brickIds) ? intersection.object.userData.brickIds : [],
+      intersection.instanceId,
+    )
+    if (instancedId) return instancedId
     let object: THREE.Object3D | null = intersection.object
     while (object) {
       if (typeof object.userData.brickId === 'string') return object.userData.brickId as string
@@ -747,7 +875,11 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       // First tagged hit wins. A finger dragged past the plate hits nothing and
       // the ghost holds its last supported position rather than snapping away.
       for (const hit of raycaster.current.intersectObjects(scene.children, true)) {
-        if (!isGhostDropTarget(hit.object.userData, state.movingId)) continue
+        const instancedBrickId = brickIdForInstance(
+          Array.isArray(hit.object.userData.brickIds) ? hit.object.userData.brickIds : [],
+          hit.instanceId,
+        )
+        if (instancedBrickId ? instancedBrickId === state.movingId : !isGhostDropTarget(hit.object.userData, state.movingId)) continue
         const next = supportedDraftFromPoint(hit.point, state.draft)
         state.setDraftPosition(next.x, next.y, next.z)
         return
@@ -981,14 +1113,32 @@ function BuildScene({
   surface: RuntimeEnvironment['surface']
 }) {
   const bricks = useBrickStore((state) => state.bricks)
+  const selectedIds = useBrickStore((state) => state.selectedIds)
+  const selectedId = useBrickStore((state) => state.selectedId)
+  const movingId = useBrickStore((state) => state.movingId)
+  const recentlyPlacedId = useBrickStore((state) => state.placeFeedback?.id ?? null)
   const gesture = useRef(createBuildGestureState())
   const cameraGestureActive = useRef(false)
+  const renderPartition = useMemo(() => partitionBuildBricks(bricks, {
+    selectedIds: selectedIds.length ? selectedIds : selectedId ? [selectedId] : [],
+    movingId,
+    recentlyPlacedId,
+  }), [bricks, movingId, recentlyPlacedId, selectedId, selectedIds])
   return (
     <>
       {/* First child on purpose: its listeners must beat OrbitControls to the canvas. */}
       <GhostDragInput cameraActive={cameraGestureActive} gesture={gesture.current} mouseTravel={mouseTravel} />
       <Baseplate surface={surface} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />
-      {bricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />)}
+      {renderPartition.instancedGroups.map((group) => (
+        <InstancedBrickGroup
+          key={group.partId}
+          group={group}
+          buildGesture={gesture.current}
+          cameraActive={cameraGestureActive}
+          mouseTravel={mouseTravel}
+        />
+      ))}
+      {renderPartition.interactiveBricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />)}
       <DraftBrick />
       <BuildCamera gestureActive={cameraGestureActive} />
       <BuildSelectionInput />
@@ -1447,11 +1597,9 @@ function useCompactRenderer() {
   return compactRenderer
 }
 
-function ClassicStudioRig({ compact }: { compact: boolean }) {
+function StudioLights({ compact }: { compact: boolean }) {
   return (
     <>
-      <color attach="background" args={['#f4f2ed']} />
-      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
       <ambientLight intensity={1.35} />
       <hemisphereLight color="#ffffff" groundColor="#aeb8b5" intensity={1.2} />
       <directionalLight
@@ -1464,6 +1612,16 @@ function ClassicStudioRig({ compact }: { compact: boolean }) {
         shadow-camera-top={25}
         shadow-camera-bottom={-25}
       />
+    </>
+  )
+}
+
+function ClassicStudioRig({ compact }: { compact: boolean }) {
+  return (
+    <>
+      <color attach="background" args={['#f4f2ed']} />
+      <fog attach="fog" args={['#f4f2ed', 42, 90]} />
+      <StudioLights compact={compact} />
     </>
   )
 }
@@ -1494,11 +1652,14 @@ function RuntimeSceneContent({
 
   return (
     <>
-      {mode === 'build' || environment.resolvedId === 'classic'
+      {usesClassicEnvironmentRig(environment.resolvedId)
         ? <ClassicStudioRig compact={compact} />
         : (
             <Suspense fallback={<ClassicStudioRig compact={compact} />}>
               <EnvironmentRig compact={compact} reducedMotion={reducedMotion} />
+              {mode === 'build' && usesStudioBuildLights(environment.resolvedId)
+                ? <StudioLights compact={compact} />
+                : null}
             </Suspense>
           )}
       {mode === 'build'
