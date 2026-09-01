@@ -3,11 +3,18 @@ import type { CSSProperties, KeyboardEvent, MutableRefObject, ReactNode } from '
 import type { CharacterPalette } from '../characters/types'
 import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
 import type { CharacterId, EnvironmentId } from '../types'
+import { PreviewArtwork } from './PreviewArtwork'
 import { updateCharacterPalette } from './selection'
 import './content-picker.css'
 
 export type ContentPreviewKind = 'environment' | 'character'
 export type ContentPreviewReason = 'hover' | 'focus' | 'selection'
+export type ContentPreviewStatus = 'ready' | 'loading' | 'unavailable'
+
+export type ContentPreviewStatuses = {
+  environment?: Readonly<Partial<Record<EnvironmentId, ContentPreviewStatus>>>
+  character?: Readonly<Partial<Record<CharacterId, ContentPreviewStatus>>>
+}
 
 export type CharacterPaletteSwatch = {
   value: string
@@ -32,6 +39,8 @@ export type ContentPickerProps = {
     id: EnvironmentId | CharacterId,
     reason: ContentPreviewReason,
   ) => void
+  /** Optional async availability state for a descriptor's lazy 3D preview. */
+  previewStatuses?: ContentPreviewStatuses
   palette?: Readonly<CharacterPalette>
   paletteGroups?: readonly CharacterPaletteGroup[]
   onPaletteChange?: (palette: CharacterPalette) => void
@@ -59,20 +68,7 @@ type SelectionGridProps<T extends PickerCard> = {
   emptyCopy: string
   onSelect: (id: T['id']) => void
   onRequestPreview?: ContentPickerProps['onRequestPreview']
-}
-
-function PreviewArtwork({ kind, previewKey }: { kind: ContentPreviewKind; previewKey: string }) {
-  return (
-    <span
-      className={`content-picker-art content-picker-art-${kind}`}
-      data-preview-key={previewKey}
-      aria-hidden="true"
-    >
-      <span className="content-picker-art-sky" />
-      <span className="content-picker-art-subject" />
-      <span className="content-picker-art-detail" />
-    </span>
-  )
+  previewStatuses?: Readonly<Partial<Record<EnvironmentId | CharacterId, ContentPreviewStatus>>>
 }
 
 function moveSelection<T extends PickerCard>(
@@ -82,14 +78,35 @@ function moveSelection<T extends PickerCard>(
   buttonRefs: MutableRefObject<Array<HTMLButtonElement | null>>,
   onSelect: (id: T['id']) => void,
   onRequest: (id: T['id']) => void,
+  isUnavailable: (id: T['id']) => boolean,
 ) {
-  if (descriptors.length < 2) return
+  if (!descriptors.length) return
 
   let nextIndex: number | null = null
-  if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % descriptors.length
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + descriptors.length) % descriptors.length
-  if (event.key === 'Home') nextIndex = 0
-  if (event.key === 'End') nextIndex = descriptors.length - 1
+  const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown'
+    ? 1
+    : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+      ? -1
+      : 0
+  if (direction) {
+    for (let offset = 1; offset <= descriptors.length; offset += 1) {
+      const candidate = (index + (direction * offset) + descriptors.length) % descriptors.length
+      if (!isUnavailable(descriptors[candidate].id)) {
+        nextIndex = candidate
+        break
+      }
+    }
+  }
+  if (event.key === 'Home') nextIndex = descriptors.findIndex(({ id }) => !isUnavailable(id))
+  if (event.key === 'End') {
+    for (let candidate = descriptors.length - 1; candidate >= 0; candidate -= 1) {
+      if (!isUnavailable(descriptors[candidate].id)) {
+        nextIndex = candidate
+        break
+      }
+    }
+  }
+  if (nextIndex === -1) nextIndex = null
   if (nextIndex === null) return
 
   event.preventDefault()
@@ -107,9 +124,15 @@ function SelectionGrid<T extends PickerCard>({
   emptyCopy,
   onSelect,
   onRequestPreview,
+  previewStatuses,
 }: SelectionGridProps<T>) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const hasSelectedCard = descriptors.some(({ id }) => id === selectedId)
+  const selectedIndex = descriptors.findIndex(({ id }) => (
+    id === selectedId && previewStatuses?.[id] !== 'unavailable'
+  ))
+  const rovingIndex = selectedIndex >= 0
+    ? selectedIndex
+    : descriptors.findIndex(({ id }) => previewStatuses?.[id] !== 'unavailable')
 
   if (!descriptors.length) return <p className="content-picker-empty">{emptyCopy}</p>
 
@@ -117,10 +140,19 @@ function SelectionGrid<T extends PickerCard>({
     <div className="content-picker-grid" role="radiogroup" aria-label={label}>
       {descriptors.map((descriptor, index) => {
         const selected = descriptor.id === selectedId
+        const previewStatus = previewStatuses?.[descriptor.id] ?? 'ready'
+        const unavailable = previewStatus === 'unavailable'
+        const statusLabel = previewStatus === 'loading'
+          ? 'Loading preview'
+          : unavailable
+            ? 'Unavailable'
+            : null
         const requestPreview = (reason: ContentPreviewReason) => {
+          if (unavailable) return
           onRequestPreview?.(kind, descriptor.id, reason)
         }
         const select = () => {
+          if (unavailable) return
           onSelect(descriptor.id)
           requestPreview('selection')
         }
@@ -133,7 +165,11 @@ function SelectionGrid<T extends PickerCard>({
             type="button"
             role="radio"
             aria-checked={selected}
-            tabIndex={selected || (!hasSelectedCard && index === 0) ? 0 : -1}
+            aria-label={`${descriptor.name}. ${descriptor.description}${statusLabel ? `. ${statusLabel}` : ''}`}
+            aria-busy={previewStatus === 'loading' || undefined}
+            aria-disabled={unavailable || undefined}
+            data-preview-status={previewStatus}
+            tabIndex={!unavailable && index === rovingIndex ? 0 : -1}
             onClick={select}
             onPointerEnter={() => requestPreview('hover')}
             onFocus={() => requestPreview('focus')}
@@ -144,9 +180,15 @@ function SelectionGrid<T extends PickerCard>({
               buttonRefs,
               onSelect,
               (id) => onRequestPreview?.(kind, id, 'selection'),
+              (id) => previewStatuses?.[id] === 'unavailable',
             )}
           >
             <PreviewArtwork kind={kind} previewKey={descriptor.previewKey} />
+            {statusLabel && (
+              <span className="content-picker-card-status">
+                {statusLabel}
+              </span>
+            )}
             <span className="content-picker-card-copy">
               <strong>{descriptor.name}</strong>
               <small>{descriptor.description}</small>
@@ -179,6 +221,7 @@ export function ContentPicker({
   onSelectEnvironment,
   onSelectCharacter,
   onRequestPreview,
+  previewStatuses,
   palette = {},
   paletteGroups = [],
   onPaletteChange,
@@ -220,6 +263,7 @@ export function ContentPicker({
           emptyCopy="No environments are available yet."
           onSelect={onSelectEnvironment}
           onRequestPreview={onRequestPreview}
+          previewStatuses={previewStatuses?.environment}
         />
       </div>}
 
@@ -237,6 +281,7 @@ export function ContentPicker({
           emptyCopy="No characters are available yet."
           onSelect={onSelectCharacter}
           onRequestPreview={onRequestPreview}
+          previewStatuses={previewStatuses?.character}
         />
       </div>}
 

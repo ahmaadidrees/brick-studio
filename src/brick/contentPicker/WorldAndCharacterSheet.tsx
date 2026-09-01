@@ -35,6 +35,8 @@ export type WorldAndCharacterSheetProps = {
   onClose: () => void
   /** Draft-time preview intents (hover/focus/selection); never a commitment. */
   onRequestPreview?: ContentPickerProps['onRequestPreview']
+  /** Optional lazy-preview state shown accessibly on each card. */
+  previewStatuses?: ContentPickerProps['previewStatuses']
   /** Private draft preview; hosts must not persist or broadcast this value. */
   onDraftChange?: (selection: ContentPickerSelection) => void
   title?: string
@@ -59,6 +61,7 @@ export function WorldAndCharacterSheet({
   onApply,
   onClose,
   onRequestPreview,
+  previewStatuses,
   onDraftChange,
   title = 'World & character',
   description = 'Choose where to build and who you will be, then press Apply.',
@@ -198,6 +201,7 @@ export function WorldAndCharacterSheet({
             paletteGroups={paletteGroups}
             onPaletteChange={(palette) => setDraft((current) => ({ ...current, palette }))}
             onRequestPreview={onRequestPreview}
+            previewStatuses={previewStatuses}
           />
         </div>
         <footer className="world-character-sheet-footer">

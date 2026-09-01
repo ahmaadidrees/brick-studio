@@ -110,6 +110,21 @@
   box-shadow: 0 8px 22px rgba(42, 101, 159, .13);
 }
 
+.content-picker-card[aria-disabled='true'] {
+  color: #748287;
+  background: #eef0ef;
+  cursor: not-allowed;
+  filter: saturate(.45);
+  opacity: .72;
+}
+
+.content-picker-card[aria-disabled='true']:hover { transform: none; }
+
+.content-picker-card[aria-busy='true'] .content-picker-art svg {
+  opacity: .68;
+  transform: scale(1.015);
+}
+
 .content-picker-card:focus-visible {
   outline: 3px solid rgba(62, 131, 215, .4);
   outline-offset: 3px;
@@ -157,6 +172,37 @@
   transition: opacity 150ms ease, transform 150ms ease;
 }
 
+.content-picker-card-status {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, .72);
+  border-radius: 999px;
+  color: #344b55;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 4px 12px rgba(37, 55, 64, .16);
+  font-size: 9px;
+  font-weight: 900;
+  backdrop-filter: blur(5px);
+}
+
+.content-picker-card[data-preview-status='loading'] .content-picker-card-status::before {
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 2px solid #a9c8e5;
+  border-top-color: var(--content-picker-blue-dark);
+  border-radius: 50%;
+  content: '';
+  animation: content-picker-spin .8s linear infinite;
+}
+
 .content-picker-card[aria-checked='true'] .content-picker-check {
   opacity: 1;
   transform: scale(1);
@@ -167,62 +213,112 @@
   display: block;
   overflow: hidden;
   border-radius: 12px;
-  background: linear-gradient(145deg, #a8d9f7, #eef8fa 62%, #d4d5c4 62%);
-  box-shadow: inset 0 -10px 20px rgba(40, 73, 89, .08);
+  background: #dceaf0;
+  box-shadow: inset 0 -10px 20px rgba(40, 73, 89, .08), 0 1px 0 rgba(255, 255, 255, .65);
 }
 
-.content-picker-art > span { position: absolute; display: block; }
-.content-picker-art-sky { inset: 0; }
-
-.content-picker-art-environment .content-picker-art-subject {
-  right: 12%;
-  bottom: 17%;
-  left: 10%;
-  height: 43%;
-  border-radius: 20px 20px 7px 7px;
-  background: linear-gradient(#76b263 0 17%, #5c914d 17% 24%, #b97e50 24%);
-  box-shadow: 18px 7px 0 -6px #d7ae68, -15px 10px 0 -8px #559a6b;
-  transform: perspective(120px) rotateX(11deg) rotateZ(-2deg);
+.content-picker-art svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 
-.content-picker-art-environment .content-picker-art-detail {
-  right: 23%;
-  bottom: 40%;
-  width: 18px;
-  height: 30px;
-  border-radius: 5px 5px 2px 2px;
-  background: #e75d4e;
-  box-shadow: inset 0 6px #f28b53, -35px 14px 0 -4px #4a8fbd;
-}
+/* Classic studio: crisp white room, blue grid plate, recognizable loose bricks. */
+.preview-classic-wall { fill: #eaf3f5; }
+.preview-classic-floor { fill: #d9dfdc; }
+.preview-classic-grid { fill: none; stroke: #c1cbc9; stroke-width: 1; }
+.preview-baseplate { fill: #5ca66b; stroke: #3e8051; stroke-width: 1.5; }
+.preview-classic-studs { fill: #79bc83; stroke: #448a57; stroke-width: 1; }
+.preview-brick-red { fill: #d94740; }
+.preview-brick-red-top, .preview-brick-red-stud { fill: #ef6b5b; }
+.preview-brick-blue { fill: #3378bf; }
+.preview-brick-blue-stud { fill: #69a6e1; }
+.preview-studio-lamp { fill: #fff4b0; stroke: #91a2a4; stroke-width: 4; }
+.preview-studio-lamp-arm { fill: none; stroke: #70858b; stroke-width: 4; }
 
-.content-picker-art-character { background: radial-gradient(circle at 50% 35%, #f8fbfa 0 13%, transparent 14%), linear-gradient(145deg, #d9ebf6, #f8f8f4); }
+/* Toy room: warm wall, window and curtains, shelf, tabletop play set. */
+.preview-room-wall { fill: #f8dfba; }
+.preview-room-window { fill: #9ed8ed; stroke: #fff9ed; stroke-width: 4; }
+.preview-room-window-frame { fill: none; stroke: #fff9ed; stroke-width: 3; }
+.preview-room-sun { fill: #ffd767; }
+.preview-room-curtain { fill: #e66a5b; }
+.preview-room-shelf { fill: #a76545; }
+.preview-room-book-one { fill: #4b8cc7; }
+.preview-room-book-two { fill: #e77f3f; }
+.preview-room-ball { fill: #f1ce4e; stroke: #4f8bba; stroke-width: 4; }
+.preview-room-table { fill: #c98b5f; }
+.preview-room-table-edge { fill: #a96646; }
+.preview-room-track { fill: none; stroke: #725444; stroke-width: 5; stroke-linecap: round; }
+.preview-room-blocks rect:nth-child(1) { fill: #df4945; }
+.preview-room-blocks rect:nth-child(2) { fill: #4b8dd0; }
+.preview-room-blocks rect:nth-child(3) { fill: #efc544; }
+.preview-room-studs ellipse:nth-child(-n+2) { fill: #ee7568; }
+.preview-room-studs ellipse:nth-child(n+3):nth-child(-n+4) { fill: #78b2e6; }
+.preview-room-studs ellipse:nth-child(n+5) { fill: #ffe175; }
 
-.content-picker-art-character .content-picker-art-subject {
-  top: 16px;
-  left: 50%;
-  width: 42px;
-  height: 42px;
-  margin-left: -21px;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #efae4d, #d67c37);
-  box-shadow: 0 38px 0 7px #3e83d7, -22px 42px 0 -14px #305f91, 22px 42px 0 -14px #305f91;
-}
+/* Brick valley: saturated block mountains, brick towers and a blue river. */
+.preview-valley-sky { fill: #8dd7ee; }
+.preview-valley-clouds { fill: #f4fbfa; }
+.preview-valley-sun { fill: #ffdd63; }
+.preview-valley-back { fill: #68a75d; }
+.preview-valley-front { fill: #8ac563; }
+.preview-valley-river { fill: #4ca9d5; }
+.preview-valley-bricks path:nth-child(1), .preview-valley-bricks path:nth-child(2) { fill: #e44b43; }
+.preview-valley-bricks path:nth-child(3), .preview-valley-bricks path:nth-child(4) { fill: #f1c846; }
+.preview-valley-bricks path:nth-child(5), .preview-valley-bricks path:nth-child(6) { fill: #447fc3; }
+.preview-valley-studs ellipse:nth-child(-n+2) { fill: #f17b6e; }
+.preview-valley-studs ellipse:nth-child(n+3):nth-child(-n+4) { fill: #ffe177; }
+.preview-valley-studs ellipse:nth-child(n+5) { fill: #74a8df; }
 
-.content-picker-art-character .content-picker-art-detail {
-  top: 30px;
-  left: 50%;
-  width: 22px;
-  height: 6px;
-  margin-left: -11px;
-  border-radius: 6px;
-  background: #294650;
-  box-shadow: 0 48px 0 -1px rgba(255, 255, 255, .7);
-}
+/* Sky island: cool open sky, floating rock, waterfall, ruins and clouds. */
+.preview-island-sky { fill: #72c8ef; }
+.preview-island-clouds { fill: rgba(247, 252, 255, .9); }
+.preview-island-grass { fill: #79bd69; stroke: #4a9356; stroke-width: 2; }
+.preview-island-rock { fill: #8d7868; }
+.preview-island-rock-detail { fill: none; stroke: #69594e; stroke-width: 3; opacity: .65; }
+.preview-island-water { fill: #d5f7ff; opacity: .92; }
+.preview-island-ruin { fill: #d7d2bd; stroke: #aaa68e; stroke-width: 1; }
+.preview-island-tree { fill: #75513b; }
+.preview-island-tree-top { fill: #4c9960; }
+.preview-island-distant { fill: #65a566; stroke: #dcf7ff; stroke-width: 2; }
 
-.content-picker-art[data-preview-key='environment:toy-room'] { background: linear-gradient(145deg, #f7d5a3, #f5eee0 62%, #c98d64 62%); }
-.content-picker-art[data-preview-key='environment:brick-valley'] { background: linear-gradient(145deg, #8ed7f0, #d8f2e8 62%, #76b263 62%); }
-.content-picker-art[data-preview-key='environment:sky-island'] { background: linear-gradient(145deg, #79c5f2, #e5f7ff 69%, #b7e0e7 69%); }
-.content-picker-art[data-preview-key='character:cc0-hero'] .content-picker-art-subject { background: linear-gradient(145deg, #f0f3f4, #99acb4); box-shadow: 0 38px 0 7px #e78236, -22px 42px 0 -14px #677a83, 22px 42px 0 -14px #677a83; }
+/* Character stages deliberately use different silhouettes and worlds. */
+.preview-character-studio { fill: #dcecf3; }
+.preview-character-playroom { fill: #f7dfb6; }
+.preview-character-space { fill: #24334f; }
+.preview-character-shadow { fill: rgba(31, 49, 58, .18); }
+.preview-toy-rainbow { fill: none; stroke: rgba(255, 255, 255, .38); stroke-width: 10; stroke-linecap: round; }
+.preview-space-stars { fill: #d8efff; }
+.preview-character-eye { fill: #263d45; }
+.preview-character-smile { fill: none; stroke: #263d45; stroke-width: 2.2; stroke-linecap: round; }
+
+.preview-builder-head { fill: #f0b14e; }
+.preview-builder-hair { fill: #5e4434; }
+.preview-builder-body { fill: #3c84cb; }
+.preview-builder-badge { fill: #f2cf49; }
+.preview-builder-arm-left, .preview-builder-arm-right { fill: #f0b14e; }
+.preview-builder-leg-left, .preview-builder-leg-right { fill: #345d91; }
+
+.preview-toy-head, .preview-toy-hand { fill: #f0ad54; }
+.preview-toy-cap { fill: #e84f48; }
+.preview-toy-body { fill: #e6683f; stroke: #bc4932; stroke-width: 2; }
+.preview-toy-arm-left, .preview-toy-arm-right { fill: #4d98c9; }
+.preview-toy-leg-left, .preview-toy-leg-right { fill: #3f75a7; }
+.preview-toy-emblem { fill: #f7d34f; stroke: #fff0a0; stroke-width: 2; }
+
+.preview-robot-shoulders { fill: #a9bbc5; stroke: #667b87; stroke-width: 2; }
+.preview-robot-chest { fill: #d1dce0; stroke: #718690; stroke-width: 2; }
+.preview-robot-leg-left, .preview-robot-leg-right { fill: #718892; }
+.preview-robot-core { fill: #ef843b; stroke: #ffbd5e; stroke-width: 2; }
+.preview-robot-head { fill: #c9d5db; stroke: #687d88; stroke-width: 2; }
+.preview-robot-face { fill: #354c5d; }
+.preview-robot-eye { fill: none; stroke: #66e4ff; stroke-width: 4; stroke-linecap: round; }
+.preview-robot-antenna { stroke: #96aab4; stroke-width: 2; }
+.preview-robot-antenna-tip { fill: #ef843b; }
+
+@keyframes content-picker-spin { to { transform: rotate(1turn); } }
 
 .content-picker-empty {
   margin: 0;

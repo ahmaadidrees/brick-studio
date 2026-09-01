@@ -34,6 +34,52 @@ describe('ContentPicker', () => {
     expect(container.querySelector('img, canvas, video')).toBeNull()
   })
 
+  it('gives every available world and character a distinct lightweight illustration', () => {
+    const { container } = render(<ContentPicker {...baseProps} />)
+
+    expect([...container.querySelectorAll('[data-artwork]')].map((node) => node.getAttribute('data-artwork'))).toEqual([
+      'toy-room',
+      'brick-valley',
+      'sky-island',
+      'toy-figure',
+      'robot-hero',
+    ])
+    expect(container.querySelectorAll('svg')).toHaveLength(5)
+    expect(container.querySelector('img, canvas, video')).toBeNull()
+  })
+
+  it('announces loading and unavailable previews and skips unavailable cards during selection', () => {
+    const onSelectCharacter = vi.fn()
+    const onRequestPreview = vi.fn()
+    render(
+      <ContentPicker
+        {...baseProps}
+        onSelectCharacter={onSelectCharacter}
+        onRequestPreview={onRequestPreview}
+        previewStatuses={{
+          environment: { 'brick-valley': 'loading' },
+          character: { 'cc0-hero': 'unavailable' },
+        }}
+      />,
+    )
+
+    const valley = screen.getByRole('radio', { name: /Brick Valley.*Loading preview/ })
+    const toyFigure = screen.getByRole('radio', { name: /Toy Figure/ })
+    const robot = screen.getByRole('radio', { name: /Robot Hero.*Unavailable/ })
+    expect(valley).toHaveAttribute('aria-busy', 'true')
+    expect(robot).toHaveAttribute('aria-disabled', 'true')
+    expect(robot).toHaveAttribute('tabindex', '-1')
+
+    fireEvent.pointerEnter(robot)
+    fireEvent.click(robot)
+    toyFigure.focus()
+    fireEvent.keyDown(toyFigure, { key: 'ArrowRight' })
+
+    expect(onSelectCharacter).toHaveBeenLastCalledWith('toy-figure')
+    expect(robot).not.toHaveFocus()
+    expect(onRequestPreview).toHaveBeenLastCalledWith('character', 'toy-figure', 'selection')
+  })
+
   it('requests lazy previews only after hover, focus, or selection intent', () => {
     const onRequestPreview = vi.fn()
     const onSelectEnvironment = vi.fn()
