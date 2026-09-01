@@ -12,12 +12,11 @@ export default function PublishedWorldPage() {
 
   useEffect(() => {
     let active = true
-    try {
-      const loaded = loadPublishedWorld(window.location.hash)
-      if (active) setWorld(loaded)
-    } catch (reason) {
-      if (active) setError(reason instanceof Error ? reason.message : 'Could not open this world.')
-    }
+    loadPublishedWorld(window.location.hash)
+      .then((loaded) => { if (active) setWorld(loaded) })
+      .catch((reason: unknown) => {
+        if (active) setError(reason instanceof Error ? reason.message : 'Could not open this world.')
+      })
     return () => { active = false }
   }, [])
 

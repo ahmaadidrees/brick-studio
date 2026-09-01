@@ -77,7 +77,7 @@ describe('keyboard construction loop', () => {
   it('places with Enter/Space, cancels with Escape, and never double-acts from a button', () => {
     render(<BrickStudioApp />)
 
-    expect(screen.getByLabelText('0 of 250 brick budget for desktop')).toBeInTheDocument()
+    expect(screen.getByLabelText('0 of 1000 brick budget for desktop')).toBeInTheDocument()
     expect(fireEvent.keyDown(document.body, { key: 'Enter' })).toBe(false)
     expect(useBrickStore.getState().bricks).toHaveLength(1)
 
@@ -250,7 +250,7 @@ describe('Brick Studio responsive controls', () => {
 
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
-    expect(screen.getByLabelText('0 of 250 brick budget for desktop')).toBeInTheDocument()
+    expect(screen.getByLabelText('0 of 1000 brick budget for desktop')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
     expect(screen.getByRole('menuitem', { name: 'Rover Lab' })).toHaveAttribute('href', '/rover')
 

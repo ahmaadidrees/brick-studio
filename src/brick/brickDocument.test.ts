@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BRICK_STUDIO_MAX_BRICKS,
   BRICK_STUDIO_MAX_JSON_LENGTH,
   BRICK_STUDIO_PART_LIBRARY_VERSION,
   BRICK_STUDIO_SCHEMA_VERSION,
@@ -15,6 +16,18 @@ const mixed: BrickInstance[] = [
   { id: 'slope', partId: 'slope_2x2', x: 12, y: 3, z: 15, rotation: 1, color: '#e7473c' },
   { id: 'door', partId: 'door_1x4', x: 24, y: 0, z: 30, rotation: 3, color: '#3e83d7' },
 ]
+
+function stackedWorld(count: number): BrickInstance[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `large-${index}`,
+    partId: 'brick_1x1',
+    x: index % 4,
+    y: Math.floor(index / 4) * 3,
+    z: 0,
+    rotation: 0,
+    color: '#3e83d7',
+  }))
+}
 
 describe('Brick Studio document schema', () => {
   it('round-trips exact durable brick state and special-part metadata', () => {
@@ -113,6 +126,25 @@ describe('Brick Studio document schema', () => {
     expect(overlap.ok ? null : overlap.error.code).toBe('invalid-layout')
     expect(outside.ok ? null : outside.error.code).toBe('invalid-layout')
     expect(overBudget.ok ? null : overBudget.error.code).toBe('brick-limit')
+  })
+
+  it('validates a heavily stacked 1,000-brick world with spatial collision indexing', () => {
+    const document = createBrickStudioDocument(stackedWorld(BRICK_STUDIO_MAX_BRICKS))
+    const startedAt = performance.now()
+    const result = validateBrickStudioDocument(document)
+    const elapsedMs = performance.now() - startedAt
+
+    expect(result).toEqual({ ok: true, document })
+    expect(elapsedMs).toBeLessThan(500)
+  })
+
+  it('retains an absolute 1,000-brick boundary even when callers request more', () => {
+    const result = validateBrickStudioDocument(
+      createBrickStudioDocument(stackedWorld(BRICK_STUDIO_MAX_BRICKS + 1)),
+      { maxBricks: BRICK_STUDIO_MAX_BRICKS + 500 },
+    )
+
+    expect(result.ok ? null : result.error.code).toBe('brick-limit')
   })
 
   it('clones input/output so callers cannot mutate the durable document by reference', () => {

@@ -7,6 +7,18 @@ import type { BrickDraft, BrickInstance } from './types'
 const base: BrickInstance = { id: 'a', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }
 const initialState = useBrickStore.getInitialState()
 
+function largeBuild(count: number): BrickInstance[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `large-${index}`,
+    partId: 'brick_1x1',
+    x: index % 64,
+    y: 0,
+    z: Math.floor(index / 64),
+    rotation: 0,
+    color: '#65b85a',
+  }))
+}
+
 function resetStore() {
   useBrickStore.setState({
     ...initialState,
@@ -215,43 +227,42 @@ describe('Explore recovery state', () => {
 })
 
 describe('budget and continuity gates', () => {
-  it('enforces the phone budget without recording the rejected placement', () => {
+  it('enforces the shared 1,000-brick limit without recording a rejected placement', () => {
     useBrickStore.getState().setBudgetProfile('phone')
-    for (let index = 0; index < 75; index += 1) {
-      expect(placeAt(index % 64, Math.floor(index / 64))).toBe(true)
-    }
+    useBrickStore.setState({ bricks: largeBuild(1_000) })
     const historyBefore = useBrickStore.getState().undoStack
     useBrickStore.getState().choosePart('brick_1x1')
-    useBrickStore.getState().setDraftPosition(20, 20, 20)
+    useBrickStore.getState().setDraftPosition(0, 3, 0)
 
     expect(useBrickStore.getState().placeDraft()).toBe(false)
-    expect(useBrickStore.getState().bricks).toHaveLength(75)
+    expect(useBrickStore.getState().bricks).toHaveLength(1_000)
     expect(useBrickStore.getState().undoStack).toEqual(historyBefore)
-    expect(useBrickStore.getState().toast).toContain('75-brick')
+    expect(useBrickStore.getState().toast).toContain('1000-brick')
   })
 
-  it('keeps ordinary budget-limit undo and redo intact', () => {
+  it('keeps world-limit undo and redo intact', () => {
     useBrickStore.getState().setBudgetProfile('phone')
-    for (let index = 0; index < 75; index += 1) placeAt(index % 64, Math.floor(index / 64))
+    useBrickStore.setState({ bricks: largeBuild(999) })
+    expect(placeAt(39, 15)).toBe(true)
 
     useBrickStore.getState().undo()
-    expect(useBrickStore.getState().bricks).toHaveLength(74)
+    expect(useBrickStore.getState().bricks).toHaveLength(999)
     expect(useBrickStore.getState().redoStack).toHaveLength(1)
     useBrickStore.getState().redo()
-    expect(useBrickStore.getState().bricks).toHaveLength(75)
+    expect(useBrickStore.getState().bricks).toHaveLength(1_000)
     expect(useBrickStore.getState().redoStack).toHaveLength(0)
   })
 
-  it('preserves a blocked redo when the active device budget becomes lower', () => {
+  it('keeps redo portable when the device profile changes', () => {
     useBrickStore.getState().setBudgetProfile('desktop')
-    for (let index = 0; index < 76; index += 1) placeAt(index % 64, Math.floor(index / 64))
+    useBrickStore.setState({ bricks: largeBuild(999) })
+    expect(placeAt(39, 15)).toBe(true)
     useBrickStore.getState().undo()
     useBrickStore.getState().setBudgetProfile('phone')
 
     useBrickStore.getState().redo()
-    expect(useBrickStore.getState().bricks).toHaveLength(75)
-    expect(useBrickStore.getState().redoStack).toHaveLength(1)
-    expect(useBrickStore.getState().toast).toContain('exceed')
+    expect(useBrickStore.getState().bricks).toHaveLength(1_000)
+    expect(useBrickStore.getState().redoStack).toHaveLength(0)
   })
 
   it('keeps the build and history intact across repeated mode switches', () => {
@@ -367,11 +378,9 @@ describe('placement feedback signals', () => {
 
   it('leaves blockedNonce untouched when only the budget rejects the placement', () => {
     useBrickStore.getState().setBudgetProfile('phone')
-    for (let index = 0; index < 75; index += 1) {
-      expect(placeAt(index % 64, Math.floor(index / 64))).toBe(true)
-    }
+    useBrickStore.setState({ bricks: largeBuild(1_000) })
     useBrickStore.getState().choosePart('brick_1x1')
-    useBrickStore.getState().setDraftPosition(20, 0, 20)
+    useBrickStore.getState().setDraftPosition(0, 3, 0)
     const feedbackBefore = useBrickStore.getState().placeFeedback
 
     expect(useBrickStore.getState().placeDraft()).toBe(false)
@@ -505,7 +514,7 @@ describe('atomic group clipboard and history', () => {
       clipboard: null,
       undoStack: [],
       redoStack: [],
-      brickBudget: 250,
+      brickBudget: 1_000,
     })
   })
 
@@ -624,9 +633,9 @@ describe('atomic group clipboard and history', () => {
   })
 
   it.each([
-    ['phone', 75],
-    ['tablet', 150],
-    ['desktop', 250],
+    ['phone', 1_000],
+    ['tablet', 1_000],
+    ['desktop', 1_000],
   ] as const)('rejects an over-budget %s paste without partial mutation or history', (profile, budget) => {
     const filler = Array.from({ length: budget - 2 }, (_, index): BrickInstance => ({
       id: `filler-${index}`,
@@ -675,7 +684,7 @@ describe('document replacement commands', () => {
       draft: null,
       undoStack: [],
       redoStack: [],
-      brickBudget: 250,
+      brickBudget: 1_000,
       budgetProfile: 'desktop',
     })
   })
@@ -720,18 +729,24 @@ describe('document replacement commands', () => {
     }
   })
 
-  it('restores a valid universal document even under a lower device budget and clears transient state/history', () => {
-    const restored = Array.from({ length: 80 }, (_, index): BrickInstance => ({
-      id: `restored-${index}`,
-      partId: 'brick_1x1',
-      x: index % 64,
-      y: Math.floor(index / 64) * 3,
-      z: Math.floor(index / 64),
-      rotation: 0,
-      color: '#65b85a',
-    }))
+  it('imports a 1,000-brick world atomically and keeps undo and redo exact', () => {
+    const fullWorld = largeBuild(1_000)
+    const serialized = serializeBrickStudioDocument(createBrickStudioDocument(fullWorld))
+
+    expect(useBrickStore.getState().importDocument(serialized)).toEqual({ ok: true })
+    expect(useBrickStore.getState().bricks).toEqual(fullWorld)
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Import project')
+
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(project)
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().bricks).toEqual(fullWorld)
+  })
+
+  it('restores a valid maximum-size shared document and clears transient state/history', () => {
+    const restored = largeBuild(1_000)
     useBrickStore.setState({
-      brickBudget: 75,
+      brickBudget: 1_000,
       budgetProfile: 'phone',
       selectedIds: ['roundtrip-door'],
       selectedId: 'roundtrip-door',
@@ -753,7 +768,7 @@ describe('document replacement commands', () => {
       undoStack: [],
       redoStack: [],
       mode: 'build',
-      brickBudget: 75,
+      brickBudget: 1_000,
     })
   })
 

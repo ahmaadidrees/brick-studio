@@ -873,7 +873,7 @@ export default function BrickStudioApp({
     const title = window.prompt('Name this world', 'My Brick World')?.trim()
     if (title === undefined) return
     try {
-      const shareUrl = createPublishedWorldUrl(createBrickStudioDocument(
+      const shareUrl = await createPublishedWorldUrl(createBrickStudioDocument(
         useBrickStore.getState().bricks,
         { environmentId, customParts: localCustomParts },
       ), title || undefined)

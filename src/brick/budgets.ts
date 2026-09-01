@@ -1,9 +1,10 @@
 import type { BrickBudgetProfile } from './types'
+import { BRICK_STUDIO_MAX_BRICKS } from './brickDocument'
 
 export const BRICK_BUDGETS: Record<BrickBudgetProfile, number> = {
-  desktop: 250,
-  tablet: 150,
-  phone: 75,
+  desktop: BRICK_STUDIO_MAX_BRICKS,
+  tablet: BRICK_STUDIO_MAX_BRICKS,
+  phone: BRICK_STUDIO_MAX_BRICKS,
 }
 
 export type BudgetEnvironment = {
@@ -16,9 +17,9 @@ export type BudgetEnvironment = {
 }
 
 /**
- * Desktop-class devices keep the desktop budget even when their browser window
- * is narrow. Touch devices use their shortest viewport edge so a rotated phone
- * does not accidentally receive the tablet budget.
+ * Classifies device shape without changing the authoritative world capacity.
+ * The profile remains useful for presentation and adaptive rendering quality;
+ * every participant can still load and edit the same complete document.
  */
 export function getBrickBudgetProfile(environment: BudgetEnvironment): BrickBudgetProfile {
   if (/CrOS/i.test(environment.userAgent)) return 'desktop'

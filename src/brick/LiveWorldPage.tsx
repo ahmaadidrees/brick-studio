@@ -315,7 +315,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   }
 
   const publishWorld = props.publishWorld ?? (async (world: LiveWorldSnapshotExport) => {
-    const url = createPublishedWorldUrl(world.document, world.title)
+    const url = await createPublishedWorldUrl(world.document, world.title)
     const copied = await copyText(url).catch(() => false)
     if (!copied) window.prompt('Share this snapshot link:', url)
     return copied

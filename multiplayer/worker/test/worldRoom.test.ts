@@ -1,4 +1,5 @@
 import {
+  BRICK_STUDIO_MAX_BRICKS,
   LIVE_MAX_COMMAND_BYTES,
   LIVE_MAX_DOCUMENT_BYTES,
   LIVE_PROTOCOL_VERSION,
@@ -31,6 +32,18 @@ function brick(id: string, x = 2, z = 2): BrickInstance {
 
 function worldDocument(bricks: BrickInstance[] = []): BrickStudioDocument {
   return createBrickStudioDocument(bricks);
+}
+
+function largeWorld(count: number): BrickInstance[] {
+  return Array.from({ length: count }, (_, index) => ({
+    id: `large-${index}`,
+    partId: "brick_1x1",
+    x: index % 64,
+    y: 0,
+    z: Math.floor(index / 64),
+    rotation: 0,
+    color: "#3e83d7",
+  }));
 }
 
 async function workerFetch(input: string, init?: RequestInit): Promise<Response> {
@@ -168,6 +181,46 @@ describe("WorldRoom", () => {
     expect(players.players).toEqual(expect.arrayContaining([
       expect.objectContaining({ playerId: "guest_001", profile: { displayName: "Grace Hopper", palette: { shirt: "#abc" } } }),
     ]));
+  });
+
+  it("accepts, edits, and strictly bounds a 1,000-brick authoritative world", async () => {
+    const seed = largeWorld(BRICK_STUDIO_MAX_BRICKS - 1);
+    const { roomId } = await createWorld(worldDocument(seed));
+    const guest = await connectWorld(roomId, "guest_large");
+    const finalBrick: BrickInstance = {
+      id: "large-final",
+      partId: "brick_1x1",
+      x: 39,
+      y: 0,
+      z: 15,
+      rotation: 0,
+      color: "#e7473c",
+    };
+    send(guest.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "guest_large#1",
+      commands: [{ op: "place", brick: finalBrick }],
+    });
+
+    expect(await guest.inbox!.next("apply")).toMatchObject({ opId: "guest_large#1", revision: 1 });
+    expect((await getWorld(roomId)).document.bricks).toHaveLength(BRICK_STUDIO_MAX_BRICKS);
+
+    send(guest.socket!, {
+      v: LIVE_PROTOCOL_VERSION,
+      type: "commands",
+      opId: "guest_large#2",
+      commands: [{
+        op: "place",
+        brick: { ...finalBrick, id: "over-limit", x: 40 },
+      }],
+    });
+    expect(await guest.inbox!.next("reject")).toMatchObject({
+      opId: "guest_large#2",
+      code: "brick-limit",
+      revision: 1,
+    });
+    expect((await getWorld(roomId)).document.bricks).toHaveLength(BRICK_STUDIO_MAX_BRICKS);
   });
 
   it("rejects observed-id hijacks without evicting the legitimate player and permits capability reconnect", async () => {

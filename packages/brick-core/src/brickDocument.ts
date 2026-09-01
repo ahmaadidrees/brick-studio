@@ -1,11 +1,12 @@
 import { BRICK_PART_MAP, createPartMap } from './parts'
-import { brickFitsLayout } from './brickRules'
+import { BrickLayoutIndex } from './brickRules'
 import type { BrickInstance, CustomPartDefinition, CustomPartTemplate, EnvironmentId } from './types'
 
 export const BRICK_STUDIO_SCHEMA_VERSION = 2
 export const BRICK_STUDIO_PART_LIBRARY_VERSION = 1
 export const BRICK_STUDIO_FILE_EXTENSION = '.brickstudio.json'
-export const BRICK_STUDIO_MAX_BRICKS = 250
+/** Shared document/live-world capacity. Rendering quality may adapt by device. */
+export const BRICK_STUDIO_MAX_BRICKS = 1_000
 export const BRICK_STUDIO_MAX_CUSTOM_PARTS = 24
 export const BRICK_STUDIO_MAX_JSON_LENGTH = 800_000
 export const BRICK_STUDIO_MAX_Y = 1_024
@@ -200,16 +201,17 @@ export function validateBrickStudioDocument(
 
   const maxBricks = Math.max(0, Math.min(options.maxBricks ?? BRICK_STUDIO_MAX_BRICKS, BRICK_STUDIO_MAX_BRICKS))
   if (value.bricks.length > maxBricks) {
-    return fail('brick-limit', `This project has ${value.bricks.length} bricks, exceeding the ${maxBricks}-brick limit for this device.`)
+    return fail('brick-limit', `This project has ${value.bricks.length} bricks, exceeding the ${maxBricks}-brick world limit.`)
   }
 
   const bricks: BrickInstance[] = []
   const ids = new Set<string>()
+  const layout = new BrickLayoutIndex(partMap)
   for (let index = 0; index < value.bricks.length; index += 1) {
     const validated = validateBrick(value.bricks[index], index, partMap)
     if ('ok' in validated) return validated
     if (ids.has(validated.id)) return fail('invalid-brick', `Brick ${index + 1} repeats the id "${validated.id}".`)
-    if (!brickFitsLayout(validated, bricks, partMap)) {
+    if (!layout.add(validated)) {
       return fail('invalid-layout', `Brick ${index + 1} overlaps another brick or falls outside the build plate.`)
     }
     ids.add(validated.id)

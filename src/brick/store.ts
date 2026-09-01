@@ -509,7 +509,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       return false
     }
     if (!state.movingId && state.bricks.length >= state.brickBudget) {
-      set({ toast: `This device's ${state.brickBudget}-brick build budget is full. Delete a brick or continue on a larger device.` })
+      set({ toast: `This world's ${state.brickBudget}-brick build limit is full. Delete a brick to place another.` })
       return false
     }
 
@@ -770,7 +770,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     if (!placement.drafts) {
       set({
         toast: placement.reason === 'budget'
-          ? `Pasting ${state.clipboard.bricks.length} bricks would exceed this device's ${state.brickBudget}-brick budget.`
+          ? `Pasting ${state.clipboard.bricks.length} bricks would exceed this world's ${state.brickBudget}-brick limit.`
           : 'The copied group has no valid offset on the plate. Nothing was pasted.',
       })
       return
@@ -933,7 +933,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     if (!next) return
     const netAddition = next.deltas.reduce((total, delta) => total + (delta.after ? 1 : 0) - (delta.before ? 1 : 0), 0)
     if (state.bricks.length + netAddition > state.brickBudget) {
-      set({ toast: `Redo would exceed this device's ${state.brickBudget}-brick budget.` })
+      set({ toast: `Redo would exceed this world's ${state.brickBudget}-brick limit.` })
       return
     }
     const brushArmed = Boolean(state.draft && !state.movingId)
