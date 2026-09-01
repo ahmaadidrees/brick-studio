@@ -74,6 +74,9 @@
   gap: 10px;
 }
 
+.world-character-sheet .content-picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.world-character-sheet .content-picker-card { min-height: 150px; grid-template-rows: 86px auto; }
+
 .content-picker-card {
   position: relative;
   min-width: 0;
@@ -297,6 +300,8 @@
   .content-picker-card-copy strong { padding-right: 0; }
   .content-picker-palette-groups { grid-template-columns: 1fr; }
   .content-picker-swatch { width: 44px; height: 44px; }
+  .world-character-sheet .content-picker-grid { grid-template-columns: 1fr; }
+  .world-character-sheet .content-picker-card { min-height: 120px; grid-template-columns: 112px 1fr; grid-template-rows: 1fr; }
 }
 
 @media (max-width: 390px) {

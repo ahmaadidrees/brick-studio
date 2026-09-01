@@ -1,0 +1,26 @@
+.create-brick-sheet { position: fixed; z-index: 44; inset: 0; display: grid; place-items: center; padding: 16px; }
+.create-brick-backdrop { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(30,46,54,.3); cursor: default; }
+.create-brick-panel { position: relative; width: min(440px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; padding: 20px; border: 1px solid rgba(255,255,255,.82); border-radius: 22px; color: var(--studio-ink, #223640); background: #fbfbf9; box-shadow: 0 28px 78px rgba(24,42,52,.34); outline: none; }
+.create-brick-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.create-brick-panel > header span { color: #89969a; font-size: 9px; font-weight: 900; letter-spacing: .11em; text-transform: uppercase; }
+.create-brick-panel h2 { margin: 4px 0 0; font: 700 25px/1.1 'Fredoka', inherit, sans-serif; }
+.create-brick-panel > header button { width: 42px; height: 42px; border: 1px solid #dce3e3; border-radius: 12px; color: #5d7076; background: #f3f6f5; font-size: 21px; cursor: pointer; }
+.create-brick-panel > p { margin: 12px 0 18px; color: #667a82; font-size: 12px; font-weight: 700; line-height: 1.5; }
+.create-brick-panel form { display: grid; gap: 14px; }
+.create-brick-panel label { display: grid; gap: 6px; color: #60747b; font-size: 10px; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.create-brick-panel label small { color: #89969a; font-size: 9px; }
+.create-brick-panel input, .create-brick-panel select { min-width: 0; min-height: 44px; box-sizing: border-box; padding: 0 11px; border: 1px solid #ccd6d8; border-radius: 11px; color: #294650; background: white; font: 800 14px/1 inherit; text-transform: none; }
+.create-brick-panel input:focus-visible, .create-brick-panel select:focus-visible, .create-brick-panel button:focus-visible { outline: 3px solid rgba(62,131,215,.4); outline-offset: 2px; }
+.create-brick-dimensions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.create-brick-error { margin: 0; padding: 9px 11px; border-radius: 10px; color: #9b4037; background: #ffefec; font-size: 11px; font-weight: 800; }
+.create-brick-panel footer { display: flex; justify-content: flex-end; gap: 9px; margin-top: 4px; }
+.create-brick-panel footer button { min-height: 44px; padding: 0 16px; border: 1px solid #d5dcdd; border-radius: 11px; color: #506770; background: #f2f5f4; font: 900 12px/1 inherit; cursor: pointer; }
+.create-brick-panel footer button[type='submit'] { border-color: #2d70b8; color: white; background: linear-gradient(145deg,#4b91df,#3476c1); }
+.resize-brick-axes { display: grid; gap: 10px; margin: 16px 0; }
+.resize-brick-axes section { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.resize-brick-axes section > span { color: #60747b; font-size: 11px; font-weight: 900; }
+.resize-brick-axes section > div { display: grid; grid-template-columns: 44px minmax(120px,1fr) 44px; align-items: center; gap: 6px; }
+.resize-brick-axes button { width: 44px; height: 44px; border: 1px solid #d5dcdd; border-radius: 11px; color: #35515c; background: #f2f5f4; font: 900 20px/1 inherit; cursor: pointer; }
+.resize-brick-axes output { color: #294650; font-size: 12px; font-weight: 900; text-align: center; }
+.resize-brick-sheet footer button:last-child { border-color: #2d70b8; color: white; background: linear-gradient(145deg,#4b91df,#3476c1); }
+@media (max-width: 520px) { .create-brick-sheet { place-items: end stretch; padding: 0; } .create-brick-panel { width: 100%; max-height: calc(100dvh - 24px); border-radius: 22px 22px 0 0; padding-bottom: calc(18px + env(safe-area-inset-bottom)); } }

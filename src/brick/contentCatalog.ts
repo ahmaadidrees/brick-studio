@@ -54,6 +54,17 @@ export const CHARACTER_PALETTE_GROUPS = [
   { key: 'accent', label: 'Accent', swatches: BRICK_COLORS },
 ] as const satisfies readonly CharacterPaletteGroup[]
 
+const CHARACTER_PALETTE_LABELS: Record<CharacterId, readonly [string, string, string]> = {
+  classic: ['Shirt', 'Pants', 'Badge'],
+  'toy-figure': ['Suit', 'Trim', 'Emblem'],
+  'cc0-hero': ['Limbs', 'Shell', 'Hands'],
+}
+
+export function characterPaletteGroups(characterId: CharacterId): readonly CharacterPaletteGroup[] {
+  const labels = CHARACTER_PALETTE_LABELS[characterId]
+  return CHARACTER_PALETTE_GROUPS.map((group, index) => ({ ...group, label: labels[index] }))
+}
+
 export function resolveCharacterId(value: unknown): CharacterId {
   return CHARACTER_DESCRIPTORS.some(({ id }) => id === value)
     ? value as CharacterId

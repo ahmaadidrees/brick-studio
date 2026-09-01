@@ -100,6 +100,7 @@ export type BrickState = {
   copy: () => void
   paste: () => void
   duplicate: () => void
+  resizeSelectedParts: (partIdsByBrickId: Readonly<Record<string, string>>) => boolean
   newBuild: () => boolean
   exportDocument: () => string
   importDocument: (serialized: string) => BrickDocumentCommandResult
@@ -333,6 +334,47 @@ function centerPivotRotation(target: Pick<BrickDraft, 'partId' | 'x' | 'z' | 'ro
     z: target.z + Math.trunc((oldSize.depth - newSize.depth) / 2),
     size: newSize,
   }
+}
+
+function rotateBrickGroup(bricks: BrickInstance[]): BrickInstance[] | null {
+  if (!bricks.length) return []
+  const bounds = bricks.map((brick) => {
+    const size = rotatedSize(BRICK_PART_MAP[brick.partId], brick.rotation)
+    return { brick, size }
+  })
+  const minX = Math.min(...bounds.map(({ brick }) => brick.x))
+  const minZ = Math.min(...bounds.map(({ brick }) => brick.z))
+  const maxX = Math.max(...bounds.map(({ brick, size }) => brick.x + size.width))
+  const maxZ = Math.max(...bounds.map(({ brick, size }) => brick.z + size.depth))
+  // Coordinates are doubled so half-stud group pivots remain exact. A result
+  // that cannot land back on the stud grid rejects the whole operation.
+  const pivotX2 = minX + maxX
+  const pivotZ2 = minZ + maxZ
+
+  const rotated: BrickInstance[] = []
+  for (const { brick, size } of bounds) {
+    const rotation = ((brick.rotation + 1) % 4) as BrickInstance['rotation']
+    const nextSize = rotatedSize(BRICK_PART_MAP[brick.partId], rotation)
+    const centerX2 = brick.x * 2 + size.width
+    const centerZ2 = brick.z * 2 + size.depth
+    const nextCenterX2 = pivotX2 - (centerZ2 - pivotZ2)
+    const nextCenterZ2 = pivotZ2 + (centerX2 - pivotX2)
+    const x2 = nextCenterX2 - nextSize.width
+    const z2 = nextCenterZ2 - nextSize.depth
+    if (x2 % 2 !== 0 || z2 % 2 !== 0) return null
+    rotated.push({ ...brick, rotation, x: x2 / 2, z: z2 / 2 })
+  }
+  return rotated
+}
+
+function transformedSelectionIsValid(
+  transformed: BrickInstance[],
+  state: Pick<BrickState, 'bricks' | 'selectedIds' | 'selectedId' | 'brickBudget'>,
+) {
+  const selected = new Set(effectiveSelectedIds(state))
+  const stationary = state.bricks.filter((brick) => !selected.has(brick.id))
+  const drafts = transformed.map(({ id: _id, ...brick }) => brick)
+  return validateBrickGroup(drafts, stationary, state.brickBudget).valid
 }
 
 function suggestedDraft(
@@ -598,6 +640,29 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     if (state.draft) {
       const next = centerPivotRotation(state.draft)
       set({ draft: { ...state.draft, rotation: next.rotation, x: next.x, z: next.z } })
+    } else if (effectiveSelectedIds(state).length > 1) {
+      const before = selectedBricks(state)
+      const after = rotateBrickGroup(before)
+      if (!after) {
+        set({ toast: 'This group cannot rotate without leaving the stud grid.' })
+        return
+      }
+      if (!transformedSelectionIsValid(after, state)) {
+        set({ toast: 'Not enough room to rotate this group.' })
+        return
+      }
+      const afterById = new Map(after.map((brick) => [brick.id, brick]))
+      const selectedNow = effectiveSelectedIds(state)
+      const deltas = before.map((brick) => {
+        const index = state.bricks.findIndex((candidate) => candidate.id === brick.id)
+        return { before: brick, after: afterById.get(brick.id)!, beforeIndex: index, afterIndex: index }
+      })
+      set({
+        bricks: state.bricks.map((brick) => afterById.get(brick.id) ?? brick),
+        undoStack: appendHistory(state.undoStack, historyEntry(deltas, `Rotate ${before.length} bricks`, null, selectedNow, selectedNow)),
+        redoStack: [],
+        announcement: `${before.length} bricks rotated together.`,
+      })
     } else if (effectiveSelectedIds(state).length === 1 && state.selectedId) {
       const index = state.bricks.findIndex((item) => item.id === state.selectedId)
       const before = state.bricks[index]
@@ -624,7 +689,25 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   nudge: (dx, dy, dz) => {
     const state = get()
     if (!state.draft && effectiveSelectedIds(state).length > 1) {
-      set({ toast: 'Bulk move is not available yet. Select one brick to move it.' })
+      const before = selectedBricks(state)
+      const after = before.map((brick) => ({ ...brick, x: brick.x + dx, y: brick.y + dy, z: brick.z + dz }))
+      if (after.some((brick) => brick.y < 0) || !transformedSelectionIsValid(after, state)) {
+        set({ toast: 'That group move is blocked by the plate edge or another brick.' })
+        return
+      }
+      const afterById = new Map(after.map((brick) => [brick.id, brick]))
+      const selectedNow = effectiveSelectedIds(state)
+      const deltas = before.map((brick) => {
+        const index = state.bricks.findIndex((candidate) => candidate.id === brick.id)
+        return { before: brick, after: afterById.get(brick.id)!, beforeIndex: index, afterIndex: index }
+      })
+      const group = `nudge:${[...selectedNow].sort().join(',')}`
+      set({
+        bricks: state.bricks.map((brick) => afterById.get(brick.id) ?? brick),
+        undoStack: recordNudge(state.undoStack, historyEntry(deltas, `Move ${before.length} bricks`, group, selectedNow, selectedNow)),
+        redoStack: [],
+        announcement: `${before.length} bricks moved together.`,
+      })
       return
     }
     const target = state.draft ?? state.bricks.find((brick) => brick.id === state.selectedId)
@@ -694,6 +777,33 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     })
   },
   duplicate: () => { get().copy(); get().paste() },
+  resizeSelectedParts: (partIdsByBrickId) => {
+    const state = get()
+    const before = selectedBricks(state)
+    if (!before.length) return false
+    const after = before.map((brick) => ({ ...brick, partId: partIdsByBrickId[brick.id] ?? brick.partId }))
+    if (after.some((brick) => !BRICK_PART_MAP[brick.partId]) || !transformedSelectionIsValid(after, state)) {
+      set({ toast: 'That resize would overlap another brick or leave the build plate.' })
+      return false
+    }
+    if (after.every((brick, index) => brick.partId === before[index].partId)) {
+      set({ toast: 'Choose at least one size change.' })
+      return false
+    }
+    const afterById = new Map(after.map((brick) => [brick.id, brick]))
+    const selectedNow = effectiveSelectedIds(state)
+    const deltas = before.map((brick) => {
+      const index = state.bricks.findIndex((candidate) => candidate.id === brick.id)
+      return { before: brick, after: afterById.get(brick.id)!, beforeIndex: index, afterIndex: index }
+    })
+    set({
+      bricks: state.bricks.map((brick) => afterById.get(brick.id) ?? brick),
+      undoStack: appendHistory(state.undoStack, historyEntry(deltas, before.length === 1 ? 'Resize brick' : `Resize ${before.length} bricks`, null, selectedNow, selectedNow)),
+      redoStack: [],
+      announcement: before.length === 1 ? 'Brick resized.' : `${before.length} bricks resized together.`,
+    })
+    return true
+  },
   newBuild: () => {
     const state = get()
     const hadBuild = state.bricks.length > 0

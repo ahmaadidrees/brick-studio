@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
+import { registerCustomParts } from './parts'
 import { MAX_HISTORY_ENTRIES, draftIsValid, useBrickStore, validateBrickGroup } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
@@ -29,6 +30,7 @@ function placeAt(x: number, z: number, partId = 'brick_1x1') {
 
 beforeEach(() => {
   vi.useRealTimers()
+  registerCustomParts([])
   resetStore()
 })
 
@@ -499,6 +501,86 @@ describe('atomic group clipboard and history', () => {
     expect(useBrickStore.getState().selectedIds).toHaveLength(3)
     useBrickStore.getState().undo()
     expect(useBrickStore.getState().bricks).toEqual(mixed)
+  })
+
+  it('moves a selected group together and undoes the repeated movement atomically', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-31T12:00:00Z'))
+    const before = useBrickStore.getState().bricks.map((brick) => ({ ...brick }))
+
+    useBrickStore.getState().nudge(1, 0, 0)
+    vi.advanceTimersByTime(100)
+    useBrickStore.getState().nudge(0, 1, 0)
+
+    expect(useBrickStore.getState().bricks).toEqual(before.map((brick) => ({
+      ...brick,
+      x: brick.x + 1,
+      y: brick.y + 1,
+    })))
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(before)
+  })
+
+  it('rotates a group around one shared pivot while preserving spacing', () => {
+    const pair: BrickInstance[] = [
+      { id: 'left', partId: 'brick_1x1', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' },
+      { id: 'right', partId: 'brick_1x1', x: 12, y: 0, z: 10, rotation: 0, color: '#fff' },
+    ]
+    useBrickStore.setState({
+      bricks: pair,
+      selectedIds: pair.map((brick) => brick.id),
+      selectedId: 'right',
+      undoStack: [],
+      redoStack: [],
+    })
+
+    useBrickStore.getState().rotate()
+
+    expect(useBrickStore.getState().bricks).toEqual([
+      { ...pair[0], x: 11, z: 9, rotation: 1 },
+      { ...pair[1], x: 11, z: 11, rotation: 1 },
+    ])
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Rotate 2 bricks')
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(pair)
+  })
+
+  it('rejects a blocked group transform without partial movement or history', () => {
+    const selected = mixed.slice(0, 2).map((brick, index) => ({ ...brick, x: index * 3 }))
+    const blocker: BrickInstance = { id: 'blocker', partId: 'brick_1x1', x: 1, y: 0, z: selected[0].z, rotation: 0, color: '#000' }
+    useBrickStore.setState({
+      bricks: [...selected, blocker],
+      selectedIds: selected.map((brick) => brick.id),
+      selectedId: selected[1].id,
+      undoStack: [],
+      redoStack: [],
+    })
+    const before = useBrickStore.getState().bricks.map((brick) => ({ ...brick }))
+
+    useBrickStore.getState().nudge(1, 0, 0)
+
+    expect(useBrickStore.getState().bricks).toEqual(before)
+    expect(useBrickStore.getState().undoStack).toEqual([])
+    expect(useBrickStore.getState().toast).toContain('group move is blocked')
+  })
+
+  it('resizes selected bricks through registered bounded parts as one undoable command', () => {
+    const resized = {
+      id: 'custom_resized', name: 'Resized brick', template: 'solid', width: 3, depth: 2, height: 4, studs: 'auto',
+    } as const
+    registerCustomParts([resized])
+    const pair: BrickInstance[] = [
+      { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },
+      { id: 'two', partId: 'brick_1x1', x: 12, y: 0, z: 4, rotation: 0, color: '#fff' },
+    ]
+    useBrickStore.setState({ bricks: pair, selectedIds: ['one', 'two'], selectedId: 'two', undoStack: [], redoStack: [] })
+
+    expect(useBrickStore.getState().resizeSelectedParts({ one: resized.id, two: resized.id })).toBe(true)
+    expect(useBrickStore.getState().bricks.map((brick) => brick.partId)).toEqual([resized.id, resized.id])
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Resize 2 bricks')
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(pair)
   })
 
   it.each([

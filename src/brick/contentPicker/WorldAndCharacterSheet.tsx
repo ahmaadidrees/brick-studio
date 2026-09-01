@@ -35,6 +35,8 @@ export type WorldAndCharacterSheetProps = {
   onClose: () => void
   /** Draft-time preview intents (hover/focus/selection); never a commitment. */
   onRequestPreview?: ContentPickerProps['onRequestPreview']
+  /** Private draft preview; hosts must not persist or broadcast this value. */
+  onDraftChange?: (selection: ContentPickerSelection) => void
   title?: string
   description?: string
   applyLabel?: string
@@ -57,6 +59,7 @@ export function WorldAndCharacterSheet({
   onApply,
   onClose,
   onRequestPreview,
+  onDraftChange,
   title = 'World & character',
   description = 'Choose where to build and who you will be, then press Apply.',
   applyLabel = 'Apply',
@@ -70,6 +73,7 @@ export function WorldAndCharacterSheet({
     selection,
     { environments: environmentDescriptors, characters: characterDescriptors },
   ))
+  const [activeTab, setActiveTab] = useState<'environment' | 'character'>('environment')
 
   // Latest inputs for the open-edge seeding effect, so reopening always seeds
   // from the current committed selection without re-seeding mid-edit.
@@ -83,7 +87,12 @@ export function WorldAndCharacterSheet({
       environments: seed.environmentDescriptors,
       characters: seed.characterDescriptors,
     }))
+    setActiveTab('environment')
   }, [open])
+
+  useEffect(() => {
+    if (open) onDraftChange?.({ ...draft, palette: { ...draft.palette } })
+  }, [draft, onDraftChange, open])
 
   useEffect(() => {
     if (!open) return
@@ -157,9 +166,24 @@ export function WorldAndCharacterSheet({
             <span aria-hidden="true">×</span>
           </button>
         </header>
+        <div className="world-character-sheet-tabs" role="tablist" aria-label="World and character settings">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'environment'}
+            onClick={() => setActiveTab('environment')}
+          >World</button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'character'}
+            onClick={() => setActiveTab('character')}
+          >Character</button>
+        </div>
         <div className="world-character-sheet-body">
           <ContentPicker
             hideHeader
+            visibleSection={activeTab}
             environmentDescriptors={environmentDescriptors}
             characterDescriptors={characterDescriptors}
             selectedEnvironmentId={draft.environmentId}

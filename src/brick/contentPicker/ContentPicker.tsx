@@ -39,6 +39,8 @@ export type ContentPickerProps = {
   description?: string
   /** Hosts that provide their own labelled chrome (e.g. WorldAndCharacterSheet) hide the built-in header; `title` then labels the region invisibly. */
   hideHeader?: boolean
+  /** Lets a host expose World and Character as clear tabs without duplicating picker logic. */
+  visibleSection?: 'all' | 'environment' | 'character'
   className?: string
 }
 
@@ -183,6 +185,7 @@ export function ContentPicker({
   title = 'Choose your world',
   description = 'Pick a place to build, then choose who you will explore it as.',
   hideHeader = false,
+  visibleSection = 'all',
   className,
 }: ContentPickerProps) {
   const headingId = useId()
@@ -203,7 +206,7 @@ export function ContentPicker({
         </header>
       )}
 
-      <div className="content-picker-section">
+      {(visibleSection === 'all' || visibleSection === 'environment') && <div className="content-picker-section">
         <SectionHeading eyebrow="Step 1" title="Environment">
           <span className="content-picker-selection-summary" aria-live="polite">
             {environmentDescriptors.find(({ id }) => id === selectedEnvironmentId)?.name ?? 'Not selected'}
@@ -218,9 +221,9 @@ export function ContentPicker({
           onSelect={onSelectEnvironment}
           onRequestPreview={onRequestPreview}
         />
-      </div>
+      </div>}
 
-      <div className="content-picker-section">
+      {(visibleSection === 'all' || visibleSection === 'character') && <div className="content-picker-section">
         <SectionHeading eyebrow="Step 2" title="Character">
           <span className="content-picker-selection-summary" aria-live="polite">
             {selectedCharacter?.name ?? 'Not selected'}
@@ -235,9 +238,9 @@ export function ContentPicker({
           onSelect={onSelectCharacter}
           onRequestPreview={onRequestPreview}
         />
-      </div>
+      </div>}
 
-      {showPalette && (
+      {visibleSection !== 'environment' && showPalette && (
         <div className="content-picker-section content-picker-palette">
           <SectionHeading eyebrow="Optional" title="Character colors" />
           <div className="content-picker-palette-groups">

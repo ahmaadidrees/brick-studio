@@ -123,6 +123,7 @@ describe('draft selection: Cancel vs Apply', () => {
     const { onApply, onClose } = renderSheet()
 
     fireEvent.click(screen.getByRole('radio', { name: /Sky Island/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
     fireEvent.click(screen.getByRole('radio', { name: /Toy Figure/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Set Shirt to Studio blue' }))
     expect(onApply).not.toHaveBeenCalled()
@@ -212,6 +213,7 @@ describe('keyboard selection and summary', () => {
 describe('character color customization', () => {
   it('shows palette controls only while the drafted character is customizable', () => {
     renderSheet()
+    fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
     expect(screen.getByRole('group', { name: 'Shirt' })).toBeInTheDocument()
     expect(screen.getByText('Character colors')).toBeInTheDocument()
 
@@ -220,6 +222,28 @@ describe('character color customization', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: /Toy Figure/ }))
     expect(screen.getByRole('group', { name: 'Shirt' })).toBeInTheDocument()
+  })
+})
+
+describe('private preview tabs', () => {
+  it('separates World and Character while reporting a reversible draft preview', () => {
+    const onDraftChange = vi.fn()
+    renderSheet({ onDraftChange })
+
+    expect(screen.getByRole('tab', { name: 'World' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('radio', { name: /Classic Studio/ })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /Toy Figure/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('radio', { name: /Sky Island/ }))
+    expect(onDraftChange).toHaveBeenLastCalledWith({
+      environmentId: 'sky-island',
+      characterId: 'toy-figure',
+      palette: {},
+    })
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
+    expect(screen.getByRole('radio', { name: /Toy Figure/ })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /Sky Island/ })).not.toBeInTheDocument()
   })
 })
 

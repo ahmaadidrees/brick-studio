@@ -70,6 +70,7 @@ export const BRICK_PARTS: BrickPart[] = [
 ]
 
 export const BRICK_PART_MAP = Object.fromEntries(BRICK_PARTS.map((part) => [part.id, part])) as Record<string, BrickPart>
+const runtimeCustomPartIds = new Set<string>()
 
 const CUSTOM_TEMPLATE_KIND: Record<CustomPartTemplate, BrickKind> = {
   solid: 'brick',
@@ -100,6 +101,20 @@ export function createPartMap(customParts: CustomPartDefinition[] = []): Record<
   return {
     ...BRICK_PART_MAP,
     ...Object.fromEntries(customParts.map((definition) => [definition.id, customPartToBrickPart(definition)])),
+  }
+}
+
+/**
+ * Installs the validated custom-part definitions for this browser document.
+ * Existing core helpers intentionally share BRICK_PART_MAP, so registering once
+ * keeps placement, rendering, physics, thumbnails, and keyboard editing aligned.
+ */
+export function registerCustomParts(customParts: CustomPartDefinition[]) {
+  for (const id of runtimeCustomPartIds) delete BRICK_PART_MAP[id]
+  runtimeCustomPartIds.clear()
+  for (const definition of customParts) {
+    BRICK_PART_MAP[definition.id] = customPartToBrickPart(definition)
+    runtimeCustomPartIds.add(definition.id)
   }
 }
 

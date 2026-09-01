@@ -46,8 +46,8 @@ import { createPublishedWorldUrl } from './publishedWorlds'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
 import {
   CHARACTER_DESCRIPTORS,
-  CHARACTER_PALETTE_GROUPS,
   ENVIRONMENT_DESCRIPTORS,
+  characterPaletteGroups,
   resolveCharacterId,
 } from './contentCatalog'
 import { WorldAndCharacterSheet, type ContentPickerSelection } from './contentPicker'
@@ -786,11 +786,15 @@ export default function BrickStudioApp({
   )
   const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
   const [worldSetupOpen, setWorldSetupOpen] = useState(false)
+  const [contentPreview, setContentPreview] = useState<ContentPickerSelection | null>(null)
   const environmentId = contentPolicy?.environmentId ?? localEnvironmentId
   const characterId: CharacterId = contentPolicy
     ? resolveCharacterId(contentPolicy.characterId)
     : localAppearance.characterId
   const characterPalette = contentPolicy?.palette ?? localAppearance.palette
+  const previewEnvironmentId = contentPreview?.environmentId ?? environmentId
+  const previewCharacterId = contentPreview?.characterId ?? characterId
+  const previewCharacterPalette = contentPreview?.palette ?? characterPalette
   const contentSelection = useMemo<ContentPickerSelection>(() => ({
     environmentId,
     characterId,
@@ -813,6 +817,7 @@ export default function BrickStudioApp({
       setLocalAppearance(nextAppearance)
     }
     setWorldSetupOpen(false)
+    setContentPreview(null)
   }, [contentPolicy])
   useBuilderShortcuts(!readOnly && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
@@ -868,9 +873,9 @@ export default function BrickStudioApp({
       <div className="brick-canvas">
         <BrickStudioScene
           {...raceScene}
-          environmentId={environmentId}
-          localCharacterId={characterId}
-          localCharacterPalette={characterPalette}
+          environmentId={previewEnvironmentId ?? environmentId}
+          localCharacterId={previewCharacterId ?? characterId}
+          localCharacterPalette={previewCharacterPalette}
         />
         <MarqueeOverlay />
       </div>
@@ -905,13 +910,20 @@ export default function BrickStudioApp({
         environmentDescriptors={selectableEnvironments}
         characterDescriptors={CHARACTER_DESCRIPTORS}
         selection={contentSelection}
-        paletteGroups={CHARACTER_PALETTE_GROUPS}
+        paletteGroups={characterPaletteGroups(contentPreview?.characterId ?? characterId)}
         description={contentPolicy && !contentPolicy.canChangeEnvironment
           ? contentPolicy.environmentHelp ?? 'Choose your character and colors. The room owner controls the shared environment.'
           : 'Choose where your world lives and customize the character you explore as.'}
         onApply={applyContentSelection}
-        onClose={() => setWorldSetupOpen(false)}
+        onDraftChange={setContentPreview}
+        onClose={() => {
+          setContentPreview(null)
+          setWorldSetupOpen(false)
+        }}
       />
+      {worldSetupOpen && contentPreview && (
+        <div className="content-preview-banner" role="status">Preview — only you can see this</div>
+      )}
       {raceOverlay}
       {liveOverlay}
     </main>

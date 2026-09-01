@@ -6,6 +6,7 @@ import {
   STUD,
   partFootprintCells,
   partWorldSize,
+  registerCustomParts,
   supportHeightForFootprint,
 } from './parts'
 import type { BrickInstance } from './types'
@@ -61,6 +62,18 @@ describe('brick catalogue', () => {
     expect(size.width).toBeCloseTo(2 * STUD - 0.035)
     expect(size.depth).toBeCloseTo(4 * STUD - 0.035)
     expect(size.height).toBeCloseTo(3 * PLATE_HEIGHT - 0.015)
+  })
+})
+
+describe('runtime custom-part registration', () => {
+  it('adds the active document definitions and removes stale ones', () => {
+    registerCustomParts([{ id: 'custom_first', name: 'First', template: 'solid', width: 3, depth: 5, height: 4, studs: 'auto' }])
+    expect(BRICK_PART_MAP.custom_first).toMatchObject({ width: 3, depth: 5, height: 4, kind: 'brick' })
+
+    registerCustomParts([{ id: 'custom_second', name: 'Second', template: 'slope', width: 2, depth: 4, height: 3, studs: 'none' }])
+    expect(BRICK_PART_MAP.custom_first).toBeUndefined()
+    expect(BRICK_PART_MAP.custom_second).toMatchObject({ kind: 'slope' })
+    registerCustomParts([])
   })
 })
 
