@@ -231,6 +231,20 @@ describe('multi-selection feedback and controls', () => {
 })
 
 describe('Brick Studio responsive controls', () => {
+  it('lets desktop builders collapse and reopen the brick drawer without losing the canvas', () => {
+    stubPointerModality(false)
+    render(<BrickStudioApp />)
+
+    expect(screen.getByRole('complementary', { name: 'Brick drawer' })).toHaveAttribute('id', 'brick-part-library')
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
+    expect(screen.queryByRole('complementary', { name: 'Brick drawer' })).not.toBeInTheDocument()
+    const reopen = screen.getByRole('button', { name: 'Open brick drawer' })
+    expect(reopen).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(reopen)
+    expect(screen.getByRole('complementary', { name: 'Brick drawer' })).toHaveAttribute('id', 'brick-part-library')
+  })
+
   it('keeps history, brick count, navigation, and the compact property control reachable', () => {
     render(<BrickStudioApp />)
 

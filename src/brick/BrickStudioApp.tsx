@@ -14,6 +14,8 @@ import {
   Move,
   MousePointer2,
   Palette,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Redo2,
   RotateCcw,
@@ -255,11 +257,19 @@ function PartGrid({ onChoose }: { onChoose?: () => void }) {
   )
 }
 
-function PartLibrary() {
+function PartLibrary({ onCollapse }: { onCollapse: () => void }) {
   return (
-    <aside className="part-library">
+    <aside className="part-library" id="brick-part-library" aria-label="Brick drawer">
       <div className="library-title">
         <div><span className="brick-eyebrow">Brick drawer</span><h2>Choose a shape</h2></div>
+        <button
+          className="studio-icon-button library-collapse-button"
+          type="button"
+          aria-label="Collapse brick drawer"
+          aria-controls="brick-part-library"
+          aria-expanded="true"
+          onClick={onCollapse}
+        ><PanelLeftClose size={18} /></button>
       </div>
       <PartGrid />
     </aside>
@@ -579,6 +589,7 @@ function TouchPlacementBar() {
 
 function BuildShell({ compact }: { compact: boolean }) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(true)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
   // One open state: the (+) FAB and the pill's Recolor reach the same sheet, whose palette
   // already recolors whatever is selected.
@@ -587,7 +598,7 @@ function BuildShell({ compact }: { compact: boolean }) {
   useEffect(() => { if (!compact) setSheetOpen(false) }, [compact])
 
   return (
-    <div className="build-shell">
+    <div className={`build-shell${compact ? ' compact-shell' : ''}${!compact && !drawerOpen ? ' drawer-collapsed' : ''}`}>
       {compact ? (
         <>
           <button
@@ -598,12 +609,25 @@ function BuildShell({ compact }: { compact: boolean }) {
             aria-expanded={sheetOpen}
             onClick={openSheet}
           >
-            <Plus size={27} />
+            <Plus size={22} />
+            <span>Bricks</span>
           </button>
           <TouchSelectionBar onRecolor={openSheet} />
           {sheetOpen && <BrickDrawerSheet onClose={closeSheet} />}
         </>
-      ) : <><PartLibrary /><Inspector /></>}
+      ) : <>
+        {drawerOpen ? <PartLibrary onCollapse={() => setDrawerOpen(false)} /> : (
+          <button
+            className="brick-drawer-toggle"
+            type="button"
+            aria-label="Open brick drawer"
+            aria-controls="brick-part-library"
+            aria-expanded="false"
+            onClick={() => setDrawerOpen(true)}
+          ><PanelLeftOpen size={18} /><span>Bricks</span></button>
+        )}
+        <Inspector />
+      </>}
       <ViewControls />
       <SelectionModeControl />
       <TouchPlacementBar />
@@ -883,7 +907,7 @@ export default function BrickStudioApp({
   }, [publishedWorld])
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
   return (
-    <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}`}>
+    <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}${livePolicy ? ' brick-live-session' : ''}`}>
       <div className="brick-canvas">
         <BrickStudioScene
           {...raceScene}

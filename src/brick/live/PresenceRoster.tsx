@@ -17,13 +17,15 @@ export type PresenceRosterProps = {
   onRename?: (displayName: string) => void
   /** Overrides the responsive default (collapsed on narrow screens). */
   defaultOpen?: boolean
+  /** Renders the list directly when a parent panel already supplies the trigger and heading. */
+  inline?: boolean
 }
 
 /** Who is in the room right now: owner first, then you, then everyone else. Collapsible so phones keep their canvas. */
-export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen }: PresenceRosterProps) {
+export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen, inline = false }: PresenceRosterProps) {
   const panelId = useId()
   const renameId = useId()
-  const [open, setOpen] = useState(() => defaultOpen ?? !(window.matchMedia?.('(max-width: 620px)').matches ?? false))
+  const [open, setOpen] = useState(() => defaultOpen ?? false)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [renameError, setRenameError] = useState<string | null>(null)
@@ -43,18 +45,20 @@ export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen }:
   }
 
   return (
-    <section className="live-roster" aria-label="Builders in this room">
-      <button
-        type="button"
-        className="live-roster-toggle"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <Users size={15} aria-hidden="true" />
-        <span>{formatLivePlayerCount(players.length)}</span>
-      </button>
-      {open && (
+    <section className={`live-roster${inline ? ' live-roster-inline' : ''}`} aria-label="Builders in this room">
+      {!inline && (
+        <button
+          type="button"
+          className="live-roster-toggle"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <Users size={15} aria-hidden="true" />
+          <span>{formatLivePlayerCount(players.length)}</span>
+        </button>
+      )}
+      {(inline || open) && (
         <div className="live-roster-panel" id={panelId}>
           {sorted.length === 0 ? (
             <p className="live-roster-empty">Nobody is here yet — copy the invite link to bring your friends in.</p>
