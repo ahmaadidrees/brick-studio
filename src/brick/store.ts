@@ -48,6 +48,9 @@ export type BrickDocumentCommandResult =
   | { ok: true }
   | { ok: false; error: BrickStudioDocumentError }
 
+export type ExploreSpawnStatus = 'idle' | 'finding' | 'ready' | 'unavailable'
+export type ExplorePosition = { x: number; y: number; z: number }
+
 export type BrickState = {
   mode: BrickMode
   bricks: BrickInstance[]
@@ -70,6 +73,9 @@ export type BrickState = {
   touchPitch: number
   touchCameraDistance: number
   jumpNonce: number
+  exploreRespawnNonce: number
+  exploreSpawnStatus: ExploreSpawnStatus
+  exploreLastSafePosition: ExplorePosition | null
   reducedMotion: boolean
   selectionMode: boolean
   marquee: MarqueeState | null
@@ -115,6 +121,10 @@ export type BrickState = {
   setTouchCameraDistance: (distance: number) => void
   adjustTouchCameraDistance: (delta: number) => void
   recenterCamera: () => void
+  requestRespawn: () => void
+  markExploreSpawnReady: (position: ExplorePosition) => void
+  rememberExplorePosition: (position: ExplorePosition) => void
+  markExploreSpawnUnavailable: () => void
   requestJump: () => void
   setReducedMotion: (reducedMotion: boolean) => void
   setSelectionMode: (selectionMode: boolean) => void
@@ -417,6 +427,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   touchPitch: ORBIT_DEFAULT_PITCH,
   touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
   jumpNonce: 0,
+  exploreRespawnNonce: 0,
+  exploreSpawnStatus: 'idle',
+  exploreLastSafePosition: null,
   reducedMotion: false,
   selectionMode: false,
   marquee: null,
@@ -439,6 +452,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       touchMove: { x: 0, z: 0 },
       touchMoveMagnitude: 0,
       touchRunning: false,
+      exploreSpawnStatus: mode === 'explore' ? 'finding' : 'idle',
       selectionMode: false,
       marquee: null,
       // A mode switch outlives any pointer capture; a stranded true would freeze the chrome.
@@ -825,6 +839,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       touchMove: { x: 0, z: 0 },
       touchMoveMagnitude: 0,
       touchRunning: false,
+      exploreSpawnStatus: 'idle',
+      exploreLastSafePosition: null,
       toast: hadBuild ? 'Started a new blank build. Undo can restore the previous build.' : 'This build is already blank.',
     })
     return hadBuild
@@ -857,6 +873,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       touchMove: { x: 0, z: 0 },
       touchMoveMagnitude: 0,
       touchRunning: false,
+      exploreSpawnStatus: 'idle',
+      exploreLastSafePosition: null,
       toast: changed ? `Imported ${nextBricks.length} bricks.` : 'The imported project already matches this build.',
     })
     return { ok: true }
@@ -882,6 +900,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       touchMove: { x: 0, z: 0 },
       touchMoveMagnitude: 0,
       touchRunning: false,
+      exploreSpawnStatus: 'idle',
+      exploreLastSafePosition: null,
       selectionMode: false,
       marquee: null,
       toast: restoredBricks.length
@@ -946,6 +966,27 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     touchPitch: ORBIT_DEFAULT_PITCH,
     touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
     announcement: 'Camera recentered.',
+  }),
+  requestRespawn: () => set((state) => ({
+    exploreRespawnNonce: state.exploreRespawnNonce + 1,
+    exploreSpawnStatus: 'finding',
+    touchMove: { x: 0, z: 0 },
+    touchMoveMagnitude: 0,
+    touchRunning: false,
+    touchYaw: ORBIT_DEFAULT_YAW,
+    touchPitch: ORBIT_DEFAULT_PITCH,
+    touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
+    announcement: 'Finding a safe spot.',
+  })),
+  markExploreSpawnReady: (exploreLastSafePosition) => set({
+    exploreSpawnStatus: 'ready',
+    exploreLastSafePosition,
+    announcement: 'Ready to explore.',
+  }),
+  rememberExplorePosition: (exploreLastSafePosition) => set({ exploreLastSafePosition }),
+  markExploreSpawnUnavailable: () => set({
+    exploreSpawnStatus: 'unavailable',
+    announcement: 'No safe spot is available. Return to Build and clear some room, then try again.',
   }),
   requestJump: () => set((state) => ({ jumpNonce: state.jumpNonce + 1 })),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),

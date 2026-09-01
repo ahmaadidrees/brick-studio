@@ -425,6 +425,23 @@ describe('Brick Studio responsive controls', () => {
     })
   })
 
+  it('offers a separate safe Respawn action with finding and unavailable recovery states', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore', exploreSpawnStatus: 'ready' })
+    render(<BrickStudioApp />)
+    const before = useBrickStore.getState().exploreRespawnNonce
+
+    fireEvent.click(screen.getByRole('button', { name: 'Respawn at a safe spot' }))
+
+    expect(useBrickStore.getState().exploreRespawnNonce).toBe(before + 1)
+    expect(screen.getByText('Finding a safe spot…', { selector: '.explore-spawn-status strong' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Respawn at a safe spot' })).toBeDisabled()
+
+    act(() => useBrickStore.getState().markExploreSpawnUnavailable())
+    expect(screen.getByRole('alert')).toHaveTextContent('No safe spot is open')
+    expect(screen.getByRole('alert')).toHaveTextContent('Return to Build')
+    expect(screen.getByRole('button', { name: 'Respawn at a safe spot' })).toBeEnabled()
+  })
+
   it('cancels look on interruption and keeps Jump/Return outside the look gesture', () => {
     useBrickStore.setState({ bricks: [brick], mode: 'explore', touchYaw: 0, touchPitch: 0.6 })
     const { container } = render(<BrickStudioApp />)

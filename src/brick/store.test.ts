@@ -174,6 +174,46 @@ describe('bounded command history', () => {
   })
 })
 
+describe('Explore recovery state', () => {
+  it('starts a safe-position search on Explore and preserves the last valid position across mode changes', () => {
+    const position = { x: 3, y: 0.4, z: -2 }
+    useBrickStore.getState().markExploreSpawnReady(position)
+    useBrickStore.getState().setMode('build')
+    useBrickStore.getState().setMode('explore')
+
+    expect(useBrickStore.getState()).toMatchObject({
+      exploreSpawnStatus: 'finding',
+      exploreLastSafePosition: position,
+    })
+  })
+
+  it('requests a recentered Respawn without changing any bricks', () => {
+    useBrickStore.setState({ bricks: [base], touchYaw: 0, touchPitch: 1, touchCameraDistance: 8 })
+    const before = useBrickStore.getState().exploreRespawnNonce
+
+    useBrickStore.getState().requestRespawn()
+
+    expect(useBrickStore.getState()).toMatchObject({
+      bricks: [base],
+      exploreRespawnNonce: before + 1,
+      exploreSpawnStatus: 'finding',
+      touchMove: { x: 0, z: 0 },
+      touchRunning: false,
+    })
+  })
+
+  it('forgets a prior world position when a different document is restored', () => {
+    useBrickStore.getState().markExploreSpawnReady({ x: 3, y: 0.4, z: -2 })
+
+    expect(useBrickStore.getState().restoreDocument(createBrickStudioDocument([base]))).toEqual({ ok: true })
+
+    expect(useBrickStore.getState()).toMatchObject({
+      exploreSpawnStatus: 'idle',
+      exploreLastSafePosition: null,
+    })
+  })
+})
+
 describe('budget and continuity gates', () => {
   it('enforces the phone budget without recording the rejected placement', () => {
     useBrickStore.getState().setBudgetProfile('phone')

@@ -82,7 +82,16 @@ import {
   supportHeightForFootprint,
   type PhysicalShape,
 } from './parts'
-import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, resolveCameraBoomDistance } from './scenePhysics'
+import {
+  CAMERA_PROBE_RADIUS,
+  EXPLORE_SPAWN_FLOOR_GAP,
+  EXPLORE_SPAWN_HEAD_CLEARANCE,
+  EXPLORE_SPAWN_SIDE_CLEARANCE,
+  createExploreSpawnCandidates,
+  findCameraObstruction,
+  findSafeExploreSpawn,
+  resolveCameraBoomDistance,
+} from './scenePhysics'
 import { usesCompactRenderer } from './rendererQuality'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { draftIsValid, useBrickStore } from './store'
@@ -124,6 +133,11 @@ const PLACE_POP_START_SCALE = 0.86
 const PLACE_POP_DURATION = 0.15
 const BLOCKED_SHAKE_DURATION = 0.22
 const BLOCKED_SHAKE_AMPLITUDE = STUD * 0.16
+const EXPLORE_STANDING_Y = EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_FLOOR_GAP
+const EXPLORE_CLEARANCE_CENTER_OFFSET = EXPLORE_SPAWN_HEAD_CLEARANCE / 2
+const EXPLORE_SPAWN_RETRY_FRAMES = 12
+const EXPLORE_SPAWN_MAX_ATTEMPTS = 3
+const EXPLORE_SAFE_POSITION_SAMPLE_FRAMES = 20
 
 function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) {
   const part = BRICK_PART_MAP[draft.partId]
@@ -1062,8 +1076,54 @@ function ExplorerAvatar({
   const { world, rapier } = useRapier()
   const { camera } = useThree()
   const cameraProbe = useMemo(() => new rapier.Ball(CAMERA_PROBE_RADIUS), [rapier])
+  const avatarSpawnCapsule = useMemo(
+    () => new rapier.Capsule(EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS),
+    [rapier],
+  )
+  const clearanceCapsule = useMemo(() => new rapier.Capsule(
+    EXPLORER_CAPSULE_HALF_HEIGHT
+      + Math.max(0, EXPLORE_SPAWN_HEAD_CLEARANCE / 2 - EXPLORE_SPAWN_SIDE_CLEARANCE),
+    EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_SIDE_CLEARANCE,
+  ), [rapier])
+  const fallbackSpawnCandidates = useMemo(() => createExploreSpawnCandidates({
+    gridSize: GRID_SIZE,
+    stud: STUD,
+    standingY: EXPLORE_STANDING_Y,
+  }), [])
   const boomDistance = useRef<number | null>(null)
+  const spawnPending = useRef(true)
+  const spawnAttempts = useRef(0)
+  const spawnRetryFrames = useRef(0)
+  const lastRespawnNonce = useRef(useBrickStore.getState().exploreRespawnNonce)
+  const safePositionFrames = useRef(0)
+  const [avatarVisible, setAvatarVisible] = useState(false)
   const outgoingPose = useRef<RaceAvatarPose>({ position: [0, 0, 0], facingYaw: Math.PI, horizontalSpeed: 0, grounded: false })
+
+  const resetMotionAt = useCallback((spawn: { x: number; y: number; z: number }) => {
+    if (!body.current) return
+    body.current.setNextKinematicTranslation(spawn)
+    character.current = createCharacterMotionState(false)
+    fixedClock.current = createFixedStepClock()
+    observedGrounded.current = false
+    motion.current.grounded = false
+    motion.current.horizontalSpeed = 0
+    motion.current.verticalVelocity = 0
+    boomDistance.current = null
+    camera.position.set(spawn.x + 6, spawn.y + 5, spawn.z + 8)
+  }, [camera])
+
+  const beginSpawnSearch = useCallback(() => {
+    spawnPending.current = true
+    spawnAttempts.current = 0
+    spawnRetryFrames.current = 0
+    safePositionFrames.current = 0
+    setAvatarVisible(false)
+    useBrickStore.setState({ exploreSpawnStatus: 'finding' })
+  }, [])
+
+  useEffect(() => {
+    beginSpawnSearch()
+  }, [beginSpawnSearch])
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
@@ -1134,6 +1194,11 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current || !collider.current || !controller.current) return
     const store = useBrickStore.getState()
+    if (store.exploreRespawnNonce !== lastRespawnNonce.current) {
+      lastRespawnNonce.current = store.exploreRespawnNonce
+      beginSpawnSearch()
+    }
+    if (spawnPending.current || store.exploreSpawnStatus !== 'ready') return
     if (store.jumpNonce !== lastTouchJump.current) {
       bufferCharacterJump(character.current)
       lastTouchJump.current = store.jumpNonce
@@ -1167,21 +1232,50 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current) return
     const store = useBrickStore.getState()
+
+    if (spawnPending.current) {
+      if (spawnRetryFrames.current > 0) {
+        spawnRetryFrames.current -= 1
+        return
+      }
+      const preferred = store.exploreLastSafePosition ? [store.exploreLastSafePosition] : []
+      const spawn = findSafeExploreSpawn(
+        world,
+        [...preferred, ...fallbackSpawnCandidates],
+        avatarSpawnCapsule,
+        clearanceCapsule,
+        EXPLORE_CLEARANCE_CENTER_OFFSET,
+        body.current,
+      )
+      spawnAttempts.current += 1
+      if (spawn) {
+        resetMotionAt(spawn)
+        spawnPending.current = false
+        setAvatarVisible(true)
+        store.markExploreSpawnReady(spawn)
+      } else if (spawnAttempts.current >= EXPLORE_SPAWN_MAX_ATTEMPTS) {
+        spawnPending.current = false
+        store.markExploreSpawnUnavailable()
+      } else {
+        spawnRetryFrames.current = EXPLORE_SPAWN_RETRY_FRAMES
+      }
+      return
+    }
+    if (store.exploreSpawnStatus !== 'ready') return
+
     orbit.current.targetYaw = store.touchYaw
     orbit.current.targetPitch = clampPitch(store.touchPitch)
     stepOrbit(orbit.current, delta, store.reducedMotion ? 24 : undefined)
 
     const position = body.current.translation()
     if (position.y < respawnBelowY) {
-      const spawn = { x: 0, y: EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.03, z: 5 }
-      body.current.setNextKinematicTranslation(spawn)
-      character.current = createCharacterMotionState(false)
-      fixedClock.current = createFixedStepClock()
-      motion.current.grounded = false
-      motion.current.horizontalSpeed = 0
-      motion.current.verticalVelocity = 0
-      camera.position.set(spawn.x + 6, spawn.y + 5, spawn.z + 8)
+      store.requestRespawn()
       return
+    }
+    safePositionFrames.current += 1
+    if (observedGrounded.current && safePositionFrames.current >= EXPLORE_SAFE_POSITION_SAMPLE_FRAMES) {
+      safePositionFrames.current = 0
+      store.rememberExplorePosition({ x: position.x, y: position.y, z: position.z })
     }
     if (onPose) {
       const pose = outgoingPose.current
@@ -1197,17 +1291,13 @@ function ExplorerAvatar({
     const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
     const direction = cameraDirection.current.copy(boom).normalize()
-    const obstruction = world.castShape(
+    const obstruction = findCameraObstruction(
+      world,
       target,
       cameraRotation.current,
       direction,
       cameraProbe,
-      CAMERA_SURFACE_PADDING,
       desiredDistance,
-      true,
-      undefined,
-      undefined,
-      undefined,
       body.current,
     )
     boomDistance.current = resolveCameraBoomDistance(
@@ -1227,18 +1317,20 @@ function ExplorerAvatar({
       ref={body}
       type="kinematicPosition"
       colliders={false}
-      position={[0, EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + 0.03, 5]}
+      position={[0, EXPLORE_STANDING_Y, 5]}
       enabledRotations={[false, false, false]}
       ccd
     >
       <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
-      <RuntimeCharacterAvatar
-        characterId={characterId}
-        motion={motion}
-        palette={palette}
-        reducedMotion={reducedMotion}
-        compact={compact}
-      />
+      <group visible={avatarVisible}>
+        <RuntimeCharacterAvatar
+          characterId={characterId}
+          motion={motion}
+          palette={palette}
+          reducedMotion={reducedMotion}
+          compact={compact}
+        />
+      </group>
     </RigidBody>
   )
 }

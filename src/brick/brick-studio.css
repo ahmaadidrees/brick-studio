@@ -199,6 +199,11 @@
 .virtual-stick span { width: 45px; height: 45px; border-radius: 50%; background: rgba(255,255,255,.78); box-shadow: 0 5px 15px rgba(30,45,50,.22); }
 .jump-button { position: absolute; z-index: 3; right: max(28px, env(safe-area-inset-right)); bottom: max(34px, env(safe-area-inset-bottom)); width: 76px; height: 76px; display: none; border: 2px solid rgba(255,255,255,.78); border-radius: 50%; color: white; background: rgba(61,131,209,.75); box-shadow: 0 8px 22px rgba(36,75,116,.25); font-size: 12px; font-weight: 900; pointer-events: auto; }
 .recenter-camera { position: absolute; z-index: 4; top: max(92px, calc(env(safe-area-inset-top) + 76px)); right: max(14px, env(safe-area-inset-right)); min-height: 44px; display: flex; align-items: center; gap: 7px; padding: 0 13px; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; color: #3f5a64; background: rgba(255,255,255,.9); box-shadow: 0 8px 22px rgba(35,55,63,.14); font-size: 10px; font-weight: 900; cursor: pointer; pointer-events: auto; }
+.respawn-avatar { position: absolute; z-index: 4; top: max(92px, calc(env(safe-area-inset-top) + 76px)); right: max(126px, calc(env(safe-area-inset-right) + 112px)); min-height: 44px; display: flex; align-items: center; gap: 7px; padding: 0 13px; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; color: #3f5a64; background: rgba(255,255,255,.9); box-shadow: 0 8px 22px rgba(35,55,63,.14); font-size: 10px; font-weight: 900; cursor: pointer; pointer-events: auto; }
+.respawn-avatar:disabled { opacity: .58; cursor: wait; }
+.explore-spawn-status { position: absolute; z-index: 5; top: max(148px, calc(env(safe-area-inset-top) + 132px)); left: 50%; min-width: min(310px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 3px; transform: translateX(-50%); padding: 11px 15px; border: 1px solid rgba(255,255,255,.82); border-radius: 13px; color: #3f5a64; background: rgba(255,255,255,.94); box-shadow: 0 9px 24px rgba(35,55,63,.16); font-size: 10px; text-align: center; pointer-events: none; }
+.explore-spawn-status strong { font-size: 12px; }.explore-spawn-status span { color: #6b7f87; font-weight: 750; }
+.explore-spawn-unavailable { color: #7b433f; background: rgba(255,245,242,.96); }
 .return-build { position: absolute; z-index: 4; top: max(92px, calc(env(safe-area-inset-top) + 76px)); left: 50%; min-height: 44px; display: flex; align-items: center; gap: 7px; transform: translateX(-50%); padding: 0 14px; border: 1px solid rgba(255,255,255,.8); border-radius: 12px; color: #3f5a64; background: rgba(255,255,255,.9); box-shadow: 0 8px 22px rgba(35,55,63,.14); font-size: 11px; font-weight: 900; pointer-events: auto; }
 .published-world-bar { position: absolute; z-index: 20; top: max(10px, env(safe-area-inset-top)); left: 50%; min-height: 54px; display: flex; align-items: center; gap: 18px; transform: translateX(-50%); padding: 7px 8px 7px 16px; border: 1px solid rgba(255,255,255,.84); border-radius: 16px; background: rgba(255,255,255,.92); box-shadow: 0 10px 28px rgba(35,55,63,.18); backdrop-filter: blur(16px); pointer-events: auto; }
 .published-world-bar > div:first-child { display: flex; flex-direction: column; min-width: 150px; }.published-world-bar span { color: #71838a; font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }.published-world-bar strong { max-width: 280px; overflow: hidden; color: #294650; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }.published-world-bar button, .published-world-state a { min-height: 40px; display: inline-flex; align-items: center; padding: 0 15px; border: 0; border-radius: 11px; color: white; background: #347f72; font: inherit; font-size: 12px; font-weight: 900; text-decoration: none; cursor: pointer; }
@@ -391,6 +396,9 @@
   .brick-mode-explore .return-build { top: max(116px, calc(env(safe-area-inset-top) + 108px)); }
   .brick-mode-explore .recenter-camera { top: max(116px, calc(env(safe-area-inset-top) + 108px)); right: max(8px, env(safe-area-inset-right)); width: 44px; padding: 0; justify-content: center; }
   .brick-mode-explore .recenter-camera span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .brick-mode-explore .respawn-avatar { top: max(116px, calc(env(safe-area-inset-top) + 108px)); right: max(58px, calc(env(safe-area-inset-right) + 50px)); width: 44px; padding: 0; justify-content: center; }
+  .brick-mode-explore .respawn-avatar span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .brick-mode-explore .explore-spawn-status { top: max(168px, calc(env(safe-area-inset-top) + 160px)); }
   .brick-mode-explore .brick-toast { top: max(168px, calc(env(safe-area-inset-top) + 160px)); }
 }
 
@@ -427,6 +435,7 @@
   .onboarding-guide { top: 68px; left: 50%; width: min(430px, calc(100% - 32px)); max-height: calc(100% - 76px); transform: translateX(-50%); }
   .brick-mode-explore .return-build { top: 92px; }
   .brick-mode-explore .recenter-camera { top: 92px; }
+  .brick-mode-explore .respawn-avatar { top: 92px; }
   .brick-mode-explore .brick-toast { top: 144px; }
   .touch-explore-hint { bottom: max(4px, env(safe-area-inset-bottom)); max-width: 42%; }
 }

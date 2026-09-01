@@ -16,6 +16,7 @@ import {
   Palette,
   Plus,
   Redo2,
+  RotateCcw,
   RotateCw,
   Trash2,
   Undo2,
@@ -628,6 +629,9 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
   const setCameraDistance = useBrickStore((state) => state.setTouchCameraDistance)
   const adjustCameraDistance = useBrickStore((state) => state.adjustTouchCameraDistance)
   const recenterCamera = useBrickStore((state) => state.recenterCamera)
+  const requestRespawn = useBrickStore((state) => state.requestRespawn)
+  const spawnStatus = useBrickStore((state) => state.exploreSpawnStatus)
+  const spawnControlsReady = spawnStatus === 'idle' || spawnStatus === 'ready'
   const jump = useBrickStore((state) => state.requestJump)
   const setMode = useBrickStore((state) => state.setMode)
   const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
@@ -713,13 +717,19 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
         ref={joystickSurface}
         className="virtual-stick"
         role="application"
-        onPointerDown={(event) => { joystick.current = { id: event.pointerId, x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture?.(event.pointerId); updateJoystick(event.clientX, event.clientY) }}
+        onPointerDown={(event) => {
+          if (!spawnControlsReady) return
+          joystick.current = { id: event.pointerId, x: event.clientX, y: event.clientY }
+          event.currentTarget.setPointerCapture?.(event.pointerId)
+          updateJoystick(event.clientX, event.clientY)
+        }}
         onPointerMove={(event) => { if (joystick.current?.id !== event.pointerId) return; updateJoystick(event.clientX, event.clientY) }}
         onPointerUp={resetJoystick}
         onPointerCancel={resetJoystick}
         onLostPointerCapture={resetJoystick}
         aria-label="Movement joystick"
         aria-describedby="touch-explore-hint"
+        aria-disabled={!spawnControlsReady}
       ><span ref={joystickKnob} aria-hidden="true" /></div>
       <button
         className="jump-button"
@@ -729,9 +739,13 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
         onPointerDown={(event) => { event.preventDefault(); jump() }}
         onClick={(event) => { if (event.detail === 0) jump() }}
         aria-label="Jump; tap again in the air to double jump"
+        disabled={!spawnControlsReady}
       >Jump</button>
       <button className="recenter-camera" onClick={recenterCamera} aria-label="Recenter camera"><Focus size={18} /><span>Recenter</span></button>
+      <button className="respawn-avatar" onClick={requestRespawn} disabled={spawnStatus === 'finding'} aria-label="Respawn at a safe spot"><RotateCcw size={18} /><span>Respawn</span></button>
       {!readOnly && <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>}
+      {spawnStatus === 'finding' && <div className="explore-spawn-status" role="status"><strong>Finding a safe spot…</strong><span>Checking for room around your character.</span></div>}
+      {spawnStatus === 'unavailable' && <div className="explore-spawn-status explore-spawn-unavailable" role="alert"><strong>No safe spot is open</strong><span>{readOnly ? 'Try again after the builder clears some room.' : 'Return to Build, clear some room, then Respawn.'}</span></div>}
       <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span>Drag: Camera</span><span>Scroll: Zoom</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
       <div className="touch-explore-hint" id="touch-explore-hint">Push farther to run · Drag to look · Pinch to zoom · Jump twice to flip</div>
     </div>
