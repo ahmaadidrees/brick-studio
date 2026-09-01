@@ -6,7 +6,7 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
 import { createBrickGeometry } from './geometry'
 import { useBrickStore } from './store'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW } from './orbitCamera'
-import { BRICK_COLORS, BRICK_PARTS } from './parts'
+import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { EXPLORE_MAX_PITCH } from './touchInput'
 import type { BrickInstance } from './types'
 
@@ -77,7 +77,7 @@ describe('keyboard construction loop', () => {
   it('places with Enter/Space, cancels with Escape, and never double-acts from a button', () => {
     render(<BrickStudioApp />)
 
-    expect(screen.getByLabelText('0 of 1000 brick budget for desktop')).toBeInTheDocument()
+    expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
     expect(fireEvent.keyDown(document.body, { key: 'Enter' })).toBe(false)
     expect(useBrickStore.getState().bricks).toHaveLength(1)
 
@@ -250,7 +250,7 @@ describe('Brick Studio responsive controls', () => {
 
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
-    expect(screen.getByLabelText('0 of 1000 brick budget for desktop')).toBeInTheDocument()
+    expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
     expect(screen.getByRole('menuitem', { name: 'Rover Lab' })).toHaveAttribute('href', '/rover')
 
@@ -739,6 +739,40 @@ describe('compact touch layout', () => {
 })
 
 describe('Builder Experience Alpha shell', () => {
+  it('makes Create a brick a first-class drawer action and immediately loads the result', () => {
+    stubMediaQueries([])
+    render(<BrickStudioApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create a brick' }))
+    const dialog = screen.getByRole('dialog', { name: 'Create a brick' })
+    fireEvent.change(within(dialog).getByLabelText('Name'), { target: { value: 'Wide ramp' } })
+    fireEvent.change(within(dialog).getByLabelText('Shape'), { target: { value: 'slope' } })
+    fireEvent.change(within(dialog).getByLabelText(/Width/), { target: { value: '3' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create and place' }))
+
+    const activePartId = useBrickStore.getState().activePartId
+    expect(activePartId).toMatch(/^custom_wide-ramp_/)
+    expect(BRICK_PART_MAP[activePartId!]).toMatchObject({ name: 'Wide ramp', width: 3, kind: 'slope' })
+    expect(screen.getByTitle('Wide ramp')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Create a brick' })).not.toBeInTheDocument()
+  })
+
+  it('opens resize from the desktop selection and applies one bounded undoable change', () => {
+    stubMediaQueries([])
+    resetStore([{ ...brick, partId: 'brick_1x1' }])
+    render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resize brick' }))
+    const dialog = screen.getByRole('dialog', { name: 'Resize brick' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Increase width' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply resize' }))
+
+    const resized = useBrickStore.getState().bricks[0]
+    expect(BRICK_PART_MAP[resized.partId]).toMatchObject({ width: 2, depth: 1, height: 3 })
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Resize brick')
+  })
+
   it('renders every part from the runtime geometry without per-card canvases', () => {
     const { container } = render(<BrickStudioApp />)
     const thumbnails = Array.from(container.querySelectorAll<SVGElement>('.part-thumbnail'))

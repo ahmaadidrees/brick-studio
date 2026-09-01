@@ -211,7 +211,6 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
   const undoCount = useBrickStore((state) => state.undoStack.length)
   const redoCount = useBrickStore((state) => state.redoStack.length)
   const brickBudget = useBrickStore((state) => state.brickBudget)
-  const budgetProfile = useBrickStore((state) => state.budgetProfile)
   const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
   const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
   const requestExplore = () => livePolicy ? livePolicy.onRequestMode('explore') : requestExploreMode()
@@ -227,7 +226,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
       </nav>
       <div className="brick-header-actions">
-        <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick budget for ${budgetProfile}`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks · {budgetProfile}</i></span>
+        <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick capacity`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks</i></span>
         {mode === 'build' && <>
           <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
           <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
@@ -266,6 +265,7 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
       <button
         className="create-part-entry"
         type="button"
+        aria-label="Create a brick"
         onClick={onCreatePart}
         disabled={!canCreatePart}
         title={!canCreatePart ? customPartHelp : 'Create a reusable brick with snapped dimensions'}
