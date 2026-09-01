@@ -9,8 +9,14 @@ import {
 import { TOY_ROOM_DESCRIPTOR } from './descriptor'
 import type { EnvironmentContentModule, EnvironmentRenderProps } from '../types'
 
-export function ToyRoomRig(_props: EnvironmentRenderProps) {
-  return <ToyRoomAtmosphere />
+export function ToyRoomRig({ compact, reducedMotion, mode }: EnvironmentRenderProps) {
+  const features = useToyRoomFeatures(compact, reducedMotion)
+  return (
+    <>
+      <ToyRoomAtmosphere />
+      {mode === 'build' && <ToyRoomWorld features={features} />}
+    </>
+  )
 }
 
 export function ToyRoomWorldSlot({ compact, reducedMotion }: EnvironmentRenderProps) {

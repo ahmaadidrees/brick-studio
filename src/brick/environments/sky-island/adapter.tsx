@@ -3,8 +3,13 @@ import { SKY_ISLAND, SKY_PALETTE } from './skyIsland'
 import { SKY_ISLAND_DESCRIPTOR } from './descriptor'
 import type { EnvironmentContentModule, EnvironmentRenderProps } from '../types'
 
-export function SkyIslandRigSlot({ compact }: EnvironmentRenderProps) {
-  return <SkyIslandRig compact={compact} />
+export function SkyIslandRigSlot({ compact, reducedMotion, mode }: EnvironmentRenderProps) {
+  return (
+    <>
+      <SkyIslandRig compact={compact} />
+      {mode === 'build' && <SkyIslandWorld compact={compact} reducedMotion={reducedMotion} withPhysics={false} />}
+    </>
+  )
 }
 
 export function SkyIslandWorldSlot({ compact, reducedMotion }: EnvironmentRenderProps) {

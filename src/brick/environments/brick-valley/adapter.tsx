@@ -2,8 +2,13 @@ import { BrickValley, SceneAtmosphere } from './BrickValleyScene'
 import { BRICK_VALLEY_DESCRIPTOR } from './descriptor'
 import type { EnvironmentContentModule, EnvironmentRenderProps } from '../types'
 
-export function BrickValleyRig(_props: EnvironmentRenderProps) {
-  return <SceneAtmosphere explore />
+export function BrickValleyRig({ compact, reducedMotion, mode }: EnvironmentRenderProps) {
+  return (
+    <>
+      <SceneAtmosphere explore />
+      {mode === 'build' && <BrickValley compact={compact} reducedMotion={reducedMotion} withPhysics={false} />}
+    </>
+  )
 }
 
 export function BrickValleyWorldSlot({ compact, reducedMotion }: EnvironmentRenderProps) {

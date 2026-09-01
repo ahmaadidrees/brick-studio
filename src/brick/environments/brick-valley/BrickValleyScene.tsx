@@ -334,7 +334,7 @@ function ValleyWater({ geometry, reducedMotion }: { geometry: THREE.BufferGeomet
  * baked per-vertex — saturated at the plate, pastel at the ridge — which is what
  * makes it read as landscape rather than as scattered props.
  */
-export function BrickValley({ compact, reducedMotion }: { compact: boolean; reducedMotion: boolean }) {
+export function BrickValley({ compact, reducedMotion, withPhysics = true }: { compact: boolean; reducedMotion: boolean; withPhysics?: boolean }) {
   const quality: ValleyQuality = compact ? 'compact' : 'full'
   const windPatch = useValleyWind(reducedMotion)
 
@@ -400,7 +400,7 @@ export function BrickValley({ compact, reducedMotion }: { compact: boolean; redu
         />
       )}
 
-      <RigidBody type="fixed" colliders={false}>
+      {withPhysics && <RigidBody type="fixed" colliders={false}>
         {/* Plate-level floor: stepping off the plate is a 0.18 drop and stepping
             back on is inside the controller's 0.22 autostep. */}
         <CuboidCollider
@@ -419,7 +419,7 @@ export function BrickValley({ compact, reducedMotion }: { compact: boolean; redu
             rotation={[0, collider.yaw, 0]}
           />
         ))}
-      </RigidBody>
+      </RigidBody>}
     </>
   )
 }

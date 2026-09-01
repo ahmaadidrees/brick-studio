@@ -222,6 +222,9 @@
 .onboarding-start { width: 100%; margin-top: 12px; }
 .brick-toast { position: absolute; z-index: 50; top: 84px; left: 50%; transform: translateX(-50%); padding: 9px 13px; border-radius: 11px; color: #4f686f; background: rgba(255,255,255,.95); box-shadow: 0 8px 22px rgba(47,62,68,.13); font-size: 11px; font-weight: 900; pointer-events: none; }
 .content-preview-banner { position: absolute; z-index: 41; top: 82px; left: 18px; padding: 9px 13px; border-radius: 11px; color: white; background: rgba(40,103,174,.9); box-shadow: 0 8px 22px rgba(35,55,63,.18); font-size: 11px; font-weight: 900; pointer-events: none; }
+.scene-loading-status { position: absolute; z-index: 42; top: 82px; left: 50%; min-height: 40px; display: flex; align-items: center; gap: 9px; transform: translateX(-50%); padding: 0 14px; border: 1px solid rgba(255,255,255,.82); border-radius: 13px; color: #41606b; background: rgba(255,255,255,.95); box-shadow: 0 9px 24px rgba(35,55,63,.16); font-size: 11px; font-weight: 900; pointer-events: none; }
+.scene-loading-spinner { width: 15px; height: 15px; box-sizing: border-box; border: 2px solid rgba(52,118,193,.22); border-top-color: #3476c1; border-radius: 50%; animation: scene-loading-spin .8s linear infinite; }
+@keyframes scene-loading-spin { to { transform: rotate(360deg); } }
 .brick-mode-explore .brick-toast { top: 144px; }
 .shortcut-bar { position: absolute; z-index: 10; right: 280px; bottom: 12px; left: 280px; display: flex; justify-content: center; gap: 15px; color: #6f7e83; font-size: 9px; font-weight: 800; pointer-events: none; }
 .shortcut-bar span { display: flex; align-items: center; gap: 4px; }.shortcut-bar kbd { min-width: 20px; height: 19px; padding: 0 4px; font-size: 8px; }

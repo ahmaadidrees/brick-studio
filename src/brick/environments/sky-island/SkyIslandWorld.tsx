@@ -563,7 +563,7 @@ export function SkyIslandRig({ compact }: { compact: boolean }) {
  * grass shelf is a real walkable surface: its top sits one plate-thickness
  * below the baseplate, inside the character controller's 0.22 autostep.
  */
-export function SkyIslandWorld({ compact, reducedMotion }: { compact: boolean; reducedMotion: boolean }) {
+export function SkyIslandWorld({ compact, reducedMotion, withPhysics = true }: { compact: boolean; reducedMotion: boolean; withPhysics?: boolean }) {
   const quality = useMemo(() => getSkyIslandQuality(compact), [compact])
   const time = useAmbientClock(reducedMotion)
 
@@ -613,7 +613,7 @@ export function SkyIslandWorld({ compact, reducedMotion }: { compact: boolean; r
 
   return (
     <group>
-      <RigidBody type="fixed" colliders={false}>
+      {withPhysics && <RigidBody type="fixed" colliders={false}>
         <ConvexHullCollider args={[colliderVertices]} />
         {propColliders.map((collider, index) => (
           <CuboidCollider
@@ -623,7 +623,7 @@ export function SkyIslandWorld({ compact, reducedMotion }: { compact: boolean; r
             rotation={collider.rotation}
           />
         ))}
-      </RigidBody>
+      </RigidBody>}
 
       <mesh geometry={massGeometry} material={natureMaterial} receiveShadow castShadow={false} />
       <mesh geometry={propsGeometry} material={natureMaterial} castShadow receiveShadow />

@@ -60,7 +60,7 @@ export function usesClassicEnvironmentRig(resolvedId: EnvironmentId) {
   return resolvedId === 'classic'
 }
 
-/** Toy Room and Brick Valley put their authored lights in the Explore-only World slot. */
-export function usesStudioBuildLights(resolvedId: EnvironmentId) {
-  return resolvedId === 'toy-room' || resolvedId === 'brick-valley'
+/** Additive Build worlds now mount their visual world and its authored lighting. */
+export function usesStudioBuildLights(_resolvedId: EnvironmentId) {
+  return false
 }

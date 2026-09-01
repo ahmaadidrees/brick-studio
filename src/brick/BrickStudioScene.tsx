@@ -131,6 +131,7 @@ export type BrickStudioSceneProps = {
   environmentId?: EnvironmentId
   localCharacterId?: CharacterId
   localCharacterPalette?: CharacterPalette
+  onEnvironmentStatusChange?: (environmentId: EnvironmentId, status: 'ready' | 'loading' | 'unavailable') => void
 }
 
 const gridWorldSize = GRID_SIZE * STUD
@@ -490,7 +491,7 @@ function InstancedBrickGroup({
         }
       }}
     >
-      <meshStandardMaterial vertexColors roughness={0.58} metalness={0.02} />
+      <meshStandardMaterial roughness={0.58} metalness={0.02} />
     </instancedMesh>
   )
 }
@@ -1108,9 +1109,11 @@ function MouseTravelTracker({ travel }: { travel: PointerTravel }) {
 function BuildScene({
   mouseTravel,
   surface,
+  showStudioGround,
 }: {
   mouseTravel: PointerTravel
   surface: RuntimeEnvironment['surface']
+  showStudioGround: boolean
 }) {
   const bricks = useBrickStore((state) => state.bricks)
   const selectedIds = useBrickStore((state) => state.selectedIds)
@@ -1144,10 +1147,10 @@ function BuildScene({
       <BuildSelectionInput />
       <BuildTouchInput gesture={gesture.current} />
       <MouseTravelTracker travel={mouseTravel} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#f5f2ec" roughness={1} />
-      </mesh>
+      {showStudioGround && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
+          <planeGeometry args={[100, 100]} />
+          <meshStandardMaterial color="#f5f2ec" roughness={1} />
+        </mesh>}
     </>
   )
 }
@@ -1631,6 +1634,7 @@ function RuntimeSceneContent({
   localCharacterId,
   localCharacterPalette,
   onLocalAvatarPose,
+  onEnvironmentStatusChange,
   remoteAvatars,
   compact,
   mouseTravel,
@@ -1650,20 +1654,26 @@ function RuntimeSceneContent({
     useBrickStore.setState({ toast: 'That world could not load, so Classic Studio is showing instead.' })
   }, [environment.error])
 
+  useEffect(() => {
+    const requestedId = environment.requestedId ?? environmentId
+    onEnvironmentStatusChange?.(
+      requestedId,
+      environment.error ? 'unavailable' : environment.loading ? 'loading' : 'ready',
+    )
+  }, [environment.error, environment.loading, environment.requestedId, environmentId, onEnvironmentStatusChange])
+
   return (
     <>
       {usesClassicEnvironmentRig(environment.resolvedId)
         ? <ClassicStudioRig compact={compact} />
         : (
             <Suspense fallback={<ClassicStudioRig compact={compact} />}>
-              <EnvironmentRig compact={compact} reducedMotion={reducedMotion} />
-              {mode === 'build' && usesStudioBuildLights(environment.resolvedId)
-                ? <StudioLights compact={compact} />
-                : null}
+              <EnvironmentRig compact={compact} reducedMotion={reducedMotion} mode={mode} />
+              {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
             </Suspense>
           )}
       {mode === 'build'
-        ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
+        ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} showStudioGround={usesClassicEnvironmentRig(environment.resolvedId)} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
         : (
             <Suspense fallback={null}>
               <ExploreScene
@@ -1682,6 +1692,7 @@ function RuntimeSceneContent({
 
 export default function BrickStudioScene({
   onLocalAvatarPose,
+  onEnvironmentStatusChange,
   remoteAvatars,
   environmentId = 'classic',
   localCharacterId = 'classic',
@@ -1713,6 +1724,7 @@ export default function BrickStudioScene({
         localCharacterId={localCharacterId}
         localCharacterPalette={localCharacterPalette}
         onLocalAvatarPose={onLocalAvatarPose}
+        onEnvironmentStatusChange={onEnvironmentStatusChange}
         remoteAvatars={remoteAvatars}
         compact={compactRenderer}
         mouseTravel={mouseTravel.current}

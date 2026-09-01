@@ -456,6 +456,7 @@ function Inspector({ onResize }: { onResize: () => void }) {
   }
   if (!target) return null
   const part = BRICK_PART_MAP[target.partId]
+  if (!part) return null
 
   return (
     <aside className={`brick-inspector ${detailsExpanded ? 'details-expanded' : 'details-collapsed'}`}>
@@ -599,6 +600,7 @@ function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onR
   const selected = bricks.find((brick) => brick.id === selectedId)
   if (!selected) return null
   const part = BRICK_PART_MAP[selected.partId]
+  if (!part) return null
   return (
     <div className="touch-selection-bar" role="group" aria-label="Selected brick actions">
       <span className="selection-part-chip">
@@ -625,6 +627,7 @@ function TouchPlacementBar() {
   const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
   if (!draft || grabInProgress) return null
   const part = BRICK_PART_MAP[draft.partId]
+  if (!part) return null
   return (
     <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
       <span className="placement-part-chip"><span className="brick-eyebrow">{movingId ? 'Moving' : 'Placing'}</span><strong>{part.name}</strong></span>
@@ -932,6 +935,7 @@ export default function BrickStudioApp({
   const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
   const [worldSetupOpen, setWorldSetupOpen] = useState(false)
   const [contentPreview, setContentPreview] = useState<ContentPickerSelection | null>(null)
+  const [environmentPreviewStatuses, setEnvironmentPreviewStatuses] = useState<Partial<Record<EnvironmentId, 'ready' | 'loading' | 'unavailable'>>>({})
   const customParts = customPartPolicy?.customParts ?? localCustomParts
   const environmentId = contentPolicy?.environmentId ?? localEnvironmentId
   const characterId: CharacterId = contentPolicy
@@ -941,6 +945,10 @@ export default function BrickStudioApp({
   const previewEnvironmentId = contentPreview?.environmentId ?? environmentId
   const previewCharacterId = contentPreview?.characterId ?? characterId
   const previewCharacterPalette = contentPreview?.palette ?? characterPalette
+  const previewEnvironmentStatus = environmentPreviewStatuses[previewEnvironmentId]
+  const updateEnvironmentPreviewStatus = useCallback((id: EnvironmentId, status: 'ready' | 'loading' | 'unavailable') => {
+    setEnvironmentPreviewStatuses((current) => current[id] === status ? current : { ...current, [id]: status })
+  }, [])
   const contentSelection = useMemo<ContentPickerSelection>(() => ({
     environmentId,
     characterId,
@@ -1082,9 +1090,16 @@ export default function BrickStudioApp({
           environmentId={previewEnvironmentId ?? environmentId}
           localCharacterId={previewCharacterId ?? characterId}
           localCharacterPalette={previewCharacterPalette}
+          onEnvironmentStatusChange={updateEnvironmentPreviewStatus}
         />
         <MarqueeOverlay />
       </div>
+      {previewEnvironmentStatus === 'loading' && (
+        <div className="scene-loading-status" role="status">
+          <span className="scene-loading-spinner" aria-hidden="true" />
+          Loading {ENVIRONMENT_DESCRIPTORS.find(({ id }) => id === previewEnvironmentId)?.name ?? 'world'}…
+        </div>
+      )}
       {readOnly ? (
         !raceOverlay && <div className="published-world-bar">
           <div><span>Published world</span><strong>{publishedWorld?.title}</strong></div>
@@ -1129,6 +1144,7 @@ export default function BrickStudioApp({
           : 'Choose where your world lives and customize the character you explore as.'}
         onApply={applyContentSelection}
         onDraftChange={setContentPreview}
+        previewStatuses={{ environment: environmentPreviewStatuses }}
         onClose={() => {
           setContentPreview(null)
           setWorldSetupOpen(false)

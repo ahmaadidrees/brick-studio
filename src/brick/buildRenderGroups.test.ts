@@ -76,8 +76,8 @@ describe('Build environment rig selection', () => {
   })
 
   it('keeps Build lit when an environment authors its lights in the Explore-only slot', () => {
-    expect(usesStudioBuildLights('toy-room')).toBe(true)
-    expect(usesStudioBuildLights('brick-valley')).toBe(true)
+    expect(usesStudioBuildLights('toy-room')).toBe(false)
+    expect(usesStudioBuildLights('brick-valley')).toBe(false)
     expect(usesStudioBuildLights('classic')).toBe(false)
     expect(usesStudioBuildLights('sky-island')).toBe(false)
   })

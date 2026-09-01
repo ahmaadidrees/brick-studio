@@ -1,9 +1,11 @@
 import type { ComponentType } from 'react'
 import type { EnvironmentDescriptor } from '../registries'
+import type { BrickMode } from '../types'
 
 export type EnvironmentRenderProps = {
   compact: boolean
   reducedMotion: boolean
+  mode?: BrickMode
 }
 
 export type EnvironmentSurface = {
