@@ -1,0 +1,19 @@
+{
+  "run": "live_mtuc4pmb",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-09T16:51:59.248Z",
+  "classId": "4c2f88e5-5194-41c3-8caf-c4450aea0dbf",
+  "worldId": "c7d4e1e1-a1ae-45a5-a8a0-a6dec9b56c0a",
+  "success": true,
+  "checks": [
+    "two authenticated sockets receive stable identities and same initial document",
+    "concurrent edits broadcast consistently and are committed in authoritative database",
+    "teacher password reset revokes active socket and old ticket until password replacement",
+    "removing group member closes active socket and preserves contributions",
+    "closing class revokes remaining socket and blocks group discovery",
+    "reopened class cold socket loads persisted edits"
+  ],
+  "limitations": [
+    "No rendered browser, real classroom students, weak-device performance, or classroom-NAT load tested"
+  ]
+}

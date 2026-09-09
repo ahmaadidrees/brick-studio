@@ -1,0 +1,48 @@
+{
+  "run": "capacity_mtuceajp",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "startedAt": "2026-09-09T16:58:25.381Z",
+  "completedAt": "2026-09-09T17:00:05.573Z",
+  "classId": "c92b6a4e-3f62-4890-878d-19df4167fef3",
+  "worldId": "ed8c2ec4-2e66-4cd5-a41a-1e09ff8bb614",
+  "studentCount": 30,
+  "registrationMs": 25912.137292,
+  "registrationConcurrency": 5,
+  "connectedClients": 31,
+  "connection": {
+    "count": 31,
+    "medianMs": 1630.3264170000039,
+    "p95Ms": 3287.449999999997,
+    "maxMs": 3713.0424580000035
+  },
+  "editAcknowledgement": {
+    "count": 30,
+    "medianMs": 530.6157920000114,
+    "p95Ms": 828.8988329999993,
+    "maxMs": 945.6265419999982
+  },
+  "totalEdits": 30,
+  "workloadMs": null,
+  "sentPoses": 630,
+  "receivedPoses": 17704,
+  "errors": [
+    {
+      "code": "invalid-layout",
+      "phase": "socket"
+    }
+  ],
+  "persisted": false,
+  "allClientsConverged": false,
+  "cleanupFailures": 0,
+  "passed": false,
+  "failure": "Socket rejected operation: invalid-layout",
+  "limitations": [
+    "31 Node WebSocket clients on one machine, not 31 physical Chromebooks",
+    "No rendered scenes, GPU/frame-rate or real student interaction measured",
+    "Workload: three concurrent editors at a time, 60 total small edits, 30 clients sending poses at 2Hz",
+    "Not a saturation/load-to-failure test; no classroom Wi-Fi or geographic distribution simulated"
+  ],
+  "fixtureSetupMode": "reactivated dedicated fixtures with new temporary test credentials",
+  "networkFamily": "IPv4",
+  "transportRetries": 0
+}

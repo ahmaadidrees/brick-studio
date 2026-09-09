@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Palette, Radio, Share2, Upload } from 'lucide-react'
+import { Download, FilePlus2, HelpCircle, MoreHorizontal, Palette, Radio, Save, FolderOpen, Users, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
@@ -12,6 +12,9 @@ export type StudioDocumentCommands = {
 }
 
 type StudioMenuProps = StudioDocumentCommands & {
+  onSaveToAccount?: () => void
+  onOpenMyWorlds?: () => void
+  onOpenMyClass?: () => void
   onOpenHelp: () => void
   onOpenWorldSetup: () => void
 }
@@ -48,7 +51,9 @@ export function StudioMenu({
   onImportProject,
   onExportProject,
   onStartLiveWorld,
-  onPublishWorld,
+  onSaveToAccount,
+  onOpenMyWorlds,
+  onOpenMyClass,
   onOpenHelp,
   onOpenWorldSetup,
 }: StudioMenuProps) {
@@ -93,7 +98,6 @@ export function StudioMenu({
       {open && (
         <div className="studio-menu-popover" role="menu" aria-label="Studio actions">
           {buildMode && <PlacedBrickNavigator />}
-          <a role="menuitem" href="/rover" aria-label="Rover Lab"><span className="studio-menu-icon" aria-hidden="true">R</span><span><strong>Rover Lab</strong><small>Open the coding mission</small></span></a>
           <button role="menuitem" type="button" onClick={() => runAndClose(onOpenWorldSetup)}>
             <Palette size={18} /><span><strong>World &amp; character</strong><small>Choose a scene and customize your explorer</small></span>
           </button>
@@ -109,9 +113,9 @@ export function StudioMenu({
           <button role="menuitem" type="button" disabled={!onStartLiveWorld} onClick={() => runAndClose(onStartLiveWorld)}>
             <Radio size={18} /><span><strong>Build together</strong><small>Start a live multiplayer world</small></span>
           </button>
-          <button role="menuitem" type="button" disabled={!onPublishWorld} onClick={() => runAndClose(onPublishWorld)}>
-            <Share2 size={18} /><span><strong>Publish</strong><small>Create a read-only Explore link</small></span>
-          </button>
+          {onSaveToAccount && <button role="menuitem" type="button" onClick={() => runAndClose(onSaveToAccount)}><Save size={18} /><span><strong>Save to my account</strong><small>Keep this build across devices</small></span></button>}
+          {onOpenMyWorlds && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyWorlds)}><FolderOpen size={18} /><span><strong>My Worlds</strong><small>Open your saved builds</small></span></button>}
+          {onOpenMyClass && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyClass)}><Users size={18} /><span><strong>My Class</strong><small>Find your group and build together</small></span></button>}
           <button role="menuitem" type="button" onClick={() => runAndClose(onOpenHelp)}>
             <HelpCircle size={18} /><span><strong>Help</strong><small>Show the quick start guide</small></span>
           </button>

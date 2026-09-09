@@ -1,4 +1,4 @@
-import { BRICK_PART_MAP, createPartMap } from './parts'
+import { STOCK_PART_MAP, createPartMap } from './parts'
 import { BrickLayoutIndex } from './brickRules'
 import type { BrickInstance, CustomPartDefinition, CustomPartTemplate, EnvironmentId } from './types'
 
@@ -78,7 +78,7 @@ function cloneCustomPart(definition: CustomPartDefinition): CustomPartDefinition
 function validateCustomPart(value: unknown, index: number): BrickStudioDocumentResult | CustomPartDefinition {
   if (!isRecord(value)) return fail('invalid-custom-part', `Custom part ${index + 1} must be an object.`)
   const { id, name, template, width, depth, height, studs } = value
-  if (typeof id !== 'string' || !CUSTOM_PART_ID_PATTERN.test(id) || BRICK_PART_MAP[id]) {
+  if (typeof id !== 'string' || !CUSTOM_PART_ID_PATTERN.test(id) || Object.hasOwn(STOCK_PART_MAP, id)) {
     return fail('invalid-custom-part', `Custom part ${index + 1} has an invalid id.`)
   }
   if (typeof name !== 'string' || !name.trim() || name.length > 40) {
@@ -113,7 +113,7 @@ function validateBrick(
   if (typeof id !== 'string' || id.length === 0 || id.length > 128) {
     return fail('invalid-brick', `Brick ${index + 1} has an invalid id.`)
   }
-  if (typeof partId !== 'string' || !partMap[partId]) {
+  if (typeof partId !== 'string' || !Object.hasOwn(partMap, partId)) {
     return fail('invalid-brick', `Brick ${index + 1} uses an unknown part id.`)
   }
   if (![x, y, z].every((coordinate) => Number.isInteger(coordinate))) {

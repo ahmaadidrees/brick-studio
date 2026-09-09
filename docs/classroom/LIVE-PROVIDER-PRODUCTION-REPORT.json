@@ -1,0 +1,24 @@
+{
+  "run": "live_mtucxcx6",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-09T17:14:54.045Z",
+  "classId": "e0544fc8-b3b4-4018-ac95-272fb7238872",
+  "worldId": "1d38406d-3128-4ecd-9c3e-410abe3ff2bf",
+  "success": true,
+  "transportRetries": 0,
+  "networkFamily": "IPv4",
+  "fixtureSetupMode": "reused dedicated fixtures",
+  "checks": [
+    "two authenticated sockets receive stable identities and same initial document",
+    "concurrent edits broadcast consistently and are committed in authoritative database",
+    "teacher password reset revokes active socket and old ticket until password replacement",
+    "removing group member closes active socket and preserves contributions",
+    "closing class revokes remaining socket and blocks group discovery",
+    "reopened class cold socket loads persisted edits"
+  ],
+  "limitations": [
+    "No rendered browser, real classroom students, weak-device performance, or classroom-NAT load tested"
+  ],
+  "workerVersion": "a1c904e1-3709-41f8-a4de-5ac03dc5c3cd",
+  "applicationSourceCommit": "49821fa"
+}

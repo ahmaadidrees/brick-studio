@@ -252,7 +252,9 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
     expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
-    expect(screen.getByRole('menuitem', { name: 'Rover Lab' })).toHaveAttribute('href', '/rover')
+    expect(screen.queryByRole('menuitem', { name: 'Rover Lab' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: /My Class/ })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /Publish/ })).not.toBeInTheDocument()
 
     const properties = screen.getByRole('button', { name: 'Show brick properties' })
     expect(properties).toHaveAttribute('aria-expanded', 'false')

@@ -787,3 +787,17 @@ describe('document replacement commands', () => {
     expect(useBrickStore.getState().undoStack).toEqual(before.undoStack)
   })
 })
+
+it('undoes and redoes imported environment and custom definitions with the bricks', () => {
+  const part = { id: 'custom_history', name: 'History', template: 'solid', width: 2, depth: 2, height: 3, studs: 'auto' } as const
+  const before = createBrickStudioDocument([{ ...base, partId: part.id }], { environmentId: 'sky-island', customParts: [part] })
+  const after = createBrickStudioDocument([{ ...base, partId: part.id }], { environmentId: 'toy-room', customParts: [{ ...part, width: 4 }] })
+  expect(useBrickStore.getState().restoreDocument(before).ok).toBe(true)
+  expect(useBrickStore.getState().importDocument(serializeBrickStudioDocument(after)).ok).toBe(true)
+  expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(after)
+  useBrickStore.getState().undo()
+  expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(before)
+  expect(JSON.parse(useBrickStore.getState().exportDocument())).toEqual(before)
+  useBrickStore.getState().redo()
+  expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(after)
+})

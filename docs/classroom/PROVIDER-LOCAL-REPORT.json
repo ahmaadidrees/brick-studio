@@ -1,0 +1,26 @@
+{
+  "run": "qa_mtuadyq4",
+  "api": "http://127.0.0.1:8788",
+  "completedAt": "2026-09-09T16:02:23.228Z",
+  "classId": "97ecbdb6-b047-4976-abfa-369f7faa58b9",
+  "worldId": "511183bb-de92-49e4-92ed-70c06013f98b",
+  "checks": [
+    "class-code registration and stable account identity",
+    "durable private world creation",
+    "private world denies another student and teacher",
+    "concurrent saves yield one winner and one revision conflict",
+    "fresh login reloads authoritative saved document",
+    "checkpoint restore persists and rejects a stale revision",
+    "direct browser-role database access denied",
+    "teacher reset invalidates old bearer and refresh",
+    "temporary login requires a new password before world access",
+    "teacher rename preserves world ownership",
+    "close enrollment denies new account creation"
+  ],
+  "passed": true,
+  "cleanupFailures": 0,
+  "limitations": [
+    "No browser interactions or real students tested",
+    "Live sockets and classroom-NAT throughput require separate verification"
+  ]
+}

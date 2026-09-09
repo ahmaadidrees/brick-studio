@@ -69,7 +69,8 @@ export const BRICK_PARTS: BrickPart[] = [
   { id: 'door_1x4', name: 'Door Frame', width: 1, depth: 4, height: 9, kind: 'door', icon: '▯' },
 ]
 
-export const BRICK_PART_MAP = Object.fromEntries(BRICK_PARTS.map((part) => [part.id, part])) as Record<string, BrickPart>
+export const STOCK_PART_MAP: Readonly<Record<string, BrickPart>> = Object.freeze(Object.assign(Object.create(null), Object.fromEntries(BRICK_PARTS.map((part) => [part.id, part]))))
+export const BRICK_PART_MAP: Record<string, BrickPart> = Object.assign(Object.create(null), STOCK_PART_MAP)
 const runtimeCustomPartIds = new Set<string>()
 
 const CUSTOM_TEMPLATE_KIND: Record<CustomPartTemplate, BrickKind> = {
@@ -98,10 +99,8 @@ export function customPartToBrickPart(definition: CustomPartDefinition): BrickPa
 }
 
 export function createPartMap(customParts: CustomPartDefinition[] = []): Record<string, BrickPart> {
-  return {
-    ...BRICK_PART_MAP,
-    ...Object.fromEntries(customParts.map((definition) => [definition.id, customPartToBrickPart(definition)])),
-  }
+  return Object.assign(Object.create(null), STOCK_PART_MAP,
+    Object.fromEntries(customParts.map((definition) => [definition.id, customPartToBrickPart(definition)])))
 }
 
 /**

@@ -3,7 +3,6 @@ import { BRICK_STUDIO_MAX_BRICKS, createBrickStudioDocument } from './brickDocum
 import {
   PUBLISHED_WORLD_MAX_HASH_LENGTH,
   PUBLISHED_WORLD_MAX_PAYLOAD_BYTES,
-  createPublishedWorldUrl,
   loadPublishedWorld,
 } from './publishedWorlds'
 import type { BrickInstance } from './types'
@@ -40,9 +39,8 @@ async function compressedSnapshot(value: string) {
   })()
   const writer = compression.writable.getWriter()
   const bytes = new TextEncoder().encode(value)
-  const input = new ArrayBuffer(bytes.byteLength)
-  new Uint8Array(input).set(bytes)
-  await writer.write(input)
+  // Typed-array chunks work across browser and Node compression streams.
+  await writer.write(bytes)
   await writer.close()
   const chunks = await chunksPromise
   const compressed = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0))
@@ -57,13 +55,12 @@ async function compressedSnapshot(value: string) {
 }
 
 describe('published world snapshot links', () => {
-  it('round trips a compressed validated document and unicode title', async () => {
+  it('opens a compressed validated document and unicode title', async () => {
     const document = createBrickStudioDocument([], { environmentId: 'brick-valley' })
-    const url = new URL(await createPublishedWorldUrl(document, 'Zoë’s world'))
+    const hash = await compressedSnapshot(JSON.stringify({ title: 'Zoë’s world', document }))
 
-    expect(url.pathname).toBe('/world')
-    expect(url.hash).toMatch(/^#v2\./)
-    await expect(loadPublishedWorld(url.hash)).resolves.toEqual({ title: 'Zoë’s world', document })
+    expect(hash).toMatch(/^v2\./)
+    await expect(loadPublishedWorld(hash)).resolves.toEqual({ title: 'Zoë’s world', document })
   })
 
   it('opens legacy uncompressed links for backwards compatibility', async () => {
@@ -73,12 +70,12 @@ describe('published world snapshot links', () => {
     await expect(loadPublishedWorld(`#${hash}`)).resolves.toEqual({ title: 'Original link', document })
   })
 
-  it('compresses and round trips a full 1,000-brick world within the guarded hash budget', async () => {
+  it('opens a compressed full 1,000-brick world within the guarded hash budget', async () => {
     const document = createBrickStudioDocument(largeWorld())
-    const url = new URL(await createPublishedWorldUrl(document, 'Big classroom world'))
+    const hash = await compressedSnapshot(JSON.stringify({ title: 'Big classroom world', document }))
 
-    expect(url.hash.length).toBeLessThan(PUBLISHED_WORLD_MAX_HASH_LENGTH)
-    await expect(loadPublishedWorld(url.hash)).resolves.toEqual({ title: 'Big classroom world', document })
+    expect(hash.length).toBeLessThan(PUBLISHED_WORLD_MAX_HASH_LENGTH)
+    await expect(loadPublishedWorld(hash)).resolves.toEqual({ title: 'Big classroom world', document })
   })
 
   it('rejects missing and damaged snapshots', async () => {

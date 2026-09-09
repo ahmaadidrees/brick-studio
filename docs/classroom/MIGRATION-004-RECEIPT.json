@@ -1,0 +1,16 @@
+{
+  "migration": "supabase/migrations/202609090004_brick_permission_queries.sql",
+  "sha256": "ee19de94e0d1ab66ef1d9c768e1a8719f9952d6e60b7fcd1bacdc02a5dbeac7d",
+  "appliedAt": "2026-09-09T16:40:18.508627+00:00",
+  "project": "wfrvgbnmyenidlpmimhl",
+  "transactional": true,
+  "privileges": [
+    {
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_execute": true,
+      "anon_batch_execute": false,
+      "authenticated_batch_execute": false
+    }
+  ]
+}

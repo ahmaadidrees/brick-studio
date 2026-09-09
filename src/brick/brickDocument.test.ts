@@ -160,3 +160,18 @@ describe('Brick Studio document schema', () => {
     }
   })
 })
+
+it('validates documents independently of the currently registered custom library', async () => {
+  const { registerCustomParts } = await import('./parts')
+  const part = { id: 'custom_shared', name: 'Shared', template: 'solid', width: 2, depth: 2, height: 3, studs: 'auto' } as const
+  const document = createBrickStudioDocument([{ ...mixed[0], partId: part.id }], { customParts: [part] })
+  registerCustomParts([part])
+  try {
+    expect(parseBrickStudioDocument(serializeBrickStudioDocument(document))).toEqual({ ok: true, document })
+    const other = createBrickStudioDocument([{ ...mixed[0], partId: part.id }], { customParts: [{ ...part, width: 3 }] })
+    expect(validateBrickStudioDocument(other)).toEqual({ ok: true, document: other })
+    expect(validateBrickStudioDocument(createBrickStudioDocument(document.bricks)).ok).toBe(false)
+    expect(validateBrickStudioDocument(createBrickStudioDocument([{ ...mixed[0], partId: 'constructor' }])).ok).toBe(false)
+    expect(validateBrickStudioDocument(createBrickStudioDocument([{ ...mixed[0], partId: '__proto__' }])).ok).toBe(false)
+  } finally { registerCustomParts([]) }
+})

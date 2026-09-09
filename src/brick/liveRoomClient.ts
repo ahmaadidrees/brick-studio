@@ -44,6 +44,7 @@ export type LiveWorldResource = {
 }
 
 export type LiveRoomHttpOptions = {
+  headers?: Record<string, string>
   baseUrl?: string
   fetch?: typeof globalThis.fetch
 }
@@ -80,7 +81,7 @@ export type LiveRoomSocketLike = {
   close: () => void
   onopen: (() => void) | null
   onmessage: ((event: { data: unknown }) => void) | null
-  onclose: (() => void) | null
+  onclose: ((event?: { code: number }) => void) | null
   onerror: (() => void) | null
 }
 
@@ -93,6 +94,8 @@ type LiveRoomStore = {
 export type LiveRoomIdentityStorage = Pick<Storage, 'getItem' | 'setItem'>
 
 export type LiveRoomClientOptions = {
+  /** Fetch a fresh short-lived classroom websocket ticket for each connection. */
+  getTicket?: () => Promise<string>
   roomId: string
   profile: PlayerProfile
   ownerToken?: string
@@ -342,7 +345,7 @@ async function jsonRequest<T>(fetcher: typeof fetch, url: string, init?: Request
     if (typeof body.message === 'string') message = body.message
     else if (typeof body.error === 'string') message = body.error
   } catch { /* keep status-based message */ }
-  throw new Error(message)
+  throw Object.assign(new Error(message), { status: response.status })
 }
 
 export async function createLiveWorld(
@@ -354,7 +357,7 @@ export async function createLiveWorld(
   const baseUrl = (options.baseUrl ?? runtimeBaseUrl()).replace(/\/$/, '')
   return jsonRequest<CreateLiveWorldResponse>(options.fetch ?? globalThis.fetch, `${baseUrl}/worlds`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...options.headers },
     body: JSON.stringify({ ...request, document: validated.document }),
   })
 }
@@ -367,6 +370,7 @@ export async function getLiveWorld(
   const resource = await jsonRequest<LiveWorldResource>(
     options.fetch ?? globalThis.fetch,
     `${baseUrl}/worlds/${encodeURIComponent(roomId)}`,
+    options.headers ? { headers: options.headers } : undefined,
   )
   const validated = normalizeBrickStudioDocument(resource.document)
   if (!validated.ok) throw new Error(validated.error.message)
@@ -775,17 +779,19 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     scheduleReconnect()
   }
 
-  const connect = () => {
+  const openConnection = (ticket?: string) => {
     if (disposed) return
     let nextSocket: LiveRoomSocketLike
     try {
-      nextSocket = createSocket(liveWebSocketUrl(
+      const connectionUrl = new URL(liveWebSocketUrl(
         baseUrl,
         roomId,
         clientId,
         options.ownerToken,
         reconnectToken,
       ))
+      if (ticket) connectionUrl.searchParams.set('ticket', ticket)
+      nextSocket = createSocket(connectionUrl.toString())
     } catch {
       reportError('connection_error', 'The live world connection could not be opened.')
       scheduleReconnect()
@@ -811,15 +817,32 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         restartConnection('connection_error', 'The live world connection encountered an error.')
       }
     }
-    nextSocket.onclose = () => {
+    nextSocket.onclose = (event) => {
       if (socket !== nextSocket) return
       socket = null
       socketOpen = false
       clearSyncWatchdog()
       poseSender.transportClosed()
       if (disposed) return
+      if (event?.code === 4003) {
+        publish({ connection: 'offline' })
+        reportError('access_changed', 'Classroom access changed. Rejoin from My Class.')
+        return
+      }
       scheduleReconnect()
     }
+  }
+
+  const connect = () => {
+    if (disposed) return
+    if (!options.getTicket) return openConnection()
+    void options.getTicket().then(ticket => {
+      if (!disposed) openConnection(ticket)
+    }).catch(() => {
+      if (disposed) return
+      publish({ connection: 'offline' })
+      reportError('classroom_auth_required', 'Could not authorize this world. Return to My Class and try joining again.')
+    })
   }
 
   const unsubscribeStore = store.subscribe((state, previous) => {
@@ -895,6 +918,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         v: LIVE_PROTOCOL_VERSION,
         type: 'replaceDocument',
         opId,
+        expectedRevision: snapshot.revision,
         document: validated.document,
       }
       if (new TextEncoder().encode(JSON.stringify(validated.document)).byteLength > LIVE_MAX_DOCUMENT_BYTES) {

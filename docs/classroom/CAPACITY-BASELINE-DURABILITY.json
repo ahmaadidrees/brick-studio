@@ -1,0 +1,9 @@
+{
+  "checkedAt": "2026-09-09T16:38:55.821Z",
+  "worldId": "67b87646-b2ab-4730-953e-3c15f5af07a4",
+  "acknowledgedEdits": 12,
+  "durableRevision": 13,
+  "durableBrickCount": 12,
+  "allAcknowledgedEditsRetained": true,
+  "explanation": "Baseline persisted:false indicated incomplete full-workload verification, not evidence of lost acknowledged edits. Authoritative row checked after failure and fixture suspension."
+}

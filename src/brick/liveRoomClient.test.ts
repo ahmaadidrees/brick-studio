@@ -764,3 +764,25 @@ describe('live room synchronization', () => {
     expect((socket().messages().filter((message) => message.type === 'pose').at(-1) as Extract<LiveClientMessage, { type: 'pose' }>).moving).toBe(false)
   })
 })
+
+it('requests a fresh classroom ticket and stops reconnecting after access revocation', async () => {
+  const getTicket = vi.fn().mockResolvedValue('short-lived-ticket')
+  const { sockets, socket, client } = createHarness({ getTicket })
+  expect(sockets).toHaveLength(0)
+  await Promise.resolve()
+  expect(new URL(socket().url).searchParams.get('ticket')).toBe('short-lived-ticket')
+  welcome(socket())
+  ;(socket() as LiveRoomSocketLike).onclose?.({ code: 4003 })
+  expect(client.getSnapshot().connection).toBe('offline')
+  expect(client.getSnapshot().error?.code).toBe('access_changed')
+  expect(getTicket).toHaveBeenCalledTimes(1)
+})
+
+it('does not open a socket if disposed while classroom authorization is pending', async () => {
+  let grant!: (ticket: string) => void
+  const { client, sockets } = createHarness({ getTicket: () => new Promise(resolve => { grant = resolve }) })
+  client.dispose()
+  grant('expired-before-open')
+  await Promise.resolve()
+  expect(sockets).toHaveLength(0)
+})

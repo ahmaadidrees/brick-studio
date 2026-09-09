@@ -1,26 +1,17 @@
-import { LIVE_MAX_DOCUMENT_BYTES } from "@brick-studio/core";
 import { DurableObject } from "cloudflare:workers";
-import {
-  WorldRoom,
-  newOwnerToken,
-  newWorldId,
-  ownerTokenVerifier,
-  validWorldId,
-  validateCreateWorldRequest,
-  type WorldRoomEnv,
-} from "./worldRoom";
-import {
-  WorldCreationLimiter,
-  worldCreationLimiterKey,
-} from "./worldCreationLimiter";
-
+import { WorldRoom, type WorldRoomEnv } from "./worldRoom";
+import { WorldCreationLimiter } from "./worldCreationLimiter";
+import { handleReleaseRequest } from "./classroomRoutes";
 export interface Env extends WorldRoomEnv {
   RACE_ROOMS: DurableObjectNamespace<RaceRoom>;
   WORLD_CREATION_LIMITER: DurableObjectNamespace<WorldCreationLimiter>;
+  CLASSROOM_TICKET_SECRET?: string;
 }
-
 export { WorldCreationLimiter, WorldRoom };
+export default { fetch: handleReleaseRequest };
 
+// Retain the historical Durable Object class for existing migration/storage identity.
+// Public Race routes are retired; no new capability-based rooms can be created.
 type RoomStatus = "waiting" | "countdown" | "racing";
 
 interface RoomRecord {
@@ -48,7 +39,6 @@ interface SocketAttachment {
 
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 const MAX_BODY_BYTES = 800_000;
-const MAX_WORLD_CREATE_BODY_BYTES = LIVE_MAX_DOCUMENT_BYTES + 16 * 1024;
 const MAX_MESSAGE_BYTES = 2_048;
 const MAX_PLAYERS = 30;
 const MAX_MESSAGES_PER_SECOND = 30;
@@ -59,169 +49,6 @@ const json = (value: unknown, status = 200, headers?: HeadersInit) =>
     status,
     headers: { "content-type": "application/json; charset=utf-8", ...headers },
   });
-
-function allowedOrigin(origin: string | null): string | null {
-  if (!origin) return null;
-  try {
-    const url = new URL(origin);
-    if (url.protocol === "https:" &&
-        (url.hostname === "virtual-legos.vercel.app" ||
-         /^virtual-legos-[a-z0-9-]+\.vercel\.app$/.test(url.hostname))) return origin;
-    if ((url.hostname === "localhost" || url.hostname === "127.0.0.1") &&
-        (url.protocol === "http:" || url.protocol === "https:")) return origin;
-  } catch { /* invalid origin */ }
-  return null;
-}
-
-function corsHeaders(origin: string | null): HeadersInit {
-  const allowed = allowedOrigin(origin);
-  return allowed ? {
-    "access-control-allow-origin": allowed,
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
-    "vary": "Origin",
-  } : {};
-}
-
-function randomToken(bytes: number): string {
-  const data = crypto.getRandomValues(new Uint8Array(bytes));
-  return Array.from(data, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-function validRoomId(value: string): boolean {
-  return /^[A-Z2-9]{8}$/.test(value);
-}
-
-function newRoomId(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const data = crypto.getRandomValues(new Uint8Array(8));
-  return Array.from(data, (byte) => alphabet[byte % alphabet.length]).join("");
-}
-
-function roomRoute(pathname: string): { roomId: string; connect: boolean } | null {
-  const match = pathname.match(/^\/rooms\/([A-Z2-9]{8})(\/connect)?$/);
-  return match ? { roomId: match[1], connect: Boolean(match[2]) } : null;
-}
-
-function worldRoute(pathname: string): { roomId: string; connect: boolean } | null {
-  const match = pathname.match(/^\/worlds\/([a-f0-9]{32})(\/connect)?$/);
-  return match ? { roomId: match[1], connect: Boolean(match[2]) } : null;
-}
-
-async function readJson(request: Request, maxBytes = MAX_BODY_BYTES): Promise<unknown> {
-  const length = Number(request.headers.get("content-length") || 0);
-  if (length > maxBytes) throw new Error("payload_too_large");
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > maxBytes) throw new Error("payload_too_large");
-  return JSON.parse(text);
-}
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const origin = request.headers.get("origin");
-    const cors = corsHeaders(origin);
-    if (origin && !allowedOrigin(origin)) return json({ error: "origin_not_allowed" }, 403);
-    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-
-    if (request.method === "POST" && url.pathname === "/worlds") {
-      const limiter = env.WORLD_CREATION_LIMITER.get(env.WORLD_CREATION_LIMITER.idFromName(
-        worldCreationLimiterKey(request.headers.get("cf-connecting-ip")),
-      ));
-      const limitResponse = await limiter.fetch("https://limiter.internal/consume", { method: "POST" });
-      if (limitResponse.status === 429) {
-        const limit = await limitResponse.json<{ retryAfterSeconds: number }>();
-        return json(
-          { error: "creation_rate_limited", retryAfterSeconds: limit.retryAfterSeconds },
-          429,
-          {
-            ...cors,
-            "access-control-expose-headers": "retry-after",
-            "retry-after": String(limit.retryAfterSeconds),
-          },
-        );
-      }
-      if (!limitResponse.ok) return json({ error: "creation_limiter_unavailable" }, 503, cors);
-
-      let input: unknown;
-      try { input = await readJson(request, MAX_WORLD_CREATE_BODY_BYTES); }
-      catch (error) {
-        return json({ error: error instanceof Error ? error.message : "invalid_json" }, 400, cors);
-      }
-      const validated = validateCreateWorldRequest(input);
-      if (!validated.ok) return json({ error: validated.code, message: validated.message }, 400, cors);
-      const roomId = newWorldId();
-      const ownerToken = newOwnerToken();
-      const verifier = await ownerTokenVerifier(ownerToken);
-      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(roomId));
-      const response = await stub.fetch("https://world.internal/init", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-world-init": "1" },
-        body: JSON.stringify({
-          roomId,
-          title: validated.value.title,
-          document: validated.value.document,
-          initialOwnerProfile: validated.value.profile,
-          ownerTokenVerifier: verifier,
-        }),
-      });
-      if (!response.ok) return json({ error: "world_creation_failed" }, 500, cors);
-      return json({ roomId, ownerToken }, 201, cors);
-    }
-
-    const liveRoute = worldRoute(url.pathname);
-    if (liveRoute) {
-      if (!validWorldId(liveRoute.roomId)) return json({ error: "not_found" }, 404, cors);
-      if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405, cors);
-      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(liveRoute.roomId));
-      const internalUrl = new URL(request.url);
-      internalUrl.hostname = "world.internal";
-      const response = await stub.fetch(new Request(internalUrl, request));
-      if (response.status === 101) return response;
-      const outgoing = new Response(response.body, response);
-      for (const [key, value] of Object.entries(cors)) outgoing.headers.set(key, String(value));
-      return outgoing;
-    }
-
-    if (request.method === "POST" && url.pathname === "/rooms") {
-      let input: unknown;
-      try { input = await readJson(request); }
-      catch (error) {
-        return json({ error: error instanceof Error ? error.message : "invalid_json" }, 400, cors);
-      }
-      if (!input || typeof input !== "object") return json({ error: "invalid_room" }, 400, cors);
-      const { title, document } = input as Record<string, unknown>;
-      if (typeof title !== "string" || !title.trim() || title.length > 100 ||
-          !document || typeof document !== "object" || Array.isArray(document)) {
-        return json({ error: "invalid_room" }, 400, cors);
-      }
-      const roomId = newRoomId();
-      const hostToken = randomToken(24);
-      const stub = env.RACE_ROOMS.get(env.RACE_ROOMS.idFromName(roomId));
-      const response = await stub.fetch("https://room.internal/init", {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-room-init": "1" },
-        body: JSON.stringify({ roomId, title: title.trim(), document, hostToken }),
-      });
-      if (!response.ok) return json({ error: "room_creation_failed" }, 500, cors);
-      return json({ roomId, hostToken }, 201, cors);
-    }
-
-    const route = roomRoute(url.pathname);
-    if (!route || !validRoomId(route.roomId)) return json({ error: "not_found" }, 404, cors);
-    if ((route.connect && request.method !== "GET") || (!route.connect && request.method !== "GET")) {
-      return json({ error: "method_not_allowed" }, 405, cors);
-    }
-    const stub = env.RACE_ROOMS.get(env.RACE_ROOMS.idFromName(route.roomId));
-    const internalUrl = new URL(request.url);
-    internalUrl.hostname = "room.internal";
-    const response = await stub.fetch(new Request(internalUrl, request));
-    if (response.status === 101) return response;
-    const outgoing = new Response(response.body, response);
-    for (const [key, value] of Object.entries(cors)) outgoing.headers.set(key, String(value));
-    return outgoing;
-  },
-};
 
 export class RaceRoom extends DurableObject<Env> {
   private record: RoomRecord | null = null;

@@ -200,3 +200,26 @@ describe('local Brick Studio persistence', () => {
     controller.dispose()
   })
 })
+
+it('rejects invalid saves without replacing the last valid world', () => {
+  const storage = memoryStorage()
+  const valid = createBrickStudioDocument([brick])
+  saveLocalBrickStudioProject(storage, valid)
+  expect(saveLocalBrickStudioProject(storage, { ...valid, bricks: [{ ...brick, partId: 'missing' }] }).ok).toBe(false)
+  expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: valid })
+})
+
+it('quarantines an unreadable draft before saving and refuses replacement if quarantine fails', async () => {
+  const { BRICK_STUDIO_RECOVERY_STORAGE_KEY } = await import('./documentPersistence')
+  const storage = memoryStorage()
+  storage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, '{broken draft')
+  expect(saveLocalBrickStudioProject(storage, [])).toEqual({ ok: true })
+  expect(storage.getItem(BRICK_STUDIO_RECOVERY_STORAGE_KEY)).toBe('{broken draft')
+  storage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, '{second broken draft')
+  const guarded = { ...storage, setItem: (key: string, value: string) => {
+    if (key === BRICK_STUDIO_RECOVERY_STORAGE_KEY) throw new Error('quota')
+    storage.setItem(key, value)
+  } }
+  expect(saveLocalBrickStudioProject(guarded, []).ok).toBe(false)
+  expect(storage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBe('{second broken draft')
+})

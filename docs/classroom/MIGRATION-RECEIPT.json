@@ -1,0 +1,121 @@
+{
+  "project": "wfrvgbnmyenidlpmimhl",
+  "files": [
+    {
+      "name": "202609090001_brick_classroom.sql",
+      "sha256": "5052d57a0ccf11945d6ba096a9020339d91c28d4b3e38ae89541b7515ff75ea6"
+    },
+    {
+      "name": "202609090002_brick_session_authorization.sql",
+      "sha256": "211b1f783d2e62a4bf46cf87e614b8f7e2e92a8d991d2c276d5e2add9035feb5"
+    },
+    {
+      "name": "202609090003_brick_storage_quotas.sql",
+      "sha256": "789d7ea2f76927d7d6ba4f9b09fa19b065b0ad56edf733d771779fd775975b19"
+    }
+  ],
+  "tables": [
+    {
+      "tablename": "brick_audit_events"
+    },
+    {
+      "tablename": "brick_checkpoints"
+    },
+    {
+      "tablename": "brick_class_codes"
+    },
+    {
+      "tablename": "brick_classes"
+    },
+    {
+      "tablename": "brick_credential_locks"
+    },
+    {
+      "tablename": "brick_rate_limits"
+    },
+    {
+      "tablename": "brick_sessions"
+    },
+    {
+      "tablename": "brick_students"
+    },
+    {
+      "tablename": "brick_teacher_sessions"
+    },
+    {
+      "tablename": "brick_world_members"
+    },
+    {
+      "tablename": "brick_worlds"
+    }
+  ],
+  "verifiedAt": "2026-09-09T16:00:44.275223+00:00",
+  "privileges": [
+    {
+      "table_name": "brick_audit_events",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_checkpoints",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_class_codes",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_classes",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_credential_locks",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_rate_limits",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_sessions",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_students",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_teacher_sessions",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_world_members",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    },
+    {
+      "table_name": "brick_worlds",
+      "rls": true,
+      "anon_select": false,
+      "authenticated_select": false
+    }
+  ]
+}

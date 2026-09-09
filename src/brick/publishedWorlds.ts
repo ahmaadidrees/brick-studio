@@ -10,12 +10,6 @@ const COMPRESSED_SNAPSHOT_PREFIX = 'v2.'
 
 export type PublishedWorld = { title: string; document: BrickStudioDocument }
 
-function encodeBytesBase64Url(bytes: Uint8Array) {
-  let binary = ''
-  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000))
-  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
-}
-
 function decodeBase64UrlBytes(value: string) {
   const base64 = value.replaceAll('-', '+').replaceAll('_', '/')
   const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='))
@@ -61,8 +55,8 @@ async function transformBytes(
     (error: unknown) => ({ ok: false as const, error }),
   )
   const writer = transform.writable.getWriter()
-  const input = new ArrayBuffer(bytes.byteLength)
-  new Uint8Array(input).set(bytes)
+  const input = new Uint8Array(bytes.byteLength)
+  input.set(bytes)
   let writeError: unknown
   try {
     await writer.write(input)
@@ -76,28 +70,11 @@ async function transformBytes(
   return output.value
 }
 
-async function gzip(bytes: Uint8Array) {
-  if (typeof CompressionStream === 'undefined') {
-    throw new Error('This browser cannot create compressed world links. Export the project file instead.')
-  }
-  return transformBytes(bytes, new CompressionStream('gzip'))
-}
-
 async function gunzip(bytes: Uint8Array) {
   if (typeof DecompressionStream === 'undefined') {
     throw new Error('This browser cannot open compressed world links.')
   }
   return transformBytes(bytes, new DecompressionStream('gzip'))
-}
-
-export async function createPublishedWorldUrl(document: BrickStudioDocument, title?: string) {
-  const payload = new TextEncoder().encode(JSON.stringify({ title: title || 'Published world', document }))
-  if (payload.byteLength > PUBLISHED_WORLD_MAX_PAYLOAD_BYTES) {
-    throw new Error('This build is too large for a shareable snapshot link. Export the project file instead.')
-  }
-  const snapshot = `${COMPRESSED_SNAPSHOT_PREFIX}${encodeBytesBase64Url(await gzip(payload))}`
-  if (snapshot.length > PUBLISHED_WORLD_MAX_HASH_LENGTH) throw new Error('This build is too large for a shareable snapshot link. Export the project file instead.')
-  return new URL(`/world#${snapshot}`, window.location.origin).toString()
 }
 
 export async function loadPublishedWorld(hash: string): Promise<PublishedWorld> {

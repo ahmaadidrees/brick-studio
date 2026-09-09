@@ -1,0 +1,8 @@
+{
+  "migration": "supabase/migrations/202609090005_brick_permission_null_guards.sql",
+  "sha256": "448e6bf3f06d3df7dbb0ddb2e59756c8af7fc6c11e79aedaae54662a3eb7128a",
+  "appliedAt": "2026-09-09T16:41:58.082099+00:00",
+  "project": "wfrvgbnmyenidlpmimhl",
+  "transactional": true,
+  "null_identity_denied": true
+}

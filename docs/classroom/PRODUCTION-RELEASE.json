@@ -1,0 +1,44 @@
+{
+  "verifiedAt": "2026-09-09T17:17:17Z",
+  "publicUrl": "https://virtual-legos.vercel.app",
+  "frontendDeployment": "dpl_Fuz3vcfibrTWT5hubY5QYkGA3SW6",
+  "immutableFrontend": "https://virtual-legos-g6gwe9kda-ahmaadidrees-projects.vercel.app",
+  "workerVersion": "a1c904e1-3709-41f8-a4de-5ac03dc5c3cd",
+  "workerUrl": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "applicationSourceCommit": "49821fa",
+  "publicAliasVerified": true,
+  "publicGoogleTeacherLoginVerified": true,
+  "existingGuestDraftBrickCountBeforeAndAfterGoogleLogin": 8,
+  "productionHttpChecks": 11,
+  "productionLiveChecks": 6,
+  "stagingCapacity": {
+    "clients": 31,
+    "durableEdits": 60,
+    "allClientsConverged": true,
+    "medianEditAckMs": 562,
+    "p95EditAckMs": 926
+  },
+  "branchesPushed": [
+    "codex/classroom-release",
+    "codex/rover-lab-archive"
+  ],
+  "remaining": [
+    "Actual student and Chromebook observations"
+  ],
+  "limitations": [
+    "31 simulated network clients do not establish device rendering performance",
+    "Intermittent test-runner network failures and one close-event timeout occurred; successful reruns and independent browser group removal are recorded separately"
+  ],
+  "compatibilityFollowUp": {
+    "applicationSourceCommit": "7d9be23",
+    "frontendDeployment": "dpl_3heqnPcAsVum67TfYfdqDzc7xDYk",
+    "immutableFrontend": "https://virtual-legos-ph98pn62i-ahmaadidrees-projects.vercel.app",
+    "change": "Typed-array chunks for browser and Node 22 legacy gzip compatibility",
+    "ciRun": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34382956499",
+    "ciConclusion": "success",
+    "localNode22Tests": 699,
+    "hostedChromeCompressedLegacyWorld": "passed",
+    "publicAliasVerified": true,
+    "workerUnchanged": true
+  }
+}

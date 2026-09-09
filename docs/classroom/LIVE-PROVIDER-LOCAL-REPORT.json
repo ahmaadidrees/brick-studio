@@ -1,0 +1,18 @@
+{
+  "run": "live_mtuaeknu",
+  "api": "http://127.0.0.1:8788",
+  "completedAt": "2026-09-09T16:03:01.156Z",
+  "classId": "21a905df-2d39-4712-bf5a-f15ae76e36b4",
+  "worldId": "304fb440-2bc4-4f81-8736-b506ef7ea2e2",
+  "success": true,
+  "checks": [
+    "two authenticated sockets receive stable identities and same initial document",
+    "concurrent edits broadcast consistently and are committed in authoritative database",
+    "removing group member closes active socket and preserves contributions",
+    "closing class revokes remaining socket and blocks group discovery",
+    "reopened class cold socket loads persisted edits"
+  ],
+  "limitations": [
+    "No rendered browser, real classroom students, weak-device performance, or classroom-NAT load tested"
+  ]
+}

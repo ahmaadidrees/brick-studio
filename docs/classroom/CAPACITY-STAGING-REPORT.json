@@ -1,0 +1,399 @@
+{
+  "run": "capacity_mtubglp1",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "startedAt": "2026-09-09T16:32:13.525Z",
+  "completedAt": "2026-09-09T16:36:10.554Z",
+  "classId": "0142e7a1-5c6e-4fff-8709-e129848e4c08",
+  "worldId": "67b87646-b2ab-4730-953e-3c15f5af07a4",
+  "studentCount": 30,
+  "connectedClients": 31,
+  "connection": {
+    "count": 31,
+    "medianMs": 3747.4652499999793,
+    "p95Ms": 5430.660999999993,
+    "maxMs": 6309.914041000011
+  },
+  "editAcknowledgement": {
+    "count": 12,
+    "medianMs": 2797.8550410000025,
+    "p95Ms": 23853.40616699998,
+    "maxMs": 23853.40616699998
+  },
+  "totalEdits": 12,
+  "workloadMs": null,
+  "sentPoses": 1980,
+  "receivedPoses": 6480,
+  "errors": [
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    },
+    {
+      "code": "rate_limited",
+      "phase": "socket"
+    }
+  ],
+  "persisted": false,
+  "allClientsConverged": false,
+  "cleanupFailures": 0,
+  "passed": false,
+  "failure": "Socket closed before acknowledgement",
+  "limitations": [
+    "31 Node WebSocket clients on one machine, not 31 physical Chromebooks",
+    "No rendered scenes, GPU/frame-rate or real student interaction measured",
+    "Workload: three concurrent editors at a time, 60 total small edits, 30 clients sending poses at 2Hz",
+    "Not a saturation/load-to-failure test; no classroom Wi-Fi or geographic distribution simulated"
+  ]
+}

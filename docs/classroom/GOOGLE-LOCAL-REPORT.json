@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-09",
+  "frontend": "http://127.0.0.1:5182",
+  "backend": "http://127.0.0.1:8788",
+  "provider": "existing managed Supabase Google provider",
+  "checks": [
+    "Personal Chrome Google account chooser displayed",
+    "Existing allowlisted teacher Google account selected",
+    "PKCE callback returned to My Class teacher dashboard",
+    "Authoritative brick_teacher_sessions query confirmed one active session for the existing teacher UUID",
+    "Cold browser reload retained My Class Teacher state"
+  ],
+  "passed": true,
+  "limitations": [
+    "Local frontend and Worker with real hosted auth/PostgreSQL; final production Google redirect still requires verification",
+    "No actual student or Chromebook observations established"
+  ]
+}
