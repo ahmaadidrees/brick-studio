@@ -39,9 +39,8 @@ async function compressedSnapshot(value: string) {
   })()
   const writer = compression.writable.getWriter()
   const bytes = new TextEncoder().encode(value)
-  const input = new ArrayBuffer(bytes.byteLength)
-  new Uint8Array(input).set(bytes)
-  await writer.write(input)
+  // Typed-array chunks work across browser and Node compression streams.
+  await writer.write(bytes)
   await writer.close()
   const chunks = await chunksPromise
   const compressed = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.byteLength, 0))

@@ -55,8 +55,8 @@ async function transformBytes(
     (error: unknown) => ({ ok: false as const, error }),
   )
   const writer = transform.writable.getWriter()
-  const input = new ArrayBuffer(bytes.byteLength)
-  new Uint8Array(input).set(bytes)
+  const input = new Uint8Array(bytes.byteLength)
+  input.set(bytes)
   let writeError: unknown
   try {
     await writer.write(input)
