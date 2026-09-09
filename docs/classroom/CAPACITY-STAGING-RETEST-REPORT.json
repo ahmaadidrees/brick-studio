@@ -1,0 +1,42 @@
+{
+  "run": "capacity_mtuchk7c",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "startedAt": "2026-09-09T17:00:57.864Z",
+  "completedAt": "2026-09-09T17:04:02.620Z",
+  "classId": "c92b6a4e-3f62-4890-878d-19df4167fef3",
+  "worldId": "c1fd7777-8cd5-4e02-a87c-a12033ea3177",
+  "studentCount": 30,
+  "registrationMs": 39194.452584,
+  "registrationConcurrency": 5,
+  "connectedClients": 31,
+  "connection": {
+    "count": 31,
+    "medianMs": 1998.0834590000013,
+    "p95Ms": 17462.807625,
+    "maxMs": 39939.461208
+  },
+  "editAcknowledgement": {
+    "count": 60,
+    "medianMs": 562.4604580000159,
+    "p95Ms": 926.1922499999928,
+    "maxMs": 1296.9943749999802
+  },
+  "totalEdits": 60,
+  "workloadMs": 20709.677166999987,
+  "sentPoses": 1230,
+  "receivedPoses": 36570,
+  "errors": [],
+  "persisted": true,
+  "allClientsConverged": true,
+  "cleanupFailures": 0,
+  "passed": true,
+  "limitations": [
+    "31 Node WebSocket clients on one machine, not 31 physical Chromebooks",
+    "No rendered scenes, GPU/frame-rate or real student interaction measured",
+    "Workload: three concurrent editors at a time, 60 total small edits, 30 clients sending poses at 2Hz",
+    "Not a saturation/load-to-failure test; no classroom Wi-Fi or geographic distribution simulated"
+  ],
+  "fixtureSetupMode": "reactivated dedicated fixtures with new temporary test credentials",
+  "networkFamily": "IPv4",
+  "transportRetries": 1
+}

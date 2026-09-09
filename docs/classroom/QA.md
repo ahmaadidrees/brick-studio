@@ -190,3 +190,37 @@ Reused only dedicated class712e2874-0026-4cba-9f5a-c9a3e9a1a92c and test student
 
 These controls now have actual local UI → real-provider evidence. Hosted candidate
 repetition and real teacher/student hardware observations remain separate gates.
+
+## Immutable production frontend and production Worker browser proof
+
+Verified `https://virtual-legos-g6gwe9kda-ahmaadidrees-projects.vercel.app/` with
+production Worker `https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev`
+(versiona1c904e1-3709-41f8-a4de-5ac03dc5c3cd). Isolated browser contexts used an
+owner-authorized Vercel CLI deployment-bypass cookie; no protection setting was
+changed and no actual teacher Google account was used.
+
+- Dedicated teacher password UI login succeeded. Created `Final production browser
+  QA`, class8e61d6a0-3fbe-4cfc-87ce-40c28980304b, and shared class world
+  66eb7193-a8f3-48ec-8da6-dacf8a4002bf through UI.
+- Independent student context registered via displayed class code, then discovered
+  and joined the same world through My Class. Student fixture UUID
+  f3a41827-e087-4ea6-8374-f19b9633395e. Both UIs displayed People2.
+- Teacher placed a brick; both rendered1brick. Student placed a second brick;
+  teacher displayed2. Student cold reload retained2. Direct PG inspection matched
+  revision3 and2brick instances. Screenshot `/tmp/brick-production-two-client.png`
+  captured and visually inspected after first synchronized edit.
+- For independent production group-revocation verification, teacher created Assigned
+  group `Final production group removal`, world2eb16d48-4b05-473b-ad92-ef92c10afb54,
+  added the fixture student through World controls, and student joined from My Class
+  and placed a brick. Teacher Remove from group caused student to render
+  `Classroom access changed. Rejoin from My Class.` and zero canvas elements.
+  `/tmp/brick-production-group-removal.png` captured and visually inspected.
+  PG retained revision2 and1brick, with zero group membership rows.
+- Authenticated browser API cleanup confirmed enrollment/collaboration closed and
+  fixture student suspended. Python urllib's production login returned403 whereas
+  existing authenticated browser requests succeeded; no product authentication
+  failure is inferred from that transport-specific result.
+
+This is actual immutable frontend → production API/WebSocket → authoritative PG →
+render/cold reload evidence using synthetic teacher/student accounts on one machine.
+It does not certify actual classroom devices or student observations.

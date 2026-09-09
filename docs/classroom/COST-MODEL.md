@@ -1,9 +1,9 @@
 # Classroom traffic and cost model
 
-Code inspection on 2026-09-09; these are request counts and illustrative traffic
+Code inspection on 2026-09-09, including permission RPC source `49821fa`; these are request counts and illustrative traffic
 estimates, not measured provider bills, latency, device benchmarks, or pricing.
 Sources: `classroomRoutes.ts`, `classroom/index.ts`, `worldRoom.ts`,
-`liveRoomClient.ts`, `efficientPoseSender.ts`, and the three classroom SQL migrations.
+`liveRoomClient.ts`, `efficientPoseSender.ts`, and the classroom SQL migrations (including permission RPCs).
 Counts change when those implementations change. A PostgREST RPC counts as one
 HTTP request here but executes several SQL statements and may write multiple rows.
 
@@ -14,9 +14,9 @@ Counts below are for students with valid sessions and successful operations.
 | Operation | Class world PG HTTP requests | Group world PG HTTP requests | Other work |
 |---|---:|---:|---|
 | Issue live ticket | 5 | 6 | 1 Supabase Auth user verification; DO init call |
-| WebSocket connect after ticket | 10 | 12 | DO admission/persist and snapshot |
-| Accepted document command batch | 5 | 6 | 1 full DO record persist; command broadcast |
-| Periodic idle reauthorization per socket/minute | 4 | 5 | Socket attachment update |
+| WebSocket connect after ticket | 4 | 4 | DO admission/persist and snapshot |
+| Accepted document command batch | 2 | 2 | 1 full DO record persist; command broadcast |
+| Periodic idle reauthorization per occupied room/minute | 1 | 1 | One batched permission RPC; each socket updated |
 | Pose packet itself | 0 | 0 | Broadcast to every other connected participant |
 
 Ticket includes student+session+world+class reads (plus group membership), then
@@ -27,17 +27,26 @@ An existing DO returns409 from init without writing, so repeated ensureRoom does
 not repeatedly create worlds, but does repeatedly download and serialize documents.
 An additional metadata GET made by the UI is another5/6 PG requests plus Auth.
 
-Accepted edits perform4/5 authorization reads followed by the atomic commit RPC.
-That RPC rechecks authorization, applies a100-saves/10-second per-user limit,
-row-locks/CAS-checks the world, writes the document and periodically checkpoints.
-Failed commits may add one reload. Invalid/replayed command messages currently pay
-pre-authorization reads even when no commit occurs. Modes/profile/resync also pay
-those reads; mode changes may commit separately. Full-world replacement broadcasts
-a snapshot rather than the normal compact command delta.
+Accepted edits now perform one `brick_authorize_world` permission RPC followed by
+one atomic `brick_commit_world` RPC. The permission response contains access metadata,
+not the full document. The commit rechecks authorization, applies a100-saves/10-second
+per-user limit, row-locks/CAS-checks the world, writes the document and periodically
+checkpoints. Failed commits may add one reload. Invalid/replayed commands still pay
+one pre-authorization RPC even without a commit. Modes/profile/resync also pay that
+RPC; mode changes may commit separately. Full-world replacement broadcasts a snapshot
+rather than the normal compact command delta.
 
-Every open socket is rechecked each60seconds. A room with no sockets clears its
-alarm. Pose activity calls touch, which persists the DO full record at most once
-per minute in the absence of other writes; poses do not write Postgres individually.
+Outer connection and serialized DO admission each perform one permission RPC;
+ensureRoom and admission each load the world, totaling4 PG HTTP requests. Admission
+still closes the authorization race. Ticket authorization retains its existing
+student/session/world/class reads, but its world permission read selects metadata.
+
+The alarm now invokes one `brick_authorize_world_batch` RPC for all open sockets in
+an occupied room each60seconds, rather than4/5 HTTP reads per socket. It still checks
+each identity inside Postgres; fewer round trips do not mean only one SQL row read.
+A room with no sockets clears its alarm. Pose activity calls touch, which persists
+the DO full record at most once per minute without other writes; poses do not write
+Postgres individually.
 
 ## Thirty-student illustration
 
@@ -45,15 +54,17 @@ Assume30 students, one classroom world,45minutes, each averages one accepted edi
 batch every5seconds, no errors/reconnects, and document sizeD remains approximately
 constant. This is a workload assumption, not observed student behavior.
 
-- 6 batches/second →16,200 commits; current authorization+commit path makes81,000
-  PG HTTP requests (97,200 for a group world).
-- Idle checks add about5,400 reads (6,750 for group). Join ticket+connect adds450
-  reads (540 group), excluding optional UI fetches, login, and teacher activity.
-- Each edit currently reads the full document for authorization, sends it to the
-  commit RPC, and receives it back: approximately3D transferred between Worker and
-  PG, excluding headers/compression/other rows. At D=100KB, that is roughly4.86GB
-  aggregate traffic per lesson, of which about3.24GB is PG-to-Worker. This is not
-  billable-egress accounting. At D=500KB it scales fivefold.
+- 6 batches/second →16,200 commits; current authorization+commit path makes32,400
+  PG HTTP requests for either class or group worlds (previous source81,000/97,200).
+- One occupied room adds about45 batched idle RPCs over45minutes, replacing the
+  previous5,400/6,750 HTTP reads. These batches still authorize every socket.
+- Thirty ticket+connect flows add270 class-world or300 group-world PG requests,
+  excluding optional UI fetches, login, teacher activity and retries.
+- Each edit sends the full document to the commit RPC and receives it back;
+  permission checks no longer return it. That is approximately2D transferred between
+  Worker and PG, excluding headers/compression/metadata. At D=100KB, roughly3.24GB
+  aggregate traffic per lesson, about1.62GB PG-to-Worker. This is not billable-egress
+  accounting. At D=500KB it scales fivefold. The earlier3D estimate is superseded.
 - Serialized room edits require sustained processing faster than167ms/batch at
   that arrival rate to avoid a growing queue. Actual cross-provider latency must
   be measured; multiple sequential network checks make this an important gate.
@@ -68,22 +79,34 @@ rate rather than11,600. Rendering/interpolation costs are separate from server c
 
 ## Existing limits and low-risk next steps
 
-Limits are currently code/SQL constants, not teacher settings:30 live participants,
+Limits are currently code/SQL constants, not teacher settings:32 live participants,
 30 messages/s/socket, minimum45ms accepted pose interval,500 commands/64KiB batch,
 800,000-byte live document,150 students/class,50 saved worlds/owner,2MB PG document,
 30 checkpoints and8MB checkpoint budget/world. Change centrally and retest if tuning;
 the PG document cap being higher does not promise an equally large world can go live.
-Thirty participants includes the teacher, so30 students plus teacher needs groups
-or a deliberate capacity change and performance verification.
+The32-participant cap includes the teacher, admitting30 students plus a teacher at
+the protocol level. A raised cap does not itself prove acceptable performance.
 
-First optimize redundant document transfer: metadata-only authorization reads,
-and initialize only when the DO reports absent rather than loading full PG state
-for every ticket. Keep admission's authoritative revision/permission refresh.
-For edit throughput, the atomic commit already enforces revocation/session/class/
-membership; consider relying on that single RPC for document mutations instead of
-also doing4/5 preliminary network reads. Retain checks for controls that do not
-commit, and retain periodic/access-change invalidation. Add race/revocation tests
-before removing checks. Never acknowledge an edit before durable commit.
+The first optimization has landed: metadata-only/compact permission responses,
+one current-rights RPC per privileged action and one batch RPC per idle room check.
+`ensureRoom` still loads the full world for each ticket/connect; initializing only
+when absent could remove redundant transfer while retaining admission refresh.
+Never acknowledge an edit before durable commit or remove revocation checks merely
+to improve a benchmark.
+
+## Hosted baseline and retest boundary
+
+`CAPACITY-STAGING-BASELINE-REPORT.json` records a failed hosted baseline with30
+students plus a teacher connected: connection p95 about5.43seconds, only12 accepted
+edits, and edit acknowledgment p95 about23.85seconds. This is evidence of an
+unacceptable baseline, not capacity certification. Permission RPC changes address
+an observed source of round-trip overhead. The final hosted retest passed with31 clients and60/60 edits, authoritative
+PostgreSQL persistence and all-client convergence: median acknowledgment562.46ms,
+p95 926.19ms, with30 pose senders at2Hz. See
+`CAPACITY-STAGING-RETEST-REPORT.json`. This short workload does not certify
+sustained lesson traffic or real device rendering. Do not infer
+improved latency, billing, Chromebook rendering or classroom readiness from lower
+source-level request counts alone.
 
 Measure accepted-edit latency p50/p95, queued batches, document bytes, PG request
 count, reconnects and pose fanout on the actual hosted candidate before describing

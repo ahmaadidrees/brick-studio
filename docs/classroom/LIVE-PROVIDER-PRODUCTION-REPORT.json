@@ -1,10 +1,13 @@
 {
-  "run": "live_mtuc4pmb",
-  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
-  "completedAt": "2026-09-09T16:51:59.248Z",
-  "classId": "4c2f88e5-5194-41c3-8caf-c4450aea0dbf",
-  "worldId": "c7d4e1e1-a1ae-45a5-a8a0-a6dec9b56c0a",
+  "run": "live_mtucxcx6",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-09T17:14:54.045Z",
+  "classId": "e0544fc8-b3b4-4018-ac95-272fb7238872",
+  "worldId": "1d38406d-3128-4ecd-9c3e-410abe3ff2bf",
   "success": true,
+  "transportRetries": 0,
+  "networkFamily": "IPv4",
+  "fixtureSetupMode": "reused dedicated fixtures",
   "checks": [
     "two authenticated sockets receive stable identities and same initial document",
     "concurrent edits broadcast consistently and are committed in authoritative database",
@@ -15,5 +18,7 @@
   ],
   "limitations": [
     "No rendered browser, real classroom students, weak-device performance, or classroom-NAT load tested"
-  ]
+  ],
+  "workerVersion": "a1c904e1-3709-41f8-a4de-5ac03dc5c3cd",
+  "applicationSourceCommit": "49821fa"
 }

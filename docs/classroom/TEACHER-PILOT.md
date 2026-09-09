@@ -1,6 +1,6 @@
 # First classroom pilot
 
-This guide describes the current classroom controls. Record the deployed URL and release identity in the release evidence before student testing.
+The classroom release is live at https://virtual-legos.vercel.app. Release identities are recorded in PRODUCTION-RELEASE.json.
 
 1. Open Brick Studio, then My Class and Teacher sign in. Choose Continue with Google and select your existing teacher account. Email/password remains available as an alternative.
 2. Create a class. Give students its enrollment code. Students choose Join a class, enter the code, and create their username, password, and roster name. The roster name helps you identify students; classmates see usernames.

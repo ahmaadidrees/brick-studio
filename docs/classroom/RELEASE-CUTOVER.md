@@ -1,31 +1,26 @@
-# Classroom cutover record
+# Classroom release — deployed September 9, 2026
 
-Status: candidate verification in progress; production has not been promoted.
+The public release is live at **https://virtual-legos.vercel.app**. `PRODUCTION-RELEASE.json` records the exact identities and proof boundaries.
 
-## Known pre-release rollback targets
+## Current release
 
-- Frontend production alias: https://virtual-legos.vercel.app
-- Frontend deployment: dpl_Hndb9jJ7XS6GnZmfG1HJk2LWiX8S
-- Immutable frontend: https://virtual-legos-qd9i5i2fm-ahmaadidrees-projects.vercel.app
-- Production Worker: brick-studio-multiplayer
-- Previous Worker version: f4d8fab8-8441-4e84-95f1-dff34548bbfd
-- Production source foundation: c278ebe
+- Application source: **49821fa**, branch `codex/classroom-release`, pushed to GitHub.
+- Frontend deployment: **dpl_Fuz3vcfibrTWT5hubY5QYkGA3SW6**.
+- Immutable frontend: https://virtual-legos-g6gwe9kda-ahmaadidrees-projects.vercel.app.
+- Production Worker: **a1c904e1-3709-41f8-a4de-5ac03dc5c3cd** at https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev.
+- Public alias was re-inspected after promotion and resolves to that frontend.
+- Public Google teacher sign-in passed and preserved the existing eight-brick guest draft.
+- Production provider checks passed11/11; live checks passed6/6. Independent two-browser editing, PostgreSQL persistence, cold reload and group removal passed on the same immutable artifact.
+- The classroom-sized staging test passed31 clients and60 durable edits, with all clients converged. This is not actual Chromebook/student evidence.
 
-Recheck these identities immediately before cutover. The existing frontend expects the old anonymous APIs; rollback must consider frontend and Worker together. New classroom PostgreSQL tables and saved data must be preserved even if application code is rolled back. Do not undo additive migrations or delete Durable Object namespaces.
+The two public backend variables are persisted in Vercel: production targets the production Worker; preview targets staging. The promoted artifact was also built with explicit matching values. Production has a distinct ticket-signing secret.
 
-## Candidate evidence
+## Prior release and recovery
 
-- Provider HTTP and two-client persistence/revocation: PROVIDER-STAGING-REPORT.json and LIVE-PROVIDER-STAGING-REPORT.json.
-- Current staging Worker after legacy recovery and capacity32 change: 89823e31-14bb-4433-a768-3aaa76903cc8. Teacher Google authentication is a subsequent change still being verified.
-- Latest full check before capacity/Google additions:635frontend tests,55Worker tests, typechecks and production build passed. Capacity change subsequently passed55Worker tests.
-- Actual browser matrix: QA.md. Student/device observations remain separate from automation.
+Previous frontend: **dpl_Hndb9jJ7XS6GnZmfG1HJk2LWiX8S**, https://virtual-legos-qd9i5i2fm-ahmaadidrees-projects.vercel.app. Previous Worker: **f4d8fab8-8441-4e84-95f1-dff34548bbfd**. Original source: **c278ebe**, also preserved in the pushed `codex/rover-lab-archive` branch.
 
-## Cutover sequence
+Prefer a forward fix for classroom issues. The old Worker serves anonymous multiplayer and does not enforce the new classroom model; do not blindly restore it while assuming new classroom rooms remain protected. Any rollback must explicitly address both frontend/backend compatibility and the access policy for new classroom rooms. Preserve PostgreSQL saves, additive migrations and Durable Object namespaces; never delete them as part of rollback.
 
-1. Finish Google teacher login, legacy owner recovery and representative hosted capacity verification. Commit the exact reviewed source and record its SHA.
-2. Deploy and verify the candidate Worker with required secrets. Preserve old namespaces and migration history.
-3. Build the exact frontend candidate with both public backend variables pointing at the intended production Worker. Prepare the production deployment without assigning the public domain; verify its immutable URL.
-4. Promote that exact artifact, then cold-load the public alias and verify guest building, teacher sign-in, student sign-in, saved work and classroom discovery against the intended backend.
-5. Record new immutable frontend ID, Worker version, source SHA and verification time here. Obtain actual student/Chromebook observations using TEACHER-PILOT.md.
+## Remaining acceptance
 
-The user authorized delivery and deployment. Production remains unchanged while candidate checks run; no additional approval gate was established.
+Actual student and school-device observations remain required. Use `TEACHER-PILOT.md`. The goal stays active until that feedback and any resulting required fixes are handled. One earlier automated production group-close observation timed out; an unchanged-source rerun and independent browser removal both passed. Keep that observation with the test-runner transport limitations rather than claiming an application fix that was not made.

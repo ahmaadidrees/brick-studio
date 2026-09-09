@@ -1,9 +1,9 @@
 {
-  "run": "qa_mtuc16gj",
-  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
-  "completedAt": "2026-09-09T16:49:24.205Z",
-  "classId": "735f5923-8b04-4da0-82c4-82f9b5c72927",
-  "worldId": "eccfc628-46fa-44b0-8616-9ecd9bb47165",
+  "run": "qa_mtucnia5",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-09T17:06:08.329Z",
+  "classId": "22c50799-d59a-4902-af3e-2a9d42b5b84d",
+  "worldId": "03d7716f-4eee-481e-984e-1430655bc5b6",
   "checks": [
     "class-code registration and stable account identity",
     "durable private world creation",
@@ -23,7 +23,7 @@
     "No browser interactions or real students tested",
     "Live sockets and classroom-NAT throughput require separate verification"
   ],
-  "workerVersion": "afc8f39a-97ec-409d-990c-f0e223b5e9d6",
+  "workerVersion": "a1c904e1-3709-41f8-a4de-5ac03dc5c3cd",
   "sourceCommit": "49821fa",
-  "deploymentVerification": "wrangler deployments list --env staging confirmed100percent currentversion duringrun"
+  "deploymentVerification": "wrangler deployments list confirmed100percent productionversion duringrun"
 }
