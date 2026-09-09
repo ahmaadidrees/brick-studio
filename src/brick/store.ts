@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   BRICK_STUDIO_MAX_BRICKS,
   createBrickStudioDocument,
+  type CreateBrickStudioDocumentOptions,
   parseBrickStudioDocument,
   serializeBrickStudioDocument,
   validateBrickStudioDocument,
@@ -10,7 +11,7 @@ import {
 } from './brickDocument'
 import { BRICK_BUDGETS } from './budgets'
 import { draftIsValid as coreDraftIsValid } from './brickRules'
-import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, rotatedSize, supportHeightForFootprint } from './parts'
+import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, registerCustomParts, rotatedSize, supportHeightForFootprint } from './parts'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
 import { clampExplorePitch } from './touchInput'
 import type { BrickBudgetProfile, BrickDraft, BrickInstance, BrickMode, ViewPreset } from './types'
@@ -26,6 +27,8 @@ export type BrickHistoryDelta = {
 }
 
 export type BrickHistoryEntry = {
+  documentBefore?: BrickStudioDocument
+  documentAfter?: BrickStudioDocument
   deltas: BrickHistoryDelta[]
   selectionBefore: string[]
   selectionAfter: string[]
@@ -52,6 +55,9 @@ export type ExploreSpawnStatus = 'idle' | 'finding' | 'ready' | 'unavailable'
 export type ExplorePosition = { x: number; y: number; z: number }
 
 export type BrickState = {
+  documentMetadata: CreateBrickStudioDocumentOptions
+  setDocumentMetadata: (metadata: CreateBrickStudioDocumentOptions) => void
+  getDocumentSnapshot: () => BrickStudioDocument
   mode: BrickMode
   bricks: BrickInstance[]
   selectedIds: string[]
@@ -415,6 +421,14 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   draft: suggestedDraft(BRICK_PARTS[5].id, BRICK_COLORS[5]),
   movingId: null,
   clipboard: null,
+  documentMetadata: {},
+  setDocumentMetadata: (metadata) => {
+    const next = { environmentId: metadata.environmentId, customParts: metadata.customParts ?? [] }
+    if (JSON.stringify(get().documentMetadata) === JSON.stringify(next)) return
+    registerCustomParts(metadata.customParts ?? [])
+    set({ documentMetadata: { environmentId: metadata.environmentId, customParts: metadata.customParts?.map((part) => ({ ...part })) ?? [] } })
+  },
+  getDocumentSnapshot: () => createBrickStudioDocument(get().bricks, get().documentMetadata),
   undoStack: [],
   redoStack: [],
   budgetProfile: 'desktop',
@@ -820,8 +834,12 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   },
   newBuild: () => {
     const state = get()
-    const hadBuild = state.bricks.length > 0
+    const beforeDocument = state.getDocumentSnapshot()
+    const blankDocument = createBrickStudioDocument([])
+    const hadBuild = JSON.stringify(beforeDocument) !== JSON.stringify(blankDocument)
+    registerCustomParts([])
     set({
+      documentMetadata: { environmentId: blankDocument.environmentId, customParts: [] },
       mode: 'build',
       bricks: [],
       ...selectionPatch([]),
@@ -831,7 +849,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       clipboard: null,
       redoStack: hadBuild ? [] : state.redoStack,
       undoStack: hadBuild
-        ? appendHistory(state.undoStack, replacementHistoryEntry(state.bricks, [], 'New Build'))
+        ? appendHistory(state.undoStack, { ...replacementHistoryEntry(state.bricks, [], 'New Build'), documentBefore: beforeDocument, documentAfter: blankDocument })
         : state.undoStack,
       viewRequest: { preset: 'home', nonce: state.viewRequest.nonce + 1 },
       selectionMode: false,
@@ -845,7 +863,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     })
     return hadBuild
   },
-  exportDocument: () => serializeBrickStudioDocument(createBrickStudioDocument(get().bricks)),
+  exportDocument: () => serializeBrickStudioDocument(get().getDocumentSnapshot()),
   importDocument: (serialized) => {
     const state = get()
     const result = parseBrickStudioDocument(serialized, { maxBricks: state.brickBudget })
@@ -854,10 +872,13 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       return result
     }
     const nextBricks = result.document.bricks.map(cloneBrick)
-    const changed = !buildsAreEqual(state.bricks, nextBricks)
+    const beforeDocument = state.getDocumentSnapshot()
+    const changed = JSON.stringify(beforeDocument) !== JSON.stringify(result.document)
+    registerCustomParts(result.document.customParts)
     set({
       mode: 'build',
       bricks: nextBricks,
+      documentMetadata: { environmentId: result.document.environmentId, customParts: result.document.customParts },
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
@@ -865,7 +886,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       clipboard: null,
       redoStack: changed ? [] : state.redoStack,
       undoStack: changed
-        ? appendHistory(state.undoStack, replacementHistoryEntry(state.bricks, nextBricks, 'Import project'))
+        ? appendHistory(state.undoStack, { ...replacementHistoryEntry(state.bricks, nextBricks, 'Import project'), documentBefore: beforeDocument, documentAfter: result.document })
         : state.undoStack,
       viewRequest: { preset: 'home', nonce: state.viewRequest.nonce + 1 },
       selectionMode: false,
@@ -886,9 +907,11 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       return result
     }
     const restoredBricks = result.document.bricks.map(cloneBrick)
+    registerCustomParts(result.document.customParts)
     set((state) => ({
       mode: 'build',
       bricks: restoredBricks,
+      documentMetadata: { environmentId: result.document.environmentId, customParts: result.document.customParts },
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
@@ -916,9 +939,11 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     if (!previous) return
     // An armed brush survives undo; a restored selection would fight it, so
     // the selection restore only applies while no brush is armed.
-    const brushArmed = Boolean(state.draft && !state.movingId)
+    const brushArmed = !previous.documentBefore && Boolean(state.draft && !state.movingId)
+    if (previous.documentBefore) registerCustomParts(previous.documentBefore.customParts)
     set({
-      bricks: applyHistoryEntry(state.bricks, previous, 'undo'),
+      ...(previous.documentBefore ? { documentMetadata: { environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts }, activePartId: null, clipboard: null } : {}),
+      bricks: previous.documentBefore?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, previous, 'undo'),
       undoStack: state.undoStack.slice(0, -1),
       redoStack: appendHistory(state.redoStack, previous),
       ...selectionPatch(brushArmed ? [] : previous.selectionBefore),
@@ -936,9 +961,11 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       set({ toast: `Redo would exceed this world's ${state.brickBudget}-brick limit.` })
       return
     }
-    const brushArmed = Boolean(state.draft && !state.movingId)
+    const brushArmed = !next.documentAfter && Boolean(state.draft && !state.movingId)
+    if (next.documentAfter) registerCustomParts(next.documentAfter.customParts)
     set({
-      bricks: applyHistoryEntry(state.bricks, next, 'redo'),
+      ...(next.documentAfter ? { documentMetadata: { environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts }, activePartId: null, clipboard: null } : {}),
+      bricks: next.documentAfter?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, next, 'redo'),
       undoStack: appendHistory(state.undoStack, next),
       redoStack: state.redoStack.slice(0, -1),
       ...selectionPatch(brushArmed ? [] : next.selectionAfter),

@@ -36,7 +36,7 @@ type VersionedMessage = { v: typeof LIVE_PROTOCOL_VERSION }
 
 export type LiveClientMessage = VersionedMessage & (
   | { type: 'commands'; opId: string; commands: LiveBrickCommand[] }
-  | { type: 'replaceDocument'; opId: string; document: BrickStudioDocument }
+  | { type: 'replaceDocument'; opId: string; expectedRevision: number; document: BrickStudioDocument }
   | { type: 'resync' }
   | { type: 'setMode'; mode: LiveWorldMode }
   | { type: 'setLocked'; locked: boolean }

@@ -45,10 +45,19 @@ export function useBrickStudioDocuments(
     customParts: persistence.customParts,
   })
 
+  useEffect(() => {
+    useBrickStore.getState().setDocumentMetadata(persistence)
+  }, [persistence.environmentId, persistence.customParts])
+
+  useEffect(() => useBrickStore.subscribe((state, previous) => {
+    if (state.documentMetadata !== previous.documentMetadata) {
+      persistenceRef.current.onDocumentLoaded?.(state.getDocumentSnapshot())
+    }
+  }), [])
+
   const currentDocument = useCallback((bricks = useBrickStore.getState().bricks) => (
     createBrickStudioDocument(bricks, {
-      environmentId: persistenceRef.current.environmentId,
-      customParts: persistenceRef.current.customParts,
+      ...useBrickStore.getState().documentMetadata,
     })
   ), [])
 
@@ -65,7 +74,7 @@ export function useBrickStudioDocuments(
         persistenceRef.current.onDocumentLoaded?.(loaded.document)
       }
     } else {
-      showDocumentMessage(loaded.error.message)
+      showDocumentMessage(`${loaded.error.message} The unreadable draft will be kept in recovery storage before any new save.`)
     }
 
     const autosave = connectBrickStudioAutosave({

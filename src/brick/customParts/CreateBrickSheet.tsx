@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { BRICK_STUDIO_MAX_CUSTOM_PARTS } from '../brickDocument'
 import type { CustomPartDefinition, CustomPartTemplate } from '../types'
 import { createCustomPartDefinition } from './definition'
 import type { CreateBrickDraft } from './definition'
@@ -24,11 +25,12 @@ function boundedInteger(value: FormDataEntryValue | null, minimum: number, maxim
 
 export type CreateBrickSheetProps = {
   open: boolean
+  existingCount?: number
   onCreate: (definition: CustomPartDefinition) => void
   onClose: () => void
 }
 
-export function CreateBrickSheet({ open, onCreate, onClose }: CreateBrickSheetProps) {
+export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }: CreateBrickSheetProps) {
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -53,6 +55,14 @@ export function CreateBrickSheet({ open, onCreate, onClose }: CreateBrickSheetPr
     if (!name || name.length > 40 || !TEMPLATES.some((option) => option.value === template)
       || width === null || depth === null || height === null || !['auto', 'full', 'none'].includes(studs)) {
       setError('Use a name and whole-number dimensions inside the shown limits.')
+      return
+    }
+    if (existingCount >= BRICK_STUDIO_MAX_CUSTOM_PARTS) {
+      setError(`This world supports up to ${BRICK_STUDIO_MAX_CUSTOM_PARTS} custom parts.`)
+      return
+    }
+    if ((template === 'round' || template === 'cone') && width !== depth) {
+      setError('Round and cone bricks need matching width and depth.')
       return
     }
     onCreate(createCustomPartDefinition({ name, template, width, depth, height, studs }))

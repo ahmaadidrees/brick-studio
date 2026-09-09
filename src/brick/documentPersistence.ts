@@ -3,6 +3,7 @@ import {
   createBrickStudioDocument,
   parseBrickStudioDocument,
   serializeBrickStudioDocument,
+  validateBrickStudioDocument,
   type BrickStudioDocument,
   type BrickStudioDocumentError,
   type CreateBrickStudioDocumentOptions,
@@ -14,6 +15,7 @@ import {
 } from './liveAutosaveGuard'
 
 export const BRICK_STUDIO_LOCAL_STORAGE_KEY = 'brick-studio.current-project.v1'
+export const BRICK_STUDIO_RECOVERY_STORAGE_KEY = 'brick-studio.recovery-project.v1'
 export const BRICK_STUDIO_AUTOSAVE_DELAY_MS = 400
 
 export type BrickStudioStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -57,6 +59,12 @@ export function saveLocalBrickStudioProject(
     const document = Array.isArray(project)
       ? createBrickStudioDocument(project, options)
       : project
+    const validated = validateBrickStudioDocument(document)
+    if (!validated.ok) return storageFailure('storage-write', `Your previous save is safe. ${validated.error.message}`)
+    const previous = storage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)
+    if (previous !== null && !parseBrickStudioDocument(previous).ok) {
+      storage.setItem(BRICK_STUDIO_RECOVERY_STORAGE_KEY, previous)
+    }
     storage.setItem(
       BRICK_STUDIO_LOCAL_STORAGE_KEY,
       serializeBrickStudioDocument(document),

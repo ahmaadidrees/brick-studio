@@ -24,7 +24,7 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import {
@@ -45,7 +45,9 @@ import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
-import { createPublishedWorldUrl } from './publishedWorlds'
+import { ClassroomPanel } from '../classroom/ClassroomPanel'
+import { browserClassroomClient } from '../classroom/client'
+import { useClassroomWorld } from '../classroom/useClassroomWorld'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
 import {
   CHARACTER_DESCRIPTORS,
@@ -197,12 +199,17 @@ function useCompactLayout() {
 }
 
 type HeaderProps = StudioDocumentCommands & {
+  onSaveToAccount?: () => void
+  onOpenMyWorlds?: () => void
+  onOpenMyClass?: () => void
+  accountLabel?: string
+  saveLabel?: string
   livePolicy?: BrickStudioLivePolicy
   onOpenHelp: () => void
   onOpenWorldSetup: () => void
 }
 
-function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, accountLabel, saveLabel }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const bricks = useBrickStore((state) => state.bricks)
@@ -226,12 +233,17 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
       </nav>
       <div className="brick-header-actions">
+        {onOpenMyClass && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyClass} aria-label={`My Class${accountLabel ? ` — ${accountLabel}` : ""}`}>My Class</button>}
+        {onOpenMyWorlds && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyWorlds} aria-label="My Worlds"><span>{saveLabel || "My Worlds"}</span></button>}
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick capacity`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks</i></span>
         {mode === 'build' && <>
           <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
           <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
         </>}
         <StudioMenu
+          onSaveToAccount={onSaveToAccount}
+          onOpenMyWorlds={onOpenMyWorlds}
+          onOpenMyClass={onOpenMyClass}
           onNewBuild={livePolicy ? undefined : onNewBuild}
           onImportProject={livePolicy ? undefined : onImportProject}
           onExportProject={onExportProject}
@@ -724,6 +736,7 @@ function BuildShell({
       <TouchPlacementBar />
       <CreateBrickSheet
         open={createOpen}
+        existingCount={customParts.length}
         onCreate={(definition) => {
           if (onCreatePart(definition)) setCreateOpen(false)
         }}
@@ -913,7 +926,6 @@ export default function BrickStudioApp({
   onPublishWorld,
   publishedWorld,
   onRemix,
-  onStartRace,
   raceScene,
   raceOverlay,
   livePolicy,
@@ -922,6 +934,10 @@ export default function BrickStudioApp({
   contentPolicy,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
+  const [classroomIntent, setClassroomIntent] = useState<"save" | "worlds" | "class" | null>(null)
+  const classroomAuth = useSyncExternalStore(browserClassroomClient.subscribe, browserClassroomClient.getSession)
+  const cloud = useClassroomWorld(!readOnly && !livePolicy)
+  const closeClassroom = useCallback(() => setClassroomIntent(null), [])
   const [localEnvironmentId, setLocalEnvironmentId] = useState<EnvironmentId>(
     () => publishedWorld?.document.environmentId ?? 'classic',
   )
@@ -1031,7 +1047,7 @@ export default function BrickStudioApp({
     setLocalCustomParts(result.definitions)
     return true
   }, [customPartPolicy, customParts])
-  useBuilderShortcuts(!readOnly && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
+  useBuilderShortcuts(!readOnly && !classroomIntent && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
@@ -1040,31 +1056,20 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
-  const startCurrentWorldLive = useCallback(() => {
-    window.location.assign('/live/new')
-  }, [])
-  const publishCurrentWorld = useCallback(async () => {
-    const title = window.prompt('Name this world', 'My Brick World')?.trim()
-    if (title === undefined) return
-    try {
-      const shareUrl = await createPublishedWorldUrl(createBrickStudioDocument(
-        useBrickStore.getState().bricks,
-        { environmentId, customParts },
-      ), title || undefined)
-      try { await navigator.clipboard.writeText(shareUrl) } catch { /* The link is still shown below. */ }
-      window.prompt('Share this read-only Explore link:', shareUrl)
-      useBrickStore.setState({ toast: 'Explore snapshot link copied.' })
-    } catch (error) {
-      useBrickStore.setState({ toast: error instanceof Error ? error.message : 'Could not publish this world.' })
-    }
-  }, [customParts, environmentId])
+  const startCurrentWorldLive = useCallback(() => setClassroomIntent('class'), [])
   const documentCommands = useBrickStudioDocuments({
-    onNewBuild,
+    onNewBuild: onNewBuild ?? (cloud.world ? () => { void (async () => {
+      if (!window.confirm('Start a new guest build? Your account world will remain saved separately.')) return
+      const saved = await cloud.flush()
+      if (!saved && !window.confirm('Some edits are only in recovery storage. Download a recovery copy before leaving if needed. Continue?')) return
+      cloud.leave()
+      useBrickStore.getState().newBuild()
+    })() } : undefined),
     onImportProject,
     onExportProject,
     onStartLiveWorld: onStartLiveWorld ?? startCurrentWorldLive,
-    onPublishWorld: onPublishWorld ?? publishCurrentWorld,
-  }, !readOnly && !livePolicy, {
+    onPublishWorld: onPublishWorld ?? (() => {}),
+  }, !readOnly && !livePolicy && !cloud.world, {
     environmentId,
     customParts,
     onDocumentLoaded: (document) => {
@@ -1104,13 +1109,18 @@ export default function BrickStudioApp({
         !raceOverlay && <div className="published-world-bar">
           <div><span>Published world</span><strong>{publishedWorld?.title}</strong></div>
           <div className="published-world-actions">
-            {onStartRace && <button className="race-primary-button" type="button" onClick={onStartRace}>Start a race</button>}
+
             {onRemix && <button type="button" onClick={onRemix}>Remix this world</button>}
           </div>
         </div>
       ) : (
         <Header
           {...documentCommands}
+          onSaveToAccount={() => setClassroomIntent('save')}
+          onOpenMyWorlds={() => setClassroomIntent('worlds')}
+          onOpenMyClass={() => setClassroomIntent('class')}
+          accountLabel={classroomAuth?.user.username}
+          saveLabel={cloud.world ? `${cloud.status === 'saved' ? 'Saved' : cloud.status === 'saving' ? 'Saving…' : cloud.status === 'pending' ? 'Unsaved changes' : 'Save needs attention'}` : 'My Worlds'}
           livePolicy={livePolicy}
           onOpenHelp={onboarding.reopen}
           onOpenWorldSetup={() => setWorldSetupOpen(true)}
@@ -1153,6 +1163,17 @@ export default function BrickStudioApp({
       {worldSetupOpen && contentPreview && (
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
+      {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'A recovery copy from this account is available.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Download your recovery copy first. Reload the saved world?')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
+      {classroomIntent && <ClassroomPanel
+        intent={classroomIntent}
+        getDocument={() => useBrickStore.getState().getDocumentSnapshot()}
+        onClose={closeClassroom}
+        beforeWorldMutation={cloud.flush}
+        onWorldUpdated={world => { if (cloud.world?.id === world.id) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}
+        onSaved={world => { if (!livePolicy) void cloud.attach(world).catch(error => useBrickStore.setState({ toast: String(error) })) }}
+        onOpenWorld={async (document, world) => { if (livePolicy) { const userId = browserClassroomClient.getSession()?.user.id; if (userId) sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId, worldId: world.id })); window.location.assign('/'); return }; await cloud.attach(world, document) }}
+        onJoinWorld={async world => { const saved = await cloud.flush(); if (!saved && !window.confirm('Your latest edits are kept in this tab for recovery but are not saved online. Leave for the shared world?')) return; window.location.assign(`/live/${world.id.replaceAll('-', '')}`) }}
+      />}
       {raceOverlay}
       {liveOverlay}
     </main>

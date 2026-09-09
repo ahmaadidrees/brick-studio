@@ -20,8 +20,9 @@ import {
   type PlayerProfile,
 } from "@brick-studio/core";
 import { DurableObject } from "cloudflare:workers";
+import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, type ClassroomEnv } from "./classroom/index";
 
-export interface WorldRoomEnv {
+export interface WorldRoomEnv extends ClassroomEnv {
   WORLD_ROOMS: DurableObjectNamespace<WorldRoom>;
 }
 
@@ -30,7 +31,13 @@ type CachedOperationOutcome =
   | { opId: string; type: "replace"; revision: number }
   | { opId: string; type: "reject"; code: string; message: string };
 
+export type ClassroomSocketAccess = {
+  userId: string; username: string; role: "teacher" | "student"; worldId: string; classId: string | null;
+  canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string;
+};
+
 type WorldRoomRecord = {
+  classroomWorldId?: string;
   roomId: string;
   title: string;
   document: BrickStudioDocument;
@@ -47,6 +54,7 @@ type WorldRoomRecord = {
 };
 
 type WorldSocketAttachment = {
+  classroomAccess?: ClassroomSocketAccess;
   playerId: string;
   isOwner: boolean;
   connectedAt: number;
@@ -350,6 +358,35 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    if (url.pathname === "/internal/classroom-invalidate" && request.method === "POST") {
+      return this.withSerializedAdmission(async () => {
+        if (!this.record?.classroomWorldId) return json({ error: "world_not_found" }, 404);
+        const input = await request.json() as { userId?: string; reason?: string; document?: unknown; revision?: number };
+        for (const socket of this.sessionSockets()) {
+          const attachment = this.attachment(socket);
+          if (attachment?.classroomAccess && (!input.userId || attachment.playerId === input.userId)) {
+            attachment.superseded = true;
+            socket.serializeAttachment(attachment);
+            socket.close(4003, "Classroom access changed. Rejoin from My Class.");
+          }
+        }
+        if (input.reason === "world_saved" || input.reason === "world_restored") {
+          const latest = await loadClassroomWorld(this.env, this.record.classroomWorldId);
+          this.record.document = latest.document;
+          this.record.revision = latest.revision;
+        } else if (input.document !== undefined) {
+          const parsed = validateBrickStudioDocument(input.document);
+          if (!parsed.ok || !Number.isInteger(input.revision) || input.revision! < this.record.revision) {
+            return json({ error: "invalid_restore" }, 409);
+          }
+          this.record.document = parsed.document;
+          this.record.revision = input.revision!;
+        }
+        await this.persist();
+        this.broadcastPlayers();
+        return json({ ok: true });
+      });
+    }
     if (request.method === "POST" && url.pathname === "/init" && request.headers.get("x-world-init") === "1") {
       if (this.record) return json({ error: "already_exists" }, 409);
       const input = await request.json() as Partial<WorldRoomRecord>;
@@ -367,9 +404,10 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       }
       this.record = {
         roomId: input.roomId,
+        ...(input.classroomWorldId ? { classroomWorldId: input.classroomWorldId } : {}),
         title: initial.value.title,
         document: initial.value.document,
-        revision: 0,
+        revision: input.classroomWorldId && Number.isInteger(input.revision) ? input.revision! : 0,
         mode: "build",
         locked: false,
         ownerTokenVerifier: input.ownerTokenVerifier,
@@ -396,13 +434,35 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return json({ error: "websocket_required" }, 426);
     }
-    const playerId = url.searchParams.get("playerId") ?? "";
+    if (request.headers.has("x-classroom-access") && !this.record.classroomWorldId) return json({ error: "world_identity_conflict" }, 409);
+    let classroomAccess: ClassroomSocketAccess | undefined;
+    if (this.record.classroomWorldId) {
+      try { classroomAccess = JSON.parse(request.headers.get("x-classroom-access") ?? "null"); } catch { /* denied below */ }
+      if (!classroomAccess || classroomAccess.worldId !== this.record.classroomWorldId
+          || typeof classroomAccess.userId !== "string" || typeof classroomAccess.username !== "string") {
+        return json({ error: "classroom_auth_required" }, 401);
+      }
+    }
+    if (classroomAccess) {
+      try {
+        const worldId = classroomAccess.worldId;
+        classroomAccess = await revalidateClassroomWorldAccess(this.env, classroomAccess, worldId);
+        const latest = await loadClassroomWorld(this.env, worldId);
+        if (latest.revision !== this.record.revision) {
+          this.record.document = latest.document;
+          this.record.revision = latest.revision;
+          await this.persist();
+          this.broadcastSnapshot();
+        }
+      } catch { return json({ error: "classroom_access_denied" }, 403); }
+    }
+    const playerId = classroomAccess?.userId ?? url.searchParams.get("playerId") ?? "";
     if (!PLAYER_ID_PATTERN.test(playerId)) return json({ error: "invalid_player_id" }, 400);
     const suppliedOwnerToken = url.searchParams.get("ownerToken") ?? "";
     const suppliedOwnerVerifier = CAPABILITY_TOKEN_PATTERN.test(suppliedOwnerToken)
       ? await ownerTokenVerifier(suppliedOwnerToken)
       : "";
-    const isOwner = Boolean(
+    const isOwner = classroomAccess ? Boolean(classroomAccess.isOwner || classroomAccess.isTeacher) : Boolean(
       suppliedOwnerVerifier && safeVerifierEqual(suppliedOwnerVerifier, this.record!.ownerTokenVerifier),
     );
     const suppliedReconnectToken = url.searchParams.get("reconnectToken") ?? "";
@@ -410,13 +470,13 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const suppliedReconnectVerifier = CAPABILITY_TOKEN_PATTERN.test(suppliedReconnectToken)
       ? await reconnectTokenVerifier(suppliedReconnectToken)
       : "";
-    const validReconnect = Boolean(
+    const validReconnect = Boolean(classroomAccess) || Boolean(
       knownReconnectVerifier
       && suppliedReconnectVerifier
       && safeVerifierEqual(suppliedReconnectVerifier, knownReconnectVerifier),
     );
     const existing = this.openSockets().find((socket) => this.attachment(socket)?.playerId === playerId);
-    const existingIdentity = isOwner
+    const existingIdentity = isOwner && !classroomAccess
       ? this.openSockets().find((socket) => this.attachment(socket)?.isOwner)
       : existing;
     const knownPlayer = Boolean(existing || this.record!.profiles[playerId] || knownReconnectVerifier);
@@ -429,7 +489,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existingIdentity) return json({ error: "world_full" }, 429);
 
     let issuedReconnectToken: string | undefined;
-    if (!isOwner && !knownPlayer) {
+    if (!classroomAccess && !isOwner && !knownPlayer) {
       issuedReconnectToken = newReconnectToken();
       this.record!.reconnectTokenVerifiers[playerId] = await reconnectTokenVerifier(issuedReconnectToken);
     } else if (isOwner && knownReconnectVerifier) {
@@ -444,6 +504,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const attachment: WorldSocketAttachment = {
       playerId,
       isOwner,
+      ...(classroomAccess ? { classroomAccess } : {}),
       connectedAt: now,
       connectionId: randomHex(8),
       superseded: false,
@@ -462,11 +523,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         : { displayName: "Builder" };
       this.pruneProfileCache();
     }
+    if (classroomAccess) this.record!.profiles[playerId] = { ...this.record!.profiles[playerId], displayName: classroomAccess.username };
     await this.persist();
     for (const previous of this.sessionSockets()) {
       const previousAttachment = this.attachment(previous);
       if (previousAttachment
-          && (previousAttachment.playerId === playerId || (isOwner && previousAttachment.isOwner))) {
+          && (previousAttachment.playerId === playerId || (isOwner && previousAttachment.isOwner && !classroomAccess))) {
         this.supersedeSocket(previous);
       }
     }
@@ -505,6 +567,11 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   }
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (this.record?.classroomWorldId) return this.withSerializedAdmission(() => this.processSocketMessage(socket, message));
+    return this.processSocketMessage(socket, message);
+  }
+
+  private async processSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const bytes = typeof message === "string" ? encodedBytes(message) : message.byteLength;
     if (bytes > MAX_FRAME_BYTES) return this.sendError(socket, "message_too_large", "The live-world message is too large.");
     if (typeof message !== "string") return this.sendError(socket, "text_messages_only", "Only JSON text messages are accepted.");
@@ -544,6 +611,13 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return this.sendError(socket, "unsupported_protocol", `This room uses live protocol v${LIVE_PROTOCOL_VERSION}.`);
     }
 
+    if (attachment.classroomAccess && ["commands", "replaceDocument", "setMode", "setLocked", "setProfile", "resync"].includes(data.type)) {
+      if (!await this.reauthorizeSocket(socket, attachment)) return;
+    }
+    if (attachment.classroomAccess && !attachment.classroomAccess.canEdit
+        && ["commands", "replaceDocument", "setMode", "setLocked"].includes(data.type)) {
+      return this.rejectOperation(socket, attachment.playerId, typeof data.opId === "string" ? data.opId : "", "read_only", "You do not have editing access to this world.");
+    }
     switch (data.type) {
       case "commands":
         await this.handleCommands(socket, attachment, data, bytes);
@@ -586,6 +660,17 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   async alarm(): Promise<void> {
     if (!this.record) return;
+    if (this.record.classroomWorldId) {
+      await this.withSerializedAdmission(async () => {
+        for (const socket of this.openSockets()) {
+          const attachment = this.attachment(socket);
+          if (attachment?.classroomAccess) await this.reauthorizeSocket(socket, attachment);
+        }
+        if (this.openSockets().length) await this.ctx.storage.setAlarm(Date.now() + 60_000);
+        else await this.ctx.storage.deleteAlarm();
+      });
+      return;
+    }
     const deleteAt = this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS;
     if (Date.now() >= deleteAt) {
       for (const socket of this.ctx.getWebSockets()) socket.close(4000, "Live world expired");
@@ -622,8 +707,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const result = validateCommands(data.commands, this.record!.document);
     if (!result.ok) return this.cacheAndReject(socket, attachment.playerId, opId, result.code, result.message);
 
-    this.record!.document = result.value.document;
-    this.record!.revision += 1;
+    if (!await this.acceptDocument(socket, attachment, opId, result.value.document)) return;
     const outcome: CachedOperationOutcome = { opId, type: "apply", revision: this.record!.revision };
     this.rememberOutcome(attachment.playerId, outcome);
     await this.persist();
@@ -660,18 +744,71 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (this.record!.mode !== "build") {
       return this.cacheAndReject(socket, attachment.playerId, opId, "explore_mode", "The world cannot be replaced during Explore mode.");
     }
+    if (!Number.isInteger(data.expectedRevision) || data.expectedRevision !== this.record!.revision) {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "revision_conflict", "The world changed while this update was prepared. Review the latest world and try again.");
+    }
     if (bytes > MAX_FRAME_BYTES || encodedBytes(data.document) > LIVE_MAX_DOCUMENT_BYTES) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "document_too_large", "The replacement document is too large.");
     }
     const document = validateBrickStudioDocument(data.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
     if (!document.ok) return this.cacheAndReject(socket, attachment.playerId, opId, document.error.code, document.error.message);
     if (!this.consumeMutationBudget(socket, attachment, "control")) return;
-    this.record!.document = document.document;
-    this.record!.revision += 1;
+    if (!await this.acceptDocument(socket, attachment, opId, document.document)) return;
     const outcome: CachedOperationOutcome = { opId, type: "replace", revision: this.record!.revision };
     this.rememberOutcome(attachment.playerId, outcome);
     await this.persist();
     this.broadcastSnapshot(opId);
+  }
+
+  private async reauthorizeSocket(socket: WebSocket, attachment: WorldSocketAttachment): Promise<boolean> {
+    if (!attachment.classroomAccess) return true;
+    try {
+      const access = await revalidateClassroomWorldAccess(this.env, attachment.classroomAccess, attachment.classroomAccess.worldId);
+      attachment.classroomAccess = access;
+      attachment.isOwner = access.isOwner || access.isTeacher;
+      socket.serializeAttachment(attachment);
+      this.record!.profiles[attachment.playerId] = { ...this.record!.profiles[attachment.playerId], displayName: access.username };
+      return true;
+    } catch {
+      attachment.superseded = true;
+      socket.serializeAttachment(attachment);
+      socket.close(4003, "Classroom access changed. Rejoin from My Class.");
+      this.broadcastPlayers();
+      return false;
+    }
+  }
+
+  private async acceptDocument(socket: WebSocket, attachment: WorldSocketAttachment, opId: string, document: BrickStudioDocument): Promise<boolean> {
+    if (!this.record!.classroomWorldId) {
+      this.record!.document = document;
+      this.record!.revision += 1;
+      return true;
+    }
+    try {
+      const saved = await commitClassroomWorld(this.env, this.record!.classroomWorldId, document, this.record!.revision, attachment.classroomAccess!);
+      this.record!.document = saved.document;
+      this.record!.revision = saved.revision;
+      return true;
+    } catch (error) {
+      if (isRecord(error) && (error.status === 401 || error.status === 403)) {
+        attachment.superseded = true;
+        socket.serializeAttachment(attachment);
+        socket.close(4003, "Classroom access changed. Rejoin from My Class.");
+        this.broadcastPlayers();
+        return false;
+      }
+      // Never acknowledge an edit before the durable classroom save. A concurrent
+      // restore/save may have advanced the database while this room was active.
+      try {
+        const latest = await loadClassroomWorld(this.env, this.record!.classroomWorldId);
+        this.record!.document = latest.document;
+        this.record!.revision = latest.revision;
+        await this.persist();
+        this.broadcastSnapshot();
+      } catch { /* Retain the last confirmed document when storage is unavailable. */ }
+      await this.cacheAndReject(socket, attachment.playerId, opId, "save_conflict", "This edit was not saved. Review the refreshed world and try again.");
+      return false;
+    }
   }
 
   private async handleSetMode(
@@ -688,8 +825,13 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return;
     }
     if (!this.consumeMutationBudget(socket, attachment, "control")) return;
+    if (this.record!.classroomWorldId) {
+      try {
+        const saved = await commitClassroomWorld(this.env, this.record!.classroomWorldId, this.record!.document, this.record!.revision, attachment.classroomAccess!);
+        this.record!.revision = saved.revision;
+      } catch { return this.sendError(socket, "save_conflict", "Could not save this mode change. Rejoin the world and try again."); }
+    } else this.record!.revision += 1;
     this.record!.mode = data.mode;
-    this.record!.revision += 1;
     await this.persist();
     this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "modeChanged", mode: data.mode, revision: this.record!.revision });
   }
@@ -716,7 +858,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     attachment: WorldSocketAttachment,
     data: Record<string, unknown>,
   ): Promise<void> {
-    const profile = sanitizeProfile(data.profile);
+    const inputProfile = attachment.classroomAccess && isRecord(data.profile)
+      ? { ...data.profile, displayName: attachment.classroomAccess.username } : data.profile;
+    const profile = sanitizeProfile(inputProfile);
     if (!profile.ok) return this.sendError(socket, profile.code, profile.message);
     const current = this.record!.profiles[attachment.playerId];
     if (current && profileEqual(current, profile.value)) {
@@ -944,7 +1088,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   }
 
   private socketIdentity(attachment: WorldSocketAttachment): string {
-    return attachment.isOwner ? "owner" : `player:${attachment.playerId}`;
+    return attachment.isOwner && !attachment.classroomAccess ? "owner" : `player:${attachment.playerId}`;
   }
 
   private currentSocket(attachment: WorldSocketAttachment): WebSocket | undefined {
@@ -1022,6 +1166,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     this.record.expiresAt = Date.now() + WORLD_ROOM_TTL_MS;
     await this.ctx.storage.put("world", this.record);
     this.lastPersistedTouch = Date.now();
-    await this.ctx.storage.setAlarm(this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS);
+    if (this.record.classroomWorldId) {
+      const scheduled = await this.ctx.storage.getAlarm();
+      if (scheduled === null || scheduled > Date.now() + 60_000) await this.ctx.storage.setAlarm(Date.now() + 60_000);
+    } else await this.ctx.storage.setAlarm(this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS);
   }
 }

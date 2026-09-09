@@ -9,9 +9,11 @@ import {
 } from "@brick-studio/core";
 import { env, exports } from "cloudflare:workers";
 import { evictDurableObject, runInDurableObject } from "cloudflare:test";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ClassroomService } from "../src/classroom/index";
 import type { Env as WorkerEnv } from "../src/index";
 import {
+  newWorldId, newOwnerToken, ownerTokenVerifier,
   WORLD_ROOM_EXPIRY_GRACE_MS,
   WORLD_ROOM_TTL_MS,
   type WorldRoom,
@@ -53,15 +55,23 @@ async function workerFetch(input: string, init?: RequestInit): Promise<Response>
   return worker.fetch(new Request(input, init), env);
 }
 
+// Legacy room fixtures exercise the DO directly; public anonymous routes are retired.
+async function roomFetch(input: string, init?: RequestInit): Promise<Response> {
+  const roomId = new URL(input).pathname.split("/")[2];
+  const workerEnv = env as unknown as WorkerEnv;
+  return workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId)).fetch(input, init);
+}
 async function createWorld(document = worldDocument(), displayName = "  Ada   Builder  ") {
-  const response = await workerFetch("https://worker.test/worlds", {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: "https://virtual-legos.vercel.app" },
-    body: JSON.stringify({ title: "Shared build", document, profile: { displayName, characterId: "future-character" } }),
+  const roomId = newWorldId();
+  const ownerToken = newOwnerToken();
+  const workerEnv = env as unknown as WorkerEnv;
+  const response = await workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId)).fetch("https://internal/init", {
+    method: "POST", headers: { "x-world-init": "1", "content-type": "application/json" },
+    body: JSON.stringify({ roomId, title: "Shared build", document, initialOwnerProfile: { displayName, characterId: "future-character" }, ownerTokenVerifier: await ownerTokenVerifier(ownerToken) }),
   });
-  const body = await response.json<{ roomId: string; ownerToken: string; error?: string }>();
-  expect(response.status, JSON.stringify(body)).toBe(201);
-  return body;
+  expect(response.status).toBe(201);
+  await response.text();
+  return { roomId, ownerToken };
 }
 
 class Inbox {
@@ -97,7 +107,7 @@ async function connectWorld(roomId: string, playerId: string, ownerToken?: strin
   url.searchParams.set("playerId", playerId);
   if (ownerToken) url.searchParams.set("ownerToken", ownerToken);
   if (reconnectToken) url.searchParams.set("reconnectToken", reconnectToken);
-  const response = await workerFetch(url.toString(), {
+  const response = await roomFetch(url.toString(), {
     headers: { Upgrade: "websocket", origin: "https://virtual-legos.vercel.app" },
   });
   if (response.status !== 101 || !response.webSocket) return { response, socket: null, inbox: null, welcome: null };
@@ -124,7 +134,7 @@ function nextClose(socket: WebSocket, timeoutMs = 3_000): Promise<CloseEvent> {
 }
 
 async function getWorld(roomId: string) {
-  const response = await workerFetch(`https://worker.test/worlds/${roomId}`);
+  const response = await roomFetch(`https://worker.test/worlds/${roomId}`);
   expect(response.status).toBe(200);
   return response.json<Record<string, unknown> & { document: BrickStudioDocument; revision: number }>();
 }
@@ -301,7 +311,7 @@ describe("WorldRoom", () => {
     const rapidUrl = new URL(`https://worker.test/worlds/${roomId}/connect`);
     rapidUrl.searchParams.set("playerId", "owner_stable");
     rapidUrl.searchParams.set("ownerToken", ownerToken);
-    const rapidRequests = [1, 2].map(() => workerFetch(rapidUrl.toString(), {
+    const rapidRequests = [1, 2].map(() => roomFetch(rapidUrl.toString(), {
       headers: { Upgrade: "websocket", origin: "https://virtual-legos.vercel.app" },
     }));
     const rapidResponses = await Promise.all(rapidRequests);
@@ -482,6 +492,7 @@ describe("WorldRoom", () => {
       v: LIVE_PROTOCOL_VERSION,
       type: "replaceDocument",
       opId: "owner_201#1",
+      expectedRevision: 2,
       document: worldDocument([brick("replacement", 12, 12)]),
     });
     expect(await owner.inbox!.next("snapshot")).toMatchObject({ opId: "owner_201#1", revision: 3 });
@@ -519,6 +530,7 @@ describe("WorldRoom", () => {
       v: LIVE_PROTOCOL_VERSION,
       type: "replaceDocument",
       opId: "owner_301#3",
+      expectedRevision: 1,
       document: worldDocument([brick("new-doc", 20, 20)]),
     };
     send(replay.socket!, replacement);
@@ -725,86 +737,102 @@ describe("WorldRoom", () => {
   });
 });
 
-describe("World creation limiter", () => {
-  it("returns a clean per-IP 429 while leaving another IP and legacy race creation available", async () => {
-    const workerEnv = env as unknown as WorkerEnv;
-    const limitedIp = "203.0.113.10";
-    const limiterStub = workerEnv.WORLD_CREATION_LIMITER.get(
-      workerEnv.WORLD_CREATION_LIMITER.idFromName(worldCreationLimiterKey(limitedIp)),
-    );
-    await runInDurableObject(limiterStub, async (_instance: WorldCreationLimiter, durableState) => {
-      await durableState.storage.put("window", {
-        windowStartedAt: Date.now(),
-        count: WORLD_CREATION_LIMIT,
-      });
-    });
-    const body = JSON.stringify({
-      title: "Limited world",
-      document: worldDocument(),
-      profile: { displayName: "Ada Builder" },
-    });
-    const limited = await workerFetch("https://worker.test/worlds", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: "https://virtual-legos.vercel.app",
-        "cf-connecting-ip": limitedIp,
-      },
-      body,
-    });
-    expect(limited.status).toBe(429);
-    expect(limited.headers.get("retry-after")).toMatch(/^\d+$/);
-    expect(await limited.json()).toMatchObject({
-      error: "creation_rate_limited",
-      retryAfterSeconds: expect.any(Number),
-    });
-
-    const otherIp = await workerFetch("https://worker.test/worlds", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: "https://virtual-legos.vercel.app",
-        "cf-connecting-ip": "203.0.113.11",
-      },
-      body,
-    });
-    expect(otherIp.status).toBe(201);
-
-    const race = await workerFetch("https://worker.test/rooms", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        origin: "https://virtual-legos.vercel.app",
-        "cf-connecting-ip": limitedIp,
-      },
-      body: JSON.stringify({ title: "Legacy race", document: { bricks: [] } }),
-    });
-    expect(race.status).toBe(201);
-  });
+it("rejects stale full-world replacement without losing a concurrent accepted brick", async () => {
+  const { roomId, ownerToken } = await createWorld();
+  const owner = await connectWorld(roomId, "owner_cas", ownerToken);
+  const guest = await connectWorld(roomId, "guest_cas");
+  send(guest.socket!, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: "guest_cas#1", commands: [{ op: "place", brick: brick("keep-me") }] });
+  await guest.inbox!.next("apply");
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "replaceDocument", opId: "owner_cas#1", expectedRevision: 0, document: worldDocument() });
+  expect(await owner.inbox!.next("reject")).toMatchObject({ code: "revision_conflict", revision: 1 });
+  expect(await getWorld(roomId)).toMatchObject({ revision: 1, document: { bricks: [brick("keep-me")] } });
 });
 
-describe("RaceRoom regression", () => {
-  it("preserves existing /rooms creation, host connection, and race start", async () => {
-    const createdResponse = await workerFetch("https://worker.test/rooms", {
-      method: "POST",
-      headers: { "content-type": "application/json", origin: "https://virtual-legos.vercel.app" },
-      body: JSON.stringify({ title: "Legacy race", document: { bricks: [] } }),
-    });
-    expect(createdResponse.status).toBe(201);
-    const created = await createdResponse.json<{ roomId: string; hostToken: string }>();
-    const url = new URL(`https://worker.test/rooms/${created.roomId}/connect`);
-    url.searchParams.set("playerId", "racer_001");
-    url.searchParams.set("hostToken", created.hostToken);
-    const response = await workerFetch(url.toString(), {
-      headers: { Upgrade: "websocket", origin: "https://virtual-legos.vercel.app" },
-    });
-    expect(response.status).toBe(101);
-    const socket = response.webSocket!;
-    sockets.push(socket);
-    const inbox = new Inbox(socket);
-    socket.accept();
-    expect(await inbox.next("welcome")).toMatchObject({ playerId: "racer_001", isHost: true, status: "waiting" });
-    socket.send(JSON.stringify({ type: "start", countdownMs: 0 }));
-    expect(await inbox.next("raceStart")).toMatchObject({ countdownMs: 0 });
+it("enforces trusted classroom identity and immediate group revocation without deleting the world", async () => {
+  const { roomId } = await createWorld();
+  const workerEnv = env as unknown as WorkerEnv;
+  const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+  const worldId = "00000000-0000-4000-8000-000000000001";
+  await runInDurableObject(stub, async (_instance: WorldRoom, state: DurableObjectState) => {
+    const record = await state.storage.get<Record<string, unknown>>("world");
+    await state.storage.put("world", { ...record, classroomWorldId: worldId });
+  });
+  await evictDurableObject(stub);
+  await runInDurableObject(stub, async (instance: WorldRoom) => {
+    Object.assign((instance as unknown as { env: object }).env, { SUPABASE_URL: "https://fake-db.test", SUPABASE_SERVICE_ROLE_KEY: "test", SUPABASE_ANON_KEY: "test" });
+  });
+  const classId = "00000000-0000-4000-8000-000000000003";
+  const fixtureWorld = { id: worldId, class_id: classId, kind: "group", owner_id: "teacher", title: "Classroom", revision: 1, document: worldDocument() };
+  let revocation: "none" | "password" | "removed" | "paused" = "none";
+  const rows = vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table) => {
+    if (table === "worlds") return [fixtureWorld];
+    if (table === "students") return [{ user_id: "00000000-0000-4000-8000-000000000002", username: "TrueName", class_id: classId, auth_version: revocation === "password" ? 2 : 1, suspended: false, reset_required: false }];
+    if (table === "sessions") return [{ auth_version: 1 }];
+    if (table === "classes") return [{ id: classId, collaboration_open: revocation !== "paused" }];
+    if (table === "world_members") return revocation === "removed" ? [] : [{ user_id: "00000000-0000-4000-8000-000000000002" }];
+    return [];
+  });
+  const rpc = vi.spyOn(ClassroomService.prototype, "rpc").mockRejectedValue(new Error("database unavailable"));
+  const access = { userId: "00000000-0000-4000-8000-000000000002", username: "TrueName", role: "student", worldId, classId: null, canEdit: true, isTeacher: false, isOwner: false, authVersion: 1, sessionId: "00000000-0000-4000-8000-000000000004" };
+  const denied = await stub.fetch(`https://internal/worlds/${roomId}/connect?playerId=spoofed`, { headers: { Upgrade: "websocket" } });
+  expect(denied.status).toBe(401);
+  const response = await stub.fetch(`https://internal/worlds/${roomId}/connect?playerId=spoofed`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
+  expect(response.status).toBe(101);
+  const socket = response.webSocket!;
+  sockets.push(socket);
+  const inbox = new Inbox(socket);
+  socket.accept();
+  expect(await inbox.next("welcome")).toMatchObject({ playerId: access.userId, players: [{ playerId: access.userId, profile: { displayName: "TrueName" } }] });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Imposter" } });
+  expect(await inbox.next("players")).toMatchObject({ players: [{ profile: { displayName: "TrueName" } }] });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#1`, commands: [{ op: "place", brick: brick("unsaved") }] });
+  expect(await inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 1, document: { bricks: [] } });
+  rpc.mockImplementationOnce(async () => {
+    fixtureWorld.revision = 2;
+    fixtureWorld.document = worldDocument([brick("teacher-restored", 20, 20)]);
+    return { error: "conflict", currentRevision: 2 };
+  });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("stale-write") }] });
+  expect(await inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 2, document: { bricks: [brick("teacher-restored", 20, 20)] } });
+  rpc.mockImplementationOnce(async (_name, input) => {
+    expect(input).toMatchObject({ p_expected_revision: 2, p_actor_id: access.userId, p_session_id: access.sessionId, p_auth_version: 1 });
+    fixtureWorld.revision = 3;
+    fixtureWorld.document = input.p_document;
+    return fixtureWorld;
+  });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#3`, commands: [{ op: "place", brick: brick("durable") }] });
+  expect(await inbox.next("apply")).toMatchObject({ revision: 3, opId: `${access.userId}#3` });
+  expect(fixtureWorld.document.bricks.map(b => b.id)).toEqual(["teacher-restored", "durable"]);
+  const closed = new Promise<number>(resolve => socket.addEventListener("close", event => resolve(event.code)));
+  expect((await stub.fetch("https://internal/internal/classroom-invalidate", { method: "POST", body: JSON.stringify({ userId: access.userId }) })).status).toBe(200);
+  expect(await closed).toBe(4003);
+  for (const change of ["password", "removed", "paused"] as const) {
+    revocation = "none";
+    const fresh = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
+    expect(fresh.status).toBe(101);
+    const active = fresh.webSocket!;
+    sockets.push(active);
+    const activeInbox = new Inbox(active);
+    active.accept();
+    await activeInbox.next("welcome");
+    const revoked = new Promise<number>(resolve => active.addEventListener("close", event => resolve(event.code)));
+    revocation = change;
+    send(active, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("unauthorized") }] });
+    expect(await revoked).toBe(4003);
+  }
+  await runInDurableObject(stub, async (instance: WorldRoom, state: DurableObjectState) => {
+    await instance.alarm();
+    expect(await state.storage.get("world")).toBeTruthy();
+  });
+  rows.mockRestore();
+  rpc.mockRestore();
+});
+
+describe("Retired anonymous multiplayer routes", () => {
+  it("rejects anonymous creation for both old multiplayer systems", async () => {
+    for (const route of ["worlds", "rooms"]) {
+      const response = await workerFetch(`https://worker.test/${route}`, { method: "POST", headers: { origin: "https://virtual-legos.vercel.app", "content-type": "application/json" }, body: JSON.stringify({ title: "Bypass", document: worldDocument(), profile: { displayName: "Guest" } }) });
+      expect(response.status).toBe(410);
+    }
   });
 });

@@ -1,3 +1,4 @@
+import { BRICK_STUDIO_MAX_CUSTOM_PARTS } from '../brickDocument'
 import { BRICK_PART_MAP } from '../parts'
 import type { BrickInstance, BrickKind, CustomPartDefinition, CustomPartTemplate } from '../types'
 import { createCustomPartDefinition } from './definition'
@@ -39,14 +40,22 @@ export function resizeSelectionDefinitions(
     if (width < 1 || width > 8 || depth < 1 || depth > 8 || height < 1 || height > 12) {
       return { ok: false, message: 'Brick sizes stay between 1–8 studs wide/deep and 1–12 plates high.' }
     }
+    if ((part.kind === 'round' || part.kind === 'cone') && width !== depth) {
+      return { ok: false, message: 'Round and cone bricks need matching width and depth.' }
+    }
+    const suffix = ` ${width}×${depth}×${height}`
+    const baseName = part.name.replace(/(?: \d+×\d+×\d+)+$/, '')
     const definition = createCustomPartDefinition({
-      name: `${part.name} ${width}×${depth}×${height}`,
+      name: `${baseName.slice(0, 40 - suffix.length)}${suffix}`,
       template: TEMPLATE_BY_KIND[part.kind],
       width,
       depth,
       height,
       studs: part.kind === 'plate' ? 'full' : 'auto',
     })
+    if (!definitions.has(definition.id) && definitions.size >= BRICK_STUDIO_MAX_CUSTOM_PARTS) {
+      return { ok: false, message: `This world supports up to ${BRICK_STUDIO_MAX_CUSTOM_PARTS} custom parts.` }
+    }
     definitions.set(definition.id, definition)
     partIdsByBrickId[brick.id] = definition.id
   }

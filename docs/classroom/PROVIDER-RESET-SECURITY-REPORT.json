@@ -1,0 +1,8 @@
+{
+  "checkedAt": "2026-09-09T16:02:52.636Z",
+  "api": "http://127.0.0.1:8788/classroom/",
+  "passed": true,
+  "oldBearerPasswordUpdateStatus": 403,
+  "providerCode": "session_not_found",
+  "temporaryPasswordStillWorks": true
+}

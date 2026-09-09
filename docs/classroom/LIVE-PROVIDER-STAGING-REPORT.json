@@ -1,0 +1,18 @@
+{
+  "run": "live_mtuah9hl",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-09T16:05:15.979Z",
+  "classId": "22d5686a-b025-4244-bccc-d418aaf3e2b9",
+  "worldId": "10fd1612-23f0-40e5-9553-fd27cca88be4",
+  "success": true,
+  "checks": [
+    "two authenticated sockets receive stable identities and same initial document",
+    "concurrent edits broadcast consistently and are committed in authoritative database",
+    "removing group member closes active socket and preserves contributions",
+    "closing class revokes remaining socket and blocks group discovery",
+    "reopened class cold socket loads persisted edits"
+  ],
+  "limitations": [
+    "No rendered browser, real classroom students, weak-device performance, or classroom-NAT load tested"
+  ]
+}
