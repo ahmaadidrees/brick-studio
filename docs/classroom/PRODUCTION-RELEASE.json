@@ -28,5 +28,17 @@
   "limitations": [
     "31 simulated network clients do not establish device rendering performance",
     "Intermittent test-runner network failures and one close-event timeout occurred; successful reruns and independent browser group removal are recorded separately"
-  ]
+  ],
+  "compatibilityFollowUp": {
+    "applicationSourceCommit": "7d9be23",
+    "frontendDeployment": "dpl_3heqnPcAsVum67TfYfdqDzc7xDYk",
+    "immutableFrontend": "https://virtual-legos-ph98pn62i-ahmaadidrees-projects.vercel.app",
+    "change": "Typed-array chunks for browser and Node 22 legacy gzip compatibility",
+    "ciRun": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34382956499",
+    "ciConclusion": "success",
+    "localNode22Tests": 699,
+    "hostedChromeCompressedLegacyWorld": "passed",
+    "publicAliasVerified": true,
+    "workerUnchanged": true
+  }
 }

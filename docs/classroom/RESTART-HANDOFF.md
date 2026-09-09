@@ -1,5 +1,10 @@
 # Classroom release checkpoint — September 9, 2026
 
+## Compatibility follow-up — deployed
+
+Current public frontend is **dpl_3heqnPcAsVum67TfYfdqDzc7xDYk**, source **7d9be23**, immutable `https://virtual-legos-ph98pn62i-ahmaadidrees-projects.vercel.app`. This supersedes the initial frontend identity below. Worker remains **a1c904e1-3709-41f8-a4de-5ac03dc5c3cd**, source49821fa. Node22 CI exposed ArrayBuffer chunk incompatibility in legacy gzip streams; typed-array chunks fixed both fixture and decoder. All699 tests, types and build passed locally under Node22 and GitHub CI run34382956499. Chrome opened the compressed legacy fixture on the immutable candidate. Public alias promotion was verified. Other classroom runtime code is unchanged; earlier classroom evidence remains scoped to its recorded artifact.
+
+
 The classroom release is deployed at https://virtual-legos.vercel.app. The goal remains active pending actual student and Chromebook observations.
 
 Use `/Users/ahmaadidrees/.codex/worktrees/brick-classroom-release`, branch `codex/classroom-release`. Deployed application source is **49821fa**; later verification/document commits do not change that runtime identity. Both this branch and `codex/rover-lab-archive` (c278ebe) are pushed. GitHub authentication succeeded.
