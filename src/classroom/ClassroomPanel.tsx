@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } fro
 import type { BrickStudioDocument } from '../brick/brickDocument'
 import { browserClassroomClient, type ClassroomClient } from './client'
 import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember, ClassroomCheckpoint } from './contracts'
+import { saveLocalBrickStudioProject } from '../brick/documentPersistence'
 import './classroom.css'
 
 type Props = {
@@ -30,6 +31,8 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [loading, setLoading] = useState(Boolean(auth && !auth.user.resetRequired))
+  const [newClassName, setNewClassName] = useState('')
   const [worlds, setWorlds] = useState<ClassroomWorld[]>([])
   const [classes, setClasses] = useState<ClassroomClass[]>([])
   const [classId, setClassId] = useState('')
@@ -53,12 +56,13 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   useEffect(() => { onSessionChange?.(auth) }, [auth, onSessionChange])
   useEffect(() => {
     setWorlds([]); setClasses([]); setStudents([]); setSelectedWorld(null); setMembers([]); setCheckpoints([])
-    if (!auth || auth.user.resetRequired) return
+    if (!auth || auth.user.resetRequired) { setLoading(false); return }
+    setLoading(true)
     let cancelled = false
     Promise.all([client.request<{ worlds: ClassroomWorld[] }>('/worlds'), client.request<{ classes: ClassroomClass[] }>('/classes')]).then(([w, c]) => {
       if (cancelled) return
       setWorlds(w.worlds); setClasses(c.classes); setClassId(c.classes[0]?.id || '')
-    }).catch(error => { if (!cancelled) setError(message(error)) })
+    }).catch(error => { if (!cancelled) setError(message(error)) }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [auth, client])
   useEffect(() => {
@@ -94,6 +98,16 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     {!auth ? <>
       <p>Your current build stays here while you sign in. You can keep building without an account.</p>
       <nav aria-label="Sign in options">{(['register', 'login', 'teacher-login'] as const).map(mode => <button key={mode} aria-pressed={loginMode === mode} onClick={() => { setLoginMode(mode); setError('') }}>{mode === 'register' ? 'Join a class' : mode === 'login' ? 'Student sign in' : 'Teacher sign in'}</button>)}</nav>
+      {loginMode === 'teacher-login' && <><button className="classroom-primary" disabled={busy} onClick={() => void run(async () => {
+        const returnTo = new URL(window.location.href)
+        if (returnTo.pathname === '/') {
+          const saved = saveLocalBrickStudioProject(localStorage, getDocument())
+          if (!saved.ok) throw new Error(saved.error.message)
+          returnTo.searchParams.set('classroom', intent)
+        }
+        const url = await client.startGoogleTeacher(`${returnTo.pathname}${returnTo.search}${returnTo.hash}`)
+        window.location.assign(url)
+      })}>Continue with Google</button><p>Use your existing teacher Google account, or sign in with email and password below.</p></>}
       <form onSubmit={event => { const data = values(event); void run(async () => { await client.authenticate(loginMode, data) }) }}>
         {loginMode === 'teacher-login' ? <label>Email<input name="email" type="email" autoComplete="username" required /></label> : <><label>Class code<input name="classCode" autoComplete="off" required maxLength={32} /></label><label>Username<input name="username" autoComplete="username" required minLength={3} maxLength={24} pattern="[A-Za-z0-9][A-Za-z0-9_-]*" title="Use letters, numbers, underscores, or hyphens" /></label></>}
         {loginMode === 'register' && <label>Name your teacher knows<input name="rosterName" autoComplete="off" required maxLength={80} /><small>Only your teacher sees this name.</small></label>}
@@ -107,7 +121,8 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     </> : <>
       <div className="classroom-account"><span>Signed in as <strong>{auth.user.username}</strong></span><button disabled={busy} onClick={() => void run(async () => { await beforeWorldMutation?.(); await client.signOut(); setNotice('Signed out. Private account lists have been cleared.') })}>Sign out / switch account</button></div>
       <nav aria-label="Account sections"><button aria-pressed={tab === 'worlds'} onClick={() => setTab('worlds')}>My Worlds</button><button aria-pressed={tab === 'class'} onClick={() => setTab('class')}>My Class</button></nav>
-      {tab === 'worlds' ? <>
+      {loading && <p role="status">Loading your worlds and classes…</p>}
+      {!loading && (tab === 'worlds' ? <>
         <button className="classroom-primary" onClick={() => setShowSave(value => !value)}>Save this build to my account</button>
         {showSave && <form onSubmit={event => { event.preventDefault(); void run(async () => { const result = await client.request<{ world: ClassroomWorld }>('/worlds', 'POST', { title: saveTitle, document: getDocument(), kind: 'personal' }); onSaved?.(result.world); await reload(); setShowSave(false); setNotice('Saved to your account.'); }) }}><label>World name<input value={saveTitle} onChange={event => setSaveTitle(event.target.value)} required maxLength={80} /></label><button disabled={busy}>{busy ? 'Saving…' : 'Save world'}</button></form>}
         <WorldList worlds={worlds.filter(world => world.kind === 'personal' && world.ownerId === auth.user.id)} busy={busy} onOpen={world => void run(async () => { const result = await client.request<{ world: ClassroomWorld }>(`/worlds/${world.id}`); if (!result.world.document) throw new Error('This world did not include a complete build.'); await onOpenWorld(result.world.document, result.world); onClose() })} onRename={setRenameWorld} onDuplicate={world => void run(async () => { const result = await client.request<{ world: ClassroomWorld }>(`/worlds/${world.id}`); await client.request('/worlds', 'POST', { title: `${world.title} copy`, document: result.world.document, kind: 'personal' }); await reload() })} onManage={world => void inspectWorld(world)} />
@@ -115,13 +130,13 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
         {classes.length > 0 && <label>Class<select value={classId} onChange={event => setClassId(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>}
         {!classes.length && <p>{teacher ? 'Create your first class to invite students.' : 'No class is available for this account. Ask your teacher for help.'}</p>}
         {teacher && <>
-          <form className="classroom-inline" onSubmit={event => { const data = values(event); void run(async () => { await client.request('/classes', 'POST', { name: data.name }); await reload() }) }}><label>New class name<input name="name" required maxLength={80} /></label><button disabled={busy}>Create class</button></form>
+          <form className="classroom-inline" onSubmit={event => { const data = values(event); void run(async () => { const created = await client.request<{ class: ClassroomClass }>('/classes', 'POST', { name: data.name }); await reload(); setClassId(created.class.id); setNewClassName('') }) }}><label>New class name<input name="name" value={newClassName} onChange={event => setNewClassName(event.target.value)} required maxLength={80} /></label><button disabled={busy}>Create class</button></form>
           {currentClass && <section className="classroom-card"><h3>Class access</h3><p>Enrollment code: <strong>{currentClass.code || 'Unavailable'}</strong> · Returning sign-in code: <strong>{currentClass.loginCode}</strong></p><div className="classroom-actions"><button disabled={busy} onClick={() => void run(async () => { await client.request(`/classes/${classId}`, 'PATCH', { enrollmentOpen: !currentClass.enrollmentOpen }); await reload() })}>{currentClass.enrollmentOpen ? 'Close enrollment' : 'Open enrollment'}</button><button disabled={busy} onClick={() => void run(async () => { await client.request(`/classes/${classId}`, 'PATCH', { rotateCode: true }); await reload() })}>New enrollment code</button><button disabled={busy} onClick={() => void run(async () => { await client.request(`/classes/${classId}`, 'PATCH', { collaborationOpen: !currentClass.collaborationOpen }); await reload() })}>{currentClass.collaborationOpen ? 'Close collaboration' : 'Open collaboration'}</button></div><small>Existing accounts and saved work remain when enrollment or collaboration closes.</small></section>}
           <h3>Students</h3>{students.map(student => <div className="classroom-row" key={student.id}><span><strong>{student.rosterName}</strong><small>{student.username}{student.suspended ? ' · Suspended' : ''}{student.resetRequired ? ' · Password change required' : ''}</small></span><button onClick={() => setEditingStudent(student)}>Manage</button></div>)}
         </>}
         {currentClass && <><h3>Shared worlds</h3><p>{currentClass.collaborationOpen ? 'Choose a world to build with your group.' : teacher ? 'Collaboration is closed to students. You can still open worlds to review and manage them.' : 'Your teacher has closed collaboration. Saved worlds are preserved.'}</p>{teacher && <form className="classroom-inline" onSubmit={event => { const data = values(event); void run(async () => { await client.request('/worlds', 'POST', { title: data.title, document: getDocument(), classId, kind: data.kind }); await reload() }) }}><label>Shared world name<input name="title" required maxLength={80} /></label><label>Access<select name="kind"><option value="class">Whole class</option><option value="group">Assigned group</option></select></label><button disabled={busy}>Create from this build</button></form>}
         <WorldList worlds={worlds.filter(world => world.classId === classId && world.kind !== 'personal')} busy={busy} onOpen={world => void run(async () => { if (!currentClass.collaborationOpen && !teacher) throw new Error('Your teacher has closed collaboration.'); await onJoinWorld(world); onClose() })} onManage={teacher ? world => void inspectWorld(world) : undefined} /></>}
-      </>}
+      </>)}
       {renameWorld && <form className="classroom-card" onSubmit={event => { const data = values(event); void run(async () => { if (beforeWorldMutation && !await beforeWorldMutation()) throw new Error('Resolve the pending world save before renaming.'); const renamed = await client.request<{ world: ClassroomWorld }>(`/worlds/${renameWorld.id}`, 'PATCH', { title: data.title }); onWorldUpdated?.(renamed.world); setRenameWorld(null); await reload() }) }}><label>World name<input name="title" defaultValue={renameWorld.title} required maxLength={80} /></label><button disabled={busy}>Save name</button><button type="button" onClick={() => setRenameWorld(null)}>Cancel</button></form>}
       {editingStudent && <form className="classroom-card" onSubmit={event => { const data = values(event); void run(async () => { await client.request(`/classes/${classId}/students/${editingStudent.id}`, 'PATCH', { username: data.username, rosterName: data.rosterName, ...(data.temporaryPassword ? { temporaryPassword: data.temporaryPassword } : {}) }); const result = await client.request<{ students: ClassroomStudent[] }>(`/classes/${classId}/students`); setStudents(result.students); setEditingStudent(null); setNotice('Student account updated.') }) }}><h3>Manage student</h3><label>Username<input name="username" defaultValue={editingStudent.username} required minLength={3} maxLength={24} pattern="[A-Za-z0-9][A-Za-z0-9_-]*" title="Use letters, numbers, underscores, or hyphens" /></label><label>Roster name<input name="rosterName" defaultValue={editingStudent.rosterName} required maxLength={80} /></label><label>Temporary password<input name="temporaryPassword" autoComplete="new-password" minLength={8} placeholder="Leave empty to keep current password" /></label><button type="button" onClick={event => { const input = event.currentTarget.form?.elements.namedItem('temporaryPassword'); if (input instanceof HTMLInputElement) { input.value = generateTemporaryPassword(); input.focus() } }}>Generate temporary password</button><small>Setting a temporary password signs the student out and requires a new password.</small><div className="classroom-actions"><button disabled={busy}>Save changes</button><button type="button" disabled={busy} onClick={() => void run(async () => { await client.request(`/classes/${classId}/students/${editingStudent.id}`, 'PATCH', { suspended: !editingStudent.suspended }); const result = await client.request<{ students: ClassroomStudent[] }>(`/classes/${classId}/students`); setStudents(result.students); setEditingStudent(null) })}>{editingStudent.suspended ? 'Reactivate access' : 'Suspend classroom access'}</button><button type="button" onClick={() => setEditingStudent(null)}>Cancel</button></div></form>}
       {selectedWorld && <section className="classroom-card"><h3>{selectedWorld.title}</h3><button onClick={() => setSelectedWorld(null)}>Close world controls</button>{teacher && selectedWorld.kind === 'group' && <><h4>Group members</h4>{members.map(member => <div className="classroom-row" key={member.id}><span>{member.rosterName || member.username}</span><button disabled={busy} onClick={() => void run(async () => { const result = await client.request<{ members: ClassroomWorldMember[] }>(`/worlds/${selectedWorld.id}/members/${member.id}`, 'DELETE'); setMembers(result.members) })}>Remove from group</button></div>)}<form className="classroom-inline" onSubmit={event => { const data = values(event); void run(async () => { const result = await client.request<{ members: ClassroomWorldMember[] }>(`/worlds/${selectedWorld.id}/members`, 'POST', { userId: data.userId }); setMembers(result.members) }) }}><label>Add student<select name="userId" required>{students.filter(student => !members.some(member => member.id === student.id)).map(student => <option key={student.id} value={student.id}>{student.rosterName} ({student.username})</option>)}</select></label><button disabled={busy}>Add to group</button></form><small>Removing a member preserves their contributions.</small></>}

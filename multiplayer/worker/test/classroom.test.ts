@@ -84,23 +84,24 @@ describe('classroom account and authorization boundaries', () => {
     expect(fetcher.mock.calls).toHaveLength(2);
   });
   it('revalidates ticket identity against current membership without a bearer', async () => {
-    const { fetcher } = serviceWith({ '/rest/v1/brick_students': [student], '/rest/v1/brick_sessions': [{ auth_version: 2 }], '/rest/v1/brick_worlds': [{ id: worldId, kind: 'group', class_id: classId, owner_id: teacherId }], '/rest/v1/brick_classes': [{ id: classId, teacher_id: teacherId, collaboration_open: true }], '/rest/v1/brick_world_members': [{ user_id: studentId }] });
+    const { fetcher } = serviceWith({ '/rest/v1/rpc/brick_authorize_world': { username: 'Builder', userId: studentId, isTeacher: false, canEdit: true } });
     vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
     await expect(revalidateClassroomWorldAccess(env, { userId: studentId, sessionId: sid, authVersion: 2 }, worldId)).resolves.toMatchObject({ username: 'Builder', userId: studentId, isTeacher: false, canEdit: true });
     expect(fetcher.mock.calls.every(([url]) => !String(url).includes('/auth/'))).toBe(true);
+    expect(fetcher.mock.calls).toHaveLength(1);
   });
   it('rejects a previously issued ticket after a password reset increments version', async () => {
-    const { fetcher } = serviceWith({ '/rest/v1/brick_students': [{ ...student, auth_version: 3 }] });
+    const { fetcher } = serviceWith({ '/rest/v1/rpc/brick_authorize_world': { error: 'session_revoked' } });
     vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
     await expect(revalidateClassroomWorldAccess(env, { userId: studentId, sessionId: sid, authVersion: 2 }, worldId)).rejects.toMatchObject({ code: 'session_revoked' });
   });
   it('rejects reset-required ticket even if its version and session are current', async () => {
-    const { fetcher } = serviceWith({ '/rest/v1/brick_students': [{ ...student, reset_required: true }], '/rest/v1/brick_sessions': [{ auth_version: 2 }] });
+    const { fetcher } = serviceWith({ '/rest/v1/rpc/brick_authorize_world': { error: 'password_change_required' } });
     vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
     await expect(revalidateClassroomWorldAccess(env, { userId: studentId, sessionId: sid, authVersion: 2 }, worldId)).rejects.toMatchObject({ code: 'password_change_required' });
   });
   it('rejects an old teacher ticket after logout', async () => {
-    const { fetcher } = serviceWith({ '/rest/v1/brick_teacher_sessions': [] });
+    const { fetcher } = serviceWith({ '/rest/v1/rpc/brick_authorize_world': { error: 'session_revoked' } });
     vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
     await expect(revalidateClassroomWorldAccess(env, { userId: teacherId, sessionId: sid, authVersion: 0 }, worldId)).rejects.toMatchObject({ code: 'session_revoked' });
   });

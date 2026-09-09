@@ -5,12 +5,12 @@ import type { RaceAvatarPose, RemoteRaceAvatar } from './BrickStudioScene'
 import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { type LiveWorldMode } from './liveProtocol'
 import { createLiveRoomClient, getLiveWorld } from './liveRoomClient'
-import { browserClassroomClient, type ClassroomClient, type ClassroomAuth } from '../classroom/client'
+import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { createLiveRoomConnector } from './live/liveRoomConnector'
 import type { PlayerProfile } from './types'
 import { LiveWorldHud } from './live/LiveWorldHud'
-import { liveGuestLink, livePlayerColor, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomSnapshot } from './live/liveRoomModel'
+import { liveGuestLink, livePlayerColor, parseLiveWorldLocation, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomSnapshot } from './live/liveRoomModel'
 import type { CreateLiveWorld, FetchLiveWorldSummary } from './live/liveWorldGateway'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
 import { resolveCharacterId } from './contentCatalog'
@@ -199,6 +199,11 @@ export function classroomWorldIdFromPath(pathname: string): string | null {
   return id ? `${id.slice(0, 8)}-${id.slice(8, 12)}-${id.slice(12, 16)}-${id.slice(16, 20)}-${id.slice(20)}`.toLowerCase() : null;
 }
 
+export function legacyOwnerToken(pathname: string, hash: string): string | null {
+  const parsed = parseLiveWorldLocation(pathname, hash);
+  return parsed.kind === 'join' && classroomWorldIdFromPath(pathname) && /^[a-f0-9]{64}$/i.test(parsed.ownerToken ?? '') ? parsed.ownerToken! : null;
+}
+
 export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const client = props.classroomClient ?? browserClassroomClient;
   const auth = useSyncExternalStore(client.subscribe, client.getSession);
@@ -220,6 +225,10 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [canRecover, setCanRecover] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
+  const oldOwnerToken = legacyOwnerToken(props.initialLocation?.pathname ?? window.location.pathname, props.initialLocation?.hash ?? window.location.hash);
   const [appearance, setAppearance] = useState(() => loadCharacterPreferences());
   const profile = useMemo<PlayerProfile>(() => ({ displayName: auth.user.username, characterId: appearance.characterId, palette: appearance.palette }), [auth.user.username, appearance]);
   const connectRoom = useMemo(() => props.connectRoom ?? createLiveRoomConnector(options => createLiveRoomClient({
@@ -233,21 +242,40 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   })), [props.connectRoom, auth.user.id, client, worldId]);
   useEffect(() => {
     let active = true;
-    setReady(false); setError('');
+    setReady(false); setError(''); setCanRecover(false);
+    let checkingWorld = false;
     void (async () => {
       // Refresh expired credentials through the account client before preflight.
       const me = await client.request<{ user: ClassroomAuth['user']; classes: ClassroomAuth['classes'] }>('/me');
       const session = client.getSession();
       if (!active || !session || session.user.id !== auth.user.id) return;
       if (me.user.resetRequired) { client.setSession({ ...session, ...me }); return; }
+      checkingWorld = true;
       const summary = props.fetchWorldSummary
         ? await props.fetchWorldSummary(roomId)
         : await getLiveWorld(roomId, { headers: { Authorization: `Bearer ${session.session.accessToken}` } });
       if (active) { setTitle(summary.title || 'Classroom world'); setReady(true); }
-    })().catch(reason => { if (active) setError(friendlyReason(reason)); });
+    })().catch(reason => { if (active) { setError(friendlyReason(reason)); setCanRecover(Boolean(checkingWorld && oldOwnerToken && reason?.status === 404)); } });
     return () => { active = false; };
   }, [auth.user.id, client, roomId, props.fetchWorldSummary, retry]);
   const session = useLiveRoomSession({ connectRoom, roomId: ready ? roomId : null, profile: ready ? profile : null });
+  if (error && canRecover) return <main className="live-world-page"><section className="live-gate-card live-blocked-card">
+    <h1>Bring this older world into My Worlds</h1>
+    <p>Your owner link can recover this build into your account if the older room is still available.</p>
+    <button className="live-primary-button" type="button" disabled={recovering} onClick={async () => {
+      if (recovering || !oldOwnerToken) return;
+      setRecovering(true); setRecoveryError('');
+      try {
+        const result = await client.request<{ world: ClassroomWorld }>(`/legacy-worlds/${roomId}/import`, 'POST', { ownerToken: oldOwnerToken });
+        if (client.getSession()?.user.id !== auth.user.id) throw new Error('Your account changed. Reopen My Worlds in the correct account.');
+        sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId: auth.user.id, worldId: result.world.id }));
+        window.location.replace('/');
+      } catch (reason) { setRecoveryError(`Could not recover this older world. ${friendlyReason(reason)}`); }
+      finally { setRecovering(false); }
+    }}>{recovering ? 'Saving older world…' : 'Save older world to My Worlds'}</button>
+    {recoveryError && <p role="alert">{recoveryError}</p>}
+    <a className="live-quiet-link" href="/">Open Brick Studio</a>
+  </section></main>;
   if (error) return <BlockedView heading="Cannot open this classroom world" message={error} onRetry={() => setRetry(n => n + 1)} />;
   if (!ready || session.status !== 'active') return <BlockedView heading="Opening your classroom world…" message="Checking your class access and saved work." />;
   const snapshot = session.snapshot;

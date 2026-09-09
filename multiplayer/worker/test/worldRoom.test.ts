@@ -723,11 +723,11 @@ describe("WorldRoom", () => {
     expect((await closed).code).toBe(1008);
   });
 
-  it("caps a room at 30 concurrent players and rejects player 31", async () => {
+  it("fits 30 students plus a teacher and spare seat, rejecting player 33", async () => {
     const { roomId, ownerToken } = await createWorld();
     const first = await connectWorld(roomId, "owner_601", ownerToken);
     expect(first.response.status).toBe(101);
-    for (let index = 1; index < 30; index += 1) {
+    for (let index = 1; index < 32; index += 1) {
       const guest = await connectWorld(roomId, `guest_${String(index).padStart(3, "0")}`);
       expect(guest.response.status).toBe(101);
     }
@@ -772,8 +772,14 @@ it("enforces trusted classroom identity and immediate group revocation without d
     if (table === "world_members") return revocation === "removed" ? [] : [{ user_id: "00000000-0000-4000-8000-000000000002" }];
     return [];
   });
-  const rpc = vi.spyOn(ClassroomService.prototype, "rpc").mockRejectedValue(new Error("database unavailable"));
+  let batchUnavailable = false;
+  const commit = vi.fn().mockRejectedValue(new Error("database unavailable"));
   const access = { userId: "00000000-0000-4000-8000-000000000002", username: "TrueName", role: "student", worldId, classId: null, canEdit: true, isTeacher: false, isOwner: false, authVersion: 1, sessionId: "00000000-0000-4000-8000-000000000004" };
+  const rpc = vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name, input) => {
+    if (name === "authorize_world") return revocation === "none" ? { ...access, classId } : { error: revocation === "password" ? "session_revoked" : revocation === "paused" ? "class_closed" : "not_found" };
+    if (name === "authorize_world_batch") { if (batchUnavailable) throw new Error("permission provider unavailable"); return input.p_identities.map(() => ({ ...access, classId })); }
+    return commit(name, input);
+  });
   const denied = await stub.fetch(`https://internal/worlds/${roomId}/connect?playerId=spoofed`, { headers: { Upgrade: "websocket" } });
   expect(denied.status).toBe(401);
   const response = await stub.fetch(`https://internal/worlds/${roomId}/connect?playerId=spoofed`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
@@ -787,14 +793,14 @@ it("enforces trusted classroom identity and immediate group revocation without d
   expect(await inbox.next("players")).toMatchObject({ players: [{ profile: { displayName: "TrueName" } }] });
   send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#1`, commands: [{ op: "place", brick: brick("unsaved") }] });
   expect(await inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 1, document: { bricks: [] } });
-  rpc.mockImplementationOnce(async () => {
+  commit.mockImplementationOnce(async () => {
     fixtureWorld.revision = 2;
     fixtureWorld.document = worldDocument([brick("teacher-restored", 20, 20)]);
     return { error: "conflict", currentRevision: 2 };
   });
   send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("stale-write") }] });
   expect(await inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 2, document: { bricks: [brick("teacher-restored", 20, 20)] } });
-  rpc.mockImplementationOnce(async (_name, input) => {
+  commit.mockImplementationOnce(async (_name, input) => {
     expect(input).toMatchObject({ p_expected_revision: 2, p_actor_id: access.userId, p_session_id: access.sessionId, p_auth_version: 1 });
     fixtureWorld.revision = 3;
     fixtureWorld.document = input.p_document;
@@ -803,6 +809,38 @@ it("enforces trusted classroom identity and immediate group revocation without d
   send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#3`, commands: [{ op: "place", brick: brick("durable") }] });
   expect(await inbox.next("apply")).toMatchObject({ revision: 3, opId: `${access.userId}#3` });
   expect(fixtureWorld.document.bricks.map(b => b.id)).toEqual(["teacher-restored", "durable"]);
+  // A slow durable write must not trap presence behind the command queue or
+  // rate-limit normally spaced arrivals when that queue finally drains.
+  let releaseCommit!: () => void;
+  let enteredCommit!: () => void;
+  const entered = new Promise<void>(resolve => { enteredCommit = resolve; });
+  commit.mockImplementationOnce(async (_name, input) => {
+    enteredCommit();
+    await new Promise<void>(resolve => { releaseCommit = resolve; });
+    fixtureWorld.revision += 1;
+    fixtureWorld.document = input.p_document;
+    return fixtureWorld;
+  });
+  await runInDurableObject(stub, async (instance: WorldRoom, state: DurableObjectState) => {
+    const server = state.getWebSockets()[0];
+    const pending = instance.webSocketMessage(server, JSON.stringify({ v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#4`, commands: [{ op: "place", brick: brick("slow-durable", 30, 30) }] }));
+    await entered;
+    const start = Date.now();
+    let clock = start;
+    const time = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    try {
+      for (let frame = 0; frame < 40; frame += 1) {
+        clock = start + frame * 500;
+        await instance.webSocketMessage(server, JSON.stringify({ v: LIVE_PROTOCOL_VERSION, type: "pose", x: frame, y: 0, z: 0, yaw: 0, moving: true, jumping: false }));
+      }
+      const attachment = server.deserializeAttachment() as { lastPoseAt: number; messageRateViolations: number; superseded: boolean };
+      expect(attachment.lastPoseAt).toBe(clock);
+      expect(attachment.messageRateViolations).toBe(0);
+      expect(attachment.superseded).toBe(false);
+    } finally { time.mockRestore(); releaseCommit(); }
+    await pending;
+  });
+  expect(await inbox.next("apply")).toMatchObject({ revision: 4, opId: `${access.userId}#4` });
   const closed = new Promise<number>(resolve => socket.addEventListener("close", event => resolve(event.code)));
   expect((await stub.fetch("https://internal/internal/classroom-invalidate", { method: "POST", body: JSON.stringify({ userId: access.userId }) })).status).toBe(200);
   expect(await closed).toBe(4003);
@@ -820,10 +858,20 @@ it("enforces trusted classroom identity and immediate group revocation without d
     send(active, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("unauthorized") }] });
     expect(await revoked).toBe(4003);
   }
+  revocation = "none";
+  const idleResponse = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
+  const idle = idleResponse.webSocket!;
+  sockets.push(idle);
+  const idleInbox = new Inbox(idle);
+  idle.accept();
+  await idleInbox.next("welcome");
+  const idleClosed = new Promise<number>(resolve => idle.addEventListener("close", event => resolve(event.code)));
+  batchUnavailable = true;
   await runInDurableObject(stub, async (instance: WorldRoom, state: DurableObjectState) => {
     await instance.alarm();
     expect(await state.storage.get("world")).toBeTruthy();
   });
+  expect(await idleClosed).toBe(4003);
   rows.mockRestore();
   rpc.mockRestore();
 });
@@ -835,4 +883,28 @@ describe("Retired anonymous multiplayer routes", () => {
       expect(response.status).toBe(410);
     }
   });
+});
+
+it('exports a surviving legacy document only with the exact owner capability and no session', async () => {
+  const document = worldDocument([brick('legacy-recovery')]);
+  const {roomId,ownerToken} = await createWorld(document);
+  const ns = (env as unknown as WorkerEnv).WORLD_ROOMS;
+  const stub = ns.get(ns.idFromName(roomId));
+  const request = (token: string) => stub.fetch('https://world.internal/internal/legacy-export', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ownerToken:token})});
+  const denied = await request(newOwnerToken()); expect(denied.status).toBe(404); await denied.text();
+  const allowed = await request(ownerToken); expect(allowed.status).toBe(200);
+  const value = await allowed.json<{title:string;document:BrickStudioDocument}>();
+  expect(value).toEqual({title:'Shared build',document});
+  await runInDurableObject(stub, async (_instance, state) => { expect(state.getWebSockets()).toHaveLength(0); });
+  const publicRequest = await workerFetch('https://worker.test/internal/legacy-export', {method:'POST',body:JSON.stringify({ownerToken})});
+  expect(publicRequest.status).toBe(404);await publicRequest.text();
+});
+
+it('never exports a classroom world through legacy owner recovery even with its initializer capability', async () => {
+  const roomId=newWorldId(),ownerToken=newOwnerToken();const ns=(env as unknown as WorkerEnv).WORLD_ROOMS;
+  const stub=ns.get(ns.idFromName(roomId));
+  const initialized=await stub.fetch('https://world.internal/init',{method:'POST',headers:{'x-world-init':'1','content-type':'application/json'},body:JSON.stringify({roomId,classroomWorldId:'11111111-1111-4111-8111-111111111111',revision:1,title:'Private classroom',document:worldDocument(),initialOwnerProfile:{displayName:'Teacher'},ownerTokenVerifier:await ownerTokenVerifier(ownerToken)})});
+  expect(initialized.status).toBe(201);await initialized.text();
+  const exported=await stub.fetch('https://world.internal/internal/legacy-export',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ownerToken})});
+  expect(exported.status).toBe(404);await exported.text();
 });

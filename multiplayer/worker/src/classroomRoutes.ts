@@ -1,3 +1,4 @@
+import { readClassroomBody, ClassroomBodyError } from "./classroom/readBody";
 import type { Env } from "./index";
 import {
   authorizeClassroomWorld,
@@ -6,6 +7,7 @@ import {
   listClassroomWorldIds,
   loadClassroomWorld,
   ClassroomHttpError,
+  ClassroomService,
   type ClassroomAccessChange,
 } from "./classroom";
 import {
@@ -136,6 +138,71 @@ export async function handleReleaseRequest(
         ),
         origin,
       );
+    const legacyRoute = url.pathname.match(
+      /^\/classroom\/legacy-worlds\/([a-f0-9]{32})\/import$/,
+    );
+    if (legacyRoute) {
+      if (request.method !== "POST")
+        return outgoing(json({ code: "method_not_allowed" }, 405), origin);
+      const service = new ClassroomService(env);
+      const bearer =
+        request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1] ||
+        "";
+      const caller = await service.authenticate(bearer);
+      await service.rate(`legacy-import:${caller.id}`, 10, 60);
+      const input = await readClassroomBody(request);
+      if (
+        typeof input.ownerToken !== "string" ||
+        !/^[a-f0-9]{64}$/.test(input.ownerToken)
+      ) {
+        throw new ClassroomHttpError(
+          404,
+          "legacy_world_unavailable",
+          "This old owner link cannot recover a saved world.",
+        );
+      }
+      const stub = env.WORLD_ROOMS.get(
+        env.WORLD_ROOMS.idFromName(legacyRoute[1]),
+      );
+      const recovered = await stub.fetch(
+        "https://world.internal/internal/legacy-export",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ownerToken: input.ownerToken }),
+        },
+      );
+      if (!recovered.ok)
+        throw new ClassroomHttpError(
+          404,
+          "legacy_world_unavailable",
+          "This old owner link cannot recover a saved world.",
+        );
+      const legacy = await recovered.json<{
+        title: string;
+        document: unknown;
+      }>();
+      const create = new Request(new URL("/classroom/worlds", request.url), {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${bearer}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          title: legacy.title,
+          document: legacy.document,
+          kind: "personal",
+        }),
+      });
+      const imported = await handleClassroomRequest(create, env);
+      if (!imported)
+        throw new ClassroomHttpError(
+          503,
+          "import_unavailable",
+          "This world could not be imported. Try again.",
+        );
+      return outgoing(imported, origin);
+    }
     const ticketRoute = url.pathname.match(
       /^\/classroom\/worlds\/([^/]+)\/live-ticket$/,
     );
@@ -192,6 +259,11 @@ export async function handleReleaseRequest(
     });
     return outgoing(response ?? json({ code: "not_found" }, 404), origin);
   } catch (error) {
+    if (error instanceof ClassroomBodyError)
+      return outgoing(
+        json({ error: error.message, code: error.code }, error.status),
+        origin,
+      );
     return outgoing(
       error instanceof ClassroomHttpError
         ? json(

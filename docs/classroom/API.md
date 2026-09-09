@@ -121,6 +121,13 @@ before restore), retaining the latest30. Conflict is HTTP409 `revision_conflict`
 `currentRevision`; clients must never automatically overwrite the server version.
 No DELETE-world endpoint is exposed in this initial API.
 
+Legacy live-room owners can use `POST /classroom/legacy-worlds/:32hex/import`
+with bearer authentication and `{ownerToken}` (64hex) to save a private copy.
+The server verifies the old owner token against the surviving legacy room record,
+validates its complete document, and returns201 `{world}`. It is limited to10/minute
+per account. Missing/expired legacy records return404; this cannot recover data that
+has already expired or been deleted. Reset-required accounts cannot import.
+
 ## Live integration
 
 `handleClassroomRequest(request,env,{onAccessChanged})` invokes the awaited callback
@@ -173,3 +180,29 @@ hosted Supabase behavior. Before student rollout, verify with dedicated test ide
 7. Direct anon/authenticated REST reads/writes and RPC calls against brick_* are denied.
 
 These checks are separate from real Chromebook and student classroom acceptance.
+
+## Teacher Google sign-in
+
+The existing Supabase Google provider is reused. Brick Studio never provisions a
+teacher from profile metadata: only provider-verified UUIDs in `BRICK_TEACHER_IDS`
+can receive a registered teacher session.
+
+1. The browser creates a random PKCE verifier, its SHA-256 base64url challenge,
+   and an independent random state. Verifier/state and expiry remain in that
+   browser tab's session storage.
+2. `POST /classroom/auth/teacher-google-start` accepts `{codeChallenge,state}` and
+   returns `{url}`. The browser Origin determines the fixed
+   `/auth/teacher-callback?state=...` redirect; arbitrary redirect targets are not
+   accepted. The authorization URL selects Google, S256, and account selection.
+3. On callback the browser checks the saved state/expiry, removes callback query
+   values from browser history, and posts `{code,codeVerifier}` to
+   `/classroom/auth/teacher-google`.
+4. The Worker exchanges the one-time code using Supabase's PKCE endpoint,
+   verifies the provider user, checks the teacher UUID allowlist, and registers
+   the session before returning the normal `ClassroomAuthResult`.
+
+Access and refresh tokens are returned only in the response body. Google sign-in
+requires an allowed Supabase redirect for the exact deployed frontend origin;
+existing ClassChat redirect settings must be preserved. Backend unit tests prove
+input and teacher-allowlist boundaries, not completion of a real Google consent
+flow. See the [Supabase PKCE documentation](https://supabase.com/docs/guides/auth/sessions/pkce-flow).

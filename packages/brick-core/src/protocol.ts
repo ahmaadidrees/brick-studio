@@ -2,7 +2,8 @@ import type { BrickStudioDocument } from './brickDocument'
 import type { BrickInstance, PlayerProfile } from './types'
 
 export const LIVE_PROTOCOL_VERSION = 1
-export const LIVE_MAX_PLAYERS = 30
+// Accommodate a class of 30 students plus their teacher and one spare seat.
+export const LIVE_MAX_PLAYERS = 32
 export const LIVE_MAX_COMMAND_BYTES = 64 * 1024
 export const LIVE_MAX_COMMANDS = 500
 export const LIVE_MAX_DOCUMENT_BYTES = 800_000

@@ -3,9 +3,10 @@
 The first reusable boundary is provider identity plus explicit product membership.
 The dependency-free `packages/classroom-contracts` fixture projects the current
 Brick and ClassChat models into a common access summary. It contains no credentials,
-network requests, enrollment, password reset, or database writes. Neither product
-imports it in production yet. Its tests prove adapter behavior, not an integrated
-login experience or live membership synchronization.
+network requests, enrollment, password reset, or database writes. An isolated
+ClassChat consumer now imports a source copy of this contract and has passed real
+cookie/API/Postgres verification. Neither production deployment imports it yet.
+This proves bounded identity reuse, not shared enrollment or password recovery.
 
 ## Current sources inspected
 
@@ -37,24 +38,61 @@ both products must enforce a common reset/revocation policy; otherwise a teacher
 reset in one product could leave an old session usable in another. Do not equate
 Brick's reset flag with ClassChat's membership flag without implementing that rule.
 
-## Next real pilot after Brick is stable
+## Completed bounded ClassChat consumer pilot
 
-1. Use a dedicated synthetic student and teacher-owned test class, never migrate
-   an existing classroom for proof. Record the exact candidate SHAs and provider.
-2. Add a server-only ClassChat adapter in an isolated ClassChat branch. Resolve the
-   verified provider user, then existing ClassChat profile/membership. No implicit
-   teacher approval or auto-enrollment based on Brick membership.
-3. Normalize both products' authoritative results using this contract, compare
-   immutable user ID/provider, and retain separate class IDs and access decisions.
-4. Verify approved teacher versus pending teacher, unrelated student, suspended
-   membership, locked account, forced reset, closed class, and cross-class guessed
-   identifiers. Confirm ClassChat thread/bot rules still run after the common gate.
-5. Browser login in each product, cold refresh, sign-out, then provider password
-   reset and old-session replay. Verify revocation on both products before claiming
-   shared account recovery. No copy of bearer tokens into URLs or local fixtures.
-6. Only then wire a feature-flagged ClassChat consumer and record actual DB/API/
-   browser evidence. This is the outstanding bounded integration proof in the goal;
-   running the fixture alone does not finish it.
+Authoritative pilot inspected at commit
+`1a7848c61f5b443630303f1aaf6b6bd29c887b18`, branch
+`codex/classroom-identity-pilot`, base `7861a83`. Worktree:
+`/Users/ahmaadidrees/.codex/worktrees/classchat-identity-pilot`.
+The original ClassChat checkout and production deployment were not changed.
+
+The consumer is `src/app/api/classroom-identity/route.ts` in that worktree.
+`GET /api/classroom-identity?classId=<uuid>` is disabled unless
+`CLASSROOM_IDENTITY_PILOT=true`. It uses ClassChat's existing verified cookie session
+and explicit profile approval, class ownership and membership reads. It returns
+only a coarse access projection. It never enrolls or approves users automatically,
+never replaces operation-specific chat permissions, and does not accept Brick
+membership as ClassChat permission. The dependency-free contract is copied into
+`src/lib/classroom/identity-contract.ts`; it has not been published as a package.
+
+Evidence artifacts in the pilot worktree:
+
+- `classroom-identity-proof.json`: real provider/API/Postgres results recorded
+  September 9, 2026 at16:15:34UTC.
+- `tools/verify-classroom-identity.mjs`: exact dedicated-fixture verifier; requires
+  explicit fixture authorization and refuses to overwrite an existing profile.
+- `docs/architecture/classroom-identity-pilot.md`: implementation/proof boundaries.
+- `tests/classroom-identity.test.ts`: local policy contract tests. The complete
+  ClassChat local suite passed14 tests; Next route generation and TypeScript passed.
+
+Real verification first denied the shared-provider QA identity without a ClassChat
+profile (401). Explicit setup of a new QA-only approved profile and owned class
+then produced a200 projection matching authoritative Postgres ownership. A guessed
+unrelated class returned404. Suspending the QA approval returned403 with the same
+provider session. These are actual authenticated HTTP cookie/API/database checks,
+not mocked endpoint responses.
+
+Fixture manifest: Auth UUID `9f0c5437-6f61-4206-99c7-cadaa206e1d3`; new ClassChat class
+`6526c9c7-fc51-44a9-8554-215b93d1f5b3`. The recorded cleanup suspended the QA teacher
+profile and closed the class with enrollment disabled. No existing teacher or
+student records were modified. This is the recorded run state, not a claim that
+provider state was queried again during this documentation update.
+
+## Limits and subsequent adoption work
+
+The guest endpoint was checked in an actual browser; screenshot:
+`/tmp/classchat-identity-pilot-guest.png`. The positive path used real HTTP cookies,
+not a positive browser UI journey. The pilot is not deployed and its feature flag
+remains off by default. It establishes a real bounded consumer beyond the original
+fixture, while preserving product-specific permissions.
+
+Shared student provisioning, synchronized class membership and cross-product
+password/session revocation are not delivered by this read-only pilot. Before
+adopting shared student accounts, test a dedicated student across both products:
+login/cold refresh, suspension/reset, old bearer and refresh replay, class closure,
+and existing ClassChat thread/bot rules. Require actual browser/API/database proof
+before claiming shared account recovery. A production consumer should import one
+versioned contract rather than maintain independent source copies.
 
 ## Local contract verification
 

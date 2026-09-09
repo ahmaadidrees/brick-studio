@@ -88,3 +88,37 @@ before removing checks. Never acknowledge an edit before durable commit.
 Measure accepted-edit latency p50/p95, queued batches, document bytes, PG request
 count, reconnects and pose fanout on the actual hosted candidate before describing
 it as scalable or cheap. No migration is warranted merely from this estimate.
+
+## Downstream edit payload check
+
+Source rechecked after integration: normal accepted brick commands broadcast
+`type:apply` with normalized operation deltas, not a full document. The client
+subscribes to changed bricks and computes `diffBricksToLiveCommands`. A single
+place/move/update sends one complete affected brick; delete sends an ID. The room
+broadcast includes the sender as its acknowledgment, so30 connected clients means
+30 outbound copies of each apply message.
+
+Measured locally with `Buffer.byteLength(JSON.stringify(...))`, a synthetic1000-brick
+fixture using UUIDs, integer grid positions, `brick-2x4`, and six-digit colors produced:
+
+| Serialized JSON | Bytes |
+|---|---:|
+| Full document |117,196|
+| Snapshot envelope |117,264|
+| Single-place apply envelope |265|
+| Single-place apply to30 recipients |7,950|
+| Snapshot to30 recipients |3,517,920|
+
+At the illustrative6 accepted edits/second, normal apply traffic is47,700bytes/s
+aggregate (~1,590bytes/s per client), excluding poses, profiles, framing, compression
+and retries. Broadcasting a full snapshot at that rate would instead be about
+21.1MB/s, roughly443times more. The implementation does not do that on the normal
+path. These are measured fixture serialization sizes, not measured network traffic;
+long IDs/coordinates, command batch size and custom-part metadata change them.
+
+Snapshots still occur for deliberate full-document replacement, commit-conflict
+reload/broadcast, revision mismatch during admission, and explicit resync/replay
+fallback. Some target one client; conflict/replacement broadcasts target the room.
+Repeated conflicts/reconnects could turn otherwise compact editing into expensive
+snapshot traffic, so measure snapshot count/bytes alongside edit latency and queue
+length. No normal-broadcast payload fix is needed from this review.

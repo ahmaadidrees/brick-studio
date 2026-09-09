@@ -108,3 +108,85 @@ without silent retry/adopting the server revision, account switches, and disposa
 not clearing a replacement controller's recovery. Hook tests exercise actual guest
 autosave guard plus cloud attach/signout and delayed resume after account switch.
 These are local deterministic regressions, not hosted account/persistence proof.
+
+## Real-provider browser exercise, 09:09–09:24 PDT
+
+Actual Chromium UI at local Vite5182 → local Worker8788 → existing Supabase
+`wfrvgbnmyenidlpmimhl`. This is real provider persistence with local frontend/Worker,
+not hosted candidate or actual student-device proof. Separate teacher and student
+browser sessions were used; credentials were loaded privately from ignored fixture
+configuration and never entered into source or this report.
+
+- Teacher sign-in succeeded. Created `UI QA Sep9 0910` through UI, class
+  `712e2874-0026-4cba-9f5a-c9a3e9a1a92c`. Minor UX findings sent to UI owner: new
+  class did not automatically select itself; loading briefly claimed no classes.
+- New browser guest placed a brick, then self-registered with displayed class code,
+  selected username/password and private roster name. Test student UUID
+  `533d646f-96a6-4d86-8bd4-e1e08579bc02`.
+- Created and placed custom brick `Cloud QA custom`, saved through My Worlds form
+  as `UI QA cloud custom`, world `dab7b7d2-fa1a-4f86-a4dd-5dc7b2d26909`.
+  Reload restored account world. Placed another custom brick, observed Unsaved →
+  Saved. Direct authoritative PG read confirmed revision2,3bricks,1custom definition.
+  Signing out restored the guest2brick draft rather than overwriting it with cloud3.
+- Returning student sign-in succeeded. Teacher created classwide
+  `UI QA shared world`, UUID `f43e5276-e77e-42b9-a4c3-c39822e49745`. Both browsers
+  joined through their My Class lists without exchanging links. People displayed2.
+  Teacher placed stock2×4, student placed1×1 atop it; both UIs displayed2bricks.
+  PG subsequently confirmed revision3 with both accepted contributions.
+- Teacher clicked Close collaboration. Teacher live UI displayed
+  `Classroom access changed. Rejoin from My Class.` PG confirmed collaboration
+  closed and both contributions preserved. Student browser automation became
+  unresponsive and eventually reported `Resource temporarily unavailable (os error
+  35)` after daemon retries. Therefore student rendered revocation is NOT verified
+  by this run; backend revocation evidence belongs to separate provider tests.
+- Cleanup via authenticated classroom API confirmed enrollment=false,
+  collaboration=false, and this test student suspended=true. Test worlds retained
+  for evidence; no unrelated students/classes were changed.
+
+Still required: hosted UI repetition, forced-password-reset and rename UI, group
+member control UI, student rendered revocation in a responsive browser, cross-device
+cold sign-in/open, physical Chromebook and classroom observations.
+
+## Student revocation follow-up (integrity lane)
+
+The prior student automation error was resolved by independent reproduction in fresh
+agent-browser session `brick-revocation-proof` around09:19–09:21PDT. Actual student
+login at local5182/API8788 entered the existing2brick shared world. Teacher API
+class-close caused rendered `Classroom access changed`, with zero canvas elements;
+`/tmp/brick-student-after-revoke.png` was visually verified by the integrity worker.
+Fresh browser stayed responsive. Fixture class/student were closed/suspended again.
+This establishes local-browser student class revocation; the original daemon os35
+was an isolated automation observation failure, not reproduced product behavior.
+
+## Teacher controls through actual UI, subsequent local-provider run
+
+Reused only dedicated class712e2874-0026-4cba-9f5a-c9a3e9a1a92c and test student
+533d646f-96a6-4d86-8bd4-e1e08579bc02. Fresh independent browser sessions
+`brick-controls-proof` and `brick-controls-student`, frontend5182/API8788.
+
+- Teacher Manage → Reactivate access succeeded. Teacher changed username from
+  `ui_qa_student` to `ui_qa_renamed` through Save changes. Student logged in through
+  UI using renamed username and unchanged password.
+- Teacher manually filled Temporary password and saved. The old student session's
+  next account request returned to sign-in; it could not retain account access.
+- Temporary-password login rendered only forced New password/Repeat/Set/Sign out
+  controls. Reusing the temporary password returned the explicit error requiring a
+  different password. A different password succeeded and restored account sections.
+- My Worlds still listed `UI QA cloud custom`; Open restored3bricks, proving rename
+  and password reset preserved the same student's saved-world ownership.
+- Teacher opened collaboration, created Assigned group `UI QA removable group`
+  (f7c9a61a-41ce-4862-8f56-ccbe9e1522c8), opened World controls, and added the student
+  using Add to group. Student discovered and joined through My Class and placed a
+  stock brick.
+- Teacher clicked Remove from group while student was live. Student rendered
+  `Classroom access changed. Rejoin from My Class.` Screenshot
+  `/tmp/brick-group-removal-student.png` captured and visually inspected. Reloading
+  the same live URL ultimately rendered `Cannot open this classroom world / World
+  not found.` PG inspection confirmed group revision2, the contributed brick
+  preserved, and zero membership rows.
+- Cleanup via authenticated classroom API confirmed enrollment/collaboration closed
+  and test student suspended. Renamed fixture account and test-world evidence remain;
+  private fixture password file was updated for authorized future QA.
+
+These controls now have actual local UI → real-provider evidence. Hosted candidate
+repetition and real teacher/student hardware observations remain separate gates.

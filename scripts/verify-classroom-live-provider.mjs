@@ -84,7 +84,8 @@ try {
   world = (await api('worlds', teacher.session.accessToken, 'POST', { title: run, kind: 'group', classId: classroom.id, document: doc }, [201])).world;
   for (const student of students) await api(`worlds/${world.id}/members`, teacher.session.accessToken, 'POST', { userId: student.user.id });
   const oldTicket = await ticket(students[0]);
-  const a = connect(oldTicket), b = connect(await ticket(students[1]));
+  let a = connect(oldTicket);
+  const b = connect(await ticket(students[1]));
   await check('two authenticated sockets receive stable identities and same initial document', async () => {
     const [first, second] = await Promise.all([a.next('welcome'), b.next('welcome')]);
     assert.equal(first.playerId, students[0].user.id); assert.equal(second.playerId, students[1].user.id);
@@ -102,6 +103,23 @@ try {
     const stored = await authoritative();
     assert.equal(stored.revision, world.revision + 2);
     assert.deepEqual(stored.document.bricks.sort((x, y) => x.id.localeCompare(y.id)), bricks);
+  });
+  await check('teacher password reset revokes active socket and old ticket until password replacement', async () => {
+    const resetTicket = await ticket(students[0]), resetTicketIssuedAt = Date.now();
+    const temporaryPassword = `Qa!${randomBytes(20).toString('hex')}`;
+    await api(`classes/${classroom.id}/students/${students[0].user.id}`, teacher.session.accessToken, 'PATCH', { temporaryPassword });
+    assert.equal((await a.closed()).code, 4003);
+    assert.ok(Date.now() - resetTicketIssuedAt < 55_000, 'Reset ticket must remain unexpired');
+    assert.ok([401, 403, 404].includes(await upgradeStatus(resetTicket)));
+    const reset = await api('auth/login', null, 'POST', { classCode: classroom.loginCode, username: students[0].user.username, password: temporaryPassword });
+    assert.equal(reset.user.resetRequired, true);
+    await api(`worlds/${world.id}/live-ticket`, reset.session.accessToken, 'POST', undefined, [403]);
+    students[0] = await api('auth/change-password', reset.session.accessToken, 'POST', { password: `Qa!${randomBytes(20).toString('hex')}` });
+    assert.equal(students[0].user.resetRequired, false);
+    a = connect(await ticket(students[0]));
+    const welcome = await a.next('welcome');
+    assert.equal(welcome.document.bricks.length, 2);
+    assert.equal((await authoritative()).document.bricks.length, 2);
   });
   await check('removing group member closes active socket and preserves contributions', async () => {
     const removalTicket = await ticket(students[0]), removalTicketIssuedAt = Date.now();

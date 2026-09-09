@@ -20,7 +20,7 @@ import {
   type PlayerProfile,
 } from "@brick-studio/core";
 import { DurableObject } from "cloudflare:workers";
-import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, type ClassroomEnv } from "./classroom/index";
+import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, revalidateClassroomWorldAccessBatch, type ClassroomEnv } from "./classroom/index";
 
 export interface WorldRoomEnv extends ClassroomEnv {
   WORLD_ROOMS: DurableObjectNamespace<WorldRoom>;
@@ -358,6 +358,22 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    // Reachable only through the authenticated outer legacy-import route.
+    // A surviving owner capability recovers a private copy, never anonymous access.
+    if (url.pathname === "/internal/legacy-export" && request.method === "POST") {
+      return this.withSerializedAdmission(async () => {
+        if (!this.record || this.record.classroomWorldId) return json({ error: "legacy_world_unavailable" }, 404);
+        let input: { ownerToken?: unknown };
+        try { input = await request.json() as { ownerToken?: unknown }; }
+        catch { return json({ error: "legacy_world_unavailable" }, 404); }
+        const token = input?.ownerToken;
+        if (typeof token !== "string" || !CAPABILITY_TOKEN_PATTERN.test(token)
+            || !safeVerifierEqual(await ownerTokenVerifier(token), this.record.ownerTokenVerifier)) {
+          return json({ error: "legacy_world_unavailable" }, 404);
+        }
+        return json({ title: this.record.title, document: this.record.document });
+      });
+    }
     if (url.pathname === "/internal/classroom-invalidate" && request.method === "POST") {
       return this.withSerializedAdmission(async () => {
         if (!this.record?.classroomWorldId) return json({ error: "world_not_found" }, 404);
@@ -567,11 +583,8 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   }
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    if (this.record?.classroomWorldId) return this.withSerializedAdmission(() => this.processSocketMessage(socket, message));
-    return this.processSocketMessage(socket, message);
-  }
-
-  private async processSocketMessage(socket: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    // Admission is measured when the frame arrives, never after database work
+    // drains the mutation queue. Presence must not wait behind durable writes.
     const bytes = typeof message === "string" ? encodedBytes(message) : message.byteLength;
     if (bytes > MAX_FRAME_BYTES) return this.sendError(socket, "message_too_large", "The live-world message is too large.");
     if (typeof message !== "string") return this.sendError(socket, "text_messages_only", "Only JSON text messages are accepted.");
@@ -611,6 +624,22 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return this.sendError(socket, "unsupported_protocol", `This room uses live protocol v${LIVE_PROTOCOL_VERSION}.`);
     }
 
+    if (data.type === "pose") {
+      this.handlePose(socket, attachment, data, bytes, now);
+      if (!this.record.classroomWorldId) await this.touch();
+      return;
+    }
+    if (this.record.classroomWorldId) {
+      return this.withSerializedAdmission(() => this.processSocketMessage(socket, data, bytes));
+    }
+    return this.processSocketMessage(socket, data, bytes);
+  }
+
+  private async processSocketMessage(socket: WebSocket, data: Record<string, unknown>, bytes: number): Promise<void> {
+    if (typeof data.type !== "string") return;
+    // A queued frame may have lost access while waiting. Re-read its attachment.
+    const attachment = this.attachment(socket);
+    if (!attachment || !this.record || attachment.superseded || this.currentSocket(attachment) !== socket) return;
     if (attachment.classroomAccess && ["commands", "replaceDocument", "setMode", "setLocked", "setProfile", "resync"].includes(data.type)) {
       if (!await this.reauthorizeSocket(socket, attachment)) return;
     }
@@ -637,9 +666,6 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       case "setProfile":
         await this.handleSetProfile(socket, attachment, data);
         break;
-      case "pose":
-        this.handlePose(socket, attachment, data, bytes, now);
-        break;
       default:
         this.sendError(socket, "unknown_message", "The live-world message type is unknown.");
         return;
@@ -662,9 +688,20 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (!this.record) return;
     if (this.record.classroomWorldId) {
       await this.withSerializedAdmission(async () => {
-        for (const socket of this.openSockets()) {
-          const attachment = this.attachment(socket);
-          if (attachment?.classroomAccess) await this.reauthorizeSocket(socket, attachment);
+        const sessions = this.openSockets().map(socket => ({ socket, attachment: this.attachment(socket) })).filter(session => session.attachment?.classroomAccess);
+        if (sessions.length) {
+          try {
+            const results = await revalidateClassroomWorldAccessBatch(this.env, sessions.map(session => session.attachment!.classroomAccess!), this.record!.classroomWorldId!);
+            for (let index = 0; index < sessions.length; index += 1) {
+              const { socket, attachment } = sessions[index];
+              const access = results[index]?.access;
+              if (access) this.applyReauthorizedAccess(socket, attachment!, access);
+              else this.revokeSocket(socket, attachment!);
+            }
+          } catch {
+            // Unavailable permission data must never extend a session's access.
+            for (const { socket, attachment } of sessions) this.revokeSocket(socket, attachment!);
+          }
         }
         if (this.openSockets().length) await this.ctx.storage.setAlarm(Date.now() + 60_000);
         else await this.ctx.storage.deleteAlarm();
@@ -764,18 +801,29 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (!attachment.classroomAccess) return true;
     try {
       const access = await revalidateClassroomWorldAccess(this.env, attachment.classroomAccess, attachment.classroomAccess.worldId);
-      attachment.classroomAccess = access;
-      attachment.isOwner = access.isOwner || access.isTeacher;
-      socket.serializeAttachment(attachment);
-      this.record!.profiles[attachment.playerId] = { ...this.record!.profiles[attachment.playerId], displayName: access.username };
-      return true;
+      return this.applyReauthorizedAccess(socket, attachment, access);
     } catch {
-      attachment.superseded = true;
-      socket.serializeAttachment(attachment);
-      socket.close(4003, "Classroom access changed. Rejoin from My Class.");
-      this.broadcastPlayers();
+      this.revokeSocket(socket, attachment);
       return false;
     }
+  }
+
+  private applyReauthorizedAccess(socket: WebSocket, attachment: WorldSocketAttachment, access: ClassroomSocketAccess): boolean {
+    const current = this.attachment(socket);
+    if (!current || current.superseded || this.currentSocket(current) !== socket) return false;
+    Object.assign(attachment, current);
+    attachment.classroomAccess = access;
+    attachment.isOwner = access.isOwner || access.isTeacher;
+    socket.serializeAttachment(attachment);
+    this.record!.profiles[attachment.playerId] = { ...this.record!.profiles[attachment.playerId], displayName: access.username };
+    return true;
+  }
+
+  private revokeSocket(socket: WebSocket, attachment: WorldSocketAttachment): void {
+    attachment.superseded = true;
+    socket.serializeAttachment(attachment);
+    socket.close(4003, "Classroom access changed. Rejoin from My Class.");
+    this.broadcastPlayers();
   }
 
   private async acceptDocument(socket: WebSocket, attachment: WorldSocketAttachment, opId: string, document: BrickStudioDocument): Promise<boolean> {

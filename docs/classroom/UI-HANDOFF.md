@@ -16,3 +16,6 @@ Worktree /Users/ahmaadidrees/.codex/worktrees/brick-classroom-release. Full impl
 
 ## Remaining
 Root browser walkthrough and any discovered fixes; actualclassroom/login/configvalidation. UI polish optional after functional evidence. No teacher live credentials were reset or invented. Teacher login existingprovideraccount only. Keep frontend private documents out of gueststorage; modifications to hook transitions need tests.
+
+## Google teacher sign-in (latest)
+User confirmed Google teacher login. Added client.startGoogleTeacher/finishGoogleTeacher with tab-scoped PKCE/state, 10-minute expiration, account-context guard, and same-origin return path. security_review worker backend contract /auth/teacher-google-start and /auth/teacher-google. TeacherGoogleCallback route wired in main; immediately strips callback query, exchanges through backend, returns original MyClass/MyWorlds/Save intent. Guest complete document saved before redirect from root editor. No provider tokens in URL. Teacher email/password fallback retained; student flow unchanged. Root configured actual Supabase callback allowlist and owns browser auth validation. Tests:23classroom tests pass including3Google PKCE cases; frontend tsc passes. googleTeacher.test.ts uses a scoped TS expected-error for Node crypto import since application DOM timer types must not gain Node globals.

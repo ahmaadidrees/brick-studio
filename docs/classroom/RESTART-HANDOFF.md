@@ -1,29 +1,40 @@
-# Classroom release restart checkpoint — 2026-09-09
+# Classroom release checkpoint — 2026-09-09
 
-Goal remains ACTIVE; release is not yet integrated or hosted-verified. User authorized implementation and aggressive parallel workers, aiming for student testing today.
+Goal remains ACTIVE. Production has NOT been promoted. Actual classroom/student/device verification remains outstanding. The bounded ClassChat read-only identity pilot has passed real API/session/PostgreSQL checks in its isolated worktree; it is not a full shared-login rollout.
 
-## Workspace and ownership
-Release worktree: /Users/ahmaadidrees/.codex/worktrees/brick-classroom-release
-Branch: codex/classroom-release, production base c278ebe. Uncommitted changes are intentional shared agent work; preserve them. Original experiment and production checkout remain separate.
+## Authoritative workspace
 
-- classroom_backend: completed backend src/classroom index, SQL migration, shared contracts, API.md. 13 tests and worker TypeScript pass. Available for followup.
-- document_integrity: completed document integrity/store/persistence and WorldRoom/client protocol edits. 86 integrity tests, 19 room tests, 25 client tests and TypeScript passed in lane. Available for followup.
-- classroom_ui: actively integrating BrickStudioApp.tsx, LiveWorldPage.tsx, main.tsx and classroom panel/cloud autosave. See UI-HANDOFF.md when available. Do not overwrite active edits.
-- Root owns outer Worker index.ts/routing/tickets, credentials, deployment, full integration validation. Outer routing NOT implemented yet.
+Use `/Users/ahmaadidrees/.codex/worktrees/brick-classroom-release`, branch `codex/classroom-release`. Initial implementation commit3d21fa2; legacy cleanup9ddf605. Preserve newer concurrent QA changes. Root desktop task directory is still an older experiment; do not edit that by accident.
 
-## Next implementation
-Wire handleClassroomRequest and authenticated cloud world live-ticket routing in Worker index. Backend exports authorizeClassroomWorld, loadClassroomWorld, commitClassroomWorld, listClassroomWorldIds. Consult docs/classroom/API.md and source for exact types. DO init requires classroomWorldId UUID and revision plus original room fields. Trusted x-classroom-access JSON must be stripped from external requests and injected only by authenticated outer Worker. Internal POST /internal/classroom-invalidate closes matching sockets; never expose publicly. Authoritative DB CAS before broadcasting is in DO. Ensure restore ordering, session expiry, revocation and private/cloud save synchronization. Use separate random ticket signing secret; never put long-lived access tokens in WebSocket URLs.
+## Completed
 
-Guest building stays free/accountless. Class-code username/password signup, teacher roster name, durable My Worlds, minimal teacher controls. Shared worlds require accounts. Retire new Publish/Race and Rover main route while preserving existing build recovery and code history.
+- Account/class/world backend, guest-safe cloud UI, authenticated live rooms, teacher controls, legacy creation retirement and recovery implemented.
+- All three additive migrations actually applied to ClassChat V2 Supabase project wfrvgbnmyenidlpmimhl. NEVER rerun them blindly. MIGRATION-RECEIPT.json records hashes and actual hosted RLS/direct SELECT denial on all11tables.
+- Hosted Worker version5203a563-b4c6-4df8-945b-349d1818954f at https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev has configured secrets and passed real HTTP and two-socket PostgreSQL verification. See PROVIDER-STAGING-REPORT.json and LIVE-PROVIDER-STAGING-REPORT.json.
+- Revoked JWT cannot directly change password through GoTrue after teacher reset; provider returned403session_not_found.
+- Combined check passed636frontendtests+52Workertests+typechecks+build before the subsequent teacher-oversight regression and unused legacy deletion, whose focused tests passed.
+- Guest browser building/customparts/reload/export/import/legacyremix verified. Integrated UI QA remains underway in release_qa agent; student signup/cloudsave/reload already passed.
 
-## Services
-Supabase existing ClassChat project wfrvgbnmyenidlpmimhl; credentials read securely from /Users/ahmaadidrees/Desktop/classchat-v2/.env.local. Do not print secrets. Existing teacher Auth UUID f3303fe5-de0d-4f8b-ad27-64b1bab0e4f3 is trusted by config. NEVER reset existing teacher password. Additive brick_* SQL only, no ClassChat data changes. Admin Auth read verified; management PAT access absent. Supabase CLI login needs --agent no --output-format text to avoid JSON interactive error. Migration NOT applied.
+## Access and local services
 
-Vercel CLI authenticated as ahmaadidrees. Existing virtual-legos project .vercel/project.json in /Users/ahmaadidrees/Documents/Virtual Legos. Copy ignored project link for release. Preview then verify before exact-artifact promotion.
+Supabase CLI and Vercel CLI authenticated. Wrangler authenticated after unavailable keychain storage; CLI uses its normal local config. Credentials are ignored private files; NEVER print their values or commit them. `.classroom-test.local` holds a dedicated QAteacher; Worker `.dev.vars` includes configured actualteacher+QAteacher IDs. Never reset the actualteacher account.
 
-Wrangler OAuth expired. Pending scoped login process session23955 may not survive restart; restart if needed with npx wrangler login --browser=false --use-keyring --scopes account:read user:read workers:write workers_scripts:write workers_routes:write workers_tail:read. Browser selection initialized but OAuth page not opened yet. No deploy or secret setup completed.
+Local Vite5182 process56890 (release_qa), Worker8788 (classroom_backend). Verify live process handles after restart. Frontend `.env.local` points to local8788.
 
-No dev server started. npm ci completed. Use browser-verification skill immediately after dev server startup. Full-suite and real Supabase/browser/two-client authorization/persistence proofs remain. Actual student/device proof must be separately reported.
+Preview dpl_7VEjiJjuPBKVix8JSvubYahKuTzE (virtual-legos-bekfi4wh8-ahmaadidrees-projects.vercel.app) is an early candidate before the last UI/cleanup edits. Newer tested preview dpl_EDmqQRX7GxC89YcJjaTkBb9F87bj at https://virtual-legos-gyfsc793o-ahmaadidrees-projects.vercel.app is READY and passed hosted teacher login and classroom-world rendering; it precedes the latest cleanup and legacy-owner recovery edits. Preview is Vercel SSO-protected. Authorized `vercel curl` supports automatic protection bypass; root acquired scoped `_vercel_jwt` cookie in `/tmp/brick-preview-headers.local`, private. Do not expose cookie/token in output. Browser automation can use the cookie for owner-authorized verification.
 
-## Codex settings
-/Users/ahmaadidrees/.codex/config.toml now has [agents] max_concurrent_threads_per_session = 8, validated with all other parsed settings unchanged and backup made. Current runtime still declares four total slots until config is reloaded. After restart inspect available concurrency; do not assume hot reload. Allocate independent security audit, outer route tests, browser QA, persistence/recovery QA, and reusable-boundary review with explicit ownership, keeping integration sequential where required.
+## Remaining critical steps
+
+Finish actual browser teacher/student/cloud/group/reset flows; fix any failures. Build an exact committed final candidate and verify hosted frontend plus backend. Preserve current production until candidate release checks pass, then perform the user-authorized cutover. No additional approval requirement was established in the accepted discussion. Check actualteacher login usability and obtain actualstudent/device observations. Deploy production backend and promote exact frontend artifact with intentional backend identity; retire old anonymous endpoints as part of cutover, not accidentally midway through oldproduction use. Record immutable version/SHA/alias/rollback separately.
+
+ClassChat bounded pilot is committed as1a7848c in /Users/ahmaadidrees/.codex/worktrees/classchat-identity-pilot (codex/classroom-identity-pilot). It proves default-disabled read-only identity projection with14tests and5actual API/session/PostgreSQL checks. It does not establish full student SSO or shared password reset. Original ClassChat checkout and production remain untouched. Cost-model estimates are not device/billing measurements.
+
+## Workers
+
+Eight workers plus root are supported now. Use collaboration.list_agents and resume existing agents with followup_task as needed. Pending_init after restart needs explicit followup, not merely send_message. Owners: classroom_ui app/hook/panel; release_qa browser/client/autosave tests; document_integrity live/store; classroom_backend auth/SQL; security_review providerlive/security; outer_routes outerWorker; legacy_cleanup retiredfrontend; reuse_boundary contracts/verifiers/costreview.
+
+## Latest live findings
+
+Teacher Google sign-in passed actual personal Chrome -> Supabase -> local callback -> My Class, plus authoritative teacher session registration and cold reload (GOOGLE-LOCAL-REPORT.json). Full Google candidate check passed638frontend/59Worker tests plus types/build.
+
+Representative31client staging load FAILED after12/60edits: medianack2.8s andp95~24s with rate-limit disconnects. CAPACITY-STAGING-REPORT.json preserves failure; allfixturesdisabled. Backend and integrity workers are diagnosing permission-check serialization/pose bursts. This is a real release issue, not a target-device proof claim. Do not promote until fixed and rerun. Legacy owner recovery meanwhile passed browser -> survivingDO -> realPG -> coldreload with exactcustomdocument match; QA teacher username/reset/groupremoval controls also passed actualbrowser.

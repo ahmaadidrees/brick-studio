@@ -1,4 +1,5 @@
 import { validateBrickStudioDocument } from '@brick-studio/core';
+import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 
 export interface ClassroomEnv {
@@ -225,6 +226,20 @@ async function route(request: Request, service: ClassroomService, path: string[]
       await service.registerSession(session, student);
       return json(await service.authResult(session));
     }
+    if (path[1] === 'teacher-google-start') {
+      const authorizationUrl = teacherGoogleAuthorizationUrl(service.env.SUPABASE_URL!, request.headers.get('Origin'), input.codeChallenge, input.state);
+      if (!authorizationUrl) fail(400, 'invalid_oauth_request', 'Start Google sign-in again from Brick Studio.');
+      return json({ url: authorizationUrl });
+    }
+    if (path[1] === 'teacher-google') {
+      const code = cleanText(input.code, 'Sign-in code', 4096);
+      if (!validGoogleCodeVerifier(input.codeVerifier)) fail(400, 'invalid_oauth_request', 'Start Google sign-in again from this browser tab.');
+      // The provider verifies that this one-time code belongs to the initiating
+      // tab's S256 challenge. No client identity/role claims are accepted.
+      const session = await service.request('/auth/v1/token?grant_type=pkce', { method: 'POST', body: JSON.stringify({ auth_code: code, code_verifier: input.codeVerifier }) });
+      await service.registerTeacherSession(session);
+      return json(await service.authResult(session));
+    }
     if (path[1] === 'teacher-login') {
       const email = cleanText(input.email, 'Email', 254);
       await service.rate(`teacher:${email.toLowerCase()}`, 12, 300);
@@ -419,26 +434,34 @@ export async function authorizeClassroomWorld(request: Request, env: ClassroomEn
   return { userId: caller.id, username: caller.username, role: caller.role, worldId: world.id as string, classId: world.class_id as string, canEdit: true, isTeacher: caller.role === 'teacher', isOwner: world.owner_id === caller.id, authVersion: caller.authVersion, sessionId: caller.sessionId };
 }
 
-/** Only invoke after validating ticket signature/expiry, or with trusted DO attachments. */
-export async function revalidateClassroomWorldAccess(env: ClassroomEnv, identity: ClassroomSessionIdentity, worldId: string) {
+export type ClassroomWorldAccess = { userId: string; username: string; role: 'teacher' | 'student'; worldId: string; classId: string; canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string };
+function accessError(code: string): ClassroomHttpError {
+  const status = code === 'session_revoked' ? 401 : code === 'not_found' ? 404 : 403;
+  const messages: Record<string, string> = { session_revoked: 'Please sign in again.', suspended: 'Your teacher has paused your classroom account.', password_change_required: 'Choose a new password to continue.', class_closed: 'Your teacher has closed classroom collaboration.', private_world: 'Only classroom worlds can be joined together.', not_found: 'World not found.' };
+  return new ClassroomHttpError(status, code, messages[code] || 'Classroom access changed.');
+}
+function validIdentity(identity: ClassroomSessionIdentity) {
   if (!uuid(identity.userId) || !uuid(identity.sessionId) || !Number.isInteger(identity.authVersion)) fail(401, 'invalid_session', 'Please sign in again.');
-  const service = new ClassroomService(env);
-  let caller: Caller;
-  if ((env.BRICK_TEACHER_IDS || '').split(',').map(x => x.trim()).includes(identity.userId)) {
-    const registered = (await service.rows('teacher_sessions', `session_id=eq.${identity.sessionId}&user_id=eq.${identity.userId}&revoked=eq.false&limit=1`))[0];
-    if (!registered || identity.authVersion !== 0) fail(401, 'session_revoked', 'Please sign in again.');
-    caller = { id: identity.userId, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, token: '', authVersion: 0, sessionId: identity.sessionId };
-  } else {
-    const student = (await service.rows('students', `user_id=eq.${identity.userId}&limit=1`))[0];
-    if (!student || student.auth_version !== identity.authVersion) fail(401, 'session_revoked', 'Please sign in again.');
-    const registered = (await service.rows('sessions', `session_id=eq.${identity.sessionId}&user_id=eq.${identity.userId}&auth_version=eq.${identity.authVersion}&limit=1`))[0];
-    if (!registered) fail(401, 'session_revoked', 'Please sign in again.');
-    if (student.suspended) fail(403, 'suspended', 'Your teacher has paused your classroom account.');
-    if (student.reset_required) fail(403, 'password_change_required', 'Choose a new password to continue.');
-    caller = { id: student.user_id, username: student.username, rosterName: student.roster_name, role: 'student', resetRequired: false, token: '', authVersion: student.auth_version, sessionId: identity.sessionId, classId: student.class_id };
-  }
-  const world = await service.worldFor(caller, worldId, true, true);
-  return { userId: caller.id, username: caller.username, role: caller.role, worldId: world.id as string, classId: world.class_id as string, canEdit: true, isTeacher: caller.role === 'teacher', isOwner: world.owner_id === caller.id, authVersion: caller.authVersion, sessionId: caller.sessionId };
+}
+/** Only invoke after validating ticket signature/expiry, or with trusted DO attachments. */
+export async function revalidateClassroomWorldAccess(env: ClassroomEnv, identity: ClassroomSessionIdentity, worldId: string): Promise<ClassroomWorldAccess> {
+  validIdentity(identity);
+  if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
+  const result = await new ClassroomService(env).rpc('authorize_world', { p_world_id: worldId, p_user_id: identity.userId, p_session_id: identity.sessionId, p_auth_version: identity.authVersion, p_teacher_allowed: (env.BRICK_TEACHER_IDS || '').split(',').map(x => x.trim()).includes(identity.userId) });
+  if (result.error) throw accessError(result.error);
+  return result as ClassroomWorldAccess;
+}
+export async function revalidateClassroomWorldAccessBatch(env: ClassroomEnv, identities: ClassroomSessionIdentity[], worldId: string): Promise<Array<{ identity: ClassroomSessionIdentity; access?: ClassroomWorldAccess; error?: { status: number; code: string; message: string } }>> {
+  if (!uuid(worldId) || identities.length > 64) fail(400, 'invalid_input', 'Invalid permission batch.');
+  identities.forEach(validIdentity);
+  const teacherIds = (env.BRICK_TEACHER_IDS || '').split(',').map(x => x.trim());
+  const results: Row[] = await new ClassroomService(env).rpc('authorize_world_batch', { p_world_id: worldId, p_identities: identities.map(identity => ({ ...identity, teacherAllowed: teacherIds.includes(identity.userId) })) });
+  if (results.length !== identities.length) fail(502, 'service_unavailable', 'Permission checks did not complete.');
+  return results.map((result, index) => {
+    if (!result.error) return { identity: identities[index], access: result as ClassroomWorldAccess };
+    const error = accessError(result.error);
+    return { identity: identities[index], error: { status: error.status, code: error.code, message: error.message } };
+  });
 }
 export async function reauthorizeClassroomSocket(env: ClassroomEnv, access: ClassroomSessionIdentity & { worldId: string }) {
   return revalidateClassroomWorldAccess(env, access, access.worldId);

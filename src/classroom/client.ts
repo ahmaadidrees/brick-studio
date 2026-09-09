@@ -2,6 +2,9 @@ import type { ClassroomAuthResult as ClassroomAuth } from './contracts'
 export type { ClassroomUser, ClassroomClass, ClassroomWorld } from './contracts'
 export type { ClassroomAuthResult as ClassroomAuth } from './contracts'
 export class ClassroomError extends Error { constructor(message: string, public status: number) { super(message) } }
+const GOOGLE_FLOW_KEY = 'brick-studio.teacher-google.v1'
+type GoogleFlow = { state: string; verifier: string; startedAt: number; returnTo: string; accountId: string | null }
+const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
 const SESSION_KEY = 'brick-studio.classroom-session.v1'
 export class ClassroomClient {
   private auth: ClassroomAuth | null = null
@@ -67,6 +70,43 @@ export class ClassroomClient {
     const epoch = this.epoch
     const auth = await this.request<ClassroomAuth>('/auth/change-password', 'POST', { password })
     this.assertContext(epoch); this.setSession(auth); return auth
+  }
+  async startGoogleTeacher(returnTo: string) {
+    const epoch = this.epoch
+    const target = new URL(returnTo, window.location.origin)
+    if (target.origin !== window.location.origin) throw new ClassroomError('Return location must stay in Brick Studio.', 400)
+    const verifier = base64url(crypto.getRandomValues(new Uint8Array(48)))
+    const state = base64url(crypto.getRandomValues(new Uint8Array(32)))
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
+    this.assertContext(epoch)
+    const flow: GoogleFlow = { state, verifier, startedAt: Date.now(), returnTo: `${target.pathname}${target.search}${target.hash}`, accountId: this.auth?.user.id ?? null }
+    try { sessionStorage.setItem(GOOGLE_FLOW_KEY, JSON.stringify(flow)) } catch { throw new ClassroomError('Allow storage in this tab to use Google sign-in.', 0) }
+    try {
+      const result = await this.request<{ url: string }>('/auth/teacher-google-start', 'POST', { codeChallenge: base64url(new Uint8Array(digest)), state })
+      this.assertContext(epoch)
+      const url = new URL(result.url)
+      if (url.protocol !== 'https:') throw new ClassroomError('Google sign-in returned an invalid destination.', 502)
+      return url.toString()
+    } catch (error) { sessionStorage.removeItem(GOOGLE_FLOW_KEY); throw error }
+  }
+  async finishGoogleTeacher(callback: string) {
+    const epoch = this.epoch
+    const url = new URL(callback, window.location.origin)
+    const raw = sessionStorage.getItem(GOOGLE_FLOW_KEY)
+    sessionStorage.removeItem(GOOGLE_FLOW_KEY)
+    let flow: GoogleFlow | null = null
+    try { flow = raw ? JSON.parse(raw) : null } catch { /* Invalid or missing tab state is rejected. */ }
+    if (!flow || flow.state !== url.searchParams.get('state') || Date.now() - flow.startedAt > 10 * 60_000 || flow.startedAt > Date.now() || flow.accountId !== (this.auth?.user.id ?? null)) throw new ClassroomError('This Google sign-in expired or belongs to another tab. Start sign-in again.', 400)
+    if (url.searchParams.has('error')) throw new ClassroomError('Google sign-in was canceled or could not finish. You can try again.', 400)
+    const code = url.searchParams.get('code')
+    if (!code) throw new ClassroomError('Google did not return a sign-in code. Please try again.', 400)
+    const auth = await this.request<ClassroomAuth>('/auth/teacher-google', 'POST', { code, codeVerifier: flow.verifier })
+    this.assertContext(epoch)
+    if (auth.user.role !== 'teacher') throw new ClassroomError('This Google account is not enabled as a Brick Studio teacher.', 403)
+    const target = new URL(flow.returnTo, window.location.origin)
+    if (target.origin !== window.location.origin) throw new ClassroomError('Invalid return location.', 400)
+    this.setSession(auth)
+    return { auth, returnTo: `${target.pathname}${target.search}${target.hash}` }
   }
   async signOut() {
     const epoch = this.epoch

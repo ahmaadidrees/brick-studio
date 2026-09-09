@@ -345,7 +345,7 @@ async function jsonRequest<T>(fetcher: typeof fetch, url: string, init?: Request
     if (typeof body.message === 'string') message = body.message
     else if (typeof body.error === 'string') message = body.error
   } catch { /* keep status-based message */ }
-  throw new Error(message)
+  throw Object.assign(new Error(message), { status: response.status })
 }
 
 export async function createLiveWorld(

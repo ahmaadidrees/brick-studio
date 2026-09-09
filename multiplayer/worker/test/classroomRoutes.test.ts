@@ -112,6 +112,10 @@ describe("public routing security", () => {
 
 afterEach(() => vi.restoreAllMocks());
 it("forwards only newly authorized identity and discards bearer/capability query secrets", async () => {
+  const authorize = vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({
+    ...identity, username: "Current server name", role: "student", classId: identity.userId,
+    canEdit: true, isTeacher: false, isOwner: false,
+  });
   const rows = vi
     .spyOn(ClassroomService.prototype, "rows")
     .mockImplementation(async (table) => {
@@ -174,7 +178,16 @@ it("forwards only newly authorized identity and discards bearer/capability query
   );
   expect(response.status).toBe(200);
   expect(rows).toHaveBeenCalled();
+  expect(authorize).toHaveBeenCalledExactlyOnceWith("authorize_world", {
+    p_world_id: identity.worldId, p_user_id: identity.userId,
+    p_session_id: identity.sessionId, p_auth_version: identity.authVersion,
+    p_teacher_allowed: false,
+  });
   const forwarded = calls.at(-1)!;
+  expect(JSON.parse(forwarded.headers.get("x-classroom-access")!)).toMatchObject({
+    username: "Current server name", role: "student", isTeacher: false,
+    sessionId: identity.sessionId, authVersion: identity.authVersion,
+  });
   expect(forwarded.url).not.toContain("ticket");
   expect(forwarded.url).not.toContain("ownerToken");
   expect(forwarded.url).not.toContain("playerId");
@@ -249,4 +262,83 @@ it("awaits durable socket invalidation before reporting a world control success"
   expect(finished).toBe(false);
   release();
   expect((await result).status).toBe(200);
+});
+
+it("requires a current account before looking up a legacy owner capability", async () => {
+  const env = {
+    SUPABASE_URL: "https://supabase.test",
+    SUPABASE_ANON_KEY: "test",
+    SUPABASE_SERVICE_ROLE_KEY: "test",
+  } as Env;
+  const response = await handleReleaseRequest(
+    new Request(
+      "https://worker.test/classroom/legacy-worlds/11111111111141118111111111111111/import",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ownerToken: "a".repeat(64) }),
+      },
+    ),
+    env,
+  );
+  expect(response.status).toBe(401);
+});
+
+it("imports a proven legacy document through validation into the current account private worlds", async () => {
+  const { createBrickStudioDocument } = await import("@brick-studio/core");
+  const document = createBrickStudioDocument([]);
+  vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue({
+    id: identity.userId,
+    username: "Builder",
+    rosterName: "Student",
+    role: "student",
+    resetRequired: false,
+    authVersion: 2,
+    sessionId: identity.sessionId,
+    token: "test",
+  });
+  vi.spyOn(ClassroomService.prototype, "rate").mockResolvedValue(undefined);
+  const insert = vi
+    .spyOn(ClassroomService.prototype, "insert")
+    .mockImplementation(async (_table, data) => [
+      { ...data, id: identity.worldId, revision: 1 },
+    ]);
+  const stub = {
+    fetch: async () =>
+      new Response(JSON.stringify({ title: "Old build", document })),
+  };
+  const env = {
+    SUPABASE_URL: "https://supabase.test",
+    SUPABASE_ANON_KEY: "test",
+    SUPABASE_SERVICE_ROLE_KEY: "test",
+    WORLD_ROOMS: { idFromName: (x: string) => x, get: () => stub },
+  } as unknown as Env;
+  const response = await handleReleaseRequest(
+    new Request(
+      "https://worker.test/classroom/legacy-worlds/11111111111141118111111111111111/import",
+      {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          ownerToken: "a".repeat(64),
+          kind: "class",
+          owner_id: identity.sessionId,
+        }),
+      },
+    ),
+    env,
+  );
+  expect(response.status).toBe(201);
+  expect(insert).toHaveBeenCalledWith(
+    "worlds",
+    expect.objectContaining({
+      owner_id: identity.userId,
+      kind: "personal",
+      class_id: null,
+      document,
+    }),
+  );
 });

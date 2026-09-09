@@ -23,7 +23,7 @@ describe('classroom entry flow', () => {
     const fetcher = vi.fn((url: string, options: RequestInit) => Promise.resolve(options.method === 'POST' ? json({ error: 'Storage is unavailable.' }, 503) : json(url.endsWith('/worlds') ? { worlds: [] } : { classes: [] })))
     const client = new ClassroomClient('', fetcher as typeof fetch); client.setSession(auth)
     render(<ClassroomPanel {...props()} client={client} />)
-    fireEvent.click(screen.getByText('Save world'))
+    fireEvent.click(await screen.findByText('Save world'))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Storage is unavailable'))
     expect(screen.queryByText('Saved to your account.')).not.toBeInTheDocument()
   })
@@ -41,4 +41,23 @@ it('lets teachers oversee a shared world while student collaboration is closed',
   fireEvent.click(screen.getByText('Join world'))
   await waitFor(() => expect(callbacks.onJoinWorld).toHaveBeenCalledWith(world))
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it('selects a newly created class and shows its enrollment code', async () => {
+  const oldClass = { id: 'old', name: 'Existing class', loginCode: 'OLD', code: 'OLDJOIN', enrollmentOpen: true, collaborationOpen: true }
+  const newClass = { ...oldClass, id: 'new', name: 'New class', loginCode: 'NEW', code: 'NEWJOIN' }
+  let created = false
+  const fetcher = vi.fn((url: string, options: RequestInit) => {
+    if (url.endsWith('/classes') && options.method === 'POST') { created = true; return Promise.resolve(json({ class: newClass })) }
+    return Promise.resolve(json(url.endsWith('/worlds') ? { worlds: [] } : url.endsWith('/students') ? { students: [] } : { classes: created ? [oldClass, newClass] : [oldClass] }))
+  })
+  const client = new ClassroomClient('', fetcher as typeof fetch)
+  client.setSession({ ...auth, user: { ...auth.user, role: 'teacher' } })
+  render(<ClassroomPanel {...props()} intent="class" client={client} />)
+  const name = await screen.findByLabelText('New class name')
+  fireEvent.change(name, { target: { value: 'New class' } })
+  fireEvent.click(screen.getByText('Create class'))
+  await screen.findByText('NEWJOIN')
+  expect(screen.getByLabelText('Class')).toHaveValue('new')
+  expect(screen.getByLabelText('New class name')).toHaveValue('')
 })

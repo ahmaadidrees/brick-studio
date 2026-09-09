@@ -934,7 +934,14 @@ export default function BrickStudioApp({
   contentPolicy,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
-  const [classroomIntent, setClassroomIntent] = useState<"save" | "worlds" | "class" | null>(null)
+  const [classroomIntent, setClassroomIntent] = useState<"save" | "worlds" | "class" | null>(() => {
+    const url = new URL(window.location.href)
+    const intent = url.searchParams.get('classroom')
+    if (intent !== 'save' && intent !== 'worlds' && intent !== 'class') return null
+    url.searchParams.delete('classroom')
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    return intent
+  })
   const classroomAuth = useSyncExternalStore(browserClassroomClient.subscribe, browserClassroomClient.getSession)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
   const closeClassroom = useCallback(() => setClassroomIntent(null), [])
