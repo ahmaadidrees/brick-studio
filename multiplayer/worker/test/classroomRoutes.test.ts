@@ -51,7 +51,7 @@ describe("public routing security", () => {
     expect(allowedOrigin("https://virtual-legos.vercel.app/")).toBe(false);
   });
   it("retired routes never reach a durable object", async () => {
-    for (const path of ["/rooms", "/rooms/ABCD1234/connect", "/worlds"]) {
+    for (const path of ["/rooms", "/rooms/ABCD1234/connect"]) {
       const r = await handleReleaseRequest(
         new Request(`https://worker.test${path}`, { method: "POST" }),
         {} as Env,
@@ -341,4 +341,32 @@ it("imports a proven legacy document through validation into the current account
       document,
     }),
   );
+});
+
+
+it("authorizes and initializes a cold compact classroom world instead of treating its missing DO as a lost guest room", async () => {
+  const world = { id: identity.worldId, title: "Cold class world", revision: 1, kind: "class", class_id: identity.userId, owner_id: identity.userId, document: {} };
+  vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue({
+    id: identity.userId, username: "Student", rosterName: "Student", role: "student",
+    resetRequired: false, authVersion: 2, sessionId: identity.sessionId, token: "test",
+  });
+  const authorized = vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+  vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([world]);
+  const paths: string[] = [];
+  const stub = { fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request = new Request(input, init), path = new URL(request.url).pathname;
+    paths.push(path);
+    if (path === "/internal/room-kind") return new Response(JSON.stringify({ kind: "missing" }));
+    if (path === "/init") {
+      expect(await request.json()).toMatchObject({ classroomWorldId: identity.worldId });
+      return new Response("{}", { status: 201 });
+    }
+    expect(JSON.parse(request.headers.get("x-classroom-access")!)).toMatchObject({ worldId: identity.worldId, userId: identity.userId });
+    return new Response(JSON.stringify({ title: world.title }));
+  } };
+  const env = { SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test", WORLD_ROOMS: { idFromName: (id: string) => id, get: () => stub } } as unknown as Env;
+  const response = await handleReleaseRequest(new Request(`https://worker.test/worlds/${identity.worldId.replaceAll("-", "")}`, { headers: { authorization: "Bearer test" } }), env);
+  expect(response.status).toBe(200);
+  expect(authorized).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: identity.userId }), identity.worldId, true, true);
+  expect(paths).toEqual(["/internal/room-kind", "/init", `/worlds/${identity.worldId.replaceAll("-", "")}`]);
 });

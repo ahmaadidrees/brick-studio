@@ -4,15 +4,22 @@ import BrickStudioApp from './BrickStudioApp'
 import type { RaceAvatarPose } from './BrickStudioScene'
 import type { RemoteAvatarSource } from './remoteAvatarSource'
 import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
-import { type LiveWorldMode } from './liveProtocol'
-import { createLiveRoomClient, getLiveWorld } from './liveRoomClient'
+import { LIVE_MAX_PLAYERS, type LiveWorldMode } from './liveProtocol'
+import { createLiveRoomClient, getLiveWorld, hasSavedLiveRoomIdentity } from './liveRoomClient'
 import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
-import { createLiveRoomConnector } from './live/liveRoomConnector'
+import { createLiveRoomConnector, defaultConnectLiveRoom } from './live/liveRoomConnector'
 import type { PlayerProfile } from './types'
 import { LiveWorldHud } from './live/LiveWorldHud'
 import { liveGuestLink, parseLiveWorldLocation, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomUiSnapshot } from './live/liveRoomModel'
-import type { CreateLiveWorld, FetchLiveWorldSummary } from './live/liveWorldGateway'
+import { createLiveWorldRoom, fetchLiveWorldSummary, LiveWorldGatewayError, type CreateLiveWorld, type FetchLiveWorldSummary, type LiveWorldSummary } from './live/liveWorldGateway'
+import { LiveWorldGate, type LiveWorldGateSubmit } from './live/LiveWorldGate'
+import { LiveStatusChip } from './live/LiveStatusChip'
+import { CopyInviteButton } from './live/CopyInviteButton'
+import { liveProfileWithDisplayName, normalizeLiveProfile, loadStoredLiveProfile, saveStoredLiveProfile } from './live/liveProfile'
+import { liveOwnerLocation } from './live/liveRoomModel'
+import { saveLocalBrickStudioProject } from './documentPersistence'
+import { loadLiveWorldSeed, LIVE_WORLD_SEED_KEY } from './live/liveWorldSeed'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
 import { resolveCharacterId } from './contentCatalog'
 import { loadCharacterPreferences } from './contentPreferences'
@@ -196,15 +203,42 @@ export function legacyOwnerToken(pathname: string, hash: string): string | null 
 export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const client = props.classroomClient ?? browserClassroomClient;
   const auth = useSyncExternalStore(client.subscribe, client.getSession);
-  const pathname = props.initialLocation?.pathname ?? window.location.pathname;
+  const [pathname] = useState(() => props.initialLocation?.pathname ?? window.location.pathname);
+  const parsed = parseLiveWorldLocation(pathname, props.initialLocation?.hash ?? window.location.hash);
+  const [access, setAccess] = useState<'checking' | 'guest' | 'classroom' | 'error'>('checking');
+  const [summary, setSummary] = useState<LiveWorldSummary | null>(null);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const fetchSummary = props.fetchWorldSummary ?? fetchLiveWorldSummary;
+  useEffect(() => {
+    if (parsed.kind !== 'join') return;
+    let active = true;
+    setAccess('checking');
+    void fetchSummary(parsed.roomId).then(value => {
+      if (!active) return;
+      setSummary(value); setAccess('guest');
+    }).catch(reason => {
+      if (!active) return;
+      // Only the server decides whether this is a classroom world. Guest room
+      // capabilities never bypass the classroom ticket or membership checks.
+      if (reason?.status === 401 || reason?.status === 403 || (reason?.status === 404 && auth && legacyOwnerToken(pathname, props.initialLocation?.hash ?? window.location.hash))) setAccess('classroom');
+      else { setError(friendlyReason(reason)); setAccess('error'); }
+    });
+    return () => { active = false; };
+  }, [pathname, fetchSummary, retry]); // Account changes must not remount a guest session.
+  if (parsed.kind === 'create') return <GuestLiveWorld {...props} />;
+  if (parsed.kind === 'invalid') return <BlockedView heading="This live link is not quite right" message="Ask the room owner to copy the invite link again." />;
+  if (access === 'checking') return <BlockedView heading="Checking this room…" message="One moment while we look up the invite." />;
+  if (access === 'error') return <BlockedView heading="Cannot open this world" message={error} onRetry={() => setRetry(n => n + 1)} />;
+  if (access === 'guest' && summary) return <GuestLiveWorld {...props} initialSummary={summary} />;
   const worldId = classroomWorldIdFromPath(pathname);
-  if (!auth || auth.user.resetRequired || pathname === '/live/new') {
+  if (!auth || auth.user.resetRequired) {
     return <ClassroomPanel client={client} intent="class" getDocument={() => useBrickStore.getState().getDocumentSnapshot()}
       onClose={() => window.location.assign('/')}
       onOpenWorld={() => window.location.assign('/')}
       onJoinWorld={world => window.location.assign(`/live/${world.id.replaceAll('-', '')}`)} />;
   }
-  if (!worldId) return <BlockedView heading="Open this world from My Class" message="This older room link is no longer available. Your classroom worlds are listed in Brick Studio." />;
+  if (!worldId) return <BlockedView heading="Open this world from My Class" message="Your classroom worlds are listed in Brick Studio." />;
   return <AuthenticatedLiveWorld key={auth.user.id} {...props} auth={auth} client={client} worldId={worldId} />;
 }
 
@@ -283,4 +317,298 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
     editingIntegrated actions={actions} onLeave={() => window.location.assign('/')} />;
   const view: LiveWorldSceneView = { roomTitle: title, document: snapshot.document, mode: snapshot.mode, revision: snapshot.revision, selfProfile: profile, setProfile, overlay };
   return props.renderWorld ? <>{props.renderWorld(view)}</> : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={actions} remoteAvatarSource={session.remoteAvatarSource} />;
+}
+
+type RoomHandle = { roomId: string; ownerToken?: string; title: string }
+type PreflightState =
+  | { status: 'loading' }
+  | { status: 'ready'; summary: LiveWorldSummary }
+  | { status: 'blocked'; heading: string; message: string; canRetry: boolean }
+const FALLBACK_ROOM_TITLE = 'Live build room'
+
+function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorldSummary }) {
+  const createWorld = props.createWorld ?? createLiveWorldRoom
+  const fetchSummary = props.fetchWorldSummary ?? fetchLiveWorldSummary
+  const connectRoom = props.connectRoom ?? defaultConnectLiveRoom
+  const copyText = props.copyText ?? defaultCopyText
+
+  const parsed = useMemo(() => {
+    const location = props.initialLocation ?? { pathname: window.location.pathname, hash: window.location.hash }
+    return parseLiveWorldLocation(location.pathname, location.hash)
+    // The route is fixed for the lifetime of the page (main.tsx re-mounts per navigation).
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const storedProfile = useMemo(() => loadStoredLiveProfile(), [])
+  const storedAppearance = useMemo(() => loadCharacterPreferences(), [])
+  const preferredProfile = useMemo<PlayerProfile>(() => ({
+    displayName: storedProfile?.displayName ?? '',
+    characterId: storedProfile?.characterId ?? storedAppearance.characterId,
+    palette: storedProfile?.palette ?? storedAppearance.palette,
+  }), [storedAppearance, storedProfile])
+  const returningGuest = useMemo(
+    () => parsed.kind === 'join' && !parsed.ownerToken && hasSavedLiveRoomIdentity(parsed.roomId),
+    [parsed],
+  )
+  const seedDocument = useMemo(() => (parsed.kind === 'create' ? loadLiveWorldSeed() : null), [parsed])
+
+  const [room, setRoom] = useState<RoomHandle | null>(() => (
+    parsed.kind === 'join'
+      ? { roomId: parsed.roomId, ownerToken: parsed.ownerToken, title: props.initialSummary?.title ?? FALLBACK_ROOM_TITLE }
+      : null
+  ))
+  const [profile, setProfile] = useState<PlayerProfile | null>(null)
+  const [preflight, setPreflight] = useState<PreflightState>(props.initialSummary ? { status: 'ready', summary: props.initialSummary } : { status: 'loading' })
+  const [preflightNonce, setPreflightNonce] = useState(0)
+  const [gateBusy, setGateBusy] = useState(false)
+  const [gateError, setGateError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (parsed.kind !== 'join' || (props.initialSummary && preflightNonce === 0)) return
+    let active = true
+    setPreflight({ status: 'loading' })
+    fetchSummary(parsed.roomId)
+      .then((summary) => {
+        if (!active) return
+        setPreflight({ status: 'ready', summary })
+        if (summary.title) setRoom((current) => (current ? { ...current, title: summary.title! } : current))
+      })
+      .catch((reason: unknown) => {
+        if (!active) return
+        const gateway = reason instanceof LiveWorldGatewayError ? reason : null
+        setPreflight({
+          status: 'blocked',
+          heading: gateway?.code === 'not-found' ? 'This room is closed' : 'Cannot reach this room',
+          message: gateway?.message ?? friendlyReason(reason),
+          canRetry: gateway?.code !== 'not-found',
+        })
+      })
+    return () => {
+      active = false
+    }
+  }, [parsed, fetchSummary, preflightNonce])
+
+  const session = useLiveRoomSession({
+    connectRoom,
+    roomId: profile && room ? room.roomId : null,
+    ownerToken: room?.ownerToken,
+    profile,
+  })
+
+  const shareLink = room ? liveGuestLink(window.location.origin, room.roomId) : ''
+
+  const handleCreate = ({ displayName, title, seedFromCurrentBuild }: LiveWorldGateSubmit) => {
+    if (gateBusy) return
+    const nextProfile = liveProfileWithDisplayName(displayName, preferredProfile)
+    const document = seedDocument && (seedFromCurrentBuild || seedDocument.bricks.length === 0) ? seedDocument : createBrickStudioDocument([])
+    setGateBusy(true)
+    setGateError(null)
+    createWorld({ title, document, profile: nextProfile })
+      .then((created) => {
+        saveStoredLiveProfile(nextProfile)
+        try { window.sessionStorage.removeItem(LIVE_WORLD_SEED_KEY) } catch { /* Keep the current room usable if storage is blocked. */ }
+        try {
+          // The owner capability lives in the URL fragment only, mirroring race
+          // host links: it survives refresh but is never sent to a server and
+          // never appears in the guest share link.
+          window.history.replaceState(null, '', liveOwnerLocation(created.roomId, created.ownerToken))
+        } catch {
+          /* A blocked history API only costs refresh-survival of ownership. */
+        }
+        setRoom({ roomId: created.roomId, ownerToken: created.ownerToken, title })
+        setProfile(nextProfile)
+      })
+      .catch((reason: unknown) => setGateError(friendlyReason(reason)))
+      .finally(() => setGateBusy(false))
+  }
+
+  const handleJoin = ({ displayName }: LiveWorldGateSubmit) => {
+    const nextProfile = liveProfileWithDisplayName(displayName, preferredProfile)
+    saveStoredLiveProfile(nextProfile)
+    setProfile(nextProfile)
+  }
+
+  const remixWorld = props.remixWorld ?? (async (world: LiveWorldSnapshotExport) => {
+    const saved = saveLocalBrickStudioProject(window.localStorage, world.document)
+    if (!saved.ok) throw new Error(saved.error.message)
+    return 'Copy saved to your studio — open Brick Studio to keep building it.'
+  })
+
+  const leaveRoom = () => {
+    window.location.assign('/')
+  }
+
+  if (parsed.kind === 'invalid') {
+    return (
+      <BlockedView
+        heading="This live link is not quite right"
+        message="A live room link looks like /live/ABC123. Ask the room owner to copy the invite link again."
+      />
+    )
+  }
+
+  if (!profile || !room) {
+    if (parsed.kind === 'create') {
+      return (
+        <main className="live-world-page">
+          <LiveWorldGate
+            kind="create"
+            seedBrickCount={seedDocument ? seedDocument.bricks.length : null}
+            defaultDisplayName={storedProfile?.displayName}
+            busy={gateBusy}
+            errorMessage={gateError}
+            onSubmit={handleCreate}
+          />
+        </main>
+      )
+    }
+    if (preflight.status === 'loading') {
+      return (
+        <main className="live-world-page">
+          <section className="live-gate-card live-blocked-card">
+            <span className="live-eyebrow">Live room invite</span>
+            <h1>Checking this room…</h1>
+            <p role="status">One moment while we look up the invite.</p>
+          </section>
+        </main>
+      )
+    }
+    if (preflight.status === 'blocked') {
+      return (
+        <BlockedView
+          heading={preflight.heading}
+          message={preflight.message}
+          onRetry={preflight.canRetry ? () => setPreflightNonce((nonce) => nonce + 1) : undefined}
+        />
+      )
+    }
+    if (preflight.summary.locked && !parsed.ownerToken && !returningGuest) {
+      return (
+        <BlockedView
+          heading="This room is closed to new joins"
+          message="The owner paused new arrivals. Ask them to reopen the room, then try this invite again. Everyone already inside can keep playing."
+          onRetry={() => setPreflightNonce((nonce) => nonce + 1)}
+        />
+      )
+    }
+    if (
+      preflight.summary.playerCount !== null
+      && preflight.summary.playerCount >= LIVE_MAX_PLAYERS
+      && !parsed.ownerToken
+      && !returningGuest
+    ) {
+      return (
+        <BlockedView
+          heading="This room is full"
+          message="This live world already has 30 builders. Try again after someone leaves."
+          onRetry={() => setPreflightNonce((nonce) => nonce + 1)}
+        />
+      )
+    }
+    return (
+      <main className="live-world-page">
+        <LiveWorldGate
+          kind="join"
+          roomTitle={preflight.summary.title}
+          playerCount={preflight.summary.playerCount}
+          returningOwner={Boolean(room?.ownerToken)}
+          defaultDisplayName={storedProfile?.displayName}
+          errorMessage={gateError}
+          onSubmit={handleJoin}
+        />
+      </main>
+    )
+  }
+
+  if (session.status === 'unwired') {
+    return (
+      <main className="live-world-page">
+        <section className="live-gate-card live-pending-card">
+          <span className="live-eyebrow">Live room</span>
+          <h1>{room.title}</h1>
+          <p role="status">
+            You are checked in as <strong>{profile.displayName}</strong>. Live co-building is not switched on in this
+            build yet — the realtime sync client is still being wired in. Your room and invite link are ready to share.
+          </p>
+          <div className="live-share-row">
+            <CopyInviteButton shareLink={shareLink} copyText={copyText} className="live-primary-button" />
+            <code className="live-share-link">{shareLink}</code>
+          </div>
+          {room.ownerToken && (
+            <p className="live-owner-hint">Keep this tab&rsquo;s web address safe — it holds your owner key for this room.</p>
+          )}
+          <a className="live-quiet-link" href="/">Back to Brick Studio</a>
+        </section>
+      </main>
+    )
+  }
+
+  if (session.status === 'active') {
+    const snapshot: LiveRoomUiSnapshot = session.snapshot
+    const setLiveProfile = (nextProfile: PlayerProfile) => {
+      const normalized = normalizeLiveProfile(nextProfile)
+      saveStoredLiveProfile(normalized)
+      setProfile(normalized)
+      session.actions.setProfile(normalized)
+    }
+    const liveActions: LiveRoomActions = {
+      ...session.actions,
+      setProfile: setLiveProfile,
+    }
+    const exportWorld = (): LiveWorldSnapshotExport => {
+      if (!snapshot.document) throw new Error('The world has not finished loading yet.')
+      return { title: room.title, document: snapshot.document }
+    }
+    const overlay = (
+      <LiveWorldHud
+        snapshot={snapshot}
+        roomTitle={room.title}
+        shareLink={shareLink}
+        copyText={copyText}
+        editingIntegrated
+        actions={liveActions}
+        onLeave={leaveRoom}
+        onRemixWorld={() => remixWorld(exportWorld())}
+        onEndRoom={props.onEndRoom}
+      />
+    )
+    if (!snapshot.document) {
+      return (
+        <main className="live-world-page">
+          <section className="live-gate-card live-blocked-card" aria-busy={snapshot.connection !== 'offline'}>
+            <span className="live-eyebrow">Live room</span>
+            <h1>Opening {room.title}…</h1>
+            <LiveStatusChip
+              connection={snapshot.connection}
+              syncing={snapshot.syncing}
+              onReconnect={session.actions.reconnect}
+            />
+            {snapshot.notice && <p className="live-gate-error" role="alert">{snapshot.notice.message}</p>}
+            <a className="live-quiet-link" href="/">Leave and open Brick Studio</a>
+          </section>
+        </main>
+      )
+    }
+    const view: LiveWorldSceneView = {
+      roomTitle: room.title,
+      document: snapshot.document,
+      mode: snapshot.mode,
+      revision: snapshot.revision,
+      selfProfile: profile,
+      setProfile: setLiveProfile,
+      overlay,
+    }
+    return props.renderWorld
+      ? <>{props.renderWorld(view)}</>
+      : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={liveActions} remoteAvatarSource={session.remoteAvatarSource} />
+  }
+
+  return (
+    <main className="live-world-page">
+      <section className="live-gate-card live-blocked-card">
+        <span className="live-eyebrow">Live room</span>
+        <h1>Opening {room.title}…</h1>
+        <p role="status">Connecting you to the room.</p>
+      </section>
+    </main>
+  )
 }

@@ -56,7 +56,7 @@ describe('calls to action', () => {
     expect(together).toHaveLength(2)
     for (const link of together) expect(link).toHaveAttribute('href', '/live/new')
 
-    expect(screen.getByRole('link', { name: /open my class/i })).toHaveAttribute('href', '/live/new')
+    expect(screen.getByRole('link', { name: /start a shared build/i })).toHaveAttribute('href', '/live/new')
     expect(screen.getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/')
   })
 
@@ -70,7 +70,7 @@ describe('calls to action', () => {
     for (const link of screen.getAllByRole('link', { name: /build together/i })) {
       expect(link).toHaveAttribute('href', '/live/party')
     }
-    expect(screen.getByRole('link', { name: /open my class/i })).toHaveAttribute('href', '/live/party')
+    expect(screen.getByRole('link', { name: /start a shared build/i })).toHaveAttribute('href', '/live/party')
   })
 })
 

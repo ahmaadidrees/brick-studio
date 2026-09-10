@@ -55,23 +55,17 @@ async function workerFetch(input: string, init?: RequestInit): Promise<Response>
   return worker.fetch(new Request(input, init), env);
 }
 
-// Legacy room fixtures exercise the DO directly; public anonymous routes are retired.
+// Exercise guest rooms through the public boundary, including header stripping.
 async function roomFetch(input: string, init?: RequestInit): Promise<Response> {
-  const roomId = new URL(input).pathname.split("/")[2];
-  const workerEnv = env as unknown as WorkerEnv;
-  return workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId)).fetch(input, init);
+  return workerFetch(input, init);
 }
 async function createWorld(document = worldDocument(), displayName = "  Ada   Builder  ") {
-  const roomId = newWorldId();
-  const ownerToken = newOwnerToken();
-  const workerEnv = env as unknown as WorkerEnv;
-  const response = await workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId)).fetch("https://internal/init", {
-    method: "POST", headers: { "x-world-init": "1", "content-type": "application/json" },
-    body: JSON.stringify({ roomId, title: "Shared build", document, initialOwnerProfile: { displayName, characterId: "future-character" }, ownerTokenVerifier: await ownerTokenVerifier(ownerToken) }),
+  const response = await workerFetch("https://worker.test/worlds", {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://virtual-legos.vercel.app" },
+    body: JSON.stringify({ title: "Shared build", document, profile: { displayName, characterId: "future-character" } }),
   });
   expect(response.status).toBe(201);
-  await response.text();
-  return { roomId, ownerToken };
+  return response.json<{ roomId: string; ownerToken: string }>();
 }
 
 class Inbox {
@@ -876,9 +870,9 @@ it("enforces trusted classroom identity and immediate group revocation without d
   rpc.mockRestore();
 });
 
-describe("Retired anonymous multiplayer routes", () => {
-  it("rejects anonymous creation for both old multiplayer systems", async () => {
-    for (const route of ["worlds", "rooms"]) {
+describe("Retired race routes", () => {
+  it("keeps the old race system retired", async () => {
+    for (const route of ["rooms"]) {
       const response = await workerFetch(`https://worker.test/${route}`, { method: "POST", headers: { origin: "https://virtual-legos.vercel.app", "content-type": "application/json" }, body: JSON.stringify({ title: "Bypass", document: worldDocument(), profile: { displayName: "Guest" } }) });
       expect(response.status).toBe(410);
     }
@@ -907,4 +901,46 @@ it('never exports a classroom world through legacy owner recovery even with its 
   expect(initialized.status).toBe(201);await initialized.text();
   const exported=await stub.fetch('https://world.internal/internal/legacy-export',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ownerToken})});
   expect(exported.status).toBe(404);await exported.text();
+});
+
+
+it("denies public classroom snapshots and sockets even with forged internal headers and the owner token", async () => {
+  const classroomWorldId = "11111111-1111-4111-8111-111111111111";
+  const roomId = classroomWorldId.replaceAll("-", ""), ownerToken = newOwnerToken();
+  const ns = (env as unknown as WorkerEnv).WORLD_ROOMS;
+  const stub = ns.get(ns.idFromName(roomId));
+  const initialized = await stub.fetch("https://world.internal/init", {
+    method: "POST", headers: { "x-world-init": "1", "content-type": "application/json" },
+    body: JSON.stringify({ roomId, classroomWorldId, revision: 1, title: "Secret title", document: worldDocument([brick("secret-brick")]), initialOwnerProfile: { displayName: "Teacher" }, ownerTokenVerifier: await ownerTokenVerifier(ownerToken) }),
+  });
+  expect(initialized.status).toBe(201); await initialized.text();
+  for (const path of [roomId, classroomWorldId]) {
+    for (const suffix of ["", "/connect"]) {
+      const response = await workerFetch(`https://worker.test/worlds/${path}${suffix}?playerId=attacker&ownerToken=${ownerToken}`, {
+        headers: { Upgrade: "websocket", "x-guest-world-access": "1", "x-world-init": "1", "x-classroom-access": JSON.stringify({ worldId: classroomWorldId, userId: "attacker", username: "Teacher", isTeacher: true }) },
+      });
+      expect(response.status).toBe(401);
+      const text = await response.text();
+      expect(text).not.toContain("secret-brick"); expect(text).not.toContain("Secret title");
+    }
+  }
+  const direct = await stub.fetch(`https://world.internal/worlds/${roomId}`);
+  expect(direct.status).toBe(401); await direct.text();
+  const internal = await workerFetch("https://worker.test/internal/room-kind");
+  expect(internal.status).toBe(404); await internal.text();
+});
+
+it("bounds anonymous creation requests and retains per-IP creation limits", async () => {
+  const invalid = await workerFetch("https://worker.test/worlds", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+  expect(invalid.status).toBe(400); await invalid.text();
+  const oversized = await workerFetch("https://worker.test/worlds", { method: "POST", headers: { "content-length": String(LIVE_MAX_DOCUMENT_BYTES + 16 * 1024 + 1) }, body: "{}" });
+  expect(oversized.status).toBe(413); await oversized.text();
+  const ip = "192.0.2.100";
+  const ns = (env as unknown as WorkerEnv).WORLD_CREATION_LIMITER;
+  const limiter = ns.get(ns.idFromName(worldCreationLimiterKey(ip)));
+  await runInDurableObject(limiter, async (_instance: WorldCreationLimiter, state: DurableObjectState) => {
+    await state.storage.put("window", { windowStartedAt: Date.now(), count: WORLD_CREATION_LIMIT });
+  });
+  const limited = await workerFetch("https://worker.test/worlds", { method: "POST", headers: { "cf-connecting-ip": ip, "content-type": "application/json" }, body: JSON.stringify({ title: "Limited", document: worldDocument(), profile: { displayName: "Builder" } }) });
+  expect(limited.status).toBe(429); expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0); await limited.text();
 });

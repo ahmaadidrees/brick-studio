@@ -146,7 +146,7 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
             </p>
             <CtaPair studioHref={studioHref} liveHref={liveHref} />
             <p className="landing-hero-trust">
-              Start without an account. Join your class to save online and build together. No installs.
+              Build and share a guest room without an account. Join your class to save online. No installs.
             </p>
           </div>
           <div className="landing-hero-stage">
@@ -183,17 +183,17 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
                 id={liveId}
                 eyebrow="Live worlds"
                 title="Build together, actually together"
-                lede="Open a shared world from My Class and see your classmates’ creations take shape alongside yours."
+                lede="Share a guest-room link and build together without signing in. Classroom accounts also give you shared worlds everyone can find in My Class."
               />
               <ul className="landing-checklist">
-                <li><Check size={15} aria-hidden="true" />Class and group worlds are easy to find, with no links to exchange</li>
+                <li><Check size={15} aria-hidden="true" />Invite friends by link, or find your class and group worlds in My Class</li>
                 <li><Check size={15} aria-hidden="true" />Build together, then step inside and explore</li>
                 <li><Check size={15} aria-hidden="true" />Teachers manage who can join and when collaboration is open</li>
               </ul>
               <p className="landing-cta-row landing-cta-row-compact">
                 <a className="landing-cta landing-cta-secondary" href={liveHref}>
                   <Users size={16} aria-hidden="true" />
-                  Open My Class
+                  Start a shared build
                 </a>
               </p>
             </div>
@@ -241,7 +241,7 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
               <h2 id={shareId}>Keep building tomorrow.</h2>
               <p>
                 Join your class and save to My Worlds to pick up your work on another device.
-                Building as a guest? Your work stays in this browser, and you can export a copy to keep.
+                Solo guest builds stay in this browser. Guest rooms are temporary; export a copy to keep your work.
               </p>
             </div>
             <span className="landing-share-icon landing-share-icon-remix" aria-hidden="true"><Sparkles size={20} aria-hidden="true" /></span>

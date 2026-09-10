@@ -1,3 +1,5 @@
+import { LIVE_MAX_DOCUMENT_BYTES } from "@brick-studio/core";
+import { worldCreationLimiterKey } from "./worldCreationLimiter";
 import { readClassroomBody, ClassroomBodyError } from "./classroom/readBody";
 import type { Env } from "./index";
 import {
@@ -15,7 +17,7 @@ import {
   issueLiveTicket,
   verifyLiveTicket,
 } from "./classroomTickets";
-import { newOwnerToken, ownerTokenVerifier } from "./worldRoom";
+import { newOwnerToken, newWorldId, ownerTokenVerifier, validateCreateWorldRequest } from "./worldRoom";
 const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), {
     status,
@@ -119,14 +121,13 @@ export async function handleReleaseRequest(
     if (external.method === "OPTIONS")
       return outgoing(new Response(null, { status: 204 }), origin);
     const headers = new Headers(external.headers);
-    for (const name of ["x-classroom-access", "x-world-init", "x-room-init"])
+    for (const name of ["x-classroom-access", "x-world-init", "x-room-init", "x-guest-world-access"])
       headers.delete(name);
     const request = new Request(external, { headers }),
       url = new URL(request.url);
     if (
       url.pathname === "/rooms" ||
-      url.pathname.startsWith("/rooms/") ||
-      url.pathname === "/worlds"
+      url.pathname.startsWith("/rooms/")
     )
       return outgoing(
         json(
@@ -138,6 +139,37 @@ export async function handleReleaseRequest(
         ),
         origin,
       );
+    if (url.pathname === "/worlds") {
+      if (request.method !== "POST")
+        return outgoing(json({ code: "method_not_allowed" }, 405), origin);
+      const limiter = env.WORLD_CREATION_LIMITER.get(env.WORLD_CREATION_LIMITER.idFromName(
+        worldCreationLimiterKey(request.headers.get("cf-connecting-ip")),
+      ));
+      const limitResponse = await limiter.fetch("https://limiter.internal/consume", { method: "POST" });
+      if (limitResponse.status === 429) {
+        const limit = await limitResponse.json<{ retryAfterSeconds: number }>();
+        const response = json({ error: "creation_rate_limited", retryAfterSeconds: limit.retryAfterSeconds }, 429);
+        response.headers.set("retry-after", String(limit.retryAfterSeconds));
+        response.headers.set("access-control-expose-headers", "retry-after");
+        return outgoing(response, origin);
+      }
+      if (!limitResponse.ok) return outgoing(json({ error: "creation_limiter_unavailable" }, 503), origin);
+      const input = await readClassroomBody(request, LIVE_MAX_DOCUMENT_BYTES + 16 * 1024);
+      const validated = validateCreateWorldRequest(input);
+      if (!validated.ok) return outgoing(json({ error: validated.code, message: validated.message }, 400), origin);
+      const roomId = newWorldId(), ownerToken = newOwnerToken();
+      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(roomId));
+      const created = await stub.fetch("https://world.internal/init", {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-world-init": "1" },
+        body: JSON.stringify({
+          roomId, title: validated.value.title, document: validated.value.document,
+          initialOwnerProfile: validated.value.profile, ownerTokenVerifier: await ownerTokenVerifier(ownerToken),
+        }),
+      });
+      if (!created.ok) return outgoing(json({ error: "world_creation_failed" }, 503), origin);
+      return outgoing(json({ roomId, ownerToken }, 201), origin);
+    }
     const legacyRoute = url.pathname.match(
       /^\/classroom\/legacy-worlds\/([a-f0-9]{32})\/import$/,
     );
@@ -221,9 +253,35 @@ export async function handleReleaseRequest(
     if (route) {
       if (request.method !== "GET")
         return outgoing(json({ code: "method_not_allowed" }, 405), origin);
+      // Guest capabilities never authorize classroom records. The immutable DO
+      // record type, not a client flag or header, decides this branch. Existing
+      // compact guest links retain their storage identity and protocol.
+      if (/^[a-f0-9]{32}$/.test(route[1]) && !url.searchParams.has("ticket")) {
+        const guestStub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(route[1]));
+        const kindResponse = await guestStub.fetch("https://world.internal/internal/room-kind");
+        if (!kindResponse.ok) return outgoing(json({ code: "service_unavailable" }, 503), origin);
+        const { kind } = await kindResponse.json<{ kind: string }>();
+        if (kind === "guest") {
+          const internal = new URL(`https://world.internal/worlds/${route[1]}${route[2] ?? ""}`);
+          for (const key of ["playerId", "ownerToken", "reconnectToken", "profile"]) {
+            const value = url.searchParams.get(key);
+            if (value !== null) internal.searchParams.set(key, value);
+          }
+          const guestHeaders = new Headers({ "x-guest-world-access": "1" });
+          if (route[2]) guestHeaders.set("Upgrade", request.headers.get("Upgrade") ?? "");
+          return outgoing(await guestStub.fetch(new Request(internal, { headers: guestHeaders })), origin);
+        }
+        // A cloud world may not have initialized its live DO yet. Missing
+        // records must pass through normal authorization and ensureRoom.
+        if (kind !== "classroom" && kind !== "missing") return outgoing(json({ code: "service_unavailable" }, 503), origin);
+      }
       const id = canonicalWorldId(route[1]);
       if (!id)
         throw new ClassroomHttpError(404, "not_found", "World not found.");
+      if ((route[2] && !url.searchParams.get("ticket")) ||
+          (!route[2] && !/^Bearer .+/i.test(request.headers.get("authorization") ?? ""))) {
+        throw new ClassroomHttpError(401, "sign_in_required", "Sign in to open this classroom world.");
+      }
       const access = route[2]
         ? await (async () => {
             const identity = await verifyLiveTicket(

@@ -5,9 +5,9 @@ export class ClassroomBodyError extends Error {
 const MAX_BODY_BYTES = 2_000_000;
 
 /** Bound allocation even when a client omits Content-Length or streams chunks. */
-export async function readClassroomBody(request: Request): Promise<Record<string, unknown>> {
+export async function readClassroomBody(request: Request, maxBytes = MAX_BODY_BYTES): Promise<Record<string, unknown>> {
   const tooLarge = () => new ClassroomBodyError(413, 'too_large', 'This request is too large.');
-  if (Number(request.headers.get('content-length')) > MAX_BODY_BYTES) throw tooLarge();
+  if (Number(request.headers.get('content-length')) > maxBytes) throw tooLarge();
   const reader = request.body?.getReader();
   if (!reader) throw new ClassroomBodyError(400, 'invalid_json', 'Send a JSON object.');
   const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false });
@@ -18,7 +18,7 @@ export async function readClassroomBody(request: Request): Promise<Record<string
       const result = await reader.read();
       if (result.done) break;
       size += result.value.byteLength;
-      if (size > MAX_BODY_BYTES) {
+      if (size > maxBytes) {
         await reader.cancel().catch(() => undefined);
         throw tooLarge();
       }

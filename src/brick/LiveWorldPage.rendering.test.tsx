@@ -50,22 +50,28 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
-async function openWorld() {
+async function openWorld(guest = false) {
   const client = new ClassroomClient('', vi.fn(async () => new Response(JSON.stringify({ user: auth.user, classes: [] }))) as typeof fetch)
-  client.setSession(auth)
+  if (!guest) client.setSession(auth)
   const connector = createFakeLiveRoomConnector({
     connection: 'online', syncing: false, document: createBrickStudioDocument([]),
     mode: 'explore', players: [self, friend], selfPlayerId: self.playerId, remotePoses: [pose],
   })
+  const fetchWorldSummary = vi.fn().mockResolvedValue({ roomId, mode: 'explore', title: 'Our group', locked: false, playerCount: 2 })
+  if (!guest) fetchWorldSummary.mockRejectedValueOnce(Object.assign(new Error('Classroom sign-in required'), { status: 401 }))
   render(<LiveWorldPage classroomClient={client} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }}
     connectRoom={connector.connect}
-    fetchWorldSummary={async () => ({ roomId, mode: 'explore', title: 'Our group', locked: false, playerCount: 2 })} />)
+    fetchWorldSummary={fetchWorldSummary} />)
+  if (guest) {
+    fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Alex' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Join the room' }))
+  }
   await screen.findByText('Build tools')
   return { room: connector.rooms[0], client }
 }
 
-it('updates every remote movement without rerendering the editor and keeps local pose delivery working', async () => {
-  const { room } = await openWorld()
+it.each([false, true])('updates remote movement without rerendering the editor and keeps local poses working (guest=%s)', async (guest) => {
+  const { room } = await openWorld(guest)
   const before = { ...renders }
   for (let index = 1; index <= 60; index += 1) {
     act(() => room.emit({ remotePoses: [{ ...pose, x: index, at: index + 1 }] }))
@@ -80,7 +86,7 @@ it('updates every remote movement without rerendering the editor and keeps local
 it('refreshes names without a new pose and removes departing players immediately', async () => {
   const { room } = await openWorld()
   act(() => room.emit({ players: [self, { ...friend, profile: { displayName: 'Taylor' } }] }))
-  expect(screen.getByLabelText('Remote characters')).toHaveTextContent('Taylor:0')
+  await waitFor(() => expect(screen.getByLabelText('Remote characters')).toHaveTextContent('Taylor:0'))
   // Even if poses have not been cleared yet, membership wins.
   act(() => room.emit({ players: [self] }))
   expect(screen.getByLabelText('Remote characters')).toBeEmptyDOMElement()

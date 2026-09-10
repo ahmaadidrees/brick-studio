@@ -928,8 +928,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       selectionMode: false,
       marquee: null,
       toast: restoredBricks.length
-        ? `Restored ${restoredBricks.length} locally saved bricks.`
-        : 'Restored a blank local project.',
+        ? `Opened a build with ${restoredBricks.length} bricks.`
+        : 'Opened a blank build.',
     }))
     return { ok: true }
   },

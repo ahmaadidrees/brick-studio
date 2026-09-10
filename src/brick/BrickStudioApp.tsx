@@ -61,6 +61,8 @@ import type { CharacterPalette } from './characters/types'
 import { CreateBrickSheet } from './customParts/CreateBrickSheet'
 import { ResizeBrickSheet, type ResizeDelta } from './customParts/ResizeBrickSheet'
 import { resizeSelectionDefinitions } from './customParts/resize'
+import { saveLiveWorldSeed } from './live/liveWorldSeed'
+import { saveLocalBrickStudioProject } from './documentPersistence'
 import './brick-studio.css'
 
 export type BrickStudioLivePolicy = {
@@ -1070,7 +1072,27 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
-  const startCurrentWorldLive = useCallback(() => setClassroomIntent('class'), [])
+  const startCurrentWorldLive = useCallback(() => {
+    void (async () => {
+      try {
+        if (cloud.world) {
+          if (!await cloud.flush()) {
+            useBrickStore.setState({ toast: 'Your account world is still saving. Wait for it to save, then start Build together again.' })
+            return
+          }
+        }
+        const document = useBrickStore.getState().getDocumentSnapshot()
+        if (!cloud.world) {
+          const saved = saveLocalBrickStudioProject(window.localStorage, document)
+          if (!saved.ok) throw new Error(saved.error.message)
+        }
+        saveLiveWorldSeed(document)
+        window.location.assign('/live/new')
+      } catch (reason) {
+        useBrickStore.setState({ toast: reason instanceof Error ? reason.message : 'Could not prepare your build. Export a copy before trying again.' })
+      }
+    })()
+  }, [cloud])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild: onNewBuild ?? (cloud.world ? () => { void (async () => {
       if (!window.confirm('Start a new guest build? Your account world will remain saved separately.')) return

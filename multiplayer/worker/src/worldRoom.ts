@@ -358,6 +358,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+    // Only the outer router can call this endpoint; it discloses no world data.
+    if (url.pathname === "/internal/room-kind" && request.method === "GET") {
+      const expired = this.record && !this.record.classroomWorldId
+        && Date.now() >= this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS;
+      return json({ kind: !this.record || expired ? "missing" : this.record.classroomWorldId ? "classroom" : "guest" });
+    }
     // Reachable only through the authenticated outer legacy-import route.
     // A surviving owner capability recovers a private copy, never anonymous access.
     if (url.pathname === "/internal/legacy-export" && request.method === "POST") {
@@ -438,10 +444,18 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return json({ ok: true }, 201);
     }
     if (!this.record) return json({ error: "world_not_found" }, 404);
+    if (this.record.classroomWorldId && request.headers.has("x-guest-world-access"))
+      return json({ error: "classroom_auth_required" }, 401);
     if (url.pathname.endsWith("/connect")) {
       return this.withSerializedAdmission(() => this.connectSocket(request, url));
     }
     if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
+    if (this.record.classroomWorldId) {
+      let access: ClassroomSocketAccess | null = null;
+      try { access = JSON.parse(request.headers.get("x-classroom-access") ?? "null"); } catch { /* denied below */ }
+      if (!access || access.worldId !== this.record.classroomWorldId || typeof access.userId !== "string")
+        return json({ error: "classroom_auth_required" }, 401);
+    }
     return json(this.publicState());
   }
 

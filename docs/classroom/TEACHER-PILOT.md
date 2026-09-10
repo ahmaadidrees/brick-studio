@@ -17,7 +17,7 @@ The classroom release is live at https://virtual-legos.vercel.app. Release ident
 - World controls → Remove from group: remove a student's access while keeping their contributions.
 - Restore world: choose an earlier checkpoint when recovery is needed. Restoring first preserves a checkpoint of the current version.
 
-Guest building, exploration, local drafts, and import/export remain available without signing in. Guests need an account to use classroom collaboration or save to My Worlds.
+Guest building, exploration, local drafts, import/export, and **Build together by invitation link** are available without signing in. Use Build together to create a temporary guest room and share its invite link; students choose a builder name. Export the build for long-term retention. An account is required for My Class collaboration and durable My Worlds saving. See GUEST-HOTFIX-2026-09-10.md for the restored guest flow and verification.
 
 ## Feedback needed from actual students
 
