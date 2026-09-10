@@ -40,5 +40,20 @@
     "hostedChromeCompressedLegacyWorld": "passed",
     "publicAliasVerified": true,
     "workerUnchanged": true
+  },
+  "guestCollaborationFollowUp": {
+    "verifiedAt": "2026-09-10T15:59:52.197030+00:00",
+    "applicationSourceCommit": "00a90ff",
+    "frontendDeployment": "dpl_8VAdrBVKCPdwaLvGymQv8oBaBjDY",
+    "immutableFrontend": "https://virtual-legos-e1j2m3cin-ahmaadidrees-projects.vercel.app",
+    "workerVersion": "68ede359-0bbe-44db-a8d7-5e38a32c567d",
+    "publicAliasVerified": true,
+    "publicGuestCreateFormVerified": true,
+    "node22FrontendTests": 642,
+    "node22WorkerTests": 64,
+    "realTwoBrowserGuestProductionFlow": "passed",
+    "unsignedClassroomAccess": "401 sign_in_required",
+    "report": "GUEST-HOTFIX-2026-09-10.md",
+    "broaderPolish": "Separate codex/classroom-polish-today at98e5cad; not deployed"
   }
 }
