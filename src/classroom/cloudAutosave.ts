@@ -2,7 +2,7 @@ import type { BrickStudioDocument } from '../brick/brickDocument'
 import { ClassroomClient } from './client'
 import type { ClassroomWorld } from './contracts'
 export type CloudSaveStatus = 'saved' | 'pending' | 'saving' | 'error'
-export type CloudRecovery = { userId: string; world: ClassroomWorld; document: BrickStudioDocument; savedAt: string }
+export type CloudRecovery = { userId: string; world: Omit<ClassroomWorld, 'document'>; document: BrickStudioDocument; savedAt: string }
 export const recoveryKey = (userId: string, worldId: string) => `brick-studio.cloud-recovery.v1:${userId}:${worldId}`
 export function createCloudAutosave({ client, userId, world: initialWorld, document: initialDocument, storage, onStatus, onWorld }: {
   client: ClassroomClient; userId: string; world: ClassroomWorld; document: BrickStudioDocument; storage: Pick<Storage, 'setItem' | 'removeItem'>;
@@ -11,7 +11,10 @@ export function createCloudAutosave({ client, userId, world: initialWorld, docum
   let world = initialWorld, latest = initialDocument, generation = 0, savedGeneration = 0, stopped = false, failed = false
   let timer: ReturnType<typeof setTimeout> | undefined, running: Promise<boolean> | null = null
   const preserve = () => {
-    try { storage.setItem(recoveryKey(userId, world.id), JSON.stringify({ userId, world, document: latest, savedAt: new Date().toISOString() } satisfies CloudRecovery)) }
+    // Recovery needs the latest document and the acknowledged world metadata.
+    // Keeping the older world.document too doubles synchronous storage work.
+    const { document: _acknowledgedDocument, ...metadata } = world
+    try { storage.setItem(recoveryKey(userId, world.id), JSON.stringify({ userId, world: metadata, document: latest, savedAt: new Date().toISOString() } satisfies CloudRecovery)) }
     catch { if (!stopped) onStatus('error', 'Device recovery storage is full. Export this build before leaving.') }
   }
   const flush = (): Promise<boolean> => {

@@ -6,6 +6,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { createMotionSnapshot } from './avatarMotion'
+import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
 import { getBuildBounds } from './bounds'
 import {
   clampBuildCameraTarget,
@@ -128,6 +129,7 @@ export type RemoteRaceAvatar = RaceAvatarPose & {
 export type BrickStudioSceneProps = {
   onLocalAvatarPose?: (pose: RaceAvatarPose) => void
   remoteAvatars?: RemoteRaceAvatar[]
+  remoteAvatarSource?: RemoteAvatarSource
   environmentId?: EnvironmentId
   localCharacterId?: CharacterId
   localCharacterPalette?: CharacterPalette
@@ -1543,9 +1545,15 @@ function PhysicsPreload() {
   return preload ? <Physics paused>{null}</Physics> : null
 }
 
+function RemoteAvatars({ source, avatars, compact }: { source?: RemoteAvatarSource; avatars?: RemoteRaceAvatar[]; compact: boolean }) {
+  const currentAvatars = useRemoteAvatars(source, avatars)
+  return currentAvatars.map((avatar) => <RemoteAvatar key={avatar.id} avatar={avatar} compact={compact} />)
+}
+
 function ExploreScene({
   onLocalAvatarPose,
-  remoteAvatars = [],
+  remoteAvatars,
+  remoteAvatarSource,
   environment,
   localCharacterId,
   localCharacterPalette,
@@ -1568,7 +1576,7 @@ function ExploreScene({
         <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
       </Suspense>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
-      {remoteAvatars.map((avatar) => <RemoteAvatar key={avatar.id} avatar={avatar} compact={compact} />)}
+      <RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} />
       <ExplorerAvatar
         onPose={onLocalAvatarPose}
         characterId={localCharacterId}
@@ -1636,6 +1644,7 @@ function RuntimeSceneContent({
   onLocalAvatarPose,
   onEnvironmentStatusChange,
   remoteAvatars,
+  remoteAvatarSource,
   compact,
   mouseTravel,
 }: BrickStudioSceneProps & {
@@ -1679,6 +1688,7 @@ function RuntimeSceneContent({
               <ExploreScene
                 onLocalAvatarPose={onLocalAvatarPose}
                 remoteAvatars={remoteAvatars}
+                remoteAvatarSource={remoteAvatarSource}
                 environment={environment}
                 localCharacterId={localCharacterId}
                 localCharacterPalette={localCharacterPalette}
@@ -1694,6 +1704,7 @@ export default function BrickStudioScene({
   onLocalAvatarPose,
   onEnvironmentStatusChange,
   remoteAvatars,
+  remoteAvatarSource,
   environmentId = 'classic',
   localCharacterId = 'classic',
   localCharacterPalette,
@@ -1726,6 +1737,7 @@ export default function BrickStudioScene({
         onLocalAvatarPose={onLocalAvatarPose}
         onEnvironmentStatusChange={onEnvironmentStatusChange}
         remoteAvatars={remoteAvatars}
+        remoteAvatarSource={remoteAvatarSource}
         compact={compactRenderer}
         mouseTravel={mouseTravel.current}
       />

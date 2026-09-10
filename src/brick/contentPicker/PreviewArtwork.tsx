@@ -1,6 +1,10 @@
+import type { CSSProperties } from 'react'
+import type { CharacterPalette } from '../characters/types'
+
 type PreviewArtworkProps = {
   kind: 'environment' | 'character'
   previewKey: string
+  palette?: Readonly<CharacterPalette>
 }
 
 function ClassicStudioArtwork() {
@@ -165,6 +169,8 @@ function RobotHeroArtwork() {
         <path className="preview-robot-leg-left" d="M74 70h23l-3 29H67z" />
         <path className="preview-robot-leg-right" d="M103 70h23l7 29h-27z" />
         <path className="preview-robot-shoulders" d="M59 47 79 39h42l20 8-7 19-14-6v22H80V60l-14 6z" />
+        <rect className="preview-robot-hand" x="57" y="61" width="14" height="12" rx="4" />
+        <rect className="preview-robot-hand" x="129" y="61" width="14" height="12" rx="4" />
         <path className="preview-robot-chest" d="M83 45h34l7 32H76z" />
         <path className="preview-robot-core" d="m100 51 10 8-10 11-10-11z" />
         <path className="preview-robot-head" d="m79 17 9-9h24l9 9-3 28H82z" />
@@ -181,7 +187,7 @@ function FallbackArtwork({ kind }: { kind: PreviewArtworkProps['kind'] }) {
   return kind === 'environment' ? <ClassicStudioArtwork /> : <ClassicBuilderArtwork />
 }
 
-export function PreviewArtwork({ kind, previewKey }: PreviewArtworkProps) {
+export function PreviewArtwork({ kind, previewKey, palette }: PreviewArtworkProps) {
   let artwork
   switch (previewKey) {
     case 'environment:classic': artwork = <ClassicStudioArtwork />; break
@@ -198,6 +204,11 @@ export function PreviewArtwork({ kind, previewKey }: PreviewArtworkProps) {
     <span
       className={`content-picker-art content-picker-art-${kind}`}
       data-preview-key={previewKey}
+      style={kind === 'character' && palette ? {
+        '--preview-character-primary': palette.primary,
+        '--preview-character-secondary': palette.secondary,
+        '--preview-character-accent': palette.accent,
+      } as CSSProperties : undefined}
       aria-hidden="true"
     >
       {artwork}

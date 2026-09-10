@@ -97,9 +97,11 @@ export function StudioMenu({
       </button>
       {open && (
         <div className="studio-menu-popover" role="menu" aria-label="Studio actions">
-          {buildMode && <PlacedBrickNavigator />}
+          {onOpenMyWorlds && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyWorlds)}><FolderOpen size={18} /><span><strong>My Worlds</strong><small>Open your saved builds</small></span></button>}
+          {onOpenMyClass && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyClass)}><Users size={18} /><span><strong>My Class</strong><small>Find your group and build together</small></span></button>}
+          {onSaveToAccount && <button role="menuitem" type="button" onClick={() => runAndClose(onSaveToAccount)}><Save size={18} /><span><strong>Save to my account</strong><small>Keep this build across devices</small></span></button>}
           <button role="menuitem" type="button" onClick={() => runAndClose(onOpenWorldSetup)}>
-            <Palette size={18} /><span><strong>World &amp; character</strong><small>Choose a scene and customize your explorer</small></span>
+            <Palette size={18} /><span><strong>Scene &amp; character</strong><small>Choose a scene and customize your explorer</small></span>
           </button>
           <button role="menuitem" type="button" disabled={!onNewBuild} onClick={() => runAndClose(onNewBuild)}>
             <FilePlus2 size={18} /><span><strong>New Build</strong><small>Start with a blank plate</small></span>
@@ -113,12 +115,10 @@ export function StudioMenu({
           <button role="menuitem" type="button" disabled={!onStartLiveWorld} onClick={() => runAndClose(onStartLiveWorld)}>
             <Radio size={18} /><span><strong>Build together</strong><small>Start a live multiplayer world</small></span>
           </button>
-          {onSaveToAccount && <button role="menuitem" type="button" onClick={() => runAndClose(onSaveToAccount)}><Save size={18} /><span><strong>Save to my account</strong><small>Keep this build across devices</small></span></button>}
-          {onOpenMyWorlds && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyWorlds)}><FolderOpen size={18} /><span><strong>My Worlds</strong><small>Open your saved builds</small></span></button>}
-          {onOpenMyClass && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyClass)}><Users size={18} /><span><strong>My Class</strong><small>Find your group and build together</small></span></button>}
           <button role="menuitem" type="button" onClick={() => runAndClose(onOpenHelp)}>
             <HelpCircle size={18} /><span><strong>Help</strong><small>Show the quick start guide</small></span>
           </button>
+          {buildMode && <PlacedBrickNavigator />}
         </div>
       )}
       <input

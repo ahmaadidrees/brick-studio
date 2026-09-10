@@ -203,13 +203,14 @@ type HeaderProps = StudioDocumentCommands & {
   onOpenMyWorlds?: () => void
   onOpenMyClass?: () => void
   accountLabel?: string
-  saveLabel?: string
+  worldTitle?: string
+  saveStatus: { label: string; detail: string; tone: 'local' | 'saved' | 'pending' | 'error' }
   livePolicy?: BrickStudioLivePolicy
   onOpenHelp: () => void
   onOpenWorldSetup: () => void
 }
 
-function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, accountLabel, saveLabel }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, accountLabel, worldTitle, saveStatus }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const bricks = useBrickStore((state) => state.bricks)
@@ -225,8 +226,14 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
   return (
     <header className="brick-header">
       <div className="brick-brand">
-        <span className="brick-brand-mark"><Cuboid size={22} /></span>
-        <div><strong>Brick Studio</strong><span>Build your world</span></div>
+        <button className="brick-brand-mark brick-customize-entry" type="button" onClick={onOpenWorldSetup} aria-label="Customize scene & character" title="Choose a scene and customize your character">
+          <Palette size={20} aria-hidden="true" /><span>Customize</span>
+        </button>
+        <div className="brick-world-context">
+          <strong>Brick Studio</strong>
+          {worldTitle && <span className="brick-world-title" title={worldTitle}>{worldTitle}</span>}
+          <span className={`brick-save-status brick-save-${saveStatus.tone}`} role="status" aria-label={`Save status: ${saveStatus.label}`} title={saveStatus.detail}>{saveStatus.label}</span>
+        </div>
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
         <button aria-label="Build mode" className={mode === 'build' ? 'active' : ''} onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
@@ -234,7 +241,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
       </nav>
       <div className="brick-header-actions">
         {onOpenMyClass && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyClass} aria-label={`My Class${accountLabel ? ` — ${accountLabel}` : ""}`}>My Class</button>}
-        {onOpenMyWorlds && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyWorlds} aria-label="My Worlds"><span>{saveLabel || "My Worlds"}</span></button>}
+        {onOpenMyWorlds && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyWorlds} aria-label="My Worlds"><span>My Worlds</span></button>}
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick capacity`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks</i></span>
         {mode === 'build' && <>
           <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
@@ -756,7 +763,7 @@ function Toast() {
   const toast = useBrickStore((state) => state.toast)
   const clear = useBrickStore((state) => state.clearToast)
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(clear, 3300); return () => window.clearTimeout(timer) }, [toast, clear])
-  return toast ? <div className="brick-toast" role="status">{toast}</div> : null
+  return toast ? <div className="brick-toast" role="status" aria-label="Studio message">{toast}</div> : null
 }
 
 function Announcer() {
@@ -1054,7 +1061,7 @@ export default function BrickStudioApp({
     setLocalCustomParts(result.definitions)
     return true
   }, [customPartPolicy, customParts])
-  useBuilderShortcuts(!readOnly && !classroomIntent && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
+  useBuilderShortcuts(!readOnly && !classroomIntent && !worldSetupOpen && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
@@ -1094,6 +1101,25 @@ export default function BrickStudioApp({
     useBrickStore.getState().setMode('explore')
   }, [publishedWorld])
   const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
+  // This label describes the destination and confirmed cloud state. Guest autosave
+  // reports failures separately and does not expose a saved acknowledgement here.
+  const saveStatus: HeaderProps['saveStatus'] = livePolicy
+    ? {
+      label: livePolicy.connection === 'online' ? 'Shared world' : livePolicy.connection === 'connecting' ? 'Connecting…' : livePolicy.connection === 'reconnecting' ? 'Reconnecting…' : 'Offline · edits paused',
+      detail: 'The shared world connection and saving details appear in the live session controls.',
+      tone: livePolicy.connection === 'online' ? 'saved' : livePolicy.connection === 'offline' ? 'error' : 'pending',
+    }
+    : cloud.world
+      ? {
+        label: cloud.status === 'saved' ? 'Saved to account' : cloud.status === 'saving' ? 'Saving to account…' : cloud.status === 'pending' ? 'Waiting to save…' : 'Save needs attention',
+        detail: cloud.status === 'saved' ? 'Your latest changes are saved to your account.' : cloud.status === 'error' ? cloud.error || 'Your latest changes are not saved online. Use the recovery controls before leaving.' : 'Your latest changes are not saved online yet. Keep this tab open.',
+        tone: cloud.status === 'saved' ? 'saved' : cloud.status === 'error' ? 'error' : 'pending',
+      }
+      : {
+        label: 'This browser only',
+        detail: 'This build stays in this browser. Use My Worlds to save a copy to your account, or Export to download it.',
+        tone: 'local',
+      }
   return (
     <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}${livePolicy ? ' brick-live-session' : ''}`}>
       <div className="brick-canvas">
@@ -1127,7 +1153,8 @@ export default function BrickStudioApp({
           onOpenMyWorlds={() => setClassroomIntent('worlds')}
           onOpenMyClass={() => setClassroomIntent('class')}
           accountLabel={classroomAuth?.user.username}
-          saveLabel={cloud.world ? `${cloud.status === 'saved' ? 'Saved' : cloud.status === 'saving' ? 'Saving…' : cloud.status === 'pending' ? 'Unsaved changes' : 'Save needs attention'}` : 'My Worlds'}
+          worldTitle={cloud.world?.title}
+          saveStatus={saveStatus}
           livePolicy={livePolicy}
           onOpenHelp={onboarding.reopen}
           onOpenWorldSetup={() => setWorldSetupOpen(true)}
@@ -1157,8 +1184,8 @@ export default function BrickStudioApp({
         selection={contentSelection}
         paletteGroups={characterPaletteGroups(contentPreview?.characterId ?? characterId)}
         description={contentPolicy && !contentPolicy.canChangeEnvironment
-          ? contentPolicy.environmentHelp ?? 'Choose your character and colors. The room owner controls the shared environment.'
-          : 'Choose where your world lives and customize the character you explore as.'}
+          ? contentPolicy.environmentHelp ?? 'Choose your character and colors. The room owner chooses the shared scene.'
+          : 'Choose a scene and customize the character you explore as.'}
         onApply={applyContentSelection}
         onDraftChange={setContentPreview}
         previewStatuses={{ environment: environmentPreviewStatuses }}

@@ -19,11 +19,11 @@ import {
   describeLiveMode,
   liveEditPermission,
   type LiveRoomActions,
-  type LiveRoomSnapshot,
+  type LiveRoomUiSnapshot,
 } from './liveRoomModel'
 
 export type LiveWorldHudProps = {
-  snapshot: LiveRoomSnapshot
+  snapshot: LiveRoomUiSnapshot
   roomTitle: string
   /** Clean guest link — never contains the owner capability. */
   shareLink: string

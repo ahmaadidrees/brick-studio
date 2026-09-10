@@ -26,8 +26,8 @@ describe('ContentPicker', () => {
   it('renders controlled, semantic selection groups without eager media or render modules', () => {
     const { container } = render(<ContentPicker {...baseProps} />)
 
-    expect(screen.getByRole('region', { name: 'Choose your world' })).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'Choose an environment' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Scene & character' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Choose a scene' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Toy Room/ })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /Brick Valley/ })).toHaveAttribute('tabindex', '-1')
     expect(screen.getByRole('radio', { name: /Toy Figure/ })).toHaveAttribute('aria-checked', 'true')
@@ -199,7 +199,7 @@ describe('ContentPicker', () => {
       />,
     )
 
-    expect(screen.getByText('No environments are available yet.')).toBeInTheDocument()
+    expect(screen.getByText('No scenes are available yet.')).toBeInTheDocument()
     expect(screen.getByText('No characters are available yet.')).toBeInTheDocument()
   })
 })

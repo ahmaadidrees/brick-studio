@@ -296,23 +296,25 @@
 
 .preview-builder-head { fill: #f0b14e; }
 .preview-builder-hair { fill: #5e4434; }
-.preview-builder-body { fill: #3c84cb; }
-.preview-builder-badge { fill: #f2cf49; }
+.preview-builder-body { fill: var(--preview-character-primary, #3c84cb); }
+.preview-builder-badge { fill: var(--preview-character-accent, #f2cf49); }
 .preview-builder-arm-left, .preview-builder-arm-right { fill: #f0b14e; }
-.preview-builder-leg-left, .preview-builder-leg-right { fill: #345d91; }
+.preview-builder-leg-left, .preview-builder-leg-right { fill: var(--preview-character-secondary, #345d91); }
 
-.preview-toy-head, .preview-toy-hand { fill: #f0ad54; }
-.preview-toy-cap { fill: #e84f48; }
-.preview-toy-body { fill: #e6683f; stroke: #bc4932; stroke-width: 2; }
-.preview-toy-arm-left, .preview-toy-arm-right { fill: #4d98c9; }
-.preview-toy-leg-left, .preview-toy-leg-right { fill: #3f75a7; }
-.preview-toy-emblem { fill: #f7d34f; stroke: #fff0a0; stroke-width: 2; }
+.preview-toy-head { fill: #f0ad54; }
+.preview-toy-hand { fill: var(--preview-character-accent, #f0ad54); }
+.preview-toy-cap { fill: var(--preview-character-primary, #e84f48); }
+.preview-toy-body { fill: var(--preview-character-primary, #e6683f); stroke: #bc4932; stroke-width: 2; }
+.preview-toy-arm-left, .preview-toy-arm-right { fill: var(--preview-character-primary, #4d98c9); }
+.preview-toy-leg-left, .preview-toy-leg-right { fill: var(--preview-character-secondary, #3f75a7); }
+.preview-toy-emblem { fill: var(--preview-character-accent, #f7d34f); stroke: #fff0a0; stroke-width: 2; }
 
-.preview-robot-shoulders { fill: #a9bbc5; stroke: #667b87; stroke-width: 2; }
-.preview-robot-chest { fill: #d1dce0; stroke: #718690; stroke-width: 2; }
-.preview-robot-leg-left, .preview-robot-leg-right { fill: #718892; }
+.preview-robot-shoulders { fill: var(--preview-character-primary, #a9bbc5); stroke: #667b87; stroke-width: 2; }
+.preview-robot-hand { fill: var(--preview-character-accent, #d1dce0); stroke: #718690; stroke-width: 1; }
+.preview-robot-chest { fill: var(--preview-character-secondary, #d1dce0); stroke: #718690; stroke-width: 2; }
+.preview-robot-leg-left, .preview-robot-leg-right { fill: var(--preview-character-primary, #718892); }
 .preview-robot-core { fill: #ef843b; stroke: #ffbd5e; stroke-width: 2; }
-.preview-robot-head { fill: #c9d5db; stroke: #687d88; stroke-width: 2; }
+.preview-robot-head { fill: var(--preview-character-secondary, #c9d5db); stroke: #687d88; stroke-width: 2; }
 .preview-robot-face { fill: #354c5d; }
 .preview-robot-eye { fill: none; stroke: #66e4ff; stroke-width: 4; stroke-linecap: round; }
 .preview-robot-antenna { stroke: #96aab4; stroke-width: 2; }
@@ -336,6 +338,31 @@
   padding-top: 18px;
   border-top: 1px solid #e4e8e7;
 }
+
+.content-picker-hint {
+  margin: -2px 0 14px;
+  color: var(--content-picker-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.content-picker-reset {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #d5dcdd;
+  border-radius: 9px;
+  color: var(--content-picker-blue-dark);
+  background: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.content-picker-reset:hover:not(:disabled) { background: #edf4fb; }
+.content-picker-reset:disabled { opacity: .5; cursor: default; }
+.content-picker-reset:focus-visible { outline: 3px solid rgba(62, 131, 215, .4); outline-offset: 2px; }
 
 .content-picker-palette-groups {
   display: grid;

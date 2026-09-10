@@ -1,6 +1,171 @@
-.classroom-backdrop{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;background:rgba(21,34,46,.55);backdrop-filter:blur(7px);padding:20px;pointer-events:auto}.classroom-panel{width:min(760px,100%);max-height:90dvh;overflow:auto;background:#f7f5ef;color:#23382f;border:1px solid #fff;border-radius:24px;box-shadow:0 24px 90px #10251c55;padding:28px;font:15px/1.5 system-ui,sans-serif;outline:none}.classroom-panel header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.classroom-panel h2{font-size:27px;line-height:1.15;margin:8px 0 18px}.classroom-panel h3{margin:8px 0}.classroom-eyebrow{font-size:11px;font-weight:800;letter-spacing:.18em;color:#607867}.classroom-panel button{border:1px solid #d1d9cf;background:#fff;color:#254a37;border-radius:10px;padding:9px 13px;font:inherit;font-weight:650;cursor:pointer;min-height:40px}.classroom-panel button:disabled{opacity:.55;cursor:wait}.classroom-panel button:focus-visible,.classroom-panel input:focus-visible,.classroom-panel select:focus-visible{outline:3px solid #d39a36;outline-offset:2px}.classroom-panel button.classroom-primary,.classroom-panel button[aria-pressed=true]{background:#245f45;color:white;border-color:#245f45}.classroom-panel nav,.classroom-actions{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.classroom-panel form{display:grid;gap:13px;margin:16px 0}.classroom-panel label{display:grid;gap:5px;font-weight:650}.classroom-panel input,.classroom-panel select{font:inherit;min-width:0;width:100%;box-sizing:border-box;background:#fff;border:1px solid #b9c8be;border-radius:9px;padding:10px;color:#243b30}.classroom-panel small{display:block;font-size:12px;color:#5b7063;font-weight:400}.classroom-panel .classroom-card{padding:17px;background:#fffdf8;border:1px solid #dfe3d7;border-radius:15px;margin:12px 0}.classroom-panel .classroom-inline{display:flex;align-items:end;gap:10px;flex-wrap:wrap}.classroom-inline label{flex:1;min-width:140px}.classroom-account,.classroom-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #dde2d8}.classroom-error{background:#ffebe5;color:#922d20;border:1px solid #efb4a5;border-radius:12px;padding:12px}.classroom-notice{background:#e5f4e8;border-radius:12px;padding:12px}.classroom-panel .classroom-link{background:transparent;border:0;text-decoration:underline;margin-top:12px}@media(max-width:560px){.classroom-backdrop{padding:8px}.classroom-panel{padding:18px;border-radius:17px;max-height:95dvh}.classroom-panel h2{font-size:23px}.classroom-account{align-items:start;flex-direction:column}}
-.classroom-header-entry{font-size:12px!important;white-space:nowrap;padding:7px!important}.classroom-recovery{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:1100;background:#fff3dc;border:1px solid #d3a756;border-radius:12px;padding:12px;display:flex;gap:8px;align-items:center;max-width:90vw;font:13px system-ui;box-shadow:0 4px 20px #0003}.classroom-recovery button{white-space:nowrap;padding:7px;border:1px solid #a28b64;border-radius:6px;background:white}
+.classroom-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 35, 54, .5);
+  backdrop-filter: blur(7px);
+  padding: 20px;
+  pointer-events: auto;
+}
+.classroom-panel {
+  --classroom-accent: var(--studio-blue-dark, #2867ae);
+  width: min(800px, 100%);
+  max-height: min(850px, calc(100dvh - 40px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #f7f9fc;
+  color: #26394d;
+  border: 1px solid #fff;
+  border-radius: 22px;
+  box-shadow: 0 24px 90px #10253c55;
+  font: 14px/1.45 system-ui, sans-serif;
+  outline: none;
+}
+.classroom-panel-entry { width: min(720px, 100%); }
+.classroom-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 19px 24px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fff;
+}
+.classroom-body { padding: 0 24px 22px; overflow: auto; overscroll-behavior: contain; }
+.classroom-panel h2 { font-size: 25px; line-height: 1.15; margin: 5px 0 0; letter-spacing: -.025em; }
+.classroom-panel h3 { margin: 4px 0 8px; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
+.classroom-panel h4 { font-size: 14px; margin: 22px 0 8px; }
+.classroom-panel h3[tabindex="-1"]:focus { outline: none; }
+.classroom-panel p { margin: 12px 0; }
+.classroom-eyebrow { font-size: 10px; font-weight: 800; letter-spacing: .16em; color: #657b93; }
+.classroom-panel button {
+  border: 1px solid #cad5e2;
+  background: #fff;
+  color: #294560;
+  border-radius: 9px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background .12s, border-color .12s;
+}
+.classroom-panel button:hover:not(:disabled) { background: #edf5ff; border-color: #a9c3df; }
+.classroom-panel button:disabled { opacity: .55; cursor: not-allowed; }
+.classroom-panel button:focus-visible,
+.classroom-panel input:focus-visible,
+.classroom-panel select:focus-visible { outline: 3px solid #d99d30; outline-offset: 2px; }
+.classroom-panel button.classroom-primary,
+.classroom-panel button[aria-pressed="true"] { background: var(--classroom-accent); color: #fff; border-color: var(--classroom-accent); }
+.classroom-panel button.classroom-primary:hover:not(:disabled) { background: #205890; }
+.classroom-panel button.classroom-close { display: grid; place-items: center; width: 38px; min-height: 38px; padding: 7px; flex: 0 0 auto; }
+.classroom-panel nav,
+.classroom-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+.classroom-panel nav > button { flex: 1; white-space: nowrap; }
+.classroom-panel form { display: grid; gap: 13px; margin: 16px 0; }
+.classroom-panel label { display: grid; align-content: start; gap: 5px; font-weight: 650; min-width: 0; }
+.classroom-panel input,
+.classroom-panel select {
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 42px;
+  background: #fff;
+  border: 1px solid #b9c9da;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: #26394d;
+}
+.classroom-panel input::placeholder { color: #728196; }
+.classroom-panel small { display: block; font-size: 12px; line-height: 1.4; color: #617186; font-weight: 400; }
+.classroom-panel .classroom-card { padding: 17px; background: #fff; border: 1px solid #dce4ee; border-radius: 13px; margin: 14px 0; }
+.classroom-panel .classroom-inline { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.classroom-inline label { flex: 1; min-width: 140px; }
+.classroom-full-width { flex-basis: 100%; }
+.classroom-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 15px 18px; }
+.classroom-field { display: grid; align-content: start; gap: 5px; min-width: 0; }
+.classroom-password { position: relative; }
+.classroom-password input { padding-right: 65px; }
+.classroom-panel .classroom-password button { position: absolute; inset: 4px 4px 4px auto; min-height: 0; padding: 3px 9px; border: 0; border-radius: 5px; font-size: 12px; background: #eef3f9; color: #294560; }
+.classroom-panel .classroom-password button[aria-pressed="true"] { background: #deedff; color: #245b9a; }
+.classroom-panel .classroom-intro { color: #526780; margin: 13px 0 10px; }
+.classroom-panel .classroom-auth-form { margin-bottom: 0; }
+.classroom-form-footer { position: sticky; bottom: -22px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #f7f9fc; padding: 12px 0 4px; margin-top: 1px; }
+.classroom-form-footer > .classroom-primary { flex: 1; }
+.classroom-panel .classroom-help { color: #617186; font-size: 13px; }
+.classroom-google { display: grid; gap: 8px; border-bottom: 1px solid #dce4ee; padding: 0 0 14px; margin-bottom: 14px; }
+.classroom-account,
+.classroom-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #e0e6ee; }
+.classroom-account { font-size: 13px; }
+.classroom-account strong { overflow-wrap: anywhere; }
+.classroom-account button { min-height: 34px; font-size: 12px; }
+.classroom-error { background: #fff0ed; color: #922d20; border: 1px solid #efb4a5; border-radius: 10px; padding: 11px; }
+.classroom-notice { background: #e9f4ee; color: #255d3e; border: 1px solid #c4dfcd; border-radius: 10px; padding: 11px; }
+.classroom-panel .classroom-link { background: transparent; border-color: transparent; color: var(--classroom-accent); font-size: 13px; padding: 5px 2px; text-decoration: underline; text-underline-offset: 3px; }
+.classroom-panel .classroom-link:hover:not(:disabled) { background: transparent; color: #1c4b80; border-color: transparent; }
+.classroom-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 14px; margin: 14px 0; }
+.classroom-section-heading p { margin: 0; color: #617186; font-size: 13px; }
+.classroom-panel .classroom-subnav { gap: 4px; background: #eaf0f7; border-radius: 11px; padding: 4px; margin-top: 16px; }
+.classroom-panel .classroom-subnav button { background: transparent; border-color: transparent; color: #526780; font-size: 13px; }
+.classroom-panel .classroom-subnav button[aria-pressed="true"] { color: #245b9a; background: #fff; border-color: #d5dfeb; box-shadow: 0 1px 3px #2945600d; }
+.classroom-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 6px; padding: 0 4px; border-radius: 6px; background: #e9f1fb; color: #245b9a; font-size: 11px; }
+.classroom-search { margin-bottom: 8px; }
+.classroom-roster .classroom-row:last-child { border-bottom: 0; }
+.classroom-row > span { min-width: 0; overflow-wrap: anywhere; }
+.classroom-row button { flex: 0 0 auto; }
+.classroom-student-status { display: inline-block; font-size: 11px; color: #8a581b; background: #fff2d7; padding: 2px 7px; margin-top: 5px; border-radius: 5px; }
+.classroom-codes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 15px 0; }
+.classroom-codes > div { padding: 14px; background: #f0f5fc; border-radius: 9px; }
+.classroom-codes h4 { margin: 4px 0 0; }
+.classroom-code { display: block; font-size: 23px; color: #245b9a; letter-spacing: .08em; margin: 8px 0; overflow-wrap: anywhere; }
+.classroom-access-row { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 14px 0; border-top: 1px solid #e0e6ee; }
+.classroom-access-row:last-child { padding-bottom: 0; }
+.classroom-access-row > div { min-width: 0; }
+.classroom-access-row small { margin-top: 4px; }
+.classroom-access-row > button { flex: 0 0 auto; font-size: 12px; }
+.classroom-panel .classroom-generate { justify-self: start; font-size: 12px; }
+.classroom-worlds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.classroom-panel .classroom-world-card { display: flex; flex-direction: column; margin: 0; min-width: 0; padding: 16px; }
+.classroom-world-heading { display: flex; gap: 12px; align-items: flex-start; }
+.classroom-world-heading > div { min-width: 0; }
+.classroom-world-heading h3 { margin: 4px 0 7px; }
+.classroom-world-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: #e8f2ff; color: #3072bd; flex: 0 0 auto; }
+.classroom-world-icon-group { background: #f0ebfd; color: #7553b9; }
+.classroom-world-icon-class { background: #e6f4ef; color: #387b63; }
+.classroom-panel .classroom-world-kind { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; color: #657b93; }
+.classroom-world-card .classroom-actions { margin: auto 0 0; padding-top: 16px; gap: 6px; }
+.classroom-world-card .classroom-actions button { padding: 6px 10px; font-size: 12px; min-height: 36px; }
+.classroom-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 26px 22px; color: #617186; background: #f0f4f9; border: 1px dashed #c5d3e3; border-radius: 13px; margin: 10px 0; }
+.classroom-empty svg { color: #6f99c9; margin-bottom: 12px; }
+.classroom-empty h3 { color: #294560; }
+.classroom-empty p { max-width: 430px; margin: 3px 0 0; font-size: 13px; }
+.classroom-header-entry { font-size: 12px!important; white-space: nowrap; padding: 7px!important; }
+.classroom-recovery { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); z-index: 1100; background: #fff3dc; border: 1px solid #d3a756; border-radius: 12px; padding: 12px; display: flex; gap: 8px; align-items: center; max-width: 90vw; font: 13px system-ui; box-shadow: 0 4px 20px #0003; }
+.classroom-recovery button { white-space: nowrap; padding: 7px; border: 1px solid #a28b64; border-radius: 6px; background: white; }
 /* Account labels are text controls, not the fixed 44px icon buttons beside them. */
-.brick-header-actions > .classroom-header-entry{flex:0 0 auto;width:auto;min-width:64px;max-width:154px;padding:0 12px!important;overflow:hidden;text-overflow:ellipsis}
-.classroom-header-entry > span{overflow:hidden;text-overflow:ellipsis;max-width:100%}
-@media(max-width:1100px){.brick-header-actions > .classroom-header-entry{display:none}}
+.brick-header-actions > .classroom-header-entry { flex: 0 0 auto; width: auto; min-width: 64px; max-width: 154px; padding: 0 12px!important; overflow: hidden; text-overflow: ellipsis; }
+.classroom-header-entry > span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 1100px) { .brick-header-actions > .classroom-header-entry { display: none; } }
+@media (max-width: 600px) {
+  .classroom-backdrop { padding: 8px; }
+  .classroom-panel { border-radius: 16px; max-height: calc(100dvh - 16px); }
+  .classroom-header { padding: 17px 16px 12px; }
+  .classroom-body { padding: 0 16px 18px; }
+  .classroom-panel h2 { font-size: 22px; }
+  .classroom-form-grid, .classroom-worlds, .classroom-codes { grid-template-columns: 1fr; }
+  .classroom-form-grid { gap: 13px; }
+  .classroom-account, .classroom-section-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .classroom-panel nav { gap: 5px; }
+  .classroom-panel nav > button { padding: 7px 9px; font-size: 12px; }
+  .classroom-panel .classroom-subnav button { padding-inline: 6px; }
+  .classroom-form-footer { bottom: -18px; gap: 7px; }
+  .classroom-form-footer > button { flex: 1 1 100%; }
+  .classroom-access-row { align-items: flex-start; flex-direction: column; gap: 9px; }
+  .classroom-empty { padding: 23px 16px; }
+}
+@media (prefers-reduced-motion: reduce) { .classroom-panel button { transition: none; } }

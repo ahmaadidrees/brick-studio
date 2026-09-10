@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import BrickStudioApp from './BrickStudioApp'
-import type { RaceAvatarPose, RemoteRaceAvatar } from './BrickStudioScene'
+import type { RaceAvatarPose } from './BrickStudioScene'
+import type { RemoteAvatarSource } from './remoteAvatarSource'
 import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { type LiveWorldMode } from './liveProtocol'
 import { createLiveRoomClient, getLiveWorld } from './liveRoomClient'
@@ -10,7 +11,7 @@ import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { createLiveRoomConnector } from './live/liveRoomConnector'
 import type { PlayerProfile } from './types'
 import { LiveWorldHud } from './live/LiveWorldHud'
-import { liveGuestLink, livePlayerColor, parseLiveWorldLocation, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomSnapshot } from './live/liveRoomModel'
+import { liveGuestLink, parseLiveWorldLocation, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomUiSnapshot } from './live/liveRoomModel'
 import type { CreateLiveWorld, FetchLiveWorldSummary } from './live/liveWorldGateway'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
 import { resolveCharacterId } from './contentCatalog'
@@ -76,10 +77,12 @@ function DefaultLiveWorldScene({
   view,
   snapshot,
   actions,
+  remoteAvatarSource,
 }: {
   view: LiveWorldSceneView
-  snapshot: LiveRoomSnapshot
+  snapshot: LiveRoomUiSnapshot
   actions: LiveRoomActions
+  remoteAvatarSource: RemoteAvatarSource
 }) {
   // The scene and store share the runtime part map, so install the authoritative
   // document definitions before rendering any custom-part meshes or controls.
@@ -94,20 +97,6 @@ function DefaultLiveWorldScene({
       jumping: !pose.grounded,
     })
   }, [actions])
-  const remoteAvatars = useMemo<RemoteRaceAvatar[]>(() => snapshot.remotePoses.map((pose) => {
-    const player = snapshot.players.find((candidate) => candidate.playerId === pose.playerId)
-    return {
-      id: pose.playerId,
-      name: player?.profile.displayName || 'Builder',
-      color: livePlayerColor(pose.playerId),
-      characterId: resolveCharacterId(player?.profile.characterId),
-      palette: player?.profile.palette,
-      position: [pose.x, pose.y, pose.z],
-      facingYaw: pose.yaw,
-      horizontalSpeed: pose.moving ? 1 : 0,
-      grounded: !pose.jumping,
-    }
-  }), [snapshot.players, snapshot.remotePoses])
   const livePolicy = useMemo(() => ({
     connection: snapshot.connection,
     isOwner: snapshot.isOwner,
@@ -171,7 +160,7 @@ function DefaultLiveWorldScene({
   }, [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view.document])
   return (
     <BrickStudioApp
-      raceScene={{ onLocalAvatarPose: sendPose, remoteAvatars }}
+      raceScene={{ onLocalAvatarPose: sendPose, remoteAvatarSource }}
       livePolicy={livePolicy}
       liveOverlay={view.overlay}
       contentPolicy={contentPolicy}
@@ -293,5 +282,5 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
     shareLink={liveGuestLink(window.location.origin, roomId)} copyText={props.copyText ?? defaultCopyText}
     editingIntegrated actions={actions} onLeave={() => window.location.assign('/')} />;
   const view: LiveWorldSceneView = { roomTitle: title, document: snapshot.document, mode: snapshot.mode, revision: snapshot.revision, selfProfile: profile, setProfile, overlay };
-  return props.renderWorld ? <>{props.renderWorld(view)}</> : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={actions} />;
+  return props.renderWorld ? <>{props.renderWorld(view)}</> : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={actions} remoteAvatarSource={session.remoteAvatarSource} />;
 }

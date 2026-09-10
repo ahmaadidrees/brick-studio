@@ -13,7 +13,7 @@ const environments = [
 
 const characters = [
   { id: 'toy-figure', name: 'Toy Figure', description: 'An articulated toy character.', previewKey: 'character:toy-figure', customizable: true },
-  { id: 'cc0-hero', name: 'CC0 Hero', description: 'A public-domain hero.', previewKey: 'character:cc0-hero', customizable: false },
+  { id: 'cc0-hero', name: 'Robot Hero', description: 'A friendly robot.', previewKey: 'character:cc0-hero', customizable: false },
 ] satisfies CharacterDescriptor[]
 
 const paletteGroups = [{
@@ -58,12 +58,12 @@ describe('dialog semantics and focus', () => {
 
   it('is a labelled modal dialog that takes focus on open and restores it on close', () => {
     const outside = document.createElement('button')
-    outside.textContent = 'World & character trigger'
+    outside.textContent = 'Scene & character trigger'
     document.body.append(outside)
     outside.focus()
 
     const { view } = renderSheet()
-    const dialog = screen.getByRole('dialog', { name: 'World & character' })
+    const dialog = screen.getByRole('dialog', { name: 'Scene & character' })
     expect(dialog).toHaveAttribute('aria-modal', 'true')
     expect(dialog).toHaveAccessibleDescription(/press Apply/i)
     expect(dialog).toHaveFocus()
@@ -184,8 +184,8 @@ describe('draft selection: Cancel vs Apply', () => {
       selection: { environmentId: null, characterId: 'toy-figure', palette: {} },
     })
     expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled()
-    expect(screen.getByText('No environments are available yet.')).toBeInTheDocument()
-    expect(screen.getByText('Pick a world and a character')).toBeInTheDocument()
+    expect(screen.getByText('No scenes are available yet.')).toBeInTheDocument()
+    expect(screen.getByText('Pick a scene and a character')).toBeInTheDocument()
   })
 })
 
@@ -211,13 +211,37 @@ describe('keyboard selection and summary', () => {
 })
 
 describe('character color customization', () => {
+  it('previews color changes on the selected illustration and resets only the draft until Apply', () => {
+    const selection = { ...baseSelection, palette: { primary: '#e7473c', secondary: '#3e83d7' } }
+    const { onApply, view } = renderSheet({
+      selection,
+      paletteGroups: [{ ...paletteGroups[0], key: 'primary', label: 'Suit' }],
+    })
+    fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
+    const preview = view.container.querySelector<HTMLElement>('[data-preview-key="character:toy-figure"]')!
+    expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('#e7473c')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set Suit to Studio blue' }))
+    expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('#3e83d7')
+    expect(onApply).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset colors' }))
+    expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('')
+    expect(screen.getByRole('button', { name: 'Reset colors' })).toBeDisabled()
+    expect(selection.palette).toEqual({ primary: '#e7473c', secondary: '#3e83d7' })
+    expect(onApply).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(onApply).toHaveBeenCalledWith({ ...baseSelection, palette: {} })
+  })
+
   it('shows palette controls only while the drafted character is customizable', () => {
     renderSheet()
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
     expect(screen.getByRole('group', { name: 'Shirt' })).toBeInTheDocument()
     expect(screen.getByText('Character colors')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('radio', { name: /CC0 Hero/ }))
+    fireEvent.click(screen.getByRole('radio', { name: /Robot Hero/ }))
     expect(screen.queryByRole('group', { name: 'Shirt' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('radio', { name: /Toy Figure/ }))
@@ -226,11 +250,32 @@ describe('character color customization', () => {
 })
 
 describe('private preview tabs', () => {
-  it('separates World and Character while reporting a reversible draft preview', () => {
+  it('moves between tabs with arrow keys and keeps the active panel labelled', () => {
+    const { onApply } = renderSheet()
+    const scene = screen.getByRole('tab', { name: 'Scene' })
+    const character = screen.getByRole('tab', { name: 'Character' })
+    scene.focus()
+    fireEvent.keyDown(scene, { key: 'ArrowRight' })
+    expect(character).toHaveFocus()
+    expect(character).toHaveAttribute('tabindex', '0')
+    expect(scene).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('tabpanel', { name: 'Character' })).toBeInTheDocument()
+
+    fireEvent.keyDown(character, { key: 'ArrowRight' })
+    expect(scene).toHaveFocus()
+    expect(screen.getByRole('tabpanel', { name: 'Scene' })).toBeInTheDocument()
+    fireEvent.keyDown(scene, { key: 'End' })
+    expect(character).toHaveFocus()
+    fireEvent.keyDown(character, { key: 'Home' })
+    expect(scene).toHaveFocus()
+    expect(onApply).not.toHaveBeenCalled()
+  })
+
+  it('separates Scene and Character while reporting a reversible draft preview', () => {
     const onDraftChange = vi.fn()
     renderSheet({ onDraftChange })
 
-    expect(screen.getByRole('tab', { name: 'World' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Scene' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('radio', { name: /Classic Studio/ })).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: /Toy Figure/ })).not.toBeInTheDocument()
 
@@ -255,7 +300,7 @@ describe('responsive-safe structure', () => {
     expect(backdrop).toHaveClass('world-character-sheet-backdrop')
     expect(panel).toHaveClass('world-character-sheet-panel')
 
-    const body = within(panel as HTMLElement).getByRole('region', { name: 'Choose your world' }).closest('.world-character-sheet-body')
+    const body = within(panel as HTMLElement).getByRole('region', { name: 'Scene & character' }).closest('.world-character-sheet-body')
     expect(body).not.toBeNull()
     const footer = panel.querySelector('.world-character-sheet-footer')!
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()

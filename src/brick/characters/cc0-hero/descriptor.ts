@@ -4,7 +4,7 @@ import type { CharacterDescriptor } from '../../registries'
 export const CC0_HERO_DESCRIPTOR = {
   id: 'cc0-hero',
   name: 'Robot Hero',
-  description: 'A professionally rigged CC0 robot with blended locomotion and emotes.',
+  description: 'A friendly robot ready to run, jump, and explore your creations.',
   previewKey: 'character:cc0-hero',
   customizable: true,
 } satisfies CharacterDescriptor

@@ -1,7 +1,8 @@
-import { memo } from 'react'
-import { renderPartThumbnail } from './brickThumbnails'
+import { memo, useEffect, useState } from 'react'
+import { getCachedPartThumbnail, renderPartThumbnail } from './brickThumbnails'
 import { createBrickGeometry } from './geometry'
 import { useBrickStore } from './store'
+import { scheduleThumbnailWork } from './thumbnailWorkQueue'
 import type { BrickPart } from './types'
 
 type ThumbnailPolygon = {
@@ -18,6 +19,26 @@ type PartThumbnailModel = {
 const VIEWBOX_SIZE = 96
 const VIEWBOX_PADDING = 8
 const thumbnailCache = new Map<string, PartThumbnailModel>()
+const FALLBACK_CACHE_LIMIT = 128
+
+const visibilityListeners = new Map<Element, (visible: boolean) => void>()
+let visibilityObserver: IntersectionObserver | null = null
+
+function observeVisibility(element: Element, onChange: (visible: boolean) => void) {
+  visibilityObserver ??= new IntersectionObserver((entries) => {
+    for (const entry of entries) visibilityListeners.get(entry.target)?.(entry.isIntersecting)
+  })
+  visibilityListeners.set(element, onChange)
+  visibilityObserver.observe(element)
+  return () => {
+    visibilityObserver?.unobserve(element)
+    visibilityListeners.delete(element)
+    if (visibilityListeners.size === 0) {
+      visibilityObserver?.disconnect()
+      visibilityObserver = null
+    }
+  }
+}
 
 type ProjectedVertex = {
   x: number
@@ -63,7 +84,11 @@ function triangleLighting(
 
 function createPartThumbnailModel(part: BrickPart): PartThumbnailModel {
   const cached = thumbnailCache.get(part.id)
-  if (cached) return cached
+  if (cached) {
+    thumbnailCache.delete(part.id)
+    thumbnailCache.set(part.id, cached)
+    return cached
+  }
 
   const geometry = createBrickGeometry(part)
   const positions = geometry.getAttribute('position')
@@ -132,6 +157,10 @@ function createPartThumbnailModel(part: BrickPart): PartThumbnailModel {
     }))
   const model = { polygons, vertexCount: positions.count }
   thumbnailCache.set(part.id, model)
+  if (thumbnailCache.size > FALLBACK_CACHE_LIMIT) {
+    const oldest = thumbnailCache.keys().next().value
+    if (oldest !== undefined) thumbnailCache.delete(oldest)
+  }
   return model
 }
 
@@ -140,36 +169,78 @@ type PartThumbnailProps = {
 }
 
 export const PartThumbnail = memo(function PartThumbnail({ part }: PartThumbnailProps) {
-  const activeColor = useBrickStore((state) => state.activeColor)
-  const rendered = renderPartThumbnail(part, activeColor)
+  const canObserve = typeof IntersectionObserver !== 'undefined'
+  const [visible, setVisible] = useState(!canObserve)
+  const [element, setElement] = useState<HTMLImageElement | SVGSVGElement | null>(null)
+  // Offscreen cards do not subscribe to colour changes. On entering the viewport
+  // the selector reads the current colour, including changes made while hidden.
+  const activeColor = useBrickStore((state) => visible ? state.activeColor : null)
+  const [result, setResult] = useState<{
+    part: BrickPart
+    url: string | null
+    model: PartThumbnailModel | null
+    vertexCount: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (!canObserve || !element) return
+    return observeVisibility(element, setVisible)
+  }, [canObserve, element])
+
+  useEffect(() => {
+    if (!visible || activeColor === null) return
+    const cached = getCachedPartThumbnail(part, activeColor)
+    const update = () => {
+      const url = cached ?? renderPartThumbnail(part, activeColor)
+      const model = url ? null : createPartThumbnailModel(part)
+      setResult({
+        part,
+        url,
+        model,
+        vertexCount: model?.vertexCount ?? createBrickGeometry(part).getAttribute('position').count,
+      })
+    }
+    // Cache hits are cheap. Hosts without visibility observation retain the
+    // immediate fallback; normal browsers only generate visible, uncached cards.
+    if (cached || !canObserve) {
+      update()
+      return
+    }
+    return scheduleThumbnailWork(update)
+  }, [activeColor, canObserve, part, visible])
+
+  const current = result?.part === part ? result : null
 
   // Same element type across colour changes, so React swaps src instead of remounting.
-  if (rendered) {
+  if (current?.url) {
     return (
       <img
+        ref={setElement}
         className="part-thumbnail"
-        src={rendered}
+        src={current.url}
         alt=""
         aria-hidden="true"
         draggable={false}
         data-part-id={part.id}
-        data-vertex-count={createBrickGeometry(part).getAttribute('position').count}
+        data-vertex-count={current.vertexCount}
       />
     )
   }
 
-  const model = createPartThumbnailModel(part)
+  const model = current?.model ?? (!canObserve ? createPartThumbnailModel(part) : null)
   return (
     <svg
+      ref={setElement}
       className="part-thumbnail"
       viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
       aria-hidden="true"
       data-part-id={part.id}
-      data-vertex-count={model.vertexCount}
+      data-vertex-count={model?.vertexCount}
       focusable="false"
     >
       <ellipse className="part-thumbnail-shadow" cx="49" cy="83" rx="30" ry="7" />
-      {model.polygons.map((polygon, index) => (
+      {!model && <path d="M18 41 48 28 78 41 78 65 48 79 18 65Z" fill="#dce7ef" />}
+      {model?.polygons.map((polygon, index) => (
         <polygon
           key={`${polygon.depth}-${index}`}
           points={polygon.points}

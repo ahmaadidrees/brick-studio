@@ -3,9 +3,8 @@ import {
   Check,
   Crown,
   Footprints,
-  Link2,
+  Cloud,
   Shapes,
-  Share2,
   ShieldCheck,
   Sparkles,
   Users,
@@ -73,7 +72,7 @@ function RosterMock() {
         <span className="landing-roster-live">
           <span className="landing-roster-pulse" />Live
         </span>
-        <span>7 of 30 builders</span>
+        <span>7 builders together</span>
       </div>
       <ul>
         <li>
@@ -133,7 +132,7 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
           <div className="landing-hero-copy">
             <p className="landing-hero-kicker">
               <Sparkles size={13} aria-hidden="true" />
-              New worlds &amp; characters just landed
+              Build, explore, and create together
             </p>
             <h1>
               Build a brick world.
@@ -143,11 +142,11 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
             <p className="landing-hero-lede">
               Brick Studio is a playful world-builder that runs right in the browser. Snap bricks into
               castles and obstacle courses, explore them as your own character, and invite the whole
-              class to build with you — live, in the same world.
+              class to build with you in a shared world.
             </p>
             <CtaPair studioHref={studioHref} liveHref={liveHref} />
             <p className="landing-hero-trust">
-              No accounts. No installs. Happy on Chromebooks, tablets, and phones.
+              Start without an account. Join your class to save online and build together. No installs.
             </p>
           </div>
           <div className="landing-hero-stage">
@@ -170,9 +169,9 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
               Flip to Explore and your build becomes a place: walk it, jump it, climb it as a
               block character of your choice.
             </StepCard>
-            <StepCard number="3" icon={<Link2 size={21} aria-hidden="true" />} title="Share the world">
-              Send one link. Friends join your live room as guests, or explore and remix a
-              published copy of your world.
+            <StepCard number="3" icon={<Users size={21} aria-hidden="true" />} title="Build with your class">
+              Join with your teacher&rsquo;s class code, choose a username, then find your
+              class and group worlds in My Class.
             </StepCard>
           </ol>
         </section>
@@ -184,17 +183,17 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
                 id={liveId}
                 eyebrow="Live worlds"
                 title="Build together, actually together"
-                lede="Up to 30 builders share one world at the same time — every brick appears for everyone, instantly."
+                lede="Open a shared world from My Class and see your classmates’ creations take shape alongside yours."
               />
               <ul className="landing-checklist">
-                <li><Check size={15} aria-hidden="true" />One invite link; guests just pick a name and hop in</li>
-                <li><Check size={15} aria-hidden="true" />The owner steers: Build together or Explore together</li>
-                <li><Check size={15} aria-hidden="true" />A lock button pauses guest building when it&rsquo;s time to listen</li>
+                <li><Check size={15} aria-hidden="true" />Class and group worlds are easy to find, with no links to exchange</li>
+                <li><Check size={15} aria-hidden="true" />Build together, then step inside and explore</li>
+                <li><Check size={15} aria-hidden="true" />Teachers manage who can join and when collaboration is open</li>
               </ul>
               <p className="landing-cta-row landing-cta-row-compact">
                 <a className="landing-cta landing-cta-secondary" href={liveHref}>
                   <Users size={16} aria-hidden="true" />
-                  Start a live room
+                  Open My Class
                 </a>
               </p>
             </div>
@@ -205,9 +204,9 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
         <section className="landing-section" aria-labelledby={worldsId}>
           <SectionHeading
             id={worldsId}
-            eyebrow="New"
-            title="Pick your world. Pick your builder."
-            lede="Choose where today's build happens and who you'll be — then make the character yours with custom colors."
+            eyebrow="Make it yours"
+            title="Pick your scene. Pick your builder."
+            lede="Give your world a setting, from a cozy playroom to an island in the sky. Then make your character yours with custom colors."
           />
           <div className="landing-worlds">
             {WORLD_TILES.map((world) => (
@@ -237,12 +236,12 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
 
         <section className="landing-section landing-share" aria-labelledby={shareId}>
           <div className="landing-share-card">
-            <span className="landing-share-icon" aria-hidden="true"><Share2 size={20} aria-hidden="true" /></span>
+            <span className="landing-share-icon" aria-hidden="true"><Cloud size={20} aria-hidden="true" /></span>
             <div>
-              <h2 id={shareId}>Publish it. Let them remix it.</h2>
+              <h2 id={shareId}>Keep building tomorrow.</h2>
               <p>
-                Publish a world as a snapshot link anyone can explore. When someone remixes it,
-                they build on their own copy — your original stays exactly as you left it.
+                Join your class and save to My Worlds to pick up your work on another device.
+                Building as a guest? Your work stays in this browser, and you can export a copy to keep.
               </p>
             </div>
             <span className="landing-share-icon landing-share-icon-remix" aria-hidden="true"><Sparkles size={20} aria-hidden="true" /></span>
@@ -258,30 +257,30 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
           <ul className="landing-classroom">
             <li>
               <ShieldCheck size={17} aria-hidden="true" />
-              <strong>Nothing to set up</strong>
-              <span>No student accounts, downloads, or installs — a link is the whole rollout.</span>
+              <strong>A simple student start</strong>
+              <span>A class code, a username, and a password. Students don&rsquo;t need an email address.</span>
             </li>
             <li>
               <Users size={17} aria-hidden="true" />
               <strong>Teacher in charge</strong>
-              <span>Room owners set Build or Explore for everyone and can lock guest building.</span>
+              <span>Manage usernames, reset passwords, and control class and group access.</span>
             </li>
             <li>
               <Footprints size={17} aria-hidden="true" />
-              <strong>Chromebook-first</strong>
-              <span>Smooth on classroom hardware, with touch controls for tablets and phones.</span>
+              <strong>Open in a browser</strong>
+              <span>Keyboard and mouse for building, plus touch controls for exploring on tablets and phones.</span>
             </li>
             <li>
               <Sparkles size={17} aria-hidden="true" />
-              <strong>Remix-safe sharing</strong>
-              <span>Copies never change the original, so showcases stay safe to share.</span>
+              <strong>Room to recover</strong>
+              <span>Undo a mistake while building, or restore an earlier checkpoint of a world saved online.</span>
             </li>
           </ul>
         </section>
 
         <section className="landing-finale" aria-labelledby={finaleId}>
           <h2 id={finaleId}>Ready when you are</h2>
-          <p>Your first brick takes about three seconds.</p>
+          <p>Start with one brick. See where it takes you.</p>
           <CtaPair studioHref={studioHref} liveHref={liveHref} compact />
         </section>
       </main>
@@ -292,7 +291,7 @@ export function LandingPage({ studioHref = '/', liveHref = '/live/new', classNam
           <strong>Brick Studio</strong>
         </span>
         <p>
-          A Virtual Legos project, made for curious builders. Brick Studio is an independent
+          A creative building playground for curious minds. Brick Studio is an independent
           creation and is not affiliated with or endorsed by the LEGO Group.
         </p>
       </footer>

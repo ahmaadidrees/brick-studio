@@ -56,3 +56,18 @@ it('rejects pending save after account switch and retains A recovery without wri
   expect(fetcher).toHaveBeenCalledTimes(1); expect(onWorld).not.toHaveBeenCalled()
   expect(JSON.parse(sessionStorage.getItem(recoveryKey('a', world.id))!).document).toEqual(changed); save.dispose()
 })
+it('retains current recovery and acknowledged revision within a one-document storage budget', () => {
+  const large = { ...doc, bricks: Array.from({ length: 1000 }, (_, i) => ({ id: `brick-${i}`, partId: 'brick-2x4', color: '#3e83d7', x: i, y: 0, z: 0, rotation: 0 as const })) }
+  const client = new ClassroomClient('', vi.fn()); client.setSession(auth)
+  const onStatus = vi.fn()
+  let stored = ''
+  const budget = JSON.stringify(large).length + 1000
+  const save = createCloudAutosave({ client, userId: 'a', world: { ...world, document: large }, document: large, onStatus, storage: {
+    setItem: (_key, value) => { if (value.length > budget) throw new Error('Storage quota exceeded'); stored = value },
+    removeItem: vi.fn(),
+  } })
+  save.schedule(large)
+  expect(onStatus).not.toHaveBeenCalledWith('error', expect.any(String))
+  expect(JSON.parse(stored)).toMatchObject({ userId: 'a', world: { id: world.id, revision: 1 }, document: large })
+  save.dispose()
+})

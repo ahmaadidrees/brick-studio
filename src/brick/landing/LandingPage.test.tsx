@@ -22,7 +22,7 @@ describe('semantics and structure', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/build a brick world/i)
     expect(screen.getAllByRole('heading', { level: 2 }).length).toBeGreaterThanOrEqual(5)
     expect(screen.getByRole('heading', { name: /build together, actually together/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /pick your world/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /pick your scene/i })).toBeInTheDocument()
   })
 
   it('starts with a skip link that targets the main landmark', () => {
@@ -56,7 +56,7 @@ describe('calls to action', () => {
     expect(together).toHaveLength(2)
     for (const link of together) expect(link).toHaveAttribute('href', '/live/new')
 
-    expect(screen.getByRole('link', { name: /start a live room/i })).toHaveAttribute('href', '/live/new')
+    expect(screen.getByRole('link', { name: /open my class/i })).toHaveAttribute('href', '/live/new')
     expect(screen.getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/')
   })
 
@@ -70,7 +70,7 @@ describe('calls to action', () => {
     for (const link of screen.getAllByRole('link', { name: /build together/i })) {
       expect(link).toHaveAttribute('href', '/live/party')
     }
-    expect(screen.getByRole('link', { name: /start a live room/i })).toHaveAttribute('href', '/live/party')
+    expect(screen.getByRole('link', { name: /open my class/i })).toHaveAttribute('href', '/live/party')
   })
 })
 

@@ -102,6 +102,9 @@ export type LiveRoomSnapshot = {
   notice: LiveRoomNotice | null
 }
 
+/** Room chrome and access gates do not subscribe to transient avatar movement. */
+export type LiveRoomUiSnapshot = Omit<LiveRoomSnapshot, 'remotePoses'>
+
 export function createInitialLiveRoomSnapshot(roomId: string, isOwner = false): LiveRoomSnapshot {
   return {
     connection: 'connecting',

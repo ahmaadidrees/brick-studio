@@ -9,7 +9,7 @@ import type { ContentPickerSelection } from './selection'
 import './world-character-sheet.css'
 
 /**
- * "World & character" — a fully controlled modal sheet around ContentPicker.
+ * "Scene & character" — a fully controlled modal sheet around ContentPicker.
  *
  * Contract: the host owns `open` and the committed `selection`. While the
  * sheet is open it edits a private draft seeded from `selection` (normalized
@@ -63,14 +63,19 @@ export function WorldAndCharacterSheet({
   onRequestPreview,
   previewStatuses,
   onDraftChange,
-  title = 'World & character',
-  description = 'Choose where to build and who you will be, then press Apply.',
+  title = 'Scene & character',
+  description = 'Choose a setting for your world and who you will be, then press Apply.',
   applyLabel = 'Apply',
   cancelLabel = 'Cancel',
 }: WorldAndCharacterSheetProps) {
   const titleId = useId()
   const descriptionId = useId()
+  const sceneTabId = useId()
+  const characterTabId = useId()
+  const tabPanelId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
+  const sceneTabRef = useRef<HTMLButtonElement>(null)
+  const characterTabRef = useRef<HTMLButtonElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const [draft, setDraft] = useState<ContentPickerSelection>(() => normalizeContentPickerSelection(
     selection,
@@ -112,6 +117,19 @@ export function WorldAndCharacterSheet({
   const environment = environmentDescriptors.find(({ id }) => id === draft.environmentId)
   const character = characterDescriptors.find(({ id }) => id === draft.characterId)
   const applyDisabled = !draft.environmentId || !draft.characterId
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    let nextTab: typeof activeTab
+    if (event.key === 'Home') nextTab = 'environment'
+    else if (event.key === 'End') nextTab = 'character'
+    else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      nextTab = activeTab === 'environment' ? 'character' : 'environment'
+    } else return
+    event.preventDefault()
+    setActiveTab(nextTab)
+    const nextRef = nextTab === 'environment' ? sceneTabRef : characterTabRef
+    nextRef.current?.focus()
+  }
 
   const handlePanelKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape') {
@@ -156,7 +174,7 @@ export function WorldAndCharacterSheet({
       >
         <header className="world-character-sheet-header">
           <div>
-            <span className="world-character-sheet-eyebrow">World setup</span>
+            <span className="world-character-sheet-eyebrow">Make it yours</span>
             <h2 id={titleId}>{title}</h2>
             <p id={descriptionId}>{description}</p>
           </div>
@@ -169,21 +187,36 @@ export function WorldAndCharacterSheet({
             <span aria-hidden="true">×</span>
           </button>
         </header>
-        <div className="world-character-sheet-tabs" role="tablist" aria-label="World and character settings">
+        <div className="world-character-sheet-tabs" role="tablist" aria-label="Scene and character settings">
           <button
+            ref={sceneTabRef}
+            id={sceneTabId}
             type="button"
             role="tab"
+            tabIndex={activeTab === 'environment' ? 0 : -1}
+            aria-controls={tabPanelId}
             aria-selected={activeTab === 'environment'}
             onClick={() => setActiveTab('environment')}
-          >World</button>
+            onKeyDown={handleTabKeyDown}
+          >Scene</button>
           <button
+            ref={characterTabRef}
+            id={characterTabId}
             type="button"
             role="tab"
+            tabIndex={activeTab === 'character' ? 0 : -1}
+            aria-controls={tabPanelId}
             aria-selected={activeTab === 'character'}
             onClick={() => setActiveTab('character')}
+            onKeyDown={handleTabKeyDown}
           >Character</button>
         </div>
-        <div className="world-character-sheet-body">
+        <div
+          className="world-character-sheet-body"
+          id={tabPanelId}
+          role="tabpanel"
+          aria-labelledby={activeTab === 'environment' ? sceneTabId : characterTabId}
+        >
           <ContentPicker
             hideHeader
             visibleSection={activeTab}
@@ -206,7 +239,7 @@ export function WorldAndCharacterSheet({
         </div>
         <footer className="world-character-sheet-footer">
           <span className="world-character-sheet-summary" aria-live="polite">
-            {environment && character ? `${environment.name} · ${character.name}` : 'Pick a world and a character'}
+            {environment && character ? `${environment.name} · ${character.name}` : 'Pick a scene and a character'}
           </span>
           <button
             type="button"

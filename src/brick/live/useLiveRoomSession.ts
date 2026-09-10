@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { PlayerProfile } from '../types'
-import type { ConnectLiveRoom, LiveRoomActions, LiveRoomController, LiveRoomSnapshot } from './liveRoomModel'
+import type { RemoteAvatarSource } from '../remoteAvatarSource'
+import type { ConnectLiveRoom, LiveRoomActions, LiveRoomController, LiveRoomUiSnapshot } from './liveRoomModel'
+import { createLiveRoomViewStore } from './liveRoomViewStore'
 
 export type UseLiveRoomSessionOptions = {
   connectRoom?: ConnectLiveRoom
@@ -13,13 +15,14 @@ export type UseLiveRoomSessionOptions = {
 export type LiveRoomSession =
   | { status: 'unwired' }
   | { status: 'idle' }
-  | { status: 'active'; snapshot: LiveRoomSnapshot; actions: LiveRoomActions }
+  | { status: 'active'; snapshot: LiveRoomUiSnapshot; actions: LiveRoomActions; remoteAvatarSource: RemoteAvatarSource }
 
 const noSubscription = () => () => {}
 
 /**
  * Owns the connect/disconnect lifecycle of a `LiveRoomController` and exposes
- * its snapshot through `useSyncExternalStore`. The profile used at connect
+ * its room snapshot through `useSyncExternalStore`. Poses have a separate
+ * source for the scene's avatar layer. The profile used at connect
  * time is captured once; later renames flow through `actions.setProfile`
  * instead of tearing the socket down.
  */
@@ -39,13 +42,14 @@ export function useLiveRoomSession({ connectRoom, roomId, ownerToken, profile }:
     }
   }, [connectRoom, roomId, ownerToken, ready])
 
+  const viewStore = useMemo(() => controller ? createLiveRoomViewStore(controller) : null, [controller])
   const snapshot = useSyncExternalStore(
-    controller?.subscribe ?? noSubscription,
-    () => (controller ? controller.getSnapshot() : null),
-    () => (controller ? controller.getSnapshot() : null),
+    viewStore?.subscribe ?? noSubscription,
+    () => viewStore?.getSnapshot() ?? null,
+    () => viewStore?.getSnapshot() ?? null,
   )
 
   if (!connectRoom) return { status: 'unwired' }
-  if (!controller || !snapshot) return { status: 'idle' }
-  return { status: 'active', snapshot, actions: controller.actions }
+  if (!controller || !viewStore || !snapshot) return { status: 'idle' }
+  return { status: 'active', snapshot, actions: controller.actions, remoteAvatarSource: viewStore.remoteAvatarSource }
 }

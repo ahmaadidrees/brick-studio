@@ -315,8 +315,8 @@ describe('Brick Studio responsive controls', () => {
     render(<BrickStudioApp />)
 
     expect(screen.getByRole('note', { name: 'Keyboard and mouse shortcuts' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Pick a brick, position it over the plate, then place it.')
-    expect(screen.getByRole('status')).not.toHaveTextContent('tap')
+    expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('Pick a brick, position it over the plate, then place it.')
+    expect(screen.getByRole('status', { name: 'Studio message' })).not.toHaveTextContent('tap')
   })
 
   it('uses the same zero-brick Explore guard for the button and 2 shortcut', () => {
@@ -894,7 +894,7 @@ describe('Builder Experience Alpha shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
     expect(useBrickStore.getState().bricks).toEqual([brick])
-    expect(screen.getByRole('status')).toHaveTextContent('unchanged')
+    expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('unchanged')
 
     confirm.mockReturnValue(true)
     fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
@@ -914,7 +914,7 @@ describe('Builder Experience Alpha shell', () => {
     fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
     fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
 
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('not valid JSON'))
+    await waitFor(() => expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('not valid JSON'))
     expect(useBrickStore.getState().bricks).toEqual([brick])
   })
 
@@ -932,6 +932,6 @@ describe('Builder Experience Alpha shell', () => {
 
     expect(createObjectURL).toHaveBeenCalledOnce()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:brick-studio')
-    expect(screen.getByRole('status')).toHaveTextContent('Project exported')
+    expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('Project exported')
   })
 })

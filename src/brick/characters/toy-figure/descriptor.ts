@@ -4,7 +4,7 @@ import type { CharacterDescriptor } from '../../registries'
 export const TOY_FIGURE_DESCRIPTOR = {
   id: 'toy-figure',
   name: 'Toy Figure',
-  description: 'An original articulated toy character with procedural movement and expressions.',
+  description: 'A playful explorer with a colorful suit and a big personality.',
   previewKey: 'character:toy-figure',
   customizable: true,
 } satisfies CharacterDescriptor

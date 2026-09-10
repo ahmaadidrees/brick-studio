@@ -48,7 +48,7 @@ export type ContentPickerProps = {
   description?: string
   /** Hosts that provide their own labelled chrome (e.g. WorldAndCharacterSheet) hide the built-in header; `title` then labels the region invisibly. */
   hideHeader?: boolean
-  /** Lets a host expose World and Character as clear tabs without duplicating picker logic. */
+  /** Lets a host expose Scene and Character as clear tabs without duplicating picker logic. */
   visibleSection?: 'all' | 'environment' | 'character'
   className?: string
 }
@@ -69,6 +69,7 @@ type SelectionGridProps<T extends PickerCard> = {
   onSelect: (id: T['id']) => void
   onRequestPreview?: ContentPickerProps['onRequestPreview']
   previewStatuses?: Readonly<Partial<Record<EnvironmentId | CharacterId, ContentPreviewStatus>>>
+  palette?: Readonly<CharacterPalette>
 }
 
 function moveSelection<T extends PickerCard>(
@@ -125,6 +126,7 @@ function SelectionGrid<T extends PickerCard>({
   onSelect,
   onRequestPreview,
   previewStatuses,
+  palette,
 }: SelectionGridProps<T>) {
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([])
   const selectedIndex = descriptors.findIndex(({ id }) => (
@@ -183,7 +185,7 @@ function SelectionGrid<T extends PickerCard>({
               (id) => previewStatuses?.[id] === 'unavailable',
             )}
           >
-            <PreviewArtwork kind={kind} previewKey={descriptor.previewKey} />
+            <PreviewArtwork kind={kind} previewKey={descriptor.previewKey} palette={selected ? palette : undefined} />
             {statusLabel && (
               <span className="content-picker-card-status">
                 {statusLabel}
@@ -225,8 +227,8 @@ export function ContentPicker({
   palette = {},
   paletteGroups = [],
   onPaletteChange,
-  title = 'Choose your world',
-  description = 'Pick a place to build, then choose who you will explore it as.',
+  title = 'Scene & character',
+  description = 'Choose a setting for your world and a character to explore it as.',
   hideHeader = false,
   visibleSection = 'all',
   className,
@@ -243,24 +245,24 @@ export function ContentPicker({
     >
       {!hideHeader && (
         <header className="content-picker-heading">
-          <span className="content-picker-eyebrow">World setup</span>
+          <span className="content-picker-eyebrow">Make it yours</span>
           <h2 id={headingId}>{title}</h2>
           <p>{description}</p>
         </header>
       )}
 
       {(visibleSection === 'all' || visibleSection === 'environment') && <div className="content-picker-section">
-        <SectionHeading eyebrow="Step 1" title="Environment">
+        <SectionHeading eyebrow="Your setting" title="Scene">
           <span className="content-picker-selection-summary" aria-live="polite">
             {environmentDescriptors.find(({ id }) => id === selectedEnvironmentId)?.name ?? 'Not selected'}
           </span>
         </SectionHeading>
         <SelectionGrid
           kind="environment"
-          label="Choose an environment"
+          label="Choose a scene"
           descriptors={environmentDescriptors}
           selectedId={selectedEnvironmentId}
-          emptyCopy="No environments are available yet."
+          emptyCopy="No scenes are available yet."
           onSelect={onSelectEnvironment}
           onRequestPreview={onRequestPreview}
           previewStatuses={previewStatuses?.environment}
@@ -268,7 +270,7 @@ export function ContentPicker({
       </div>}
 
       {(visibleSection === 'all' || visibleSection === 'character') && <div className="content-picker-section">
-        <SectionHeading eyebrow="Step 2" title="Character">
+        <SectionHeading eyebrow="Your explorer" title="Character">
           <span className="content-picker-selection-summary" aria-live="polite">
             {selectedCharacter?.name ?? 'Not selected'}
           </span>
@@ -282,12 +284,21 @@ export function ContentPicker({
           onSelect={onSelectCharacter}
           onRequestPreview={onRequestPreview}
           previewStatuses={previewStatuses?.character}
+          palette={palette}
         />
       </div>}
 
       {visibleSection !== 'environment' && showPalette && (
         <div className="content-picker-section content-picker-palette">
-          <SectionHeading eyebrow="Optional" title="Character colors" />
+          <SectionHeading eyebrow="Make it yours" title="Character colors">
+            <button
+              type="button"
+              className="content-picker-reset"
+              disabled={!Object.keys(palette).length}
+              onClick={() => onPaletteChange?.({})}
+            >Reset colors</button>
+          </SectionHeading>
+          <p className="content-picker-hint">Choose colors below. Switch to Explore to meet your character.</p>
           <div className="content-picker-palette-groups">
             {paletteGroups.map((group) => (
               <fieldset key={group.key}>

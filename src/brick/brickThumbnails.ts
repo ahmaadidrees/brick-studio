@@ -3,6 +3,9 @@ import { createBrickGeometry } from './geometry'
 import type { BrickPart } from './types'
 
 export const THUMBNAIL_PIXELS = 128
+export const THUMBNAIL_CACHE_LIMIT = 192
+// Bound both entry count and encoded PNG storage during long colour sessions.
+export const THUMBNAIL_CACHE_CHARACTER_LIMIT = 2 * 1024 * 1024
 const FRAME_PADDING = 1.08
 const CAMERA_DISTANCE = 20
 /** Hero three-quarter angle: the direction the camera looks along, toward the part. */
@@ -24,12 +27,35 @@ type ThumbnailStage = {
 }
 
 const dataUrlCache = new Map<string, string>()
+let cachedCharacters = 0
 let stage: ThumbnailStage | null = null
 // null until probed. A host without WebGL never gains it, so the verdict outlives disposal.
 let webglSupported: boolean | null = null
 
 export function thumbnailCacheKey(part: BrickPart, color: string) {
   return `${part.id}|${color.toLowerCase()}`
+}
+
+export function getCachedPartThumbnail(part: BrickPart, color: string): string | undefined {
+  const key = thumbnailCacheKey(part, color)
+  const cached = dataUrlCache.get(key)
+  if (cached !== undefined) {
+    dataUrlCache.delete(key)
+    dataUrlCache.set(key, cached)
+  }
+  return cached
+}
+
+function cacheThumbnail(key: string, url: string) {
+  if (url.length > THUMBNAIL_CACHE_CHARACTER_LIMIT) return
+  dataUrlCache.set(key, url)
+  cachedCharacters += url.length
+  while (dataUrlCache.size > THUMBNAIL_CACHE_LIMIT || cachedCharacters > THUMBNAIL_CACHE_CHARACTER_LIMIT) {
+    const oldest = dataUrlCache.entries().next().value
+    if (!oldest) break
+    cachedCharacters -= oldest[1].length
+    dataUrlCache.delete(oldest[0])
+  }
 }
 
 /**
@@ -78,6 +104,7 @@ export function thumbnailFraming(
 function createStage(): ThumbnailStage | null {
   if (stage) return stage
   if (webglSupported === false) return null
+  if (typeof document === 'undefined') return null
 
   try {
     const canvas = document.createElement('canvas')
@@ -130,11 +157,12 @@ function createStage(): ThumbnailStage | null {
 
 /**
  * Data URL of a part rendered in `color`, or null when WebGL is unavailable and
- * the caller should fall back. Every part/colour pair renders once ever.
+ * the caller should fall back. Recently used part/colour pairs share a bounded
+ * cache; older entries are rendered again only when requested.
  */
 export function renderPartThumbnail(part: BrickPart, color: string): string | null {
   const key = thumbnailCacheKey(part, color)
-  const cached = dataUrlCache.get(key)
+  const cached = getCachedPartThumbnail(part, color)
   if (cached) return cached
 
   const active = createStage()
@@ -165,7 +193,7 @@ export function renderPartThumbnail(part: BrickPart, color: string): string | nu
 
     active.renderer.render(active.scene, active.camera)
     const url = active.renderer.domElement.toDataURL('image/png')
-    dataUrlCache.set(key, url)
+    cacheThumbnail(key, url)
     return url
   } catch {
     return null
@@ -179,6 +207,7 @@ export function partThumbnailCacheSize() {
 /** Releases the shared renderer. Part geometry is owned by geometry.ts and stays cached. */
 export function disposePartThumbnails() {
   dataUrlCache.clear()
+  cachedCharacters = 0
   if (!stage) return
   stage.mesh.geometry = stage.placeholder
   stage.placeholder.dispose()
