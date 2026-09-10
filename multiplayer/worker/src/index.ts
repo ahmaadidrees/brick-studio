@@ -11,7 +11,7 @@ export { WorldCreationLimiter, WorldRoom };
 export default { fetch: handleReleaseRequest };
 
 // Retain the historical Durable Object class for existing migration/storage identity.
-// Public Race routes are retired; no new capability-based rooms can be created.
+// Public Race routes remain retired; guest Build together uses WorldRoom.
 type RoomStatus = "waiting" | "countdown" | "racing";
 
 interface RoomRecord {
