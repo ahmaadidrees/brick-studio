@@ -66,7 +66,7 @@ export type BrickState = {
   activeColor: string
   draft: BrickDraft | null
   movingId: string | null
-  movingSelection: { originals: BrickInstance[]; duplicate: boolean } | null
+  movingSelection: { originals: BrickInstance[]; duplicate: boolean; color?: string } | null
   clipboard: BrickClipboard | null
   undoStack: BrickHistoryEntry[]
   redoStack: BrickHistoryEntry[]
@@ -287,6 +287,7 @@ export function selectionDrafts(state: Pick<BrickState, 'draft' | 'movingSelecti
   if (!originals?.length || originals.length === 1) return [{ ...state.draft }]
   const anchor = originals[0]
   return originals.map((brick) => ({ ...brick,
+    color: state.movingSelection?.color ?? brick.color,
     x: brick.x + state.draft!.x - anchor.x,
     y: brick.y + state.draft!.y - anchor.y,
     z: brick.z + state.draft!.z - anchor.z,
@@ -515,7 +516,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   setActiveColor: (color) => {
     const state = get()
     if (state.draft) {
-      set({ activeColor: color, draft: { ...state.draft, color } })
+      set({ activeColor: color, draft: { ...state.draft, color },
+        ...(state.movingSelection ? { movingSelection: { ...state.movingSelection, color } } : {}),
+      })
       return
     }
     const targets = selectedBricks(state).filter((brick) => brick.color !== color)

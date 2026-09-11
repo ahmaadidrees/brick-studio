@@ -877,6 +877,18 @@ describe('selection placement previews', () => {
     useBrickStore.getState().undo()
     expect(useBrickStore.getState().bricks).toEqual(group)
   })
+  it('applies a preview color to the whole group only on placement and undoes it with the move', () => {
+    const before = useBrickStore.getState().bricks
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setActiveColor('#65b85a')
+    expect(useBrickStore.getState().bricks).toBe(before)
+    useBrickStore.getState().setDraftPosition(9, 0, 10)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().bricks.every((brick) => brick.color === '#65b85a')).toBe(true)
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(before)
+  })
   it('validates group edges and does not add history for an unchanged drop', () => {
     useBrickStore.getState().startMove()
     useBrickStore.getState().setDraftPosition(63, 0, 4)
