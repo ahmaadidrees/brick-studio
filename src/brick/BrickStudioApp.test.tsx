@@ -270,7 +270,7 @@ describe('Brick Studio responsive controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
     const properties = screen.getByRole('region', { name: 'Brick properties and editing actions' })
     expect(properties).toHaveAttribute('tabindex', '0')
-    expect(screen.getByText('Editing actions are first. Scroll for color and position.')).toBeInTheDocument()
+    expect(screen.getByText('Drag the selected brick to move it. Use arrows for precise steps.')).toBeInTheDocument()
 
     const actions = screen.getByRole('group', { name: 'Brick editing actions' })
     const firstPaletteControl = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
@@ -626,6 +626,10 @@ describe('compact touch layout', () => {
     fireEvent.click(within(pill).getByRole('button', { name: 'Rotate brick' }))
     expect(useBrickStore.getState().bricks[0].rotation).toBe(1)
     fireEvent.click(within(pill).getByRole('button', { name: 'Duplicate brick' }))
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+    expect(useBrickStore.getState().movingSelection?.duplicate).toBe(true)
+    act(() => useBrickStore.getState().setDraftPosition(20, 0, 20))
+    fireEvent.click(screen.getByRole('button', { name: 'Place positioned brick' }))
     expect(useBrickStore.getState().bricks).toHaveLength(2)
     const framing = useBrickStore.getState().viewRequest.nonce
     fireEvent.click(screen.getByRole('button', { name: 'Focus selected brick' }))

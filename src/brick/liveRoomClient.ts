@@ -245,7 +245,7 @@ export function applyLiveCommands(bricks: BrickInstance[], commands: LiveBrickCo
 }
 
 export function buildLiveRemotePatch(
-  state: Pick<BrickState, 'selectedIds' | 'selectedId' | 'movingId'>,
+  state: Pick<BrickState, 'selectedIds' | 'selectedId' | 'movingId'> & Partial<Pick<BrickState, 'movingSelection'>>,
   document: BrickStudioDocument,
   mode?: LiveWorldMode,
   resetHistory = false,
@@ -259,11 +259,19 @@ export function buildLiveRemotePatch(
     ...(mode ? { mode } : {}),
     ...(resetHistory ? { undoStack: [], redoStack: [] } : {}),
   }
-  if (state.movingId && !ids.has(state.movingId)) {
+  const preview = state.movingSelection
+  const nextById = new Map(document.bricks.map((brick) => [brick.id, brick]))
+  const movedOriginalChanged = preview && !preview.duplicate && preview.originals.some((original) => {
+    const next = nextById.get(original.id)
+    return !next || !brickContentEquals(original, next)
+  })
+  if ((state.movingId && !ids.has(state.movingId)) || movedOriginalChanged
+    || (preview && (resetHistory || mode === 'explore'))) {
     patch.movingId = null
+    patch.movingSelection = null
     patch.draft = null
     patch.activePartId = null
-    patch.toast = 'The shared world changed the brick you were moving, so the move was canceled.'
+    patch.toast = 'The shared world changed while you were positioning bricks. Select them again to continue.'
   }
   return patch
 }
@@ -528,7 +536,11 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     const changed = snapshot.mode !== mode
     snapshot = { ...snapshot, mode }
     applyingRemote = true
-    try { store.setState({ mode }) } finally { applyingRemote = false }
+    try {
+      store.setState({ mode, ...(mode === 'explore'
+        ? { draft: null, movingId: null, movingSelection: null, activePartId: null }
+        : {}) })
+    } finally { applyingRemote = false }
     if (changed) options.onMode?.(mode)
   }
 

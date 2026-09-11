@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
 import { registerCustomParts } from './parts'
-import { MAX_HISTORY_ENTRIES, draftIsValid, useBrickStore, validateBrickGroup } from './store'
+import { MAX_HISTORY_ENTRIES, draftIsValid, selectionDrafts, selectionDraftIsValid, useBrickStore, validateBrickGroup } from './store'
 import type { BrickDraft, BrickInstance } from './types'
 
 const base: BrickInstance = { id: 'a', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }
@@ -538,6 +538,9 @@ describe('atomic group clipboard and history', () => {
 
   it('duplicates and deletes whole groups as single atomic commands', () => {
     useBrickStore.getState().duplicate()
+    const anchor = useBrickStore.getState().draft!
+    useBrickStore.getState().setDraftPosition(anchor.x, anchor.y + 12, anchor.z)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
     expect(useBrickStore.getState().bricks).toHaveLength(6)
     expect(useBrickStore.getState().undoStack).toHaveLength(1)
 
@@ -800,4 +803,102 @@ it('undoes and redoes imported environment and custom definitions with the brick
   expect(JSON.parse(useBrickStore.getState().exportDocument())).toEqual(before)
   useBrickStore.getState().redo()
   expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(after)
+})
+
+
+describe('selection placement previews', () => {
+  const group: BrickInstance[] = [
+    { id: 'move-a', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },
+    { id: 'move-b', partId: 'brick_1x1', x: 5, y: 0, z: 4, rotation: 0, color: '#f00' },
+  ]
+  beforeEach(() => {
+    useBrickStore.setState({ bricks: group.map((brick) => ({ ...brick })), draft: null })
+    useBrickStore.getState().selectBricks(group.map((brick) => brick.id))
+  })
+  it('does not notify subscribers when pointer movement stays in the same snapped cell', () => {
+    useBrickStore.getState().startMove()
+    const notify = vi.fn()
+    const unsubscribe = useBrickStore.subscribe(notify)
+    const draft = useBrickStore.getState().draft!
+    useBrickStore.getState().setDraftPosition(draft.x, draft.y, draft.z)
+    expect(notify).not.toHaveBeenCalled()
+    expect(useBrickStore.getState().draft).toBe(draft)
+    useBrickStore.getState().setDraftPosition(draft.x + 1, draft.y, draft.z)
+    expect(notify).toHaveBeenCalledTimes(1)
+    unsubscribe()
+  })
+  it('previews an entire group without mutating the world and commits one undo step', () => {
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(9, 3, 10)
+    expect(useBrickStore.getState().bricks).toEqual(group)
+    expect(selectionDrafts(useBrickStore.getState()).map(({ x, y, z }) => [x, y, z])).toEqual([[9, 3, 10], [10, 3, 10]])
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    const moved = useBrickStore.getState().bricks
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(group)
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().bricks).toEqual(moved)
+  })
+  it('rejects a collision affecting a non-anchor brick and allows cancel without history', () => {
+    const obstacle = { ...group[0], id: 'obstacle', x: 10, z: 10 }
+    useBrickStore.setState({ bricks: [...group, obstacle] })
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(9, 0, 10)
+    expect(selectionDraftIsValid(useBrickStore.getState())).toBe(false)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().bricks).toEqual([...group, obstacle])
+    useBrickStore.getState().cancelInteraction()
+    expect(useBrickStore.getState().movingSelection).toBeNull()
+    expect(useBrickStore.getState().selectedIds).toEqual(group.map((brick) => brick.id))
+    expect(useBrickStore.getState().undoStack).toHaveLength(0)
+  })
+  it('does not overwrite a source changed while the preview was open', () => {
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(9, 0, 10)
+    const updated = [{ ...group[0], color: '#000' }, group[1]]
+    useBrickStore.setState({ bricks: updated })
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().bricks).toEqual(updated)
+  })
+  it('duplicates in place as an uncommitted preview and keeps original IDs on cancel', () => {
+    useBrickStore.getState().duplicate()
+    expect(selectionDrafts(useBrickStore.getState())).toEqual(group)
+    expect(useBrickStore.getState().bricks).toEqual(group)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    useBrickStore.getState().cancelInteraction()
+    expect(useBrickStore.getState().selectedIds).toEqual(group.map((brick) => brick.id))
+    expect(useBrickStore.getState().undoStack).toHaveLength(0)
+    useBrickStore.getState().duplicate()
+    useBrickStore.getState().setDraftPosition(4, 3, 4)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().bricks).toHaveLength(4)
+    expect(useBrickStore.getState().bricks.slice(2).every((brick) => !group.some((original) => original.id === brick.id))).toBe(true)
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().bricks).toEqual(group)
+  })
+  it('validates group edges and does not add history for an unchanged drop', () => {
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(63, 0, 4)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    useBrickStore.getState().setDraftPosition(4, 0, 4)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().undoStack).toHaveLength(0)
+    expect(useBrickStore.getState().movingSelection).toBeNull()
+  })
+  it('lets an existing group move when a lower device budget is already exceeded', () => {
+    useBrickStore.setState({ brickBudget: 1 })
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(9, 0, 10)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(useBrickStore.getState().bricks).toHaveLength(2)
+  })
+  it('rejects duplicate over budget and clears move state when choosing a new part', () => {
+    useBrickStore.setState({ brickBudget: 3 })
+    useBrickStore.getState().duplicate()
+    expect(useBrickStore.getState().movingSelection).toBeNull()
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().choosePart('brick_2x2')
+    expect(useBrickStore.getState().movingSelection).toBeNull()
+  })
 })

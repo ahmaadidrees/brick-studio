@@ -10,7 +10,8 @@ import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
 import { RemoteAvatar } from './RemoteAvatar'
 import { getBuildBounds } from './bounds'
 import {
-  clampBuildCameraTarget,
+  BUILD_CAMERA_MAX_POLAR_ANGLE,
+  constrainBuildCameraNavigation,
   createBuildFramePose,
   getBuildCameraLimits,
 } from './buildCamera'
@@ -85,6 +86,7 @@ import {
   EXPLORER_CAPSULE_RADIUS,
   GRID_SIZE,
   STUD,
+  PLATE_HEIGHT,
   brickPhysicalShapes,
   brickWorldPosition,
   rotatedSize,
@@ -103,7 +105,7 @@ import {
 } from './scenePhysics'
 import { usesCompactRenderer } from './rendererQuality'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
-import { draftIsValid, useBrickStore } from './store'
+import { selectionDrafts, selectionDraftIsValid, useBrickStore } from './store'
 import {
   RuntimeCharacterAvatar,
   useRuntimeEnvironment,
@@ -164,11 +166,19 @@ function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) 
 function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft) {
   const next = gridDraftFromPoint(point, 0, draft)
   const size = rotatedSize(BRICK_PART_MAP[draft.partId], draft.rotation)
-  const { bricks, movingId } = useBrickStore.getState()
+  const state = useBrickStore.getState()
+  const { bricks, movingId, movingSelection } = state
   // The brick being moved is still in `bricks`; counting it as support would
   // stack the ghost on top of its own original the moment a move drag starts.
-  const support = movingId ? bricks.filter((brick) => brick.id !== movingId) : bricks
-  next.y = supportHeightForFootprint(support, next.x, next.z, size.width, size.depth)
+  const ignored = new Set(movingSelection && !movingSelection.duplicate ? movingSelection.originals.map((brick) => brick.id) : movingId ? [movingId] : [])
+  const support = bricks.filter((brick) => !ignored.has(brick.id))
+  if (movingSelection && movingSelection.originals.length > 1) {
+    const anchor = movingSelection.originals[0]
+    next.y = Math.max(...movingSelection.originals.map((brick) => {
+      const brickSize = rotatedSize(BRICK_PART_MAP[brick.partId], brick.rotation)
+      return supportHeightForFootprint(support, next.x + brick.x - anchor.x, next.z + brick.z - anchor.z, brickSize.width, brickSize.depth) - (brick.y - anchor.y)
+    }))
+  } else next.y = supportHeightForFootprint(support, next.x, next.z, size.width, size.depth)
   return next
 }
 
@@ -303,6 +313,8 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
+  const movingSelection = useBrickStore((state) => state.movingSelection)
+  const isMoving = movingId === brick.id || Boolean(movingSelection && !movingSelection.duplicate && movingSelection.originals.some((original) => original.id === brick.id))
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const selectBrick = useBrickStore((state) => state.selectBrick)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
@@ -374,9 +386,9 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
             selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || useBrickStore.getState().selectionMode)
           }
         }}
-        scale={movingId === brick.id ? 0.98 : 1}
+        scale={isMoving ? 0.98 : 1}
       >
-        <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={movingId === brick.id} opacity={movingId === brick.id ? 0.3 : 1} />
+        <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={isMoving} opacity={isMoving ? 0.3 : 1} />
         {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
       </mesh>
     </group>
@@ -503,8 +515,11 @@ function DraftBrick() {
   const draft = useBrickStore((state) => state.draft)
   const bricks = useBrickStore((state) => state.bricks)
   const movingId = useBrickStore((state) => state.movingId)
+  const movingSelection = useBrickStore((state) => state.movingSelection)
   if (!draft) return null
-  return <DraftBrickMesh draft={draft} valid={draftIsValid(draft, bricks, movingId)} />
+  const state = { draft, bricks, movingId, movingSelection }
+  const valid = selectionDraftIsValid({ ...useBrickStore.getState(), ...state })
+  return <>{selectionDrafts(state).map((preview, index) => <DraftBrickMesh key={index} draft={preview} valid={valid} />)}</>
 }
 
 function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean }) {
@@ -559,9 +574,6 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const bricks = useBrickStore((state) => state.bricks)
   const setViewTarget = useBrickStore((state) => state.setViewTarget)
   const { camera, gl, size: viewportSize } = useThree()
-  const unclampedTarget = useRef(new THREE.Vector3())
-  const clampedTarget = useRef(new THREE.Vector3())
-  const targetCorrection = useRef(new THREE.Vector3())
   const perspectiveCamera = camera as THREE.PerspectiveCamera
   const bounds = useMemo(() => getBuildBounds(bricks), [bricks])
   const limits = useMemo(
@@ -578,12 +590,8 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const clampCameraNavigation = useCallback(() => {
     const control = controls.current
     if (!control) return
-    const previous = unclampedTarget.current.copy(control.target)
-    clampBuildCameraTarget(previous, limits, clampedTarget.current)
-    if (clampedTarget.current.equals(previous)) return
-    targetCorrection.current.subVectors(clampedTarget.current, previous)
-    control.target.copy(clampedTarget.current)
-    camera.position.add(targetCorrection.current)
+    constrainBuildCameraNavigation(control.target, camera.position, limits)
+    camera.lookAt(control.target)
   }, [camera, limits])
 
   useEffect(() => {
@@ -631,7 +639,9 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
       dampingFactor={0.08}
       minDistance={limits.minDistance}
       maxDistance={limits.maxDistance}
-      maxPolarAngle={Math.PI / 2.02}
+      maxPolarAngle={BUILD_CAMERA_MAX_POLAR_ANGLE}
+      zoomToCursor
+      screenSpacePanning
       mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
       onStart={() => { gestureActive.current = true }}
@@ -709,6 +719,7 @@ function BuildSelectionInput() {
     }
     const pointerDown = (event: PointerEvent) => {
       const state = useBrickStore.getState()
+      if (state.draft) return
       if (!shouldCaptureSelectionGesture({
         mode: state.mode,
         button: event.button,
@@ -828,6 +839,8 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
   const { camera, gl, scene } = useThree()
   const activePointer = useRef<{ id: number; pointerType: string } | null>(null)
   const grabbedBrick = useRef(false)
+  const selectedDrag = useRef<{ brickId: string; x: number; y: number; origin: THREE.Vector3; plane: THREE.Plane; anchor: BrickDraft; started: boolean } | null>(null)
+  const suppressClick = useRef(false)
   const ghostTravel = useRef(createPointerTravel())
   const longPress = useRef(createLongPressState())
   const holdTimer = useRef<number | null>(null)
@@ -855,6 +868,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       useBrickStore.getState().setGrabInProgress(false)
       if (!active) return
       activePointer.current = null
+      selectedDrag.current = null
       grabbedBrick.current = false
       endPointerTravel(ghostTravel.current)
       // Our consume starved MouseTravelTracker's own pointerup.
@@ -883,6 +897,8 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
           Array.isArray(hit.object.userData.brickIds) ? hit.object.userData.brickIds : [],
           hit.instanceId,
         )
+        const hitBrickId = instancedBrickId ?? hit.object.userData.brickId
+        if (state.movingSelection && !state.movingSelection.duplicate && state.movingSelection.originals.some((brick) => brick.id === hitBrickId)) continue
         if (instancedBrickId ? instancedBrickId === state.movingId : !isGhostDropTarget(hit.object.userData, state.movingId)) continue
         const next = supportedDraftFromPoint(hit.point, state.draft)
         state.setDraftPosition(next.x, next.y, next.z)
@@ -935,13 +951,35 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
         return
       }
       abortHold()
+      suppressClick.current = false
       const state = useBrickStore.getState()
-      if (state.mode !== 'build' || state.selectionMode) return
+      if (state.mode !== 'build') return
+      if (!state.draft && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        const brickId = findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current)
+        const ids = state.selectedIds.length ? state.selectedIds : state.selectedId ? [state.selectedId] : []
+        const brick = state.bricks.find((candidate) => candidate.id === brickId)
+        if (brick && ids.includes(brick.id)) {
+          const anchor = state.bricks.find((candidate) => ids.includes(candidate.id))!
+          const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -brick.y * PLATE_HEIGHT)
+          const origin = raycaster.current.ray.intersectPlane(plane, new THREE.Vector3())
+          if (origin) {
+            consume(event)
+            selectedDrag.current = { brickId: brick.id, x: event.clientX, y: event.clientY, origin, plane, anchor: { ...anchor }, started: false }
+            activePointer.current = { id: event.pointerId, pointerType: event.pointerType }
+            canvas.setPointerCapture?.(event.pointerId)
+            return
+          }
+        }
+      }
+      if (state.selectionMode && !state.draft) return
       // Dragging the ghost itself stays touch/pen: a desktop ghost already follows the cursor.
       if (state.draft && isConfirmationPlacementPointer(event.pointerType)) {
         const rect = canvas.getBoundingClientRect()
-        const bounds = projectBrickScreenBounds({ ...state.draft, id: 'ghost-drag' }, camera, rect.width, rect.height)
-        if (pointWithinInflatedRect(bounds, event.clientX - rect.left, event.clientY - rect.top)) {
+        const overPreview = selectionDrafts(state).some((preview, index) => {
+          const bounds = projectBrickScreenBounds({ ...preview, id: `ghost-drag-${index}` }, camera, rect.width, rect.height)
+          return pointWithinInflatedRect(bounds, event.clientX - rect.left, event.clientY - rect.top)
+        })
+        if (overPreview) {
           consume(event)
           activePointer.current = { id: event.pointerId, pointerType: event.pointerType }
           beginPointerTravel(ghostTravel.current, event.clientX, event.clientY)
@@ -968,6 +1006,31 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
     const pointerMove = (event: PointerEvent) => {
       if (activePointer.current?.id === event.pointerId) {
         consume(event)
+        const direct = selectedDrag.current
+        if (direct) {
+          if (!direct.started && Math.hypot(event.clientX - direct.x, event.clientY - direct.y) < BUILD_TOUCH_DRAG_THRESHOLD) return
+          if (!direct.started) {
+            direct.started = true
+            useBrickStore.getState().startMove()
+            useBrickStore.getState().setGrabInProgress(true)
+            suppressClick.current = true
+            if (event.pointerType === 'mouse') markPointerTravelDragged(mouseTravel)
+          }
+          const state = useBrickStore.getState()
+          if (!state.draft) return
+          const rect = canvas.getBoundingClientRect()
+          pointer.current.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
+          raycaster.current.setFromCamera(pointer.current, camera)
+          const point = raycaster.current.ray.intersectPlane(direct.plane, new THREE.Vector3())
+          if (!point) return
+          const x = direct.anchor.x + Math.round((point.x - direct.origin.x) / STUD)
+          const z = direct.anchor.z + Math.round((point.z - direct.origin.z) / STUD)
+          const size = rotatedSize(BRICK_PART_MAP[state.draft.partId], state.draft.rotation)
+          const target = new THREE.Vector3((x + size.width / 2 - GRID_SIZE / 2) * STUD, 0, (z + size.depth / 2 - GRID_SIZE / 2) * STUD)
+          const next = supportedDraftFromPoint(target, state.draft)
+          state.setDraftPosition(next.x, next.y, next.z)
+          return
+        }
         if (!grabbedBrick.current) updatePointerTravel(ghostTravel.current, event.clientX, event.clientY)
         reposition(event)
         return
@@ -980,6 +1043,18 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       abortHold()
       if (activePointer.current?.id !== event.pointerId) return
       consume(event)
+      if (selectedDrag.current) {
+        const { started, brickId } = selectedDrag.current
+        suppressClick.current = true
+        if (started) {
+          if (event.type === 'pointerup') useBrickStore.getState().placeDraft()
+          else useBrickStore.getState().cancelInteraction()
+        } else if (event.type === 'pointerup' && useBrickStore.getState().selectionMode) {
+          useBrickStore.getState().toggleBrick(brickId)
+        }
+        release()
+        return
+      }
       // Letting go of a grab never decides the brick's fate: the moving ghost
       // parks where it sits, red and blocked included, until the kid confirms
       // (Place, double tap, click, Enter) or cancels.
@@ -1000,9 +1075,15 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
     // Build) so neither the pointer id nor grabInProgress is left stranded.
     const unsubscribe = useBrickStore.subscribe((state) => {
       if (state.mode !== 'build' || state.selectionMode) abortHold()
-      if (activePointer.current !== null && (state.mode !== 'build' || !state.draft)) release()
+      if (activePointer.current !== null && (state.mode !== 'build' || (!state.draft && (!selectedDrag.current || selectedDrag.current.started)))) release()
     })
 
+    const click = (event: MouseEvent) => {
+      if (!suppressClick.current) return
+      suppressClick.current = false
+      consume(event)
+    }
+    canvas.addEventListener('click', click, true)
     canvas.addEventListener('pointerdown', pointerDown, true)
     canvas.addEventListener('pointermove', pointerMove, true)
     canvas.addEventListener('pointerup', pointerUp, true)
@@ -1014,6 +1095,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       canvas.removeEventListener('pointerdown', pointerDown, true)
       canvas.removeEventListener('pointermove', pointerMove, true)
       canvas.removeEventListener('pointerup', pointerUp, true)
+      canvas.removeEventListener('click', click, true)
       canvas.removeEventListener('pointercancel', pointerUp, true)
       canvas.removeEventListener('lostpointercapture', pointerUp, true)
       window.removeEventListener('blur', abandon)

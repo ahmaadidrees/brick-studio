@@ -14,6 +14,7 @@ export type BrickPart = {
   height: number
   kind: BrickKind
   icon: string
+  studs?: 'auto' | 'full' | 'none'
 }
 
 export type BrickInstance = {

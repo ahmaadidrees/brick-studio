@@ -3,6 +3,8 @@ import { getBuildBounds } from './bounds'
 import {
   BUILD_CAMERA_ABSOLUTE_MAX_DISTANCE,
   BUILD_CAMERA_MIN_DISTANCE,
+  BUILD_CAMERA_MIN_HEIGHT,
+  constrainBuildCameraNavigation,
   clampBuildCameraTarget,
   createBuildFramePose,
   getBuildCameraLimits,
@@ -43,6 +45,30 @@ describe('bounded Build camera', () => {
       y: limits.targetMin[1],
       z: limits.targetMin[2],
     })
+  })
+
+  it('preserves viewing direction when cursor zoom moves the target outside bounds', () => {
+    const limits = getBuildCameraLimits(getBuildBounds(edgeBuild), 45, 1)
+    const target = { x: 1000, y: 2, z: -1000 }
+    const position = { x: 1004, y: 7, z: -994 }
+    constrainBuildCameraNavigation(target, position, limits)
+    expect(target.x).toBe(limits.targetMax[0])
+    expect(target.z).toBe(limits.targetMin[2])
+    expect(position.x - target.x).toBeCloseTo(4)
+    expect(position.y - target.y).toBe(5)
+    expect(position.z - target.z).toBeCloseTo(6)
+  })
+
+  it('permits looking upward at elevated targets without orbiting under the plate', () => {
+    const limits = getBuildCameraLimits(getBuildBounds(edgeBuild), 45, 1)
+    const target = { x: 0, y: 2, z: 0 }
+    const position = { x: 0, y: -4, z: 5 }
+    constrainBuildCameraNavigation(target, position, limits)
+    expect(position.y).toBe(BUILD_CAMERA_MIN_HEIGHT)
+    expect(position.y).toBeLessThan(target.y)
+    expect(target).toEqual({ x: 0, y: 2, z: 0 })
+    constrainBuildCameraNavigation(target, position, limits)
+    expect(position).toEqual({ x: 0, y: BUILD_CAMERA_MIN_HEIGHT, z: 5 })
   })
 
   it('frames placed-brick bounds and a ~16-stud working area for an empty build', () => {

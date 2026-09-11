@@ -2,8 +2,11 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { BRICK_STUDIO_MAX_CUSTOM_PARTS } from '../brickDocument'
 import type { CustomPartDefinition, CustomPartTemplate } from '../types'
 import { createCustomPartDefinition } from './definition'
+import { CreateBrickPreview } from './CreateBrickPreview'
 import type { CreateBrickDraft } from './definition'
 import './create-brick-sheet.css'
+
+const INITIAL_PREVIEW: CreateBrickDraft = { name: 'My brick', template: 'solid', width: 2, depth: 4, height: 3, studs: 'auto' }
 
 const TEMPLATES: ReadonlyArray<{ value: CustomPartTemplate; label: string }> = [
   { value: 'solid', label: 'Classic brick' },
@@ -34,14 +37,39 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
   const titleId = useId()
   const panel = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<CreateBrickDraft>(INITIAL_PREVIEW)
+  const [previewHint, setPreviewHint] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
     setError(null)
+    setPreview(INITIAL_PREVIEW)
+    setPreviewHint(null)
     panel.current?.focus()
   }, [open])
 
   if (!open) return null
+
+  const updatePreview = (event: FormEvent<HTMLFormElement>) => {
+    const form = new FormData(event.currentTarget)
+    const width = boundedInteger(form.get('width'), 1, 8)
+    const depth = boundedInteger(form.get('depth'), 1, 8)
+    const height = boundedInteger(form.get('height'), 1, 12)
+    const template = String(form.get('template')) as CustomPartTemplate
+    const studs = String(form.get('studs')) as CustomPartDefinition['studs']
+    setError(null)
+    if (width === null || depth === null || height === null) {
+      setPreviewHint('Enter whole-number dimensions to update the preview.')
+      return
+    }
+    if ((template === 'round' || template === 'cone') && width !== depth) {
+      setPreviewHint('Match width and depth to preview this shape.')
+      return
+    }
+    setPreviewHint(null)
+    setPreview((current) => current.width === width && current.depth === depth && current.height === height
+      && current.template === template && current.studs === studs ? current : { ...INITIAL_PREVIEW, width, depth, height, template, studs })
+  }
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -73,7 +101,7 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
       <button className="create-brick-backdrop" type="button" aria-label="Cancel creating a brick" onClick={onClose} />
       <div
         ref={panel}
-        className="create-brick-panel"
+        className="create-brick-panel create-brick-panel-with-preview"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -89,8 +117,10 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
           <div><span>Brick drawer</span><h2 id={titleId}>Create a brick</h2></div>
           <button type="button" aria-label="Close create a brick" onClick={onClose}>×</button>
         </header>
-        <p>Choose a familiar shape and snapped dimensions. Your brick stays editable, shareable, and safe for multiplayer.</p>
-        <form onSubmit={submit}>
+        <p>Make it your own. Preview your shape as you adjust its size and studs.</p>
+        <div className="create-brick-workspace">
+        <CreateBrickPreview draft={preview} hint={previewHint} />
+        <form onSubmit={submit} onChange={updatePreview}>
           <label>Name<input name="name" maxLength={40} defaultValue="My brick" required /></label>
           <label>Shape<select name="template" defaultValue="solid">{TEMPLATES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <div className="create-brick-dimensions">
@@ -102,6 +132,7 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
           {error && <p className="create-brick-error" role="alert">{error}</p>}
           <footer><button type="button" onClick={onClose}>Cancel</button><button type="submit">Create and place</button></footer>
         </form>
+        </div>
       </div>
     </div>
   )

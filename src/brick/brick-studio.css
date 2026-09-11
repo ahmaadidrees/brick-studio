@@ -53,30 +53,40 @@
   right: max(14px, env(safe-area-inset-right));
   height: 62px;
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: minmax(150px, 1fr) auto auto;
+  gap: 14px;
   align-items: center;
-  pointer-events: none;
+  padding: 6px 10px;
+  border: 1px solid var(--studio-panel-border);
+  border-radius: 18px;
+  background: var(--studio-panel);
+  box-shadow: 0 8px 28px rgba(45,61,67,.12);
+  pointer-events: auto;
 }
 
 .brick-brand,
 .brick-mode-switch,
 .brick-header-actions { pointer-events: auto; }
 
-.brick-brand { width: fit-content; max-width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; padding-right: 10px; border-radius: 13px; background: var(--studio-panel); box-shadow: 0 7px 20px rgba(45,61,67,.1); }
+.brick-brand { width: fit-content; max-width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; padding-right: 6px; border-radius: 13px; background: transparent; }
 .brick-brand-mark { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border: 0; border-radius: 13px; color: white; background: linear-gradient(145deg, #4c91df, #2f70bc); box-shadow: 0 7px 18px rgba(44, 102, 165, 0.23); }
 .brick-customize-entry { align-content: center; gap: 2px; padding: 2px; cursor: pointer; }
 .brick-customize-entry > span { font: 800 8px/1.1 system-ui, sans-serif; }
 .brick-customize-entry:hover { background: #2867ae; }
 .brick-customize-entry:focus-visible { outline: 3px solid rgba(62,131,215,.5); outline-offset: 3px; }
 .brick-world-context { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.brick-brand strong { font: 700 18px/1.05 'Fredoka', sans-serif; white-space: nowrap; }
+.brick-brand strong { overflow: hidden; font: 700 18px/1.05 'Fredoka', sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .brick-world-title { max-width: 260px; overflow: hidden; color: #506770; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .brick-save-status { color: #536a74; font: 700 11px/1.2 system-ui, sans-serif; white-space: nowrap; }
 .brick-save-saved { color: #2a715b; }
 .brick-save-pending { color: #87580d; }
 .brick-save-error { color: #aa302a; }
 
+.brick-header .brick-mode-switch { box-shadow: none; background: #edf2f5; border-color: transparent; }
+.brick-header .studio-icon-button, .brick-header .brick-count { box-shadow: none; background: transparent; }
+.brick-header .studio-icon-button { border-color: transparent; }
+.brick-header .studio-icon-button:hover:not(:disabled) { background: #edf5fc; }
+.brick-header-actions > .brick-collaborate-entry { width: auto; flex: 0 0 auto; color: #2867ae; background: #edf5fc; box-shadow: none; white-space: nowrap; }
 .brick-mode-switch { display: flex; gap: 4px; padding: 5px; border: 1px solid rgba(167,177,180,.38); border-radius: 16px; background: rgba(255,255,255,.9); box-shadow: 0 10px 28px rgba(45,61,67,.12); backdrop-filter: blur(15px); }
 .brick-mode-switch button { min-width: 104px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 11px; color: #65777e; background: transparent; font-size: 13px; font-weight: 900; cursor: pointer; }
 .brick-mode-switch button.active { color: white; background: linear-gradient(145deg, #4b8ed9, #3476c1); box-shadow: 0 5px 13px rgba(44,105,174,.24); }
@@ -194,6 +204,7 @@
 .inspector-actions button.danger { color: #b04f49; background: #fae9e7; }
 .inspector-actions kbd { min-width: 18px; height: 17px; padding: 0 3px; border: 0; border-radius: 4px; background: rgba(0,0,0,.07); font-size: 8px; }
 .inspector-scroll-hint { display: none; }
+.inspector-drag-hint { margin: 10px 0; color: #607681; font-size: 11px; line-height: 1.5; }
 .coordinates { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 12px; }
 .coordinates span { display: flex; justify-content: space-between; padding: 6px 7px; border-radius: 7px; color: #8a979a; background: #f3f5f4; font-size: 9px; font-weight: 800; }
 .coordinates strong { color: #4e656d; }
@@ -540,3 +551,24 @@
   .brick-studio *, .brick-studio *::before, .brick-studio *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
   .brick-sheet, .brick-sheet-backdrop, .touch-placement-bar, .touch-selection-bar { animation: none !important; }
 }
+
+/* Keep one toolbar surface on compact screens; secondary actions remain in More. */
+@media (max-width: 1100px) {
+  .brick-header-actions > .brick-collaborate-entry { display: none; }
+  .brick-header { grid-template-columns: minmax(130px, 1fr) auto auto; gap: 8px; }
+}
+@media (max-width: 740px) {
+  .brick-header { height: 110px; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .brick-header-actions { top: 58px; right: 10px; }
+  .brick-mode-switch { align-self: start; }
+}
+@media (max-width: 600px) {
+  .brick-header { height: 104px; padding: 0; border-radius: 14px; }
+  .brick-brand { padding: 3px 0 0 3px; gap: 6px; }
+  .brick-mode-switch { margin: 3px 3px 0 0; }
+  .brick-header-actions { top: 52px; right: 3px; }
+  .brick-header-actions > .brick-help-entry { display: none; }
+}
+
+.inspector-cancel { width: 100%; margin-top: 8px; box-shadow: none; }
+.inspector-actions button:disabled, .inspector-quick-actions button:disabled { opacity: .38; cursor: default; }

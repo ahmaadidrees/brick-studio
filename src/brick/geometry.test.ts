@@ -126,3 +126,28 @@ describe('createBrickGeometry', () => {
     expect(renderedFloor(part, 'front')).toBeGreaterThan(0.2)
   })
 })
+
+describe('custom brick preview geometry', () => {
+  it('keeps changing preview geometry out of the shared cache', () => {
+    const part: BrickPart = { id: 'preview-isolation', name: 'Preview', width: 2, depth: 2, height: 3, kind: 'brick', icon: '◆' }
+    const cached = createBrickGeometry(part)
+    const preview = createBrickGeometry({ ...part, width: 8 }, { cache: false })
+    preview.computeBoundingBox()
+    cached.computeBoundingBox()
+    expect(preview.boundingBox!.max.x).toBeGreaterThan(cached.boundingBox!.max.x)
+    preview.dispose()
+    expect(createBrickGeometry(part)).toBe(cached)
+  })
+
+  it('renders explicit smooth tops and full studs while preserving automatic shape defaults', () => {
+    for (const kind of ['brick', 'slope', 'cone', 'stair'] as const) {
+      const part: BrickPart = { id: `stud-preview-${kind}`, name: 'Preview', width: 2, depth: 2, height: 3, kind, icon: '◆' }
+      const smooth = createBrickGeometry({ ...part, studs: 'none' }, { cache: false })
+      const full = createBrickGeometry({ ...part, studs: 'full' }, { cache: false })
+      const auto = createBrickGeometry(part, { cache: false })
+      expect(full.getAttribute('position').count).toBeGreaterThan(smooth.getAttribute('position').count)
+      expect(auto.getAttribute('position').count).toBe((kind === 'brick' ? full : smooth).getAttribute('position').count)
+      smooth.dispose(); full.dispose(); auto.dispose()
+    }
+  })
+})

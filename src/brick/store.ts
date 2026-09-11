@@ -66,6 +66,7 @@ export type BrickState = {
   activeColor: string
   draft: BrickDraft | null
   movingId: string | null
+  movingSelection: { originals: BrickInstance[]; duplicate: boolean } | null
   clipboard: BrickClipboard | null
   undoStack: BrickHistoryEntry[]
   redoStack: BrickHistoryEntry[]
@@ -279,6 +280,34 @@ export function draftIsValid(draft: BrickDraft, bricks: BrickInstance[], ignored
   return coreDraftIsValid(draft, bricks, ignoredId)
 }
 
+/** All preview pieces translated relative to the first selected brick. */
+export function selectionDrafts(state: Pick<BrickState, 'draft' | 'movingSelection'>): BrickDraft[] {
+  if (!state.draft) return []
+  const originals = state.movingSelection?.originals
+  if (!originals?.length || originals.length === 1) return [{ ...state.draft }]
+  const anchor = originals[0]
+  return originals.map((brick) => ({ ...brick,
+    x: brick.x + state.draft!.x - anchor.x,
+    y: brick.y + state.draft!.y - anchor.y,
+    z: brick.z + state.draft!.z - anchor.z,
+    color: state.draft!.color === anchor.color ? brick.color : state.draft!.color,
+  }))
+}
+
+export function selectionDraftIsValid(state: Pick<BrickState, 'draft' | 'movingSelection' | 'movingId' | 'bricks' | 'brickBudget'>): boolean {
+  if (!state.draft) return false
+  if (!state.movingSelection) return draftIsValid(state.draft, state.bricks, state.movingId)
+  const { originals, duplicate } = state.movingSelection
+  // Never overwrite an edit or deletion received while a move was in progress.
+  if (!duplicate && originals.some((original) => {
+    const current = state.bricks.find((brick) => brick.id === original.id)
+    return !current || !buildsAreEqual([original], [current])
+  })) return false
+  const ids = new Set(originals.map((brick) => brick.id))
+  const remaining = duplicate ? state.bricks : state.bricks.filter((brick) => !ids.has(brick.id))
+  return validateBrickGroup(selectionDrafts(state), remaining, duplicate ? state.brickBudget : Math.max(state.brickBudget, state.bricks.length)).valid
+}
+
 export type BrickGroupValidation = {
   valid: boolean
   reason: 'budget' | 'placement' | null
@@ -419,7 +448,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   activePartId: BRICK_PARTS[5].id,
   activeColor: BRICK_COLORS[5],
   draft: suggestedDraft(BRICK_PARTS[5].id, BRICK_COLORS[5]),
-  movingId: null,
+  movingId: null, movingSelection: null,
   clipboard: null,
   documentMetadata: {},
   setDocumentMetadata: (metadata) => {
@@ -463,6 +492,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       selectedId: null,
       draft: mode === 'build' ? state.draft ?? rearmed : null,
       movingId: mode === 'explore' ? null : state.movingId,
+      movingSelection: mode === 'explore' ? null : state.movingSelection,
       touchMove: { x: 0, z: 0 },
       touchMoveMagnitude: 0,
       touchRunning: false,
@@ -478,7 +508,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     activePartId: partId,
     selectedIds: [],
     selectedId: null,
-    movingId: null,
+    movingId: null, movingSelection: null,
     draft: suggestedDraft(partId, state.activeColor, state.viewTarget, state.bricks),
     announcement: `${BRICK_PART_MAP[partId].name} ready to place.`,
   })),
@@ -513,10 +543,14 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       announcement: targets.length === 1 ? 'Brick recolored.' : `${targets.length} bricks recolored.`,
     })
   },
-  setDraftPosition: (x, y, z) => set((state) => ({ draft: state.draft ? { ...state.draft, x, y, z } : state.draft })),
+  setDraftPosition: (x, y, z) => set((state) => {
+    const draft = state.draft
+    if (!draft || (draft.x === x && draft.y === y && draft.z === z)) return state
+    return { draft: { ...draft, x, y, z } }
+  }),
   placeDraft: () => {
     const state = get()
-    if (!state.draft || !draftIsValid(state.draft, state.bricks, state.movingId)) {
+    if (!state.draft || !selectionDraftIsValid(state)) {
       // blockedNonce marks a discrete rejected placement (overlap/out-of-bounds
       // only, not budget) so the ghost shake never keys off continuous validity.
       set({ toast: 'That placement overlaps another brick or falls outside the plate.', blockedNonce: state.blockedNonce + 1 })
@@ -527,7 +561,28 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       return false
     }
 
-    if (state.movingId) {
+    if (state.movingSelection) {
+      const { originals, duplicate } = state.movingSelection
+      const drafts = selectionDrafts(state)
+      const after = drafts.map((draft, index) => ({ ...draft, id: duplicate ? createBrickId() : originals[index].id }))
+      const afterById = new Map(after.map((brick) => [brick.id, brick]))
+      const ids = after.map((brick) => brick.id)
+      const beforeIds = originals.map((brick) => brick.id)
+      const deltas = after.map((brick, index) => ({
+        before: duplicate ? null : originals[index], after: brick,
+        beforeIndex: duplicate ? null : state.bricks.findIndex((item) => item.id === brick.id),
+        afterIndex: duplicate ? state.bricks.length + index : state.bricks.findIndex((item) => item.id === brick.id),
+      }))
+      const changed = duplicate || !buildsAreEqual(originals, after)
+      set({
+        bricks: duplicate ? [...state.bricks, ...after] : state.bricks.map((brick) => afterById.get(brick.id) ?? brick),
+        ...selectionPatch(ids), draft: null, movingId: null, movingSelection: null, activePartId: null,
+        undoStack: changed ? appendHistory(state.undoStack, historyEntry(deltas, `${duplicate ? 'Duplicate' : 'Move'} ${after.length === 1 ? 'brick' : `${after.length} bricks`}`, null, beforeIds, ids)) : state.undoStack,
+        redoStack: changed ? [] : state.redoStack,
+        announcement: `${duplicate ? 'Duplicated' : 'Moved'} ${after.length} ${after.length === 1 ? 'brick' : 'bricks'}.`,
+        placeFeedback: { id: ids[0], nonce: (state.placeFeedback?.nonce ?? 0) + 1 },
+      })
+    } else if (state.movingId) {
       const index = state.bricks.findIndex((brick) => brick.id === state.movingId)
       const before = state.bricks[index]
       if (!before) return false
@@ -535,7 +590,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       set({
         bricks: state.bricks.map((brick) => brick.id === before.id ? after : brick),
         ...selectionPatch([before.id]),
-        movingId: null,
+        movingId: null, movingSelection: null,
         draft: null,
         activePartId: null,
         undoStack: appendHistory(state.undoStack, singleHistoryEntry(before, after, index, index, 'Move brick')),
@@ -566,10 +621,10 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   cancelInteraction: () => {
     const state = get()
     if (state.draft) {
-      const restoredIds = state.movingId ? [state.movingId] : []
+      const restoredIds = state.movingSelection?.originals.map((brick) => brick.id).filter((id) => state.bricks.some((brick) => brick.id === id)) ?? (state.movingId ? [state.movingId] : [])
       set({
         draft: null,
-        movingId: null,
+        movingId: null, movingSelection: null,
         activePartId: null,
         ...selectionPatch(restoredIds),
         announcement: state.movingId ? 'Move canceled.' : 'Placement canceled.',
@@ -590,7 +645,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch(selected ? [selected.id] : []),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       announcement: selected ? describeBrick(selected, index, state.bricks.length) : state.announcement,
     })
   },
@@ -603,7 +658,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch(selectedIds),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       announcement: selectedIds.length > 1
         ? `${selectedIds.length} bricks selected.`
         : selectedIds.length === 1
@@ -620,11 +675,13 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch(selectedIds),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       announcement: selectedIds.length > 1 ? `${selectedIds.length} bricks selected.` : selectedIds.length === 1 ? '1 brick selected.' : 'Selection cleared.',
     })
   },
-  clearSelection: () => set({ ...selectionPatch([]), marquee: null, announcement: 'Selection cleared.' }),
+  clearSelection: () => set((state) => ({ ...selectionPatch([]), marquee: null,
+    ...(state.movingSelection ? { draft: null, movingId: null, movingSelection: null, activePartId: null } : {}),
+    announcement: 'Selection cleared.' })),
   selectAdjacentBrick: (direction) => {
     const state = get()
     if (state.bricks.length === 0) {
@@ -640,7 +697,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch([selected.id]),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       announcement: describeBrick(selected, nextIndex, state.bricks.length),
     })
   },
@@ -657,6 +714,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     }))
     set({
       bricks: state.bricks.filter((brick) => !selectedSet.has(brick.id)),
+      ...(state.movingSelection ? { draft: null, movingId: null, movingSelection: null, activePartId: null } : {}),
       ...selectionPatch([]),
       undoStack: appendHistory(state.undoStack, historyEntry(deltas, selected.length === 1 ? 'Delete brick' : `Delete ${selected.length} bricks`, null, effectiveSelectedIds(state), [])),
       redoStack: [],
@@ -666,6 +724,10 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   rotate: () => {
     const state = get()
     if (state.draft) {
+      if ((state.movingSelection?.originals.length ?? 0) > 1) {
+        set({ toast: 'Place this group before rotating it.' })
+        return
+      }
       const next = centerPivotRotation(state.draft)
       set({ draft: { ...state.draft, rotation: next.rotation, x: next.x, z: next.z } })
     } else if (effectiveSelectedIds(state).length > 1) {
@@ -742,7 +804,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     if (!target) return
     const next = { ...target, x: target.x + dx, y: Math.max(0, target.y + dy), z: target.z + dz }
     const ignored = state.draft ? state.movingId : state.selectedId
-    if (!draftIsValid(next, state.bricks, ignored)) {
+    if (state.movingSelection ? !selectionDraftIsValid({ ...state, draft: next }) : !draftIsValid(next, state.bricks, ignored)) {
       set({ toast: 'That move is blocked by the plate edge or another brick.' })
       return
     }
@@ -764,9 +826,9 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   },
   startMove: () => {
     const state = get()
-    if (effectiveSelectedIds(state).length !== 1) return
-    const brick = state.bricks.find((item) => item.id === state.selectedId)
-    if (brick) set({ draft: { ...brick }, movingId: brick.id, activePartId: brick.partId, toast: 'Choose a new valid location.' })
+    const originals = selectedBricks(state).map(cloneBrick)
+    const brick = originals[0]
+    if (brick) set({ draft: { ...brick }, movingId: brick.id, movingSelection: { originals, duplicate: false }, activePartId: brick.partId, toast: 'Drag to a new valid location.' })
   },
   copy: () => {
     const state = get()
@@ -797,14 +859,24 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       bricks: [...state.bricks, ...pasted],
       ...selectionPatch(pastedIds),
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       activePartId: null,
       undoStack: appendHistory(state.undoStack, historyEntry(deltas, pasted.length === 1 ? 'Paste brick' : `Paste ${pasted.length} bricks`, null, effectiveSelectedIds(state), pastedIds)),
       redoStack: [],
       announcement: pasted.length === 1 ? 'Brick pasted.' : `${pasted.length} bricks pasted.`,
     })
   },
-  duplicate: () => { get().copy(); get().paste() },
+  duplicate: () => {
+    const state = get()
+    const originals = selectedBricks(state).map(cloneBrick)
+    if (!originals.length) return
+    if (state.bricks.length + originals.length > state.brickBudget) {
+      set({ toast: `Duplicating this selection would exceed this world's ${state.brickBudget}-brick limit.` })
+      return
+    }
+    set({ draft: { ...originals[0] }, movingId: null, movingSelection: { originals, duplicate: true },
+      activePartId: originals[0].partId, toast: 'Move the copy to a free location, then place it.' })
+  },
   resizeSelectedParts: (partIdsByBrickId) => {
     const state = get()
     const before = selectedBricks(state)
@@ -845,7 +917,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       clipboard: null,
       redoStack: hadBuild ? [] : state.redoStack,
       undoStack: hadBuild
@@ -882,7 +954,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       clipboard: null,
       redoStack: changed ? [] : state.redoStack,
       undoStack: changed
@@ -915,7 +987,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
-      movingId: null,
+      movingId: null, movingSelection: null,
       clipboard: null,
       undoStack: [],
       redoStack: [],
@@ -939,7 +1011,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     if (!previous) return
     // An armed brush survives undo; a restored selection would fight it, so
     // the selection restore only applies while no brush is armed.
-    const brushArmed = !previous.documentBefore && Boolean(state.draft && !state.movingId)
+    const brushArmed = !previous.documentBefore && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (previous.documentBefore) registerCustomParts(previous.documentBefore.customParts)
     set({
       ...(previous.documentBefore ? { documentMetadata: { environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts }, activePartId: null, clipboard: null } : {}),
@@ -947,7 +1019,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       undoStack: state.undoStack.slice(0, -1),
       redoStack: appendHistory(state.redoStack, previous),
       ...selectionPatch(brushArmed ? [] : previous.selectionBefore),
-      movingId: null,
+      movingId: null, movingSelection: null,
       draft: brushArmed ? state.draft : null,
       toast: `Undid: ${previous.label}.`,
     })
@@ -961,7 +1033,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       set({ toast: `Redo would exceed this world's ${state.brickBudget}-brick limit.` })
       return
     }
-    const brushArmed = !next.documentAfter && Boolean(state.draft && !state.movingId)
+    const brushArmed = !next.documentAfter && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (next.documentAfter) registerCustomParts(next.documentAfter.customParts)
     set({
       ...(next.documentAfter ? { documentMetadata: { environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts }, activePartId: null, clipboard: null } : {}),
@@ -969,7 +1041,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
       undoStack: appendHistory(state.undoStack, next),
       redoStack: state.redoStack.slice(0, -1),
       ...selectionPatch(brushArmed ? [] : next.selectionAfter),
-      movingId: null,
+      movingId: null, movingSelection: null,
       draft: brushArmed ? state.draft : null,
       toast: `Redid: ${next.label}.`,
     })
@@ -1020,7 +1092,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   setSelectionMode: (selectionMode) => set({
     selectionMode,
     marquee: null,
-    ...(selectionMode ? { draft: null, movingId: null, activePartId: null } : {}),
+    ...(selectionMode ? { draft: null, movingId: null, movingSelection: null, activePartId: null } : {}),
     toast: selectionMode ? 'Select mode: tap bricks or drag empty space. Tap Done when finished.' : null,
     announcement: selectionMode ? 'Select mode on.' : 'Select mode finished.',
   }),

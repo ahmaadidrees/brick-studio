@@ -95,6 +95,7 @@ export function customPartToBrickPart(definition: CustomPartDefinition): BrickPa
     height: definition.height,
     kind: CUSTOM_TEMPLATE_KIND[definition.template],
     icon: '◆',
+    studs: definition.studs,
   }
 }
 

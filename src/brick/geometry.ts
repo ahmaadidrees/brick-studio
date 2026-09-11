@@ -36,11 +36,14 @@ function extrudeProfile(shape: THREE.Shape, width: number) {
 
 /** Parts whose top face is missing or pointed take no studs. */
 function hasStuds(part: BrickPart) {
+  if (part.studs === 'none') return false
+  if (part.studs === 'full') return true
   return part.kind !== 'slope' && part.kind !== 'stair' && part.kind !== 'cone'
 }
 
-export function createBrickGeometry(part: BrickPart) {
-  const cached = geometryCache.get(part.id)
+export function createBrickGeometry(part: BrickPart, options: { cache?: boolean } = {}) {
+  const cache = options.cache !== false
+  const cached = cache ? geometryCache.get(part.id) : undefined
   if (cached) return cached
 
   const { width, depth, height } = partWorldSize(part)
@@ -111,12 +114,20 @@ export function createBrickGeometry(part: BrickPart) {
 
   if (hasStuds(part)) {
     for (const [x, z] of partFootprintCells(part)) {
+      const localX = (x - (part.width - 1) / 2) * STUD
+      const localZ = (z - (part.depth - 1) / 2) * STUD
+      let top = height
+      if (part.kind === 'slope') top = height * (0.5 - localZ / depth)
+      if (part.kind === 'stair') top = ((z + 1) / part.depth) * height
+      if (part.kind === 'cone') {
+        const radius = roundPartRadius(part)
+        const radialDistance = Math.hypot(localX, localZ)
+        if (radialDistance > radius) continue
+        const base = conePartBaseHeight(part)
+        top = base + (height - base) * (1 - radialDistance / radius)
+      }
       const stud = new THREE.CylinderGeometry(STUD * 0.235, STUD * 0.235, STUD_HEIGHT, 16)
-      stud.translate(
-        (x - (part.width - 1) / 2) * STUD,
-        height + STUD_HEIGHT / 2,
-        (z - (part.depth - 1) / 2) * STUD,
-      )
+      stud.translate(localX, top + STUD_HEIGHT / 2, localZ)
       geometries.push(stud)
     }
   }
@@ -124,12 +135,11 @@ export function createBrickGeometry(part: BrickPart) {
   // ExtrudeGeometry is unindexed while the primitives are indexed; mergeGeometries
   // refuses mixed inputs, so level them before merging.
   const indexed = geometries.every((geometry) => geometry.getIndex() !== null)
-  const merged = mergeGeometries(
-    indexed ? geometries : geometries.map((geometry) => geometry.getIndex() ? geometry.toNonIndexed() : geometry),
-    false,
-  )
+  const inputs = indexed ? geometries : geometries.map((geometry) => geometry.getIndex() ? geometry.toNonIndexed() : geometry)
+  const merged = mergeGeometries(inputs, false)
+  for (const geometry of new Set([...geometries, ...inputs])) geometry.dispose()
   if (!merged) throw new Error(`Could not merge geometry for part ${part.id}`)
   merged.computeVertexNormals()
-  geometryCache.set(part.id, merged)
+  if (cache) geometryCache.set(part.id, merged)
   return merged
 }

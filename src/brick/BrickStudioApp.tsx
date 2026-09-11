@@ -10,6 +10,8 @@ import {
   Focus,
   Gamepad2,
   Home,
+  HelpCircle,
+  Users,
   Layers3,
   Move,
   MousePointer2,
@@ -226,22 +228,23 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
   const requestExplore = () => livePolicy ? livePolicy.onRequestMode('explore') : requestExploreMode()
 
   return (
-    <header className="brick-header">
+    <header className="brick-header" aria-label="Studio toolbar">
       <div className="brick-brand">
         <button className="brick-brand-mark brick-customize-entry" type="button" onClick={onOpenWorldSetup} aria-label="Customize scene & character" title="Choose a scene and customize your character">
           <Palette size={20} aria-hidden="true" /><span>Customize</span>
         </button>
         <div className="brick-world-context">
-          <strong>Brick Studio</strong>
-          {worldTitle && <span className="brick-world-title" title={worldTitle}>{worldTitle}</span>}
+          <strong title={worldTitle ?? 'Brick Studio'}>{worldTitle || 'Brick Studio'}</strong>
+          {worldTitle && <span className="brick-world-title">Brick Studio</span>}
           <span className={`brick-save-status brick-save-${saveStatus.tone}`} role="status" aria-label={`Save status: ${saveStatus.label}`} title={saveStatus.detail}>{saveStatus.label}</span>
         </div>
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
-        <button aria-label="Build mode" className={mode === 'build' ? 'active' : ''} onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
-        <button aria-label="Explore mode" className={mode === 'explore' ? 'active' : ''} onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
+        <button aria-label="Build mode" aria-pressed={mode === 'build'} className={mode === 'build' ? 'active' : ''} onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
+        <button aria-label="Explore mode" aria-pressed={mode === 'explore'} className={mode === 'explore' ? 'active' : ''} onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
       </nav>
-      <div className="brick-header-actions">
+      <div className="brick-header-actions" role="group" aria-label="World actions">
+        {!livePolicy && onStartLiveWorld && <button className="studio-button brick-collaborate-entry" onClick={onStartLiveWorld} aria-label="Build together"><Users size={17} /><span>Build together</span></button>}
         {onOpenMyClass && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyClass} aria-label={`My Class${accountLabel ? ` — ${accountLabel}` : ""}`}>My Class</button>}
         {onOpenMyWorlds && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyWorlds} aria-label="My Worlds"><span>My Worlds</span></button>}
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick capacity`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks</i></span>
@@ -249,6 +252,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
           <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
           <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
         </>}
+        <button className="studio-icon-button brick-help-entry" onClick={onOpenHelp} aria-label="Quick start and controls" title="Quick start and controls"><HelpCircle size={18} /></button>
         <StudioMenu
           onSaveToAccount={onSaveToAccount}
           onOpenMyWorlds={onOpenMyWorlds}
@@ -437,6 +441,8 @@ function Inspector({ onResize }: { onResize: () => void }) {
   const activeColor = useBrickStore((state) => state.activeColor)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
+  const movingSelection = useBrickStore((state) => state.movingSelection)
+  const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
   const bricks = useBrickStore((state) => state.bricks)
   const rotate = useBrickStore((state) => state.rotate)
   const startMove = useBrickStore((state) => state.startMove)
@@ -448,7 +454,7 @@ function Inspector({ onResize }: { onResize: () => void }) {
   const requestView = useBrickStore((state) => state.requestView)
   const [detailsExpanded, setDetailsExpanded] = useState(false)
   const inspectorSheet = useRef<HTMLDivElement>(null)
-  const selected = selectedIds.length > 1 ? undefined : bricks.find((brick) => brick.id === selectedId)
+  const selected = draft || selectedIds.length > 1 ? undefined : bricks.find((brick) => brick.id === selectedId)
   const moving = Boolean(movingId && draft)
   const target = moving ? draft : selected ?? draft
 
@@ -463,9 +469,11 @@ function Inspector({ onResize }: { onResize: () => void }) {
           <span className="inspector-cube multi-selection-cube"><Layers3 size={19} /></span>
           <div><span className="brick-eyebrow">Selection</span><h2>{selectedIds.length} bricks selected</h2></div>
         </div>
-        <p>Bulk actions preserve every brick's spacing, color, rotation, and part.</p>
+        <p>Drag a selected brick to move the whole group. Release to place; Esc cancels.</p>
         <section className="inspector-transform-section"><label><Move size={15} /> Position & size</label><TransformControls count={selectedIds.length} onResize={onResize} /></section>
-        <div className="inspector-actions multi-selection-actions">
+        <div className="inspector-actions multi-selection-actions" role="group" aria-label="Selection editing actions">
+          <button aria-label="Move selected bricks" onClick={startMove}><Move size={18} /><span>Move</span></button>
+          <button aria-label="Focus selected bricks" onClick={() => requestView('selection')}><Focus size={18} /><span>Focus</span><kbd>F</kbd></button>
           <button aria-label={`Copy ${selectedIds.length} selected bricks`} onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>
           <button aria-label={`Paste copied bricks`} onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>
           <button aria-label={`Duplicate ${selectedIds.length} selected bricks`} onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>
@@ -482,10 +490,10 @@ function Inspector({ onResize }: { onResize: () => void }) {
   return (
     <aside className={`brick-inspector ${detailsExpanded ? 'details-expanded' : 'details-collapsed'}`}>
       <div className="inspector-toolbar">
-        <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{part.name}</h2></div></div>
+        <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{movingSelection?.duplicate ? 'Duplicating' : moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{movingSelection && movingSelection.originals.length > 1 ? `${movingSelection.originals.length} bricks` : part.name}</h2></div></div>
         <div className="inspector-quick-actions">
           {draft && <button aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /></button>}
-          <button aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /></button>
+          <button aria-label="Rotate brick" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={18} /></button>
           {selected && <button aria-label="Move brick" onClick={startMove}><Move size={18} /></button>}
           <button className="inspector-sheet-toggle" aria-controls="brick-inspector-properties" aria-expanded={detailsExpanded} aria-label={detailsExpanded ? 'Hide brick properties' : 'Show brick properties'} onClick={() => setDetailsExpanded((expanded) => !expanded)}><ChevronDown size={19} /></button>
         </div>
@@ -500,7 +508,7 @@ function Inspector({ onResize }: { onResize: () => void }) {
       >
         <div className="inspector-actions" role="group" aria-label="Brick editing actions">
           {draft && <button className="inspector-sheet-primary" aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /><span>{moving ? 'Place move' : 'Place'}</span><kbd>Enter</kbd></button>}
-          <button className="inspector-sheet-primary" aria-label="Rotate brick" onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
+          <button className="inspector-sheet-primary" aria-label="Rotate brick" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
           {selected && <button className="inspector-sheet-primary" aria-label="Move brick" onClick={startMove}><Move size={18} /><span>Move</span></button>}
           {selected && <button aria-label="Duplicate brick" onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>}
           {selected && <button aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={18} /><span>Focus</span><kbd>F</kbd></button>}
@@ -508,7 +516,8 @@ function Inspector({ onResize }: { onResize: () => void }) {
           {!selected && <button aria-label="Paste brick" onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>}
           {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
         </div>
-        <p className="inspector-scroll-hint">Editing actions are first. Scroll for color and position.</p>
+        {draft && <button className="studio-button inspector-cancel" type="button" onClick={cancelInteraction}><X size={16} />Cancel placement</button>}
+        <p className="inspector-drag-hint">{draft ? 'Position the preview, then place. Esc cancels.' : 'Drag the selected brick to move it. Use arrows for precise steps.'}</p>
         {(selected || moving) && <section className="inspector-transform-section"><label><Move size={15} /> Position & size</label><TransformControls count={1} onResize={onResize} /></section>}
         <section><label><Palette size={15} /> Color</label><ColorPalette targetColor={target.color} /></section>
         <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
@@ -641,6 +650,7 @@ function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onR
 function TouchPlacementBar() {
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
+  const movingSelection = useBrickStore((state) => state.movingSelection)
   const grabInProgress = useBrickStore((state) => state.grabInProgress)
   const placeDraft = useBrickStore((state) => state.placeDraft)
   const rotate = useBrickStore((state) => state.rotate)
@@ -651,9 +661,9 @@ function TouchPlacementBar() {
   if (!part) return null
   return (
     <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
-      <span className="placement-part-chip"><span className="brick-eyebrow">{movingId ? 'Moving' : 'Placing'}</span><strong>{part.name}</strong></span>
+      <span className="placement-part-chip"><span className="brick-eyebrow">{movingSelection?.duplicate ? 'Duplicating' : movingId ? 'Moving' : 'Placing'}</span><strong>{movingSelection && movingSelection.originals.length > 1 ? `${movingSelection.originals.length} bricks` : part.name}</strong></span>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Cancel" onClick={cancelInteraction}><X size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate" onClick={rotate}><RotateCw size={19} /></button>
+      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Raise brick one plate" onClick={() => nudge(0, 1, 0)}><ChevronUp size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Lower brick one plate" onClick={() => nudge(0, -1, 0)}><ChevronDown size={19} /></button>
       <button className="studio-button studio-button-primary touch-place-button" type="button" aria-label={movingId ? 'Place moved brick from touch controls' : 'Place positioned brick'} onClick={() => placeDraft()}>
@@ -905,7 +915,7 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
 function ShortcutBar() {
   const coarsePointer = useCoarsePointerPreference()
   if (coarsePointer) return null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Click place · Drag orbit · ⇧Drag pan</span><span>⌘Click multi-select</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Drag empty space to orbit · ⇧Drag to pan</span><span>Ctrl/⌘Click multi-select</span><span>Drag selection to move</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands & {

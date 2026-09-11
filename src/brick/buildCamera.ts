@@ -3,6 +3,8 @@ import { GRID_SIZE, PLATE_HEIGHT, STUD } from './parts'
 import type { ViewPreset } from './types'
 
 export const BUILD_CAMERA_MIN_DISTANCE = 3
+export const BUILD_CAMERA_MIN_HEIGHT = PLATE_HEIGHT
+export const BUILD_CAMERA_MAX_POLAR_ANGLE = Math.PI * 5 / 6
 export const BUILD_CAMERA_ABSOLUTE_MAX_DISTANCE = 180
 const TARGET_HORIZONTAL_MARGIN = STUD * 4
 const TARGET_VERTICAL_MARGIN = STUD * 6
@@ -81,6 +83,25 @@ export function clampBuildCameraTarget<T extends BuildCameraPoint>(
   output.y = Math.max(limits.targetMin[1], Math.min(limits.targetMax[1], target.y))
   output.z = Math.max(limits.targetMin[2], Math.min(limits.targetMax[2], target.z))
   return output
+}
+
+/** Keep cursor zoom/pan bounded without changing its viewing direction, except
+ * when lifting the camera above the plate to prevent an underground view. */
+export function constrainBuildCameraNavigation(
+  target: BuildCameraPoint,
+  position: BuildCameraPoint,
+  limits: BuildCameraLimits,
+) {
+  const x = Math.max(limits.targetMin[0], Math.min(limits.targetMax[0], target.x))
+  const y = Math.max(limits.targetMin[1], Math.min(limits.targetMax[1], target.y))
+  const z = Math.max(limits.targetMin[2], Math.min(limits.targetMax[2], target.z))
+  position.x += x - target.x
+  position.y += y - target.y
+  position.z += z - target.z
+  target.x = x
+  target.y = y
+  target.z = z
+  position.y = Math.max(BUILD_CAMERA_MIN_HEIGHT, position.y)
 }
 
 export function createBuildFramePose(

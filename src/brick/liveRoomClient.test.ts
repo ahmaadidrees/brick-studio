@@ -226,6 +226,49 @@ describe('live brick command helpers', () => {
 })
 
 describe('live room synchronization', () => {
+  it('sends a placed group as one command batch and cancels a preview when a peer changes any member', () => {
+    const { socket } = createHarness()
+    const a = brick('a')
+    const b = brick('b', { x: 14 })
+    welcome(socket(), { document: documentWith(a, b) })
+    useBrickStore.setState({ selectedIds: ['a', 'b'], selectedId: 'b' })
+    useBrickStore.getState().startMove()
+    useBrickStore.setState({ draft: { ...a, z: 16 } })
+    expect(socket().commandMessages()).toHaveLength(0)
+    useBrickStore.getState().placeDraft()
+    const command = socket().commandMessages()[0]
+    expect(command.commands).toHaveLength(2)
+    expect(command.commands.every((item) => item.op === 'move')).toBe(true)
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    socket().receive({ v: 1, type: 'apply', revision: 1, from: 'live-test-client', opId: command.opId, commands: command.commands })
+    useBrickStore.getState().startMove()
+    socket().receive({ v: 1, type: 'apply', revision: 2, from: 'peer', opId: 'peer#1', commands: [
+      { op: 'recolor', brick: { ...b, z: 16, color: '#65b85a' } },
+    ] })
+    expect(useBrickStore.getState()).toMatchObject({ movingSelection: null, movingId: null, draft: null })
+    expect(useBrickStore.getState().bricks.find((item) => item.id === 'b')?.color).toBe('#65b85a')
+    expect(socket().commandMessages()).toHaveLength(1)
+    expect(useBrickStore.getState().undoStack).toHaveLength(0)
+  })
+
+  it('preserves group preview across unrelated peer edits and clears it on authoritative resync', () => {
+    const { socket } = createHarness()
+    const a = brick('a')
+    const b = brick('b', { x: 14 })
+    const peer = brick('peer-brick', { x: 30 })
+    welcome(socket(), { document: documentWith(a, b, peer) })
+    useBrickStore.setState({ selectedIds: ['a', 'b'], selectedId: 'b' })
+    useBrickStore.getState().startMove()
+    const preview = useBrickStore.getState().movingSelection
+    socket().receive({ v: 1, type: 'apply', revision: 1, from: 'peer', opId: 'peer#1', commands: [
+      { op: 'move', brick: { ...peer, x: 32 } },
+    ] })
+    expect(useBrickStore.getState().movingSelection).toBe(preview)
+    socket().receive({ v: 1, type: 'snapshot', revision: 1, mode: 'build', document: documentWith(a, b, { ...peer, x: 32 }) })
+    expect(useBrickStore.getState()).toMatchObject({ movingSelection: null, draft: null })
+    expect(socket().commandMessages()).toHaveLength(0)
+  })
+
   it('connects on the WorldRoom route, sends its profile, and adopts welcome state', () => {
     const { client, socket, callbacks } = createHarness({ ownerToken: 'owner capability' })
     expect(socket().url).toContain('wss://live.example/worlds/ROOM1234/connect?')

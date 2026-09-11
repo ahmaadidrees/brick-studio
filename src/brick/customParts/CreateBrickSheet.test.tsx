@@ -2,6 +2,12 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CreateBrickSheet, createCustomPartDefinition } from './CreateBrickSheet'
 
+vi.mock('./CreateBrickPreview', () => ({
+  CreateBrickPreview: ({ draft, hint }: { draft: { width: number; depth: number; height: number; template: string; studs: string }; hint: string | null }) => (
+    <div data-testid="preview">{JSON.stringify(draft)}{hint}</div>
+  ),
+}))
+
 afterEach(cleanup)
 
 describe('CreateBrickSheet', () => {
@@ -25,6 +31,22 @@ describe('CreateBrickSheet', () => {
       height: 5,
       studs: 'auto',
     }))
+  })
+
+  it('previews valid edits without creating a part and preserves the last valid shape during invalid input', () => {
+    const onCreate = vi.fn()
+    render(<CreateBrickSheet open onCreate={onCreate} onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText(/Width/), { target: { value: '5' } })
+    expect(screen.getByTestId('preview').textContent).toContain('"width":5')
+    fireEvent.change(screen.getByLabelText(/Width/), { target: { value: '' } })
+    expect(screen.getByTestId('preview').textContent).toContain('"width":5')
+    expect(screen.getByTestId('preview').textContent).toContain('whole-number')
+    fireEvent.change(screen.getByLabelText(/Width/), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText(/Shape/), { target: { value: 'round' } })
+    fireEvent.change(screen.getByLabelText(/Top studs/), { target: { value: 'none' } })
+    expect(screen.getByTestId('preview').textContent).toContain('"template":"round"')
+    expect(screen.getByTestId('preview').textContent).toContain('"studs":"none"')
+    expect(onCreate).not.toHaveBeenCalled()
   })
 
   it('uses the same id for the same normalized definition', () => {

@@ -1,6 +1,8 @@
 import type { MutablePlanarVector } from './characterInput'
 
-export const ORBIT_MIN_PITCH = 0.16
+// Negative pitch puts the camera below its avatar focus, allowing upward views.
+// The existing sphere cast shortens the boom before it reaches the ground/walls.
+export const ORBIT_MIN_PITCH = -1.15
 export const ORBIT_MAX_PITCH = 1.08
 export const ORBIT_DEFAULT_PITCH = 0.55
 export const ORBIT_DEFAULT_YAW = Math.PI
