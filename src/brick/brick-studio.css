@@ -568,6 +568,9 @@
   .brick-mode-switch { margin: 3px 3px 0 0; }
   .brick-header-actions { top: 52px; right: 3px; }
   .brick-header-actions > .brick-help-entry { display: none; }
+  /* Camera and Select occupy the toolbar's second row from the build shell.
+     Keep their hit targets above the shared header surface. */
+  .view-controls, .selection-mode-control { z-index: 21; }
 }
 
 .inspector-cancel { width: 100%; margin-top: 8px; box-shadow: none; }

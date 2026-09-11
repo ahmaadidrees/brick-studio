@@ -14,7 +14,10 @@
 - Node 22 full check: 759 frontend tests and 64 Worker tests, core/Worker type checks, and production build passed (823 tests total).
 - Focused tests cover camera bounds and actual Rapier floor obstruction, group collision/undo/cancellation, unchanged snapped positions avoiding store notifications, preview form updates, custom geometry studs/cache isolation, and the client/store atomic multiplayer move boundary.
 - Compiled local frontend against the production Worker passed real-pointer two-browser guest single/group drag, undo, duplicate positioning/placement, exact UI-exported document equality, and cold guest reload/rejoin. No browser page exceptions were observed in that flow. The disposable QA room was closed to new entrants.
-- Further camera, preview, responsive, and hosted release evidence is recorded in the accompanying QA/release manifest once complete.
+- The first immutable hosted candidate passed the same eight-step two-browser flow. Additional compiled checks verified Escape during a held drag and rejected overlapping duplicates preserve the exact exported document.
+- Actual camera gestures against a UI-imported 35-brick tower verified Build upward viewing, off-center cursor zoom, and Explore upward viewing/Recenter without page exceptions. At extreme upward angles or close walls, the existing obstruction handling brings the avatar close to the camera; this is not exhaustive collision certification.
+- All ten custom templates rendered in the real preview. Dimension/stud changes and drag orbit changed the image; invalid input retained the prior valid image with guidance. Desktop and 390px mobile preview layouts passed without horizontal overflow or page exceptions.
+- Responsive review caught mobile camera/Select controls behind the shared toolbar surface. A CSS stacking correction restores their hit targets; the accompanying QA report records the retest. Hosted cutover identities are recorded in the release manifest.
 
 ## Boundaries
 
