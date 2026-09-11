@@ -8,6 +8,9 @@ export const BRICK_STUDIO_FILE_EXTENSION = '.brickstudio.json'
 /** Shared document/live-world capacity. Rendering quality may adapt by device. */
 export const BRICK_STUDIO_MAX_BRICKS = 1_000
 export const BRICK_STUDIO_MAX_CUSTOM_PARTS = 24
+export const CUSTOM_BRICK_MAX_WIDTH = 32
+export const CUSTOM_BRICK_MAX_DEPTH = 32
+export const CUSTOM_BRICK_MAX_HEIGHT = 96
 export const BRICK_STUDIO_MAX_JSON_LENGTH = 800_000
 export const BRICK_STUDIO_MAX_Y = 1_024
 export const DEFAULT_ENVIRONMENT_ID: EnvironmentId = 'classic'
@@ -88,9 +91,9 @@ function validateCustomPart(value: unknown, index: number): BrickStudioDocumentR
     return fail('invalid-custom-part', `Custom part ${index + 1} has an invalid template.`)
   }
   if (![width, depth, height].every(Number.isInteger)
-      || typeof width !== 'number' || width < 1 || width > 8
-      || typeof depth !== 'number' || depth < 1 || depth > 8
-      || typeof height !== 'number' || height < 1 || height > 12) {
+      || typeof width !== 'number' || width < 1 || width > CUSTOM_BRICK_MAX_WIDTH
+      || typeof depth !== 'number' || depth < 1 || depth > CUSTOM_BRICK_MAX_DEPTH
+      || typeof height !== 'number' || height < 1 || height > CUSTOM_BRICK_MAX_HEIGHT) {
     return fail('invalid-custom-part', `Custom part ${index + 1} has dimensions outside the supported range.`)
   }
   if (studs !== 'auto' && studs !== 'full' && studs !== 'none') {

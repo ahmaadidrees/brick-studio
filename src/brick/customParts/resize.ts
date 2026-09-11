@@ -1,4 +1,4 @@
-import { BRICK_STUDIO_MAX_CUSTOM_PARTS } from '../brickDocument'
+import { BRICK_STUDIO_MAX_CUSTOM_PARTS, CUSTOM_BRICK_MAX_WIDTH, CUSTOM_BRICK_MAX_DEPTH, CUSTOM_BRICK_MAX_HEIGHT } from '../brickDocument'
 import { BRICK_PART_MAP } from '../parts'
 import type { BrickInstance, BrickKind, CustomPartDefinition, CustomPartTemplate } from '../types'
 import { createCustomPartDefinition } from './definition'
@@ -37,8 +37,8 @@ export function resizeSelectionDefinitions(
     const width = part.width + delta.width
     const depth = part.depth + delta.depth
     const height = part.height + delta.height
-    if (width < 1 || width > 8 || depth < 1 || depth > 8 || height < 1 || height > 12) {
-      return { ok: false, message: 'Brick sizes stay between 1–8 studs wide/deep and 1–12 plates high.' }
+    if (width < 1 || width > CUSTOM_BRICK_MAX_WIDTH || depth < 1 || depth > CUSTOM_BRICK_MAX_DEPTH || height < 1 || height > CUSTOM_BRICK_MAX_HEIGHT) {
+      return { ok: false, message: `Brick sizes stay between 1–${CUSTOM_BRICK_MAX_WIDTH} studs wide, 1–${CUSTOM_BRICK_MAX_DEPTH} studs deep and 1–${CUSTOM_BRICK_MAX_HEIGHT} plates high.` }
     }
     if ((part.kind === 'round' || part.kind === 'cone') && width !== depth) {
       return { ok: false, message: 'Round and cone bricks need matching width and depth.' }

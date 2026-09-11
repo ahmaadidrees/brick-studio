@@ -11,6 +11,12 @@ const bricks: BrickInstance[] = [
 beforeEach(() => registerCustomParts([]))
 
 describe('resizeSelectionDefinitions', () => {
+  it('resizes to the larger shared limits', () => {
+    const result = resizeSelectionDefinitions([bricks[0]], { width: 31, depth: 30, height: 93 }, [])
+    expect(result.ok && result.definitions[0]).toMatchObject({ width: 32, depth: 32, height: 96 })
+    expect(resizeSelectionDefinitions([bricks[0]], { width: 32, depth: 30, height: 93 }, []).ok).toBe(false)
+  })
+
   it('creates deduplicated bounded definitions for a mixed selection', () => {
     const result = resizeSelectionDefinitions(bricks, { width: 1, depth: 0, height: 2 }, [])
     expect(result.ok).toBe(true)
@@ -23,7 +29,7 @@ describe('resizeSelectionDefinitions', () => {
 
   it('rejects the complete selection when any dimension leaves the safe range', () => {
     const result = resizeSelectionDefinitions(bricks, { width: -1, depth: 0, height: 0 }, [])
-    expect(result).toEqual({ ok: false, message: 'Brick sizes stay between 1–8 studs wide/deep and 1–12 plates high.' })
+    expect(result).toEqual({ ok: false, message: 'Brick sizes stay between 1–32 studs wide, 1–32 studs deep and 1–96 plates high.' })
   })
 
   it('retains existing document definitions while adding resized parts', () => {

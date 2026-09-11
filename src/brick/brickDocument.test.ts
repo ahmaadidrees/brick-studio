@@ -70,6 +70,15 @@ describe('Brick Studio document schema', () => {
     })
   })
 
+  it('round-trips maximum-size custom bricks and rejects dimensions beyond each limit', () => {
+    const part = { id: 'custom_large', name: 'Large brick', template: 'solid' as const, width: 32, depth: 32, height: 96, studs: 'full' as const }
+    const document = createBrickStudioDocument([{ ...mixed[0], x: 0, z: 0, partId: part.id }], { customParts: [part] })
+    expect(validateBrickStudioDocument(JSON.parse(JSON.stringify(document)))).toMatchObject({ ok: true, document })
+    for (const oversized of [{ width: 33 }, { depth: 33 }, { height: 97 }]) {
+      expect(validateBrickStudioDocument({ ...document, customParts: [{ ...part, ...oversized }] }).ok).toBe(false)
+    }
+  })
+
   it('validates custom definitions and permits bricks to reference them', () => {
     const customParts = [{
       id: 'custom_wide_ramp',

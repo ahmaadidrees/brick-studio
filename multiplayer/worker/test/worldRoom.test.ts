@@ -140,6 +140,40 @@ afterEach(() => {
 });
 
 describe("WorldRoom", () => {
+  it("persists and rejoins a maximum-size custom brick while rejecting oversized definitions", async () => {
+    const customPart = {
+      id: "custom_large_test", name: "Large custom brick", template: "solid" as const,
+      width: 32, depth: 32, height: 96, studs: "none" as const,
+    };
+    const placed = { ...brick("large-custom", 0, 0), partId: customPart.id };
+    const document = createBrickStudioDocument([placed], { customParts: [customPart] });
+    const { roomId } = await createWorld(document);
+    const guest = await connectWorld(roomId, "guest_custom_size");
+    expect(guest.welcome!.document).toEqual(document);
+    const moved = { ...placed, x: 1 };
+    send(guest.socket!, {
+      v: LIVE_PROTOCOL_VERSION, type: "commands", opId: "guest_custom_size#1",
+      commands: [{ op: "move", brick: moved }],
+    });
+    expect(await guest.inbox!.next("apply")).toMatchObject({ revision: 1 });
+    const expected = createBrickStudioDocument([moved], { customParts: [customPart] });
+    const workerEnv = env as unknown as WorkerEnv;
+    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    await evictDurableObject(stub);
+    expect((await getWorld(roomId)).document).toEqual(expected);
+    const rejoined = await connectWorld(roomId, "guest_custom_rejoin");
+    expect(rejoined.welcome).toMatchObject({ revision: 1, document: expected });
+
+    for (const oversized of [{ width: 33 }, { depth: 33 }, { height: 97 }]) {
+      const response = await workerFetch("https://worker.test/worlds", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: "https://virtual-legos.vercel.app" },
+        body: JSON.stringify({ document: { ...document, customParts: [{ ...customPart, ...oversized }] } }),
+      });
+      expect(response.status).toBe(400);
+    }
+  });
+
   it("creates a validated v2 world and joins with sanitized owner and guest profiles", async () => {
     const legacy = { schemaVersion: 1, partLibraryVersion: 1, bricks: [brick("seed")] } as const;
     const { roomId, ownerToken } = await createWorld(legacy as unknown as BrickStudioDocument);

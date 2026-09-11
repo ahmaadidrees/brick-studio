@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { BRICK_STUDIO_MAX_CUSTOM_PARTS } from '../brickDocument'
+import { BRICK_STUDIO_MAX_CUSTOM_PARTS, CUSTOM_BRICK_MAX_WIDTH, CUSTOM_BRICK_MAX_DEPTH, CUSTOM_BRICK_MAX_HEIGHT } from '../brickDocument'
 import type { CustomPartDefinition, CustomPartTemplate } from '../types'
 import { createCustomPartDefinition } from './definition'
 import { CreateBrickPreview } from './CreateBrickPreview'
@@ -52,9 +52,9 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
 
   const updatePreview = (event: FormEvent<HTMLFormElement>) => {
     const form = new FormData(event.currentTarget)
-    const width = boundedInteger(form.get('width'), 1, 8)
-    const depth = boundedInteger(form.get('depth'), 1, 8)
-    const height = boundedInteger(form.get('height'), 1, 12)
+    const width = boundedInteger(form.get('width'), 1, CUSTOM_BRICK_MAX_WIDTH)
+    const depth = boundedInteger(form.get('depth'), 1, CUSTOM_BRICK_MAX_DEPTH)
+    const height = boundedInteger(form.get('height'), 1, CUSTOM_BRICK_MAX_HEIGHT)
     const template = String(form.get('template')) as CustomPartTemplate
     const studs = String(form.get('studs')) as CustomPartDefinition['studs']
     setError(null)
@@ -76,9 +76,9 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
     const form = new FormData(event.currentTarget)
     const name = String(form.get('name') ?? '').trim()
     const template = String(form.get('template') ?? '') as CustomPartTemplate
-    const width = boundedInteger(form.get('width'), 1, 8)
-    const depth = boundedInteger(form.get('depth'), 1, 8)
-    const height = boundedInteger(form.get('height'), 1, 12)
+    const width = boundedInteger(form.get('width'), 1, CUSTOM_BRICK_MAX_WIDTH)
+    const depth = boundedInteger(form.get('depth'), 1, CUSTOM_BRICK_MAX_DEPTH)
+    const height = boundedInteger(form.get('height'), 1, CUSTOM_BRICK_MAX_HEIGHT)
     const studs = String(form.get('studs') ?? '') as CustomPartDefinition['studs']
     if (!name || name.length > 40 || !TEMPLATES.some((option) => option.value === template)
       || width === null || depth === null || height === null || !['auto', 'full', 'none'].includes(studs)) {
@@ -124,9 +124,9 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
           <label>Name<input name="name" maxLength={40} defaultValue="My brick" required /></label>
           <label>Shape<select name="template" defaultValue="solid">{TEMPLATES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
           <div className="create-brick-dimensions">
-            <label>Width <small>studs</small><input name="width" type="number" inputMode="numeric" min={1} max={8} defaultValue={2} required /></label>
-            <label>Depth <small>studs</small><input name="depth" type="number" inputMode="numeric" min={1} max={8} defaultValue={4} required /></label>
-            <label>Height <small>plates</small><input name="height" type="number" inputMode="numeric" min={1} max={12} defaultValue={3} required /></label>
+            <label>Width <small>studs · max {CUSTOM_BRICK_MAX_WIDTH}</small><input name="width" type="number" inputMode="numeric" min={1} max={CUSTOM_BRICK_MAX_WIDTH} defaultValue={2} required /></label>
+            <label>Depth <small>studs · max {CUSTOM_BRICK_MAX_DEPTH}</small><input name="depth" type="number" inputMode="numeric" min={1} max={CUSTOM_BRICK_MAX_DEPTH} defaultValue={4} required /></label>
+            <label>Height <small>plates · max {CUSTOM_BRICK_MAX_HEIGHT}</small><input name="height" type="number" inputMode="numeric" min={1} max={CUSTOM_BRICK_MAX_HEIGHT} defaultValue={3} required /></label>
           </div>
           <label>Top studs<select name="studs" defaultValue="auto"><option value="auto">Match the shape</option><option value="full">Full grid</option><option value="none">Smooth top</option></select></label>
           {error && <p className="create-brick-error" role="alert">{error}</p>}

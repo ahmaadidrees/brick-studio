@@ -41,7 +41,7 @@ future shared document schema explicitly adopts it.
 
 ## Budgets
 
-- Bounds: 1–8 studs wide/deep and 1–12 plates tall (matching document v2).
+- Bounds: 1–32 studs wide/deep and 1–96 plates tall, shared by creation, resizing, and document validation.
 - 1–32 boxes, using no more than four built-in material slots.
 - 1–16 cuboid colliders.
 - Every numeric value is finite and limited to six decimal places.
