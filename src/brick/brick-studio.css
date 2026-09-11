@@ -607,3 +607,17 @@
   .brick-header-actions { left: 3px; }
   .view-controls { top: calc(max(7px, env(safe-area-inset-top)) + 104px); }
 }
+
+/* Laptop widths keep collaboration visible without crowding world identity. */
+@media (min-width: 741px) and (max-width: 1180px) {
+  .brick-header-actions > .brick-collaborate-entry { display: flex; width: 44px; min-width: 44px; height: 44px; flex: 0 0 44px; padding: 0; justify-content: center; }
+  .brick-header-actions > .brick-collaborate-entry > span,
+  .brick-header-actions > .brick-count { display: none; }
+}
+/* Hints wrap as complete phrases, never as skinny columns over the canvas. */
+.shortcut-bar { flex-wrap: wrap; gap: 6px 14px; line-height: 1.45; }
+.shortcut-bar > span { flex: 0 0 auto; white-space: nowrap; }
+@media (min-width: 901px) and (max-width: 1180px) {
+  .shortcut-bar > span:nth-child(2),
+  .shortcut-bar > span:nth-child(n+4) { display: none; }
+}
