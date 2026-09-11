@@ -1,4 +1,6 @@
-# Classroom release — deployed September 9, 2026
+# Classroom release history
+
+Current production release: September 10 classroom polish and multiplayer reliability, source `3e4c886`, deployment `dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g`. See `RELIABILITY-RELEASE-2026-09-10.md` and `PRODUCTION-RELEASE.json` for current identities and proof. The September9 records below are historical.
 
 ## Compatibility follow-up — deployed
 

@@ -1,6 +1,6 @@
 # Classroom polish and multiplayer reliability release
 
-Branch: `codex/classroom-polish-today`. This candidate includes the earlier guest collaboration hotfix and the previously prepared UI/performance polish. Production cutover details will be recorded after hosted verification.
+Branch: `codex/classroom-polish-today`. This candidate includes the earlier guest collaboration hotfix and the previously prepared UI/performance polish. Deployed and publicly verified at https://virtual-legos.vercel.app. Application source `3e4c886`; frontend `dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g`; immutable https://virtual-legos-3rbja2ec9-ahmaadidrees-projects.vercel.app. Worker remains `68ede359-0bbe-44db-a8d7-5e38a32c567d`. The exact source passed GitHub CI run 34548058052.
 
 ## Resulting behavior
 
@@ -29,3 +29,11 @@ Branch: `codex/classroom-polish-today`. This candidate includes the earlier gues
 - Account recovery uses existing tab session storage; live recovery is held in tab memory until exported. Closing the tab/browser or clearing storage is not a durable backup. The UI provides recovery downloads and leave warnings.
 - No new scenes, branding changes, infrastructure migration, broad graphics rewrite or expanded teacher feature set.
 - Retain the prior frontend deployment for rollback. The current Worker is compatible with the old guest-hotfix frontend; do not roll back to the older pre-classroom backend.
+
+## Hosted cutover verification
+
+The immutable candidate passed anonymous two-browser creation/join, concurrent edits and conservative Undo with exact exported-document equality, duplicate-tab pause/manual rejoin, and cold guest reload against the production Worker. Student login and private-world UI export matched authoritative PostgreSQL; unsigned private-world and classroom summary/socket requests returned401 without documents. No browser page exceptions were reported in the completed hosted flows.
+
+The public alias was promoted and re-inspected to the candidate deployment. A fresh signed-out public browser loaded the studio and the updated guest creation form with temporary-room guidance. Vercel reported no runtime errors in the sampled 15-minute window; that static-frontend log check does not establish Cloudflare health. QA guest rooms were locked and clients disconnected; the dedicated account QA class was closed and its student suspended, retaining evidence worlds.
+
+Rollback: promote the prior frontend `dpl_8VAdrBVKCPdwaLvGymQv8oBaBjDY`; keep the current Worker and data unchanged. Full identities/history are preserved in `PRODUCTION-RELEASE.json`.

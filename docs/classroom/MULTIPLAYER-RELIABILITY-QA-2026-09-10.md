@@ -79,7 +79,14 @@ shared with another QA session. A fixed compiled frontend and a separately
 owned Chrome process remove those sources of interference. These harness
 interruptions are retained as incomplete attempts, not application failures.
 
-The controlled test rooms contain only QA-generated worlds. No production
-rooms, student accounts, provider settings or production deployments were
-changed by this verification lane. Temporary owner links and raw test exports
+The controlled test rooms contain only QA-generated worlds. No existing student
+rooms, student accounts or provider settings were changed by this verification
+lane. The subsequent hosted checks below created a small isolated QA room on
+the production backend. Temporary owner links and raw test exports
 remain in local `/tmp` files and are not committed.
+
+## Hosted production candidate
+
+Source `3e4c886`, immutable frontend `https://virtual-legos-3rbja2ec9-ahmaadidrees-projects.vercel.app`, deployment `dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g` passed the narrow hosted guest smoke. All six observed WebSocket connections targeted the production Worker. Anonymous create/join, simultaneous UI edits plus conservative Undo, duplicate-tab pause over 10.5 seconds with no automatic reconnect, explicit rejoin, and cold guest reload all passed. Final actual UI exports matched, diagnostic text excluded sensitive fields, and no browser page exceptions were observed. The isolated QA room was locked and a fresh API read confirmed zero participants after cleanup.
+
+Additional staging recovery UI verification downloaded the exact pre-reconnect unconfirmed draft; the canonical owner/guest exports matched separately. Explicit recovery dismissal worked after the download. Detailed local reports are `/tmp/brick-hosted-reliability-report.json` and `/tmp/brick-diagnostics-recovery-report.json`. Public alias cutover is recorded in `RELIABILITY-RELEASE-2026-09-10.md`.
