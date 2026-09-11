@@ -291,7 +291,6 @@ export function selectionDrafts(state: Pick<BrickState, 'draft' | 'movingSelecti
     x: brick.x + state.draft!.x - anchor.x,
     y: brick.y + state.draft!.y - anchor.y,
     z: brick.z + state.draft!.z - anchor.z,
-    color: state.draft!.color === anchor.color ? brick.color : state.draft!.color,
   }))
 }
 
