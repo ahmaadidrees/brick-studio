@@ -67,3 +67,27 @@ it('invokes native-style fetch with the global receiver', async () => {
   const client = new ClassroomClient('', fetcher); client.setSession(auth)
   await expect(client.request('/worlds')).resolves.toEqual({ worlds: [] })
 })
+it.each([0, 429, 502])('keeps the account available for retry when token renewal temporarily fails (%s)', async status => {
+  const fetcher = vi.fn().mockResolvedValueOnce(json({}, 401))
+  if (status === 0) fetcher.mockRejectedValueOnce(new Error('offline'))
+  else fetcher.mockResolvedValueOnce(json({ error: 'Please retry.' }, status))
+  fetcher.mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json({ ...auth, session: { ...auth.session, accessToken: 'access2' } })).mockResolvedValueOnce(json({ worlds: [] }))
+  const client = new ClassroomClient('', fetcher); client.setSession(auth)
+  await expect(client.request('/worlds')).rejects.toThrow()
+  expect(client.getSession()).toEqual(auth)
+  await expect(client.request('/worlds')).resolves.toEqual({ worlds: [] })
+  expect(client.getSession()?.session.accessToken).toBe('access2')
+})
+it.each([401, 403])('still clears an invalid or revoked refresh session (%s)', async status => {
+  const fetcher = vi.fn().mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json({ error: 'Your session ended.' }, status))
+  const client = new ClassroomClient('', fetcher); client.setSession(auth)
+  await expect(client.request('/worlds')).rejects.toThrow('Your session ended')
+  expect(client.getSession()).toBeNull()
+})
+it('keeps the refreshed login when access to one world has been removed', async () => {
+  const refreshed = { ...auth, session: { ...auth.session, accessToken: 'access2' } }
+  const fetcher = vi.fn().mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json(refreshed)).mockResolvedValueOnce(json({ error: 'Access to this world ended.' }, 403))
+  const client = new ClassroomClient('', fetcher); client.setSession(auth)
+  await expect(client.request('/worlds/removed-world')).rejects.toThrow('Access to this world ended')
+  expect(client.getSession()).toEqual(refreshed)
+})

@@ -7,11 +7,18 @@ export type LiveStatusChipProps = {
   syncing: boolean
   /** Optional transport-level retry, shown only once the client reports itself offline. */
   onReconnect?: () => void
+  /** A different tab or device took over this participant's connection. */
+  sessionReplaced?: boolean
+  pendingOperations?: number
 }
 
 /** Connection + sync pill. `role="status"` lets screen readers hear drops and recoveries without stealing focus. */
-export function LiveStatusChip({ connection, syncing, onReconnect }: LiveStatusChipProps) {
-  const status = describeLiveConnection(connection, syncing)
+export function LiveStatusChip({ connection, syncing, onReconnect, sessionReplaced = false, pendingOperations = 0 }: LiveStatusChipProps) {
+  const status = sessionReplaced
+    ? { label: 'Paused here', detail: 'This room is open in another tab or device.', tone: 'warn' }
+    : connection === 'online' && pendingOperations > 0
+      ? { label: 'Syncing…', detail: `${pendingOperations} ${pendingOperations === 1 ? 'change' : 'changes'} waiting for the room`, tone: 'busy' }
+      : describeLiveConnection(connection, syncing)
   const Icon = connection === 'online' ? Wifi : connection === 'offline' ? WifiOff : RefreshCw
   const spinning = status.tone === 'busy' || connection === 'reconnecting'
   return (
@@ -22,7 +29,7 @@ export function LiveStatusChip({ connection, syncing, onReconnect }: LiveStatusC
         <small>{status.detail}</small>
       </span>
       {connection === 'offline' && onReconnect && (
-        <button type="button" onClick={onReconnect}>Try again</button>
+        <button type="button" onClick={onReconnect}>{sessionReplaced ? 'Rejoin here' : 'Try again'}</button>
       )}
     </div>
   )

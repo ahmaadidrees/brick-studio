@@ -3,8 +3,9 @@
 import { performance } from 'node:perf_hooks'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { LIVE_MAX_PLAYERS } from '../packages/brick-core/src/protocol.ts'
 
-export const LIVE_LOAD_CLIENTS = 30
+export const LIVE_LOAD_CLIENTS = LIVE_MAX_PLAYERS
 export const DEFAULT_POSES_PER_CLIENT = 3
 export const DEFAULT_LOAD_TIMEOUT_MS = 15_000
 
@@ -200,6 +201,7 @@ function trackedSocket({ url, playerId, counters, overflow = false }) {
     welcome: null,
     maxPresence: 0,
     poseMessages: 0,
+    latestPoses: new Map(),
     appliedOpIds: new Set(),
     errors: [],
     typedErrors: [],
@@ -240,6 +242,7 @@ function trackedSocket({ url, playerId, counters, overflow = false }) {
         record.maxPresence = Math.max(record.maxPresence, message.players.length)
       } else if (message.type === 'pose') {
         record.poseMessages += 1
+        record.latestPoses.set(message.playerId, message)
       } else if (message.type === 'apply' && typeof message.opId === 'string') {
         record.appliedOpIds.add(message.opId)
       } else if (message.type === 'error') {
@@ -389,12 +392,22 @@ export async function runLiveWorldLoad(options) {
           jumping: false,
         }, counters)
       }
-      await sleep(60)
+      await sleep(100)
     }
-    const minimumObservedPoses = (options.clients - 1) * options.posesPerClient
+    // Poses are intentionally coalesced by the service. Network bursts can drop
+    // intermediate samples; verify everyone's final position instead of requiring
+    // delivery of every sample. Repeat the idle pose as the real client does.
+    for (let index = 0; index < records.length; index += 1) {
+      sendJson(records[index], {
+        v: 1, type: 'pose', x: index * 2, y: 1, z: options.posesPerClient - 1,
+        yaw: (options.posesPerClient - 1) * 0.1, moving: false, jumping: false,
+      }, counters)
+    }
     await waitUntil(
-      () => records[0].poseMessages >= minimumObservedPoses,
-      { timeoutMs: options.timeoutMs, label: `owner observation of ${minimumObservedPoses} peer poses`, records },
+      () => records.every(record => records.every(peer => peer === record
+        || (record.latestPoses.get(peer.playerId)?.z === options.posesPerClient - 1
+          && record.latestPoses.get(peer.playerId)?.moving === false))),
+      { timeoutMs: options.timeoutMs, label: 'final peer positions on every client', records },
     )
     const poseCompleteAt = performance.now()
 
@@ -425,7 +438,8 @@ export async function runLiveWorldLoad(options) {
     const editCompleteAt = performance.now()
 
     const overflowStartedAt = performance.now()
-    const overflowId = `load_${runId}_31`
+    const overflowClientNumber = options.clients + 1
+    const overflowId = `load_${runId}_${overflowClientNumber}`
     overflowRecord = trackedSocket({
       url: websocketUrl(options.serverUrl, created.roomId, overflowId),
       playerId: overflowId,
@@ -434,11 +448,11 @@ export async function runLiveWorldLoad(options) {
     })
     await waitUntil(
       () => overflowRecord.rejectionSignals.length > 0 && !overflowRecord.welcome,
-      { timeoutMs: options.timeoutMs, label: 'client 31 rejection', records },
+      { timeoutMs: options.timeoutMs, label: `client ${overflowClientNumber} rejection`, records },
     )
-    if (overflowRecord.welcome) throw new Error('Client 31 was welcomed even though the room was full.')
+    if (overflowRecord.welcome) throw new Error(`Client ${overflowClientNumber} was welcomed even though the room was full.`)
     if (records.some((record) => record.socket.readyState !== WebSocket.OPEN)) {
-      throw new Error('A connected client was displaced when client 31 was rejected.')
+      throw new Error('A connected client was displaced when the overflow client was rejected.')
     }
 
     return {
@@ -449,8 +463,10 @@ export async function runLiveWorldLoad(options) {
       presenceVerified: records.every((record) => record.maxPresence >= options.clients),
       poseMessagesPerClient: options.posesPerClient,
       peerPosesObservedByOwner: owner.poseMessages,
+      finalPeerPositionsVerifiedOnAllClients: true,
       editRevisionObservedByAll: true,
-      client31: {
+      overflowClient: {
+        number: overflowClientNumber,
         rejected: true,
         typedErrors: overflowRecord.typedErrors,
         signals: overflowRecord.rejectionSignals,
@@ -463,7 +479,7 @@ export async function runLiveWorldLoad(options) {
         allConnectedAndPresent: rounded(presenceAt - connectionStartedAt),
         poseBurstAndObservation: rounded(poseCompleteAt - poseStartedAt),
         editBroadcast: rounded(editCompleteAt - editStartedAt),
-        client31Rejection: rounded(performance.now() - overflowStartedAt),
+        overflowClientRejection: rounded(performance.now() - overflowStartedAt),
         total: rounded(performance.now() - totalStartedAt),
       },
       counters,

@@ -97,6 +97,9 @@ export function LiveWorldGate({
             : 'Pick a builder name and hop in.'}
         </p>
       )}
+      <p className="live-retention-note">
+        <strong>Temporary room.</strong> Expires after 2 hours without activity. Use Share → Export copy before you leave to keep your build.
+      </p>
       <form className="live-gate-form" onSubmit={submit}>
         {creating && (
           <div className="live-field">

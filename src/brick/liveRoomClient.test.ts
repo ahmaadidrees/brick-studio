@@ -54,7 +54,7 @@ class FakeSocket implements LiveRoomSocketLike {
   closed = false
   onopen: (() => void) | null = null
   onmessage: ((event: { data: unknown }) => void) | null = null
-  onclose: (() => void) | null = null
+  onclose: ((event?: { code: number }) => void) | null = null
   onerror: (() => void) | null = null
 
   constructor(readonly url: string) {}
@@ -62,7 +62,7 @@ class FakeSocket implements LiveRoomSocketLike {
   send(data: string) { this.sent.push(data) }
   close() { this.closed = true; this.onclose?.() }
   open() { this.onopen?.() }
-  drop() { this.onclose?.() }
+  drop(code?: number) { this.onclose?.(code === undefined ? undefined : { code }) }
   receive(message: LiveServerMessage) { this.onmessage?.({ data: JSON.stringify(message) }) }
   messages(): LiveClientMessage[] { return this.sent.map((raw) => JSON.parse(raw) as LiveClientMessage) }
   commandMessages() {
@@ -329,6 +329,134 @@ describe('live room synchronization', () => {
     expect(reconnectUrl.searchParams.get('reconnectToken')).toBe(reconnectToken)
   })
 
+  it('stops automatic reconnect after takeover and keeps unconfirmed work as a recovery copy on explicit rejoin', () => {
+    vi.useFakeTimers()
+    const { client, sockets, socket, callbacks } = createHarness({ reconnectDelaysMs: [25], syncTimeoutMs: 100 })
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    useBrickStore.setState({ bricks: [brick('a'), brick('pending', { x: 20, z: 20 })] })
+    const replacedSocket = socket()
+
+    replacedSocket.drop(4001)
+    expect(client.getSnapshot()).toMatchObject({ connection: 'offline', pendingOperations: 1, error: { code: 'session_replaced' } })
+    expect(callbacks.errors).toContain('session_replaced')
+    vi.advanceTimersByTime(60_000)
+    expect(sockets).toHaveLength(1)
+    expect(useBrickStore.getState().bricks.map(({ id }) => id)).toEqual(['a', 'pending'])
+    useBrickStore.setState({ bricks: [brick('accidental-offline-edit')] })
+    expect(useBrickStore.getState().bricks.map(({ id }) => id)).toEqual(['a', 'pending'])
+
+    client.reconnect?.()
+    client.reconnect?.()
+    expect(sockets).toHaveLength(2)
+    expect(client.getSnapshot().connection).toBe('connecting')
+    // Events queued on the superseded socket cannot restart or rewrite the new session.
+    replacedSocket.receive({ v: 1, type: 'snapshot', revision: 99, mode: 'build', document: documentWith(brick('stale')) })
+    replacedSocket.drop(4001)
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    expect(socket().commandMessages()).toEqual([])
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online', revision: 1, pendingOperations: 0, error: { code: 'changes_need_review' } })
+    expect(client.getSnapshot().recoveryDocument?.bricks.map(({ id }) => id)).toEqual(['a', 'pending'])
+    expect(useBrickStore.getState().bricks.map(({ id }) => id)).toEqual(['a'])
+    vi.advanceTimersByTime(60_000)
+    expect(sockets).toHaveLength(2)
+  })
+
+  it.each(['socket opening', 'welcome'] as const)('retries a stalled %s without losing the client handle', (stage) => {
+    vi.useFakeTimers()
+    const { client, sockets, socket } = createHarness({ connectionTimeoutMs: 100, reconnectDelaysMs: [25] })
+    const first = socket()
+    if (stage === 'welcome') first.open()
+    vi.advanceTimersByTime(100)
+    expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', error: { code: 'connection_timeout' } })
+    expect(first.closed).toBe(true)
+    vi.advanceTimersByTime(25)
+    expect(sockets).toHaveLength(2)
+    welcome(socket())
+    vi.advanceTimersByTime(500)
+    expect(client.getSnapshot().connection).toBe('online')
+    expect(sockets).toHaveLength(2)
+  })
+
+  it('keeps a recovery draft when the replacement tab consumed an ambiguous pending operation id', () => {
+    const { client, socket } = createHarness()
+    welcome(socket())
+    useBrickStore.setState({ bricks: [brick('old-tab-unsent')] })
+    const oldOperation = socket().commandMessages()[0]
+    socket().drop(4001)
+    client.reconnect?.()
+    // The new tab accepted a different edit using the same playerId#1.
+    const otherTabDocument = documentWith(brick('new-tab', { x: 30, z: 30 }))
+    welcome(socket(), { revision: 1, operationHighWater: '1', document: otherTabDocument })
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: oldOperation.opId, revision: 1, commands: [] })
+    expect(client.getSnapshot()).toMatchObject({
+      connection: 'online', pendingOperations: 0, document: otherTabDocument,
+      recoveryDocument: documentWith(brick('old-tab-unsent')), error: { code: 'changes_need_review' },
+    })
+    expect(socket().commandMessages()).toHaveLength(0)
+    client.dismissRecovery?.()
+    expect(client.getSnapshot()).toMatchObject({ recoveryDocument: null, error: undefined })
+  })
+
+  it('retains an earlier recovery copy through a second takeover until each copy is explicitly dismissed', () => {
+    const { client, socket } = createHarness()
+    welcome(socket())
+    useBrickStore.setState({ bricks: [brick('first-draft')] })
+    socket().drop(4001)
+    client.dismissRecovery?.()
+    expect(client.getSnapshot().recoveryDocument?.bricks[0].id).toBe('first-draft')
+    client.reconnect?.()
+    welcome(socket())
+    useBrickStore.setState({ bricks: [brick('second-draft')] })
+    socket().drop(4001)
+    expect(client.getSnapshot()).toMatchObject({ recoveryDocumentCount: 2, recoveryDocument: documentWith(brick('first-draft')) })
+    client.reconnect?.()
+    welcome(socket())
+    client.dismissRecovery?.()
+    expect(client.getSnapshot()).toMatchObject({ recoveryDocumentCount: 1, recoveryDocument: documentWith(brick('second-draft')), error: { code: 'changes_need_review' } })
+    client.dismissRecovery?.()
+    expect(client.getSnapshot()).toMatchObject({ recoveryDocumentCount: 0, recoveryDocument: null, error: undefined })
+  })
+
+  it('recovers an ambiguous consumed operation after an ordinary network close that hid the takeover', () => {
+    vi.useFakeTimers()
+    const { client, socket } = createHarness({ reconnectDelaysMs: [25] })
+    welcome(socket())
+    useBrickStore.setState({ bricks: [brick('old-tab-unsent')] })
+    socket().drop(1006)
+    vi.advanceTimersByTime(25)
+    const otherTabDocument = documentWith(brick('new-tab', { x: 30, z: 30 }))
+    welcome(socket(), { revision: 1, operationHighWater: '1', document: otherTabDocument })
+    expect(socket().commandMessages()).toHaveLength(0)
+    expect(client.getSnapshot()).toMatchObject({
+      connection: 'online', pendingOperations: 0, document: otherTabDocument,
+      recoveryDocument: documentWith(brick('old-tab-unsent')), error: { code: 'changes_need_review' },
+    })
+    useBrickStore.setState({ bricks: [...otherTabDocument.bricks, brick('new-change')] })
+    expect(socket().commandMessages()[0].opId).toBe('live-test-client#2')
+  })
+
+  it('does not request recovery when a lost acknowledgement is confirmed by an identical canonical document', () => {
+    vi.useFakeTimers()
+    const { client, socket } = createHarness({ reconnectDelaysMs: [25] })
+    welcome(socket())
+    const saved = documentWith(brick('accepted'))
+    useBrickStore.setState({ bricks: saved.bricks })
+    socket().drop(1006)
+    vi.advanceTimersByTime(25)
+    welcome(socket(), { revision: 1, operationHighWater: '1', document: saved })
+    expect(socket().commandMessages()).toHaveLength(0)
+    expect(client.getSnapshot()).toMatchObject({ connection: 'online', pendingOperations: 0, document: saved, recoveryDocument: null, error: undefined })
+  })
+
+  it('disposal cancels a stalled connection deadline and ignores explicit rejoin', () => {
+    vi.useFakeTimers()
+    const { client, sockets } = createHarness({ connectionTimeoutMs: 100, reconnectDelaysMs: [25] })
+    client.dispose()
+    client.reconnect?.()
+    vi.advanceTimersByTime(1_000)
+    expect(sockets).toHaveLength(1)
+  })
+
   it('restores a guest identity after reload while keeping identities room-scoped', () => {
     const storage = memoryIdentityStorage()
     const reconnectToken = 'guest_reconnect_capability_987654321'
@@ -460,6 +588,99 @@ describe('live room synchronization', () => {
     expect(useBrickStore.getState().bricks).toEqual([brick('healed')])
   })
 
+  it('keeps own placement undo and redo across independent peer placements without changing peer bricks', () => {
+    const { client, socket } = createHarness()
+    welcome(socket())
+    useBrickStore.getState().choosePart('brick_1x1')
+    useBrickStore.getState().setDraftPosition(4, 0, 4)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    const ownBrick = useBrickStore.getState().bricks[0]
+    const placement = socket().commandMessages()[0]
+    const peerBrick = brick('peer', { x: 30, z: 30 })
+    // Both builders placed before receiving the other's change.
+    socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer#1', revision: 1, commands: [{ op: 'place', brick: peerBrick }] })
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: placement.opId, revision: 2, commands: placement.commands })
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    useBrickStore.getState().undo()
+    const undo = socket().commandMessages().at(-1)!
+    expect(undo.commands).toEqual([{ op: 'delete', id: ownBrick.id }])
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: undo.opId, revision: 3, commands: undo.commands })
+    expect(useBrickStore.getState().bricks).toEqual([peerBrick])
+
+    const otherPeerBrick = brick('peer-again', { x: 40, z: 40 })
+    socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer#2', revision: 4, commands: [{ op: 'place', brick: otherPeerBrick }] })
+    expect(useBrickStore.getState().redoStack).toHaveLength(1)
+    useBrickStore.getState().redo()
+    const redo = socket().commandMessages().at(-1)!
+    expect(redo.commands).toEqual([{ op: 'place', brick: ownBrick }])
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: redo.opId, revision: 5, commands: redo.commands })
+    expect(client.getSnapshot()).toMatchObject({ revision: 5, pendingOperations: 0 })
+    expect(useBrickStore.getState().bricks).toEqual([peerBrick, otherPeerBrick, ownBrick])
+  })
+
+  it('invalidates both undo and redo touching a brick a peer edits', () => {
+    const { socket } = createHarness()
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    useBrickStore.getState().selectBrick('a')
+    useBrickStore.getState().setActiveColor('#65b85a')
+    const recolor = socket().commandMessages()[0]
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: recolor.opId, revision: 2, commands: recolor.commands })
+    useBrickStore.getState().nudge(1, 0, 0)
+    const nudge = socket().commandMessages().at(-1)!
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: nudge.opId, revision: 3, commands: nudge.commands })
+    useBrickStore.getState().undo()
+    const undo = socket().commandMessages().at(-1)!
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: undo.opId, revision: 4, commands: undo.commands })
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    expect(useBrickStore.getState().redoStack).toHaveLength(1)
+    const peerVersion = brick('a', { color: '#3e83d7' })
+    socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer#1', revision: 5, commands: [{ op: 'recolor', brick: peerVersion }] })
+    const beforeAttempt = socket().commandMessages().length
+    useBrickStore.getState().undo()
+    useBrickStore.getState().redo()
+    expect(socket().commandMessages()).toHaveLength(beforeAttempt)
+    expect(useBrickStore.getState()).toMatchObject({ undoStack: [], redoStack: [], bricks: [peerVersion] })
+  })
+
+  it('invalidates a whole grouped history entry when one member changes remotely while keeping unrelated history', () => {
+    const { socket } = createHarness()
+    const a = brick('a')
+    const b = brick('b', { x: 20, z: 20 })
+    welcome(socket(), { revision: 1, document: documentWith(a, b) })
+    useBrickStore.getState().selectBricks(['a', 'b'])
+    useBrickStore.getState().setActiveColor('#65b85a')
+    const group = socket().commandMessages()[0]
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: group.opId, revision: 2, commands: group.commands })
+    expect(useBrickStore.getState().undoStack[0].deltas).toHaveLength(2)
+    useBrickStore.getState().choosePart('brick_1x1')
+    useBrickStore.getState().setDraftPosition(4, 0, 4)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    const unrelated = socket().commandMessages().at(-1)!
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: unrelated.opId, revision: 3, commands: unrelated.commands })
+    const peerVersion = { ...a, x: 12, color: '#65b85a' }
+    socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer#1', revision: 4, commands: [{ op: 'move', brick: peerVersion }] })
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    useBrickStore.getState().undo()
+    const ownUndo = socket().commandMessages().at(-1)!
+    expect(ownUndo.commands).toHaveLength(1)
+    expect(ownUndo.commands[0]).toMatchObject({ op: 'delete' })
+    expect(useBrickStore.getState().bricks).toEqual([peerVersion, { ...b, color: '#65b85a' }])
+    const beforeAttempt = socket().commandMessages().length
+    useBrickStore.getState().undo()
+    expect(socket().commandMessages()).toHaveLength(beforeAttempt)
+  })
+
+  it('drops full-document restore history on any remote edit even if its deltas use unrelated IDs', () => {
+    const { socket } = createHarness()
+    welcome(socket(), { document: documentWith(brick('a')) })
+    useBrickStore.setState({
+      undoStack: [{ deltas: [], selectionBefore: [], selectionAfter: [], label: 'New build', group: null, recordedAt: 1, documentBefore: documentWith() }],
+      redoStack: [{ deltas: [], selectionBefore: [], selectionAfter: [], label: 'Import', group: null, recordedAt: 1, documentAfter: documentWith(brick('replacement')) }],
+    })
+    socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer#1', revision: 1, commands: [{ op: 'place', brick: brick('peer', { x: 30, z: 30 }) }] })
+    expect(useBrickStore.getState()).toMatchObject({ undoStack: [], redoStack: [] })
+  })
+
   it('rolls back a rejected optimistic change to the canonical document', () => {
     const { client, socket, callbacks } = createHarness()
     welcome(socket(), { revision: 3, document: documentWith(brick('a')) })
@@ -499,6 +720,49 @@ describe('live room synchronization', () => {
     socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: original.opId, revision: 2, commands: [] })
     expect(client.getSnapshot()).toMatchObject({ revision: 3, pendingOperations: 0 })
     expect(useBrickStore.getState().bricks[0].color).toBe('#3e83d7')
+  })
+
+  it('rebases an unconfirmed move over another builder’s recolor without losing either change', () => {
+    const { client, socket } = createHarness()
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    useBrickStore.setState({ bricks: [brick('a', { x: 20 })] })
+    const move = socket().commandMessages()[0]
+    socket().receive({
+      v: 1, type: 'apply', from: 'peer', opId: 'peer#1', revision: 2,
+      commands: [{ op: 'recolor', brick: brick('a', { color: '#65b85a' }) }],
+    })
+    expect(useBrickStore.getState().bricks).toEqual([brick('a', { x: 20, color: '#65b85a' })])
+    socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: move.opId, revision: 3, commands: move.commands })
+    expect(client.getSnapshot()).toMatchObject({ pendingOperations: 0, revision: 3 })
+    expect(useBrickStore.getState().bricks).toEqual([brick('a', { x: 20, color: '#65b85a' })])
+    expect(socket().commandMessages()).toHaveLength(1)
+  })
+
+  it('replays a deletion and its local undo across reconnect without erasing a peer’s new brick', () => {
+    vi.useFakeTimers()
+    const { client, socket } = createHarness({ reconnectDelaysMs: [25] })
+    welcome(socket(), { revision: 1, document: documentWith(brick('a')) })
+    useBrickStore.setState({ selectedIds: ['a'], selectedId: 'a', draft: null })
+    useBrickStore.getState().deleteSelected()
+    useBrickStore.getState().undo()
+    const originals = socket().commandMessages()
+    expect(originals.map(({ commands }) => commands[0].op)).toEqual(['delete', 'place'])
+    expect(useBrickStore.getState().bricks).toEqual([brick('a')])
+    socket().drop()
+    vi.advanceTimersByTime(25)
+    const peerBrick = brick('peer-brick', { x: 30, z: 30 })
+    welcome(socket(), { revision: 2, document: documentWith(brick('a'), peerBrick) })
+    expect(socket().commandMessages()).toEqual(originals)
+    for (const [index, operation] of originals.entries()) {
+      socket().receive({ v: 1, type: 'apply', from: 'live-test-client', opId: operation.opId, revision: 3 + index, commands: operation.commands })
+    }
+    expect(client.getSnapshot()).toMatchObject({ revision: 4, pendingOperations: 0 })
+    expect(useBrickStore.getState().bricks).toEqual([peerBrick, brick('a')])
+    // Old history is deliberately discarded when adopting the new shared world.
+    const beforeUndo = socket().commandMessages().length
+    useBrickStore.getState().undo()
+    expect(socket().commandMessages()).toHaveLength(beforeUndo)
+    expect(useBrickStore.getState().bricks).toContainEqual(peerBrick)
   })
 
   it('reconnects and replays the same optimistic operation when socket.send throws', () => {
@@ -776,6 +1040,58 @@ it('requests a fresh classroom ticket and stops reconnecting after access revoca
   expect(client.getSnapshot().connection).toBe('offline')
   expect(client.getSnapshot().error?.code).toBe('access_changed')
   expect(getTicket).toHaveBeenCalledTimes(1)
+})
+
+it('rechecks classroom access on explicit rejoin and does not reuse a revoked ticket', async () => {
+  vi.useFakeTimers()
+  const getTicket = vi.fn().mockResolvedValueOnce('first-ticket').mockRejectedValueOnce(Object.assign(new Error('access revoked'), { status: 403 }))
+  const { client, socket, sockets } = createHarness({ getTicket, reconnectDelaysMs: [25] })
+  await Promise.resolve()
+  welcome(socket())
+  socket().drop(4003)
+  vi.advanceTimersByTime(60_000)
+  expect(getTicket).toHaveBeenCalledTimes(1)
+  client.reconnect?.()
+  client.reconnect?.()
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(getTicket).toHaveBeenCalledTimes(2)
+  expect(sockets).toHaveLength(1)
+  expect(client.getSnapshot()).toMatchObject({ connection: 'offline', error: { code: 'access_changed' } })
+})
+
+it.each([undefined, 429, 500, 503])('keeps a temporary classroom ticket failure (%s) recoverable without losing its draft', async (status) => {
+  const failure = Object.assign(new Error('temporarily unavailable'), { status })
+  const getTicket = vi.fn().mockResolvedValueOnce('first-ticket').mockRejectedValueOnce(failure).mockResolvedValueOnce('fresh-ticket')
+  const { client, socket, sockets } = createHarness({ getTicket })
+  await Promise.resolve()
+  welcome(socket())
+  useBrickStore.setState({ bricks: [brick('unconfirmed')] })
+  socket().drop(4001)
+  client.reconnect?.()
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(client.getSnapshot()).toMatchObject({ connection: 'offline', error: { code: 'connection_error' }, recoveryDocument: documentWith(brick('unconfirmed')) })
+  client.reconnect?.()
+  await Promise.resolve()
+  expect(sockets).toHaveLength(2)
+  expect(new URL(socket().url).searchParams.get('ticket')).toBe('fresh-ticket')
+  welcome(socket())
+  expect(client.getSnapshot()).toMatchObject({ connection: 'online', recoveryDocument: documentWith(brick('unconfirmed')), error: { code: 'changes_need_review' } })
+})
+
+it('keeps a true unauthorized classroom ticket response blocked while retaining its recovery copy', async () => {
+  const getTicket = vi.fn().mockResolvedValueOnce('first-ticket').mockRejectedValueOnce(Object.assign(new Error('sign in required'), { status: 401 }))
+  const { client, socket, sockets } = createHarness({ getTicket })
+  await Promise.resolve()
+  welcome(socket())
+  useBrickStore.setState({ bricks: [brick('unconfirmed')] })
+  socket().drop(4001)
+  client.reconnect?.()
+  await Promise.resolve()
+  await Promise.resolve()
+  expect(sockets).toHaveLength(1)
+  expect(client.getSnapshot()).toMatchObject({ connection: 'offline', error: { code: 'classroom_auth_required' }, recoveryDocument: documentWith(brick('unconfirmed')) })
 })
 
 it('does not open a socket if disposed while classroom authorization is pending', async () => {

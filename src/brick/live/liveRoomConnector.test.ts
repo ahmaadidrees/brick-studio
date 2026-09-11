@@ -35,6 +35,7 @@ function createClientHarness(overrides: Partial<ClientSnapshot> = {}) {
     profiles: [] as Array<{ displayName: string }>,
     poses: [] as LivePose[],
     resync: 0,
+    reconnect: 0,
     dispose: 0,
   }
   const client: LiveRoomClient = {
@@ -46,6 +47,7 @@ function createClientHarness(overrides: Partial<ClientSnapshot> = {}) {
     replaceDocument: () => null,
     sendPose: (pose) => { calls.poses.push(pose) },
     requestResync: () => { calls.resync += 1; return true },
+    reconnect: () => { calls.reconnect += 1 },
     dispose: () => {
       calls.dispose += 1
       options?.onStatus?.({ ...snapshot, connection: 'offline' })
@@ -64,6 +66,7 @@ function createClientHarness(overrides: Partial<ClientSnapshot> = {}) {
     },
     emitPose: (pose: Parameters<NonNullable<LiveRoomClientOptions['onPose']>>[0]) => options?.onPose?.(pose),
     emitError: (code: string, message: string) => options?.onError?.({ code, message }),
+    emitDiagnostic: (event: Parameters<NonNullable<LiveRoomClientOptions['onDiagnostic']>>[0], details: Parameters<NonNullable<LiveRoomClientOptions['onDiagnostic']>>[1]) => options?.onDiagnostic?.(event, details),
   }
 }
 
@@ -84,6 +87,7 @@ describe('live room controller adapter', () => {
       isOwner: true,
       revision: 4,
       syncing: true,
+      pendingOperations: 0,
       connection: 'online',
       remotePoses: [],
     })
@@ -100,6 +104,7 @@ describe('live room controller adapter', () => {
     controller.actions.setProfile({ displayName: 'Grace' })
     controller.actions.sendPose(pose)
     controller.actions.requestResync()
+    controller.actions.reconnect?.()
 
     expect(harness.calls).toMatchObject({
       modes: ['explore'],
@@ -107,6 +112,7 @@ describe('live room controller adapter', () => {
       profiles: [{ displayName: 'Grace' }],
       poses: [pose],
       resync: 1,
+      reconnect: 1,
     })
   })
 
@@ -207,6 +213,26 @@ describe('live room controller adapter', () => {
     expect(listener).toHaveBeenCalledTimes(5)
   })
 
+  it('clears takeover notices only after rejoin succeeds and exports sanitized diagnostics', () => {
+    const harness = createClientHarness()
+    const controller = createLiveRoomConnector(harness.createClient)({ roomId: 'ROOM1234', profile: { displayName: 'Ada' } })
+    harness.emitStatus({ connection: 'offline' })
+    harness.emitError('session_replaced', 'This room is open in another tab or device.')
+    harness.emitDiagnostic('socket_close', { closeCode: 4001 })
+    harness.emitDiagnostic('error', { code: 'session_replaced' })
+    controller.actions.reconnect?.()
+    harness.emitStatus({ connection: 'connecting' })
+    expect(controller.getSnapshot().notice?.code).toBe('session_replaced')
+    harness.emitStatus({ connection: 'online' })
+    expect(controller.getSnapshot().notice).toBeNull()
+    expect(harness.createClient).toHaveBeenCalledOnce()
+    const report = controller.actions.exportDiagnostics?.() ?? ''
+    expect(report).toContain('4001')
+    expect(report).toContain('session_replaced')
+    expect(report).not.toContain('ROOM1234')
+    expect(report).not.toContain('Ada')
+  })
+
   it('disconnects idempotently and ignores late callbacks or actions', () => {
     const harness = createClientHarness()
     const controller = createLiveRoomConnector(harness.createClient)({
@@ -226,10 +252,12 @@ describe('live room controller adapter', () => {
     })
     controller.actions.setMode('explore')
     controller.actions.sendPose({ x: 1, y: 1, z: 1, yaw: 0, moving: false, jumping: false })
+    controller.actions.reconnect?.()
 
     expect(harness.calls.dispose).toBe(1)
     expect(harness.calls.modes).toEqual([])
     expect(harness.calls.poses).toEqual([])
+    expect(harness.calls.reconnect).toBe(0)
     expect(controller.getSnapshot()).toBe(beforeDisconnect)
     expect(listener).not.toHaveBeenCalled()
   })

@@ -21,11 +21,13 @@ import { createEfficientPoseSender, type PoseVisibilitySource } from './efficien
 import { suspendBrickStudioAutosave } from './liveAutosaveGuard'
 import { useBrickStore, type BrickState } from './store'
 import type { BrickInstance, PlayerProfile } from './types'
+import type { LiveDiagnosticDetails, LiveDiagnosticEventName } from './live/liveDiagnostics'
 
 export const DEFAULT_LIVE_RECONNECT_DELAYS_MS = [500, 1_000, 2_000, 5_000, 10_000]
 export const DEFAULT_LIVE_POSE_INTERVAL_MS = 75
 export const DEFAULT_LIVE_POSE_HEARTBEAT_MS = 1_500
 export const DEFAULT_LIVE_SYNC_TIMEOUT_MS = 5_000
+export const DEFAULT_LIVE_CONNECTION_TIMEOUT_MS = 15_000
 /** Stays below the Worker's retained outcome window so reconnect replay can never outrun dedupe history. */
 export const LIVE_MAX_PENDING_OPERATIONS = 96
 export const LIVE_ROOM_IDENTITY_STORAGE_PREFIX = 'brick-studio.live-room-identity.v1:'
@@ -73,6 +75,9 @@ export type LiveRoomSnapshot = {
   document: BrickStudioDocument | null
   pendingOperations: number
   awaitingSnapshot: boolean
+  /** Optimistic draft retained when another session made queued operation IDs ambiguous. */
+  recoveryDocument?: BrickStudioDocument | null
+  recoveryDocumentCount?: number
   error?: LiveRoomError
 }
 
@@ -108,6 +113,8 @@ export type LiveRoomClientOptions = {
   reconnectDelaysMs?: number[]
   /** Maximum time an edit acknowledgement or resync response may remain silent before reconnecting. */
   syncTimeoutMs?: number
+  /** Bound a stalled WebSocket upgrade or missing welcome before retrying. */
+  connectionTimeoutMs?: number
   poseIntervalMs?: number
   poseHeartbeatMs?: number
   visibility?: PoseVisibilitySource
@@ -121,6 +128,7 @@ export type LiveRoomClientOptions = {
   onLocked?: (locked: boolean) => void
   onPose?: (pose: LiveRemotePose) => void
   onError?: (error: LiveRoomError) => void
+  onDiagnostic?: (event: LiveDiagnosticEventName, details: LiveDiagnosticDetails) => void
 }
 
 export type LiveRoomClient = {
@@ -132,6 +140,9 @@ export type LiveRoomClient = {
   replaceDocument: (document: BrickStudioDocument) => string | null
   sendPose: (pose: LivePose) => void
   requestResync: () => boolean
+  /** Resume a paused session; ambiguous takeover edits remain available as recovery copies. */
+  reconnect?: () => void
+  dismissRecovery?: () => void
   dispose: () => void
 }
 
@@ -402,6 +413,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   const createSocket = options.createSocket ?? defaultCreateSocket
   const reconnectDelays = options.reconnectDelaysMs ?? DEFAULT_LIVE_RECONNECT_DELAYS_MS
   const syncTimeoutMs = options.syncTimeoutMs ?? DEFAULT_LIVE_SYNC_TIMEOUT_MS
+  const connectionTimeoutMs = options.connectionTimeoutMs ?? DEFAULT_LIVE_CONNECTION_TIMEOUT_MS
   const now = options.now ?? (() => Date.now())
   const setTimer = options.setTimeout ?? ((handler, timeout) => globalThis.setTimeout(handler, timeout))
   const clearTimer = options.clearTimeout ?? ((timer) => globalThis.clearTimeout(timer))
@@ -417,10 +429,12 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   let everOnline = false
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
   let syncTimer: ReturnType<typeof setTimeout> | undefined
+  let connectionTimer: ReturnType<typeof setTimeout> | undefined
   let operationSequence = 0n
   let reconnectToken = reusableGuestIdentity?.reconnectToken
   let canonicalDocument: BrickStudioDocument | null = null
   const pending = new Map<string, PendingOperation>()
+  const recoveryDocuments: BrickStudioDocument[] = []
   const listeners = new Set<() => void>()
 
   let snapshot: LiveRoomSnapshot = {
@@ -435,15 +449,25 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     document: null,
     pendingOperations: 0,
     awaitingSnapshot: false,
+    recoveryDocument: null,
+    recoveryDocumentCount: 0,
   }
 
   const publish = (patch: Partial<LiveRoomSnapshot> = {}) => {
+    const previous = snapshot
     snapshot = { ...snapshot, ...patch }
+    if (snapshot.connection !== previous.connection) {
+      options.onDiagnostic?.('connection', { connection: snapshot.connection })
+    }
+    if (snapshot.revision !== previous.revision || snapshot.pendingOperations !== previous.pendingOperations || snapshot.awaitingSnapshot !== previous.awaitingSnapshot) {
+      options.onDiagnostic?.('sync', { revision: snapshot.revision, pendingOperations: snapshot.pendingOperations, awaitingSnapshot: snapshot.awaitingSnapshot })
+    }
     for (const listener of [...listeners]) listener()
     options.onStatus?.(snapshot)
   }
 
   const reportError = (code: string, message: string) => {
+    options.onDiagnostic?.('error', { code })
     const error = { code, message }
     publish({ error })
     options.onError?.(error)
@@ -471,11 +495,23 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     return next
   }
 
-  const applyDisplayedDocument = (document: BrickStudioDocument, reason: LiveDocumentReason, resetHistory = false) => {
+  const applyDisplayedDocument = (document: BrickStudioDocument, reason: LiveDocumentReason, resetHistory = false, remoteCommands?: LiveBrickCommand[]) => {
     const next = cloneDocument(document)
     applyingRemote = true
     try {
-      store.setState(buildLiveRemotePatch(store.getState(), next, snapshot.mode, resetHistory))
+      const state = store.getState()
+      const patch = buildLiveRemotePatch(state, next, snapshot.mode, resetHistory)
+      if (remoteCommands?.length) {
+        const touchedIds = new Set(remoteCommands.map(command => command.op === 'delete' ? command.id : command.brick.id))
+        const keepIndependent = (entry: BrickState['undoStack'][number]) => !entry.documentBefore && !entry.documentAfter
+          && entry.deltas.length > 0
+          && entry.deltas.every(delta => !touchedIds.has(delta.before?.id ?? '') && !touchedIds.has(delta.after?.id ?? ''))
+        // Deltas only rewrite their own brick IDs. Discard a whole grouped entry
+        // on any overlap; full-document restores could erase unrelated peer work.
+        patch.undoStack = state.undoStack.filter(keepIndependent)
+        patch.redoStack = state.redoStack.filter(keepIndependent)
+      }
+      store.setState(patch)
     } finally {
       applyingRemote = false
     }
@@ -483,9 +519,9 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     options.onDocument?.(cloneDocument(next), reason)
   }
 
-  const refreshFromCanonical = (reason: LiveDocumentReason, resetHistory = false) => {
+  const refreshFromCanonical = (reason: LiveDocumentReason, resetHistory = false, remoteCommands?: LiveBrickCommand[]) => {
     if (!canonicalDocument) return
-    applyDisplayedDocument(rebasePending(canonicalDocument), reason, resetHistory)
+    applyDisplayedDocument(rebasePending(canonicalDocument), reason, resetHistory, remoteCommands)
   }
 
   const adoptMode = (mode: LiveWorldMode) => {
@@ -512,6 +548,12 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     if (syncTimer === undefined) return
     clearTimer(syncTimer)
     syncTimer = undefined
+  }
+
+  const clearConnectionWatchdog = () => {
+    if (connectionTimer === undefined) return
+    clearTimer(connectionTimer)
+    connectionTimer = undefined
   }
 
   const hasOutstandingSync = () => pending.size > 0 || snapshot.awaitingSnapshot
@@ -607,7 +649,10 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
 
     switch (message.type) {
       case 'welcome': {
+        const unconfirmedDraft = pending.size > 0 && snapshot.document ? cloneDocument(snapshot.document) : null
         if (!acceptDocument(message.document, 'welcome', message.revision, true)) return
+        clearConnectionWatchdog()
+        options.onDiagnostic?.('welcome', { revision: message.revision, playerCount: message.players.length })
         const reconnectWelcome = message as typeof message & {
           reconnectToken?: unknown
           operationHighWater?: unknown
@@ -626,6 +671,21 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           && /^(?:0|[1-9]\d{0,15})$/.test(reconnectWelcome.operationHighWater)
         ) {
           const operationHighWater = BigInt(reconnectWelcome.operationHighWater)
+          // A missed close4001 can look like an ordinary network interruption.
+          // Consumed IDs may belong to a replacement tab, so a cached outcome
+          // cannot prove these local edits reached the server. Preserve the draft.
+          let ambiguousOperations = false
+          for (const [opId] of pending) {
+            if (BigInt(opId.slice(clientId.length + 1)) <= operationHighWater) {
+              pending.delete(opId)
+              ambiguousOperations = true
+            }
+          }
+          if (ambiguousOperations && unconfirmedDraft) {
+            if (JSON.stringify(unconfirmedDraft) !== JSON.stringify(canonicalDocument)) recoveryDocuments.push(unconfirmedDraft)
+            publish({ recoveryDocument: recoveryDocuments[0] ?? null, recoveryDocumentCount: recoveryDocuments.length, pendingOperations: pending.size })
+            refreshFromCanonical('welcome', true)
+          }
           if (operationHighWater > operationSequence) operationSequence = operationHighWater
         }
         reconnectAttempt = 0
@@ -642,6 +702,9 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           players: clonePlayers(message.players),
         })
         replayPending()
+        if (snapshot.recoveryDocument) {
+          reportError('changes_need_review', 'The latest shared world is open. Some changes from your previous session could not be confirmed. A recovery copy is available to review and download before closing this tab.')
+        }
         return
       }
       case 'apply': {
@@ -665,7 +728,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           bricks: applyLiveCommands(canonicalDocument.bricks, message.commands),
         }
         publish({ revision: message.revision, pendingOperations: pending.size })
-        refreshFromCanonical(own ? 'local' : 'remote', !own)
+        refreshFromCanonical(own ? 'local' : 'remote', false, own ? undefined : message.commands)
         if (own) armSyncWatchdog(true)
         return
       }
@@ -756,6 +819,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     if (disposed || reconnectTimer !== undefined) return
     const delay = reconnectDelays[Math.min(reconnectAttempt, reconnectDelays.length - 1)] ?? 1_000
     reconnectAttempt += 1
+    options.onDiagnostic?.('reconnect', { attempt: reconnectAttempt })
     publish({ connection: 'reconnecting' })
     if (everOnline) options.onError?.({ code: 'reconnecting', message: 'Connection lost. Rejoining the live world…' })
     reconnectTimer = setTimer(() => {
@@ -770,6 +834,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     socket = null
     socketOpen = false
     clearSyncWatchdog()
+    clearConnectionWatchdog()
     poseSender.transportClosed()
     if (staleSocket) {
       try { staleSocket.close() }
@@ -799,6 +864,11 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     }
     socket = nextSocket
     socketOpen = false
+    connectionTimer = setTimer(() => {
+      connectionTimer = undefined
+      if (disposed || socket !== nextSocket) return
+      restartConnection('connection_timeout', 'Joining the live world took too long. Trying again…')
+    }, connectionTimeoutMs)
     nextSocket.onopen = () => {
       if (disposed || socket !== nextSocket) return
       socketOpen = true
@@ -822,8 +892,20 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       socket = null
       socketOpen = false
       clearSyncWatchdog()
+      clearConnectionWatchdog()
       poseSender.transportClosed()
       if (disposed) return
+      options.onDiagnostic?.('socket_close', { closeCode: event?.code })
+      if (event?.code === 4001) {
+        if (pending.size > 0 && snapshot.document) recoveryDocuments.push(cloneDocument(snapshot.document))
+        publish({
+          connection: 'offline',
+          recoveryDocument: recoveryDocuments[0] ?? null,
+          recoveryDocumentCount: recoveryDocuments.length,
+        })
+        reportError('session_replaced', 'This room is open in another tab or device. Building is paused here. Close the other session, then rejoin here.')
+        return
+      }
       if (event?.code === 4003) {
         publish({ connection: 'offline' })
         reportError('access_changed', 'Classroom access changed. Rejoin from My Class.')
@@ -838,10 +920,17 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     if (!options.getTicket) return openConnection()
     void options.getTicket().then(ticket => {
       if (!disposed) openConnection(ticket)
-    }).catch(() => {
+    }).catch((reason: unknown) => {
       if (disposed) return
       publish({ connection: 'offline' })
-      reportError('classroom_auth_required', 'Could not authorize this world. Return to My Class and try joining again.')
+      const status = typeof reason === 'object' && reason !== null && 'status' in reason ? reason.status : undefined
+      if (status === 401) {
+        reportError('classroom_auth_required', 'Sign in again to rejoin this classroom world. Your visible work is still available to export.')
+      } else if (status === 403) {
+        reportError('access_changed', 'Classroom access changed. Rejoin from My Class. Your visible work is still available to export.')
+      } else {
+        reportError('connection_error', 'Could not reach the classroom server. Your work is still here. Try rejoining when your connection returns.')
+      }
     })
   }
 
@@ -931,12 +1020,32 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     },
     sendPose: (pose) => poseSender.update(pose),
     requestResync,
+    reconnect: () => {
+      if (disposed || snapshot.connection !== 'offline') return
+      reconnectAttempt = 0
+      // Another tab can consume the same playerId#sequence for a different edit.
+      // Replaying would receive an unrelated cached ack and silently lose intent.
+      // Keep the optimistic draft for explicit recovery, then adopt server state.
+      if (snapshot.error?.code === 'session_replaced' && pending.size > 0) pending.clear()
+      publish({ connection: 'connecting', error: undefined, pendingOperations: pending.size })
+      connect()
+    },
+    dismissRecovery: () => {
+      if (disposed || pending.size > 0) return
+      recoveryDocuments.shift()
+      publish({
+        recoveryDocument: recoveryDocuments[0] ?? null,
+        recoveryDocumentCount: recoveryDocuments.length,
+        ...(recoveryDocuments.length === 0 && snapshot.error?.code === 'changes_need_review' ? { error: undefined } : {}),
+      })
+    },
     dispose: () => {
       if (disposed) return
       disposed = true
       unsubscribeStore()
       if (reconnectTimer !== undefined) clearTimer(reconnectTimer)
       clearSyncWatchdog()
+      clearConnectionWatchdog()
       poseSender.deactivate()
       socket?.close()
       socket = null

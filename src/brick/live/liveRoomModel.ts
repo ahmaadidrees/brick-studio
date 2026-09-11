@@ -88,6 +88,8 @@ export type LiveRoomSnapshot = {
   connection: LiveConnectionState
   /** True while the client is waiting on a `welcome`/`snapshot` to close a revision gap. */
   syncing: boolean
+  /** Local changes still waiting for an authoritative server outcome. */
+  pendingOperations?: number
   roomId: string
   selfPlayerId: string | null
   isOwner: boolean
@@ -95,6 +97,8 @@ export type LiveRoomSnapshot = {
   mode: LiveWorldMode
   locked: boolean
   document: BrickStudioDocument | null
+  recoveryDocument?: BrickStudioDocument | null
+  recoveryDocumentCount?: number
   players: LivePlayer[]
   /** Latest transient exploration pose for each connected remote player. */
   remotePoses: LiveRoomRemotePose[]
@@ -109,6 +113,7 @@ export function createInitialLiveRoomSnapshot(roomId: string, isOwner = false): 
   return {
     connection: 'connecting',
     syncing: true,
+    pendingOperations: 0,
     roomId,
     selfPlayerId: null,
     isOwner,
@@ -116,6 +121,8 @@ export function createInitialLiveRoomSnapshot(roomId: string, isOwner = false): 
     mode: 'build',
     locked: false,
     document: null,
+    recoveryDocument: null,
+    recoveryDocumentCount: 0,
     players: [],
     remotePoses: [],
     notice: null,
@@ -132,6 +139,10 @@ export type LiveRoomActions = {
   sendPose: (pose: LivePose) => void
   requestResync: () => void
   reconnect?: () => void
+  /** Safe, bounded session diagnostics; excludes room IDs, names, links and creations. */
+  exportDiagnostics?: () => string
+  /** Explicitly discard the retained recovery copy after reviewing/exporting it. */
+  dismissRecovery?: () => void
 }
 
 export type LiveRoomController = {

@@ -10,6 +10,7 @@ import {
   type LiveRoomRemotePose,
   type LiveRoomSnapshot,
 } from './liveRoomModel'
+import { createLiveDiagnostics } from './liveDiagnostics'
 
 export type LiveRoomClientFactory = (options: LiveRoomClientOptions) => LiveRoomClient
 
@@ -29,6 +30,7 @@ export function createLiveRoomConnector(
     let client: LiveRoomClient | null = null
     let noticeSequence = 0
     let snapshot = createInitialLiveRoomSnapshot(options.roomId, Boolean(options.ownerToken))
+    const diagnostics = createLiveDiagnostics()
     const poses = new Map<string, LiveRoomRemotePose>()
     const listeners = new Set<() => void>()
 
@@ -55,16 +57,18 @@ export function createLiveRoomConnector(
       }
       const remotePoses = posesChanged ? [...poses.values()] : snapshot.remotePoses
       const syncing = source.document === null || source.awaitingSnapshot
-      // `reconnecting` is a transient transport notice. The status chip announces
-      // the online recovery, so do not leave the old warning over a healthy room.
+      // Transport notices expire once a successful welcome restores the session.
       // All server/rejection errors remain visible until the user dismisses them.
-      const notice = source.connection === 'online' && snapshot.notice?.code === 'reconnecting'
+      const recoveredConnectionNotice = ['reconnecting', 'session_replaced', 'connection_error', 'connection_timeout', 'sync_timeout', 'classroom_auth_required', 'access_changed']
+        .includes(snapshot.notice?.code ?? '')
+      const notice = source.connection === 'online' && recoveredConnectionNotice
         ? null
         : snapshot.notice
 
       if (
         source.connection === snapshot.connection
         && syncing === snapshot.syncing
+        && source.pendingOperations === snapshot.pendingOperations
         && source.roomId === snapshot.roomId
         && source.clientId === snapshot.selfPlayerId
         && source.isOwner === snapshot.isOwner
@@ -72,6 +76,8 @@ export function createLiveRoomConnector(
         && source.mode === snapshot.mode
         && source.locked === snapshot.locked
         && source.document === snapshot.document
+        && (source.recoveryDocument ?? null) === snapshot.recoveryDocument
+        && (source.recoveryDocumentCount ?? 0) === snapshot.recoveryDocumentCount
         && samePlayers(source.players, snapshot.players)
         && remotePoses === snapshot.remotePoses
         && notice === snapshot.notice
@@ -81,6 +87,7 @@ export function createLiveRoomConnector(
         ...snapshot,
         connection: source.connection,
         syncing,
+        pendingOperations: source.pendingOperations,
         roomId: source.roomId,
         selfPlayerId: source.clientId,
         isOwner: source.isOwner,
@@ -88,6 +95,8 @@ export function createLiveRoomConnector(
         mode: source.mode,
         locked: source.locked,
         document: source.document,
+        recoveryDocument: source.recoveryDocument ?? null,
+        recoveryDocumentCount: source.recoveryDocumentCount ?? 0,
         players: source.players,
         remotePoses,
         notice,
@@ -118,6 +127,7 @@ export function createLiveRoomConnector(
       onStatus: adoptClientSnapshot,
       onPose: receivePose,
       onError: receiveError,
+      onDiagnostic: diagnostics.record,
     })
     adoptClientSnapshot(client.getSnapshot())
 
@@ -135,6 +145,13 @@ export function createLiveRoomConnector(
         replaceDocument: (document) => disconnected ? null : client?.replaceDocument(document) ?? null,
         sendPose: (pose) => { if (!disconnected) client?.sendPose(pose) },
         requestResync: () => { if (!disconnected) client?.requestResync() },
+        ...(client.reconnect ? { reconnect: () => { if (!disconnected) client?.reconnect?.() } } : {}),
+        exportDiagnostics: diagnostics.exportText,
+        dismissRecovery: () => {
+          if (disconnected) return
+          client?.dismissRecovery?.()
+          if (!snapshot.recoveryDocument && snapshot.notice?.code === 'changes_need_review') commit({ ...snapshot, notice: null })
+        },
       },
       disconnect: () => {
         if (disconnected) return

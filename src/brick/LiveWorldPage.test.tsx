@@ -5,6 +5,7 @@ import { ClassroomClient, type ClassroomAuth } from '../classroom/client'
 import { createBrickStudioDocument } from './brickDocument'
 import { saveLiveWorldSeed, LIVE_WORLD_SEED_KEY } from './live/liveWorldSeed'
 import { saveLocalBrickStudioProject, loadLocalBrickStudioProject } from './documentPersistence'
+import * as persistence from './documentPersistence'
 import { createInitialLiveRoomSnapshot, type ConnectLiveRoom } from './live/liveRoomModel'
 vi.mock('./BrickStudioApp', () => ({ default: () => <div>Builder scene</div> }))
 const id = '00000000-0000-4000-8000-000000000001'
@@ -118,4 +119,38 @@ it('creates from the prepared document without replacing the separately saved gu
   expect(createWorld).toHaveBeenCalledWith(expect.objectContaining({ document: seed }));
   expect(loadLocalBrickStudioProject(window.localStorage)).toEqual({ ok: true, document: localDocument });
   expect(sessionStorage.getItem(LIVE_WORLD_SEED_KEY)).toBeNull();
+});
+
+it('exports a guest room snapshot without overwriting the separately saved local build', async () => {
+  const localDocument = createBrickStudioDocument([], { environmentId: 'sky-island' });
+  saveLocalBrickStudioProject(window.localStorage, localDocument);
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true });
+  try {
+    render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }}
+      connectRoom={guestConnector()} fetchWorldSummary={async () => ({ roomId, mode: 'build', title: 'Guest world', locked: false, playerCount: 1 })}
+      renderWorld={view => <>{view.overlay}</>} />);
+    fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Friend' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join the room' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Share' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export copy' }));
+    await waitFor(() => expect(download).toHaveBeenCalledWith(createBrickStudioDocument([])));
+    expect(loadLocalBrickStudioProject(window.localStorage)).toEqual({ ok: true, document: localDocument });
+  } finally {
+    download.mockRestore();
+  }
+});
+
+it('allows explicit classroom rejoin when the first connection was replaced before a document loaded', async () => {
+  const c = client(); c.setSession(auth);
+  const reconnect = vi.fn();
+  const snapshot = { ...createInitialLiveRoomSnapshot(roomId, false), connection: 'offline' as const,
+    notice: { seq: 1, code: 'session_replaced', message: 'This room is open in another tab or device.' } };
+  const connectRoom: ConnectLiveRoom = () => ({ getSnapshot: () => snapshot, subscribe: () => () => {}, disconnect: vi.fn(),
+    actions: { setProfile: vi.fn(), setMode: vi.fn(), setLocked: vi.fn(), sendPose: vi.fn(), requestResync: vi.fn(), reconnect } });
+  render(<LiveWorldPage classroomClient={c} initialLocation={location} connectRoom={connectRoom}
+    fetchWorldSummary={vi.fn().mockRejectedValueOnce(Object.assign(new Error('Sign in required'), { status: 401 })).mockResolvedValue({ roomId, mode: 'build', title: 'Group', locked: false, playerCount: 0 })} />);
+  expect(await screen.findByText('Paused here')).toBeInTheDocument();
+  expect(reconnect).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Rejoin here' }));
+  expect(reconnect).toHaveBeenCalledOnce();
 });

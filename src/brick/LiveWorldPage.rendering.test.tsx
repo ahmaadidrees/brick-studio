@@ -1,13 +1,15 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { useLayoutEffect } from 'react'
 import { ClassroomClient, type ClassroomAuth } from '../classroom/client'
 import type { BrickStudioAppProps } from './BrickStudioApp'
 import { createBrickStudioDocument } from './brickDocument'
 import LiveWorldPage from './LiveWorldPage'
 import { createFakeLiveRoomConnector } from './live/testing/fakeLiveRoomController'
 import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
+import * as persistence from './documentPersistence'
 
-const renders = vi.hoisted(() => ({ editor: 0, avatars: 0 }))
+const renders = vi.hoisted(() => ({ editor: 0, avatars: 0, beforeAvatarSubscribe: null as (() => void) | null }))
 
 // Keep the real page, session, and subscription hooks. Replacing WebGL with a
 // probe lets us count editor work separately from the scene's avatar boundary.
@@ -30,6 +32,7 @@ vi.mock('./BrickStudioApp', () => ({
 function AvatarProbe({ source }: { source?: RemoteAvatarSource }) {
   const avatars = useRemoteAvatars(source)
   renders.avatars += 1
+  useLayoutEffect(() => { renders.beforeAvatarSubscribe?.() }, [])
   return <output aria-label="Remote characters">{avatars.map(avatar => `${avatar.name}:${avatar.position[0]}`).join(',')}</output>
 }
 
@@ -47,27 +50,50 @@ beforeEach(() => {
   sessionStorage.clear()
   renders.editor = 0
   renders.avatars = 0
+  renders.beforeAvatarSubscribe = null
 })
 afterEach(cleanup)
 
-async function openWorld(guest = false) {
+async function openWorld(guest = false, deliverPoseBeforeSubscription = false) {
   const client = new ClassroomClient('', vi.fn(async () => new Response(JSON.stringify({ user: auth.user, classes: [] }))) as typeof fetch)
   if (!guest) client.setSession(auth)
   const connector = createFakeLiveRoomConnector({
     connection: 'online', syncing: false, document: createBrickStudioDocument([]),
     mode: 'explore', players: [self, friend], selfPlayerId: self.playerId, remotePoses: [pose],
   })
+  const subscriptions = { active: 0 }
+  const connectRoom = vi.fn((...args: Parameters<typeof connector.connect>) => {
+    const controller = connector.connect(...args)
+    if (!controller) return controller
+    return { ...controller, subscribe: (listener: () => void) => {
+      subscriptions.active += 1
+      const unsubscribe = controller.subscribe(listener)
+      return () => { subscriptions.active -= 1; unsubscribe() }
+    } }
+  })
+  if (deliverPoseBeforeSubscription) renders.beforeAvatarSubscribe = () => {
+    expect(subscriptions.active).toBe(0)
+    connector.rooms[0].emit({ remotePoses: [{ ...pose, x: 17, at: 2 }] })
+  }
   const fetchWorldSummary = vi.fn().mockResolvedValue({ roomId, mode: 'explore', title: 'Our group', locked: false, playerCount: 2 })
   if (!guest) fetchWorldSummary.mockRejectedValueOnce(Object.assign(new Error('Classroom sign-in required'), { status: 401 }))
   render(<LiveWorldPage classroomClient={client} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }}
-    connectRoom={connector.connect}
+    connectRoom={connectRoom}
     fetchWorldSummary={fetchWorldSummary} />)
   if (guest) {
     fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Alex' } })
     fireEvent.click(screen.getByRole('button', { name: 'Join the room' }))
   }
   await screen.findByText('Build tools')
-  return { room: connector.rooms[0], client }
+  // The async account preflight can paint the editor before React installs its
+  // external-store subscriptions. Wait for both real consumers before testing
+  // synchronous frame delivery, and fail if the controller was replaced.
+  await waitFor(() => {
+    expect(connectRoom).toHaveBeenCalledOnce()
+    expect(subscriptions.active).toBe(2)
+    expect(connector.rooms[0].calls.disconnect).toBe(0)
+  })
+  return { room: connector.rooms[0], client, connectRoom }
 }
 
 it.each([false, true])('updates remote movement without rerendering the editor and keeps local poses working (guest=%s)', async (guest) => {
@@ -81,6 +107,17 @@ it.each([false, true])('updates remote movement without rerendering the editor a
   expect(renders.avatars - before.avatars).toBe(60)
   fireEvent.click(screen.getByRole('button', { name: 'Move my character' }))
   expect(room.calls.sendPose).toEqual([{ x: 3, y: 4, z: 5, yaw: 1, moving: true, jumping: true }])
+})
+
+it.each([false, true])('catches a pose delivered after the first render but before subscription without replacing the room (guest=%s)', async (guest) => {
+  const { room, connectRoom } = await openWorld(guest, true)
+  await waitFor(() => expect(screen.getByLabelText('Remote characters')).toHaveTextContent('Sam:17'))
+  expect(connectRoom).toHaveBeenCalledOnce()
+  const before = { ...renders }
+  act(() => room.emit({ remotePoses: [{ ...pose, x: 18, at: 3 }] }))
+  expect(screen.getByLabelText('Remote characters')).toHaveTextContent('Sam:18')
+  expect(renders.editor).toBe(before.editor)
+  expect(renders.avatars).toBe(before.avatars + 1)
 })
 
 it('refreshes names without a new pose and removes departing players immediately', async () => {
@@ -119,10 +156,62 @@ it.each(['access_changed', 'classroom_auth_required'])('immediately removes the 
   expect(screen.queryByLabelText('Remote characters')).not.toBeInTheDocument()
 })
 
+it.each(['access_changed', 'classroom_auth_required'])('keeps the recovery draft exportable and retries without reloading after %s', async (code) => {
+  const { room } = await openWorld()
+  const recoveryDocument = createBrickStudioDocument([], { environmentId: 'sky-island' })
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true })
+  try {
+    act(() => room.emit({ connection: 'offline', recoveryDocument, recoveryDocumentCount: 2,
+      notice: { seq: 1, code, message: 'Ask your teacher to restore your access.' } }))
+    expect(screen.queryByText('Build tools')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Download recovery copy' }))
+    await waitFor(() => expect(download).toHaveBeenCalledWith(recoveryDocument, globalThis, 'brick-studio-recovery'))
+    const guardedUnload = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(guardedUnload)
+    expect(guardedUnload.defaultPrevented).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Try reconnecting' }))
+    expect(room.calls.reconnect).toBe(1)
+    expect(room.calls.disconnect).toBe(0)
+    expect(room.controller.getSnapshot().recoveryDocument).toBe(recoveryDocument)
+  } finally { download.mockRestore() }
+})
+
 it('disconnects and removes the scene on sign-out after receiving poses', async () => {
   const { room, client } = await openWorld()
   act(() => room.emit({ remotePoses: [{ ...pose, x: 30 }] }))
   act(() => client.setSession(null))
   await waitFor(() => expect(room.calls.disconnect).toBe(1))
   expect(screen.queryByText('Build tools')).not.toBeInTheDocument()
+})
+
+it.each(['access_changed', 'classroom_auth_required'])('exports both the older recovery and newer pending draft after %s', async (code) => {
+  const { room } = await openWorld()
+  const recoveryDocument = createBrickStudioDocument([], { environmentId: 'sky-island' })
+  const currentDraft = createBrickStudioDocument([], { environmentId: 'brick-valley' })
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true })
+  const beforeUnloadPrevented = () => {
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+  try {
+    act(() => room.emit({ connection: 'offline', document: currentDraft, pendingOperations: 1, recoveryDocument, recoveryDocumentCount: 1,
+      notice: { seq: 1, code, message: 'Ask your teacher to restore your access.' } }))
+    expect(screen.queryByText('Build tools')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Download recovery copy' }))
+    await waitFor(() => expect(download).toHaveBeenCalledWith(recoveryDocument, globalThis, 'brick-studio-recovery'))
+    expect(beforeUnloadPrevented()).toBe(true)
+    download.mockReturnValueOnce({ ok: false, error: { code: 'download', message: 'Current draft download failed' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Download current draft' }))
+    await screen.findByText('Current draft download failed')
+    expect(beforeUnloadPrevented()).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Download current draft' }))
+    await screen.findByText('Current draft download started. The shared world has not confirmed these changes.')
+    expect(download).toHaveBeenLastCalledWith(currentDraft, globalThis, 'brick-studio-current-draft')
+    expect(beforeUnloadPrevented()).toBe(false)
+    expect(screen.queryByRole('button', { name: 'I have my copy' })).not.toBeInTheDocument()
+    act(() => room.emit({ document: createBrickStudioDocument([]), pendingOperations: 2 }))
+    expect(beforeUnloadPrevented()).toBe(true)
+    expect(room.calls.disconnect).toBe(0)
+  } finally { download.mockRestore() }
 })

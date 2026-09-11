@@ -49,6 +49,10 @@
 }
 .live-gate-card h1 { margin: 0; font: 700 26px/1.12 'Fredoka', sans-serif; }
 .live-gate-card > p { margin: 0; color: #52666e; font-size: 13px; font-weight: 600; line-height: 1.5; }
+.live-retention-note { margin: 0; padding: 10px 12px; border-radius: 10px; color: #52666e; background: #f0f5f7; font-size: 11px; font-weight: 600; line-height: 1.5; }
+.live-gate-card > .live-retention-note { font-size: 12px; }
+.live-pending-note { margin: 0; padding: 9px 11px; border-radius: 10px; color: #76531b !important; background: #fff7e0; font-size: 11px; font-weight: 700; line-height: 1.45; }
+.live-pending-detail { display: block; margin-top: 5px; font-size: inherit; font-weight: 800; }
 
 .live-gate-points { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .live-gate-points li { display: flex; align-items: center; gap: 9px; color: #52666e; font-size: 12px; font-weight: 700; line-height: 1.35; }
@@ -553,6 +557,10 @@
 .live-lock-toggle:disabled { opacity: 0.5; cursor: default; }
 .live-panel-actions button:focus-visible,
 .live-lock-toggle:focus-visible { outline: 3px solid rgba(62, 131, 215, 0.38); outline-offset: 2px; }
+.live-diagnostics-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border: 0; border-radius: 8px; color: #52666e; background: transparent; font: 700 10px/1.3 inherit; cursor: pointer; }
+.live-diagnostics-button:hover:not(:disabled) { background: #eef2f2; }
+.live-diagnostics-button:disabled { opacity: 0.5; cursor: default; }
+.live-diagnostics-button:focus-visible { outline: 3px solid rgba(62, 131, 215, 0.38); outline-offset: 2px; }
 .live-panel-actions .live-danger-button { grid-column: 1 / -1; }
 .live-room-summary { display: grid; gap: 4px; padding: 11px 12px; border-radius: 12px; background: #f0f5f7; }
 .live-room-summary > span { color: #6f8087; font-size: 9px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
@@ -591,6 +599,9 @@
 }
 .live-recovery-banner > span { flex: 1; }
 .live-recovery-banner > span strong { display: block; color: #694914; }
+.live-draft-recovery { flex-wrap: wrap; }
+.live-draft-recovery > span { min-width: 180px; }
+.live-draft-recovery > button:disabled { opacity: 0.5; cursor: default; }
 .live-recovery-banner > button,
 .live-notice-action { min-height: 34px !important; width: auto !important; padding: 0 10px; border: 0; border-radius: 8px; color: #6b4b17; background: rgba(122, 92, 30, 0.1); font: 900 10px/1 inherit; white-space: nowrap; cursor: pointer; }
 .live-notice { max-width: min(580px, 100%); }

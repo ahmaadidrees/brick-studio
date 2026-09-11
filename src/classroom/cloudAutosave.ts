@@ -4,11 +4,11 @@ import type { ClassroomWorld } from './contracts'
 export type CloudSaveStatus = 'saved' | 'pending' | 'saving' | 'error'
 export type CloudRecovery = { userId: string; world: Omit<ClassroomWorld, 'document'>; document: BrickStudioDocument; savedAt: string }
 export const recoveryKey = (userId: string, worldId: string) => `brick-studio.cloud-recovery.v1:${userId}:${worldId}`
-export function createCloudAutosave({ client, userId, world: initialWorld, document: initialDocument, storage, onStatus, onWorld }: {
+export function createCloudAutosave({ client, userId, world: initialWorld, document: initialDocument, storage, onStatus, onWorld, pendingRecovery = false }: {
   client: ClassroomClient; userId: string; world: ClassroomWorld; document: BrickStudioDocument; storage: Pick<Storage, 'setItem' | 'removeItem'>;
-  onStatus: (status: CloudSaveStatus, error?: string) => void; onWorld?: (world: ClassroomWorld) => void
+  onStatus: (status: CloudSaveStatus, error?: string) => void; onWorld?: (world: ClassroomWorld) => void; pendingRecovery?: boolean
 }) {
-  let world = initialWorld, latest = initialDocument, generation = 0, savedGeneration = 0, stopped = false, failed = false
+  let world = initialWorld, latest = initialDocument, generation = pendingRecovery ? 1 : 0, savedGeneration = 0, stopped = false, failed = pendingRecovery
   let timer: ReturnType<typeof setTimeout> | undefined, running: Promise<boolean> | null = null
   const preserve = () => {
     // Recovery needs the latest document and the acknowledged world metadata.

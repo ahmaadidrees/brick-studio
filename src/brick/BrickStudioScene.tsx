@@ -7,6 +7,7 @@ import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import * as THREE from 'three'
 import { createMotionSnapshot } from './avatarMotion'
 import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
+import { RemoteAvatar } from './RemoteAvatar'
 import { getBuildBounds } from './bounds'
 import {
   clampBuildCameraTarget,
@@ -1490,45 +1491,6 @@ function ExplorerAvatar({
   )
 }
 
-function RemoteAvatar({ avatar, compact }: { avatar: RemoteRaceAvatar; compact: boolean }) {
-  const group = useRef<THREE.Group>(null)
-  const target = useRef(new THREE.Vector3(...avatar.position))
-  const palette = useMemo(
-    () => avatar.palette && Object.keys(avatar.palette).length
-      ? avatar.palette
-      : { primary: avatar.color },
-    [avatar.color, avatar.palette],
-  )
-  const motion = useRef(createMotionSnapshot({
-    grounded: avatar.grounded,
-    facingYaw: avatar.facingYaw,
-    horizontalSpeed: avatar.horizontalSpeed,
-    maxSpeed: 4,
-  }))
-
-  useEffect(() => {
-    target.current.set(...avatar.position)
-    motion.current.grounded = avatar.grounded
-    motion.current.facingYaw = avatar.facingYaw
-    motion.current.horizontalSpeed = avatar.horizontalSpeed
-  }, [avatar])
-
-  useFrame((_, delta) => {
-    if (!group.current) return
-    group.current.position.lerp(target.current, 1 - Math.exp(-14 * Math.min(delta, 0.05)))
-  })
-
-  return (
-    <group ref={group} position={avatar.position}>
-      <RuntimeCharacterAvatar
-        characterId={avatar.characterId ?? 'classic'}
-        motion={motion}
-        palette={palette}
-        compact={compact}
-      />
-    </group>
-  )
-}
 
 function PhysicsPreload() {
   const [preload, setPreload] = useState(false)

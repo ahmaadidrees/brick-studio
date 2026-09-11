@@ -1219,7 +1219,7 @@ export default function BrickStudioApp({
       {worldSetupOpen && contentPreview && (
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
-      {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'A recovery copy from this account is available.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Download your recovery copy first. Reload the saved world?')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
+      {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {classroomIntent && <ClassroomPanel
         intent={classroomIntent}
         getDocument={() => useBrickStore.getState().getDocumentSnapshot()}

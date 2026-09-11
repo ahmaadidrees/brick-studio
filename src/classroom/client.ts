@@ -53,8 +53,15 @@ export class ClassroomClient {
           await this.refreshing.promise
         }
         this.assertContext(epoch)
-        return this.perform<T>(path, method, body, false, epoch)
-      } catch (error) { if (this.epoch === epoch) this.setSession(null); throw error }
+      } catch (error) {
+        // A lost connection, a rate limit, or an unavailable account service does
+        // not revoke this login. Keep the editor and its pending save attached so
+        // the student can retry when the service returns.
+        if (this.epoch === epoch && error instanceof ClassroomError && (error.status === 401 || error.status === 403)) this.setSession(null)
+        throw error
+      }
+      // A world may become inaccessible without invalidating the account.
+      return this.perform<T>(path, method, body, false, epoch)
     }
     const payload = await response.json().catch(() => null)
     this.assertContext(epoch)
