@@ -1,138 +1,134 @@
 {
-  "verifiedAt": "2026-09-11T18:36:35.293336+00:00",
+  "verifiedAt": "2026-09-11T21:16:53.234964+00:00",
   "publicUrl": "https://virtual-legos.vercel.app",
-  "applicationSourceCommit": "fa37938a5f91885dc9df37ad593ca78986c913be",
+  "applicationSourceCommit": "904d31207eca604e83e6e9c0eb5e4f10ccef36a5",
   "branch": "codex/classroom-polish-today",
-  "frontendDeployment": "dpl_5zyhpVh5SS7yUUfLpdSkrwaBqw97",
-  "immutableFrontend": "https://virtual-legos-7twtvo2mm-ahmaadidrees-projects.vercel.app",
+  "frontendDeployment": "dpl_Bg2n5ga6s6yw6jRY9b3yRSZHqi6z",
+  "immutableFrontend": "https://virtual-legos-his7ggwvi-ahmaadidrees-projects.vercel.app",
   "workerVersion": "001938a8-3d4c-46be-9386-dce3c5d2eede",
   "workerUrl": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
-  "workerChanged": true,
+  "workerChanged": false,
   "customBrickLimits": {
     "widthStuds": 32,
     "depthStuds": 32,
     "heightPlates": 96
   },
   "publicAliasVerified": true,
-  "frontendTests": 763,
+  "frontendTests": 788,
   "workerTests": 65,
-  "totalTests": 828,
+  "totalTests": 853,
   "typesAndBuildPassed": true,
-  "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34633929389",
+  "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34648317379",
   "ciConclusion": "success",
   "hostedChecks": [
-    "Staging and production accept/persist maximum custom brick; reject each dimension above maximum",
-    "Real UI max preview/create/place in guest world; second-browser export and cold rejoin equal owner export",
-    "Authoritative production Worker document equals UI export",
-    "Fresh public browser max form/preview plus import/render of maximum saved brick; zero page exceptions"
+    "Exact final candidate: two signed-out guest browsers, actual interior placement Y31, both exports equal authoritative production Worker document",
+    "Preceding candidate with identical interaction code: group drag and single Undo converge, cold rejoin exact document equality, roof placement and blocked clearance",
+    "All three Explore mappings checked via actual keys and peer poses; Settings focus handoff and modal shortcut isolation verified",
+    "Local preferences survive cold rejoin without changing shared documents",
+    "Final responsive layouts checked at laptop and mobile widths; collaboration directly accessible, Settings scrolls with fixed Done",
+    "Fresh signed-out public browser Settings, import, Explore, Back to building and viewport focus; public alias exact deployment verified"
   ],
+  "observability": {
+    "hostedBrowserExceptions": 0,
+    "publicBrowserExceptions": 0,
+    "vercelRuntimeErrorsInSample": 0,
+    "vercelSampleWindow": "15 minutes around promotion",
+    "limitation": "Vercel static logs do not certify Cloudflare or browser health; those flows were checked separately."
+  },
   "limitations": [
-    "Refresh older tabs in shared rooms before using expanded custom brick dimensions",
-    "Actual school Chromebook performance at maximum-size custom parts is not benchmarked"
+    "Physical Chromebook and touch-device performance remain unverified; browser viewports are not device certification",
+    "Follow gently follows forward movement and suppresses strafe/backward turning to prevent camera-relative steering feedback",
+    "Existing bounding-box clearance may reject some visually open slope-side placements",
+    "World-title menu and broader toolbar consolidation deferred to a focused follow-up",
+    "Existing guest rooms remain temporary; account and save formats are unchanged"
   ],
   "rollback": {
-    "note": "Keep expanded validator support after large documents are saved. Old frontend and backend validators cannot read those definitions; do not blindly restore older validators."
+    "frontendDeployment": "dpl_5zyhpVh5SS7yUUfLpdSkrwaBqw97",
+    "immutableFrontend": "https://virtual-legos-7twtvo2mm-ahmaadidrees-projects.vercel.app",
+    "worker": "Keep current expanded custom-brick validator; no backend rollback needed"
   },
+  "reports": [
+    "CONTROLS-AND-UI-2026-09-11.md",
+    "CONTROLS-PASS-QA-2026-09-11.md"
+  ],
   "previousReleaseManifest": {
-    "verifiedAt": "2026-09-11T17:46:09.729065+00:00",
+    "verifiedAt": "2026-09-11T18:36:35.293336+00:00",
     "publicUrl": "https://virtual-legos.vercel.app",
-    "applicationSourceCommit": "956c037b4b691761c8cf625d2597af1a559023da",
+    "applicationSourceCommit": "fa37938a5f91885dc9df37ad593ca78986c913be",
     "branch": "codex/classroom-polish-today",
-    "frontendDeployment": "dpl_jmdRVrE3xhxPJHPJGmMwKFE3EvYR",
-    "immutableFrontend": "https://virtual-legos-a0borkbbo-ahmaadidrees-projects.vercel.app",
-    "workerVersion": "68ede359-0bbe-44db-a8d7-5e38a32c567d",
+    "frontendDeployment": "dpl_5zyhpVh5SS7yUUfLpdSkrwaBqw97",
+    "immutableFrontend": "https://virtual-legos-7twtvo2mm-ahmaadidrees-projects.vercel.app",
+    "workerVersion": "001938a8-3d4c-46be-9386-dce3c5d2eede",
     "workerUrl": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
-    "workerChanged": false,
+    "workerChanged": true,
+    "customBrickLimits": {
+      "widthStuds": 32,
+      "depthStuds": 32,
+      "heightPlates": 96
+    },
     "publicAliasVerified": true,
-    "publicSignedOutGuestCreationVerified": true,
-    "frontendTests": 760,
-    "workerTests": 64,
-    "totalTests": 824,
+    "frontendTests": 763,
+    "workerTests": 65,
+    "totalTests": 828,
     "typesAndBuildPassed": true,
-    "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34629308382",
+    "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34633929389",
     "ciConclusion": "success",
     "hostedChecks": [
-      "Actual pointer single/group dragging, one-step Undo, duplicate preview/color/placement in two signed-out guest browsers",
-      "Exact full UI-exported JSON equality after eight steps and cold guest reload/rejoin",
-      "Authoritative production Worker room document exactly matches cold-rejoin UI export: four bricks, revision seven",
-      "Public toolbar, live custom-brick preview dimension update, mobile Frame Build/Top click targets, and signed-out guest entry",
-      "Public alias re-inspected to the verified candidate"
+      "Staging and production accept/persist maximum custom brick; reject each dimension above maximum",
+      "Real UI max preview/create/place in guest world; second-browser export and cold rejoin equal owner export",
+      "Authoritative production Worker document equals UI export",
+      "Fresh public browser max form/preview plus import/render of maximum saved brick; zero page exceptions"
     ],
-    "compiledChecks": [
-      "35-brick tower upward camera gestures in Build and Explore; off-center cursor zoom and Recenter",
-      "All ten custom templates, live dimensions/studs, orbit, invalid-input preservation, desktop and mobile layouts",
-      "Invalid duplicate placement and Escape during held drag preserve exact document",
-      "375px mobile camera/Select/More hit testing after toolbar stacking correction"
-    ],
-    "observability": {
-      "hostedBrowserExceptions": 0,
-      "publicBrowserExceptions": 0,
-      "vercelRuntimeErrorsInSample": 0,
-      "vercelSampleWindow": "15 minutes around promotion",
-      "limitation": "Static Vercel logs do not establish browser or Cloudflare health; those flows were checked separately."
-    },
     "limitations": [
-      "Physical touch-device and school Chromebook/student testing remains required",
-      "Explore zoom follows the character; only Build zoom is cursor-centered",
-      "Extreme upward Explore views and nearby walls may bring the avatar close due to existing obstruction handling",
-      "Place a group before rotating it",
-      "Actual student and school Chromebook testing still required",
-      "Guest rooms expire after about 2 hours inactivity",
-      "Live recovery is held in tab memory until exported; cloud recovery uses tab sessionStorage",
-      "Explore per-brick rendering remains a measured scaling concern; no instancing rewrite in this release",
-      "The sustained session is five minutes, not a full-class-period endurance test"
+      "Refresh older tabs in shared rooms before using expanded custom brick dimensions",
+      "Actual school Chromebook performance at maximum-size custom parts is not benchmarked"
     ],
     "rollback": {
-      "frontendDeployment": "dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g",
-      "immutableFrontend": "https://virtual-legos-3rbja2ec9-ahmaadidrees-projects.vercel.app",
-      "worker": "Keep current Worker; no data or backend rollback needed"
+      "note": "Keep expanded validator support after large documents are saved. Old frontend and backend validators cannot read those definitions; do not blindly restore older validators."
     },
-    "reports": [
-      "EDITOR-USABILITY-2026-09-11.md",
-      "EDITOR-USABILITY-QA-2026-09-11.md"
-    ],
     "previousReleaseManifest": {
-      "verifiedAt": "2026-09-11T01:39:53.635911+00:00",
+      "verifiedAt": "2026-09-11T17:46:09.729065+00:00",
       "publicUrl": "https://virtual-legos.vercel.app",
-      "applicationSourceCommit": "3e4c8863fdf06010af729b4380a3fe33a0ace9a8",
+      "applicationSourceCommit": "956c037b4b691761c8cf625d2597af1a559023da",
       "branch": "codex/classroom-polish-today",
-      "frontendDeployment": "dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g",
-      "immutableFrontend": "https://virtual-legos-3rbja2ec9-ahmaadidrees-projects.vercel.app",
+      "frontendDeployment": "dpl_jmdRVrE3xhxPJHPJGmMwKFE3EvYR",
+      "immutableFrontend": "https://virtual-legos-a0borkbbo-ahmaadidrees-projects.vercel.app",
       "workerVersion": "68ede359-0bbe-44db-a8d7-5e38a32c567d",
       "workerUrl": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
       "workerChanged": false,
       "publicAliasVerified": true,
       "publicSignedOutGuestCreationVerified": true,
-      "frontendTests": 743,
+      "frontendTests": 760,
       "workerTests": 64,
-      "totalTests": 807,
+      "totalTests": 824,
       "typesAndBuildPassed": true,
-      "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34548058052",
+      "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34629308382",
       "ciConclusion": "success",
       "hostedChecks": [
-        "Guest create/join without account, simultaneous edits and conservative Undo with full document equality",
-        "Duplicate-tab terminal pause, explicit transfer back, cold guest reload/rejoin",
-        "All sampled live WebSocket connections target production Worker",
-        "Student login, private-world open and actual UI export exactly matching PostgreSQL",
-        "Unsigned private-world and classroom summary/socket requests return401 without documents",
-        "Public alias resolves to candidate; new unsigned guest form has temporary-room guidance"
+        "Actual pointer single/group dragging, one-step Undo, duplicate preview/color/placement in two signed-out guest browsers",
+        "Exact full UI-exported JSON equality after eight steps and cold guest reload/rejoin",
+        "Authoritative production Worker room document exactly matches cold-rejoin UI export: four bricks, revision seven",
+        "Public toolbar, live custom-brick preview dimension update, mobile Frame Build/Top click targets, and signed-out guest entry",
+        "Public alias re-inspected to the verified candidate"
       ],
-      "stagingChecks": {
-        "sustainedSeconds": 306.6,
-        "fullDocumentEqualityChecks": 7,
-        "receivedPoseFrames": 461,
-        "browserNetworkRecovery": true,
-        "browserSaveRecoveryAndDatabaseProof": true,
-        "staleRecoveryCannotOverwriteNewerSave": true,
-        "capacitySampleClients": 32
-      },
+      "compiledChecks": [
+        "35-brick tower upward camera gestures in Build and Explore; off-center cursor zoom and Recenter",
+        "All ten custom templates, live dimensions/studs, orbit, invalid-input preservation, desktop and mobile layouts",
+        "Invalid duplicate placement and Escape during held drag preserve exact document",
+        "375px mobile camera/Select/More hit testing after toolbar stacking correction"
+      ],
       "observability": {
         "hostedBrowserExceptions": 0,
+        "publicBrowserExceptions": 0,
         "vercelRuntimeErrorsInSample": 0,
         "vercelSampleWindow": "15 minutes around promotion",
-        "limitation": "Vercel logs do not establish Cloudflare or browser health; hosted flow results are recorded separately."
+        "limitation": "Static Vercel logs do not establish browser or Cloudflare health; those flows were checked separately."
       },
       "limitations": [
+        "Physical touch-device and school Chromebook/student testing remains required",
+        "Explore zoom follows the character; only Build zoom is cursor-centered",
+        "Extreme upward Explore views and nearby walls may bring the avatar close due to existing obstruction handling",
+        "Place a group before rotating it",
         "Actual student and school Chromebook testing still required",
         "Guest rooms expire after about 2 hours inactivity",
         "Live recovery is held in tab memory until exported; cloud recovery uses tab sessionStorage",
@@ -140,67 +136,125 @@
         "The sustained session is five minutes, not a full-class-period endurance test"
       ],
       "rollback": {
-        "frontendDeployment": "dpl_8VAdrBVKCPdwaLvGymQv8oBaBjDY",
-        "immutableFrontend": "https://virtual-legos-e1j2m3cin-ahmaadidrees-projects.vercel.app",
-        "worker": "Keep current Worker; no backend rollback or data deletion is needed"
+        "frontendDeployment": "dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g",
+        "immutableFrontend": "https://virtual-legos-3rbja2ec9-ahmaadidrees-projects.vercel.app",
+        "worker": "Keep current Worker; no data or backend rollback needed"
       },
+      "reports": [
+        "EDITOR-USABILITY-2026-09-11.md",
+        "EDITOR-USABILITY-QA-2026-09-11.md"
+      ],
       "previousReleaseManifest": {
-        "verifiedAt": "2026-09-09T17:17:17Z",
+        "verifiedAt": "2026-09-11T01:39:53.635911+00:00",
         "publicUrl": "https://virtual-legos.vercel.app",
-        "frontendDeployment": "dpl_Fuz3vcfibrTWT5hubY5QYkGA3SW6",
-        "immutableFrontend": "https://virtual-legos-g6gwe9kda-ahmaadidrees-projects.vercel.app",
-        "workerVersion": "a1c904e1-3709-41f8-a4de-5ac03dc5c3cd",
+        "applicationSourceCommit": "3e4c8863fdf06010af729b4380a3fe33a0ace9a8",
+        "branch": "codex/classroom-polish-today",
+        "frontendDeployment": "dpl_6EivCt87xvNyiZUy1pP9gx6PrD5g",
+        "immutableFrontend": "https://virtual-legos-3rbja2ec9-ahmaadidrees-projects.vercel.app",
+        "workerVersion": "68ede359-0bbe-44db-a8d7-5e38a32c567d",
         "workerUrl": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
-        "applicationSourceCommit": "49821fa",
+        "workerChanged": false,
         "publicAliasVerified": true,
-        "publicGoogleTeacherLoginVerified": true,
-        "existingGuestDraftBrickCountBeforeAndAfterGoogleLogin": 8,
-        "productionHttpChecks": 11,
-        "productionLiveChecks": 6,
-        "stagingCapacity": {
-          "clients": 31,
-          "durableEdits": 60,
-          "allClientsConverged": true,
-          "medianEditAckMs": 562,
-          "p95EditAckMs": 926
+        "publicSignedOutGuestCreationVerified": true,
+        "frontendTests": 743,
+        "workerTests": 64,
+        "totalTests": 807,
+        "typesAndBuildPassed": true,
+        "ciUrl": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34548058052",
+        "ciConclusion": "success",
+        "hostedChecks": [
+          "Guest create/join without account, simultaneous edits and conservative Undo with full document equality",
+          "Duplicate-tab terminal pause, explicit transfer back, cold guest reload/rejoin",
+          "All sampled live WebSocket connections target production Worker",
+          "Student login, private-world open and actual UI export exactly matching PostgreSQL",
+          "Unsigned private-world and classroom summary/socket requests return401 without documents",
+          "Public alias resolves to candidate; new unsigned guest form has temporary-room guidance"
+        ],
+        "stagingChecks": {
+          "sustainedSeconds": 306.6,
+          "fullDocumentEqualityChecks": 7,
+          "receivedPoseFrames": 461,
+          "browserNetworkRecovery": true,
+          "browserSaveRecoveryAndDatabaseProof": true,
+          "staleRecoveryCannotOverwriteNewerSave": true,
+          "capacitySampleClients": 32
         },
-        "branchesPushed": [
-          "codex/classroom-release",
-          "codex/rover-lab-archive"
-        ],
-        "remaining": [
-          "Actual student and Chromebook observations"
-        ],
+        "observability": {
+          "hostedBrowserExceptions": 0,
+          "vercelRuntimeErrorsInSample": 0,
+          "vercelSampleWindow": "15 minutes around promotion",
+          "limitation": "Vercel logs do not establish Cloudflare or browser health; hosted flow results are recorded separately."
+        },
         "limitations": [
-          "31 simulated network clients do not establish device rendering performance",
-          "Intermittent test-runner network failures and one close-event timeout occurred; successful reruns and independent browser group removal are recorded separately"
+          "Actual student and school Chromebook testing still required",
+          "Guest rooms expire after about 2 hours inactivity",
+          "Live recovery is held in tab memory until exported; cloud recovery uses tab sessionStorage",
+          "Explore per-brick rendering remains a measured scaling concern; no instancing rewrite in this release",
+          "The sustained session is five minutes, not a full-class-period endurance test"
         ],
-        "compatibilityFollowUp": {
-          "applicationSourceCommit": "7d9be23",
-          "frontendDeployment": "dpl_3heqnPcAsVum67TfYfdqDzc7xDYk",
-          "immutableFrontend": "https://virtual-legos-ph98pn62i-ahmaadidrees-projects.vercel.app",
-          "change": "Typed-array chunks for browser and Node 22 legacy gzip compatibility",
-          "ciRun": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34382956499",
-          "ciConclusion": "success",
-          "localNode22Tests": 699,
-          "hostedChromeCompressedLegacyWorld": "passed",
-          "publicAliasVerified": true,
-          "workerUnchanged": true
-        },
-        "guestCollaborationFollowUp": {
-          "verifiedAt": "2026-09-10T15:59:52.197030+00:00",
-          "applicationSourceCommit": "00a90ff",
+        "rollback": {
           "frontendDeployment": "dpl_8VAdrBVKCPdwaLvGymQv8oBaBjDY",
           "immutableFrontend": "https://virtual-legos-e1j2m3cin-ahmaadidrees-projects.vercel.app",
-          "workerVersion": "68ede359-0bbe-44db-a8d7-5e38a32c567d",
+          "worker": "Keep current Worker; no backend rollback or data deletion is needed"
+        },
+        "previousReleaseManifest": {
+          "verifiedAt": "2026-09-09T17:17:17Z",
+          "publicUrl": "https://virtual-legos.vercel.app",
+          "frontendDeployment": "dpl_Fuz3vcfibrTWT5hubY5QYkGA3SW6",
+          "immutableFrontend": "https://virtual-legos-g6gwe9kda-ahmaadidrees-projects.vercel.app",
+          "workerVersion": "a1c904e1-3709-41f8-a4de-5ac03dc5c3cd",
+          "workerUrl": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+          "applicationSourceCommit": "49821fa",
           "publicAliasVerified": true,
-          "publicGuestCreateFormVerified": true,
-          "node22FrontendTests": 642,
-          "node22WorkerTests": 64,
-          "realTwoBrowserGuestProductionFlow": "passed",
-          "unsignedClassroomAccess": "401 sign_in_required",
-          "report": "GUEST-HOTFIX-2026-09-10.md",
-          "broaderPolish": "Separate codex/classroom-polish-today at98e5cad; not deployed"
+          "publicGoogleTeacherLoginVerified": true,
+          "existingGuestDraftBrickCountBeforeAndAfterGoogleLogin": 8,
+          "productionHttpChecks": 11,
+          "productionLiveChecks": 6,
+          "stagingCapacity": {
+            "clients": 31,
+            "durableEdits": 60,
+            "allClientsConverged": true,
+            "medianEditAckMs": 562,
+            "p95EditAckMs": 926
+          },
+          "branchesPushed": [
+            "codex/classroom-release",
+            "codex/rover-lab-archive"
+          ],
+          "remaining": [
+            "Actual student and Chromebook observations"
+          ],
+          "limitations": [
+            "31 simulated network clients do not establish device rendering performance",
+            "Intermittent test-runner network failures and one close-event timeout occurred; successful reruns and independent browser group removal are recorded separately"
+          ],
+          "compatibilityFollowUp": {
+            "applicationSourceCommit": "7d9be23",
+            "frontendDeployment": "dpl_3heqnPcAsVum67TfYfdqDzc7xDYk",
+            "immutableFrontend": "https://virtual-legos-ph98pn62i-ahmaadidrees-projects.vercel.app",
+            "change": "Typed-array chunks for browser and Node 22 legacy gzip compatibility",
+            "ciRun": "https://github.com/ahmaadidrees/brick-studio/actions/runs/34382956499",
+            "ciConclusion": "success",
+            "localNode22Tests": 699,
+            "hostedChromeCompressedLegacyWorld": "passed",
+            "publicAliasVerified": true,
+            "workerUnchanged": true
+          },
+          "guestCollaborationFollowUp": {
+            "verifiedAt": "2026-09-10T15:59:52.197030+00:00",
+            "applicationSourceCommit": "00a90ff",
+            "frontendDeployment": "dpl_8VAdrBVKCPdwaLvGymQv8oBaBjDY",
+            "immutableFrontend": "https://virtual-legos-e1j2m3cin-ahmaadidrees-projects.vercel.app",
+            "workerVersion": "68ede359-0bbe-44db-a8d7-5e38a32c567d",
+            "publicAliasVerified": true,
+            "publicGuestCreateFormVerified": true,
+            "node22FrontendTests": 642,
+            "node22WorkerTests": 64,
+            "realTwoBrowserGuestProductionFlow": "passed",
+            "unsignedClassroomAccess": "401 sign_in_required",
+            "report": "GUEST-HOTFIX-2026-09-10.md",
+            "broaderPolish": "Separate codex/classroom-polish-today at98e5cad; not deployed"
+          }
         }
       }
     }
