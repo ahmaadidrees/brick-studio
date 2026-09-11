@@ -37,8 +37,8 @@ describe('marquee geometry', () => {
     expect(finished.rectangle).toEqual({ left: 100, top: 100, right: 108, bottom: 106 })
   })
 
-  it('captures marquee gestures only in Select mode so every ordinary drag stays camera', () => {
-    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', selectionMode: false })).toBe(false)
+  it('captures primary mouse selection while retaining explicit touch selection', () => {
+    expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', selectionMode: false })).toBe(true)
     expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'mouse', selectionMode: true })).toBe(true)
     expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'touch', selectionMode: false })).toBe(false)
     expect(shouldCaptureSelectionGesture({ mode: 'build', button: 0, pointerType: 'touch', selectionMode: true })).toBe(true)

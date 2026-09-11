@@ -108,6 +108,6 @@ describe('studio navigation and save context', () => {
     expect(screen.queryByText('Saved to account')).not.toBeInTheDocument()
     view.rerender(<BrickStudioApp livePolicy={{ ...policy, connection: 'offline' }} />)
     expect(screen.getByRole('status', { name: 'Save status: Offline · edits paused' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Build mode' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
   })
 })

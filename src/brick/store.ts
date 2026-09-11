@@ -1,3 +1,4 @@
+import { readExplorePreferences, saveExplorePreferences, type ExploreCameraMode, type ExploreKeyboardMode } from './explorePreferences'
 import { create } from 'zustand'
 import {
   BRICK_STUDIO_MAX_BRICKS,
@@ -76,6 +77,12 @@ export type BrickState = {
   touchMove: { x: number; z: number }
   touchMoveMagnitude: number
   touchRunning: boolean
+  exploreCameraMode: ExploreCameraMode
+  exploreKeyboardMode: ExploreKeyboardMode
+  exploreManualLookAt: number
+  exploreFacingYaw: number
+  setExploreCameraMode: (mode: ExploreCameraMode) => void
+  setExploreKeyboardMode: (mode: ExploreKeyboardMode) => void
   touchYaw: number
   touchPitch: number
   touchCameraDistance: number
@@ -466,6 +473,11 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   touchMove: { x: 0, z: 0 },
   touchMoveMagnitude: 0,
   touchRunning: false,
+  ...readExplorePreferences(),
+  exploreManualLookAt: 0,
+  exploreFacingYaw: ORBIT_DEFAULT_YAW,
+  setExploreCameraMode: (exploreCameraMode) => { set({ exploreCameraMode, exploreManualLookAt: Date.now() }); saveExplorePreferences(get()) },
+  setExploreKeyboardMode: (exploreKeyboardMode) => { set({ exploreKeyboardMode }); saveExplorePreferences(get()) },
   touchYaw: ORBIT_DEFAULT_YAW,
   touchPitch: ORBIT_DEFAULT_PITCH,
   touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
@@ -1055,15 +1067,17 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     touchMoveMagnitude: magnitude,
     touchRunning: running,
   }),
-  addTouchYaw: (delta) => set((state) => ({ touchYaw: state.touchYaw + delta })),
+  addTouchYaw: (delta) => set((state) => ({ touchYaw: state.touchYaw + delta, exploreManualLookAt: Date.now() })),
   addTouchLook: (yawDelta, pitchDelta) => set((state) => ({
+    exploreManualLookAt: Date.now(),
     touchYaw: state.touchYaw + yawDelta,
     touchPitch: clampExplorePitch(state.touchPitch + pitchDelta),
   })),
   setTouchCameraDistance: (touchCameraDistance) => set({ touchCameraDistance: clampOrbitDistance(touchCameraDistance) }),
   adjustTouchCameraDistance: (delta) => set((state) => ({ touchCameraDistance: clampOrbitDistance(state.touchCameraDistance + delta) })),
   recenterCamera: () => set({
-    touchYaw: ORBIT_DEFAULT_YAW,
+    exploreManualLookAt: Date.now(),
+    touchYaw: get().exploreFacingYaw,
     touchPitch: ORBIT_DEFAULT_PITCH,
     touchCameraDistance: ORBIT_DEFAULT_DISTANCE,
     announcement: 'Camera recentered.',
@@ -1095,8 +1109,8 @@ export const useBrickStore = create<BrickState>((set, get) => ({
     selectionMode,
     marquee: null,
     ...(selectionMode ? { draft: null, movingId: null, movingSelection: null, activePartId: null } : {}),
-    toast: selectionMode ? 'Select mode: tap bricks or drag empty space. Tap Done when finished.' : null,
-    announcement: selectionMode ? 'Select mode on.' : 'Select mode finished.',
+    toast: selectionMode ? 'Box select: draw a rectangle or tap a brick. Camera controls return automatically.' : null,
+    announcement: selectionMode ? 'Box selection ready.' : 'Box selection finished.',
   }),
   setMarquee: (marquee) => set((state) => state.marquee === marquee ? state : { marquee }),
   setGrabInProgress: (grabInProgress) => set((state) => state.grabInProgress === grabInProgress ? state : { grabInProgress }),

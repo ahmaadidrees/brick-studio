@@ -1,3 +1,4 @@
+import { exploreKeyboardBlocked, followCameraYaw, readExploreKeys } from './explorePreferences'
 import { Edges, OrbitControls } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
@@ -68,7 +69,7 @@ import {
   resetCharacterFrameTranslation,
   stepCharacterMotion,
 } from './characterController'
-import { cameraRelativeMove, combineMoveAxes, readKeyboardMove } from './characterInput'
+import { cameraRelativeMove, combineMoveAxes } from './characterInput'
 import { createBrickGeometry } from './geometry'
 import {
   beginMarqueeGesture,
@@ -90,7 +91,6 @@ import {
   brickPhysicalShapes,
   brickWorldPosition,
   rotatedSize,
-  supportHeightForFootprint,
   type PhysicalShape,
 } from './parts'
 import {
@@ -104,6 +104,7 @@ import {
   resolveCameraBoomDistance,
 } from './scenePhysics'
 import { usesCompactRenderer } from './rendererQuality'
+import { draftFromSurfacePoint } from './surfacePlacement'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { selectionDrafts, selectionDraftIsValid, useBrickStore } from './store'
 import {
@@ -152,34 +153,11 @@ const EXPLORE_SPAWN_RETRY_FRAMES = 12
 const EXPLORE_SPAWN_MAX_ATTEMPTS = 3
 const EXPLORE_SAFE_POSITION_SAMPLE_FRAMES = 20
 
-function gridDraftFromPoint(point: THREE.Vector3, y: number, draft: BrickDraft) {
-  const part = BRICK_PART_MAP[draft.partId]
-  const size = rotatedSize(part, draft.rotation)
-  return {
-    x: Math.round(point.x / STUD + GRID_SIZE / 2 - size.width / 2),
-    y,
-    z: Math.round(point.z / STUD + GRID_SIZE / 2 - size.depth / 2),
-  }
-}
-
-/** Grid position with y resting on the tallest brick under the ghost footprint. */
-function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft) {
-  const next = gridDraftFromPoint(point, 0, draft)
-  const size = rotatedSize(BRICK_PART_MAP[draft.partId], draft.rotation)
+/** Target the actual raycast surface; layout validation provides the blocked preview. */
+function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBrickId?: string | null) {
   const state = useBrickStore.getState()
-  const { bricks, movingId, movingSelection } = state
-  // The brick being moved is still in `bricks`; counting it as support would
-  // stack the ghost on top of its own original the moment a move drag starts.
-  const ignored = new Set(movingSelection && !movingSelection.duplicate ? movingSelection.originals.map((brick) => brick.id) : movingId ? [movingId] : [])
-  const support = bricks.filter((brick) => !ignored.has(brick.id))
-  if (movingSelection && movingSelection.originals.length > 1) {
-    const anchor = movingSelection.originals[0]
-    next.y = Math.max(...movingSelection.originals.map((brick) => {
-      const brickSize = rotatedSize(BRICK_PART_MAP[brick.partId], brick.rotation)
-      return supportHeightForFootprint(support, next.x + brick.x - anchor.x, next.z + brick.z - anchor.z, brickSize.width, brickSize.depth) - (brick.y - anchor.y)
-    }))
-  } else next.y = supportHeightForFootprint(support, next.x, next.z, size.width, size.depth)
-  return next
+  return draftFromSurfacePoint(point, draft, state.movingSelection?.originals,
+    hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined)
 }
 
 /**
@@ -202,7 +180,7 @@ function applyTouchPositionIntent(
     state.placeDraft()
     return
   }
-  const next = supportedDraftFromPoint(event.point, state.draft)
+  const next = supportedDraftFromPoint(event.point, state.draft, fallbackSelectionId)
   state.setDraftPosition(next.x, next.y, next.z)
 }
 
@@ -348,7 +326,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
     if (cameraActive?.current) return
     event.stopPropagation()
-    const next = supportedDraftFromPoint(event.point, draft)
+    const next = supportedDraftFromPoint(event.point, draft, brick.id)
     setDraftPosition(next.x, next.y, next.z)
   }
 
@@ -474,7 +452,7 @@ function InstancedBrickGroup({
         const state = useBrickStore.getState()
         if (!state.draft || isConfirmationPlacementPointer(event.pointerType) || cameraActive.current) return
         event.stopPropagation()
-        const next = supportedDraftFromPoint(event.point, state.draft)
+        const next = supportedDraftFromPoint(event.point, state.draft, brickForEvent(event)?.id)
         state.setDraftPosition(next.x, next.y, next.z)
       }}
       onPointerUp={(event) => {
@@ -566,10 +544,11 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
   )
 }
 
+let buildCameraSpaceHeld = false
+
 function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const controls = useRef<OrbitControlsImpl | null>(null)
   const request = useBrickStore((state) => state.viewRequest)
-  const selectionMode = useBrickStore((state) => state.selectionMode)
   const marquee = useBrickStore((state) => state.marquee)
   const bricks = useBrickStore((state) => state.bricks)
   const setViewTarget = useBrickStore((state) => state.setViewTarget)
@@ -621,20 +600,48 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
 
   useEffect(() => {
     const canvas = gl.domElement
+    let cameraPointerClick = false
     const applyPanModifier = (event: PointerEvent) => {
       const control = controls.current
       if (!control || event.pointerType !== 'mouse') return
-      control.mouseButtons.LEFT = event.shiftKey ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE
+      cameraPointerClick = event.button !== 0 || buildCameraSpaceHeld
+      // OrbitControls handles Shift itself, switching ROTATE to PAN.
+      control.mouseButtons.LEFT = buildCameraSpaceHeld ? THREE.MOUSE.ROTATE : undefined
+      control.mouseButtons.RIGHT = THREE.MOUSE.ROTATE
     }
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, button, a, [contenteditable="true"]'))) return
+      buildCameraSpaceHeld = true
+      event.preventDefault()
+    }
+    const keyUp = (event: KeyboardEvent) => { if (event.code === 'Space') buildCameraSpaceHeld = false }
+    const blur = () => { buildCameraSpaceHeld = false }
+    const suppressCameraClick = (event: MouseEvent) => {
+      if (!cameraPointerClick) return
+      cameraPointerClick = false
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    canvas.addEventListener('click', suppressCameraClick, true)
     canvas.addEventListener('pointerdown', applyPanModifier, true)
-    return () => canvas.removeEventListener('pointerdown', applyPanModifier, true)
+    window.addEventListener('keydown', keyDown)
+    window.addEventListener('keyup', keyUp)
+    window.addEventListener('blur', blur)
+    return () => {
+      canvas.removeEventListener('click', suppressCameraClick, true)
+      canvas.removeEventListener('pointerdown', applyPanModifier, true)
+      window.removeEventListener('keydown', keyDown)
+      window.removeEventListener('keyup', keyUp)
+      window.removeEventListener('blur', blur)
+      buildCameraSpaceHeld = false
+    }
   }, [gl])
 
   return (
     <OrbitControls
       ref={controls}
       makeDefault
-      enabled={!selectionMode && !marquee}
+      enabled={!marquee}
       enableDamping
       dampingFactor={0.08}
       minDistance={limits.minDistance}
@@ -642,7 +649,7 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
       maxPolarAngle={BUILD_CAMERA_MAX_POLAR_ANGLE}
       zoomToCursor
       screenSpacePanning
-      mouseButtons={{ LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN }}
+      mouseButtons={{ MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE }}
       touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
       onStart={() => { gestureActive.current = true }}
       onEnd={() => { gestureActive.current = false; publishViewTarget() }}
@@ -655,6 +662,7 @@ type ActiveSelectionGesture = {
   pointerId: number
   brickId: string | null
   explicitMode: boolean
+  additive: boolean
   gesture: MarqueeGesture
 }
 
@@ -697,6 +705,7 @@ function BuildSelectionInput() {
 
   useEffect(() => {
     const canvas = gl.domElement
+    let cancelledPointerId: number | null = null
     const localPoint = (event: PointerEvent) => {
       const rect = canvas.getBoundingClientRect()
       return { x: event.clientX - rect.left, y: event.clientY - rect.top }
@@ -719,24 +728,29 @@ function BuildSelectionInput() {
     }
     const pointerDown = (event: PointerEvent) => {
       const state = useBrickStore.getState()
-      if (state.draft) return
+      if (state.draft || active.current || buildCameraSpaceHeld) return
       if (!shouldCaptureSelectionGesture({
         mode: state.mode,
         button: event.button,
         pointerType: event.pointerType,
         selectionMode: state.selectionMode,
       })) return
+      cancelledPointerId = null
+      suppressClick.current = false
+      clearSuppressTimer()
       consume(event)
       const point = localPoint(event)
       active.current = {
         pointerId: event.pointerId,
         brickId: findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current),
         explicitMode: state.selectionMode,
+        additive: event.shiftKey || event.ctrlKey || event.metaKey,
         gesture: beginMarqueeGesture(point),
       }
       canvas.setPointerCapture?.(event.pointerId)
     }
     const pointerMove = (event: PointerEvent) => {
+      if (cancelledPointerId === event.pointerId) { consume(event); return }
       const current = active.current
       if (!current || current.pointerId !== event.pointerId) return
       consume(event)
@@ -750,6 +764,14 @@ function BuildSelectionInput() {
       }
     }
     const pointerUp = (event: PointerEvent) => {
+      if (cancelledPointerId === event.pointerId) {
+        cancelledPointerId = null
+        consume(event)
+        suppressClick.current = true
+        clearSuppressTimer()
+        suppressTimer.current = window.setTimeout(() => { suppressClick.current = false }, 250)
+        return
+      }
       const current = active.current
       if (!current || current.pointerId !== event.pointerId) return
       consume(event)
@@ -762,16 +784,16 @@ function BuildSelectionInput() {
       }
       if (current.gesture.dragging && !current.brickId) {
         const rect = canvas.getBoundingClientRect()
-        state.selectBricks(selectBricksInMarquee(state.bricks, camera, rect.width, rect.height, finished.rectangle))
+        const ids = selectBricksInMarquee(state.bricks, camera, rect.width, rect.height, finished.rectangle)
+        state.selectBricks(current.additive ? [...new Set([...state.selectedIds, ...ids])] : ids)
       } else if (!current.gesture.dragging && current.brickId) {
-        state.toggleBrick(current.brickId)
-      } else if (!current.gesture.dragging && state.selectionMode) {
-        state.clearSelection()
+        state.selectBrick(current.brickId, current.additive || current.explicitMode)
       }
       suppressClick.current = true
       clearSuppressTimer()
       suppressTimer.current = window.setTimeout(() => { suppressClick.current = false }, 250)
       reset()
+      if (current.explicitMode) state.setSelectionMode(false)
     }
     const pointerCancel = (event: PointerEvent) => {
       if (active.current?.pointerId !== event.pointerId) return
@@ -784,7 +806,20 @@ function BuildSelectionInput() {
       suppressClick.current = false
       clearSuppressTimer()
     }
-    const blur = () => reset()
+    const keyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !active.current) return
+      // Cancel this gesture, preserving the selection that existed before it.
+      // Consume its eventual release/click even if Escape was held long before
+      // the mouse button is released. A normal Escape with no gesture still
+      // reaches the app's clear-selection handler.
+      cancelledPointerId = active.current.pointerId
+      suppressClick.current = true
+      clearSuppressTimer()
+      consume(event)
+      reset()
+      if (useBrickStore.getState().selectionMode) useBrickStore.getState().setSelectionMode(false)
+    }
+    const blur = () => { cancelledPointerId = null; reset() }
     const visibility = () => { if (document.visibilityState !== 'visible') reset() }
     const unsubscribe = useBrickStore.subscribe((state) => {
       if ((state.mode !== 'build' && (active.current || state.marquee)) || (active.current?.explicitMode && !state.selectionMode)) reset()
@@ -796,6 +831,7 @@ function BuildSelectionInput() {
     canvas.addEventListener('pointercancel', pointerCancel, true)
     canvas.addEventListener('lostpointercapture', pointerCancel, true)
     canvas.addEventListener('click', click, true)
+    window.addEventListener('keydown', keyDown, true)
     window.addEventListener('blur', blur)
     window.addEventListener('resize', reset)
     window.addEventListener('orientationchange', reset)
@@ -807,6 +843,7 @@ function BuildSelectionInput() {
       canvas.removeEventListener('pointercancel', pointerCancel, true)
       canvas.removeEventListener('lostpointercapture', pointerCancel, true)
       canvas.removeEventListener('click', click, true)
+      window.removeEventListener('keydown', keyDown, true)
       window.removeEventListener('blur', blur)
       window.removeEventListener('resize', reset)
       window.removeEventListener('orientationchange', reset)
@@ -900,7 +937,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
         const hitBrickId = instancedBrickId ?? hit.object.userData.brickId
         if (state.movingSelection && !state.movingSelection.duplicate && state.movingSelection.originals.some((brick) => brick.id === hitBrickId)) continue
         if (instancedBrickId ? instancedBrickId === state.movingId : !isGhostDropTarget(hit.object.userData, state.movingId)) continue
-        const next = supportedDraftFromPoint(hit.point, state.draft)
+        const next = supportedDraftFromPoint(hit.point, state.draft, hitBrickId)
         state.setDraftPosition(next.x, next.y, next.z)
         return
       }
@@ -953,7 +990,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       abortHold()
       suppressClick.current = false
       const state = useBrickStore.getState()
-      if (state.mode !== 'build') return
+      if (state.mode !== 'build' || buildCameraSpaceHeld || event.button !== 0) return
       if (!state.draft && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
         const brickId = findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current)
         const ids = state.selectedIds.length ? state.selectedIds : state.selectedId ? [state.selectedId] : []
@@ -990,7 +1027,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       }
       // Only a plain primary press holds: the other buttons pan the camera and a
       // held modifier is the desktop multi-select click, which must stay a click.
-      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return
+      if (event.pointerType === 'mouse' || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return
       // Off the ghost: arm a hold over whatever brick is under the pointer.
       // Deliberately not consumed — until the hold fires this is still an
       // ordinary camera gesture, and a hold that stays still never moves it.
@@ -1025,10 +1062,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
           if (!point) return
           const x = direct.anchor.x + Math.round((point.x - direct.origin.x) / STUD)
           const z = direct.anchor.z + Math.round((point.z - direct.origin.z) / STUD)
-          const size = rotatedSize(BRICK_PART_MAP[state.draft.partId], state.draft.rotation)
-          const target = new THREE.Vector3((x + size.width / 2 - GRID_SIZE / 2) * STUD, 0, (z + size.depth / 2 - GRID_SIZE / 2) * STUD)
-          const next = supportedDraftFromPoint(target, state.draft)
-          state.setDraftPosition(next.x, next.y, next.z)
+          state.setDraftPosition(x, direct.anchor.y, z)
           return
         }
         if (!grabbedBrick.current) updatePointerTravel(ghostTravel.current, event.clientX, event.clientY)
@@ -1044,15 +1078,14 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       if (activePointer.current?.id !== event.pointerId) return
       consume(event)
       if (selectedDrag.current) {
-        const { started, brickId } = selectedDrag.current
+        const { started } = selectedDrag.current
         suppressClick.current = true
         if (started) {
           if (event.type === 'pointerup') useBrickStore.getState().placeDraft()
           else useBrickStore.getState().cancelInteraction()
-        } else if (event.type === 'pointerup' && useBrickStore.getState().selectionMode) {
-          useBrickStore.getState().toggleBrick(brickId)
         }
         release()
+        if (useBrickStore.getState().selectionMode) useBrickStore.getState().setSelectionMode(false)
         return
       }
       // Letting go of a grab never decides the brick's fate: the moving ghost
@@ -1228,8 +1261,8 @@ function BuildScene({
       ))}
       {renderPartition.interactiveBricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />)}
       <DraftBrick />
-      <BuildCamera gestureActive={cameraGestureActive} />
       <BuildSelectionInput />
+      <BuildCamera gestureActive={cameraGestureActive} />
       <BuildTouchInput gesture={gesture.current} />
       <MouseTravelTracker travel={mouseTravel} />
       {showStudioGround && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
@@ -1297,6 +1330,7 @@ function ExplorerAvatar({
   const characterStep = useRef(createCharacterStepResult())
   const fixedClock = useRef(createFixedStepClock())
   const keyboardMove = useRef({ x: 0, z: 0 })
+  const keyboardLook = useRef({ x: 0, z: 0 })
   const combinedMove = useRef({ x: 0, z: 0 })
   const worldMove = useRef({ x: 0, z: 0 })
   const motionInput = useRef({ worldX: 0, worldZ: 0, running: false })
@@ -1365,6 +1399,7 @@ function ExplorerAvatar({
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || exploreKeyboardBlocked(event.target)) { keys.current.clear(); return }
       const key = event.key.toLowerCase()
       if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' '].includes(key)) {
         event.preventDefault()
@@ -1382,11 +1417,15 @@ function ExplorerAvatar({
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
     window.addEventListener('blur', clearKeys)
+    window.addEventListener('focusin', clearKeys)
+    const unsubscribeControls = useBrickStore.subscribe((next, previous) => { if (next.exploreKeyboardMode !== previous.exploreKeyboardMode) clearKeys() })
     document.addEventListener('visibilitychange', visibility)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
       window.removeEventListener('blur', clearKeys)
+      window.removeEventListener('focusin', clearKeys)
+      unsubscribeControls()
       document.removeEventListener('visibilitychange', visibility)
       clearKeys()
     }
@@ -1442,7 +1481,13 @@ function ExplorerAvatar({
       lastTouchJump.current = store.jumpNonce
     }
 
-    readKeyboardMove(keys.current, keyboardMove.current)
+    if (keys.current.size && exploreKeyboardBlocked(document.activeElement)) keys.current.clear()
+    readExploreKeys(keys.current, store.exploreKeyboardMode, false, keyboardMove.current)
+    readExploreKeys(keys.current, store.exploreKeyboardMode, true, keyboardLook.current)
+    if (keyboardLook.current.x || keyboardLook.current.z) {
+      const seconds = Math.max(0, Math.min(0.05, delta))
+      store.addTouchLook(-keyboardLook.current.x * seconds * 1.8, -keyboardLook.current.z * seconds * 1.2)
+    }
     combineMoveAxes(keyboardMove.current, store.touchMove, combinedMove.current)
     cameraRelativeMove(
       combinedMove.current.x,
@@ -1501,7 +1546,10 @@ function ExplorerAvatar({
     }
     if (store.exploreSpawnStatus !== 'ready') return
 
-    orbit.current.targetYaw = store.touchYaw
+    const liveCamera = useBrickStore.getState()
+    const nextYaw = followCameraYaw(liveCamera.touchYaw, motion.current.facingYaw, delta, motion.current.horizontalSpeed, liveCamera.exploreCameraMode, Date.now() - liveCamera.exploreManualLookAt, combinedMove.current)
+    if (nextYaw !== liveCamera.touchYaw || liveCamera.exploreFacingYaw !== motion.current.facingYaw) useBrickStore.setState({ touchYaw: nextYaw, exploreFacingYaw: motion.current.facingYaw })
+    orbit.current.targetYaw = nextYaw
     orbit.current.targetPitch = clampPitch(store.touchPitch)
     stepOrbit(orbit.current, delta, store.reducedMotion ? 24 : undefined)
 
@@ -1764,15 +1812,17 @@ export default function BrickStudioScene({
   }, [placeFeedback])
   return (
     <Canvas
+      onPointerDownCapture={(event) => {
+        if (event.target instanceof HTMLCanvasElement) {
+          event.target.tabIndex = -1
+          event.target.focus({ preventScroll: true })
+        }
+      }}
       shadows={!compactRenderer}
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
       camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-      onPointerMissed={() => {
-        if (mode !== 'build') return
-        if (pointerTravelExceeds(mouseTravel.current)) return
-        useBrickStore.getState().selectBrick(null)
-      }}
+
     >
       <RuntimeSceneContent
         environmentId={environmentId}

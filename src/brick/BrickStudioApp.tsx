@@ -1,3 +1,5 @@
+import { StudioSettings } from './ExploreCameraSettings'
+import { getExploreKeyboardHint } from './explorePreferences'
 import {
   Box,
   Check,
@@ -84,6 +86,7 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
   useEffect(() => {
     if (!enabled) return
     const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]')) return
       const target = event.target
       if (target instanceof HTMLElement && target.matches('input, textarea, [contenteditable="true"]')) return
       const interactiveTarget = target instanceof HTMLElement && target.matches('select, button, a')
@@ -108,7 +111,7 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
       }
       if (state.mode !== 'build') return
       if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
-      if ((event.key === 'Enter' || event.key === ' ') && state.draft) { event.preventDefault(); state.placeDraft(); return }
+      if (event.key === 'Enter' && state.draft) { event.preventDefault(); state.placeDraft(); return }
       if (event.key === 'Escape') {
         event.preventDefault()
         if (state.draft) state.cancelInteraction()
@@ -157,10 +160,18 @@ function useReducedMotionPreference() {
 
   useEffect(() => {
     const preference = window.matchMedia?.('(prefers-reduced-motion: reduce)')
-    const updatePreference = () => setReducedMotion(preference?.matches ?? false)
+    const updatePreference = () => {
+      let saved: string | null = null
+      try { saved = localStorage.getItem('brick-studio-motion-preference-v1') } catch { /* System preference remains available when storage is blocked. */ }
+      setReducedMotion(saved === 'reduced' || (saved !== 'full' && (preference?.matches ?? false)))
+    }
     updatePreference()
     preference?.addEventListener?.('change', updatePreference)
-    return () => preference?.removeEventListener?.('change', updatePreference)
+    window.addEventListener('brick-studio-motion-preference-change', updatePreference)
+    return () => {
+      preference?.removeEventListener?.('change', updatePreference)
+      window.removeEventListener('brick-studio-motion-preference-change', updatePreference)
+    }
   }, [setReducedMotion])
 }
 
@@ -240,8 +251,9 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         </div>
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
-        <button aria-label="Build mode" aria-pressed={mode === 'build'} className={mode === 'build' ? 'active' : ''} onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Build</span><kbd>1</kbd></button>
-        <button aria-label="Explore mode" aria-pressed={mode === 'explore'} className={mode === 'explore' ? 'active' : ''} onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
+        {mode === 'build'
+          ? <button aria-label="Explore mode" className="brick-primary-mode" onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
+          : <button aria-label="Back to building" className="brick-primary-mode" onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Back to building</span><kbd>1</kbd></button>}
       </nav>
       <div className="brick-header-actions" role="group" aria-label="World actions">
         {!livePolicy && onStartLiveWorld && <button className="studio-button brick-collaborate-entry" onClick={onStartLiveWorld} aria-label="Build together"><Users size={17} /><span>Build together</span></button>}
@@ -252,6 +264,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
           <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
           <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
         </>}
+        <StudioSettings />
         <button className="studio-icon-button brick-help-entry" onClick={onOpenHelp} aria-label="Quick start and controls" title="Quick start and controls"><HelpCircle size={18} /></button>
         <StudioMenu
           onSaveToAccount={onSaveToAccount}
@@ -546,11 +559,11 @@ function SelectionModeControl() {
     <button
       className={`selection-mode-control ${selectionMode ? 'active' : ''}`}
       aria-pressed={selectionMode}
-      aria-label={selectionMode ? 'Finish selecting bricks' : 'Select multiple bricks'}
+      aria-label={selectionMode ? 'Cancel box selection' : 'Box select bricks'}
       onClick={() => setSelectionMode(!selectionMode)}
     >
       {selectionMode ? <Check size={18} /> : <MousePointer2 size={18} />}
-      <span>{selectionMode ? 'Done' : 'Select'}</span>
+      <span>{selectionMode ? 'Cancel' : 'Box select'}</span>
     </button>
   )
 }
@@ -784,6 +797,7 @@ function Announcer() {
 }
 
 function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
+  const keyboardMode = useBrickStore((state) => state.exploreKeyboardMode)
   const setMove = useBrickStore((state) => state.setTouchMove)
   const addLook = useBrickStore((state) => state.addTouchLook)
   const setCameraDistance = useBrickStore((state) => state.setTouchCameraDistance)
@@ -793,7 +807,6 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
   const spawnStatus = useBrickStore((state) => state.exploreSpawnStatus)
   const spawnControlsReady = spawnStatus === 'idle' || spawnStatus === 'ready'
   const jump = useBrickStore((state) => state.requestJump)
-  const setMode = useBrickStore((state) => state.setMode)
   const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
   const joystickSurface = useRef<HTMLDivElement>(null)
   const joystickKnob = useRef<HTMLSpanElement>(null)
@@ -849,8 +862,12 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
       <div
         ref={lookZone}
         className="look-zone"
+        tabIndex={-1}
+        role="region"
+        aria-label="Explore camera controls"
         onPointerDown={(event) => {
           if (event.pointerType === 'mouse' && event.button !== 0) return
+          event.currentTarget.focus({ preventScroll: true })
           if (!beginExploreCameraPointer(cameraGesture.current, event.pointerId, event.clientX, event.clientY, useBrickStore.getState().touchCameraDistance)) return
           event.preventDefault()
           event.currentTarget.setPointerCapture?.(event.pointerId)
@@ -871,7 +888,6 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
           event.preventDefault()
           adjustCameraDistance(normalizeWheelZoom(event.deltaY, event.deltaMode))
         }}
-        aria-hidden="true"
       />
       <div
         ref={joystickSurface}
@@ -903,10 +919,9 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
       >Jump</button>
       <button className="recenter-camera" onClick={recenterCamera} aria-label="Recenter camera"><Focus size={18} /><span>Recenter</span></button>
       <button className="respawn-avatar" onClick={requestRespawn} disabled={spawnStatus === 'finding'} aria-label="Respawn at a safe spot"><RotateCcw size={18} /><span>Respawn</span></button>
-      {!readOnly && <button className="return-build" onClick={() => { resetTouchControls(); setMode('build') }}><Layers3 size={18} /> Return to Build</button>}
       {spawnStatus === 'finding' && <div className="explore-spawn-status" role="status"><strong>Finding a safe spot…</strong><span>Checking for room around your character.</span></div>}
-      {spawnStatus === 'unavailable' && <div className="explore-spawn-status explore-spawn-unavailable" role="alert"><strong>No safe spot is open</strong><span>{readOnly ? 'Try again after the builder clears some room.' : 'Return to Build, clear some room, then Respawn.'}</span></div>}
-      <div className="desktop-explore-hint"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span><span><kbd>Shift</kbd> Run</span><span>Drag: Camera</span><span>Scroll: Zoom</span><span><kbd>Space</kbd> Jump ×2</span><span><kbd>Esc</kbd> Build</span></div>
+      {spawnStatus === 'unavailable' && <div className="explore-spawn-status explore-spawn-unavailable" role="alert"><strong>No safe spot is open</strong><span>{readOnly ? 'Try again after the builder clears some room.' : 'Use Back to building, clear some room, then Respawn.'}</span></div>}
+      <div className="desktop-explore-hint"><span>{getExploreKeyboardHint(keyboardMode)}</span><span><kbd>Shift</kbd> Run</span><span>Drag: Camera</span><span>Scroll: Zoom</span><span><kbd>Space</kbd> Jump ×2</span>{!readOnly && <span><kbd>Esc</kbd> Build</span>}</div>
       <div className="touch-explore-hint" id="touch-explore-hint">Push farther to run · Drag to look · Pinch to zoom · Jump twice to flip</div>
     </div>
   )
@@ -915,7 +930,7 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
 function ShortcutBar() {
   const coarsePointer = useCoarsePointerPreference()
   if (coarsePointer) return null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Drag empty space to orbit · ⇧Drag to pan</span><span>Ctrl/⌘Click multi-select</span><span>Drag selection to move</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Right-drag orbit · ⇧Right-drag pan · Space+drag orbit</span><span>Shift-click multi-select · Drag empty space box-select</span><span>Drag selection to move</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands & {
@@ -1174,6 +1189,7 @@ export default function BrickStudioApp({
         !raceOverlay && <div className="published-world-bar">
           <div><span>Published world</span><strong>{publishedWorld?.title}</strong></div>
           <div className="published-world-actions">
+            <StudioSettings />
 
             {onRemix && <button type="button" onClick={onRemix}>Remix this world</button>}
           </div>
@@ -1206,7 +1222,7 @@ export default function BrickStudioApp({
           <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
-      ) : <TouchExploreControls readOnly={readOnly} />}
+      ) : <TouchExploreControls readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
       <Toast />
       <Announcer />
       <WorldAndCharacterSheet

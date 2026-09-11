@@ -575,3 +575,35 @@
 
 .inspector-cancel { width: 100%; margin-top: 8px; box-shadow: none; }
 .inspector-actions button:disabled, .inspector-quick-actions button:disabled { opacity: .38; cursor: default; }
+
+/* Mouse users box-select directly; coarse pointers retain the one-shot tool. */
+@media (hover: hover) and (pointer: fine) { .selection-mode-control { display: none; } }
+
+/* One prominent mode action stays readable, including on small classroom screens. */
+.brick-mode-switch .brick-primary-mode { color: white; background: #3476c1; padding-inline: 16px; }
+.brick-mode-switch .brick-primary-mode:hover:not(:disabled) { background: #2867ae; }
+@media (max-width: 680px) {
+  .brick-mode-switch .brick-primary-mode { min-width: 94px; gap: 5px; padding-inline: 9px; font-size: 11px; }
+  .brick-mode-switch .brick-primary-mode span { display: inline; }
+}
+
+/* Keep the creative entry readable rather than squeezing its label into an icon tile. */
+.brick-brand-mark.brick-customize-entry { display: flex; justify-content: center; align-items: center; width: auto; min-width: 108px; flex: 0 0 auto; gap: 7px; padding: 0 10px; }
+.brick-customize-entry > span { font: 800 11px/1.2 system-ui, sans-serif; white-space: nowrap; }
+@media (max-width: 740px) {
+  .brick-brand-mark.brick-customize-entry { width: 44px; min-width: 44px; flex-basis: 44px; padding: 0; }
+  .brick-customize-entry > span { display: none; }
+}
+
+/* Keep collaboration one tap away on phones; capacity yields to the action. */
+@media (max-width: 740px) {
+  .brick-header-actions > .brick-collaborate-entry { display: flex; width: 44px; min-width: 44px; height: 44px; flex: 0 0 44px; padding: 0; justify-content: center; }
+  .brick-header-actions > .brick-collaborate-entry > span { display: none; }
+  .brick-header-actions > .brick-count { display: none; }
+  .brick-header-actions { left: 98px; right: 3px; gap: 4px; }
+}
+/* At very narrow widths keep both camera presets below the utility row. */
+@media (max-width: 349px) {
+  .brick-header-actions { left: 3px; }
+  .view-controls { top: calc(max(7px, env(safe-area-inset-top)) + 104px); }
+}

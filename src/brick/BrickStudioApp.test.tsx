@@ -1,3 +1,4 @@
+import { exploreKeyboardBlocked } from './explorePreferences'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
@@ -74,7 +75,7 @@ afterEach(() => {
 })
 
 describe('keyboard construction loop', () => {
-  it('places with Enter/Space, cancels with Escape, and never double-acts from a button', () => {
+  it('places with Enter, reserves Space for camera, cancels with Escape, and never double-acts from a button', () => {
     render(<BrickStudioApp />)
 
     expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
@@ -87,7 +88,9 @@ describe('keyboard construction loop', () => {
     expect(fireEvent.keyDown(partButton, { key: ' ' })).toBe(true)
     expect(useBrickStore.getState().bricks).toHaveLength(1)
 
-    expect(fireEvent.keyDown(document.body, { key: ' ' })).toBe(false)
+    expect(fireEvent.keyDown(document.body, { key: ' ' })).toBe(true)
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+    expect(fireEvent.keyDown(document.body, { key: 'Enter' })).toBe(false)
     expect(useBrickStore.getState().bricks).toHaveLength(2)
 
     fireEvent.click(partButton)
@@ -214,19 +217,19 @@ describe('multi-selection feedback and controls', () => {
     expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Recolor 2 bricks')
   })
 
-  it('exposes a touch-sized Select/Done mode and Escape clears the selection', () => {
+  it('exposes a touch-sized one-shot Box select tool and Escape clears the selection', () => {
     resetStore(pair)
     render(<BrickStudioApp />)
-    const selectMode = screen.getByRole('button', { name: 'Select multiple bricks' })
+    const selectMode = screen.getByRole('button', { name: 'Box select bricks' })
 
     expect(selectMode).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(selectMode)
-    expect(screen.getByRole('button', { name: 'Finish selecting bricks' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Cancel box selection' })).toHaveAttribute('aria-pressed', 'true')
     act(() => useBrickStore.getState().selectBricks(['one', 'two']))
     fireEvent.keyDown(document.body, { key: 'Escape' })
 
     expect(useBrickStore.getState()).toMatchObject({ selectedIds: [], selectedId: null, selectionMode: false, marquee: null })
-    expect(screen.getByRole('button', { name: 'Select multiple bricks' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Box select bricks' })).toBeInTheDocument()
   })
 })
 
@@ -329,6 +332,9 @@ describe('Brick Studio responsive controls', () => {
     useBrickStore.setState({ bricks: [brick] })
     fireEvent.keyDown(document.body, { key: '2' })
     expect(useBrickStore.getState().mode).toBe('explore')
+    expect(screen.queryByRole('button', { name: 'Explore mode' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to building' }))
+    expect(useBrickStore.getState().mode).toBe('build')
   })
 
   it('lets only an online live-world owner request a shared mode change', () => {
@@ -336,7 +342,6 @@ describe('Brick Studio responsive controls', () => {
     const onRequestMode = vi.fn()
     const { rerender } = render(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: false, onRequestMode }} />)
 
-    expect(screen.getByRole('button', { name: 'Build mode' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
     fireEvent.keyDown(document.body, { key: '2' })
     expect(onRequestMode).not.toHaveBeenCalled()
@@ -348,6 +353,18 @@ describe('Brick Studio responsive controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Explore mode' }))
     expect(onRequestMode).toHaveBeenCalledWith('explore')
     expect(useBrickStore.getState().mode).toBe('build')
+  })
+
+  it('does not expose a local mode-switch bypass to a live-world member', () => {
+    resetStore([brick])
+    useBrickStore.setState({ mode: 'explore' })
+    const onRequestMode = vi.fn()
+    render(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: false, onRequestMode }} />)
+    expect(screen.getByRole('button', { name: 'Back to building' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Return to Build' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to building' }))
+    expect(onRequestMode).not.toHaveBeenCalled()
+    expect(useBrickStore.getState().mode).toBe('explore')
   })
 
   it('resets touch movement on pointer interruptions, blur, visibility loss, and return to Build', () => {
@@ -372,7 +389,7 @@ describe('Brick Studio responsive controls', () => {
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
 
     useBrickStore.setState({ touchMove: { x: 0.7, z: -0.4 }, touchMoveMagnitude: 0.8, touchRunning: true })
-    fireEvent.click(screen.getByRole('button', { name: 'Return to Build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to building' }))
     expect(useBrickStore.getState().touchMove).toEqual({ x: 0, z: 0 })
     expect(useBrickStore.getState().mode).toBe('build')
   })
@@ -403,6 +420,35 @@ describe('Brick Studio responsive controls', () => {
 
     fireEvent.pointerUp(joystick, { pointerId: 7 })
     expect(useBrickStore.getState().touchMove).toEqual({ x: 0, z: 0 })
+  })
+
+  it('isolates Build shortcuts while Settings is open', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'build', selectedId: brick.id, selectedIds: [brick.id] })
+    render(<BrickStudioApp />)
+    const before = useBrickStore.getState().getDocumentSnapshot()
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    const control = screen.getByLabelText('Explore keyboard controls')
+    control.focus()
+    for (const key of ['Delete', '2', 'r']) fireEvent.keyDown(control, { key })
+    fireEvent.keyDown(control, { key: 'z', ctrlKey: true })
+    expect(useBrickStore.getState().mode).toBe('build')
+    expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(before)
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()
+  })
+
+  it('returns keyboard control to the Explore surface after closing Settings', () => {
+    useBrickStore.setState({ bricks: [brick], mode: 'explore' })
+    render(<BrickStudioApp />)
+    const settings = screen.getByRole('button', { name: 'Settings' })
+    settings.focus()
+    fireEvent.click(settings)
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(settings).toHaveFocus()
+    expect(exploreKeyboardBlocked(document.activeElement)).toBe(true)
+    const surface = screen.getByRole('region', { name: 'Explore camera controls' })
+    fireEvent.pointerDown(surface, { pointerId: 81, clientX: 400, clientY: 400 })
+    expect(surface).toHaveFocus()
+    expect(exploreKeyboardBlocked(document.activeElement)).toBe(false)
   })
 
   it('updates yaw and clamped pitch from two-axis look drag', () => {
@@ -454,7 +500,7 @@ describe('Brick Studio responsive controls', () => {
 
     act(() => useBrickStore.getState().markExploreSpawnUnavailable())
     expect(screen.getByRole('alert')).toHaveTextContent('No safe spot is open')
-    expect(screen.getByRole('alert')).toHaveTextContent('Return to Build')
+    expect(screen.getByRole('alert')).toHaveTextContent('Back to building')
     expect(screen.getByRole('button', { name: 'Respawn at a safe spot' })).toBeEnabled()
   })
 
@@ -480,7 +526,7 @@ describe('Brick Studio responsive controls', () => {
     expect(useBrickStore.getState().jumpNonce).toBe(jumpBefore + 1)
     fireEvent.click(jumpButton, { detail: 0 })
     expect(useBrickStore.getState().jumpNonce).toBe(jumpBefore + 2)
-    expect(screen.getByRole('button', { name: 'Return to Build' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Back to building' })).toBeEnabled()
   })
 
   it('resets an active look gesture on viewport and orientation changes', () => {
@@ -499,6 +545,19 @@ describe('Brick Studio responsive controls', () => {
     fireEvent(window, new Event('orientationchange'))
     fireEvent.pointerMove(lookZone, { pointerId: 42, clientX: 100, clientY: 100 })
     expect(useBrickStore.getState().touchYaw).toBe(yawAfterResize)
+  })
+
+  it('keeps an explicit motion preference across remounts and responds to settings changes', () => {
+    stubMediaQueries(['(prefers-reduced-motion: reduce)'])
+    localStorage.setItem('brick-studio-motion-preference-v1', 'full')
+    const view = render(<BrickStudioApp />)
+    expect(useBrickStore.getState().reducedMotion).toBe(false)
+    localStorage.setItem('brick-studio-motion-preference-v1', 'reduced')
+    act(() => window.dispatchEvent(new Event('brick-studio-motion-preference-change')))
+    expect(useBrickStore.getState().reducedMotion).toBe(true)
+    view.unmount()
+    render(<BrickStudioApp />)
+    expect(useBrickStore.getState().reducedMotion).toBe(true)
   })
 
   it('reacts to reduced-motion preference without disabling touch controls', () => {
