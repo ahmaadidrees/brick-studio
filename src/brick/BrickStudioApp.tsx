@@ -1,3 +1,4 @@
+import { CustomColorPicker } from './CustomColorPicker'
 import { StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
 import {
@@ -373,6 +374,8 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
     // shortcut that cancels the armed brush.
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]')
+      if (dialogs[dialogs.length - 1] !== panel.current) return
       event.stopPropagation()
       onClose()
     }
@@ -407,8 +410,11 @@ type ColorPaletteProps = {
 }
 
 function ColorPalette({ targetColor }: ColorPaletteProps) {
+  const [customOpen, setCustomOpen] = useState(false)
+  const customSelected = !BRICK_COLORS.some((color) => color.toLowerCase() === targetColor.toLowerCase())
   const setColor = useBrickStore((state) => state.setActiveColor)
   return (
+    <>
     <div className="color-grid" aria-label="Brick color">
       {BRICK_COLORS.map((color) => {
         const selected = targetColor === color
@@ -425,7 +431,10 @@ function ColorPalette({ targetColor }: ColorPaletteProps) {
           </button>
         )
       })}
+      <button type="button" className={`brick-any-color${customSelected ? ' active' : ''}`} style={customSelected ? { background: targetColor } : undefined} aria-pressed={customSelected} aria-label="Choose any brick color" title="Choose any color" aria-haspopup="dialog" onClick={() => setCustomOpen(true)}>{customSelected ? <Check size={13} /> : '+'}</button>
     </div>
+    {customOpen && <CustomColorPicker color={targetColor} onApply={setColor} onClose={() => setCustomOpen(false)} />}
+    </>
   )
 }
 

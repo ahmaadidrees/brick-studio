@@ -1,0 +1,21 @@
+.color-grid > .brick-any-color { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); color: #fff; text-shadow: 0 1px 3px #000; font-weight: 900; font-size: 18px; }
+.brick-color-backdrop { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 16px; background: #152d4266; }
+.brick-color-panel { box-sizing: border-box; width: min(100%, 350px); max-height: calc(100dvh - 32px); overflow: auto; border-radius: 20px; background: #fff; color: #263e4b; padding: 18px; box-shadow: 0 18px 65px #1236; font: 14px/1.4 system-ui, sans-serif; }
+.brick-color-panel header, .brick-color-panel footer, .brick-color-value { display: flex; align-items: center; gap: 12px; }
+.brick-color-panel header { justify-content: space-between; }
+.brick-color-panel h2 { margin: 0; font-size: 20px; }
+.brick-color-panel p { font-size: 12px; color: #536a74; }
+.brick-color-panel button { min-width: 44px; min-height: 44px; border: 1px solid #cad8e3; border-radius: 10px; background: #f1f6fa; color: #263e4b; font: inherit; cursor: pointer; padding: 0 12px; }
+.brick-color-wheel { position: relative; width: 196px; height: 196px; margin: 16px auto; border-radius: 50%; background: radial-gradient(circle closest-side, #fff 0%, #ffffff00 100%), conic-gradient(red, yellow, lime, cyan, blue, magenta, red); touch-action: none; cursor: crosshair; }
+.brick-color-wheel > span { position: absolute; width: 14px; height: 14px; box-sizing: border-box; border: 2px solid #fff; border-radius: 50%; outline: 1px solid #263e4b; transform: translate(-50%, -50%); pointer-events: none; }
+.brick-color-sliders label { display: grid; grid-template-columns: 82px 1fr; align-items: center; font-size: 12px; }
+.brick-color-sliders input { width: 100%; min-height: 36px; margin: 0; accent-color: #3476c1; }
+.brick-color-value { margin: 12px 0; }
+.brick-color-preview { width: 54px; height: 54px; border: 1px solid #b7c6cf; border-radius: 12px; flex-shrink: 0; }
+.brick-color-value label { display: grid; flex: 1; gap: 3px; font-size: 12px; }
+.brick-color-value input { box-sizing: border-box; width: 100%; min-height: 40px; border: 1px solid #b7c6cf; border-radius: 8px; padding: 8px; font: 15px monospace; }
+.brick-color-panel footer { justify-content: flex-end; margin-top: 14px; }
+.brick-color-panel footer button:last-child { color: white; background: #3476c1; }
+.brick-color-panel button:disabled { opacity: .45; cursor: default; }
+.brick-color-panel :focus-visible { outline: 3px solid #84b8f0; outline-offset: 2px; }
+@media (max-height: 650px) { .brick-color-wheel { width: 144px; height: 144px; margin: 8px auto; } .brick-color-panel { padding: 12px; } .brick-color-panel p { margin: 6px 0; } }

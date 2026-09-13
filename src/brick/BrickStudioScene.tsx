@@ -9,6 +9,7 @@ import * as THREE from 'three'
 import { createMotionSnapshot } from './avatarMotion'
 import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
 import { RemoteAvatar } from './RemoteAvatar'
+import { VerticalSelectionHandle } from './VerticalSelectionHandle'
 import { getBuildBounds } from './bounds'
 import {
   BUILD_CAMERA_MAX_POLAR_ANGLE,
@@ -1261,6 +1262,7 @@ function BuildScene({
       ))}
       {renderPartition.interactiveBricks.map((brick) => <BrickObject key={brick.id} brick={brick} buildGesture={gesture.current} cameraActive={cameraGestureActive} mouseTravel={mouseTravel} />)}
       <DraftBrick />
+      <VerticalSelectionHandle />
       <BuildSelectionInput />
       <BuildCamera gestureActive={cameraGestureActive} />
       <BuildTouchInput gesture={gesture.current} />

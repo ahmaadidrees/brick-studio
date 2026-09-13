@@ -75,6 +75,26 @@ afterEach(() => {
 })
 
 describe('keyboard construction loop', () => {
+  it('applies a custom group color as one undoable edit and keeps Cancel local', () => {
+    resetStore([brick, { ...brick, id: 'brick-b', x: 20 }])
+    useBrickStore.getState().selectBricks(['brick-a', 'brick-b'])
+    render(<BrickStudioApp />)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Choose any brick color' })[0])
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hex color' }), { target: { value: '#123abc' } })
+    expect(useBrickStore.getState().bricks.every((item) => item.color === '#fff')).toBe(true)
+    expect(useBrickStore.getState().undoStack).toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Apply color' }))
+    expect(useBrickStore.getState().bricks.every((item) => item.color === '#123abc')).toBe(true)
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Choose any brick color' })[0]).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Choose any brick color' })[0])
+    fireEvent.change(screen.getByRole('textbox', { name: 'Hex color' }), { target: { value: '#ffffff' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(useBrickStore.getState().undoStack).toHaveLength(1)
+    act(() => useBrickStore.getState().undo())
+    expect(useBrickStore.getState().bricks.every((item) => item.color === '#fff')).toBe(true)
+  })
+
   it('places with Enter, reserves Space for camera, cancels with Escape, and never double-acts from a button', () => {
     render(<BrickStudioApp />)
 
