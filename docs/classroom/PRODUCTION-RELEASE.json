@@ -311,5 +311,18 @@
         }
       }
     }
+  },
+  "heightHandleVisualFollowUp": {
+    "verifiedAt": "2026-09-13T23:04:56.461008+00:00",
+    "sourceCommit": "df2b46d27c27d55b32f33e45d37a30c9060cc698",
+    "frontendDeployment": "dpl_4rwt9A47r2zaQ941VkiAHVspn4yw",
+    "immutableFrontend": "https://virtual-legos-dgu8dclyn-ahmaadidrees-projects.vercel.app",
+    "publicAliasVerified": true,
+    "checks": [
+      "TypeScript and production build passed",
+      "Local rendered appearance and actual drag verified;44px hit area",
+      "Public URL new handle class verified; no page exceptions"
+    ],
+    "change": "Compact arrow grip with subtle border; value shown only during drag; movement logic unchanged"
   }
 }
