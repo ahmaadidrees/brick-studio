@@ -1,5 +1,6 @@
 import { Html } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
+import './vertical-selection-handle.css'
 import { MoveVertical } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from 'react'
 import { Vector3 } from 'three'
@@ -119,10 +120,10 @@ export function VerticalSelectionHandle() {
         onPointerCancel={() => finish(false)}
         onLostPointerCapture={() => finish(false)}
         onClick={(event) => { event.preventDefault(); event.stopPropagation() }}
-        style={{ pointerEvents: 'auto', touchAction: 'none', userSelect: 'none', cursor: owned ? 'grabbing' : 'ns-resize', display: 'flex', alignItems: 'center', gap: 5, minHeight: 44, padding: '8px 11px', transform: 'translateY(-22px)', border: `2px solid ${valid ? '#197b92' : '#c13d3d'}`, borderRadius: 14, background: valid ? '#fff' : '#fff0f0', color: valid ? '#15596b' : '#a52626', boxShadow: '0 3px 12px #17323d26', font: '600 12px system-ui', whiteSpace: 'nowrap' }}
+        className={`vertical-selection-handle${owned ? ' is-dragging' : ''}${valid ? '' : ' is-blocked'}`}
       >
-        <MoveVertical size={20} aria-hidden="true" />
-        {owned && draft ? `Height ${draft.y - active.current!.startY >= 0 ? '+' : ''}${draft.y - active.current!.startY}` : 'Height'}
+        <span className="vertical-selection-handle-grip"><MoveVertical size={17} aria-hidden="true" /></span>
+        {owned && draft && <span className="vertical-selection-handle-value">{draft.y - active.current!.startY >= 0 ? '+' : ''}{draft.y - active.current!.startY}</span>}
       </button>
     </Html>
   )

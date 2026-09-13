@@ -1,0 +1,51 @@
+.vertical-selection-handle {
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  cursor: ns-resize;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  transform: translateY(-16px);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #456774;
+}
+.vertical-selection-handle-grip {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 32px;
+  border: 1px solid #45677430;
+  border-radius: 12px;
+  background: #fffffff0;
+  box-shadow: 0 2px 5px #17323d14;
+  transition: background 120ms, border-color 120ms, box-shadow 120ms;
+}
+.vertical-selection-handle:hover .vertical-selection-handle-grip,
+.vertical-selection-handle.is-dragging .vertical-selection-handle-grip {
+  background: #fff;
+  border-color: #197b9280;
+  box-shadow: 0 2px 8px #17323d25;
+}
+.vertical-selection-handle:focus-visible { outline: 2px solid #197b92; outline-offset: 2px; }
+.vertical-selection-handle.is-dragging { cursor: grabbing; color: #15596b; }
+.vertical-selection-handle-value {
+  position: absolute;
+  left: 43px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: #ffffffed;
+  color: inherit;
+  font: 600 11px system-ui;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.vertical-selection-handle.is-blocked { color: #a52626; }
+.vertical-selection-handle.is-blocked .vertical-selection-handle-grip { border-color: #c13d3d; background: #fff0f0; }
+@media (prefers-reduced-motion: reduce) { .vertical-selection-handle-grip { transition: none; } }
