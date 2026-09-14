@@ -1,4 +1,5 @@
-/** W6 wave-0 audit: renders every character in the real preview (idle + walk) and captures sheet baselines. */
+/** W6 avatar evidence: renders every character in the real preview (idle + walk) and captures the sheet at three viewports.
+ * UI_TAG=before (wave-0 audit) or after (final); UI_OUTPUT picks the folder. */
 import { mkdir } from 'node:fs/promises'
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
 const origin = process.env.UI_ORIGIN || 'http://127.0.0.1:5196'
@@ -19,6 +20,11 @@ async function ready() {
   await page.waitForFunction(() => !!document.querySelector('.character-preview canvas') && !document.querySelector('.character-preview__status'))
   await page.waitForTimeout(700)
 }
+// Selecting a card scrolls it into view; sheet captures start from the top of the studio.
+async function top() {
+  await page.locator('.world-character-sheet-body').evaluate(element => { element.scrollTop = 0 })
+  await page.waitForTimeout(200)
+}
 try {
   await page.goto(`${origin}/build`)
   await page.getByRole('button', { name: 'Character', exact: true }).waitFor()
@@ -26,6 +32,7 @@ try {
   if (await dismiss.count()) await dismiss.click()
   await open()
   await ready()
+  await top()
   await page.screenshot({ path: `${output}/${tag}-sheet-1366x768.png` })
   for (const [id, name] of [['classic', 'Classic Builder'], ['toy-figure', 'Toy Figure'], ['cc0-hero', 'Robot Hero'], ['pip', 'Pip'], ['fern', 'Fern'], ['nova', 'Nova']]) {
     await dialog.getByRole('radio', { name: new RegExp(`^${name}`) }).click()
@@ -41,9 +48,11 @@ try {
   await ready()
   await page.setViewportSize({ width: 390, height: 844 })
   await page.waitForTimeout(400)
+  await top()
   await page.screenshot({ path: `${output}/${tag}-sheet-390x844.png` })
   await page.setViewportSize({ width: 320, height: 740 })
   await page.waitForTimeout(400)
+  await top()
   await page.screenshot({ path: `${output}/${tag}-sheet-320x740.png` })
   console.log(JSON.stringify({ result: 'captured', output, errors }))
   if (errors.length) process.exitCode = 1
