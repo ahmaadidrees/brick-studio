@@ -69,6 +69,11 @@ import { resizeSelectionDefinitions } from './customParts/resize'
 import { saveLiveWorldSeed } from './live/liveWorldSeed'
 import { saveLocalBrickStudioProject } from './documentPersistence'
 import './brick-studio.css'
+import { installActiveWorldRecovery } from './activeWorldRecovery'
+
+// Lets AppErrorBoundary capture the open world (local, class, or live) from the
+// store before a crash unmounts the studio. Idempotent, so module re-evaluation is safe.
+installActiveWorldRecovery()
 
 export type BrickStudioLivePolicy = {
   connection: LiveConnectionState
