@@ -187,7 +187,16 @@ function FallbackArtwork({ kind }: { kind: PreviewArtworkProps['kind'] }) {
   return kind === 'environment' ? <ClassicStudioArtwork /> : <ClassicBuilderArtwork />
 }
 
+const ORIGINAL_PREVIEWS: Record<string, string> = {
+    'character:pip': new URL('../../../assets/characters-original/pip-preview.png', import.meta.url).href,
+    'character:fern': new URL('../../../assets/characters-original/fern-preview.png', import.meta.url).href,
+    'character:nova': new URL('../../../assets/characters-original/nova-preview.png', import.meta.url).href,
+  }
+
 export function PreviewArtwork({ kind, previewKey, palette }: PreviewArtworkProps) {
+  if (kind === 'character' && ORIGINAL_PREVIEWS[previewKey]) return <span className="content-picker-art content-picker-art-character" data-preview-key={previewKey} aria-hidden="true">
+    <img src={ORIGINAL_PREVIEWS[previewKey]} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#71838c' }} />
+  </span>
   let artwork
   switch (previewKey) {
     case 'environment:classic': artwork = <ClassicStudioArtwork />; break

@@ -253,6 +253,7 @@ export function buildLiveRemotePatch(
   const ids = new Set(document.bricks.map((brick) => brick.id))
   const selectedIds = state.selectedIds.filter((id) => ids.has(id))
   const patch: Partial<BrickState> = {
+    documentMetadata: { plateSize: document.plateSize, environmentId: document.environmentId, customParts: document.customParts.map(part => ({ ...part })) },
     bricks: document.bricks.map(cloneBrick),
     selectedIds,
     selectedId: state.selectedId && ids.has(state.selectedId) ? state.selectedId : selectedIds.at(-1) ?? null,
@@ -350,6 +351,7 @@ function liveWebSocketUrl(
   const url = new URL(`${baseUrl}/worlds/${encodeURIComponent(roomId)}/connect`)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   url.searchParams.set('playerId', clientId)
+  url.searchParams.set('documentSchema', '3')
   if (ownerToken) url.searchParams.set('ownerToken', ownerToken)
   else if (reconnectToken) url.searchParams.set('reconnectToken', reconnectToken)
   return url.toString()

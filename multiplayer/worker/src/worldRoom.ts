@@ -1,4 +1,5 @@
 import {
+  normalizeCharacterAppearance,
   BRICK_STUDIO_MAX_BRICKS,
   LIVE_MAX_COMMAND_BYTES,
   LIVE_MAX_COMMANDS,
@@ -54,6 +55,7 @@ type WorldRoomRecord = {
 };
 
 type WorldSocketAttachment = {
+  documentSchema?: number;
   classroomAccess?: ClassroomSocketAccess;
   playerId: string;
   isOwner: boolean;
@@ -162,7 +164,8 @@ function profileEqual(first: PlayerProfile, second: PlayerProfile): boolean {
   if (first.displayName !== second.displayName || first.characterId !== second.characterId) return false;
   const firstPalette = Object.entries(first.palette ?? {}).sort(([a], [b]) => a.localeCompare(b));
   const secondPalette = Object.entries(second.palette ?? {}).sort(([a], [b]) => a.localeCompare(b));
-  return firstPalette.length === secondPalette.length
+  return JSON.stringify(normalizeCharacterAppearance(first.appearance)) === JSON.stringify(normalizeCharacterAppearance(second.appearance))
+    && firstPalette.length === secondPalette.length
     && firstPalette.every(([key, color], index) => (
       key === secondPalette[index]?.[0] && color === secondPalette[index]?.[1]
     ));
@@ -221,6 +224,7 @@ export function sanitizeProfile(value: unknown): ValidationResult<PlayerProfile>
       displayName,
       ...(characterId ? { characterId } : {}),
       ...(palette ? { palette } : {}),
+      ...(value.appearance !== undefined ? { appearance: normalizeCharacterAppearance(value.appearance) } : {}),
     },
   };
 }
@@ -480,6 +484,8 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         }
       } catch { return json({ error: "classroom_access_denied" }, 403); }
     }
+    const documentSchema = url.searchParams.get("documentSchema") === "3" ? 3 : 2;
+    if (this.record!.document.schemaVersion > documentSchema) return json({ error: "client_update_required", message: "Refresh Brick Studio to open this expanded world." }, 409);
     const playerId = classroomAccess?.userId ?? url.searchParams.get("playerId") ?? "";
     if (!PLAYER_ID_PATTERN.test(playerId)) return json({ error: "invalid_player_id" }, 400);
     const suppliedOwnerToken = url.searchParams.get("ownerToken") ?? "";
@@ -526,6 +532,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const [client, server] = Object.values(pair);
     const now = Date.now();
     const attachment: WorldSocketAttachment = {
+      documentSchema,
       playerId,
       isOwner,
       ...(classroomAccess ? { classroomAccess } : {}),
@@ -655,6 +662,10 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         && ["commands", "replaceDocument", "setMode", "setLocked"].includes(data.type)) {
       return this.rejectOperation(socket, attachment.playerId, typeof data.opId === "string" ? data.opId : "", "read_only", "You do not have editing access to this world.");
     }
+    if (this.record.document.schemaVersion > (attachment.documentSchema ?? 2)
+      && ["commands", "replaceDocument", "setMode"].includes(data.type)) {
+      return this.rejectOperation(socket, attachment.playerId, typeof data.opId === "string" ? data.opId : "", "client_update_required", "Refresh Brick Studio before editing this expanded world.");
+    }
     switch (data.type) {
       case "commands":
         await this.handleCommands(socket, attachment, data, bytes);
@@ -783,6 +794,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
     const document = validateBrickStudioDocument(data.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
     if (!document.ok) return this.cacheAndReject(socket, attachment.playerId, opId, document.error.code, document.error.message);
+    if (document.document.schemaVersion === 3 && this.openSockets().some(peer => (this.attachment(peer)?.documentSchema ?? 2) < 3)) {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "client_update_required", "Ask everyone in this world to refresh Brick Studio before using larger plates or bricks.");
+    }
     if (!this.consumeMutationBudget(socket, attachment, "control")) return;
     if (!await this.acceptDocument(socket, attachment, opId, document.document)) return;
     const outcome: CachedOperationOutcome = { opId, type: "replace", revision: this.record!.revision };

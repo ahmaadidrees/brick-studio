@@ -49,7 +49,7 @@ describe('Brick Studio document schema', () => {
   it.each([
     ['malformed JSON', '{ nope', 'invalid-json'],
     ['oversized text', ' '.repeat(BRICK_STUDIO_MAX_JSON_LENGTH + 1), 'invalid-json'],
-    ['unsupported schema', JSON.stringify({ schemaVersion: 3, partLibraryVersion: 1, bricks: [] }), 'unsupported-schema'],
+    ['unsupported schema', JSON.stringify({ schemaVersion: 99, partLibraryVersion: 1, bricks: [] }), 'unsupported-schema'],
     ['unsupported library', JSON.stringify({ schemaVersion: 1, partLibraryVersion: 2, bricks: [] }), 'unsupported-library'],
   ])('rejects %s', (_label, serialized, code) => {
     const result = parseBrickStudioDocument(serialized)
@@ -71,10 +71,10 @@ describe('Brick Studio document schema', () => {
   })
 
   it('round-trips maximum-size custom bricks and rejects dimensions beyond each limit', () => {
-    const part = { id: 'custom_large', name: 'Large brick', template: 'solid' as const, width: 32, depth: 32, height: 96, studs: 'full' as const }
+    const part = { id: 'custom_large', name: 'Large brick', template: 'solid' as const, width: 64, depth: 64, height: 192, studs: 'full' as const }
     const document = createBrickStudioDocument([{ ...mixed[0], x: 0, z: 0, partId: part.id }], { customParts: [part] })
     expect(validateBrickStudioDocument(JSON.parse(JSON.stringify(document)))).toMatchObject({ ok: true, document })
-    for (const oversized of [{ width: 33 }, { depth: 33 }, { height: 97 }]) {
+    for (const oversized of [{ width: 65 }, { depth: 65 }, { height: 193 }]) {
       expect(validateBrickStudioDocument({ ...document, customParts: [{ ...part, ...oversized }] }).ok).toBe(false)
     }
   })

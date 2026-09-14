@@ -12,7 +12,7 @@ export type BuildBounds = {
 const HORIZONTAL_PADDING = STUD * 2
 const VERTICAL_PADDING = PLATE_HEIGHT * 3
 
-export function getBuildBounds(bricks: BrickInstance[]): BuildBounds {
+export function getBuildBounds(bricks: BrickInstance[], plateSize: number = GRID_SIZE): BuildBounds {
   let minX: number
   let minY: number
   let minZ: number
@@ -21,7 +21,7 @@ export function getBuildBounds(bricks: BrickInstance[]): BuildBounds {
   let maxZ: number
 
   if (bricks.length === 0) {
-    const halfPlate = GRID_SIZE * STUD / 2
+    const halfPlate = plateSize * STUD / 2
     minX = -halfPlate
     minY = -PLATE_HEIGHT
     minZ = -halfPlate
@@ -39,7 +39,7 @@ export function getBuildBounds(bricks: BrickInstance[]): BuildBounds {
     for (const brick of bricks) {
       const part = BRICK_PART_MAP[brick.partId]
       const rotated = rotatedSize(part, brick.rotation)
-      const position = brickWorldPosition(brick)
+      const position = brickWorldPosition(brick, plateSize)
       const halfWidth = rotated.width * STUD / 2
       const halfDepth = rotated.depth * STUD / 2
       minX = Math.min(minX, position[0] - halfWidth)

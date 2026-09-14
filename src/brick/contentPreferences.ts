@@ -1,3 +1,4 @@
+import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
 import type { CharacterPalette } from './characters/types'
 import { CHARACTER_DESCRIPTORS, ENVIRONMENT_DESCRIPTORS } from './contentCatalog'
 import {
@@ -12,6 +13,7 @@ type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>
 
 export type CharacterPreferences = {
   characterId: CharacterId
+  appearance?: CharacterAppearance
   palette: CharacterPalette
 }
 
@@ -37,9 +39,10 @@ export function loadCharacterPreferences(storage: PreferenceStorage = window.loc
     return {
       characterId: saved?.characterId ?? 'classic',
       palette: sanitizePalette(saved?.palette ?? {}),
+      appearance: normalizeCharacterAppearance(saved?.appearance),
     }
   } catch {
-    return { characterId: 'classic', palette: {} }
+    return { characterId: 'classic', palette: {}, appearance: normalizeCharacterAppearance(undefined) }
   }
 }
 
@@ -53,6 +56,7 @@ export function saveCharacterPreferences(
       environmentId,
       characterId: preferences.characterId,
       palette: sanitizePalette(preferences.palette),
+      appearance: normalizeCharacterAppearance(preferences.appearance),
     }))
     return true
   } catch {

@@ -1,3 +1,4 @@
+import type { CharacterAppearance } from '@brick-studio/core'
 import type { ComponentType } from 'react'
 import type { MotionSnapshotRef } from '../avatarMotion'
 import type { CharacterDescriptor } from '../registries'
@@ -10,6 +11,7 @@ export type CharacterVisualProps = {
   compact?: boolean
   scale?: number
   palette?: CharacterPalette
+  appearance?: CharacterAppearance
 }
 
 export type CharacterContentModule = {

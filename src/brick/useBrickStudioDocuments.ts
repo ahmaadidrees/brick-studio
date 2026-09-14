@@ -41,13 +41,14 @@ export function useBrickStudioDocuments(
   const autosaveRef = useRef<ReturnType<typeof connectBrickStudioAutosave> | null>(null)
   const loadedRef = useRef(false)
   const persistedMetadataRef = useRef({
+    plateSize: persistence.plateSize,
     environmentId: persistence.environmentId,
     customParts: persistence.customParts,
   })
 
   useEffect(() => {
     useBrickStore.getState().setDocumentMetadata(persistence)
-  }, [persistence.environmentId, persistence.customParts])
+  }, [persistence.plateSize, persistence.environmentId, persistence.customParts])
 
   useEffect(() => useBrickStore.subscribe((state, previous) => {
     if (state.documentMetadata !== previous.documentMetadata) {
@@ -96,14 +97,16 @@ export function useBrickStudioDocuments(
   // array is referentially unchanged, so they must enter the same debounced save.
   useEffect(() => {
     const previous = persistedMetadataRef.current
-    const changed = previous.environmentId !== persistence.environmentId
+    const changed = previous.plateSize !== persistence.plateSize
+      || previous.environmentId !== persistence.environmentId
       || previous.customParts !== persistence.customParts
     persistedMetadataRef.current = {
+      plateSize: persistence.plateSize,
       environmentId: persistence.environmentId,
       customParts: persistence.customParts,
     }
     if (changed && enabled && loadedRef.current) autosaveRef.current?.schedule()
-  }, [enabled, persistence.environmentId, persistence.customParts])
+  }, [enabled, persistence.plateSize, persistence.environmentId, persistence.customParts])
 
   const newBuild = useCallback(() => {
     if (!window.confirm('Start a new blank build? You can Undo during this session to restore the current build.')) {

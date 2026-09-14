@@ -308,3 +308,11 @@ describe('responsive-safe structure', () => {
     expect(view.container.querySelector('img, canvas, video')).toBeNull()
   })
 })
+
+it('can switch to Scene after opening directly on Character', () => {
+  renderSheet({ initialTab: 'character', plateSize: 64, canResizePlate: true })
+  expect(screen.getByRole('tab', { name: 'Character' })).toHaveAttribute('aria-selected', 'true')
+  fireEvent.click(screen.getByRole('tab', { name: 'Scene' }))
+  expect(screen.getByRole('tab', { name: 'Scene' })).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('button', { name: '128 × 128' })).toBeVisible()
+})

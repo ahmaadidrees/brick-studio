@@ -97,9 +97,10 @@ class Inbox {
   }
 }
 
-async function connectWorld(roomId: string, playerId: string, ownerToken?: string, reconnectToken?: string) {
+async function connectWorld(roomId: string, playerId: string, ownerToken?: string, reconnectToken?: string, documentSchema = 2) {
   const url = new URL(`https://worker.test/worlds/${roomId}/connect`);
   url.searchParams.set("playerId", playerId);
+  if (documentSchema === 3) url.searchParams.set("documentSchema", "3");
   if (ownerToken) url.searchParams.set("ownerToken", ownerToken);
   if (reconnectToken) url.searchParams.set("reconnectToken", reconnectToken);
   const response = await roomFetch(url.toString(), {
@@ -1294,4 +1295,37 @@ describe("classroom invalidation", () => {
     expect(db.classes[0].name).toBe("Period 1, renamed");
     for (const builder of [first, second, supervising]) expect(await builder.closed).toBe(4003);
   });
+});
+
+
+it("protects expanded worlds from legacy clients while allowing capable builders", async () => {
+  const expanded = createBrickStudioDocument([brick("edge", 120, 120)], { plateSize: 128 });
+  const { roomId, ownerToken } = await createWorld(expanded);
+  const legacy = await connectWorld(roomId, "legacy_expanded");
+  expect(legacy.response.status).toBe(409);
+  expect(await legacy.response.json()).toMatchObject({ error: "client_update_required" });
+  const owner = await connectWorld(roomId, "owner_expanded", ownerToken, undefined, 3);
+  expect(owner.welcome).toMatchObject({ document: expanded });
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: "owner_expanded#1", commands: [{ op: "place", brick: brick("new_edge", 125, 125) }] });
+  expect(await owner.inbox!.next("apply")).toMatchObject({ revision: 1 });
+  expect((await getWorld(roomId)).document.plateSize).toBe(128);
+});
+
+it("rejects expansion without altering a room while an older tab remains connected", async () => {
+  const { roomId, ownerToken } = await createWorld();
+  const owner = await connectWorld(roomId, "owner_mixed", ownerToken, undefined, 3);
+  await connectWorld(roomId, "legacy_mixed");
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "replaceDocument", opId: "owner_mixed#1", expectedRevision: 0, document: createBrickStudioDocument([], { plateSize: 96 }) });
+  expect(await owner.inbox!.next("reject")).toMatchObject({ code: "client_update_required" });
+  expect(await getWorld(roomId)).toMatchObject({ revision: 0, document: { schemaVersion: 2 } });
+});
+
+it("broadcasts and persists bounded appearance changes for another builder", async () => {
+  const { roomId, ownerToken } = await createWorld();
+  const owner = await connectWorld(roomId, "owner_style", ownerToken, undefined, 3);
+  const guest = await connectWorld(roomId, "guest_style", undefined, undefined, 3);
+  await guest.inbox!.next("players");
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Stylist", characterId: "toy-figure", appearance: { hair: "bun", accessory: "glasses", body: "broad" } } });
+  const updated = await guest.inbox!.next("players");
+  expect(updated).toMatchObject({ players: expect.arrayContaining([expect.objectContaining({ playerId: "owner_style", profile: expect.objectContaining({ appearance: expect.objectContaining({ hair: "bun", accessory: "glasses", body: "broad" }) }) })]) });
 });

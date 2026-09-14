@@ -198,13 +198,13 @@ export function supportHeightForFootprint(
   return top
 }
 
-export function brickWorldPosition(brick: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>) {
+export function brickWorldPosition(brick: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>, plateSize: number = GRID_SIZE) {
   const part = BRICK_PART_MAP[brick.partId]
   const size = rotatedSize(part, brick.rotation)
   return [
-    (brick.x + size.width / 2 - GRID_SIZE / 2) * STUD,
+    (brick.x + size.width / 2 - plateSize / 2) * STUD,
     brick.y * PLATE_HEIGHT,
-    (brick.z + size.depth / 2 - GRID_SIZE / 2) * STUD,
+    (brick.z + size.depth / 2 - plateSize / 2) * STUD,
   ] as [number, number, number]
 }
 
@@ -448,8 +448,8 @@ export function rotateLocalPoint(
 }
 
 /** Converts local collision pieces into axis-aligned world-space pieces. */
-export function brickPhysicalShapes(brick: BrickInstance): PhysicalShape[] {
-  const origin = brickWorldPosition(brick)
+export function brickPhysicalShapes(brick: BrickInstance, plateSize: number = GRID_SIZE): PhysicalShape[] {
+  const origin = brickWorldPosition(brick, plateSize)
   const rotated = brick.rotation % 2 === 1
 
   return partPhysicalShapes(BRICK_PART_MAP[brick.partId]).map((shape) => {

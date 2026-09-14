@@ -1,3 +1,8 @@
+import { AppearanceControls } from '../characters/AppearanceControls'
+import { CharacterPreview } from '../characters/CharacterPreview'
+import { LookColors } from '../characters/LookColors'
+import { WardrobePanel } from '../characters/WardrobePanel'
+import { BUILD_PLATE_SIZES, type BuildPlateSize } from '../buildPlate'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { CharacterId, EnvironmentId } from '../types'
@@ -24,6 +29,8 @@ import './world-character-sheet.css'
  */
 export type WorldAndCharacterSheetProps = {
   open: boolean
+  plateSize?: BuildPlateSize
+  canResizePlate?: boolean
   initialTab?: 'environment' | 'character'
   environmentDescriptors: readonly EnvironmentDescriptor[]
   characterDescriptors: readonly CharacterDescriptor[]
@@ -31,7 +38,7 @@ export type WorldAndCharacterSheetProps = {
   selection: ContentPickerSelection
   paletteGroups?: readonly CharacterPaletteGroup[]
   /** One combined draft — fired only by the Apply button. */
-  onApply: (selection: ContentPickerSelection) => void
+  onApply: (selection: ContentPickerSelection, plateSize?: BuildPlateSize) => void
   /** Cancel/Escape/backdrop/close-button; the draft is discarded. */
   onClose: () => void
   /** Draft-time preview intents (hover/focus/selection); never a commitment. */
@@ -56,6 +63,8 @@ function focusableElements(panel: HTMLElement): HTMLElement[] {
 export function WorldAndCharacterSheet({
   open,
   initialTab = 'environment',
+  plateSize,
+  canResizePlate = false,
   environmentDescriptors,
   characterDescriptors,
   selection,
@@ -83,6 +92,7 @@ export function WorldAndCharacterSheet({
     selection,
     { environments: environmentDescriptors, characters: characterDescriptors },
   ))
+  const [draftPlateSize, setDraftPlateSize] = useState(plateSize)
   const [activeTab, setActiveTab] = useState<'environment' | 'character'>('environment')
 
   // Latest inputs for the open-edge seeding effect, so reopening always seeds
@@ -97,6 +107,7 @@ export function WorldAndCharacterSheet({
       environments: seed.environmentDescriptors,
       characters: seed.characterDescriptors,
     }))
+    setDraftPlateSize(plateSize)
     setActiveTab(initialTab)
   }, [open, initialTab])
 
@@ -198,7 +209,7 @@ export function WorldAndCharacterSheet({
             tabIndex={activeTab === 'environment' ? 0 : -1}
             aria-controls={tabPanelId}
             aria-selected={activeTab === 'environment'}
-            onClick={() => setActiveTab(initialTab)}
+            onClick={() => setActiveTab('environment')}
             onKeyDown={handleTabKeyDown}
           >Scene</button>
           <button
@@ -219,6 +230,18 @@ export function WorldAndCharacterSheet({
           role="tabpanel"
           aria-labelledby={activeTab === 'environment' ? sceneTabId : characterTabId}
         >
+          {activeTab === 'environment' && plateSize && (
+            <fieldset className="plate-size-picker" disabled={!canResizePlate}>
+              <legend>Build plate</legend>
+              <p>More room to build. Your creation stays centered; shrinking never cuts off bricks.</p>
+              <div>{BUILD_PLATE_SIZES.map(size => (
+                <button type="button" key={size} aria-pressed={draftPlateSize === size}
+                  onClick={() => setDraftPlateSize(size)}>{size} × {size}</button>
+              ))}</div>
+              {!canResizePlate && <small>The owner can resize the plate while everyone is in Build.</small>}
+            </fieldset>
+          )}
+          {activeTab === 'character' && <CharacterPreview characterId={draft.characterId} palette={draft.palette} appearance={draft.appearance} />}
           <ContentPicker
             hideHeader
             visibleSection={activeTab}
@@ -238,6 +261,12 @@ export function WorldAndCharacterSheet({
             onRequestPreview={onRequestPreview}
             previewStatuses={previewStatuses}
           />
+          {activeTab === 'character' && draft.characterId === 'toy-figure' && <AppearanceControls appearance={draft.appearance} onChange={appearance => setDraft(current => ({ ...current, appearance }))} />}
+          {activeTab === 'character' && <LookColors palette={draft.palette} onChange={palette => setDraft(current => ({ ...current, palette }))} />}
+          {activeTab === 'character' && draft.characterId && <WardrobePanel
+            appearance={{ characterId: draft.characterId, palette: draft.palette, appearance: draft.appearance }}
+            onChoose={appearance => setDraft(current => ({ ...current, ...appearance }))}
+          />}
         </div>
         <footer className="world-character-sheet-footer">
           <span className="world-character-sheet-summary" aria-live="polite">
@@ -252,7 +281,11 @@ export function WorldAndCharacterSheet({
             type="button"
             className="world-character-sheet-apply"
             disabled={applyDisabled}
-            onClick={() => onApply({ ...draft, palette: { ...draft.palette } })}
+            onClick={() => {
+              const selection = { ...draft, palette: { ...draft.palette } }
+              if (draftPlateSize) onApply(selection, draftPlateSize)
+              else onApply(selection)
+            }}
           >{applyLabel}</button>
         </footer>
       </div>

@@ -107,6 +107,7 @@ export type RuntimeCharacterAvatarProps = Omit<CharacterVisualProps, 'palette'> 
 export function RuntimeCharacterAvatar({
   characterId,
   palette,
+  appearance,
   motion,
   compact,
   reducedMotion,
@@ -120,6 +121,7 @@ export function RuntimeCharacterAvatar({
     reducedMotion,
     scale,
     palette,
+    appearance,
   }
 
   return (

@@ -31,7 +31,7 @@ function overlapsVertically(brick: BrickInstance, maxY: number, otherBrick: Bric
 export class BrickLayoutIndex {
   private readonly columns = new Map<number, Array<{ start: number; end: number }>>()
 
-  constructor(private readonly partMap: BrickPartMap = BRICK_PART_MAP) {}
+  constructor(private readonly partMap: BrickPartMap = BRICK_PART_MAP, private readonly plateSize: number = GRID_SIZE) {}
 
   add(brick: BrickInstance): boolean {
     const bounds = brickBounds(brick, this.partMap)
@@ -39,8 +39,8 @@ export class BrickLayoutIndex {
       || brick.x < 0
       || brick.z < 0
       || brick.y < 0
-      || bounds.maxX > GRID_SIZE
-      || bounds.maxZ > GRID_SIZE) return false
+      || bounds.maxX > this.plateSize
+      || bounds.maxZ > this.plateSize) return false
 
     const placements: Array<{
       spans: Array<{ start: number; end: number }>
@@ -49,7 +49,7 @@ export class BrickLayoutIndex {
     }> = []
     for (let x = brick.x; x < bounds.maxX; x += 1) {
       for (let z = brick.z; z < bounds.maxZ; z += 1) {
-        const key = x * GRID_SIZE + z
+        const key = x * this.plateSize + z
         const spans = this.columns.get(key) ?? []
         let low = 0
         let high = spans.length
@@ -75,6 +75,7 @@ export function brickFitsLayout(
   brick: BrickInstance,
   staged: BrickInstance[],
   partMap: BrickPartMap = BRICK_PART_MAP,
+  plateSize: number = GRID_SIZE,
 ): boolean {
   const bounds = brickBounds(brick, partMap)
   if (!bounds) return false
@@ -83,8 +84,8 @@ export function brickFitsLayout(
     brick.x < 0
     || brick.z < 0
     || brick.y < 0
-    || maxX > GRID_SIZE
-    || maxZ > GRID_SIZE
+    || maxX > plateSize
+    || maxZ > plateSize
   ) return false
 
   for (const otherBrick of staged) {
@@ -104,7 +105,8 @@ export function draftIsValid(
   bricks: BrickInstance[],
   ignoredId: string | null = null,
   partMap: BrickPartMap = BRICK_PART_MAP,
+  plateSize: number = GRID_SIZE,
 ): boolean {
   const staged = ignoredId ? bricks.filter((brick) => brick.id !== ignoredId) : bricks
-  return brickFitsLayout({ ...draft, id: ignoredId ?? '__draft__' }, staged, partMap)
+  return brickFitsLayout({ ...draft, id: ignoredId ?? '__draft__' }, staged, partMap, plateSize)
 }

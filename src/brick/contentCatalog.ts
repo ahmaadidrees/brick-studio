@@ -3,7 +3,7 @@ import {
   SKY_ISLAND_DESCRIPTOR,
   TOY_ROOM_DESCRIPTOR,
 } from './environments'
-import { CC0_HERO_DESCRIPTOR, TOY_FIGURE_DESCRIPTOR } from './characters'
+import { CC0_HERO_DESCRIPTOR, TOY_FIGURE_DESCRIPTOR, PIP_DESCRIPTOR, FERN_DESCRIPTOR, NOVA_DESCRIPTOR } from './characters'
 import type { CharacterDescriptor, EnvironmentDescriptor } from './registries'
 import type { CharacterPaletteGroup } from './contentPicker'
 import type { CharacterId } from './types'
@@ -34,6 +34,7 @@ export const CHARACTER_DESCRIPTORS = [
   CLASSIC_CHARACTER_DESCRIPTOR,
   TOY_FIGURE_DESCRIPTOR,
   CC0_HERO_DESCRIPTOR,
+  PIP_DESCRIPTOR, FERN_DESCRIPTOR, NOVA_DESCRIPTOR,
 ] as const satisfies readonly CharacterDescriptor[]
 
 const BRICK_COLORS = [
@@ -55,6 +56,9 @@ export const CHARACTER_PALETTE_GROUPS = [
 ] as const satisfies readonly CharacterPaletteGroup[]
 
 const CHARACTER_PALETTE_LABELS: Record<CharacterId, readonly [string, string, string]> = {
+  pip: ['Helmet', 'Panels', 'Glow'],
+  fern: ['Coat', 'Cap', 'Scarf'],
+  nova: ['Body', 'Belly', 'Glow'],
   classic: ['Shirt', 'Pants', 'Badge'],
   'toy-figure': ['Suit', 'Trim', 'Emblem'],
   'cc0-hero': ['Limbs', 'Shell', 'Hands'],

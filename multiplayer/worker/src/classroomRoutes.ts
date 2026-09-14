@@ -263,7 +263,7 @@ export async function handleReleaseRequest(
         const { kind } = await kindResponse.json<{ kind: string }>();
         if (kind === "guest") {
           const internal = new URL(`https://world.internal/worlds/${route[1]}${route[2] ?? ""}`);
-          for (const key of ["playerId", "ownerToken", "reconnectToken", "profile"]) {
+          for (const key of ["playerId", "ownerToken", "reconnectToken", "profile", "documentSchema"]) {
             const value = url.searchParams.get(key);
             if (value !== null) internal.searchParams.set(key, value);
           }
@@ -301,6 +301,7 @@ export async function handleReleaseRequest(
         internal = new URL(
           `https://world.internal/worlds/${id.replaceAll("-", "")}${route[2] ?? ""}`,
         );
+      if (url.searchParams.get("documentSchema") === "3") internal.searchParams.set("documentSchema", "3");
       const profile = url.searchParams.get("profile");
       if (profile) internal.searchParams.set("profile", profile);
       const trustedHeaders = new Headers();

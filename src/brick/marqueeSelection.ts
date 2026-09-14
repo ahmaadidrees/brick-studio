@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { BRICK_PART_MAP, PLATE_HEIGHT, STUD, brickWorldPosition, rotatedSize } from './parts'
+import { BRICK_PART_MAP, GRID_SIZE, PLATE_HEIGHT, STUD, brickWorldPosition, rotatedSize } from './parts'
 import type { BrickInstance } from './types'
 
 export const MARQUEE_DRAG_THRESHOLD = 6
@@ -74,10 +74,11 @@ export function projectBrickScreenBounds(
   camera: THREE.Camera,
   viewportWidth: number,
   viewportHeight: number,
+  plateSize: number = GRID_SIZE,
 ): ScreenRect | null {
   const part = BRICK_PART_MAP[brick.partId]
   const size = rotatedSize(part, brick.rotation)
-  const center = brickWorldPosition(brick)
+  const center = brickWorldPosition(brick, plateSize)
   const halfWidth = size.width * STUD / 2
   const halfDepth = size.depth * STUD / 2
   const minY = center[1]
@@ -114,9 +115,10 @@ export function selectBricksInMarquee(
   viewportWidth: number,
   viewportHeight: number,
   marquee: ScreenRect,
+  plateSize: number = GRID_SIZE,
 ) {
   return bricks.flatMap((brick) => {
-    const bounds = projectBrickScreenBounds(brick, camera, viewportWidth, viewportHeight)
+    const bounds = projectBrickScreenBounds(brick, camera, viewportWidth, viewportHeight, plateSize)
     return bounds && screenRectsIntersect(bounds, marquee) ? [brick.id] : []
   })
 }

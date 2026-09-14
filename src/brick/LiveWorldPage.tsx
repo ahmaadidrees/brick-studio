@@ -1,9 +1,11 @@
+import { normalizeCharacterAppearance } from '@brick-studio/core'
+import { getBuildPlateSize, type BuildPlateSize } from './buildPlate'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import BrickStudioApp from './BrickStudioApp'
 import type { RaceAvatarPose } from './BrickStudioScene'
 import type { RemoteAvatarSource } from './remoteAvatarSource'
-import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
+import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { LIVE_MAX_PLAYERS, type LiveWorldMode } from './liveProtocol'
 import { createLiveRoomClient, getLiveWorld, hasSavedLiveRoomIdentity } from './liveRoomClient'
 import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
@@ -118,9 +120,11 @@ function DefaultLiveWorldScene({
     onGoHome: () => window.location.assign('/'),
   }), [actions.setMode, snapshot.connection, snapshot.isOwner])
   const contentPolicy = useMemo(() => ({
+    plateSize: view.document.plateSize,
     environmentId: view.document.environmentId,
     characterId: view.selfProfile.characterId,
     palette: view.selfProfile.palette,
+    appearance: view.selfProfile.appearance,
     canChangeEnvironment: snapshot.isOwner
       && snapshot.connection === 'online'
       && snapshot.mode === 'build'
@@ -128,25 +132,22 @@ function DefaultLiveWorldScene({
     environmentHelp: snapshot.isOwner
       ? 'Switch everyone to Build before changing the shared environment. You can still customize your character now.'
       : 'Choose your character and colors. The room owner controls the shared environment.',
-    onApply: (selection: ContentPickerSelection) => {
-      view.setProfile({
-        ...view.selfProfile,
-        characterId: selection.characterId ?? 'classic',
-        palette: { ...selection.palette },
-      })
-      if (
-        selection.environmentId
-        && selection.environmentId !== view.document.environmentId
-        && snapshot.isOwner
-      ) {
-        const opId = actions.replaceDocument?.({
-          ...view.document,
-          environmentId: selection.environmentId,
-        })
+    onApply: (selection: ContentPickerSelection, requestedPlateSize?: BuildPlateSize) => {
+      const size = requestedPlateSize ?? getBuildPlateSize(view.document)
+      const worldChanged = size !== getBuildPlateSize(view.document)
+        || (selection.environmentId && selection.environmentId !== view.document.environmentId)
+      if (worldChanged) {
+        if (!snapshot.isOwner || snapshot.connection !== 'online' || snapshot.mode !== 'build') return false
+        const resized = resizeBuildPlate(view.document, size)
+        if (!resized.ok) { useBrickStore.setState({ toast: resized.error.message }); return false }
+        const opId = actions.replaceDocument?.({ ...resized.document, environmentId: selection.environmentId ?? view.document.environmentId })
         if (!opId) {
-          useBrickStore.setState({ toast: 'The shared world is still reconnecting. Try the environment change again.' })
+          useBrickStore.setState({ toast: 'The shared world is still syncing. Try the scene change again.' })
+          return false
         }
       }
+      view.setProfile({ ...view.selfProfile, characterId: selection.characterId ?? 'classic', palette: { ...selection.palette }, appearance: normalizeCharacterAppearance(selection.appearance) })
+      return true
     },
   }), [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view])
   const customPartPolicy = useMemo(() => {
@@ -165,6 +166,7 @@ function DefaultLiveWorldScene({
         try {
           return Boolean(actions.replaceDocument?.(createBrickStudioDocument(next.bricks, {
             environmentId: view.document.environmentId,
+            plateSize: view.document.plateSize,
             customParts: next.customParts,
           })))
         } catch {
@@ -331,7 +333,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   const [recoveryError, setRecoveryError] = useState('');
   const oldOwnerToken = legacyOwnerToken(props.initialLocation?.pathname ?? window.location.pathname, props.initialLocation?.hash ?? window.location.hash);
   const [appearance, setAppearance] = useState(() => loadCharacterPreferences());
-  const profile = useMemo<PlayerProfile>(() => ({ displayName: auth.user.username, characterId: appearance.characterId, palette: appearance.palette }), [auth.user.username, appearance]);
+  const profile = useMemo<PlayerProfile>(() => ({ displayName: auth.user.username, characterId: appearance.characterId, palette: appearance.palette, appearance: appearance.appearance }), [auth.user.username, appearance]);
   const connectRoom = useMemo(() => props.connectRoom ?? createLiveRoomConnector(options => createLiveRoomClient({
     ...options, clientId: auth.user.id, identityStorage: null,
     getTicket: async () => {
@@ -386,7 +388,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   if (!snapshot.document) return <OpeningRoomView title={title} snapshot={snapshot} actions={session.actions} />;
   const setProfile = (next: PlayerProfile) => {
     const safe = { ...next, displayName: auth.user.username };
-    setAppearance({ characterId: resolveCharacterId(safe.characterId), palette: safe.palette ?? {} });
+    setAppearance({ characterId: resolveCharacterId(safe.characterId), palette: safe.palette ?? {}, appearance: normalizeCharacterAppearance(safe.appearance) });
     session.actions.setProfile(safe);
   };
   const actions = { ...session.actions, setProfile };
@@ -424,6 +426,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
     displayName: storedProfile?.displayName ?? '',
     characterId: storedProfile?.characterId ?? storedAppearance.characterId,
     palette: storedProfile?.palette ?? storedAppearance.palette,
+    appearance: storedProfile?.appearance ?? storedAppearance.appearance,
   }), [storedAppearance, storedProfile])
   const returningGuest = useMemo(
     () => parsed.kind === 'join' && !parsed.ownerToken && hasSavedLiveRoomIdentity(parsed.roomId),

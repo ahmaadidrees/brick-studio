@@ -1,18 +1,19 @@
+import { ScaledEnvironment } from '../ScaledEnvironment'
 import { BrickValley, SceneAtmosphere } from './BrickValleyScene'
 import { BRICK_VALLEY_DESCRIPTOR } from './descriptor'
 import type { EnvironmentContentModule, EnvironmentRenderProps } from '../types'
 
-export function BrickValleyRig({ compact, reducedMotion, mode }: EnvironmentRenderProps) {
+export function BrickValleyRig({ compact, reducedMotion, mode, plateSize }: EnvironmentRenderProps) {
   return (
     <>
       <SceneAtmosphere explore />
-      {mode === 'build' && <BrickValley compact={compact} reducedMotion={reducedMotion} withPhysics={false} />}
+      {mode === 'build' && <ScaledEnvironment plateSize={plateSize}><BrickValley compact={compact} reducedMotion={reducedMotion} withPhysics={false} /></ScaledEnvironment>}
     </>
   )
 }
 
-export function BrickValleyWorldSlot({ compact, reducedMotion }: EnvironmentRenderProps) {
-  return <BrickValley compact={compact} reducedMotion={reducedMotion} />
+export function BrickValleyWorldSlot({ compact, reducedMotion, plateSize }: EnvironmentRenderProps) {
+  return <ScaledEnvironment plateSize={plateSize}><BrickValley compact={compact} reducedMotion={reducedMotion} /></ScaledEnvironment>
 }
 
 const module: EnvironmentContentModule = {

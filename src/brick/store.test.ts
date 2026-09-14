@@ -914,3 +914,31 @@ describe('selection placement previews', () => {
     expect(useBrickStore.getState().movingSelection).toBeNull()
   })
 })
+
+
+describe('expanded world metadata history', () => {
+  it('preserves plate size through restore, export, import, undo and redo', () => {
+    const original = createBrickStudioDocument([base], { plateSize: 96 })
+    expect(useBrickStore.getState().restoreDocument(original).ok).toBe(true)
+    expect(JSON.parse(useBrickStore.getState().exportDocument())).toEqual(original)
+    const replacement = createBrickStudioDocument([{ ...base, x: 100 }], { plateSize: 128 })
+    expect(useBrickStore.getState().importDocument(serializeBrickStudioDocument(replacement)).ok).toBe(true)
+    expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(replacement)
+    useBrickStore.getState().undo()
+    expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(original)
+    useBrickStore.getState().redo()
+    expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(replacement)
+  })
+})
+
+
+it('places on expanded edges while rejecting positions outside the active world', () => {
+  useBrickStore.getState().restoreDocument(createBrickStudioDocument([], { plateSize: 128 }))
+  expect(placeAt(127, 127)).toBe(true)
+  expect(placeAt(128, 127)).toBe(false)
+  expect(useBrickStore.getState().bricks).toHaveLength(1)
+  useBrickStore.getState().setViewTarget(120, 120)
+  expect(useBrickStore.getState().viewTarget).toEqual({ x: 120, z: 120 })
+  useBrickStore.getState().restoreDocument(createBrickStudioDocument([]))
+  expect(placeAt(127, 127)).toBe(false)
+})

@@ -14,14 +14,14 @@ describe('CreateBrickSheet', () => {
   it('previews and creates a brick at the expanded dimension limits', () => {
     const onCreate = vi.fn()
     render(<CreateBrickSheet open onCreate={onCreate} onClose={vi.fn()} />)
-    for (const [label, value] of [[/Width/, '32'], [/Depth/, '32'], [/Height/, '96']] as const) {
+    for (const [label, value] of [[/Width/, '64'], [/Depth/, '64'], [/Height/, '192']] as const) {
       const input = screen.getByLabelText(label)
       expect(input.getAttribute('max')).toBe(value)
       fireEvent.change(input, { target: { value } })
     }
-    expect(screen.getByTestId('preview').textContent).toContain('"height":96')
+    expect(screen.getByTestId('preview').textContent).toContain('"height":192')
     fireEvent.click(screen.getByRole('button', { name: 'Create and place' }))
-    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ width: 32, depth: 32, height: 96 }))
+    expect(onCreate).toHaveBeenCalledWith(expect.objectContaining({ width: 64, depth: 64, height: 192 }))
   })
 
   it('creates one deterministic bounded part from the visible form', () => {

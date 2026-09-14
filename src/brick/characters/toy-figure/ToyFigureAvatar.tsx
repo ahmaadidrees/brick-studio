@@ -1,3 +1,4 @@
+import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
 import { useFrame } from '@react-three/fiber'
 import { memo, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
@@ -77,7 +78,6 @@ const TORSO_PROFILE: readonly (readonly [number, number])[] = [
 const SUIT_COLOR = '#e8654a'
 const TRIM_COLOR = '#2d6a80'
 const ACCENT_COLOR = '#f6c445'
-const SKIN_COLOR = '#f0bd86'
 const DARK_COLOR = '#26313d'
 
 type ToyFigureAssets = {
@@ -105,6 +105,7 @@ type ToyFigureAssets = {
   suit: THREE.Material
   trim: THREE.Material
   accent: THREE.Material
+  hair: THREE.Material
   skin: THREE.Material
   dark: THREE.Material
   faceMaterial: THREE.MeshStandardMaterial
@@ -128,7 +129,7 @@ function createPlastic(color: string, compact: boolean): THREE.Material {
   })
 }
 
-function createToyFigureAssets(compact: boolean, palette: CharacterPalette = {}): ToyFigureAssets {
+function createToyFigureAssets(compact: boolean, palette: CharacterPalette = {}, appearance: CharacterAppearance): ToyFigureAssets {
   const sphereRadial = compact ? 12 : 22
   const sphereRings = compact ? 8 : 14
   const capsuleRadial = compact ? 8 : 14
@@ -143,7 +144,7 @@ function createToyFigureAssets(compact: boolean, palette: CharacterPalette = {})
   }
 
   const torsoPoints = TORSO_PROFILE.map(([radius, height]) => new THREE.Vector2(radius, height))
-  const faceTexture = createFaceTexture(compact ? 96 : 160)
+  const faceTexture = createFaceTexture(compact ? 96 : 160, appearance.face)
   const faceMaterial = new THREE.MeshStandardMaterial({
     map: faceTexture,
     transparent: true,
@@ -154,7 +155,8 @@ function createToyFigureAssets(compact: boolean, palette: CharacterPalette = {})
   const suit = createPlastic(palette.primary ?? SUIT_COLOR, compact)
   const trim = createPlastic(palette.secondary ?? TRIM_COLOR, compact)
   const accent = createPlastic(palette.accent ?? ACCENT_COLOR, compact)
-  const skin = createPlastic(palette.skin ?? SKIN_COLOR, compact)
+  const skin = createPlastic(appearance.skinColor, compact)
+  const hair = createPlastic(appearance.hairColor, compact)
   const dark = createPlastic(palette.dark ?? DARK_COLOR, compact)
 
   return {
@@ -202,11 +204,12 @@ function createToyFigureAssets(compact: boolean, palette: CharacterPalette = {})
     trim,
     accent,
     skin,
+    hair,
     dark,
     faceMaterial,
     faceTexture,
     geometries,
-    materials: [suit, trim, accent, skin, dark, faceMaterial],
+    materials: [suit, trim, accent, skin, hair, dark, faceMaterial],
   }
 }
 
@@ -231,6 +234,7 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
   scale = 0.36,
   compact = false,
   palette,
+  appearance: appearanceInput,
 }: ToyFigureAvatarProps) {
   const physicsFollow = useRef<THREE.Group>(null)
   const facing = useRef<THREE.Group>(null)
@@ -257,7 +261,8 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
 
   const runtime = useRef(createToyFigureRuntime(motion.current))
   const shownFaceFrame = useRef(-1)
-  const assets = useMemo(() => createToyFigureAssets(compact, palette), [compact, palette])
+  const appearance = useMemo(() => normalizeCharacterAppearance(appearanceInput), [appearanceInput])
+  const assets = useMemo(() => createToyFigureAssets(compact, palette, appearance), [compact, palette, appearance])
 
   useEffect(() => () => disposeToyFigureAssets(assets), [assets])
 
@@ -340,7 +345,7 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
   })
 
   const {
-    suit, trim, accent, skin, dark, faceMaterial,
+    suit, trim, accent, skin, hair, dark, faceMaterial,
     pelvis: pelvisGeometry, belt, torso, emblem, collar, neck,
     cranium, face, cap, brim, nose,
     shoulderBall, elbowBall, upperArm, forearm, hand,
@@ -397,7 +402,7 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
       <group ref={facing}>
         <group ref={lean}>
           <group ref={squash}>
-            <group ref={flip}>
+            <group ref={flip} scale={[appearance.body === 'broad' ? 1.15 : appearance.body === 'slim' ? 0.88 : 1, 1, 1]}>
               <group ref={pelvis} position={[0, PELVIS_Y, 0]}>
                 <mesh geometry={pelvisGeometry} material={trim} position={[0, 0.01, 0]} castShadow />
                 <mesh geometry={belt} material={dark} position={[0, 0.1, 0]} />
@@ -407,7 +412,16 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
 
               <group ref={chest} position={[0, CHEST_Y, 0]}>
                 <mesh geometry={torso} material={suit} castShadow />
-                {compact ? null : <mesh geometry={emblem} material={accent} position={[0, 0.265, 0.172]} />}
+                {appearance.outfit === 'overalls' && <>
+                  <mesh material={trim} position={[0, 0.17, 0.162]}><boxGeometry args={[0.28, 0.3, 0.04]} /></mesh>
+                  {[-1, 1].map(side => <mesh key={side} material={trim} position={[side * 0.11, 0.33, 0.14]}><boxGeometry args={[0.055, 0.17, 0.045]} /></mesh>)}
+                </>}
+                {appearance.outfit === 'sport' && <mesh material={accent} position={[0, 0.23, 0.174]}><boxGeometry args={[0.47, 0.07, 0.035]} /></mesh>}
+                {appearance.accessory === 'backpack' && <group position={[0, 0.24, -0.23]}>
+                  <mesh material={trim} castShadow><boxGeometry args={[0.34, 0.38, 0.2]} /></mesh>
+                  <mesh material={accent} position={[0, -0.055, -0.115]}><boxGeometry args={[0.25, 0.16, 0.045]} /></mesh>
+                </group>}
+                {compact || appearance.outfit !== 'explorer' ? null : <mesh geometry={emblem} material={accent} position={[0, 0.265, 0.172]} />}
                 <mesh geometry={neck} material={skin} position={[0, 0.435, 0]} />
                 <mesh geometry={collar} material={accent} position={[0, 0.425, 0]} />
                 {arm('left', leftShoulder, leftElbow)}
@@ -417,15 +431,22 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
                   <mesh geometry={cranium} material={skin} position={[0, CRANIUM_LOCAL_Y, 0]} castShadow />
                   <mesh geometry={face} material={faceMaterial} position={[0, CRANIUM_LOCAL_Y, 0]} renderOrder={1} />
                   {compact ? null : <mesh geometry={nose} material={skin} position={[0, 0.179, 0.213]} />}
-                  <mesh geometry={cap} material={suit} position={[0, CRANIUM_LOCAL_Y, 0]} castShadow />
+                  {appearance.hair !== 'none' && <mesh geometry={cap} material={appearance.hair === 'cap' ? suit : hair} position={[0, CRANIUM_LOCAL_Y, 0]} castShadow />}
+                  {appearance.hair === 'short' && <mesh geometry={cap} material={hair} position={[0, 0.27, 0.035]} rotation={[0, 0, -0.24]} scale={[1.04, 1.1, 1]} />}
+                  {appearance.hair === 'curls' && [-2, -1, 0, 1, 2].map((i) => <mesh key={i} material={hair} position={[i * 0.088, 0.46 - Math.abs(i) * 0.023, 0.06]} castShadow><sphereGeometry args={[0.082, 10, 8]} /></mesh>)}
+                  {appearance.hair === 'bun' && <mesh material={hair} position={[0, 0.48, -0.13]} castShadow><sphereGeometry args={[0.12, 12, 10]} /></mesh>}
+                  {appearance.accessory === 'glasses' && <group position={[0, 0.235, 0.221]}>
+                    {[-1, 1].map(side => <mesh key={side} material={dark} position={[side * 0.097, 0, 0]}><torusGeometry args={[0.07, 0.012, 6, 16]} /></mesh>)}
+                    <mesh material={dark}><boxGeometry args={[0.06, 0.018, 0.02]} /></mesh>
+                  </group>}
                   {/* The brim survives the compact tier: without it the cap reads
                       as a bald dome and the character loses its silhouette. */}
-                  <mesh
+                  {appearance.hair === 'cap' && <mesh
                     geometry={brim}
                     material={accent}
                     position={[0, CRANIUM_LOCAL_Y + CAP_EDGE_Y, 0]}
                     rotation={[0.2, 0, 0]}
-                  />
+                  />}
                 </group>
               </group>
             </group>

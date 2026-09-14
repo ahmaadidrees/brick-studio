@@ -51,8 +51,9 @@ export function getBuildCameraLimits(
   bounds: BuildBounds,
   verticalFovDegrees: number,
   aspect: number,
+  plateSize: number = GRID_SIZE,
 ): BuildCameraLimits {
-  const halfPlate = GRID_SIZE * STUD / 2
+  const halfPlate = plateSize * STUD / 2
   const frameDistance = getFrameDistance(bounds, verticalFovDegrees, aspect)
 
   return {

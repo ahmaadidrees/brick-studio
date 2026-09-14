@@ -1,3 +1,5 @@
+import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
+import { getBuildPlateSize, type BuildPlateSize } from './buildPlate'
 import { CustomColorPicker } from './CustomColorPicker'
 import { StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
@@ -44,7 +46,7 @@ import {
 import { requestExploreMode } from './modeCommands'
 import { OnboardingGuide, useBuilderOnboarding } from './OnboardingGuide'
 import { PartThumbnail } from './PartThumbnail'
-import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
+import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
@@ -980,12 +982,14 @@ export type BrickStudioAppProps = StudioDocumentCommands & {
   liveOverlay?: ReactNode
   customPartPolicy?: BrickStudioCustomPartPolicy
   contentPolicy?: {
+    plateSize?: BuildPlateSize
     environmentId: EnvironmentId
     characterId?: string
+    appearance?: CharacterAppearance
     palette?: CharacterPalette
     canChangeEnvironment: boolean
     environmentHelp?: string
-    onApply: (selection: ContentPickerSelection) => void
+    onApply: (selection: ContentPickerSelection, plateSize?: BuildPlateSize) => boolean | void
   }
 }
 
@@ -1026,16 +1030,20 @@ export default function BrickStudioApp({
       return initial
     },
   )
+  const [localPlateSize, setLocalPlateSize] = useState<BuildPlateSize>(() => getBuildPlateSize(publishedWorld?.document ?? {}))
   const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
   const [worldSetupOpen, setWorldSetupOpen] = useState(false)
   const [worldSetupTab, setWorldSetupTab] = useState<'environment' | 'character'>('environment')
   const [contentPreview, setContentPreview] = useState<ContentPickerSelection | null>(null)
   const [environmentPreviewStatuses, setEnvironmentPreviewStatuses] = useState<Partial<Record<EnvironmentId, 'ready' | 'loading' | 'unavailable'>>>({})
   const customParts = customPartPolicy?.customParts ?? localCustomParts
+  const plateSize = contentPolicy ? getBuildPlateSize(contentPolicy) : localPlateSize
   const environmentId = contentPolicy?.environmentId ?? localEnvironmentId
   const characterId: CharacterId = contentPolicy
     ? resolveCharacterId(contentPolicy.characterId)
     : localAppearance.characterId
+  const characterAppearance = contentPolicy?.appearance ?? localAppearance.appearance
+  const previewCharacterAppearance = contentPreview?.appearance ?? characterAppearance
   const characterPalette = contentPolicy?.palette ?? localAppearance.palette
   const previewEnvironmentId = contentPreview?.environmentId ?? environmentId
   const previewCharacterId = contentPreview?.characterId ?? characterId
@@ -1048,26 +1056,36 @@ export default function BrickStudioApp({
     environmentId,
     characterId,
     palette: characterPalette,
-  }), [characterId, characterPalette, environmentId])
+    appearance: characterAppearance,
+  }), [characterId, characterPalette, characterAppearance, environmentId])
   const selectableEnvironments = useMemo(() => {
     if (!contentPolicy || contentPolicy.canChangeEnvironment) return ENVIRONMENT_DESCRIPTORS
     return ENVIRONMENT_DESCRIPTORS.filter(({ id }) => id === environmentId)
   }, [contentPolicy, environmentId])
-  const applyContentSelection = useCallback((selection: ContentPickerSelection) => {
+  const applyContentSelection = useCallback((selection: ContentPickerSelection, requestedPlateSize?: BuildPlateSize) => {
     if (!selection.environmentId || !selection.characterId) return
+    if (useBrickStore.getState().graphicsPaused) return
+    if (!contentPolicy && requestedPlateSize && requestedPlateSize !== plateSize) {
+      const resized = resizeBuildPlate(useBrickStore.getState().getDocumentSnapshot(), requestedPlateSize)
+      if (!resized.ok) { useBrickStore.setState({ toast: resized.error.message }); return }
+      const result = useBrickStore.getState().importDocument(JSON.stringify(resized.document), 'Resize build plate')
+      if (!result.ok) return
+      setLocalPlateSize(requestedPlateSize)
+    }
+    if (contentPolicy && contentPolicy.onApply(selection, requestedPlateSize) === false) return
     const nextAppearance = {
       characterId: selection.characterId,
       palette: { ...selection.palette },
+      appearance: normalizeCharacterAppearance(selection.appearance),
     }
     saveCharacterPreferences(nextAppearance, undefined, selection.environmentId)
-    if (contentPolicy) contentPolicy.onApply({ ...selection, palette: nextAppearance.palette })
-    else {
+    if (!contentPolicy) {
       setLocalEnvironmentId(selection.environmentId)
       setLocalAppearance(nextAppearance)
     }
     setWorldSetupOpen(false)
     setContentPreview(null)
-  }, [contentPolicy])
+  }, [contentPolicy, plateSize])
   useLayoutEffect(() => {
     registerCustomParts(customParts)
   }, [customParts])
@@ -1171,7 +1189,9 @@ export default function BrickStudioApp({
   }, !readOnly && !livePolicy && !cloud.world, {
     environmentId,
     customParts,
+    plateSize,
     onDocumentLoaded: (document) => {
+      setLocalPlateSize(getBuildPlateSize(document))
       registerCustomParts(document.customParts)
       setLocalEnvironmentId(document.environmentId)
       setLocalCustomParts(document.customParts)
@@ -1181,11 +1201,12 @@ export default function BrickStudioApp({
     if (!publishedWorld) return
     registerCustomParts(publishedWorld.document.customParts)
     useBrickStore.getState().restoreDocument(publishedWorld.document)
+    setLocalPlateSize(getBuildPlateSize(publishedWorld.document))
     setLocalEnvironmentId(publishedWorld.document.environmentId)
     setLocalCustomParts(publishedWorld.document.customParts)
     useBrickStore.getState().setMode('explore')
   }, [publishedWorld])
-  const showOnboarding = onboarding.open && (brickCount === 0 || onboarding.forced)
+  const showOnboarding = onboarding.open && !worldSetupOpen && (brickCount === 0 || onboarding.forced)
   // This label describes the destination and confirmed cloud state. Guest autosave
   // reports failures separately and does not expose a saved acknowledgement here.
   const saveStatus: HeaderProps['saveStatus'] = livePolicy
@@ -1213,6 +1234,7 @@ export default function BrickStudioApp({
           environmentId={previewEnvironmentId ?? environmentId}
           localCharacterId={previewCharacterId ?? characterId}
           localCharacterPalette={previewCharacterPalette}
+          localCharacterAppearance={previewCharacterAppearance}
           onEnvironmentStatusChange={updateEnvironmentPreviewStatus}
         />
         <MarqueeOverlay />
@@ -1282,6 +1304,8 @@ export default function BrickStudioApp({
       <WorldAndCharacterSheet
         open={worldSetupOpen}
         initialTab={worldSetupTab}
+        plateSize={plateSize}
+        canResizePlate={!readOnly && (!contentPolicy || contentPolicy.canChangeEnvironment)}
         environmentDescriptors={selectableEnvironments}
         characterDescriptors={CHARACTER_DESCRIPTORS}
         selection={contentSelection}

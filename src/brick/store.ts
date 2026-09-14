@@ -11,6 +11,7 @@ import {
   type BrickStudioDocumentError,
 } from './brickDocument'
 import { BRICK_BUDGETS } from './budgets'
+import { getBuildPlateSize } from './buildPlate'
 import { draftIsValid as coreDraftIsValid } from './brickRules'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, registerCustomParts, rotatedSize, supportHeightForFootprint } from './parts'
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
@@ -125,7 +126,7 @@ export type BrickState = {
   resizeSelectedParts: (partIdsByBrickId: Readonly<Record<string, string>>) => boolean
   newBuild: () => boolean
   exportDocument: () => string
-  importDocument: (serialized: string) => BrickDocumentCommandResult
+  importDocument: (serialized: string, historyLabel?: string) => BrickDocumentCommandResult
   restoreDocument: (document: BrickStudioDocument) => BrickDocumentCommandResult
   undo: () => void
   redo: () => void
@@ -286,8 +287,8 @@ function selectionPatch(ids: string[]) {
   return { selectedIds: ids, selectedId: ids.at(-1) ?? null }
 }
 
-export function draftIsValid(draft: BrickDraft, bricks: BrickInstance[], ignoredId: string | null = null) {
-  return coreDraftIsValid(draft, bricks, ignoredId)
+export function draftIsValid(draft: BrickDraft, bricks: BrickInstance[], ignoredId: string | null = null, plateSize: number = GRID_SIZE) {
+  return coreDraftIsValid(draft, bricks, ignoredId, BRICK_PART_MAP, plateSize)
 }
 
 /** All preview pieces translated relative to the first selected brick. */
@@ -304,9 +305,9 @@ export function selectionDrafts(state: Pick<BrickState, 'draft' | 'movingSelecti
   }))
 }
 
-export function selectionDraftIsValid(state: Pick<BrickState, 'draft' | 'movingSelection' | 'movingId' | 'bricks' | 'brickBudget'>): boolean {
+export function selectionDraftIsValid(state: Pick<BrickState, 'draft' | 'movingSelection' | 'movingId' | 'bricks' | 'brickBudget'> & Partial<Pick<BrickState, 'documentMetadata'>>): boolean {
   if (!state.draft) return false
-  if (!state.movingSelection) return draftIsValid(state.draft, state.bricks, state.movingId)
+  if (!state.movingSelection) return draftIsValid(state.draft, state.bricks, state.movingId, getBuildPlateSize(state.documentMetadata ?? {}))
   const { originals, duplicate } = state.movingSelection
   // Never overwrite an edit or deletion received while a move was in progress.
   if (!duplicate && originals.some((original) => {
@@ -315,7 +316,7 @@ export function selectionDraftIsValid(state: Pick<BrickState, 'draft' | 'movingS
   })) return false
   const ids = new Set(originals.map((brick) => brick.id))
   const remaining = duplicate ? state.bricks : state.bricks.filter((brick) => !ids.has(brick.id))
-  return validateBrickGroup(selectionDrafts(state), remaining, duplicate ? state.brickBudget : Math.max(state.brickBudget, state.bricks.length)).valid
+  return validateBrickGroup(selectionDrafts(state), remaining, duplicate ? state.brickBudget : Math.max(state.brickBudget, state.bricks.length), getBuildPlateSize(state.documentMetadata ?? {})).valid
 }
 
 export type BrickGroupValidation = {
@@ -327,13 +328,14 @@ export function validateBrickGroup(
   drafts: BrickDraft[],
   bricks: BrickInstance[],
   brickBudget: number,
+  plateSize: number = GRID_SIZE,
 ): BrickGroupValidation {
   if (bricks.length + drafts.length > brickBudget) return { valid: false, reason: 'budget' }
 
   const staged = bricks.map(cloneBrick)
   for (let index = 0; index < drafts.length; index += 1) {
     const draft = drafts[index]
-    if (!draftIsValid(draft, staged)) return { valid: false, reason: 'placement' }
+    if (!draftIsValid(draft, staged, null, plateSize)) return { valid: false, reason: 'placement' }
     staged.push({ ...draft, id: `group-validation-${index}` })
   }
   return { valid: true, reason: null }
@@ -345,10 +347,11 @@ export function findGroupPasteDrafts(
   clipboard: BrickClipboard,
   bricks: BrickInstance[],
   brickBudget: number,
+  plateSize: number = GRID_SIZE,
 ): { drafts: BrickDraft[] | null; reason: BrickGroupValidation['reason'] } {
   if (bricks.length + clipboard.bricks.length > brickBudget) return { drafts: null, reason: 'budget' }
 
-  for (let distance = PASTE_OFFSET_STEP; distance <= GRID_SIZE; distance += PASTE_OFFSET_STEP) {
+  for (let distance = PASTE_OFFSET_STEP; distance <= plateSize; distance += PASTE_OFFSET_STEP) {
     const offsets = [
       [distance, distance],
       [-distance, distance],
@@ -365,7 +368,7 @@ export function findGroupPasteDrafts(
         x: brick.x + xOffset,
         z: brick.z + zOffset,
       }))
-      if (validateBrickGroup(drafts, bricks, brickBudget).valid) return { drafts, reason: null }
+      if (validateBrickGroup(drafts, bricks, brickBudget, plateSize).valid) return { drafts, reason: null }
     }
   }
   return { drafts: null, reason: 'placement' }
@@ -424,12 +427,12 @@ function rotateBrickGroup(bricks: BrickInstance[]): BrickInstance[] | null {
 
 function transformedSelectionIsValid(
   transformed: BrickInstance[],
-  state: Pick<BrickState, 'bricks' | 'selectedIds' | 'selectedId' | 'brickBudget'>,
+  state: Pick<BrickState, 'bricks' | 'selectedIds' | 'selectedId' | 'brickBudget' | 'documentMetadata'>,
 ) {
   const selected = new Set(effectiveSelectedIds(state))
   const stationary = state.bricks.filter((brick) => !selected.has(brick.id))
   const drafts = transformed.map(({ id: _id, ...brick }) => brick)
-  return validateBrickGroup(drafts, stationary, state.brickBudget).valid
+  return validateBrickGroup(drafts, stationary, state.brickBudget, getBuildPlateSize(state.documentMetadata)).valid
 }
 
 function suggestedDraft(
@@ -437,12 +440,13 @@ function suggestedDraft(
   color: string,
   origin: { x: number; z: number } | null = null,
   bricks: BrickInstance[] = [],
+  plateSize: number = GRID_SIZE,
 ): BrickDraft {
   const part = BRICK_PART_MAP[partId]
-  const centerX = origin?.x ?? GRID_SIZE / 2
-  const centerZ = origin?.z ?? GRID_SIZE / 2
-  const x = Math.max(0, Math.min(GRID_SIZE - part.width, Math.floor(centerX - part.width / 2)))
-  const z = Math.max(0, Math.min(GRID_SIZE - part.depth, Math.floor(centerZ - part.depth / 2)))
+  const centerX = origin?.x ?? plateSize / 2
+  const centerZ = origin?.z ?? plateSize / 2
+  const x = Math.max(0, Math.min(plateSize - part.width, Math.floor(centerX - part.width / 2)))
+  const z = Math.max(0, Math.min(plateSize - part.depth, Math.floor(centerZ - part.depth / 2)))
   return { partId, x, y: supportHeightForFootprint(bricks, x, z, part.width, part.depth), z, rotation: 0, color }
 }
 
@@ -490,10 +494,10 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   clipboard: null,
   documentMetadata: {},
   setDocumentMetadata: (metadata) => {
-    const next = { environmentId: metadata.environmentId, customParts: metadata.customParts ?? [] }
+    const next = { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts ?? [] }
     if (JSON.stringify(get().documentMetadata) === JSON.stringify(next)) return
     registerCustomParts(metadata.customParts ?? [])
-    set({ documentMetadata: { environmentId: metadata.environmentId, customParts: metadata.customParts?.map((part) => ({ ...part })) ?? [] } })
+    set({ documentMetadata: { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts?.map((part) => ({ ...part })) ?? [] } })
   },
   getDocumentSnapshot: () => createBrickStudioDocument(get().bricks, get().documentMetadata),
   undoStack: [],
@@ -529,7 +533,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
 
   setMode: (mode) => {
     const state = get()
-    const rearmed = state.activePartId ? suggestedDraft(state.activePartId, state.activeColor, state.viewTarget, state.bricks) : null
+    const rearmed = state.activePartId ? suggestedDraft(state.activePartId, state.activeColor, state.viewTarget, state.bricks, getBuildPlateSize(state.documentMetadata)) : null
     set({
       mode,
       selectedIds: [],
@@ -553,7 +557,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     selectedIds: [],
     selectedId: null,
     movingId: null, movingSelection: null,
-    draft: suggestedDraft(partId, state.activeColor, state.viewTarget, state.bricks),
+    draft: suggestedDraft(partId, state.activeColor, state.viewTarget, state.bricks, getBuildPlateSize(state.documentMetadata)),
     announcement: `${BRICK_PART_MAP[partId].name} ready to place.`,
   })),
   setActiveColor: (color) => {
@@ -807,10 +811,10 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
       const after = {
         ...before,
         rotation: next.rotation,
-        x: Math.min(Math.max(next.x, 0), GRID_SIZE - next.size.width),
-        z: Math.min(Math.max(next.z, 0), GRID_SIZE - next.size.depth),
+        x: Math.min(Math.max(next.x, 0), getBuildPlateSize(state.documentMetadata) - next.size.width),
+        z: Math.min(Math.max(next.z, 0), getBuildPlateSize(state.documentMetadata) - next.size.depth),
       }
-      if (draftIsValid(after, state.bricks, before.id)) {
+      if (draftIsValid(after, state.bricks, before.id, getBuildPlateSize(state.documentMetadata))) {
         set({
           bricks: state.bricks.map((item) => item.id === before.id ? after : item),
           undoStack: appendHistory(state.undoStack, singleHistoryEntry(before, after, index, index, 'Rotate brick')),
@@ -850,7 +854,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     if (!target) return
     const next = { ...target, x: target.x + dx, y: Math.max(0, target.y + dy), z: target.z + dz }
     const ignored = state.draft ? state.movingId : state.selectedId
-    if (state.movingSelection ? !selectionDraftIsValid({ ...state, draft: next }) : !draftIsValid(next, state.bricks, ignored)) {
+    if (state.movingSelection ? !selectionDraftIsValid({ ...state, draft: next }) : !draftIsValid(next, state.bricks, ignored, getBuildPlateSize(state.documentMetadata))) {
       set({ toast: 'That move is blocked by the plate edge or another brick.' })
       return
     }
@@ -888,7 +892,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   paste: () => {
     const state = get()
     if (!state.clipboard?.bricks.length) return
-    const placement = findGroupPasteDrafts(state.clipboard, state.bricks, state.brickBudget)
+    const placement = findGroupPasteDrafts(state.clipboard, state.bricks, state.brickBudget, getBuildPlateSize(state.documentMetadata))
     if (!placement.drafts) {
       set({
         toast: placement.reason === 'budget'
@@ -982,7 +986,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     return hadBuild
   },
   exportDocument: () => serializeBrickStudioDocument(get().getDocumentSnapshot()),
-  importDocument: (serialized) => {
+  importDocument: (serialized, historyLabel = 'Import project') => {
     const state = get()
     const result = parseBrickStudioDocument(serialized, { maxBricks: state.brickBudget })
     if (!result.ok) {
@@ -996,7 +1000,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     set({
       mode: 'build',
       bricks: nextBricks,
-      documentMetadata: { environmentId: result.document.environmentId, customParts: result.document.customParts },
+      documentMetadata: { plateSize: result.document.plateSize, environmentId: result.document.environmentId, customParts: result.document.customParts },
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
@@ -1004,7 +1008,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
       clipboard: null,
       redoStack: changed ? [] : state.redoStack,
       undoStack: changed
-        ? appendHistory(state.undoStack, { ...replacementHistoryEntry(state.bricks, nextBricks, 'Import project'), documentBefore: beforeDocument, documentAfter: result.document })
+        ? appendHistory(state.undoStack, { ...replacementHistoryEntry(state.bricks, nextBricks, historyLabel), documentBefore: beforeDocument, documentAfter: result.document })
         : state.undoStack,
       viewRequest: { preset: 'home', nonce: state.viewRequest.nonce + 1 },
       selectionMode: false,
@@ -1014,7 +1018,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
       touchRunning: false,
       exploreSpawnStatus: 'idle',
       exploreLastSafePosition: null,
-      toast: changed ? `Imported ${nextBricks.length} bricks.` : 'The imported project already matches this build.',
+      toast: changed ? (historyLabel === 'Resize build plate' ? 'Build plate resized. Undo can restore its previous size.' : `Imported ${nextBricks.length} bricks.`) : 'The imported project already matches this build.',
     })
     return { ok: true }
   },
@@ -1029,7 +1033,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     set((state) => ({
       mode: 'build',
       bricks: restoredBricks,
-      documentMetadata: { environmentId: result.document.environmentId, customParts: result.document.customParts },
+      documentMetadata: { plateSize: result.document.plateSize, environmentId: result.document.environmentId, customParts: result.document.customParts },
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
@@ -1060,7 +1064,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     const brushArmed = !previous.documentBefore && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (previous.documentBefore) registerCustomParts(previous.documentBefore.customParts)
     set({
-      ...(previous.documentBefore ? { documentMetadata: { environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts }, activePartId: null, clipboard: null } : {}),
+      ...(previous.documentBefore ? { documentMetadata: { plateSize: previous.documentBefore.plateSize, environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts }, activePartId: null, clipboard: null } : {}),
       bricks: previous.documentBefore?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, previous, 'undo'),
       undoStack: state.undoStack.slice(0, -1),
       redoStack: appendHistory(state.redoStack, previous),
@@ -1082,7 +1086,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     const brushArmed = !next.documentAfter && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (next.documentAfter) registerCustomParts(next.documentAfter.customParts)
     set({
-      ...(next.documentAfter ? { documentMetadata: { environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts }, activePartId: null, clipboard: null } : {}),
+      ...(next.documentAfter ? { documentMetadata: { plateSize: next.documentAfter.plateSize, environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts }, activePartId: null, clipboard: null } : {}),
       bricks: next.documentAfter?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, next, 'redo'),
       undoStack: appendHistory(state.undoStack, next),
       redoStack: state.redoStack.slice(0, -1),
@@ -1168,8 +1172,8 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   setMarquee: (marquee) => set((state) => state.marquee === marquee ? state : { marquee }),
   setGrabInProgress: (grabInProgress) => set((state) => state.grabInProgress === grabInProgress ? state : { grabInProgress }),
   setViewTarget: (x, z) => set((state) => {
-    const clampedX = Math.max(0, Math.min(GRID_SIZE, Math.round(x)))
-    const clampedZ = Math.max(0, Math.min(GRID_SIZE, Math.round(z)))
+    const clampedX = Math.max(0, Math.min(getBuildPlateSize(state.documentMetadata), Math.round(x)))
+    const clampedZ = Math.max(0, Math.min(getBuildPlateSize(state.documentMetadata), Math.round(z)))
     return state.viewTarget?.x === clampedX && state.viewTarget?.z === clampedZ
       ? state
       : { viewTarget: { x: clampedX, z: clampedZ } }

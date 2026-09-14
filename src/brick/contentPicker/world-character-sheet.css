@@ -216,3 +216,34 @@
   .world-character-sheet-backdrop,
   .world-character-sheet-panel { animation: none; }
 }
+
+.plate-size-picker { margin: 0 0 16px; padding: 14px; border: 1px solid #dce3e8; border-radius: 12px; }
+.plate-size-picker legend { font-weight: 700; padding: 0 5px; }
+.plate-size-picker p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: #526171; }
+.plate-size-picker > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.plate-size-picker button { padding: 9px 14px; border: 1px solid #ccd5df; border-radius: 8px; background: white; color: #253447; cursor: pointer; }
+.plate-size-picker button[aria-pressed="true"] { background: #e6f1ff; border-color: #3975b9; color: #194e8b; font-weight: 700; }
+.plate-size-picker small { display: block; margin-top: 8px; }
+
+.wardrobe-panel { padding: 16px 0; border-top: 1px solid #dce3e8; }
+.wardrobe-panel h3 { margin: 0 0 5px; }
+.wardrobe-panel p { font-size: 13px; color: #526171; }
+.wardrobe-save { display: flex; gap: 8px; flex-wrap: wrap; }
+.wardrobe-save input { min-width: 100px; flex: 1; padding: 9px; border: 1px solid #ccd5df; border-radius: 8px; }
+.wardrobe-panel button { border: 1px solid #ccd5df; border-radius: 8px; padding: 8px 10px; background: white; color: #253447; cursor: pointer; }
+.wardrobe-panel button:disabled { opacity: .5; cursor: default; }
+.wardrobe-panel ul { list-style: none; padding: 0; display: grid; gap: 8px; }
+.wardrobe-panel li { display: flex; gap: 6px; }
+.wardrobe-look { flex: 1; text-align: left; overflow-wrap: anywhere; }
+.wardrobe-swatches { display: inline-flex; gap: 2px; margin-right: 8px; }
+.wardrobe-swatches i { width: 12px; height: 16px; border-radius: 3px; }
+.wardrobe-panel button[aria-pressed="true"] { color: #92600c; background: #fff5d6; }
+
+.look-colors { padding: 16px 0; border-top: 1px solid #dce3e8; }
+.look-colors h3 { margin: 0 0 12px; }
+.look-color-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.look-colors button { background: white; color: #253447; border: 1px solid #ccd5df; border-radius: 8px; padding: 9px; cursor: pointer; }
+.look-color-presets span { display: flex; justify-content: center; gap: 3px; margin-bottom: 5px; }
+.look-color-presets i { width: 22px; height: 15px; border-radius: 4px; }
+.look-color-locks { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; font-size: 12px; }
+.look-color-locks label { display: flex; align-items: center; gap: 4px; }
