@@ -34,3 +34,13 @@ World-title menu, visible Scene/Character entries, independent save status, cons
 Final Node 22 frontend run: **866 tests across 90 files passed**. TypeScript/build and diff check passed. Six real-browser viewport/modality cases passed with no header/toolbar overlaps, offscreen controls or page exceptions. UI placement -> Home -> Continue building preserved the complete stored document. See `docs/classroom/REFINEMENT-NAVIGATION-QA.md` and `scripts/qa/verify-refinement-ui.mjs`.
 
 No deployment yet. Next work is persisted world plate dimensions and their placement/scene/authority consumers, followed by the dedicated character customizer and content. The goal remains full scope; existing unchecked delivery items require integration/hosted proof before release.
+
+## Checkpoint 3 — expanded worlds and character studio
+
+Implementation committed as `ed8af41`: plate sizes64/96/128, centered resize with shrink rejection, explicit schema3 for expanded documents, per-world bounds across placement/render/physics/selection, persisted metadata and history. Mixed-version rooms reject unsupported edits; guest and classroom routes forward client capability. Custom bricks64×64×192 use reduced stud tessellation on large footprints.
+
+Character studio includes an actual rotatable runtime preview with idle/walk/run/jump, Toy Figure body/face/hair/outfit/accessory/skin/hair colors, category locks and randomization, coordinated color sets, and local named outfits/favorites. Pip/Fern/Nova were authored in Blender, exported, reimport-verified and registered lazily with instance-local tinting and procedural animation. Editable source and reproducible script are checked in.
+
+Verification so far: full frontend892 + worker77 + types/build passed; additional worker appearance propagation test passes (world-room suite32). Browser cold reload retains128 plate and Toy Figure variants. Expanded scenery supports movement beyond128 plate boundaries in all3 scenes on host Chrome. See EXPANDED-PERFORMANCE-QA.md; physical Chromebook performance and extreme24-part stress remain unverified. Local QA found and fixed Scene-tab shortcut navigation and320px sheet overflow; final visual recheck is in progress.
+
+Staging worker version9032bff3-2835-4299-8e0a-b221fe253e85; committed frontend preview virtual-legos-788vjxwd9-ahmaadidrees-projects.vercel.app. Latest narrow-screen CSS fix is not yet in that preview. Production unchanged. Hosted two-client authoritative persistence/appearance checks, final compact-screen review, release commit/preview refresh and production verification remain required.
