@@ -89,8 +89,8 @@ describe('AppErrorBoundary', () => {
     expect(button).toHaveAccessibleDescription('Build saved on this device · the world you were in could not be captured')
     fireEvent.click(button)
     expect(download).toHaveBeenCalledTimes(1)
-    expect(download).toHaveBeenCalledWith(document, 'brick-studio-build')
-    expect(screen.getByRole('status')).toHaveTextContent('downloaded as brick-studio-build.brickstudio.json')
+    expect(download).toHaveBeenCalledWith(document, 'brickgineers-build')
+    expect(screen.getByRole('status')).toHaveTextContent('downloaded as brickgineers-build.brickstudio.json')
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
     expect(reload).toHaveBeenCalledTimes(1)
@@ -122,7 +122,7 @@ describe('AppErrorBoundary', () => {
       </AppErrorBoundary>,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Download build saved on this device' }))
-    expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brick-studio-build')
+    expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brickgineers-build')
   })
 
   it('surfaces the export error message when the download cannot be prepared', () => {
@@ -160,17 +160,17 @@ describe('AppErrorBoundary', () => {
     const active = screen.getByRole('button', { name: 'Download the world I was in' })
     expect(active).toHaveAccessibleDescription(CLOUD_LABEL)
     fireEvent.click(active)
-    expect(download).toHaveBeenLastCalledWith(classWorld, 'brick-studio-class-world-recovered')
+    expect(download).toHaveBeenLastCalledWith(classWorld, 'brickgineers-class-world-recovered')
     expect(screen.getByRole('status')).toHaveTextContent(
-      'The world you were in was downloaded as brick-studio-class-world-recovered.brickstudio.json.',
+      'The world you were in was downloaded as brickgineers-class-world-recovered.brickstudio.json.',
     )
 
     const older = screen.getByRole('button', { name: 'Download older build saved on this device' })
     expect(older).toHaveAccessibleDescription('Build saved on this device earlier · kept separate from the world above')
     fireEvent.click(older)
-    expect(download).toHaveBeenLastCalledWith(privateBuild, 'brick-studio-build')
+    expect(download).toHaveBeenLastCalledWith(privateBuild, 'brickgineers-build')
     expect(screen.getByRole('status')).toHaveTextContent(
-      'The build saved on this device was downloaded as brick-studio-build.brickstudio.json.',
+      'The build saved on this device was downloaded as brickgineers-build.brickstudio.json.',
     )
     expect(download).toHaveBeenCalledTimes(2)
   })
@@ -192,10 +192,10 @@ describe('AppErrorBoundary', () => {
     const active = screen.getByRole('button', { name: 'Download the world I was in' })
     expect(active).toHaveAccessibleDescription(LIVE_LABEL)
     fireEvent.click(active)
-    expect(download).toHaveBeenLastCalledWith(liveWorld, 'brick-studio-live-room-recovered')
+    expect(download).toHaveBeenLastCalledWith(liveWorld, 'brickgineers-live-room-recovered')
 
     fireEvent.click(screen.getByRole('button', { name: 'Download older build saved on this device' }))
-    expect(download).toHaveBeenLastCalledWith(privateBuild, 'brick-studio-build')
+    expect(download).toHaveBeenLastCalledWith(privateBuild, 'brickgineers-build')
   })
 
   it('shows a single download when the local autosave already matches the open build', () => {
@@ -215,7 +215,7 @@ describe('AppErrorBoundary', () => {
     expect(downloads[0]).toHaveTextContent('Download the world I was in')
     expect(downloads[0]).toHaveAccessibleDescription(LOCAL_LABEL)
     fireEvent.click(downloads[0])
-    expect(download).toHaveBeenCalledWith(document, 'brick-studio-build-recovered')
+    expect(download).toHaveBeenCalledWith(document, 'brickgineers-build-recovered')
   })
 
   it('keeps an older local autosave downloadable when the open local build moved past it', () => {
@@ -233,9 +233,9 @@ describe('AppErrorBoundary', () => {
     const active = screen.getByRole('button', { name: 'Download the world I was in' })
     expect(active).toHaveAccessibleDescription(LOCAL_LABEL)
     fireEvent.click(active)
-    expect(download).toHaveBeenLastCalledWith(unsaved, 'brick-studio-build-recovered')
+    expect(download).toHaveBeenLastCalledWith(unsaved, 'brickgineers-build-recovered')
     fireEvent.click(screen.getByRole('button', { name: 'Download older build saved on this device' }))
-    expect(download).toHaveBeenLastCalledWith(expect.objectContaining({ bricks: [brick] }), 'brick-studio-build')
+    expect(download).toHaveBeenLastCalledWith(expect.objectContaining({ bricks: [brick] }), 'brickgineers-build')
   })
 
   it('captures the open world before the crashing subtree tears down and resets the store', () => {
@@ -270,9 +270,9 @@ describe('AppErrorBoundary', () => {
     const active = screen.getByRole('button', { name: 'Download the world I was in' })
     expect(active).toHaveAccessibleDescription(LIVE_LABEL)
     fireEvent.click(active)
-    expect(download).toHaveBeenLastCalledWith(liveWorld, 'brick-studio-live-room-recovered')
+    expect(download).toHaveBeenLastCalledWith(liveWorld, 'brickgineers-live-room-recovered')
     fireEvent.click(screen.getByRole('button', { name: 'Download older build saved on this device' }))
-    expect(download).toHaveBeenLastCalledWith(privateBuild, 'brick-studio-build')
+    expect(download).toHaveBeenLastCalledWith(privateBuild, 'brickgineers-build')
   })
 
   it('ignores a provider that throws and falls back to the build saved on this device', () => {
@@ -288,7 +288,7 @@ describe('AppErrorBoundary', () => {
 
     expect(screen.queryByRole('button', { name: 'Download the world I was in' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Download build saved on this device' }))
-    expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brick-studio-build')
+    expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brickgineers-build')
   })
 
   it('ignores a provider whose document fails validation and falls back to the build saved on this device', () => {
@@ -310,6 +310,6 @@ describe('AppErrorBoundary', () => {
 
     expect(screen.queryByRole('button', { name: 'Download the world I was in' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Download build saved on this device' }))
-    expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brick-studio-build')
+    expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brickgineers-build')
   })
 })

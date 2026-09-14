@@ -1,17 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Copy } from 'lucide-react'
+import { BRAND_NAME } from '../brand'
+import { Button, Dialog } from '../ui'
 import BrickStudioApp from './BrickStudioApp'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY, saveLocalBrickStudioProject } from './documentPersistence'
 import { loadPublishedWorld, type PublishedWorld } from './publishedWorlds'
 
-function ReplacementDialog({ children, onCancel }: { children: React.ReactNode; onCancel: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  useEffect(() => { dialog.current?.showModal() }, [])
-  return <dialog ref={dialog} onCancel={onCancel} aria-labelledby="remix-replace-title"
-    style={{ maxWidth: 'min(28rem, 90vw)', borderRadius: 16, padding: 24, border: '1px solid #bccbd2' }}>
-    {children}
-  </dialog>
-}
-
+/**
+ * Read-only viewer for `/world#…` links (board 15). The world opens straight into Explore
+ * through BrickStudioApp; "Make a copy" starts a guest remix, which replaces the browser's
+ * guest draft only after an explicit confirmation.
+ */
 export default function PublishedWorldPage() {
   const [world, setWorld] = useState<PublishedWorld | null>(null)
   const [error, setError] = useState('')
@@ -30,10 +29,23 @@ export default function PublishedWorldPage() {
   }, [])
 
   if (error) {
-    return <main className="published-world-state"><h1>World unavailable</h1><p>{error}</p><a href="/build">Open Brick Studio</a></main>
+    return (
+      <main className="published-world-state" aria-labelledby="published-world-state-title">
+        <h1 id="published-world-state-title">World unavailable</h1>
+        <p>{error}</p>
+        <a href="/build">Go to builder</a>
+      </main>
+    )
   }
   if (remixed) return <BrickStudioApp />
-  if (!world) return <main className="published-world-state"><h1>Opening published world…</h1></main>
+  if (!world) {
+    return (
+      <main className="published-world-state" aria-busy="true" aria-labelledby="published-world-state-title">
+        <h1 id="published-world-state-title">Opening this world…</h1>
+        <p>Just a moment while {BRAND_NAME} gets things ready.</p>
+      </main>
+    )
+  }
 
   const remix = (replaceExisting = false) => {
     setRemixError('')
@@ -49,22 +61,29 @@ export default function PublishedWorldPage() {
         return
       }
     } catch {
-      setRemixError('This browser blocked local storage, so the remix could not be saved.')
+      setRemixError('This browser blocked local storage, so the copy could not be saved.')
       return
     }
-    window.history.replaceState(null, '', '/')
+    // The copy is now the guest draft, so the address must be the builder, not the landing page.
+    window.history.replaceState(null, '', '/build')
     setRemixed(true)
   }
 
   return <>
     <BrickStudioApp publishedWorld={world} onRemix={() => remix()} />
-    {confirmReplacement && <ReplacementDialog onCancel={() => setConfirmReplacement(false)}>
-        <h2 id="remix-replace-title">Replace your guest draft?</h2>
-        <p>Remixing replaces the build saved in this browser. To keep it, cancel and open Brick Studio in another tab to export it first.</p>
-        {remixError && <p role="alert">{remixError}</p>}
-        <button type="button" onClick={() => { setConfirmReplacement(false); setRemixError('') }}>Cancel</button>
-        <button type="button" onClick={() => remix(true)}>Replace draft and remix</button>
-    </ReplacementDialog>}
-    {!confirmReplacement && remixError && <p role="alert">{remixError}</p>}
+    <Dialog
+      open={confirmReplacement}
+      onClose={() => { setConfirmReplacement(false); setRemixError('') }}
+      title="Replace your guest draft?"
+      description="This will replace the build saved in this browser. To keep it, cancel and download your current build first."
+      footer={<>
+        <Button variant="secondary" onClick={() => { setConfirmReplacement(false); setRemixError('') }}>Cancel</Button>
+        <Button variant="danger" icon={<Copy size={16} />} onClick={() => remix(true)}>Replace draft and make a copy</Button>
+      </>}
+    >
+      <p className="published-world-dialog-copy">You are copying <strong>{world.title}</strong> into this browser as your guest build.</p>
+      {remixError && <p className="published-world-dialog-error" role="alert">{remixError}</p>}
+    </Dialog>
+    {!confirmReplacement && remixError && <p className="published-world-remix-error" role="alert">{remixError}</p>}
   </>
 }

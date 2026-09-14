@@ -14,6 +14,8 @@ import {
   type BrickStudioErrorEntry,
 } from './errorLog'
 import { captureRecoverySnapshot, type RecoverySnapshot, type RecoverySnapshotSource } from './recoverySnapshot'
+import { BRAND_NAME } from '../brand'
+import { BrickMark } from '../brand/BrickMark'
 import './app-error-boundary.css'
 
 export type AppErrorBoundaryProps = {
@@ -42,11 +44,11 @@ type AppErrorBoundaryState = {
 
 /** Download names without the extension; the active copy carries its source so it never overwrites the local one. */
 const ACTIVE_FILENAMES: Record<RecoverySnapshotSource, string> = {
-  live: 'brick-studio-live-room-recovered',
-  cloud: 'brick-studio-class-world-recovered',
-  local: 'brick-studio-build-recovered',
+  live: 'brickgineers-live-room-recovered',
+  cloud: 'brickgineers-class-world-recovered',
+  local: 'brickgineers-build-recovered',
 }
-const LOCAL_FILENAME = 'brick-studio-build'
+const LOCAL_FILENAME = 'brickgineers-build'
 
 const ACTIVE_LABELS: Record<RecoverySnapshotSource, string> = {
   live: 'Live room · captured when the studio crashed · may include changes that weren\'t saved',
@@ -170,7 +172,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     return (
       <div className="app-recovery" role="alert" aria-labelledby="app-recovery-title">
         <section className="app-recovery__card">
-          <p className="app-recovery__eyebrow">Brick Studio</p>
+          <p className="app-recovery__eyebrow"><BrickMark size={22} title={null} />{BRAND_NAME}</p>
           <h1 id="app-recovery-title" className="app-recovery__title">Oops! The studio tripped over a brick.</h1>
           <p className="app-recovery__lead">{lead}</p>
           <p className="app-recovery__error">

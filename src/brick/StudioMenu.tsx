@@ -1,6 +1,7 @@
 import { Download, FilePlus2, HelpCircle, MoreHorizontal, Pencil, Radio, Save, FolderOpen, Users, Upload, ChevronDown, Home } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
-import { createPortal } from 'react-dom'
+import { BRAND_NAME } from '../brand'
+import { Button, Dialog, TextField } from '../ui'
 import { BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
 
@@ -58,34 +59,16 @@ type RenameWorldDialogProps = {
   onClose: () => void
 }
 
-/** Small modal so builder shortcuts pause while typing; focus returns to the world menu on close. */
+/** Shared Dialog so builder shortcuts pause while typing; focus returns to the world menu on close. */
 function RenameWorldDialog({ currentTitle, onRename, onClose }: RenameWorldDialogProps) {
-  const titleId = useId()
-  const inputId = useId()
-  const panel = useRef<HTMLDivElement>(null)
+  const formId = useId()
   const input = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(currentTitle)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const closeRef = useRef(onClose)
   closeRef.current = onClose
-
-  useEffect(() => {
-    const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    input.current?.focus()
-    input.current?.select()
-    const keyboardHandler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeRef.current(); return }
-      if (event.key !== 'Tab') return
-      const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>('button, input') ?? []).filter((element) => !element.hasAttribute('disabled'))
-      const first = controls[0]
-      const last = controls.at(-1)
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
-    }
-    window.addEventListener('keydown', keyboardHandler, true)
-    return () => { window.removeEventListener('keydown', keyboardHandler, true); restoreTo?.focus() }
-  }, [])
+  useEffect(() => { input.current?.select() }, [])
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -99,22 +82,32 @@ function RenameWorldDialog({ currentTitle, onRename, onClose }: RenameWorldDialo
       .catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : 'Could not rename this world. Try again.'); setBusy(false) })
   }
 
-  return createPortal(
-    <div className="studio-dialog-backdrop" onPointerDown={(event) => { if (event.target === event.currentTarget && !busy) onClose() }}>
-      <div ref={panel} className="studio-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
-        <form onSubmit={submit}>
-          <h2 id={titleId}>Rename world</h2>
-          <label className="studio-dialog-field" htmlFor={inputId}>World name</label>
-          <input ref={input} id={inputId} value={title} maxLength={WORLD_TITLE_MAX_LENGTH} disabled={busy} aria-invalid={error ? true : undefined} onChange={(event) => { setTitle(event.target.value); setError('') }} />
-          {error && <p className="studio-dialog-error" role="alert">{error}</p>}
-          <div className="studio-dialog-actions">
-            <button type="button" className="studio-button" disabled={busy} onClick={onClose}>Cancel</button>
-            <button type="submit" className="studio-button studio-button-primary" disabled={busy}>{busy ? 'Saving name…' : 'Save name'}</button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body,
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Rename world"
+      description="The new name shows in My Worlds and in the header."
+      dismissible={!busy}
+      initialFocusRef={input}
+      footer={<>
+        <Button variant="secondary" disabled={busy} onClick={onClose}>Cancel</Button>
+        <Button variant="primary" type="submit" form={formId} loading={busy} loadingLabel="Saving name…">Save name</Button>
+      </>}
+    >
+      <form id={formId} onSubmit={submit}>
+        <TextField
+          ref={input}
+          label="World name"
+          value={title}
+          maxLength={WORLD_TITLE_MAX_LENGTH}
+          disabled={busy}
+          error={error || undefined}
+          autoComplete="off"
+          onChange={(event) => { setTitle(event.target.value); setError('') }}
+        />
+      </form>
+    </Dialog>
   )
 }
 
@@ -220,7 +213,7 @@ export function StudioMenu({
         className="visually-hidden"
         type="file"
         accept=".brickstudio.json,application/json"
-        aria-label="Choose Brick Studio project file"
+        aria-label={`Choose ${BRAND_NAME} project file`}
         tabIndex={-1}
         onChange={(event) => {
           const file = event.target.files?.[0]

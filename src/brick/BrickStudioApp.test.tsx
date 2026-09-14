@@ -925,7 +925,7 @@ describe('Builder Experience Alpha shell', () => {
 
     openMenu()
     const file = new File(['{"schemaVersion":1}'], 'world.brickstudio.json', { type: 'application/json' })
-    fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Choose Brickgineers project file'), { target: { files: [file] } })
     expect(onImportProject).toHaveBeenCalledWith(file)
   })
 
@@ -1004,7 +1004,7 @@ describe('Builder Experience Alpha shell', () => {
     Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue('{bad') })
 
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
-    fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Choose Brickgineers project file'), { target: { files: [file] } })
 
     await waitFor(() => expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('not valid JSON'))
     expect(useBrickStore.getState().bricks).toEqual([brick])
