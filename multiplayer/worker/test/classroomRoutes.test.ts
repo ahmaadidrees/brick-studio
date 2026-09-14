@@ -370,3 +370,67 @@ it("authorizes and initializes a cold compact classroom world instead of treatin
   expect(authorized).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: identity.userId }), identity.worldId, true, true);
   expect(paths).toEqual(["/internal/room-kind", "/init", `/worlds/${identity.worldId.replaceAll("-", "")}`]);
 });
+
+describe("live invalidation routing", () => {
+  const teacher = { id: identity.userId, username: "Teacher", rosterName: "Teacher", role: "teacher" as const, resetRequired: false, authVersion: 0, sessionId: identity.sessionId, token: "test" };
+  function roomsEnv(respond: (room: string) => Response) {
+    const notified: Array<{ room: string; body: Record<string, unknown> }> = [];
+    const env = {
+      SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test",
+      WORLD_ROOMS: {
+        idFromName: (x: string) => x,
+        get: (room: string) => ({
+          fetch: async (_input: RequestInfo | URL, init?: RequestInit) => {
+            notified.push({ room, body: JSON.parse(String(init?.body)) });
+            return respond(room);
+          },
+        }),
+      },
+    } as unknown as Env;
+    return { env, notified };
+  }
+
+  it("notifies only the renamed world as metadata and never enumerates the class", async () => {
+    const world = { id: identity.worldId, title: "World", revision: 3, owner_id: identity.userId, class_id: identity.userId, kind: "class", document: {} };
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
+    vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+    const rows = vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([]);
+    vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({ ...world, revision: 4, title: "New title" });
+    const { env, notified } = roomsEnv(() => new Response("{}"));
+    const response = await handleReleaseRequest(new Request(`https://worker.test/classroom/worlds/${identity.worldId}`, {
+      method: "PATCH", headers: { authorization: "Bearer test", "content-type": "application/json" }, body: JSON.stringify({ title: "New title" }),
+    }), env);
+    expect(response.status).toBe(200);
+    expect(notified).toEqual([{ room: identity.worldId.replaceAll("-", ""), body: { reason: "world_saved", change: "metadata" } }]);
+    expect(rows).not.toHaveBeenCalled();
+  });
+
+  it("fans a class change out to every class world as a membership check and reports a room that could not re-authorize", async () => {
+    const classId = identity.userId;
+    const worlds = [identity.worldId, "44444444-4444-4444-8444-444444444444"];
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
+    vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table) => {
+      if (table === "classes") return [{ id: classId, teacher_id: identity.userId, name: "Period 1", collaboration_open: true }];
+      if (table === "worlds") return worlds.map((id) => ({ id }));
+      return [];
+    });
+    vi.spyOn(ClassroomService.prototype, "patch").mockImplementation(async (_table, _filter, data) => [{ id: classId, teacher_id: identity.userId, ...data }]);
+    vi.spyOn(ClassroomService.prototype, "insert").mockResolvedValue([]);
+    let failing: string | null = null;
+    const { env, notified } = roomsEnv((room) => room === failing
+      ? new Response(JSON.stringify({ error: "reauthorization_failed" }), { status: 503 })
+      : new Response("{}"));
+    const rename = () => handleReleaseRequest(new Request(`https://worker.test/classroom/classes/${classId}`, {
+      method: "PATCH", headers: { authorization: "Bearer test", "content-type": "application/json" }, body: JSON.stringify({ name: "Period 1, renamed" }),
+    }), env);
+
+    expect((await rename()).status).toBe(200);
+    expect(notified.map((entry) => entry.room).sort()).toEqual(worlds.map((id) => id.replaceAll("-", "")).sort());
+    expect(notified.map((entry) => entry.body)).toEqual(worlds.map(() => ({ reason: "class_updated", change: "membership" })));
+
+    failing = worlds[1].replaceAll("-", "");
+    const failed = await rename();
+    expect(failed.status).toBe(503);
+    expect(await failed.json()).toMatchObject({ code: "live_invalidation_failed" });
+  });
+});
