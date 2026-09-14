@@ -71,7 +71,7 @@
 .brick-header-world { min-width: 0; display: flex; align-items: center; gap: 10px; }
 /* Brand lockup doubles as Home. Under 640px the wordmark drops (brand-lockup-wide), so the mark
    alone stays a 44px target. A divider separates it from the world title on wide screens. */
-.brick-brand-home { padding: 0 6px 0 2px; border-radius: var(--radius-md, 12px); }
+.brick-brand-home { min-width: 44px; justify-content: center; padding: 0 6px 0 2px; border-radius: var(--radius-md, 12px); }
 .brick-brand-home:hover { background: rgba(88, 136, 218, .1); }
 .brick-brand-home:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
 .brick-brand-home .brand-wordmark { font-size: 22px; }
@@ -254,7 +254,10 @@
 /* ------------------------------------------------------------ toolbar --- */
 
 /* One compact bottom toolbar, centered in the canvas area (offset while the drawer is docked). */
-.brick-edit-toolbar { position: absolute; z-index: 13; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 4px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 4px; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+/* Scrolls sideways rather than leaving controls outside the viewport at 200% zoom or on short
+   landscape phones; the 6px padding keeps focus rings inside the scroll box. */
+.brick-edit-toolbar { position: absolute; z-index: 13; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 4px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; touch-action: pan-x; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.brick-edit-toolbar > * { flex: 0 0 auto; }
 .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 138px); }
 .brick-history-tools { display: flex; gap: 0; }
 .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }
@@ -275,7 +278,7 @@
 .empty-guide svg { color: var(--studio-blue); flex: 0 0 auto; }
 .empty-guide div { display: flex; flex-direction: column; }.empty-guide strong { font-size: 12px; }.empty-guide span { margin-top: 2px; color: var(--studio-muted); font-size: 10px; }
 .touch-placement-bar, .touch-selection-bar { display: none; }
-.onboarding-guide { position: absolute; z-index: var(--z-drawer, 40); top: calc(var(--brick-header-block) + 20px); left: 50%; width: min(430px, calc(100% - 32px)); box-sizing: border-box; padding: 22px; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 24px 70px rgba(38, 60, 81, .23)); }
+.onboarding-guide { position: absolute; z-index: var(--z-drawer, 40); top: calc(var(--brick-header-block) + 20px); left: 50%; width: min(430px, calc(100% - 32px)); max-height: calc(100% - var(--brick-header-block) - 36px - env(safe-area-inset-bottom, 0px)); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 22px; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 24px 70px rgba(38, 60, 81, .23)); }
 .onboarding-guide h2 { margin: 5px 42px 5px 0; font: 600 24px/1.08 var(--font-display, 'Fredoka'), sans-serif; }
 .onboarding-intro { margin: 0 38px 16px 0; color: var(--studio-muted); font-size: 12px; line-height: 1.45; }
 .onboarding-close { position: absolute; top: 14px; right: 14px; }
@@ -292,6 +295,8 @@
 .scene-loading-spinner { width: 15px; height: 15px; box-sizing: border-box; border: 2px solid rgba(88, 136, 218, .22); border-top-color: var(--studio-blue); border-radius: 50%; animation: scene-loading-spin .8s linear infinite; }
 @keyframes scene-loading-spin { to { transform: rotate(360deg); } }
 .brick-mode-explore .brick-toast, .brick-mode-explore .scene-loading-status { top: max(72px, calc(env(safe-area-inset-top) + 68px)); }
+/* In a shared world the People panel (live-hud at --z-drawer) must stay readable over a passing hint. */
+.brick-live-session .brick-toast { z-index: var(--z-sheet, 30); }
 /* Hints wrap as complete phrases, never as skinny columns over the canvas. */
 .shortcut-bar { position: absolute; z-index: 10; right: 12px; bottom: 70px; left: 290px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; color: var(--studio-muted); font-size: 10px; font-weight: 700; line-height: 1.45; pointer-events: none; }
 .shortcut-bar > span { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -399,6 +404,9 @@
 
 @media (pointer: coarse) {
   .fine-pointer-copy { display: none; }
+  /* The title trigger keeps its 28px layout box but grows a 44px hit area on touch. */
+  .studio-world-title { min-height: 44px; padding: 8px 4px; margin: -8px 0; }
+  .library-collapse-button { width: 44px; height: 44px; min-height: 44px; }
   .coarse-pointer-copy { display: inline; }
   .shortcut-bar { display: none; }
   .color-grid { grid-template-columns: repeat(4, 1fr); }
@@ -623,8 +631,9 @@
   .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 166px); }
   .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
   .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(3) { display: block; }
-  .build-shell.compact-shell .brick-edit-toolbar { left: 126px; transform: none; }
-  .touch-placement-bar, .touch-selection-bar { top: auto; right: 8px; bottom: 8px; left: auto; max-width: calc(100% - 320px); flex-wrap: nowrap; }
+  .build-shell.compact-shell .brick-edit-toolbar { left: 126px; max-width: calc(100% - 134px); transform: none; }
+  .touch-placement-bar, .touch-selection-bar { top: auto; right: 8px; bottom: 8px; left: auto; max-width: calc(100% - 320px); flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; touch-action: pan-x; }
+  .touch-placement-bar > *, .touch-selection-bar > * { flex-shrink: 0; }
   .placement-part-chip { flex: 0 1 auto; flex-direction: column; align-items: stretch; padding: 0 10px 0 12px; }
   .selection-part-chip { flex: 0 1 auto; padding: 0 8px 0 6px; }
   .selection-chip-text { flex-direction: column; align-items: stretch; gap: 2px; }

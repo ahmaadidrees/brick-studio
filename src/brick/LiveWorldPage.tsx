@@ -12,7 +12,7 @@ import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type 
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { createLiveRoomConnector, defaultConnectLiveRoom } from './live/liveRoomConnector'
 import type { PlayerProfile } from './types'
-import { LiveWorldHud } from './live/LiveWorldHud'
+import { LivePeoplePanelContext, LiveWorldHud, type LivePeoplePanelRequest } from './live/LiveWorldHud'
 import { liveGuestLink, parseLiveWorldLocation, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomUiSnapshot } from './live/liveRoomModel'
 import { createLiveWorldRoom, fetchLiveWorldSummary, LiveWorldGatewayError, type CreateLiveWorld, type FetchLiveWorldSummary, type LiveWorldSummary } from './live/liveWorldGateway'
 import { LiveWorldGate, type LiveWorldGateSubmit } from './live/LiveWorldGate'
@@ -74,7 +74,7 @@ async function defaultCopyText(text: string): Promise<boolean> {
 }
 
 /**
- * Default live scene. The transport owns the Brick Studio store while this is
+ * Default live scene. The transport owns the studio store while this is
  * mounted, so document persistence is disabled and every local edit flows
  * through the authoritative room client.
  */
@@ -102,13 +102,18 @@ function DefaultLiveWorldScene({
       jumping: !pose.grounded,
     })
   }, [actions])
+  // The header's People entry opens the HUD's room panel; a bumped seq is the request.
+  const [peoplePanelRequest, setPeoplePanelRequest] = useState<LivePeoplePanelRequest>({ seq: 0 })
   const livePolicy = useMemo(() => ({
     connection: snapshot.connection,
     isOwner: snapshot.isOwner,
     onRequestMode: actions.setMode,
     // The HUD's beforeunload guard covers pending commands and recovery copies.
     onGoHome: () => window.location.assign('/'),
-  }), [actions.setMode, snapshot.connection, snapshot.isOwner])
+    roomTitle: view.roomTitle,
+    peopleCount: snapshot.players.length,
+    onOpenPeople: () => setPeoplePanelRequest((current) => ({ seq: current.seq + 1 })),
+  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, view.roomTitle])
   const contentPolicy = useMemo(() => ({
     plateSize: view.document.plateSize,
     environmentId: view.document.environmentId,
@@ -166,13 +171,15 @@ function DefaultLiveWorldScene({
     }
   }, [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view.document])
   return (
-    <BrickStudioApp
-      raceScene={{ onLocalAvatarPose: sendPose, remoteAvatarSource }}
-      livePolicy={livePolicy}
-      liveOverlay={view.overlay}
-      contentPolicy={contentPolicy}
-      customPartPolicy={customPartPolicy}
-    />
+    <LivePeoplePanelContext.Provider value={peoplePanelRequest}>
+      <BrickStudioApp
+        raceScene={{ onLocalAvatarPose: sendPose, remoteAvatarSource }}
+        livePolicy={livePolicy}
+        liveOverlay={view.overlay}
+        contentPolicy={contentPolicy}
+        customPartPolicy={customPartPolicy}
+      />
+    </LivePeoplePanelContext.Provider>
   )
 }
 
@@ -195,6 +202,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const [summary, setSummary] = useState<LiveWorldSummary | null>(null);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [wantsClassroomSignIn, setWantsClassroomSignIn] = useState(false);
   const fetchSummary = props.fetchWorldSummary ?? fetchLiveWorldSummary;
   useEffect(() => {
     if (parsed.kind !== 'join') return;
@@ -219,12 +227,18 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   if (access === 'guest' && summary) return <GuestLiveWorld {...props} initialSummary={summary} />;
   const worldId = classroomWorldIdFromPath(pathname);
   if (!auth || auth.user.resetRequired) {
+    // The service answers 401 for classroom worlds and for ids it does not know, so a signed-out
+    // visitor gets a calm gate first instead of a bare sign-in form for what may be a dead link.
+    if (!auth && !wantsClassroomSignIn) {
+      return <BlockedView heading="This world needs a class sign-in" message="This link belongs to a classroom world, or the room is no longer available. Sign in with your class code to check, or keep building on your own."
+        action={{ label: 'Sign in to my class', onClick: () => setWantsClassroomSignIn(true) }} />;
+    }
     return <ClassroomPanel client={client} intent="class" getDocument={() => useBrickStore.getState().getDocumentSnapshot()}
       onClose={() => window.location.assign('/build')}
       onOpenWorld={() => window.location.assign('/build')}
       onJoinWorld={world => window.location.assign(`/live/${world.id.replaceAll('-', '')}`)} />;
   }
-  if (!worldId) return <BlockedView heading="Open this world from My Class" message="Your classroom worlds are listed in Brick Studio." />;
+  if (!worldId) return <BlockedView heading="Open this world from My Class" message="Your classroom worlds are listed in My Class in the builder." />;
   return <AuthenticatedLiveWorld key={auth.user.id} {...props} auth={auth} client={client} worldId={worldId} />;
 }
 
@@ -283,7 +297,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
       finally { setRecovering(false); }
     }}>{recovering ? 'Saving older world…' : 'Save older world to My Worlds'}</button>
     {recoveryError && <p role="alert">{recoveryError}</p>}
-    <a className="live-quiet-link" href="/build">Open Brick Studio</a>
+    <a className="live-quiet-link" href="/build">Go to builder</a>
   </section></main>;
   if (error) return <BlockedView heading="Cannot open this classroom world" message={error} onRetry={() => setRetry(n => n + 1)} />;
   if (!ready || session.status !== 'active') return <BlockedView heading="Opening your classroom world…" message="Checking your class access and saved work." />;
@@ -419,7 +433,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
   const remixWorld = props.remixWorld ?? (async (world: LiveWorldSnapshotExport) => {
     const saved = saveLocalBrickStudioProject(window.localStorage, world.document)
     if (!saved.ok) throw new Error(saved.error.message)
-    return 'Saved as this browser’s local build. Open Brick Studio to continue, or export a file to keep it elsewhere.'
+    return 'Saved as this browser’s local build. Go to the builder to continue, or export a file to keep it elsewhere.'
   })
 
   const leaveRoom = () => {
@@ -525,7 +539,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
           {room.ownerToken && (
             <p className="live-owner-hint">Keep this tab&rsquo;s web address safe — it holds your owner key for this room.</p>
           )}
-          <a className="live-quiet-link" href="/build">Back to Brick Studio</a>
+          <a className="live-quiet-link" href="/build">Back to the builder</a>
         </section>
       </main>
     )

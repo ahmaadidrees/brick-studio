@@ -297,7 +297,7 @@ type PeopleEntryProps = {
 function PeopleEntry({ livePolicy, onStartLiveWorld, compact = false }: PeopleEntryProps) {
   if (livePolicy) {
     const count = livePolicy.peopleCount
-    const label = count === undefined ? 'People' : `People, ${count} in this world`
+    const label = count === undefined ? 'People' : `People, ${count} ${livePolicy.connection === 'online' ? 'here' : 'last seen'}`
     return (
       <Button variant="quiet" className="brick-header-tool brick-people-entry" icon={<Users size={17} />} aria-label={label} title={label} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
         People{count !== undefined && <strong className="brick-people-count" aria-hidden="true">{count}</strong>}
@@ -1278,9 +1278,11 @@ export default function BrickStudioApp({
     if (useBrickStore.getState().graphicsPaused) return
     if (!contentPolicy && requestedPlateSize && requestedPlateSize !== plateSize) {
       const resized = resizeBuildPlate(useBrickStore.getState().getDocumentSnapshot(), requestedPlateSize)
-      if (!resized.ok) { useBrickStore.setState({ toast: resized.error.message }); return }
+      // W5 widened the sheet's onApply to accept `{ ok: false, message }` so the rejection shows
+      // inline beside the plate controls; the toast stays for hosts that ignore the return value.
+      if (!resized.ok) { useBrickStore.setState({ toast: resized.error.message }); return { ok: false as const, message: resized.error.message } }
       const result = useBrickStore.getState().importDocument(JSON.stringify(resized.document), 'Resize build plate')
-      if (!result.ok) return
+      if (!result.ok) return { ok: false as const, message: result.error.message }
       setLocalPlateSize(requestedPlateSize)
     }
     if (contentPolicy && contentPolicy.onApply(selection, requestedPlateSize) === false) return

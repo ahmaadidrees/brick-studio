@@ -1,6 +1,7 @@
 import { Check, Crown, Pencil, Users, X } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Button } from '../../ui'
 import { LIVE_MAX_DISPLAY_NAME_LENGTH, type LivePlayer } from '../liveProtocol'
 import {
   displayNameError,
@@ -47,16 +48,17 @@ export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen, i
   return (
     <section className={`live-roster${inline ? ' live-roster-inline' : ''}`} aria-label="Builders in this room">
       {!inline && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           className="live-roster-toggle"
+          icon={<Users size={15} />}
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen((current) => !current)}
         >
-          <Users size={15} aria-hidden="true" />
-          <span>{formatLivePlayerCount(players.length)}</span>
-        </button>
+          {formatLivePlayerCount(players.length)}
+        </Button>
       )}
       {(inline || open) && (
         <div className="live-roster-panel" id={panelId}>
@@ -73,6 +75,7 @@ export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen, i
                         <label className="live-visually-hidden" htmlFor={renameId}>New builder name</label>
                         <input
                           id={renameId}
+                          className="ui-input"
                           value={draft}
                           maxLength={LIVE_MAX_DISPLAY_NAME_LENGTH}
                           autoFocus
@@ -81,17 +84,21 @@ export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen, i
                             setRenameError(null)
                           }}
                           aria-invalid={renameError ? true : undefined}
+                          aria-describedby={renameError ? `${renameId}-error` : undefined}
                         />
-                        <button type="submit" aria-label="Save my new name"><Check size={14} aria-hidden="true" /></button>
-                        <button
-                          type="button"
+                        <Button type="submit" variant="primary" size="sm" iconOnly icon={<Check size={15} />} aria-label="Save my new name">Save my new name</Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          iconOnly
+                          icon={<X size={15} />}
                           aria-label="Keep my current name"
                           onClick={() => {
                             setEditing(false)
                             setRenameError(null)
                           }}
-                        ><X size={14} aria-hidden="true" /></button>
-                        {renameError && <p className="live-roster-rename-error" role="alert">{renameError}</p>}
+                        >Keep my current name</Button>
+                        {renameError && <p id={`${renameId}-error`} className="live-roster-rename-error" role="alert">{renameError}</p>}
                       </form>
                     ) : (
                       <>
@@ -104,16 +111,19 @@ export function PresenceRoster({ players, selfPlayerId, onRename, defaultOpen, i
                         )}
                         {isSelf && <span className="live-roster-badge">You</span>}
                         {isSelf && onRename && (
-                          <button
-                            type="button"
+                          <Button
+                            variant="quiet"
+                            size="sm"
+                            iconOnly
                             className="live-roster-rename"
+                            icon={<Pencil size={14} />}
                             aria-label="Change my builder name"
                             onClick={() => {
                               setDraft(player.profile.displayName)
                               setEditing(true)
                               setRenameError(null)
                             }}
-                          ><Pencil size={13} aria-hidden="true" /></button>
+                          >Change my builder name</Button>
                         )}
                       </>
                     )}
