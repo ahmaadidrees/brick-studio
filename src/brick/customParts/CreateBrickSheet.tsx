@@ -88,6 +88,7 @@ export type CreateBrickSheetProps = {
  */
 export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }: CreateBrickSheetProps) {
   const formId = useId()
+  const dialogId = useId()
   const formRef = useRef<HTMLFormElement>(null)
   const [form, setForm] = useState<FormState>(INITIAL_FORM)
   const [error, setError] = useState<string | null>(null)
@@ -101,6 +102,28 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
     setPreview(INITIAL_PREVIEW)
     setSubmitted(false)
   }, [open])
+
+  // On compact layouts the brick drawer is itself a sheet that closes when this
+  // opens; its unmount cleanup restores focus to the drawer button after the
+  // shared Sheet's layout effect has focused this dialog. Passive mount effects
+  // run after passive unmount cleanups, so reclaim focus here — and remember
+  // where it went, because the original opener inside the drawer no longer
+  // exists when this dialog closes and focus would otherwise fall to <body>.
+  const fallbackFocus = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!open) return
+    const panel = document.getElementById(dialogId)
+    const active = document.activeElement
+    if (panel && active instanceof HTMLElement && !panel.contains(active)) {
+      fallbackFocus.current = active
+      panel.focus({ preventScroll: true })
+    }
+    return () => {
+      const fallback = fallbackFocus.current
+      fallbackFocus.current = null
+      if (fallback?.isConnected && (!document.activeElement || document.activeElement === document.body)) fallback.focus({ preventScroll: true })
+    }
+  }, [open, dialogId])
 
   const dimensions = {
     width: boundedInteger(form.width, CUSTOM_BRICK_MAX_WIDTH),
@@ -170,6 +193,7 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
 
   return (
     <Dialog
+      id={dialogId}
       open={open}
       onClose={onClose}
       title="Create a brick"
