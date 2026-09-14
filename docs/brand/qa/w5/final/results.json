@@ -1,0 +1,131 @@
+[
+  {
+    "width": 1366,
+    "height": 768,
+    "sheets": {
+      "08 scene": {
+        "box": {
+          "x": 726,
+          "y": 0,
+          "width": 640,
+          "height": 768
+        },
+        "footerBottom": 768,
+        "smallTargets": 0,
+        "escapeRestoredFocusTo": "Scene"
+      },
+      "10 create": {
+        "box": {
+          "x": 293,
+          "y": 20,
+          "width": 780,
+          "height": 728
+        },
+        "footerBottom": 747,
+        "smallTargets": 0,
+        "escapeRestoredFocusTo": "Create a brick"
+      },
+      "10 color": {
+        "box": {
+          "x": 473,
+          "y": 107.34375,
+          "width": 420,
+          "height": 553.296875
+        },
+        "footerBottom": 659.640625,
+        "smallTargets": 0,
+        "appliedColorSelected": "true"
+      },
+      "10 resize": {
+        "box": {
+          "x": 493,
+          "y": 140.421875,
+          "width": 380,
+          "height": 487.140625
+        },
+        "footerBottom": 626.5625,
+        "smallTargets": 0,
+        "rejection": "That size does not fit here. Try a smaller change or move the selection first.",
+        "escapeRestoredFocusTo": "Resize brick"
+      }
+    }
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "sheets": {
+      "08 scene": {
+        "box": {
+          "x": 0,
+          "y": 67.53125,
+          "width": 390,
+          "height": 776.46875
+        },
+        "footerBottom": 844,
+        "smallTargets": 0,
+        "escapeRestoredFocusTo": "Scene"
+      },
+      "10 create": {
+        "box": {
+          "x": 0,
+          "y": 67.53125,
+          "width": 390,
+          "height": 776.46875
+        },
+        "footerBottom": 844,
+        "smallTargets": 0,
+        "escapeRestoredFocusTo": "Open brick drawer"
+      },
+      "10 color": {
+        "box": {
+          "x": 0,
+          "y": 124.703125,
+          "width": 390,
+          "height": 719.296875
+        },
+        "footerBottom": 844,
+        "smallTargets": 0,
+        "appliedColorSelected": "true"
+      }
+    }
+  },
+  {
+    "width": 320,
+    "height": 740,
+    "sheets": {
+      "08 scene": {
+        "box": {
+          "x": 0,
+          "y": 59.203125,
+          "width": 320,
+          "height": 680.796875
+        },
+        "footerBottom": 740,
+        "smallTargets": 0,
+        "escapeRestoredFocusTo": "Scene"
+      },
+      "10 create": {
+        "box": {
+          "x": 0,
+          "y": 59.203125,
+          "width": 320,
+          "height": 680.796875
+        },
+        "footerBottom": 740,
+        "smallTargets": 0,
+        "escapeRestoredFocusTo": "Open brick drawer"
+      },
+      "10 color": {
+        "box": {
+          "x": 0,
+          "y": 59.203125,
+          "width": 320,
+          "height": 680.796875
+        },
+        "footerBottom": 740,
+        "smallTargets": 0,
+        "appliedColorSelected": "true"
+      }
+    }
+  }
+]
