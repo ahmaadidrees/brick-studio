@@ -1,11 +1,8 @@
-import { AppearanceControls } from '../characters/AppearanceControls'
-import { CharacterPreview } from '../characters/CharacterPreview'
-import { LookColors } from '../characters/LookColors'
-import { WardrobePanel } from '../characters/WardrobePanel'
+import { CharacterStudio } from '../characters/CharacterStudio'
 import { BUILD_PLATE_SIZES, type BuildPlateSize } from '../buildPlate'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import type { CharacterId, EnvironmentId } from '../types'
+import type { EnvironmentId } from '../types'
 import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
 import { ContentPicker } from './ContentPicker'
 import type { CharacterPaletteGroup, ContentPickerProps } from './ContentPicker'
@@ -54,6 +51,9 @@ export type WorldAndCharacterSheetProps = {
 }
 
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]'
+
+// The scene tab hides the picker's character section; character edits go through CharacterStudio.
+const ignoreCharacter = () => {}
 
 function focusableElements(panel: HTMLElement): HTMLElement[] {
   return [...panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)]
@@ -241,32 +241,32 @@ export function WorldAndCharacterSheet({
               {!canResizePlate && <small>The owner can resize the plate while everyone is in Build.</small>}
             </fieldset>
           )}
-          {activeTab === 'character' && <CharacterPreview characterId={draft.characterId} palette={draft.palette} appearance={draft.appearance} />}
-          <ContentPicker
-            hideHeader
-            visibleSection={activeTab}
-            environmentDescriptors={environmentDescriptors}
-            characterDescriptors={characterDescriptors}
-            selectedEnvironmentId={draft.environmentId}
-            selectedCharacterId={draft.characterId}
-            onSelectEnvironment={(environmentId: EnvironmentId) => {
-              setDraft((current) => ({ ...current, environmentId }))
-            }}
-            onSelectCharacter={(characterId: CharacterId) => {
-              setDraft((current) => ({ ...current, characterId }))
-            }}
-            palette={draft.palette}
-            paletteGroups={paletteGroups}
-            onPaletteChange={(palette) => setDraft((current) => ({ ...current, palette }))}
-            onRequestPreview={onRequestPreview}
-            previewStatuses={previewStatuses}
-          />
-          {activeTab === 'character' && draft.characterId === 'toy-figure' && <AppearanceControls appearance={draft.appearance} onChange={appearance => setDraft(current => ({ ...current, appearance }))} />}
-          {activeTab === 'character' && <LookColors palette={draft.palette} onChange={palette => setDraft(current => ({ ...current, palette }))} />}
-          {activeTab === 'character' && draft.characterId && <WardrobePanel
-            appearance={{ characterId: draft.characterId, palette: draft.palette, appearance: draft.appearance }}
-            onChoose={appearance => setDraft(current => ({ ...current, ...appearance }))}
-          />}
+          {activeTab === 'environment' && (
+            <ContentPicker
+              hideHeader
+              visibleSection="environment"
+              environmentDescriptors={environmentDescriptors}
+              characterDescriptors={characterDescriptors}
+              selectedEnvironmentId={draft.environmentId}
+              selectedCharacterId={draft.characterId}
+              onSelectEnvironment={(environmentId: EnvironmentId) => {
+                setDraft((current) => ({ ...current, environmentId }))
+              }}
+              onSelectCharacter={ignoreCharacter}
+              onRequestPreview={onRequestPreview}
+              previewStatuses={previewStatuses}
+            />
+          )}
+          {activeTab === 'character' && (
+            <CharacterStudio
+              draft={draft}
+              onDraftChange={setDraft}
+              characterDescriptors={characterDescriptors}
+              paletteGroups={paletteGroups}
+              onRequestPreview={onRequestPreview}
+              previewStatuses={previewStatuses}
+            />
+          )}
         </div>
         <footer className="world-character-sheet-footer">
           <span className="world-character-sheet-summary" aria-live="polite">
