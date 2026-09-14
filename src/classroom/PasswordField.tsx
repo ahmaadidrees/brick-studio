@@ -1,20 +1,30 @@
-import { useId, useState, type InputHTMLAttributes } from 'react'
+import { useState, type InputHTMLAttributes } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { Button, Field } from '../ui'
 
-type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'id'> & {
+type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'id' | 'className'> & {
   label: string
   hint?: string
+  error?: string
+  id?: string
 }
 
-/** Keeps the submitted field unchanged when a student checks what they typed. */
-export function PasswordField({ label, hint, ...inputProps }: Props) {
-  const id = useId()
+/** Password input with an accessible Show/Hide toggle. Revealing never changes the submitted value. */
+export function PasswordField({ label, hint, error, id, ...inputProps }: Props) {
   const [visible, setVisible] = useState(false)
-  return <div className="classroom-field">
-    <label htmlFor={id}>{label}</label>
-    <div className="classroom-password">
-      <input {...inputProps} id={id} type={visible ? 'text' : 'password'} aria-describedby={hint ? `${id}-hint` : undefined} />
-      <button type="button" aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`} aria-controls={id} aria-pressed={visible} onClick={() => setVisible(value => !value)}>{visible ? 'Hide' : 'Show'}</button>
-    </div>
-    {hint && <small id={`${id}-hint`}>{hint}</small>}
-  </div>
+  return <Field label={label} hint={hint} error={error} id={id} className="classroom-password-field">
+    {control => <span className="classroom-password">
+      <input {...inputProps} {...control} className="ui-input classroom-password-input" type={visible ? 'text' : 'password'} />
+      <Button
+        variant="quiet"
+        size="sm"
+        className="classroom-password-toggle"
+        icon={visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`}
+        aria-controls={control.id}
+        aria-pressed={visible}
+        onClick={() => setVisible(value => !value)}
+      >{visible ? 'Hide' : 'Show'}</Button>
+    </span>}
+  </Field>
 }

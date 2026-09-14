@@ -1,0 +1,116 @@
+{
+  "capturedAt": "2026-09-14T23:19:42.846Z",
+  "origin": "http://127.0.0.1:5193",
+  "results": [
+    {
+      "name": "03 labels stay visible with text (1366)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 primary action inside the viewport (1366)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 Escape closes the panel to the build",
+      "ok": true,
+      "detail": "http://127.0.0.1:5193/build"
+    },
+    {
+      "name": "03 invalid credentials keep typed details (1366)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 labels stay visible with text (390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 primary action inside the viewport (390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (03 student 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (03 enroll 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (03 teacher 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 invalid credentials keep typed details (390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "03 primary action inside the viewport (320)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "16 focused field stays visible with the keyboard open",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "16 primary action stays visible with the keyboard open",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "04 callback failure keeps Try again and Keep building",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "05 no img thumbnails (1366)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "05 no img thumbnails (390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (05 worlds 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "13 Escape closes only the confirmation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (13 manage 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (14 settings 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "D7 touch targets >= 44px (14 world controls 390)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "15 expired session returns to student sign-in with the reason",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}
