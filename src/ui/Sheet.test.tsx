@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Dialog, Sheet } from './Sheet'
 
@@ -111,5 +111,60 @@ describe('Sheet', () => {
     expect(document.querySelector('.ui-sheet-root')).toHaveClass('ui-sheet-sheet')
     render(<Dialog open onClose={() => {}} title="Centered"><p>Body</p></Dialog>)
     expect(document.querySelectorAll('.ui-sheet-dialog')).toHaveLength(1)
+  })
+
+  it('reclaims focus stolen by a sibling cleanup and falls back to it when the opener is gone', () => {
+    // The compact brick drawer: a sheet whose passive unmount cleanup restores
+    // focus to its own button, after the new dialog's layout effect ran.
+    function Drawer({ onCreate, restoreTo }: { onCreate: () => void; restoreTo: React.RefObject<HTMLButtonElement | null> }) {
+      useEffect(() => () => { restoreTo.current?.focus() }, [restoreTo])
+      return <button type="button" onClick={onCreate}>Create a brick</button>
+    }
+    function Harness() {
+      const drawerButton = useRef<HTMLButtonElement>(null)
+      const [drawerOpen, setDrawerOpen] = useState(false)
+      const [sheetOpen, setSheetOpen] = useState(false)
+      return (
+        <>
+          <button ref={drawerButton} type="button" onClick={() => setDrawerOpen(true)}>Bricks</button>
+          {drawerOpen && <Drawer restoreTo={drawerButton} onCreate={() => { setDrawerOpen(false); setSheetOpen(true) }} />}
+          <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Create a brick"><input aria-label="Name" /></Sheet>
+        </>
+      )
+    }
+    render(<Harness />)
+    const bricks = screen.getByRole('button', { name: 'Bricks' })
+    bricks.focus()
+    fireEvent.click(bricks)
+    const create = screen.getByRole('button', { name: 'Create a brick' })
+    create.focus()
+    fireEvent.click(create)
+    const dialog = screen.getByRole('dialog', { name: 'Create a brick' })
+    expect(dialog).toHaveFocus()
+    expect(screen.queryByRole('button', { name: 'Create a brick' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(bricks).toHaveFocus()
+  })
+
+  it('leaves focus with a dialog that took it while this sheet closed', () => {
+    function Harness() {
+      const [sheetOpen, setSheetOpen] = useState(true)
+      const otherDialog = useRef<HTMLDivElement>(null)
+      return (
+        <>
+          <button type="button" onClick={() => { otherDialog.current?.focus(); setSheetOpen(false) }}>Hand off</button>
+          <div ref={otherDialog} role="dialog" aria-modal="true" aria-label="Other" tabIndex={-1} />
+          <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Settings"><p>Body</p></Sheet>
+        </>
+      )
+    }
+    render(<Harness />)
+    const handOff = screen.getByRole('button', { name: 'Hand off' })
+    // Simulate the sheet having captured this button as its opener.
+    handOff.focus()
+    fireEvent.click(handOff)
+    expect(screen.queryByRole('dialog', { name: 'Settings' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Other' })).toHaveFocus()
   })
 })

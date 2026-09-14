@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react'
-import { ChevronDown, Compass, Download, Eye, EyeOff, GraduationCap, Image, KeyRound, Settings, Smile, User, UserRound, Users } from 'lucide-react'
+import { ChevronDown, Compass, Download, ExternalLink, Eye, EyeOff, GraduationCap, Heart, Image, KeyRound, Settings, Smile, User, UserRound, Users } from 'lucide-react'
 import { BRAND_NAME, BRAND_PALETTE, BRAND_PRIMARY_STRONG, BRAND_TAGLINE, BrandLockup, BrickMark, Wordmark } from '../brand'
 import { Button } from './Button'
 import { Field, TextField } from './Field'
+import { Select } from './Select'
 import { SegmentedControl } from './SegmentedControl'
 import { SaveStatus, type SaveStatusSource } from './SaveStatus'
 import { Dialog, Sheet } from './Sheet'
@@ -63,15 +64,15 @@ export function Gallery() {
         </div>
       </GallerySection>
 
-      <GallerySection id="buttons" title="Buttons" description="primary · secondary · quiet · danger, three sizes, icon slot, loading and disabled.">
+      <GallerySection id="buttons" title="Buttons" description="primary · secondary · quiet · danger, three sizes, icon slot, loading, disabled, pressed toggles, and the same component as a link (href). sm reaches 44px on touch.">
         <ButtonsExample />
       </GallerySection>
 
-      <GallerySection id="fields" title="Fields" description="Label, hint, error and disabled states; the password pattern uses Field's render prop.">
+      <GallerySection id="fields" title="Fields" description="Label, hint, error, required and disabled states; the required mark sits outside the label so the accessible name stays plain; the password pattern uses Field's render prop; Select is the native picker beyond four options.">
         <FieldsExample />
       </GallerySection>
 
-      <GallerySection id="segmented" title="Segmented control" description="Radiogroup: one tab stop, arrow keys move the selection.">
+      <GallerySection id="segmented" title="Segmented control" description="Radiogroup: one tab stop, arrow keys move the selection; aria-describedby ties a hint to the group; options are 44px on touch.">
         <SegmentedExample />
       </GallerySection>
 
@@ -281,6 +282,7 @@ function SheetExample() {
 }
 
 function ButtonsExample() {
+  const [pressed, setPressed] = useState<Record<string, boolean>>({ primary: true, secondary: true, quiet: true, danger: true })
   return (
     <div className="ui-gallery-stack">
       {(['primary', 'secondary', 'quiet', 'danger'] as const).map((variant) => (
@@ -293,8 +295,16 @@ function ButtonsExample() {
           <Button variant={variant} iconOnly icon={<Settings size={20} />} aria-label={`${variant} settings`}>Settings</Button>
           <Button variant={variant} loading loadingLabel="Saving…">Save</Button>
           <Button variant={variant} disabled>Disabled</Button>
+          <Button variant={variant} pressed={pressed[variant]} icon={<Heart size={18} />} onClick={() => setPressed((current) => ({ ...current, [variant]: !current[variant] }))}>Favorite</Button>
+          <Button variant={variant} href="#buttons" trailingIcon={<ExternalLink size={16} />} onClick={(event) => event.preventDefault()}>Link</Button>
         </div>
       ))}
+      <div className="ui-gallery-row" data-variant="links">
+        <Button href="#buttons" variant="primary" size="lg" icon={<Compass size={18} />} onClick={(event) => event.preventDefault()}>Start building</Button>
+        <Button href="#buttons" variant="secondary" onClick={(event) => event.preventDefault()}>Open the classroom</Button>
+        <Button href="#buttons" variant="quiet" size="sm" onClick={(event) => event.preventDefault()}>Read the help</Button>
+        <Button href="#buttons" variant="secondary" disabled>Disabled link</Button>
+      </div>
     </div>
   )
 }
@@ -306,6 +316,17 @@ function FieldsExample() {
       <TextField label="Choose a username" hint="Letters, numbers, _ or -" defaultValue="river builds" error="Usernames cannot contain spaces." />
       <TextField label="Name your teacher knows" labelAside="Shown to your teacher" required />
       <TextField label="Email" disabled value="teacher@school.example" readOnly />
+      <Select label="Class" hint="Students see this name on their worlds." defaultValue="p2" required>
+        <option value="p1">Period 1 — Makers</option>
+        <option value="p2">Period 2 — Builders</option>
+        <option value="p3">Period 3 — Engineers</option>
+        <option value="p4">After-school club</option>
+      </Select>
+      <Select label="Group" error="Pick a group first." defaultValue="">
+        <option value="">Choose a group…</option>
+        <option value="a">Red team</option>
+        <option value="b">Blue team</option>
+      </Select>
       <PasswordExample label="Choose a password" hint="At least 8 characters." />
       <PasswordExample label="Current password" error="That password is not right." />
     </div>
@@ -315,10 +336,15 @@ function FieldsExample() {
 function SegmentedExample() {
   const [a, setA] = useState<'follow' | 'free'>('follow')
   const [b, setB] = useState<'idle' | 'walk' | 'run'>('idle')
+  const [plate, setPlate] = useState<'64' | '96' | '128'>('96')
   return (
     <div className="ui-gallery-stack">
       <SegmentedControl label="Explore camera" showLabel value={a} onChange={setA} options={[{ value: 'follow', label: 'Follow' }, { value: 'free', label: 'Free look' }]} />
       <SegmentedControl label="Preview motion" size="sm" value={b} onChange={setB} options={[{ value: 'idle', label: 'Idle' }, { value: 'walk', label: 'Walk' }, { value: 'run', label: 'Run', disabled: true }]} />
+      <div className="ui-field">
+        <SegmentedControl label="Plate size" showLabel aria-describedby="ui-gallery-plate-hint" value={plate} onChange={setPlate} options={[{ value: '64', label: '64 × 64' }, { value: '96', label: '96 × 96' }, { value: '128', label: '128 × 128' }]} />
+        <p id="ui-gallery-plate-hint" className="ui-field-hint">Your creation stays centered.</p>
+      </div>
     </div>
   )
 }

@@ -15,6 +15,9 @@ describe('Gallery', () => {
     }
     expect(screen.getByRole('link', { name: `${BRAND_NAME} Home` })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Explore' })).toHaveClass('ui-button-primary')
+    expect(screen.getByRole('link', { name: 'Start building' })).toHaveClass('ui-button', 'ui-button-primary')
+    expect(screen.getByLabelText('Class').tagName).toBe('SELECT')
+    expect(screen.getByRole('radiogroup', { name: 'Plate size' })).toHaveAccessibleDescription('Your creation stays centered.')
     expect(screen.getByRole('form', { name: 'Welcome back' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Open settings sheet' }))
     expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument()

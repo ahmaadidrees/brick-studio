@@ -83,3 +83,24 @@ Notes:
   (favicon) through 96px; mono and outline variants use `currentColor`.
 - Wordmark is real text (Fredoka 700) — selectable, translatable off (`translate="no"`), scales with `size`.
 - All touch targets ≥ 44px at `md` (`--control-height`), 36px at `sm` only for dense toolbars.
+
+## Second pass (primitive requests + consistency review)
+
+`sheet-scroll.mjs` verifies the Sheet body scrolls under the persistent footer and captures the new gallery examples:
+
+```
+PLAYWRIGHT_MODULE=… CHROME_PATH=… UI_ORIGIN=http://127.0.0.1:5191 node docs/brand/qa/w1/sheet-scroll.mjs
+```
+
+| Check | Result |
+|---|---|
+| 844×390 (touch): gallery Settings sheet | body `overflow-y: auto`, scrollHeight 509 > clientHeight 195, footer inside the viewport before and after scrolling, last paragraph reachable; `landscape-844x390-sheet-{top,bottom}.png` |
+| 683×384 (1366×768 at 200% zoom) | scrollHeight 647 > clientHeight 189, footer inside, last paragraph reachable; `zoom200-683x384-sheet-{top,bottom}.png` |
+| Touch-target rule | `.ui-button-sm` 44px and `.ui-segmented-option` 44px under `(pointer: coarse)`; 36px / 38px with a mouse |
+| New examples | `{desktop-1366x768,mobile-390x844}-{buttons,fields,segmented}.png`: link buttons (`a.ui-button`, `href`, 3px ring, disabled link without href), pressed toggles (`aria-pressed="true"` + `.ui-button-pressed`), required mark outside the `<label>`, `Select` at 44px, segmented group described by its hint |
+
+Note for element screenshots in Playwright: measure before `locator.screenshot()` on a section taller than the
+viewport — the temporary viewport resize drops the touch emulation (`pointer: coarse` reads false afterwards).
+
+`consistency-review.mjs` + `CONSISTENCY-REVIEW.md` + `review/` hold the cross-lane review (landing, entry panel,
+scene/character sheets, create-brick and colour dialogs, editor chrome at 1366×768 and 390×844).

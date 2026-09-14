@@ -17,7 +17,14 @@ export type FieldProps = {
   hint?: string
   /** Validation message; announced, shown in the danger color with an icon. */
   error?: string
+  /** Sets `aria-required` on the control; `TextField`/`Select` also set native `required`. */
   required?: boolean
+  /**
+   * Shows a "*" beside the label of a required field. It sits outside the
+   * `<label>` element and is aria-hidden, so the accessible name stays exactly
+   * the label text ("Password", not "Password *"). Set false to hide it.
+   */
+  requiredMark?: boolean
   /** Fixed id for the control; a stable id is generated otherwise. */
   id?: string
   /** Optional text beside the label (e.g. "Optional"). */
@@ -36,7 +43,7 @@ export type FieldProps = {
  * The hint stays visible when an error appears so the format rule is not
  * lost while the user corrects the value.
  */
-export function Field({ label, hint, error, required, id: fixedId, labelAside, children, className }: FieldProps) {
+export function Field({ label, hint, error, required, requiredMark = true, id: fixedId, labelAside, children, className }: FieldProps) {
   const generatedId = useId()
   const id = fixedId ?? `field${generatedId}`
   const hintId = hint ? `${id}-hint` : undefined
@@ -51,7 +58,10 @@ export function Field({ label, hint, error, required, id: fixedId, labelAside, c
   return (
     <div className={['ui-field', error && 'ui-field-invalid', className].filter(Boolean).join(' ')}>
       <div className="ui-field-label-row">
-        <label htmlFor={id} className="ui-field-label">{label}{required && <span className="ui-field-required" aria-hidden="true"> *</span>}</label>
+        <span className="ui-field-label-group">
+          <label htmlFor={id} className="ui-field-label">{label}</label>
+          {required && requiredMark && <span className="ui-field-required" aria-hidden="true">*</span>}
+        </span>
         {labelAside && <span className="ui-field-aside">{labelAside}</span>}
       </div>
       {children(control)}
@@ -77,11 +87,11 @@ export type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 
 
 /** Field + a plain `<input>`; covers text, email, number and code inputs. */
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { label, hint, error, required, id, labelAside, className, inputClassName, icon, ...input },
+  { label, hint, error, required, requiredMark, id, labelAside, className, inputClassName, icon, ...input },
   ref,
 ) {
   return (
-    <Field label={label} hint={hint} error={error} required={required} id={id} labelAside={labelAside} className={className}>
+    <Field label={label} hint={hint} error={error} required={required} requiredMark={requiredMark} id={id} labelAside={labelAside} className={className}>
       {(control) => (
         <span className={['ui-input-wrap', icon && 'ui-input-has-icon'].filter(Boolean).join(' ')}>
           {icon && <span className="ui-input-icon" aria-hidden="true">{icon}</span>}
