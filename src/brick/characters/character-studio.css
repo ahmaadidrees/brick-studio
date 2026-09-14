@@ -1,27 +1,13 @@
-/* CharacterStudio — the Character tab body ("Make it yours."). Uses the brand
-   semantic tokens with fallbacks so it renders the same before W1's :root lands. */
+/* CharacterStudio — the Character tab body ("Make it yours."). Layout and the
+   few studio-only controls (swatches, choice chips, outfit rows) live here; every
+   button and field is the shared src/ui primitive, and every value is a
+   semantic token from src/styles.css. */
 
 .character-studio {
-  --cs-text: var(--text, var(--studio-ink, #263c51));
-  --cs-muted: var(--text-muted, var(--studio-muted, #5f6f7c));
-  --cs-surface: var(--surface, #ffffff);
-  --cs-surface-2: var(--surface-2, #f1f4f7);
-  --cs-border: var(--border, #dbe2e8);
-  --cs-primary: var(--primary, #5888da);
-  --cs-primary-strong: var(--primary-strong, #3b66b8);
-  --cs-primary-contrast: var(--primary-contrast, #ffffff);
-  --cs-accent: var(--accent, #f17861);
-  --cs-selection: var(--selection, #e6eefb);
-  --cs-focus: var(--focus, #5888da);
-  --cs-danger: var(--danger, #c9442f);
-  --cs-radius-sm: var(--radius-sm, 8px);
-  --cs-radius-md: var(--radius-md, 12px);
-  --cs-radius-lg: var(--radius-lg, 16px);
-  --cs-font-display: var(--font-display, 'Fredoka', inherit, sans-serif);
   display: grid;
-  gap: 18px;
+  gap: var(--space-5);
   min-width: 0;
-  color: var(--cs-text);
+  color: var(--text);
 }
 
 .character-studio *,
@@ -32,131 +18,76 @@
 .character-studio button:disabled { cursor: default; }
 .character-studio button:focus-visible,
 .character-studio input:focus-visible {
-  outline: 3px solid var(--cs-focus);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 .character-studio svg { flex: 0 0 auto; }
 
-.character-studio__intro { display: grid; gap: 4px; }
+.character-studio__intro { display: grid; gap: var(--space-1); }
 .character-studio__intro h3 {
   margin: 0;
-  font: 700 clamp(22px, 3vw, 28px)/1.05 var(--cs-font-display);
+  font: 700 clamp(22px, 3vw, 28px)/1.05 var(--font-display);
   letter-spacing: -0.01em;
 }
-.character-studio__intro p { margin: 0; color: var(--cs-muted); font-size: 13px; font-weight: 600; line-height: 1.45; }
+.character-studio__intro p { margin: 0; color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; line-height: 1.45; }
 
 /* Section chrome shared by figure, colors, color sets and outfits. */
 .character-studio > section {
   min-width: 0;
-  padding: 14px;
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius-lg);
-  background: var(--cs-surface);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
 }
 .character-studio__heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
-.character-studio__heading h3 { margin: 0; font: 700 17px/1.15 var(--cs-font-display); }
-.character-studio__heading p { margin: 3px 0 0; color: var(--cs-muted); font-size: 12px; font-weight: 600; line-height: 1.4; }
+.character-studio__heading h3 { margin: 0; font: 700 var(--text-lg)/1.15 var(--font-display); }
+.character-studio__heading p { margin: 3px 0 0; color: var(--text-muted); font-size: 12.5px; font-weight: 600; line-height: 1.4; }
+.character-studio__heading > .ui-button { flex-shrink: 0; }
 
-/* Buttons: one primary (filled), one ghost (outlined), one danger, one lock, one icon. */
-.character-studio__primary,
-.character-studio__ghost,
-.character-studio__danger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 8px 14px;
-  border-radius: var(--cs-radius-md);
-  font-size: 13px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-.character-studio__primary {
-  border: 1px solid var(--cs-primary-strong);
-  color: var(--cs-primary-contrast);
-  background: var(--cs-primary);
-}
-.character-studio__primary:hover:not(:disabled) { background: var(--cs-primary-strong); }
-.character-studio__primary:disabled { opacity: 0.5; }
-.character-studio__ghost {
-  flex-shrink: 0;
-  border: 1px solid var(--cs-border);
-  color: var(--cs-primary-strong);
-  background: var(--cs-surface);
-}
-.character-studio__ghost:hover:not(:disabled) { background: var(--cs-selection); }
-.character-studio__ghost:disabled { opacity: 0.5; }
-.character-studio__danger {
-  border: 1px solid var(--cs-danger);
-  color: var(--cs-danger);
-  background: var(--cs-surface);
-}
-.character-studio__danger:hover { color: var(--cs-primary-contrast); background: var(--cs-danger); }
-
-.character-studio__lock {
-  position: absolute;
-  top: -2px;
-  right: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+/* "Keep" lock: a quiet small button that fills when pressed. */
+.character-studio .character-studio__lock {
   min-height: 32px;
-  padding: 4px 9px;
-  border: 1px solid transparent;
-  border-radius: var(--cs-radius-sm);
-  color: var(--cs-muted);
-  background: transparent;
-  font-size: 11px;
-  font-weight: 800;
-}
-.character-studio__lock:hover { background: var(--cs-surface-2); }
-.character-studio__lock[aria-pressed='true'] {
-  border-color: var(--cs-primary);
-  color: var(--cs-primary-strong);
-  background: var(--cs-selection);
-}
-
-/* Categories (figure parts and color slots). */
-.appearance-category,
-.character-colors__group {
-  position: relative;
-  min-width: 0;
-  margin: 12px 0 0;
-  padding: 6px 0 0;
-  border: 0;
-}
-.appearance-category legend,
-.character-colors__group legend { padding: 0; font-size: 12px; font-weight: 800; }
-.appearance-category[data-locked] legend::after,
-.character-colors__group[data-locked] legend::after { content: ' · kept'; color: var(--cs-muted); font-weight: 700; }
-.appearance-options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-.appearance-options button {
-  min-height: 40px;
-  padding: 7px 12px;
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius-sm);
-  color: var(--cs-text);
-  background: var(--cs-surface-2);
+  padding: 0 var(--space-2);
+  color: var(--text-muted);
   font-size: 12px;
-  font-weight: 700;
 }
-.appearance-options button:hover { background: var(--cs-selection); }
-.appearance-options button[aria-pressed='true'] {
-  border-color: var(--cs-primary);
-  color: var(--cs-primary-strong);
-  background: var(--cs-selection);
-  box-shadow: inset 0 0 0 1px var(--cs-primary);
+.character-studio .character-studio__lock[aria-pressed='true'] {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: var(--primary);
 }
 
-.character-colors__groups { display: grid; gap: 4px; }
-.character-colors__swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* Categories (figure parts and color slots): a label row with its lock, then the choices. */
+.appearance-category,
+.character-colors__group { min-width: 0; margin: var(--space-3) 0 0; }
+.character-category__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 32px;
+}
+.character-category__label { font-size: var(--text-sm); font-weight: 800; }
+[data-locked] > .character-category__header > .character-category__label::after { content: ' · kept'; color: var(--text-muted); font-weight: 700; }
+.appearance-options { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+/* Choice chips: the secondary button, filled when it is the current choice. */
+.character-studio .appearance-option { min-height: 40px; }
+.character-studio .appearance-option[aria-pressed='true'] {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  border-color: var(--primary-strong);
+  box-shadow: inset 0 0 0 1px var(--primary-strong);
+}
+
+.character-colors__groups { display: grid; gap: var(--space-1); }
+.character-colors__swatches { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
 .character-swatch {
   position: relative;
   width: 40px;
@@ -164,10 +95,10 @@
   display: grid;
   place-items: center;
   padding: 0;
-  border: 2px solid var(--cs-surface);
-  border-radius: var(--cs-radius-sm);
-  background: var(--character-swatch, var(--cs-surface-2));
-  box-shadow: 0 0 0 1px var(--cs-border);
+  border: 2px solid var(--surface);
+  border-radius: var(--radius-sm);
+  background: var(--character-swatch, var(--surface-2));
+  box-shadow: 0 0 0 1px var(--border-strong);
   cursor: pointer;
 }
 .character-swatch > span {
@@ -179,11 +110,11 @@
   opacity: 0;
   transform: rotate(-45deg) translateY(-1px);
 }
-.character-swatch[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--cs-text); }
+.character-swatch[aria-pressed='true'] { box-shadow: 0 0 0 3px var(--text); }
 .character-swatch[aria-pressed='true'] > span { opacity: 1; }
 .character-swatch--custom {
   overflow: hidden;
-  background: conic-gradient(#f17861, #f3ca74, #7ac07a, #5888da, #9568c9, #f17861);
+  background: conic-gradient(var(--accent), var(--warning), #7ac07a, var(--primary), #9568c9, var(--accent));
 }
 .character-swatch--custom input {
   width: 100%;
@@ -206,21 +137,21 @@
   pointer-events: none;
 }
 
-.character-looks__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
+.character-looks__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: var(--space-2); }
 .character-look {
   display: grid;
   gap: 5px;
   min-height: 44px;
-  padding: 8px;
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius-md);
-  color: var(--cs-text);
-  background: var(--cs-surface-2);
-  font-size: 12px;
+  padding: var(--space-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  background: var(--surface);
+  font-size: 12.5px;
   font-weight: 700;
   text-align: center;
 }
-.character-look:hover:not(:disabled) { background: var(--cs-selection); }
+.character-look:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
 .character-look:disabled { opacity: 0.5; }
 .character-look > span { display: flex; justify-content: center; gap: 3px; }
 .character-look i { width: 22px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
@@ -228,106 +159,87 @@
 .character-studio__mix {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px dashed var(--cs-border);
-  border-radius: var(--cs-radius-lg);
-  background: var(--cs-surface-2);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
 }
-.character-studio__mix p { flex: 1; min-width: 0; margin: 0; color: var(--cs-muted); font-size: 12px; font-weight: 600; line-height: 1.4; }
+.character-studio__mix > .ui-button { flex-shrink: 0; }
+.character-studio__mix p { flex: 1; min-width: 0; margin: 0; color: var(--text-muted); font-size: 12.5px; font-weight: 600; line-height: 1.4; }
 
 /* Wardrobe. */
-.character-wardrobe__save { display: flex; gap: 8px; flex-wrap: wrap; }
-.character-wardrobe__save input {
-  flex: 1;
-  min-width: 140px;
-  min-height: 44px;
-  padding: 8px 12px;
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius-md);
-  color: var(--cs-text);
-  background: var(--cs-surface);
-  font: inherit;
-}
-.character-wardrobe__save input:disabled { background: var(--cs-surface-2); }
+.character-wardrobe__save { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; }
+.character-wardrobe__field { flex: 1; min-width: 160px; }
 .character-wardrobe__note,
-.character-wardrobe__empty { margin: 10px 0 0; color: var(--cs-muted); font-size: 12px; font-weight: 600; }
+.character-wardrobe__empty { margin: var(--space-3) 0 0; color: var(--text-muted); font-size: 12.5px; font-weight: 600; }
 .character-wardrobe__empty {
-  padding: 12px;
-  border: 1px dashed var(--cs-border);
-  border-radius: var(--cs-radius-md);
+  padding: var(--space-3);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
   text-align: center;
 }
-.character-wardrobe__list { list-style: none; display: grid; gap: 8px; margin: 12px 0 0; padding: 0; }
+.character-wardrobe__list { list-style: none; display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; }
 .character-wardrobe__item {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 6px;
-  border: 1px solid var(--cs-border);
-  border-radius: var(--cs-radius-md);
-  background: var(--cs-surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
 }
-.character-wardrobe__item[data-favorite] { border-color: var(--cs-primary); background: var(--cs-selection); }
+.character-wardrobe__item[data-favorite] { border-color: var(--primary); background: var(--primary-soft); }
 .character-wardrobe__look {
   flex: 1;
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 10px;
+  column-gap: var(--space-3);
   align-items: center;
   min-height: 44px;
-  padding: 4px 8px;
+  padding: 4px var(--space-2);
   border: 0;
-  border-radius: var(--cs-radius-sm);
-  color: var(--cs-text);
+  border-radius: var(--radius-sm);
+  color: var(--text);
   background: transparent;
   text-align: left;
 }
-.character-wardrobe__look:hover { background: var(--cs-surface); }
+.character-wardrobe__look:hover { background: var(--surface); }
 .character-wardrobe__swatches { grid-row: span 2; display: inline-flex; gap: 2px; }
 .character-wardrobe__swatches i { width: 12px; height: 26px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08); }
-.character-wardrobe__name { font-size: 13px; font-weight: 800; overflow-wrap: anywhere; }
-.character-wardrobe__look small { color: var(--cs-muted); font-size: 11px; font-weight: 700; }
-.character-wardrobe__icon {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--cs-radius-sm);
-  color: var(--cs-muted);
-  background: transparent;
-}
-.character-wardrobe__icon:hover { background: var(--cs-surface); }
-.character-wardrobe__icon[aria-pressed='true'] { color: #b8860b; }
+.character-wardrobe__name { font-size: var(--text-sm); font-weight: 800; overflow-wrap: anywhere; }
+.character-wardrobe__look small { color: var(--text-muted); font-size: 11.5px; font-weight: 700; }
+.character-studio .character-wardrobe__icon { color: var(--text-muted); }
+.character-studio .character-wardrobe__icon[aria-pressed='true'] { color: #b8860b; }
 .character-wardrobe__confirm { display: inline-flex; gap: 6px; }
-.character-wardrobe__confirm button { min-height: 40px; padding: 6px 10px; }
 .character-wardrobe__device {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  margin: 12px 0 0;
-  color: var(--cs-muted);
-  font-size: 12px;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  color: var(--text-muted);
+  font-size: 12.5px;
   font-weight: 600;
   line-height: 1.45;
 }
 .character-wardrobe__device svg { margin-top: 1px; }
-.character-wardrobe__device strong { color: var(--cs-text); }
-.character-wardrobe__status { min-height: 1em; margin: 6px 0 0; color: var(--cs-primary-strong); font-size: 12px; font-weight: 700; }
+.character-wardrobe__device strong { color: var(--text); }
+.character-wardrobe__status { min-height: 1em; margin: 6px 0 0; color: var(--primary-strong); font-size: 12.5px; font-weight: 700; }
+.character-wardrobe__status[data-tone='error'] { color: var(--danger-text); }
 .character-wardrobe__status:empty { margin: 0; min-height: 0; }
 
 @media (max-width: 620px) {
-  .character-studio { gap: 14px; }
-  .character-studio > section { padding: 12px; }
+  .character-studio { gap: var(--space-4); }
+  .character-studio > section { padding: var(--space-3); }
   .character-studio__heading { flex-wrap: wrap; }
   .character-studio__mix { flex-direction: column; align-items: stretch; text-align: center; }
   .character-looks__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .character-wardrobe__save > .ui-button { flex: 1; }
 }
 
 @media (pointer: coarse) {
   .character-swatch { width: 44px; height: 44px; }
+  .character-studio .character-studio__lock { min-height: 36px; }
 }

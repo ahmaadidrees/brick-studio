@@ -1,5 +1,6 @@
 import { Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import { Button } from '../../ui'
 import { AppearanceControls } from './AppearanceControls'
 import { CharacterPreview } from './CharacterPreview'
 import { LookColors } from './LookColors'
@@ -49,6 +50,7 @@ export function CharacterStudio({
   const selected = characterDescriptors.find(({ id }) => id === draft.characterId)
   const customizable = Boolean(selected?.customizable)
   const showColors = customizable && paletteGroups.length > 0
+  const showFigure = draft.characterId === 'toy-figure'
   const mixable = canMixDraft(draft, { locked, paletteGroups, customizable })
   const onToggleLock = (key: string) => setLocked(current => toggleLock(current, key))
 
@@ -72,7 +74,7 @@ export function CharacterStudio({
         onRequestPreview={onRequestPreview}
         previewStatuses={previewStatuses}
       />
-      {draft.characterId === 'toy-figure' && (
+      {showFigure && (
         <AppearanceControls
           appearance={draft.appearance}
           locked={locked}
@@ -90,14 +92,14 @@ export function CharacterStudio({
         />
       )}
       {showColors && <LookColors palette={draft.palette} locked={locked} onChange={palette => onDraftChange({ ...draft, palette })} />}
-      {(showColors || draft.characterId === 'toy-figure') && (
+      {(showColors || showFigure) && (
         <div className="character-studio__mix">
-          <button
-            type="button"
-            className="character-studio__primary"
+          <Button
+            variant="primary"
+            icon={<Sparkles size={16} />}
             disabled={!mixable}
             onClick={() => onDraftChange(mixDraft(draft, { locked, paletteGroups, customizable }))}
-          ><Sparkles aria-hidden="true" size={16} /><span>Mix it up</span></button>
+          >Mix it up</Button>
           <p>{mixable ? 'Shuffles every part you have not kept. Locked choices, skin tone and hair color stay the same.' : 'Everything is kept. Unlock a part to mix it.'}</p>
         </div>
       )}

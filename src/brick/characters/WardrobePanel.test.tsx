@@ -22,7 +22,7 @@ describe('wardrobe panel', () => {
     view.unmount()
     render(<WardrobePanel appearance={{ characterId: 'classic', palette: {} }} onChoose={onChoose} characterDescriptors={descriptors} />)
     expect(screen.getByRole('button', { name: 'Favorite Moon explorer' })).toHaveAttribute('aria-pressed', 'true')
-    const look = screen.getByRole('button', { name: /Moon explorer/ })
+    const look = screen.getByRole('button', { name: 'Moon explorer' })
     expect(within(look).getByText('Toy Figure')).toBeInTheDocument()
     fireEvent.click(look)
     expect(onChoose).toHaveBeenCalledWith(appearance)

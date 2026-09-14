@@ -1,6 +1,7 @@
-import { Lock, LockOpen } from 'lucide-react'
-import type { CSSProperties } from 'react'
+import { useId, type CSSProperties } from 'react'
 import { CHARACTER_APPEARANCE_OPTIONS, normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
+import { Button } from '../../ui'
+import { LockToggle } from './PaletteControls'
 import { APPEARANCE_CATEGORIES, type StudioLocks } from './studioMix'
 
 export { randomizeCharacterAppearance } from './studioMix'
@@ -35,9 +36,10 @@ export type AppearanceControlsProps = {
 /** Toy Figure categories: body, face, hair & hats, outfit, accessory, then skin tone and hair color. */
 export function AppearanceControls({ appearance, locked, onToggleLock, onChange }: AppearanceControlsProps) {
   const current = normalizeCharacterAppearance(appearance)
+  const idBase = useId()
   const colorRow = (key: 'skinColor' | 'hairColor', label: string, presets: readonly { value: string; label: string }[]) => (
-    <fieldset className="appearance-category appearance-category--colors">
-      <legend>{label}</legend>
+    <div role="group" aria-labelledby={`${idBase}-${key}`} className="appearance-category appearance-category--colors">
+      <div className="character-category__header"><span id={`${idBase}-${key}`} className="character-category__label">{label}</span></div>
       <div className="character-colors__swatches">
         {presets.map((preset) => (
           <button
@@ -60,7 +62,7 @@ export function AppearanceControls({ appearance, locked, onToggleLock, onChange 
           />
         </label>
       </div>
-    </fieldset>
+    </div>
   )
   return (
     <section className="appearance-controls" aria-label="Customize your figure">
@@ -70,24 +72,18 @@ export function AppearanceControls({ appearance, locked, onToggleLock, onChange 
       {APPEARANCE_CATEGORIES.map(({ key, label }) => {
         const isLocked = locked.has(key)
         return (
-          <fieldset key={key} className="appearance-category" data-locked={isLocked || undefined}>
-            <legend>{label}</legend>
-            <button
-              className="character-studio__lock"
-              type="button"
-              aria-label={`Keep ${label.toLowerCase()} when mixing`}
-              aria-pressed={isLocked}
-              onClick={() => onToggleLock(key)}
-            >
-              {isLocked ? <Lock aria-hidden="true" size={14} /> : <LockOpen aria-hidden="true" size={14} />}
-              <span>{isLocked ? 'Kept' : 'Keep'}</span>
-            </button>
+          <div key={key} role="group" aria-labelledby={`${idBase}-${key}`} className="appearance-category" data-locked={isLocked || undefined}>
+            <div className="character-category__header">
+              <span id={`${idBase}-${key}`} className="character-category__label">{label}</span>
+              <LockToggle label={label.toLowerCase()} locked={isLocked} onToggle={() => onToggleLock(key)} />
+            </div>
             <div className="appearance-options">
+              {/* Toggle buttons on purpose: the QA harness drives these by name + aria-pressed. */}
               {CHARACTER_APPEARANCE_OPTIONS[key].map(value => (
-                <button key={value} type="button" aria-pressed={current[key] === value} onClick={() => onChange({ ...current, [key]: value })}>{LABELS[value]}</button>
+                <Button key={value} variant="secondary" size="sm" className="appearance-option" aria-pressed={current[key] === value} onClick={() => onChange({ ...current, [key]: value })}>{LABELS[value]}</Button>
               ))}
             </div>
-          </fieldset>
+          </div>
         )
       })}
       {colorRow('skinColor', 'Skin tone', SKIN_TONES)}

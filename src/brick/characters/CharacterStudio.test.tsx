@@ -6,6 +6,12 @@ import type { ContentPickerSelection } from '../contentPicker/selection'
 import { CharacterStudio } from './CharacterStudio'
 import { WARDROBE_STORAGE_KEY } from './wardrobe'
 
+// jsdom has no WebGL: stand in for the R3F Canvas so the DOM around it can be tested.
+vi.mock('@react-three/fiber', async (importActual) => ({
+  ...(await importActual<typeof import('@react-three/fiber')>()),
+  Canvas: ({ frameloop }: { frameloop?: string }) => <canvas data-frameloop={frameloop} />,
+}))
+
 const persistence = vi.hoisted(() => ({ save: vi.fn(), setState: vi.fn() }))
 vi.mock('../contentPreferences', async (importActual) => ({
   ...(await importActual<typeof import('../contentPreferences')>()),
@@ -108,7 +114,7 @@ describe('CharacterStudio', () => {
     ] }))
     const onDraftChange = vi.fn()
     render(<CharacterStudio draft={{ ...draft, characterId: 'pip' }} onDraftChange={onDraftChange} characterDescriptors={characters} paletteGroups={paletteGroups} />)
-    fireEvent.click(screen.getByRole('button', { name: /Curly builder/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Curly builder' }))
     expect(onDraftChange).toHaveBeenCalledWith({
       environmentId: 'classic', characterId: 'toy-figure', palette: { primary: '#3e83d7' },
       appearance: { ...DEFAULT_CHARACTER_APPEARANCE, hair: 'curls', accessory: 'glasses' },

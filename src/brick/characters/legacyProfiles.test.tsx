@@ -1,11 +1,17 @@
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CHARACTER_APPEARANCE, normalizeCharacterAppearance } from '@brick-studio/core'
 import { CHARACTER_DESCRIPTORS, characterPaletteGroups, ENVIRONMENT_DESCRIPTORS } from '../contentCatalog'
 import { loadCharacterPreferences } from '../contentPreferences'
 import { normalizeContentPickerSelection, parseContentPickerPreferences } from '../contentPicker/selection'
 import { CharacterStudio } from './CharacterStudio'
 import { loadWardrobe, WARDROBE_STORAGE_KEY } from './wardrobe'
+
+// jsdom has no WebGL: stand in for the R3F Canvas so the DOM around it can be tested.
+vi.mock('@react-three/fiber', async (importActual) => ({
+  ...(await importActual<typeof import('@react-three/fiber')>()),
+  Canvas: ({ frameloop }: { frameloop?: string }) => <canvas data-frameloop={frameloop} />,
+}))
 
 /**
  * Records written by earlier releases: a v1 preference with a partial appearance
@@ -57,7 +63,7 @@ describe('legacy saved profiles', () => {
     expect(screen.getByLabelText('Custom skin tone')).toHaveValue('#aabbcc')
     expect(screen.getByRole('button', { name: 'Set Trim to Sky blue' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Favorite Old favorite' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: /Pip look/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pip look' })).toBeInTheDocument()
     expect(screen.queryByText('Gone character')).toBeNull()
   })
 
