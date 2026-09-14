@@ -1,5 +1,5 @@
 {
-  "_comment": "Role/label locators for scripts/qa/brand-surfaces.mjs. Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText.",
+  "_comment": "Role/label locators for the brand QA harnesses (scripts/qa/lib/ui.mjs makeLocate). Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText, `css` uses page.locator (only for controls whose accessible name is not stable, e.g. the save chip). Names verified in the DOM of the integrated candidate 7083387.",
   "worldMenu": {
     "role": "button",
     "name": "World menu"
@@ -33,10 +33,8 @@
     }
   },
   "saveStatus": {
-    "role": "status",
-    "name": {
-      "regex": "^Save status"
-    }
+    "css": "[role=\"status\"][data-kind]",
+    "_note": "SaveStatus primitive: role=status + data-kind=local|cloud|shared; its accessible name is the human label/detail, so it is matched by attribute."
   },
   "settings": {
     "role": "button",
@@ -102,7 +100,7 @@
   },
   "brickDrawerSheet": {
     "role": "dialog",
-    "name": "Choose a shape"
+    "name": "Bricks"
   },
   "createBrick": {
     "role": "button",
@@ -141,27 +139,28 @@
     "name": "Continue building"
   },
   "builderName": {
-    "label": "Your builder name"
+    "label": "Your name"
   },
   "roomName": {
-    "label": "Room name"
+    "label": "World name"
   },
   "createRoom": {
     "role": "button",
-    "name": "Create my live room"
+    "name": "Create shared world"
   },
   "liveBlockedHeading": {
     "role": "heading",
     "name": {
-      "regex": "Cannot open this world|Cannot reach this room|This room is closed"
+      "regex": "Cannot open this world|Cannot reach this room|This room is closed|This world needs a class sign-in"
     }
   },
   "publishedTitle": {
-    "text": "Published world"
+    "role": "region",
+    "name": "Published world"
   },
   "remix": {
     "role": "button",
-    "name": "Remix this world"
+    "name": "Make a copy"
   },
   "remixConfirm": {
     "role": "dialog",
@@ -180,7 +179,7 @@
     "name": "Download my build"
   },
   "importFile": {
-    "label": "Choose Brick Studio project file"
+    "label": "Choose Brickgineers project file"
   },
   "studioMessage": {
     "role": "status",
@@ -189,24 +188,25 @@
   "classroomDialog": {
     "role": "dialog",
     "name": {
-      "regex": "Save, return, build together|My Worlds|My Class|Choose your new password"
+      "regex": "Join your class|Welcome back|Teacher sign in|My Worlds|My Class|Choose a new password"
     }
   },
   "classroomJoin": {
-    "role": "button",
-    "name": "Join a class"
+    "role": "radio",
+    "name": "Join a class",
+    "_note": "SegmentedControl \"Sign in as\": Student / Join a class / Teacher (aria-checked)."
   },
   "classroomStudentSignIn": {
-    "role": "button",
-    "name": "Student sign in"
+    "role": "radio",
+    "name": "Student"
   },
   "classroomTeacherSignIn": {
-    "role": "button",
-    "name": "Teacher sign in"
+    "role": "radio",
+    "name": "Teacher"
   },
   "closeClassroom": {
     "role": "button",
-    "name": "Close classroom"
+    "name": "Close and keep building"
   },
   "notFoundHeading": {
     "role": "heading",
@@ -220,14 +220,14 @@
     "label": "Enrollment code"
   },
   "signInCode": {
-    "label": "Sign-in code"
+    "label": "Class sign-in code"
   },
   "teacherEmail": {
     "label": "Email"
   },
   "brandHome": {
     "role": "link",
-    "name": "Brickgineers"
+    "name": "Brickgineers Home"
   },
   "people": {
     "role": "button",
@@ -235,17 +235,9 @@
       "regex": "^People"
     }
   },
-  "share": {
-    "role": "button",
-    "name": "Share"
-  },
-  "room": {
-    "role": "button",
-    "name": "Room"
-  },
   "joinRoom": {
     "role": "button",
-    "name": "Join the room"
+    "name": "Join world"
   },
   "exportCopy": {
     "role": "button",
@@ -253,12 +245,12 @@
   },
   "copyInvite": {
     "role": "button",
-    "name": "Copy invite link"
+    "name": "Copy link"
   },
   "menuExport": {
     "role": "menuitem",
     "name": {
-      "regex": "^Export"
+      "regex": "^Download build"
     }
   },
   "menuHelp": {
@@ -266,5 +258,22 @@
     "name": {
       "regex": "^Help"
     }
+  },
+  "inviteLink": {
+    "role": "region",
+    "name": "Invite link",
+    "_note": "Inside the People panel (a dialog titled with the room name); replaces the pre-brand Share sheet."
+  },
+  "closeRoom": {
+    "role": "button",
+    "name": "Close room to new people"
+  },
+  "openRoom": {
+    "role": "button",
+    "name": "Open room to new people"
+  },
+  "closePeoplePanel": {
+    "role": "button",
+    "name": "Close people panel"
   }
 }

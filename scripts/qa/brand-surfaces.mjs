@@ -55,8 +55,8 @@ const VARIANTS = {
 
 /**
  * Surfaces. `route` is opened first; `ready` (or any of `readyAny`) must be visible before `steps` run; `expect` (or `expectAny`)
- * must be visible afterwards; `expectPressed` names a toggle that must carry `aria-pressed="true"` (entry-intent
- * modes). `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
+ * must be visible afterwards; `expectPressed` names a toggle that must carry `aria-pressed="true"` or a radio with `aria-checked="true"`
+ * (entry-intent modes). `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
  * keeps the onboarding guide. `scrollable` marks a document that scrolls (landing) so below-the-fold
  * controls are not "outside". `escape` presses Escape after the screenshot and expects `expect` to hide.
  */
@@ -197,8 +197,10 @@ async function runSurface(browser, surface, viewport, variantId) {
       if (!(await locate(page, key).first().isVisible().catch(() => false))) failures.push(`${key} not visible`)
     }
     if (surface.expectPressed) {
-      const pressed = await locate(page, surface.expectPressed).first().getAttribute('aria-pressed').catch(() => null)
-      if (pressed !== 'true') failures.push(`${surface.expectPressed} is not pressed (aria-pressed=${JSON.stringify(pressed)})`)
+      // Toggle buttons carry aria-pressed; the SegmentedControl modes are role=radio with aria-checked.
+      const target = locate(page, surface.expectPressed).first()
+      const pressed = await target.evaluate((el) => el.getAttribute('aria-pressed') ?? el.getAttribute('aria-checked')).catch(() => null)
+      if (pressed !== 'true') failures.push(`${surface.expectPressed} is not pressed/checked (aria-pressed/aria-checked=${JSON.stringify(pressed)})`)
     }
     if (surface.selectedTab) {
       const selected = await page.getByRole('tab', { selected: true }).first().textContent().catch(() => null)

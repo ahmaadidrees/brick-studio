@@ -2,8 +2,8 @@
  * Shared page helpers for the brand QA scripts: role/label locators from scripts/qa/locators.json,
  * a small declarative step runner, and the guest-storage seeding every surface needs.
  *
- * A locator entry is `{ role, name, exact? }`, `{ label }` or `{ text }`; `name` may be a string (exact by default)
- * or `{ regex }`. Scripts pass the parsed JSON so a renamed control only needs a JSON edit.
+ * A locator entry is `{ role, name, exact? }`, `{ label }`, `{ text }` or `{ css }`; `name` may be a string (exact by default)
+ * or `{ regex }`. `css` is for controls whose accessible name is not stable (the save chip). Scripts pass the parsed JSON so a renamed control only needs a JSON edit.
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -29,7 +29,8 @@ export function makeLocate(locators) {
     if (spec.role) return page.getByRole(spec.role, { name, ...(typeof name === 'string' ? { exact: spec.exact ?? true } : {}) })
     if (spec.label) return page.getByLabel(spec.label, { exact: true })
     if (spec.text) return page.getByText(spec.text, { exact: true })
-    throw new Error(`locators.json entry "${key}" needs role, label or text`)
+    if (spec.css) return page.locator(spec.css)
+    throw new Error(`locators.json entry "${key}" needs role, label, text or css`)
   }
 }
 
