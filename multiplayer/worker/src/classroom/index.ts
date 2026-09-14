@@ -1,4 +1,4 @@
-import { validateBrickStudioDocument } from '@brick-studio/core';
+import { validateBrickStudioDocument, type BrickStudioDocument } from '@brick-studio/core';
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 
@@ -9,7 +9,19 @@ export interface ClassroomEnv {
   /** Trusted existing Supabase user UUIDs, never student-controlled metadata. */
   BRICK_TEACHER_IDS?: string;
 }
-export type ClassroomAccessChange = { classId?: string; worldId?: string; userId?: string; reason: string };
+/**
+ * How a classroom mutation affects live sockets. The host Worker forwards it to
+ * every affected WorldRoom, which never infers it from `reason` alone.
+ * - `metadata`: the stored document/title/revision changed (rename, save, restore).
+ *   Nobody loses access; rooms reload from Postgres and broadcast a snapshot.
+ * - `membership`: who may be inside changed (member added, class settings, roster
+ *   edits). Rooms re-authorize connected sessions in place and close only those
+ *   now denied; an unavailable permission check closes them (fail closed).
+ * - `revocation`: the named session(s) lost access (logout, password change or
+ *   reset, suspension, member removal). Rooms close those sockets immediately.
+ */
+export type ClassroomAccessChangeKind = 'metadata' | 'membership' | 'revocation';
+export type ClassroomAccessChange = { classId?: string; worldId?: string; userId?: string; reason: string; change: ClassroomAccessChangeKind };
 export type ClassroomHandlerOptions = { onAccessChanged?: (event: ClassroomAccessChange) => Promise<void> };
 export type ClassroomSessionIdentity = { userId: string; sessionId: string; authVersion: number };
 type Row = Record<string, any>;
@@ -259,7 +271,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (caller.role === 'student') await service.remove('sessions', `session_id=eq.${caller.sessionId}&user_id=eq.${caller.id}`);
       else await service.patch('teacher_sessions', `session_id=eq.${caller.sessionId}&user_id=eq.${caller.id}`, { revoked: true });
       await service.request('/auth/v1/logout?scope=local', { method: 'POST' }, caller.token);
-      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'logout' });
+      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'logout', change: 'revocation' });
       return json({ ok: true });
     }
     if (path[1] === 'change-password') {
@@ -285,7 +297,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (!cleared) fail(409, 'account_changed', 'Your account changed. Please sign in again.');
       const session = await service.login(internalEmail(caller.id), pass);
       await service.registerSession(session, student);
-      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'password_changed' });
+      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'password_changed', change: 'revocation' });
       return json(await service.authResult(session));
       });
     }
@@ -315,7 +327,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
         code = newCode(); await service.insert('class_codes', { class_id: cls.id, code });
       } else code = (await service.rows('class_codes', `class_id=eq.${cls.id}&can_enroll=eq.true&limit=1`))[0]?.code;
       await service.audit(caller, input.rotateCode ? 'rotate_class_code' : 'update_class', cls.id);
-      await options.onAccessChanged?.({ classId: cls.id, reason: 'class_updated' });
+      await options.onAccessChanged?.({ classId: cls.id, reason: 'class_updated', change: 'membership' });
       return json({ class: classView(updated, code) });
     }
     if (path[2] === 'students' && path.length === 3 && method === 'GET') return json({ students: (await service.rows('students', `class_id=eq.${cls.id}&order=username.asc`)).map(studentView) });
@@ -342,7 +354,9 @@ async function route(request: Request, service: ClassroomService, path: string[]
         await service.request('/auth/v1/logout?scope=global', { method: 'POST' }, resetSession.access_token);
       }
       await service.audit(caller, temp ? 'reset_password' : 'update_student', cls.id, student.user_id);
-      await options.onAccessChanged?.({ classId: cls.id, userId: student.user_id, reason: temp ? 'password_reset' : 'student_updated' });
+      // Only an auth_version bump (suspension, temporary password) invalidates the
+      // student's sessions; a username or roster edit re-authorizes them in place.
+      await options.onAccessChanged?.({ classId: cls.id, userId: student.user_id, reason: temp ? 'password_reset' : 'student_updated', change: changes.auth_version !== undefined ? 'revocation' : 'membership' });
       return json({ student: studentView(updated) });
       });
     }
@@ -378,7 +392,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (updated.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
       if (updated.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
       if (updated.error) fail(404, 'not_found', 'World not found.');
-      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: 'world_saved' });
+      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: 'world_saved', change: 'metadata' });
       return json({ world: worldView(updated) });
     }
     if (path.length === 2 && method === 'PUT' || path[2] === 'restore' && method === 'POST') {
@@ -397,7 +411,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (saved.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
       if (saved.error) fail(404, 'not_found', 'World not found.');
       if (restoring) await service.audit(caller, 'restore_world', world.class_id, world.id);
-      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: restoring ? 'world_restored' : 'world_saved' });
+      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: restoring ? 'world_restored' : 'world_saved', change: 'metadata' });
       return json({ world: worldView(saved, true) });
     }
     if (path[2] === 'checkpoints' && method === 'GET') return json({ checkpoints: (await service.rows('checkpoints', `world_id=eq.${world.id}&select=id,revision,created_at,reason&order=created_at.desc&limit=30`)).map(cp => ({ id: cp.id, revision: cp.revision, createdAt: cp.created_at, reason: cp.reason })) });
@@ -417,7 +431,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
           await service.audit(caller, 'remove_group_member', world.class_id, path[3]);
         } else fail(405, 'method_not_allowed', 'Unsupported member action.');
       }
-      if (method !== 'GET') await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id, userId: method === 'DELETE' ? path[3] : undefined, reason: 'members_updated' });
+      if (method !== 'GET') await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id, userId: method === 'DELETE' ? path[3] : undefined, reason: 'members_updated', change: method === 'DELETE' ? 'revocation' : 'membership' });
       const students = await service.rows('students', `class_id=eq.${world.class_id}&order=username.asc`);
       const members = world.kind === 'group' ? await service.rows('world_members', `world_id=eq.${world.id}`) : students.map(s => ({ user_id: s.user_id }));
       return json({ members: students.filter(s => members.some(m => m.user_id === s.user_id)).map(s => ({ id: s.user_id, username: s.username, ...(caller.role === 'teacher' ? { rosterName: s.roster_name } : {}) })) });
@@ -467,21 +481,23 @@ export async function reauthorizeClassroomSocket(env: ClassroomEnv, access: Clas
   return revalidateClassroomWorldAccess(env, access, access.worldId);
 }
 
+/** A stored world as trusted DOs consume it; every stored document was validated on write. */
+export type ClassroomWorldSnapshot = { id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document: BrickStudioDocument };
 /** Server-only helpers. The DO must authorize the caller before committing any edit. */
-export async function loadClassroomWorld(env: ClassroomEnv, worldId: string) {
+export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
-  return worldView(row, true);
+  return worldView(row, true) as ClassroomWorldSnapshot;
 }
-export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity) {
+export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const saved = await new ClassroomService(env).rpc('commit_world', { p_world_id: worldId, p_expected_revision: expectedRevision(revision), p_document: document(value), p_title: null, p_reason: 'live_edit', p_actor_id: identity.userId, p_session_id: identity.sessionId, p_auth_version: identity.authVersion });
   if (saved.error === 'conflict') throw new ClassroomHttpError(409, 'revision_conflict', 'A newer world revision exists.', { currentRevision: saved.currentRevision });
   if (saved.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
   if (saved.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
   if (saved.error) fail(404, 'not_found', 'World not found.');
-  return worldView(saved, true);
+  return worldView(saved, true) as ClassroomWorldSnapshot;
 }
 export async function listClassroomWorldIds(env: ClassroomEnv, filter: { classId?: string; userId?: string }): Promise<string[]> {
   const service = new ClassroomService(env);

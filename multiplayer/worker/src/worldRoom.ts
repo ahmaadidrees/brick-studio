@@ -383,26 +383,21 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (url.pathname === "/internal/classroom-invalidate" && request.method === "POST") {
       return this.withSerializedAdmission(async () => {
         if (!this.record?.classroomWorldId) return json({ error: "world_not_found" }, 404);
-        const input = await request.json() as { userId?: string; reason?: string; document?: unknown; revision?: number };
+        const input = await request.json() as { userId?: unknown; change?: unknown; document?: unknown; revision?: unknown };
+        const userId = typeof input.userId === "string" ? input.userId : undefined;
+        // A missing or unknown kind revokes: a caller that predates `change`
+        // must never keep a revoked session alive.
+        const change = input.change === "metadata" || input.change === "membership" ? input.change : "revocation";
+        if (change === "metadata") return this.refreshClassroomWorld(input);
+        if (change === "membership") {
+          const checked = await this.reauthorizeClassroomSockets(userId);
+          await this.persist();
+          this.broadcastPlayers();
+          return checked ? json({ ok: true }) : json({ error: "reauthorization_failed" }, 503);
+        }
         for (const socket of this.sessionSockets()) {
           const attachment = this.attachment(socket);
-          if (attachment?.classroomAccess && (!input.userId || attachment.playerId === input.userId)) {
-            attachment.superseded = true;
-            socket.serializeAttachment(attachment);
-            socket.close(4003, "Classroom access changed. Rejoin from My Class.");
-          }
-        }
-        if (input.reason === "world_saved" || input.reason === "world_restored") {
-          const latest = await loadClassroomWorld(this.env, this.record.classroomWorldId);
-          this.record.document = latest.document;
-          this.record.revision = latest.revision;
-        } else if (input.document !== undefined) {
-          const parsed = validateBrickStudioDocument(input.document);
-          if (!parsed.ok || !Number.isInteger(input.revision) || input.revision! < this.record.revision) {
-            return json({ error: "invalid_restore" }, 409);
-          }
-          this.record.document = parsed.document;
-          this.record.revision = input.revision!;
+          if (attachment?.classroomAccess && (!userId || attachment.playerId === userId)) this.revokeSocket(socket, attachment);
         }
         await this.persist();
         this.broadcastPlayers();
@@ -479,8 +474,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         classroomAccess = await revalidateClassroomWorldAccess(this.env, classroomAccess, worldId);
         const latest = await loadClassroomWorld(this.env, worldId);
         if (latest.revision !== this.record.revision) {
-          this.record.document = latest.document;
-          this.record.revision = latest.revision;
+          this.adoptClassroomWorld(latest);
           await this.persist();
           this.broadcastSnapshot();
         }
@@ -702,21 +696,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (!this.record) return;
     if (this.record.classroomWorldId) {
       await this.withSerializedAdmission(async () => {
-        const sessions = this.openSockets().map(socket => ({ socket, attachment: this.attachment(socket) })).filter(session => session.attachment?.classroomAccess);
-        if (sessions.length) {
-          try {
-            const results = await revalidateClassroomWorldAccessBatch(this.env, sessions.map(session => session.attachment!.classroomAccess!), this.record!.classroomWorldId!);
-            for (let index = 0; index < sessions.length; index += 1) {
-              const { socket, attachment } = sessions[index];
-              const access = results[index]?.access;
-              if (access) this.applyReauthorizedAccess(socket, attachment!, access);
-              else this.revokeSocket(socket, attachment!);
-            }
-          } catch {
-            // Unavailable permission data must never extend a session's access.
-            for (const { socket, attachment } of sessions) this.revokeSocket(socket, attachment!);
-          }
-        }
+        await this.reauthorizeClassroomSockets();
         if (this.openSockets().length) await this.ctx.storage.setAlarm(Date.now() + 60_000);
         else await this.ctx.storage.deleteAlarm();
       });
@@ -811,6 +791,70 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     this.broadcastSnapshot(opId);
   }
 
+  /**
+   * A rename, REST save or checkpoint restore changed the stored world without
+   * changing who may be inside. Adopt the authoritative document, title and
+   * revision so every later edit commits against the current revision, then
+   * broadcast the snapshot so clients rebase their pending edits on the new base.
+   */
+  private async refreshClassroomWorld(input: { document?: unknown; revision?: unknown }): Promise<Response> {
+    if (input.document !== undefined) {
+      const parsed = validateBrickStudioDocument(input.document);
+      if (!parsed.ok || !Number.isInteger(input.revision) || (input.revision as number) < this.record!.revision) {
+        return json({ error: "invalid_restore" }, 409);
+      }
+      this.adoptClassroomWorld({ document: parsed.document, revision: input.revision as number });
+    } else {
+      try {
+        this.adoptClassroomWorld(await loadClassroomWorld(this.env, this.record!.classroomWorldId!));
+      } catch {
+        // Keep the last confirmed document: the commit CAS rejects any stale edit
+        // and refreshes the room then. Report it so the route never claims success.
+        return json({ error: "world_reload_failed" }, 503);
+      }
+    }
+    await this.persist();
+    this.broadcastSnapshot();
+    return json({ ok: true });
+  }
+
+  /**
+   * Re-check every connected classroom session (or only one user's) against the
+   * current database permissions. Allowed sessions continue with refreshed access
+   * and display names; denied ones close with 4003. Returns false when the check
+   * itself failed: unavailable permission data must never extend a session's
+   * access, so every session in scope is closed.
+   */
+  private async reauthorizeClassroomSockets(userId?: string): Promise<boolean> {
+    const sessions = this.openSockets().flatMap((socket) => {
+      const attachment = this.attachment(socket);
+      return attachment?.classroomAccess && (!userId || attachment.playerId === userId) ? [{ socket, attachment }] : [];
+    });
+    if (!sessions.length) return true;
+    try {
+      const results = await revalidateClassroomWorldAccessBatch(
+        this.env,
+        sessions.map((session) => session.attachment.classroomAccess!),
+        this.record!.classroomWorldId!,
+      );
+      sessions.forEach(({ socket, attachment }, index) => {
+        const access = results[index]?.access;
+        if (access) this.applyReauthorizedAccess(socket, attachment, access);
+        else this.revokeSocket(socket, attachment);
+      });
+      return true;
+    } catch {
+      for (const { socket, attachment } of sessions) this.revokeSocket(socket, attachment);
+      return false;
+    }
+  }
+
+  private adoptClassroomWorld(latest: { document: BrickStudioDocument; revision: number; title?: unknown }): void {
+    this.record!.document = latest.document;
+    this.record!.revision = latest.revision;
+    if (typeof latest.title === "string" && latest.title.trim()) this.record!.title = latest.title;
+  }
+
   private async reauthorizeSocket(socket: WebSocket, attachment: WorldSocketAttachment): Promise<boolean> {
     if (!attachment.classroomAccess) return true;
     try {
@@ -848,8 +892,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
     try {
       const saved = await commitClassroomWorld(this.env, this.record!.classroomWorldId, document, this.record!.revision, attachment.classroomAccess!);
-      this.record!.document = saved.document;
-      this.record!.revision = saved.revision;
+      this.adoptClassroomWorld(saved);
       return true;
     } catch (error) {
       if (isRecord(error) && (error.status === 401 || error.status === 403)) {
@@ -862,9 +905,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       // Never acknowledge an edit before the durable classroom save. A concurrent
       // restore/save may have advanced the database while this room was active.
       try {
-        const latest = await loadClassroomWorld(this.env, this.record!.classroomWorldId);
-        this.record!.document = latest.document;
-        this.record!.revision = latest.revision;
+        this.adoptClassroomWorld(await loadClassroomWorld(this.env, this.record!.classroomWorldId));
         await this.persist();
         this.broadcastSnapshot();
       } catch { /* Retain the last confirmed document when storage is unavailable. */ }
