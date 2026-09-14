@@ -1,53 +1,99 @@
-import { useState } from 'react'
+import { Lock, LockOpen } from 'lucide-react'
+import type { CSSProperties } from 'react'
 import { CHARACTER_APPEARANCE_OPTIONS, normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
-import './appearance-controls.css'
+import { APPEARANCE_CATEGORIES, type StudioLocks } from './studioMix'
 
-type Category = keyof typeof CHARACTER_APPEARANCE_OPTIONS
-const CATEGORIES: { key: Category; label: string }[] = [
-  { key: 'body', label: 'Body' }, { key: 'face', label: 'Face' }, { key: 'hair', label: 'Hair & hats' },
-  { key: 'outfit', label: 'Outfit' }, { key: 'accessory', label: 'Accessory' },
-]
+export { randomizeCharacterAppearance } from './studioMix'
+
 const LABELS: Record<string, string> = {
   classic: 'Classic', broad: 'Broad', slim: 'Slim', friendly: 'Smile', freckles: 'Freckles', rosy: 'Rosy cheeks',
   cap: 'Cap', short: 'Swept hair', curls: 'Curls', bun: 'Bun', none: 'None',
   explorer: 'Explorer', overalls: 'Overalls', sport: 'Sport', glasses: 'Glasses', backpack: 'Backpack',
 }
 
-export function randomizeCharacterAppearance(appearance: CharacterAppearance, locked: ReadonlySet<Category>, random = Math.random): CharacterAppearance {
-  const next = { ...appearance }
-  for (const { key } of CATEGORIES) {
-    if (locked.has(key)) continue
-    const options = CHARACTER_APPEARANCE_OPTIONS[key].filter(value => value !== appearance[key])
-    Object.assign(next, { [key]: options[Math.min(options.length - 1, Math.max(0, Math.floor(random() * options.length)))] })
-  }
-  return next
+/** Preset tones; any other value still comes through the custom picker and normalizes the same way. */
+export const SKIN_TONES = [
+  { value: '#f7dcc4', label: 'Porcelain' }, { value: '#f0bd86', label: 'Sand' }, { value: '#d9a06b', label: 'Honey' },
+  { value: '#b87a4e', label: 'Caramel' }, { value: '#8d5a3a', label: 'Cocoa' }, { value: '#5b3a29', label: 'Espresso' },
+] as const
+export const HAIR_COLORS = [
+  { value: '#593c2e', label: 'Chestnut' }, { value: '#2b2117', label: 'Black' }, { value: '#f2d16b', label: 'Blonde' },
+  { value: '#c8532d', label: 'Auburn' }, { value: '#9a9aa0', label: 'Silver' }, { value: '#5888da', label: 'Cornflower' },
+] as const
+
+function toLongHex(color: string) {
+  return color.length === 4 ? `#${color.slice(1).split('').map(c => c + c).join('')}` : color
 }
 
-export function AppearanceControls({ appearance, onChange }: {
+export type AppearanceControlsProps = {
   appearance?: CharacterAppearance
+  locked: StudioLocks
+  onToggleLock: (category: string) => void
   onChange: (appearance: CharacterAppearance) => void
-}) {
-  const current = normalizeCharacterAppearance(appearance)
-  const [locked, setLocked] = useState<Set<Category>>(() => new Set())
-  const toggleLock = (key: Category) => setLocked(previous => {
-    const next = new Set(previous)
-    if (next.has(key)) next.delete(key)
-    else next.add(key)
-    return next
-  })
-  return <section className="appearance-controls" aria-label="Customize your figure">
-    <div className="appearance-controls-heading">
-      <div><h3>Make it yours</h3><p>Keep your favorites, then mix up the rest.</p></div>
-      <button type="button" className="appearance-mix" disabled={locked.size === CATEGORIES.length} onClick={() => onChange(randomizeCharacterAppearance(current, locked))}>Mix it up</button>
-    </div>
-    {CATEGORIES.map(({ key, label }) => <fieldset key={key} className="appearance-category">
-      <legend>{label}</legend>
-      <button className="appearance-lock" type="button" aria-label={`Keep ${label.toLowerCase()} when mixing`} aria-pressed={locked.has(key)} onClick={() => toggleLock(key)}>{locked.has(key) ? 'Kept' : 'Keep'}</button>
-      <div className="appearance-options">{CHARACTER_APPEARANCE_OPTIONS[key].map(value => <button key={value} type="button" aria-pressed={current[key] === value} onClick={() => onChange({ ...current, [key]: value })}>{LABELS[value]}</button>)}</div>
-    </fieldset>)}
-    <div className="appearance-colors">
-      <label>Skin tone<input type="color" value={current.skinColor.length === 4 ? `#${current.skinColor.slice(1).split('').map(c => c + c).join('')}` : current.skinColor} onChange={event => onChange({ ...current, skinColor: event.target.value })} /></label>
-      <label>Hair color<input type="color" value={current.hairColor.length === 4 ? `#${current.hairColor.slice(1).split('').map(c => c + c).join('')}` : current.hairColor} onChange={event => onChange({ ...current, hairColor: event.target.value })} /></label>
-    </div>
-  </section>
 }
+
+/** Toy Figure categories: body, face, hair & hats, outfit, accessory, then skin tone and hair color. */
+export function AppearanceControls({ appearance, locked, onToggleLock, onChange }: AppearanceControlsProps) {
+  const current = normalizeCharacterAppearance(appearance)
+  const colorRow = (key: 'skinColor' | 'hairColor', label: string, presets: readonly { value: string; label: string }[]) => (
+    <fieldset className="appearance-category appearance-category--colors">
+      <legend>{label}</legend>
+      <div className="character-colors__swatches">
+        {presets.map((preset) => (
+          <button
+            key={preset.value}
+            type="button"
+            className="character-swatch"
+            style={{ '--character-swatch': preset.value } as CSSProperties}
+            aria-label={`Set ${label.toLowerCase()} to ${preset.label}`}
+            aria-pressed={current[key] === preset.value}
+            title={preset.label}
+            onClick={() => onChange({ ...current, [key]: preset.value })}
+          ><span aria-hidden="true" /></button>
+        ))}
+        <label className="character-swatch character-swatch--custom" title={`Custom ${label.toLowerCase()}`}>
+          <input
+            type="color"
+            aria-label={`Custom ${label.toLowerCase()}`}
+            value={toLongHex(current[key])}
+            onChange={event => onChange({ ...current, [key]: event.target.value })}
+          />
+        </label>
+      </div>
+    </fieldset>
+  )
+  return (
+    <section className="appearance-controls" aria-label="Customize your figure">
+      <div className="character-studio__heading">
+        <div><h3>Your figure</h3><p>Choose a look for each part. Lock a part to keep it when you mix.</p></div>
+      </div>
+      {APPEARANCE_CATEGORIES.map(({ key, label }) => {
+        const isLocked = locked.has(key)
+        return (
+          <fieldset key={key} className="appearance-category" data-locked={isLocked || undefined}>
+            <legend>{label}</legend>
+            <button
+              className="character-studio__lock"
+              type="button"
+              aria-label={`Keep ${label.toLowerCase()} when mixing`}
+              aria-pressed={isLocked}
+              onClick={() => onToggleLock(key)}
+            >
+              {isLocked ? <Lock aria-hidden="true" size={14} /> : <LockOpen aria-hidden="true" size={14} />}
+              <span>{isLocked ? 'Kept' : 'Keep'}</span>
+            </button>
+            <div className="appearance-options">
+              {CHARACTER_APPEARANCE_OPTIONS[key].map(value => (
+                <button key={value} type="button" aria-pressed={current[key] === value} onClick={() => onChange({ ...current, [key]: value })}>{LABELS[value]}</button>
+              ))}
+            </div>
+          </fieldset>
+        )
+      })}
+      {colorRow('skinColor', 'Skin tone', SKIN_TONES)}
+      {colorRow('hairColor', 'Hair color', HAIR_COLORS)}
+    </section>
+  )
+}
+
+export default AppearanceControls

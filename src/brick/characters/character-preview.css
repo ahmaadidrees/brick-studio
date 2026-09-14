@@ -1,19 +1,79 @@
+/* CharacterPreview — the one live Canvas in the studio, on a warm "desk" stage. */
 .character-preview {
   overflow: hidden;
-  border: 1px solid rgb(111 143 158 / 25%);
-  border-radius: 18px;
-  background: linear-gradient(145deg, #f5fafc, #e5eff3);
-  color: #244454;
+  border: 1px solid var(--border, #dbe2e8);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface, #ffffff);
+  color: var(--text, #263c51);
 }
-.character-preview__stage { height: clamp(190px, 27vh, 290px); position: relative; touch-action: pan-y; }
+.character-preview__stage {
+  position: relative;
+  height: clamp(200px, 30vh, 300px);
+  background:
+    radial-gradient(120% 70% at 50% 100%, rgba(243, 202, 116, 0.28), transparent 60%),
+    linear-gradient(180deg, #e9f0fb 0%, #dfe8f5 100%);
+  touch-action: pan-y;
+}
 .character-preview__stage canvas { touch-action: none; }
-.character-preview__hint { position: absolute; left: 14px; bottom: 12px; pointer-events: none; font-size: 11px; color: #4d6977; }
-.character-preview__status { position: absolute; top: 12px; left: 12px; right: 12px; padding: 7px 10px; border-radius: 9px; background: rgb(255 255 255 / 90%); font-size: 12px; pointer-events: none; }
-.character-preview__controls { display: flex; gap: 5px; padding: 9px; background: rgb(255 255 255 / 55%); border-top: 1px solid rgb(111 143 158 / 15%); }
-.character-preview__controls button { flex: 1; min-width: 0; min-height: 36px; border: 1px solid transparent; border-radius: 9px; padding: 6px 3px; font: inherit; font-size: 12px; font-weight: 650; color: #416171; background: transparent; cursor: pointer; }
-.character-preview__controls button:hover { background: #e0ebf0; }
-.character-preview__controls button[aria-pressed='true'] { background: #244e62; color: white; }
-.character-preview__controls button:focus-visible { outline: 3px solid #438bb0; outline-offset: 2px; }
-.character-preview__unavailable { padding: 35px 20px; font-size: 13px; }
-.character-preview__motion-note { margin: 0; padding: 0 12px 10px; font-size: 11px; }
-@media (max-width: 540px) { .character-preview__controls button { min-height: 40px; } }
+.character-preview__hint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: var(--text-muted, #5f6f7c);
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.character-preview__status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm, 8px);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.character-preview__controls {
+  display: flex;
+  gap: 5px;
+  padding: 8px;
+  border-top: 1px solid var(--border, #dbe2e8);
+  background: var(--surface, #ffffff);
+}
+.character-preview__controls button {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 4px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--text, #263c51);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.character-preview__controls button:hover { background: var(--surface-2, #f1f4f7); }
+.character-preview__controls button[aria-pressed='true'] { color: var(--primary-contrast, #fff); background: var(--primary, #5888da); }
+.character-preview__pause[aria-pressed='true'] { color: var(--text, #263c51); background: var(--surface-2, #f1f4f7); border-color: var(--border, #dbe2e8); }
+.character-preview__controls button:focus-visible { outline: 3px solid var(--focus, #5888da); outline-offset: 2px; }
+.character-preview__unavailable { margin: 0; padding: 35px 20px; font-size: 13px; font-weight: 600; }
+.character-preview__motion-note { margin: 0; padding: 0 12px 10px; color: var(--text-muted, #5f6f7c); font-size: 11px; font-weight: 600; }
+@media (max-width: 360px) {
+  .character-preview__controls { flex-wrap: wrap; }
+  .character-preview__controls button { flex-basis: 30%; }
+}
