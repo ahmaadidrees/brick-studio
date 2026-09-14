@@ -1,0 +1,78 @@
+{
+  "timestamp": "2026-09-14T23:04:17.524Z",
+  "origin": "http://127.0.0.1:5207",
+  "shots": [
+    {
+      "file": "toy-room-explore-desktop-1366x768-spawn.png",
+      "viewport": "1366x768",
+      "seeded": {
+        "ok": true,
+        "bricks": 59
+      },
+      "state": {
+        "mode": "explore",
+        "status": "ready",
+        "environmentId": "toy-room",
+        "bricks": 59,
+        "yaw": 3.141592653589793,
+        "pitch": 0.55,
+        "distance": 6.1
+      },
+      "errors": []
+    },
+    {
+      "file": "toy-room-explore-desktop-1366x768-room.png",
+      "viewport": "1366x768",
+      "seeded": {
+        "ok": true,
+        "bricks": 59
+      },
+      "state": {
+        "mode": "explore",
+        "status": "ready",
+        "environmentId": "toy-room",
+        "bricks": 59,
+        "yaw": 0.9415926535897929,
+        "pitch": 0.13000000000000006,
+        "distance": 9
+      },
+      "errors": []
+    },
+    {
+      "file": "toy-room-explore-phone-390x844-spawn.png",
+      "viewport": "390x844",
+      "seeded": {
+        "ok": true,
+        "bricks": 59
+      },
+      "state": {
+        "mode": "explore",
+        "status": "ready",
+        "environmentId": "toy-room",
+        "bricks": 59,
+        "yaw": 3.141592653589793,
+        "pitch": 0.55,
+        "distance": 6.1
+      },
+      "errors": []
+    },
+    {
+      "file": "toy-room-explore-phone-390x844-room.png",
+      "viewport": "390x844",
+      "seeded": {
+        "ok": true,
+        "bricks": 59
+      },
+      "state": {
+        "mode": "explore",
+        "status": "ready",
+        "environmentId": "toy-room",
+        "bricks": 59,
+        "yaw": 0.9415926535897929,
+        "pitch": 0.13000000000000006,
+        "distance": 9
+      },
+      "errors": []
+    }
+  ]
+}
