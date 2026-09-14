@@ -76,3 +76,7 @@
   .character-preview__controls { flex-wrap: wrap; }
   .character-preview .character-preview__action { flex-basis: 30%; }
 }
+/* Touch: the action pills are at least 44px tall whatever the primitive's size. */
+@media (pointer: coarse) {
+  .character-preview .character-preview__action { min-height: 44px; min-width: 44px; }
+}
