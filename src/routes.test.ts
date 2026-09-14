@@ -29,6 +29,16 @@ describe('public home and editor routes', () => {
     expect(resolve('/missing').route).toBe('not-found')
     expect(resolve('/live').route).toBe('not-found')
   })
+
+  it('serves the UI gallery only in development builds', () => {
+    const gallery = new URL('/dev/ui', 'https://example.test')
+    expect(resolveAppRoute(gallery, { dev: true })).toEqual({ route: 'dev-ui' })
+    expect(resolveAppRoute(gallery, { dev: false })).toEqual({ route: 'not-found' })
+    expect(resolveAppRoute(new URL('/dev/ui/', 'https://example.test'), { dev: true }).route).toBe('not-found')
+    expect(resolveAppRoute(new URL('/dev', 'https://example.test'), { dev: true }).route).toBe('not-found')
+    expect(import.meta.env.DEV).toBe(true)
+    expect(resolve('/dev/ui').route).toBe('dev-ui')
+  })
 })
 
 describe('classroom entry intents', () => {

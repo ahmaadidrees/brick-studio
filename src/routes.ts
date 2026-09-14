@@ -1,6 +1,6 @@
 export const BUILD_PATH = '/build'
 
-export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'not-found'
+export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'not-found'
 
 /**
  * Account entry intents carried by `/build?classroom=<intent>`.
@@ -21,13 +21,22 @@ export function parseClassroomEntryIntent(search: string): ClassroomEntryIntent 
   return isClassroomEntryIntent(value) ? value : null
 }
 
+export type ResolveAppRouteOptions = {
+  /** Development builds only; the UI gallery never resolves in production. Defaults to `import.meta.env.DEV`. */
+  dev?: boolean
+}
+
 /** Resolve only known routes; preserve old editor links without hiding the home page. */
-export function resolveAppRoute(location: Pick<URL, 'pathname' | 'search' | 'hash'>): {
+export function resolveAppRoute(
+  location: Pick<URL, 'pathname' | 'search' | 'hash'>,
+  { dev = import.meta.env.DEV }: ResolveAppRouteOptions = {},
+): {
   route: AppRoute
   canonicalPath?: string
 } {
   const { pathname, search, hash } = location
   if (pathname === '/auth/teacher-callback') return { route: 'teacher-callback' }
+  if (pathname === '/dev/ui' && dev) return { route: 'dev-ui' }
   if (/^\/live\/[^/]+\/?$/.test(pathname)) return { route: 'live' }
   if (/^\/world\/?$/.test(pathname)) return { route: 'published' }
   if (pathname === '/build' || pathname === '/build/') {
