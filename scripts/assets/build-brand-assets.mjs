@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-// Generates Brick Studio's icon and link-preview artwork into public/.
+// Generates the Brickgineers icon and link-preview artwork into public/.
 //
 //   node scripts/assets/build-brand-assets.mjs
 //
-// The art is drawn in code in the same flat-shaded isometric language as the
-// landing page (src/brick/landing/LandingArt.tsx) so it stays consistent with
-// the product without importing React at build time. It contains no wordmark
-// or text, so a future product rename does not require new artwork.
+// The mark is the same geometry as src/brand/BrickMark.tsx (`MARK`): two
+// equal rounded brick lobes forming a B — blue #5888DA upper, coral #F17861
+// lower — with exactly two front studs per lobe. This script cannot import
+// TSX, so the numbers are mirrored here; src/test/indexHtml.test.ts checks the
+// favicon against the brand palette. Nothing here contains text, so a rename
+// never needs new artwork and no font has to be present on the build host.
 //
-// Outputs (vector sources are committed next to the PNGs so a reviewer can
-// open them in a browser):
-//   public/favicon.svg          rounded tile + 2x2 brick, scales to any size
+// Outputs (vector sources are committed next to the PNGs):
+//   public/favicon.svg          mark on a rounded warm-white tile
 //   public/favicon-32.png       PNG fallback for browsers without SVG favicons
 //   public/icon-192.png         web app manifest icon (full bleed)
 //   public/icon-512.png         web app manifest icon (full bleed / maskable)
@@ -32,175 +33,129 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const PUBLIC_DIR = join(ROOT, 'public')
 const VECTOR_DIR = join(ROOT, 'scripts', 'assets')
 
-// Landing-page palette (LandingArt.tsx + landing.css); the app's theme-color is the sky tint.
+// Brand palette (src/brand/brand.ts). theme-color in index.html/manifest is the warm white.
 const COLOR = {
-  blue: '#3e83d7',
-  red: '#e2574c',
-  yellow: '#f0be54',
-  green: '#31a06c',
-  purple: '#8d6bd9',
-  teal: '#1fa3b8',
-  plate: '#dfe0d0',
-  cream: '#fffaf0',
-  ink: '#294650',
-  sky: '#e9fbff',
-  paper: '#fdf6e9',
+  cornflower: '#5888DA',
+  coral: '#F17861',
+  butter: '#F3CA74',
+  ink: '#263C51',
+  warmWhite: '#F8F4EB',
+  upperStud: '#8FB0EA',
+  lowerStud: '#F8A896',
+  butterStud: '#F9E0A6',
+  wall: '#DCE6F7',
+  wallDeep: '#C9D8F2',
+  desk: '#E7C58C',
+  deskEdge: '#D4AC6E',
+  plate: '#EDE6D6',
+  plateStud: '#E2D9C4',
+  book: '#F4EBDD',
 }
-const EDGE = 'rgba(31, 62, 84, 0.2)'
-const ISO_X = 0.866
-const ISO_Y = 0.5
 
 const f = (value) => Number(value.toFixed(2)).toString()
 
-/** Projects grid space (x right-down, z left-down, y up) to screen space. */
-function point(x, y, z, scale) {
-  return [(x - z) * ISO_X * scale, (x + z) * ISO_Y * scale - y * scale]
+// Mirror of MARK in src/brand/BrickMark.tsx.
+const MARK = { viewBox: 64, lobe: { x: 8, width: 48, height: 24, leftRadius: 6, rightRadius: 12 }, upperY: 7, lowerY: 33, studRadius: 4.6, studColumns: [22, 38] }
+
+/** Rounded rectangle with a squarer left edge and a round right edge (a B bowl). */
+function lobePath(x, y, width, height, leftRadius, rightRadius) {
+  const right = x + width
+  const bottom = y + height
+  return `M${x + leftRadius} ${y} H${right - rightRadius} A${rightRadius} ${rightRadius} 0 0 1 ${right} ${y + rightRadius} V${bottom - rightRadius} A${rightRadius} ${rightRadius} 0 0 1 ${right - rightRadius} ${bottom} H${x + leftRadius} A${leftRadius} ${leftRadius} 0 0 1 ${x} ${bottom - leftRadius} V${y + leftRadius} A${leftRadius} ${leftRadius} 0 0 1 ${x + leftRadius} ${y} Z`
 }
 
-function polygon(coords) {
-  return coords.map(([x, y]) => `${f(x)},${f(y)}`).join(' ')
-}
-
-/** Mixes a hex color toward white (positive) or black (negative). */
-function shade(hex, amount) {
-  const value = hex.replace('#', '')
-  const channels = [0, 2, 4].map((offset) => parseInt(value.slice(offset, offset + 2), 16))
-  const target = amount >= 0 ? 255 : 0
-  const mix = Math.abs(amount)
-  return `#${channels
-    .map((channel) => Math.round(channel + (target - channel) * mix).toString(16).padStart(2, '0'))
-    .join('')}`
-}
-
-/** One shaded brick box: top and the two camera-facing sides, plus optional studs. */
-function isoBox({ x, z, y, w, d, h, color, studs = true, s }) {
-  const x1 = x + w
-  const z1 = z + d
-  const y1 = y + h
-  const top = polygon([point(x, y1, z, s), point(x1, y1, z, s), point(x1, y1, z1, s), point(x, y1, z1, s)])
-  const right = polygon([point(x1, y1, z, s), point(x1, y1, z1, s), point(x1, y, z1, s), point(x1, y, z, s)])
-  const left = polygon([point(x1, y1, z1, s), point(x, y1, z1, s), point(x, y, z1, s), point(x1, y, z1, s)])
-  const face = (points, fill) =>
-    `<polygon points="${points}" fill="${fill}" stroke="${EDGE}" stroke-width="0.6" stroke-linejoin="round"/>`
-
-  let studMarkup = ''
-  if (studs) {
-    const rx = 0.3 * Math.SQRT2 * ISO_X * s
-    const ry = 0.3 * Math.SQRT2 * ISO_Y * s
-    const lift = 0.16 * s
-    for (let i = 0; i < w; i += 1) {
-      for (let k = 0; k < d; k += 1) {
-        const [cx, cy] = point(x + i + 0.5, y1, z + k + 0.5, s)
-        studMarkup += `<ellipse cx="${f(cx)}" cy="${f(cy - lift / 2)}" rx="${f(rx)}" ry="${f(ry + lift / 2)}" fill="${shade(color, 0.02)}"/>`
-        studMarkup += `<ellipse cx="${f(cx)}" cy="${f(cy - lift)}" rx="${f(rx)}" ry="${f(ry)}" fill="${shade(color, 0.32)}"/>`
-      }
-    }
-  }
-  return `<g>${face(left, shade(color, -0.3))}${face(right, shade(color, -0.12))}${face(top, shade(color, 0.2))}${studMarkup}</g>`
-}
-
-/** The studio's block explorer: boxy legs, torso, and a smiling head. */
-function isoCharacter(x, z, s) {
-  const skin = COLOR.yellow
-  const shirt = COLOR.blue
-  const legs = '#305f91'
-  const face = (fy, fz) => point(x + 1.02, fy, z + fz, s)
-  const [leftEyeX, leftEyeY] = face(2.62, 0.32)
-  const [rightEyeX, rightEyeY] = face(2.62, 0.7)
-  const [smileX, smileY] = face(2.3, 0.51)
+/** The mark in its 64-unit box; wrap in a <g transform> to place it. */
+function markSvg() {
+  const { lobe, upperY, lowerY, studRadius, studColumns } = MARK
+  const studs = (y, fill) => studColumns.map((cx) => `<circle cx="${cx}" cy="${f(y + lobe.height / 2)}" r="${studRadius}" fill="${fill}"/>`).join('')
   return [
-    isoBox({ x, z, y: 0, w: 1, d: 1, h: 0.9, color: legs, studs: false, s }),
-    isoBox({ x: x - 0.08, z: z - 0.08, y: 0.9, w: 1.16, d: 1.16, h: 1.05, color: shirt, studs: false, s }),
-    isoBox({ x: x + 0.06, z: z + 0.06, y: 1.95, w: 0.88, d: 0.88, h: 0.85, color: skin, studs: false, s }),
-    isoBox({ x: x + 0.3, z: z + 0.3, y: 2.8, w: 0.4, d: 0.4, h: 0.14, color: skin, studs: false, s }),
-    `<circle cx="${f(leftEyeX)}" cy="${f(leftEyeY)}" r="${f(s * 0.055)}" fill="${COLOR.ink}"/>`,
-    `<circle cx="${f(rightEyeX)}" cy="${f(rightEyeY)}" r="${f(s * 0.055)}" fill="${COLOR.ink}"/>`,
-    `<path d="M ${f(smileX - s * 0.11)} ${f(smileY)} Q ${f(smileX)} ${f(smileY + s * 0.12)} ${f(smileX + s * 0.11)} ${f(smileY)}" fill="none" stroke="${COLOR.ink}" stroke-width="${f(s * 0.05)}" stroke-linecap="round"/>`,
+    `<path d="${lobePath(lobe.x, upperY, lobe.width, lobe.height, lobe.leftRadius, lobe.rightRadius)}" fill="${COLOR.cornflower}"/>`,
+    `<path d="${lobePath(lobe.x, lowerY, lobe.width, lobe.height, lobe.leftRadius, lobe.rightRadius)}" fill="${COLOR.coral}"/>`,
+    studs(upperY, COLOR.upperStud),
+    studs(lowerY, COLOR.lowerStud),
   ].join('')
 }
 
-function isoFlag(x, z, y, s) {
-  const [baseX, baseY] = point(x, y, z, s)
-  const [tipX, tipY] = point(x, y + 1.9, z, s)
-  const [wave1X, wave1Y] = point(x + 1.05, y + 1.62, z - 0.1, s)
-  const [wave2X, wave2Y] = point(x + 1.05, y + 1.2, z - 0.1, s)
-  const [footX, footY] = point(x, y + 1.32, z, s)
-  return [
-    `<line x1="${f(baseX)}" y1="${f(baseY)}" x2="${f(tipX)}" y2="${f(tipY)}" stroke="#4a5b63" stroke-width="${f(s * 0.1)}" stroke-linecap="round"/>`,
-    `<path d="M ${f(tipX)} ${f(tipY)} Q ${f(wave1X)} ${f(wave1Y - s * 0.3)} ${f(wave1X)} ${f(wave1Y)} Q ${f(wave2X)} ${f(wave2Y)} ${f(footX)} ${f(footY)} Z" fill="${COLOR.red}" stroke="${EDGE}" stroke-width="0.6"/>`,
-    `<circle cx="${f(tipX)}" cy="${f(tipY - s * 0.1)}" r="${f(s * 0.11)}" fill="${COLOR.yellow}"/>`,
-  ].join('')
-}
-
-function sparkle(x, y, size) {
-  const d = `M ${f(x)} ${f(y - size)} Q ${f(x + size * 0.18)} ${f(y - size * 0.18)} ${f(x + size)} ${f(y)} Q ${f(x + size * 0.18)} ${f(y + size * 0.18)} ${f(x)} ${f(y + size)} Q ${f(x - size * 0.18)} ${f(y + size * 0.18)} ${f(x - size)} ${f(y)} Q ${f(x - size * 0.18)} ${f(y - size * 0.18)} ${f(x)} ${f(y - size)} Z`
-  return `<path d="${d}" fill="${COLOR.yellow}" opacity="0.9"/>`
-}
-
-/** The landing hero diorama: a floating baseplate world mid-build. Same geometry as HeroDiorama. */
-function heroDiorama() {
-  const s = 30
-  return [
-    `<ellipse cx="0" cy="172" rx="196" ry="34" fill="rgba(47, 76, 92, 0.12)"/>`,
-    '<g transform="translate(0, 40)">',
-    isoBox({ x: -3.5, z: -3.5, y: -0.5, w: 7, d: 7, h: 0.5, color: COLOR.plate, s }),
-    isoBox({ x: -3, z: -3, y: 0, w: 4, d: 1, h: 1.2, color: COLOR.red, s }),
-    isoBox({ x: -3, z: -3, y: 1.2, w: 2, d: 1, h: 1.2, color: COLOR.red, s }),
-    isoBox({ x: -3, z: -3, y: 2.4, w: 4, d: 1, h: 1.2, color: COLOR.yellow, s }),
-    isoBox({ x: -3, z: -1.6, y: 0, w: 1, d: 2, h: 1.2, color: COLOR.green, s }),
-    isoBox({ x: -3, z: 0.6, y: 0, w: 1, d: 2, h: 2.4, color: COLOR.green, s }),
-    isoBox({ x: 1.4, z: -2.9, y: 0, w: 2, d: 2, h: 3.6, color: COLOR.blue, s }),
-    isoBox({ x: 1.65, z: -2.65, y: 3.6, w: 1.5, d: 1.5, h: 0.5, color: COLOR.purple, s }),
-    isoFlag(2.4, -1.9, 4.1, s),
-    isoBox({ x: -1.4, z: 2.1, y: 0, w: 2, d: 1, h: 1.2, color: COLOR.teal, s }),
-    isoBox({ x: 2.1, z: 1.4, y: 0, w: 1, d: 1, h: 1.2, color: COLOR.yellow, s }),
-    isoCharacter(0.4, 0.55, s),
-    '</g>',
-    `<g transform="translate(-186, -120)">${isoBox({ x: 0, z: 0, y: 0, w: 2, d: 1, h: 1.2, color: COLOR.red, s: 22 })}</g>`,
-    `<g transform="translate(172, -142)">${isoBox({ x: 0, z: 0, y: 0, w: 1, d: 1, h: 1.2, color: COLOR.green, s: 19 })}</g>`,
-    `<g transform="translate(148, 96)">${isoBox({ x: 0, z: 0, y: 0, w: 2, d: 2, h: 0.5, color: COLOR.purple, s: 17 })}</g>`,
-    sparkle(-176, -108, 9),
-    sparkle(186, -52, 7),
-    sparkle(128, -158, 11),
-  ].join('\n')
-}
-
-/** 1200x630 card: sky gradient, the diorama centered, loose bricks drifting in from the sides. No text. */
-function ogImageSvg() {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
-<defs>
-<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${COLOR.sky}"/><stop offset="1" stop-color="${COLOR.paper}"/></linearGradient>
-<radialGradient id="glow" cx="0.5" cy="0.55" r="0.5"><stop offset="0" stop-color="#ffffff" stop-opacity="0.85"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient>
-</defs>
-<rect width="1200" height="630" fill="url(#sky)"/>
-<ellipse cx="600" cy="345" rx="470" ry="270" fill="url(#glow)"/>
-<g transform="translate(600 330) scale(1.3)">
-${heroDiorama()}
-</g>
-<g transform="translate(150 190)">${isoBox({ x: 0, z: 0, y: 0, w: 2, d: 2, h: 1.2, color: COLOR.teal, s: 26 })}</g>
-<g transform="translate(118 430)">${isoBox({ x: 0, z: 0, y: 0, w: 1, d: 2, h: 1.2, color: COLOR.yellow, s: 22 })}</g>
-<g transform="translate(1056 176)">${isoBox({ x: 0, z: 0, y: 0, w: 2, d: 1, h: 1.2, color: COLOR.red, s: 24 })}</g>
-<g transform="translate(1046 436)">${isoBox({ x: 0, z: 0, y: 0, w: 2, d: 2, h: 0.5, color: COLOR.purple, s: 22 })}</g>
-${sparkle(226, 300, 10)}
-${sparkle(986, 322, 8)}
-${sparkle(84, 118, 8)}
-${sparkle(1122, 562, 9)}
+/**
+ * Icon: the mark on a warm-white tile. `rounded` cuts the tile corners for
+ * favicons; full-bleed variants keep the mark inside the maskable safe zone
+ * (inner 80%) for platforms that apply their own mask.
+ */
+function iconSvg({ px = null, rounded }) {
+  const size = 64
+  const scale = rounded ? 0.84 : 0.7
+  const offset = (size - MARK.viewBox * scale) / 2
+  const sizeAttributes = px ? ` width="${px}" height="${px}"` : ''
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}"${sizeAttributes}>
+<rect width="${size}" height="${size}" rx="${rounded ? 14 : 0}" fill="${COLOR.warmWhite}"/>
+<g transform="translate(${f(offset)} ${f(offset)}) scale(${scale})">${markSvg()}</g>
 </svg>
 `
 }
 
-/**
- * Icon: the landing wordmark's 2x2 blue brick (BrickMark) on a cream tile.
- * `rounded` cuts the tile's corners for favicons; full-bleed variants keep the
- * brick inside the maskable safe zone for platforms that apply their own mask.
- */
-function iconSvg({ px = null, rounded }) {
-  const size = 64
-  const s = rounded ? 15 : 12
-  const sizeAttributes = px ? ` width="${px}" height="${px}"` : ''
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}"${sizeAttributes}>
-<rect width="${size}" height="${size}" rx="${rounded ? 14 : 0}" fill="${COLOR.cream}"/>
-<g transform="translate(32 ${f(32 + 0.6 * s)})">${isoBox({ x: -1, z: -1, y: 0, w: 2, d: 2, h: 1.2, color: COLOR.blue, s })}</g>
+/** A flat, front-facing brick in the mark's language: rounded body plus a row of studs on top. */
+function brick({ x, y, w, h, color, stud, studs = 2, rx = 6 }) {
+  const studR = Math.min(h * 0.17, w / (studs * 3))
+  const gap = w / studs
+  const row = Array.from({ length: studs }, (_, index) => `<circle cx="${f(x + gap * (index + 0.5))}" cy="${f(y + h / 2)}" r="${f(studR)}" fill="${stud}"/>`).join('')
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${color}"/>${row}`
+}
+
+/** 1200x630 card: a cozy toy room built from flat vector shapes — cool wall, warm desk, lamp, books, clock — with the mark centre stage. No text. */
+function ogImageSvg() {
+  const W = 1200
+  const H = 630
+  const deskTop = 430
+  const bricks = [
+    // Under the lamp
+    brick({ x: 120, y: 372, w: 132, h: 58, color: COLOR.coral, stud: COLOR.lowerStud, studs: 2, rx: 12 }),
+    brick({ x: 186, y: 314, w: 66, h: 58, color: COLOR.butter, stud: COLOR.butterStud, studs: 1, rx: 12 }),
+    brick({ x: 300, y: 372, w: 66, h: 58, color: COLOR.cornflower, stud: COLOR.upperStud, studs: 1, rx: 12 }),
+    // Right of the mark, a small tower
+    brick({ x: 776, y: 372, w: 132, h: 58, color: COLOR.cornflower, stud: COLOR.upperStud, studs: 2, rx: 12 }),
+    brick({ x: 914, y: 372, w: 66, h: 58, color: COLOR.coral, stud: COLOR.lowerStud, studs: 1, rx: 12 }),
+    brick({ x: 810, y: 314, w: 132, h: 58, color: COLOR.butter, stud: COLOR.butterStud, studs: 2, rx: 12 }),
+    brick({ x: 843, y: 256, w: 66, h: 58, color: COLOR.coral, stud: COLOR.lowerStud, studs: 1, rx: 12 }),
+  ].join('')
+  const plateStuds = []
+  for (let cx = 84; cx < W - 60; cx += 48) plateStuds.push(`<circle cx="${cx}" cy="${deskTop + 22}" r="7" fill="${COLOR.plateStud}"/>`)
+  const books = [
+    `<rect x="1004" y="390" width="164" height="40" rx="8" fill="${COLOR.cornflower}"/>`,
+    `<rect x="1016" y="350" width="150" height="40" rx="8" fill="${COLOR.coral}"/>`,
+    `<rect x="1000" y="310" width="156" height="40" rx="8" fill="${COLOR.butter}"/>`,
+    `<rect x="1012" y="270" width="150" height="40" rx="8" fill="${COLOR.ink}" opacity="0.85"/>`,
+  ].join('')
+  const clock = [
+    `<circle cx="960" cy="130" r="64" fill="${COLOR.book}" stroke="${COLOR.ink}" stroke-width="8"/>`,
+    `<line x1="960" y1="130" x2="960" y2="88" stroke="${COLOR.ink}" stroke-width="8" stroke-linecap="round"/>`,
+    `<line x1="960" y1="130" x2="992" y2="146" stroke="${COLOR.ink}" stroke-width="8" stroke-linecap="round"/>`,
+    `<circle cx="960" cy="130" r="7" fill="${COLOR.ink}"/>`,
+  ].join('')
+  const lamp = [
+    `<path d="M 84 ${deskTop} L 120 250 L 250 132" fill="none" stroke="${COLOR.ink}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<circle cx="120" cy="250" r="14" fill="${COLOR.ink}"/>`,
+    `<path d="M 196 96 L 316 96 L 356 206 L 156 206 Z" fill="${COLOR.butter}" stroke="${COLOR.ink}" stroke-width="10" stroke-linejoin="round"/>`,
+    `<rect x="56" y="${deskTop - 16}" width="74" height="16" rx="8" fill="${COLOR.ink}"/>`,
+    `<ellipse cx="256" cy="206" rx="98" ry="14" fill="#FFF3C2"/>`,
+    `<path d="M 156 214 L 356 214 L 470 ${deskTop} L 40 ${deskTop} Z" fill="url(#glow)"/>`,
+  ].join('')
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+<defs>
+<linearGradient id="wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${COLOR.wall}"/><stop offset="1" stop-color="${COLOR.wallDeep}"/></linearGradient>
+<linearGradient id="glow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFF3C2" stop-opacity="0.75"/><stop offset="1" stop-color="#FFF3C2" stop-opacity="0"/></linearGradient>
+<linearGradient id="desk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${COLOR.desk}"/><stop offset="1" stop-color="${COLOR.deskEdge}"/></linearGradient>
+</defs>
+<rect width="${W}" height="${H}" fill="url(#wall)"/>
+<rect x="0" y="${deskTop}" width="${W}" height="${H - deskTop}" fill="url(#desk)"/>
+<rect x="0" y="${deskTop}" width="${W}" height="10" fill="${COLOR.deskEdge}"/>
+<rect x="40" y="${deskTop + 4}" width="${W - 80}" height="40" rx="10" fill="${COLOR.plate}"/>
+${plateStuds.join('')}
+${clock}
+${books}
+${lamp}
+${bricks}
+<rect x="470" y="150" width="270" height="270" rx="56" fill="${COLOR.warmWhite}" stroke="${COLOR.ink}" stroke-opacity="0.12" stroke-width="4"/>
+<g transform="translate(494 174) scale(3.4375)">${markSvg()}</g>
 </svg>
 `
 }
@@ -226,11 +181,11 @@ function hasQlmanage() {
 /** Renders `svg` to a PNG of exactly width x height at `destination`. */
 async function rasterize(svg, width, height, destination, tools) {
   if (tools.sharp) {
-    await tools.sharp(Buffer.from(svg)).resize(width, height).png().toFile(destination)
+    await tools.sharp(Buffer.from(svg), { density: 288 }).resize(width, height).png().toFile(destination)
     return 'sharp'
   }
   if (tools.qlmanage) {
-    const workDir = mkdtempSync(join(tmpdir(), 'brick-studio-assets-'))
+    const workDir = mkdtempSync(join(tmpdir(), 'brickgineers-assets-'))
     try {
       const svgPath = join(workDir, `${basename(destination, '.png')}.svg`)
       writeFileSync(svgPath, svg)
