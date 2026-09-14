@@ -1,0 +1,410 @@
+{
+  "version": 2,
+  "status": "final",
+  "note": "Runtime captures of the real Brickgineers editor (no UI). Intrinsic sizes and bytes are measured from the files in this folder.",
+  "sourceScripts": [
+    "scripts/art/media-seed.mjs",
+    "scripts/art/media-capture.mjs",
+    "scripts/art/media-optimize.mjs"
+  ],
+  "provenance": {
+    "commit": "0aa3f0b",
+    "capturedAt": "2026-09-14T23:06:14.857Z",
+    "captureOrigin": "http://127.0.0.1:5207",
+    "seed": "media-seed.mjs castle: 59 catalog bricks on a 64 plate, same build in every scene",
+    "characters": "real runtime avatars (pip, fern, nova, toy-figure) standing on the plate in the Toy Room; cc0-hero excluded from marketing",
+    "encoders": {
+      "sharp": "sharp 0.35.2 (libvips 8.18.3)",
+      "avifenc": "Version: 1.4.2 (dav1d [dec]:1.5.3, aom [enc/dec]:3.14.1)"
+    },
+    "notes": []
+  },
+  "budgets": {
+    "heroDeliveredCapBytes": 256000,
+    "heroDelivered": {
+      "avif": 55687,
+      "webp": 90326
+    },
+    "initialSetCapBytes": 614400,
+    "initialSet": {
+      "avif": 168590,
+      "webp": 250632
+    },
+    "heroDeliveredOk": true,
+    "initialSetOk": true
+  },
+  "files": [
+    {
+      "file": "hero-1600.avif",
+      "width": 1600,
+      "height": 960,
+      "bytes": 55687,
+      "sha256": "08fa21e4dc036ec2",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "hero-1600.webp",
+      "width": 1600,
+      "height": 960,
+      "bytes": 90326,
+      "sha256": "70f4623075aad768",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "hero-1600.png",
+      "width": 1600,
+      "height": 960,
+      "bytes": 157736,
+      "sha256": "60508b2b5a48067c",
+      "initial": true
+    },
+    {
+      "file": "hero-1200.avif",
+      "width": 1200,
+      "height": 720,
+      "bytes": 40594,
+      "sha256": "af1cc4e74653432c",
+      "quality": 62
+    },
+    {
+      "file": "hero-1200.webp",
+      "width": 1200,
+      "height": 720,
+      "bytes": 62692,
+      "sha256": "36f5a368b1090799",
+      "quality": 84
+    },
+    {
+      "file": "hero-1200.png",
+      "width": 1200,
+      "height": 720,
+      "bytes": 139093,
+      "sha256": "81751deb9548b996"
+    },
+    {
+      "file": "hero-800.avif",
+      "width": 800,
+      "height": 480,
+      "bytes": 23993,
+      "sha256": "209d3f12461c7c5e",
+      "quality": 62
+    },
+    {
+      "file": "hero-800.webp",
+      "width": 800,
+      "height": 480,
+      "bytes": 39010,
+      "sha256": "73605cc6e3d972a0",
+      "quality": 84
+    },
+    {
+      "file": "hero-800.png",
+      "width": 800,
+      "height": 480,
+      "bytes": 76791,
+      "sha256": "6ac46372b64d11ca"
+    },
+    {
+      "file": "scene-toy-room-800.avif",
+      "width": 800,
+      "height": 500,
+      "bytes": 29289,
+      "sha256": "d29fbc1a5978fff9",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "scene-toy-room-800.webp",
+      "width": 800,
+      "height": 500,
+      "bytes": 46394,
+      "sha256": "8705d26b50814307",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "scene-toy-room-800.png",
+      "width": 800,
+      "height": 500,
+      "bytes": 100435,
+      "sha256": "6b6fb20924dc05b4",
+      "initial": true
+    },
+    {
+      "file": "scene-toy-room-400.avif",
+      "width": 400,
+      "height": 250,
+      "bytes": 10850,
+      "sha256": "4dd9beb614711dbe",
+      "quality": 62
+    },
+    {
+      "file": "scene-toy-room-400.webp",
+      "width": 400,
+      "height": 250,
+      "bytes": 17112,
+      "sha256": "89210850f50936a1",
+      "quality": 84
+    },
+    {
+      "file": "scene-toy-room-400.png",
+      "width": 400,
+      "height": 250,
+      "bytes": 39088,
+      "sha256": "e44d750bef833744"
+    },
+    {
+      "file": "scene-brick-valley-800.avif",
+      "width": 800,
+      "height": 500,
+      "bytes": 32465,
+      "sha256": "59d26cefee96d44a",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "scene-brick-valley-800.webp",
+      "width": 800,
+      "height": 500,
+      "bytes": 44034,
+      "sha256": "088d8a6e7bb33158",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "scene-brick-valley-800.png",
+      "width": 800,
+      "height": 500,
+      "bytes": 101464,
+      "sha256": "1b369e5780df9044",
+      "initial": true
+    },
+    {
+      "file": "scene-brick-valley-400.avif",
+      "width": 400,
+      "height": 250,
+      "bytes": 12067,
+      "sha256": "0477af19dcb2189d",
+      "quality": 62
+    },
+    {
+      "file": "scene-brick-valley-400.webp",
+      "width": 400,
+      "height": 250,
+      "bytes": 17072,
+      "sha256": "30e1e3ec79e1105c",
+      "quality": 84
+    },
+    {
+      "file": "scene-brick-valley-400.png",
+      "width": 400,
+      "height": 250,
+      "bytes": 39287,
+      "sha256": "c3f15637482bcd26"
+    },
+    {
+      "file": "scene-sky-island-800.avif",
+      "width": 800,
+      "height": 500,
+      "bytes": 13609,
+      "sha256": "887e4b317bd0f6b6",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "scene-sky-island-800.webp",
+      "width": 800,
+      "height": 500,
+      "bytes": 20804,
+      "sha256": "f0da2dd27628e61d",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "scene-sky-island-800.png",
+      "width": 800,
+      "height": 500,
+      "bytes": 60395,
+      "sha256": "d26d6a1152053c6f",
+      "initial": true
+    },
+    {
+      "file": "scene-sky-island-400.avif",
+      "width": 400,
+      "height": 250,
+      "bytes": 5955,
+      "sha256": "91bd9eac6253eeb8",
+      "quality": 62
+    },
+    {
+      "file": "scene-sky-island-400.webp",
+      "width": 400,
+      "height": 250,
+      "bytes": 8654,
+      "sha256": "9b55ebd18b8e0f0c",
+      "quality": 84
+    },
+    {
+      "file": "scene-sky-island-400.png",
+      "width": 400,
+      "height": 250,
+      "bytes": 22492,
+      "sha256": "6986d0d0d5ee8e8d"
+    },
+    {
+      "file": "scene-classic-800.avif",
+      "width": 800,
+      "height": 500,
+      "bytes": 17120,
+      "sha256": "c8c0d6138ccb2e3d",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "scene-classic-800.webp",
+      "width": 800,
+      "height": 500,
+      "bytes": 21984,
+      "sha256": "f454aac2fd458d1b",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "scene-classic-800.png",
+      "width": 800,
+      "height": 500,
+      "bytes": 53605,
+      "sha256": "8db5c2a2efee3556",
+      "initial": true
+    },
+    {
+      "file": "scene-classic-400.avif",
+      "width": 400,
+      "height": 250,
+      "bytes": 5997,
+      "sha256": "b15a4bc63b92257a",
+      "quality": 62
+    },
+    {
+      "file": "scene-classic-400.webp",
+      "width": 400,
+      "height": 250,
+      "bytes": 7980,
+      "sha256": "d57fc9c7a1bad52e",
+      "quality": 84
+    },
+    {
+      "file": "scene-classic-400.png",
+      "width": 400,
+      "height": 250,
+      "bytes": 22146,
+      "sha256": "a10e23058327f07d"
+    },
+    {
+      "file": "character-pip-400.avif",
+      "width": 400,
+      "height": 400,
+      "bytes": 4710,
+      "sha256": "57b8a28d5167982f",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "character-pip-400.webp",
+      "width": 400,
+      "height": 400,
+      "bytes": 6232,
+      "sha256": "2bb187ec03fbe39a",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "character-pip-400.png",
+      "width": 400,
+      "height": 400,
+      "bytes": 19888,
+      "sha256": "24ade3b4b93297ed",
+      "initial": true
+    },
+    {
+      "file": "character-fern-400.avif",
+      "width": 400,
+      "height": 400,
+      "bytes": 4739,
+      "sha256": "6dd6e6d10eb47468",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "character-fern-400.webp",
+      "width": 400,
+      "height": 400,
+      "bytes": 6120,
+      "sha256": "4be886bebb1052f0",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "character-fern-400.png",
+      "width": 400,
+      "height": 400,
+      "bytes": 21663,
+      "sha256": "1d93cd8dc88d33af",
+      "initial": true
+    },
+    {
+      "file": "character-nova-400.avif",
+      "width": 400,
+      "height": 400,
+      "bytes": 5084,
+      "sha256": "5b14d56fe32b31f2",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "character-nova-400.webp",
+      "width": 400,
+      "height": 400,
+      "bytes": 6804,
+      "sha256": "2d1f193474b0b723",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "character-nova-400.png",
+      "width": 400,
+      "height": 400,
+      "bytes": 23729,
+      "sha256": "3161443171a5412b",
+      "initial": true
+    },
+    {
+      "file": "character-toy-figure-400.avif",
+      "width": 400,
+      "height": 400,
+      "bytes": 5887,
+      "sha256": "26953afb667f7054",
+      "quality": 62,
+      "initial": true
+    },
+    {
+      "file": "character-toy-figure-400.webp",
+      "width": 400,
+      "height": 400,
+      "bytes": 7934,
+      "sha256": "9babf3065e95c1bf",
+      "quality": 84,
+      "initial": true
+    },
+    {
+      "file": "character-toy-figure-400.png",
+      "width": 400,
+      "height": 400,
+      "bytes": 24901,
+      "sha256": "7d2e6f964965f0cc",
+      "initial": true
+    }
+  ]
+}
