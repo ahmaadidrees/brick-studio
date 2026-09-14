@@ -1,0 +1,97 @@
+{
+  "checkedAt": "2026-09-14T23:06:49.958Z",
+  "origin": "http://127.0.0.1:5208",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      7.91,
+      8.19,
+      7.4
+    ],
+    "freeMemoryMB": 42732,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "cases": [
+    {
+      "id": "schema-2",
+      "file": "scripts/perf/fixtures/mixed-250.brickstudio.json",
+      "status": "passed",
+      "steps": [
+        {
+          "step": "after-import",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        },
+        {
+          "step": "after-reload",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        },
+        {
+          "step": "after-home-continue-reload",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        }
+      ],
+      "failures": [],
+      "notes": []
+    },
+    {
+      "id": "schema-3",
+      "file": "scripts/qa/fixtures/expanded-128.brickstudio.json",
+      "status": "passed",
+      "steps": [
+        {
+          "step": "after-import",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        },
+        {
+          "step": "after-reload",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        },
+        {
+          "step": "after-home-continue-reload",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        }
+      ],
+      "failures": [],
+      "notes": []
+    },
+    {
+      "id": "schema-1-legacy",
+      "file": "scripts/qa/fixtures/legacy-v1.brickstudio.json",
+      "status": "passed",
+      "steps": [
+        {
+          "step": "after-import",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        },
+        {
+          "step": "after-reload",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        },
+        {
+          "step": "after-home-continue-reload",
+          "status": "passed",
+          "filename": "brick-studio-build.brickstudio.json"
+        }
+      ],
+      "failures": [],
+      "notes": []
+    }
+  ],
+  "summary": {
+    "cases": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}
