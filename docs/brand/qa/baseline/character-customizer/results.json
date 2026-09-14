@@ -1,0 +1,227 @@
+{
+  "checkedAt": "2026-09-14T22:07:58.812Z",
+  "origin": "http://127.0.0.1:5208",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      7.21,
+      5.95,
+      4.76
+    ],
+    "freeMemoryMB": 57496,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "checks": [
+    {
+      "sceneTabFromCharacterShortcut": "passed"
+    },
+    {
+      "character": "pip",
+      "animationSampleHashes": {
+        "Idle": "db26b3280904e97c77fa8a62267d330546bdb3301400ad764628e2f9325f4bfc",
+        "Walk": "040665b5505656b469230f6a1dc1f680fdcf9738d7b7c415b307ca7e6a9e5e62",
+        "Run": "19324e7392146bf333a5c440345c8e64732be90f1d1b8a4797421a8441d03ae8",
+        "Jump": "c6997661e0896b6de1dec0e8c2aa4a7076ae7d5e7b97c13bbf81bdd7f08f9d96"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "pip",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "character": "fern",
+      "animationSampleHashes": {
+        "Idle": "bfefcac2e447961351bcc7c33d01c0822064a36313311d330e4e6879d56e5576",
+        "Walk": "bfd71a2df7253a1b60aa0e44aac8347c142b1c438571b91c83e08d05ae50ab86",
+        "Run": "7dee80dea5cf1b75fb77f3ae1762f3a27a5f37e4b90bddb9a8574cef79da3436",
+        "Jump": "42fbd4120fcf68ce9e26e8390e137d58d9add57e3deb30997b30ec582d48003d"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "fern",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "character": "nova",
+      "animationSampleHashes": {
+        "Idle": "f0c50535170b261858d738d936f504d1c9ac628869ec9ded0240db89c8207000",
+        "Walk": "582497d0c0dc54ea184d49a2fd7a473699329ffb32d070012d2825fc7811c0d0",
+        "Run": "b5b6efba0877e2dab475303f8bc9066e80e3f8acdfac0e65d84be9562762c0bf",
+        "Jump": "aa9c2cef1e3a128d84f24542513bba8a9a27400f8c33dc6ddbb2d01e2a319c5d"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "nova",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "toyAppearanceApplyReload": "passed",
+      "outfitSaveFavoriteReloadRestore": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "toy-figure",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "freckles",
+          "hair": "curls",
+          "outfit": "overalls",
+          "accessory": "glasses",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      },
+      "wardrobe": {
+        "version": 1,
+        "outfits": [
+          {
+            "characterId": "toy-figure",
+            "palette": {},
+            "appearance": {
+              "body": "classic",
+              "face": "freckles",
+              "hair": "curls",
+              "outfit": "overalls",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            },
+            "id": "553766bb-2de3-4dae-94e8-66ec27537284",
+            "name": "Curly Builder QA",
+            "favorite": true
+          }
+        ]
+      }
+    },
+    {
+      "mobileWidth": 390,
+      "layout": {
+        "panel": {
+          "x": 0,
+          "y": 26,
+          "width": 390,
+          "height": 818,
+          "top": 26,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "footer": {
+          "x": 1,
+          "y": 773,
+          "width": 388,
+          "height": 71,
+          "top": 773,
+          "right": 389,
+          "bottom": 844,
+          "left": 1
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390
+      }
+    },
+    {
+      "mobileWidth": 320,
+      "layout": {
+        "panel": {
+          "x": 0,
+          "y": 26,
+          "width": 320,
+          "height": 714,
+          "top": 26,
+          "right": 320,
+          "bottom": 740,
+          "left": 0
+        },
+        "footer": {
+          "x": 1,
+          "y": 669,
+          "width": 318,
+          "height": 71,
+          "top": 669,
+          "right": 319,
+          "bottom": 740,
+          "left": 1
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 320,
+          "height": 740
+        },
+        "scrollWidth": 320
+      }
+    }
+  ],
+  "errors": [],
+  "assets": [
+    {
+      "url": "http://127.0.0.1:5208/assets/characters-original/pip.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5208/assets/characters-original/pip.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5208/assets/characters-original/fern.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5208/assets/characters-original/fern.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5208/assets/characters-original/nova.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5208/assets/characters-original/nova.glb",
+      "status": 200
+    }
+  ]
+}

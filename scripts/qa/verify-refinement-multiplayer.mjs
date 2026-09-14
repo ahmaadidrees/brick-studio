@@ -1,16 +1,24 @@
+/**
+ * Two-client guest room verification through the real UI: create, invite, resize, place, profile, export,
+ * cold rejoin, and UI export == authoritative worker document.
+ * Environment: PLAYWRIGHT_MODULE, CHROME_PATH, QA_ORIGIN (frontend), QA_API (worker origin; http or https),
+ * QA_OUTPUT, VERCEL_SHARE (hosted previews only), QA_LOCK_ROOM=1 to close the disposable room afterwards.
+ * Defaults point at the staging pair; a local pair is documented in docs/brand/qa/README.md.
+ */
 import assert from 'node:assert/strict'
-import {mkdir,writeFile,readFile} from 'node:fs/promises'
-const {chromium}=await import('/Users/ahmaadidrees/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs')
-const origin=process.env.QA_ORIGIN || 'https://virtual-legos-788vjxwd9-ahmaadidrees-projects.vercel.app',api=process.env.QA_API || 'https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev',out=process.env.QA_OUTPUT || '/tmp/brick-refinement-multiplayer'
-await mkdir(out,{recursive:true});const report={timestamp:new Date().toISOString(),origin,api,steps:[]}
-const browser=await chromium.launch({headless:true,executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
+import {writeFile,readFile} from 'node:fs/promises'
+import { hostSnapshot, launchOptions, loadChromium, outputDir } from './lib/env.mjs'
+const chromium=await loadChromium()
+const origin=(process.env.QA_ORIGIN || 'https://virtual-legos-788vjxwd9-ahmaadidrees-projects.vercel.app').replace(/\/+$/,''),api=(process.env.QA_API || 'https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev').replace(/\/+$/,'')
+const out=await outputDir('QA_OUTPUT','/tmp/brick-refinement-multiplayer');const report={timestamp:new Date().toISOString(),origin,api,host:hostSnapshot(),steps:[]}
+const browser=await chromium.launch(launchOptions())
 let cleanupOwner;
 try{
  const wire=async context=>{if(process.env.VERCEL_SHARE){const p=await context.newPage();await p.goto(origin+'/?_vercel_share='+process.env.VERCEL_SHARE);await p.close()}};
  const ownerContext=await browser.newContext({permissions:['clipboard-read','clipboard-write'],acceptDownloads:true});await wire(ownerContext);const owner=await ownerContext.newPage();cleanupOwner=owner;const errors=[];owner.on('pageerror',e=>errors.push(e.message));const frames=[];owner.on('websocket',s=>{report.socketUrl=s.url().split('?')[0];s.on('framereceived',f=>{try{frames.push(JSON.parse(f.payload))}catch{}})})
  await owner.goto(origin+'/live/new');await owner.screenshot({path:out+'/initial.png'});console.log((await owner.locator('body').innerText()).slice(0,3000));
  await owner.getByLabel('Your builder name').fill('QA Owner');await owner.getByLabel('Room name',{exact:true}).fill('Disposable release QA');await owner.getByRole('button',{name:'Create my live room',exact:true}).click();await owner.getByRole('button',{name:'Share',exact:true}).waitFor({timeout:30000});const guide=owner.getByRole('button',{name:'Dismiss quick start',exact:true});if(await guide.count())await guide.click();report.steps.push('Created guest world through UI');report.roomId=new URL(owner.url()).pathname.split('/').at(-1);console.log('CREATED',report.roomId,report.socketUrl)
- assert(report.socketUrl?.startsWith(api.replace('https:','wss:')),'Must connect only configured QA backend')
+ assert(report.socketUrl?.startsWith(api.replace(/^http/,'ws')),'Must connect only configured QA backend')
  await owner.getByRole('button',{name:'Share',exact:true}).click();await owner.getByRole('button',{name:'Copy invite link',exact:true}).click();const invite=await owner.evaluate(()=>navigator.clipboard.readText());assert(!invite.includes('#'));report.invite=invite;report.steps.push('Copied guest invite through Share UI; no owner fragment')
  const peerContext=await browser.newContext();await wire(peerContext);const peer=await peerContext.newPage();const peerFrames=[];peer.on('websocket',s=>s.on('framereceived',f=>{try{peerFrames.push(JSON.parse(f.payload))}catch{}}));await peer.goto(invite);await peer.getByLabel('Your builder name').fill('QA Peer');await peer.getByRole('button',{name:'Join the room',exact:true}).click();await peer.getByRole('button',{name:'Share',exact:true}).waitFor({timeout:30000});const peerGuide=peer.getByRole('button',{name:'Dismiss quick start',exact:true});if(await peerGuide.count())await peerGuide.click();report.steps.push('Second isolated browser joined through invite UI');
  await owner.keyboard.press('Escape');await owner.getByRole('button',{name:'Scene',exact:true}).click();console.log('SCENE UI',await owner.locator('[role="dialog"]').innerText());await owner.screenshot({path:out+'/scene.png'});

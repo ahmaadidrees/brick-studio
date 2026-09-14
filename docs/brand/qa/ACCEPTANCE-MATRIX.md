@@ -1,0 +1,47 @@
+# Brickgineers direction I — acceptance matrix (W8)
+
+One row per approved board (`brickgineers-i-surfaces/NN-*.png`) and per extra-coverage item from `docs/brand/CONTRACTS.md`
+"Verification expectations". "Reach" is the route and the role/label steps a harness uses; "Harness id" is the surface
+id in `scripts/qa/brand-surfaces.mjs` (matrix: six viewports, 200 % zoom, reduced motion) or the board/state in
+`scripts/qa/board-captures.mjs` (captures: 1366×768 and 390×844). Owner is the lane that must fix a failure on that row;
+W8 only reports. Fixture column says what a row needs beyond a guest browser.
+
+## Boards
+
+| Board | Reach (route → steps) | Assertion | Harness id | Owner | Fixture |
+|---|---|---|---|---|---|
+| 01 Landing | `/` (guest, no draft) | "Start building" link visible; page scrolls vertically only; no control outside the viewport; landing bundle stays free of editor chunks | matrix `landing`; captures 01/start-building; `route-transfer` landing row | W2 (copy/layout), W7 (hero media), W1 (tokens) | none |
+| 01 Landing (returning guest) | `/` with a seeded guest draft | "Continue building" link replaces "Start building" | matrix `landing-continue`; captures 01/continue-building; `schema-roundtrip` Home → Continue step | W2, lead (draft detection) | none |
+| 02 How it works & teachers | `/` scrolled to the how-it-works section | Section headings reachable by keyboard scroll; full-page capture at both widths; no "Explore worlds" nav (board-vs-code decision) | matrix `landing` (full-page screenshot); captures 02 | W2 | none |
+| 03 Student & teacher entry | `/build?classroom=join`, `=signin`, `=teacher` | Dialog "Save, return, build together" opens; the matching nav button has `aria-pressed="true"`; mode-only field visible (Enrollment code / Sign-in code / Email); Escape closes and (strict) returns focus; 44 px targets on touch | matrix `entry-join`, `entry-signin`, `entry-teacher`, `entry-worlds`; captures 03/join, student-sign-in, teacher-sign-in | W3 (panel), lead (intents) | none |
+| 04 Account recovery & save handoff | `/build?classroom=save` (guest draft seeded) | Entry dialog with the save intent; guest document unchanged by opening/closing it | matrix `entry-save`; captures 04/guest-save-handoff | W3, W4 (menu entry) | "Choose your new password" state needs an account with `resetRequired` (captures 04/password-reset, needs fixture) |
+| 05 My Worlds & My Class | `/build?classroom=worlds`, `=class` signed in | Tabs "My Worlds"/"My Class" pressed by intent; world cards labelled by title; no fake thumbnails (mark or scene art only) | captures 05/my-worlds, 05/my-class (needs fixture) | W3 | signed-in classroom session in `sessionStorage` (`brick-studio.classroom-session.v1`) plus a worker with classroom secrets (`SESSION_STORAGE_FILE`) |
+| 06 Build editor & selection | `/build` with a 250-brick draft; desktop drawer open | Header per CONTRACTS (brand home link "Brickgineers", world title menu, `role=status` save status, Scene, Character, Build together, Settings, Explore); brick drawer `complementary` "Brick drawer" (desktop) or dialog "Choose a shape" (touch); no overflow | matrix `build`, `build-drawer`, `quick-start`; captures 06, 06/brick-drawer (header probe recorded in `captures.json`) | W4 (header/menu), W5 (drawer), W1 (SaveStatus) | none |
+| 07 Explore | `/build` → Explore | "Back to building", "Respawn at a safe spot" visible; compact HUD; spawn ready; no pageerror | matrix `explore`; captures 07 (header probe); `verify-expanded-performance` Explore rows | W4 (HUD), lead (scene) | quiet host for the performance rows |
+| 08 Scenes & build plate | `/build` → Scene | Dialog "Scene & character" with tab Scene selected; fits every viewport; Escape closes; 64/96/128 plate buttons apply (multiplayer harness resizes 96 → 128) | matrix `scene-sheet`; captures 08; `verify-refinement-multiplayer` resize steps | W5 (sheet frame/scene tab), W1 (Sheet primitive) | none |
+| 09 Character studio | `/build` → Character | Same dialog with tab Character selected and a live WebGL preview canvas; Pip/Fern/Nova GLB 200 and four distinct animation frames; Apply → reload persists; outfit + favorite restore; 390/320 sheet fit | matrix `character-sheet`; captures 09; `verify-character-customizer` | W6 | none |
+| 10 Custom bricks & color | `/build` → drawer → Create a brick; → brick properties → Choose any brick color | Dialogs "Create a brick" and "Choose any color" fit; Escape closes; three-way studs select (no Arch/toggle from the board); sliders reach 44 px on touch | matrix `create-brick`, `color-picker`; captures 10/create-brick, 10/color-picker | W5 | none (Resize sheet needs a placed custom brick; not automated) |
+| 11 Guest collaboration | `/live/new` → name + room → Create my live room → People | Create form labels "Your builder name"/"Room name"; in-room HUD shows Share/People/Room; invite has no owner fragment; two-client export == authoritative document; cold rejoin identical | matrix `live-create`; captures 11/create-room, 11/in-room-people; `verify-refinement-multiplayer` | W4 (HUD/gate), lead (protocol) | reachable worker: local `wrangler dev` on 127.0.0.1:8787 with the dev server started with `VITE_LIVE_SERVER_URL=http://127.0.0.1:8787` |
+| 12 Settings & world menu | `/build` → Settings; → world title menu | Dialog "Settings" fits and closes on Escape with focus back on the trigger (strict); menu "Studio actions" lists Home, My Worlds, My Class, Save to account, Download build, Import build, Help with New Build and Build together reachable | matrix `settings`, `world-menu`; captures 12/settings, 12/world-menu | W4 | none |
+| 13 Teacher roster | `/build?classroom=class` as a teacher | "Class sections" nav with Students / Shared worlds / Class settings; roster rows with "Manage <name>" buttons; empty state "Ready for your students" | captures 13 (needs fixture) | W3 | teacher session + worker with classroom secrets |
+| 14 Class access & groups | `/build?classroom=class` → Class settings | Enrollment code / returning sign-in code kept distinct; "teacher can close collaboration" wording (no "join anytime") | captures 14 (needs fixture) | W3 | teacher session + worker with classroom secrets |
+| 15 Safe states & published viewer | `/world#<snapshot>`; Remix; WebGL context loss; corrupt import; `/live/<unknown>`; `/nowhere` | Viewer shows "Published world" + "Remix this world"; remix confirmation leaves the seeded draft unchanged and lands on `/build`; "Graphics paused" alert with "Download my build" at `--z-system`; corrupt import shows the studio message and leaves the draft unchanged; blocked-room heading; not-found heading | matrix `published-viewer`, `published-remix-confirm`, `graphics-paused`, `import-corrupt`, `live-unavailable`, `not-found`; captures 15/* | W4 | none |
+| 16 Mobile | `/build` at 390×844 and 320×740 | Quick start guide fits; Scene/Settings reachable; brick sheet "Choose a shape" fits; every touch target ≥ 44 px (strict) | matrix every surface at 390×844, 320×740, 844×390; captures 16/quick-start, 16/build, 16/brick-sheet | W4, W5, W1 | none |
+
+## Extra coverage
+
+| Item | Assertion | Harness | Owner |
+|---|---|---|---|
+| Six-viewport matrix | 1366×768, 1024×768, 768×1024, 390×844, 320×740, 844×390: no horizontal overflow, no control outside the viewport, dialogs fit, Escape closes | `brand-surfaces.mjs` | every UI lane |
+| 200 % zoom | Same surfaces at half the CSS viewport with DPR 2 on desktop/tablet viewports | `brand-surfaces.mjs` variant `zoom200` | every UI lane |
+| Reduced motion | `prefers-reduced-motion: reduce` applied; running animations recorded | `brand-surfaces.mjs` variant `reduced-motion` | every UI lane |
+| Touch targets | Every control ≥ 44 CSS px on touch viewports (`STRICT_TOUCH_TARGETS=1`) | `brand-surfaces.mjs` | every UI lane |
+| Focus handling | Open dialogs contain focus; Escape returns focus to the trigger (`STRICT_FOCUS=1`) | `brand-surfaces.mjs` | W1 (Sheet/Dialog), W3, W4, W5 |
+| Header/toolbar bounds | No overlapping header controls at six viewports; Character shortcut opens the Character tab; Settings fits; world menu entries; Escape restores focus; no recovery screen | `verify-refinement-ui.mjs` | W4 |
+| Home → Continue → reload | Guest document identical after Place → Home → Continue and after import → Home → Continue → reload | `verify-refinement-ui.mjs`, `schema-roundtrip.mjs` | lead (persistence), W2 (Continue link) |
+| Schema 2/3 round trip | Import → Export equality for schema 2 and schema 3 (expanded plate) files; schema 1 normalizes to 2 | `schema-roundtrip.mjs`; `npx vitest run src/brick/brickDocument.test.ts packages/brick-core` | lead |
+| Two-client guest room | Export == authoritative `GET /worlds/:id`; peer receives resize/brick/profile; cold rejoin equal | `verify-refinement-multiplayer.mjs` (local pair) | lead, W4 |
+| Transfer budget | Landing free of editor chunks; `/build` compressed transfer within 10 % of baseline; media budgets (hero ≤ 250 KB, marketing media ≤ 600 KB) | `route-transfer.mjs` + `BUNDLE.md` diff | W7, W2, lead |
+| Performance | 64×64×192 custom-part timing; 128-plate Explore spawn/RAF p50/p95 within baseline on a quiet host | `verify-expanded-performance.mjs` | lead |
+| Unit/integration gate | `npm run check` (vitest, worker tests, brick-core and worker typecheck, build) under Node 22 | npm | every lane |
+| Identity assets | `index.html` metadata, manifest, icons (existing `src/test/indexHtml.test.ts`) | vitest | W1 |

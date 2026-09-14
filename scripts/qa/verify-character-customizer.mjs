@@ -1,13 +1,15 @@
-/** Real WebGL/customizer QA in an isolated local guest browser. See CHARACTER-CUSTOMIZER-QA.md. */
+/**
+ * Real WebGL/customizer QA in an isolated local guest browser. See docs/classroom/CHARACTER-CUSTOMIZER-QA.md.
+ * Environment: PLAYWRIGHT_MODULE, CHROME_PATH, UI_ORIGIN (localhost only), UI_OUTPUT. See docs/brand/qa/README.md.
+ */
 import assert from 'node:assert/strict'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
-const origin = process.env.UI_ORIGIN || 'http://127.0.0.1:5190'
-assert(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname), 'Local guest test only.')
-const output = process.env.UI_OUTPUT || '/tmp/brick-character-customizer-qa'
-await mkdir(output, { recursive: true })
-const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' })
+import { hostSnapshot, launchOptions, loadChromium, localOrigin, outputDir } from './lib/env.mjs'
+const chromium = await loadChromium()
+const origin = localOrigin('UI_ORIGIN', 'http://127.0.0.1:5190', 'local guest test only.')
+const output = await outputDir('UI_OUTPUT', '/tmp/brick-character-customizer-qa')
+const browser = await chromium.launch(launchOptions())
 const context = await browser.newContext({ viewport: { width: 1366, height: 900 } })
 const page = await context.newPage()
 const errors = [], assets = [], checks = []
@@ -123,10 +125,10 @@ try {
   assert(assets.some(item => item.url.includes('/pip.glb') && item.status === 200))
   assert(assets.some(item => item.url.includes('/fern.glb') && item.status === 200))
   assert(assets.some(item => item.url.includes('/nova.glb') && item.status === 200))
-  await writeFile(`${output}/results.json`, JSON.stringify({ checkedAt: new Date().toISOString(), origin, checks, errors, assets }, null, 2))
+  await writeFile(`${output}/results.json`, JSON.stringify({ checkedAt: new Date().toISOString(), origin, host: hostSnapshot(), checks, errors, assets }, null, 2))
   console.log(JSON.stringify({ result: 'passed', output, checks, assets }, null, 2))
 } catch (error) {
   await page.screenshot({ path: `${output}/failure.png` })
-  await writeFile(`${output}/results.json`, JSON.stringify({ checkedAt: new Date().toISOString(), origin, checks, errors, assets, failure: String(error) }, null, 2))
+  await writeFile(`${output}/results.json`, JSON.stringify({ checkedAt: new Date().toISOString(), origin, host: hostSnapshot(), checks, errors, assets, failure: String(error) }, null, 2))
   throw error
 } finally { await browser.close() }
