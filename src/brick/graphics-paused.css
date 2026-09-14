@@ -1,0 +1,76 @@
+/* Shown by GraphicsPausedOverlay while the WebGL context is lost. three.js already
+   preventDefault()s the loss event and restores on webglcontextrestored. The overlay
+   sits inside the canvas container and captures pointer input over the canvas, so
+   nothing can be placed or moved blind; the studio chrome above it keeps working. */
+.graphics-paused {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(244, 242, 237, 0.86);
+  backdrop-filter: blur(6px);
+  color: #405761;
+  text-align: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.graphics-paused__card {
+  display: grid;
+  gap: 10px;
+  max-width: 360px;
+  padding: 18px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 9px 24px rgba(35, 55, 63, 0.16);
+}
+
+.graphics-paused__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.graphics-paused__lead,
+.graphics-paused__status {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.graphics-paused__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.graphics-paused__button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(64, 87, 97, 0.28);
+  border-radius: 999px;
+  background: #fff;
+  color: #405761;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.graphics-paused__button--primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, #5b7fe0, #4360c7);
+  color: #fff;
+}
+
+/* Editing chrome is made inert while the context is lost; show it as parked. */
+.brick-inspector[inert],
+.touch-selection-bar[inert],
+.part-library[inert],
+.vertical-selection-handle[inert] {
+  opacity: 0.55;
+}

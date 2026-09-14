@@ -109,12 +109,15 @@ import { draftFromSurfacePoint } from './surfacePlacement'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { selectionDrafts, selectionDraftIsValid, useBrickStore } from './store'
 import {
+  ENVIRONMENT_UNAVAILABLE_TOAST,
   RuntimeCharacterAvatar,
+  RuntimeEnvironmentBoundary,
   useRuntimeEnvironment,
   type RuntimeEnvironment,
 } from './runtimeContent'
 import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
+import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -823,6 +826,9 @@ function BuildSelectionInput() {
     const blur = () => { cancelledPointerId = null; reset() }
     const visibility = () => { if (document.visibilityState !== 'visible') reset() }
     const unsubscribe = useBrickStore.subscribe((state) => {
+      // A lost WebGL context parks the gesture too: release the captured pointer so a
+      // box selection already in flight cannot finish blind after the veil appears.
+      if (state.graphicsPaused) { reset(); return }
       if ((state.mode !== 'build' && (active.current || state.marquee)) || (active.current?.explicitMode && !state.selectionMode)) reset()
     })
 
@@ -1108,6 +1114,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
     // Abort whenever the drag loses its subject (Cancel, placement, or leaving
     // Build) so neither the pointer id nor grabInProgress is left stranded.
     const unsubscribe = useBrickStore.subscribe((state) => {
+      if (state.graphicsPaused) { abandon(); return }
       if (state.mode !== 'build' || state.selectionMode) abortHold()
       if (activePointer.current !== null && (state.mode !== 'build' || (!state.draft && (!selectedDrag.current || selectedDrag.current.started)))) release()
     })
@@ -1401,6 +1408,7 @@ function ExplorerAvatar({
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
+      if (useBrickStore.getState().graphicsPaused) { keys.current.clear(); return }
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || exploreKeyboardBlocked(event.target)) { keys.current.clear(); return }
       const key = event.key.toLowerCase()
       if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' '].includes(key)) {
@@ -1473,6 +1481,7 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current || !collider.current || !controller.current) return
     const store = useBrickStore.getState()
+    if (store.graphicsPaused) { keys.current.clear(); return }
     if (store.exploreRespawnNonce !== lastRespawnNonce.current) {
       lastRespawnNonce.current = store.exploreRespawnNonce
       beginSpawnSearch()
@@ -1517,6 +1526,7 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current) return
     const store = useBrickStore.getState()
+    if (store.graphicsPaused) return
 
     if (spawnPending.current) {
       if (spawnRetryFrames.current > 0) {
@@ -1659,16 +1669,19 @@ function ExploreScene({
 }) {
   const bricks = useBrickStore((state) => state.bricks)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const EnvironmentWorld = environment.World
   return (
-    <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
+    <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate paused={graphicsPaused}>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
         <Baseplate surface={environment.surface} explore />
       </RigidBody>
-      <Suspense fallback={null}>
-        <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
-      </Suspense>
+      <RuntimeEnvironmentBoundary environmentId={environment.resolvedId} resetKey={environment.resolvedId}>
+        <Suspense fallback={null}>
+          <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
+        </Suspense>
+      </RuntimeEnvironmentBoundary>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
       <RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} />
       <ExplorerAvatar
@@ -1754,7 +1767,7 @@ function RuntimeSceneContent({
 
   useEffect(() => {
     if (!environment.error) return
-    useBrickStore.setState({ toast: 'That world could not load, so Classic Studio is showing instead.' })
+    useBrickStore.setState({ toast: ENVIRONMENT_UNAVAILABLE_TOAST })
   }, [environment.error])
 
   useEffect(() => {
@@ -1770,10 +1783,12 @@ function RuntimeSceneContent({
       {usesClassicEnvironmentRig(environment.resolvedId)
         ? <ClassicStudioRig compact={compact} />
         : (
-            <Suspense fallback={<ClassicStudioRig compact={compact} />}>
-              <EnvironmentRig compact={compact} reducedMotion={reducedMotion} mode={mode} />
-              {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
-            </Suspense>
+            <RuntimeEnvironmentBoundary environmentId={environment.resolvedId} resetKey={environment.resolvedId} fallback={<ClassicStudioRig compact={compact} />}>
+              <Suspense fallback={<ClassicStudioRig compact={compact} />}>
+                <EnvironmentRig compact={compact} reducedMotion={reducedMotion} mode={mode} />
+                {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
+              </Suspense>
+            </RuntimeEnvironmentBoundary>
           )}
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} showStudioGround={usesClassicEnvironmentRig(environment.resolvedId)} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
@@ -1807,12 +1822,14 @@ export default function BrickStudioScene({
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const compactRenderer = useCompactRenderer()
   const mouseTravel = useRef(createPointerTravel())
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
 
   // Audible confirmation is orthogonal to reduced motion — always play it.
   useEffect(() => {
     if (placeFeedback) playPlaceClick()
   }, [placeFeedback])
   return (
+    <>
     <Canvas
       onPointerDownCapture={(event) => {
         if (event.target instanceof HTMLCanvasElement) {
@@ -1824,7 +1841,13 @@ export default function BrickStudioScene({
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
       camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-
+      onCreated={({ gl }) => {
+        // three.js already preventDefault()s webglcontextlost so the browser can restore it.
+        // The pause lives in the store so the editor chrome, the explore rig and the
+        // physics world all park together and resume together.
+        gl.domElement.addEventListener('webglcontextlost', () => useBrickStore.getState().setGraphicsPaused(true))
+        gl.domElement.addEventListener('webglcontextrestored', () => useBrickStore.getState().setGraphicsPaused(false))
+      }}
     >
       <RuntimeSceneContent
         environmentId={environmentId}
@@ -1838,5 +1861,7 @@ export default function BrickStudioScene({
         mouseTravel={mouseTravel.current}
       />
     </Canvas>
+    {graphicsPaused ? <GraphicsPausedOverlay /> : null}
+    </>
   )
 }

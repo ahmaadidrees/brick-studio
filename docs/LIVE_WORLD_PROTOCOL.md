@@ -41,6 +41,12 @@ The executable types, limits, and validation rules live in `packages/brick-core`
 - The room remains message-driven and uses the WebSocket Hibernation API. It must not run a server tick loop.
 - The pilot provides an explicit persistence exit: the owner can publish the current room through the existing share-link format, and any participant can remix that published snapshot.
 
+## Classroom rooms
+
+- A classroom room re-authorizes every privileged action and idle sockets against Postgres. A session that lost access closes with `4003` ("Classroom access changed"); `4001` still means the same identity connected elsewhere. Only a real revocation (logout, password change or reset, suspension, member removal, class closed for students) produces `4003`.
+- A rename, REST save or checkpoint restore is not an access change. The room reloads the stored document, title and revision and broadcasts the ordinary `snapshot` message (without `opId`) so every client rebases its pending edits on the new base; an edit that raced the reload receives `reject` with code `save_conflict` and the refreshed document. No message shape changed. The snapshot carries no title, so an open tab shows a new title after its next world summary fetch or rejoin.
+- A member added or a class setting changed re-authorizes every connected session in place; sockets that are still allowed receive nothing but a `players` roster refresh.
+
 ## Release gates
 
 1. Worker tests and CI pass against a staging Durable Object namespace.

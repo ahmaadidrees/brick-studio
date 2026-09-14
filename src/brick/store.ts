@@ -91,6 +91,8 @@ export type BrickState = {
   exploreSpawnStatus: ExploreSpawnStatus
   exploreLastSafePosition: ExplorePosition | null
   reducedMotion: boolean
+  /** True while the WebGL context is lost: editing and movement input are parked. */
+  graphicsPaused: boolean
   selectionMode: boolean
   marquee: MarqueeState | null
   /** Grid coordinates of the build camera focus, published by the scene. */
@@ -141,6 +143,7 @@ export type BrickState = {
   markExploreSpawnUnavailable: () => void
   requestJump: () => void
   setReducedMotion: (reducedMotion: boolean) => void
+  setGraphicsPaused: (paused: boolean) => void
   setSelectionMode: (selectionMode: boolean) => void
   setMarquee: (marquee: MarqueeState | null) => void
   setViewTarget: (x: number, z: number) => void
@@ -447,7 +450,35 @@ function describeBrick(brick: BrickInstance, index: number, count: number) {
   return `${BRICK_PART_MAP[brick.partId].name}, brick ${index + 1} of ${count}, at X ${brick.x}, Y ${brick.y}, Z ${brick.z}.`
 }
 
-export const useBrickStore = create<BrickState>((set, get) => ({
+/**
+ * Local editing, placement and movement actions that must not run blind while the
+ * WebGL context is lost. Incoming multiplayer and classroom state (raw patches,
+ * restoreDocument) bypass these actions, so a paused studio still receives remote
+ * edits; only the local builder's hands are parked. Cancel, mode, camera, view and
+ * export paths stay open so the chrome, Settings and recovery keep working.
+ */
+const GRAPHICS_PAUSE_GATED_ACTIONS = [
+  'choosePart', 'setActiveColor', 'setDraftPosition', 'placeDraft',
+  'selectBrick', 'selectBricks', 'toggleBrick', 'clearSelection', 'selectAdjacentBrick',
+  'deleteSelected', 'rotate', 'nudge', 'startMove', 'copy', 'paste', 'duplicate',
+  'resizeSelectedParts', 'newBuild', 'undo', 'redo',
+  'setTouchMove', 'addTouchYaw', 'addTouchLook', 'requestJump', 'requestRespawn',
+] as const satisfies readonly (keyof BrickState)[]
+
+export function isGraphicsPauseGatedAction(name: keyof BrickState): boolean {
+  return (GRAPHICS_PAUSE_GATED_ACTIONS as readonly string[]).includes(name)
+}
+
+function withGraphicsPauseGuard(get: () => BrickState, state: BrickState): BrickState {
+  const guarded: Record<string, unknown> = {}
+  for (const name of GRAPHICS_PAUSE_GATED_ACTIONS) {
+    const action = state[name] as (...args: unknown[]) => unknown
+    guarded[name] = (...args: unknown[]) => (get().graphicsPaused ? false : action(...args))
+  }
+  return { ...state, ...(guarded as Partial<BrickState>) }
+}
+
+export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseGuard(get, {
   mode: 'build',
   bricks: [],
   selectedIds: [],
@@ -486,6 +517,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   exploreSpawnStatus: 'idle',
   exploreLastSafePosition: null,
   reducedMotion: false,
+  graphicsPaused: false,
   selectionMode: false,
   marquee: null,
   viewTarget: null,
@@ -1105,6 +1137,27 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   }),
   requestJump: () => set((state) => ({ jumpNonce: state.jumpNonce + 1 })),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
+  setGraphicsPaused: (paused) => {
+    const state = get()
+    if (state.graphicsPaused === paused) return
+    if (!paused) {
+      set({ graphicsPaused: false, announcement: 'Graphics are back. You can keep building.' })
+      return
+    }
+    // A lost WebGL context leaves the view blank. Park every in-flight gesture so no
+    // blind placement, move or step lands while the studio cannot show what it is doing.
+    // The selection itself is kept: it is state, not a gesture.
+    if (state.draft) state.cancelInteraction()
+    set({
+      graphicsPaused: true,
+      marquee: null,
+      grabInProgress: false,
+      touchMove: { x: 0, z: 0 },
+      touchMoveMagnitude: 0,
+      touchRunning: false,
+      announcement: 'Graphics paused. Building and movement are on hold until the screen comes back.',
+    })
+  },
   setSelectionMode: (selectionMode) => set({
     selectionMode,
     marquee: null,

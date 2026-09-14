@@ -74,7 +74,7 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ userId: event.userId, reason: event.reason }),
+          body: JSON.stringify({ userId: event.userId, reason: event.reason, change: event.change }),
         },
       );
       if (!r.ok && r.status !== 404)

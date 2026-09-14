@@ -1,6 +1,11 @@
 import { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles.css'
+import { AppErrorBoundary } from './brick/AppErrorBoundary'
+import { installBrickStudioErrorListeners } from './brick/errorLog'
+
+// Prefixed console logging plus a small in-memory ring buffer for the recovery screen.
+installBrickStudioErrorListeners()
 
 const TeacherGoogleCallback = lazy(() => import('./classroom/TeacherGoogleCallback'))
 const BrickStudioApp = lazy(() => import('./brick/BrickStudioApp'))
@@ -21,7 +26,9 @@ const experience = window.location.pathname === '/auth/teacher-callback'
     : <BrickStudioApp />
 
 createRoot(document.getElementById('root')!).render(
-  <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>Opening the studio…</div>}>
-    {experience}
-  </Suspense>,
+  <AppErrorBoundary>
+    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>Opening the studio…</div>}>
+      {experience}
+    </Suspense>
+  </AppErrorBoundary>,
 )
