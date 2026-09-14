@@ -6,14 +6,14 @@ Working branch: `codex/product-refinement`, based on Claude recovery integration
 
 ## Delivery checklist
 
-- [ ] Landing at `/`, editor at `/build`, compatible `/welcome` and classroom callback/return links; continue existing guest draft.
-- [ ] World-title menu and save status; clear Explore/Back; compact editing toolbar; visible Scene/Character; collaboration and classroom reachable at compact sizes.
-- [ ] Wider Build and Explore zoom with clipping/interior checks.
-- [ ] Persisted 64/96/128 world plate size; legacy documents default 64, safe shrinking, stable placement, scene framing, authority validation, save/reload and multiplayer convergence.
-- [ ] Custom brick bounds 64x64 studs / 192 plates subject to footprint and render checks; keep brick count budget separate.
-- [ ] Dedicated character customizer: live rotatable preview, motion previews, face/hair/outfit/accessories/colors, apply/cancel, controlled randomization, saved outfits/favorites for guests.
-- [ ] Cohesive starter looks and new original characters using compatible geometry/animation; appearance persists and converges in multiplayer without draft broadcasts.
-- [ ] Focused tests, full checks on Node 22, desktop/compact browser review, authoritative persistence and two-client verification, hosted candidate, production release evidence.
+- [x] Landing at `/`, editor at `/build`, compatible `/welcome` and classroom callback/return links; continue existing guest draft.
+- [x] World-title menu and save status; clear Explore/Back; compact editing toolbar; visible Scene/Character; collaboration and classroom reachable at compact sizes.
+- [x] Wider Build and Explore zoom with clipping/interior checks.
+- [x] Persisted 64/96/128 world plate size; legacy documents default 64, safe shrinking, stable placement, scene framing, authority validation, save/reload and multiplayer convergence.
+- [x] Custom brick bounds 64x64 studs / 192 plates subject to footprint and render checks; keep brick count budget separate.
+- [x] Dedicated character customizer: live rotatable preview, motion previews, face/hair/outfit/accessories/colors, apply/cancel, controlled randomization, saved outfits/favorites for guests.
+- [x] Cohesive starter looks and new original characters using compatible geometry/animation; appearance persists and converges in multiplayer without draft broadcasts.
+- [x] Focused tests, full checks on Node 22, desktop/compact browser review, authoritative persistence and two-client verification, hosted candidate, production release evidence.
 
 ## Sequencing and constraints
 
@@ -44,3 +44,7 @@ Character studio includes an actual rotatable runtime preview with idle/walk/run
 Verification so far: full frontend892 + worker77 + types/build passed; additional worker appearance propagation test passes (world-room suite32). Browser cold reload retains128 plate and Toy Figure variants. Expanded scenery supports movement beyond128 plate boundaries in all3 scenes on host Chrome. See EXPANDED-PERFORMANCE-QA.md; physical Chromebook performance and extreme24-part stress remain unverified. Local QA found and fixed Scene-tab shortcut navigation and320px sheet overflow; final visual recheck is in progress.
 
 Staging worker version9032bff3-2835-4299-8e0a-b221fe253e85; committed frontend preview virtual-legos-788vjxwd9-ahmaadidrees-projects.vercel.app. Latest narrow-screen CSS fix is not yet in that preview. Production unchanged. Hosted two-client authoritative persistence/appearance checks, final compact-screen review, release commit/preview refresh and production verification remain required.
+
+## Final release
+
+All delivery items implemented and verified. Production promoted to `dpl_7TRb3UJpviAGr4k6e1agzdbAcfN5`, application source `0bca8e493d8260e3f147f812aa7ed8f9494f3b13`; worker `073e877d-02c3-425b-b083-56815d36bb2a`. Final Node22 check:893 frontend tests,78 worker tests, types and production build passed. Public two-guest verification confirmed expanded document persistence and peer appearances against authoritative storage, including cold rejoin. See classroom reports and PRODUCTION-RELEASE.json for evidence and device limitations. Earlier checkpoint statements describe historical state.
