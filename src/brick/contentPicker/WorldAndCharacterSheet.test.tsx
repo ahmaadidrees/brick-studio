@@ -88,7 +88,7 @@ describe('dialog semantics and focus', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close without applying' }))
     expect(onClose).toHaveBeenCalledTimes(2)
 
-    fireEvent.click(view.container.querySelector('.world-character-sheet-backdrop')!)
+    fireEvent.pointerDown(document.querySelector('.ui-sheet-backdrop')!)
     expect(onClose).toHaveBeenCalledTimes(3)
 
     fireEvent.click(screen.getByRole('dialog'))
@@ -213,12 +213,12 @@ describe('keyboard selection and summary', () => {
 describe('character color customization', () => {
   it('previews color changes on the selected illustration and resets only the draft until Apply', () => {
     const selection = { ...baseSelection, palette: { primary: '#e7473c', secondary: '#3e83d7' } }
-    const { onApply, view } = renderSheet({
+    const { onApply } = renderSheet({
       selection,
       paletteGroups: [{ ...paletteGroups[0], key: 'primary', label: 'Suit' }],
     })
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
-    const preview = view.container.querySelector<HTMLElement>('[data-preview-key="character:toy-figure"]')!
+    const preview = document.querySelector<HTMLElement>('[data-preview-key="character:toy-figure"]')!
     expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('#e7473c')
 
     fireEvent.click(screen.getByRole('button', { name: 'Set Suit to Studio blue' }))
@@ -293,19 +293,23 @@ describe('private preview tabs', () => {
 })
 
 describe('responsive-safe structure', () => {
-  it('keeps the scroll container, footer actions, and backdrop as separate layers', () => {
+  it('keeps the scroll container, footer actions, and backdrop as separate layers of the shared sheet', () => {
     const { view } = renderSheet()
-    const root = view.container.querySelector('.world-character-sheet')!
+    // Portaled onto document.body so it stacks above the editor lanes.
+    expect(view.container).toBeEmptyDOMElement()
+    const root = document.querySelector('.ui-sheet-root.world-character-sheet')!
     const [backdrop, panel] = [...root.children]
-    expect(backdrop).toHaveClass('world-character-sheet-backdrop')
-    expect(panel).toHaveClass('world-character-sheet-panel')
+    expect(backdrop).toHaveClass('ui-sheet-backdrop')
+    expect(panel).toBe(screen.getByRole('dialog', { name: 'Scene & character' }))
 
-    const body = within(panel as HTMLElement).getByRole('region', { name: 'Scene & character' }).closest('.world-character-sheet-body')
+    const body = within(panel as HTMLElement).getByRole('region', { name: 'Scene & character' }).closest('.ui-sheet-body')
     expect(body).not.toBeNull()
-    const footer = panel.querySelector('.world-character-sheet-footer')!
+    expect(body!.querySelector('.world-character-sheet-body')).not.toBeNull()
+    const footer = panel.querySelector('.ui-sheet-footer')!
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Apply' })).toBeInTheDocument()
-    expect(view.container.querySelector('img, canvas, video')).toBeNull()
+    expect(document.querySelector('canvas, video')).toBeNull()
+    for (const img of document.querySelectorAll('img')) expect(img).toHaveAttribute('loading', 'lazy')
   })
 })
 
@@ -315,4 +319,92 @@ it('can switch to Scene after opening directly on Character', () => {
   fireEvent.click(screen.getByRole('tab', { name: 'Scene' }))
   expect(screen.getByRole('tab', { name: 'Scene' })).toHaveAttribute('aria-selected', 'true')
   expect(screen.getByRole('button', { name: '128 × 128' })).toBeVisible()
+})
+
+describe('build plate (board 08)', () => {
+  it('offers 64/96/128 as a segmented choice with the centered-resize promise and the current size', () => {
+    renderSheet({ plateSize: 96, canResizePlate: true })
+    const group = screen.getByRole('group', { name: 'Build plate size' })
+    expect(within(group).getAllByRole('button').map((button) => button.textContent)).toEqual(['64 × 64', '96 × 96', '128 × 128'])
+    expect(screen.getByRole('button', { name: '96 × 96' })).toHaveAttribute('aria-pressed', 'true')
+    expect(group).toHaveAccessibleDescription('Your creation stays centered.')
+    expect(screen.getByText('Now 96 × 96')).toBeInTheDocument()
+    expect(screen.getByText('Choose the size for your building space.')).toBeInTheDocument()
+  })
+
+  it('applies the chosen plate size together with the selection and narrates the change', () => {
+    const { onApply } = renderSheet({ plateSize: 64, canResizePlate: true })
+    expect(screen.getByText('Make it yours')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '128 × 128' }))
+    expect(screen.getByText('Preview — only you can see this')).toBeInTheDocument()
+    expect(screen.getByText('Classic Studio · Toy Figure · 128 × 128 plate')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(onApply).toHaveBeenCalledWith(baseSelection, 128)
+  })
+
+  it('warns while shrinking and explains a locked plate instead of hiding it', () => {
+    renderSheet({ plateSize: 128, canResizePlate: true })
+    fireEvent.click(screen.getByRole('button', { name: '64 × 64' }))
+    expect(screen.getByRole('group', { name: 'Build plate size' })).toHaveAccessibleDescription(/stays centered\. Bricks near the edge must fit/)
+
+    cleanup()
+    renderSheet({ plateSize: 128, canResizePlate: false })
+    expect(screen.getByRole('button', { name: '64 × 64' })).toBeDisabled()
+    expect(screen.getByText(/Only the world owner can resize it/)).toBeInTheDocument()
+  })
+
+  it('presents a rejected shrink with the real brick-core message, Keep current size and Back to building', () => {
+    const message = 'Some bricks would fall outside the smaller plate. Move them toward the center before shrinking it.'
+    const onApply = vi.fn(() => ({ ok: false as const, message }))
+    const { onClose } = renderSheet({ plateSize: 128, canResizePlate: true, onApply })
+    fireEvent.click(screen.getByRole('button', { name: '64 × 64' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+
+    const alert = screen.getByRole('alert', { name: 'Can’t shrink the plate yet' })
+    expect(alert).toHaveFocus()
+    expect(alert).toHaveTextContent(message)
+    expect(screen.getByRole('img', { name: 'A 64 by 64 plate drawn inside the current 128 by 128 plate.' })).toBeInTheDocument()
+    expect(alert).toHaveTextContent('New 64 × 64 plate')
+    expect(alert).toHaveTextContent('Current 128 × 128 plate')
+    expect(screen.queryByRole('tab', { name: 'Scene' })).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep current size' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '128 × 128' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('tab', { name: 'Scene' })).toHaveAttribute('aria-selected', 'true')
+    expect(onClose).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: '64 × 64' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to building' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(onApply).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a non-plate rejection inline and keeps editing possible', () => {
+    const onApply = vi.fn(() => ({ ok: false as const, message: 'The room is still syncing.' }))
+    renderSheet({ plateSize: 64, canResizePlate: true, onApply })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('The room is still syncing.')
+    expect(screen.getByRole('tab', { name: 'Scene' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled()
+  })
+
+  it('ignores void and boolean apply results', () => {
+    const { onClose } = renderSheet({ plateSize: 64, canResizePlate: true, onApply: vi.fn(() => true) })
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('reads as a bottom sheet with the plate controls after the scene cards', () => {
+    renderSheet({ plateSize: 64, canResizePlate: true })
+    const body = screen.getByRole('tabpanel', { name: 'Scene' })
+    const [picker, plate] = [...body.children]
+    expect(picker).toHaveClass('content-picker')
+    expect(plate).toHaveClass('plate-size-picker')
+    expect(screen.getByRole('heading', { name: 'Choose your scene' })).toBeInTheDocument()
+    expect(screen.getByText('Each scene gives your build a different backdrop and feeling.')).toBeInTheDocument()
+  })
 })

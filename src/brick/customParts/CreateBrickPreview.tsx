@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { Orbit } from 'lucide-react'
 import { createBrickGeometry } from '../geometry'
 import { customPartToBrickPart } from '../parts'
 import type { CreateBrickDraft } from './definition'
@@ -39,7 +40,8 @@ export function CreateBrickPreview({ draft, hint }: { draft: CreateBrickDraft; h
     controls.enablePan = false
     controls.enableZoom = false
     controls.enableDamping = false
-    const material = new THREE.MeshStandardMaterial({ color: '#528fda', roughness: 0.32, metalness: 0.04 })
+    // Brand coral (#F17861) so the preview reads as "your brick", not a placed one.
+    const material = new THREE.MeshStandardMaterial({ color: '#f17861', roughness: 0.34, metalness: 0.04 })
     const mesh = new THREE.Mesh(new THREE.BufferGeometry(), material)
     scene.add(mesh)
     const render = () => renderer.render(scene, camera)
@@ -91,10 +93,15 @@ export function CreateBrickPreview({ draft, hint }: { draft: CreateBrickDraft; h
 
   return (
     <figure className="create-brick-preview" aria-label="Live brick preview">
-      <canvas ref={canvas} aria-label="3D preview of your brick. Drag to rotate." />
+      <div className="create-brick-preview-stage">
+        <canvas ref={canvas} aria-label="3D preview of your brick. Drag to rotate." />
+        {!unavailable && (
+          <span className="create-brick-preview-pill" aria-hidden="true"><Orbit size={15} /> Drag to rotate</span>
+        )}
+      </div>
       <figcaption>
         <strong>{draft.width} × {draft.depth} studs · {draft.height} plates</strong>
-        <span>{unavailable ? '3D preview unavailable on this device.' : hint ?? 'Drag the brick to see every side'}</span>
+        <span>{unavailable ? '3D preview unavailable on this device.' : hint ?? 'Preview updates as you change the shape.'}</span>
       </figcaption>
     </figure>
   )

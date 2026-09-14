@@ -1,5 +1,6 @@
 import { useId, useRef } from 'react'
 import type { CSSProperties, KeyboardEvent, MutableRefObject, ReactNode } from 'react'
+import { Check } from 'lucide-react'
 import type { CharacterPalette } from '../characters/types'
 import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
 import type { CharacterId, EnvironmentId } from '../types'
@@ -195,7 +196,7 @@ function SelectionGrid<T extends PickerCard>({
               <strong>{descriptor.name}</strong>
               <small>{descriptor.description}</small>
             </span>
-            <span className="content-picker-check" aria-hidden="true">✓</span>
+            <span className="content-picker-check" aria-hidden="true"><Check size={14} strokeWidth={3} /></span>
           </button>
         )
       })}
@@ -252,14 +253,15 @@ export function ContentPicker({
       )}
 
       {(visibleSection === 'all' || visibleSection === 'environment') && <div className="content-picker-section">
-        <SectionHeading eyebrow="Your setting" title="Scene">
+        <SectionHeading eyebrow="Your setting" title="Choose your scene">
           <span className="content-picker-selection-summary" aria-live="polite">
             {environmentDescriptors.find(({ id }) => id === selectedEnvironmentId)?.name ?? 'Not selected'}
           </span>
         </SectionHeading>
+        <p className="content-picker-section-lead">Each scene gives your build a different backdrop and feeling.</p>
         <SelectionGrid
           kind="environment"
-          label="Choose a scene"
+          label="Choose your scene"
           descriptors={environmentDescriptors}
           selectedId={selectedEnvironmentId}
           emptyCopy="No scenes are available yet."
@@ -317,7 +319,7 @@ export function ContentPicker({
                         updateCharacterPalette(palette, group.key, swatch.value),
                       )}
                     >
-                      <span aria-hidden="true" />
+                      <Check size={16} strokeWidth={3} aria-hidden="true" />
                     </button>
                   ))}
                 </div>
