@@ -437,6 +437,12 @@
   .content-picker-swatch { width: 44px; height: 44px; }
 }
 
+/* Touch: every palette control is a 44px target (W8 D7). */
+@media (max-width: 900px), (pointer: coarse) {
+  .content-picker-reset { min-height: 44px; }
+  .content-picker-swatch { width: 44px; height: 44px; }
+}
+
 @media (max-width: 340px) {
   .content-picker-grid,
   .world-character-sheet .content-picker-grid { grid-template-columns: minmax(0, 1fr); }

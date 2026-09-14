@@ -182,6 +182,9 @@
 /* Short landscape (phones rotated): keep the sheet edge-tight. */
 @media (max-height: 520px) and (orientation: landscape) {
   .world-character-sheet .ui-sheet-description { display: none; }
+  /* Eyebrow beside the tabs: one row less above the scrolling content, targets stay 44px. */
+  .world-character-sheet-tabs-bar { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-3); padding: var(--space-2) 0; margin-bottom: var(--space-2); }
+  .world-character-sheet-tabs { max-width: 360px; justify-self: end; width: 100%; }
   .plate-resize-rejection { padding-top: var(--space-3); }
 }
 
@@ -190,8 +193,8 @@
 .wardrobe-panel h3 { margin: 0 0 5px; }
 .wardrobe-panel p { font-size: 13px; color: var(--text-muted); }
 .wardrobe-save { display: flex; gap: 8px; flex-wrap: wrap; }
-.wardrobe-save input { min-width: 100px; flex: 1; padding: 9px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
-.wardrobe-panel button { border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 10px; background: var(--surface); color: var(--text); cursor: pointer; }
+.wardrobe-save input { min-width: 100px; min-height: 44px; flex: 1; box-sizing: border-box; padding: 9px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); }
+.wardrobe-panel button { min-height: 44px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 10px; background: var(--surface); color: var(--text); cursor: pointer; }
 .wardrobe-panel button:disabled { opacity: .5; cursor: default; }
 .wardrobe-panel ul { list-style: none; padding: 0; display: grid; gap: 8px; }
 .wardrobe-panel li { display: flex; gap: 6px; }
@@ -203,7 +206,7 @@
 .look-colors { padding: 16px 0; border-top: 1px solid var(--border); }
 .look-colors h3 { margin: 0 0 12px; }
 .look-color-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.look-colors button { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px; cursor: pointer; }
+.look-colors button { min-height: 44px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px; cursor: pointer; }
 .look-color-presets span { display: flex; justify-content: center; gap: 3px; margin-bottom: 5px; }
 .look-color-presets i { width: 22px; height: 15px; border-radius: 4px; }
 .look-color-locks { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; font-size: 12px; }
