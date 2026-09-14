@@ -16,7 +16,7 @@ import { loadRuntimeRegistration, useRuntimeLazySelection } from './lazySelectio
 export const CLASSIC_ENVIRONMENT_DESCRIPTOR = {
   id: 'classic',
   name: 'Classic Studio',
-  description: 'The original Brick Studio baseplate and studio lighting.',
+  description: 'The original baseplate and studio lighting.',
   previewKey: 'environment:classic',
 } satisfies EnvironmentDescriptor
 

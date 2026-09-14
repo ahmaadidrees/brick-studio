@@ -11,7 +11,7 @@ import type { CharacterId } from './types'
 export const CLASSIC_ENVIRONMENT_DESCRIPTOR = {
   id: 'classic',
   name: 'Classic Studio',
-  description: 'The bright, familiar Brick Studio build plate.',
+  description: 'The bright, familiar studio build plate.',
   previewKey: 'environment:classic',
 } satisfies EnvironmentDescriptor
 

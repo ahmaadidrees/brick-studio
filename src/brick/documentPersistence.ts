@@ -15,6 +15,7 @@ import {
 } from './liveAutosaveGuard'
 
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY, BRICK_STUDIO_RECOVERY_STORAGE_KEY } from './localProjectKeys'
+import { BRAND_NAME } from '../brand'
 export { BRICK_STUDIO_LOCAL_STORAGE_KEY, BRICK_STUDIO_RECOVERY_STORAGE_KEY } from './localProjectKeys'
 export const BRICK_STUDIO_AUTOSAVE_DELAY_MS = 400
 
@@ -71,7 +72,7 @@ export function saveLocalBrickStudioProject(
     )
     return { ok: true }
   } catch {
-    return storageFailure('storage-write', 'Brick Studio could not save to local storage. Your current build is still open.')
+    return storageFailure('storage-write', `${BRAND_NAME} could not save to local storage. Your current build is still open.`)
   }
 }
 
@@ -80,7 +81,7 @@ export function loadLocalBrickStudioProject(storage: BrickStudioStorage): BrickS
   try {
     serialized = storage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)
   } catch {
-    return { ok: false, error: { code: 'storage-read', message: 'Brick Studio could not read local storage. A blank build was left unchanged.' } }
+    return { ok: false, error: { code: 'storage-read', message: `${BRAND_NAME} could not read local storage. A blank build was left unchanged.` } }
   }
   if (serialized === null) return { ok: true, document: null }
   const result = parseBrickStudioDocument(serialized)
@@ -92,7 +93,7 @@ export function clearLocalBrickStudioProject(storage: BrickStudioStorage): Brick
     storage.removeItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)
     return { ok: true }
   } catch {
-    return storageFailure('storage-remove', 'Brick Studio could not clear its local project.')
+    return storageFailure('storage-remove', `${BRAND_NAME} could not clear its local project.`)
   }
 }
 
@@ -157,7 +158,7 @@ type DownloadEnvironment = {
 export function downloadBrickStudioDocument(
   document: BrickStudioDocument,
   environment: DownloadEnvironment = globalThis,
-  filename = `brick-studio-build${BRICK_STUDIO_FILE_EXTENSION}`,
+  filename = `brickgineers-build${BRICK_STUDIO_FILE_EXTENSION}`,
 ): BrickStudioPersistenceResult {
   try {
     const blob = new environment.Blob([serializeBrickStudioDocument(document)], { type: 'application/json' })
@@ -174,6 +175,6 @@ export function downloadBrickStudioDocument(
     environment.URL.revokeObjectURL(url)
     return { ok: true }
   } catch {
-    return storageFailure('download', 'Brick Studio could not prepare the project download.')
+    return storageFailure('download', `${BRAND_NAME} could not prepare the project download.`)
   }
 }

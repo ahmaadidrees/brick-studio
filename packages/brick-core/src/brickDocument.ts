@@ -176,10 +176,10 @@ export function validateBrickStudioDocument(
   options: ValidationOptions = {},
 ): BrickStudioDocumentResult {
   if (!isRecord(value) || !Array.isArray(value.bricks)) {
-    return fail('invalid-document', 'This is not a Brick Studio document.')
+    return fail('invalid-document', 'This is not a Brickgineers build file.')
   }
   if (value.schemaVersion !== 1 && value.schemaVersion !== BRICK_STUDIO_SCHEMA_VERSION && value.schemaVersion !== BRICK_STUDIO_EXPANDED_SCHEMA_VERSION) {
-    return fail('unsupported-schema', `Unsupported Brick Studio schema version: ${String(value.schemaVersion)}.`)
+    return fail('unsupported-schema', `Unsupported Brickgineers build schema version: ${String(value.schemaVersion)}.`)
   }
 
   const expanded = value.schemaVersion === BRICK_STUDIO_EXPANDED_SCHEMA_VERSION
@@ -192,12 +192,12 @@ export function validateBrickStudioDocument(
       || typeof value.partLibraryVersion !== 'number'
       || value.partLibraryVersion < 1
       || value.partLibraryVersion > BRICK_STUDIO_PART_LIBRARY_VERSION) {
-    return fail('unsupported-library', `Unsupported Brick Studio part library version: ${String(value.partLibraryVersion)}.`)
+    return fail('unsupported-library', `Unsupported Brickgineers part library version: ${String(value.partLibraryVersion)}.`)
   }
 
   const environmentId = value.schemaVersion === 1 ? DEFAULT_ENVIRONMENT_ID : value.environmentId
   if (typeof environmentId !== 'string' || !ENVIRONMENT_IDS.includes(environmentId as EnvironmentId)) {
-    return fail('invalid-environment', `Unsupported Brick Studio environment: ${String(environmentId)}.`)
+    return fail('invalid-environment', `Unsupported Brickgineers environment: ${String(environmentId)}.`)
   }
   const rawCustomParts = value.schemaVersion === 1 ? [] : value.customParts
   if (!Array.isArray(rawCustomParts)) {

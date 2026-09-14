@@ -17,7 +17,7 @@ import { loadRuntimeRegistration, useRuntimeLazySelection } from './lazySelectio
 export const CLASSIC_CHARACTER_DESCRIPTOR = {
   id: 'classic',
   name: 'Classic Builder',
-  description: 'The original procedural Brick Studio explorer.',
+  description: 'The original procedural block explorer.',
   previewKey: 'character:classic',
   customizable: true,
 } satisfies CharacterDescriptor

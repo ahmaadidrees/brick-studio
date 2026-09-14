@@ -4,6 +4,7 @@ import './styles.css'
 import { AppErrorBoundary } from './brick/AppErrorBoundary'
 import { installBrickStudioErrorListeners } from './brick/errorLog'
 import { resolveAppRoute } from './routes'
+import { BRAND_NAME } from './brand'
 
 // Prefixed console logging plus a small in-memory ring buffer for the recovery screen.
 installBrickStudioErrorListeners()
@@ -33,7 +34,7 @@ const experience = route === 'teacher-callback'
 
 createRoot(document.getElementById('root')!).render(
   <AppErrorBoundary>
-    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>{route === 'landing' ? 'Welcome to Brick Studio…' : 'Opening the studio…'}</div>}>
+    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>{route === 'landing' ? `Welcome to ${BRAND_NAME}…` : 'Opening the studio…'}</div>}>
       {experience}
     </Suspense>
   </AppErrorBoundary>,

@@ -1,13 +1,13 @@
-# Brick Studio
+# Brickgineers
 
-Brick Studio is a browser-based building toy made for classrooms. Build with toy bricks on a
+Brickgineers (formerly Brick Studio) is a browser-based building toy made for classrooms. Build with toy bricks on a
 64 × 64-stud plate, then step inside the exact creation and explore it in third person — on your
 own, with friends in a live room, or as a class with a teacher in charge. It runs in a plain browser
 tab with nothing to install, including on school Chromebooks.
 
 Live: **https://virtual-legos.vercel.app** (landing page at [/welcome](https://virtual-legos.vercel.app/welcome)).
 
-Brick Studio is an independent project and is not affiliated with, sponsored by, or endorsed by the
+Brickgineers is an independent project and is not affiliated with, sponsored by, or endorsed by the
 LEGO Group. LEGO® is a trademark of the LEGO Group.
 
 ## What you can do

@@ -92,11 +92,11 @@ export class ClassroomService {
     if (teachers.includes(authUser.id)) {
       const sid = sessionId(token);
       const registered = (await this.rows('teacher_sessions', `session_id=eq.${sid}&user_id=eq.${authUser.id}&revoked=eq.false&limit=1`))[0];
-      if (!registered) fail(401, 'session_revoked', 'Please sign in through Brick Studio again.');
+      if (!registered) fail(401, 'session_revoked', 'Please sign in through Brickgineers again.');
       return { id: authUser.id, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, token, authVersion: 0, sessionId: sid };
     }
     const student = (await this.rows('students', `user_id=eq.${authUser.id}&limit=1`))[0];
-    if (!student) fail(403, 'not_enrolled', 'This account is not enrolled in Brick Studio.');
+    if (!student) fail(403, 'not_enrolled', 'This account is not enrolled in Brickgineers.');
     const sid = sessionId(token);
     const registered = (await this.rows('sessions', `session_id=eq.${sid}&user_id=eq.${authUser.id}&limit=1`))[0];
     if (!registered || registered.auth_version !== student.auth_version) fail(401, 'session_revoked', 'Your account changed. Please sign in again.');
@@ -240,7 +240,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     }
     if (path[1] === 'teacher-google-start') {
       const authorizationUrl = teacherGoogleAuthorizationUrl(service.env.SUPABASE_URL!, request.headers.get('Origin'), input.codeChallenge, input.state);
-      if (!authorizationUrl) fail(400, 'invalid_oauth_request', 'Start Google sign-in again from Brick Studio.');
+      if (!authorizationUrl) fail(400, 'invalid_oauth_request', 'Start Google sign-in again from Brickgineers.');
       return json({ url: authorizationUrl });
     }
     if (path[1] === 'teacher-google') {

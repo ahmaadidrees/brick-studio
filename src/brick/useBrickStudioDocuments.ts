@@ -12,6 +12,7 @@ import {
 } from './documentPersistence'
 import type { StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
+import { BRAND_NAME } from '../brand'
 
 export type BrickStudioDocumentPersistenceOptions = CreateBrickStudioDocumentOptions & {
   /** Receives normalized local/imported documents so app-owned metadata state can follow them. */
@@ -26,7 +27,7 @@ function getLocalStorage() {
   try {
     return window.localStorage
   } catch {
-    showDocumentMessage('Brick Studio could not access local storage. Your current build is still open.')
+    showDocumentMessage(`${BRAND_NAME} could not access local storage. Your current build is still open.`)
     return null
   }
 }
@@ -127,7 +128,7 @@ export function useBrickStudioDocuments(
       const result = useBrickStore.getState().importDocument(serialized)
       if (result.ok && parsed.ok) persistenceRef.current.onDocumentLoaded?.(parsed.document)
     } catch {
-      showDocumentMessage('Brick Studio could not read that file. Your current build is unchanged.')
+      showDocumentMessage(`${BRAND_NAME} could not read that file. Your current build is unchanged.`)
     }
   }, [])
 
