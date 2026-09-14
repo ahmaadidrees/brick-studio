@@ -2,17 +2,20 @@ import { CharacterStudio } from '../characters/CharacterStudio'
 import { BUILD_PLATE_SIZES, type BuildPlateSize } from '../buildPlate'
 import { useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { Eye } from 'lucide-react'
 import type { EnvironmentId } from '../types'
 import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
+import { Button, Sheet } from '../../ui'
 import { ContentPicker } from './ContentPicker'
 import type { CharacterPaletteGroup, ContentPickerProps } from './ContentPicker'
 import { normalizeContentPickerSelection } from './selection'
 import type { ContentPickerSelection } from './selection'
-import { sheetKeyDownHandler, useSheetFocus } from './sheetFocus'
 import './world-character-sheet.css'
 
 /**
- * "Scene & character" — a fully controlled modal sheet around ContentPicker.
+ * "Scene & character" — a fully controlled sheet around ContentPicker on the
+ * shared src/ui Sheet (right-docked on wide screens so the live world stays
+ * visible for the private preview; a bottom sheet on phones and touch).
  *
  * Contract: the host owns `open` and the committed `selection`. While the
  * sheet is open it edits a private draft seeded from `selection` (normalized
@@ -61,6 +64,8 @@ export type WorldAndCharacterSheetProps = {
 
 export const PLATE_RESIZE_STAYS_CENTERED = 'Your creation stays centered.'
 export const PLATE_RESIZE_LOCKED = 'Plate size can’t be changed here. Only the world owner can resize it, from Build.'
+export const PREVIEW_EYEBROW = 'Preview — only you can see this'
+export const DEFAULT_EYEBROW = 'Make it yours'
 
 // The scene tab hides the picker's character section; character edits go through CharacterStudio.
 const ignoreCharacter = () => {}
@@ -115,14 +120,11 @@ export function WorldAndCharacterSheet({
   applyLabel = 'Apply',
   cancelLabel = 'Cancel',
 }: WorldAndCharacterSheetProps) {
-  const titleId = useId()
-  const descriptionId = useId()
   const sceneTabId = useId()
   const characterTabId = useId()
   const tabPanelId = useId()
   const plateHintId = useId()
   const rejectionTitleId = useId()
-  const panelRef = useRef<HTMLDivElement>(null)
   const sceneTabRef = useRef<HTMLButtonElement>(null)
   const characterTabRef = useRef<HTMLButtonElement>(null)
   const plateGroupRef = useRef<HTMLDivElement>(null)
@@ -156,8 +158,6 @@ export function WorldAndCharacterSheet({
     if (open) onDraftChange?.({ ...draft, palette: { ...draft.palette } })
   }, [draft, onDraftChange, open])
 
-  useSheetFocus(open, panelRef)
-
   useEffect(() => {
     if (applyRejection) rejectionRef.current?.focus()
   }, [applyRejection])
@@ -189,8 +189,6 @@ export function WorldAndCharacterSheet({
     nextRef.current?.focus()
   }
 
-  const handlePanelKeyDown = sheetKeyDownHandler(panelRef, onClose)
-
   const keepCurrentSize = () => {
     setDraftPlateSize(plateSize)
     setApplyRejection(null)
@@ -210,90 +208,88 @@ export function WorldAndCharacterSheet({
     ? `${PLATE_RESIZE_STAYS_CENTERED} Bricks near the edge must fit inside the smaller plate.`
     : PLATE_RESIZE_STAYS_CENTERED
 
+  const footer = showShrinkRejection
+    ? (
+      <div className="plate-resize-rejection-actions">
+        <Button variant="primary" fullWidth onClick={keepCurrentSize}>Keep current size</Button>
+        <Button variant="quiet" fullWidth onClick={onClose}>Back to building</Button>
+      </div>
+    )
+    : (
+      <>
+        <span className="world-character-sheet-summary" aria-live="polite">
+          {environment && character
+            ? `${environment.name} · ${character.name}${plateChanged ? ` · ${draftPlateSize} × ${draftPlateSize} plate` : ''}`
+            : 'Pick a scene and a character'}
+        </span>
+        <Button variant="secondary" className="world-character-sheet-cancel" onClick={onClose}>{cancelLabel}</Button>
+        <Button variant="primary" className="world-character-sheet-apply" disabled={applyDisabled} onClick={apply}>{applyLabel}</Button>
+      </>
+    )
+
   return (
-    <div className="world-character-sheet">
-      <div
-        className="world-character-sheet-backdrop"
-        aria-hidden="true"
-        onClick={onClose}
-      />
-      <div
-        ref={panelRef}
-        className="world-character-sheet-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        tabIndex={-1}
-        onKeyDown={handlePanelKeyDown}
-      >
-        <header className="world-character-sheet-header">
-          <div>
-            <span className="world-character-sheet-eyebrow" data-preview={hasDraftChanges || undefined}>
-              {hasDraftChanges ? 'Preview — only you can see this' : 'Make it yours'}
-            </span>
-            <h2 id={titleId}>{title}</h2>
-            <p id={descriptionId}>{description}</p>
-          </div>
-          <button
-            type="button"
-            className="world-character-sheet-close"
-            aria-label="Close without applying"
-            onClick={onClose}
-          >
-            <span aria-hidden="true">×</span>
-          </button>
-        </header>
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title={title}
+      description={description}
+      size="lg"
+      closeLabel="Close without applying"
+      className="world-character-sheet"
+      footer={footer}
+    >
+      {/* `.world-character-sheet-body` stays for the QA scripts; the shared sheet body is the scroll container. */}
+      <div className="world-character-sheet-body">
         {showShrinkRejection ? (
-          <>
-            <div
-              ref={rejectionRef}
-              className="world-character-sheet-body plate-resize-rejection"
-              role="alert"
-              aria-labelledby={rejectionTitleId}
-              tabIndex={-1}
-            >
-              <h3 id={rejectionTitleId}>Can’t shrink the plate yet</h3>
-              <p className="plate-resize-rejection-message">{applyRejection}</p>
-              <PlateShrinkDiagram current={plateSize!} next={draftPlateSize!} />
-              <ul className="plate-resize-legend">
-                <li><i className="plate-resize-legend-next" aria-hidden="true" />New {draftPlateSize} × {draftPlateSize} plate</li>
-                <li><i className="plate-resize-legend-current" aria-hidden="true" />Current {plateSize} × {plateSize} plate</li>
-              </ul>
-            </div>
-            <footer className="world-character-sheet-footer plate-resize-rejection-actions">
-              <button type="button" className="world-character-sheet-apply" onClick={keepCurrentSize}>Keep current size</button>
-              <button type="button" className="world-character-sheet-link" onClick={onClose}>Back to building</button>
-            </footer>
-          </>
+          <div
+            ref={rejectionRef}
+            className="plate-resize-rejection"
+            role="alert"
+            aria-labelledby={rejectionTitleId}
+            tabIndex={-1}
+          >
+            <h3 id={rejectionTitleId}>Can’t shrink the plate yet</h3>
+            <p className="plate-resize-rejection-message">{applyRejection}</p>
+            <PlateShrinkDiagram current={plateSize!} next={draftPlateSize!} />
+            <ul className="plate-resize-legend">
+              <li><i className="plate-resize-legend-next" aria-hidden="true" />New {draftPlateSize} × {draftPlateSize} plate</li>
+              <li><i className="plate-resize-legend-current" aria-hidden="true" />Current {plateSize} × {plateSize} plate</li>
+            </ul>
+          </div>
         ) : (
           <>
-            <div className="world-character-sheet-tabs" role="tablist" aria-label="Scene and character settings">
-              <button
-                ref={sceneTabRef}
-                id={sceneTabId}
-                type="button"
-                role="tab"
-                tabIndex={activeTab === 'environment' ? 0 : -1}
-                aria-controls={tabPanelId}
-                aria-selected={activeTab === 'environment'}
-                onClick={() => setActiveTab('environment')}
-                onKeyDown={handleTabKeyDown}
-              >Scene</button>
-              <button
-                ref={characterTabRef}
-                id={characterTabId}
-                type="button"
-                role="tab"
-                tabIndex={activeTab === 'character' ? 0 : -1}
-                aria-controls={tabPanelId}
-                aria-selected={activeTab === 'character'}
-                onClick={() => setActiveTab('character')}
-                onKeyDown={handleTabKeyDown}
-              >Character</button>
+            <div className="world-character-sheet-tabs-bar">
+              <span className="world-character-sheet-eyebrow" data-preview={hasDraftChanges || undefined}>
+                {hasDraftChanges && <Eye size={14} aria-hidden="true" />}
+                {hasDraftChanges ? PREVIEW_EYEBROW : DEFAULT_EYEBROW}
+              </span>
+              <div className="world-character-sheet-tabs" role="tablist" aria-label="Scene and character settings">
+                <button
+                  ref={sceneTabRef}
+                  id={sceneTabId}
+                  type="button"
+                  role="tab"
+                  tabIndex={activeTab === 'environment' ? 0 : -1}
+                  aria-controls={tabPanelId}
+                  aria-selected={activeTab === 'environment'}
+                  onClick={() => setActiveTab('environment')}
+                  onKeyDown={handleTabKeyDown}
+                >Scene</button>
+                <button
+                  ref={characterTabRef}
+                  id={characterTabId}
+                  type="button"
+                  role="tab"
+                  tabIndex={activeTab === 'character' ? 0 : -1}
+                  aria-controls={tabPanelId}
+                  aria-selected={activeTab === 'character'}
+                  onClick={() => setActiveTab('character')}
+                  onKeyDown={handleTabKeyDown}
+                >Character</button>
+              </div>
             </div>
             <div
-              className="world-character-sheet-body"
+              className="world-character-sheet-tabpanel"
               id={tabPanelId}
               role="tabpanel"
               aria-labelledby={activeTab === 'environment' ? sceneTabId : characterTabId}
@@ -353,28 +349,10 @@ export function WorldAndCharacterSheet({
             {applyRejection && !showShrinkRejection && (
               <p className="world-character-sheet-error" role="alert">{applyRejection}</p>
             )}
-            <footer className="world-character-sheet-footer">
-              <span className="world-character-sheet-summary" aria-live="polite">
-                {environment && character
-                  ? `${environment.name} · ${character.name}${plateChanged ? ` · ${draftPlateSize} × ${draftPlateSize} plate` : ''}`
-                  : 'Pick a scene and a character'}
-              </span>
-              <button
-                type="button"
-                className="world-character-sheet-cancel"
-                onClick={onClose}
-              >{cancelLabel}</button>
-              <button
-                type="button"
-                className="world-character-sheet-apply"
-                disabled={applyDisabled}
-                onClick={apply}
-              >{applyLabel}</button>
-            </footer>
           </>
         )}
       </div>
-    </div>
+    </Sheet>
   )
 }
 

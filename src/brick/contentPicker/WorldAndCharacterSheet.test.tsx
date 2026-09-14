@@ -88,7 +88,7 @@ describe('dialog semantics and focus', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close without applying' }))
     expect(onClose).toHaveBeenCalledTimes(2)
 
-    fireEvent.click(view.container.querySelector('.world-character-sheet-backdrop')!)
+    fireEvent.pointerDown(document.querySelector('.ui-sheet-backdrop')!)
     expect(onClose).toHaveBeenCalledTimes(3)
 
     fireEvent.click(screen.getByRole('dialog'))
@@ -213,12 +213,12 @@ describe('keyboard selection and summary', () => {
 describe('character color customization', () => {
   it('previews color changes on the selected illustration and resets only the draft until Apply', () => {
     const selection = { ...baseSelection, palette: { primary: '#e7473c', secondary: '#3e83d7' } }
-    const { onApply, view } = renderSheet({
+    const { onApply } = renderSheet({
       selection,
       paletteGroups: [{ ...paletteGroups[0], key: 'primary', label: 'Suit' }],
     })
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
-    const preview = view.container.querySelector<HTMLElement>('[data-preview-key="character:toy-figure"]')!
+    const preview = document.querySelector<HTMLElement>('[data-preview-key="character:toy-figure"]')!
     expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('#e7473c')
 
     fireEvent.click(screen.getByRole('button', { name: 'Set Suit to Studio blue' }))
@@ -293,19 +293,23 @@ describe('private preview tabs', () => {
 })
 
 describe('responsive-safe structure', () => {
-  it('keeps the scroll container, footer actions, and backdrop as separate layers', () => {
+  it('keeps the scroll container, footer actions, and backdrop as separate layers of the shared sheet', () => {
     const { view } = renderSheet()
-    const root = view.container.querySelector('.world-character-sheet')!
+    // Portaled onto document.body so it stacks above the editor lanes.
+    expect(view.container).toBeEmptyDOMElement()
+    const root = document.querySelector('.ui-sheet-root.world-character-sheet')!
     const [backdrop, panel] = [...root.children]
-    expect(backdrop).toHaveClass('world-character-sheet-backdrop')
-    expect(panel).toHaveClass('world-character-sheet-panel')
+    expect(backdrop).toHaveClass('ui-sheet-backdrop')
+    expect(panel).toBe(screen.getByRole('dialog', { name: 'Scene & character' }))
 
-    const body = within(panel as HTMLElement).getByRole('region', { name: 'Scene & character' }).closest('.world-character-sheet-body')
+    const body = within(panel as HTMLElement).getByRole('region', { name: 'Scene & character' }).closest('.ui-sheet-body')
     expect(body).not.toBeNull()
-    const footer = panel.querySelector('.world-character-sheet-footer')!
+    expect(body!.querySelector('.world-character-sheet-body')).not.toBeNull()
+    const footer = panel.querySelector('.ui-sheet-footer')!
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
     expect(within(footer as HTMLElement).getByRole('button', { name: 'Apply' })).toBeInTheDocument()
-    expect(view.container.querySelector('img, canvas, video')).toBeNull()
+    expect(document.querySelector('canvas, video')).toBeNull()
+    for (const img of document.querySelectorAll('img')) expect(img).toHaveAttribute('loading', 'lazy')
   })
 })
 
@@ -395,8 +399,8 @@ describe('build plate (board 08)', () => {
   })
 
   it('reads as a bottom sheet with the plate controls after the scene cards', () => {
-    const { view } = renderSheet({ plateSize: 64, canResizePlate: true })
-    const body = view.container.querySelector('.world-character-sheet-body')!
+    renderSheet({ plateSize: 64, canResizePlate: true })
+    const body = screen.getByRole('tabpanel', { name: 'Scene' })
     const [picker, plate] = [...body.children]
     expect(picker).toHaveClass('content-picker')
     expect(plate).toHaveClass('plate-size-picker')

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import type { CharacterPalette } from '../characters/types'
 
@@ -193,6 +194,53 @@ const ORIGINAL_PREVIEWS: Record<string, string> = {
     'character:nova': new URL('../../../assets/characters-original/nova-preview.png', import.meta.url).href,
   }
 
+/**
+ * Scene thumbnails delivered by W7 (contract: `public/brand/media/manifest.json`):
+ * `scene-{slug}-{800,400}.{avif,webp,png}` at 800×500 and 400×250 (16:10).
+ * They layer over the SVG art below; until a file exists (or if it fails to
+ * load) the `<img>` errors out, the picture is dropped and the SVG stays the
+ * visible thumbnail — no code change is needed when the files land.
+ */
+export const SCENE_MEDIA_SLUGS: Readonly<Record<string, string>> = {
+  'environment:classic': 'classic',
+  'environment:toy-room': 'toy-room',
+  'environment:brick-valley': 'brick-valley',
+  'environment:sky-island': 'sky-island',
+}
+const SCENE_MEDIA_BASE = `${import.meta.env.BASE_URL ?? '/'}brand/media/`.replace(/\/{2,}/g, '/')
+export const SCENE_MEDIA_WIDTHS = [400, 800] as const
+export const SCENE_MEDIA_SIZES = '(max-width: 620px) 100vw, 300px'
+
+export function sceneMediaSource(slug: string, width: (typeof SCENE_MEDIA_WIDTHS)[number], format: 'avif' | 'webp' | 'png') {
+  return `${SCENE_MEDIA_BASE}scene-${slug}-${width}.${format}`
+}
+
+function sceneSrcSet(slug: string, format: 'avif' | 'webp' | 'png') {
+  return SCENE_MEDIA_WIDTHS.map((width) => `${sceneMediaSource(slug, width, format)} ${width}w`).join(', ')
+}
+
+function ScenePhoto({ slug }: { slug: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
+  return (
+    <picture className="content-picker-photo">
+      <source type="image/avif" srcSet={sceneSrcSet(slug, 'avif')} sizes={SCENE_MEDIA_SIZES} />
+      <source type="image/webp" srcSet={sceneSrcSet(slug, 'webp')} sizes={SCENE_MEDIA_SIZES} />
+      <img
+        src={sceneMediaSource(slug, 400, 'png')}
+        srcSet={sceneSrcSet(slug, 'png')}
+        sizes={SCENE_MEDIA_SIZES}
+        width={400}
+        height={250}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </picture>
+  )
+}
+
 export function PreviewArtwork({ kind, previewKey, palette }: PreviewArtworkProps) {
   if (kind === 'character' && ORIGINAL_PREVIEWS[previewKey]) return <span className="content-picker-art content-picker-art-character" data-preview-key={previewKey} aria-hidden="true">
     <img src={ORIGINAL_PREVIEWS[previewKey]} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#71838c' }} />
@@ -208,6 +256,7 @@ export function PreviewArtwork({ kind, previewKey, palette }: PreviewArtworkProp
     case 'character:cc0-hero': artwork = <RobotHeroArtwork />; break
     default: artwork = <FallbackArtwork kind={kind} />
   }
+  const sceneSlug = kind === 'environment' ? SCENE_MEDIA_SLUGS[previewKey] : undefined
 
   return (
     <span
@@ -221,6 +270,7 @@ export function PreviewArtwork({ kind, previewKey, palette }: PreviewArtworkProp
       aria-hidden="true"
     >
       {artwork}
+      {sceneSlug && <ScenePhoto slug={sceneSlug} />}
     </span>
   )
 }
