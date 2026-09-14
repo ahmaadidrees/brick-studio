@@ -1,9 +1,9 @@
 {
   "pip": {
-    "bytes": 116632,
+    "bytes": 115356,
     "triangles": 2444,
     "mesh_count": 20,
-    "material_count": 5,
+    "material_count": 6,
     "reimport_blender_bounds": [
       [
         -0.29548,
@@ -46,7 +46,7 @@
     ]
   },
   "fern": {
-    "bytes": 112320,
+    "bytes": 112340,
     "triangles": 2824,
     "mesh_count": 21,
     "material_count": 6,
@@ -93,7 +93,7 @@
     ]
   },
   "nova": {
-    "bytes": 139492,
+    "bytes": 139504,
     "triangles": 5260,
     "mesh_count": 24,
     "material_count": 7,

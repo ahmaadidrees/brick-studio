@@ -1,16 +1,23 @@
+import { Sparkles } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '../../ui'
 import { AppearanceControls } from './AppearanceControls'
 import { CharacterPreview } from './CharacterPreview'
 import { LookColors } from './LookColors'
+import { PaletteControls } from './PaletteControls'
 import { WardrobePanel } from './WardrobePanel'
+import { canMixDraft, mixDraft, toggleLock } from './studioMix'
 import { ContentPicker } from '../contentPicker/ContentPicker'
 import type { CharacterPaletteGroup, ContentPickerProps } from '../contentPicker/ContentPicker'
 import type { ContentPickerSelection } from '../contentPicker/selection'
 import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
 import type { CharacterId } from '../types'
+import './character-studio.css'
 
 /**
  * The Character tab body of the "Scene & character" sheet: live preview,
- * character cards, appearance/look controls and the wardrobe.
+ * character cards, appearance/color controls with locks, "Mix it up", and the
+ * wardrobe.
  *
  * Contract: fully controlled. The host owns the draft and passes every edit
  * back through `onDraftChange` with one complete selection; nothing here is
@@ -39,8 +46,20 @@ export function CharacterStudio({
   previewStatuses,
   onRequestPreview,
 }: CharacterStudioProps) {
+  const [locked, setLocked] = useState<Set<string>>(() => new Set())
+  const selected = characterDescriptors.find(({ id }) => id === draft.characterId)
+  const customizable = Boolean(selected?.customizable)
+  const showColors = customizable && paletteGroups.length > 0
+  const showFigure = draft.characterId === 'toy-figure'
+  const mixable = canMixDraft(draft, { locked, paletteGroups, customizable })
+  const onToggleLock = (key: string) => setLocked(current => toggleLock(current, key))
+
   return (
-    <>
+    <div className="character-studio">
+      <header className="character-studio__intro">
+        <h3>Make it yours.</h3>
+        <p>Customize your character and show what kind of builder you are. Nothing changes for anyone else until you press Apply.</p>
+      </header>
       <CharacterPreview characterId={draft.characterId} palette={draft.palette} appearance={draft.appearance} />
       <ContentPicker
         hideHeader
@@ -52,18 +71,46 @@ export function CharacterStudio({
         onSelectEnvironment={ignoreEnvironment}
         onSelectCharacter={(characterId: CharacterId) => onDraftChange({ ...draft, characterId })}
         palette={draft.palette}
-        paletteGroups={paletteGroups}
-        onPaletteChange={(palette) => onDraftChange({ ...draft, palette })}
         onRequestPreview={onRequestPreview}
         previewStatuses={previewStatuses}
       />
-      {draft.characterId === 'toy-figure' && <AppearanceControls appearance={draft.appearance} onChange={appearance => onDraftChange({ ...draft, appearance })} />}
-      <LookColors palette={draft.palette} onChange={palette => onDraftChange({ ...draft, palette })} />
-      {draft.characterId && <WardrobePanel
-        appearance={{ characterId: draft.characterId, palette: draft.palette, appearance: draft.appearance }}
-        onChoose={appearance => onDraftChange({ ...draft, ...appearance })}
-      />}
-    </>
+      {showFigure && (
+        <AppearanceControls
+          appearance={draft.appearance}
+          locked={locked}
+          onToggleLock={onToggleLock}
+          onChange={appearance => onDraftChange({ ...draft, appearance })}
+        />
+      )}
+      {showColors && (
+        <PaletteControls
+          groups={paletteGroups}
+          palette={draft.palette}
+          locked={locked}
+          onToggleLock={onToggleLock}
+          onChange={palette => onDraftChange({ ...draft, palette })}
+        />
+      )}
+      {showColors && <LookColors palette={draft.palette} locked={locked} onChange={palette => onDraftChange({ ...draft, palette })} />}
+      {(showColors || showFigure) && (
+        <div className="character-studio__mix">
+          <Button
+            variant="primary"
+            icon={<Sparkles size={16} />}
+            disabled={!mixable}
+            onClick={() => onDraftChange(mixDraft(draft, { locked, paletteGroups, customizable }))}
+          >Mix it up</Button>
+          <p>{mixable ? 'Shuffles every part you have not kept. Locked choices, skin tone and hair color stay the same.' : 'Everything is kept. Unlock a part to mix it.'}</p>
+        </div>
+      )}
+      {draft.characterId && (
+        <WardrobePanel
+          appearance={{ characterId: draft.characterId, palette: draft.palette, appearance: draft.appearance }}
+          characterDescriptors={characterDescriptors}
+          onChoose={appearance => onDraftChange({ ...draft, ...appearance })}
+        />
+      )}
+    </div>
   )
 }
 

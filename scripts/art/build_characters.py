@@ -9,8 +9,13 @@ def mat(name,color,metal=0,rough=.38,emission=0):
  p=m.node_tree.nodes.get('Principled BSDF'); p.inputs['Base Color'].default_value=(*color,1); p.inputs['Metallic'].default_value=metal;p.inputs['Roughness'].default_value=rough
  if emission:p.inputs['Emission Color'].default_value=(*color,1);p.inputs['Emission Strength'].default_value=emission
  return m
+def srgb(hex_color):
+ """Brand hex (sRGB) to the linear base color Blender stores and glTF exports, so the runtime shows exactly this hex."""
+ return tuple(((c/255)/12.92 if (c/255)<=.04045 else (((c/255)+.055)/1.055)**2.4) for c in (int(hex_color[i:i+2],16) for i in (1,3,5)))
+# Brickgineers palette: cornflower #5888DA, coral #F17861, butter #F3CA74, ink #263C51, warm white #F8F4EB.
+# Material names are part of the runtime contract (palette channels resolve by name), so only the colors move.
 M={k:mat(k,c,metal,rough,em) for k,c,metal,rough,em in [
- ('Porcelain',(.82,.91,.86),.05,.32,0),('Ink',(.024,.057,.083),.15,.3,0),('Lagoon',(.04,.58,.53),.25,.3,0),('Sunshine',(1,.56,.09),.1,.34,0),('Signal',(.31,.94,.9),.1,.25,1.2),('Clay',(.81,.31,.15),0,.6,0),('Moss',(.25,.43,.22),0,.65,0),('Cream',(.97,.79,.5),0,.6,0),('Bark',(.19,.10,.065),0,.6,0),('Orchid',(.49,.24,.77),.05,.37,0),('Pink',(.98,.37,.61),0,.4,0)]}
+ ('Porcelain',srgb('#F8F4EB'),.05,.32,0),('Ink',srgb('#263C51'),.15,.3,0),('Lagoon',srgb('#5888DA'),.25,.3,0),('Sunshine',srgb('#F3CA74'),.1,.34,0),('Signal',(.31,.94,.9),.1,.25,1.2),('Clay',srgb('#F17861'),0,.6,0),('Coral',srgb('#F17861'),0,.5,0),('Moss',(.25,.43,.22),0,.65,0),('Cream',(.97,.79,.5),0,.6,0),('Bark',(.19,.10,.065),0,.6,0),('Orchid',(.49,.24,.77),.05,.37,0),('Pink',srgb('#F79C8C'),0,.4,0)]}
 characters=[]; group=None
 def empty(name,loc,parent=None):
  o=bpy.data.objects.new(name,None);bpy.context.collection.objects.link(o);o.location=loc;o.parent=parent;return o
@@ -33,7 +38,7 @@ def limb(root,name,pivot,kind,material,size):
 # PIP — solar-powered pocket surveyor.
 r=empty('Pip_Root',(0,0,0));characters.append(r)
 for s,x in [('L',-.115),('R',.115)]:
- p=limb(r,'Pip_Leg_'+s,(x,0,.29),'','Ink',(.105,.12,.23));cube('Pip_Boot_'+s,(0,-.035,-.24),(.16,.23,.10),'Lagoon',p,.03)
+ p=limb(r,'Pip_Leg_'+s,(x,0,.29),'','Ink',(.105,.12,.23));cube('Pip_Boot_'+s,(0,-.035,-.24),(.16,.23,.10),'Coral',p,.03)
 body=cube('Pip_Body',(0,0,.43),(.38,.25,.32),'Porcelain',r)
 cube('Pip_ChestPanel',(0,-.137,.45),(.24,.025,.17),'Lagoon',r,.02)
 for x in [-.065,0,.065]:cube('Pip_ChargeBar',(x,-.155,.455),(.035,.012,.07),'Sunshine',r,.006)

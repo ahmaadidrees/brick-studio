@@ -4,9 +4,24 @@ Created in Blender from original procedural geometry, without downloaded meshes,
 
 | Character | Design | GLB bytes | Triangles | Meshes | Materials |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Pip | Solar-powered pocket robot, luminous eyes and beacon | 116,632 | 2,444 | 20 | 5 |
-| Fern | Woodland pathfinder with fox-ear cap, scarf, and field pack | 112,320 | 2,824 | 21 | 6 |
-| Nova | Curious comet creature with glowing antenna tips | 139,492 | 5,260 | 24 | 7 |
+| Pip | Solar-powered pocket robot, luminous eyes and beacon | 115,356 | 2,444 | 20 | 6 |
+| Fern | Woodland pathfinder with fox-ear cap, scarf, and field pack | 112,340 | 2,824 | 21 | 6 |
+| Nova | Curious comet creature with glowing antenna tips | 139,504 | 5,260 | 24 | 7 |
+
+## Palette (Brickgineers)
+
+Materials are named, and the runtime recolors by name (`Sunshine`/`Lagoon`/`Signal` for Pip, `Moss`/`Clay`/`Sunshine` for Fern, `Orchid`/`Pink`/`Signal` for Nova), so names never change; only their base colors do. The build script converts brand hex values (sRGB) to the linear base color that Blender stores and glTF exports, so the runtime shows exactly these:
+
+| Material | Color | Used by |
+| --- | --- | --- |
+| `Sunshine` | butter `#F3CA74` | Pip helmet, hands and charge bars; Fern scarf; Nova star pack |
+| `Lagoon` | cornflower `#5888DA` | Pip arms, chest panel and backpack |
+| `Clay` | coral `#F17861` | Fern cap, brim, ears, nose and field pack |
+| `Coral` | coral `#F17861` | Pip boots (static; not a palette channel) |
+| `Porcelain` | warm white `#F8F4EB` | Pip body; Nova eye shine |
+| `Ink` | ink `#263C51` | Pip legs, visor and antenna; Fern and Nova eyes, Nova mouth and pupils |
+| `Pink` | soft coral-pink `#F79C8C` | Nova belly and freckles |
+| `Signal`, `Moss`, `Cream`, `Bark`, `Orchid` | unchanged | Pip/Nova glow, Fern coat and face, boots, Nova body |
 
 ## Loading and animation
 

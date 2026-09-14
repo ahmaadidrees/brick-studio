@@ -75,10 +75,11 @@ const TORSO_PROFILE: readonly (readonly [number, number])[] = [
   [0, 0.45],
 ]
 
-const SUIT_COLOR = '#e8654a'
-const TRIM_COLOR = '#2d6a80'
-const ACCENT_COLOR = '#f6c445'
-const DARK_COLOR = '#26313d'
+/** Brand-palette defaults: coral suit, cornflower trim, butter accents, ink boots and belt. */
+const SUIT_COLOR = '#f17861'
+const TRIM_COLOR = '#5888da'
+const ACCENT_COLOR = '#f3ca74'
+const DARK_COLOR = '#263c51'
 
 type ToyFigureAssets = {
   pelvis: THREE.BufferGeometry
@@ -367,7 +368,8 @@ export const ToyFigureAvatar = memo(function ToyFigureAvatar({
         <group ref={elbowRef} position={[0, -ELBOW_DROP, 0]}>
           {compact ? null : <mesh geometry={elbowBall} material={skin} />}
           <mesh geometry={forearm} material={skin} position={[0, -0.11, 0]} castShadow />
-          <mesh geometry={hand} material={accent} position={[0, -0.265, 0]} />
+          {/* Mitten in the skin tone, so hands never read as yellow toy claws. */}
+          <mesh geometry={hand} material={skin} position={[0, -0.265, 0]} />
         </group>
       </group>
     )
