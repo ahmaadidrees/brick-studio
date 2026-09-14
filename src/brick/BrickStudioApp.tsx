@@ -4,7 +4,6 @@ import { CustomColorPicker } from './CustomColorPicker'
 import { StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
 import {
-  AlertCircle,
   ArrowLeft,
   Box,
   Check,
@@ -12,8 +11,6 @@ import {
   ChevronUp,
   Clipboard,
   ClipboardPaste,
-  CloudCheck,
-  CloudUpload,
   Compass,
   Copy,
   Cuboid,
@@ -22,7 +19,6 @@ import {
   Users,
   Layers3,
   MapPin,
-  MonitorSmartphone,
   Move,
   MousePointer2,
   Mountain,
@@ -31,19 +27,18 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
-  Radio,
   Redo2,
-  RefreshCw,
   RotateCcw,
   RotateCw,
   Search,
   Trash2,
   Undo2,
-  WifiOff,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
+import { BrandLockup } from '../brand'
+import { Button, SaveStatus, type SaveStatusSource } from '../ui'
 import { getBrickBudgetProfile, readBrickBudgetEnvironment } from './budgets'
 import {
   beginExploreCameraPointer,
@@ -265,34 +260,31 @@ function useCompactLayout() {
   return compact
 }
 
+/**
+ * The header's save chip is the shared `SaveStatus` primitive fed with the real enum the
+ * shell already holds (guest local, `CloudSaveStatus`, `LiveConnectionState`); `detail` is
+ * the tooltip/secondary copy. Nothing here infers state from a label.
+ */
 export type StudioSaveStatus = {
-  label: string
+  source: SaveStatusSource
   detail: string
-  tone: 'local' | 'saved' | 'pending' | 'error'
-  /** Which real state machine produced the label: guest autosave, cloud autosave, or the live connection. */
-  source: 'local' | 'cloud' | 'live'
 }
 
-/** One truthful save chip. Labels come only from the real enums; the icon follows the source and tone. */
-function SaveStatusChip({ status }: { status: StudioSaveStatus }) {
-  const Icon = status.tone === 'error'
-    ? (status.source === 'live' ? WifiOff : AlertCircle)
-    : status.source === 'live'
-      ? (status.tone === 'saved' ? Radio : RefreshCw)
-      : status.source === 'cloud'
-        ? (status.tone === 'saved' ? CloudCheck : CloudUpload)
-        : MonitorSmartphone
+type BrandHomeProps = { onGoHome: () => void; wordmark: 'wide' | 'never'; className?: string }
+
+/** Brand lockup as the Home affordance: a real link to `/`, intercepted so unsaved work is flushed first. */
+function BrandHome({ onGoHome, wordmark, className }: BrandHomeProps) {
   return (
-    <span className={`brick-save-status brick-save-${status.tone}`} role="status" aria-label={`Save status: ${status.label}`} title={status.detail}>
-      <Icon size={13} aria-hidden="true" className={status.source === 'live' && status.tone === 'pending' ? 'brick-save-spin' : undefined} />
-      <span>{status.label}</span>
-    </span>
+    <BrandLockup
+      href="/"
+      size={wordmark === 'never' ? 28 : 32}
+      wordmark={wordmark}
+      srSuffix="Home"
+      title="Home"
+      className={className}
+      onClick={(event) => { event.preventDefault(); onGoHome() }}
+    />
   )
-}
-
-/** Placeholder slot for the brand mark until W1's BrickMark lands; the button already routes Home. */
-function BrandMarkSlot() {
-  return <span className="brick-brand-mark-slot" aria-hidden="true"><i /><i /></span>
 }
 
 type PeopleEntryProps = {
@@ -307,16 +299,16 @@ function PeopleEntry({ livePolicy, onStartLiveWorld, compact = false }: PeopleEn
     const count = livePolicy.peopleCount
     const label = count === undefined ? 'People' : `People, ${count} in this world`
     return (
-      <button className="studio-button brick-header-tool brick-people-entry" type="button" aria-label={label} title={label} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
-        <Users size={17} aria-hidden="true" /><span>People</span>{count !== undefined && <strong className="brick-people-count">{count}</strong>}
-      </button>
+      <Button variant="quiet" className="brick-header-tool brick-people-entry" icon={<Users size={17} />} aria-label={label} title={label} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
+        People{count !== undefined && <strong className="brick-people-count" aria-hidden="true">{count}</strong>}
+      </Button>
     )
   }
   if (!onStartLiveWorld) return null
   return (
-    <button className="studio-button brick-header-tool brick-collaborate-entry" type="button" onClick={onStartLiveWorld} aria-label="Build together" title="Start a shared world from this build">
-      <Users size={17} aria-hidden="true" /><span>{compact ? 'People' : 'Build together'}</span>
-    </button>
+    <Button variant="quiet" className="brick-header-tool brick-collaborate-entry" icon={<Users size={17} />} onClick={onStartLiveWorld} aria-label="Build together" title="Start a shared world from this build">
+      {compact ? 'People' : 'Build together'}
+    </Button>
   )
 }
 
@@ -334,7 +326,8 @@ type HeaderProps = StudioDocumentCommands & {
   onGoHome: () => void
 }
 
-const NEUTRAL_WORLD_TITLE = 'My world'
+/** Guest drafts have no title field in the schema, so the header shows a neutral name, never the brand. */
+const NEUTRAL_WORLD_TITLE = 'My build'
 
 function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, onRenameWorld, worldTitle, saveStatus, onGoHome }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
@@ -348,7 +341,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
   return (
     <header className="brick-header" aria-label="Studio toolbar">
       <div className="brick-header-world">
-        <button className="brick-brand-mark" type="button" aria-label="Home" title="Home" onClick={onGoHome}><BrandMarkSlot /></button>
+        <BrandHome onGoHome={onGoHome} wordmark="wide" className="brick-brand-home" />
         <div className="brick-world-context">
           <StudioMenu
             worldTitle={title}
@@ -364,19 +357,19 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
             onPublishWorld={livePolicy ? undefined : onPublishWorld}
             onOpenHelp={onOpenHelp}
           />
-          <SaveStatusChip status={saveStatus} />
+          <SaveStatus source={saveStatus.source} detail={saveStatus.detail} className="brick-save-status" />
         </div>
       </div>
       <div className="brick-header-tools" role="group" aria-label="World tools">
-        <button className="studio-button brick-header-tool" type="button" onClick={() => onOpenWorldSetup('environment')}><Mountain size={17} aria-hidden="true" /><span>Scene</span></button>
-        <button className="studio-button brick-header-tool" type="button" onClick={() => onOpenWorldSetup('character')}><UserRound size={17} aria-hidden="true" /><span>Character</span></button>
+        <Button variant="quiet" className="brick-header-tool" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
+        <Button variant="quiet" className="brick-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
         <StudioSettings />
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
         {mode === 'build'
-          ? <button type="button" aria-label="Explore mode" className="brick-primary-mode" onClick={requestExplore} disabled={!hasBricks || liveModeDisabled}><Compass size={18} aria-hidden="true" /><span>Explore</span><kbd>2</kbd></button>
-          : <button type="button" aria-label="Back to building" className="brick-primary-mode" onClick={requestBuild} disabled={liveModeDisabled}><ArrowLeft size={18} aria-hidden="true" /><span>Back to building</span><kbd>1</kbd></button>}
+          ? <Button variant="primary" aria-label="Explore mode" title={hasBricks ? 'Step inside your world (2)' : 'Place a brick first, then explore'} className="brick-primary-mode" icon={<Compass size={18} />} onClick={requestExplore} disabled={!hasBricks || liveModeDisabled}>Explore<kbd aria-hidden="true">2</kbd></Button>
+          : <Button variant="primary" aria-label="Back to building" className="brick-primary-mode" icon={<ArrowLeft size={18} />} onClick={requestBuild} disabled={liveModeDisabled}>Back to building<kbd aria-hidden="true">1</kbd></Button>}
       </nav>
     </header>
   )
@@ -386,11 +379,11 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
 function PublishedWorldBar({ title, onRemix }: { title?: string; onRemix?: () => void }) {
   return (
     <div className="published-world-bar" role="region" aria-label="Published world">
-      <span className="brick-brand-mark published-world-mark" aria-hidden="true"><BrandMarkSlot /></span>
+      <BrandLockup wordmark="never" size={28} className="published-world-mark" />
       <div className="published-world-heading"><span>Read-only world</span><strong title={title}>{title}</strong></div>
       <div className="published-world-actions">
         <StudioSettings />
-        {onRemix && <button type="button" className="studio-button studio-button-primary published-world-remix" onClick={onRemix} title="Save a copy of this world as your guest build"><Copy size={16} aria-hidden="true" /><span>Make a copy</span></button>}
+        {onRemix && <Button variant="primary" className="published-world-remix" icon={<Copy size={16} />} onClick={onRemix} title="Save a copy of this world as your guest build">Make a copy</Button>}
       </div>
     </div>
   )
@@ -413,13 +406,13 @@ function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup
   return (
     <div className="brick-explore-hud" role="region" aria-label="Explore toolbar">
       <div className="brick-explore-hud-start">
-        <button className="brick-brand-mark" type="button" aria-label="Home" title="Home" onClick={onGoHome}><BrandMarkSlot /></button>
-        <button type="button" aria-label="Back to building" className="brick-primary-mode brick-explore-back" onClick={requestBuild} disabled={liveModeDisabled}><ArrowLeft size={18} aria-hidden="true" /><span>Back to building</span><kbd>1</kbd></button>
+        <BrandHome onGoHome={onGoHome} wordmark="never" className="brick-brand-mark" />
+        <Button variant="secondary" aria-label="Back to building" className="brick-explore-back" icon={<ArrowLeft size={18} />} onClick={requestBuild} disabled={liveModeDisabled}>Back to building<kbd aria-hidden="true">1</kbd></Button>
       </div>
       <div className="brick-explore-hud-end">
         <div className="brick-explore-cluster" role="group" aria-label="World tools">
           <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
-          <button className="studio-button brick-header-tool" type="button" onClick={() => onOpenWorldSetup('character')}><UserRound size={17} aria-hidden="true" /><span>Character</span></button>
+          <Button variant="quiet" className="brick-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
           <StudioSettings />
         </div>
         <span className="brick-explore-title-pill" title={title}><MapPin size={14} aria-hidden="true" /><span>{title}</span></span>
@@ -1430,30 +1423,22 @@ export default function BrickStudioApp({
   // state, so the only local error the header can surface truthfully is blocked storage access.
   const saveStatus: StudioSaveStatus = livePolicy
     ? {
-      label: livePolicy.connection === 'online' ? 'Shared world' : livePolicy.connection === 'connecting' ? 'Connecting…' : livePolicy.connection === 'reconnecting' ? 'Reconnecting…' : 'Offline · edits paused',
+      source: { kind: 'live', connection: livePolicy.connection },
       detail: livePolicy.connection === 'online' ? 'Changes are shared with everyone in this world as you make them.' : 'The shared world connection and recovery details appear in the live session controls.',
-      tone: livePolicy.connection === 'online' ? 'saved' : livePolicy.connection === 'offline' ? 'error' : 'pending',
-      source: 'live',
     }
     : cloud.world
       ? {
-        label: cloud.status === 'saved' ? 'Saved to your account' : cloud.status === 'saving' ? 'Saving to your account…' : cloud.status === 'pending' ? 'Waiting to save…' : 'Save needs attention',
+        source: { kind: 'cloud', status: cloud.status },
         detail: cloud.status === 'saved' ? 'Your latest changes are saved to your account.' : cloud.status === 'error' ? cloud.error || 'Your latest changes are not saved online. Use the recovery controls before leaving.' : 'Your latest changes are not saved online yet. Keep this tab open.',
-        tone: cloud.status === 'saved' ? 'saved' : cloud.status === 'error' ? 'error' : 'pending',
-        source: 'cloud',
       }
       : localStorageBlocked
         ? {
-          label: 'Save needs attention',
+          source: { kind: 'local', error: 'This browser blocked local storage, so this build cannot be saved here.' },
           detail: 'This browser blocked local storage, so this build cannot be saved here. Download the build to keep it.',
-          tone: 'error',
-          source: 'local',
         }
         : {
-          label: 'Saved in this browser',
+          source: { kind: 'local' },
           detail: 'This build stays in this browser on this device. Use My Worlds to save a copy to your account, or Download build to keep a file.',
-          tone: 'local',
-          source: 'local',
         }
   const goHome = () => { void (async () => {
     if (livePolicy) {

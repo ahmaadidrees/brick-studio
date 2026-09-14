@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Settings, X } from 'lucide-react'
+import { Button } from '../ui'
 import { useBrickStore } from './store'
 import type { ExploreCameraMode, ExploreKeyboardMode } from './explorePreferences'
 import './explore-camera-settings.css'
@@ -15,7 +16,7 @@ export function StudioSettings() {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   return <>
-    <button ref={trigger} type="button" className="studio-icon-button studio-settings-trigger" aria-label="Settings" title="Settings" aria-haspopup="dialog" onClick={() => setOpen(true)}><Settings size={18} /><span>Settings</span></button>
+    <Button ref={trigger} variant="quiet" className="brick-header-tool studio-settings-trigger" icon={<Settings size={18} />} aria-label="Settings" title="Settings" aria-haspopup="dialog" onClick={() => setOpen(true)}>Settings</Button>
     {open && <SettingsPanel onClose={() => { setOpen(false); trigger.current?.focus() }} />}
   </>
 }

@@ -1,18 +1,9 @@
-/* Editor shell. Colors reference the semantic tokens from docs/brand/CONTRACTS.md with fallbacks
-   so the studio reads correctly before W1's :root tokens merge; the legacy --studio-* names stay
-   as aliases for rules that other lanes still reference. */
+/* Editor shell. The legacy --studio-* names (ink, muted, blue, panel, border, shadow, control
+   metrics) are aliased to the semantic tokens in src/styles.css :root; only lane-local values
+   are defined here so the shared palette lands unchanged. */
 .brick-studio {
-  --studio-ink: var(--text, #263c51);
-  --studio-muted: var(--text-muted, #5f7381);
-  --studio-blue: var(--primary, #5888da);
-  --studio-blue-dark: var(--primary-strong, #3f6cc0);
-  --studio-panel: var(--surface, #ffffff);
   --studio-panel-soft: var(--surface-2, #f3f0e8);
-  --studio-panel-border: var(--border, rgba(38, 60, 81, .14));
-  --studio-panel-shadow: var(--shadow-md, 0 12px 32px rgba(38, 60, 81, .12));
-  --studio-focus: var(--focus, rgba(88, 136, 218, .55));
-  --studio-control-height: 44px;
-  --studio-control-radius: var(--radius-md, 12px);
+  --studio-focus: var(--focus, #3565bf);
   --brick-header-height: 64px;
   --brick-header-block: calc(var(--brick-header-height) + env(safe-area-inset-top, 0px));
   --brick-panel-top: calc(var(--brick-header-block) + 12px);
@@ -77,44 +68,37 @@
   pointer-events: auto;
 }
 
-.brick-header-world { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.brick-header-world { min-width: 0; display: flex; align-items: center; gap: 10px; }
+/* Brand lockup doubles as Home. Under 640px the wordmark drops (brand-lockup-wide), so the mark
+   alone stays a 44px target. A divider separates it from the world title on wide screens. */
+.brick-brand-home { padding: 0 6px 0 2px; border-radius: var(--radius-md, 12px); }
+.brick-brand-home:hover { background: rgba(88, 136, 218, .1); }
+.brick-brand-home:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.brick-brand-home .brand-wordmark { font-size: 22px; }
+.brick-header-world::before { content: none; }
 .brick-brand-mark { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-md, 12px); background: transparent; cursor: pointer; }
 .brick-brand-mark:hover { background: rgba(88, 136, 218, .1); }
 .brick-brand-mark:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-/* Placeholder mark: two equal rounded lobes, blue over coral. W1's BrickMark replaces this slot. */
-.brick-brand-mark-slot { display: grid; gap: 2px; width: 26px; }
-.brick-brand-mark-slot i { display: block; height: 11px; border-radius: 4px; background: var(--primary, #5888da); }
-.brick-brand-mark-slot i:last-child { background: var(--accent, #f17861); }
-.brick-world-context { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+.brick-world-context { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-left: 10px; border-left: 1px solid var(--studio-panel-border); }
 .studio-world-title { display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 28px; padding: 0 4px; border: 0; border-radius: 6px; color: var(--studio-ink); background: transparent; cursor: pointer; text-align: left; }
 .studio-world-title strong { max-width: 260px; overflow: hidden; font: 600 17px/1.15 var(--font-display, 'Fredoka'), sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .studio-world-title svg { flex: 0 0 auto; color: var(--studio-muted); }
 .studio-world-title:hover { background: rgba(88, 136, 218, .08); }
 .studio-world-title:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.brick-save-status { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 0 4px; color: var(--studio-muted); font: 700 11px/1.2 var(--font-body, 'Nunito'), system-ui, sans-serif; white-space: nowrap; }
-.brick-save-status > span { overflow: hidden; text-overflow: ellipsis; }
-.brick-save-status svg { flex: 0 0 auto; }
-.brick-save-saved { color: var(--success, #2a715b); }
-.brick-save-pending { color: var(--warning, #87580d); }
-.brick-save-error { color: var(--danger, #aa302a); }
-.brick-save-spin { animation: brick-spin 1.1s linear infinite; }
-@keyframes brick-spin { to { transform: rotate(360deg); } }
+/* The save chip is the shared SaveStatus primitive; the header only tightens it to one line. */
+.brick-header .brick-save-status { min-height: 22px; padding: 0 8px 0 4px; background: transparent; border-color: transparent; font-size: 11.5px; }
+.brick-header .brick-save-status .ui-save-status-detail { display: none; }
+.brick-header .brick-save-status.ui-save-status-error, .brick-header .brick-save-status.ui-save-status-offline { padding-right: 9px; background: var(--danger-soft, #fbe4e0); border-color: var(--danger, #c9463a); }
 
 .brick-header-tools { display: flex; align-items: center; gap: 2px; }
-.brick-header-tool,
-.brick-header .studio-settings-trigger,
-.brick-explore-cluster .studio-settings-trigger { width: auto; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 12px; border-color: transparent; color: var(--studio-ink); background: transparent; box-shadow: none; font-size: 12px; font-weight: 800; white-space: nowrap; }
-.brick-header-tool:hover:not(:disabled),
-.brick-header .studio-settings-trigger:hover:not(:disabled),
-.brick-explore-cluster .studio-settings-trigger:hover:not(:disabled) { border-color: transparent; background: rgba(88, 136, 218, .1); }
-.brick-people-count { min-width: 19px; height: 19px; display: inline-grid; place-items: center; padding: 0 5px; border-radius: 9px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .16); font-size: 10px; }
+.brick-header-tool.ui-button { min-width: 44px; padding: 0 12px; font-size: 12.5px; }
+.brick-header-tool.ui-button .ui-button-icon { color: var(--studio-blue-dark); }
+.brick-people-count { min-width: 19px; height: 19px; display: inline-grid; place-items: center; margin-left: 6px; padding: 0 5px; border-radius: 9px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .16); font-size: 10px; vertical-align: middle; }
 
 .brick-mode-switch { display: flex; align-items: center; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--studio-panel-border); }
-.brick-primary-mode { min-width: 112px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 16px; border: 1px solid var(--studio-blue-dark); border-radius: var(--studio-control-radius); color: var(--primary-contrast, #ffffff); background: var(--studio-blue); box-shadow: 0 6px 16px rgba(63, 108, 192, .24); font: 800 13px/1 inherit; white-space: nowrap; cursor: pointer; }
-.brick-primary-mode:hover:not(:disabled) { background: var(--studio-blue-dark); }
-.brick-primary-mode:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.brick-primary-mode:disabled { opacity: .42; cursor: default; }
-.brick-primary-mode kbd { min-width: 17px; height: 17px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; }
+.brick-primary-mode.ui-button { min-width: 112px; padding: 0 16px; font-size: 13.5px; }
+.brick-primary-mode kbd, .brick-explore-back kbd { min-width: 17px; height: 17px; margin-left: 6px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; vertical-align: middle; }
+.brick-explore-back kbd { background: rgba(38, 60, 81, .08); }
 
 .studio-menu { position: relative; min-width: 0; }
 /* The placed-brick section can push the menu past a short viewport, so it scrolls; the studio
@@ -336,13 +320,10 @@
 .brick-explore-hud > * { pointer-events: auto; }
 .brick-explore-hud-start { display: flex; align-items: center; gap: 8px; }
 .brick-explore-hud-start .brick-brand-mark { border: 1px solid var(--studio-panel-border); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
-.brick-explore-back { border-color: var(--studio-panel-border); color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
-.brick-explore-back:hover:not(:disabled) { color: var(--studio-blue-dark); background: var(--studio-panel); }
-.brick-explore-back kbd { background: rgba(38, 60, 81, .08); }
+.brick-explore-back.ui-button { box-shadow: var(--shadow-md, 0 6px 18px rgba(38, 60, 81, .12)); }
 .brick-explore-hud-end { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; }
 .brick-explore-cluster { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
-.brick-explore-cluster .brick-header-tool { min-height: 40px; }
-.brick-explore-cluster .studio-settings-trigger { min-height: 40px; }
+.brick-explore-cluster .brick-header-tool.ui-button { min-height: 40px; }
 .brick-explore-title-pill { max-width: min(280px, 60vw); display: inline-flex; align-items: center; gap: 6px; min-height: 34px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--studio-panel-border); border-radius: 999px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .1)); font-size: 12px; font-weight: 800; }
 .brick-explore-title-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brick-explore-title-pill svg { flex: 0 0 auto; color: var(--studio-blue-dark); }
@@ -389,8 +370,7 @@
 .published-world-heading span { color: var(--studio-muted); font-size: 9px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
 .published-world-heading strong { max-width: 280px; overflow: hidden; color: var(--studio-ink); font: 600 16px/1.15 var(--font-display, 'Fredoka'), sans-serif; text-overflow: ellipsis; white-space: nowrap; }
 .published-world-actions { display: flex; align-items: center; gap: 6px; }
-.published-world-actions .studio-settings-trigger { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border-color: transparent; box-shadow: none; background: transparent; }
-.published-world-remix { min-height: 44px; }
+.published-world-mark { min-height: 0; padding: 0 4px; }
 .published-world-bar .race-primary-button { background: var(--studio-blue); }
 
 /* Full-page states from PublishedWorldPage: loading, unavailable. */
@@ -417,9 +397,9 @@
   .published-world-bar { right: max(8px, env(safe-area-inset-right)); left: max(8px, env(safe-area-inset-left)); max-width: none; gap: 8px; transform: none; }
   .published-world-heading { min-width: 0; flex: 1; }
   .published-world-heading strong { max-width: none; }
-  .published-world-actions .studio-settings-trigger span { display: none; }
-  .published-world-remix span { display: none; }
-  .published-world-remix { width: 44px; padding: 0; }
+  .published-world-actions .brick-header-tool .ui-button-label { display: none; }
+  .published-world-remix .ui-button-label { display: none; }
+  .published-world-remix.ui-button { width: 44px; padding: 0; }
   .race-hud { flex-wrap: wrap; }.race-room-card, .race-host-card { max-width: 100%; }.race-room-card > div { min-width: 72px; }
   .race-status { top: 116px; }
 }
@@ -541,9 +521,9 @@
 
 @media (max-width: 900px) {
   .brick-header { gap: 8px; }
-  .brick-header-tool > span, .brick-header .studio-settings-trigger > span { display: none; }
-  .brick-header-tool, .brick-header .studio-settings-trigger { min-width: 44px; padding: 0 10px; }
-  .brick-primary-mode { min-width: 0; }
+  .brick-header-tool .ui-button-label { display: none; }
+  .brick-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
+  .brick-primary-mode.ui-button { min-width: 0; }
   .color-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }.color-grid button { min-width: 44px; width: 44px; height: 44px; }
   /* Compact layouts have no docked drawer, so the toolbar hugs the left edge above the (+) button. */
   .brick-edit-toolbar { left: max(10px, env(safe-area-inset-left)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 68px); transform: none; }
@@ -567,11 +547,14 @@
   .brick-mode-switch { grid-area: mode; margin: 0; padding-left: 0; border-left: 0; }
   .brick-header-tools { grid-area: tools; justify-content: space-between; gap: 4px; }
   .brick-header-tools > * { flex: 1 1 0; }
-  .brick-header-tool > span, .brick-header .studio-settings-trigger > span { display: none; }
-  .brick-header-tool, .brick-header .studio-settings-trigger { min-height: 44px; background: var(--studio-panel-soft); }
+  .brick-header-world { gap: 6px; }
+  .brick-brand-home { padding: 0 2px; }
+  .brick-world-context { padding-left: 6px; }
+  .brick-header-tool .ui-button-label { display: none; }
+  .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; background: var(--studio-panel-soft); }
   .studio-world-title strong { max-width: min(180px, 44vw); font-size: 16px; }
-  .brick-save-status { max-width: 44vw; font-size: 10px; }
-  .brick-primary-mode { min-width: 0; padding: 0 12px; font-size: 12px; }
+  .brick-header .brick-save-status { max-width: 46vw; font-size: 11px; }
+  .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }
   .brick-primary-mode kbd { display: none; }
   .studio-menu-popover { width: min(272px, calc(100vw - 16px)); }
   .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100vw - 16px); gap: 2px; }
@@ -598,11 +581,10 @@
   /* Explore HUD on phones: icon-only cluster, short Back label, title pill under the cluster. */
   .brick-explore-hud { right: max(8px, env(safe-area-inset-right)); left: max(8px, env(safe-area-inset-left)); gap: 8px; }
   .brick-explore-hud-start { gap: 6px; }
-  .brick-explore-back { min-width: 0; padding: 0 12px; }
-  .brick-explore-back > span { display: none; }
-  .brick-explore-back kbd { display: none; }
-  .brick-explore-cluster .brick-header-tool > span, .brick-explore-cluster .studio-settings-trigger > span { display: none; }
-  .brick-explore-cluster .brick-header-tool, .brick-explore-cluster .studio-settings-trigger { min-width: 44px; min-height: 44px; padding: 0 8px; }
+  .brick-explore-back.ui-button { min-width: 44px; padding: 0 12px; }
+  .brick-explore-back .ui-button-label { display: none; }
+  .brick-explore-cluster .brick-header-tool .ui-button-label { display: none; }
+  .brick-explore-cluster .brick-header-tool.ui-button { min-width: 44px; min-height: 44px; padding: 0 8px; }
   .brick-explore-title-pill { max-width: 52vw; }
   .recenter-camera, .respawn-avatar { top: max(106px, calc(env(safe-area-inset-top) + 102px)); right: max(8px, env(safe-area-inset-right)); width: 44px; padding: 0; justify-content: center; }
   .recenter-camera span, .respawn-avatar span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -613,8 +595,9 @@
 /* Very narrow phones: keep every header target inside 320px. */
 @media (max-width: 360px) {
   .studio-world-title strong { max-width: 38vw; font-size: 15px; }
-  .brick-primary-mode { padding: 0 10px; font-size: 11px; }
-  .brick-header-tool, .brick-header .studio-settings-trigger { padding: 0 6px; }
+  .brick-header .brick-save-status { max-width: 42vw; font-size: 10.5px; }
+  .brick-primary-mode.ui-button { padding: 0 10px; font-size: 12px; }
+  .brick-header-tool.ui-button { padding: 0 6px; }
 }
 
 /* --------------------------------------------------- short landscape ---- */
@@ -698,7 +681,7 @@
 
 /* The store flag mirrors the media query for canvases and anything mounted before it resolves. */
 .brick-reduced-motion .brick-sheet, .brick-reduced-motion .brick-sheet-backdrop, .brick-reduced-motion .touch-placement-bar, .brick-reduced-motion .touch-selection-bar { animation: none; }
-.brick-reduced-motion .brick-save-spin { animation: none; }
+.brick-reduced-motion .ui-spin { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .brick-studio *, .brick-studio *::before, .brick-studio *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }

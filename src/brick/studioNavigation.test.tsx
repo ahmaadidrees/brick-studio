@@ -45,7 +45,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(
 describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
     render(<BrickStudioApp />)
-    expect(screen.getByRole('status', { name: 'Save status: Saved in this browser' })).toBeInTheDocument()
+    // The header uses the shared SaveStatus primitive fed from the real enum; the chip carries its source.
+    expect(screen.getByText('Saved in this browser').closest('[role="status"]')).toHaveAttribute('data-kind', 'local')
     expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     expect(screen.getByRole('menuitem', { name: /My Worlds/ })).toHaveTextContent('My Worlds')
@@ -70,7 +71,7 @@ describe('studio navigation and save context', () => {
       const navigation = screen.getByRole('menuitem', { name: /My Worlds/ })
       expect(navigation).toHaveTextContent(/^My Worlds/)
       expect(navigation).toBeEnabled()
-      expect(screen.getByRole('status', { name: `Save status: ${label}` })).toBeInTheDocument()
+      expect(screen.getByText(label).closest('[role="status"]')).toHaveAttribute('data-kind', 'cloud')
     }
     fireEvent.click(screen.getByRole('menuitem', { name: /My Worlds/ }))
     expect(screen.getByRole('dialog', { name: 'Classroom worlds' })).toBeInTheDocument()
@@ -128,10 +129,10 @@ describe('studio navigation and save context', () => {
   it('does not report an account save for a connected or offline shared world', () => {
     const policy = { connection: 'online' as const, isOwner: true, onRequestMode: vi.fn() }
     const view = render(<BrickStudioApp livePolicy={policy} />)
-    expect(screen.getByRole('status', { name: 'Save status: Shared world' })).toBeInTheDocument()
+    expect(screen.getByText('Shared world').closest('[role="status"]')).toHaveAttribute('data-kind', 'live')
     expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     view.rerender(<BrickStudioApp livePolicy={{ ...policy, connection: 'offline' }} />)
-    expect(screen.getByRole('status', { name: 'Save status: Offline · edits paused' })).toBeInTheDocument()
+    expect(screen.getByText('Offline · edits paused').closest('[role="status"]')).toHaveAttribute('data-tone', 'offline')
     expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
   })
 })
