@@ -13,7 +13,7 @@ const only = process.argv[2] ?? ''
 const outDir = dirname(fileURLToPath(import.meta.url))
 mkdirSync(outDir, { recursive: true })
 
-const VIEWPORTS = { desktop: { width: 1366, height: 768 }, phone: { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } }
+const VIEWPORTS = { desktop: { width: 1366, height: 768 }, phone: { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, narrow: { width: 320, height: 740, isMobile: true, hasTouch: true, deviceScaleFactor: 2, onlyFor: ['06-build'] } }
 
 function demoBricks() {
   const colors = ['#5888da', '#f17861', '#f3ca74', '#5888da', '#f17861']
@@ -87,6 +87,7 @@ try {
     if (only && !shot.name.includes(only)) continue
     for (const [label, viewport] of Object.entries(VIEWPORTS)) {
       if (shot.phoneOnly && label !== 'phone') continue
+      if (viewport.onlyFor && !viewport.onlyFor.includes(shot.name)) continue
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, isMobile: viewport.isMobile, hasTouch: viewport.hasTouch, deviceScaleFactor: viewport.deviceScaleFactor ?? 1, reducedMotion: 'reduce' })
       const page = await context.newPage()
       const errors = []
