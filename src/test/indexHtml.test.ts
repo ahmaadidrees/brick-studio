@@ -74,6 +74,12 @@ describe('index.html link previews', () => {
     expect(placeholderUses).toBe(3) // og:url, og:image, twitter:image
     expect(html).not.toMatch(/%(?!VITE_PUBLIC_ORIGIN%)[A-Z_]+%/)
     for (const link of head.querySelectorAll('link[href]')) {
+      const rel = link.getAttribute('rel') ?? ''
+      if (rel === 'preconnect' || rel === 'dns-prefetch') {
+        // Resource hints for the Google Fonts hosts named by the @import in src/styles.css.
+        expect(link.getAttribute('href')).toMatch(/^https:\/\/fonts\.(googleapis|gstatic)\.com$/)
+        continue
+      }
       expect(link.getAttribute('href'), `${link.outerHTML} should be root-relative`).toMatch(/^\//)
     }
   })
