@@ -190,7 +190,7 @@ function BlockedView({ heading, message, onRetry }: { heading: string; message: 
         <h1>{heading}</h1>
         <p>{message}</p>
         {onRetry && <button className="live-primary-button" type="button" onClick={onRetry}>Try again</button>}
-        <a className="live-quiet-link" href="/">Open Brick Studio</a>
+        <a className="live-quiet-link" href="/build">Open Brick Studio</a>
       </section>
     </main>
   )
@@ -205,7 +205,7 @@ function OpeningRoomView({ title, snapshot, actions }: { title: string; snapshot
         <LiveStatusChip connection={snapshot.connection} syncing={snapshot.syncing}
           onReconnect={actions.reconnect} sessionReplaced={snapshot.notice?.code === 'session_replaced'} pendingOperations={snapshot.pendingOperations} />
         {snapshot.notice && <p className="live-gate-error" role="alert">{snapshot.notice.message}</p>}
-        <a className="live-quiet-link" href="/">Leave and open Brick Studio</a>
+        <a className="live-quiet-link" href="/build">Leave and open Brick Studio</a>
       </section>
     </main>
   )
@@ -262,7 +262,7 @@ function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: LiveRoomU
     </>}
     {message && <p role="status">{message}</p>}
     {actions.reconnect && <button type="button" className="live-primary-button" disabled={snapshot.connection !== 'offline'} onClick={actions.reconnect}>Try reconnecting</button>}
-    <a className="live-quiet-link" href="/">Open Brick Studio</a>
+    <a className="live-quiet-link" href="/build">Open Brick Studio</a>
   </section></main>
 }
 
@@ -310,8 +310,8 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const worldId = classroomWorldIdFromPath(pathname);
   if (!auth || auth.user.resetRequired) {
     return <ClassroomPanel client={client} intent="class" getDocument={() => useBrickStore.getState().getDocumentSnapshot()}
-      onClose={() => window.location.assign('/')}
-      onOpenWorld={() => window.location.assign('/')}
+      onClose={() => window.location.assign('/build')}
+      onOpenWorld={() => window.location.assign('/build')}
       onJoinWorld={world => window.location.assign(`/live/${world.id.replaceAll('-', '')}`)} />;
   }
   if (!worldId) return <BlockedView heading="Open this world from My Class" message="Your classroom worlds are listed in Brick Studio." />;
@@ -373,7 +373,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
       finally { setRecovering(false); }
     }}>{recovering ? 'Saving older world…' : 'Save older world to My Worlds'}</button>
     {recoveryError && <p role="alert">{recoveryError}</p>}
-    <a className="live-quiet-link" href="/">Open Brick Studio</a>
+    <a className="live-quiet-link" href="/build">Open Brick Studio</a>
   </section></main>;
   if (error) return <BlockedView heading="Cannot open this classroom world" message={error} onRetry={() => setRetry(n => n + 1)} />;
   if (!ready || session.status !== 'active') return <BlockedView heading="Opening your classroom world…" message="Checking your class access and saved work." />;
@@ -390,7 +390,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   const actions = { ...session.actions, setProfile };
   const overlay = <LiveWorldHud snapshot={snapshot} roomTitle={title} roomKind="classroom"
     shareLink={liveGuestLink(window.location.origin, roomId)} copyText={props.copyText ?? defaultCopyText}
-    editingIntegrated actions={actions} onLeave={() => window.location.assign('/')}
+    editingIntegrated actions={actions} onLeave={() => window.location.assign('/build')}
     onExportWorld={() => exportLiveWorldCopy(snapshot.document!)}
     onExportRecovery={snapshot.recoveryDocument ? () => exportLiveWorldCopy(snapshot.recoveryDocument!, true) : undefined} />;
   const view: LiveWorldSceneView = { roomTitle: title, document: snapshot.document, mode: snapshot.mode, revision: snapshot.revision, selfProfile: profile, setProfile, overlay };
@@ -512,7 +512,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
   })
 
   const leaveRoom = () => {
-    window.location.assign('/')
+    window.location.assign('/build')
   }
 
   if (parsed.kind === 'invalid') {
@@ -614,7 +614,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
           {room.ownerToken && (
             <p className="live-owner-hint">Keep this tab&rsquo;s web address safe — it holds your owner key for this room.</p>
           )}
-          <a className="live-quiet-link" href="/">Back to Brick Studio</a>
+          <a className="live-quiet-link" href="/build">Back to Brick Studio</a>
         </section>
       </main>
     )

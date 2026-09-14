@@ -133,7 +133,8 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
         <nav aria-label="Sign in options">{(['register', 'login', 'teacher-login'] as const).map(mode => <button key={mode} disabled={busy} aria-pressed={loginMode === mode} onClick={() => { setLoginMode(mode); setError('') }}>{mode === 'register' ? 'Join a class' : mode === 'login' ? 'Student sign in' : 'Teacher sign in'}</button>)}</nav>
         {loginMode === 'teacher-login' && <div className="classroom-google"><button className="classroom-primary" disabled={busy} onClick={() => void run(async () => {
           const returnTo = new URL(window.location.href)
-          if (returnTo.pathname === '/') {
+          if (returnTo.pathname === '/' || returnTo.pathname === '/build') {
+            returnTo.pathname = '/build'
             const saved = saveLocalBrickStudioProject(localStorage, getDocument())
             if (!saved.ok) throw new Error(saved.error.message)
             returnTo.searchParams.set('classroom', intent)

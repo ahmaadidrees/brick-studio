@@ -101,7 +101,7 @@ const WORLD_TILES = [
 
 const SWATCHES = ['#e7473c', '#f0be54', '#31a06c', '#3e83d7', '#8d6bd9'] as const
 
-export function LandingPage({ studioHref = '/', liveHref = '/live/new', className }: LandingPageProps) {
+export function LandingPage({ studioHref = '/build', liveHref = '/live/new', className }: LandingPageProps) {
   const mainId = useId()
   const stepsId = useId()
   const liveId = useId()

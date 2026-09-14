@@ -13,5 +13,5 @@ export default function TeacherGoogleCallback() {
     window.history.replaceState(null, '', '/auth/teacher-callback')
     void browserClassroomClient.finishGoogleTeacher(callback).then(({ returnTo }) => window.location.replace(returnTo)).catch(reason => setError(reason instanceof Error ? reason.message : 'Could not finish Google sign-in.'))
   }, [])
-  return <main className="classroom-backdrop"><section className="classroom-panel"><span className="classroom-eyebrow">BRICK STUDIO</span><h1>{error ? 'Sign-in needs another try' : 'Finishing Google sign-in…'}</h1>{error ? <><p role="alert">{error}</p><a href="/?classroom=class">Return to Brick Studio</a></> : <p role="status">Checking your teacher account. Your build is preserved.</p>}</section></main>
+  return <main className="classroom-backdrop"><section className="classroom-panel"><span className="classroom-eyebrow">BRICK STUDIO</span><h1>{error ? 'Sign-in needs another try' : 'Finishing Google sign-in…'}</h1>{error ? <><p role="alert">{error}</p><a href="/build?classroom=class">Return to Brick Studio</a></> : <p role="status">Checking your teacher account. Your build is preserved.</p>}</section></main>
 }

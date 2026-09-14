@@ -50,14 +50,14 @@ describe('calls to action', () => {
 
     const starts = screen.getAllByRole('link', { name: /start building/i })
     expect(starts).toHaveLength(2)
-    for (const link of starts) expect(link).toHaveAttribute('href', '/')
+    for (const link of starts) expect(link).toHaveAttribute('href', '/build')
 
     const together = screen.getAllByRole('link', { name: /build together/i })
     expect(together).toHaveLength(2)
     for (const link of together) expect(link).toHaveAttribute('href', '/live/new')
 
     expect(screen.getByRole('link', { name: /start a shared build/i })).toHaveAttribute('href', '/live/new')
-    expect(screen.getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/build')
   })
 
   it('routes every call to action through the studioHref/liveHref contract', () => {

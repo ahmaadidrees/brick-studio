@@ -7,8 +7,8 @@ export const ORBIT_MAX_PITCH = 1.08
 export const ORBIT_DEFAULT_PITCH = 0.55
 export const ORBIT_DEFAULT_YAW = Math.PI
 export const ORBIT_DAMPING = 15
-export const ORBIT_MIN_DISTANCE = 3.4
-export const ORBIT_MAX_DISTANCE = 10.5
+export const ORBIT_MIN_DISTANCE = 1.8
+export const ORBIT_MAX_DISTANCE = 24
 export const ORBIT_DEFAULT_DISTANCE = 6.1
 
 const TWO_PI = Math.PI * 2

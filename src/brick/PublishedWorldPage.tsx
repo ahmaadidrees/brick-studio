@@ -30,7 +30,7 @@ export default function PublishedWorldPage() {
   }, [])
 
   if (error) {
-    return <main className="published-world-state"><h1>World unavailable</h1><p>{error}</p><a href="/">Open Brick Studio</a></main>
+    return <main className="published-world-state"><h1>World unavailable</h1><p>{error}</p><a href="/build">Open Brick Studio</a></main>
   }
   if (remixed) return <BrickStudioApp />
   if (!world) return <main className="published-world-state"><h1>Opening published world…</h1></main>

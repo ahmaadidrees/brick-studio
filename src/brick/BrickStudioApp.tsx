@@ -1279,7 +1279,7 @@ export default function BrickStudioApp({
         beforeWorldMutation={cloud.flush}
         onWorldUpdated={world => { if (cloud.world?.id === world.id) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}
         onSaved={world => { if (!livePolicy) void cloud.attach(world).catch(error => useBrickStore.setState({ toast: String(error) })) }}
-        onOpenWorld={async (document, world) => { if (livePolicy) { const userId = browserClassroomClient.getSession()?.user.id; if (userId) sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId, worldId: world.id })); window.location.assign('/'); return }; await cloud.attach(world, document) }}
+        onOpenWorld={async (document, world) => { if (livePolicy) { const userId = browserClassroomClient.getSession()?.user.id; if (userId) sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId, worldId: world.id })); window.location.assign('/build'); return }; await cloud.attach(world, document) }}
         onJoinWorld={async world => { const saved = await cloud.flush(); if (!saved && !window.confirm('Your latest edits are kept in this tab for recovery but are not saved online. Leave for the shared world?')) return; window.location.assign(`/live/${world.id.replaceAll('-', '')}`) }}
       />}
       {raceOverlay}
