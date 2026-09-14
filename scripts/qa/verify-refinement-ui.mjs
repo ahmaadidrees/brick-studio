@@ -1,12 +1,14 @@
-/** Local browser verification. PLAYWRIGHT_MODULE may point at an installed Playwright index.mjs. */
+/**
+ * Local browser verification of the refined editor navigation (six viewports, Home → Continue round trip).
+ * Environment: PLAYWRIGHT_MODULE, CHROME_PATH, UI_ORIGIN (localhost only), UI_OUTPUT. See docs/brand/qa/README.md.
+ */
 import assert from 'node:assert/strict'
-import { mkdir, writeFile } from 'node:fs/promises'
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright')
-const origin = process.env.UI_ORIGIN || 'http://127.0.0.1:5190'
-assert(['localhost', '127.0.0.1'].includes(new URL(origin).hostname), 'This harness creates local guest test builds only.')
-const output = process.env.UI_OUTPUT || '/tmp/brick-refinement-ui'
-await mkdir(output, { recursive: true })
-const browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) })
+import { writeFile } from 'node:fs/promises'
+import { hostSnapshot, launchOptions, loadChromium, localOrigin, outputDir } from './lib/env.mjs'
+const chromium = await loadChromium()
+const origin = localOrigin('UI_ORIGIN', 'http://127.0.0.1:5190', 'this harness creates local guest test builds only.')
+const output = await outputDir('UI_OUTPUT', '/tmp/brick-refinement-ui')
+const browser = await chromium.launch(launchOptions())
 const results = []
 try {
   for (const [width, height, touch] of [[1366,768,false],[1024,768,false],[768,1024,false],[390,844,true],[320,740,true],[844,390,true]]) {
@@ -64,6 +66,6 @@ try {
     }
     await context.close()
   }
-  await writeFile(`${output}/results.json`, JSON.stringify(results,null,2))
+  await writeFile(`${output}/results.json`, JSON.stringify({checkedAt:new Date().toISOString(),origin,host:hostSnapshot(),results},null,2))
   console.log(JSON.stringify({result:'passed',output,results},null,2))
 } finally { await browser.close() }

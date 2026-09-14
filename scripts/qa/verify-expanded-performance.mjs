@@ -1,9 +1,16 @@
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/Users/ahmaadidrees/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs')
-import {mkdir,writeFile} from 'node:fs/promises'
-const origin='http://127.0.0.1:5190', output='/tmp/brick-expanded-performance'
-await mkdir(output,{recursive:true})
-const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'})
-const report={timestamp:new Date().toISOString(),origin,scenes:[]}
+/**
+ * Expanded-world geometry, physics and frame-cadence rehearsal against a local Vite dev server.
+ * Environment: PLAYWRIGHT_MODULE, CHROME_PATH, UI_ORIGIN (localhost only: the harness replaces the guest
+ * document through the store), UI_OUTPUT. Host load is recorded before and after so noisy runs can be repeated.
+ * See docs/brand/qa/README.md and docs/classroom/EXPANDED-PERFORMANCE-QA.md.
+ */
+import {writeFile} from 'node:fs/promises'
+import { hostSnapshot, launchOptions, loadChromium, localOrigin, outputDir } from './lib/env.mjs'
+const chromium=await loadChromium()
+const origin=localOrigin('UI_ORIGIN','http://127.0.0.1:5190','the harness replaces the guest document in the loaded store.')
+const output=await outputDir('UI_OUTPUT','/tmp/brick-expanded-performance')
+const browser=await chromium.launch(launchOptions())
+const report={timestamp:new Date().toISOString(),origin,hostBefore:hostSnapshot(),scenes:[]}
 try {
  const context=await browser.newContext({viewport:{width:1366,height:768}})
  const page=await context.newPage(); const errors=[];page.on('pageerror',e=>errors.push(e.message))
@@ -28,4 +35,4 @@ try {
  await page.evaluate(async()=>{window.qaStore.setState({exploreLastSafePosition:{x:0,y:.39,z:5}});const s=window.qaStore.getState();s.requestRespawn()});await page.waitForTimeout(1500);await page.evaluate(()=>window.qaStore.getState().setTouchMove(-.7,-.7,1,true));await page.waitForTimeout(3000);scene.returnLeg=await page.evaluate(()=>{const s=window.qaStore.getState();s.setTouchMove(0,0,0,false);return {status:s.exploreSpawnStatus,position:s.exploreLastSafePosition}});await page.screenshot({path:output+'/'+environmentId+'.png'});scene.errors=[...errors];report.scenes.push(scene);console.log('SCENE',JSON.stringify(scene))
  }
  await context.close()
-}finally{await writeFile(output+'/results.json',JSON.stringify(report,null,2));await browser.close()}
+}finally{report.hostAfter=hostSnapshot();await writeFile(output+'/results.json',JSON.stringify(report,null,2));await browser.close()}
