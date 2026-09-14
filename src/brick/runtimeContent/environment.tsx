@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { ADDITIVE_ENVIRONMENT_BY_ID } from '../environments/index'
 import type {
   EnvironmentContentModule,
@@ -6,8 +6,11 @@ import type {
   EnvironmentSurface,
   LazyEnvironmentRegistration,
 } from '../environments/types'
+import { recordBrickStudioError } from '../errorLog'
 import type { EnvironmentDescriptor } from '../registries'
+import { useBrickStore } from '../store'
 import type { EnvironmentId } from '../types'
+import { RuntimeContentBoundary } from './contentBoundary'
 import { loadRuntimeRegistration, useRuntimeLazySelection } from './lazySelection'
 
 export const CLASSIC_ENVIRONMENT_DESCRIPTOR = {
@@ -22,6 +25,8 @@ export const CLASSIC_ENVIRONMENT_SURFACE: EnvironmentSurface = {
   showStuds: true,
   finish: 'matte',
 }
+
+export const ENVIRONMENT_UNAVAILABLE_TOAST = 'That world could not load, so Classic Studio is showing instead.'
 
 function EmptyEnvironmentSlot(_props: EnvironmentRenderProps) {
   return null
@@ -39,6 +44,12 @@ function environmentRegistration(
 ): LazyEnvironmentRegistration | null {
   if (!environmentId || environmentId === 'classic') return null
   return ADDITIVE_ENVIRONMENT_BY_ID.get(environmentId) ?? null
+}
+
+/** Default failure handler shared by every environment slot. */
+export function reportRuntimeEnvironmentFailure(error: unknown) {
+  recordBrickStudioError('boundary', error, 'World failed to load.')
+  useBrickStore.setState({ toast: ENVIRONMENT_UNAVAILABLE_TOAST })
 }
 
 export type RuntimeEnvironment = {
@@ -72,6 +83,32 @@ export function useRuntimeEnvironment(
   }
 }
 
+export type RuntimeEnvironmentBoundaryProps = {
+  /** Usually the resolved environment id: only a different world retries the slot. */
+  resetKey?: unknown
+  /** Procedural stand-in for the slot. The classic module renders nothing, so null is the default. */
+  fallback?: ReactNode
+  onError?: (error: unknown) => void
+  children?: ReactNode
+}
+
+/**
+ * Keeps a world that throws while rendering from unmounting the scene. Chunk failures
+ * are handled earlier by lazySelection, which already falls back to Classic Studio.
+ */
+export function RuntimeEnvironmentBoundary({
+  resetKey,
+  fallback = null,
+  onError = reportRuntimeEnvironmentFailure,
+  children,
+}: RuntimeEnvironmentBoundaryProps) {
+  return (
+    <RuntimeContentBoundary resetKey={resetKey} fallback={fallback} onError={onError}>
+      {children}
+    </RuntimeContentBoundary>
+  )
+}
+
 export type RuntimeEnvironmentSlotProps = EnvironmentRenderProps & {
   environmentId: EnvironmentId | null | undefined
 }
@@ -82,11 +119,13 @@ export function RuntimeEnvironmentRig({
   compact,
   reducedMotion,
 }: RuntimeEnvironmentSlotProps) {
-  const { Rig } = useRuntimeEnvironment(environmentId)
+  const { Rig, resolvedId } = useRuntimeEnvironment(environmentId)
   return (
-    <Suspense fallback={null}>
-      <Rig compact={compact} reducedMotion={reducedMotion} />
-    </Suspense>
+    <RuntimeEnvironmentBoundary resetKey={resolvedId}>
+      <Suspense fallback={null}>
+        <Rig compact={compact} reducedMotion={reducedMotion} />
+      </Suspense>
+    </RuntimeEnvironmentBoundary>
   )
 }
 
@@ -96,11 +135,13 @@ export function RuntimeEnvironmentWorld({
   compact,
   reducedMotion,
 }: RuntimeEnvironmentSlotProps) {
-  const { World } = useRuntimeEnvironment(environmentId)
+  const { World, resolvedId } = useRuntimeEnvironment(environmentId)
   return (
-    <Suspense fallback={null}>
-      <World compact={compact} reducedMotion={reducedMotion} />
-    </Suspense>
+    <RuntimeEnvironmentBoundary resetKey={resolvedId}>
+      <Suspense fallback={null}>
+        <World compact={compact} reducedMotion={reducedMotion} />
+      </Suspense>
+    </RuntimeEnvironmentBoundary>
   )
 }
 

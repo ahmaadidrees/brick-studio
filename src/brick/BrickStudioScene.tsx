@@ -109,7 +109,9 @@ import { draftFromSurfacePoint } from './surfacePlacement'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { selectionDrafts, selectionDraftIsValid, useBrickStore } from './store'
 import {
+  ENVIRONMENT_UNAVAILABLE_TOAST,
   RuntimeCharacterAvatar,
+  RuntimeEnvironmentBoundary,
   useRuntimeEnvironment,
   type RuntimeEnvironment,
 } from './runtimeContent'
@@ -1666,9 +1668,11 @@ function ExploreScene({
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
         <Baseplate surface={environment.surface} explore />
       </RigidBody>
-      <Suspense fallback={null}>
-        <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
-      </Suspense>
+      <RuntimeEnvironmentBoundary resetKey={environment.resolvedId}>
+        <Suspense fallback={null}>
+          <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
+        </Suspense>
+      </RuntimeEnvironmentBoundary>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
       <RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} />
       <ExplorerAvatar
@@ -1754,7 +1758,7 @@ function RuntimeSceneContent({
 
   useEffect(() => {
     if (!environment.error) return
-    useBrickStore.setState({ toast: 'That world could not load, so Classic Studio is showing instead.' })
+    useBrickStore.setState({ toast: ENVIRONMENT_UNAVAILABLE_TOAST })
   }, [environment.error])
 
   useEffect(() => {
@@ -1770,10 +1774,12 @@ function RuntimeSceneContent({
       {usesClassicEnvironmentRig(environment.resolvedId)
         ? <ClassicStudioRig compact={compact} />
         : (
-            <Suspense fallback={<ClassicStudioRig compact={compact} />}>
-              <EnvironmentRig compact={compact} reducedMotion={reducedMotion} mode={mode} />
-              {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
-            </Suspense>
+            <RuntimeEnvironmentBoundary resetKey={environment.resolvedId} fallback={<ClassicStudioRig compact={compact} />}>
+              <Suspense fallback={<ClassicStudioRig compact={compact} />}>
+                <EnvironmentRig compact={compact} reducedMotion={reducedMotion} mode={mode} />
+                {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
+              </Suspense>
+            </RuntimeEnvironmentBoundary>
           )}
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} showStudioGround={usesClassicEnvironmentRig(environment.resolvedId)} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
