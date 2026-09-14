@@ -45,7 +45,7 @@ With a class account:
 
 ## Quick start
 
-Requires **Node 22** (the version CI uses; an `.nvmrc` / `engines` field is being added).
+Requires **Node 22**, pinned by `.nvmrc` and the `engines` field and matching CI.
 
 ```sh
 npm install
