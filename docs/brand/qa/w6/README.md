@@ -33,3 +33,10 @@ Unit-level checks live in `src/brick/characters/*.test.tsx`: one Canvas at DPR [
 hidden or under reduced motion, boundary fallback when the 3D context fails, Apply/Cancel left to the parent sheet
 (`onDraftChange` only, no preference persistence or store writes while drafting), wardrobe persistence in
 `brick-studio.wardrobe.v1` (max 24, failed and blocked storage surfaced), legacy saved profiles resolving.
+
+## Touch targets (W8 D7)
+
+`measure-touch-targets.mjs` (same env vars) opens the character tab at 390×844, 320×740 and 844×390 with mobile
+emulation (`pointer: coarse`), saves one outfit and opens its Remove confirmation, then measures every button, input and
+swatch inside `.character-studio` and prints any under 44×44 (`small`), the preview pills and the Keep locks. Last run:
+96 controls per viewport, `small: []` at all three; pills 64×44 / 87–132×44 / 80×44, locks 75×44.

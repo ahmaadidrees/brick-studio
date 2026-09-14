@@ -116,9 +116,12 @@
   overflow: hidden;
   background: conic-gradient(var(--accent), var(--warning), #7ac07a, var(--primary), #9568c9, var(--accent));
 }
+/* The native picker covers the whole swatch, border included, so the input itself is the full tap target. */
 .character-swatch--custom input {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: -2px;
+  width: auto;
+  height: auto;
   padding: 0;
   border: 0;
   opacity: 0;
@@ -192,7 +195,9 @@
 }
 .character-wardrobe__item[data-favorite] { border-color: var(--primary); background: var(--primary-soft); }
 .character-wardrobe__look {
-  flex: 1;
+  /* Wide enough to stay a real target on 320px phones: the icon and confirm
+     buttons wrap under it instead of squeezing it. */
+  flex: 1 1 160px;
   min-width: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -239,7 +244,16 @@
   .character-wardrobe__save > .ui-button { flex: 1; }
 }
 
+/* Touch: every control in the studio is at least 44×44, including the small
+   (sm) primitives, Keep locks, choice chips, swatches and icon buttons. */
 @media (pointer: coarse) {
+  .character-studio .ui-button,
+  .character-studio .ui-input { min-height: 44px; }
+  .character-studio .ui-button-sm { padding-inline: var(--space-3); }
+  .character-studio .ui-button-icon-only { width: 44px; min-width: 44px; }
+  .character-studio .character-studio__lock { min-height: 44px; min-width: 44px; }
+  .character-studio .appearance-option { min-height: 44px; }
   .character-swatch { width: 44px; height: 44px; }
-  .character-studio .character-studio__lock { min-height: 36px; }
+  .character-look { min-height: 48px; }
+  .character-wardrobe__look { min-height: 44px; }
 }
