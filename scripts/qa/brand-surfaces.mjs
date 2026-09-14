@@ -13,6 +13,7 @@
  *   SCREENSHOT_FORMAT=png|jpeg             default png
  *   STRICT_TOUCH_TARGETS=1                 fail when a touch-viewport control is under 44 CSS px
  *   STRICT_FOCUS=1                         fail when an open dialog does not contain focus
+ *   INCLUDE_PENDING=1                      also run surfaces marked `pending` (none at the moment)
  *
  * Hard checks (fail the run): the surface's expected element is visible, no `pageerror`, no horizontal page
  * overflow, no visible control outside the viewport (vertical position is ignored inside scrollable regions
@@ -57,7 +58,8 @@ const VARIANTS = {
 
 /**
  * Surfaces. `route` is opened first; `ready` must be visible before `steps` run; `expect` (or `expectAny`)
- * must be visible afterwards. `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
+ * must be visible afterwards; `expectPressed` names a toggle that must carry `aria-pressed="true"` (entry-intent
+ * modes). `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
  * keeps the onboarding guide. `scrollable` marks a document that scrolls (landing) so below-the-fold
  * controls are not "outside". `escape` presses Escape after the screenshot and expects `expect` to hide.
  */
@@ -66,9 +68,10 @@ const SURFACES = [
   { id: 'landing-continue', board: '01', route: '/', scrollable: true, seed: 'fixture', expect: 'continueBuilding' },
   { id: 'entry-worlds', board: '03/05', route: '/build?classroom=worlds', ready: 'classroomDialog', expect: 'classroomDialog', escape: true },
   { id: 'entry-save', board: '04', route: '/build?classroom=save', ready: 'classroomDialog', expect: 'classroomDialog', escape: true },
-  { id: 'entry-join', board: '03', route: '/build?classroom=join', ready: 'classroomDialog', expect: 'classroomJoin', escape: true, pending: 'classroom=join intent lands with the brand pass (lead Wave 0)' },
-  { id: 'entry-signin', board: '03', route: '/build?classroom=signin', ready: 'classroomDialog', expect: 'classroomStudentSignIn', escape: true, pending: 'classroom=signin intent lands with the brand pass (lead Wave 0)' },
-  { id: 'entry-teacher', board: '03', route: '/build?classroom=teacher', ready: 'classroomDialog', expect: 'classroomTeacherSignIn', escape: true, pending: 'classroom=teacher intent lands with the brand pass (lead Wave 0)' },
+  // Wave 0 entry intents: the mode is proven by the pressed nav button plus its mode-only field, not by visibility alone.
+  { id: 'entry-join', board: '03', route: '/build?classroom=join', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomJoin', expectAlso: ['enrollmentCode'], escape: true },
+  { id: 'entry-signin', board: '03', route: '/build?classroom=signin', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomStudentSignIn', expectAlso: ['signInCode'], escape: true },
+  { id: 'entry-teacher', board: '03', route: '/build?classroom=teacher', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomTeacherSignIn', expectAlso: ['teacherEmail'], escape: true },
   { id: 'quick-start', board: '06/16', route: '/build', quickStart: true, ready: 'worldMenu', expect: 'quickStart' },
   { id: 'build', board: '06', route: '/build', seed: 'fixture', ready: 'worldMenu', expect: 'exploreMode', expectAlso: ['saveStatus'], settle: 1500 },
   { id: 'build-drawer', board: '06/16', route: '/build', ready: 'worldMenu', steps: [{ clickIfVisible: 'openBrickDrawer' }], expectAny: ['brickDrawer', 'brickDrawerSheet'] },
@@ -140,24 +143,28 @@ const measure = ({ touch, scrollablePage }) => {
     const r = el.getBoundingClientRect()
     return r.width > 1 && r.height > 1
   }
-  const inScrollable = (el) => {
+  // A control is reachable when an ancestor (or the page itself) can scroll it into view on that axis.
+  const inScrollable = (el, axis) => {
     let node = el.parentElement
     while (node && node !== document.body) {
       const cs = getComputedStyle(node)
-      if (/(auto|scroll)/.test(cs.overflowY) && node.scrollHeight > node.clientHeight + 1) return true
+      if (axis === 'y' && /(auto|scroll)/.test(cs.overflowY) && node.scrollHeight > node.clientHeight + 1) return true
+      if (axis === 'x' && /(auto|scroll)/.test(cs.overflowX) && node.scrollWidth > node.clientWidth + 1) return true
       node = node.parentElement
     }
     return false
   }
+  const clipped = (value) => value === 'hidden' || value === 'clip'
+  const pageScrollsY = docEl.scrollHeight > vh + 1 && !clipped(getComputedStyle(docEl).overflowY) && !clipped(getComputedStyle(document.body).overflowY)
   const describe = (el) => (el.getAttribute('aria-label') || el.textContent || el.getAttribute('name') || el.tagName).replace(/\s+/g, ' ').trim().slice(0, 60)
   const selector = 'button, a[href], input:not([type=hidden]), select, textarea, [role=button], [role=tab], [role=radio], [role=menuitem], [role=checkbox], [role=slider], [role=link]'
   const controls = [...document.querySelectorAll(selector)].filter((el) => isVisible(el) && !el.closest('[aria-hidden="true"], [inert]'))
-  const pageScrollable = scrollablePage && docEl.scrollHeight > vh + 1
+  const pageScrollable = pageScrollsY || (scrollablePage && docEl.scrollHeight > vh + 1)
   const outside = [], small = []
   for (const el of controls) {
     const r = el.getBoundingClientRect()
-    const horizontally = r.left < -1 || r.right > vw + 1
-    const vertically = (r.top < -1 || r.bottom > vh + 1) && !pageScrollable && !inScrollable(el)
+    const horizontally = (r.left < -1 || r.right > vw + 1) && !inScrollable(el, 'x')
+    const vertically = (r.top < -1 || r.bottom > vh + 1) && !pageScrollable && !inScrollable(el, 'y')
     const rect = [round(r.left), round(r.top), round(r.width), round(r.height)]
     if (horizontally || vertically) outside.push({ name: describe(el), rect })
     if (touch && el.tagName !== 'A' && (r.width < 44 || r.height < 44)) small.push({ name: describe(el), rect })
@@ -174,7 +181,7 @@ const measure = ({ touch, scrollablePage }) => {
   })
   const active = document.activeElement
   return {
-    viewport: { width: vw, height: vh, devicePixelRatio, scrollWidth: docEl.scrollWidth, scrollHeight: docEl.scrollHeight },
+    viewport: { width: vw, height: vh, devicePixelRatio, scrollWidth: docEl.scrollWidth, scrollHeight: docEl.scrollHeight, pageScrollsY },
     overflowX, controlCount: controls.length, outside, small, dialogs,
     reducedMotionMatches: matchMedia('(prefers-reduced-motion: reduce)').matches,
     runningAnimations: typeof document.getAnimations === 'function' ? document.getAnimations().filter((a) => a.playState === 'running').length : null,
@@ -220,6 +227,10 @@ async function runSurface(browser, surface, viewport, variantId) {
     }
     for (const key of surface.expectAlso ?? []) {
       if (!(await locate(page, key).first().isVisible().catch(() => false))) failures.push(`${key} not visible`)
+    }
+    if (surface.expectPressed) {
+      const pressed = await locate(page, surface.expectPressed).first().getAttribute('aria-pressed').catch(() => null)
+      if (pressed !== 'true') failures.push(`${surface.expectPressed} is not pressed (aria-pressed=${JSON.stringify(pressed)})`)
     }
     if (surface.selectedTab) {
       const selected = await page.getByRole('tab', { selected: true }).first().textContent().catch(() => null)

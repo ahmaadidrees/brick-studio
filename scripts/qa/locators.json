@@ -213,5 +213,44 @@
   "showBrickProperties": {
     "role": "button",
     "name": "Show brick properties"
+  },
+  "enrollmentCode": {
+    "label": "Enrollment code"
+  },
+  "signInCode": {
+    "label": "Sign-in code"
+  },
+  "teacherEmail": {
+    "label": "Email"
+  },
+  "brandHome": {
+    "role": "link",
+    "name": "Brickgineers"
+  },
+  "people": {
+    "role": "button",
+    "name": {
+      "regex": "^People"
+    }
+  },
+  "share": {
+    "role": "button",
+    "name": "Share"
+  },
+  "room": {
+    "role": "button",
+    "name": "Room"
+  },
+  "joinRoom": {
+    "role": "button",
+    "name": "Join the room"
+  },
+  "exportCopy": {
+    "role": "button",
+    "name": "Export copy"
+  },
+  "copyInvite": {
+    "role": "button",
+    "name": "Copy invite link"
   }
 }
