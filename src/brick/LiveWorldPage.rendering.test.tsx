@@ -19,6 +19,8 @@ vi.mock('./BrickStudioApp', () => ({
     return <>
       <div>Build tools</div>
       <output aria-label="Editor connection">{props.livePolicy?.connection}</output>
+      {/* Mirrors the real header's People entry (BrickStudioLivePolicy.onOpenPeople). */}
+      <button aria-label={`People, ${props.livePolicy?.peopleCount ?? 0} ${props.livePolicy?.connection === 'online' ? 'here' : 'last seen'}`} onClick={props.livePolicy?.onOpenPeople}>People</button>
       <output aria-label="Editor environment">{props.contentPolicy?.environmentId}</output>
       <button onClick={() => props.raceScene?.onLocalAvatarPose?.({
         position: [3, 4, 5], facingYaw: 1, horizontalSpeed: 2, grounded: false,
@@ -81,8 +83,8 @@ async function openWorld(guest = false, deliverPoseBeforeSubscription = false) {
     connectRoom={connectRoom}
     fetchWorldSummary={fetchWorldSummary} />)
   if (guest) {
-    fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Alex' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Join the room' }))
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Alex' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Join world' }))
   }
   await screen.findByText('Build tools')
   // The async account preflight can paint the editor before React installs its
@@ -137,7 +139,7 @@ it('still delivers reconnect, room admission, document changes and rejection not
   expect(screen.getByText('Reconnecting to the room')).toBeInTheDocument()
   act(() => room.emit({ connection: 'online', locked: true, mode: 'build' }))
   expect(screen.getByLabelText('Editor connection')).toHaveTextContent('online')
-  fireEvent.click(screen.getByRole('button', { name: 'Room' }))
+  fireEvent.click(screen.getByRole('button', { name: /^People, \d+ here$/ }))
   expect(screen.getByText('New people cannot join right now.')).toBeInTheDocument()
   act(() => room.emit({ document: createBrickStudioDocument([], { environmentId: 'brick-valley' }), revision: 2 }))
   expect(screen.getByLabelText('Editor environment')).toHaveTextContent('brick-valley')

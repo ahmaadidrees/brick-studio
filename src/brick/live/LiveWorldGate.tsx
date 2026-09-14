@@ -1,6 +1,7 @@
-import { Crown, Link2, Radio, Users } from 'lucide-react'
+import { ArrowLeft, GraduationCap, Play, Users } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Button, TextField } from '../../ui'
 import { LIVE_MAX_DISPLAY_NAME_LENGTH, LIVE_MAX_PLAYERS } from '../liveProtocol'
 import { displayNameError, formatLivePlayerCount, normalizeDisplayName } from './liveRoomModel'
 
@@ -11,7 +12,7 @@ export type LiveWorldGateSubmit = {
   displayName: string
   /** Room title; only meaningful for `kind: 'create'`. */
   title: string
-  /** Seed the room with the local Brick Studio build instead of an empty plate. */
+  /** Seed the room with the local build instead of an empty plate. */
   seedFromCurrentBuild: boolean
 }
 
@@ -32,7 +33,11 @@ export type LiveWorldGateProps = {
   onSubmit: (value: LiveWorldGateSubmit) => void
 }
 
-/** Display-name entry for guests plus room set-up for owners — the only doorway into a live session. */
+/**
+ * The only doorway into a guest room (board 11): owners name the room and pick the seed
+ * build; recipients enter a name. Guest rooms are temporary and need no account; the
+ * classroom sign-in link keeps the account path one tap away without mixing the two.
+ */
 export function LiveWorldGate({
   kind,
   roomTitle,
@@ -45,15 +50,14 @@ export function LiveWorldGate({
   errorMessage,
   onSubmit,
 }: LiveWorldGateProps) {
-  const nameId = useId()
-  const nameHintId = useId()
-  const titleId = useId()
+  const seedId = useId()
   const [name, setName] = useState(defaultDisplayName ?? '')
   const [title, setTitle] = useState(defaultTitle ?? LIVE_ROOM_DEFAULT_TITLE)
   const [seedFromCurrentBuild, setSeedFromCurrentBuild] = useState(true)
   const [localError, setLocalError] = useState<string | null>(null)
   const creating = kind === 'create'
   const shownError = localError ?? errorMessage ?? null
+  const seedChoice = creating && seedBrickCount != null && seedBrickCount > 0
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -67,74 +71,60 @@ export function LiveWorldGate({
     onSubmit({
       displayName,
       title: creating ? (title.trim().slice(0, LIVE_ROOM_TITLE_MAX_LENGTH).trim() || LIVE_ROOM_DEFAULT_TITLE) : '',
-      seedFromCurrentBuild: creating && seedBrickCount != null && seedBrickCount > 0 && seedFromCurrentBuild,
+      seedFromCurrentBuild: seedChoice && seedFromCurrentBuild,
     })
   }
 
   return (
-    <section className="live-gate-card">
-      <span className="live-eyebrow">{creating ? 'Live rooms' : 'Live room invite'}</span>
+    <section className="live-gate-card" aria-busy={busy || undefined}>
+      <span className="live-eyebrow">{creating ? 'Build together' : 'Shared world invite'}</span>
       <h1>
         {creating
-          ? 'Start a live build room'
+          ? 'Build together.'
           : returningOwner
-            ? 'Welcome back, room owner'
+            ? 'Welcome back, room owner.'
             : roomTitle
-              ? `Join “${roomTitle}”`
-              : 'Join this live room'}
+              ? `Join ${roomTitle}.`
+              : 'Join this shared world.'}
       </h1>
-      {creating ? (
-        <ul className="live-gate-points">
-          <li><Link2 size={14} aria-hidden="true" />Friends join instantly from one shared link — no accounts.</li>
-          <li><Users size={14} aria-hidden="true" />Up to {LIVE_MAX_PLAYERS} builders can be in the room together.</li>
-          <li><Crown size={14} aria-hidden="true" />You stay in charge of Build/Explore mode and whether new people can join.</li>
-        </ul>
-      ) : (
-        <p className="live-gate-subline">
-          <Radio size={14} aria-hidden="true" />
-          {playerCount != null
-            ? `${formatLivePlayerCount(playerCount)} inside right now.`
-            : 'Pick a builder name and hop in.'}
-        </p>
-      )}
-      <p className="live-retention-note">
-        <strong>Temporary room.</strong> Expires after 2 hours without activity. Use Share → Export copy before you leave to keep your build.
+      <p className="live-gate-lead">
+        {creating
+          ? 'Start a shared world from this build.'
+          : playerCount != null
+            ? `${formatLivePlayerCount(playerCount)} inside right now. Enter your name to join.`
+            : 'Enter your name to join this shared world.'}
       </p>
       <form className="live-gate-form" onSubmit={submit}>
         {creating && (
-          <div className="live-field">
-            <label htmlFor={titleId}>Room name</label>
-            <input
-              id={titleId}
-              value={title}
-              maxLength={LIVE_ROOM_TITLE_MAX_LENGTH}
-              disabled={busy}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          </div>
-        )}
-        <div className="live-field">
-          <label htmlFor={nameId}>Your builder name</label>
-          <input
-            id={nameId}
-            value={name}
-            maxLength={LIVE_MAX_DISPLAY_NAME_LENGTH}
-            autoFocus={!defaultDisplayName}
+          <TextField
+            label="World name"
+            value={title}
+            maxLength={LIVE_ROOM_TITLE_MAX_LENGTH}
             disabled={busy}
-            aria-describedby={nameHintId}
-            aria-invalid={shownError ? true : undefined}
-            onChange={(event) => {
-              setName(event.target.value)
-              setLocalError(null)
-            }}
+            autoComplete="off"
+            onChange={(event) => setTitle(event.target.value)}
           />
-          <small id={nameHintId}>Everyone in the room sees this name.</small>
-        </div>
-        {creating && seedBrickCount != null && seedBrickCount > 0 && (
+        )}
+        <TextField
+          label="Your name"
+          hint="Everyone in the room sees this name."
+          value={name}
+          maxLength={LIVE_MAX_DISPLAY_NAME_LENGTH}
+          autoFocus={!defaultDisplayName}
+          disabled={busy}
+          autoComplete="nickname"
+          error={shownError ?? undefined}
+          onChange={(event) => {
+            setName(event.target.value)
+            setLocalError(null)
+          }}
+        />
+        {seedChoice && (
           <fieldset className="live-seed-choice" disabled={busy}>
             <legend>Starting world</legend>
-            <label>
+            <label htmlFor={`${seedId}-current`}>
               <input
+                id={`${seedId}-current`}
                 type="radio"
                 name="live-seed"
                 checked={seedFromCurrentBuild}
@@ -142,8 +132,9 @@ export function LiveWorldGate({
               />
               <span>My current build <small>({seedBrickCount} {seedBrickCount === 1 ? 'brick' : 'bricks'})</small></span>
             </label>
-            <label>
+            <label htmlFor={`${seedId}-empty`}>
               <input
+                id={`${seedId}-empty`}
                 type="radio"
                 name="live-seed"
                 checked={!seedFromCurrentBuild}
@@ -153,14 +144,36 @@ export function LiveWorldGate({
             </label>
           </fieldset>
         )}
-        {shownError && <p className="live-gate-error" role="alert">{shownError}</p>}
-        <button className="live-primary-button" type="submit" disabled={busy}>
-          {busy
-            ? creating ? 'Creating your room…' : 'Joining…'
-            : creating ? 'Create my live room' : returningOwner ? 'Rejoin as owner' : 'Join the room'}
-        </button>
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          fullWidth
+          icon={creating ? <Play size={18} /> : <Users size={18} />}
+          loading={busy}
+          loadingLabel={creating ? 'Creating your world…' : 'Joining…'}
+        >
+          {creating ? 'Create shared world' : returningOwner ? 'Rejoin as owner' : 'Join world'}
+        </Button>
+        <p className="live-gate-reassurance">
+          {creating
+            ? `No account needed. Guest rooms are temporary and hold up to ${LIVE_MAX_PLAYERS} builders.`
+            : 'You can join as a guest.'}
+        </p>
       </form>
-      <a className="live-quiet-link" href="/">Back to Brick Studio</a>
+      <p className="live-retention-note">
+        <strong>Temporary room.</strong> Expires after 2 hours without activity. Download a copy from People before you leave to keep your build.
+      </p>
+      <div className="live-gate-footer">
+        {creating ? (
+          <Button variant="secondary" fullWidth icon={<ArrowLeft size={16} />} onClick={() => window.location.assign('/build')}>Keep building</Button>
+        ) : (
+          <a className="live-gate-classroom" href="/build?classroom=signin">
+            <GraduationCap size={18} aria-hidden="true" />
+            <span><strong>Classroom sign in</strong><small>Use your teacher’s sign-in code.</small></span>
+          </a>
+        )}
+      </div>
     </section>
   )
 }

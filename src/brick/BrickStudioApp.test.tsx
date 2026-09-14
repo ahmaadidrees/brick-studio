@@ -201,8 +201,10 @@ describe('single-brick inspector', () => {
     useBrickStore.setState({ activeColor: BRICK_COLORS[5], selectedIds: [redBrick.id], selectedId: redBrick.id })
     render(<BrickStudioApp />)
 
-    const red = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
-    const blue = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })
+    // The drawer carries its own palette now, so assert against the inspector's copy.
+    const inspector = () => within(screen.getByRole('complementary', { name: 'Brick inspector' }))
+    const red = inspector().getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
+    const blue = inspector().getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })
     expect(red).toHaveAttribute('aria-pressed', 'true')
     expect(blue).toHaveAttribute('aria-pressed', 'false')
 
@@ -218,8 +220,8 @@ describe('single-brick inspector', () => {
       expect(useBrickStore.getState().restoreDocument(createBrickStudioDocument([restored]))).toEqual({ ok: true })
       useBrickStore.getState().selectBrick(restored.id)
     })
-    expect(screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })).toHaveAttribute('aria-pressed', 'false')
+    expect(inspector().getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })).toHaveAttribute('aria-pressed', 'true')
+    expect(inspector().getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })).toHaveAttribute('aria-pressed', 'false')
   })
 })
 
@@ -239,7 +241,7 @@ describe('multi-selection feedback and controls', () => {
     expect(screen.getByRole('button', { name: 'Copy 2 selected bricks' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Rotate brick' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Use color #e7473c' }))
+    fireEvent.click(within(screen.getByRole('complementary', { name: '2 bricks selected' })).getByRole('button', { name: 'Use color #e7473c' }))
     expect(useBrickStore.getState().bricks.every((brick) => brick.color === '#e7473c')).toBe(true)
     expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Recolor 2 bricks')
   })
@@ -303,7 +305,7 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByText('Drag the selected brick to move it. Use arrows for precise steps.')).toBeInTheDocument()
 
     const actions = screen.getByRole('group', { name: 'Brick editing actions' })
-    const firstPaletteControl = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
+    const firstPaletteControl = within(screen.getByRole('complementary', { name: 'Brick inspector' })).getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
     expect(actions.compareDocumentPosition(firstPaletteControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     for (const name of ['Duplicate brick', 'Focus selected brick', 'Copy brick', 'Delete brick']) {
       expect(actions).toContainElement(screen.getByRole('button', { name }))
@@ -327,7 +329,7 @@ describe('Brick Studio responsive controls', () => {
 
     expect(properties.scrollTop).toBe(0)
     const actions = screen.getByRole('group', { name: 'Brick editing actions' })
-    const firstPaletteControl = screen.getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
+    const firstPaletteControl = within(screen.getByRole('complementary', { name: 'Brick inspector' })).getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
     expect(actions.compareDocumentPosition(firstPaletteControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
@@ -627,10 +629,10 @@ describe('compact touch layout', () => {
     const { container } = render(<BrickStudioApp />)
 
     expect(container.querySelector('.part-library')).toBeNull()
-    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Bricks' })).not.toBeInTheDocument()
     const fab = openSheet()
 
-    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    const sheet = screen.getByRole('dialog', { name: 'Bricks' })
     expect(sheet).toHaveAttribute('aria-modal', 'true')
     expect(fab).toHaveAttribute('aria-expanded', 'true')
     expect(document.activeElement).toBe(sheet)
@@ -638,7 +640,7 @@ describe('compact touch layout', () => {
 
     fireEvent.click(within(sheet).getByTitle('Door Frame'))
     expect(useBrickStore.getState().draft).toMatchObject({ partId: 'door_1x4' })
-    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Bricks' })).not.toBeInTheDocument()
     expect(document.activeElement).toBe(fab)
   })
 
@@ -649,13 +651,13 @@ describe('compact touch layout', () => {
     const armed = useBrickStore.getState().draft
 
     fireEvent.keyDown(document.body, { key: 'Escape' })
-    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Bricks' })).not.toBeInTheDocument()
     expect(useBrickStore.getState().draft).toEqual(armed)
     expect(document.activeElement).toBe(fab)
 
     fireEvent.click(fab)
     fireEvent.pointerDown(screen.getByTestId('brick-sheet-backdrop'))
-    expect(screen.queryByRole('dialog', { name: 'Choose a shape' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Bricks' })).not.toBeInTheDocument()
   })
 
   it('recolors the live selection from the sheet palette', () => {
@@ -665,7 +667,7 @@ describe('compact touch layout', () => {
     act(() => useBrickStore.getState().selectBrick(brick.id))
     openSheet()
 
-    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    const sheet = screen.getByRole('dialog', { name: 'Bricks' })
     fireEvent.click(within(sheet).getByRole('button', { name: `Use color ${BRICK_COLORS[3]}` }))
     expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[3])
   })
@@ -732,7 +734,7 @@ describe('compact touch layout', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Recolor brick' }))
     expect(screen.getByRole('button', { name: 'Open brick drawer' })).toHaveAttribute('aria-expanded', 'true')
-    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    const sheet = screen.getByRole('dialog', { name: 'Bricks' })
     fireEvent.click(within(sheet).getByRole('button', { name: `Use color ${BRICK_COLORS[3]}` }))
 
     expect(useBrickStore.getState().bricks[0].color).toBe(BRICK_COLORS[3])
@@ -758,7 +760,7 @@ describe('compact touch layout', () => {
       ])
 
     fireEvent.click(within(pill).getByRole('button', { name: 'Recolor 2 selected bricks' }))
-    const sheet = screen.getByRole('dialog', { name: 'Choose a shape' })
+    const sheet = screen.getByRole('dialog', { name: 'Bricks' })
     expect(within(sheet).getByText('Color all 2')).toBeInTheDocument()
     fireEvent.click(within(sheet).getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` }))
 
@@ -914,7 +916,7 @@ describe('Builder Experience Alpha shell', () => {
     expect(onNewBuild).toHaveBeenCalledOnce()
 
     openMenu()
-    fireEvent.click(screen.getByRole('menuitem', { name: /Export/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Download build/ }))
     expect(onExportProject).toHaveBeenCalledOnce()
 
     openMenu()
@@ -923,7 +925,7 @@ describe('Builder Experience Alpha shell', () => {
 
     openMenu()
     const file = new File(['{"schemaVersion":1}'], 'world.brickstudio.json', { type: 'application/json' })
-    fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Choose Brickgineers project file'), { target: { files: [file] } })
     expect(onImportProject).toHaveBeenCalledWith(file)
   })
 
@@ -1002,7 +1004,7 @@ describe('Builder Experience Alpha shell', () => {
     Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue('{bad') })
 
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
-    fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Choose Brickgineers project file'), { target: { files: [file] } })
 
     await waitFor(() => expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('not valid JSON'))
     expect(useBrickStore.getState().bricks).toEqual([brick])
@@ -1018,7 +1020,7 @@ describe('Builder Experience Alpha shell', () => {
     render(<BrickStudioApp />)
 
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: /Export/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Download build/ }))
 
     expect(createObjectURL).toHaveBeenCalledOnce()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:brick-studio')

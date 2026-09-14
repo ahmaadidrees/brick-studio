@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Download, GraduationCap, Hammer, Lock, RefreshCw } from 'lucide-react'
+import { Button } from '../../ui'
 import type { BrickStudioDocument } from '../brickDocument'
 import { downloadBrickStudioDocument } from '../documentPersistence'
 import type { LiveRoomActions, LiveRoomUiSnapshot } from './liveRoomModel'
 import { LiveStatusChip } from './LiveStatusChip'
 
 /**
- * Presentational state cards for the live world page: blocked/loading gates,
+ * Presentational state cards for the live world page (board 15): blocked/loading gates,
  * the opening-room wait and the classroom-access-changed recovery card.
  * LiveWorldPage owns the transport and decides which of these to show.
  */
@@ -21,15 +23,27 @@ export async function exportLiveWorldCopy(document: BrickStudioDocument, recover
   return 'Download started. Keep the .brickstudio file to reopen this copy later with Import.'
 }
 
-export function BlockedView({ heading, message, onRetry }: { heading: string; message: string; onRetry?: () => void }) {
+/** Go to the builder; the guest draft there is untouched by whatever room this page was about. */
+function BuilderLink({ label = 'Go to builder', quiet = false }: { label?: string; quiet?: boolean }) {
+  return <a className={quiet ? 'live-quiet-link' : 'ui-button ui-button-secondary ui-button-md live-builder-link'} href="/build">{quiet ? label : <><Hammer size={16} aria-hidden="true" /><span>{label}</span></>}</a>
+}
+
+export type BlockedViewAction = { label: string; onClick: () => void }
+
+export function BlockedView({ heading, message, onRetry, action }: { heading: string; message: string; onRetry?: () => void; action?: BlockedViewAction }) {
+  const closed = /closed|full|sign-in/i.test(heading)
   return (
     <main className="live-world-page">
-      <section className="live-gate-card live-blocked-card">
-        <span className="live-eyebrow">Live rooms</span>
-        <h1>{heading}</h1>
+      <section className="live-gate-card live-blocked-card" aria-labelledby="live-blocked-title">
+        <span className={`live-state-icon${closed ? ' live-state-icon-warn' : ''}`} aria-hidden="true">{closed ? <Lock size={22} /> : <RefreshCw size={22} />}</span>
+        <span className="live-eyebrow">Shared worlds</span>
+        <h1 id="live-blocked-title">{heading}</h1>
         <p>{message}</p>
-        {onRetry && <button className="live-primary-button" type="button" onClick={onRetry}>Try again</button>}
-        <a className="live-quiet-link" href="/build">Open Brick Studio</a>
+        <div className="live-state-actions">
+          {action && <Button variant="primary" icon={<GraduationCap size={16} />} onClick={action.onClick}>{action.label}</Button>}
+          {onRetry && <Button variant={action ? 'secondary' : 'primary'} icon={<RefreshCw size={16} />} onClick={onRetry}>Try again</Button>}
+          <BuilderLink />
+        </div>
       </section>
     </main>
   )
@@ -39,12 +53,13 @@ export function OpeningRoomView({ title, snapshot, actions }: { title: string; s
   return (
     <main className="live-world-page">
       <section className="live-gate-card live-blocked-card" aria-busy={snapshot.connection !== 'offline'}>
-        <span className="live-eyebrow">Live room</span>
+        <span className="live-eyebrow">Shared world</span>
         <h1>Opening {title}…</h1>
+        <p>Just a moment while we get things ready.</p>
         <LiveStatusChip connection={snapshot.connection} syncing={snapshot.syncing}
           onReconnect={actions.reconnect} sessionReplaced={snapshot.notice?.code === 'session_replaced'} pendingOperations={snapshot.pendingOperations} />
         {snapshot.notice && <p className="live-gate-error" role="alert">{snapshot.notice.message}</p>}
-        <a className="live-quiet-link" href="/build">Leave and open Brick Studio</a>
+        <BuilderLink label="Leave and go to builder" quiet />
       </section>
     </main>
   )
@@ -71,8 +86,8 @@ export function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: Li
     <h1>Classroom access changed</h1>
     <p>{snapshot.notice?.message || 'Ask your teacher to check your access to this world.'}</p>
     {draft && <>
-      <p>{hasPending || snapshot.recoveryDocument ? 'Keep a copy of your earlier changes before leaving. Some changes may not be in the shared world.' : 'You can still export the build already loaded in this tab.'}</p>
-      <button type="button" className="live-primary-button" disabled={busy} onClick={async () => {
+      <p>{hasPending || snapshot.recoveryDocument ? 'Keep a copy of your earlier changes before leaving. Some changes may not be in the shared world.' : 'You can still download the build already loaded in this tab.'}</p>
+      <Button variant="primary" icon={<Download size={16} />} disabled={busy} onClick={async () => {
         if (busy) return
         setBusy(true); setMessage('')
         try {
@@ -81,13 +96,13 @@ export function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: Li
         }
         catch (reason) { setMessage(friendlyReason(reason)) }
         finally { setBusy(false) }
-      }}>Download recovery copy</button>
+      }}>Download recovery copy</Button>
       {(snapshot.recoveryDocumentCount ?? 0) > 1 && <p>{snapshot.recoveryDocumentCount} recovery copies remain. Download each before leaving.</p>}
-      {snapshot.recoveryDocument && draft === exportedDraft && !hasPending && actions.dismissRecovery && <button type="button" className="live-primary-button" onClick={actions.dismissRecovery}>I have my copy</button>}
+      {snapshot.recoveryDocument && draft === exportedDraft && !hasPending && actions.dismissRecovery && <Button variant="secondary" onClick={actions.dismissRecovery}>I have my copy</Button>}
     </>}
     {currentDraft && <>
       <p>You also have newer changes in this tab. Download this current draft as a separate copy.</p>
-      <button type="button" className="live-primary-button" disabled={busy} onClick={async () => {
+      <Button variant="secondary" icon={<Download size={16} />} disabled={busy} onClick={async () => {
         if (busy) return
         setBusy(true); setMessage('')
         try {
@@ -97,10 +112,10 @@ export function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: Li
           setMessage('Current draft download started. The shared world has not confirmed these changes.')
         } catch (reason) { setMessage(friendlyReason(reason)) }
         finally { setBusy(false) }
-      }}>Download current draft</button>
+      }}>Download current draft</Button>
     </>}
     {message && <p role="status">{message}</p>}
-    {actions.reconnect && <button type="button" className="live-primary-button" disabled={snapshot.connection !== 'offline'} onClick={actions.reconnect}>Try reconnecting</button>}
-    <a className="live-quiet-link" href="/build">Open Brick Studio</a>
+    {actions.reconnect && <Button variant="secondary" icon={<RefreshCw size={16} />} disabled={snapshot.connection !== 'offline'} onClick={actions.reconnect}>Try reconnecting</Button>}
+    <BuilderLink quiet />
   </section></main>
 }
