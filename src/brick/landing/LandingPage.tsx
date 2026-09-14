@@ -9,7 +9,8 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
-import { useId } from 'react'
+import { useId, useState } from 'react'
+import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
 import type { ReactNode } from 'react'
 import { BrickMark, HeroDiorama } from './LandingArt'
 import './landing.css'
@@ -38,11 +39,11 @@ function SectionHeading({ eyebrow, title, lede, id }: { eyebrow: string; title: 
   )
 }
 
-function CtaPair({ studioHref, liveHref, compact }: { studioHref: string; liveHref: string; compact?: boolean }) {
+function CtaPair({ studioHref, liveHref, compact, continueBuild }: { studioHref: string; liveHref: string; compact?: boolean; continueBuild?: boolean }) {
   return (
     <p className={compact ? 'landing-cta-row landing-cta-row-compact' : 'landing-cta-row'}>
       <a className="landing-cta landing-cta-primary" href={studioHref}>
-        Start building
+        {continueBuild ? 'Continue building' : 'Start building'}
         <ArrowRight size={16} aria-hidden="true" />
       </a>
       <a className="landing-cta landing-cta-secondary" href={liveHref}>
@@ -102,6 +103,9 @@ const WORLD_TILES = [
 const SWATCHES = ['#e7473c', '#f0be54', '#31a06c', '#3e83d7', '#8d6bd9'] as const
 
 export function LandingPage({ studioHref = '/build', liveHref = '/live/new', className }: LandingPageProps) {
+  const [continueBuild] = useState(() => {
+    try { return window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY) !== null } catch { return false }
+  })
   const mainId = useId()
   const stepsId = useId()
   const liveId = useId()
@@ -144,7 +148,7 @@ export function LandingPage({ studioHref = '/build', liveHref = '/live/new', cla
               castles and obstacle courses, explore them as your own character, and invite the whole
               class to build with you in a shared world.
             </p>
-            <CtaPair studioHref={studioHref} liveHref={liveHref} />
+            <CtaPair continueBuild={continueBuild} studioHref={studioHref} liveHref={liveHref} />
             <p className="landing-hero-trust">
               Build and share a guest room without an account. Join your class to save online. No installs.
             </p>
@@ -281,7 +285,7 @@ export function LandingPage({ studioHref = '/build', liveHref = '/live/new', cla
         <section className="landing-finale" aria-labelledby={finaleId}>
           <h2 id={finaleId}>Ready when you are</h2>
           <p>Start with one brick. See where it takes you.</p>
-          <CtaPair studioHref={studioHref} liveHref={liveHref} compact />
+          <CtaPair continueBuild={continueBuild} studioHref={studioHref} liveHref={liveHref} compact />
         </section>
       </main>
 

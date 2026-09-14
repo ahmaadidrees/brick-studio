@@ -24,6 +24,7 @@ import './world-character-sheet.css'
  */
 export type WorldAndCharacterSheetProps = {
   open: boolean
+  initialTab?: 'environment' | 'character'
   environmentDescriptors: readonly EnvironmentDescriptor[]
   characterDescriptors: readonly CharacterDescriptor[]
   /** The app's committed selection; seeds the draft each time the sheet opens. */
@@ -54,6 +55,7 @@ function focusableElements(panel: HTMLElement): HTMLElement[] {
 
 export function WorldAndCharacterSheet({
   open,
+  initialTab = 'environment',
   environmentDescriptors,
   characterDescriptors,
   selection,
@@ -95,8 +97,8 @@ export function WorldAndCharacterSheet({
       environments: seed.environmentDescriptors,
       characters: seed.characterDescriptors,
     }))
-    setActiveTab('environment')
-  }, [open])
+    setActiveTab(initialTab)
+  }, [open, initialTab])
 
   useEffect(() => {
     if (open) onDraftChange?.({ ...draft, palette: { ...draft.palette } })
@@ -196,7 +198,7 @@ export function WorldAndCharacterSheet({
             tabIndex={activeTab === 'environment' ? 0 : -1}
             aria-controls={tabPanelId}
             aria-selected={activeTab === 'environment'}
-            onClick={() => setActiveTab('environment')}
+            onClick={() => setActiveTab(initialTab)}
             onKeyDown={handleTabKeyDown}
           >Scene</button>
           <button

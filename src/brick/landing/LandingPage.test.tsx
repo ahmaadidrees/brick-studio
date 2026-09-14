@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import LandingPage from './LandingPage'
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); window.localStorage.clear() })
 
 function sourceOf(relativePath: string): string {
   return readFileSync(decodeURIComponent(new URL(relativePath, import.meta.url).pathname), 'utf8')
@@ -99,4 +99,15 @@ describe('bundle and asset boundaries', () => {
     const tsx = sourceOf('./LandingPage.tsx') + sourceOf('./LandingArt.tsx')
     expect(tsx).not.toMatch(/https?:\/\//)
   })
+})
+
+
+it('offers to continue an existing guest build without replacing it', () => {
+  const saved = JSON.stringify({ version: 1, bricks: [{ id: 'kept' }] })
+  window.localStorage.setItem('brick-studio.current-project.v1', saved)
+  render(<LandingPage />)
+  for (const link of screen.getAllByRole('link', { name: /continue building/i })) {
+    expect(link).toHaveAttribute('href', '/build')
+  }
+  expect(window.localStorage.getItem('brick-studio.current-project.v1')).toBe(saved)
 })

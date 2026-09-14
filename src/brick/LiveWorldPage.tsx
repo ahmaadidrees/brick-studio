@@ -114,6 +114,8 @@ function DefaultLiveWorldScene({
     connection: snapshot.connection,
     isOwner: snapshot.isOwner,
     onRequestMode: actions.setMode,
+    // The HUD's beforeunload guard covers pending commands and recovery copies.
+    onGoHome: () => window.location.assign('/'),
   }), [actions.setMode, snapshot.connection, snapshot.isOwner])
   const contentPolicy = useMemo(() => ({
     environmentId: view.document.environmentId,
@@ -368,7 +370,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
         const result = await client.request<{ world: ClassroomWorld }>(`/legacy-worlds/${roomId}/import`, 'POST', { ownerToken: oldOwnerToken });
         if (client.getSession()?.user.id !== auth.user.id) throw new Error('Your account changed. Reopen My Worlds in the correct account.');
         sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId: auth.user.id, worldId: result.world.id }));
-        window.location.replace('/');
+        window.location.replace('/build');
       } catch (reason) { setRecoveryError(`Could not recover this older world. ${friendlyReason(reason)}`); }
       finally { setRecovering(false); }
     }}>{recovering ? 'Saving older world…' : 'Save older world to My Worlds'}</button>

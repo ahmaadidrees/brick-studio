@@ -145,7 +145,7 @@ describe('keyboard construction loop', () => {
     ]
     resetStore(bricks)
     render(<BrickStudioApp />)
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const selector = screen.getByLabelText('Placed bricks')
 
     fireEvent.change(selector, { target: { value: 'two' } })
@@ -281,7 +281,7 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
     expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     expect(screen.queryByRole('menuitem', { name: 'Rover Lab' })).not.toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /My Class/ })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: /Publish/ })).not.toBeInTheDocument()
@@ -889,7 +889,7 @@ describe('Builder Experience Alpha shell', () => {
 
     render(<BrickStudioApp />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /Help/ }))
     expect(screen.getByRole('dialog', { name: 'Build something you can explore' })).toBeInTheDocument()
   })
@@ -908,7 +908,7 @@ describe('Builder Experience Alpha shell', () => {
       />,
     )
 
-    const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     openMenu()
     fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
     expect(onNewBuild).toHaveBeenCalledOnce()
@@ -933,7 +933,7 @@ describe('Builder Experience Alpha shell', () => {
     render(<BrickStudioApp />)
     expect(screen.queryByLabelText('Placed bricks')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const selector = screen.getByLabelText('Placed bricks')
     expect(selector).toHaveAttribute('aria-keyshortcuts', 'BracketLeft BracketRight')
     expect(selector).toHaveAccessibleDescription('Use this list or [ and ] to select each placed brick.')
@@ -981,13 +981,13 @@ describe('Builder Experience Alpha shell', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     render(<BrickStudioApp />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
     expect(useBrickStore.getState().bricks).toEqual([brick])
     expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('unchanged')
 
     confirm.mockReturnValue(true)
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /New Build/ }))
     expect(useBrickStore.getState().bricks).toEqual([])
     act(() => useBrickStore.getState().undo())
@@ -1001,7 +1001,7 @@ describe('Builder Experience Alpha shell', () => {
     const file = new File(['{bad'], 'broken.brickstudio.json', { type: 'application/json' })
     Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue('{bad') })
 
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     fireEvent.change(screen.getByLabelText('Choose Brick Studio project file'), { target: { files: [file] } })
 
     await waitFor(() => expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('not valid JSON'))
@@ -1017,11 +1017,36 @@ describe('Builder Experience Alpha shell', () => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     render(<BrickStudioApp />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     fireEvent.click(screen.getByRole('menuitem', { name: /Export/ }))
 
     expect(createObjectURL).toHaveBeenCalledOnce()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:brick-studio')
     expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('Project exported')
+  })
+})
+
+describe('refined world navigation', () => {
+  it('closes the world menu with Escape without cancelling the brick being placed', () => {
+    render(<BrickStudioApp />)
+    const draft = useBrickStore.getState().draft
+    const trigger = screen.getByRole('button', { name: 'World menu' })
+    fireEvent.click(trigger)
+    const home = screen.getByRole('menuitem', { name: /^Home/ })
+    expect(home).toHaveFocus()
+    fireEvent.keyDown(home, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(useBrickStore.getState().draft).toEqual(draft)
+  })
+
+  it('opens the visible Character entry on its tab and preserves Cancel semantics', async () => {
+    render(<BrickStudioApp />)
+    fireEvent.click(screen.getByRole('button', { name: 'Character' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Character' })).toHaveAttribute('aria-selected', 'true'))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Scene & character' })).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog', { name: 'Scene & character' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Scene' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Scene' })).toHaveAttribute('aria-selected', 'true'))
   })
 })

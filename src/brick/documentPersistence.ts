@@ -14,8 +14,8 @@ import {
   subscribeBrickStudioAutosaveGuard,
 } from './liveAutosaveGuard'
 
-export const BRICK_STUDIO_LOCAL_STORAGE_KEY = 'brick-studio.current-project.v1'
-export const BRICK_STUDIO_RECOVERY_STORAGE_KEY = 'brick-studio.recovery-project.v1'
+import { BRICK_STUDIO_LOCAL_STORAGE_KEY, BRICK_STUDIO_RECOVERY_STORAGE_KEY } from './localProjectKeys'
+export { BRICK_STUDIO_LOCAL_STORAGE_KEY, BRICK_STUDIO_RECOVERY_STORAGE_KEY } from './localProjectKeys'
 export const BRICK_STUDIO_AUTOSAVE_DELAY_MS = 400
 
 export type BrickStudioStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>

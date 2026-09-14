@@ -26,3 +26,11 @@ No fixed claim about physical Chromebook performance: browser emulation is evide
 Landing/editor route separation and known classroom/room return links implemented. `/welcome` canonicalizes to `/`; shared `/world` and `/live/:id` routes are preserved. Expanded camera range: Build 1.2 minimum with a wider bounds-derived maximum; Explore 1.8–24, retaining obstruction handling and the original default distance.
 
 Node 22.23.2: 24 routing/landing/classroom tests and 68 camera/editor tests passed; TypeScript and production build passed. Browser navigation, persistence/reopen, camera clipping and visual review remain pending. No deployment performed. Next: header/tool grouping, dedicated Scene/Character entries, landing Continue building, then world-size schema and consumers.
+
+## Checkpoint 2 — navigation and toolbar
+
+World-title menu, visible Scene/Character entries, independent save status, consolidated editing toolbar and narrower header groups implemented in the current style. Character entry opens its tab. Home saves before navigating; landing offers Continue building for existing local work. Older room recovery now returns to `/build`. Menu keyboard/Escape handling preserves active placement. Duplicated empty-world hints no longer overlap.
+
+Final Node 22 frontend run: **866 tests across 90 files passed**. TypeScript/build and diff check passed. Six real-browser viewport/modality cases passed with no header/toolbar overlaps, offscreen controls or page exceptions. UI placement -> Home -> Continue building preserved the complete stored document. See `docs/classroom/REFINEMENT-NAVIGATION-QA.md` and `scripts/qa/verify-refinement-ui.mjs`.
+
+No deployment yet. Next work is persisted world plate dimensions and their placement/scene/authority consumers, followed by the dedicated character customizer and content. The goal remains full scope; existing unchecked delivery items require integration/hosted proof before release.

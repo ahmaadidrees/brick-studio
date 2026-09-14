@@ -13,11 +13,12 @@ import {
   Focus,
   Gamepad2,
   Home,
-  HelpCircle,
   Users,
   Layers3,
   Move,
   MousePointer2,
+  Mountain,
+  UserRound,
   Palette,
   PanelLeftClose,
   PanelLeftOpen,
@@ -79,6 +80,7 @@ export type BrickStudioLivePolicy = {
   connection: LiveConnectionState
   isOwner: boolean
   onRequestMode: (mode: LiveWorldMode) => void
+  onGoHome?: () => void
 }
 
 export type BrickStudioCustomPartPolicy = {
@@ -94,6 +96,9 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
     const handler = (event: KeyboardEvent) => {
       if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]')) return
       const target = event.target
+      // Menu navigation and Escape belong to the menu, not the build underneath.
+      if (target instanceof HTMLElement && target.closest('[role="menu"]')
+        && (event.key === 'Escape' || !target.matches('select'))) return
       if (target instanceof HTMLElement && target.matches('input, textarea, [contenteditable="true"]')) return
       const interactiveTarget = target instanceof HTMLElement && target.matches('select, button, a')
       const selectionTarget = target instanceof HTMLSelectElement
@@ -230,66 +235,72 @@ type HeaderProps = StudioDocumentCommands & {
   saveStatus: { label: string; detail: string; tone: 'local' | 'saved' | 'pending' | 'error' }
   livePolicy?: BrickStudioLivePolicy
   onOpenHelp: () => void
-  onOpenWorldSetup: () => void
+  onOpenWorldSetup: (tab?: 'environment' | 'character') => void
+  onGoHome: () => void
 }
 
-function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, accountLabel, worldTitle, saveStatus }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, worldTitle, saveStatus, onGoHome }: HeaderProps) {
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
-  const bricks = useBrickStore((state) => state.bricks)
-  const undo = useBrickStore((state) => state.undo)
-  const redo = useBrickStore((state) => state.redo)
-  const undoCount = useBrickStore((state) => state.undoStack.length)
-  const redoCount = useBrickStore((state) => state.redoStack.length)
-  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
-  const brickBudget = useBrickStore((state) => state.brickBudget)
+  const hasBricks = useBrickStore((state) => state.bricks.length > 0)
   const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
   const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
   const requestExplore = () => livePolicy ? livePolicy.onRequestMode('explore') : requestExploreMode()
 
   return (
-    <header className="brick-header" aria-label="Studio toolbar">
+    <header className="brick-header brick-header-refined" aria-label="Studio toolbar">
       <div className="brick-brand">
-        <button className="brick-brand-mark brick-customize-entry" type="button" onClick={onOpenWorldSetup} aria-label="Customize scene & character" title="Choose a scene and customize your character">
-          <Palette size={20} aria-hidden="true" /><span>Customize</span>
-        </button>
         <div className="brick-world-context">
-          <strong title={worldTitle ?? 'Brick Studio'}>{worldTitle || 'Brick Studio'}</strong>
-          {worldTitle && <span className="brick-world-title">Brick Studio</span>}
+          <StudioMenu
+            worldTitle={worldTitle || 'Brick Studio'}
+            onGoHome={onGoHome}
+            onSaveToAccount={onSaveToAccount}
+            onOpenMyWorlds={onOpenMyWorlds}
+            onOpenMyClass={onOpenMyClass}
+            onNewBuild={livePolicy ? undefined : onNewBuild}
+            onImportProject={livePolicy ? undefined : onImportProject}
+            onExportProject={onExportProject}
+            onStartLiveWorld={livePolicy ? undefined : onStartLiveWorld}
+            onPublishWorld={livePolicy ? undefined : onPublishWorld}
+            onOpenHelp={onOpenHelp}
+            onOpenWorldSetup={() => onOpenWorldSetup('environment')}
+          />
           <span className={`brick-save-status brick-save-${saveStatus.tone}`} role="status" aria-label={`Save status: ${saveStatus.label}`} title={saveStatus.detail}>{saveStatus.label}</span>
         </div>
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
         {mode === 'build'
-          ? <button aria-label="Explore mode" className="brick-primary-mode" onClick={requestExplore} disabled={bricks.length === 0 || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
+          ? <button aria-label="Explore mode" className="brick-primary-mode" onClick={requestExplore} disabled={!hasBricks || liveModeDisabled}><Gamepad2 size={18} /><span>Explore</span><kbd>2</kbd></button>
           : <button aria-label="Back to building" className="brick-primary-mode" onClick={requestBuild} disabled={liveModeDisabled}><Layers3 size={18} /><span>Back to building</span><kbd>1</kbd></button>}
       </nav>
+      <div className="brick-creative-actions" role="group" aria-label="Make it yours">
+        <button className="studio-button" onClick={() => onOpenWorldSetup('environment')}><Mountain size={17} /><span>Scene</span></button>
+        <button className="studio-button" onClick={() => onOpenWorldSetup('character')}><UserRound size={17} /><span>Character</span></button>
+      </div>
       <div className="brick-header-actions" role="group" aria-label="World actions">
         {!livePolicy && onStartLiveWorld && <button className="studio-button brick-collaborate-entry" onClick={onStartLiveWorld} aria-label="Build together"><Users size={17} /><span>Build together</span></button>}
-        {onOpenMyClass && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyClass} aria-label={`My Class${accountLabel ? ` — ${accountLabel}` : ""}`}>My Class</button>}
-        {onOpenMyWorlds && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyWorlds} aria-label="My Worlds"><span>My Worlds</span></button>}
-        <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick capacity`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks</i></span>
-        {mode === 'build' && <>
-          <button className="studio-icon-button" onClick={undo} disabled={!undoCount || graphicsPaused} aria-label="Undo"><Undo2 size={18} /></button>
-          <button className="studio-icon-button" onClick={redo} disabled={!redoCount || graphicsPaused} aria-label="Redo"><Redo2 size={18} /></button>
-        </>}
         <StudioSettings />
-        <button className="studio-icon-button brick-help-entry" onClick={onOpenHelp} aria-label="Quick start and controls" title="Quick start and controls"><HelpCircle size={18} /></button>
-        <StudioMenu
-          onSaveToAccount={onSaveToAccount}
-          onOpenMyWorlds={onOpenMyWorlds}
-          onOpenMyClass={onOpenMyClass}
-          onNewBuild={livePolicy ? undefined : onNewBuild}
-          onImportProject={livePolicy ? undefined : onImportProject}
-          onExportProject={onExportProject}
-          onStartLiveWorld={livePolicy ? undefined : onStartLiveWorld}
-          onPublishWorld={livePolicy ? undefined : onPublishWorld}
-          onOpenHelp={onOpenHelp}
-          onOpenWorldSetup={onOpenWorldSetup}
-        />
       </div>
     </header>
   )
+}
+
+function EditingToolbar() {
+  const undo = useBrickStore((state) => state.undo)
+  const redo = useBrickStore((state) => state.redo)
+  const canUndo = useBrickStore((state) => state.undoStack.length > 0 && !state.graphicsPaused)
+  const canRedo = useBrickStore((state) => state.redoStack.length > 0 && !state.graphicsPaused)
+  const count = useBrickStore((state) => state.bricks.length)
+  const budget = useBrickStore((state) => state.brickBudget)
+  return <div className="brick-edit-toolbar" role="group" aria-label="Build tools">
+    <div className="brick-history-tools" role="group" aria-label="Edit history">
+      <button className="studio-icon-button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo"><Undo2 size={18} /></button>
+      <button className="studio-icon-button" onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo"><Redo2 size={18} /></button>
+    </div>
+    <SelectionModeControl />
+    <ViewControls />
+    <span className="brick-capacity-status" aria-label={`${count} of ${budget} brick capacity`}>{count} / {budget}</span>
+  </div>
 }
 
 type PartGridProps = {
@@ -608,7 +619,8 @@ function MarqueeOverlay() {
 
 function EmptyState() {
   const count = useBrickStore((state) => state.bricks.length)
-  if (count) return null
+  const toast = useBrickStore((state) => state.toast)
+  if (count || toast) return null
   return (
     <div className="empty-guide">
       <MousePointer2 size={22} />
@@ -783,8 +795,7 @@ function BuildShell({
         )}
         <Inspector onResize={openResize} />
       </>}
-      <ViewControls />
-      <SelectionModeControl />
+      <EditingToolbar />
       <TouchPlacementBar />
       <CreateBrickSheet
         open={createOpen}
@@ -1017,6 +1028,7 @@ export default function BrickStudioApp({
   )
   const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
   const [worldSetupOpen, setWorldSetupOpen] = useState(false)
+  const [worldSetupTab, setWorldSetupTab] = useState<'environment' | 'character'>('environment')
   const [contentPreview, setContentPreview] = useState<ContentPickerSelection | null>(null)
   const [environmentPreviewStatuses, setEnvironmentPreviewStatuses] = useState<Partial<Record<EnvironmentId, 'ready' | 'loading' | 'unavailable'>>>({})
   const customParts = customPartPolicy?.customParts ?? localCustomParts
@@ -1231,7 +1243,23 @@ export default function BrickStudioApp({
           saveStatus={saveStatus}
           livePolicy={livePolicy}
           onOpenHelp={onboarding.reopen}
-          onOpenWorldSetup={() => setWorldSetupOpen(true)}
+          onOpenWorldSetup={(tab = 'environment') => { setWorldSetupTab(tab); setWorldSetupOpen(true) }}
+          onGoHome={() => { void (async () => {
+            if (livePolicy) {
+              livePolicy.onGoHome?.()
+              return
+            }
+            if (cloud.world) {
+              if (!await cloud.flush()) {
+                useBrickStore.setState({ toast: 'Your account save needs attention. Resolve it or download a recovery copy before leaving.' })
+                return
+              }
+            } else {
+              const saved = saveLocalBrickStudioProject(window.localStorage, useBrickStore.getState().getDocumentSnapshot())
+              if (!saved.ok) { useBrickStore.setState({ toast: saved.error.message }); return }
+            }
+            window.location.assign('/')
+          })().catch(reason => useBrickStore.setState({ toast: String(reason) })) }}
         />
       )}
       {mode === 'build' ? (
@@ -1253,6 +1281,7 @@ export default function BrickStudioApp({
       <Announcer />
       <WorldAndCharacterSheet
         open={worldSetupOpen}
+        initialTab={worldSetupTab}
         environmentDescriptors={selectableEnvironments}
         characterDescriptors={CHARACTER_DESCRIPTORS}
         selection={contentSelection}

@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Palette, Radio, Save, FolderOpen, Users, Upload } from 'lucide-react'
+import { Download, FilePlus2, HelpCircle, MoreHorizontal, Palette, Radio, Save, FolderOpen, Users, Upload, ChevronDown, Home } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
@@ -12,6 +12,8 @@ export type StudioDocumentCommands = {
 }
 
 type StudioMenuProps = StudioDocumentCommands & {
+  worldTitle?: string
+  onGoHome?: () => void
   onSaveToAccount?: () => void
   onOpenMyWorlds?: () => void
   onOpenMyClass?: () => void
@@ -47,6 +49,8 @@ function PlacedBrickNavigator() {
 }
 
 export function StudioMenu({
+  worldTitle,
+  onGoHome,
   onNewBuild,
   onImportProject,
   onExportProject,
@@ -59,16 +63,22 @@ export function StudioMenu({
 }: StudioMenuProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const importRef = useRef<HTMLInputElement>(null)
   const buildMode = useBrickStore((state) => state.mode === 'build')
 
   useEffect(() => {
     if (!open) return
+    containerRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')?.focus()
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) setOpen(false)
     }
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
     }
     window.addEventListener('pointerdown', closeOnOutsidePointer)
     window.addEventListener('keydown', closeOnEscape)
@@ -84,19 +94,31 @@ export function StudioMenu({
   }
 
   return (
-    <div className="studio-menu" ref={containerRef}>
+    <div className={`studio-menu ${worldTitle ? 'studio-world-menu' : ''}`} ref={containerRef}>
       <button
-        className="studio-icon-button"
+        ref={triggerRef}
+        className={worldTitle ? 'studio-world-title' : 'studio-icon-button'}
         type="button"
-        aria-label="More studio actions"
+        aria-label={worldTitle ? 'World menu' : 'More studio actions'}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <MoreHorizontal size={19} />
+        {worldTitle ? <><strong title={worldTitle}>{worldTitle}</strong><ChevronDown size={16} /></> : <MoreHorizontal size={19} />}
       </button>
       {open && (
-        <div className="studio-menu-popover" role="menu" aria-label="Studio actions">
+        <div className="studio-menu-popover" role="menu" aria-label="Studio actions" onKeyDown={event => {
+          if ((event.target as HTMLElement).matches('input, select, textarea')) return
+          if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
+          const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')]
+          if (!items.length) return
+          event.preventDefault()
+          const current = items.indexOf(document.activeElement as HTMLButtonElement)
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
+            : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+          items[next].focus()
+        }}>
+          {onGoHome && <button role="menuitem" type="button" onClick={() => runAndClose(onGoHome)}><Home size={18} /><span><strong>Home</strong><small>Return to the Brick Studio landing page</small></span></button>}
           {onOpenMyWorlds && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyWorlds)}><FolderOpen size={18} /><span><strong>My Worlds</strong><small>Open your saved builds</small></span></button>}
           {onOpenMyClass && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenMyClass)}><Users size={18} /><span><strong>My Class</strong><small>Find your group and build together</small></span></button>}
           {onSaveToAccount && <button role="menuitem" type="button" onClick={() => runAndClose(onSaveToAccount)}><Save size={18} /><span><strong>Save to my account</strong><small>Keep this build across devices</small></span></button>}

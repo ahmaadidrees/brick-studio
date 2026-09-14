@@ -621,3 +621,58 @@
   .shortcut-bar > span:nth-child(2),
   .shortcut-bar > span:nth-child(n+4) { display: none; }
 }
+
+/* Refinement: world navigation, creative choices, and editing have distinct homes. */
+.brick-header-refined { height: 62px; align-items: center; grid-template-areas: 'world mode creative actions'; grid-template-columns: minmax(140px, 1fr) auto auto auto; gap: 14px; }
+.brick-header-refined .brick-brand { grid-area: world; }
+.brick-header-refined .brick-mode-switch { grid-area: mode; margin: 0; }
+.brick-header-refined .brick-header-actions { grid-area: actions; position: static; gap: 8px; pointer-events: auto; }
+.brick-header-refined .brick-header-actions > .brick-collaborate-entry { display: flex; width: auto; flex-basis: auto; padding: 0 12px; }
+.brick-header-refined .brick-header-actions > .brick-collaborate-entry > span { display: inline; }
+.brick-creative-actions { grid-area: creative; display: flex; gap: 4px; }
+.brick-creative-actions .studio-button { box-shadow: none; background: transparent; border-color: transparent; padding: 0 10px; }
+.brick-creative-actions .studio-button:hover { background: #edf5fc; }
+.studio-world-title { display: flex; align-items: center; gap: 7px; max-width: 100%; padding: 2px 0; border: 0; color: #334f5d; background: transparent; cursor: pointer; text-align: left; }
+.studio-world-title strong { max-width: 230px; }
+.studio-world-title:focus-visible { outline: 3px solid #8eb8e6; outline-offset: 3px; border-radius: 4px; }
+.studio-world-menu .studio-menu-popover { left: 0; right: auto; top: 46px; }
+.brick-edit-toolbar { position: absolute; z-index: 13; left: 280px; bottom: 54px; display: flex; align-items: center; gap: 6px; padding: 4px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: 0 8px 24px #2d3d431c; }
+.brick-history-tools { display: flex; gap: 0; }
+.brick-history-tools .studio-icon-button { border: 0; box-shadow: none; background: transparent; }
+.brick-edit-toolbar .view-controls { position: static; width: auto; height: 44px; padding: 0; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.brick-edit-toolbar .view-controls button { min-width: 40px; height: 44px; }
+.brick-edit-toolbar .selection-mode-control { position: static; height: 44px; width: auto; min-width: 44px; padding: 0 10px; box-shadow: none; border-color: transparent; background: #edf2f5; }
+.brick-edit-toolbar .selection-mode-control.active { background: #3476c1; color: white; }
+.brick-capacity-status { padding: 0 8px; color: #7b8c94; font-size: 10px; white-space: nowrap; }
+@media (max-width: 1100px) {
+  .brick-header-refined { gap: 8px; }
+  .brick-header-refined .brick-header-actions > .brick-collaborate-entry { width: 44px; padding: 0; }
+  .brick-header-refined .brick-header-actions > .brick-collaborate-entry > span { display: none; }
+}
+@media (max-width: 900px) { .brick-edit-toolbar { left: 14px; } }
+@media (max-width: 700px) {
+  .brick-header-refined { height: 108px; padding: 5px 8px; grid-template-areas: 'world mode' 'creative actions'; grid-template-columns: minmax(0,1fr) auto; grid-template-rows: 44px 44px; align-items: center; gap: 6px 8px; }
+  .brick-header-refined .brick-brand { padding: 0; }
+  .brick-header-refined .brick-header-actions { justify-self: end; }
+  .brick-header-refined .brick-mode-switch { justify-self: end; padding: 0; }
+  .brick-header-refined .brick-mode-switch .brick-primary-mode { min-height: 44px; }
+  .studio-world-title strong { max-width: min(180px, 42vw); font-size: 16px; }
+  .brick-header-refined .brick-save-status { max-width: 42vw; font-size: 10px; }
+  .brick-creative-actions .studio-button { font-size: 11px; padding: 0 7px; gap: 5px; }
+  .brick-edit-toolbar { top: calc(max(7px, env(safe-area-inset-top)) + 120px); bottom: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100vw - 16px); gap: 2px; }
+  .brick-edit-toolbar .view-controls button { min-width: 44px; }
+  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+3) { display: none; }
+  .brick-edit-toolbar .selection-mode-control span { display: none; }
+  .brick-capacity-status { display: none; }
+  .brick-toast, .onboarding-guide { top: max(190px, calc(env(safe-area-inset-top) + 190px)); }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .brick-header-refined { height: 60px; grid-template-areas: 'world mode creative actions'; grid-template-columns: minmax(100px,1fr) auto auto auto; grid-template-rows: 44px; }
+  .brick-edit-toolbar { top: 80px; bottom: auto; left: 8px; }
+  .brick-edit-toolbar .view-controls button:not(.view-home) { display: none; }
+  .brick-creative-actions .studio-button { padding: 0 5px; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .brick-mode-build .brick-toast { top: 140px; }
+}

@@ -47,7 +47,8 @@ describe('studio navigation and save context', () => {
     render(<BrickStudioApp />)
     expect(screen.getByRole('status', { name: 'Save status: This browser only' })).toBeInTheDocument()
     expect(screen.queryByText('Saved to account')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'My Worlds' })).toHaveTextContent('My Worlds')
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
+    expect(screen.getByRole('menuitem', { name: /My Worlds/ })).toHaveTextContent('My Worlds')
   })
 
   it('keeps My Worlds navigable while a named cloud world moves through pending, saving, error and saved states', () => {
@@ -56,6 +57,7 @@ describe('studio navigation and save context', () => {
     const view = render(<BrickStudioApp />)
     expect(screen.getByText('My mountain castle')).toHaveAttribute('title', 'My mountain castle')
 
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const states: [CloudSaveStatus, string][] = [
       ['pending', 'Waiting to save…'],
       ['saving', 'Saving to account…'],
@@ -65,12 +67,12 @@ describe('studio navigation and save context', () => {
     for (const [status, label] of states) {
       cloud.status = status
       view.rerender(<BrickStudioApp />)
-      const navigation = screen.getByRole('button', { name: 'My Worlds' })
-      expect(navigation).toHaveTextContent(/^My Worlds$/)
+      const navigation = screen.getByRole('menuitem', { name: /My Worlds/ })
+      expect(navigation).toHaveTextContent(/^My Worlds/)
       expect(navigation).toBeEnabled()
       expect(screen.getByRole('status', { name: `Save status: ${label}` })).toBeInTheDocument()
     }
-    fireEvent.click(screen.getByRole('button', { name: 'My Worlds' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /My Worlds/ }))
     expect(screen.getByRole('dialog', { name: 'Classroom worlds' })).toBeInTheDocument()
   })
 
@@ -78,7 +80,7 @@ describe('studio navigation and save context', () => {
     render(<BrickStudioApp />)
     const before = useBrickStore.getState().getDocumentSnapshot()
     fireEvent.click(screen.getByRole('button', { name: 'Start building' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Customize scene & character' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Scene' }))
     const picker = screen.getByRole('dialog', { name: 'Scene & character' })
     expect(picker).toBeInTheDocument()
     fireEvent.keyDown(picker, { key: 'Enter' })
@@ -91,12 +93,13 @@ describe('studio navigation and save context', () => {
 
   it('keeps My Worlds and My Class at the start of the compact menu', () => {
     render(<BrickStudioApp />)
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const menu = screen.getByRole('menu', { name: 'Studio actions' })
     const entries = within(menu).getAllByRole('menuitem')
-    expect(entries[0]).toHaveTextContent('My Worlds')
-    expect(entries[1]).toHaveTextContent('My Class')
-    fireEvent.click(entries[1])
+    expect(entries[0]).toHaveTextContent('Home')
+    expect(entries[1]).toHaveTextContent('My Worlds')
+    expect(entries[2]).toHaveTextContent('My Class')
+    fireEvent.click(entries[2])
     expect(screen.getByRole('dialog', { name: 'Classroom class' })).toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
