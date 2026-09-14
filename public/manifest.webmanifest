@@ -1,12 +1,12 @@
 {
-  "name": "Brick Studio",
-  "short_name": "Brick Studio",
-  "description": "Build a brick world in your browser, then step inside and explore it.",
+  "name": "Brickgineers",
+  "short_name": "Brickgineers",
+  "description": "Build a brick world, then step inside and explore it together.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f2ed",
-  "theme_color": "#e9fbff",
+  "background_color": "#F8F4EB",
+  "theme_color": "#F8F4EB",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },

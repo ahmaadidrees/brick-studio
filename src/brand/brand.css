@@ -1,0 +1,24 @@
+/* Brand mark + wordmark presentation. Tokens come from src/styles.css. */
+.brand-mark { display: inline-block; flex: 0 0 auto; vertical-align: middle; }
+.brand-wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.brand-lockup {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 44px;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+a.brand-lockup:hover .brand-wordmark { color: var(--primary-strong); }
+@media (max-width: 640px) {
+  .brand-lockup-wide .brand-wordmark { display: none; }
+}
