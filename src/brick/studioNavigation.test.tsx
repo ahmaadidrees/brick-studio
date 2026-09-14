@@ -45,8 +45,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(
 describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
     render(<BrickStudioApp />)
-    expect(screen.getByRole('status', { name: 'Save status: This browser only' })).toBeInTheDocument()
-    expect(screen.queryByText('Saved to account')).not.toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Save status: Saved in this browser' })).toBeInTheDocument()
+    expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     expect(screen.getByRole('menuitem', { name: /My Worlds/ })).toHaveTextContent('My Worlds')
   })
@@ -60,9 +60,9 @@ describe('studio navigation and save context', () => {
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const states: [CloudSaveStatus, string][] = [
       ['pending', 'Waiting to save…'],
-      ['saving', 'Saving to account…'],
+      ['saving', 'Saving to your account…'],
       ['error', 'Save needs attention'],
-      ['saved', 'Saved to account'],
+      ['saved', 'Saved to your account'],
     ]
     for (const [status, label] of states) {
       cloud.status = status
@@ -129,7 +129,7 @@ describe('studio navigation and save context', () => {
     const policy = { connection: 'online' as const, isOwner: true, onRequestMode: vi.fn() }
     const view = render(<BrickStudioApp livePolicy={policy} />)
     expect(screen.getByRole('status', { name: 'Save status: Shared world' })).toBeInTheDocument()
-    expect(screen.queryByText('Saved to account')).not.toBeInTheDocument()
+    expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     view.rerender(<BrickStudioApp livePolicy={{ ...policy, connection: 'offline' }} />)
     expect(screen.getByRole('status', { name: 'Save status: Offline · edits paused' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
