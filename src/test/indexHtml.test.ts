@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { BRAND_MARK_COLORS, BRAND_NAME, BRAND_PALETTE } from '../brand/brand'
 
 /**
  * Link previews and icons live in index.html + public/, none of which the app's component
@@ -50,7 +51,8 @@ describe('index.html link previews', () => {
     expect(attribute('meta[name="viewport"]', 'content')).toContain('width=device-width')
     expect(attribute('meta[name="theme-color"]', 'content')).toMatch(/^#[0-9a-f]{6}$/i)
     expect(attribute('meta[name="description"]', 'content').trim()).not.toBe('')
-    expect(head.querySelector('title')?.textContent).toBe('Brick Studio')
+    expect(head.querySelector('title')?.textContent).toBe(BRAND_NAME)
+    expect(html).not.toContain('Brick Studio') // the display name comes from src/brand/brand.ts
   })
 
   it('declares Open Graph and Twitter card tags built from the single origin placeholder', () => {
@@ -74,6 +76,12 @@ describe('index.html link previews', () => {
     expect(placeholderUses).toBe(3) // og:url, og:image, twitter:image
     expect(html).not.toMatch(/%(?!VITE_PUBLIC_ORIGIN%)[A-Z_]+%/)
     for (const link of head.querySelectorAll('link[href]')) {
+      const rel = link.getAttribute('rel') ?? ''
+      if (rel === 'preconnect' || rel === 'dns-prefetch') {
+        // Resource hints for the Google Fonts hosts named by the @import in src/styles.css.
+        expect(link.getAttribute('href')).toMatch(/^https:\/\/fonts\.(googleapis|gstatic)\.com$/)
+        continue
+      }
       expect(link.getAttribute('href'), `${link.outerHTML} should be root-relative`).toMatch(/^\//)
     }
   })
@@ -98,6 +106,10 @@ describe('index.html icons and manifest', () => {
     const svg = readFileSync(publicPath(attribute('link[rel="icon"][type="image/svg+xml"]', 'href')), 'utf8')
     expect(svg).toContain('<svg')
     expect(svg).not.toMatch(/<text/i) // wordmark-free: a rename must not require new artwork
+    // The favicon is the brand mark: blue upper lobe, coral lower lobe, two studs per lobe.
+    expect(svg.toUpperCase()).toContain(BRAND_MARK_COLORS.upper.toUpperCase())
+    expect(svg.toUpperCase()).toContain(BRAND_MARK_COLORS.lower.toUpperCase())
+    expect(svg.match(/<circle/g)).toHaveLength(4)
 
     const png = head.querySelector('link[rel="icon"][type="image/png"]')
     if (!png) throw new Error('index.html is missing the PNG favicon fallback')
@@ -113,10 +125,13 @@ describe('index.html icons and manifest', () => {
     const manifest = JSON.parse(readFileSync(publicPath(attribute('link[rel="manifest"]', 'href')), 'utf8')) as {
       name: string
       short_name: string
+      theme_color: string
       icons: Array<{ src: string; sizes: string; type: string }>
     }
-    expect(manifest.name).toBe('Brick Studio')
-    expect(manifest.short_name).toBe('Brick Studio')
+    expect(manifest.name).toBe(BRAND_NAME)
+    expect(manifest.short_name).toBe(BRAND_NAME)
+    expect(manifest.theme_color.toUpperCase()).toBe(BRAND_PALETTE.warmWhite.toUpperCase())
+    expect(manifest.theme_color.toUpperCase()).toBe(attribute('meta[name="theme-color"]', 'content').toUpperCase())
     expect(manifest.icons.length).toBeGreaterThanOrEqual(2)
     for (const icon of manifest.icons) {
       const path = publicPath(icon.src)
