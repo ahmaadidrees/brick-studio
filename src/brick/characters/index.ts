@@ -4,6 +4,8 @@ import { TOY_FIGURE_DESCRIPTOR } from './toy-figure/descriptor'
 import type { LazyCharacterRegistration } from './types'
 
 export * from './types'
+export { CharacterStudio } from './CharacterStudio'
+export type { CharacterStudioProps } from './CharacterStudio'
 export { CC0_HERO_DESCRIPTOR, TOY_FIGURE_DESCRIPTOR, PIP_DESCRIPTOR, FERN_DESCRIPTOR, NOVA_DESCRIPTOR }
 
 export const ADDITIVE_CHARACTER_REGISTRATIONS = [

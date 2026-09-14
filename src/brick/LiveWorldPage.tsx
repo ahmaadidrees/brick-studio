@@ -20,9 +20,10 @@ import { LiveStatusChip } from './live/LiveStatusChip'
 import { CopyInviteButton } from './live/CopyInviteButton'
 import { liveProfileWithDisplayName, normalizeLiveProfile, loadStoredLiveProfile, saveStoredLiveProfile } from './live/liveProfile'
 import { liveOwnerLocation } from './live/liveRoomModel'
-import { downloadBrickStudioDocument, saveLocalBrickStudioProject } from './documentPersistence'
+import { saveLocalBrickStudioProject } from './documentPersistence'
 import { loadLiveWorldSeed, LIVE_WORLD_SEED_KEY } from './live/liveWorldSeed'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
+import { BlockedView, ClassroomAccessChangedView, OpeningRoomView, exportLiveWorldCopy, friendlyReason } from './live/LiveStateViews'
 import { resolveCharacterId } from './contentCatalog'
 import { loadCharacterPreferences } from './contentPreferences'
 import type { ContentPickerSelection } from './contentPicker'
@@ -70,17 +71,6 @@ async function defaultCopyText(text: string): Promise<boolean> {
   } catch {
     return false
   }
-}
-
-function friendlyReason(reason: unknown): string {
-  if (reason instanceof Error && reason.message) return reason.message
-  return 'Something went wrong. Please try again.'
-}
-
-async function exportLiveWorldCopy(document: BrickStudioDocument, recovery = false): Promise<string> {
-  const result = recovery ? downloadBrickStudioDocument(document, globalThis, 'brick-studio-recovery') : downloadBrickStudioDocument(document)
-  if (!result.ok) throw new Error(result.error.message)
-  return 'Download started. Keep the .brickstudio file to reopen this copy later with Import.'
 }
 
 /**
@@ -184,90 +174,6 @@ function DefaultLiveWorldScene({
       customPartPolicy={customPartPolicy}
     />
   )
-}
-
-function BlockedView({ heading, message, onRetry }: { heading: string; message: string; onRetry?: () => void }) {
-  return (
-    <main className="live-world-page">
-      <section className="live-gate-card live-blocked-card">
-        <span className="live-eyebrow">Live rooms</span>
-        <h1>{heading}</h1>
-        <p>{message}</p>
-        {onRetry && <button className="live-primary-button" type="button" onClick={onRetry}>Try again</button>}
-        <a className="live-quiet-link" href="/build">Open Brick Studio</a>
-      </section>
-    </main>
-  )
-}
-
-function OpeningRoomView({ title, snapshot, actions }: { title: string; snapshot: LiveRoomUiSnapshot; actions: LiveRoomActions }) {
-  return (
-    <main className="live-world-page">
-      <section className="live-gate-card live-blocked-card" aria-busy={snapshot.connection !== 'offline'}>
-        <span className="live-eyebrow">Live room</span>
-        <h1>Opening {title}…</h1>
-        <LiveStatusChip connection={snapshot.connection} syncing={snapshot.syncing}
-          onReconnect={actions.reconnect} sessionReplaced={snapshot.notice?.code === 'session_replaced'} pendingOperations={snapshot.pendingOperations} />
-        {snapshot.notice && <p className="live-gate-error" role="alert">{snapshot.notice.message}</p>}
-        <a className="live-quiet-link" href="/build">Leave and open Brick Studio</a>
-      </section>
-    </main>
-  )
-}
-
-function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: LiveRoomUiSnapshot; actions: LiveRoomActions }) {
-  const draft = snapshot.recoveryDocument ?? snapshot.document
-  const [exportedDraft, setExportedDraft] = useState<BrickStudioDocument | null>(null)
-  const [exportedCurrentDraft, setExportedCurrentDraft] = useState<BrickStudioDocument | null>(null)
-  const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState(false)
-  const hasPending = (snapshot.pendingOperations ?? 0) > 0
-  const currentDraft = hasPending && snapshot.recoveryDocument && snapshot.document !== draft ? snapshot.document : null
-  const needsLeaveWarning = (hasPending && snapshot.document !== exportedCurrentDraft)
-    || Boolean(snapshot.recoveryDocument && (draft !== exportedDraft || (snapshot.recoveryDocumentCount ?? 1) > 1))
-  useEffect(() => {
-    if (!needsLeaveWarning) return
-    const warnBeforeLeaving = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
-    window.addEventListener('beforeunload', warnBeforeLeaving)
-    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
-  }, [needsLeaveWarning])
-  return <main className="live-world-page"><section className="live-gate-card live-blocked-card">
-    <span className="live-eyebrow">Classroom world</span>
-    <h1>Classroom access changed</h1>
-    <p>{snapshot.notice?.message || 'Ask your teacher to check your access to this world.'}</p>
-    {draft && <>
-      <p>{hasPending || snapshot.recoveryDocument ? 'Keep a copy of your earlier changes before leaving. Some changes may not be in the shared world.' : 'You can still export the build already loaded in this tab.'}</p>
-      <button type="button" className="live-primary-button" disabled={busy} onClick={async () => {
-        if (busy) return
-        setBusy(true); setMessage('')
-        try {
-          setMessage(await exportLiveWorldCopy(draft, true)); setExportedDraft(draft)
-          if (draft === snapshot.document) setExportedCurrentDraft(draft)
-        }
-        catch (reason) { setMessage(friendlyReason(reason)) }
-        finally { setBusy(false) }
-      }}>Download recovery copy</button>
-      {(snapshot.recoveryDocumentCount ?? 0) > 1 && <p>{snapshot.recoveryDocumentCount} recovery copies remain. Download each before leaving.</p>}
-      {snapshot.recoveryDocument && draft === exportedDraft && !hasPending && actions.dismissRecovery && <button type="button" className="live-primary-button" onClick={actions.dismissRecovery}>I have my copy</button>}
-    </>}
-    {currentDraft && <>
-      <p>You also have newer changes in this tab. Download this current draft as a separate copy.</p>
-      <button type="button" className="live-primary-button" disabled={busy} onClick={async () => {
-        if (busy) return
-        setBusy(true); setMessage('')
-        try {
-          const result = downloadBrickStudioDocument(currentDraft, globalThis, 'brick-studio-current-draft')
-          if (!result.ok) throw new Error(result.error.message)
-          setExportedCurrentDraft(currentDraft)
-          setMessage('Current draft download started. The shared world has not confirmed these changes.')
-        } catch (reason) { setMessage(friendlyReason(reason)) }
-        finally { setBusy(false) }
-      }}>Download current draft</button>
-    </>}
-    {message && <p role="status">{message}</p>}
-    {actions.reconnect && <button type="button" className="live-primary-button" disabled={snapshot.connection !== 'offline'} onClick={actions.reconnect}>Try reconnecting</button>}
-    <a className="live-quiet-link" href="/build">Open Brick Studio</a>
-  </section></main>
 }
 
 export function classroomWorldIdFromPath(pathname: string): string | null {

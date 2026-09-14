@@ -5,10 +5,12 @@ import { browserClassroomClient, type ClassroomClient } from './client'
 import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember, ClassroomCheckpoint } from './contracts'
 import { saveLocalBrickStudioProject } from '../brick/documentPersistence'
 import { PasswordField } from './PasswordField'
+import type { ClassroomEntryIntent } from '../routes'
 import './classroom.css'
 
 type Props = {
-  intent: 'save' | 'worlds' | 'class'
+  /** Entry intent from `/build?classroom=` or the studio menu; see `ClassroomEntryIntent` in routes.ts. */
+  intent: ClassroomEntryIntent
   getDocument: () => BrickStudioDocument
   onOpenWorld: (document: BrickStudioDocument, world: ClassroomWorld) => void | Promise<void>
   onJoinWorld: (world: ClassroomWorld) => void | Promise<void>
@@ -23,6 +25,12 @@ export function generateTemporaryPassword() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
   return Array.from(crypto.getRandomValues(new Uint8Array(12)), value => alphabet[value % alphabet.length]).join('')
 }
+/** Guests land on the sign-in mode their link asked for; signed-in users ignore it and see their tabs. */
+function initialLoginMode(intent: ClassroomEntryIntent): 'login' | 'register' | 'teacher-login' {
+  if (intent === 'signin') return 'login'
+  if (intent === 'teacher') return 'teacher-login'
+  return 'register'
+}
 const message = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.'
 function values(event: FormEvent<HTMLFormElement>) {
   event.preventDefault()
@@ -33,7 +41,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
   const [tab, setTab] = useState(intent === 'class' ? 'class' : 'worlds')
   const [classSection, setClassSection] = useState<'students' | 'worlds' | 'settings'>('students')
-  const [loginMode, setLoginMode] = useState<'login' | 'register' | 'teacher-login'>('register')
+  const [loginMode, setLoginMode] = useState<'login' | 'register' | 'teacher-login'>(initialLoginMode(intent))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')

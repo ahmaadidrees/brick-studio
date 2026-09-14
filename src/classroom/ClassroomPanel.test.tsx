@@ -196,3 +196,39 @@ it('keeps group member management and checkpoint recovery in world controls', as
   fireEvent.click(screen.getByRole('button', { name: /Back to worlds/ }))
   expect(screen.getByRole('button', { name: 'Join world' })).toBeInTheDocument()
 })
+
+describe('entry intents', () => {
+  it.each([
+    ['join', 'Join a class', 'Enrollment code'],
+    ['signin', 'Student sign in', 'Sign-in code'],
+    ['teacher', 'Teacher sign in', 'Email'],
+    ['save', 'Join a class', 'Enrollment code'],
+    ['worlds', 'Join a class', 'Enrollment code'],
+    ['class', 'Join a class', 'Enrollment code'],
+  ] as const)('opens a guest on the %s mode', (intent, mode, field) => {
+    render(<ClassroomPanel {...props()} intent={intent} client={new ClassroomClient('', vi.fn())} />)
+    expect(screen.getByRole('button', { name: mode })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText(field)).toBeInTheDocument()
+    expect(screen.getByText('Keep building as a guest')).toBeInTheDocument()
+  })
+
+  it.each(['join', 'signin', 'teacher', 'worlds'] as const)('shows My Worlds to a signed-in user arriving with the %s intent', async intent => {
+    const fetcher = vi.fn((url: string) => Promise.resolve(json(url.endsWith('/worlds') ? { worlds: [] } : { classes: [] })))
+    const client = new ClassroomClient('', fetcher as typeof fetch); client.setSession(auth)
+    render(<ClassroomPanel {...props()} intent={intent} client={client} />)
+    expect(await screen.findByRole('button', { name: 'My Worlds' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: 'Student sign in' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save world' })).not.toBeInTheDocument()
+  })
+
+  it.each(['save', 'worlds', 'class', 'join', 'signin', 'teacher'] as const)('sends the %s intent through the Google teacher round-trip', async intent => {
+    const client = new ClassroomClient('', vi.fn())
+    const start = vi.spyOn(client, 'startGoogleTeacher').mockReturnValue(new Promise(() => {}))
+    const callbacks = props()
+    render(<ClassroomPanel {...callbacks} intent={intent} client={client} />)
+    if (intent !== 'teacher') fireEvent.click(screen.getByRole('button', { name: 'Teacher sign in' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
+    await waitFor(() => expect(start).toHaveBeenCalledWith(`/build?classroom=${intent}`))
+    expect(callbacks.getDocument).toHaveBeenCalledOnce()
+  })
+})

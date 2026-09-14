@@ -54,6 +54,7 @@ import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
+import { parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
 import { browserClassroomClient } from '../classroom/client'
 import { useClassroomWorld } from '../classroom/useClassroomWorld'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
@@ -1009,10 +1010,11 @@ export default function BrickStudioApp({
   contentPolicy,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
-  const [classroomIntent, setClassroomIntent] = useState<"save" | "worlds" | "class" | null>(() => {
+  const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(() => {
     const url = new URL(window.location.href)
-    const intent = url.searchParams.get('classroom')
-    if (intent !== 'save' && intent !== 'worlds' && intent !== 'class') return null
+    if (!url.searchParams.has('classroom')) return null
+    // Consume the entry intent even when it is unknown so a mistyped link never lingers in the address bar.
+    const intent = parseClassroomEntryIntent(url.search)
     url.searchParams.delete('classroom')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     return intent
