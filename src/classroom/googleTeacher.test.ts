@@ -29,7 +29,7 @@ describe('Google teacher PKCE', () => {
   it('rejects expired flows and external return locations', async () => {
     const fetcher = vi.fn().mockResolvedValue(json({ url: 'https://auth.example.test/authorize' }))
     const client = new ClassroomClient('', fetcher)
-    await expect(client.startGoogleTeacher('https://unrelated.test/')).rejects.toThrow('stay in Brick Studio')
+    await expect(client.startGoogleTeacher('https://unrelated.test/')).rejects.toThrow('stay in Brickgineers')
     await client.startGoogleTeacher('/')
     const pending = JSON.parse(sessionStorage.getItem(FLOW)!); pending.startedAt = Date.now() - 11 * 60_000; sessionStorage.setItem(FLOW, JSON.stringify(pending))
     await expect(client.finishGoogleTeacher(`/auth/teacher-callback?state=${pending.state}&code=expired`)).rejects.toThrow('expired')

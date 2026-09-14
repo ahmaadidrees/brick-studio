@@ -1,3 +1,4 @@
+import { BRAND_NAME } from '../brand'
 import type { ClassroomAuthResult as ClassroomAuth } from './contracts'
 export type { ClassroomUser, ClassroomClass, ClassroomWorld } from './contracts'
 export type { ClassroomAuthResult as ClassroomAuth } from './contracts'
@@ -81,7 +82,7 @@ export class ClassroomClient {
   async startGoogleTeacher(returnTo: string) {
     const epoch = this.epoch
     const target = new URL(returnTo, window.location.origin)
-    if (target.origin !== window.location.origin) throw new ClassroomError('Return location must stay in Brick Studio.', 400)
+    if (target.origin !== window.location.origin) throw new ClassroomError(`Return location must stay in ${BRAND_NAME}.`, 400)
     const verifier = base64url(crypto.getRandomValues(new Uint8Array(48)))
     const state = base64url(crypto.getRandomValues(new Uint8Array(32)))
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))
@@ -109,7 +110,7 @@ export class ClassroomClient {
     if (!code) throw new ClassroomError('Google did not return a sign-in code. Please try again.', 400)
     const auth = await this.request<ClassroomAuth>('/auth/teacher-google', 'POST', { code, codeVerifier: flow.verifier })
     this.assertContext(epoch)
-    if (auth.user.role !== 'teacher') throw new ClassroomError('This Google account is not enabled as a Brick Studio teacher.', 403)
+    if (auth.user.role !== 'teacher') throw new ClassroomError(`This Google account is not enabled as a ${BRAND_NAME} teacher.`, 403)
     const target = new URL(flow.returnTo, window.location.origin)
     if (target.origin !== window.location.origin) throw new ClassroomError('Invalid return location.', 400)
     this.setSession(auth)
