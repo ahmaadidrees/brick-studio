@@ -72,7 +72,9 @@
   },
   "exploreMode": {
     "role": "button",
-    "name": "Explore mode"
+    "name": {
+      "regex": "^Explore( mode)?$"
+    }
   },
   "backToBuilding": {
     "role": "button",
@@ -252,5 +254,17 @@
   "copyInvite": {
     "role": "button",
     "name": "Copy invite link"
+  },
+  "menuExport": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Export"
+    }
+  },
+  "menuHelp": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Help"
+    }
   }
 }

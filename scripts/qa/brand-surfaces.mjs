@@ -24,22 +24,19 @@
  */
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { hostSnapshot, launchOptions, loadChromium, localOrigin, outputDir } from './lib/env.mjs'
+import { CORRUPT_FIXTURE_PATH, FIXTURE_DOCUMENT_PATH, ONBOARDING_KEY, PROJECT_KEY, loadLocators, makeLocate, runSteps as runSharedSteps } from './lib/ui.mjs'
 
-const here = path.dirname(fileURLToPath(import.meta.url))
 const chromium = await loadChromium()
 const origin = localOrigin('UI_ORIGIN', 'http://127.0.0.1:5198', 'the harness seeds and replaces guest browser storage.')
 const output = await outputDir('UI_OUTPUT', '/tmp/brick-brand-surfaces')
 const format = process.env.SCREENSHOT_FORMAT === 'jpeg' ? 'jpeg' : 'png'
 const strictTouch = process.env.STRICT_TOUCH_TARGETS === '1'
 const strictFocus = process.env.STRICT_FOCUS === '1'
-const locators = JSON.parse(await readFile(path.join(here, 'locators.json'), 'utf8'))
-const fixtureDocument = await readFile(path.join(here, '../perf/fixtures/mixed-250.brickstudio.json'), 'utf8')
-const corruptFixture = path.join(here, 'fixtures/corrupt.brickstudio.json')
+const locate = makeLocate(await loadLocators())
+const fixtureDocument = await readFile(FIXTURE_DOCUMENT_PATH, 'utf8')
+const corruptFixture = CORRUPT_FIXTURE_PATH
 const publishedHash = '#' + Buffer.from(JSON.stringify({ title: 'QA baseline world', document: JSON.parse(fixtureDocument) })).toString('base64url')
-const ONBOARDING_KEY = 'brick-studio:onboarding:v1'
-const PROJECT_KEY = 'brick-studio.current-project.v1'
 
 const VIEWPORTS = [
   { id: '1366x768', width: 1366, height: 768, touch: false },
@@ -57,7 +54,7 @@ const VARIANTS = {
 }
 
 /**
- * Surfaces. `route` is opened first; `ready` must be visible before `steps` run; `expect` (or `expectAny`)
+ * Surfaces. `route` is opened first; `ready` (or any of `readyAny`) must be visible before `steps` run; `expect` (or `expectAny`)
  * must be visible afterwards; `expectPressed` names a toggle that must carry `aria-pressed="true"` (entry-intent
  * modes). `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
  * keeps the onboarding guide. `scrollable` marks a document that scrolls (landing) so below-the-fold
@@ -83,7 +80,8 @@ const SURFACES = [
   { id: 'color-picker', board: '10', route: '/build', ready: 'worldMenu', steps: [{ clickIfVisible: 'openBrickDrawer' }, { clickIfVisible: 'showBrickProperties' }, { click: 'anyColor' }], expect: 'colorDialog', escape: true },
   { id: 'explore', board: '07', route: '/build', seed: 'fixture', ready: 'worldMenu', steps: [{ click: 'exploreMode' }, { waitFor: 'backToBuilding' }, { waitFor: 'respawn' }], expect: 'backToBuilding', settle: 3500 },
   { id: 'live-create', board: '11', route: '/live/new', ready: 'builderName', expect: 'createRoom' },
-  { id: 'live-unavailable', board: '15', route: '/live/0123456789abcdef0123456789abcdef', ready: 'liveBlockedHeading', expect: 'liveBlockedHeading' },
+  // With a reachable worker an unknown id answers 401 and the page shows the classroom sign-in panel; without one it shows "Cannot reach this room".
+  { id: 'live-unavailable', board: '15', route: '/live/0123456789abcdef0123456789abcdef', readyAny: ['liveBlockedHeading', 'classroomDialog'], expectAny: ['liveBlockedHeading', 'classroomDialog'] },
   { id: 'published-viewer', board: '15', route: '/world' + publishedHash, ready: 'publishedTitle', expect: 'remix', settle: 1500 },
   { id: 'published-remix-confirm', board: '15', route: '/world' + publishedHash, seed: 'fixture', ready: 'remix', steps: [{ click: 'remix' }], expect: 'remixConfirm', escape: true, documentUnchanged: true },
   { id: 'graphics-paused', board: '15', route: '/build', seed: 'fixture', ready: 'exploreMode', steps: [{ wait: 1500 }, { loseContext: true }], expect: 'graphicsPaused', expectAlso: ['downloadBuild'] },
@@ -96,41 +94,7 @@ const surfaceIds = only('SURFACES', SURFACES.map((s) => s.id))
 const viewportIds = only('VIEWPORTS', VIEWPORTS.map((v) => v.id))
 const variantIds = only('VARIANTS', Object.keys(VARIANTS))
 
-function locate(page, key) {
-  const spec = locators[key]
-  if (!spec) throw new Error(`locators.json has no entry "${key}"`)
-  const name = spec.name && typeof spec.name === 'object' ? new RegExp(spec.name.regex) : spec.name
-  if (spec.role) return page.getByRole(spec.role, { name, ...(typeof name === 'string' ? { exact: spec.exact ?? true } : {}) })
-  if (spec.label) return page.getByLabel(spec.label, { exact: true })
-  if (spec.text) return page.getByText(spec.text, { exact: true })
-  throw new Error(`locators.json entry "${key}" needs role, label or text`)
-}
-
-async function runSteps(page, steps = []) {
-  for (const step of steps) {
-    if (step.click) await locate(page, step.click).first().click()
-    else if (step.clickIfVisible) {
-      const target = locate(page, step.clickIfVisible).first()
-      if (await target.isVisible().catch(() => false)) await target.click()
-    } else if (step.waitFor) await locate(page, step.waitFor).first().waitFor({ state: 'visible' })
-    else if (step.waitCanvasIn) await locate(page, step.waitCanvasIn).first().locator('canvas').first().waitFor({ state: 'attached', timeout: 15000 })
-    else if (step.press) await page.keyboard.press(step.press)
-    else if (step.wait) await page.waitForTimeout(step.wait)
-    else if (step.setInputFiles) await locate(page, step.setInputFiles.locator).first().setInputFiles(step.setInputFiles.file)
-    else if (step.loseContext) {
-      const lost = await page.evaluate(() => {
-        const canvases = [...document.querySelectorAll('canvas')].sort((a, b) => b.width * b.height - a.width * a.height)
-        for (const canvas of canvases) {
-          const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
-          const extension = gl?.getExtension('WEBGL_lose_context')
-          if (extension) { extension.loseContext(); return true }
-        }
-        return false
-      })
-      if (!lost) throw new Error('No WebGL canvas exposed WEBGL_lose_context')
-    } else throw new Error(`Unknown step ${JSON.stringify(step)}`)
-  }
-}
+const runSteps = (page, steps, notes) => runSharedSteps(page, locate, steps, notes)
 
 const measure = ({ touch, scrollablePage }) => {
   const vw = innerWidth, vh = innerHeight
@@ -219,7 +183,11 @@ async function runSurface(browser, surface, viewport, variantId) {
   try {
     await page.goto(`${origin}${surface.route}`, { waitUntil: 'domcontentloaded' })
     if (surface.ready) await locate(page, surface.ready).first().waitFor({ state: 'visible', timeout: 20000 })
-    await runSteps(page, surface.steps)
+    if (surface.readyAny) {
+      await Promise.any(surface.readyAny.map((key) => locate(page, key).first().waitFor({ state: 'visible', timeout: 20000 })))
+        .catch(() => { throw new Error(`none of ${surface.readyAny.join(', ')} became visible`) })
+    }
+    await runSteps(page, surface.steps, notes)
     if (surface.expect) await locate(page, surface.expect).first().waitFor({ state: 'visible', timeout: 15000 })
     if (surface.expectAny) {
       const visible = await Promise.all(surface.expectAny.map((key) => locate(page, key).first().isVisible().catch(() => false)))
