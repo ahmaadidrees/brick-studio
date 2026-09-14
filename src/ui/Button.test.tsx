@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Compass } from 'lucide-react'
-import { Button } from './Button'
+import { Button, ButtonLink } from './Button'
 
 afterEach(cleanup)
 
@@ -54,5 +54,41 @@ describe('Button', () => {
     expect(button).toHaveFocus()
     fireEvent.click(button)
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders a link with the same classes when given an href', () => {
+    render(<Button href="#help" variant="primary" size="lg" icon={<Compass />}>Read the help</Button>)
+    const link = screen.getByRole('link', { name: 'Read the help' })
+    expect(link.tagName).toBe('A')
+    expect(link).toHaveAttribute('href', '#help')
+    expect(link).not.toHaveAttribute('type')
+    expect(link).toHaveClass('ui-button', 'ui-button-primary', 'ui-button-lg')
+    link.focus()
+    expect(link).toHaveFocus()
+  })
+
+  it('drops the href and announces disabled on an inert link', () => {
+    const onClick = vi.fn()
+    render(<><Button href="/build" disabled onClick={onClick}>Open</Button><ButtonLink href="/build" loading loadingLabel="Opening…">Open</ButtonLink></>)
+    const disabled = screen.getByRole('link', { name: 'Open' })
+    expect(disabled).not.toHaveAttribute('href')
+    expect(disabled).toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(disabled)
+    expect(onClick).not.toHaveBeenCalled()
+    const busy = screen.getByRole('link', { name: 'Opening…' })
+    expect(busy).toHaveAttribute('aria-busy', 'true')
+    expect(busy).not.toHaveAttribute('href')
+  })
+
+  it('exposes a toggle through the pressed prop', () => {
+    const { rerender } = render(<Button pressed={false}>Follow</Button>)
+    const button = screen.getByRole('button', { name: 'Follow' })
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(button).not.toHaveClass('ui-button-pressed')
+    rerender(<Button pressed>Follow</Button>)
+    expect(button).toHaveAttribute('aria-pressed', 'true')
+    expect(button).toHaveClass('ui-button-pressed')
+    rerender(<Button>Follow</Button>)
+    expect(button).not.toHaveAttribute('aria-pressed')
   })
 })

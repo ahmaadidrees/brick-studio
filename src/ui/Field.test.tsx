@@ -22,12 +22,25 @@ describe('TextField', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Usernames cannot contain spaces.')
   })
 
-  it('honours a fixed id and required', () => {
+  it('honours a fixed id and required without changing the accessible name', () => {
     render(<TextField id="code" label="Enrollment code" required />)
-    const input = screen.getByLabelText(/Enrollment code/)
+    const input = screen.getByLabelText('Enrollment code')
     expect(input).toHaveAttribute('id', 'code')
     expect(input).toBeRequired()
     expect(input).toHaveAttribute('aria-required', 'true')
+    expect(input).toHaveAccessibleName('Enrollment code')
+    const label = screen.getByText('Enrollment code')
+    expect(label.tagName).toBe('LABEL')
+    expect(label.textContent).toBe('Enrollment code')
+    const mark = document.querySelector('.ui-field-required')
+    expect(mark).toHaveAttribute('aria-hidden', 'true')
+    expect(label).not.toContainElement(mark as HTMLElement)
+  })
+
+  it('can hide the required mark while keeping the semantics', () => {
+    render(<TextField label="Password" required requiredMark={false} />)
+    expect(screen.getByLabelText('Password')).toBeRequired()
+    expect(document.querySelector('.ui-field-required')).toBeNull()
   })
 })
 

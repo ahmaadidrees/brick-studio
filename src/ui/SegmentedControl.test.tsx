@@ -60,4 +60,14 @@ describe('SegmentedControl', () => {
     expect(onChange).toHaveBeenCalledWith('teacher')
     expect(screen.getByRole('radio', { name: 'Teacher' })).toHaveAttribute('aria-checked', 'true')
   })
+
+  it('passes aria-describedby through to the radiogroup', () => {
+    render(
+      <>
+        <SegmentedControl label="Plate size" aria-describedby="plate-hint" value="64" onChange={() => {}} options={[{ value: '64', label: '64' }, { value: '96', label: '96' }]} />
+        <p id="plate-hint">Your creation stays centered.</p>
+      </>,
+    )
+    expect(screen.getByRole('radiogroup', { name: 'Plate size' })).toHaveAccessibleDescription('Your creation stays centered.')
+  })
 })

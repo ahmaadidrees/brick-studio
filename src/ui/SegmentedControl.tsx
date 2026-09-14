@@ -18,14 +18,17 @@ export type SegmentedControlProps<T extends string> = {
   size?: 'sm' | 'md'
   fullWidth?: boolean
   className?: string
+  /** Id(s) of hint text for the whole group (e.g. "Your creation stays centered."). */
+  'aria-describedby'?: string
 }
 
 /**
  * A single-choice switch (Student / Teacher, Follow / Free look) with
  * radiogroup semantics: one tab stop, arrow keys move and select, Home/End
- * jump. Use it for 2–4 short options; use a <select> beyond that.
+ * jump. Use it for 2–4 short options; use `Select` beyond that. Options are
+ * 38px tall with a mouse and 44px on coarse pointers (see ui.css).
  */
-export function SegmentedControl<T extends string>({ label, showLabel = false, options, value, onChange, size = 'md', fullWidth = false, className }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ label, showLabel = false, options, value, onChange, size = 'md', fullWidth = false, className, 'aria-describedby': describedBy }: SegmentedControlProps<T>) {
   const labelId = useId()
   const buttons = useRef<Array<HTMLButtonElement | null>>([])
   const enabled = options.map((option, index) => ({ option, index })).filter(({ option }) => !option.disabled)
@@ -49,7 +52,7 @@ export function SegmentedControl<T extends string>({ label, showLabel = false, o
   return (
     <div className={['ui-segmented', `ui-segmented-${size}`, fullWidth && 'ui-segmented-full', className].filter(Boolean).join(' ')}>
       <span id={labelId} className={showLabel ? 'ui-segmented-label' : 'sr-only'}>{label}</span>
-      <div role="radiogroup" aria-labelledby={labelId} className="ui-segmented-track">
+      <div role="radiogroup" aria-labelledby={labelId} aria-describedby={describedBy} className="ui-segmented-track">
         {options.map((option, index) => {
           const selected = option.value === value
           // Roving tabindex: the selected option is the tab stop; if none is

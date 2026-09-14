@@ -61,21 +61,49 @@ export function Sheet({ open, onClose, title, description, children, footer, var
   const descriptionId = description ? `${id}-description` : undefined
   const panel = useRef<HTMLDivElement>(null)
   const restoreTo = useRef<HTMLElement | null>(null)
+  const fallbackTo = useRef<HTMLElement | null>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
   // Move focus in on open and put it back where it came from on close.
   useLayoutEffect(() => {
     if (!open) return
-    restoreTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    const target = initialFocusRef?.current ?? panel.current
+    // If the opener unmounted in this same commit, focus is already on <body>;
+    // do not record that as the place to return to.
+    const opener = document.activeElement
+    restoreTo.current = opener instanceof HTMLElement && opener !== document.body ? opener : null
+    const panelNode = panel.current
+    const target = initialFocusRef?.current ?? panelNode
     target?.focus({ preventScroll: true })
     return () => {
       const previous = restoreTo.current
+      const fallback = fallbackTo.current
       restoreTo.current = null
-      if (previous && previous.isConnected) previous.focus({ preventScroll: true })
+      fallbackTo.current = null
+      // Another modal dialog already holds focus (it opened as this one
+      // closed): leave it alone instead of yanking focus back out of it.
+      const active = document.activeElement
+      if (active instanceof HTMLElement && active !== document.body && !panelNode?.contains(active) && active.closest('[role="dialog"][aria-modal="true"]')) return
+      // The opener may have unmounted with its own sheet (the compact brick
+      // drawer); fall back to whatever took focus on open rather than <body>.
+      const candidate = previous?.isConnected ? previous : fallback?.isConnected ? fallback : null
+      candidate?.focus({ preventScroll: true })
     }
     // initialFocusRef is a ref; only `open` should re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  // A sibling sheet closing in the same commit may restore focus to its own
+  // opener from a passive cleanup, after the layout effect above ran. Passive
+  // mount effects run after those cleanups, so re-check and reclaim, and
+  // remember what took focus as the close-time fallback.
+  useEffect(() => {
+    if (!open) return
+    const panelNode = panel.current
+    const active = document.activeElement
+    if (!panelNode || !(active instanceof HTMLElement) || panelNode.contains(active)) return
+    if (active !== document.body) fallbackTo.current = active
+    ;(initialFocusRef?.current ?? panelNode).focus({ preventScroll: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
