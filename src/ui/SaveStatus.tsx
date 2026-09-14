@@ -78,6 +78,8 @@ export type SaveStatusProps = {
   detail?: string
   /** Icon + label in one pill (header) vs. icon-only with the label for screen readers. */
   compact?: boolean
+  /** Full pill on wide screens, icon-only under 640px (the label stays for screen readers). */
+  autoCompact?: boolean
   /** Shown only for error/offline tones. */
   action?: ReactNode
   className?: string
@@ -88,19 +90,19 @@ export type SaveStatusProps = {
  * error is announced without stealing focus. The device icon marks browser-
  * only drafts; the cloud icon appears only when the cloud reports `saved`.
  */
-export function SaveStatus({ source, detail, compact = false, action, className }: SaveStatusProps) {
+export function SaveStatus({ source, detail, compact = false, autoCompact = false, action, className }: SaveStatusProps) {
   const { label, tone, busy } = describeSaveStatus(source)
   const showAction = action && (tone === 'error' || tone === 'offline')
   const detailText = detail ?? (source.kind === 'local' && source.error ? source.error : undefined)
   return (
     <div
-      className={['ui-save-status', `ui-save-status-${tone}`, compact && 'ui-save-status-compact', className].filter(Boolean).join(' ')}
+      className={['ui-save-status', `ui-save-status-${tone}`, compact && 'ui-save-status-compact', autoCompact && !compact && 'ui-save-status-auto', className].filter(Boolean).join(' ')}
       role="status"
       aria-live="polite"
       aria-busy={busy || undefined}
       data-kind={source.kind}
       data-tone={tone}
-      title={compact ? (detailText ? `${label} — ${detailText}` : label) : detailText}
+      title={compact || autoCompact ? (detailText ? `${label} — ${detailText}` : label) : detailText}
     >
       <span className="ui-save-status-icon" aria-hidden="true">{iconFor(source, busy)}</span>
       <span className={compact ? 'sr-only' : 'ui-save-status-text'}>

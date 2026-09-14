@@ -121,7 +121,7 @@ function HeaderExample() {
           <BrandLockup size={32} wordmark="wide" href="#header" srSuffix="Home" onClick={(event) => event.preventDefault()} />
           <span className="ui-gallery-header-divider" aria-hidden="true" />
           <Button variant="quiet" trailingIcon={<ChevronDown size={16} />} aria-haspopup="menu" className="ui-gallery-header-title">Desk Castle</Button>
-          <SaveStatus source={cloud} />
+          <SaveStatus source={cloud} autoCompact />
         </div>
         <div className="ui-gallery-header-actions" aria-label="World tools">
           <Button variant="quiet" icon={<Image size={18} />}>Scene</Button>
@@ -338,6 +338,7 @@ const SAVE_SOURCES: Array<{ name: string; source: SaveStatusSource; detail?: str
 
 function SaveStatusExample() {
   return (
+    <div className="ui-gallery-table-wrap">
     <table className="ui-gallery-table">
       <thead><tr><th scope="col">Input</th><th scope="col">Full</th><th scope="col">Compact</th></tr></thead>
       <tbody>
@@ -350,6 +351,7 @@ function SaveStatusExample() {
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
 

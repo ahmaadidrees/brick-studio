@@ -68,6 +68,15 @@ describe('SaveStatus', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
   })
 
+  it('autoCompact keeps the label in the DOM and marks the pill for the narrow-screen rule', () => {
+    render(<SaveStatus source={{ kind: 'local' }} autoCompact />)
+    const status = screen.getByRole('status')
+    expect(status).toHaveClass('ui-save-status-auto')
+    expect(status).not.toHaveClass('ui-save-status-compact')
+    expect(status).toHaveTextContent('Saved in this browser')
+    expect(status).toHaveAttribute('title', 'Saved in this browser')
+  })
+
   it('shows the storage error as the detail line', () => {
     render(<SaveStatus source={{ kind: 'local', error: 'This browser is blocking storage.' }} />)
     expect(screen.getByRole('status')).toHaveTextContent('Save needs attention')

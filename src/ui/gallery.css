@@ -7,6 +7,8 @@
 .ui-gallery-section-heading h2 { font-size: 22px; }
 .ui-gallery-section-heading p { margin-top: 4px; max-width: 70ch; color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; line-height: 1.45; }
 .ui-gallery-section-body { display: grid; gap: var(--space-4); }
+/* Grid children default to min-width:auto (their min-content width); that would let a nowrap demo widen the page on phones. */
+.ui-gallery-section, .ui-gallery-section-body, .ui-gallery-section-body > *, .ui-gallery-header-demo > * { min-width: 0; }
 .ui-gallery-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .ui-gallery-stack { display: grid; gap: var(--space-4); }
 .ui-gallery-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4); }
@@ -26,12 +28,15 @@
 .ui-gallery-password-toggle { position: absolute; right: 4px; color: var(--text-muted); }
 .ui-gallery-footer-status { margin-right: auto; }
 .ui-gallery-filler { color: var(--text-muted); font-weight: 600; line-height: 1.5; }
-.ui-gallery-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+.ui-gallery-table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ui-gallery-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: var(--text-sm); }
+.ui-gallery-table .ui-save-status-label { white-space: normal; overflow: visible; }
 .ui-gallery-table th, .ui-gallery-table td { padding: var(--space-2) var(--space-3); text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .ui-gallery-table th[scope="row"] { font-weight: 700; color: var(--text-muted); }
 .ui-gallery-table code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
-/* Representative compact header */
+/* Representative compact header (wider column so the 1366 layout is representative) */
+.ui-gallery-section[data-gallery-section="header"] { max-width: 1200px; }
 .ui-gallery-header-demo { display: grid; gap: var(--space-3); }
 .ui-gallery-header {
   display: flex;
@@ -46,7 +51,7 @@
 }
 .ui-gallery-header-start { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex: 1 1 auto; }
 .ui-gallery-header-divider { width: 1px; height: 28px; background: var(--border); }
-.ui-gallery-header-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; min-width: 0; }
+.ui-gallery-header-title { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; flex: 0 1 auto; min-width: 88px; }
 .ui-gallery-header-title .ui-button-label { overflow: hidden; text-overflow: ellipsis; }
 .ui-gallery-header-actions { display: flex; align-items: center; gap: 2px; }
 .ui-gallery-header-end { display: flex; align-items: center; padding-left: var(--space-2); border-left: 1px solid var(--border); }
