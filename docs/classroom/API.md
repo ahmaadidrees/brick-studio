@@ -132,10 +132,35 @@ has already expired or been deleted. Reset-required accounts cannot import.
 
 `handleClassroomRequest(request,env,{onAccessChanged})` invokes the awaited callback
 before returning success after access changes, resets, membership changes, world
-save/restore and logout. Event: `{classId?,worldId?,userId?,reason}`. Root Worker must
-notify affected live DOs; `listClassroomWorldIds(env,{classId?,userId?})` enumerates IDs.
-Callback failure reports failure rather than falsely claiming live access changed;
-the durable permission mutation remains in effect and reauthorization is fail-closed.
+save/restore and logout. Event: `{classId?,worldId?,userId?,reason,change}`. Root Worker
+must notify affected live DOs; `listClassroomWorldIds(env,{classId?,userId?})` enumerates
+IDs only when the event carries no `worldId`, so a world-scoped event never touches the
+other worlds of the class. Callback failure reports failure rather than falsely claiming
+live access changed; the durable permission mutation remains in effect and
+reauthorization is fail-closed.
+
+`change` states whether anyone actually lost access, so a live room can tell a
+notification from a revocation. The Worker forwards `{userId?,reason,change}` to each
+room's internal invalidation endpoint; a missing or unknown kind counts as `revocation`.
+
+| Route | reason | change | Live room effect |
+|---|---|---|---|
+| PATCH worlds/:id (rename), PUT worlds/:id | world_saved | metadata (world) | Nobody closes. Under serialized admission the room reloads document, title and revision from Postgres and broadcasts `snapshot`; clients rebase pending edits, later edits commit against the refreshed revision, and an edit that raced the reload is rejected as `save_conflict` by the commit CAS instead of overwriting or applying to the old base. |
+| POST worlds/:id/restore | world_restored | metadata (world) | Same, with the restored document. |
+| POST worlds/:id/members | members_updated | membership (world) | Every connected session in that world is re-authorized in place through the batch permission check; only sessions now denied close with 4003. Existing members keep building. |
+| PATCH classes/:id | class_updated | membership (class) | Same, for every live world of the class. `collaborationOpen:false` closes every student; the teacher keeps oversight. Name, code rotation and enrollment changes close nobody. |
+| PATCH classes/:id/students/:userId (username, rosterName) | student_updated | membership (userId) | Only that student's sessions are re-authorized; their display name refreshes and they stay connected. |
+| PATCH classes/:id/students/:userId (suspended, temporaryPassword) | student_updated, password_reset | revocation (userId) | That student's sockets close with 4003 immediately, without a database round trip. |
+| DELETE worlds/:id/members/:userId | members_updated | revocation (userId) | The removed member's sockets close with 4003; other members are untouched. |
+| POST auth/change-password, POST auth/logout | password_changed, logout | revocation (userId) | That user's sockets close with 4003. |
+
+Fail-closed rules. If a membership re-authorization check cannot complete, every
+session in scope closes with 4003 and the route answers 503 `live_invalidation_failed`
+while the durable mutation stands. If a metadata reload cannot complete, sessions stay
+connected on the last confirmed document, the route answers 503 `live_invalidation_failed`,
+and the next edit's commit CAS rejects the stale base and refreshes the room. Idle sockets
+are still re-checked every minute through the same batch path, and every privileged
+socket action still re-authorizes first.
 
 `authorizeClassroomWorld(request,env,worldId)` verifies current account, session,
 class access and group membership. It returns userId,username,role,worldId,classId,
@@ -174,10 +199,14 @@ hosted Supabase behavior. Before student rollout, verify with dedicated test ide
 3. Two different students/classes cannot read guessed private/group/world identifiers.
 4. Concurrent real saves: one CAS wins and one conflicts; checkpoints survive fresh login.
 5. Open two actual live clients; teacher closes class/removes member/resets password;
-   affected socket loses access before success, contributions remain intact.
+   affected socket loses access before success, contributions remain intact, and the
+   unaffected client keeps building without a reconnect.
 6. Restore with a live room open, then cold-reopen from a different browser and compare
    authoritative DB document/revision, including custom parts and scene settings.
 7. Direct anon/authenticated REST reads/writes and RPC calls against brick_* are denied.
+8. Rename a world, add a group member and edit class settings while two live clients
+   build; neither client disconnects, both receive the refreshed snapshot, later edits
+   commit, and `brick_worlds.title`/`revision` match what the clients show.
 
 These checks are separate from real Chromebook and student classroom acceptance.
 
