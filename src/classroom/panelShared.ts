@@ -1,12 +1,5 @@
 import type { FormEvent } from 'react'
 
-/**
- * User-visible product name for classroom surfaces. Phase B swaps this for
- * `BRAND_NAME` from `src/brand/brand.ts` once the foundation lane lands; storage
- * keys and identifiers never read from here.
- */
-export const PRODUCT_NAME = 'Brick Studio'
-
 /** Real account rules from docs/classroom/API.md; the server enforces the same limits. */
 export const USERNAME_PATTERN = '[A-Za-z0-9][A-Za-z0-9_\\-]*'
 export const USERNAME_RULE = '3–24 letters or numbers; _ and - are OK. Start with a letter or number.'
