@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveAppRoute } from './routes'
+import { parseClassroomEntryIntent, resolveAppRoute } from './routes'
 
 const resolve = (path: string) => resolveAppRoute(new URL(path, 'https://example.test'))
 
@@ -28,5 +28,23 @@ describe('public home and editor routes', () => {
   it('does not open a blank editor for mistyped links', () => {
     expect(resolve('/missing').route).toBe('not-found')
     expect(resolve('/live').route).toBe('not-found')
+  })
+})
+
+describe('classroom entry intents', () => {
+  it('accepts every documented intent from a query string', () => {
+    for (const intent of ['save', 'worlds', 'class', 'join', 'signin', 'teacher'] as const) {
+      expect(parseClassroomEntryIntent(`?classroom=${intent}`)).toBe(intent)
+      expect(parseClassroomEntryIntent(`?utm_source=poster&classroom=${intent}`)).toBe(intent)
+    }
+  })
+
+  it('rejects unknown, empty, mis-cased and missing intents without throwing', () => {
+    expect(parseClassroomEntryIntent('?classroom=bogus')).toBeNull()
+    expect(parseClassroomEntryIntent('?classroom=')).toBeNull()
+    expect(parseClassroomEntryIntent('?classroom=Join')).toBeNull()
+    expect(parseClassroomEntryIntent('?classroom=join%20')).toBeNull()
+    expect(parseClassroomEntryIntent('?other=join')).toBeNull()
+    expect(parseClassroomEntryIntent('')).toBeNull()
   })
 })

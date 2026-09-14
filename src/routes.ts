@@ -2,6 +2,25 @@ export const BUILD_PATH = '/build'
 
 export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'not-found'
 
+/**
+ * Account entry intents carried by `/build?classroom=<intent>`.
+ * `save` opens the save flow, `worlds`/`class` open a signed-in tab, and
+ * `join`/`signin`/`teacher` pick the initial sign-in mode for guests.
+ */
+export type ClassroomEntryIntent = 'save' | 'worlds' | 'class' | 'join' | 'signin' | 'teacher'
+
+const CLASSROOM_ENTRY_INTENTS: ReadonlySet<string> = new Set<ClassroomEntryIntent>(['save', 'worlds', 'class', 'join', 'signin', 'teacher'])
+
+export function isClassroomEntryIntent(value: unknown): value is ClassroomEntryIntent {
+  return typeof value === 'string' && CLASSROOM_ENTRY_INTENTS.has(value)
+}
+
+/** Reads `?classroom=` from a query string; unknown or missing values resolve to null. */
+export function parseClassroomEntryIntent(search: string): ClassroomEntryIntent | null {
+  const value = new URLSearchParams(search).get('classroom')
+  return isClassroomEntryIntent(value) ? value : null
+}
+
 /** Resolve only known routes; preserve old editor links without hiding the home page. */
 export function resolveAppRoute(location: Pick<URL, 'pathname' | 'search' | 'hash'>): {
   route: AppRoute

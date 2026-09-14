@@ -40,7 +40,7 @@ beforeEach(() => {
   cloud.status = 'saved'
   cloud.error = ''
 })
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/') })
 
 describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
@@ -102,6 +102,27 @@ describe('studio navigation and save context', () => {
     fireEvent.click(entries[2])
     expect(screen.getByRole('dialog', { name: 'Classroom class' })).toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['worlds', 'Classroom worlds'],
+    ['join', 'Classroom join'],
+    ['signin', 'Classroom signin'],
+    ['teacher', 'Classroom teacher'],
+  ])('opens the classroom panel for /build?classroom=%s and consumes the param', (intent, dialog) => {
+    window.history.replaceState(null, '', `/build?classroom=${intent}&utm_source=poster#top`)
+    render(<BrickStudioApp />)
+    expect(screen.getByRole('dialog', { name: dialog })).toBeInTheDocument()
+    expect(window.location.search).toBe('?utm_source=poster')
+    expect(window.location.hash).toBe('#top')
+  })
+
+  it('opens no panel for /build?classroom=bogus and still strips the param', () => {
+    window.history.replaceState(null, '', '/build?classroom=bogus&utm_source=poster')
+    render(<BrickStudioApp />)
+    expect(screen.queryByRole('dialog', { name: /^Classroom/ })).not.toBeInTheDocument()
+    expect(window.location.pathname).toBe('/build')
+    expect(window.location.search).toBe('?utm_source=poster')
   })
 
   it('does not report an account save for a connected or offline shared world', () => {
