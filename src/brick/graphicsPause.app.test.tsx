@@ -39,6 +39,9 @@ function resetStore(overrides: Partial<ReturnType<typeof useBrickStore.getState>
 }
 
 beforeEach(() => {
+  // The studio autosaves into localStorage and reloads it on mount; start each test clean.
+  localStorage.clear()
+  sessionStorage.clear()
   stubMediaQueries([])
   resetStore()
 })
@@ -62,6 +65,29 @@ describe('editing while the graphics are paused', () => {
     fireEvent.keyDown(window, { key: ']' })
     expect(useBrickStore.getState().selectedIds).toHaveLength(1)
     fireEvent.keyDown(window, { key: 'Delete' })
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+  })
+
+  it('parks the inspector delete button and undo while paused, even if the click still fires', () => {
+    resetStore({ selectedIds: ['brick-a'], selectedId: 'brick-a' })
+    render(<BrickStudioApp />)
+    // The desktop inspector starts collapsed; expand it, then grab the controls before
+    // pausing, because an inert subtree is excluded from role queries.
+    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
+    const deleteButton = screen.getByRole('button', { name: 'Delete brick' })
+    const inspector = deleteButton.closest('aside')
+    expect(inspector).not.toBeNull()
+
+    act(() => useBrickStore.getState().setGraphicsPaused(true))
+    expect(inspector).toHaveAttribute('inert')
+    // jsdom does not enforce inert, so a forced click exercises the store-level backstop.
+    fireEvent.click(deleteButton)
+    expect(useBrickStore.getState().bricks).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Undo' })).toBeDisabled()
+
+    act(() => useBrickStore.getState().setGraphicsPaused(false))
+    expect(inspector).not.toHaveAttribute('inert')
+    fireEvent.click(deleteButton)
     expect(useBrickStore.getState().bricks).toHaveLength(1)
   })
 

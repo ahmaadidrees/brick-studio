@@ -826,6 +826,9 @@ function BuildSelectionInput() {
     const blur = () => { cancelledPointerId = null; reset() }
     const visibility = () => { if (document.visibilityState !== 'visible') reset() }
     const unsubscribe = useBrickStore.subscribe((state) => {
+      // A lost WebGL context parks the gesture too: release the captured pointer so a
+      // box selection already in flight cannot finish blind after the veil appears.
+      if (state.graphicsPaused) { reset(); return }
       if ((state.mode !== 'build' && (active.current || state.marquee)) || (active.current?.explicitMode && !state.selectionMode)) reset()
     })
 
@@ -1111,6 +1114,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
     // Abort whenever the drag loses its subject (Cancel, placement, or leaving
     // Build) so neither the pointer id nor grabInProgress is left stranded.
     const unsubscribe = useBrickStore.subscribe((state) => {
+      if (state.graphicsPaused) { abandon(); return }
       if (state.mode !== 'build' || state.selectionMode) abortHold()
       if (activePointer.current !== null && (state.mode !== 'build' || (!state.draft && (!selectedDrag.current || selectedDrag.current.started)))) release()
     })

@@ -30,6 +30,7 @@ export function VerticalSelectionHandle() {
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingSelection = useBrickStore((state) => state.movingSelection)
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const active = useRef<Drag | null>(null)
   const selected = useMemo(() => {
     const ids = new Set(selectedIds.length ? selectedIds : selectedId ? [selectedId] : [])
@@ -61,7 +62,7 @@ export function VerticalSelectionHandle() {
       cancel()
     }
     const unsubscribe = useBrickStore.subscribe((state) => {
-      if (active.current && (state.mode !== 'build' || state.movingSelection !== active.current.selection)) cancel()
+      if (active.current && (state.graphicsPaused || state.mode !== 'build' || state.movingSelection !== active.current.selection)) cancel()
     })
     window.addEventListener('blur', cancel)
     window.addEventListener('resize', cancel)
@@ -120,6 +121,7 @@ export function VerticalSelectionHandle() {
         onPointerCancel={() => finish(false)}
         onLostPointerCapture={() => finish(false)}
         onClick={(event) => { event.preventDefault(); event.stopPropagation() }}
+        inert={graphicsPaused}
         className={`vertical-selection-handle${owned ? ' is-dragging' : ''}${valid ? '' : ' is-blocked'}`}
       >
         <span className="vertical-selection-handle-grip"><MoveVertical size={17} aria-hidden="true" /></span>

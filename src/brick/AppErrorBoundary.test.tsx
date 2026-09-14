@@ -16,7 +16,7 @@ const worldBrick: BrickInstance = { id: 'brick-b', partId: 'brick_2x4', x: 30, y
 
 const LIVE_LABEL = 'Live room · captured when the studio crashed · may include changes that weren\'t saved'
 const CLOUD_LABEL = 'Class world · captured when the studio crashed · may include changes that weren\'t saved yet'
-const LOCAL_LABEL = 'Saved on this device · captured when the studio crashed'
+const LOCAL_LABEL = 'This device · captured when the studio crashed · may include unsaved changes'
 
 function Boom({ message }: { message: string }): never {
   throw new Error(message)

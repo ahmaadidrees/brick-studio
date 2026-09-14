@@ -51,7 +51,7 @@ const LOCAL_FILENAME = 'brick-studio-build'
 const ACTIVE_LABELS: Record<RecoverySnapshotSource, string> = {
   live: 'Live room · captured when the studio crashed · may include changes that weren\'t saved',
   cloud: 'Class world · captured when the studio crashed · may include changes that weren\'t saved yet',
-  local: 'Saved on this device · captured when the studio crashed',
+  local: 'This device · captured when the studio crashed · may include unsaved changes',
 }
 
 function defaultStorage(): BrickStudioStorage | null {

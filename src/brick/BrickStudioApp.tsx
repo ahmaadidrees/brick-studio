@@ -241,6 +241,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
   const redo = useBrickStore((state) => state.redo)
   const undoCount = useBrickStore((state) => state.undoStack.length)
   const redoCount = useBrickStore((state) => state.redoStack.length)
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const brickBudget = useBrickStore((state) => state.brickBudget)
   const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
   const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
@@ -269,8 +270,8 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         {onOpenMyWorlds && <button className="studio-icon-button classroom-header-entry" onClick={onOpenMyWorlds} aria-label="My Worlds"><span>My Worlds</span></button>}
         <span className="brick-count" aria-label={`${bricks.length} of ${brickBudget} brick capacity`}><Box size={16} /> {bricks.length} / {brickBudget}<i> bricks</i></span>
         {mode === 'build' && <>
-          <button className="studio-icon-button" onClick={undo} disabled={!undoCount} aria-label="Undo"><Undo2 size={18} /></button>
-          <button className="studio-icon-button" onClick={redo} disabled={!redoCount} aria-label="Redo"><Redo2 size={18} /></button>
+          <button className="studio-icon-button" onClick={undo} disabled={!undoCount || graphicsPaused} aria-label="Undo"><Undo2 size={18} /></button>
+          <button className="studio-icon-button" onClick={redo} disabled={!redoCount || graphicsPaused} aria-label="Redo"><Redo2 size={18} /></button>
         </>}
         <StudioSettings />
         <button className="studio-icon-button brick-help-entry" onClick={onOpenHelp} aria-label="Quick start and controls" title="Quick start and controls"><HelpCircle size={18} /></button>
@@ -338,8 +339,9 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
 }
 
 function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse: () => void }) {
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   return (
-    <aside className="part-library" id="brick-part-library" aria-label="Brick drawer">
+    <aside inert={graphicsPaused} className="part-library" id="brick-part-library" aria-label="Brick drawer">
       <div className="library-title">
         <div><span className="brick-eyebrow">Brick drawer</span><h2>Choose a shape</h2></div>
         <button
@@ -465,6 +467,7 @@ function TransformControls({ count, onResize, compact = false }: { count: number
 
 /** Desktop-only. Compact layouts get TouchSelectionBar instead. */
 function Inspector({ onResize }: { onResize: () => void }) {
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const activeColor = useBrickStore((state) => state.activeColor)
@@ -493,7 +496,7 @@ function Inspector({ onResize }: { onResize: () => void }) {
 
   if (selectedIds.length > 1 && !draft) {
     return (
-      <aside className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
+      <aside inert={graphicsPaused} className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
         <div className="inspector-heading">
           <span className="inspector-cube multi-selection-cube"><Layers3 size={19} /></span>
           <div><span className="brick-eyebrow">Selection</span><h2>{selectedIds.length} bricks selected</h2></div>
@@ -517,7 +520,7 @@ function Inspector({ onResize }: { onResize: () => void }) {
   if (!part) return null
 
   return (
-    <aside className={`brick-inspector ${detailsExpanded ? 'details-expanded' : 'details-collapsed'}`}>
+    <aside inert={graphicsPaused} className={`brick-inspector ${detailsExpanded ? 'details-expanded' : 'details-collapsed'}`}>
       <div className="inspector-toolbar">
         <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{movingSelection?.duplicate ? 'Duplicating' : moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{movingSelection && movingSelection.originals.length > 1 ? `${movingSelection.originals.length} bricks` : part.name}</h2></div></div>
         <div className="inspector-quick-actions">
@@ -624,6 +627,7 @@ function EmptyState() {
  * only — there is no room for them beside six 44px targets.
  */
 function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onResize: () => void }) {
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const bricks = useBrickStore((state) => state.bricks)
   const selectedId = useBrickStore((state) => state.selectedId)
   const selectedIds = useBrickStore((state) => state.selectedIds)
@@ -642,7 +646,7 @@ function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onR
   const count = selectedIds.length
   if (count > 1) {
     return (
-      <div className="touch-selection-bar" role="group" aria-label={`${count} bricks selected`}>
+      <div inert={graphicsPaused} className="touch-selection-bar" role="group" aria-label={`${count} bricks selected`}>
         <span className="selection-part-chip">
           <span className="selection-swatch selection-swatch-multi" aria-hidden="true"><Layers3 size={17} /></span>
           <span className="selection-chip-text"><span className="brick-eyebrow">Selection</span><strong>{count} bricks</strong></span>
@@ -661,7 +665,7 @@ function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onR
   const part = BRICK_PART_MAP[selected.partId]
   if (!part) return null
   return (
-    <div className="touch-selection-bar" role="group" aria-label="Selected brick actions">
+    <div inert={graphicsPaused} className="touch-selection-bar" role="group" aria-label="Selected brick actions">
       <span className="selection-part-chip">
         <span className="selection-swatch" style={{ background: selected.color }} aria-hidden="true" />
         <span className="selection-chip-text"><span className="brick-eyebrow">Selected</span><strong>{part.name}</strong></span>

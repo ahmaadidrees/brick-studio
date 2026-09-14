@@ -66,3 +66,11 @@
   background: linear-gradient(135deg, #5b7fe0, #4360c7);
   color: #fff;
 }
+
+/* Editing chrome is made inert while the context is lost; show it as parked. */
+.brick-inspector[inert],
+.touch-selection-bar[inert],
+.part-library[inert],
+.vertical-selection-handle[inert] {
+  opacity: 0.55;
+}
