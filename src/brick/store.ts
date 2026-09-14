@@ -91,6 +91,8 @@ export type BrickState = {
   exploreSpawnStatus: ExploreSpawnStatus
   exploreLastSafePosition: ExplorePosition | null
   reducedMotion: boolean
+  /** True while the WebGL context is lost: editing and movement input are parked. */
+  graphicsPaused: boolean
   selectionMode: boolean
   marquee: MarqueeState | null
   /** Grid coordinates of the build camera focus, published by the scene. */
@@ -141,6 +143,7 @@ export type BrickState = {
   markExploreSpawnUnavailable: () => void
   requestJump: () => void
   setReducedMotion: (reducedMotion: boolean) => void
+  setGraphicsPaused: (paused: boolean) => void
   setSelectionMode: (selectionMode: boolean) => void
   setMarquee: (marquee: MarqueeState | null) => void
   setViewTarget: (x: number, z: number) => void
@@ -486,6 +489,7 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   exploreSpawnStatus: 'idle',
   exploreLastSafePosition: null,
   reducedMotion: false,
+  graphicsPaused: false,
   selectionMode: false,
   marquee: null,
   viewTarget: null,
@@ -1105,6 +1109,27 @@ export const useBrickStore = create<BrickState>((set, get) => ({
   }),
   requestJump: () => set((state) => ({ jumpNonce: state.jumpNonce + 1 })),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
+  setGraphicsPaused: (paused) => {
+    const state = get()
+    if (state.graphicsPaused === paused) return
+    if (!paused) {
+      set({ graphicsPaused: false, announcement: 'Graphics are back. You can keep building.' })
+      return
+    }
+    // A lost WebGL context leaves the view blank. Park every in-flight gesture so no
+    // blind placement, move or step lands while the studio cannot show what it is doing.
+    // The selection itself is kept: it is state, not a gesture.
+    if (state.draft) state.cancelInteraction()
+    set({
+      graphicsPaused: true,
+      marquee: null,
+      grabInProgress: false,
+      touchMove: { x: 0, z: 0 },
+      touchMoveMagnitude: 0,
+      touchRunning: false,
+      announcement: 'Graphics paused. Building and movement are on hold until the screen comes back.',
+    })
+  },
   setSelectionMode: (selectionMode) => set({
     selectionMode,
     marquee: null,

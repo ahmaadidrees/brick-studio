@@ -93,6 +93,8 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
       const interactiveTarget = target instanceof HTMLElement && target.matches('select, button, a')
       const selectionTarget = target instanceof HTMLSelectElement
       const state = useBrickStore.getState()
+      // While the WebGL context is lost the view is blank: no blind edits from the keyboard.
+      if (state.graphicsPaused) return
       const command = event.metaKey || event.ctrlKey
       if (command && event.key.toLowerCase() === 'z') { event.preventDefault(); event.shiftKey ? state.redo() : state.undo(); return }
       if (command && event.key.toLowerCase() === 'c') { event.preventDefault(); state.copy(); return }
@@ -805,6 +807,12 @@ function Announcer() {
   return <div className="visually-hidden" data-testid="builder-announcer" aria-live="polite" aria-atomic="true">{announcement}</div>
 }
 
+function TouchExploreControlsGate(props: { readOnly?: boolean }) {
+  // A lost WebGL context parks movement too; the joystick and jump button return with the graphics.
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
+  return graphicsPaused ? null : <TouchExploreControls {...props} />
+}
+
 function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
   const keyboardMode = useBrickStore((state) => state.exploreKeyboardMode)
   const setMove = useBrickStore((state) => state.setTouchMove)
@@ -1231,7 +1239,7 @@ export default function BrickStudioApp({
           <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
-      ) : <TouchExploreControls readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
+      ) : <TouchExploreControlsGate readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
       <Toast />
       <Announcer />
       <WorldAndCharacterSheet
