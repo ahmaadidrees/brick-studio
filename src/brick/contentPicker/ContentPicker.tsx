@@ -252,14 +252,15 @@ export function ContentPicker({
       )}
 
       {(visibleSection === 'all' || visibleSection === 'environment') && <div className="content-picker-section">
-        <SectionHeading eyebrow="Your setting" title="Scene">
+        <SectionHeading eyebrow="Your setting" title="Choose your scene">
           <span className="content-picker-selection-summary" aria-live="polite">
             {environmentDescriptors.find(({ id }) => id === selectedEnvironmentId)?.name ?? 'Not selected'}
           </span>
         </SectionHeading>
+        <p className="content-picker-section-lead">Each scene gives your build a different backdrop and feeling.</p>
         <SelectionGrid
           kind="environment"
-          label="Choose a scene"
+          label="Choose your scene"
           descriptors={environmentDescriptors}
           selectedId={selectedEnvironmentId}
           emptyCopy="No scenes are available yet."

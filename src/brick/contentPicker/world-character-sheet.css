@@ -220,13 +220,103 @@
   .world-character-sheet-panel { animation: none; }
 }
 
-.plate-size-picker { margin: 0 0 16px; padding: 14px; border: 1px solid #dce3e8; border-radius: 12px; }
-.plate-size-picker legend { font-weight: 700; padding: 0 5px; }
-.plate-size-picker p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: #526171; }
-.plate-size-picker > div { display: flex; gap: 8px; flex-wrap: wrap; }
-.plate-size-picker button { padding: 9px 14px; border: 1px solid #ccd5df; border-radius: 8px; background: white; color: #253447; cursor: pointer; }
-.plate-size-picker button[aria-pressed="true"] { background: #e6f1ff; border-color: #3975b9; color: #194e8b; font-weight: 700; }
-.plate-size-picker small { display: block; margin-top: 8px; }
+/* Build plate — a segmented 64/96/128 choice under the scene cards (board 08). */
+.plate-size-picker {
+  position: relative;
+  min-width: 0;
+  margin: 18px 0 0;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--border, #dce3e8);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface, #fff);
+}
+.plate-size-picker legend {
+  padding: 0 5px;
+  color: var(--text, #223640);
+  font: 700 18px/1.1 var(--font-display, 'Fredoka'), inherit, sans-serif;
+}
+.plate-size-current {
+  float: right;
+  margin: 3px 0 4px 12px;
+  color: var(--text-muted, #6f8087);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.plate-size-lead { clear: none; margin: 2px 0 10px; color: var(--text-muted, #526171); font-size: 12px; font-weight: 700; line-height: 1.45; }
+.plate-size-options {
+  clear: both;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border, #ccd5df);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface, #fff);
+}
+.plate-size-options button {
+  min-width: 0;
+  min-height: 46px;
+  padding: 0 6px;
+  border: 0;
+  border-right: 1px solid var(--border, #ccd5df);
+  color: var(--text, #253447);
+  background: transparent;
+  font: 800 13px/1 inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.plate-size-options button:last-child { border-right: 0; }
+.plate-size-options button:hover:not(:disabled):not([aria-pressed='true']) { background: var(--surface-2, #f1f6fb); }
+.plate-size-options button[aria-pressed='true'] {
+  color: var(--primary-contrast, #fff);
+  background: var(--primary, #3e83d7);
+  font-weight: 900;
+}
+.plate-size-options button:focus-visible { outline: 3px solid var(--focus, rgba(62, 131, 215, .4)); outline-offset: -3px; position: relative; z-index: 1; }
+.plate-size-picker:disabled .plate-size-options { opacity: .55; }
+.plate-size-picker:disabled .plate-size-options button { cursor: not-allowed; }
+.plate-size-hint { margin: 9px 0 0; color: var(--text-muted, #526171); font-size: 12px; font-weight: 700; line-height: 1.45; }
+
+/* Plate shrink rejected by brick-core: the sheet swaps its body for this state (board 08, right card). */
+.plate-resize-rejection { display: grid; justify-items: center; gap: 12px; padding-top: 22px; text-align: center; outline: none; }
+.plate-resize-rejection:focus-visible { outline: 3px solid var(--focus, rgba(62, 131, 215, .4)); outline-offset: -3px; }
+.plate-resize-rejection h3 { margin: 0; font: 700 clamp(20px, 3vw, 24px)/1.15 var(--font-display, 'Fredoka'), inherit, sans-serif; color: var(--text, #223640); }
+.plate-resize-rejection-message { max-width: 34ch; margin: 0; color: var(--text-muted, #526171); font-size: 13px; font-weight: 700; line-height: 1.5; }
+.plate-resize-diagram { width: min(220px, 70%); height: auto; margin-top: 6px; }
+.plate-resize-diagram-current { fill: var(--surface-2, #eef1f3); stroke: var(--border, #cbd5d7); stroke-width: 2; }
+.plate-resize-diagram-stud { fill: rgba(38, 60, 81, .16); }
+.plate-resize-diagram-next { fill: none; stroke: var(--text, #263c51); stroke-width: 2.5; stroke-dasharray: 6 5; }
+.plate-resize-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin: 0; padding: 0; list-style: none; color: var(--text-muted, #526171); font-size: 12px; font-weight: 800; }
+.plate-resize-legend li { display: inline-flex; align-items: center; gap: 7px; }
+.plate-resize-legend i { width: 18px; height: 18px; border-radius: 4px; }
+.plate-resize-legend-next { border: 2px dashed var(--text, #263c51); }
+.plate-resize-legend-current { border: 2px solid var(--border, #cbd5d7); background: var(--surface-2, #eef1f3); }
+.plate-resize-rejection-actions { flex-direction: column; gap: 6px; }
+.plate-resize-rejection-actions .world-character-sheet-apply { width: 100%; }
+.world-character-sheet-link {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--primary-strong, #2867ae);
+  background: transparent;
+  font: 900 13px/1 inherit;
+  cursor: pointer;
+}
+.world-character-sheet-link:hover { text-decoration: underline; }
+.world-character-sheet-link:focus-visible { outline: 3px solid var(--focus, rgba(62, 131, 215, .4)); outline-offset: 2px; }
+.world-character-sheet-error {
+  margin: 0 22px 10px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm, 8px);
+  color: var(--danger, #9b4037);
+  background: #ffefec;
+  font-size: 12px;
+  font-weight: 800;
+}
+.world-character-sheet-eyebrow[data-preview] { color: var(--primary-strong, #2867ae); }
 
 .wardrobe-panel { padding: 16px 0; border-top: 1px solid #dce3e8; }
 .wardrobe-panel h3 { margin: 0 0 5px; }

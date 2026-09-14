@@ -27,7 +27,7 @@ describe('ContentPicker', () => {
     const { container } = render(<ContentPicker {...baseProps} />)
 
     expect(screen.getByRole('region', { name: 'Scene & character' })).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'Choose a scene' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Choose your scene' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Toy Room/ })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /Brick Valley/ })).toHaveAttribute('tabindex', '-1')
     expect(screen.getByRole('radio', { name: /Toy Figure/ })).toHaveAttribute('aria-checked', 'true')
