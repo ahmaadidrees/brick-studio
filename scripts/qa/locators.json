@@ -1,0 +1,217 @@
+{
+  "_comment": "Role/label locators for scripts/qa/brand-surfaces.mjs. Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText.",
+  "worldMenu": {
+    "role": "button",
+    "name": "World menu"
+  },
+  "studioMenu": {
+    "role": "menu",
+    "name": "Studio actions"
+  },
+  "menuHome": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Home"
+    }
+  },
+  "menuMyWorlds": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^My Worlds"
+    }
+  },
+  "menuMyClass": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^My Class"
+    }
+  },
+  "menuImport": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Import"
+    }
+  },
+  "saveStatus": {
+    "role": "status",
+    "name": {
+      "regex": "^Save status"
+    }
+  },
+  "settings": {
+    "role": "button",
+    "name": "Settings"
+  },
+  "settingsDialog": {
+    "role": "dialog",
+    "name": "Settings"
+  },
+  "scene": {
+    "role": "button",
+    "name": "Scene"
+  },
+  "character": {
+    "role": "button",
+    "name": "Character"
+  },
+  "sceneDialog": {
+    "role": "dialog",
+    "name": "Scene & character"
+  },
+  "sceneTab": {
+    "role": "tab",
+    "name": "Scene"
+  },
+  "characterTab": {
+    "role": "tab",
+    "name": "Character"
+  },
+  "applySheet": {
+    "role": "button",
+    "name": "Apply"
+  },
+  "exploreMode": {
+    "role": "button",
+    "name": "Explore mode"
+  },
+  "backToBuilding": {
+    "role": "button",
+    "name": "Back to building"
+  },
+  "respawn": {
+    "role": "button",
+    "name": "Respawn at a safe spot"
+  },
+  "recenter": {
+    "role": "button",
+    "name": "Recenter camera"
+  },
+  "buildTogether": {
+    "role": "button",
+    "name": "Build together"
+  },
+  "openBrickDrawer": {
+    "role": "button",
+    "name": "Open brick drawer"
+  },
+  "brickDrawer": {
+    "role": "complementary",
+    "name": "Brick drawer"
+  },
+  "brickDrawerSheet": {
+    "role": "dialog",
+    "name": "Choose a shape"
+  },
+  "createBrick": {
+    "role": "button",
+    "name": "Create a brick"
+  },
+  "createBrickDialog": {
+    "role": "dialog",
+    "name": "Create a brick"
+  },
+  "anyColor": {
+    "role": "button",
+    "name": "Choose any brick color"
+  },
+  "colorDialog": {
+    "role": "dialog",
+    "name": "Choose any color"
+  },
+  "placeBrick": {
+    "role": "button",
+    "name": "Place brick"
+  },
+  "quickStart": {
+    "role": "dialog",
+    "name": "Build something you can explore"
+  },
+  "dismissQuickStart": {
+    "role": "button",
+    "name": "Dismiss quick start"
+  },
+  "startBuilding": {
+    "role": "link",
+    "name": "Start building"
+  },
+  "continueBuilding": {
+    "role": "link",
+    "name": "Continue building"
+  },
+  "builderName": {
+    "label": "Your builder name"
+  },
+  "roomName": {
+    "label": "Room name"
+  },
+  "createRoom": {
+    "role": "button",
+    "name": "Create my live room"
+  },
+  "liveBlockedHeading": {
+    "role": "heading",
+    "name": {
+      "regex": "Cannot open this world|Cannot reach this room|This room is closed"
+    }
+  },
+  "publishedTitle": {
+    "text": "Published world"
+  },
+  "remix": {
+    "role": "button",
+    "name": "Remix this world"
+  },
+  "remixConfirm": {
+    "role": "dialog",
+    "name": "Replace your guest draft?"
+  },
+  "remixCancel": {
+    "role": "button",
+    "name": "Cancel"
+  },
+  "graphicsPaused": {
+    "role": "alert",
+    "name": "Graphics paused"
+  },
+  "downloadBuild": {
+    "role": "button",
+    "name": "Download my build"
+  },
+  "importFile": {
+    "label": "Choose Brick Studio project file"
+  },
+  "studioMessage": {
+    "role": "status",
+    "name": "Studio message"
+  },
+  "classroomDialog": {
+    "role": "dialog",
+    "name": {
+      "regex": "Save, return, build together|My Worlds|My Class|Choose your new password"
+    }
+  },
+  "classroomJoin": {
+    "role": "button",
+    "name": "Join a class"
+  },
+  "classroomStudentSignIn": {
+    "role": "button",
+    "name": "Student sign in"
+  },
+  "classroomTeacherSignIn": {
+    "role": "button",
+    "name": "Teacher sign in"
+  },
+  "closeClassroom": {
+    "role": "button",
+    "name": "Close classroom"
+  },
+  "notFoundHeading": {
+    "role": "heading",
+    "name": "We couldn't find that page"
+  },
+  "showBrickProperties": {
+    "role": "button",
+    "name": "Show brick properties"
+  }
+}
