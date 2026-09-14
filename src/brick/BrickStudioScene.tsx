@@ -117,6 +117,7 @@ import {
 } from './runtimeContent'
 import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
+import './graphics-paused.css'
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -1813,12 +1814,14 @@ export default function BrickStudioScene({
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const compactRenderer = useCompactRenderer()
   const mouseTravel = useRef(createPointerTravel())
+  const [graphicsPaused, setGraphicsPaused] = useState(false)
 
   // Audible confirmation is orthogonal to reduced motion — always play it.
   useEffect(() => {
     if (placeFeedback) playPlaceClick()
   }, [placeFeedback])
   return (
+    <>
     <Canvas
       onPointerDownCapture={(event) => {
         if (event.target instanceof HTMLCanvasElement) {
@@ -1830,7 +1833,11 @@ export default function BrickStudioScene({
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
       camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-
+      onCreated={({ gl }) => {
+        // three.js already preventDefault()s webglcontextlost so the browser can restore it.
+        gl.domElement.addEventListener('webglcontextlost', () => setGraphicsPaused(true))
+        gl.domElement.addEventListener('webglcontextrestored', () => setGraphicsPaused(false))
+      }}
     >
       <RuntimeSceneContent
         environmentId={environmentId}
@@ -1844,5 +1851,7 @@ export default function BrickStudioScene({
         mouseTravel={mouseTravel.current}
       />
     </Canvas>
+    {graphicsPaused ? <div className="graphics-paused" role="status"><span>Graphics paused… the studio is waking the screen back up.</span></div> : null}
+    </>
   )
 }

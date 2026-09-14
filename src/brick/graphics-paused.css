@@ -1,0 +1,29 @@
+/* Shown by BrickStudioScene while the WebGL context is lost. three.js already
+   preventDefault()s the loss event and restores on webglcontextrestored; this only
+   explains the blank view in the meantime. Sits inside the canvas container, so the
+   studio chrome above it keeps working. */
+.graphics-paused {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(244, 242, 237, 0.86);
+  backdrop-filter: blur(6px);
+  color: #405761;
+  font-weight: 800;
+  text-align: center;
+  pointer-events: none;
+}
+
+.graphics-paused span {
+  max-width: 320px;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 9px 24px rgba(35, 55, 63, 0.16);
+  font-size: 13px;
+  line-height: 1.4;
+}
