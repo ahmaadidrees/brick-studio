@@ -19,13 +19,16 @@ active at resume, verified by process and worktree inspection). Approved package
 | W8 QA harness, baseline (defects D1–D10 with owners), run book | `db83458` (merge) | 1004 tests |
 | W3 accounts/classrooms (boards 03/04/05/13/14/15/16) + classroom client strings | `618d040` (merge), `5f9d1f7` | 1048 tests |
 | W5 scene/plate, custom bricks, resize, color (boards 08/10/16; D2/D5/D6/D7 fixed) | `6950d4b` (merge) | 1064 tests |
+| W6 D7 remainder (44px character controls on touch) | `95e019b` (merge) | 1064 tests |
+| W4 editor/Explore/collaboration/recovery shell (boards 06/07/11/12/15/16; D1/D3/D4/D7/D8/D9/D10) | `8b2f8db` (merge) | 1066 tests; `npm run check` green (worker 78, build) |
+| W1 second pass: Button href/pressed, Field required name, Select, SegmentedControl describedby, 44px coarse rule, Sheet focus; consistency review | `7083387` (merge) | 109 files / 1075 tests |
 
 All lane worktrees (w2–w8) were fast-forward-merged onto `7d9a48b` so every lane consumes the foundation. W6's
 in-progress state was snapshotted as a WIP commit first (its staged CSS deletion blocked the merge).
 
 ## Merge order and gates
 
-W1 ✔ W2 ✔ W7 ✔ W6 ✔ W8 ✔ W3 ✔ W5 ✔ → W4 (in progress; carries D1/D3/D4/D7/D8/D9/D10) → W6 D7 remainder → W1 primitive requests + consistency review → W8 integrated run. `npm run check` under Node 22 at each boundary, then the W8 run
+All lanes merged at `7083387`. Next: W8 integrated run (strict surfaces matrix, refinement UI, character customizer, schema round trip, board captures, local two-client multiplayer, route transfer, performance on a quiet host) → lead fixes → final candidate. `npm run check` under Node 22 at each boundary, then the W8 run
 book (surfaces matrix strict, refinement UI, character customizer, route transfer, local two-client multiplayer,
 performance on a quiet host, board captures).
 
@@ -35,6 +38,12 @@ performance on a quiet host, board captures).
 - W5/W2 ← W7: media filenames and intrinsic sizes per CONTRACTS (`scene-*-400` is 400×250, 16:10).
 - W6 ← lead: keep "Toy Figure"/"Classic Builder" names; cc0-hero stays selectable, excluded from marketing media.
 - W1 request 2 (lane stylesheets override the `:root` aliases) delegated to W2/W3/W4/W5 in their briefs.
+
+## Known flake
+
+`src/brick/BrickStudioApp.test.tsx` "applies a custom group color as one undoable edit and keeps Cancel local" failed
+once in a full run right after the W1 merge while another lane's suite was running; passes alone and on rerun
+(1075/1075). W8 re-runs it three times in the integrated pass.
 
 ## Boundaries
 
