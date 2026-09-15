@@ -1,0 +1,90 @@
+[
+  {
+    "timestamp": "2026-09-15T01:05:50.303Z",
+    "origin": "http://127.0.0.1:5215",
+    "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+    "peerOrigin": null,
+    "steps": [
+      "Created guest world through UI",
+      "Copied guest invite through the People panel; no owner fragment",
+      "Second isolated browser joined through invite UI",
+      "Owner resized96 through Scene UI; peer received replacement",
+      "Owner resized128 through Scene UI; peer received replacement",
+      "Owner selected Toy Figure, Bun, Glasses through Character UI; peer players appearance confirmed",
+      "Owner selected Nova through UI; peer players characterId confirmed",
+      "UI export equals authoritative GET; contains edge brick on128 plate",
+      "Cold peer reload rejoined with document identical to export and authoritative GET"
+    ],
+    "errors": [],
+    "failure": null,
+    "cleanupLocked": true,
+    "label": "staging-local",
+    "authoritativeEqualsExport": true
+  },
+  {
+    "timestamp": "2026-09-15T01:17:24.855Z",
+    "origin": "https://virtual-legos-mzdcjm0vt-ahmaadidrees-projects.vercel.app",
+    "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+    "peerOrigin": "https://virtual-legos-mzdcjm0vt-ahmaadidrees-projects.vercel.app",
+    "steps": [
+      "Created guest world through UI",
+      "Copied guest invite through the People panel; no owner fragment",
+      "Second isolated browser joined through invite UI",
+      "Owner resized96 through Scene UI; peer received replacement",
+      "Owner resized128 through Scene UI; peer received replacement",
+      "Owner selected Toy Figure, Bun, Glasses through Character UI; peer players appearance confirmed",
+      "Owner selected Nova through UI; peer players characterId confirmed",
+      "UI export equals authoritative GET; contains edge brick on128 plate",
+      "Cold peer reload rejoined with document identical to export and authoritative GET"
+    ],
+    "errors": [],
+    "failure": null,
+    "cleanupLocked": true,
+    "label": "staging-preview",
+    "authoritativeEqualsExport": true
+  },
+  {
+    "timestamp": "2026-09-15T01:21:06.395Z",
+    "origin": "https://virtual-legos-923a42tph-ahmaadidrees-projects.vercel.app",
+    "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+    "peerOrigin": "https://virtual-legos-923a42tph-ahmaadidrees-projects.vercel.app",
+    "steps": [
+      "Created guest world through UI",
+      "Copied guest invite through the People panel; no owner fragment",
+      "Second isolated browser joined through invite UI",
+      "Owner resized96 through Scene UI; peer received replacement",
+      "Owner resized128 through Scene UI; peer received replacement",
+      "Owner selected Toy Figure, Bun, Glasses through Character UI; peer players appearance confirmed",
+      "Owner selected Nova through UI; peer players characterId confirmed",
+      "UI export equals authoritative GET; contains edge brick on128 plate",
+      "Cold peer reload rejoined with document identical to export and authoritative GET"
+    ],
+    "errors": [],
+    "failure": null,
+    "cleanupLocked": true,
+    "label": "production-candidate",
+    "authoritativeEqualsExport": true
+  },
+  {
+    "timestamp": "2026-09-15T01:23:41.838Z",
+    "origin": "https://brickgineers.com",
+    "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+    "peerOrigin": "https://virtual-legos.vercel.app",
+    "steps": [
+      "Created guest world through UI",
+      "Copied guest invite through the People panel; no owner fragment",
+      "Second isolated browser joined through invite UI",
+      "Owner resized96 through Scene UI; peer received replacement",
+      "Owner resized128 through Scene UI; peer received replacement",
+      "Owner selected Toy Figure, Bun, Glasses through Character UI; peer players appearance confirmed",
+      "Owner selected Nova through UI; peer players characterId confirmed",
+      "UI export equals authoritative GET; contains edge brick on128 plate",
+      "Cold peer reload rejoined with document identical to export and authoritative GET"
+    ],
+    "errors": [],
+    "failure": null,
+    "cleanupLocked": true,
+    "label": "production-cross-origin",
+    "authoritativeEqualsExport": true
+  }
+]

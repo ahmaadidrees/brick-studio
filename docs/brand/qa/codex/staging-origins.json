@@ -1,0 +1,26 @@
+[
+  {
+    "origin": "https://brickgineers.com",
+    "headers": "HTTP/2 204 \ndate: Tue, 15 Sep 2026 01:05:11 GMT\naccess-control-allow-origin: https://brickgineers.com\ncache-control: no-store\nvary: Origin\naccess-control-allow-headers: content-type, authorization\naccess-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=9hDQgqJfef4fLBDjt0TdmXNI1QdA%2FHvfBJFAPjtzdmPtA5KQPQQJEEW%2BrCGKerItLuGgC92yky60biO7J6%2BemM6%2FEFu1XN%2FykTKR6S5klZnXSTQiiJROplqzZVkcc%2B%2BGZpJh9Kw3TT2KYSyMJ79lbayjgILH%2FNd5xAiYyzxVqu%2FJaC5teAcMMrmMXKxnRWAmBWHJT48XkXM%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3b8c12c1ba0f2-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://www.brickgineers.com",
+    "headers": "HTTP/2 204 \ndate: Tue, 15 Sep 2026 01:05:12 GMT\naccess-control-allow-origin: https://www.brickgineers.com\ncache-control: no-store\nvary: Origin\naccess-control-allow-headers: content-type, authorization\naccess-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=cdBIX%2FvbJJgiWhiJVttnaHma5ZS7pyaK9vcE%2BFm8YlCUymGvNjp7xfQcPnPQSRylbn77lA3pUiQjN5U8yUBcs1epCktQAKXdQE8%2B%2FLE%2BK96iG1rI7jpjrV0RKgjvjJmrHZ31BhxGQNO9Z%2BURzDHrPcxV5wbVNxvLwCLcCnv2N3k%2FyjILixw2jwRyHQfVQsEi4rIdVx6UXPs%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3b8c2bb1d88f5-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://virtual-legos.vercel.app",
+    "headers": "HTTP/2 204 \ndate: Tue, 15 Sep 2026 01:05:12 GMT\naccess-control-allow-origin: https://virtual-legos.vercel.app\ncache-control: no-store\nvary: Origin\naccess-control-allow-headers: content-type, authorization\naccess-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=yLA0C5HeI9MHcO68%2FBbDjnaOhDnmZ3zrl3e14l8T4%2FfNIcPFsB1G6m%2BTk5sY%2FZVWH8UDKmgZCmw59MulFPsylEjt6dyxwv8i4gCL4DXiHjHUCsxOtL%2BtXuGz6VyljMLR4mZ7SLWzi6Q8KWjSec4XuC2J1ieRISeA%2BF0tbeuTf9bQYfu6%2F3ZxR2QIs6QCaDbot6q7Rg3mlXA%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3b8c34de612a1-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://brickgineers.com.evil.example",
+    "headers": "HTTP/2 403 \ndate: Tue, 15 Sep 2026 01:05:12 GMT\ncontent-type: application/json\ncontent-length: 29\ncache-control: no-store\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=Tf%2BEXCE2D1k%2BiRKmKSmcVHkOLArKhyeslPor1C%2FPFXWFq0NNPNktKtBzSVT3rKUMh1HTaWquPDbekLMKgUWTD4T2%2Bt%2B9M5YcfXdOnhuHIdqQTJDOkQXV%2FS9Y3X65qBlpQ7x%2BUBCiiY0ARpRQIFQqTc%2FG65gD3MH2mCeJoTpaS5UQA7P2l11CYcOsrdFLNuRhnGSqvaZWOSQ%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3b8c3f82a70f0-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "http://brickgineers.com",
+    "headers": "HTTP/2 403 \ndate: Tue, 15 Sep 2026 01:05:12 GMT\ncontent-type: application/json\ncontent-length: 29\ncache-control: no-store\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=OutCh0XfXWKA5%2BroMTfgXWy07ZCR1DU0qS0Ao%2Ft9zD%2F2ovJU1dnNbS4Uze%2Fs2zwtadFjv%2BYAN92NNs4T7hrm5MVZJia4KZQ0x4qv%2BVHDsbXtxrkG1wPUk6nsJNh%2BkRsOuPxPnvLm0JmeVRaPWf%2BQr6zgN7fBjxpTce3kGZpIwOzMbJnsidN1fMi54k8%2FALi9mEobCgPSnFs%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3b8c4987ee19d-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://brickgineers.com:8443",
+    "headers": "HTTP/2 403 \ndate: Tue, 15 Sep 2026 01:05:12 GMT\ncontent-type: application/json\ncontent-length: 29\ncache-control: no-store\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=pzco6TEUrrIcRDi0QWmJ7vHjAZpsJZBXr7AQ61eQV6IGuojV%2F5rZUuZ6J%2B8M8Kp1AsCW5xOgbl0HUqTjuXjfiOrlr9mcRvQcMTn6ecsNgDq071YdNlsJTAQ6eykYTBV2VxapRZCs8N7AWa8FAQDnTO80UDVgqFulaQI7gkNGz6wK%2FL7y2SJwPcZpwQH9E7vrIFXL%2F22AZAE%3D\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3b8c659996ad1-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  }
+]
