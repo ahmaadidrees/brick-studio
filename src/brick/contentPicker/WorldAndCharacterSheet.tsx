@@ -223,7 +223,7 @@ export function WorldAndCharacterSheet({
             : 'Pick a scene and a character'}
         </span>
         <Button variant="secondary" className="world-character-sheet-cancel" onClick={onClose}>{cancelLabel}</Button>
-        <Button variant="primary" className="world-character-sheet-apply" disabled={applyDisabled} onClick={apply}>{applyLabel}</Button>
+        <Button variant="primary" className="world-character-sheet-apply" disabled={applyDisabled} onClick={apply}>{activeTab === 'character' && applyLabel === 'Apply' ? 'Use this look' : applyLabel}</Button>
       </>
     )
 
@@ -231,11 +231,11 @@ export function WorldAndCharacterSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title={title}
-      description={description}
+      title={activeTab === 'character' && title === 'Scene & character' ? 'Character Studio' : title}
+      description={activeTab === 'character' ? 'Choose a character, make it yours, then use your look.' : description}
       size="lg"
       closeLabel="Close without applying"
-      className="world-character-sheet"
+      className={`world-character-sheet${activeTab === 'character' ? ' world-character-sheet--studio' : ''}`}
       footer={footer}
     >
       {/* `.world-character-sheet-body` stays for the QA scripts; the shared sheet body is the scroll container. */}

@@ -63,6 +63,8 @@ type WorldSocketAttachment = {
   connectionId?: string;
   superseded?: boolean;
   lastPoseAt: number;
+  /** Last accepted movement state; optional for sockets attached before this release. */
+  lastPoseMoving?: boolean;
   messageWindowAt: number;
   messageCount: number;
   messageRateViolations: number;
@@ -999,14 +1001,21 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     now: number,
   ): void {
     if (bytes > LIVE_MAX_POSE_BYTES) return this.sendError(socket, "pose_too_large", "The pose message exceeds 2 KiB.");
-    if (now - attachment.lastPoseAt < MIN_POSE_INTERVAL_MS) return;
     const keys = ["x", "y", "z", "yaw"] as const;
     if (!keys.every((key) => typeof data[key] === "number" && Number.isFinite(data[key]) && Math.abs(data[key] as number) <= 100_000)
         || typeof data.moving !== "boolean"
         || typeof data.jumping !== "boolean") {
       return this.sendError(socket, "invalid_pose", "The pose message is invalid.");
     }
+    const moving = data.moving || data.jumping;
+    // The client sends its final stop immediately, even within the normal pose
+    // interval. Admit that transition once so peers need not wait for the idle
+    // heartbeat. Repeated idle packets and a rapid restart still hit the normal
+    // throttle; the outer per-socket message budget also remains in force.
+    const finalStop = attachment.lastPoseMoving === true && !moving;
+    if (now - attachment.lastPoseAt < MIN_POSE_INTERVAL_MS && !finalStop) return;
     attachment.lastPoseAt = now;
+    attachment.lastPoseMoving = Boolean(moving);
     socket.serializeAttachment(attachment);
     const pose = data as unknown as LivePose;
     this.broadcast({

@@ -17,12 +17,16 @@ page.on('pageerror', error => errors.push(error.message))
 page.on('response', response => { if (/\.(glb|gltf)(\?|$)/.test(response.url())) assets.push({ url: response.url(), status: response.status() }) })
 const prefKey = 'brick-studio.content-preferences.v1'
 const wardrobeKey = 'brick-studio.wardrobe.v1'
-const dialog = page.getByRole('dialog', { name: 'Scene & character', exact: true })
+const dialog = page.getByRole('dialog', { name: /^(Character Studio|Scene & character)$/ })
 async function open() {
   await page.getByRole('button', { name: 'Character', exact: true }).click()
   await dialog.waitFor()
+  await page.waitForTimeout(700)
+  await page.screenshot({ path: `${output}/studio-initial.png` })
   await page.waitForFunction(() => [...document.querySelectorAll('[role=tab]')].some(element => element.textContent === 'Character' && element.getAttribute('aria-selected') === 'true'))
 }
+async function studioTab(name) { await dialog.getByRole('tab', { name, exact: true }).click() }
+async function category(name) { await studioTab('Customize'); await dialog.getByRole('button', { name, exact: true }).click() }
 async function ready() {
   await page.locator('.world-character-sheet-body').evaluate(element => { element.scrollTop = 0 })
   await page.waitForFunction(() => !!document.querySelector('.character-preview canvas') && !document.querySelector('.character-preview__status'))
@@ -38,7 +42,7 @@ async function selected(name) {
   assert.equal(await dialog.getByRole('radio', { name: new RegExp(`^${name}`) }).getAttribute('aria-checked'), 'true')
 }
 async function persist(id) {
-  await dialog.getByRole('button', { name: 'Apply', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Use this look', exact: true }).click()
   await page.waitForFunction(([key, id]) => JSON.parse(localStorage.getItem(key) || 'null')?.characterId === id, [prefKey, id])
   const before = await page.evaluate(key => JSON.parse(localStorage.getItem(key)), prefKey)
   await page.reload()
@@ -57,7 +61,7 @@ try {
   assert.equal(await dialog.getByRole('tab', { name: 'Scene', exact: true }).getAttribute('aria-selected'), 'true')
   await dialog.getByRole('tab', { name: 'Character', exact: true }).click()
   checks.push({ sceneTabFromCharacterShortcut: 'passed' })
-  for (const [id, name] of [['pip', 'Pip'], ['fern', 'Fern'], ['nova', 'Nova']]) {
+  for (const [id, name] of [['classic', 'Classic Builder'], ['toy-figure', 'Toy Figure'], ['robot', 'Robot Hero'], ['pip', 'Pip'], ['fern', 'Fern'], ['nova', 'Nova']]) {
     await dialog.getByRole('radio', { name: new RegExp(`^${name}`) }).click()
     await ready()
     const hashes = {}
@@ -69,17 +73,26 @@ try {
     }
     assert.equal(new Set(Object.values(hashes)).size, 4, `${name} must render distinct animation samples`)
     await dialog.getByRole('button', { name: 'Idle', exact: true }).click()
-    const saved = await persist(id)
+    const saved = ['pip', 'fern', 'nova'].includes(id) ? await persist(id) : null
     await selected(name)
-    checks.push({ character: id, animationSampleHashes: hashes, applyReload: 'passed', saved })
+    checks.push({ character: id, animationSampleHashes: hashes, applyReload: saved ? 'passed' : 'not checked', saved })
   }
   await dialog.getByRole('radio', { name: /^Toy Figure/ }).click()
+  await category('Head')
   await dialog.getByRole('button', { name: 'Curls', exact: true }).click()
+  await category('Extras')
   await dialog.getByRole('button', { name: 'Glasses', exact: true }).click()
+  await category('Head')
   await dialog.getByRole('button', { name: 'Freckles', exact: true }).click()
+  await category('Outfit')
   await dialog.getByRole('button', { name: 'Overalls', exact: true }).click()
   await ready()
   await shot('toy-curls-glasses')
+  await page.screenshot({ path: `${output}/desktop-outfit.png` })
+  await category('Head')
+  await ready()
+  await page.screenshot({ path: `${output}/desktop-head.png` })
+  await studioTab('My looks')
   await dialog.getByRole('textbox', { name: 'Outfit name', exact: true }).fill('Curly Builder QA')
   await dialog.getByRole('button', { name: 'Save outfit', exact: true }).click()
   await dialog.getByRole('button', { name: 'Favorite Curly Builder QA', exact: true }).click()
@@ -89,17 +102,38 @@ try {
   assert.equal(wardrobe.outfits[0].appearance.accessory, 'glasses')
   const saved = await persist('toy-figure')
   await selected('Toy Figure')
-  for (const name of ['Curls', 'Glasses', 'Freckles', 'Overalls']) assert.equal(await dialog.getByRole('button', { name, exact: true }).getAttribute('aria-pressed'), 'true')
+  for (const [section, names] of [['Head', ['Curls', 'Freckles']], ['Extras', ['Glasses']], ['Outfit', ['Overalls']]]) { await category(section); for (const name of names) assert.equal(await dialog.getByRole('button', { name, exact: true }).getAttribute('aria-pressed'), 'true') }
   assert.equal(saved.appearance.hair, 'curls')
   assert.equal(saved.appearance.accessory, 'glasses')
+  await studioTab('My looks')
   assert.equal(await dialog.getByRole('button', { name: 'Favorite Curly Builder QA', exact: true }).getAttribute('aria-pressed'), 'true')
+  await studioTab('Characters')
   await dialog.getByRole('radio', { name: /^Nova/ }).click()
+  await studioTab('My looks')
   await dialog.getByRole('button', { name: 'Curly Builder QA', exact: true }).click()
+  await studioTab('Characters')
   await selected('Toy Figure')
+  await category('Head')
   assert.equal(await dialog.getByRole('button', { name: 'Curls', exact: true }).getAttribute('aria-pressed'), 'true')
+  await category('Extras')
   assert.equal(await dialog.getByRole('button', { name: 'Glasses', exact: true }).getAttribute('aria-pressed'), 'true')
+  await category('Head')
+  const keepHair = dialog.getByRole('button', { name: /Keep hair.*when mixing/i })
+  await keepHair.click()
+  await dialog.getByRole('button', { name: 'Mix it up', exact: true }).click()
+  assert.equal(await dialog.getByRole('button', { name: 'Curls', exact: true }).getAttribute('aria-pressed'), 'true')
+  await dialog.getByRole('button', { name: 'Undo mix', exact: true }).click()
+  assert.equal(await dialog.getByRole('button', { name: 'Freckles', exact: true }).getAttribute('aria-pressed'), 'true')
+  await dialog.getByRole('button', { name: 'Bun', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  assert.deepEqual(await page.evaluate(key => JSON.parse(localStorage.getItem(key)), prefKey), saved)
+  await open()
+  await category('Head')
+  assert.equal(await dialog.getByRole('button', { name: 'Curls', exact: true }).getAttribute('aria-pressed'), 'true')
+  checks.push({ lockSurvivesMix: 'passed', undoMix: 'passed', draftCancel: 'passed' })
+  await category('Extras')
   checks.push({ toyAppearanceApplyReload: 'passed', outfitSaveFavoriteReloadRestore: 'passed', saved, wardrobe })
-  for (const [width, height] of [[390, 844], [320, 740]]) {
+  for (const [width, height] of [[1366, 768], [1024, 600], [768, 1024], [1024, 768], [390, 844], [320, 740]]) {
     await page.setViewportSize({ width, height })
     await page.locator('.world-character-sheet-body').evaluate(element => { element.scrollTop = 0 })
     await ready()
@@ -117,9 +151,34 @@ try {
     assert(layout.footer.bottom <= height + 1 && layout.footer.top >= 0)
     assert.equal(layout.scrollWidth, width)
     assert.deepEqual(layout.outsideX, [])
-    await page.screenshot({ path: `${output}/mobile-${width}-preview.png` })
+    await page.screenshot({ path: `${output}/layout-${width}x${height}-preview.png` })
     await dialog.getByRole('button', { name: 'Glasses', exact: true }).scrollIntoViewIfNeeded()
-    await page.screenshot({ path: `${output}/mobile-${width}-appearance.png` })
+    await page.screenshot({ path: `${output}/layout-${width}x${height}-appearance.png` })
+  }
+  for (const [width, height] of [[390, 844], [768, 1024], [1024, 768]]) {
+    const touch = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: true })
+    const touchPage = await touch.newPage()
+    touchPage.on('pageerror', error => errors.push(error.message))
+    await touchPage.goto(`${origin}/build`)
+    await touchPage.getByRole('button', { name: 'Character', exact: true }).waitFor()
+    const dismiss = touchPage.getByRole('button', { name: 'Dismiss quick start', exact: true })
+    if (await dismiss.count()) await dismiss.click()
+    await touchPage.getByRole('button', { name: 'Character', exact: true }).click()
+    const touchDialog = touchPage.getByRole('dialog', { name: 'Character Studio', exact: true })
+    await touchDialog.getByRole('radio', { name: /^Toy Figure/ }).click()
+    await touchDialog.getByRole('tab', { name: 'Customize', exact: true }).click()
+    await touchPage.waitForTimeout(1200)
+    const bounds = await touchDialog.evaluate(element => {
+      const r = element.getBoundingClientRect()
+      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, scrollWidth: document.documentElement.scrollWidth, coarse: matchMedia('(any-pointer: coarse)').matches }
+    })
+    assert(bounds.coarse)
+    assert(bounds.left >= 0 && bounds.right <= width + 1 && bounds.top >= 0 && bounds.bottom <= height + 1)
+    assert.equal(bounds.scrollWidth, width)
+    await touchPage.screenshot({ path: `${output}/touch-${width}x${height}.png` })
+    await touchDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    checks.push({ touchViewport: `${width}x${height}`, bounds, cancel: 'passed' })
+    await touch.close()
   }
   assert.deepEqual(errors, [])
   assert(assets.some(item => item.url.includes('/pip.glb') && item.status === 200))

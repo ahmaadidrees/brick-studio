@@ -619,6 +619,44 @@ describe("WorldRoom", () => {
     expect((await getWorld(roomId)).revision).toBe(130);
   }, 20_000);
 
+  it("delivers one immediate final pose without opening an idle or toggle spam bypass", async () => {
+    const { roomId } = await createWorld();
+    await connectWorld(roomId, "guest_stop");
+    const workerEnv = env as unknown as WorkerEnv;
+    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    await runInDurableObject(stub, async (instance: WorldRoom, state: DurableObjectState) => {
+      const server = state.getWebSockets()[0];
+      const emitted: Array<Record<string, unknown>> = [];
+      const broadcast = vi.spyOn(instance as unknown as { broadcast(value: Record<string, unknown>): void }, "broadcast")
+        .mockImplementation(value => { emitted.push(value); });
+      const start = Date.now();
+      let clock = start;
+      const time = vi.spyOn(Date, "now").mockImplementation(() => clock);
+      const pose = async (offset: number, x: number, moving: boolean, jumping = false) => {
+        clock = start + offset;
+        await instance.webSocketMessage(server, JSON.stringify({ v: LIVE_PROTOCOL_VERSION, type: "pose", x, y: 0, z: 0, yaw: 0, moving, jumping }));
+      };
+      try {
+        await pose(0, 1, true);
+        await pose(10, 2, false); // Stop ten milliseconds after movement must arrive.
+        await pose(11, 3, false); // Duplicate idle cannot bypass the throttle.
+        await pose(12, 4, true); // Nor can alternating moving/stopped packets.
+        await pose(13, 5, false);
+        expect(emitted.map(value => value.x)).toEqual([1, 2]);
+        await pose(55, 6, false, true); // Jumping alone is still movement.
+        await pose(56, 100001, false); // Invalid stop cannot consume the transition.
+        await pose(57, 7, false);
+        expect(emitted.map(value => value.x)).toEqual([1, 2, 6, 7]);
+        expect(emitted.at(-1)).toMatchObject({ moving: false, jumping: false });
+        // The global frame budget must apply even to throttled pose spam.
+        for (let index = 0; index < 30; index += 1) await pose(58, 8, false);
+        expect(server.deserializeAttachment()).toMatchObject({ lastPoseAt: start + 57, lastPoseMoving: false });
+        expect(server.readyState).not.toBe(WebSocket.OPEN);
+        expect(emitted.map(value => value.x)).toEqual([1, 2, 6, 7]);
+      } finally { time.mockRestore(); broadcast.mockRestore(); }
+    });
+  });
+
   it("enforces command, pose, and absolute frame byte limits without partially applying", async () => {
     const { roomId } = await createWorld();
     const guest = await connectWorld(roomId, "guest_401");

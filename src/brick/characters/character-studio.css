@@ -248,83 +248,51 @@
   .character-wardrobe__save > .ui-button { flex: 1; }
 }
 
-/* Board 09: keep the character beside its choices, with a separate wardrobe.
-   The same DOM and shared sheet still provide focus, draft and Apply behavior. */
-@media (min-width: 1000px) and (min-height: 600px) and (pointer: fine) {
-  .ui-sheet-root.world-character-sheet:has(.character-studio) {
-    --sheet-width: 1440px;
-    padding: 20px;
-    justify-content: center;
-  }
-  .world-character-sheet:has(.character-studio) .ui-sheet {
-    --sheet-width: 1440px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-  }
-  .world-character-sheet:has(.character-studio) .ui-sheet-header { padding-block: var(--space-2); }
-  .world-character-sheet:has(.character-studio) .ui-sheet-description { display: none; }
-  .world-character-sheet:has(.character-studio) .world-character-sheet-tabs-bar {
-    grid-template-columns: 1fr minmax(260px, 360px);
-    align-items: center;
-    padding-block: var(--space-2);
-  }
-  .character-studio {
-    grid-template-columns: minmax(260px, 0.95fr) minmax(360px, 1.3fr) minmax(220px, 0.65fr);
-    align-items: start;
-    gap: var(--space-4);
-  }
-  .character-studio__presentation,
-  .character-studio > .character-wardrobe { position: sticky; top: 72px; }
-  .character-studio__intro h3 { font-size: clamp(34px, 3.6vw, 52px); }
-  .character-studio__intro p { font-size: 15px; line-height: 1.5; }
-  .character-studio .character-preview__stage { height: clamp(230px, calc(100dvh - 440px), 600px); }
-  .character-studio .content-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .character-studio .content-picker-card-copy { padding: 0; text-align: center; }
-  .character-studio .content-picker-card-copy strong { font-size: 13px; }
-  .character-studio .content-picker-card-copy small { display: none; }
-  .character-studio .content-picker-section-heading > div > span { display: none; }
-  .character-studio .content-picker-section-heading h3 { font-size: 20px; }
-  .character-studio .content-picker-check { width: 23px; height: 23px; top: 9px; right: 9px; }
-  .character-studio .content-picker-art-character { aspect-ratio: auto; height: 100px; }
-  .character-studio .character-wardrobe__save { display: grid; }
-  .character-studio .character-wardrobe__field { min-width: 0; }
-  .character-studio .character-wardrobe__save > .ui-button { width: 100%; }
-  .character-studio .character-preview__pause svg { display: none; }
-  .character-studio .character-preview__action { font-size: 12px; }
+/* Focused studio: the preview stays beside one active set of choices. */
+.character-studio__navigation { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4px; padding: 5px; background: var(--surface-2); border-radius: 15px; border: 1px solid var(--border); }
+.character-studio__navigation button, .character-studio__sections button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 11px; color: var(--text-muted); background: transparent; font-size: 13px; font-weight: 800; }
+.character-studio__navigation [aria-selected='true'] { background: var(--surface); color: var(--primary-strong); box-shadow: var(--shadow-sm); }
+.character-studio__sections { display: flex; flex-wrap: wrap; gap: 6px; }
+.character-studio__sections [aria-pressed='true'] { color: var(--primary-strong); background: var(--primary-soft); }
+.character-studio__panel { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.character-studio__panel > section { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.character-studio__empty { padding: 24px; border: 1px dashed var(--border-strong); border-radius: 16px; background: var(--surface-2); }
+.character-studio__empty h3 { margin: 0; font-family: var(--font-display); }
+.character-studio__empty p { color: var(--text-muted); line-height: 1.5; }
+.character-studio__mix { flex-wrap: wrap; border-style: solid; }
+.character-studio__mix p { flex-basis: 100%; }
+.character-studio .content-picker-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; }
+.character-studio .content-picker-card-copy { padding: 0; text-align: center; }
+.character-studio .content-picker-card-copy small, .character-studio .content-picker-section-heading > div > span { display: none; }
+.character-studio .content-picker-card-copy strong { font-size: 13px; }
+.character-studio .content-picker-art-character { aspect-ratio: 1.15; }
+.character-studio .content-picker-section-heading h3 { font-size: 18px; }
+.character-studio .character-preview__stage { height: var(--character-preview-height, clamp(240px,38vh,420px)); }
+@media (min-width: 760px) and (min-height: 600px) {
+  .ui-sheet-root.world-character-sheet:has(.character-studio) { --sheet-width: 1200px; padding: 16px; justify-content: center; }
+  .world-character-sheet:has(.character-studio) .ui-sheet { --sheet-width: 1200px; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  .character-studio { grid-template-columns: minmax(230px,.95fr) minmax(310px,1.05fr); gap: 24px; align-items: start; }
+  .character-studio__presentation { position: sticky; top: 72px; }
+  .character-studio__intro h3 { font-size: 28px; }
+  .character-studio__presentation { --character-preview-height: clamp(260px,calc(100dvh - 340px),480px); }
 }
-@media (min-width: 1000px) and (max-width: 1199px) and (min-height: 600px) and (pointer: fine) {
-  .character-studio { grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr); }
-  .character-studio > .character-wardrobe { grid-column: 1; grid-row: 2; position: static; }
-  .character-studio__customization { grid-column: 2; grid-row: 1 / span 2; }
-}
-
-/* Touch: every control in the studio is at least 44×44, including the small
-   (sm) primitives, Keep locks, choice chips, swatches and icon buttons. */
 @media (pointer: coarse) {
-  .character-studio .ui-button,
-  .character-studio .ui-input { min-height: 44px; }
-  .character-studio .ui-button-sm { padding-inline: var(--space-3); }
+  .character-studio .ui-button, .character-studio .ui-input, .character-studio .character-studio__lock { min-height: 44px; }
   .character-studio .ui-button-icon-only { width: 44px; min-width: 44px; }
-  .character-studio .character-studio__lock { min-height: 44px; min-width: 44px; }
-  .character-studio .appearance-option { min-height: 44px; }
   .character-swatch { width: 44px; height: 44px; }
-  .character-look { min-height: 48px; }
-  .character-wardrobe__look { min-height: 44px; }
 }
-
-/* Touch browsing keeps the result beside the controls on tablets, and a small
-   live preview above them on phones. The sheet remains the only scroll owner. */
-@media (pointer: coarse) and (min-width: 760px) and (min-height: 600px) {
-  .character-studio { grid-template-columns: minmax(200px, .8fr) minmax(300px, 1.2fr); align-items: start; gap: 16px; }
-  .character-studio__presentation { position: sticky; top: 112px; }
-  .character-studio__customization { grid-column: 2; grid-row: 1 / span 2; }
-  .character-studio > .character-wardrobe { grid-column: 1; }
-  .character-studio .character-preview__stage { height: clamp(180px, 30dvh, 320px); }
-}
-@media (pointer: coarse) and (max-width: 759px) and (min-height: 600px) {
-  .character-studio__presentation { position: sticky; top: 104px; z-index: 1; gap: 0; padding: 6px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+@media (max-width: 759px) {
+  .character-studio { gap: 14px; }
+  .character-studio__presentation { gap: 8px; --character-preview-height: 180px; }
   .character-studio__intro { display: none; }
-  .character-studio .character-preview__stage { height: 120px; }
-  .character-studio .character-preview { border: 0; box-shadow: none; }
+  .character-studio__navigation button { padding-inline: 4px; font-size: 12px; }
+  .character-studio__panel > section { padding: 12px; }
+  .character-studio .content-picker-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .character-studio .character-preview__hint { display: none; }
+  .character-studio__mix { flex-direction: row; text-align: left; }
+}
+@media (max-height: 599px) and (min-width: 600px) {
+  .character-studio { grid-template-columns: minmax(180px,.75fr) minmax(260px,1.25fr); gap: 16px; }
+  .character-studio__presentation { --character-preview-height: 180px; }
+  .character-studio__intro { display: none; }
 }

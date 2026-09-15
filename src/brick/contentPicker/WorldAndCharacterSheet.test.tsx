@@ -133,10 +133,12 @@ describe('draft selection: Cancel vs Apply', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Sky Island/ }))
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
     fireEvent.click(screen.getByRole('radio', { name: /Toy Figure/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Customize' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Colors' }))
     fireEvent.click(screen.getByRole('button', { name: 'Set Shirt to Studio blue' }))
     expect(onApply).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use this look' }))
     expect(onApply).toHaveBeenCalledTimes(1)
     expect(onApply).toHaveBeenCalledWith({
       environmentId: 'sky-island',
@@ -226,6 +228,8 @@ describe('character color customization', () => {
       paletteGroups: [{ ...paletteGroups[0], key: 'primary', label: 'Suit' }],
     })
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Customize' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Colors' }))
     const preview = screen.getByTestId('live-character-preview')
     expect(JSON.parse(preview.dataset.palette!)).toEqual({ primary: '#e7473c', secondary: '#3e83d7' })
     expect(screen.getByRole('button', { name: 'Set Suit to Rocket red' })).toHaveAttribute('aria-pressed', 'true')
@@ -242,20 +246,26 @@ describe('character color customization', () => {
     expect(selection.palette).toEqual({ primary: '#e7473c', secondary: '#3e83d7' })
     expect(onApply).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use this look' }))
     expect(onApply).toHaveBeenCalledWith({ ...baseSelection, palette: {} })
   })
 
   it('shows palette controls only while the drafted character is customizable', () => {
     renderSheet()
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Customize' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Colors' }))
     expect(screen.getByRole('group', { name: 'Shirt' })).toBeInTheDocument()
     expect(screen.getByText('Character colors')).toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Characters' }))
     fireEvent.click(screen.getByRole('radio', { name: /Robot Hero/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Customize' }))
     expect(screen.queryByRole('group', { name: 'Shirt' })).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Characters' }))
     fireEvent.click(screen.getByRole('radio', { name: /Toy Figure/ }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Customize' }))
     expect(screen.getByRole('group', { name: 'Shirt' })).toBeInTheDocument()
   })
 })

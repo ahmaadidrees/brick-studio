@@ -1,8 +1,8 @@
 import { OrbitControls } from '@react-three/drei'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Pause, Play, RotateCcw } from 'lucide-react'
-import { Component, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
-import type { Group } from 'three'
+import { Component, useEffect, useRef, useState, useSyncExternalStore, type ComponentRef, type ReactNode } from 'react'
+import { Vector3, type Group } from 'three'
 import type { CharacterAppearance } from '@brick-studio/core'
 import { Button } from '../../ui'
 import { createMotionSnapshot } from '../avatarMotion'
@@ -13,6 +13,7 @@ import './character-preview.css'
 
 export type CharacterPreviewProps = {
   characterId: CharacterId | null | undefined
+  focus?: 'head' | 'body'
   palette?: CharacterPalette
   appearance?: CharacterAppearance
   /** Forces reduced motion; when omitted the studio motion preference and system setting decide. */
@@ -111,13 +112,13 @@ function PreviewStudioSet() {
   })
   return <group ref={stage}>
     <mesh position={[0, 0.6, -0.82]}>
-      <boxGeometry args={[8, 4, 0.06]} /><meshStandardMaterial color="#6c89bc" roughness={1} />
+      <boxGeometry args={[8, 4, 0.06]} /><meshStandardMaterial color="#a4bbd5" roughness={1} />
     </mesh>
     <mesh position={[0, -0.45, 0]}>
-      <boxGeometry args={[8, 0.06, 8]} /><meshStandardMaterial color="#e3bd83" roughness={1} />
+      <boxGeometry args={[8, 0.06, 8]} /><meshStandardMaterial color="#e9cf9f" roughness={1} />
     </mesh>
     <mesh position={[0, -0.405, 0]}>
-      <cylinderGeometry args={[0.55, 0.55, 0.065, 48]} /><meshStandardMaterial color="#afc9ee" roughness={0.85} />
+      <cylinderGeometry args={[0.55, 0.55, 0.065, 48]} /><meshStandardMaterial color="#c1d5eb" roughness={0.85} />
     </mesh>
     <mesh position={[-0.66, 0.17, -0.64]}>
       <boxGeometry args={[0.62, 0.045, 0.23]} /><meshStandardMaterial color="#e8c991" roughness={1} />
@@ -137,13 +138,52 @@ function PreviewStudioSet() {
   </group>
 }
 
+/** Reframe without remounting the model or resetting the student's viewing angle. */
+function PreviewCamera({ focus, reducedMotion }: { focus: 'head' | 'body'; reducedMotion: boolean }) {
+  const controls = useRef<ComponentRef<typeof OrbitControls>>(null)
+  const { camera, invalidate } = useThree()
+  const transition = useRef<{ position: Vector3; target: Vector3 } | null>(null)
+  useEffect(() => {
+    const orbit = controls.current
+    if (!orbit) return
+    const target = new Vector3(0, focus === 'head' ? 0.23 : 0.05, 0)
+    const position = camera.position.clone().sub(orbit.target).normalize()
+      .multiplyScalar(focus === 'head' ? 1.08 : 1.95).add(target)
+    if (reducedMotion) {
+      camera.position.copy(position)
+      orbit.target.copy(target)
+      orbit.update()
+      transition.current = null
+    } else transition.current = { position, target }
+    invalidate()
+  }, [camera, focus, invalidate, reducedMotion])
+  useFrame((_, delta) => {
+    const destination = transition.current
+    const orbit = controls.current
+    if (!destination || !orbit) return
+    const blend = 1 - Math.exp(-Math.min(delta, 0.05) * 12)
+    camera.position.lerp(destination.position, blend)
+    orbit.target.lerp(destination.target, blend)
+    if (camera.position.distanceToSquared(destination.position) < 0.000001) {
+      camera.position.copy(destination.position)
+      orbit.target.copy(destination.target)
+      transition.current = null
+    }
+    orbit.update()
+    invalidate()
+  })
+  return <OrbitControls ref={controls} target={[0, 0.05, 0]} enablePan={false} enableZoom={false}
+    enableDamping={false} minPolarAngle={Math.PI / 3} maxPolarAngle={Math.PI / 1.8}
+    onStart={() => { transition.current = null }} />
+}
+
 /**
  * The one live Canvas in the studio: the same lazy character adapter and motion
  * contract as Explore, without physics. It renders on demand (no continuous
  * frames) whenever it is paused, scrolled out of view, in a hidden tab, or under
  * reduced motion; unmounting disposes the renderer and the avatar's materials.
  */
-export function CharacterPreview({ characterId, palette, appearance, reducedMotion: reducedMotionInput }: CharacterPreviewProps) {
+export function CharacterPreview({ characterId, palette, appearance, reducedMotion: reducedMotionInput, focus = 'body' }: CharacterPreviewProps) {
   const reducedMotion = usePreviewReducedMotion(reducedMotionInput)
   const [action, setAction] = useState<PreviewAction>('idle')
   const [playing, setPlaying] = useState(true)
@@ -163,7 +203,7 @@ export function CharacterPreview({ characterId, palette, appearance, reducedMoti
   }, [])
   const animate = playing && visible && pageVisible && !reducedMotion
   const choose = (next: PreviewAction) => { setAction(next); setPlaying(true) }
-  return <div className="character-preview" ref={container} data-animating={animate || undefined}>
+  return <div className="character-preview" ref={container} data-animating={animate || undefined} data-focus={focus}>
     <div className="character-preview__stage" aria-label="Interactive 3D character preview">
       <PreviewBoundary key={characterId}>
         <Canvas camera={{ position: [0.8, 0.5, 1.8], fov: 34 }} dpr={PREVIEW_DPR}
@@ -175,8 +215,7 @@ export function CharacterPreview({ characterId, palette, appearance, reducedMoti
           <PreviewFigure characterId={characterId} palette={palette} appearance={appearance}
             reducedMotion={reducedMotion} action={action} onStatus={setStatus} />
           <PreviewStudioSet />
-          <OrbitControls target={[0, 0.1, 0]} enablePan={false} enableZoom={false} enableDamping={false}
-            minPolarAngle={Math.PI / 3} maxPolarAngle={Math.PI / 1.8} />
+          <PreviewCamera focus={focus} reducedMotion={reducedMotion} />
         </Canvas>
       </PreviewBoundary>
       <span className="character-preview__hint"><RotateCcw aria-hidden="true" size={14} />Drag to turn</span>

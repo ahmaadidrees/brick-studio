@@ -59,6 +59,18 @@ describe('character preview controls', () => {
     expect(lastCanvas().frameloop).toBe('always')
   })
 
+  it('keeps the selected animation paused when customization reframes the same preview', () => {
+    const view = render(<CharacterPreview characterId="toy-figure" focus="body" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Walk' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Pause character animation' }))
+    view.rerender(<CharacterPreview characterId="toy-figure" focus="head" />)
+    expect(screen.getByRole('button', { name: 'Walk' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Play character animation' })).toBeInTheDocument()
+    expect(lastCanvas().frameloop).toBe('demand')
+    expect(view.container.querySelectorAll('canvas')).toHaveLength(1)
+    expect(view.container.querySelector('.character-preview')).toHaveAttribute('data-focus', 'head')
+  })
+
   it('renders on demand while the tab is hidden and resumes when it is shown again', () => {
     render(<CharacterPreview characterId="classic" />)
     const hidden = vi.spyOn(document, 'hidden', 'get')

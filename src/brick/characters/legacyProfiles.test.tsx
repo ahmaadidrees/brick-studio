@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_CHARACTER_APPEARANCE, normalizeCharacterAppearance } from '@brick-studio/core'
 import { CHARACTER_DESCRIPTORS, characterPaletteGroups, ENVIRONMENT_DESCRIPTORS } from '../contentCatalog'
@@ -56,12 +56,17 @@ describe('legacy saved profiles', () => {
     const draft = normalizeContentPickerSelection(JSON.parse(LEGACY_PREFERENCES), { environments: ENVIRONMENT_DESCRIPTORS, characters: CHARACTER_DESCRIPTORS })
     render(<CharacterStudio draft={draft} onDraftChange={() => {}} characterDescriptors={CHARACTER_DESCRIPTORS} paletteGroups={characterPaletteGroups('toy-figure')} />)
     expect(screen.getByRole('radio', { name: /^Toy Figure/ })).toHaveAttribute('aria-checked', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Customize' }))
+    expect(screen.getByLabelText('Custom skin tone')).toHaveValue('#aabbcc')
     expect(screen.getByRole('button', { name: /^Curls$/ })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: /^Extras$/ }))
     expect(screen.getByRole('button', { name: /^Glasses$/ })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: /^Outfit$/ }))
     expect(screen.getByRole('button', { name: /^Broad$/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: /^Explorer$/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByLabelText('Custom skin tone')).toHaveValue('#aabbcc')
+    fireEvent.click(screen.getByRole('button', { name: /^Colors$/ }))
     expect(screen.getByRole('button', { name: 'Set Trim to Sky blue' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('tab', { name: 'My looks' }))
     expect(screen.getByRole('button', { name: 'Favorite Old favorite' })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByRole('button', { name: 'Pip look' })).toBeInTheDocument()
     expect(screen.queryByText('Gone character')).toBeNull()

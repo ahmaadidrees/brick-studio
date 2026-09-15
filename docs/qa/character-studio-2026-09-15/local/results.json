@@ -1,0 +1,429 @@
+{
+  "checkedAt": "2026-09-15T16:47:29.780Z",
+  "origin": "http://127.0.0.1:5234",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      7.46,
+      5.97,
+      5.65
+    ],
+    "freeMemoryMB": 33883,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "checks": [
+    {
+      "sceneTabFromCharacterShortcut": "passed"
+    },
+    {
+      "character": "classic",
+      "animationSampleHashes": {
+        "Idle": "cd49a7a61396ba586c5896504d77b5705f886738baca869792db528d92c72a73",
+        "Walk": "13aed89f154f8446e74d523e1c79985e392c5b7c2733408a9a4d5fef722f2e37",
+        "Run": "d137249fa8e979432ca918bd2e3d154b9de647c671f2216a6239ee8d5c177202",
+        "Jump": "1a09bd8162a4383a2b5aeea66d462e8764ba0ff36eebfb50987d84b4725ee650"
+      },
+      "applyReload": "not checked",
+      "saved": null
+    },
+    {
+      "character": "toy-figure",
+      "animationSampleHashes": {
+        "Idle": "82469ca91c8ac65a0fc03c2df34533e8a7de12cb083ddc1386a04bbecde3d898",
+        "Walk": "bf8a84e4423d66868705b4bce3203cda1424857a7f0e6b5affb0cf23ab01d629",
+        "Run": "62511cd6e7d81a7e3a4e77ca70cdda02baa6f4b57a6c0046be520c542825e0cf",
+        "Jump": "1611272da9c16eeda8b684821318cfe2baf63b2c690876f6b269d8e2db5a53fd"
+      },
+      "applyReload": "not checked",
+      "saved": null
+    },
+    {
+      "character": "robot",
+      "animationSampleHashes": {
+        "Idle": "2683e890060c5492a825f4ad4f6eb883f87f5944bb7938bb7b734635f5b0d42b",
+        "Walk": "d00d24c6525e2eae095ac1a03dd6fb76727d17b4548bcce02d52c7d745baf827",
+        "Run": "d45b2cd77d4e9f6d20732e185bfc78b2161a9130a4490555470c95b00b4cb8ff",
+        "Jump": "4364cf5c7e2eee38cfd6da0203a4f71819a7732caa96cc5410b75bb4b484144d"
+      },
+      "applyReload": "not checked",
+      "saved": null
+    },
+    {
+      "character": "pip",
+      "animationSampleHashes": {
+        "Idle": "8bd42445f314552d3c425619ed22584be4af53ad7c177e22c795e909da3ea985",
+        "Walk": "b44b15029f9069d6a772ae01842550e7fa197f8a9199a66c8e68242c3be25ad8",
+        "Run": "c27c7008e4cdd560aadd7fcc2081de355e38c1dfed319600b12e87e86fd4a698",
+        "Jump": "9b166aa18c4e5a6594f7014f86dfcf6fe5e908bba49f0a71d1dbe4ed85ee3f05"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "pip",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "character": "fern",
+      "animationSampleHashes": {
+        "Idle": "3163a35cc8612c9cc194d9e7ed567c167a720fcf3f606e8ab4c9fa76572408d6",
+        "Walk": "4b762b73cb0e139124a0fde30d95ed9f2a624a36695e61876caf37b51dbf2a25",
+        "Run": "70d3803198c8f3f7fef120df424bf495fa898165a79bdffab2542e13c8a39617",
+        "Jump": "db551716081570005f44167dcd86768533804bf616102f6c2c08330004f1254d"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "fern",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "character": "nova",
+      "animationSampleHashes": {
+        "Idle": "e1c34a7da0d8fb95d7fddc031f5cf5f52fbd7be3ede11a9c066bc25f0f6aa09f",
+        "Walk": "af98af3041963479342301f7846b39104a2ef9fa6414c4cb722776a3e941b2eb",
+        "Run": "c6920599d7a1d4b75adb1bea9a330d2b3c22814b349130a3f63c917289f962c7",
+        "Jump": "44f541288bd68d5de8a807b4d62d619a5e7731a04c197286f855554a3f86ff35"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "nova",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "lockSurvivesMix": "passed",
+      "undoMix": "passed",
+      "draftCancel": "passed"
+    },
+    {
+      "toyAppearanceApplyReload": "passed",
+      "outfitSaveFavoriteReloadRestore": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "toy-figure",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "freckles",
+          "hair": "curls",
+          "outfit": "overalls",
+          "accessory": "glasses",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      },
+      "wardrobe": {
+        "version": 1,
+        "outfits": [
+          {
+            "characterId": "toy-figure",
+            "palette": {},
+            "appearance": {
+              "body": "classic",
+              "face": "freckles",
+              "hair": "curls",
+              "outfit": "overalls",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            },
+            "id": "5f981d68-5360-4199-87d4-0690562764d0",
+            "name": "Curly Builder QA",
+            "favorite": true
+          }
+        ]
+      }
+    },
+    {
+      "mobileWidth": 1366,
+      "layout": {
+        "panel": {
+          "x": 83,
+          "y": 16,
+          "width": 1200,
+          "height": 736,
+          "top": 16,
+          "right": 1283,
+          "bottom": 752,
+          "left": 83
+        },
+        "footer": {
+          "x": 84,
+          "y": 682,
+          "width": 1198,
+          "height": 69,
+          "top": 682,
+          "right": 1282,
+          "bottom": 751,
+          "left": 84
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 1366,
+          "height": 768
+        },
+        "scrollWidth": 1366
+      }
+    },
+    {
+      "mobileWidth": 1024,
+      "layout": {
+        "panel": {
+          "x": 16,
+          "y": 16,
+          "width": 992,
+          "height": 568,
+          "top": 16,
+          "right": 1008,
+          "bottom": 584,
+          "left": 16
+        },
+        "footer": {
+          "x": 17,
+          "y": 514,
+          "width": 990,
+          "height": 69,
+          "top": 514,
+          "right": 1007,
+          "bottom": 583,
+          "left": 17
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 1024,
+          "height": 600
+        },
+        "scrollWidth": 1024
+      }
+    },
+    {
+      "mobileWidth": 768,
+      "layout": {
+        "panel": {
+          "x": 16,
+          "y": 151.765625,
+          "width": 736,
+          "height": 856.234375,
+          "top": 151.765625,
+          "right": 752,
+          "bottom": 1008,
+          "left": 16
+        },
+        "footer": {
+          "x": 17,
+          "y": 938,
+          "width": 734,
+          "height": 69,
+          "top": 938,
+          "right": 751,
+          "bottom": 1007,
+          "left": 17
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 768,
+          "height": 1024
+        },
+        "scrollWidth": 768
+      }
+    },
+    {
+      "mobileWidth": 1024,
+      "layout": {
+        "panel": {
+          "x": 16,
+          "y": 16,
+          "width": 992,
+          "height": 736,
+          "top": 16,
+          "right": 1008,
+          "bottom": 752,
+          "left": 16
+        },
+        "footer": {
+          "x": 17,
+          "y": 682,
+          "width": 990,
+          "height": 69,
+          "top": 682,
+          "right": 1007,
+          "bottom": 751,
+          "left": 17
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        },
+        "scrollWidth": 1024
+      }
+    },
+    {
+      "mobileWidth": 390,
+      "layout": {
+        "panel": {
+          "x": 0,
+          "y": 67.53125,
+          "width": 390,
+          "height": 776.46875,
+          "top": 67.53125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "footer": {
+          "x": 1,
+          "y": 775,
+          "width": 388,
+          "height": 69,
+          "top": 775,
+          "right": 389,
+          "bottom": 844,
+          "left": 1
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390
+      }
+    },
+    {
+      "mobileWidth": 320,
+      "layout": {
+        "panel": {
+          "x": 0,
+          "y": 59.203125,
+          "width": 320,
+          "height": 680.796875,
+          "top": 59.203125,
+          "right": 320,
+          "bottom": 740,
+          "left": 0
+        },
+        "footer": {
+          "x": 1,
+          "y": 671,
+          "width": 318,
+          "height": 69,
+          "top": 671,
+          "right": 319,
+          "bottom": 740,
+          "left": 1
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 320,
+          "height": 740
+        },
+        "scrollWidth": 320
+      }
+    },
+    {
+      "touchViewport": "390x844",
+      "bounds": {
+        "left": 0,
+        "right": 390,
+        "top": 67.53125,
+        "bottom": 844,
+        "scrollWidth": 390,
+        "coarse": true
+      },
+      "cancel": "passed"
+    },
+    {
+      "touchViewport": "768x1024",
+      "bounds": {
+        "left": 16,
+        "right": 752,
+        "top": 65.921875,
+        "bottom": 1008,
+        "scrollWidth": 768,
+        "coarse": true
+      },
+      "cancel": "passed"
+    },
+    {
+      "touchViewport": "1024x768",
+      "bounds": {
+        "left": 16,
+        "right": 1008,
+        "top": 45.453125,
+        "bottom": 752,
+        "scrollWidth": 1024,
+        "coarse": true
+      },
+      "cancel": "passed"
+    }
+  ],
+  "errors": [],
+  "assets": [
+    {
+      "url": "http://127.0.0.1:5234/src/brick/characters/cc0-hero/brick-hero.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5234/assets/characters-original/pip.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5234/assets/characters-original/pip.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5234/assets/characters-original/fern.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5234/assets/characters-original/fern.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5234/assets/characters-original/nova.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5234/assets/characters-original/nova.glb",
+      "status": 200
+    }
+  ]
+}
