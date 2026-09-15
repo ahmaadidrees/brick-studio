@@ -163,6 +163,9 @@ a.ui-button[aria-disabled="true"] { cursor: default; }
   .ui-save-status-auto { padding: 0; width: 32px; height: 32px; justify-content: center; }
   .ui-save-status-auto .ui-save-status-text { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .ui-save-status-auto .ui-save-status-action { margin: 0; }
+  /* Errors and offline states keep their label: a save problem is never reduced to an icon. */
+  .ui-save-status-auto.ui-save-status-error, .ui-save-status-auto.ui-save-status-offline { width: auto; height: auto; min-height: 32px; padding: 0 8px 0 4px; justify-content: flex-start; }
+  .ui-save-status-auto.ui-save-status-error .ui-save-status-text, .ui-save-status-auto.ui-save-status-offline .ui-save-status-text { position: static; width: auto; height: auto; margin: 0; padding: 0; overflow: hidden; clip: auto; white-space: nowrap; border: 0; }
 }
 .ui-save-status-icon { display: inline-flex; flex: 0 0 auto; }
 .ui-save-status-text { display: flex; flex-direction: column; min-width: 0; }

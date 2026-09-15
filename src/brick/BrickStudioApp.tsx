@@ -361,7 +361,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
             onPublishWorld={livePolicy ? undefined : onPublishWorld}
             onOpenHelp={onOpenHelp}
           />
-          <SaveStatus source={saveStatus.source} detail={saveStatus.detail} className="brick-save-status" />
+          <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} className="brick-save-status" />
         </div>
       </div>
       <div className="brick-header-tools" role="group" aria-label="World tools">

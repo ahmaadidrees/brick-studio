@@ -551,14 +551,16 @@
   .brick-header-tools > * { flex: 1 1 0; }
   .brick-header-world { gap: 6px; }
   .brick-brand-home { padding: 0 2px; }
-  .brick-world-context { padding-left: 6px; }
+  /* One 44px row: title trigger beside the (icon-only) save chip, so the 44px hit box never leaves the header. */
+  .brick-world-context { flex-direction: row; align-items: center; gap: 4px; padding-left: 6px; }
+  .studio-menu { position: static; }
   .brick-header-tool .ui-button-label { display: none; }
   .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; background: var(--studio-panel-soft); }
   .studio-world-title strong { max-width: min(180px, 44vw); font-size: 16px; }
   .brick-header .brick-save-status { max-width: 46vw; font-size: 11px; }
   .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }
   .brick-primary-mode kbd { display: none; }
-  .studio-menu-popover { width: min(272px, calc(100vw - 16px)); }
+  .studio-menu-popover { top: calc(100% + 6px); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); width: auto; max-height: calc(100vh - var(--brick-header-block) - 24px); }
   .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100vw - 16px); gap: 2px; }
   .brick-edit-toolbar .view-controls button { min-width: 44px; }
   .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+3) { display: none; }
