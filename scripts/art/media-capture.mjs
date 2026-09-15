@@ -62,7 +62,7 @@ function parseCamera(value, fallback) {
  * Low three-quarter view from the front of the plate with a wider lens than the editor's 45°, so the oversized lamp
  * (back-left), the castle (centre) and the book stack (right) share one frame like the approved board.
  */
-const HERO_CAMERA = parseCamera(process.env.HERO_CAMERA, { position: [10, 8, 19], target: [-1, 4, -7], fov: 60 })
+const HERO_CAMERA = parseCamera(process.env.HERO_CAMERA, { position: [8, 9, 19], target: [0, 4.6, -4], fov: 60 })
 /** Closer and lower for the scene cards: the same build, each environment's character around it. */
 const SCENE_CAMERA = parseCamera(process.env.SCENE_CAMERA, { position: [-8, 8, 22], target: [1, 2.5, -4], fov: 50 })
 

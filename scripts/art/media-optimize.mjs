@@ -139,7 +139,7 @@ const selectedFiles = new Set(selectedTargets.flatMap((target) => ['avif', 'webp
 let previousManifest = null
 try { previousManifest = JSON.parse(await readFile(path.join(outDir, 'manifest.json'), 'utf8')) } catch {}
 const files = (previousManifest?.files || []).filter((entry) => !selectedFiles.has(entry.file))
-const notes = files.length ? [`Retained ${files.length} unselected files from capture ${previousManifest.provenance.capturedAt} (source ${previousManifest.provenance.commit}); hero and scene recaptures do not replace verified character portraits.`] : []
+const notes = files.length ? (previousManifest.provenance.notes?.length ? [...previousManifest.provenance.notes] : [`Retained ${files.length} unselected files from capture ${previousManifest.provenance.capturedAt} (source ${previousManifest.provenance.commit}); hero and scene recaptures do not replace verified character portraits.`]) : []
 try {
   for (const target of selectedTargets) {
     const masterPath = path.join(mastersDir, target.master)

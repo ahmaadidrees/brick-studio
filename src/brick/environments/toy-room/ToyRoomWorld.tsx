@@ -361,7 +361,12 @@ function PlayTable({ features }: { features: ToyRoomFeatures }) {
 /** Hero prop 1: the swing-arm lamp that lights the whole diorama. */
 function DeskLamp({ features }: { features: ToyRoomFeatures }) {
   const shadeQuaternion = useMemo(() => {
-    const direction = vec(LAMP_TARGET).sub(vec(LAMP_SHADE)).normalize()
+    // Point the housing mostly down at the desk. The previous steep sideways tilt
+    // exposed the whole white reflector from the normal student/marketing view.
+    const direction = vec(LAMP_TARGET).sub(vec(LAMP_SHADE))
+    direction.x *= 0.25
+    direction.z = -Math.abs(direction.z) * 0.6
+    direction.normalize()
     return new THREE.Quaternion().setFromUnitVectors(UP, direction.clone().negate())
   }, [])
   const segments = features.roundSegments
@@ -387,7 +392,7 @@ function DeskLamp({ features }: { features: ToyRoomFeatures }) {
         {/* Painted outside */}
         <mesh position={[0, 3.5, 0]} castShadow>
           <cylinderGeometry args={[2.6, LAMP_SHADE_RADIUS, 7, segments, 1, true]} />
-          <meshStandardMaterial color={PALETTE.butter} emissive="#4a3210" emissiveIntensity={0.35} metalness={0.1} roughness={0.42} side={THREE.FrontSide} />
+          <meshStandardMaterial color="#FFC552" emissive="#CF8B20" emissiveIntensity={0.3} metalness={0.1} roughness={0.42} side={THREE.FrontSide} />
         </mesh>
         {/* Hot enamel inside */}
         <mesh position={[0, 3.5, 0]}>
@@ -396,7 +401,7 @@ function DeskLamp({ features }: { features: ToyRoomFeatures }) {
         </mesh>
         <mesh position={[0, 7, 0]} castShadow>
           <sphereGeometry args={[2.7, segments, segments / 2, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={PALETTE.butter} emissive="#4a3210" emissiveIntensity={0.35} metalness={0.1} roughness={0.42} side={THREE.DoubleSide} />
+          <meshStandardMaterial color="#FFC552" emissive="#CF8B20" emissiveIntensity={0.3} metalness={0.1} roughness={0.42} side={THREE.DoubleSide} />
         </mesh>
         {/* Bulb */}
         <mesh position={[0, 2.6, 0]}>

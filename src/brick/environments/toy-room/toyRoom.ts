@@ -113,7 +113,7 @@ export const LAMP_ELBOW = { x: -38, y: 13, z: -28 } as const
  * would be permanently out of frame; at this height the shade comes into view
  * from across the table and its beam crosses the scene from anywhere.
  */
-export const LAMP_SHADE = { x: -21, y: 16.5, z: -14.5 } as const
+export const LAMP_SHADE = { x: -21, y: 12, z: -14.5 } as const
 export const LAMP_SHADE_RADIUS = 5.6
 export const LAMP_TARGET = { x: 1, y: 0.4, z: 2 } as const
 

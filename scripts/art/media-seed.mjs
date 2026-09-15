@@ -3,11 +3,12 @@
 // document passes the shared-core validation exactly as a student's world would. Kept small (under 80 bricks) so it
 // reads at hero size and stays cheap to render in every scene.
 
+// Slightly lifted pigments retain the approved blue/coral/butter identity under the real dusk lighting.
 export const SEED_COLORS = {
-  blue: '#5888DA',
-  coral: '#F17861',
-  butter: '#F3CA74',
-  white: '#F8F4EB',
+  blue: '#488DFF',
+  coral: '#FF6644',
+  butter: '#FFD343',
+  white: '#FFFBF2',
   green: '#6FB26A',
   ink: '#263C51',
 }
@@ -88,7 +89,7 @@ export function createSeedBricks() {
     brick('slope_2x2', 44, 0, 30, green, 3),
     brick('brick_2x3', 41, 0, 43, white),
     brick('brick_1x2', 28, 0, 41, green, 1),
-  ].map((piece) => ({ ...piece, z: piece.z + 7 }))
+  ].map((piece) => ({ ...piece, z: piece.z + 10 }))
 }
 
 export const SEED_WORLD = {
