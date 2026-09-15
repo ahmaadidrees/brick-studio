@@ -103,7 +103,7 @@
 .studio-menu { position: relative; min-width: 0; }
 /* The placed-brick section can push the menu past a short viewport, so it scrolls; the studio
    root is touch-action: none, hence the explicit pan-y. */
-.studio-menu-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: var(--z-sheet, 30); width: 272px; max-height: calc(100vh - var(--brick-header-block) - 24px); display: grid; gap: 2px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 18px 48px rgba(38, 60, 81, .2)); touch-action: pan-y; }
+.studio-menu-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: var(--z-sheet, 30); width: min(272px, calc(100vw - 16px)); max-height: calc(100vh - var(--brick-header-block) - 24px); display: grid; gap: 2px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 18px 48px rgba(38, 60, 81, .2)); touch-action: pan-y; }
 .studio-menu-popover button, .studio-menu-popover a { min-height: 48px; display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 8px; padding: 6px 9px; border: 0; border-radius: 10px; color: var(--studio-ink); background: transparent; text-align: left; text-decoration: none; cursor: pointer; }
 .studio-menu-popover button:hover:not(:disabled), .studio-menu-popover a:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .1); }
 .studio-menu-popover button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; }
@@ -165,7 +165,7 @@
 
 .part-search { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 9px; padding: 0 10px; border: 1px solid var(--studio-panel-border); border-radius: var(--studio-control-radius); color: var(--studio-muted); background: var(--studio-panel-soft); }
 .part-search:focus-within { border-color: var(--studio-blue); outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.part-search input { flex: 1; min-width: 0; border: 0; color: var(--studio-ink); background: transparent; font: 700 13px/1.2 inherit; outline: none; }
+.part-search input { flex: 1; min-width: 0; min-height: 32px; border: 0; color: var(--studio-ink); background: transparent; font: 700 13px/1.2 inherit; outline: none; }
 .part-search input::placeholder { color: var(--studio-muted); font-weight: 700; }
 .part-search input::-webkit-search-cancel-button { display: none; }
 .part-search-clear { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 8px; color: var(--studio-muted); background: transparent; cursor: pointer; }
@@ -317,6 +317,7 @@
 .brick-explore-hud-end { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; }
 .brick-explore-cluster { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
 .brick-explore-cluster .brick-header-tool.ui-button { min-height: 40px; }
+@media (pointer: coarse) { .brick-explore-cluster .brick-header-tool.ui-button { min-height: 44px; min-width: 44px; } }
 .brick-explore-title-pill { max-width: min(280px, 60vw); display: inline-flex; align-items: center; gap: 6px; min-height: 34px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--studio-panel-border); border-radius: 999px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .1)); font-size: 12px; font-weight: 800; }
 .brick-explore-title-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brick-explore-title-pill svg { flex: 0 0 auto; color: var(--studio-blue-dark); }
@@ -405,7 +406,9 @@
 @media (pointer: coarse) {
   .fine-pointer-copy { display: none; }
   /* The title trigger keeps its 28px layout box but grows a 44px hit area on touch. */
-  .studio-world-title { min-height: 44px; padding: 8px 4px; margin: -8px 0; }
+  .studio-world-title { min-height: 44px; padding: 8px 4px; }
+  .part-search { min-height: 48px; }
+  .part-search input { min-height: 44px; }
   .library-collapse-button { width: 44px; height: 44px; min-height: 44px; }
   .coarse-pointer-copy { display: inline; }
   .shortcut-bar { display: none; }

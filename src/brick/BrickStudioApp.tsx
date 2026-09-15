@@ -387,7 +387,7 @@ function PublishedWorldBar({ title, onRemix }: { title?: string; onRemix?: () =>
       <div className="published-world-heading"><span>Read-only world</span><strong title={title}>{title}</strong></div>
       <div className="published-world-actions">
         <StudioSettings />
-        {onRemix && <Button variant="primary" className="published-world-remix" icon={<Copy size={16} />} onClick={onRemix} title="Save a copy of this world as your guest build">Make a copy</Button>}
+        {onRemix && <Button variant="primary" className="published-world-remix" icon={<Copy size={16} />} onClick={onRemix} aria-label="Make a copy" title="Save a copy of this world as your guest build">Make a copy</Button>}
       </div>
     </div>
   )
@@ -599,7 +599,7 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
 
   useEffect(() => {
     const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    panel.current?.focus()
+    panel.current?.focus({ preventScroll: true })
     // Capture phase: Escape must close the sheet without also reaching the global builder
     // shortcut that cancels the armed brush.
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -612,7 +612,7 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
     window.addEventListener('keydown', closeOnEscape, true)
     return () => {
       window.removeEventListener('keydown', closeOnEscape, true)
-      restoreTo?.focus()
+      restoreTo?.focus({ preventScroll: true })
     }
   }, [onClose])
 
