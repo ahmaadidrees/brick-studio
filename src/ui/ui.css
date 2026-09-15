@@ -250,3 +250,6 @@ a.ui-button[aria-disabled="true"] { cursor: default; }
   .ui-sheet, .ui-sheet-backdrop, .ui-sheet-dialog .ui-sheet { animation: none; }
   .ui-spin { animation: none; }
 }
+/* In-app "Reduced" motion preference (the editor sets this class on <html>). */
+.brick-reduced-motion .ui-sheet, .brick-reduced-motion .ui-sheet-backdrop, .brick-reduced-motion .ui-sheet-dialog .ui-sheet { animation: none; }
+.brick-reduced-motion .ui-spin { animation: none; }

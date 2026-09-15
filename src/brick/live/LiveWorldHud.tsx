@@ -182,12 +182,15 @@ export function LiveWorldHud({
 
   return (
     <div className="live-hud">
-      {!headerRequest && (
+      {/* With a header the chip only appears while edits are unconfirmed, so nothing unsent can read as shared. */}
+      {(!headerRequest || sessionReplaced || syncing || hasPendingChanges) && (
         <div className="live-toolbar" role="toolbar" aria-label="Live collaboration controls">
           <LiveStatusChip connection={connection} syncing={syncing} sessionReplaced={sessionReplaced} pendingOperations={pendingOperations} />
-          <Button variant="quiet" size="sm" icon={<Users size={16} />} aria-label={peopleLabel} aria-controls={panelOpen ? panelId : undefined} aria-expanded={panelOpen} onClick={togglePanel}>
-            People<strong className="live-people-count" aria-hidden="true">{players.length}</strong>
-          </Button>
+          {!headerRequest && (
+            <Button variant="quiet" size="sm" icon={<Users size={16} />} aria-label={peopleLabel} aria-controls={panelOpen ? panelId : undefined} aria-expanded={panelOpen} onClick={togglePanel}>
+              People<strong className="live-people-count" aria-hidden="true">{players.length}</strong>
+            </Button>
+          )}
         </div>
       )}
 
