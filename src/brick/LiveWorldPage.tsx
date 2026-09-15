@@ -148,18 +148,18 @@ function DefaultLiveWorldScene({
     },
   }), [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view])
   const customPartPolicy = useMemo(() => {
-    const canEdit = snapshot.isOwner
-      && snapshot.connection === 'online'
+    const canEdit = snapshot.connection === 'online'
       && snapshot.mode === 'build'
-      && Boolean(actions.replaceDocument)
+      && (snapshot.pendingOperations ?? 0) === 0
+      && !snapshot.syncing
+      && Boolean(actions.addCustomPart)
     return {
       customParts: view.document.customParts,
       canEdit,
-      help: snapshot.isOwner
-        ? 'Switch everyone to Build and wait for sync before changing the shared brick library.'
-        : 'The room owner controls custom brick shapes so every builder stays in sync.',
+      help: 'Switch to Build and wait for sync to create a shared brick.',
+      onAddPart: (part: BrickStudioDocument['customParts'][number]) => canEdit && Boolean(actions.addCustomPart?.(part)),
       onReplaceDocument: (next: { bricks: BrickStudioDocument['bricks']; customParts: BrickStudioDocument['customParts'] }) => {
-        if (!canEdit) return false
+        if (!canEdit || !snapshot.isOwner) return false
         try {
           return Boolean(actions.replaceDocument?.(createBrickStudioDocument(next.bricks, {
             environmentId: view.document.environmentId,
@@ -171,7 +171,7 @@ function DefaultLiveWorldScene({
         }
       },
     }
-  }, [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view.document])
+  }, [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, snapshot.pendingOperations, snapshot.syncing, view.document])
   return (
     <LivePeoplePanelContext.Provider value={peoplePanelRequest}>
       <BrickStudioApp

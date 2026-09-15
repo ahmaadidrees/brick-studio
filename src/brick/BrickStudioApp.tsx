@@ -108,6 +108,7 @@ export type BrickStudioLivePolicy = {
 export type BrickStudioCustomPartPolicy = {
   customParts: CustomPartDefinition[]
   canEdit: boolean
+  onAddPart?: (part: CustomPartDefinition) => boolean
   help?: string
   onReplaceDocument: (next: { bricks: BrickStudioDocument['bricks']; customParts: CustomPartDefinition[] }) => boolean
 }
@@ -1296,10 +1297,10 @@ export default function BrickStudioApp({
     const nextCustomParts = customParts.some((part) => part.id === definition.id)
       ? customParts
       : [...customParts, definition]
-    if (customPartPolicy && !customPartPolicy.onReplaceDocument({
+    if (customPartPolicy && !(customPartPolicy.onAddPart ? customPartPolicy.onAddPart(definition) : customPartPolicy.onReplaceDocument({
       bricks: useBrickStore.getState().bricks,
       customParts: nextCustomParts,
-    })) {
+    }))) {
       useBrickStore.setState({ toast: 'The shared brick library is still syncing. Try again in a moment.' })
       return false
     }

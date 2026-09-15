@@ -657,20 +657,23 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     // A queued frame may have lost access while waiting. Re-read its attachment.
     const attachment = this.attachment(socket);
     if (!attachment || !this.record || attachment.superseded || this.currentSocket(attachment) !== socket) return;
-    if (attachment.classroomAccess && ["commands", "replaceDocument", "setMode", "setLocked", "setProfile", "resync"].includes(data.type)) {
+    if (attachment.classroomAccess && ["commands", "addCustomPart", "replaceDocument", "setMode", "setLocked", "setProfile", "resync"].includes(data.type)) {
       if (!await this.reauthorizeSocket(socket, attachment)) return;
     }
     if (attachment.classroomAccess && !attachment.classroomAccess.canEdit
-        && ["commands", "replaceDocument", "setMode", "setLocked"].includes(data.type)) {
+        && ["commands", "addCustomPart", "replaceDocument", "setMode", "setLocked"].includes(data.type)) {
       return this.rejectOperation(socket, attachment.playerId, typeof data.opId === "string" ? data.opId : "", "read_only", "You do not have editing access to this world.");
     }
     if (this.record.document.schemaVersion > (attachment.documentSchema ?? 2)
-      && ["commands", "replaceDocument", "setMode"].includes(data.type)) {
+      && ["commands", "addCustomPart", "replaceDocument", "setMode"].includes(data.type)) {
       return this.rejectOperation(socket, attachment.playerId, typeof data.opId === "string" ? data.opId : "", "client_update_required", "Refresh Brickgineers before editing this expanded world.");
     }
     switch (data.type) {
       case "commands":
         await this.handleCommands(socket, attachment, data, bytes);
+        break;
+      case "addCustomPart":
+        await this.handleReplaceDocument(socket, attachment, data, bytes, true);
         break;
       case "replaceDocument":
         await this.handleReplaceDocument(socket, attachment, data, bytes);
@@ -770,6 +773,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     attachment: WorldSocketAttachment,
     data: Record<string, unknown>,
     bytes: number,
+    additive = false,
   ): Promise<void> {
     const opId = typeof data.opId === "string" ? data.opId : "";
     const sequence = this.operationSequence(opId, attachment.playerId);
@@ -782,20 +786,27 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       this.sendSnapshot(socket, opId);
       return;
     }
-    if (!attachment.isOwner) {
+    if (!additive && !attachment.isOwner) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "owner_only", "Only the room owner can replace the world.");
     }
     if (this.record!.mode !== "build") {
       return this.cacheAndReject(socket, attachment.playerId, opId, "explore_mode", "The world cannot be replaced during Explore mode.");
     }
-    if (!Number.isInteger(data.expectedRevision) || data.expectedRevision !== this.record!.revision) {
+    if (!additive && (!Number.isInteger(data.expectedRevision) || data.expectedRevision !== this.record!.revision)) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "revision_conflict", "The world changed while this update was prepared. Review the latest world and try again.");
     }
-    if (bytes > MAX_FRAME_BYTES || encodedBytes(data.document) > LIVE_MAX_DOCUMENT_BYTES) {
+    if (bytes > MAX_FRAME_BYTES || (!additive && encodedBytes(data.document) > LIVE_MAX_DOCUMENT_BYTES)) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "document_too_large", "The replacement document is too large.");
     }
-    const document = validateBrickStudioDocument(data.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
+    // Validate an append against the latest authoritative document, never a client's stale copy.
+    const part = data.part as { id?: unknown } | null;
+    if (additive && (!part || typeof part !== "object" || this.record!.document.customParts.some(existing => existing.id === part.id))) {
+      return this.cacheAndReject(socket, attachment.playerId, opId, "custom_part_conflict", "That custom brick id already exists or is invalid.");
+    }
+    const input = additive ? { ...this.record!.document, schemaVersion: 3, plateSize: this.record!.document.plateSize ?? 64, customParts: [...this.record!.document.customParts, data.part] } : data.document;
+    const document = validateBrickStudioDocument(input, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
     if (!document.ok) return this.cacheAndReject(socket, attachment.playerId, opId, document.error.code, document.error.message);
+    if (encodedBytes(document.document) > LIVE_MAX_DOCUMENT_BYTES) return this.cacheAndReject(socket, attachment.playerId, opId, "document_too_large", "The shared brick library is full.");
     if (document.document.schemaVersion === 3 && this.openSockets().some(peer => (this.attachment(peer)?.documentSchema ?? 2) < 3)) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "client_update_required", "Ask everyone in this world to refresh Brickgineers before using larger plates or bricks.");
     }

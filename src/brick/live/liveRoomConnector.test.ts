@@ -44,6 +44,7 @@ function createClientHarness(overrides: Partial<ClientSnapshot> = {}) {
     setProfile: (profile) => { calls.profiles.push(profile); return true },
     setMode: (mode) => { calls.modes.push(mode); return true },
     setLocked: (locked) => { calls.locked.push(locked); return true },
+    addCustomPart: () => null,
     replaceDocument: () => null,
     sendPose: (pose) => { calls.poses.push(pose) },
     requestResync: () => { calls.resync += 1; return true },

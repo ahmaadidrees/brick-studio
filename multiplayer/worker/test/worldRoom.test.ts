@@ -142,6 +142,42 @@ afterEach(() => {
 });
 
 describe("WorldRoom", () => {
+  it("merges concurrent non-owner custom brick additions without replacing existing work", async () => {
+    const original = brick("original", 0, 0);
+    const { roomId } = await createWorld(createBrickStudioDocument([original]));
+    const a = await connectWorld(roomId, "custom_builder_a");
+    const b = await connectWorld(roomId, "custom_builder_b");
+    const part = { id: "custom_first", name: "First", template: "solid", width: 2, depth: 2, height: 3, studs: "auto" };
+    send(a.socket!, { v: 1, type: "addCustomPart", opId: "custom_builder_a#1", part });
+    send(b.socket!, { v: 1, type: "addCustomPart", opId: "custom_builder_b#1", part: { ...part, id: "custom_second" } });
+    await a.inbox!.next("snapshot");
+    await b.inbox!.next("snapshot");
+    // A resync is ordered behind this socket's addition and observes both accepted append operations.
+    send(b.socket!, { v: 1, type: "resync" });
+    const state = await getWorld(roomId);
+    expect(state.document.customParts.map(p => p.id).sort()).toEqual(["custom_first", "custom_second"]);
+    expect(state.document.bricks).toEqual([original]);
+    send(a.socket!, { v: 1, type: "addCustomPart", opId: "custom_builder_a#2", part: { ...part, width: 3 } });
+    expect(await a.inbox!.next("reject")).toMatchObject({ code: "custom_part_conflict" });
+    expect((await getWorld(roomId)).document.customParts.find(p => p.id === part.id)?.width).toBe(2);
+    send(a.socket!, { v: 1, type: "addCustomPart", opId: "custom_builder_a#3", part: { ...part, id: "custom_invalid", width: 1000 } });
+    await a.inbox!.next("reject");
+    expect((await getWorld(roomId)).document.customParts).toHaveLength(2);
+    send(a.socket!, { v: 1, type: "addCustomPart", opId: "custom_builder_a#1", part });
+    await a.inbox!.next("snapshot");
+    expect((await getWorld(roomId)).document.customParts).toHaveLength(2);
+  });
+
+  it("enforces the shared custom part cap for non-owner additions", async () => {
+    const part = { id: "custom_cap", name: "Cap", template: "solid" as const, width: 2, depth: 2, height: 3, studs: "auto" as const };
+    const customParts = Array.from({ length: 24 }, (_, i) => ({ ...part, id: `custom_cap_${i}` }));
+    const { roomId } = await createWorld(createBrickStudioDocument([], { customParts }));
+    const guest = await connectWorld(roomId, "custom_cap_guest");
+    send(guest.socket!, { v: 1, type: "addCustomPart", opId: "custom_cap_guest#1", part });
+    expect(await guest.inbox!.next("reject")).toMatchObject({ code: "custom-part-limit" });
+    expect((await getWorld(roomId)).document.customParts).toHaveLength(24);
+  });
+
   it("persists and rejoins a maximum-size custom brick while rejecting oversized definitions", async () => {
     const customPart = {
       id: "custom_large_test", name: "Large custom brick", template: "solid" as const,

@@ -1,3 +1,4 @@
+import { createBrickStudioDocument, type CustomPartDefinition } from '@brick-studio/core'
 import {
   LIVE_MAX_COMMAND_BYTES,
   LIVE_MAX_COMMANDS,
@@ -137,6 +138,7 @@ export type LiveRoomClient = {
   setProfile: (profile: PlayerProfile) => boolean
   setMode: (mode: LiveWorldMode) => boolean
   setLocked: (locked: boolean) => boolean
+  addCustomPart: (part: CustomPartDefinition) => string | null
   replaceDocument: (document: BrickStudioDocument) => string | null
   sendPose: (pose: LivePose) => void
   requestResync: () => boolean
@@ -146,7 +148,7 @@ export type LiveRoomClient = {
   dispose: () => void
 }
 
-type PendingOperation = Extract<LiveClientMessage, { type: 'commands' | 'replaceDocument' }>
+type PendingOperation = Extract<LiveClientMessage, { type: 'commands' | 'replaceDocument' | 'addCustomPart' }>
 
 function runtimeBaseUrl() {
   const live = import.meta.env.VITE_LIVE_SERVER_URL as string | undefined
@@ -500,7 +502,9 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     for (const operation of pending.values()) {
       next = operation.type === 'replaceDocument'
         ? cloneDocument(operation.document)
-        : { ...next, bricks: applyLiveCommands(next.bricks, operation.commands) }
+        : operation.type === 'addCustomPart'
+          ? createBrickStudioDocument(next.bricks, { ...next, customParts: next.customParts.some(part => part.id === operation.part.id) ? next.customParts : [...next.customParts, operation.part] })
+          : { ...next, bricks: applyLiveCommands(next.bricks, operation.commands) }
     }
     return next
   }
@@ -1005,6 +1009,15 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     setLocked: (locked) => snapshot.isOwner
       && snapshot.connection === 'online'
       && send({ v: LIVE_PROTOCOL_VERSION, type: 'setLocked', locked }),
+    addCustomPart: (part) => {
+      if (snapshot.connection !== 'online' || snapshot.mode !== 'build' || snapshot.awaitingSnapshot || pending.size > 0 || !canonicalDocument) return null
+      const next = normalizeBrickStudioDocument({ ...canonicalDocument, schemaVersion: 3, plateSize: canonicalDocument.plateSize ?? 64, customParts: [...canonicalDocument.customParts, part] })
+      if (!next.ok) { reportError(next.error.code, next.error.message); return null }
+      const opId = nextOpId()
+      enqueue({ v: LIVE_PROTOCOL_VERSION, type: 'addCustomPart', opId, part })
+      refreshFromCanonical('local')
+      return opId
+    },
     replaceDocument: (document) => {
       if (!snapshot.isOwner || snapshot.connection !== 'online') return null
       if (pending.size >= LIVE_MAX_PENDING_OPERATIONS) {
