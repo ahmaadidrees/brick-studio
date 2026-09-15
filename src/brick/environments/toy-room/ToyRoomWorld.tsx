@@ -361,12 +361,7 @@ function PlayTable({ features }: { features: ToyRoomFeatures }) {
 /** Hero prop 1: the swing-arm lamp that lights the whole diorama. */
 function DeskLamp({ features }: { features: ToyRoomFeatures }) {
   const shadeQuaternion = useMemo(() => {
-    // Point the housing mostly down at the desk. The previous steep sideways tilt
-    // exposed the whole white reflector from the normal student/marketing view.
-    const direction = vec(LAMP_TARGET).sub(vec(LAMP_SHADE))
-    direction.x *= 0.25
-    direction.z = -Math.abs(direction.z) * 0.6
-    direction.normalize()
+    const direction = vec(LAMP_TARGET).sub(vec(LAMP_SHADE)).normalize()
     return new THREE.Quaternion().setFromUnitVectors(UP, direction.clone().negate())
   }, [])
   const segments = features.roundSegments

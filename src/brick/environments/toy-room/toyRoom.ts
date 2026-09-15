@@ -115,7 +115,7 @@ export const LAMP_ELBOW = { x: -38, y: 13, z: -28 } as const
  */
 export const LAMP_SHADE = { x: -21, y: 12, z: -14.5 } as const
 export const LAMP_SHADE_RADIUS = 5.6
-export const LAMP_TARGET = { x: 1, y: 0.4, z: 2 } as const
+export const LAMP_TARGET = { x: -17, y: 0.4, z: -11.5 } as const
 
 /** Book stack: four hardcovers (navy, coral, butter, cornflower), a climbable ruler leaning on the top one. */
 export const BOOK_THICKNESS = 2.55
