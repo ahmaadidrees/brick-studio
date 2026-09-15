@@ -2,6 +2,7 @@ import { ArrowLeft, GraduationCap, Play, Users } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Button, TextField } from '../../ui'
+import { BrandLockup } from '../../brand'
 import { LIVE_MAX_DISPLAY_NAME_LENGTH, LIVE_MAX_PLAYERS } from '../liveProtocol'
 import { displayNameError, formatLivePlayerCount, normalizeDisplayName } from './liveRoomModel'
 
@@ -76,7 +77,8 @@ export function LiveWorldGate({
   }
 
   return (
-    <section className="live-gate-card" aria-busy={busy || undefined}>
+    <section className="live-gate-card live-entry-card" aria-busy={busy || undefined}>
+      <BrandLockup size={34} className="live-gate-brand" />
       <span className="live-eyebrow">{creating ? 'Build together' : 'Shared world invite'}</span>
       <h1>
         {creating
@@ -94,6 +96,14 @@ export function LiveWorldGate({
             ? `${formatLivePlayerCount(playerCount)} inside right now. Enter your name to join.`
             : 'Enter your name to join this shared world.'}
       </p>
+      <figure className="live-scene-illustration">
+        <picture>
+          <source srcSet="/brand/media/scene-toy-room-400.avif 400w, /brand/media/scene-toy-room-800.avif 800w" type="image/avif" sizes="(max-width: 480px) calc(100vw - 80px), 390px" />
+          <source srcSet="/brand/media/scene-toy-room-400.webp 400w, /brand/media/scene-toy-room-800.webp 800w" type="image/webp" sizes="(max-width: 480px) calc(100vw - 80px), 390px" />
+          <img src="/brand/media/scene-toy-room-400.png" width={800} height={500} sizes="(max-width: 480px) calc(100vw - 80px), 390px" alt="" />
+        </picture>
+        <figcaption>Toy Room · scene illustration</figcaption>
+      </figure>
       <form className="live-gate-form" onSubmit={submit}>
         {creating && (
           <TextField

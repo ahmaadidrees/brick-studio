@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Download, GraduationCap, Hammer, Lock, RefreshCw } from 'lucide-react'
 import { Button } from '../../ui'
+import { BrandLockup } from '../../brand'
 import type { BrickStudioDocument } from '../brickDocument'
 import { downloadBrickStudioDocument } from '../documentPersistence'
 import type { LiveRoomActions, LiveRoomUiSnapshot } from './liveRoomModel'
@@ -35,6 +36,7 @@ export function BlockedView({ heading, message, onRetry, action }: { heading: st
   return (
     <main className="live-world-page">
       <section className="live-gate-card live-blocked-card" aria-labelledby="live-blocked-title">
+        <BrandLockup size={32} className="live-gate-brand" />
         <span className={`live-state-icon${closed ? ' live-state-icon-warn' : ''}`} aria-hidden="true">{closed ? <Lock size={22} /> : <RefreshCw size={22} />}</span>
         <span className="live-eyebrow">Shared worlds</span>
         <h1 id="live-blocked-title">{heading}</h1>
@@ -53,6 +55,7 @@ export function OpeningRoomView({ title, snapshot, actions }: { title: string; s
   return (
     <main className="live-world-page">
       <section className="live-gate-card live-blocked-card" aria-busy={snapshot.connection !== 'offline'}>
+        <BrandLockup size={32} className="live-gate-brand" />
         <span className="live-eyebrow">Shared world</span>
         <h1>Opening {title}…</h1>
         <p>Just a moment while we get things ready.</p>
@@ -82,6 +85,7 @@ export function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: Li
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
   }, [needsLeaveWarning])
   return <main className="live-world-page"><section className="live-gate-card live-blocked-card">
+    <BrandLockup size={32} className="live-gate-brand" />
     <span className="live-eyebrow">Classroom world</span>
     <h1>Classroom access changed</h1>
     <p>{snapshot.notice?.message || 'Ask your teacher to check your access to this world.'}</p>

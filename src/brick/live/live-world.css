@@ -25,9 +25,9 @@
   -webkit-overflow-scrolling: touch;
   color: var(--text);
   background:
-    radial-gradient(52rem 30rem at 12% -8%, rgba(88, 136, 218, 0.16), transparent 60%),
-    radial-gradient(44rem 26rem at 105% 16%, rgba(243, 202, 116, 0.22), transparent 62%),
-    var(--bg);
+    radial-gradient(52rem 30rem at 12% -8%, rgba(88, 136, 218, 0.08), transparent 60%),
+    radial-gradient(44rem 26rem at 105% 16%, rgba(243, 202, 116, 0.10), transparent 62%),
+    var(--surface);
 }
 
 .live-eyebrow {
@@ -47,8 +47,19 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
+/* The scene is an illustration, never a fabricated preview of the invited world. */
+.live-gate-brand { width: 100%; padding-bottom: 12px; border-bottom: 1px solid var(--border); border-radius: 0; }
+.live-entry-card { gap: 12px; }
+.live-scene-illustration { margin: 0; width: 100%; }
+.live-scene-illustration picture { display: block; overflow: hidden; border-radius: var(--radius-md); background: var(--primary-soft); }
+.live-scene-illustration img { display: block; width: 100%; height: 144px; object-fit: cover; object-position: 50% 66%; }
+.live-scene-illustration figcaption { padding-top: 5px; color: var(--text-muted); font-size: 11px; line-height: 1.4; font-weight: 600; }
+@media (max-width: 480px), (max-height: 650px) {
+  .live-scene-illustration img { height: 112px; }
+}
+
 .live-gate-card h1 { margin: 0; font-family: var(--font-display); font-size: clamp(26px, 4vw, 32px); font-weight: 700; line-height: 1.1; }
 .live-gate-card > p,
 .live-gate-lead { margin: 0; color: var(--text-muted); font-size: var(--text-md); font-weight: 600; line-height: 1.5; }
