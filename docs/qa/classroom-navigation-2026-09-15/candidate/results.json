@@ -1,0 +1,15 @@
+{
+  "origin": "https://virtual-legos-9ji2h3yto-ahmaadidrees-projects.vercel.app",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "classId": "46f367f6-1c00-441a-a54a-39a24afda91a",
+  "checks": [
+    "browser six-character enrollment, preserved fields, My Class destination",
+    "only successful class name/code remembered",
+    "remembered return code is not reused for enrollment",
+    "cold browser login and saved nonempty world download equals authoritative database",
+    "mobile student entrance, separate teacher Google entry and guest exit",
+    "teacher dashboard direct entry, invite QR/link, password reset focus, mobile invite prefill and class lookup"
+  ],
+  "errors": [],
+  "cleanup": "synthetic roster suspended; enrollment and collaboration closed"
+}

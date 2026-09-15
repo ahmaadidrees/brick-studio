@@ -1,0 +1,15 @@
+{
+  "origin": "http://127.0.0.1:5234",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "classId": "e3061d53-1d4b-4f9f-b7e0-855873f6903c",
+  "checks": [
+    "browser six-character enrollment, preserved fields, My Class destination",
+    "only successful class name/code remembered",
+    "remembered return code is not reused for enrollment",
+    "cold browser login and saved nonempty world download equals authoritative database",
+    "mobile student entrance, separate teacher Google entry and guest exit",
+    "teacher dashboard direct entry, invite QR/link, password reset focus, mobile invite prefill and class lookup"
+  ],
+  "errors": [],
+  "cleanup": "synthetic roster suspended; enrollment and collaboration closed"
+}
