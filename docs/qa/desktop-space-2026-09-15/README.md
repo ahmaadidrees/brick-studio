@@ -21,3 +21,13 @@ Based on the shipped mobile/tablet release `99185c9`; student auth and guest/liv
 ## Rollback
 
 Previous production frontend: `dpl_DSYsFviv9sfebZ4r47DCFLhuoRJa`, https://virtual-legos-akgm86i69-ahmaadidrees-projects.vercel.app . No Worker/database rollback is involved.
+
+## Shipped
+
+- Product source: `f42372a`, branch `codex/desktop-canvas-space`.
+- Deployment: `dpl_HKsy8HmmEjaFkckeDFdfBVz8Eg1i`.
+- Candidate: https://virtual-legos-fr5412g7f-ahmaadidrees-projects.vercel.app .
+- Hosted `candidate/results.json`: four desktop sizes, all checks pass, no page errors.
+- Hosted `candidate-touch/results.json`: seven regression sizes, all checks pass, no page errors. Existing deployment protection preserved with origin-scoped verification credentials.
+- Promoted to https://brickgineers.com . `public-release.json` verifies exact script-asset equality with the prebuilt artifact on both public origins, plus public Chromebook placement and catalog readback: at least 12 fully visible cards, Box Select hidden for mouse.
+- No backend deployment or auth/provider changes. Current production mobile/tablet and student-login releases remain included.

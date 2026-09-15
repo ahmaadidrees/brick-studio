@@ -1,0 +1,26 @@
+{
+  "at": "2026-09-15T16:17:10.676Z",
+  "source": "f42372a",
+  "deployment": "dpl_HKsy8HmmEjaFkckeDFdfBVz8Eg1i",
+  "origins": [
+    {
+      "origin": "https://brickgineers.com",
+      "status": 200,
+      "scripts": [
+        "/assets/index-BE1YK-hx.js"
+      ]
+    },
+    {
+      "origin": "https://virtual-legos.vercel.app",
+      "status": 200,
+      "scripts": [
+        "/assets/index-BE1YK-hx.js"
+      ]
+    }
+  ],
+  "catalog": {
+    "height": 405,
+    "fullyVisible": 12
+  },
+  "errors": []
+}
