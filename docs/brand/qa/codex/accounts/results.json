@@ -180,9 +180,8 @@
     "Teacher Google OAuth not exercised; dedicated teacher email/password used",
     "No physical Chromebook or real student account used"
   ],
-  "scope": "Nine browser interaction and authoritative persistence checks, not an all-endpoints release certification",
-  "releaseReady": false,
-  "openFindings": [
-    "Teacher GET /classroom/worlds returns 500 with 24 classes; worker fix and fresh staging recheck required."
-  ]
+  "scope": "Nine successful browser interaction/persistence checks, followed by healthy teacher-world-list recheck. Root owns whole-release certification.",
+  "releaseReady": null,
+  "openFindings": [],
+  "resolvedBy": "teacher-world-list-recheck.json: real browser teacher/world/class requests all200 at24classes on worker01b230d6"
 }

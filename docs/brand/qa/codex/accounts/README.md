@@ -12,9 +12,9 @@ Captured 2026-09-15 01:16 UTC against local candidate UI at `http://127.0.0.1:52
 - Temporary sign-in requires choosing a new password. The saved world remains owned by the same student and its document is unchanged after recovery.
 - Nine final scoped checks passed. The synthetic student was suspended and its class enrollment/collaboration closed afterward.
 
-## Scope and open finding
+## Scope and resolved finding
 
-The teacher's GET `/classroom/worlds` returned 500 at 24 classes. Root delegated a worker batching fix. `results.json` records the failure alongside the successful scoped checks; this evidence **does not certify that endpoint or release readiness**. The frontend now retains successfully loaded class controls while explicitly showing the world error (commit `fe02a1b`, 73 ClassroomPanel tests passed). Teacher captures can include this genuine error state. Fresh healthy captures should supersede those once the worker fix is deployed to staging.
+The teacher's GET `/classroom/worlds` returned 500 at 24 classes. Root delegated a worker batching fix. `results.json` records the failure alongside the successful scoped checks; this evidence **does not certify that endpoint or release readiness**. The frontend now retains successfully loaded class controls while explicitly showing the world error (commit `fe02a1b`, 73 ClassroomPanel tests passed). Teacher captures can include this genuine error state. Fresh healthy captures superseded those teacher images at 01:19 UTC after staging worker `01b230d6-11c1-4a9b-a0ab-3b7828db83e9` (source `dfe3496`) was deployed. Actual browser teacher login, classes, worlds, and synthetic roster requests all returned 200 at 24 classes, with no error alert. See `teacher-world-list-recheck.json`. This final recheck did not create or modify any classes, students, or worlds.
 
 Earlier attempt reports preserve harness corrections (native option attachment and import confirmation) and the endpoint failure discovery. The first empty synthetic class was explicitly closed by its unique name; all other created synthetic classes are also closed and any synthetic students suspended.
 
