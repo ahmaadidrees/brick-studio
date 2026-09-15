@@ -5,6 +5,14 @@ import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
 import type { ContentPickerSelection } from './selection'
 import WorldAndCharacterSheet, { type WorldAndCharacterSheetProps } from './WorldAndCharacterSheet'
 
+// Assert the draft sent to the live preview without asking jsdom to render WebGL.
+// Static picker portraits intentionally do not simulate customized colors.
+vi.mock('../characters/CharacterPreview', () => ({
+  CharacterPreview: ({ palette }: { palette?: Record<string, string> }) => (
+    <div data-testid="live-character-preview" data-palette={JSON.stringify(palette ?? {})} />
+  ),
+}))
+
 const environments = [
   { id: 'classic', name: 'Classic Studio', description: 'The original bright baseplate.', previewKey: 'environment:classic' },
   { id: 'toy-room', name: 'Toy Room', description: 'A play table inside a warm bedroom.', previewKey: 'environment:toy-room' },
@@ -211,22 +219,25 @@ describe('keyboard selection and summary', () => {
 })
 
 describe('character color customization', () => {
-  it('previews color changes on the selected illustration and resets only the draft until Apply', () => {
+  it('sends colors to the live character preview and resets only the draft until Apply', () => {
     const selection = { ...baseSelection, palette: { primary: '#e7473c', secondary: '#3e83d7' } }
     const { onApply } = renderSheet({
       selection,
       paletteGroups: [{ ...paletteGroups[0], key: 'primary', label: 'Suit' }],
     })
     fireEvent.click(screen.getByRole('tab', { name: 'Character' }))
-    const preview = document.querySelector<HTMLElement>('[data-preview-key="character:toy-figure"]')!
-    expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('#e7473c')
+    const preview = screen.getByTestId('live-character-preview')
+    expect(JSON.parse(preview.dataset.palette!)).toEqual({ primary: '#e7473c', secondary: '#3e83d7' })
+    expect(screen.getByRole('button', { name: 'Set Suit to Rocket red' })).toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.click(screen.getByRole('button', { name: 'Set Suit to Studio blue' }))
-    expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('#3e83d7')
+    expect(JSON.parse(preview.dataset.palette!)).toEqual({ primary: '#3e83d7', secondary: '#3e83d7' })
+    expect(screen.getByRole('button', { name: 'Set Suit to Studio blue' })).toHaveAttribute('aria-pressed', 'true')
     expect(onApply).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Reset colors' }))
-    expect(preview.style.getPropertyValue('--preview-character-primary')).toBe('')
+    expect(JSON.parse(preview.dataset.palette!)).toEqual({})
+    expect(screen.getByRole('button', { name: 'Set Suit to Studio blue' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Reset colors' })).toBeDisabled()
     expect(selection.palette).toEqual({ primary: '#e7473c', secondary: '#3e83d7' })
     expect(onApply).not.toHaveBeenCalled()
