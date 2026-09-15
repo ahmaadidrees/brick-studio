@@ -1,0 +1,56 @@
+{
+  "verifiedAt": "2026-09-15T01:29:32.149818+00:00",
+  "sourceSha": "dfe3496493fec47ad3cb076cf3093b56c3d7039e",
+  "frontendDeployment": "dpl_5yzfL3EuLRcuj9iW7RH9LtpnNjVX",
+  "immutableUrl": "https://virtual-legos-923a42tph-ahmaadidrees-projects.vercel.app",
+  "workerVersion": "c5da8fcb-a7c3-4deb-aec9-32b7bf1698fb",
+  "stagingWorkerVersion": "01b230d6-11c1-4a9b-a0ab-3b7828db83e9",
+  "domains": {
+    "domains": [
+      {
+        "name": "www.brickgineers.com",
+        "apexName": "brickgineers.com",
+        "projectId": "prj_L1KlULGAwmrfCIYoFSvSjUeVOAl8",
+        "redirect": "brickgineers.com",
+        "redirectStatusCode": 308,
+        "gitBranch": null,
+        "customEnvironmentId": null,
+        "updatedAt": 1789435341812,
+        "createdAt": 1789435341812,
+        "verified": true
+      },
+      {
+        "name": "brickgineers.com",
+        "apexName": "brickgineers.com",
+        "projectId": "prj_L1KlULGAwmrfCIYoFSvSjUeVOAl8",
+        "redirect": null,
+        "redirectStatusCode": null,
+        "gitBranch": null,
+        "customEnvironmentId": null,
+        "updatedAt": 1789435341141,
+        "createdAt": 1789435341141,
+        "verified": true
+      },
+      {
+        "name": "virtual-legos.vercel.app",
+        "apexName": "vercel.app",
+        "projectId": "prj_L1KlULGAwmrfCIYoFSvSjUeVOAl8",
+        "redirect": null,
+        "gitBranch": null,
+        "customEnvironmentId": null,
+        "updatedAt": 1784777311958,
+        "createdAt": 1784777311958,
+        "verified": true
+      }
+    ],
+    "pagination": {
+      "count": 3,
+      "next": null,
+      "prev": 1789435341812
+    }
+  },
+  "googleTeacherRoundTrip": "Chrome Ahmaad profile: new domain -> Google -> Supabase -> new-domain callback -> My Worlds with teacher role; no account records changed",
+  "supabaseRedirects": "Added apex/www state-bearing teacher callbacks; prior redirects and global Site URL preserved",
+  "nodeVersion": "22.x",
+  "errorScan": "Vercel last15m query returned0entries; bounded worker self-IP error tail returned0events. Not broad monitoring."
+}

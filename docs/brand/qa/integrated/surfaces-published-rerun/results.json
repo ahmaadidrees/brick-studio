@@ -1,0 +1,833 @@
+{
+  "checkedAt": "2026-09-15T00:14:44.573Z",
+  "origin": "http://127.0.0.1:5190",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      4.59,
+      5.65,
+      8.63
+    ],
+    "freeMemoryMB": 41477,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "strictTouch": true,
+  "strictFocus": true,
+  "runs": [
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 5,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/1366x768.jpeg",
+      "durationMs": 2455
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              493,
+              216,
+              380,
+              336
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/1366x768.jpeg",
+      "durationMs": 1542
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 5,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/1024x768.jpeg",
+      "durationMs": 1952
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              322,
+              216,
+              380,
+              336
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/1024x768.jpeg",
+      "durationMs": 1496
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/768x1024.jpeg",
+      "durationMs": 2412
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              786,
+              768,
+              238
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/768x1024.jpeg",
+      "durationMs": 1486
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/390x844.jpeg",
+      "durationMs": 2431
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              512,
+              390,
+              332
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/390x844.jpeg",
+      "durationMs": 1454
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/320x740.jpeg",
+      "durationMs": 2418
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              361,
+              320,
+              379
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/320x740.jpeg",
+      "durationMs": 1471
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/844x390.jpeg",
+      "durationMs": 2410
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              173,
+              844,
+              217
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/844x390.jpeg",
+      "durationMs": 1468
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/1366x768-zoom200.jpeg",
+      "durationMs": 2431
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              146,
+              683,
+              238
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/1366x768-zoom200.jpeg",
+      "durationMs": 1511
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/1024x768-zoom200.jpeg",
+      "durationMs": 2431
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              146,
+              512,
+              238
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/1024x768-zoom200.jpeg",
+      "durationMs": 1494
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "768x1024",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 384,
+          "height": 512,
+          "devicePixelRatio": 2,
+          "scrollWidth": 384,
+          "scrollHeight": 512,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/768x1024-zoom200.jpeg",
+      "durationMs": 2415
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "768x1024",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 384,
+          "height": 512,
+          "devicePixelRatio": 2,
+          "scrollWidth": 384,
+          "scrollHeight": 512,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              180,
+              384,
+              332
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/768x1024-zoom200.jpeg",
+      "durationMs": 1455
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 5,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/1366x768-reduced-motion.jpeg",
+      "durationMs": 2452
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              493,
+              216,
+              380,
+              336
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/1366x768-reduced-motion.jpeg",
+      "durationMs": 1528
+    },
+    {
+      "surface": "published-viewer",
+      "board": "15",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "published-viewer/390x844-reduced-motion.jpeg",
+      "durationMs": 2431
+    },
+    {
+      "surface": "published-remix-confirm",
+      "board": "15",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Replace your guest draft?",
+            "fits": true,
+            "rect": [
+              0,
+              512,
+              390,
+              332
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Replace your guest draft?This will replace the build saved i"
+      },
+      "consoleErrors": [],
+      "screenshot": "published-remix-confirm/390x844-reduced-motion.jpeg",
+      "durationMs": 1451
+    }
+  ],
+  "skipped": [],
+  "summary": {
+    "runs": 22,
+    "passed": 22,
+    "failed": 0,
+    "skipped": 0,
+    "notes": 0
+  }
+}

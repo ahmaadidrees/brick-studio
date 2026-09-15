@@ -1,16 +1,19 @@
 import { STOCK_PART_MAP, createPartMap } from './parts'
 import { BrickLayoutIndex } from './brickRules'
+import { DEFAULT_BUILD_PLATE_SIZE, getBuildPlateSize, isBuildPlateSize, type BuildPlateSize } from './buildPlate'
 import type { BrickInstance, CustomPartDefinition, CustomPartTemplate, EnvironmentId } from './types'
 
 export const BRICK_STUDIO_SCHEMA_VERSION = 2
+/** Expanded worlds explicitly opt out of older clients that only understand a 64-stud plate. */
+export const BRICK_STUDIO_EXPANDED_SCHEMA_VERSION = 3
 export const BRICK_STUDIO_PART_LIBRARY_VERSION = 1
 export const BRICK_STUDIO_FILE_EXTENSION = '.brickstudio.json'
 /** Shared document/live-world capacity. Rendering quality may adapt by device. */
 export const BRICK_STUDIO_MAX_BRICKS = 1_000
 export const BRICK_STUDIO_MAX_CUSTOM_PARTS = 24
-export const CUSTOM_BRICK_MAX_WIDTH = 32
-export const CUSTOM_BRICK_MAX_DEPTH = 32
-export const CUSTOM_BRICK_MAX_HEIGHT = 96
+export const CUSTOM_BRICK_MAX_WIDTH = 64
+export const CUSTOM_BRICK_MAX_DEPTH = 64
+export const CUSTOM_BRICK_MAX_HEIGHT = 192
 export const BRICK_STUDIO_MAX_JSON_LENGTH = 800_000
 export const BRICK_STUDIO_MAX_Y = 1_024
 export const DEFAULT_ENVIRONMENT_ID: EnvironmentId = 'classic'
@@ -23,10 +26,11 @@ export type BrickStudioDocumentV1 = {
 }
 
 export type BrickStudioDocument = {
-  schemaVersion: typeof BRICK_STUDIO_SCHEMA_VERSION
+  schemaVersion: typeof BRICK_STUDIO_SCHEMA_VERSION | typeof BRICK_STUDIO_EXPANDED_SCHEMA_VERSION
   partLibraryVersion: number
   environmentId: EnvironmentId
   customParts: CustomPartDefinition[]
+  plateSize?: BuildPlateSize
   bricks: BrickInstance[]
 }
 
@@ -39,6 +43,7 @@ export type BrickStudioDocumentErrorCode =
   | 'custom-part-limit'
   | 'invalid-custom-part'
   | 'invalid-environment'
+  | 'invalid-plate-size'
   | 'invalid-brick'
   | 'invalid-layout'
 
@@ -144,6 +149,7 @@ function validateBrick(
 }
 
 export type CreateBrickStudioDocumentOptions = {
+  plateSize?: BuildPlateSize
   environmentId?: EnvironmentId
   customParts?: CustomPartDefinition[]
 }
@@ -152,8 +158,12 @@ export function createBrickStudioDocument(
   bricks: BrickInstance[],
   options: CreateBrickStudioDocumentOptions = {},
 ): BrickStudioDocument {
+  const plateSize = getBuildPlateSize(options)
+  const expanded = plateSize !== DEFAULT_BUILD_PLATE_SIZE
+    || options.customParts?.some(part => part.width > 32 || part.depth > 32 || part.height > 96)
   return {
-    schemaVersion: BRICK_STUDIO_SCHEMA_VERSION,
+    schemaVersion: expanded ? BRICK_STUDIO_EXPANDED_SCHEMA_VERSION : BRICK_STUDIO_SCHEMA_VERSION,
+    ...(expanded ? { plateSize } : {}),
     partLibraryVersion: BRICK_STUDIO_PART_LIBRARY_VERSION,
     environmentId: options.environmentId ?? DEFAULT_ENVIRONMENT_ID,
     customParts: (options.customParts ?? []).map(cloneCustomPart),
@@ -166,21 +176,28 @@ export function validateBrickStudioDocument(
   options: ValidationOptions = {},
 ): BrickStudioDocumentResult {
   if (!isRecord(value) || !Array.isArray(value.bricks)) {
-    return fail('invalid-document', 'This is not a Brick Studio document.')
+    return fail('invalid-document', 'This is not a Brickgineers build file.')
   }
-  if (value.schemaVersion !== 1 && value.schemaVersion !== BRICK_STUDIO_SCHEMA_VERSION) {
-    return fail('unsupported-schema', `Unsupported Brick Studio schema version: ${String(value.schemaVersion)}.`)
+  if (value.schemaVersion !== 1 && value.schemaVersion !== BRICK_STUDIO_SCHEMA_VERSION && value.schemaVersion !== BRICK_STUDIO_EXPANDED_SCHEMA_VERSION) {
+    return fail('unsupported-schema', `Unsupported Brickgineers build schema version: ${String(value.schemaVersion)}.`)
   }
+
+  const expanded = value.schemaVersion === BRICK_STUDIO_EXPANDED_SCHEMA_VERSION
+  if ((expanded && !isBuildPlateSize(value.plateSize))
+    || (!expanded && value.plateSize !== undefined && value.plateSize !== DEFAULT_BUILD_PLATE_SIZE)) {
+    return fail('invalid-plate-size', 'Choose a supported build plate size: 64, 96, or 128 studs. Expanded plates require the newer world format.')
+  }
+  const plateSize = expanded ? value.plateSize as BuildPlateSize : DEFAULT_BUILD_PLATE_SIZE
   if (!Number.isInteger(value.partLibraryVersion)
       || typeof value.partLibraryVersion !== 'number'
       || value.partLibraryVersion < 1
       || value.partLibraryVersion > BRICK_STUDIO_PART_LIBRARY_VERSION) {
-    return fail('unsupported-library', `Unsupported Brick Studio part library version: ${String(value.partLibraryVersion)}.`)
+    return fail('unsupported-library', `Unsupported Brickgineers part library version: ${String(value.partLibraryVersion)}.`)
   }
 
   const environmentId = value.schemaVersion === 1 ? DEFAULT_ENVIRONMENT_ID : value.environmentId
   if (typeof environmentId !== 'string' || !ENVIRONMENT_IDS.includes(environmentId as EnvironmentId)) {
-    return fail('invalid-environment', `Unsupported Brick Studio environment: ${String(environmentId)}.`)
+    return fail('invalid-environment', `Unsupported Brickgineers environment: ${String(environmentId)}.`)
   }
   const rawCustomParts = value.schemaVersion === 1 ? [] : value.customParts
   if (!Array.isArray(rawCustomParts)) {
@@ -209,7 +226,7 @@ export function validateBrickStudioDocument(
 
   const bricks: BrickInstance[] = []
   const ids = new Set<string>()
-  const layout = new BrickLayoutIndex(partMap)
+  const layout = new BrickLayoutIndex(partMap, plateSize)
   for (let index = 0; index < value.bricks.length; index += 1) {
     const validated = validateBrick(value.bricks[index], index, partMap)
     if ('ok' in validated) return validated
@@ -226,11 +243,28 @@ export function validateBrickStudioDocument(
     document: createBrickStudioDocument(bricks, {
       environmentId: environmentId as EnvironmentId,
       customParts,
+      plateSize,
     }),
   }
 }
 
 export const normalizeBrickStudioDocument = validateBrickStudioDocument
+
+/** Resize around the center without moving the build in world space or deleting bricks. */
+export function resizeBuildPlate(document: BrickStudioDocument, size: BuildPlateSize): BrickStudioDocumentResult {
+  if (!isBuildPlateSize(size)) return fail('invalid-plate-size', 'Choose a plate size of 64, 96, or 128 studs.')
+  const shift = (size - getBuildPlateSize(document)) / 2
+  const resized = createBrickStudioDocument(document.bricks.map(brick => ({ ...brick, x: brick.x + shift, z: brick.z + shift })), {
+    environmentId: document.environmentId,
+    customParts: document.customParts,
+    plateSize: size,
+  })
+  const result = validateBrickStudioDocument(resized)
+  if (!result.ok && (result.error.code === 'invalid-layout' || result.error.code === 'invalid-brick')) {
+    return fail('invalid-layout', 'Some bricks would fall outside the smaller plate. Move them toward the center before shrinking it.')
+  }
+  return result
+}
 
 export function parseBrickStudioDocument(
   serialized: string,

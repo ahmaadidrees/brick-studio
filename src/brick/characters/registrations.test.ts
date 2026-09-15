@@ -10,8 +10,9 @@ describe('additive character registrations', () => {
     expect(ADDITIVE_CHARACTER_REGISTRATIONS.map(({ descriptor }) => descriptor.id)).toEqual([
       'toy-figure',
       'cc0-hero',
+      'pip', 'fern', 'nova',
     ])
-    expect(ADDITIVE_CHARACTER_BY_ID.size).toBe(2)
+    expect(ADDITIVE_CHARACTER_BY_ID.size).toBe(5)
   })
 
   it('lazy-loads render adapters and keeps warmup opt-in', async () => {

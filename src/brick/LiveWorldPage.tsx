@@ -1,16 +1,18 @@
+import { normalizeCharacterAppearance } from '@brick-studio/core'
+import { getBuildPlateSize, type BuildPlateSize } from './buildPlate'
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
 import BrickStudioApp from './BrickStudioApp'
 import type { RaceAvatarPose } from './BrickStudioScene'
 import type { RemoteAvatarSource } from './remoteAvatarSource'
-import { createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
+import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { LIVE_MAX_PLAYERS, type LiveWorldMode } from './liveProtocol'
 import { createLiveRoomClient, getLiveWorld, hasSavedLiveRoomIdentity } from './liveRoomClient'
 import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { createLiveRoomConnector, defaultConnectLiveRoom } from './live/liveRoomConnector'
 import type { PlayerProfile } from './types'
-import { LiveWorldHud } from './live/LiveWorldHud'
+import { LivePeoplePanelContext, LiveWorldHud, type LivePeoplePanelRequest } from './live/LiveWorldHud'
 import { liveGuestLink, parseLiveWorldLocation, type ConnectLiveRoom, type LiveRoomActions, type LiveRoomUiSnapshot } from './live/liveRoomModel'
 import { createLiveWorldRoom, fetchLiveWorldSummary, LiveWorldGatewayError, type CreateLiveWorld, type FetchLiveWorldSummary, type LiveWorldSummary } from './live/liveWorldGateway'
 import { LiveWorldGate, type LiveWorldGateSubmit } from './live/LiveWorldGate'
@@ -18,9 +20,10 @@ import { LiveStatusChip } from './live/LiveStatusChip'
 import { CopyInviteButton } from './live/CopyInviteButton'
 import { liveProfileWithDisplayName, normalizeLiveProfile, loadStoredLiveProfile, saveStoredLiveProfile } from './live/liveProfile'
 import { liveOwnerLocation } from './live/liveRoomModel'
-import { downloadBrickStudioDocument, saveLocalBrickStudioProject } from './documentPersistence'
+import { saveLocalBrickStudioProject } from './documentPersistence'
 import { loadLiveWorldSeed, LIVE_WORLD_SEED_KEY } from './live/liveWorldSeed'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
+import { BlockedView, ClassroomAccessChangedView, OpeningRoomView, exportLiveWorldCopy, friendlyReason } from './live/LiveStateViews'
 import { resolveCharacterId } from './contentCatalog'
 import { loadCharacterPreferences } from './contentPreferences'
 import type { ContentPickerSelection } from './contentPicker'
@@ -70,19 +73,8 @@ async function defaultCopyText(text: string): Promise<boolean> {
   }
 }
 
-function friendlyReason(reason: unknown): string {
-  if (reason instanceof Error && reason.message) return reason.message
-  return 'Something went wrong. Please try again.'
-}
-
-async function exportLiveWorldCopy(document: BrickStudioDocument, recovery = false): Promise<string> {
-  const result = recovery ? downloadBrickStudioDocument(document, globalThis, 'brick-studio-recovery') : downloadBrickStudioDocument(document)
-  if (!result.ok) throw new Error(result.error.message)
-  return 'Download started. Keep the .brickstudio file to reopen this copy later with Import.'
-}
-
 /**
- * Default live scene. The transport owns the Brick Studio store while this is
+ * Default live scene. The transport owns the studio store while this is
  * mounted, so document persistence is disabled and every local edit flows
  * through the authoritative room client.
  */
@@ -110,15 +102,26 @@ function DefaultLiveWorldScene({
       jumping: !pose.grounded,
     })
   }, [actions])
+  // The header's People entry opens the HUD's room panel; a bumped seq is the request.
+  const [peoplePanelRequest, setPeoplePanelRequest] = useState<LivePeoplePanelRequest>({ seq: 0 })
   const livePolicy = useMemo(() => ({
     connection: snapshot.connection,
     isOwner: snapshot.isOwner,
     onRequestMode: actions.setMode,
-  }), [actions.setMode, snapshot.connection, snapshot.isOwner])
+    // The HUD's beforeunload guard covers pending commands and recovery copies.
+    onGoHome: () => window.location.assign('/'),
+    roomTitle: view.roomTitle,
+    peopleCount: snapshot.players.length,
+    pendingOperations: snapshot.pendingOperations ?? 0,
+    sessionReplaced: snapshot.connection === 'offline' && snapshot.notice?.code === 'session_replaced',
+    onOpenPeople: () => setPeoplePanelRequest((current) => ({ seq: current.seq + 1 })),
+  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, snapshot.pendingOperations, snapshot.notice?.code, view.roomTitle])
   const contentPolicy = useMemo(() => ({
+    plateSize: view.document.plateSize,
     environmentId: view.document.environmentId,
     characterId: view.selfProfile.characterId,
     palette: view.selfProfile.palette,
+    appearance: view.selfProfile.appearance,
     canChangeEnvironment: snapshot.isOwner
       && snapshot.connection === 'online'
       && snapshot.mode === 'build'
@@ -126,25 +129,22 @@ function DefaultLiveWorldScene({
     environmentHelp: snapshot.isOwner
       ? 'Switch everyone to Build before changing the shared environment. You can still customize your character now.'
       : 'Choose your character and colors. The room owner controls the shared environment.',
-    onApply: (selection: ContentPickerSelection) => {
-      view.setProfile({
-        ...view.selfProfile,
-        characterId: selection.characterId ?? 'classic',
-        palette: { ...selection.palette },
-      })
-      if (
-        selection.environmentId
-        && selection.environmentId !== view.document.environmentId
-        && snapshot.isOwner
-      ) {
-        const opId = actions.replaceDocument?.({
-          ...view.document,
-          environmentId: selection.environmentId,
-        })
+    onApply: (selection: ContentPickerSelection, requestedPlateSize?: BuildPlateSize) => {
+      const size = requestedPlateSize ?? getBuildPlateSize(view.document)
+      const worldChanged = size !== getBuildPlateSize(view.document)
+        || (selection.environmentId && selection.environmentId !== view.document.environmentId)
+      if (worldChanged) {
+        if (!snapshot.isOwner || snapshot.connection !== 'online' || snapshot.mode !== 'build') return false
+        const resized = resizeBuildPlate(view.document, size)
+        if (!resized.ok) { useBrickStore.setState({ toast: resized.error.message }); return false }
+        const opId = actions.replaceDocument?.({ ...resized.document, environmentId: selection.environmentId ?? view.document.environmentId })
         if (!opId) {
-          useBrickStore.setState({ toast: 'The shared world is still reconnecting. Try the environment change again.' })
+          useBrickStore.setState({ toast: 'The shared world is still syncing. Try the scene change again.' })
+          return false
         }
       }
+      view.setProfile({ ...view.selfProfile, characterId: selection.characterId ?? 'classic', palette: { ...selection.palette }, appearance: normalizeCharacterAppearance(selection.appearance) })
+      return true
     },
   }), [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view])
   const customPartPolicy = useMemo(() => {
@@ -163,6 +163,7 @@ function DefaultLiveWorldScene({
         try {
           return Boolean(actions.replaceDocument?.(createBrickStudioDocument(next.bricks, {
             environmentId: view.document.environmentId,
+            plateSize: view.document.plateSize,
             customParts: next.customParts,
           })))
         } catch {
@@ -172,98 +173,16 @@ function DefaultLiveWorldScene({
     }
   }, [actions, snapshot.connection, snapshot.isOwner, snapshot.mode, view.document])
   return (
-    <BrickStudioApp
-      raceScene={{ onLocalAvatarPose: sendPose, remoteAvatarSource }}
-      livePolicy={livePolicy}
-      liveOverlay={view.overlay}
-      contentPolicy={contentPolicy}
-      customPartPolicy={customPartPolicy}
-    />
+    <LivePeoplePanelContext.Provider value={peoplePanelRequest}>
+      <BrickStudioApp
+        raceScene={{ onLocalAvatarPose: sendPose, remoteAvatarSource }}
+        livePolicy={livePolicy}
+        liveOverlay={view.overlay}
+        contentPolicy={contentPolicy}
+        customPartPolicy={customPartPolicy}
+      />
+    </LivePeoplePanelContext.Provider>
   )
-}
-
-function BlockedView({ heading, message, onRetry }: { heading: string; message: string; onRetry?: () => void }) {
-  return (
-    <main className="live-world-page">
-      <section className="live-gate-card live-blocked-card">
-        <span className="live-eyebrow">Live rooms</span>
-        <h1>{heading}</h1>
-        <p>{message}</p>
-        {onRetry && <button className="live-primary-button" type="button" onClick={onRetry}>Try again</button>}
-        <a className="live-quiet-link" href="/">Open Brick Studio</a>
-      </section>
-    </main>
-  )
-}
-
-function OpeningRoomView({ title, snapshot, actions }: { title: string; snapshot: LiveRoomUiSnapshot; actions: LiveRoomActions }) {
-  return (
-    <main className="live-world-page">
-      <section className="live-gate-card live-blocked-card" aria-busy={snapshot.connection !== 'offline'}>
-        <span className="live-eyebrow">Live room</span>
-        <h1>Opening {title}…</h1>
-        <LiveStatusChip connection={snapshot.connection} syncing={snapshot.syncing}
-          onReconnect={actions.reconnect} sessionReplaced={snapshot.notice?.code === 'session_replaced'} pendingOperations={snapshot.pendingOperations} />
-        {snapshot.notice && <p className="live-gate-error" role="alert">{snapshot.notice.message}</p>}
-        <a className="live-quiet-link" href="/">Leave and open Brick Studio</a>
-      </section>
-    </main>
-  )
-}
-
-function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: LiveRoomUiSnapshot; actions: LiveRoomActions }) {
-  const draft = snapshot.recoveryDocument ?? snapshot.document
-  const [exportedDraft, setExportedDraft] = useState<BrickStudioDocument | null>(null)
-  const [exportedCurrentDraft, setExportedCurrentDraft] = useState<BrickStudioDocument | null>(null)
-  const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState(false)
-  const hasPending = (snapshot.pendingOperations ?? 0) > 0
-  const currentDraft = hasPending && snapshot.recoveryDocument && snapshot.document !== draft ? snapshot.document : null
-  const needsLeaveWarning = (hasPending && snapshot.document !== exportedCurrentDraft)
-    || Boolean(snapshot.recoveryDocument && (draft !== exportedDraft || (snapshot.recoveryDocumentCount ?? 1) > 1))
-  useEffect(() => {
-    if (!needsLeaveWarning) return
-    const warnBeforeLeaving = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
-    window.addEventListener('beforeunload', warnBeforeLeaving)
-    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
-  }, [needsLeaveWarning])
-  return <main className="live-world-page"><section className="live-gate-card live-blocked-card">
-    <span className="live-eyebrow">Classroom world</span>
-    <h1>Classroom access changed</h1>
-    <p>{snapshot.notice?.message || 'Ask your teacher to check your access to this world.'}</p>
-    {draft && <>
-      <p>{hasPending || snapshot.recoveryDocument ? 'Keep a copy of your earlier changes before leaving. Some changes may not be in the shared world.' : 'You can still export the build already loaded in this tab.'}</p>
-      <button type="button" className="live-primary-button" disabled={busy} onClick={async () => {
-        if (busy) return
-        setBusy(true); setMessage('')
-        try {
-          setMessage(await exportLiveWorldCopy(draft, true)); setExportedDraft(draft)
-          if (draft === snapshot.document) setExportedCurrentDraft(draft)
-        }
-        catch (reason) { setMessage(friendlyReason(reason)) }
-        finally { setBusy(false) }
-      }}>Download recovery copy</button>
-      {(snapshot.recoveryDocumentCount ?? 0) > 1 && <p>{snapshot.recoveryDocumentCount} recovery copies remain. Download each before leaving.</p>}
-      {snapshot.recoveryDocument && draft === exportedDraft && !hasPending && actions.dismissRecovery && <button type="button" className="live-primary-button" onClick={actions.dismissRecovery}>I have my copy</button>}
-    </>}
-    {currentDraft && <>
-      <p>You also have newer changes in this tab. Download this current draft as a separate copy.</p>
-      <button type="button" className="live-primary-button" disabled={busy} onClick={async () => {
-        if (busy) return
-        setBusy(true); setMessage('')
-        try {
-          const result = downloadBrickStudioDocument(currentDraft, globalThis, 'brick-studio-current-draft')
-          if (!result.ok) throw new Error(result.error.message)
-          setExportedCurrentDraft(currentDraft)
-          setMessage('Current draft download started. The shared world has not confirmed these changes.')
-        } catch (reason) { setMessage(friendlyReason(reason)) }
-        finally { setBusy(false) }
-      }}>Download current draft</button>
-    </>}
-    {message && <p role="status">{message}</p>}
-    {actions.reconnect && <button type="button" className="live-primary-button" disabled={snapshot.connection !== 'offline'} onClick={actions.reconnect}>Try reconnecting</button>}
-    <a className="live-quiet-link" href="/">Open Brick Studio</a>
-  </section></main>
 }
 
 export function classroomWorldIdFromPath(pathname: string): string | null {
@@ -285,6 +204,7 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const [summary, setSummary] = useState<LiveWorldSummary | null>(null);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [wantsClassroomSignIn, setWantsClassroomSignIn] = useState(false);
   const fetchSummary = props.fetchWorldSummary ?? fetchLiveWorldSummary;
   useEffect(() => {
     if (parsed.kind !== 'join') return;
@@ -309,12 +229,18 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   if (access === 'guest' && summary) return <GuestLiveWorld {...props} initialSummary={summary} />;
   const worldId = classroomWorldIdFromPath(pathname);
   if (!auth || auth.user.resetRequired) {
+    // The service answers 401 for classroom worlds and for ids it does not know, so a signed-out
+    // visitor gets a calm gate first instead of a bare sign-in form for what may be a dead link.
+    if (!auth && !wantsClassroomSignIn) {
+      return <BlockedView heading="This world needs a class sign-in" message="This link belongs to a classroom world, or the room is no longer available. Sign in with your class code to check, or keep building on your own."
+        action={{ label: 'Sign in to my class', onClick: () => setWantsClassroomSignIn(true) }} />;
+    }
     return <ClassroomPanel client={client} intent="class" getDocument={() => useBrickStore.getState().getDocumentSnapshot()}
-      onClose={() => window.location.assign('/')}
-      onOpenWorld={() => window.location.assign('/')}
+      onClose={() => window.location.assign('/build')}
+      onOpenWorld={() => window.location.assign('/build')}
       onJoinWorld={world => window.location.assign(`/live/${world.id.replaceAll('-', '')}`)} />;
   }
-  if (!worldId) return <BlockedView heading="Open this world from My Class" message="Your classroom worlds are listed in Brick Studio." />;
+  if (!worldId) return <BlockedView heading="Open this world from My Class" message="Your classroom worlds are listed in My Class in the builder." />;
   return <AuthenticatedLiveWorld key={auth.user.id} {...props} auth={auth} client={client} worldId={worldId} />;
 }
 
@@ -329,7 +255,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   const [recoveryError, setRecoveryError] = useState('');
   const oldOwnerToken = legacyOwnerToken(props.initialLocation?.pathname ?? window.location.pathname, props.initialLocation?.hash ?? window.location.hash);
   const [appearance, setAppearance] = useState(() => loadCharacterPreferences());
-  const profile = useMemo<PlayerProfile>(() => ({ displayName: auth.user.username, characterId: appearance.characterId, palette: appearance.palette }), [auth.user.username, appearance]);
+  const profile = useMemo<PlayerProfile>(() => ({ displayName: auth.user.username, characterId: appearance.characterId, palette: appearance.palette, appearance: appearance.appearance }), [auth.user.username, appearance]);
   const connectRoom = useMemo(() => props.connectRoom ?? createLiveRoomConnector(options => createLiveRoomClient({
     ...options, clientId: auth.user.id, identityStorage: null,
     getTicket: async () => {
@@ -368,12 +294,12 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
         const result = await client.request<{ world: ClassroomWorld }>(`/legacy-worlds/${roomId}/import`, 'POST', { ownerToken: oldOwnerToken });
         if (client.getSession()?.user.id !== auth.user.id) throw new Error('Your account changed. Reopen My Worlds in the correct account.');
         sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId: auth.user.id, worldId: result.world.id }));
-        window.location.replace('/');
+        window.location.replace('/build');
       } catch (reason) { setRecoveryError(`Could not recover this older world. ${friendlyReason(reason)}`); }
       finally { setRecovering(false); }
     }}>{recovering ? 'Saving older world…' : 'Save older world to My Worlds'}</button>
     {recoveryError && <p role="alert">{recoveryError}</p>}
-    <a className="live-quiet-link" href="/">Open Brick Studio</a>
+    <a className="live-quiet-link" href="/build">Go to builder</a>
   </section></main>;
   if (error) return <BlockedView heading="Cannot open this classroom world" message={error} onRetry={() => setRetry(n => n + 1)} />;
   if (!ready || session.status !== 'active') return <BlockedView heading="Opening your classroom world…" message="Checking your class access and saved work." />;
@@ -384,13 +310,13 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   if (!snapshot.document) return <OpeningRoomView title={title} snapshot={snapshot} actions={session.actions} />;
   const setProfile = (next: PlayerProfile) => {
     const safe = { ...next, displayName: auth.user.username };
-    setAppearance({ characterId: resolveCharacterId(safe.characterId), palette: safe.palette ?? {} });
+    setAppearance({ characterId: resolveCharacterId(safe.characterId), palette: safe.palette ?? {}, appearance: normalizeCharacterAppearance(safe.appearance) });
     session.actions.setProfile(safe);
   };
   const actions = { ...session.actions, setProfile };
   const overlay = <LiveWorldHud snapshot={snapshot} roomTitle={title} roomKind="classroom"
     shareLink={liveGuestLink(window.location.origin, roomId)} copyText={props.copyText ?? defaultCopyText}
-    editingIntegrated actions={actions} onLeave={() => window.location.assign('/')}
+    editingIntegrated actions={actions} onLeave={() => window.location.assign('/build')}
     onExportWorld={() => exportLiveWorldCopy(snapshot.document!)}
     onExportRecovery={snapshot.recoveryDocument ? () => exportLiveWorldCopy(snapshot.recoveryDocument!, true) : undefined} />;
   const view: LiveWorldSceneView = { roomTitle: title, document: snapshot.document, mode: snapshot.mode, revision: snapshot.revision, selfProfile: profile, setProfile, overlay };
@@ -422,6 +348,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
     displayName: storedProfile?.displayName ?? '',
     characterId: storedProfile?.characterId ?? storedAppearance.characterId,
     palette: storedProfile?.palette ?? storedAppearance.palette,
+    appearance: storedProfile?.appearance ?? storedAppearance.appearance,
   }), [storedAppearance, storedProfile])
   const returningGuest = useMemo(
     () => parsed.kind === 'join' && !parsed.ownerToken && hasSavedLiveRoomIdentity(parsed.roomId),
@@ -508,11 +435,11 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
   const remixWorld = props.remixWorld ?? (async (world: LiveWorldSnapshotExport) => {
     const saved = saveLocalBrickStudioProject(window.localStorage, world.document)
     if (!saved.ok) throw new Error(saved.error.message)
-    return 'Saved as this browser’s local build. Open Brick Studio to continue, or export a file to keep it elsewhere.'
+    return 'Saved as this browser’s local build. Go to the builder to continue, or export a file to keep it elsewhere.'
   })
 
   const leaveRoom = () => {
-    window.location.assign('/')
+    window.location.assign('/build')
   }
 
   if (parsed.kind === 'invalid') {
@@ -614,7 +541,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
           {room.ownerToken && (
             <p className="live-owner-hint">Keep this tab&rsquo;s web address safe — it holds your owner key for this room.</p>
           )}
-          <a className="live-quiet-link" href="/">Back to Brick Studio</a>
+          <a className="live-quiet-link" href="/build">Back to the builder</a>
         </section>
       </main>
     )

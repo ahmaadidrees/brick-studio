@@ -1,0 +1,9 @@
+{
+  "node": "22.23.2",
+  "stagingWorkerVersionReportedByDeployingLead": "b60d566d",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "harnesses": {
+    "scripts/verify-classroom-provider.mjs": "03415d0311f380c020c141710202b16934ed938cdbf1b2fe4f657731319da2b8",
+    "scripts/verify-classroom-live-provider.mjs": "8f189070ddd6860d1503b409fd454842e9601e2fc2491cf27a6cd21dc2e7a2b6"
+  }
+}

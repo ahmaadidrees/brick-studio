@@ -2,10 +2,10 @@ import { getFrameDistance, type BuildBounds } from './bounds'
 import { GRID_SIZE, PLATE_HEIGHT, STUD } from './parts'
 import type { ViewPreset } from './types'
 
-export const BUILD_CAMERA_MIN_DISTANCE = 3
+export const BUILD_CAMERA_MIN_DISTANCE = 1.2
 export const BUILD_CAMERA_MIN_HEIGHT = PLATE_HEIGHT
 export const BUILD_CAMERA_MAX_POLAR_ANGLE = Math.PI * 5 / 6
-export const BUILD_CAMERA_ABSOLUTE_MAX_DISTANCE = 180
+export const BUILD_CAMERA_ABSOLUTE_MAX_DISTANCE = 256
 const TARGET_HORIZONTAL_MARGIN = STUD * 4
 const TARGET_VERTICAL_MARGIN = STUD * 6
 const HOME_DIRECTION = [14, 12, 16] as const
@@ -51,8 +51,9 @@ export function getBuildCameraLimits(
   bounds: BuildBounds,
   verticalFovDegrees: number,
   aspect: number,
+  plateSize: number = GRID_SIZE,
 ): BuildCameraLimits {
-  const halfPlate = GRID_SIZE * STUD / 2
+  const halfPlate = plateSize * STUD / 2
   const frameDistance = getFrameDistance(bounds, verticalFovDegrees, aspect)
 
   return {
@@ -69,7 +70,7 @@ export function getBuildCameraLimits(
     minDistance: BUILD_CAMERA_MIN_DISTANCE,
     maxDistance: Math.min(
       BUILD_CAMERA_ABSOLUTE_MAX_DISTANCE,
-      Math.max(42, frameDistance * 1.2),
+      Math.max(64, frameDistance * 2),
     ),
   }
 }

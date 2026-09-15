@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { CuboidCollider, CylinderCollider } from '@react-three/rapier'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { createBrickGeometry } from '../../geometry'
 import { BRICK_PART_MAP } from '../../parts'
 import {
@@ -10,6 +11,7 @@ import {
   BOOK_HALF_LENGTH,
   BOOK_HALF_WIDTH,
   BOOK_THICKNESS,
+  CLOCK,
   DESK_HALF_X,
   DESK_HALF_Z,
   DESK_GUARD_HEIGHT,
@@ -23,11 +25,13 @@ import {
   LAMP_SHADE,
   LAMP_SHADE_RADIUS,
   LAMP_TARGET,
+  POSTER,
   RAMP_LENGTH,
   RAMP_THICKNESS,
   RAMP_WIDTH,
   ROOM,
   TOY_PROPS,
+  TOY_ROOM_PALETTE,
   WINDOW,
   rulerRampPose,
   toyRoomFeatures,
@@ -36,23 +40,26 @@ import {
 } from './toyRoom'
 import {
   createBeamAlphaTexture,
-  createCoffeeRingTexture,
+  createClockFaceTexture,
   createDieTexture,
   createDustTexture,
   createFloorTexture,
   createLetterTexture,
   createPageTexture,
-  createWallpaperTexture,
+  createPosterTexture,
+  createRulerTexture,
+  createSkylineTexture,
   createWoodTexture,
   disposeTextures,
 } from './toyRoomTextures'
 
-/** Warm evening room: the lamp is the only hot light, everything else is dusk. */
-export const TOY_ROOM_FOG_COLOR = '#6a7181'
+/** Cool blue evening room: the lamp is the only hot light, everything else is dusk. */
+export const TOY_ROOM_FOG_COLOR = TOY_ROOM_PALETTE.fog
 export const TOY_ROOM_FOG_NEAR = 48
 export const TOY_ROOM_FOG_FAR = 430
-const LAMP_WARM = '#ffcf94'
-const WINDOW_COOL = '#b9d2ff'
+const PALETTE = TOY_ROOM_PALETTE
+const LAMP_WARM = PALETTE.lampWarm
+const WINDOW_COOL = PALETTE.windowCool
 
 const UP = new THREE.Vector3(0, 1, 0)
 
@@ -109,17 +116,11 @@ function Strut({
 /* -------------------------------------------------------------------------- */
 
 function RoomShell({ features }: { features: ToyRoomFeatures }) {
-  const textures = useMemo(() => ({
-    wallpaper: createWallpaperTexture(features.woodTextureSize),
-    floor: createFloorTexture(256),
-  }), [features.woodTextureSize])
-
-  useEffect(() => () => disposeTextures([textures.wallpaper, textures.floor]), [textures])
-
+  const floor = useMemo(() => createFloorTexture(256), [])
   useEffect(() => {
-    textures.wallpaper.repeat.set(7, 4)
-    textures.floor.repeat.set(6, 6)
-  }, [textures])
+    floor.repeat.set(6, 6)
+    return () => floor.dispose()
+  }, [floor])
 
   const wallHeight = ROOM.ceilingY - ROOM.floorY
   const wallCenterY = (ROOM.ceilingY + ROOM.floorY) / 2
@@ -131,49 +132,81 @@ function RoomShell({ features }: { features: ToyRoomFeatures }) {
 
   return (
     <group>
-      {/* Back wall */}
+      {/* Flat cornflower walls — the cool half of the warm-lamp / cool-room split. */}
       <mesh position={[centerX, wallCenterY, ROOM.backWallZ]} receiveShadow>
         <planeGeometry args={[width, wallHeight]} />
-        <meshStandardMaterial map={textures.wallpaper} roughness={0.96} />
+        <meshStandardMaterial color={PALETTE.wall} roughness={0.96} />
       </mesh>
-      {/* Left wall */}
       <mesh position={[ROOM.leftWallX, wallCenterY, centerZ]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
         <planeGeometry args={[depth, wallHeight]} />
-        <meshStandardMaterial map={textures.wallpaper} roughness={0.96} />
+        <meshStandardMaterial color={PALETTE.wall} roughness={0.96} />
       </mesh>
       {/* Far walls close the room off behind the haze. */}
       <mesh position={[centerX, wallCenterY, ROOM.farWallZ]} rotation={[0, Math.PI, 0]}>
         <planeGeometry args={[width, wallHeight]} />
-        <meshStandardMaterial map={textures.wallpaper} roughness={0.98} />
+        <meshStandardMaterial color={PALETTE.wall} roughness={0.98} />
       </mesh>
       <mesh position={[ROOM.rightWallX, wallCenterY, centerZ]} rotation={[0, -Math.PI / 2, 0]}>
         <planeGeometry args={[depth, wallHeight]} />
-        <meshStandardMaterial map={textures.wallpaper} roughness={0.98} />
+        <meshStandardMaterial color={PALETTE.wall} roughness={0.98} />
       </mesh>
       {/* Skirting board grounds the walls. */}
       <mesh position={[centerX, ROOM.floorY + 5, ROOM.backWallZ + 1]}>
         <boxGeometry args={[width, 10, 2]} />
-        <meshStandardMaterial color="#e6e2d6" roughness={0.7} />
+        <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.7} />
       </mesh>
       <mesh position={[ROOM.leftWallX + 1, ROOM.floorY + 5, centerZ]}>
         <boxGeometry args={[2, 10, depth]} />
-        <meshStandardMaterial color="#e6e2d6" roughness={0.7} />
+        <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.7} />
       </mesh>
       {/* Floor, far below the table edge. */}
       <mesh position={[centerX, ROOM.floorY, centerZ]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[width, depth]} />
-        <meshStandardMaterial map={textures.floor} roughness={0.85} />
+        <meshStandardMaterial map={floor} roughness={0.85} />
       </mesh>
       <mesh position={[80, ROOM.floorY + 0.4, 105]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[92, 40]} />
-        <meshStandardMaterial color="#8d5c63" roughness={1} />
+        <meshStandardMaterial color={PALETTE.coral} roughness={1} />
       </mesh>
       <mesh position={[80, ROOM.floorY + 0.6, 105]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[70, 81, 40]} />
-        <meshStandardMaterial color="#c98f7d" roughness={1} />
+        <meshStandardMaterial color={PALETTE.warmWhite} roughness={1} />
       </mesh>
+      <WallClock features={features} />
+      <WallPoster />
       {features.distantFurniture && <DistantFurniture />}
     </group>
+  )
+}
+
+/** Wall clock: a painted face (ticks and hands in one texture) inside a cornflower rim. Static by design. */
+function WallClock({ features }: { features: ToyRoomFeatures }) {
+  const face = useMemo(() => createClockFaceTexture(), [])
+  useEffect(() => () => face.dispose(), [face])
+  const segments = Math.max(16, features.roundSegments)
+  return (
+    <group position={[CLOCK.x, CLOCK.y, CLOCK.z]}>
+      <mesh position={[0, 0, 0.9]}>
+        <circleGeometry args={[CLOCK.radius, segments]} />
+        <meshStandardMaterial map={face} roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 0, 0.3]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[CLOCK.radius + 1.1, CLOCK.radius + 1.1, 1.2, segments]} />
+        <meshStandardMaterial color={PALETTE.cornflower} roughness={0.5} />
+      </mesh>
+    </group>
+  )
+}
+
+/** "SAME DESK / MORE WORLDS" poster from the boards, pinned to the back wall. */
+function WallPoster() {
+  const texture = useMemo(() => createPosterTexture(), [])
+  useEffect(() => () => texture.dispose(), [texture])
+  return (
+    <mesh position={[POSTER.x, POSTER.y, POSTER.z]}>
+      <planeGeometry args={[POSTER.halfWidth * 2, POSTER.halfHeight * 2]} />
+      <meshStandardMaterial map={texture} roughness={0.9} />
+    </mesh>
   )
 }
 
@@ -188,81 +221,80 @@ function DistantFurniture() {
       {/* Bed in the far corner */}
       <mesh position={[148, ROOM.floorY + 13, 118]}>
         <boxGeometry args={[112, 26, 176]} />
-        <meshStandardMaterial color="#9c8770" roughness={0.9} />
+        <meshStandardMaterial color={PALETTE.deskEdge} roughness={0.9} />
       </mesh>
       <mesh position={[148, ROOM.floorY + 32, 126]}>
         <boxGeometry args={[108, 14, 158]} />
-        <meshStandardMaterial color="#78a0b8" roughness={1} />
+        <meshStandardMaterial color={PALETTE.cornflower} roughness={1} />
       </mesh>
       <mesh position={[148, ROOM.floorY + 40, 56]}>
         <boxGeometry args={[74, 22, 32]} />
-        <meshStandardMaterial color="#efe9dc" roughness={1} />
+        <meshStandardMaterial color={PALETTE.warmWhite} roughness={1} />
       </mesh>
       <mesh position={[148, ROOM.floorY + 34, 34]}>
         <boxGeometry args={[112, 68, 8]} />
-        <meshStandardMaterial color="#8d7660" roughness={0.9} />
+        <meshStandardMaterial color={PALETTE.deskLeg} roughness={0.9} />
       </mesh>
       {/* Bookshelf in the far corner, low enough not to loom over the table */}
       <mesh position={[54, ROOM.floorY + 30, 176]}>
         <boxGeometry args={[92, 60, 24]} />
-        <meshStandardMaterial color="#93795c" roughness={0.9} />
+        <meshStandardMaterial color={PALETTE.deskEdge} roughness={0.9} />
       </mesh>
       {[0, 1].map((shelf) => (
         <mesh key={shelf} position={[54, ROOM.floorY + 16 + shelf * 30, 174]}>
           <boxGeometry args={[82, 18, 18]} />
-          <meshStandardMaterial color={['#bf6650', '#4f8f80'][shelf]} roughness={1} />
+          <meshStandardMaterial color={[PALETTE.coral, PALETTE.butter][shelf]} roughness={1} />
         </mesh>
       ))}
       {/* Toy chest */}
       <mesh position={[-24, ROOM.floorY + 21, 132]}>
         <boxGeometry args={[70, 42, 48]} />
-        <meshStandardMaterial color="#5f93ba" roughness={0.85} />
+        <meshStandardMaterial color={PALETTE.navy} roughness={0.85} />
       </mesh>
       <mesh position={[-24, ROOM.floorY + 44, 132]}>
         <boxGeometry args={[74, 6, 52]} />
-        <meshStandardMaterial color="#4b7c9e" roughness={0.85} />
+        <meshStandardMaterial color={PALETTE.cornflower} roughness={0.85} />
       </mesh>
       {/* A ball and a wooden block left out on the rug */}
       <mesh position={[62, ROOM.floorY + 12, 92]}>
         <sphereGeometry args={[12, 16, 12]} />
-        <meshStandardMaterial color="#e05a4c" roughness={0.5} />
+        <meshStandardMaterial color={PALETTE.coral} roughness={0.5} />
       </mesh>
       <mesh position={[22, ROOM.floorY + 7, 122]} rotation={[0, 0.6, 0]}>
         <boxGeometry args={[14, 14, 14]} />
-        <meshStandardMaterial color="#eddcb6" roughness={0.85} />
+        <meshStandardMaterial color={PALETTE.butter} roughness={0.85} />
       </mesh>
     </group>
   )
 }
 
-/** The window is a lit panel on the wall — the motivated source of the cool fill. */
 function RoomWindow() {
+  const skyline = useMemo(() => createSkylineTexture(), [])
+  useEffect(() => () => skyline.dispose(), [skyline])
+  const width = WINDOW.halfWidth * 2
+  const height = WINDOW.halfHeight * 2
   return (
-    <group position={[WINDOW.x, WINDOW.centerY, WINDOW.centerZ]} rotation={[0, Math.PI / 2, 0]}>
-      <mesh position={[0, 0, 0.4]}>
-        <planeGeometry args={[WINDOW.halfWidth * 2, WINDOW.halfHeight * 2]} />
-        <meshBasicMaterial color="#e9f2ff" toneMapped={false} />
+    <group position={[WINDOW.x, WINDOW.centerY, WINDOW.centerZ]}>
+      {/* Ink frame behind everything, the dusk city in front of it, glazing bars over that. */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[width + 7, height + 7, 1.2]} />
+        <meshStandardMaterial color={PALETTE.ink} roughness={0.7} />
       </mesh>
-      <mesh position={[0, 0, 0.9]}>
-        <planeGeometry args={[WINDOW.halfWidth * 2.6, WINDOW.halfHeight * 2.5]} />
-        <meshBasicMaterial color={WINDOW_COOL} transparent opacity={0.16} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+      <mesh position={[0, 0, 0.8]}>
+        <planeGeometry args={[width, height]} />
+        <meshBasicMaterial map={skyline} toneMapped={false} />
       </mesh>
-      {/* Frame and glazing bars */}
-      <mesh position={[0, 0, 0.6]}>
-        <boxGeometry args={[1.6, WINDOW.halfHeight * 2, 1.2]} />
-        <meshStandardMaterial color="#f3efe6" roughness={0.6} />
+      <mesh position={[0, 0, 1.1]}>
+        <boxGeometry args={[1.4, height, 0.6]} />
+        <meshStandardMaterial color={PALETTE.ink} roughness={0.6} />
       </mesh>
-      <mesh position={[0, 0, 0.6]}>
-        <boxGeometry args={[WINDOW.halfWidth * 2, 1.6, 1.2]} />
-        <meshStandardMaterial color="#f3efe6" roughness={0.6} />
+      <mesh position={[0, 0, 1.1]}>
+        <boxGeometry args={[width, 1.4, 0.6]} />
+        <meshStandardMaterial color={PALETTE.ink} roughness={0.6} />
       </mesh>
-      <mesh position={[0, 0, 0.2]}>
-        <boxGeometry args={[WINDOW.halfWidth * 2 + 7, WINDOW.halfHeight * 2 + 7, 1.6]} />
-        <meshStandardMaterial color="#efe9dc" roughness={0.65} />
-      </mesh>
-      <mesh position={[0, -WINDOW.halfHeight - 5, 1.6]}>
-        <boxGeometry args={[WINDOW.halfWidth * 2 + 12, 2.4, 5]} />
-        <meshStandardMaterial color="#efe9dc" roughness={0.65} />
+      <mesh position={[0, -WINDOW.halfHeight - 4.4, 1.8]}>
+        <boxGeometry args={[width + 12, 2.4, 5]} />
+        <meshStandardMaterial color={PALETTE.deskEdge} roughness={0.65} />
       </mesh>
     </group>
   )
@@ -292,7 +324,7 @@ function PlayTable({ features }: { features: ToyRoomFeatures }) {
 
   return (
     <group>
-      {/* Varnished top — the walkable surface the plate rests on. */}
+      {/* Varnished honey top — the walkable surface the plate rests on. */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, DESK_TOP_Y, 0]} receiveShadow>
         <planeGeometry args={[DESK_HALF_X * 2, DESK_HALF_Z * 2]} />
         {features.clearcoat
@@ -302,37 +334,20 @@ function PlayTable({ features }: { features: ToyRoomFeatures }) {
       {/* Slab body */}
       <mesh position={[0, DESK_TOP_Y - 0.02 - DESK_SLAB_THICKNESS / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[DESK_HALF_X * 2, DESK_SLAB_THICKNESS, DESK_HALF_Z * 2]} />
-        <meshStandardMaterial color="#9c6a3c" roughness={0.72} />
+        <meshStandardMaterial color={PALETTE.deskEdge} roughness={0.72} />
       </mesh>
-      {/* Low bull-nosed rail: a visible barrier you can also hop onto for the view. */}
-      {rails.map((rail, index) => {
-        const lengthwise = rail.size[0] > rail.size[1]
-        return (
-          <group key={index} position={[rail.position[0], 0, rail.position[2]]}>
-            <mesh position={[0, DESK_TOP_Y + DESK_RIM_HEIGHT / 2 - 0.5, 0]} castShadow receiveShadow>
-              <boxGeometry args={[rail.size[0], DESK_RIM_HEIGHT + 1, rail.size[1]]} />
-              <meshStandardMaterial color="#a8713f" roughness={0.6} />
-            </mesh>
-            <mesh
-              position={[
-                lengthwise ? 0 : (rail.position[0] > 0 ? 0.42 : -0.42),
-                DESK_TOP_Y + DESK_RIM_HEIGHT - 0.34,
-                lengthwise ? (rail.position[2] > 0 ? 0.42 : -0.42) : 0,
-              ]}
-              rotation={lengthwise ? [0, 0, Math.PI / 2] : [Math.PI / 2, 0, 0]}
-              castShadow
-            >
-              <cylinderGeometry args={[0.36, 0.36, Math.max(rail.size[0], rail.size[1]), Math.max(8, features.roundSegments / 2)]} />
-              <meshStandardMaterial color="#bb8149" roughness={0.5} />
-            </mesh>
-          </group>
-        )
-      })}
+      {/* Low rail: a visible barrier you can also hop onto for the view. One box per side. */}
+      {rails.map((rail, index) => (
+        <mesh key={index} position={[rail.position[0], DESK_TOP_Y + DESK_RIM_HEIGHT / 2 - 0.5, rail.position[2]]} castShadow receiveShadow>
+          <boxGeometry args={[rail.size[0], DESK_RIM_HEIGHT + 1, rail.size[1]]} />
+          <meshStandardMaterial color={PALETTE.deskEdge} roughness={0.6} />
+        </mesh>
+      ))}
       {/* Legs, seen when you peer over the rail. */}
       {[[legX, legZ], [-legX, legZ], [legX, -legZ], [-legX, -legZ]].map(([x, z], index) => (
         <mesh key={index} position={[x, DESK_TOP_Y - DESK_SLAB_THICKNESS - legHeight / 2, z]}>
           <boxGeometry args={[7, legHeight, 7]} />
-          <meshStandardMaterial color="#8a5d33" roughness={0.8} />
+          <meshStandardMaterial color={PALETTE.deskLeg} roughness={0.8} />
         </mesh>
       ))}
     </group>
@@ -355,45 +370,44 @@ function DeskLamp({ features }: { features: ToyRoomFeatures }) {
     <group>
       <mesh position={[LAMP_BASE.x, LAMP_BASE.y + 0.7, LAMP_BASE.z]} castShadow receiveShadow>
         <cylinderGeometry args={[7.2, 7.5, 1.4, segments]} />
-        <meshStandardMaterial color="#2f8a95" metalness={0.3} roughness={0.36} />
+        <meshStandardMaterial color={PALETTE.butter} metalness={0.15} roughness={0.42} />
       </mesh>
       <mesh position={[LAMP_BASE.x, LAMP_BASE.y + 1.7, LAMP_BASE.z]} castShadow>
         <cylinderGeometry args={[3.2, 4.6, 1.2, segments]} />
-        <meshStandardMaterial color="#e9e2d0" metalness={0.2} roughness={0.4} />
+        <meshStandardMaterial color={PALETTE.lampGold} metalness={0.35} roughness={0.4} />
       </mesh>
-      <Strut from={{ ...LAMP_BASE, y: LAMP_BASE.y + 2 }} to={LAMP_ELBOW} radius={0.62} segments={Math.max(8, segments / 2)} color="#d9d2bf" metalness={0.35} roughness={0.36} />
+      <Strut from={{ ...LAMP_BASE, y: LAMP_BASE.y + 2 }} to={LAMP_ELBOW} radius={0.62} segments={Math.max(8, segments / 2)} color={PALETTE.lampGold} metalness={0.4} roughness={0.36} />
       <mesh position={[LAMP_ELBOW.x, LAMP_ELBOW.y, LAMP_ELBOW.z]} castShadow>
         <sphereGeometry args={[1.15, segments / 2, segments / 3]} />
-        <meshStandardMaterial color="#2f8a95" metalness={0.4} roughness={0.32} />
+        <meshStandardMaterial color={PALETTE.ink} metalness={0.3} roughness={0.4} />
       </mesh>
-      <Strut from={LAMP_ELBOW} to={{ ...LAMP_SHADE, y: LAMP_SHADE.y + 2.4 }} radius={0.55} segments={Math.max(8, segments / 2)} color="#d9d2bf" metalness={0.35} roughness={0.36} />
+      <Strut from={LAMP_ELBOW} to={{ ...LAMP_SHADE, y: LAMP_SHADE.y + 2.4 }} radius={0.55} segments={Math.max(8, segments / 2)} color={PALETTE.lampGold} metalness={0.4} roughness={0.36} />
 
       <group position={[LAMP_SHADE.x, LAMP_SHADE.y, LAMP_SHADE.z]} quaternion={shadeQuaternion}>
         {/* Painted outside */}
         <mesh position={[0, 3.5, 0]} castShadow>
           <cylinderGeometry args={[2.6, LAMP_SHADE_RADIUS, 7, segments, 1, true]} />
-          <meshStandardMaterial color="#35a0ad" emissive="#0e3a40" emissiveIntensity={0.5} metalness={0.25} roughness={0.38} side={THREE.FrontSide} />
+          <meshStandardMaterial color="#FFC552" emissive="#CF8B20" emissiveIntensity={0.3} metalness={0.1} roughness={0.42} side={THREE.FrontSide} />
         </mesh>
         {/* Hot enamel inside */}
         <mesh position={[0, 3.5, 0]}>
           <cylinderGeometry args={[2.5, LAMP_SHADE_RADIUS - 0.12, 6.9, segments, 1, true]} />
-          <meshStandardMaterial color="#fff1d6" emissive={LAMP_WARM} emissiveIntensity={1.5} roughness={0.85} side={THREE.BackSide} />
+          <meshStandardMaterial color="#fff1d6" emissive={LAMP_WARM} emissiveIntensity={0.85} roughness={0.85} side={THREE.BackSide} />
         </mesh>
         <mesh position={[0, 7, 0]} castShadow>
           <sphereGeometry args={[2.7, segments, segments / 2, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color="#35a0ad" emissive="#0e3a40" emissiveIntensity={0.5} metalness={0.25} roughness={0.38} />
+          <meshStandardMaterial color="#FFC552" emissive="#CF8B20" emissiveIntensity={0.3} metalness={0.1} roughness={0.42} side={THREE.DoubleSide} />
         </mesh>
         {/* Bulb */}
         <mesh position={[0, 2.6, 0]}>
-          <sphereGeometry args={[1.9, segments / 2, segments / 3]} />
-          <meshBasicMaterial color="#fff6e2" toneMapped={false} />
+          <sphereGeometry args={[1.35, segments / 2, segments / 3]} />
+          <meshBasicMaterial color="#fff2d6" toneMapped={false} />
         </mesh>
       </group>
     </group>
   )
 }
 
-/** Hero prop 2: the book cliff, with a ruler leaned against it as the way up. */
 function BookStack({ features }: { features: ToyRoomFeatures }) {
   const page = useMemo(() => createPageTexture(), [])
   useEffect(() => {
@@ -401,7 +415,17 @@ function BookStack({ features }: { features: ToyRoomFeatures }) {
     return () => page.dispose()
   }, [page])
 
-  const books = TOY_PROPS.filter((prop) => prop.kind === 'book')
+  const books = useMemo(() => TOY_PROPS.filter((prop) => prop.kind === 'book'), [])
+
+  // One merged cover (two boards + spine) per book instead of three meshes.
+  const covers = useMemo(() => new Map(books.map((book) => {
+    const [halfLength, halfWidth] = book.half
+    const board = (y: number) => new THREE.BoxGeometry(halfLength * 2, 0.36, halfWidth * 2).translate(0, y, 0)
+    const spine = new THREE.BoxGeometry(0.62, BOOK_THICKNESS, halfWidth * 2).translate(-halfLength + 0.31, BOOK_THICKNESS / 2, 0)
+    const merged = mergeGeometries([board(0.18), board(BOOK_THICKNESS - 0.18), spine], false)
+    return [book.id, merged ?? spine] as const
+  })), [books])
+  useEffect(() => () => covers.forEach((geometry) => geometry.dispose()), [covers])
 
   return (
     <group>
@@ -410,64 +434,47 @@ function BookStack({ features }: { features: ToyRoomFeatures }) {
         const lift = DESK_TOP_Y + (book.lift ?? 0)
         return (
           <group key={book.id} position={[book.x, lift, book.z]} rotation={[0, book.rotation, 0]}>
-            {/* Page block */}
             <mesh position={[0, BOOK_THICKNESS / 2, 0]} castShadow receiveShadow>
               <boxGeometry args={[halfLength * 2 - 0.7, BOOK_THICKNESS - 0.7, halfWidth * 2 - 0.7]} />
-              <meshStandardMaterial map={page} color="#fbf3e0" roughness={0.94} />
+              <meshStandardMaterial map={page} color={PALETTE.warmWhite} roughness={0.94} />
             </mesh>
-            {/* Boards */}
-            <mesh position={[0, 0.18, 0]} castShadow receiveShadow>
-              <boxGeometry args={[halfLength * 2, 0.36, halfWidth * 2]} />
-              <meshStandardMaterial color={book.color} roughness={0.66} />
+            <mesh geometry={covers.get(book.id)} castShadow receiveShadow>
+              <meshStandardMaterial color={book.color} roughness={0.62} />
             </mesh>
-            <mesh position={[0, BOOK_THICKNESS - 0.18, 0]} castShadow receiveShadow>
-              <boxGeometry args={[halfLength * 2, 0.36, halfWidth * 2]} />
-              <meshStandardMaterial color={book.color} roughness={0.66} />
-            </mesh>
-            {/* Spine */}
-            <mesh position={[-halfLength + 0.3, BOOK_THICKNESS / 2, 0]} castShadow>
-              <boxGeometry args={[0.62, BOOK_THICKNESS, halfWidth * 2]} />
-              <meshStandardMaterial color={book.color} roughness={0.6} />
-            </mesh>
-            <mesh position={[-halfLength + 0.28, BOOK_THICKNESS / 2, 0]}>
-              <boxGeometry args={[0.66, 0.5, halfWidth * 1.1]} />
-              <meshStandardMaterial color="#dfb35c" metalness={0.6} roughness={0.35} />
-            </mesh>
-            <mesh position={[0, BOOK_THICKNESS + 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[halfLength * 1.1, halfWidth * 0.34]} />
-              <meshStandardMaterial color="#e8c877" roughness={0.5} metalness={0.35} />
+            {/* Warm-white title band on the spine, the readable "book" cue at explore scale. */}
+            <mesh position={[-halfLength - 0.02, BOOK_THICKNESS / 2, 0]} rotation={[0, -Math.PI / 2, 0]}>
+              <planeGeometry args={[halfWidth * 1.2, BOOK_THICKNESS * 0.36]} />
+              <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.7} />
             </mesh>
           </group>
         )
       })}
-      <RulerRamp features={features} />
+      <RulerRamp />
     </group>
   )
 }
 
-function RulerRamp({ features }: { features: ToyRoomFeatures }) {
+function RulerRamp() {
   const pose = useMemo(rulerRampPose, [])
   const rotation = useMemo(() => yawPitchEuler(pose.rotation, pose.pitch), [pose])
-  const ticks = useMemo(() => Array.from({ length: 12 }, (_, index) => index), [])
+  const markings = useMemo(() => createRulerTexture(), [])
+  useEffect(() => () => markings.dispose(), [markings])
 
   return (
     <group position={[pose.x, DESK_TOP_Y + pose.y, pose.z]} rotation={rotation}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={[RAMP_WIDTH, RAMP_THICKNESS, RAMP_LENGTH]} />
-        <meshStandardMaterial color="#e0b878" roughness={0.55} />
+        <meshStandardMaterial color={PALETTE.butter} roughness={0.55} />
       </mesh>
-      {/* Ruler markings so the plank reads as a ruler even from the camera boom. */}
-      {features.clearcoat && ticks.map((index) => (
-        <mesh key={index} position={[RAMP_WIDTH / 2 - 0.55, RAMP_THICKNESS / 2 + 0.005, -RAMP_LENGTH / 2 + 1 + index * 2]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[index % 2 === 0 ? 1 : 0.6, 0.14]} />
-          <meshBasicMaterial color="#4a3722" />
-        </mesh>
-      ))}
+      {/* Markings sit a hair above the plank so the plank stays the collider's exact size. */}
+      <mesh position={[0, RAMP_THICKNESS / 2 + 0.006, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+        <planeGeometry args={[RAMP_LENGTH, RAMP_WIDTH]} />
+        <meshStandardMaterial map={markings} roughness={0.55} />
+      </mesh>
     </group>
   )
 }
 
-/** Hero prop 3: the mug, a ceramic tower next to a minifig. */
 function Mug({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }) {
   const profile = useMemo(() => [
     new THREE.Vector2(0, 0),
@@ -480,29 +487,31 @@ function Mug({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }) {
     new THREE.Vector2(3.78, 1.2),
     new THREE.Vector2(0, 1.2),
   ], [])
+  const pencilSegments = 6
 
   return (
     <group position={[prop.x, DESK_TOP_Y, prop.z]} rotation={[0, prop.rotation, 0]}>
       <mesh castShadow receiveShadow>
         <latheGeometry args={[profile, features.roundSegments]} />
         {features.clearcoat
-          ? <meshPhysicalMaterial color="#f0ece2" roughness={0.22} clearcoat={0.7} clearcoatRoughness={0.14} metalness={0} />
-          : <meshStandardMaterial color="#f0ece2" roughness={0.35} />}
+          ? <meshPhysicalMaterial color={PALETTE.cornflower} roughness={0.24} clearcoat={0.7} clearcoatRoughness={0.14} metalness={0} />
+          : <meshStandardMaterial color={PALETTE.cornflower} roughness={0.36} />}
       </mesh>
       <mesh position={[4.1, 5.2, 0]} rotation={[0, Math.PI / 2, -0.15]} castShadow>
         <torusGeometry args={[2.4, 0.62, features.roundSegments / 3, features.roundSegments, Math.PI * 1.35]} />
-        <meshStandardMaterial color="#f0ece2" roughness={0.3} />
+        <meshStandardMaterial color={PALETTE.cornflower} roughness={0.3} />
       </mesh>
-      {/* Painted band */}
-      <mesh position={[0, 3.4, 0]}>
-        <cylinderGeometry args={[4.33, 4.33, 2.2, features.roundSegments, 1, true]} />
-        <meshStandardMaterial color="#3d7f8c" roughness={0.35} side={THREE.DoubleSide} />
-      </mesh>
-      {/* Cold coffee */}
-      <mesh position={[0, 7.4, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[3.75, features.roundSegments]} />
-        <meshStandardMaterial color="#3a2113" roughness={0.16} metalness={0.1} />
-      </mesh>
+      {/* Pencils standing in the mug, leaning outward like the boards. Not shadow casters: the mug already is. */}
+      {[
+        { color: PALETTE.butter, tilt: [0.16, 0.1], offset: [1.2, -0.8] },
+        { color: PALETTE.coral, tilt: [-0.14, 0.18], offset: [-1.1, 0.9] },
+        { color: PALETTE.navy, tilt: [0.05, -0.2], offset: [-0.4, -1.4] },
+      ].map((pencil, index) => (
+        <mesh key={index} position={[pencil.offset[0], 8.6, pencil.offset[1]]} rotation={[pencil.tilt[0], 0, pencil.tilt[1]]}>
+          <cylinderGeometry args={[0.5, 0.5, 15, pencilSegments]} />
+          <meshStandardMaterial color={pencil.color} roughness={0.5} />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -516,7 +525,7 @@ function Pencil({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }
         {/* Barrel */}
         <mesh position={[0, 0, 3.2]} castShadow receiveShadow>
           <cylinderGeometry args={[0.55, 0.55, 19.6, 6]} />
-          <meshStandardMaterial color="#f0b52a" roughness={0.42} />
+          <meshStandardMaterial color={PALETTE.butter} roughness={0.42} />
         </mesh>
         {/* Sharpened cone and graphite */}
         <mesh position={[0, 0, -8.9]} rotation={[Math.PI, 0, 0]} castShadow>
@@ -538,7 +547,7 @@ function Pencil({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }
         </mesh>
         <mesh position={[0, 0, 15.2]} castShadow>
           <cylinderGeometry args={[0.54, 0.56, 1.5, segments]} />
-          <meshStandardMaterial color="#e8909a" roughness={0.86} />
+          <meshStandardMaterial color={PALETTE.coral} roughness={0.86} />
         </mesh>
       </group>
     </group>
@@ -578,17 +587,10 @@ function Crayon({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }
           <cylinderGeometry args={[0.55, 0.55, 9.4, segments]} />
           <meshStandardMaterial color={prop.color} roughness={0.72} />
         </mesh>
-        <mesh position={[0, 0, 0]}>
+        {/* Paper wrap */}
+        <mesh>
           <cylinderGeometry args={[0.6, 0.6, 6.4, segments]} />
-          <meshStandardMaterial color={prop.color} roughness={0.9} />
-        </mesh>
-        <mesh position={[0, 3.2, 0]}>
-          <cylinderGeometry args={[0.6, 0.6, 0.3, segments]} />
-          <meshStandardMaterial color="#f6f1e6" roughness={0.9} />
-        </mesh>
-        <mesh position={[0, -3.2, 0]}>
-          <cylinderGeometry args={[0.6, 0.6, 0.3, segments]} />
-          <meshStandardMaterial color="#f6f1e6" roughness={0.9} />
+          <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.9} />
         </mesh>
         <mesh position={[0, 5.5, 0]} castShadow>
           <coneGeometry args={[0.55, 1.6, segments]} />
@@ -606,7 +608,7 @@ function Paintbrush({ prop, features }: { prop: ToyProp; features: ToyRoomFeatur
       <group rotation={[Math.PI / 2, 0, 0]}>
         <mesh position={[0, -4.5, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.42, 0.62, 11, segments]} />
-          <meshStandardMaterial color="#c14b3f" roughness={0.42} />
+          <meshStandardMaterial color={PALETTE.coral} roughness={0.42} />
         </mesh>
         <mesh position={[0, 2, 0]} castShadow>
           <cylinderGeometry args={[0.62, 0.55, 2.6, segments]} />
@@ -648,16 +650,12 @@ function Eraser({ prop }: { prop: ToyProp }) {
     <group position={[prop.x, DESK_TOP_Y, prop.z]} rotation={[0, prop.rotation, 0]}>
       <mesh position={[0, 0.8, 0]} castShadow receiveShadow>
         <boxGeometry args={[6, 1.6, 3]} />
-        <meshStandardMaterial color="#e46e86" roughness={0.9} />
+        <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.9} />
       </mesh>
       {/* Cardboard sleeve, hugging the block rather than sitting proud of it. */}
       <mesh position={[0, 0.8, 0]}>
         <boxGeometry args={[3.2, 1.64, 3.06]} />
-        <meshStandardMaterial color="#f6ecd6" roughness={0.92} />
-      </mesh>
-      <mesh position={[0, 0.8, 0]}>
-        <boxGeometry args={[2.4, 1.66, 3.08]} />
-        <meshStandardMaterial color="#4d7fb0" roughness={0.86} />
+        <meshStandardMaterial color={PALETTE.cornflower} roughness={0.86} />
       </mesh>
     </group>
   )
@@ -669,12 +667,12 @@ function Marble({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }
       <mesh castShadow receiveShadow>
         <sphereGeometry args={[1.3, features.roundSegments, features.roundSegments / 2]} />
         {features.clearcoat
-          ? <meshPhysicalMaterial color="#8fd6e8" roughness={0.05} clearcoat={1} clearcoatRoughness={0.04} metalness={0.05} />
-          : <meshStandardMaterial color="#8fd6e8" roughness={0.14} metalness={0.05} />}
+          ? <meshPhysicalMaterial color={PALETTE.cornflower} roughness={0.05} clearcoat={1} clearcoatRoughness={0.04} metalness={0.05} />
+          : <meshStandardMaterial color={PALETTE.cornflower} roughness={0.14} metalness={0.05} />}
       </mesh>
       <mesh rotation={[0.4, 0.3, 0.9]}>
         <torusGeometry args={[0.78, 0.3, 6, features.roundSegments / 2]} />
-        <meshStandardMaterial color="#f2f6f8" roughness={0.2} />
+        <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.2} />
       </mesh>
     </group>
   )
@@ -686,16 +684,16 @@ function Ball({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }) 
       <mesh castShadow receiveShadow>
         <sphereGeometry args={[2.6, features.roundSegments, features.roundSegments / 2]} />
         {features.clearcoat
-          ? <meshPhysicalMaterial color="#f4f0e6" roughness={0.3} clearcoat={0.7} clearcoatRoughness={0.2} />
-          : <meshStandardMaterial color="#f4f0e6" roughness={0.42} />}
+          ? <meshPhysicalMaterial color={PALETTE.warmWhite} roughness={0.3} clearcoat={0.7} clearcoatRoughness={0.2} />
+          : <meshStandardMaterial color={PALETTE.warmWhite} roughness={0.42} />}
       </mesh>
       <mesh>
         <torusGeometry args={[2.45, 0.62, 8, features.roundSegments]} />
-        <meshStandardMaterial color="#d8483d" roughness={0.4} />
+        <meshStandardMaterial color={PALETTE.coral} roughness={0.4} />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]}>
         <torusGeometry args={[2.45, 0.45, 8, features.roundSegments]} />
-        <meshStandardMaterial color="#3f7fd0" roughness={0.4} />
+        <meshStandardMaterial color={PALETTE.cornflower} roughness={0.4} />
       </mesh>
     </group>
   )
@@ -716,18 +714,16 @@ function StickyNote({ prop }: { prop: ToyProp }) {
   useEffect(() => () => geometry.dispose(), [geometry])
   return (
     <mesh geometry={geometry} position={[prop.x, DESK_TOP_Y + 0.06, prop.z]} rotation={[-Math.PI / 2, 0, prop.rotation]} receiveShadow castShadow>
-      <meshStandardMaterial color="#f2e05c" roughness={0.94} side={THREE.DoubleSide} />
+      <meshStandardMaterial color={PALETTE.butter} roughness={0.94} side={THREE.DoubleSide} />
     </mesh>
   )
 }
 
-function CoffeeRing({ prop }: { prop: ToyProp }) {
-  const texture = useMemo(() => createCoffeeRingTexture(), [])
-  useEffect(() => () => texture.dispose(), [texture])
+function Coaster({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures }) {
   return (
-    <mesh position={[prop.x, DESK_TOP_Y + 0.012, prop.z]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[prop.half[0] * 2, prop.half[1] * 2]} />
-      <meshBasicMaterial map={texture} transparent opacity={0.75} depthWrite={false} />
+    <mesh position={[prop.x, DESK_TOP_Y + 0.2, prop.z]} receiveShadow>
+      <cylinderGeometry args={[prop.half[0], prop.half[0], 0.4, Math.max(12, features.roundSegments)]} />
+      <meshStandardMaterial color={PALETTE.coral} roughness={0.92} />
     </mesh>
   )
 }
@@ -746,7 +742,7 @@ function LampCord({ prop, features }: { prop: ToyProp; features: ToyRoomFeatures
   useEffect(() => () => geometry.dispose(), [geometry])
   return (
     <mesh geometry={geometry} castShadow receiveShadow>
-      <meshStandardMaterial color="#2e3238" roughness={0.62} />
+      <meshStandardMaterial color={PALETTE.ink} roughness={0.62} />
     </mesh>
   )
 }
@@ -761,7 +757,7 @@ function ToyProps({ features }: { features: ToyRoomFeatures }) {
           case 'book': return null
           case 'ruler-ramp': return null
           case 'mug': return <Mug key={prop.id} prop={prop} features={features} />
-          case 'coffee-ring': return <CoffeeRing key={prop.id} prop={prop} />
+          case 'coaster': return <Coaster key={prop.id} prop={prop} features={features} />
           case 'pencil': return <Pencil key={prop.id} prop={prop} features={features} />
           case 'giant-brick': return <GiantBrick key={prop.id} prop={prop} features={features} />
           case 'eraser': return <Eraser key={prop.id} prop={prop} />
@@ -808,7 +804,7 @@ function LightBeam({ features }: { features: ToyRoomFeatures }) {
         color={LAMP_WARM}
         alphaMap={alpha}
         transparent
-        opacity={0.45}
+        opacity={0.3}
         depthWrite={false}
         side={THREE.DoubleSide}
         blending={THREE.AdditiveBlending}
@@ -858,11 +854,11 @@ function DustMotes({ features }: { features: ToyRoomFeatures }) {
     geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(LAMP_SHADE.x / 2, LAMP_SHADE.y / 2, LAMP_SHADE.z / 2), 60)
     const texture = createDustTexture()
     const material = new THREE.PointsMaterial({
-      size: 0.4,
+      size: 0.32,
       map: texture,
       alphaMap: texture,
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.5,
       color: '#fff0d4',
       depthWrite: false,
       blending: THREE.AdditiveBlending,
@@ -901,11 +897,6 @@ function DustMotes({ features }: { features: ToyRoomFeatures }) {
   return <points ref={points} geometry={assets.geometry} material={assets.material} frustumCulled={false} />
 }
 
-/**
- * The lighting rig: a warm key raking down the lamp's own axis (this one casts
- * the shadows), the lamp's falloff pool, a cool window fill, and a dim room
- * bounce. Everything is motivated by something you can see in the room.
- */
 function ToyRoomLights({ features }: { features: ToyRoomFeatures }) {
   const spotTarget = useMemo(() => {
     const object = new THREE.Object3D()
@@ -921,12 +912,12 @@ function ToyRoomLights({ features }: { features: ToyRoomFeatures }) {
   return (
     <>
       <primitive object={spotTarget} />
-      <ambientLight color="#8b9fbe" intensity={0.64} />
-      <hemisphereLight color="#a9c0e2" groundColor="#a9743d" intensity={0.66} />
+      <ambientLight color="#aebfe2" intensity={1.05} />
+      <hemisphereLight color="#c2d3f6" groundColor={PALETTE.desk} intensity={0.95} />
       {/* Warm key — the lamp's direction, but directional so the shadow map stays crisp. */}
       <directionalLight
         color={LAMP_WARM}
-        intensity={1.65}
+        intensity={2.1}
         position={keyPosition}
         castShadow
         shadow-mapSize={[features.shadowMapSize, features.shadowMapSize]}
@@ -950,10 +941,8 @@ function ToyRoomLights({ features }: { features: ToyRoomFeatures }) {
         angle={1.02}
         penumbra={0.86}
       />
-      {/* Cool window fill from the wall you can see it on. */}
-      <directionalLight color={WINDOW_COOL} intensity={0.95} position={[-190, 78, 40]} />
-      {/* Dim room bounce so the far walls and floor do not go to mud. */}
-      <directionalLight color="#8ea2c6" intensity={0.7} position={[70, 40, 150]} />
+      {/* Cool dusk fill from the window wall; the hemisphere light carries the room bounce. */}
+      <directionalLight color={WINDOW_COOL} intensity={1.05} position={[-190, 78, 40]} />
     </>
   )
 }
@@ -1084,7 +1073,7 @@ export function ToyRoomWorld({ features }: { features: ToyRoomFeatures }) {
         opacity={0.55}
         frames={features.contactShadowFrames}
         resolution={features.contactShadowResolution}
-        color="#2a1c10"
+        color="#20304e"
       />
     </group>
   )

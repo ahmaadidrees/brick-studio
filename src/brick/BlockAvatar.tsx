@@ -28,17 +28,28 @@ type AvatarAssets = {
   accent: THREE.MeshStandardMaterial
 }
 
+/**
+ * Brand-palette defaults (coral shirt, cornflower pants, butter badge, ink
+ * shoes and eyes). Player `color`/`palette` overrides still win; the tan skin
+ * and every box dimension are unchanged.
+ */
+const CLASSIC_SHIRT_COLOR = '#f17861'
+const CLASSIC_PANTS_COLOR = '#5888da'
+const CLASSIC_BADGE_COLOR = '#f3ca74'
+const CLASSIC_SKIN_COLOR = '#f2c37f'
+const CLASSIC_SHOE_COLOR = '#263c51'
+
 function createAvatarAssets(
-  primary = '#ef6f54',
-  secondary = '#356c89',
-  accentColor = '#f4d35e',
+  primary = CLASSIC_SHIRT_COLOR,
+  secondary = CLASSIC_PANTS_COLOR,
+  accentColor = CLASSIC_BADGE_COLOR,
 ): AvatarAssets {
   return {
     geometry: new THREE.BoxGeometry(1, 1, 1),
     torso: new THREE.MeshStandardMaterial({ color: primary, roughness: 0.6 }),
-    skin: new THREE.MeshStandardMaterial({ color: '#f2c37f', roughness: 0.64 }),
+    skin: new THREE.MeshStandardMaterial({ color: CLASSIC_SKIN_COLOR, roughness: 0.64 }),
     pants: new THREE.MeshStandardMaterial({ color: secondary, roughness: 0.65 }),
-    shoes: new THREE.MeshStandardMaterial({ color: '#263e4b', roughness: 0.72 }),
+    shoes: new THREE.MeshStandardMaterial({ color: CLASSIC_SHOE_COLOR, roughness: 0.72 }),
     accent: new THREE.MeshStandardMaterial({ color: accentColor, roughness: 0.58 }),
   }
 }

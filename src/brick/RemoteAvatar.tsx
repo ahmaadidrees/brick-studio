@@ -49,6 +49,7 @@ export function RemoteAvatar({ avatar, compact }: { avatar: RemoteRaceAvatar; co
         characterId={avatar.characterId ?? 'classic'}
         motion={motion}
         palette={palette}
+        appearance={avatar.appearance}
         compact={compact}
       />
     </group>

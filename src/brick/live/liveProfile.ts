@@ -1,3 +1,4 @@
+import { normalizeCharacterAppearance } from '@brick-studio/core'
 import type { PlayerProfile } from '../types'
 import { normalizeDisplayName } from './liveRoomModel'
 
@@ -55,6 +56,7 @@ export function normalizeLiveProfile(profile: PlayerProfile): PlayerProfile {
     displayName,
     ...(characterId ? { characterId } : {}),
     ...(palette ? { palette } : {}),
+    ...(profile.appearance ? { appearance: normalizeCharacterAppearance(profile.appearance) } : {}),
   }
 }
 
@@ -66,6 +68,7 @@ export function liveProfileWithDisplayName(
   return normalizeLiveProfile({
     displayName,
     ...(storedProfile?.characterId ? { characterId: storedProfile.characterId } : {}),
+    ...(storedProfile?.appearance ? { appearance: storedProfile.appearance } : {}),
     ...(storedProfile?.palette ? { palette: storedProfile.palette } : {}),
   })
 }
@@ -92,6 +95,7 @@ export function loadStoredLiveProfile(storage: ProfileStorage | undefined = defa
         && record.version !== 1
         && record.version !== LIVE_PROFILE_STORAGE_VERSION) return null
     const profile = normalizeLiveProfile({
+      ...(record.appearance ? { appearance: normalizeCharacterAppearance(record.appearance) } : {}),
       displayName: typeof record.displayName === 'string' ? record.displayName : '',
       ...(typeof record.characterId === 'string' ? { characterId: record.characterId } : {}),
       ...(typeof record.palette === 'object' && record.palette !== null
@@ -115,6 +119,7 @@ export function saveStoredLiveProfile(
       version: LIVE_PROFILE_STORAGE_VERSION,
       displayName: normalized.displayName,
       ...(normalized.characterId ? { characterId: normalized.characterId } : {}),
+      ...(normalized.appearance ? { appearance: normalized.appearance } : {}),
       ...(normalized.palette ? { palette: normalized.palette } : {}),
     }))
   } catch {

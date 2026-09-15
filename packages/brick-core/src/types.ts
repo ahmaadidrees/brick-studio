@@ -1,3 +1,4 @@
+import type { CharacterAppearance } from './characterAppearance'
 export type BrickMode = 'build' | 'explore'
 
 export type BrickBudgetProfile = 'desktop' | 'tablet' | 'phone'
@@ -33,7 +34,7 @@ export type ViewPreset = 'home' | 'selection' | 'top' | 'front' | 'right' | 'per
 
 export type EnvironmentId = 'classic' | 'toy-room' | 'brick-valley' | 'sky-island'
 
-export type CharacterId = 'classic' | 'toy-figure' | 'cc0-hero'
+export type CharacterId = 'classic' | 'toy-figure' | 'cc0-hero' | 'pip' | 'fern' | 'nova'
 
 export type CustomPartTemplate =
   | 'solid'
@@ -58,6 +59,7 @@ export type CustomPartDefinition = {
 }
 
 export type PlayerProfile = {
+  appearance?: CharacterAppearance
   displayName: string
   characterId?: string
   palette?: Record<string, string>

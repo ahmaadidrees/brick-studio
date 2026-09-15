@@ -11,6 +11,7 @@ import { env, exports } from "cloudflare:workers";
 import { evictDurableObject, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClassroomService } from "../src/classroom/index";
+import { handleReleaseRequest } from "../src/classroomRoutes";
 import type { Env as WorkerEnv } from "../src/index";
 import {
   newWorldId, newOwnerToken, ownerTokenVerifier,
@@ -96,9 +97,10 @@ class Inbox {
   }
 }
 
-async function connectWorld(roomId: string, playerId: string, ownerToken?: string, reconnectToken?: string) {
+async function connectWorld(roomId: string, playerId: string, ownerToken?: string, reconnectToken?: string, documentSchema = 2) {
   const url = new URL(`https://worker.test/worlds/${roomId}/connect`);
   url.searchParams.set("playerId", playerId);
+  if (documentSchema === 3) url.searchParams.set("documentSchema", "3");
   if (ownerToken) url.searchParams.set("ownerToken", ownerToken);
   if (reconnectToken) url.searchParams.set("reconnectToken", reconnectToken);
   const response = await roomFetch(url.toString(), {
@@ -977,4 +979,353 @@ it("bounds anonymous creation requests and retains per-IP creation limits", asyn
   });
   const limited = await workerFetch("https://worker.test/worlds", { method: "POST", headers: { "cf-connecting-ip": ip, "content-type": "application/json" }, body: JSON.stringify({ title: "Limited", document: worldDocument(), profile: { displayName: "Builder" } }) });
   expect(limited.status).toBe(429); expect(Number(limited.headers.get("retry-after"))).toBeGreaterThan(0); await limited.text();
+});
+
+describe("classroom invalidation", () => {
+  const classId = "00000000-0000-4000-8000-0000000000c1";
+  const teacher = { id: "00000000-0000-4000-8000-0000000000a1", sessionId: "00000000-0000-4000-8000-0000000000a2" };
+  const teacherCaller = { id: teacher.id, username: "Teacher", rosterName: "Teacher", role: "teacher" as const, resetRequired: false, authVersion: 0, sessionId: teacher.sessionId, token: "teacher" };
+  const fakeEnv = { SUPABASE_URL: "https://fake-db.test", SUPABASE_SERVICE_ROLE_KEY: "test", SUPABASE_ANON_KEY: "test", BRICK_TEACHER_IDS: teacher.id };
+  const workerEnv = env as unknown as WorkerEnv;
+  const routeEnv = {
+    ...fakeEnv, CLASSROOM_TICKET_SECRET: "test-only-secret-".repeat(4),
+    WORLD_ROOMS: workerEnv.WORLD_ROOMS, WORLD_CREATION_LIMITER: workerEnv.WORLD_CREATION_LIMITER, RACE_ROOMS: workerEnv.RACE_ROOMS,
+  } as WorkerEnv;
+  type FixtureWorld = { id: string; class_id: string; kind: "group" | "class"; owner_id: string; title: string; revision: number; document: BrickStudioDocument };
+  type FixtureStudent = { user_id: string; username: string; roster_name: string; class_id: string; auth_version: number; suspended: boolean; reset_required: boolean; session_id: string };
+  type Access = { userId: string; username: string; role: "teacher" | "student"; worldId: string; classId: string; canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string };
+
+  const randomWorldUuid = () => {
+    const hex = newWorldId();
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  };
+
+  // A tiny stand-in for the classroom Postgres schema and its authorization RPCs,
+  // shared by the router and every Durable Object through the service prototype.
+  function fixture(worldIds: string[]) {
+    const db = {
+      worlds: worldIds.map((id): FixtureWorld => ({ id, class_id: classId, kind: "group", owner_id: teacher.id, title: "Period 1 build", revision: 1, document: worldDocument() })),
+      students: [1, 2, 3].map((n): FixtureStudent => ({
+        user_id: `00000000-0000-4000-8000-0000000000${n}1`, username: `Builder${n}`, roster_name: `Student ${n}`, class_id: classId,
+        auth_version: 1, suspended: false, reset_required: false, session_id: `00000000-0000-4000-8000-0000000000${n}2`,
+      })),
+      classes: [{ id: classId, teacher_id: teacher.id, name: "Period 1", login_code: "PERIOD1", enrollment_open: true, collaboration_open: true }],
+      members: [] as Array<{ world_id: string; user_id: string }>,
+      batchUnavailable: false,
+      worldsUnavailable: false,
+      commits: [] as Array<{ worldId: string; expectedRevision: number; actorId: string }>,
+    };
+    for (const world of db.worlds) for (const student of db.students.slice(0, 2)) db.members.push({ world_id: world.id, user_id: student.user_id });
+    const matches = (row: Record<string, unknown>, filter: string) => filter.split("&").every((part) => {
+      const [key, value] = part.split("=eq.");
+      return value === undefined || String(row[key]) === value;
+    });
+    const tables = (): Record<string, Array<Record<string, unknown>>> => ({
+      worlds: db.worlds, students: db.students, classes: db.classes, world_members: db.members,
+      sessions: db.students.map((student) => ({ session_id: student.session_id, user_id: student.user_id, auth_version: student.auth_version })),
+      teacher_sessions: [{ session_id: teacher.sessionId, user_id: teacher.id, revoked: false }],
+    });
+    const authorize = (worldId: string, userId: string, sessionId: string, authVersion: number, teacherAllowed: boolean) => {
+      const world = db.worlds.find((candidate) => candidate.id === worldId);
+      const cls = db.classes[0];
+      if (teacherAllowed && authVersion === 0) {
+        if (userId !== teacher.id || sessionId !== teacher.sessionId) return { error: "session_revoked" };
+        if (!world) return { error: "not_found" };
+        return { userId, username: "Teacher", role: "teacher", worldId, classId: cls.id, canEdit: true, isTeacher: true, isOwner: world.owner_id === userId, authVersion, sessionId };
+      }
+      const student = db.students.find((candidate) => candidate.user_id === userId);
+      if (!student || student.auth_version !== authVersion || student.session_id !== sessionId) return { error: "session_revoked" };
+      if (student.suspended) return { error: "suspended" };
+      if (!world) return { error: "not_found" };
+      if (!cls.collaboration_open) return { error: "class_closed" };
+      if (world.kind === "group" && !db.members.some((member) => member.world_id === worldId && member.user_id === userId)) return { error: "not_found" };
+      return { userId, username: student.username, role: "student", worldId, classId: cls.id, canEdit: true, isTeacher: false, isOwner: false, authVersion, sessionId };
+    };
+    vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table, filter = "") => {
+      if (table === "worlds" && db.worldsUnavailable) throw new Error("database unavailable");
+      return (tables()[table] ?? []).filter((row) => matches(row, filter));
+    });
+    const rpc = vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name, input) => {
+      if (name === "authorize_world") return authorize(input.p_world_id, input.p_user_id, input.p_session_id, input.p_auth_version, input.p_teacher_allowed);
+      if (name === "authorize_world_batch") {
+        if (db.batchUnavailable) throw new Error("permission provider unavailable");
+        return input.p_identities.map((identity: { userId: string; sessionId: string; authVersion: number; teacherAllowed: boolean }) =>
+          authorize(input.p_world_id, identity.userId, identity.sessionId, identity.authVersion, identity.teacherAllowed));
+      }
+      if (name === "commit_world") {
+        const world = db.worlds.find((candidate) => candidate.id === input.p_world_id);
+        if (!world) return { error: "not_found" };
+        db.commits.push({ worldId: world.id, expectedRevision: input.p_expected_revision, actorId: input.p_actor_id });
+        if (world.revision !== input.p_expected_revision) return { error: "conflict", currentRevision: world.revision };
+        world.revision += 1;
+        world.document = input.p_document;
+        if (typeof input.p_title === "string") world.title = input.p_title;
+        return { ...world };
+      }
+      if (name === "take_rate_limit" || name === "acquire_credential_lock") return true;
+      throw new Error(`Unexpected rpc ${name}`);
+    });
+    const batchChecks = () => rpc.mock.calls.filter(([name]) => name === "authorize_world_batch").length;
+    const studentAccess = (index: number, worldId: string): Access => {
+      const student = db.students[index];
+      return { userId: student.user_id, username: student.username, role: "student", worldId, classId, canEdit: true, isTeacher: false, isOwner: false, authVersion: student.auth_version, sessionId: student.session_id };
+    };
+    const teacherAccess = (worldId: string): Access => ({ userId: teacher.id, username: "Teacher", role: "teacher", worldId, classId, canEdit: true, isTeacher: true, isOwner: true, authVersion: 0, sessionId: teacher.sessionId });
+    return { db, batchChecks, studentAccess, teacherAccess };
+  }
+
+  async function openRoom(world: FixtureWorld) {
+    const roomId = world.id.replaceAll("-", "");
+    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+    const initialized = await stub.fetch("https://world.internal/init", {
+      method: "POST", headers: { "x-world-init": "1", "content-type": "application/json" },
+      body: JSON.stringify({ roomId, classroomWorldId: world.id, revision: world.revision, title: world.title, document: world.document, initialOwnerProfile: { displayName: "Builder" }, ownerTokenVerifier: await ownerTokenVerifier(newOwnerToken()) }),
+    });
+    expect(initialized.status).toBe(201); await initialized.text();
+    await runInDurableObject(stub, async (instance: WorldRoom) => { Object.assign((instance as unknown as { env: object }).env, fakeEnv); });
+    return {
+      roomId, stub,
+      invalidate: async (body: Record<string, unknown>) => {
+        const response = await stub.fetch("https://world.internal/internal/classroom-invalidate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        return { status: response.status, body: await response.json<Record<string, unknown>>() };
+      },
+      state: async (access: Access) => {
+        const response = await stub.fetch(`https://world.internal/worlds/${roomId}`, { headers: { "x-classroom-access": JSON.stringify(access) } });
+        expect(response.status).toBe(200);
+        return response.json<{ title: string; revision: number; document: BrickStudioDocument; players: Array<{ playerId: string }> }>();
+      },
+    };
+  }
+  type Room = Awaited<ReturnType<typeof openRoom>>;
+
+  async function join(room: Room, access: Access) {
+    const response = await room.stub.fetch(`https://world.internal/worlds/${room.roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
+    expect(response.status).toBe(101);
+    const socket = response.webSocket!;
+    sockets.push(socket);
+    const inbox = new Inbox(socket);
+    socket.accept();
+    const welcome = await inbox.next("welcome");
+    const closed = new Promise<number>((resolve) => socket.addEventListener("close", (event) => resolve(event.code)));
+    let sequence = 0;
+    const edit = (id: string, x: number, z = 0) => {
+      sequence += 1;
+      const opId = `${access.userId}#${sequence}`;
+      send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId, commands: [{ op: "place", brick: brick(id, x, z) }] });
+      return opId;
+    };
+    return { access, socket, inbox, welcome, closed, edit };
+  }
+  type Builder = Awaited<ReturnType<typeof join>>;
+
+  const stillOpen = (closed: Promise<number>) => Promise.race([
+    closed.then((code) => `closed ${code}`),
+    new Promise<string>((resolve) => setTimeout(() => resolve("open"), 150)),
+  ]);
+  // Every connected builder receives every broadcast; drain them so inboxes stay in step.
+  const applied = async (opId: string, revision: number, ...builders: Builder[]) => {
+    for (const builder of builders) expect(await builder.inbox.next("apply")).toMatchObject({ opId, revision });
+  };
+  const snapshotted = async (revision: number, ...builders: Builder[]) => {
+    for (const builder of builders) expect(await builder.inbox.next("snapshot")).toMatchObject({ revision });
+  };
+  const bricksOf = (document: unknown) => (document as BrickStudioDocument).bricks.map((placed) => placed.id);
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it("keeps every builder connected through a rename and commits later edits against the refreshed revision", async () => {
+    const { db, studentAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const first = await join(room, studentAccess(0, world.id));
+    const second = await join(room, studentAccess(1, world.id));
+    await applied(first.edit("first-before", 0), 2, first, second);
+
+    // The teacher renames through the REST route: Postgres has already advanced
+    // the revision when the live event reaches the room.
+    world.revision = 3; world.title = "Bridge challenge";
+    expect((await room.invalidate({ reason: "world_saved", change: "metadata" })).status).toBe(200);
+    for (const builder of [first, second]) {
+      const snapshot = await builder.inbox.next("snapshot");
+      expect(snapshot).toMatchObject({ revision: 3 });
+      expect(bricksOf(snapshot.document)).toEqual(["first-before"]);
+    }
+    expect(await room.state(first.access)).toMatchObject({ title: "Bridge challenge", revision: 3 });
+
+    await applied(first.edit("first-after", 4), 4, first, second);
+    await applied(second.edit("second-after", 8), 5, first, second);
+    expect(db.commits.slice(-2).map((commit) => commit.expectedRevision)).toEqual([3, 4]);
+    expect(bricksOf(world.document)).toEqual(["first-before", "first-after", "second-after"]);
+
+    // An edit that races a second rename: the database moved on before the room heard.
+    world.revision = 6; world.title = "Bridge challenge, day two";
+    second.edit("raced", 12);
+    const rejected = await second.inbox.next("reject");
+    expect(rejected).toMatchObject({ code: "save_conflict", revision: 6 });
+    expect(bricksOf(rejected.document)).toEqual(["first-before", "first-after", "second-after"]);
+    expect(db.commits.at(-1)).toMatchObject({ expectedRevision: 5 });
+    expect(bricksOf(world.document)).not.toContain("raced");
+    await snapshotted(6, first, second);
+
+    // The late live event re-confirms the same base for everyone, and building continues.
+    expect((await room.invalidate({ reason: "world_saved", change: "metadata" })).status).toBe(200);
+    await snapshotted(6, first, second);
+    expect(await room.state(first.access)).toMatchObject({ title: "Bridge challenge, day two", revision: 6 });
+    await applied(second.edit("retry", 12), 7, first, second);
+    expect(db.commits.at(-1)).toMatchObject({ expectedRevision: 6 });
+    expect(await stillOpen(first.closed)).toBe("open");
+    expect(await stillOpen(second.closed)).toBe("open");
+  });
+
+  it("keeps builders connected when the metadata reload is unavailable and recovers through the commit guard", async () => {
+    const { db, studentAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const builder = await join(room, studentAccess(0, world.id));
+    world.revision = 2; world.title = "Renamed while the database was away";
+    db.worldsUnavailable = true;
+    const unavailable = await room.invalidate({ reason: "world_saved", change: "metadata" });
+    expect(unavailable).toMatchObject({ status: 503, body: { error: "world_reload_failed" } });
+    expect(await stillOpen(builder.closed)).toBe("open");
+
+    db.worldsUnavailable = false;
+    builder.edit("stale", 0);
+    expect(await builder.inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 2 });
+    await snapshotted(2, builder);
+    expect(bricksOf(world.document)).toEqual([]);
+    expect(await room.state(builder.access)).toMatchObject({ title: "Renamed while the database was away", revision: 2 });
+    await applied(builder.edit("fresh", 0), 3, builder);
+  });
+
+  it("re-authorizes existing members in place when a member is added and closes only a removed member", async () => {
+    const { db, batchChecks, studentAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const first = await join(room, studentAccess(0, world.id));
+    const second = await join(room, studentAccess(1, world.id));
+
+    db.members.push({ world_id: world.id, user_id: db.students[2].user_id });
+    expect((await room.invalidate({ reason: "members_updated", change: "membership" })).status).toBe(200);
+    expect(batchChecks()).toBe(1);
+    expect(await stillOpen(first.closed)).toBe("open");
+    expect(await stillOpen(second.closed)).toBe("open");
+    await applied(first.edit("still-building", 0), 2, first, second);
+    const third = await join(room, studentAccess(2, world.id));
+    expect(third.welcome).toMatchObject({ revision: 2 });
+
+    db.members = db.members.filter((member) => member.user_id !== first.access.userId);
+    expect((await room.invalidate({ reason: "members_updated", change: "revocation", userId: first.access.userId })).status).toBe(200);
+    expect(await first.closed).toBe(4003);
+    expect(batchChecks()).toBe(1);
+    expect(await stillOpen(second.closed)).toBe("open");
+    expect(await stillOpen(third.closed)).toBe("open");
+    await applied(second.edit("after-removal", 4), 3, second, third);
+    expect((await room.state(second.access)).players.map((player) => player.playerId).sort())
+      .toEqual([second.access.userId, third.access.userId].sort());
+  });
+
+  it("a password or session revocation closes only that user's sockets", async () => {
+    const { db, batchChecks, studentAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const first = await join(room, studentAccess(0, world.id));
+    const second = await join(room, studentAccess(1, world.id));
+    const stale = first.access;
+
+    db.students[0].auth_version = 2;
+    expect((await room.invalidate({ reason: "password_reset", change: "revocation", userId: stale.userId })).status).toBe(200);
+    expect(await first.closed).toBe(4003);
+    expect(batchChecks()).toBe(0);
+    expect(await stillOpen(second.closed)).toBe("open");
+    await applied(second.edit("unaffected", 0), 2, second);
+
+    const rejoin = await room.stub.fetch(`https://world.internal/worlds/${room.roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(stale) } });
+    expect(rejoin.status).toBe(403);
+    expect(await rejoin.json()).toEqual({ error: "classroom_access_denied" });
+  });
+
+  it("closing collaboration disconnects every student in every class world while the teacher keeps oversight", async () => {
+    const { db, studentAccess, teacherAccess } = fixture([randomWorldUuid(), randomWorldUuid()]);
+    const alpha = await openRoom(db.worlds[0]);
+    const beta = await openRoom(db.worlds[1]);
+    const alphaStudent = await join(alpha, studentAccess(0, db.worlds[0].id));
+    const betaStudent = await join(beta, studentAccess(1, db.worlds[1].id));
+    const alphaTeacher = await join(alpha, teacherAccess(db.worlds[0].id));
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacherCaller);
+    vi.spyOn(ClassroomService.prototype, "patch").mockImplementation(async (table, _filter, data) => {
+      if (table !== "classes") return [];
+      Object.assign(db.classes[0], data);
+      return [db.classes[0]];
+    });
+    vi.spyOn(ClassroomService.prototype, "insert").mockResolvedValue([]);
+
+    const response = await handleReleaseRequest(new Request(`https://worker.test/classroom/classes/${classId}`, {
+      method: "PATCH", headers: { authorization: "Bearer teacher", "content-type": "application/json", origin: "https://virtual-legos.vercel.app" },
+      body: JSON.stringify({ collaborationOpen: false }),
+    }), routeEnv);
+    expect(response.status).toBe(200);
+    expect(await alphaStudent.closed).toBe(4003);
+    expect(await betaStudent.closed).toBe(4003);
+    expect(await stillOpen(alphaTeacher.closed)).toBe("open");
+    await applied(alphaTeacher.edit("teacher-only", 0), 2, alphaTeacher);
+  });
+
+  it("fails closed and reports live_invalidation_failed when membership re-authorization is unavailable", async () => {
+    const { db, studentAccess, teacherAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const first = await join(room, studentAccess(0, world.id));
+    const second = await join(room, studentAccess(1, world.id));
+    const supervising = await join(room, teacherAccess(world.id));
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacherCaller);
+    vi.spyOn(ClassroomService.prototype, "patch").mockImplementation(async (table, _filter, data) => {
+      if (table !== "classes") return [];
+      Object.assign(db.classes[0], data);
+      return [db.classes[0]];
+    });
+    vi.spyOn(ClassroomService.prototype, "insert").mockResolvedValue([]);
+
+    db.batchUnavailable = true;
+    const response = await handleReleaseRequest(new Request(`https://worker.test/classroom/classes/${classId}`, {
+      method: "PATCH", headers: { authorization: "Bearer teacher", "content-type": "application/json", origin: "https://virtual-legos.vercel.app" },
+      body: JSON.stringify({ name: "Period 1, renamed" }),
+    }), routeEnv);
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "live_invalidation_failed" });
+    expect(db.classes[0].name).toBe("Period 1, renamed");
+    for (const builder of [first, second, supervising]) expect(await builder.closed).toBe(4003);
+  });
+});
+
+
+it("protects expanded worlds from legacy clients while allowing capable builders", async () => {
+  const expanded = createBrickStudioDocument([brick("edge", 120, 120)], { plateSize: 128 });
+  const { roomId, ownerToken } = await createWorld(expanded);
+  const legacy = await connectWorld(roomId, "legacy_expanded");
+  expect(legacy.response.status).toBe(409);
+  expect(await legacy.response.json()).toMatchObject({ error: "client_update_required" });
+  const owner = await connectWorld(roomId, "owner_expanded", ownerToken, undefined, 3);
+  expect(owner.welcome).toMatchObject({ document: expanded });
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: "owner_expanded#1", commands: [{ op: "place", brick: brick("new_edge", 125, 125) }] });
+  expect(await owner.inbox!.next("apply")).toMatchObject({ revision: 1 });
+  expect((await getWorld(roomId)).document.plateSize).toBe(128);
+});
+
+it("rejects expansion without altering a room while an older tab remains connected", async () => {
+  const { roomId, ownerToken } = await createWorld();
+  const owner = await connectWorld(roomId, "owner_mixed", ownerToken, undefined, 3);
+  await connectWorld(roomId, "legacy_mixed");
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "replaceDocument", opId: "owner_mixed#1", expectedRevision: 0, document: createBrickStudioDocument([], { plateSize: 96 }) });
+  expect(await owner.inbox!.next("reject")).toMatchObject({ code: "client_update_required" });
+  expect(await getWorld(roomId)).toMatchObject({ revision: 0, document: { schemaVersion: 2 } });
+});
+
+it("broadcasts and persists bounded appearance changes for another builder", async () => {
+  const { roomId, ownerToken } = await createWorld();
+  const owner = await connectWorld(roomId, "owner_style", ownerToken, undefined, 3);
+  const guest = await connectWorld(roomId, "guest_style", undefined, undefined, 3);
+  await guest.inbox!.next("players");
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Stylist", characterId: "toy-figure", appearance: { hair: "bun", accessory: "glasses", body: "broad" } } });
+  const updated = await guest.inbox!.next("players");
+  expect(updated).toMatchObject({ players: expect.arrayContaining([expect.objectContaining({ playerId: "owner_style", profile: expect.objectContaining({ appearance: expect.objectContaining({ hair: "bun", accessory: "glasses", body: "broad" }) }) })]) });
 });

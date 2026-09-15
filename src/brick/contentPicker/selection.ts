@@ -1,3 +1,4 @@
+import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
 import type { CharacterDescriptor, EnvironmentDescriptor } from '../registries'
 import type { CharacterPalette } from '../characters/types'
 import type { CharacterId, EnvironmentId } from '../types'
@@ -7,6 +8,7 @@ export const CONTENT_PICKER_PREFERENCES_VERSION = 1 as const
 export type ContentPickerSelection = {
   environmentId: EnvironmentId | null
   characterId: CharacterId | null
+  appearance?: CharacterAppearance
   palette: CharacterPalette
 }
 
@@ -24,6 +26,7 @@ export type ContentPickerPreferences = ContentPickerSelection & {
 type PartialSelection = {
   environmentId?: unknown
   characterId?: unknown
+  appearance?: unknown
   palette?: unknown
 }
 
@@ -74,6 +77,7 @@ export function normalizeContentPickerSelection(
       catalog.fallbackCharacterId,
     ),
     palette: copyStringPalette(selection?.palette),
+    ...(selection?.appearance !== undefined ? { appearance: normalizeCharacterAppearance(selection.appearance) } : {}),
   }
 }
 
@@ -96,6 +100,7 @@ export function serializeContentPickerPreferences(selection: ContentPickerSelect
     environmentId: selection.environmentId,
     characterId: selection.characterId,
     palette: copyStringPalette(selection.palette),
+    ...(selection.appearance ? { appearance: normalizeCharacterAppearance(selection.appearance) } : {}),
   }
   return JSON.stringify(preferences)
 }

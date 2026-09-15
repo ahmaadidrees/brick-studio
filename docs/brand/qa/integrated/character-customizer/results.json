@@ -1,0 +1,227 @@
+{
+  "checkedAt": "2026-09-15T00:13:58.497Z",
+  "origin": "http://127.0.0.1:5190",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      4.3,
+      5.84,
+      8.86
+    ],
+    "freeMemoryMB": 40178,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "checks": [
+    {
+      "sceneTabFromCharacterShortcut": "passed"
+    },
+    {
+      "character": "pip",
+      "animationSampleHashes": {
+        "Idle": "b1618a575ffc9a7fc31c727b92598952e15d6b5bf16749c9cb45465dfc3a7399",
+        "Walk": "d22c5e388b8e52626deb01f219f40b1f62462154ee520a7313ee572e9b9e53c4",
+        "Run": "7fd90de22fdbb5b949641ef2d5d6e5255f311df88f863ce5b4b7b93271d80e2e",
+        "Jump": "0a6d308dd0ebacdec3b5a221293e5a808767fbc3ab9698cc1a56f292fb983cc2"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "pip",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "character": "fern",
+      "animationSampleHashes": {
+        "Idle": "4dbf09e9f587d654047a65f60a494c3b1c81555a9e79d278fc441cd754319288",
+        "Walk": "52611f297a5d7fe93bdedac29e95bc1e8ae9eb96c0768444a5799ee59d317f77",
+        "Run": "6ea0ab4509bdf6dfc2977f16be89740dd1142a1bef6656eab0610f0c8be0484c",
+        "Jump": "a95b9891272805a72c4cbced6d3f001a2a656f1b68ea1844dd6050c44efed316"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "fern",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "character": "nova",
+      "animationSampleHashes": {
+        "Idle": "b1fd1a6955f1adc266000b7ba15c1e552a0839c69f2b132bb0a7a8df0ea87d81",
+        "Walk": "536560952f5c537ee7601975c7aaecf79c57c6bdb9407a7d3560c341df408d2b",
+        "Run": "26cc1ab775eee21c76e52c635ddcdcb93442b34e07e6bca8df2f2070f0e1a56d",
+        "Jump": "7b588398038e2a10d4ad05df380169bf0584283fc3efee3d4e5d7e352fec736e"
+      },
+      "applyReload": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "nova",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "friendly",
+          "hair": "cap",
+          "outfit": "explorer",
+          "accessory": "none",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      }
+    },
+    {
+      "toyAppearanceApplyReload": "passed",
+      "outfitSaveFavoriteReloadRestore": "passed",
+      "saved": {
+        "version": 1,
+        "environmentId": "classic",
+        "characterId": "toy-figure",
+        "palette": {},
+        "appearance": {
+          "body": "classic",
+          "face": "freckles",
+          "hair": "curls",
+          "outfit": "overalls",
+          "accessory": "glasses",
+          "skinColor": "#f0bd86",
+          "hairColor": "#593c2e"
+        }
+      },
+      "wardrobe": {
+        "version": 1,
+        "outfits": [
+          {
+            "characterId": "toy-figure",
+            "palette": {},
+            "appearance": {
+              "body": "classic",
+              "face": "freckles",
+              "hair": "curls",
+              "outfit": "overalls",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            },
+            "id": "da7b6d59-8733-49db-a41c-992f1c4fb913",
+            "name": "Curly Builder QA",
+            "favorite": true
+          }
+        ]
+      }
+    },
+    {
+      "mobileWidth": 390,
+      "layout": {
+        "panel": {
+          "x": 0,
+          "y": 67.53125,
+          "width": 390,
+          "height": 776.46875,
+          "top": 67.53125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "footer": {
+          "x": 1,
+          "y": 775,
+          "width": 388,
+          "height": 69,
+          "top": 775,
+          "right": 389,
+          "bottom": 844,
+          "left": 1
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 390,
+          "height": 844
+        },
+        "scrollWidth": 390
+      }
+    },
+    {
+      "mobileWidth": 320,
+      "layout": {
+        "panel": {
+          "x": 0,
+          "y": 59.203125,
+          "width": 320,
+          "height": 680.796875,
+          "top": 59.203125,
+          "right": 320,
+          "bottom": 740,
+          "left": 0
+        },
+        "footer": {
+          "x": 1,
+          "y": 671,
+          "width": 318,
+          "height": 69,
+          "top": 671,
+          "right": 319,
+          "bottom": 740,
+          "left": 1
+        },
+        "outsideX": [],
+        "viewport": {
+          "width": 320,
+          "height": 740
+        },
+        "scrollWidth": 320
+      }
+    }
+  ],
+  "errors": [],
+  "assets": [
+    {
+      "url": "http://127.0.0.1:5190/assets/characters-original/pip.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5190/assets/characters-original/pip.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5190/assets/characters-original/fern.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5190/assets/characters-original/fern.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5190/assets/characters-original/nova.glb",
+      "status": 200
+    },
+    {
+      "url": "http://127.0.0.1:5190/assets/characters-original/nova.glb",
+      "status": 200
+    }
+  ]
+}

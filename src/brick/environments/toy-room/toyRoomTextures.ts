@@ -22,13 +22,13 @@ function paint(size: number, draw: (context: CanvasRenderingContext2D, size: num
 }
 
 /**
- * Oak-ish table grain. Every stroke is a sine of the full canvas width so the
+ * Honey table grain. Every stroke is a sine of the full canvas width so the
  * pattern tiles seamlessly along the grain, and each stroke is drawn three times
  * (−size, 0, +size) so it tiles across the grain as well.
  */
 export function createWoodTexture(size: number) {
   return paint(size, (context) => {
-    context.fillStyle = '#b07a45'
+    context.fillStyle = '#cf9a5f'
     context.fillRect(0, 0, size, size)
 
     const stroke = (y: number, amplitude: number, waves: number, phase: number, width: number, style: string) => {
@@ -56,7 +56,7 @@ export function createWoodTexture(size: number) {
         1,
         Math.random() * Math.PI * 2,
         10 + Math.random() * 18,
-        index % 3 === 0 ? 'rgba(206, 158, 104, 0.13)' : 'rgba(134, 92, 50, 0.11)',
+        index % 3 === 0 ? 'rgba(236, 196, 138, 0.14)' : 'rgba(164, 112, 62, 0.10)',
       )
     }
     // Fine grain: many hairlines, each barely visible on its own.
@@ -67,13 +67,13 @@ export function createWoodTexture(size: number) {
         1 + Math.floor(Math.random() * 2),
         Math.random() * Math.PI * 2,
         0.4 + Math.random() * 0.8,
-        Math.random() > 0.62 ? 'rgba(214, 172, 122, 0.10)' : 'rgba(118, 76, 36, 0.10)',
+        Math.random() > 0.62 ? 'rgba(240, 206, 156, 0.10)' : 'rgba(146, 96, 48, 0.09)',
       )
     }
     // A couple of knots, drawn well inside the tile so they never straddle a seam.
     for (const knot of [{ x: size * 0.31, y: size * 0.42 }, { x: size * 0.74, y: size * 0.78 }]) {
       for (let ring = 8; ring > 0; ring -= 1) {
-        context.strokeStyle = `rgba(102, 66, 30, ${0.03 + ring * 0.011})`
+        context.strokeStyle = `rgba(128, 84, 40, ${0.03 + ring * 0.01})`
         context.lineWidth = 1
         context.beginPath()
         context.ellipse(knot.x, knot.y, ring * 2.2, ring * 1.1, 0.5, 0, Math.PI * 2)
@@ -83,36 +83,176 @@ export function createWoodTexture(size: number) {
   })
 }
 
-/** Soft two-tone wallpaper: wide stripes with a sprinkle of little cross motifs. */
-export function createWallpaperTexture(size: number) {
-  return paint(size, (context) => {
-    context.fillStyle = '#b3c4c0'
+/**
+ * The view through the window: a dusk gradient with a few stars, a simple city
+ * skyline and a sprinkle of lit windows. One plane, one texture, no lights.
+ */
+export function createSkylineTexture(size = 512) {
+  const texture = paint(size, (context) => {
+    const sky = context.createLinearGradient(0, 0, 0, size)
+    sky.addColorStop(0, '#1d2a55')
+    sky.addColorStop(0.42, '#4a4a8f')
+    sky.addColorStop(0.66, '#b46a7e')
+    sky.addColorStop(0.8, '#f0a06a')
+    sky.addColorStop(1, '#f7c890')
+    context.fillStyle = sky
     context.fillRect(0, 0, size, size)
-    const stripe = size / 8
-    for (let index = 0; index < 8; index += 1) {
-      if (index % 2 === 0) continue
-      context.fillStyle = 'rgba(238, 242, 232, 0.34)'
-      context.fillRect(index * stripe, 0, stripe * 0.55, size)
-      context.fillStyle = 'rgba(238, 242, 232, 0.16)'
-      context.fillRect(index * stripe + stripe * 0.62, 0, stripe * 0.16, size)
+
+    // Stars in the dark upper third.
+    context.fillStyle = 'rgba(255, 248, 230, 0.9)'
+    let seed = 7
+    const random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 }
+    for (let index = 0; index < 34; index += 1) {
+      const x = random() * size
+      const y = random() * size * 0.34
+      const r = 0.6 + random() * 1.3
+      context.beginPath()
+      context.arc(x, y, r, 0, Math.PI * 2)
+      context.fill()
     }
-    context.strokeStyle = 'rgba(126, 154, 148, 0.5)'
-    context.lineWidth = size / 96
-    const step = size / 4
-    for (let row = 0; row < 4; row += 1) {
-      for (let column = 0; column < 4; column += 1) {
-        const cx = column * step + step / 2 + (row % 2 ? step / 2 : 0)
-        const cy = row * step + step / 2
-        const arm = size / 44
-        context.beginPath()
-        context.moveTo(cx - arm, cy)
-        context.lineTo(cx + arm, cy)
-        context.moveTo(cx, cy - arm)
-        context.lineTo(cx, cy + arm)
-        context.stroke()
+
+    // Two rows of buildings: a pale distant row and a darker near row.
+    const skyline = (baseY: number, color: string, windowColor: string, count: number, tallest: number) => {
+      let x = 0
+      context.fillStyle = color
+      const buildings: [number, number, number][] = []
+      for (let index = 0; index < count && x < size; index += 1) {
+        const width = size * (0.05 + random() * 0.08)
+        const height = size * (0.1 + random() * tallest)
+        context.fillRect(x, baseY - height, width + 1, height + size)
+        buildings.push([x, width, height])
+        x += width
+      }
+      context.fillStyle = windowColor
+      for (const [bx, bw, bh] of buildings) {
+        const columns = Math.max(1, Math.floor(bw / (size * 0.03)))
+        const rows = Math.max(1, Math.floor(bh / (size * 0.04)))
+        for (let column = 0; column < columns; column += 1) {
+          for (let row = 0; row < rows; row += 1) {
+            if (random() > 0.45) continue
+            context.fillRect(
+              bx + size * 0.008 + column * (size * 0.03),
+              baseY - bh + size * 0.012 + row * (size * 0.04),
+              size * 0.012,
+              size * 0.016,
+            )
+          }
+        }
       }
     }
+    skyline(size * 0.86, '#5b5a9a', 'rgba(255, 224, 170, 0.55)', 14, 0.3)
+    skyline(size * 0.98, '#2a3566', 'rgba(255, 214, 140, 0.85)', 10, 0.24)
+    // Ground line so the city sits on something.
+    context.fillStyle = '#222c52'
+    context.fillRect(0, size * 0.97, size, size * 0.03)
   })
+  texture.wrapS = THREE.ClampToEdgeWrapping
+  texture.wrapT = THREE.ClampToEdgeWrapping
+  return texture
+}
+
+/** Wall clock face — ticks, numerals at the quarters and hands painted at ten past ten. */
+export function createClockFaceTexture(size = 256) {
+  const texture = paint(size, (context) => {
+    const center = size / 2
+    context.fillStyle = '#f8f4eb'
+    context.fillRect(0, 0, size, size)
+    context.strokeStyle = '#263c51'
+    context.lineCap = 'round'
+    for (let index = 0; index < 12; index += 1) {
+      const angle = (index / 12) * Math.PI * 2
+      const quarter = index % 3 === 0
+      const outer = size * 0.44
+      const inner = quarter ? size * 0.36 : size * 0.4
+      context.lineWidth = quarter ? size * 0.035 : size * 0.018
+      context.beginPath()
+      context.moveTo(center + Math.cos(angle) * inner, center + Math.sin(angle) * inner)
+      context.lineTo(center + Math.cos(angle) * outer, center + Math.sin(angle) * outer)
+      context.stroke()
+    }
+    const hand = (angle: number, length: number, width: number) => {
+      context.lineWidth = width
+      context.beginPath()
+      context.moveTo(center - Math.cos(angle) * size * 0.05, center - Math.sin(angle) * size * 0.05)
+      context.lineTo(center + Math.cos(angle) * length, center + Math.sin(angle) * length)
+      context.stroke()
+    }
+    // Ten past ten, the classic friendly clock face.
+    hand(-Math.PI / 2 - (2 / 12) * Math.PI * 2, size * 0.24, size * 0.05)
+    hand(-Math.PI / 2 + (2 / 12) * Math.PI * 2, size * 0.36, size * 0.035)
+    context.fillStyle = '#f17861'
+    context.beginPath()
+    context.arc(center, center, size * 0.035, 0, Math.PI * 2)
+    context.fill()
+  })
+  texture.wrapS = THREE.ClampToEdgeWrapping
+  texture.wrapT = THREE.ClampToEdgeWrapping
+  return texture
+}
+
+/**
+ * Butter ruler with ink markings, drawn once instead of a dozen tick meshes.
+ * The texture is laid along the ruler's length (u) with the ticks on one edge.
+ */
+export function createRulerTexture(width = 512, height = 64) {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  if (context) {
+    context.fillStyle = '#f3ca74'
+    context.fillRect(0, 0, width, height)
+    context.fillStyle = '#263c51'
+    const ticks = 24
+    for (let index = 0; index <= ticks; index += 1) {
+      const x = (index / ticks) * (width - 2) + 1
+      const major = index % 2 === 0
+      const length = major ? height * 0.42 : height * 0.24
+      context.fillRect(x - 1, 0, 2, length)
+    }
+    context.font = `bold ${Math.round(height * 0.3)}px system-ui, sans-serif`
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    for (let index = 1; index < ticks / 2; index += 1) {
+      context.fillText(String(index), (index / (ticks / 2)) * (width - 2) + 1, height * 0.72)
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.ClampToEdgeWrapping
+  texture.wrapT = THREE.ClampToEdgeWrapping
+  texture.anisotropy = 8
+  return texture
+}
+
+/** The "SAME DESK / MORE WORLDS" poster from the direction I boards: warm-white type on cornflower. */
+export function createPosterTexture(width = 256, height = 320) {
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  if (context) {
+    context.fillStyle = '#5888da'
+    context.fillRect(0, 0, width, height)
+    context.strokeStyle = 'rgba(248, 244, 235, 0.55)'
+    context.lineWidth = width * 0.02
+    context.strokeRect(width * 0.07, height * 0.06, width * 0.86, height * 0.88)
+    context.fillStyle = '#f8f4eb'
+    context.font = `bold ${Math.round(width * 0.19)}px system-ui, sans-serif`
+    context.textAlign = 'center'
+    context.textBaseline = 'middle'
+    const lines = ['SAME', 'DESK', 'MORE', 'WORLDS']
+    lines.forEach((line, index) => {
+      context.fillText(line, width / 2, height * (0.24 + index * 0.17))
+    })
+    context.fillStyle = '#f17861'
+    context.fillRect(width * 0.34, height * 0.9, width * 0.32, height * 0.018)
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.ClampToEdgeWrapping
+  texture.wrapT = THREE.ClampToEdgeWrapping
+  return texture
 }
 
 /** Cut page edges — dense horizontal striations with a warm cream base. */
@@ -132,13 +272,13 @@ export function createPageTexture(size = 128) {
 /** A wooden alphabet block face. */
 export function createLetterTexture(letter: string, size = 128) {
   return paint(size, (context) => {
-    context.fillStyle = '#e8d5ac'
+    context.fillStyle = '#f8f4eb'
     context.fillRect(0, 0, size, size)
-    context.strokeStyle = 'rgba(150, 112, 62, 0.55)'
+    context.strokeStyle = '#f17861'
     context.lineWidth = size * 0.05
     context.strokeRect(size * 0.1, size * 0.1, size * 0.8, size * 0.8)
-    context.fillStyle = '#c0442f'
-    context.font = `bold ${size * 0.6}px Georgia, serif`
+    context.fillStyle = '#5888da'
+    context.font = `bold ${size * 0.6}px system-ui, sans-serif`
     context.textAlign = 'center'
     context.textBaseline = 'middle'
     context.fillText(letter, size / 2, size * 0.54)
@@ -193,27 +333,10 @@ export function createBeamAlphaTexture(size = 64) {
   return texture
 }
 
-/** Faint coffee ring left on the table. */
-export function createCoffeeRingTexture(size = 128) {
-  return paint(size, (context) => {
-    context.clearRect(0, 0, size, size)
-    context.strokeStyle = 'rgba(96, 58, 28, 0.42)'
-    context.lineWidth = size * 0.045
-    context.beginPath()
-    context.arc(size / 2, size / 2, size * 0.36, 0.2, Math.PI * 1.85)
-    context.stroke()
-    context.strokeStyle = 'rgba(96, 58, 28, 0.18)'
-    context.lineWidth = size * 0.02
-    context.beginPath()
-    context.arc(size / 2, size / 2, size * 0.3, 1.1, Math.PI * 1.6)
-    context.stroke()
-  })
-}
-
 /** Room floorboards seen far below the table edge. */
 export function createFloorTexture(size = 256) {
   return paint(size, (context) => {
-    context.fillStyle = '#8a6039'
+    context.fillStyle = '#7d5a3a'
     context.fillRect(0, 0, size, size)
     const plank = size / 5
     for (let index = 0; index < 5; index += 1) {

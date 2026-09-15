@@ -19,14 +19,15 @@ describe('Explore camera gesture input', () => {
   })
 
   it('converts pinch distance to the shared zoom and clamps both limits', () => {
-    expect(zoomFromPinch(6, 100, 200)).toBe(ORBIT_MIN_DISTANCE)
-    expect(zoomFromPinch(6, 100, 25)).toBe(ORBIT_MAX_DISTANCE)
+    expect(zoomFromPinch(6, 100, 200)).toBe(3)
+    expect(zoomFromPinch(6, 100, 1000)).toBe(ORBIT_MIN_DISTANCE)
+    expect(zoomFromPinch(6, 100, 10)).toBe(ORBIT_MAX_DISTANCE)
 
     const gesture = createExploreCameraGesture()
     beginExploreCameraPointer(gesture, 1, 100, 100, 6)
     beginExploreCameraPointer(gesture, 2, 200, 100, 6)
     const update = updateExploreCameraPointer(gesture, 2, 250, 100)
-    expect(update.zoom).toBe(ORBIT_MIN_DISTANCE + 0.6)
+    expect(update.zoom).toBe(4)
     expect(update.yawDelta).toBe(0)
   })
 

@@ -1,0 +1,85 @@
+/* Shown by GraphicsPausedOverlay while the WebGL context is lost. three.js already
+   preventDefault()s the loss event and restores on webglcontextrestored. The overlay sits
+   inside the canvas container at the system layer of the stacking scale, captures pointer
+   input over the canvas so nothing can be placed or moved blind, and leaves the studio chrome
+   above it inert-marked but visible. Tokens from src/styles.css. */
+.graphics-paused {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-system, 2000);
+  display: grid;
+  place-items: center;
+  padding: var(--space-6, 24px);
+  background: rgba(248, 244, 235, 0.88);
+  color: var(--text);
+  text-align: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.graphics-paused__card {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3, 12px);
+  width: min(400px, 100%);
+  padding: var(--space-6, 24px) var(--space-5, 20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.graphics-paused__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md, 12px);
+  color: var(--accent);
+  background: var(--accent-soft, #fde7e2);
+}
+
+.graphics-paused__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.graphics-paused__lead,
+.graphics-paused__status,
+.graphics-paused__waiting {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.graphics-paused__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-1, 4px);
+}
+
+.graphics-paused__waiting { flex-basis: 100%; font-size: 12.5px; }
+.graphics-paused__status { color: var(--success); font-weight: 700; }
+.graphics-paused__status--error { color: var(--danger-text); }
+
+/* Editing chrome is made inert while the context is lost; show it as parked. */
+.brick-inspector[inert],
+.touch-selection-bar[inert],
+.part-library[inert],
+.vertical-selection-handle[inert] {
+  opacity: 0.55;
+}
+
+@media (max-width: 480px) {
+  .graphics-paused { padding: var(--space-4, 16px); }
+  .graphics-paused__card { padding: var(--space-5, 20px) var(--space-4, 16px); }
+  .graphics-paused__actions > .ui-button { flex: 1 1 100%; }
+}

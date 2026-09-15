@@ -53,15 +53,16 @@ const HERO_EMOTE_CLIPS: Record<HeroEmoteKey, string> = {
 }
 
 /**
- * Repaint of the CC0 robot into a studio palette. The shell reads warm orange so
- * the hero separates from the pale plate and from the blue bricks kids build with;
- * cream panels and navy boots/visor give it weight at the ends.
+ * Runtime repaint of the CC0 robot onto the brand palette: coral limbs so the
+ * hero separates from the plate and from the blue bricks kids build with, a
+ * warm-white shell, and ink visor/boots for weight at the ends. The vendored
+ * binary is untouched; only cloned materials change.
  */
-const HERO_SHELL_COLOR = '#f4f0e6'
-const HERO_LIMB_COLOR = '#f06a3f'
-const HERO_VISOR_COLOR = '#23313e'
-const HERO_BOOT_COLOR = '#23313e'
-const HERO_GLOVE_COLOR = '#f4f0e6'
+const HERO_SHELL_COLOR = '#f8f4eb'
+const HERO_LIMB_COLOR = '#f17861'
+const HERO_VISOR_COLOR = '#263c51'
+const HERO_BOOT_COLOR = '#263c51'
+const HERO_GLOVE_COLOR = '#f8f4eb'
 
 function heroPartColor(objectName: string, materialName: string, colors: CharacterPalette) {
   if (materialName === 'Grey') return objectName.startsWith('Foot')

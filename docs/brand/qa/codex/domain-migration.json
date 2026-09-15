@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-15T01:24:41.073Z",
+  "steps": [
+    "Old host imported and exported full schema3 fixture",
+    "Old host cold reload retains exact draft",
+    "New origin does not pretend old browser draft migrated",
+    "New origin file import and cold reload equal full exported document",
+    "Legacy landing serves notice without redirect"
+  ],
+  "success": true
+}

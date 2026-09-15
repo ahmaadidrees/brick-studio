@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-09-15T01:05:38.462693+00:00",
+  "passed": true,
+  "source": "Authoritative Supabase rows restricted to the two newly created fixture class IDs",
+  "results": [
+    {
+      "run": "qa_mu1yy17y",
+      "classId": "0f3e7cd7-b67a-48bf-bccd-8bfc8054255a",
+      "enrollmentOpen": false,
+      "collaborationOpen": false,
+      "fixtureStudents": 2,
+      "allSuspended": true
+    },
+    {
+      "run": "live_mu1yyopl",
+      "classId": "3a4750ee-a944-41d9-8804-61285d4308ff",
+      "enrollmentOpen": false,
+      "collaborationOpen": false,
+      "fixtureStudents": 2,
+      "allSuspended": true
+    }
+  ]
+}

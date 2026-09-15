@@ -1,0 +1,290 @@
+{
+  "_comment": "Role/label locators for the brand QA harnesses (scripts/qa/lib/ui.mjs makeLocate). Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText, `css` uses page.locator (only for controls whose accessible name is not stable, e.g. the save chip). Names verified in the DOM of the integrated candidate 7083387.",
+  "worldMenu": {
+    "role": "button",
+    "name": "World menu"
+  },
+  "studioMenu": {
+    "role": "menu",
+    "name": "Studio actions"
+  },
+  "menuHome": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Home"
+    }
+  },
+  "menuMyWorlds": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^My Worlds"
+    }
+  },
+  "menuMyClass": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^My Class"
+    }
+  },
+  "menuImport": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Import"
+    }
+  },
+  "saveStatus": {
+    "css": "[role=\"status\"][data-kind]",
+    "_note": "SaveStatus primitive: role=status + data-kind=local|cloud|shared; its accessible name is the human label/detail, so it is matched by attribute."
+  },
+  "settings": {
+    "role": "button",
+    "name": "Settings"
+  },
+  "settingsDialog": {
+    "role": "dialog",
+    "name": "Settings"
+  },
+  "scene": {
+    "role": "button",
+    "name": "Scene"
+  },
+  "character": {
+    "role": "button",
+    "name": "Character"
+  },
+  "sceneDialog": {
+    "role": "dialog",
+    "name": "Scene & character"
+  },
+  "sceneTab": {
+    "role": "tab",
+    "name": "Scene"
+  },
+  "characterTab": {
+    "role": "tab",
+    "name": "Character"
+  },
+  "applySheet": {
+    "role": "button",
+    "name": "Apply"
+  },
+  "exploreMode": {
+    "role": "button",
+    "name": {
+      "regex": "^Explore( mode)?$"
+    }
+  },
+  "backToBuilding": {
+    "role": "button",
+    "name": "Back to building"
+  },
+  "respawn": {
+    "role": "button",
+    "name": "Respawn at a safe spot"
+  },
+  "recenter": {
+    "role": "button",
+    "name": "Recenter camera"
+  },
+  "buildTogether": {
+    "role": "button",
+    "name": "Build together"
+  },
+  "openBrickDrawer": {
+    "role": "button",
+    "name": "Open brick drawer"
+  },
+  "brickDrawer": {
+    "role": "complementary",
+    "name": "Brick drawer"
+  },
+  "brickDrawerSheet": {
+    "role": "dialog",
+    "name": "Bricks"
+  },
+  "createBrick": {
+    "role": "button",
+    "name": "Create a brick"
+  },
+  "createBrickDialog": {
+    "role": "dialog",
+    "name": "Create a brick"
+  },
+  "anyColor": {
+    "role": "button",
+    "name": "Choose any brick color"
+  },
+  "colorDialog": {
+    "role": "dialog",
+    "name": "Choose any color"
+  },
+  "placeBrick": {
+    "role": "button",
+    "name": "Place brick"
+  },
+  "quickStart": {
+    "role": "dialog",
+    "name": "Build something you can explore"
+  },
+  "dismissQuickStart": {
+    "role": "button",
+    "name": "Dismiss quick start"
+  },
+  "startBuilding": {
+    "role": "link",
+    "name": "Start building"
+  },
+  "continueBuilding": {
+    "role": "link",
+    "name": "Continue building"
+  },
+  "builderName": {
+    "label": "Your name"
+  },
+  "roomName": {
+    "label": "World name"
+  },
+  "createRoom": {
+    "role": "button",
+    "name": "Create shared world"
+  },
+  "liveBlockedHeading": {
+    "role": "heading",
+    "name": {
+      "regex": "Cannot open this world|Cannot reach this room|This room is closed|This world needs a class sign-in"
+    }
+  },
+  "publishedTitle": {
+    "role": "region",
+    "name": "Published world"
+  },
+  "remix": {
+    "role": "button",
+    "name": {
+      "regex": "^(Make a copy|Save a copy of this world as your guest build)$"
+    },
+    "_note": "Wide layout says \"Make a copy\"; the compact (<= 512 px) bar uses the long aria-label. Reported as a naming inconsistency."
+  },
+  "remixConfirm": {
+    "role": "dialog",
+    "name": "Replace your guest draft?"
+  },
+  "remixCancel": {
+    "role": "button",
+    "name": "Cancel"
+  },
+  "graphicsPaused": {
+    "role": "alert",
+    "name": "Graphics paused"
+  },
+  "downloadBuild": {
+    "role": "button",
+    "name": "Download my build"
+  },
+  "importFile": {
+    "label": "Choose Brickgineers project file"
+  },
+  "studioMessage": {
+    "role": "status",
+    "name": "Studio message"
+  },
+  "classroomDialog": {
+    "role": "dialog",
+    "name": {
+      "regex": "Join your class|Welcome back|Teacher sign in|My Worlds|My Class|Choose a new password"
+    }
+  },
+  "classroomJoin": {
+    "role": "radio",
+    "name": "Join a class",
+    "_note": "SegmentedControl \"Sign in as\": Student / Join a class / Teacher (aria-checked)."
+  },
+  "classroomStudentSignIn": {
+    "role": "radio",
+    "name": "Student"
+  },
+  "classroomTeacherSignIn": {
+    "role": "radio",
+    "name": "Teacher"
+  },
+  "closeClassroom": {
+    "role": "button",
+    "name": "Close and keep building"
+  },
+  "notFoundHeading": {
+    "role": "heading",
+    "name": "We couldn't find that page"
+  },
+  "showBrickProperties": {
+    "role": "button",
+    "name": "Show brick properties"
+  },
+  "enrollmentCode": {
+    "label": "Enrollment code"
+  },
+  "signInCode": {
+    "label": "Class sign-in code"
+  },
+  "teacherEmail": {
+    "label": "Email"
+  },
+  "brandHome": {
+    "role": "link",
+    "name": "Brickgineers Home"
+  },
+  "people": {
+    "role": "button",
+    "name": {
+      "regex": "^People"
+    }
+  },
+  "joinRoom": {
+    "role": "button",
+    "name": "Join world"
+  },
+  "exportCopy": {
+    "role": "button",
+    "name": "Export copy"
+  },
+  "copyInvite": {
+    "role": "button",
+    "name": "Copy link"
+  },
+  "menuExport": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Download build"
+    }
+  },
+  "menuHelp": {
+    "role": "menuitem",
+    "name": {
+      "regex": "^Help"
+    }
+  },
+  "inviteLink": {
+    "role": "region",
+    "name": "Invite link",
+    "_note": "Inside the People panel (a dialog titled with the room name); replaces the pre-brand Share sheet."
+  },
+  "closeRoom": {
+    "role": "button",
+    "name": "Close room to new people"
+  },
+  "openRoom": {
+    "role": "button",
+    "name": "Open room to new people"
+  },
+  "closePeoplePanel": {
+    "role": "button",
+    "name": "Close people panel"
+  },
+  "teacherGoogle": {
+    "role": "button",
+    "name": "Continue with Google"
+  },
+  "useEmailPassword": {
+    "role": "button",
+    "name": "Use email and password"
+  }
+}

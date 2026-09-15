@@ -1,0 +1,145 @@
+{
+  "pip": {
+    "bytes": 115356,
+    "triangles": 2444,
+    "mesh_count": 20,
+    "material_count": 6,
+    "reimport_blender_bounds": [
+      [
+        -0.29548,
+        -0.17544,
+        -0.0
+      ],
+      [
+        0.29548,
+        0.23084,
+        1.0
+      ]
+    ],
+    "nodes": [
+      "Pip_Root",
+      "Pip_Arm_L",
+      "Pip_Arm_L_mesh",
+      "Pip_Hand_L",
+      "Pip_Arm_R",
+      "Pip_Arm_R_mesh",
+      "Pip_Hand_R",
+      "Pip_Backpack",
+      "Pip_Body",
+      "Pip_ChargeBar",
+      "Pip_ChargeBar.001",
+      "Pip_ChargeBar.002",
+      "Pip_ChestPanel",
+      "Pip_Head",
+      "Pip_Antenna",
+      "Pip_Beacon",
+      "Pip_Eye",
+      "Pip_Eye.001",
+      "Pip_Helmet",
+      "Pip_Visor",
+      "Pip_Leg_L",
+      "Pip_Boot_L",
+      "Pip_Leg_L_mesh",
+      "Pip_Leg_R",
+      "Pip_Boot_R",
+      "Pip_Leg_R_mesh"
+    ]
+  },
+  "fern": {
+    "bytes": 112340,
+    "triangles": 2824,
+    "mesh_count": 21,
+    "material_count": 6,
+    "reimport_blender_bounds": [
+      [
+        -0.27317,
+        -0.21951,
+        0.0
+      ],
+      [
+        0.27317,
+        0.25366,
+        1.0
+      ]
+    ],
+    "nodes": [
+      "Fern_Root",
+      "Fern_Arm_L",
+      "Fern_Arm_L_mesh",
+      "Fern_Hand_L",
+      "Fern_Arm_R",
+      "Fern_Arm_R_mesh",
+      "Fern_Hand_R",
+      "Fern_Coat",
+      "Fern_FieldPack",
+      "Fern_Head",
+      "Fern_Cap",
+      "Fern_CapBrim",
+      "Fern_CapEar",
+      "Fern_CapEar.001",
+      "Fern_Eye",
+      "Fern_Eye.001",
+      "Fern_Face",
+      "Fern_Nose",
+      "Fern_Leg_L",
+      "Fern_Boot_L",
+      "Fern_Leg_L_mesh",
+      "Fern_Leg_R",
+      "Fern_Boot_R",
+      "Fern_Leg_R_mesh",
+      "Fern_Satchel",
+      "Fern_Scarf",
+      "Fern_ScarfTail"
+    ]
+  },
+  "nova": {
+    "bytes": 139504,
+    "triangles": 5260,
+    "mesh_count": 24,
+    "material_count": 7,
+    "reimport_blender_bounds": [
+      [
+        -0.30457,
+        -0.20423,
+        0.0
+      ],
+      [
+        0.30457,
+        0.21755,
+        1.0
+      ]
+    ],
+    "nodes": [
+      "Nova_Root",
+      "Nova_Arm_L",
+      "Nova_ArmMesh_L",
+      "Nova_Paw_L",
+      "Nova_Arm_R",
+      "Nova_ArmMesh_R",
+      "Nova_Paw_R",
+      "Nova_Belly",
+      "Nova_Body",
+      "Nova_Head",
+      "Nova_Ear_L",
+      "Nova_Ear_R",
+      "Nova_EarTip_L",
+      "Nova_EarTip_R",
+      "Nova_EyeShine_L",
+      "Nova_EyeShine_R",
+      "Nova_EyeWhite_L",
+      "Nova_EyeWhite_R",
+      "Nova_Freckle",
+      "Nova_Freckle.001",
+      "Nova_Freckle.002",
+      "Nova_HeadMesh",
+      "Nova_Mouth",
+      "Nova_Pupil_L",
+      "Nova_Pupil_R",
+      "Nova_Leg_L",
+      "Nova_Foot_L",
+      "Nova_Leg_R",
+      "Nova_Foot_R",
+      "Nova_StarPack"
+    ]
+  }
+}

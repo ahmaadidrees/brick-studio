@@ -40,14 +40,16 @@ beforeEach(() => {
   cloud.status = 'saved'
   cloud.error = ''
 })
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/') })
 
 describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
     render(<BrickStudioApp />)
-    expect(screen.getByRole('status', { name: 'Save status: This browser only' })).toBeInTheDocument()
-    expect(screen.queryByText('Saved to account')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'My Worlds' })).toHaveTextContent('My Worlds')
+    // The header uses the shared SaveStatus primitive fed from the real enum; the chip carries its source.
+    expect(screen.getByText('This browser only').closest('[role="status"]')).toHaveAttribute('data-kind', 'local')
+    expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
+    expect(screen.getByRole('menuitem', { name: /My Worlds/ })).toHaveTextContent('My Worlds')
   })
 
   it('keeps My Worlds navigable while a named cloud world moves through pending, saving, error and saved states', () => {
@@ -56,21 +58,22 @@ describe('studio navigation and save context', () => {
     const view = render(<BrickStudioApp />)
     expect(screen.getByText('My mountain castle')).toHaveAttribute('title', 'My mountain castle')
 
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const states: [CloudSaveStatus, string][] = [
       ['pending', 'Waiting to save…'],
-      ['saving', 'Saving to account…'],
+      ['saving', 'Saving to your account…'],
       ['error', 'Save needs attention'],
-      ['saved', 'Saved to account'],
+      ['saved', 'Saved to your account'],
     ]
     for (const [status, label] of states) {
       cloud.status = status
       view.rerender(<BrickStudioApp />)
-      const navigation = screen.getByRole('button', { name: 'My Worlds' })
-      expect(navigation).toHaveTextContent(/^My Worlds$/)
+      const navigation = screen.getByRole('menuitem', { name: /My Worlds/ })
+      expect(navigation).toHaveTextContent(/^My Worlds/)
       expect(navigation).toBeEnabled()
-      expect(screen.getByRole('status', { name: `Save status: ${label}` })).toBeInTheDocument()
+      expect(screen.getByText(label).closest('[role="status"]')).toHaveAttribute('data-kind', 'cloud')
     }
-    fireEvent.click(screen.getByRole('button', { name: 'My Worlds' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /My Worlds/ }))
     expect(screen.getByRole('dialog', { name: 'Classroom worlds' })).toBeInTheDocument()
   })
 
@@ -78,7 +81,7 @@ describe('studio navigation and save context', () => {
     render(<BrickStudioApp />)
     const before = useBrickStore.getState().getDocumentSnapshot()
     fireEvent.click(screen.getByRole('button', { name: 'Start building' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Customize scene & character' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Scene' }))
     const picker = screen.getByRole('dialog', { name: 'Scene & character' })
     expect(picker).toBeInTheDocument()
     fireEvent.keyDown(picker, { key: 'Enter' })
@@ -91,23 +94,45 @@ describe('studio navigation and save context', () => {
 
   it('keeps My Worlds and My Class at the start of the compact menu', () => {
     render(<BrickStudioApp />)
-    fireEvent.click(screen.getByRole('button', { name: 'More studio actions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     const menu = screen.getByRole('menu', { name: 'Studio actions' })
     const entries = within(menu).getAllByRole('menuitem')
-    expect(entries[0]).toHaveTextContent('My Worlds')
-    expect(entries[1]).toHaveTextContent('My Class')
-    fireEvent.click(entries[1])
+    expect(entries[0]).toHaveTextContent('Home')
+    expect(entries[1]).toHaveTextContent('My Worlds')
+    expect(entries[2]).toHaveTextContent('My Class')
+    fireEvent.click(entries[2])
     expect(screen.getByRole('dialog', { name: 'Classroom class' })).toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['worlds', 'Classroom worlds'],
+    ['join', 'Classroom join'],
+    ['signin', 'Classroom signin'],
+    ['teacher', 'Classroom teacher'],
+  ])('opens the classroom panel for /build?classroom=%s and consumes the param', (intent, dialog) => {
+    window.history.replaceState(null, '', `/build?classroom=${intent}&utm_source=poster#top`)
+    render(<BrickStudioApp />)
+    expect(screen.getByRole('dialog', { name: dialog })).toBeInTheDocument()
+    expect(window.location.search).toBe('?utm_source=poster')
+    expect(window.location.hash).toBe('#top')
+  })
+
+  it('opens no panel for /build?classroom=bogus and still strips the param', () => {
+    window.history.replaceState(null, '', '/build?classroom=bogus&utm_source=poster')
+    render(<BrickStudioApp />)
+    expect(screen.queryByRole('dialog', { name: /^Classroom/ })).not.toBeInTheDocument()
+    expect(window.location.pathname).toBe('/build')
+    expect(window.location.search).toBe('?utm_source=poster')
   })
 
   it('does not report an account save for a connected or offline shared world', () => {
     const policy = { connection: 'online' as const, isOwner: true, onRequestMode: vi.fn() }
     const view = render(<BrickStudioApp livePolicy={policy} />)
-    expect(screen.getByRole('status', { name: 'Save status: Shared world' })).toBeInTheDocument()
-    expect(screen.queryByText('Saved to account')).not.toBeInTheDocument()
+    expect(screen.getByText('Shared world').closest('[role="status"]')).toHaveAttribute('data-kind', 'live')
+    expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     view.rerender(<BrickStudioApp livePolicy={{ ...policy, connection: 'offline' }} />)
-    expect(screen.getByRole('status', { name: 'Save status: Offline · edits paused' })).toBeInTheDocument()
+    expect(screen.getByText('Offline · edits paused').closest('[role="status"]')).toHaveAttribute('data-tone', 'offline')
     expect(screen.getByRole('button', { name: 'Explore mode' })).toBeDisabled()
   })
 })

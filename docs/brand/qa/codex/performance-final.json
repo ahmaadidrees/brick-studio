@@ -1,0 +1,252 @@
+{
+  "timestamp": "2026-09-15T01:21:44.687Z",
+  "origin": "http://127.0.0.1:5190",
+  "hostBefore": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      4.83,
+      5.79,
+      5.86
+    ],
+    "freeMemoryMB": 38646,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "scenes": [
+    {
+      "environmentId": "toy-room",
+      "spawn": {
+        "mode": "explore",
+        "status": "ready",
+        "position": {
+          "x": 0,
+          "y": 0.39,
+          "z": 5
+        },
+        "metadata": {
+          "plateSize": 128,
+          "environmentId": "toy-room",
+          "customParts": [
+            {
+              "id": "custom_perf_max",
+              "name": "Maximum",
+              "template": "solid",
+              "width": 64,
+              "depth": 64,
+              "height": 192,
+              "studs": "full"
+            }
+          ]
+        }
+      },
+      "frames": {
+        "p50": 16.699999999999818,
+        "p95": 16.700000000000728,
+        "max": 16.800000000000182
+      },
+      "render": {
+        "render": {
+          "frame": 1590,
+          "calls": 76,
+          "triangles": 922954,
+          "points": 110,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 70,
+          "textures": 14
+        },
+        "renderer": "WebKit WebGL"
+      },
+      "afterTravel": {
+        "mode": "explore",
+        "status": "ready",
+        "position": {
+          "x": 64.06395721435547,
+          "y": 0.15075565874576569,
+          "z": 5.005887985229492
+        }
+      },
+      "returnLeg": {
+        "status": "ready",
+        "position": {
+          "x": 29.664859771728516,
+          "y": 0.3814451992511749,
+          "z": 15.291191101074219
+        }
+      },
+      "errors": []
+    },
+    {
+      "environmentId": "sky-island",
+      "spawn": {
+        "mode": "explore",
+        "status": "ready",
+        "position": {
+          "x": 0,
+          "y": 0.39,
+          "z": 5
+        },
+        "metadata": {
+          "plateSize": 128,
+          "environmentId": "sky-island",
+          "customParts": [
+            {
+              "id": "custom_perf_max",
+              "name": "Maximum",
+              "template": "solid",
+              "width": 64,
+              "depth": 64,
+              "height": 192,
+              "studs": "full"
+            }
+          ]
+        }
+      },
+      "frames": {
+        "p50": 16.700000000000728,
+        "p95": 16.700000000000728,
+        "max": 16.80000000000291
+      },
+      "render": {
+        "render": {
+          "frame": 7918,
+          "calls": 42,
+          "triangles": 281240,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 43,
+          "textures": 16
+        },
+        "renderer": "WebKit WebGL"
+      },
+      "afterTravel": {
+        "mode": "explore",
+        "status": "ready",
+        "position": {
+          "x": 47.16322708129883,
+          "y": 0.205418661236763,
+          "z": 3.423973321914673
+        }
+      },
+      "returnLeg": {
+        "status": "ready",
+        "position": {
+          "x": 36.80029296875,
+          "y": 0.38232511281967163,
+          "z": 13.811553001403809
+        }
+      },
+      "errors": []
+    },
+    {
+      "environmentId": "brick-valley",
+      "spawn": {
+        "mode": "explore",
+        "status": "ready",
+        "position": {
+          "x": 0,
+          "y": 0.39,
+          "z": 5
+        },
+        "metadata": {
+          "plateSize": 128,
+          "environmentId": "brick-valley",
+          "customParts": [
+            {
+              "id": "custom_perf_max",
+              "name": "Maximum",
+              "template": "solid",
+              "width": 64,
+              "depth": 64,
+              "height": 192,
+              "studs": "full"
+            }
+          ]
+        }
+      },
+      "frames": {
+        "p50": 16.69999999999709,
+        "p95": 16.799999999995634,
+        "max": 16.80000000000291
+      },
+      "render": {
+        "render": {
+          "frame": 9304,
+          "calls": 43,
+          "triangles": 1013958,
+          "points": 0,
+          "lines": 0
+        },
+        "memory": {
+          "geometries": 40,
+          "textures": 18
+        },
+        "renderer": "WebKit WebGL"
+      },
+      "afterTravel": {
+        "mode": "explore",
+        "status": "ready",
+        "position": {
+          "x": 63.79999923706055,
+          "y": 0.07844547182321548,
+          "z": 4.995007038116455
+        }
+      },
+      "returnLeg": {
+        "status": "ready",
+        "position": {
+          "x": 53.444496154785156,
+          "y": 0.08876053243875504,
+          "z": 15.443489074707031
+        }
+      },
+      "errors": []
+    }
+  ],
+  "geometry": [
+    {
+      "studs": "none",
+      "geometryMs": 0,
+      "triangles": 12,
+      "bytes": 840,
+      "validationMs": 0.7999999821186066,
+      "valid": true
+    },
+    {
+      "studs": "auto",
+      "geometryMs": 42.900000005960464,
+      "triangles": 131084,
+      "bytes": 8389520,
+      "validationMs": 0.5999999940395355,
+      "valid": true
+    },
+    {
+      "studs": "full",
+      "geometryMs": 33.5,
+      "triangles": 131084,
+      "bytes": 8389520,
+      "validationMs": 0.30000001192092896,
+      "valid": true
+    }
+  ],
+  "hostAfter": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      5.69,
+      5.83,
+      5.87
+    ],
+    "freeMemoryMB": 37441,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  }
+}

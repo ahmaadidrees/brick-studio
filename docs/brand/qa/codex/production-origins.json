@@ -1,0 +1,26 @@
+[
+  {
+    "origin": "https://brickgineers.com",
+    "headers": "HTTP/2 204 \ndate: Tue, 15 Sep 2026 01:12:02 GMT\naccess-control-allow-origin: https://brickgineers.com\ncache-control: no-store\nvary: Origin\naccess-control-allow-headers: content-type, authorization\naccess-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=G7zu8beJMbon8mtFkRAvJsqZoZ2ylp2stUuZIeQylaSU6Fo%2FfIA%2FptB7zSk0Y2ghVKKwHdmGroNiR20DUcrKnj1BT9JYCGJNfw%2BG1dnSbRj8PTvOeUVpTzt5eC4vqvWAbXsjPa4dCOi61ahhIGJ1JmNG8yfXIuVIwYEIsASYvGvKa0AODM3qJcU5DlYWNVo%2B\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3c2c9e9c17ab5-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://www.brickgineers.com",
+    "headers": "HTTP/2 204 \ndate: Tue, 15 Sep 2026 01:12:03 GMT\naccess-control-allow-origin: https://www.brickgineers.com\ncache-control: no-store\nvary: Origin\naccess-control-allow-headers: content-type, authorization\naccess-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=D0ksH%2BYVrI1HySwHvQXnKdTdYZb9p07SpbRkTvtxoE0FepSBK%2B8%2BijnL1bHdZ5Arpl6ThqR9m5nrECh2eE18qqgqAMuhKecOcyvmLTLgxPH%2B34N%2B86v7gnU3zSL9aJsgJIXqTRotuDXXRwSCPWd1QwasNLyStbIlfTfGQrcBOxP5u4YWM6mivhdpYUwasGgm\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3c2ca9dfdd3d7-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://virtual-legos.vercel.app",
+    "headers": "HTTP/2 204 \ndate: Tue, 15 Sep 2026 01:12:03 GMT\naccess-control-allow-origin: https://virtual-legos.vercel.app\ncache-control: no-store\nvary: Origin\naccess-control-allow-headers: content-type, authorization\naccess-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=k2iF8ujC2eS%2Bz6c11M7pfVD%2BeYe9AgLB%2FvmrMU0x59kt1ge4JReBfKaHI9c5uhYZ4J4%2FAsV%2FRi1vY%2FwFYp0dE6YR4CdrnQbn9Tq8CzmPjheGzj960KXDYCxc8n3rDkyI%2FjYfsDBICfvu8dl9NU6chasO4tt5qdPN6FnaM9oSyi%2Fav6aT0BIn24Kdnj9RaA%2B0\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3c2cc0bc9cee9-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://brickgineers.com.evil.example",
+    "headers": "HTTP/2 403 \ndate: Tue, 15 Sep 2026 01:12:03 GMT\ncontent-type: application/json\ncontent-length: 29\ncache-control: no-store\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=L%2FgqtG7N9DWu00kWuFZ1eH20tg60pDhPnDSJjWxQWcXhEtzhLmMNwybyR4GfIhmA0QKEO%2BFd8EuU0B7GaxPGbQ5tTEbH1Evn5MHuYRNEdOWCSFUpOQbb2KJrrZ9ITasJFfAl4YZz8G%2FSU7ArojuzK%2F%2FqOL2CLMNzsu%2BSVkcJcjb%2BqF8jUDJpcHSb7dB1s70n\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3c2ccfb69a364-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "http://brickgineers.com",
+    "headers": "HTTP/2 403 \ndate: Tue, 15 Sep 2026 01:12:03 GMT\ncontent-type: application/json\ncontent-length: 29\ncache-control: no-store\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=l7a2W10ikdm3ZQ9thCi2igGT0t1j5hlfJ3tQDQ0FKdxfxnWwC%2BVQARJg9rONhYeg5SAiQJrfcLNFJcLKVvahR7wnVJlWnlx8YBnjDIMXekvASdqc7D3UziYaVyYh4XgnycqJX55DKrBQRkNb5fWQXqO8w%2FDbUayzOIWb7Kahn7xqGCRSVMgVEtNgvV661nFd\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3c2cdaeb57851-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  },
+  {
+    "origin": "https://brickgineers.com:8443",
+    "headers": "HTTP/2 403 \ndate: Tue, 15 Sep 2026 01:12:03 GMT\ncontent-type: application/json\ncontent-length: 29\ncache-control: no-store\nreport-to: {\"group\":\"cf-nel\",\"max_age\":604800,\"endpoints\":[{\"url\":\"https://a.nel.cloudflare.com/report/v4?s=QUzAgF2F1FQ3pXInEAdEn1IqiVllIeqhTgFGHiBbzWr0paBetgUF1w4d8AJe7ilXAGWBFzOd%2BLnI2J3sNkJXn9j5abeXqcY7QeqWUeLj0xK%2BPKH6KLxKXvM8VA8qzU%2BeHJQI1wbq%2Bauw7G5DKc1J79%2FbrvfVgdq2HddEZf%2BuVjmDaWIf1aaSBIBSH9A8pF1g\"}]}\nnel: {\"report_to\":\"cf-nel\",\"success_fraction\":0.0,\"max_age\":604800}\nserver: cloudflare\ncf-ray: a3b3c2cf3ad98e6a-SJC\nalt-svc: h3=\":443\"; ma=86400"
+  }
+]

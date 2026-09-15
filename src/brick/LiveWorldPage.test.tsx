@@ -18,6 +18,9 @@ function client() { return new ClassroomClient('', vi.fn(async () => new Respons
 it('requires account sign-in before connecting to a protected classroom world', async () => {
   const connectRoom = vi.fn(); const fetchWorldSummary = vi.fn(async () => { throw Object.assign(new Error('Sign in required'), { status: 401 }) });
   render(<LiveWorldPage classroomClient={client()} initialLocation={location} connectRoom={connectRoom} fetchWorldSummary={fetchWorldSummary} />)
+  // Signed-out visitors get a gate first (the id may be a classroom world or unknown), then the sign-in panel.
+  expect(await screen.findByText('This world needs a class sign-in')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Sign in to my class' }))
   expect(await screen.findByText('Keep building as a guest')).toBeInTheDocument()
   expect(connectRoom).not.toHaveBeenCalled(); expect(fetchWorldSummary).toHaveBeenCalledOnce()
 })
@@ -78,8 +81,8 @@ it('creates a live room without an account and gives the creator the owner capab
   const createWorld = vi.fn(async () => ({ roomId, ownerToken: 'a'.repeat(64) }));
   const connectRoom = guestConnector();
   render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: '/live/new', hash: '' }} createWorld={createWorld} connectRoom={connectRoom} renderWorld={view => <div>{view.selfProfile.displayName}</div>} />);
-  fireEvent.change(screen.getByLabelText('Your builder name'), { target: { value: 'Guest Builder' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Create my live room' }));
+  fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Guest Builder' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create shared world' }));
   await screen.findByText('Guest Builder');
   expect(createWorld).toHaveBeenCalledWith(expect.objectContaining({ profile: expect.objectContaining({ displayName: 'Guest Builder' }) }));
   expect(connectRoom).toHaveBeenCalledWith(expect.objectContaining({ roomId, ownerToken: 'a'.repeat(64) }));
@@ -89,8 +92,8 @@ it('lets a signed-out guest join a public room with a builder name', async () =>
   const connectRoom = guestConnector();
   const summary = vi.fn(async () => ({ roomId, mode: 'build' as const, title: 'Guest world', locked: false, playerCount: 1 }));
   render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} connectRoom={connectRoom} fetchWorldSummary={summary} renderWorld={view => <div>{view.selfProfile.displayName}</div>} />);
-  fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Friend' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Join the room' }));
+  fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Friend' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Join world' }));
   await screen.findByText('Friend');
   expect(connectRoom).toHaveBeenCalledWith(expect.objectContaining({ roomId, profile: expect.objectContaining({ displayName: 'Friend' }) }));
   expect((connectRoom as ReturnType<typeof vi.fn>).mock.calls[0][0].ownerToken).toBeUndefined();
@@ -100,8 +103,10 @@ it('lets a signed-out guest join a public room with a builder name', async () =>
 it('does not open a socket or reveal a guest gate when classroom preflight requires sign-in', async () => {
   const connectRoom = guestConnector();
   render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: `/live/${roomId}`, hash: '#owner=' + 'b'.repeat(64) }} connectRoom={connectRoom} fetchWorldSummary={async () => { throw Object.assign(new Error('Sign in required'), { status: 401 }) }} />);
+  // A signed-out visitor sees a calm gate first: the link may be a classroom world or a room that no longer exists.
+  fireEvent.click(await screen.findByRole('button', { name: 'Sign in to my class' }));
   await screen.findByText('Keep building as a guest');
-  expect(screen.queryByLabelText('Your builder name')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Your name')).not.toBeInTheDocument();
   expect(connectRoom).not.toHaveBeenCalled();
 });
 
@@ -113,8 +118,8 @@ it('creates from the prepared document without replacing the separately saved gu
   saveLiveWorldSeed(seed);
   const createWorld = vi.fn(async () => ({ roomId, ownerToken: 'c'.repeat(64) }));
   render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: '/live/new', hash: '' }} createWorld={createWorld} connectRoom={guestConnector()} renderWorld={view => <div>{view.selfProfile.displayName}</div>} />);
-  fireEvent.change(screen.getByLabelText('Your builder name'), { target: { value: 'Scene Builder' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Create my live room' }));
+  fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Scene Builder' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Create shared world' }));
   await screen.findByText('Scene Builder');
   expect(createWorld).toHaveBeenCalledWith(expect.objectContaining({ document: seed }));
   expect(loadLocalBrickStudioProject(window.localStorage)).toEqual({ ok: true, document: localDocument });
@@ -129,9 +134,9 @@ it('exports a guest room snapshot without overwriting the separately saved local
     render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }}
       connectRoom={guestConnector()} fetchWorldSummary={async () => ({ roomId, mode: 'build', title: 'Guest world', locked: false, playerCount: 1 })}
       renderWorld={view => <>{view.overlay}</>} />);
-    fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Friend' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Join the room' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Share' }));
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Friend' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join world' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^People, \d+ here$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Export copy' }));
     await waitFor(() => expect(download).toHaveBeenCalledWith(createBrickStudioDocument([])));
     expect(loadLocalBrickStudioProject(window.localStorage)).toEqual({ ok: true, document: localDocument });

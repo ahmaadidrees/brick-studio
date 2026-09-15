@@ -6,16 +6,24 @@ import {
 } from '../../characterController'
 import {
   BOOK_STACK_HEIGHT,
+  CLOCK,
   DESK_GUARD_HEIGHT,
+  DESK_HALF_X,
   DESK_INNER_HALF_X,
   DESK_INNER_HALF_Z,
   DESK_RIM_HEIGHT,
   DESK_TOP_Y,
+  EXPLORE_PLATE_COLOR,
+  LAMP_SHADE,
   PLATE_THICKNESS,
+  POSTER,
   RAMP_ANGLE,
   RAMP_LENGTH,
   RAMP_THICKNESS,
+  ROOM,
   TOY_PROPS,
+  TOY_ROOM_PALETTE,
+  WINDOW,
   extentsOverlap,
   plateExtent,
   plateGap,
@@ -136,5 +144,84 @@ describe('toy room perf ladder', () => {
     expect(calm.animateDust).toBe(false)
     expect(calm.ambientMotion).toBe(false)
     expect(calm.contactShadowResolution).toBe(toyRoomFeatures(false, false).contactShadowResolution)
+  })
+})
+
+describe('toy room direction I dressing', () => {
+  const HEX = /^#[0-9a-f]{6}$/i
+  const brandColors = new Set(Object.values(TOY_ROOM_PALETTE).map((color) => color.toLowerCase()))
+
+  it('keeps every palette entry and the plate colour a six-digit hex', () => {
+    for (const [name, color] of Object.entries(TOY_ROOM_PALETTE)) {
+      expect(`${name}:${HEX.test(color)}`).toBe(`${name}:true`)
+    }
+    expect(EXPLORE_PLATE_COLOR).toMatch(HEX)
+  })
+
+  it('carries the four brand tokens from the boards unchanged', () => {
+    expect(TOY_ROOM_PALETTE.cornflower.toLowerCase()).toBe('#5888da')
+    expect(TOY_ROOM_PALETTE.coral.toLowerCase()).toBe('#f17861')
+    expect(TOY_ROOM_PALETTE.butter.toLowerCase()).toBe('#f3ca74')
+    expect(TOY_ROOM_PALETTE.ink.toLowerCase()).toBe('#263c51')
+  })
+
+  it('uses a warm-white plate and a cool blue room', () => {
+    const channels = (color: string) => [1, 3, 5].map((offset) => parseInt(color.slice(offset, offset + 2), 16))
+    const [plateRed, , plateBlue] = channels(EXPLORE_PLATE_COLOR)
+    expect(plateRed).toBeGreaterThan(plateBlue)
+    for (const surface of [TOY_ROOM_PALETTE.wall, TOY_ROOM_PALETTE.fog]) {
+      const [red, , blue] = channels(surface)
+      expect(blue).toBeGreaterThan(red)
+    }
+  })
+
+  it('paints every coloured prop in a brand colour', () => {
+    for (const prop of TOY_PROPS) {
+      if (!prop.color) continue
+      expect(`${prop.id}:${brandColors.has(prop.color.toLowerCase())}`).toBe(`${prop.id}:true`)
+    }
+  })
+
+  it('stacks the books in the board order: navy, coral, butter, cornflower', () => {
+    const spines = TOY_PROPS.filter((prop) => prop.kind === 'book').map((prop) => prop.color)
+    expect(spines).toEqual([
+      TOY_ROOM_PALETTE.navy,
+      TOY_ROOM_PALETTE.coral,
+      TOY_ROOM_PALETTE.butter,
+      TOY_ROOM_PALETTE.cornflower,
+    ])
+  })
+
+  it('swaps the coffee for a pencil cup and a coaster', () => {
+    const kinds = new Set(TOY_PROPS.map((prop) => prop.kind))
+    expect(kinds.has('coaster')).toBe(true)
+    expect([...kinds]).not.toContain('coffee-ring')
+    const mug = TOY_PROPS.find((prop) => prop.id === 'mug')
+    const coaster = TOY_PROPS.find((prop) => prop.id === 'coaster')
+    expect(mug?.group).toBe('pencil-cup')
+    expect(coaster?.group).toBe('pencil-cup')
+  })
+
+  it('hangs the clock and poster on the back wall, above the lamp and clear of the window', () => {
+    for (const [name, item, halfWidth, halfHeight] of [
+      ['clock', CLOCK, CLOCK.radius, CLOCK.radius],
+      ['poster', POSTER, POSTER.halfWidth, POSTER.halfHeight],
+    ] as const) {
+      // Just proud of the wall plane, never inside the desk footprint.
+      expect(`${name}:${item.z > ROOM.backWallZ && item.z < ROOM.backWallZ + 2}`).toBe(`${name}:true`)
+      // Bottom edge higher than the lamp head so nothing on the wall competes with the key light.
+      expect(item.y - halfHeight).toBeGreaterThan(LAMP_SHADE.y + 7)
+      expect(item.y + halfHeight).toBeLessThan(ROOM.ceilingY)
+      // Inside the back wall, and clear of the window wall's corner.
+      expect(item.x - halfWidth).toBeGreaterThan(WINDOW.x + 4)
+      expect(item.x + halfWidth).toBeLessThan(DESK_HALF_X + 40)
+    }
+    // Clock and poster do not overlap each other.
+    expect(Math.abs(CLOCK.x - POSTER.x)).toBeGreaterThan(CLOCK.radius + POSTER.halfWidth)
+  })
+
+  it('keeps the dust ladder lighter than the pre-brand room', () => {
+    expect(toyRoomFeatures(false, false).dustCount).toBeLessThanOrEqual(110)
+    expect(toyRoomFeatures(true, false).dustCount).toBeLessThanOrEqual(40)
   })
 })

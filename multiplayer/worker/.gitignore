@@ -5,3 +5,6 @@ node_modules/
 # Local Worker secrets
 .dev.vars
 .dev.vars.*
+
+# Keep the example file with variable names only
+!.dev.vars.example

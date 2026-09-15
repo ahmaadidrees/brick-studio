@@ -19,6 +19,8 @@ vi.mock('./BrickStudioApp', () => ({
     return <>
       <div>Build tools</div>
       <output aria-label="Editor connection">{props.livePolicy?.connection}</output>
+      {/* Mirrors the real header's People entry (BrickStudioLivePolicy.onOpenPeople). */}
+      <button aria-label={`People, ${props.livePolicy?.peopleCount ?? 0} ${props.livePolicy?.connection === 'online' ? 'here' : 'last seen'}`} onClick={props.livePolicy?.onOpenPeople}>People</button>
       <output aria-label="Editor environment">{props.contentPolicy?.environmentId}</output>
       <button onClick={() => props.raceScene?.onLocalAvatarPose?.({
         position: [3, 4, 5], facingYaw: 1, horizontalSpeed: 2, grounded: false,
@@ -81,8 +83,8 @@ async function openWorld(guest = false, deliverPoseBeforeSubscription = false) {
     connectRoom={connectRoom}
     fetchWorldSummary={fetchWorldSummary} />)
   if (guest) {
-    fireEvent.change(await screen.findByLabelText('Your builder name'), { target: { value: 'Alex' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Join the room' }))
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Alex' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Join world' }))
   }
   await screen.findByText('Build tools')
   // The async account preflight can paint the editor before React installs its
@@ -137,7 +139,7 @@ it('still delivers reconnect, room admission, document changes and rejection not
   expect(screen.getByText('Reconnecting to the room')).toBeInTheDocument()
   act(() => room.emit({ connection: 'online', locked: true, mode: 'build' }))
   expect(screen.getByLabelText('Editor connection')).toHaveTextContent('online')
-  fireEvent.click(screen.getByRole('button', { name: 'Room' }))
+  fireEvent.click(screen.getByRole('button', { name: /^People, \d+ here$/ }))
   expect(screen.getByText('New people cannot join right now.')).toBeInTheDocument()
   act(() => room.emit({ document: createBrickStudioDocument([], { environmentId: 'brick-valley' }), revision: 2 }))
   expect(screen.getByLabelText('Editor environment')).toHaveTextContent('brick-valley')
@@ -165,7 +167,7 @@ it.each(['access_changed', 'classroom_auth_required'])('keeps the recovery draft
       notice: { seq: 1, code, message: 'Ask your teacher to restore your access.' } }))
     expect(screen.queryByText('Build tools')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Download recovery copy' }))
-    await waitFor(() => expect(download).toHaveBeenCalledWith(recoveryDocument, globalThis, 'brick-studio-recovery'))
+    await waitFor(() => expect(download).toHaveBeenCalledWith(recoveryDocument, globalThis, 'brickgineers-recovery'))
     const guardedUnload = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(guardedUnload)
     expect(guardedUnload.defaultPrevented).toBe(true)
@@ -199,7 +201,7 @@ it.each(['access_changed', 'classroom_auth_required'])('exports both the older r
       notice: { seq: 1, code, message: 'Ask your teacher to restore your access.' } }))
     expect(screen.queryByText('Build tools')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Download recovery copy' }))
-    await waitFor(() => expect(download).toHaveBeenCalledWith(recoveryDocument, globalThis, 'brick-studio-recovery'))
+    await waitFor(() => expect(download).toHaveBeenCalledWith(recoveryDocument, globalThis, 'brickgineers-recovery'))
     expect(beforeUnloadPrevented()).toBe(true)
     download.mockReturnValueOnce({ ok: false, error: { code: 'download', message: 'Current draft download failed' } })
     fireEvent.click(screen.getByRole('button', { name: 'Download current draft' }))
@@ -207,7 +209,7 @@ it.each(['access_changed', 'classroom_auth_required'])('exports both the older r
     expect(beforeUnloadPrevented()).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Download current draft' }))
     await screen.findByText('Current draft download started. The shared world has not confirmed these changes.')
-    expect(download).toHaveBeenLastCalledWith(currentDraft, globalThis, 'brick-studio-current-draft')
+    expect(download).toHaveBeenLastCalledWith(currentDraft, globalThis, 'brickgineers-current-draft')
     expect(beforeUnloadPrevented()).toBe(false)
     expect(screen.queryByRole('button', { name: 'I have my copy' })).not.toBeInTheDocument()
     act(() => room.emit({ document: createBrickStudioDocument([]), pendingOperations: 2 }))

@@ -1,3 +1,4 @@
+import type { CharacterAppearance } from '@brick-studio/core'
 import * as THREE from 'three'
 import {
   FACE_ATLAS_COLUMNS,
@@ -144,7 +145,7 @@ function drawFrame(cell: Cell, frame: number) {
  * Builds the 2x2 face atlas. `cellSize` drops on the compact renderer, which is
  * the only quality knob the face needs: the drawing is resolution independent.
  */
-export function createFaceTexture(cellSize = 128) {
+export function createFaceTexture(cellSize = 128, face: CharacterAppearance['face'] = 'friendly') {
   const canvas = document.createElement('canvas')
   canvas.width = cellSize * FACE_ATLAS_COLUMNS
   canvas.height = cellSize * FACE_ATLAS_ROWS
@@ -153,7 +154,15 @@ export function createFaceTexture(cellSize = 128) {
     for (const frame of [FACE_FRAME_OPEN, FACE_FRAME_BLINK, FACE_FRAME_GRIN, FACE_FRAME_GASP]) {
       const column = frame % FACE_ATLAS_COLUMNS
       const row = Math.floor(frame / FACE_ATLAS_COLUMNS)
-      drawFrame(makeCell(context, column, row, cellSize), frame)
+      const cell = makeCell(context, column, row, cellSize)
+      drawFrame(cell, frame)
+      if (face === 'freckles') {
+        for (const x of [0.15, 0.22, 0.28, 0.72, 0.78, 0.85]) ellipse(cell, x, 0.59 + (x % 0.03), 0.016, 0.016, BROW)
+      }
+      if (face === 'rosy') {
+        ellipse(cell, 0.16, 0.59, 0.09, 0.048, '#df8a7b')
+        ellipse(cell, 0.84, 0.59, 0.09, 0.048, '#df8a7b')
+      }
     }
   }
   const texture = new THREE.CanvasTexture(canvas)
