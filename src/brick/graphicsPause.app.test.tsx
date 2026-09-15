@@ -71,9 +71,7 @@ describe('editing while the graphics are paused', () => {
   it('parks the inspector delete button and undo while paused, even if the click still fires', () => {
     resetStore({ selectedIds: ['brick-a'], selectedId: 'brick-a' })
     render(<BrickStudioApp />)
-    // The desktop inspector starts collapsed; expand it, then grab the controls before
-    // pausing, because an inert subtree is excluded from role queries.
-    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
+    // Grab the visible selection action before pausing; inert subtrees leave role queries.
     const deleteButton = screen.getByRole('button', { name: 'Delete brick' })
     const inspector = deleteButton.closest('aside')
     expect(inspector).not.toBeNull()

@@ -81,6 +81,7 @@ import { saveLiveWorldSeed } from './live/liveWorldSeed'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY, saveLocalBrickStudioProject } from './documentPersistence'
 import './brick-studio.css'
 import './touch-layout.css'
+import './desktop-layout.css'
 import { installActiveWorldRecovery } from './activeWorldRecovery'
 
 // Lets AppErrorBoundary capture the open world (local, class, or live) from the
@@ -453,6 +454,7 @@ function EditingToolbar() {
 }
 
 type PartGridProps = {
+  denseCatalog?: boolean
   customParts: CustomPartDefinition[]
   onChoose?: () => void
   onCreatePart: () => void
@@ -479,7 +481,7 @@ function partCategory(part: { kind: string; id: string }, customIds: ReadonlySet
   return 'shapes'
 }
 
-function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPartHelp }: PartGridProps) {
+function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPartHelp, denseCatalog = false }: PartGridProps) {
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
   const [query, setQuery] = useState('')
@@ -498,6 +500,7 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
   }), [parts, category, customIds, trimmedQuery])
   return (
     <>
+      <div className="part-search-row">
       <div className="part-search">
         <Search size={16} aria-hidden="true" />
         <input
@@ -517,6 +520,8 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
         />
         {query && <button type="button" className="part-search-clear" aria-label="Clear search" onClick={() => setQuery('')}><X size={14} aria-hidden="true" /></button>}
       </div>
+      {denseCatalog && <select className="part-category-select" aria-label="Brick category" value={category} onChange={event => setCategory(event.target.value as PartCategory)}>{categories.map(entry => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select>}
+      </div>
       <button
         className="create-part-entry"
         type="button"
@@ -528,7 +533,7 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
         <span className="create-part-entry-icon"><Plus size={19} /></span>
         <span><strong>Create a brick</strong><small>{canCreatePart ? 'Choose its shape and size' : customPartHelp}</small></span>
       </button>
-      <div className="part-categories" role="tablist" aria-label="Brick categories">
+      {!denseCatalog && <div className="part-categories" role="tablist" aria-label="Brick categories">
         {categories.map((entry) => (
           <button
             key={entry.id}
@@ -539,7 +544,7 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
             onClick={() => setCategory(entry.id)}
           >{entry.label}</button>
         ))}
-      </div>
+      </div>}
       <div className="part-grid" aria-label="Brick shapes">
         {visibleParts.map((part) => (
           <button
@@ -579,7 +584,7 @@ function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse:
           onClick={onCollapse}
         ><PanelLeftClose size={18} /></button>
       </div>
-      <PartGrid {...gridProps} />
+      <PartGrid {...gridProps} denseCatalog />
       <section className="library-colors">
         <label><Palette size={15} aria-hidden="true" /> {selectionCount > 1 ? `Color all ${selectionCount}` : 'Color'}</label>
         <ColorPalette targetColor={targetColor} />
@@ -678,7 +683,7 @@ function ColorPalette({ targetColor }: ColorPaletteProps) {
   )
 }
 
-function TransformControls({ count, onResize, compact = false }: { count: number; onResize: () => void; compact?: boolean }) {
+function TransformControls({ count, onResize, compact = false, hideRotate = false }: { count: number; onResize: () => void; compact?: boolean; hideRotate?: boolean }) {
   const nudge = useBrickStore((state) => state.nudge)
   const rotate = useBrickStore((state) => state.rotate)
   const selectionLabel = count === 1 ? 'brick' : `${count} bricks`
@@ -690,106 +695,59 @@ function TransformControls({ count, onResize, compact = false }: { count: number
       <button type="button" aria-label={`Move ${selectionLabel} right one stud`} onClick={() => nudge(1, 0, 0)}><span aria-hidden="true">→</span><small>Right</small></button>
       <button type="button" aria-label={`Raise ${selectionLabel} one plate`} onClick={() => nudge(0, 1, 0)}><ChevronUp size={18} /><small>Raise</small></button>
       <button type="button" aria-label={`Lower ${selectionLabel} one plate`} onClick={() => nudge(0, -1, 0)}><ChevronDown size={18} /><small>Lower</small></button>
-      <button type="button" aria-label={`Rotate ${selectionLabel}`} onClick={rotate}><RotateCw size={18} /><small>Rotate</small></button>
+      {!hideRotate && <button type="button" aria-label={`Rotate ${selectionLabel}`} onClick={rotate}><RotateCw size={18} /><small>Rotate</small></button>}
       <button type="button" aria-label={`Resize ${selectionLabel}`} onClick={onResize}><Cuboid size={18} /><small>Resize</small></button>
     </div>
   )
 }
 
-/** Desktop-only. Compact layouts get TouchSelectionBar instead. */
+/** Desktop selection tools share the canvas edge; placement uses the existing strip. */
 function Inspector({ onResize }: { onResize: () => void }) {
-  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
-  const selectedIds = useBrickStore((state) => state.selectedIds)
-  const selectedId = useBrickStore((state) => state.selectedId)
-  const activeColor = useBrickStore((state) => state.activeColor)
-  const draft = useBrickStore((state) => state.draft)
-  const movingId = useBrickStore((state) => state.movingId)
-  const movingSelection = useBrickStore((state) => state.movingSelection)
-  const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
-  const bricks = useBrickStore((state) => state.bricks)
-  const rotate = useBrickStore((state) => state.rotate)
-  const startMove = useBrickStore((state) => state.startMove)
-  const duplicate = useBrickStore((state) => state.duplicate)
-  const copy = useBrickStore((state) => state.copy)
-  const paste = useBrickStore((state) => state.paste)
-  const placeDraft = useBrickStore((state) => state.placeDraft)
-  const deleteSelected = useBrickStore((state) => state.deleteSelected)
-  const requestView = useBrickStore((state) => state.requestView)
-  const [detailsExpanded, setDetailsExpanded] = useState(false)
-  const inspectorSheet = useRef<HTMLDivElement>(null)
-  const selected = draft || selectedIds.length > 1 ? undefined : bricks.find((brick) => brick.id === selectedId)
-  const moving = Boolean(movingId && draft)
-  const target = moving ? draft : selected ?? draft
-
-  useLayoutEffect(() => {
-    if (detailsExpanded && inspectorSheet.current) inspectorSheet.current.scrollTop = 0
-  }, [detailsExpanded])
-
-  if (selectedIds.length > 1 && !draft) {
-    return (
-      <aside inert={graphicsPaused} className="brick-inspector multi-selection-inspector" aria-label={`${selectedIds.length} bricks selected`}>
-        <div className="inspector-heading">
-          <span className="inspector-cube multi-selection-cube"><Layers3 size={19} /></span>
-          <div><span className="brick-eyebrow">Selection</span><h2>{selectedIds.length} bricks selected</h2></div>
-        </div>
-        <p>Drag a selected brick to move the whole group. Release to place; Esc cancels.</p>
-        <section className="inspector-transform-section"><label><Move size={15} /> Position & size</label><TransformControls count={selectedIds.length} onResize={onResize} /></section>
-        <div className="inspector-actions multi-selection-actions" role="group" aria-label="Selection editing actions">
-          <button aria-label="Move selected bricks" onClick={startMove}><Move size={18} /><span>Move</span></button>
-          <button aria-label="Focus selected bricks" onClick={() => requestView('selection')}><Focus size={18} /><span>Focus</span><kbd>F</kbd></button>
-          <button aria-label={`Copy ${selectedIds.length} selected bricks`} onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>
-          <button aria-label={`Paste copied bricks`} onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>
-          <button aria-label={`Duplicate ${selectedIds.length} selected bricks`} onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>
-          <button aria-label={`Delete ${selectedIds.length} selected bricks`} className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>
-        </div>
-        <section><label><Palette size={15} /> Color all {selectedIds.length}</label><ColorPalette targetColor={activeColor} /></section>
-      </aside>
-    )
-  }
-  if (!target) return null
-  const part = BRICK_PART_MAP[target.partId]
-  if (!part) return null
-
-  return (
-    <aside inert={graphicsPaused} className={`brick-inspector ${detailsExpanded ? 'details-expanded' : 'details-collapsed'}`} aria-label="Brick inspector">
-      <div className="inspector-toolbar">
-        <div className="inspector-heading"><span className="inspector-cube" style={{ background: target.color }}><Box size={19} /></span><div><span className="brick-eyebrow">{movingSelection?.duplicate ? 'Duplicating' : moving ? 'Moving' : selected ? 'Selected brick' : 'Placing'}</span><h2>{movingSelection && movingSelection.originals.length > 1 ? `${movingSelection.originals.length} bricks` : part.name}</h2></div></div>
-        <div className="inspector-quick-actions">
-          {draft && <button aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /></button>}
-          <button aria-label="Rotate brick" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={18} /></button>
-          {selected && <button aria-label="Move brick" onClick={startMove}><Move size={18} /></button>}
-          <button className="inspector-sheet-toggle" aria-controls="brick-inspector-properties" aria-expanded={detailsExpanded} aria-label={detailsExpanded ? 'Hide brick properties' : 'Show brick properties'} onClick={() => setDetailsExpanded((expanded) => !expanded)}><ChevronDown size={19} /></button>
-        </div>
+  const graphicsPaused = useBrickStore(state => state.graphicsPaused)
+  const bricks = useBrickStore(state => state.bricks)
+  const selectedIds = useBrickStore(state => state.selectedIds)
+  const draft = useBrickStore(state => state.draft)
+  const rotate = useBrickStore(state => state.rotate)
+  const duplicate = useBrickStore(state => state.duplicate)
+  const deleteSelected = useBrickStore(state => state.deleteSelected)
+  const copy = useBrickStore(state => state.copy)
+  const paste = useBrickStore(state => state.paste)
+  const startMove = useBrickStore(state => state.startMove)
+  const requestView = useBrickStore(state => state.requestView)
+  const setColor = useBrickStore(state => state.setActiveColor)
+  const [expanded, setExpanded] = useState(false)
+  const [colorOpen, setColorOpen] = useState(false)
+  const selected = bricks.find(brick => selectedIds.includes(brick.id))
+  const count = selectedIds.length
+  if (draft || !selected || !count) return null
+  const label = count === 1 ? 'brick' : `${count} selected bricks`
+  return <>
+    <aside inert={graphicsPaused} className="desktop-selection-panel" aria-label={count === 1 ? 'Brick inspector' : `${count} bricks selected`}>
+      <div className="desktop-selection-actions">
+        <strong className="desktop-selection-name">{count === 1 ? BRICK_PART_MAP[selected.partId]?.name : `${count} bricks selected`}</strong>
+        <button type="button" aria-label={count === 1 ? 'Recolor brick' : `Recolor ${count} selected bricks`} onClick={() => setColorOpen(true)}><Palette size={17} /><span>Color</span></button>
+        {count === 1 && <button type="button" aria-label="Rotate brick" onClick={rotate}><RotateCw size={17} /><span>Rotate</span></button>}
+        <button type="button" aria-label={`Duplicate ${label}`} onClick={duplicate}><Copy size={17} /><span>Duplicate</span></button>
+        <button type="button" aria-label={`Delete ${label}`} className="danger" onClick={deleteSelected}><Trash2 size={17} /><span>Delete</span></button>
+        <button type="button" className="desktop-adjust" aria-expanded={expanded} aria-controls="brick-inspector-properties" onClick={() => setExpanded(!expanded)}><SlidersHorizontal size={17} /><span>Adjust</span></button>
       </div>
-      <div
-        ref={inspectorSheet}
-        className="inspector-sheet"
-        id="brick-inspector-properties"
-        role="region"
-        aria-label="Brick properties and editing actions"
-        tabIndex={detailsExpanded ? 0 : -1}
-      >
-        <div className="inspector-actions" role="group" aria-label="Brick editing actions">
-          {draft && <button className="inspector-sheet-primary" aria-label={moving ? 'Place moved brick' : 'Place brick'} onClick={() => placeDraft()}><Check size={18} /><span>{moving ? 'Place move' : 'Place'}</span><kbd>Enter</kbd></button>}
-          <button className="inspector-sheet-primary" aria-label="Rotate brick" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={18} /><span>Rotate</span><kbd>R</kbd></button>
-          {selected && <button className="inspector-sheet-primary" aria-label="Move brick" onClick={startMove}><Move size={18} /><span>Move</span></button>}
-          {selected && <button aria-label="Duplicate brick" onClick={duplicate}><Copy size={18} /><span>Duplicate</span><kbd>⌘D</kbd></button>}
-          {selected && <button aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={18} /><span>Focus</span><kbd>F</kbd></button>}
-          {selected && <button aria-label="Copy brick" onClick={copy}><Clipboard size={18} /><span>Copy</span><kbd>⌘C</kbd></button>}
-          {!selected && <button aria-label="Paste brick" onClick={paste}><Clipboard size={18} /><span>Paste</span><kbd>⌘V</kbd></button>}
-          {selected && <button aria-label="Delete brick" className="danger" onClick={deleteSelected}><Trash2 size={18} /><span>Delete</span></button>}
+      {expanded && <div className="desktop-selection-details" id="brick-inspector-properties" role="region" aria-label="Brick properties and editing actions" tabIndex={0}>
+        <TransformControls count={count} onResize={onResize} hideRotate={count === 1} />
+        <div className="desktop-secondary-actions">
+          <button type="button" onClick={startMove} aria-label={count === 1 ? 'Move brick' : 'Move selected bricks'}>Move</button>
+          <button type="button" onClick={copy} aria-label={`Copy ${label}`}>Copy</button>
+          <button type="button" onClick={paste} aria-label="Paste copied bricks">Paste</button>
+          <button type="button" onClick={() => requestView('selection')} aria-label={count === 1 ? 'Focus selected brick' : 'Focus selected bricks'}>Focus</button>
         </div>
-        {draft && <button className="studio-button inspector-cancel" type="button" onClick={cancelInteraction}><X size={16} />Cancel placement</button>}
-        <p className="inspector-drag-hint">{draft ? 'Position the preview, then place. Esc cancels.' : 'Drag the selected brick to move it. Use arrows for precise steps.'}</p>
-        {(selected || moving) && <section className="inspector-transform-section"><label><Move size={15} /> Position & size</label><TransformControls count={1} onResize={onResize} /></section>}
-        <section><label><Palette size={15} /> Color</label><ColorPalette targetColor={target.color} /></section>
-        <div className="coordinates"><span>X <strong>{target.x}</strong></span><span>Y <strong>{target.y}</strong></span><span>Z <strong>{target.z}</strong></span></div>
-      </div>
+        {count === 1 && <div className="coordinates"><span>X <strong>{selected.x}</strong></span><span>Height <strong>{selected.y}</strong></span><span>Z <strong>{selected.z}</strong></span></div>}
+      </div>}
     </aside>
-  )
+    {colorOpen && <CustomColorPicker color={selected.color} onApply={setColor} onClose={() => setColorOpen(false)} />}
+  </>
 }
 
 function ViewControls() {
+  const preset = useBrickStore(state => state.viewRequest.preset)
   const requestView = useBrickStore((state) => state.requestView)
   const views: { id: ViewPreset; label: string }[] = [
     { id: 'top', label: 'Top' }, { id: 'front', label: 'Front' }, { id: 'right', label: 'Side' }, { id: 'perspective', label: '3D' },
@@ -797,7 +755,10 @@ function ViewControls() {
   return (
     <div className="view-controls" role="group" aria-label="Build camera views">
       <button type="button" className="view-home" onClick={() => requestView('home')} title="Frame the whole build (Home)" aria-label="Frame Build"><Home size={17} aria-hidden="true" /><span>Frame build</span></button>
-      {views.map((view) => <button type="button" key={view.id} onClick={() => requestView(view.id)} title={`${view.label} view`}>{view.label}</button>)}
+      <select className="camera-view-select" aria-label="Camera view" value={views.some(view => view.id === preset) ? preset : ''} onChange={event => requestView(event.target.value as ViewPreset)}>
+        <option value="" disabled>View</option>
+        {views.map(view => <option key={view.id} value={view.id}>{view.label}</option>)}
+      </select>
     </div>
   )
 }
@@ -929,7 +890,7 @@ function TouchPlacementBar() {
   const part = BRICK_PART_MAP[draft.partId]
   if (!part) return null
   return (
-    <div className="touch-placement-bar" role="group" aria-label="Positioned brick actions">
+    <div className="touch-placement-bar" data-moving={Boolean(movingId || movingSelection)} role="group" aria-label="Positioned brick actions">
       <span className="placement-part-chip"><span className="brick-eyebrow">{movingSelection?.duplicate ? 'Duplicating' : movingId ? 'Moving' : 'Placing'}</span><strong>{movingSelection && movingSelection.originals.length > 1 ? `${movingSelection.originals.length} bricks` : part.name}</strong></span>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Cancel" onClick={cancelInteraction}><X size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={19} /></button>

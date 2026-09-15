@@ -130,8 +130,8 @@ describe('keyboard construction loop', () => {
     render(<BrickStudioApp />)
 
     fireEvent.click(screen.getByTitle('Door Frame'))
-    expect(screen.getAllByRole('button', { name: 'Place brick' })).toHaveLength(2)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Place brick' })[0])
+    expect(screen.getAllByRole('button', { name: 'Place positioned brick' })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Place positioned brick' }))
 
     expect(useBrickStore.getState().bricks[0]?.partId).toBe('door_1x4')
     expect(useBrickStore.getState().draft).toMatchObject({ partId: 'door_1x4' })
@@ -174,7 +174,7 @@ describe('keyboard construction loop', () => {
     expect(fireEvent.keyDown(document.body, { key: ']' })).toBe(false)
     expect(useBrickStore.getState().selectedId).toBe('one')
     expect(screen.getByTestId('builder-announcer')).toHaveTextContent('brick 1 of 2')
-    expect(screen.getByText('1 × 1 Brick', { selector: '.brick-inspector h2' })).toBeInTheDocument()
+    expect(screen.getByText('1 × 1 Brick', { selector: '.desktop-selection-name' })).toBeInTheDocument()
   })
 })
 
@@ -186,11 +186,13 @@ describe('live move feedback', () => {
     useBrickStore.setState({ selectedIds: ['one'], selectedId: 'one' })
     const { container } = render(<BrickStudioApp />)
 
-    fireEvent.click(screen.getAllByLabelText('Move brick')[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Adjust' }))
+    fireEvent.click(screen.getByLabelText('Move brick'))
     act(() => useBrickStore.getState().setDraftPosition(12, 3, 14))
 
-    expect(screen.getByText('Moving', { selector: '.brick-inspector .brick-eyebrow' })).toBeInTheDocument()
-    expect(Array.from(container.querySelectorAll('.coordinates strong')).map((element) => element.textContent)).toEqual(['12', '3', '14'])
+    expect(screen.getByText('Moving', { selector: '.touch-placement-bar .brick-eyebrow' })).toBeInTheDocument()
+    expect(container.querySelector('.desktop-selection-panel')).toBeNull()
+    expect(useBrickStore.getState().draft).toMatchObject({ x: 12, y: 3, z: 14 })
   })
 })
 
@@ -201,8 +203,8 @@ describe('single-brick inspector', () => {
     useBrickStore.setState({ activeColor: BRICK_COLORS[5], selectedIds: [redBrick.id], selectedId: redBrick.id })
     render(<BrickStudioApp />)
 
-    // The drawer carries its own palette now, so assert against the inspector's copy.
-    const inspector = () => within(screen.getByRole('complementary', { name: 'Brick inspector' }))
+    // Only the library owns the full palette; it still follows the selection.
+    const inspector = () => within(screen.getByRole('complementary', { name: 'Brick drawer' }))
     const red = inspector().getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
     const blue = inspector().getByRole('button', { name: `Use color ${BRICK_COLORS[5]}` })
     expect(red).toHaveAttribute('aria-pressed', 'true')
@@ -237,11 +239,12 @@ describe('multi-selection feedback and controls', () => {
     render(<BrickStudioApp />)
 
     expect(screen.getByRole('complementary', { name: '2 bricks selected' })).toBeInTheDocument()
-    expect(screen.getByText('2 bricks selected', { selector: 'h2' })).toBeInTheDocument()
+    expect(screen.getByText('2 bricks selected', { selector: '.desktop-selection-name' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Adjust' }))
     expect(screen.getByRole('button', { name: 'Copy 2 selected bricks' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Rotate brick' })).not.toBeInTheDocument()
 
-    fireEvent.click(within(screen.getByRole('complementary', { name: '2 bricks selected' })).getByRole('button', { name: 'Use color #e7473c' }))
+    fireEvent.click(within(screen.getByRole('complementary', { name: 'Brick drawer' })).getByRole('button', { name: 'Use color #e7473c' }))
     expect(useBrickStore.getState().bricks.every((brick) => brick.color === '#e7473c')).toBe(true)
     expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Recolor 2 bricks')
   })
@@ -288,49 +291,37 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('menuitem', { name: /My Class/ })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: /Publish/ })).not.toBeInTheDocument()
 
-    const properties = screen.getByRole('button', { name: 'Show brick properties' })
-    expect(properties).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(properties)
-    expect(screen.getByRole('button', { name: 'Hide brick properties' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByRole('complementary', { name: 'Brick inspector' })).not.toBeInTheDocument()
   })
 
-  it('keeps the complete editing action set discoverable when phone properties are open', () => {
+  it('keeps precise selection edits behind Adjust and removes the duplicate palette', () => {
     resetStore([brick])
     useBrickStore.setState({ selectedIds: [brick.id], selectedId: brick.id })
     render(<BrickStudioApp />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
-    const properties = screen.getByRole('region', { name: 'Brick properties and editing actions' })
-    expect(properties).toHaveAttribute('tabindex', '0')
-    expect(screen.getByText('Drag the selected brick to move it. Use arrows for precise steps.')).toBeInTheDocument()
-
-    const actions = screen.getByRole('group', { name: 'Brick editing actions' })
-    const firstPaletteControl = within(screen.getByRole('complementary', { name: 'Brick inspector' })).getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
-    expect(actions.compareDocumentPosition(firstPaletteControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    for (const name of ['Duplicate brick', 'Focus selected brick', 'Copy brick', 'Delete brick']) {
-      expect(actions).toContainElement(screen.getByRole('button', { name }))
+    const inspector = within(screen.getByRole('complementary', { name: 'Brick inspector' }))
+    expect(inspector.queryByRole('button', { name: 'Move brick' })).not.toBeInTheDocument()
+    expect(inspector.queryByLabelText('Brick color')).not.toBeInTheDocument()
+    for (const name of ['Recolor brick', 'Rotate brick', 'Duplicate brick', 'Delete brick']) {
+      expect(inspector.getByRole('button', { name })).toBeInTheDocument()
     }
-    expect(screen.getAllByRole('button', { name: 'Rotate brick' })).not.toHaveLength(0)
-    expect(screen.getAllByRole('button', { name: 'Move brick' })).not.toHaveLength(0)
+    fireEvent.click(inspector.getByRole('button', { name: 'Adjust' }))
+    const properties = inspector.getByRole('region', { name: 'Brick properties and editing actions' })
+    fireEvent.click(within(properties).getByRole('button', { name: 'Raise brick one plate' }))
+    expect(useBrickStore.getState().bricks[0].y).toBe(1)
+    expect(within(properties).getByText('Height')).toHaveTextContent('Height 1')
+    fireEvent.click(inspector.getByRole('button', { name: 'Adjust' }))
+    expect(inspector.queryByRole('region')).not.toBeInTheDocument()
   })
 
-  it('resets the phone properties scroll position whenever the disclosure reopens', () => {
-    resetStore([brick])
-    useBrickStore.setState({ selectedIds: [brick.id], selectedId: brick.id })
+  it('filters the docked catalog without losing the search and resets camera from the view selector', () => {
     render(<BrickStudioApp />)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
-    const properties = screen.getByRole('region', { name: 'Brick properties and editing actions' })
-    properties.scrollTop = 143
-    expect(properties.scrollTop).toBe(143)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Hide brick properties' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Show brick properties' }))
-
-    expect(properties.scrollTop).toBe(0)
-    const actions = screen.getByRole('group', { name: 'Brick editing actions' })
-    const firstPaletteControl = within(screen.getByRole('complementary', { name: 'Brick inspector' })).getByRole('button', { name: `Use color ${BRICK_COLORS[0]}` })
-    expect(actions.compareDocumentPosition(firstPaletteControl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Brick category' }), { target: { value: 'plates' } })
+    expect(screen.queryByTitle('2 × 4 Brick')).not.toBeInTheDocument()
+    expect(screen.getByTitle('2 × 4 Plate')).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search bricks' }), { target: { value: '1 × 1' } })
+    expect(screen.queryByTitle('2 × 4 Plate')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('combobox', { name: 'Camera view' }), { target: { value: 'top' } })
+    expect(useBrickStore.getState().viewRequest.preset).toBe('top')
   })
 
   it('hides mouse and Command guidance on a wide coarse-pointer layout', () => {
@@ -813,19 +804,19 @@ describe('compact touch layout', () => {
     expect(screen.queryByRole('group', { name: 'Selected brick actions' })).not.toBeInTheDocument()
   })
 
-  it('leaves the desktop inspector card, its disclosure, and coordinates untouched', () => {
+  it('shows a compact desktop selection panel with coordinates only when requested', () => {
     stubMediaQueries([])
     resetStore([brick])
     const { container } = render(<BrickStudioApp />)
     act(() => useBrickStore.getState().selectBrick(brick.id))
-
     expect(container.querySelector('.touch-selection-bar')).toBeNull()
-    expect(container.querySelector('.brick-inspector')).not.toBeNull()
-    expect(screen.getByRole('button', { name: 'Show brick properties' })).toHaveAttribute('aria-expanded', 'false')
-    expect(Array.from(container.querySelectorAll('.coordinates strong')).map((element) => element.textContent)).toEqual(['10', '0', '10'])
-
+    expect(container.querySelector('.desktop-selection-panel')).not.toBeNull()
+    expect(container.querySelector('.coordinates')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Adjust' }))
+    expect(Array.from(container.querySelectorAll('.coordinates strong')).map(element => element.textContent)).toEqual(['10', '0', '10'])
     act(() => useBrickStore.getState().startMove())
-    expect(screen.getByText('Moving', { selector: '.brick-inspector .brick-eyebrow' })).toBeInTheDocument()
+    expect(container.querySelector('.desktop-selection-panel')).toBeNull()
+    expect(screen.getByText('Moving', { selector: '.touch-placement-bar .brick-eyebrow' })).toBeInTheDocument()
   })
 
   it('keeps the docked drawer and no (+) button on a wide fine-pointer layout', () => {
@@ -882,6 +873,7 @@ describe('Builder Experience Alpha shell', () => {
     render(<BrickStudioApp />)
     act(() => useBrickStore.getState().selectBrick(brick.id))
 
+    fireEvent.click(screen.getByRole('button', { name: 'Adjust' }))
     fireEvent.click(screen.getByRole('button', { name: 'Resize brick' }))
     const dialog = screen.getByRole('dialog', { name: 'Resize brick' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Increase width' }))

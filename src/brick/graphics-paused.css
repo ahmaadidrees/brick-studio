@@ -71,7 +71,7 @@
 .graphics-paused__status--error { color: var(--danger-text); }
 
 /* Editing chrome is made inert while the context is lost; show it as parked. */
-.brick-inspector[inert],
+.desktop-selection-panel[inert],
 .touch-selection-bar[inert],
 .part-library[inert],
 .vertical-selection-handle[inert] {
