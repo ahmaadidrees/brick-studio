@@ -147,9 +147,9 @@ function StartCta({ href, continueBuild, className }: { href: string; continueBu
 }
 
 const STEPS = [
-  { kind: 'build', title: 'Build it', text: 'Pick bricks from the drawer, snap them onto the plate, recolor, undo. Simple tools, any shape you can imagine.' },
-  { kind: 'explore', title: 'Explore it', text: 'Switch to Explore and step inside your build as your character. Walk it, jump it, see it at eye level.' },
-  { kind: 'friends', title: 'Bring friends', text: 'Share a link to build together as guests, or open a class world while your teacher keeps it open.' },
+  { kind: 'build', title: 'Build it', text: 'Use simple tools to create anything you can imagine.' },
+  { kind: 'explore', title: 'Explore it', text: 'Step inside your world and see it come to life in real time.' },
+  { kind: 'friends', title: 'Bring friends', text: 'Share a link to build together as guests.' },
 ] as const
 
 const SCENES = [
@@ -255,7 +255,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
       <a className="landing-skip" href={`#${mainId}`}>Skip to content</a>
 
       <header className="landing-nav" onKeyDown={onNavKeyDown}>
-        <BrandLockup size={36} className="landing-brand" />
+        <BrandLockup size={56} className="landing-brand" />
         <Button
           ref={menuButton}
           variant="secondary"
@@ -278,6 +278,26 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
       </header>
 
       <main id={mainId}>
+        {window.location.hostname === 'virtual-legos.vercel.app' && (
+          <aside className="landing-legacy-notice" aria-label="New Brickgineers address">
+            <details>
+              <summary>Brickgineers has a new home <ArrowRight size={16} aria-hidden="true" /></summary>
+              <div className="landing-legacy-body">
+                <p>
+                  Your draft at this address stays in this browser. Continue building here, then export a copy
+                  from the world menu or sign in and save it to your account before moving to the new address.
+                </p>
+                <p>
+                  Importing an exported build moves the build itself. Browser preferences, your outfit collection,
+                  and ownership of guest rooms stay at this address.
+                </p>
+                <a href="https://brickgineers.com" target="_blank" rel="noopener noreferrer">
+                  Open brickgineers.com in a new tab <ArrowRight size={16} aria-hidden="true" />
+                </a>
+              </div>
+            </details>
+          </aside>
+        )}
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero-copy">
             <h1 id="landing-hero-title">
@@ -293,9 +313,9 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
               widths={[800, 1200, 1600]}
               width={1600}
               height={960}
-              sizes="(max-width: 760px) 100vw, (max-width: 1180px) 56vw, 640px"
+              sizes="(max-width: 760px) 100vw, (max-width: 1240px) 64vw, 760px"
               priority
-              alt="A brick castle with a flag, built on a play table in the Toy Room, with a builder standing beside it."
+              alt="A colorful brick castle with a flag on a Toy Room play table, beside a warm lamp and a sunset window."
               fallback={<HeroDiorama />}
             />
           </div>
@@ -414,9 +434,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
             <div className="landing-classroom-copy">
               <h2 id={classroomId}>A creative space for your classroom.</h2>
               <p>
-                Guests build in this browser and share temporary room links. In a class, students join with the code
-                you give them, save worlds to their accounts, and find the class and group worlds you create in My
-                Class, for as long as you keep collaboration open.
+                Give students a class code, keep their worlds saved online, and build together in a space you manage.
               </p>
             </div>
             <CtaLink href="#teachers" trailingIcon={<ArrowRight size={18} />}>See classroom tools</CtaLink>
@@ -512,8 +530,9 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
             <ul>
               <li>Guest building stores your draft, settings, and character choices in this browser only. Clearing site data removes them.</li>
               <li>A shared guest room keeps the build and builder names on the server while the room is active, and deletes them about two hours after the last activity.</li>
-              <li>A class account stores a username, a roster name that only you and your teacher see, a password, and the worlds you save. Students never need an email address.</li>
-              <li>Teacher sign-in uses your existing teacher account. Google sign-in shares your Google account identity with the app only to confirm that account.</li>
+              <li>A class account stores a username, a roster name that only you and your teacher see, protected sign-in credentials, and the worlds you save. Students never need an email address.</li>
+              <li>Teacher sign-in uses your existing teacher account. Google sign-in confirms your existing teacher account.</li>
+              <li>Vercel hosts the app, Cloudflare runs shared rooms, and Supabase handles accounts. Fonts are loaded from Google Fonts.</li>
               <li>Questions about a class account go to the teacher. Teachers reach the team that set up their account.</li>
             </ul>
           </section>

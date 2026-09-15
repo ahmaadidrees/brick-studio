@@ -294,6 +294,7 @@ describe('bundle and asset boundaries', () => {
     expect(css).not.toMatch(/url\(\s*['"]?https?:/i)
     expect(css).toMatch(/prefers-reduced-motion/)
     const tsx = sourceOf('./LandingPage.tsx') + sourceOf('./LandingArt.tsx')
-    expect(tsx).not.toMatch(/https?:\/\//)
+    // The sole external URL is an explicit legacy-host migration link; it is not fetched.
+    expect(tsx.match(/https?:\/\/[^'"\s<>]+/g)).toEqual(['https://brickgineers.com'])
   })
 })

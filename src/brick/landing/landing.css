@@ -5,20 +5,20 @@
    imports, no fetches. Only layout-sized values live here. */
 
 .brick-landing {
-  --page-max: 1120px;
+  --page-max: 1240px;
   --page-gutter: clamp(16px, 4vw, 28px);
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
   color: var(--text);
-  background: var(--bg);
+  background: var(--surface);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 .brick-landing, .brick-landing * { box-sizing: border-box; }
 .brick-landing :is(h1, h2, h3) { margin: 0; font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; }
-.brick-landing p { margin: 0; }
+.brick-landing :where(p) { margin: 0; }
 .brick-landing :is(a, button, summary):focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
@@ -65,7 +65,7 @@
   gap: 12px;
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: 14px var(--page-gutter) 4px;
+  padding: 24px var(--page-gutter) 12px;
 }
 .landing-nav nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 6px; }
 .landing-nav-link {
@@ -84,23 +84,35 @@
 .landing-nav-cta { margin-left: 6px; border-color: var(--primary); color: var(--primary-strong); }
 .landing-menu-toggle { display: none; }
 
+/* The previous address keeps its own drafts and room ownership. This notice
+   only appears there and never redirects a student away from their work. */
+.landing-legacy-notice { max-width: var(--page-max); margin: 12px auto 0; padding: 0 var(--page-gutter); }
+.landing-legacy-notice details { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--primary-soft); }
+.landing-legacy-notice summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 10px 16px; font-size: 14px; font-weight: 800; cursor: pointer; list-style: none; }
+.landing-legacy-notice summary::-webkit-details-marker { display: none; }
+.landing-legacy-notice summary svg { transition: transform 140ms ease; }
+.landing-legacy-notice details[open] summary svg { transform: rotate(90deg); }
+.landing-legacy-body { padding: 0 16px 12px; font-size: 14px; line-height: 1.5; }
+.landing-legacy-body p + p { margin-top: 8px; }
+.landing-legacy-body a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--primary-strong); font-weight: 800; text-underline-offset: 3px; }
+
 /* ---------------------------------------------------------------- hero --- */
 
 .landing-hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
   grid-template-areas: 'copy stage' 'actions stage';
   align-items: center;
   align-content: center;
-  column-gap: clamp(18px, 4vw, 44px);
+  column-gap: clamp(18px, 2.5vw, 30px);
   max-width: var(--page-max);
   margin: 0 auto;
-  padding: clamp(18px, 4vw, 40px) var(--page-gutter) clamp(24px, 4vw, 44px);
+  padding: 12px var(--page-gutter) 20px;
 }
 .landing-hero-copy { grid-area: copy; align-self: end; }
 .landing-hero-stage { grid-area: stage; position: relative; min-width: 0; }
-.landing-hero-actions { grid-area: actions; align-self: start; }
-.landing-hero h1 { font-size: clamp(34px, 5.2vw, 58px); line-height: 1.02; }
+.landing-hero-actions { grid-area: actions; align-self: start; padding-top: 20px; }
+.landing-hero h1 { font-size: clamp(34px, 4.2vw, 49px); line-height: 1.02; }
 .landing-hero-lede {
   max-width: 30rem;
   margin-top: 14px;
@@ -127,7 +139,7 @@
 .landing-cta:hover { transform: translateY(-2px); }
 .landing-cta:active { transform: translateY(1px); }
 
-.landing-hero-stage .landing-media { border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.landing-hero-stage .landing-media { border-radius: var(--radius-md); }
 
 /* Media frames: explicit aspect ratio from the manifest, so a missing or
    still-loading file never shifts the layout. The vector fallback is always
@@ -152,7 +164,7 @@
 
 /* ------------------------------------------------------------ sections --- */
 
-.landing-section { max-width: var(--page-max); margin: 0 auto; padding: clamp(24px, 4vw, 44px) var(--page-gutter); }
+.landing-section { max-width: var(--page-max); margin: 0 auto; padding: clamp(18px, 2.4vw, 28px) var(--page-gutter); }
 .landing-section-heading { max-width: 640px; margin-bottom: clamp(16px, 3vw, 24px); }
 .landing-eyebrow {
   display: inline-block;
@@ -166,6 +178,20 @@
 .landing-section-heading h2 { font-size: clamp(26px, 3.6vw, 40px); line-height: 1.08; }
 .landing-section-heading p { margin-top: 10px; color: var(--text-muted); font-size: 15px; font-weight: 600; line-height: 1.55; }
 
+/* Keep the landing overview compact like board 01; board 02's longer
+   account explanation stays directly below the three steps. */
+.landing-how { padding-top: 8px; }
+.landing-how .landing-section-heading { max-width: none; margin-bottom: 16px; }
+.landing-how .landing-section-heading h2 { font-size: 25px; }
+.landing-how .landing-section-heading p { margin-top: 6px; }
+.landing-how .landing-eyebrow { margin-bottom: 6px; }
+.landing-hero-trust { max-width: 340px; text-align: center; }
+.landing-hero-actions .landing-cta-row { margin-top: 0; }
+.landing-hero-actions .landing-cta { font-size: 20px; }
+.landing-hero-actions .landing-cta svg { width: 22px; height: 22px; }
+.landing-nav-link:nth-last-child(2) { margin-left: 10px; border-left: 1px solid var(--border); border-radius: 0; }
+.landing-brand { gap: 10px; }
+
 /* Steps (board 01 cards, board 02 numbering) */
 .landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
 .landing-step {
@@ -175,9 +201,8 @@
   align-items: center;
   padding: 18px 14px 18px 18px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--surface);
-  box-shadow: var(--shadow-sm);
 }
 .landing-step-copy { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; align-items: center; }
 .landing-step-number {
@@ -193,7 +218,7 @@
 }
 .landing-step-explore .landing-step-number { background: var(--accent); color: var(--text); }
 .landing-step-friends .landing-step-number { background: var(--brand-butter); color: var(--text); }
-.landing-step h3 { grid-row: 1; font-size: 22px; }
+.landing-step h3 { grid-row: 1; font-size: 21px; }
 .landing-step p { grid-column: 1 / -1; margin-top: 10px; color: var(--text-muted); font-size: 14px; font-weight: 600; line-height: 1.5; }
 .landing-step-art { width: 100%; height: auto; display: block; }
 
@@ -357,10 +382,11 @@
   padding: clamp(24px, 4vw, 40px) var(--page-gutter);
   border-radius: var(--radius-lg);
   text-align: center;
+  background: var(--bg);
 }
 .landing-finale h2 { font-size: clamp(26px, 3.6vw, 36px); }
 .landing-finale .landing-cta-row { justify-content: center; }
-.landing-finale .landing-hero-trust { margin-top: 12px; }
+.landing-finale .landing-hero-trust { max-width: none; margin-top: 12px; }
 
 /* Help + privacy summaries (footer link targets) */
 .landing-fineprint { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 8px; }
@@ -392,6 +418,8 @@
 /* ----------------------------------------------------------- responsive --- */
 
 @media (max-width: 1024px) {
+  .landing-nav .landing-brand .brand-wordmark { font-size: 30px !important; }
+  .landing-nav .landing-brand .brand-mark { width: 42px; height: 42px; }
   .landing-steps { grid-template-columns: minmax(0, 1fr); }
   .landing-step { grid-template-columns: minmax(0, 1fr) 132px; }
   .landing-features { grid-template-columns: minmax(0, 1fr); }
@@ -407,6 +435,12 @@
 
 @media (max-width: 760px) {
   .landing-menu-toggle { display: inline-flex; }
+  .landing-nav { padding-top: 14px; }
+  .landing-nav .landing-brand .brand-wordmark { font-size: 25px !important; }
+  .landing-nav .landing-brand .brand-mark { width: 34px; height: 34px; }
+  .landing-nav-link:nth-last-child(2) { margin-left: 0; border-left: 0; }
+  .landing-hero-trust { max-width: none; }
+  .landing-hero-actions { padding-top: 0; }
   .landing-nav { flex-wrap: wrap; }
   .landing-nav nav {
     display: none;
@@ -460,5 +494,5 @@
   .landing-drift-a, .landing-drift-b, .landing-drift-c, .landing-twinkle { animation: none; }
   .landing-cta, .landing-cta:hover, .landing-cta:active { transform: none; transition: none; }
   .landing-media img { transition: none; }
-  .landing-faq-item summary::after { transition: none; }
+  .landing-faq-item summary::after, .landing-legacy-notice summary svg { transition: none; }
 }
