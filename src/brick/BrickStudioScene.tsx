@@ -305,7 +305,6 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
   const plateSize = usePlateSize()
 
   const selectedIds = useBrickStore((state) => state.selectedIds)
-  const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
   const movingSelection = useBrickStore((state) => state.movingSelection)
@@ -384,7 +383,12 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
         scale={isMoving ? 0.98 : 1}
       >
         <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={isMoving} opacity={isMoving ? 0.3 : 1} />
-        {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
+        {selectedIds.includes(brick.id) && !explore && <>
+          {/* A pale casing keeps the same blue selection legible on every brick color.
+              Keep depth testing so hidden edges do not show through other bricks. */}
+          <Edges scale={1.025} color="#eef5ff" lineWidth={4} threshold={15} depthWrite={false} renderOrder={1} toneMapped={false} />
+          <Edges scale={1.025} color="#2870ed" lineWidth={2} threshold={15} depthWrite={false} renderOrder={2} toneMapped={false} />
+        </>}
       </mesh>
     </group>
   )
