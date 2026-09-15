@@ -36,13 +36,20 @@ export function EntryView({ mode, busy, fieldErrors, onModeChange, onSubmit, onG
   const [draft, setDraft] = useState({ classCode: mode === 'login' ? remembered?.code || '' : '', username: '', password: '', rosterName: '' })
   const [changeClass, setChangeClass] = useState(false)
   const update = (name: keyof typeof draft, value: string) => setDraft(previous => ({ ...previous, [name]: value }))
+  const chooseMode = (next: EntryMode) => {
+    // A remembered return code is not an enrollment invitation. Preserve typed
+    // codes, but ask a new student for their teacher's enrollment code.
+    if (next === 'register' && !changeClass && draft.classCode === remembered?.code) update('classCode', '')
+    if (next === 'login' && !changeClass && !draft.classCode && remembered) update('classCode', remembered.code)
+    onModeChange(next)
+  }
   const shared = { busy, fieldErrors, draft, update }
   return <div className="classroom-entry">
     {mode !== 'teacher-login' && <SegmentedControl<'login' | 'register'>
       label="Student account"
       fullWidth
       value={mode}
-      onChange={onModeChange}
+      onChange={chooseMode}
       options={[
         { value: 'login', label: ENTRY_MODE_LABELS.login, icon: <GraduationCap size={16} />, disabled: busy },
         { value: 'register', label: ENTRY_MODE_LABELS.register, icon: <UserRoundPlus size={16} />, disabled: busy },
@@ -54,7 +61,7 @@ export function EntryView({ mode, busy, fieldErrors, onModeChange, onSubmit, onG
       onSubmit={values => onSubmit('login', values)} />}
     {mode === 'register' && <EnrollForm {...shared} onSubmit={values => onSubmit('register', values)} />}
     {mode === 'teacher-login' && <TeacherSignInForm key="teacher" busy={busy} onSubmit={values => onSubmit('teacher-login', values)} onGoogle={onGoogle} />}
-    <div className="classroom-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => onModeChange(mode === 'teacher-login' ? 'login' : 'teacher-login')}>{mode === 'teacher-login' ? 'Student login' : 'Teacher sign in'}</Button></div>
+    <div className="classroom-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => chooseMode(mode === 'teacher-login' ? 'login' : 'teacher-login')}>{mode === 'teacher-login' ? 'Student login' : 'Teacher sign in'}</Button></div>
     <p className="classroom-preserved" role="note"><BrickMark size={22} title={null} /><span>Your current build stays here while you sign in.</span></p>
   </div>
 }
