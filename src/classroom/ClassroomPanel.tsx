@@ -103,12 +103,14 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     // A 401/403 during this load clears the session (client.ts), which cancels this effect; the reason must still reach
     // the entry view so an expired session is never a silent return to sign-in.
     const sessionLost = (error: unknown) => error instanceof ClassroomError && (error.status === 401 || error.status === 403) && !client.getSession() && !signingOut.current
-    Promise.all([client.request<{ worlds: ClassroomWorld[] }>('/worlds'), client.request<{ classes: ClassroomClass[] }>('/classes')]).then(([w, c]) => {
+    Promise.allSettled([client.request<{ worlds: ClassroomWorld[] }>('/worlds'), client.request<{ classes: ClassroomClass[] }>('/classes')]).then(([w, c]) => {
+      const failure = [w, c].find(result => result.status === 'rejected')
+      const lostSession = [w, c].find(result => result.status === 'rejected' && sessionLost(result.reason))
+      if (lostSession?.status === 'rejected') { setError(errorMessage(lostSession.reason)); setLoginMode('login'); return }
       if (cancelled) return
-      setWorlds(w.worlds); setClasses(c.classes); setClassId(c.classes[0]?.id || '')
-    }).catch(error => {
-      if (sessionLost(error)) { setError(errorMessage(error)); setLoginMode('login'); return }
-      if (!cancelled) setError(errorMessage(error))
+      if (w.status === 'fulfilled') setWorlds(w.value.worlds)
+      if (c.status === 'fulfilled') { setClasses(c.value.classes); setClassId(c.value.classes[0]?.id || '') }
+      if (failure?.status === 'rejected') setError(errorMessage(failure.reason))
     }).finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [auth, client])

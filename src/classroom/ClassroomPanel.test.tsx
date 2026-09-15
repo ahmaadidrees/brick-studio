@@ -46,6 +46,14 @@ describe('classroom entry flow', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show new password' })).toBeInTheDocument()
   })
+  it('keeps class controls accessible and shows the error when loading worlds fails', async () => {
+    const fetcher = fakeApi({ classes: [classroom], students: [student] }, url => url.endsWith('/worlds') ? json({ error: 'Worlds are temporarily unavailable.' }, 500) : undefined)
+    render(<ClassroomPanel {...props()} intent="class" client={signedIn(teacherAuth, fetcher)} />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Worlds are temporarily unavailable.')
+    expect(screen.getByLabelText('Class')).toHaveValue(classroom.id)
+    fireEvent.click(screen.getByRole('radio', { name: 'Class settings' }))
+    expect(screen.getByRole('heading', { name: 'Class access' })).toBeInTheDocument()
+  })
   it('does not announce a confirmed save when persistence fails', async () => {
     const fetcher = vi.fn((url: string, options: RequestInit) => Promise.resolve(options.method === 'POST' ? json({ error: 'Storage is unavailable.' }, 503) : json(url.endsWith('/worlds') ? { worlds: [] } : { classes: [] })))
     const client = new ClassroomClient('', fetcher as typeof fetch); client.setSession(auth)
