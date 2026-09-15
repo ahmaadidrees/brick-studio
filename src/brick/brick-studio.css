@@ -407,6 +407,8 @@
   .fine-pointer-copy { display: none; }
   /* The title trigger keeps its 28px layout box but grows a 44px hit area on touch. */
   .studio-world-title { min-height: 44px; padding: 8px 4px; }
+  /* Touch layouts of any width keep title and save chip on one row so the 44px trigger fits the header. */
+  .brick-world-context { flex-direction: row; align-items: center; gap: 6px; }
   .part-search { min-height: 48px; }
   .part-search input { min-height: 44px; }
   .library-collapse-button { width: 44px; height: 44px; min-height: 44px; }
@@ -464,6 +466,9 @@
     /* The studio root is touch-action: none for the canvas, so the sheet has to re-allow the
        vertical pan that scrolls a long part list. */
     touch-action: pan-y;
+    /* Short viewports: the sheet scrolls as a whole so the colour row is never pushed below the screen. */
+    overflow-y: auto;
+    overscroll-behavior: contain;
     animation: brick-sheet-rise 220ms cubic-bezier(.2,.9,.3,1);
   }
   .brick-sheet:focus { outline: none; }
