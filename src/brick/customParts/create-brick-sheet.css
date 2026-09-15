@@ -3,7 +3,9 @@
    shared src/ui Sheet/Dialog. Every color is a token from src/styles.css. */
 
 /* Board 10 is a wide workspace: form beside the live preview. */
-.ui-sheet-root.create-brick-sheet { --sheet-width: 780px; }
+.ui-sheet-root.create-brick-sheet { --sheet-width: 1000px; }
+.create-brick-sheet .ui-sheet { --sheet-width: 1000px; }
+.create-brick-sheet .ui-sheet-title { font-size: clamp(26px, 3.5vw, 44px); }
 
 .create-brick-workspace {
   display: grid;
@@ -31,12 +33,19 @@
 }
 .create-brick-number { text-align: center; font-weight: 800; }
 .create-brick-slider {
+  appearance: none;
   width: 100%;
   min-height: var(--control-height);
   margin: 0;
   accent-color: var(--primary-strong);
+  background: transparent;
   cursor: pointer;
 }
+.create-brick-slider::-webkit-slider-runnable-track { height: 8px; border-radius: 999px; background: linear-gradient(to right, var(--primary) var(--slider-fill), var(--primary-soft) var(--slider-fill)); }
+.create-brick-slider::-moz-range-track { height: 8px; border-radius: 999px; background: var(--primary-soft); }
+.create-brick-slider::-moz-range-progress { height: 8px; border-radius: 999px; background: var(--primary); }
+.create-brick-slider::-webkit-slider-thumb { appearance: none; width: 23px; height: 23px; margin-top: -7.5px; border: 1px solid var(--primary); border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-sm); }
+.create-brick-slider::-moz-range-thumb { width: 23px; height: 23px; border: 1px solid var(--primary); border-radius: 50%; background: var(--surface); box-shadow: var(--shadow-sm); }
 .create-brick-slider:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-sm); }
 
 .create-brick-notice,
@@ -99,6 +108,11 @@
   text-align: center;
 }
 .create-brick-preview figcaption strong { color: var(--text); font-size: var(--text-sm); font-weight: 800; }
+
+@media (min-width: 901px) and (pointer: fine) {
+  .create-brick-workspace { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
+  .create-brick-preview canvas { height: clamp(380px, 57vh, 650px); }
+}
 
 /* Resize */
 .resize-brick-axes { display: grid; gap: var(--space-3); }

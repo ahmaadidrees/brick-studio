@@ -56,53 +56,57 @@ export function CharacterStudio({
 
   return (
     <div className="character-studio">
-      <header className="character-studio__intro">
-        <h3>Make it yours.</h3>
-        <p>Customize your character and show what kind of builder you are. Nothing changes for anyone else until you press Apply.</p>
-      </header>
-      <CharacterPreview characterId={draft.characterId} palette={draft.palette} appearance={draft.appearance} />
-      <ContentPicker
-        hideHeader
-        visibleSection="character"
-        environmentDescriptors={NO_ENVIRONMENTS}
-        characterDescriptors={characterDescriptors}
-        selectedEnvironmentId={draft.environmentId}
-        selectedCharacterId={draft.characterId}
-        onSelectEnvironment={ignoreEnvironment}
-        onSelectCharacter={(characterId: CharacterId) => onDraftChange({ ...draft, characterId })}
-        palette={draft.palette}
-        onRequestPreview={onRequestPreview}
-        previewStatuses={previewStatuses}
-      />
-      {showFigure && (
-        <AppearanceControls
-          appearance={draft.appearance}
-          locked={locked}
-          onToggleLock={onToggleLock}
-          onChange={appearance => onDraftChange({ ...draft, appearance })}
-        />
-      )}
-      {showColors && (
-        <PaletteControls
-          groups={paletteGroups}
+      <div className="character-studio__presentation">
+        <header className="character-studio__intro">
+          <h3>Make it yours.</h3>
+          <p>Customize your character and show what kind of builder you are. Nothing changes for anyone else until you press Apply.</p>
+        </header>
+        <CharacterPreview characterId={draft.characterId} palette={draft.palette} appearance={draft.appearance} />
+      </div>
+      <div className="character-studio__customization">
+        <ContentPicker
+          hideHeader
+          visibleSection="character"
+          environmentDescriptors={NO_ENVIRONMENTS}
+          characterDescriptors={characterDescriptors}
+          selectedEnvironmentId={draft.environmentId}
+          selectedCharacterId={draft.characterId}
+          onSelectEnvironment={ignoreEnvironment}
+          onSelectCharacter={(characterId: CharacterId) => onDraftChange({ ...draft, characterId })}
           palette={draft.palette}
-          locked={locked}
-          onToggleLock={onToggleLock}
-          onChange={palette => onDraftChange({ ...draft, palette })}
+          onRequestPreview={onRequestPreview}
+          previewStatuses={previewStatuses}
         />
-      )}
-      {showColors && <LookColors palette={draft.palette} locked={locked} onChange={palette => onDraftChange({ ...draft, palette })} />}
-      {(showColors || showFigure) && (
-        <div className="character-studio__mix">
-          <Button
-            variant="primary"
-            icon={<Sparkles size={16} />}
-            disabled={!mixable}
-            onClick={() => onDraftChange(mixDraft(draft, { locked, paletteGroups, customizable }))}
-          >Mix it up</Button>
-          <p>{mixable ? 'Shuffles every part you have not kept. Locked choices, skin tone and hair color stay the same.' : 'Everything is kept. Unlock a part to mix it.'}</p>
-        </div>
-      )}
+        {showFigure && (
+          <AppearanceControls
+            appearance={draft.appearance}
+            locked={locked}
+            onToggleLock={onToggleLock}
+            onChange={appearance => onDraftChange({ ...draft, appearance })}
+          />
+        )}
+        {showColors && (
+          <PaletteControls
+            groups={paletteGroups}
+            palette={draft.palette}
+            locked={locked}
+            onToggleLock={onToggleLock}
+            onChange={palette => onDraftChange({ ...draft, palette })}
+          />
+        )}
+        {showColors && <LookColors palette={draft.palette} locked={locked} onChange={palette => onDraftChange({ ...draft, palette })} />}
+        {(showColors || showFigure) && (
+          <div className="character-studio__mix">
+            <Button
+              variant="primary"
+              icon={<Sparkles size={16} />}
+              disabled={!mixable}
+              onClick={() => onDraftChange(mixDraft(draft, { locked, paletteGroups, customizable }))}
+            >Mix it up</Button>
+            <p>{mixable ? 'Shuffles every part you have not kept. Locked choices, skin tone and hair color stay the same.' : 'Everything is kept. Unlock a part to mix it.'}</p>
+          </div>
+        )}
+      </div>
       {draft.characterId && (
         <WardrobePanel
           appearance={{ characterId: draft.characterId, palette: draft.palette, appearance: draft.appearance }}

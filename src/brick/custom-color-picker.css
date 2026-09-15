@@ -19,14 +19,27 @@
   align-items: center;
 }
 
-.brick-color-wheel {
+.brick-color-spectrum {
   position: relative;
   width: 176px;
   height: 176px;
+}
+.brick-color-wheel {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: radial-gradient(circle closest-side, #fff 0%, rgba(255, 255, 255, 0) 100%), conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
   box-shadow: var(--shadow-sm);
+  touch-action: none;
+  cursor: crosshair;
+}
+.brick-color-wheel::before { content: ''; position: absolute; inset: 12%; border-radius: 50%; background: var(--surface); }
+.brick-color-square {
+  position: absolute;
+  inset: 25%;
+  background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent);
+  box-shadow: 0 0 0 5px var(--surface);
   touch-action: none;
   cursor: crosshair;
 }
@@ -78,6 +91,6 @@
   .brick-color-value { width: 100%; }
 }
 @media (max-height: 650px) {
-  .brick-color-wheel { width: 132px; height: 132px; }
+  .brick-color-spectrum { width: 132px; height: 132px; }
   .brick-color-preview { width: 56px; height: 56px; }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { BRICK_STUDIO_MAX_CUSTOM_PARTS, CUSTOM_BRICK_MAX_WIDTH, CUSTOM_BRICK_MAX_DEPTH, CUSTOM_BRICK_MAX_HEIGHT } from '../brickDocument'
 import type { CustomPartDefinition, CustomPartTemplate } from '../types'
 import { Button, Dialog, Field, TextField } from '../../ui'
@@ -243,6 +243,7 @@ export function CreateBrickSheet({ open, onCreate, onClose, existingCount = 0 }:
                     <input
                       type="range"
                       className="create-brick-slider"
+                      style={{ '--slider-fill': `${(sliderValue - 1) / (max - 1) * 100}%` } as CSSProperties}
                       aria-label={`Slide ${label.toLowerCase()}`}
                       min={1}
                       max={max}

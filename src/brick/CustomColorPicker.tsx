@@ -44,14 +44,18 @@ export function CustomColorPicker({ color, onApply, onClose }: CustomColorPicker
   const update = (next: HsvColor) => { setHsv(next); setHex(hsvToHex(next)) }
   const wheelPoint = (element: HTMLDivElement, x: number, y: number) => {
     const rect = element.getBoundingClientRect(), dx = x - rect.left - rect.width / 2, dy = y - rect.top - rect.height / 2
-    update({ ...hsv, h: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360, s: Math.min(1, Math.hypot(dx, dy) / (rect.width / 2)) })
+    update({ ...hsv, h: (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360 })
+  }
+  const squarePoint = (element: HTMLDivElement, x: number, y: number) => {
+    const rect = element.getBoundingClientRect()
+    update({ ...hsv, s: Math.max(0, Math.min(1, (x - rect.left) / rect.width)), v: 1 - Math.max(0, Math.min(1, (y - rect.top) / rect.height)) })
   }
   return (
     <Dialog
       open
       onClose={onClose}
       title="Choose any color"
-      description="Pick a color on the wheel, then adjust its brightness."
+      description="Choose a hue on the ring, then a shade in the square."
       closeLabel="Close color picker"
       className="brick-color-dialog"
       footer={(
@@ -62,6 +66,7 @@ export function CustomColorPicker({ color, onApply, onClose }: CustomColorPicker
       )}
     >
       <div className="brick-color-layout">
+        <div className="brick-color-spectrum">
         <div
           className="brick-color-wheel"
           role="img"
@@ -72,7 +77,21 @@ export function CustomColorPicker({ color, onApply, onClose }: CustomColorPicker
           onPointerCancel={() => { activePointer.current = null }}
           onLostPointerCapture={() => { activePointer.current = null }}
         >
-          <span className="brick-color-wheel-thumb" style={{ left: `${50 + Math.sin(hsv.h * Math.PI / 180) * hsv.s * 50}%`, top: `${50 - Math.cos(hsv.h * Math.PI / 180) * hsv.s * 50}%`, background: preview }} />
+          <span className="brick-color-wheel-thumb" style={{ left: `${50 + Math.sin(hsv.h * Math.PI / 180) * 44}%`, top: `${50 - Math.cos(hsv.h * Math.PI / 180) * 44}%`, background: hsvToHex({ h: hsv.h, s: 1, v: 1 }) }} />
+        </div>
+        <div
+          className="brick-color-square"
+          role="img"
+          aria-label="Color shade. The saturation and brightness sliders below offer the same controls."
+          style={{ backgroundColor: hsvToHex({ h: hsv.h, s: 1, v: 1 }) }}
+          onPointerDown={(event) => { if (event.button !== 0 || activePointer.current !== null) return; event.preventDefault(); activePointer.current = event.pointerId; event.currentTarget.setPointerCapture?.(event.pointerId); squarePoint(event.currentTarget, event.clientX, event.clientY) }}
+          onPointerMove={(event) => { if (activePointer.current === event.pointerId) squarePoint(event.currentTarget, event.clientX, event.clientY) }}
+          onPointerUp={(event) => { if (activePointer.current === event.pointerId) { activePointer.current = null; event.currentTarget.releasePointerCapture?.(event.pointerId) } }}
+          onPointerCancel={() => { activePointer.current = null }}
+          onLostPointerCapture={() => { activePointer.current = null }}
+        >
+          <span className="brick-color-wheel-thumb" style={{ left: `${hsv.s * 100}%`, top: `${(1 - hsv.v) * 100}%`, background: preview }} />
+        </div>
         </div>
         <div className="brick-color-value">
           <span className="brick-color-preview" role="img" aria-label={`Color preview ${preview}`} style={{ background: preview }} />

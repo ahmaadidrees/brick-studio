@@ -32,7 +32,8 @@
 .character-studio__intro p { margin: 0; color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; line-height: 1.45; }
 
 /* Section chrome shared by figure, colors, color sets and outfits. */
-.character-studio > section {
+.character-studio > section,
+.character-studio__customization > section {
   min-width: 0;
   padding: var(--space-4);
   border: 1px solid var(--border);
@@ -40,6 +41,8 @@
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
+.character-studio__presentation,
+.character-studio__customization { display: grid; gap: var(--space-4); min-width: 0; align-content: start; }
 .character-studio__heading {
   display: flex;
   align-items: flex-start;
@@ -237,11 +240,62 @@
 
 @media (max-width: 620px) {
   .character-studio { gap: var(--space-4); }
-  .character-studio > section { padding: var(--space-3); }
+  .character-studio > section,
+  .character-studio__customization > section { padding: var(--space-3); }
   .character-studio__heading { flex-wrap: wrap; }
   .character-studio__mix { flex-direction: column; align-items: stretch; text-align: center; }
   .character-looks__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .character-wardrobe__save > .ui-button { flex: 1; }
+}
+
+/* Board 09: keep the character beside its choices, with a separate wardrobe.
+   The same DOM and shared sheet still provide focus, draft and Apply behavior. */
+@media (min-width: 1000px) and (min-height: 600px) and (pointer: fine) {
+  .ui-sheet-root.world-character-sheet:has(.character-studio) {
+    --sheet-width: 1440px;
+    padding: 20px;
+    justify-content: center;
+  }
+  .world-character-sheet:has(.character-studio) .ui-sheet {
+    --sheet-width: 1440px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .world-character-sheet:has(.character-studio) .ui-sheet-header { padding-block: var(--space-2); }
+  .world-character-sheet:has(.character-studio) .ui-sheet-description { display: none; }
+  .world-character-sheet:has(.character-studio) .world-character-sheet-tabs-bar {
+    grid-template-columns: 1fr minmax(260px, 360px);
+    align-items: center;
+    padding-block: var(--space-2);
+  }
+  .character-studio {
+    grid-template-columns: minmax(260px, 0.95fr) minmax(360px, 1.3fr) minmax(220px, 0.65fr);
+    align-items: start;
+    gap: var(--space-4);
+  }
+  .character-studio__presentation,
+  .character-studio > .character-wardrobe { position: sticky; top: 72px; }
+  .character-studio__intro h3 { font-size: clamp(34px, 3.6vw, 52px); }
+  .character-studio__intro p { font-size: 15px; line-height: 1.5; }
+  .character-studio .character-preview__stage { height: clamp(230px, calc(100dvh - 440px), 600px); }
+  .character-studio .content-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .character-studio .content-picker-card-copy { padding: 0; text-align: center; }
+  .character-studio .content-picker-card-copy strong { font-size: 13px; }
+  .character-studio .content-picker-card-copy small { display: none; }
+  .character-studio .content-picker-section-heading > div > span { display: none; }
+  .character-studio .content-picker-section-heading h3 { font-size: 20px; }
+  .character-studio .content-picker-check { width: 23px; height: 23px; top: 9px; right: 9px; }
+  .character-studio .content-picker-art-character { aspect-ratio: auto; height: 100px; }
+  .character-studio .character-wardrobe__save { display: grid; }
+  .character-studio .character-wardrobe__field { min-width: 0; }
+  .character-studio .character-wardrobe__save > .ui-button { width: 100%; }
+  .character-studio .character-preview__pause svg { display: none; }
+  .character-studio .character-preview__action { font-size: 12px; }
+}
+@media (min-width: 1000px) and (max-width: 1199px) and (min-height: 600px) and (pointer: fine) {
+  .character-studio { grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr); }
+  .character-studio > .character-wardrobe { grid-column: 1; grid-row: 2; position: static; }
+  .character-studio__customization { grid-column: 2; grid-row: 1 / span 2; }
 }
 
 /* Touch: every control in the studio is at least 44×44, including the small

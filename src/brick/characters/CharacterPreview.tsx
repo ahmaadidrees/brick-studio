@@ -101,6 +101,42 @@ function PreviewFigure({ characterId, palette, appearance, reducedMotion, action
   </group>
 }
 
+/** A small real 3D toy-room stage; no scene assets, physics or extra canvases. */
+function PreviewStudioSet() {
+  const stage = useRef<Group>(null)
+  useFrame(({ camera }) => {
+    // The room stays behind the turntable as the camera rotates around the
+    // character, so a full turn never puts the backdrop in front of the avatar.
+    if (stage.current) stage.current.rotation.y = Math.atan2(camera.position.x, camera.position.z)
+  })
+  return <group ref={stage}>
+    <mesh position={[0, 0.6, -0.82]}>
+      <boxGeometry args={[8, 4, 0.06]} /><meshStandardMaterial color="#6c89bc" roughness={1} />
+    </mesh>
+    <mesh position={[0, -0.45, 0]}>
+      <boxGeometry args={[8, 0.06, 8]} /><meshStandardMaterial color="#e3bd83" roughness={1} />
+    </mesh>
+    <mesh position={[0, -0.405, 0]}>
+      <cylinderGeometry args={[0.55, 0.55, 0.065, 48]} /><meshStandardMaterial color="#afc9ee" roughness={0.85} />
+    </mesh>
+    <mesh position={[-0.66, 0.17, -0.64]}>
+      <boxGeometry args={[0.62, 0.045, 0.23]} /><meshStandardMaterial color="#e8c991" roughness={1} />
+    </mesh>
+    {['#f17861', '#f3ca74', '#9fcac2', '#b8cae8'].map((color, index) => <mesh key={color} position={[-0.86 + index * 0.13, 0.3 + (index % 2) * 0.025, -0.65]}>
+      <boxGeometry args={[0.095, 0.21 + (index % 2) * 0.05, 0.13]} /><meshStandardMaterial color={color} roughness={1} />
+    </mesh>)}
+    <mesh position={[0.73, 0.24, -0.7]}>
+      <boxGeometry args={[0.33, 0.47, 0.045]} /><meshStandardMaterial color="#e8c991" roughness={1} />
+    </mesh>
+    <mesh position={[0.73, 0.24, -0.67]}>
+      <boxGeometry args={[0.28, 0.42, 0.025]} /><meshStandardMaterial color="#c5dbed" roughness={1} />
+    </mesh>
+    <mesh position={[0.72, 0.3, -0.65]}>
+      <circleGeometry args={[0.065, 24]} /><meshBasicMaterial color="#f3ca74" />
+    </mesh>
+  </group>
+}
+
 /**
  * The one live Canvas in the studio: the same lazy character adapter and motion
  * contract as Explore, without physics. It renders on demand (no continuous
@@ -138,9 +174,7 @@ export function CharacterPreview({ characterId, palette, appearance, reducedMoti
           <directionalLight position={[-3, 2, -2]} intensity={1} color="#c4ddff" />
           <PreviewFigure characterId={characterId} palette={palette} appearance={appearance}
             reducedMotion={reducedMotion} action={action} onStatus={setStatus} />
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.38, 0]}>
-            <circleGeometry args={[0.55, 40]} /><meshStandardMaterial color="#c9d8ee" roughness={1} />
-          </mesh>
+          <PreviewStudioSet />
           <OrbitControls target={[0, 0.1, 0]} enablePan={false} enableZoom={false} enableDamping={false}
             minPolarAngle={Math.PI / 3} maxPolarAngle={Math.PI / 1.8} />
         </Canvas>
