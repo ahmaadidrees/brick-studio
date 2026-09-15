@@ -24,7 +24,7 @@ type RosterProps = {
   search: string
   busy: boolean
   onSearch: (value: string) => void
-  onManage: (student: ClassroomStudent) => void
+  onManage: (student: ClassroomStudent, focus?: 'password') => void
   onViewCodes: () => void
 }
 
@@ -33,9 +33,6 @@ export function RosterSection({ currentClass, students, loading, search, busy, o
   const query = search.trim().toLocaleLowerCase()
   const visible = students.filter(student => `${student.rosterName} ${student.username}`.toLocaleLowerCase().includes(query))
   return <section aria-label="Class students" className="classroom-section">
-    <div className="classroom-creative-banner">
-      <div><h3>Build curious minds together.</h3><p>Manage your class and keep the creativity going.</p></div>
-    </div>
     <div className="classroom-roster-toolbar">
       <div className="classroom-section-heading">
         <div><h3 className="classroom-section-title">Students</h3><p>{loading ? 'Loading students…' : `${students.length} ${students.length === 1 ? 'student' : 'students'} in ${currentClass.name}. Manage usernames, passwords, and access.`}</p></div>
@@ -50,7 +47,7 @@ export function RosterSection({ currentClass, students, loading, search, busy, o
           <strong>{student.rosterName}</strong>
           <span className="classroom-roster-username">{student.username}</span>
           <StudentStatusChip student={student} />
-          <Button variant="secondary" size="sm" trailingIcon={<ChevronRight size={16} />} disabled={busy} aria-label={`Manage ${student.rosterName}`} onClick={() => onManage(student)}>Manage</Button>
+          <Button variant="secondary" size="sm" trailingIcon={<ChevronRight size={16} />} disabled={busy} aria-label={`Manage ${student.rosterName}`} onClick={() => onManage(student)}>Edit student</Button><Button variant="quiet" size="sm" disabled={busy} aria-label={`Reset password for ${student.rosterName}`} onClick={() => onManage(student, 'password')}>Reset password</Button>
         </div>)}
       </div>
       {!visible.length && <p className="classroom-help" role="status">No students match “{search.trim()}”.</p>}

@@ -341,7 +341,7 @@ type HeaderProps = StudioDocumentCommands & {
 /** Guest drafts have no title field in the schema, so the header shows a neutral name, never the brand. */
 const NEUTRAL_WORLD_TITLE = 'My build'
 
-function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, onRenameWorld, worldTitle, saveStatus, onGoHome }: HeaderProps) {
+function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, accountLabel, onRenameWorld, worldTitle, saveStatus, onGoHome }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
@@ -378,6 +378,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
         <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
+        {onOpenMyClass && <Button variant="quiet" className="brick-header-account" aria-label={accountLabel ? 'Open My Class' : 'Open sign in'} onClick={onOpenMyClass}>{accountLabel ? 'My Class' : 'Sign in'}</Button>}
         <StudioSettings />
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
@@ -1488,7 +1489,7 @@ export default function BrickStudioApp({
           {...documentCommands}
           onSaveToAccount={() => setClassroomIntent('save')}
           onOpenMyWorlds={() => setClassroomIntent('worlds')}
-          onOpenMyClass={() => setClassroomIntent('class')}
+          onOpenMyClass={() => setClassroomIntent(classroomAuth ? 'class' : 'signin')}
           onRenameWorld={renameWorld}
           accountLabel={classroomAuth?.user.username}
           worldTitle={cloud.world?.title}

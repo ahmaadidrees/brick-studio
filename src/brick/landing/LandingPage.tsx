@@ -270,6 +270,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
         <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
           <a className="landing-nav-link" href="#how-it-works">How it works</a>
           <a className="landing-nav-link" href="#teachers">For teachers</a>
+          <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
           <a className="ui-button ui-button-secondary landing-nav-cta" href={signinHref}>
             <span className="ui-button-label">Student login</span>
           </a>

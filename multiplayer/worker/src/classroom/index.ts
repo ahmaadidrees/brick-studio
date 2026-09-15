@@ -235,6 +235,14 @@ async function route(request: Request, service: ClassroomService, path: string[]
     const ip = request.headers.get('CF-Connecting-IP') || 'local';
     // A full class shares one school NAT: account-level buckets do the tight throttling.
     await service.rate(`ip:${ip}`, 600, 600);
+    if (path[1] === 'class') {
+      const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
+      const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
+      if (!alias) fail(404, 'class_not_found', 'Check the class code with your teacher.');
+      const cls = (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
+      if (!cls) fail(404, 'class_not_found', 'Check the class code with your teacher.');
+      return json({ name: cls.name, canEnroll: Boolean(alias.can_enroll && cls.enrollment_open) });
+    }
     if (path[1] === 'register' || path[1] === 'login') {
       const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
       const username = normalizeUsername(input.username);

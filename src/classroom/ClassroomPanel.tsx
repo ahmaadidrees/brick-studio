@@ -1,5 +1,5 @@
 import { rememberClass } from './rememberedClass'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Blocks, CircleAlert, CircleCheck, LoaderCircle, LogOut, UserRound, Users } from 'lucide-react'
 import type { BrickStudioDocument } from '../brick/brickDocument'
 import { BrandLockup, BrickMark } from '../brand'
@@ -48,7 +48,7 @@ const sameTitle = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.t
  */
 export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, onClose, onSessionChange, onSaved, beforeWorldMutation, onWorldUpdated, client = browserClassroomClient }: Props) {
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
-  const [tab, setTab] = useState<'worlds' | 'class'>(intent === 'class' || (auth?.user.role === 'student' && (intent === 'signin' || intent === 'join')) ? 'class' : 'worlds')
+  const [tab, setTab] = useState<'worlds' | 'class'>((intent === 'teacher' && auth?.user.role !== 'student') || intent === 'class' || (auth?.user.role === 'student' && (intent === 'signin' || intent === 'join')) ? 'class' : 'worlds')
   const [classSection, setClassSection] = useState<ClassSection>('students')
   const [loginMode, setLoginMode] = useState<EntryMode>(initialLoginMode(intent))
   const [busy, setBusy] = useState(false)
@@ -70,6 +70,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   const [saveTitle, setSaveTitle] = useState('My build')
   const [renameWorld, setRenameWorld] = useState<ClassroomWorld | null>(null)
   const [showSave, setShowSave] = useState(intent === 'save')
+  const studentFocus = useRef<'password' | null>(null)
   const detailHeading = useRef<HTMLHeadingElement>(null)
   /** Set while this panel signs the account out, so a load request cancelled by that sign-out stays silent. */
   const signingOut = useRef(false)
@@ -126,9 +127,13 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
       .finally(() => { if (!cancelled) setStudentsLoading(false) })
     return () => { cancelled = true }
   }, [classId, teacher, client, auth])
-  useEffect(() => { detailHeading.current?.focus() }, [selectedWorld?.id, editingStudent?.id, renameWorld?.id])
+  useEffect(() => {
+    if (editingStudent && studentFocus.current === 'password') { document.querySelector<HTMLInputElement>('input[name="temporaryPassword"]')?.focus(); studentFocus.current = null }
+    else detailHeading.current?.focus()
+  }, [selectedWorld?.id, editingStudent?.id, renameWorld?.id])
 
   // Entry -----------------------------------------------------------------------------------------
+  const resolveClass = useCallback((code: string) => client.request<{ name: string; canEnroll: boolean }>('/auth/class', 'POST', { classCode: code }), [client])
   const changeMode = (mode: EntryMode) => { setLoginMode(mode); setError(''); setFieldErrors({}) }
   const authenticate = (mode: EntryMode, data: Record<string, string>) => {
     if (mode !== 'teacher-login') {
@@ -141,6 +146,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     void run(async () => {
       const next = await client.authenticate(mode, data)
       rememberClass(next)
+      if (next.user.role === 'teacher' && intent !== 'save' && intent !== 'worlds') setTab('class')
       if (next.user.role === 'student' && (intent === 'signin' || intent === 'join' || intent === 'class')) setTab('class')
     })
   }
@@ -150,7 +156,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
       returnTo.pathname = '/build'
       const saved = saveLocalBrickStudioProject(localStorage, getDocument())
       if (!saved.ok) throw new Error(saved.error.message)
-      returnTo.searchParams.set('classroom', intent)
+      returnTo.searchParams.set('classroom', intent === 'save' || intent === 'worlds' ? intent : 'teacher')
     }
     const url = await client.startGoogleTeacher(`${returnTo.pathname}${returnTo.search}${returnTo.hash}`)
     window.location.assign(url)
@@ -231,7 +237,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   })
 
   const reset = Boolean(auth?.user.resetRequired)
-  const title = !auth ? ENTRY_HEADLINES[loginMode].title : reset ? 'Choose a new password' : tab === 'class' ? 'My Class' : 'My Worlds'
+  const title = !auth ? ENTRY_HEADLINES[loginMode].title : reset ? 'Choose a new password' : tab === 'class' ? (teacher ? 'Teacher dashboard' : 'My Class') : 'My Worlds'
   const description = !auth ? ENTRY_HEADLINES[loginMode].lead
     : reset ? 'Your teacher reset your password. Choose one to use next time.'
     : tab === 'class' ? (teacher ? 'Manage your class and build together.' : 'Your class worlds, ready when your teacher opens them.')
@@ -262,7 +268,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     {error && <p className="classroom-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
     {notice && <p className="classroom-notice" role="status"><CircleCheck size={18} aria-hidden="true" /><span>{notice}</span></p>}
     {!auth
-      ? <EntryView mode={loginMode} busy={busy} fieldErrors={fieldErrors} onModeChange={changeMode} onSubmit={authenticate} onGoogle={startGoogle} />
+      ? <EntryView mode={loginMode} busy={busy} fieldErrors={fieldErrors} onModeChange={changeMode} onSubmit={authenticate} onGoogle={startGoogle} onResolveClass={resolveClass} />
       : reset
         ? <PasswordResetView onSubmit={changePassword} />
         : <div className="classroom-account-body">
@@ -287,7 +293,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
                   ? <WorldsView worlds={personalWorlds} busy={busy} showSave={showSave} saveTitle={saveTitle} saveDuplicate={personalWorlds.some(world => sameTitle(world.title, saveTitle))} onToggleSave={() => setShowSave(value => !value)} onSaveTitleChange={setSaveTitle} onSave={saveBuild} onBackToBuilding={onClose} onOpen={openWorld} onRename={setRenameWorld} onDuplicate={duplicateWorld} onManage={inspectWorld} />
                   : <ClassShell classes={classes} classId={classId} teacher={teacher} busy={busy} section={classSection} onClassChange={setClassId} onSectionChange={setClassSection}>
                     {teacher && (!currentClass || classSection === 'settings') && <ClassSettings currentClass={currentClass} busy={busy} newClassName={newClassName} onNewClassName={setNewClassName} onCreateClass={createClass} onToggleEnrollment={() => currentClass && patchClass({ enrollmentOpen: !currentClass.enrollmentOpen }, currentClass.enrollmentOpen ? 'Enrollment is closed. Existing accounts still work.' : 'Enrollment is open.')} onRotateCode={() => patchClass({ rotateCode: true }, 'New enrollment code ready. The returning sign-in code did not change.')} onToggleCollaboration={() => currentClass && patchClass({ collaborationOpen: !currentClass.collaborationOpen }, currentClass.collaborationOpen ? 'Collaboration is closed. Saved worlds are preserved.' : 'Collaboration is open.')} />}
-                    {teacher && currentClass && classSection === 'students' && <RosterSection currentClass={currentClass} students={students} loading={studentsLoading} search={studentSearch} busy={busy} onSearch={setStudentSearch} onManage={setEditingStudent} onViewCodes={() => setClassSection('settings')} />}
+                    {teacher && currentClass && classSection === 'students' && <RosterSection currentClass={currentClass} students={students} loading={studentsLoading} search={studentSearch} busy={busy} onSearch={setStudentSearch} onManage={(student, focus) => { studentFocus.current = focus ?? null; setEditingStudent(student) }} onViewCodes={() => setClassSection('settings')} />}
                     {currentClass && (!teacher || classSection === 'worlds') && <SharedWorldsSection currentClass={currentClass} teacher={teacher} worlds={worlds.filter(world => world.classId === classId && world.kind !== 'personal')} busy={busy} onCreate={createShared} onJoin={joinWorld} onManage={teacher ? inspectWorld : undefined} />}
                   </ClassShell>)}
         </div>}

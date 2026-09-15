@@ -90,8 +90,31 @@ try{
  await entry.getByRole('button',{name:'Student login',exact:true}).click();
  await entry.getByRole('button',{name:'Keep building as a guest',exact:true}).click();
  checks.push('mobile student entrance, separate teacher Google entry and guest exit');
- await guest.close();assert.deepEqual(errors,[]);
-}catch(error){failure=String(error);console.error(failure);}
+ await guest.close();
+ const teacherContext=await newContext({viewport:{width:1366,height:768}});
+ await teacherContext.addInitScript(auth=>sessionStorage.setItem('brick-studio.classroom-session.v1',JSON.stringify(auth)),teacher);
+ const dashboard=await teacherContext.newPage();await dashboard.goto(`${origin}/build?classroom=teacher`);
+ await dashboard.getByRole('heading',{name:'Teacher dashboard',exact:true}).waitFor();
+ await dashboard.getByLabel('Class',{exact:true}).selectOption(cls.id);
+ await dashboard.getByRole('button',{name:'Invite students',exact:true}).click();
+ await dashboard.getByRole('img',{name:'Scan to open this class on another device',exact:true}).waitFor();
+ const invite=await dashboard.getByLabel('Class link',{exact:true}).inputValue();assert.equal(new URL(invite).searchParams.get('classCode'),cls.code);
+ await dashboard.getByRole('button',{name:'Reset password for Synthetic login QA',exact:true}).waitFor();
+ await dashboard.screenshot({animations:'disabled',path:`${out}/teacher-invite.png`});
+ await dashboard.getByRole('button',{name:'Reset password for Synthetic login QA',exact:true}).click();
+ await dashboard.getByLabel('Temporary password',{exact:true}).waitFor();
+ assert.equal(await dashboard.getByLabel('Temporary password',{exact:true}).evaluate(el=>el===document.activeElement),true);
+ await dashboard.getByRole('dialog',{name:'Teacher dashboard',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
+ await dashboard.setViewportSize({width:390,height:844});await dashboard.screenshot({animations:'disabled',path:`${out}/teacher-mobile.png`});
+ const inviteContext=await newContext({viewport:{width:390,height:844}});const invitePage=await inviteContext.newPage();await invitePage.goto(invite);
+ assert.equal(await invitePage.getByLabel('Class code',{exact:true}).inputValue(),cls.code);
+ await invitePage.getByText(cls.name,{exact:true}).waitFor();
+ await invitePage.screenshot({animations:'disabled',path:`${out}/student-invite.png`});
+ await invitePage.getByRole('radio',{name:'Create account',exact:true}).click();assert.equal(await invitePage.getByLabel('Class code',{exact:true}).inputValue(),cls.code);
+ await inviteContext.close();await teacherContext.close();
+ checks.push('teacher dashboard direct entry, invite QR/link, password reset focus, mobile invite prefill and class lookup');
+ assert.deepEqual(errors,[]);
+}catch(error){failure=String(error);console.error(failure);const failedPage=browser.contexts().at(-1)?.pages().at(-1);if(failedPage)await failedPage.screenshot({path:`${out}/failure.png`}).catch(()=>{});}
 finally{
  const roster=(await request(`classes/${cls.id}/students`,'GET',undefined,teacher.session.accessToken)).students;
  for(const user of roster)await request(`classes/${cls.id}/students/${user.id}`,'PATCH',{suspended:true},teacher.session.accessToken);

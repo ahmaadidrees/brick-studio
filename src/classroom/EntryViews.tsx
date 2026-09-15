@@ -1,5 +1,5 @@
 import { forgetClass, readRememberedClass } from './rememberedClass'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronUp, GraduationCap, KeyRound, Mail, UserRound, UserRoundPlus } from 'lucide-react'
 import { BrickMark } from '../brand'
 import { Button, SegmentedControl } from '../ui'
@@ -28,23 +28,52 @@ type Props = {
   onModeChange: (mode: EntryMode) => void
   onSubmit: (mode: EntryMode, values: Record<string, string>) => void
   onGoogle: () => void
+  onResolveClass?: (code: string) => Promise<{ name: string; canEnroll: boolean }>
 }
 
 /** Board 03: student sign-in/create-account switch with a separate teacher entrance. */
-export function EntryView({ mode, busy, fieldErrors, onModeChange, onSubmit, onGoogle }: Props) {
+export function EntryView({ mode, busy, fieldErrors, onModeChange, onSubmit, onGoogle, onResolveClass }: Props) {
   const [remembered] = useState(readRememberedClass)
-  const [draft, setDraft] = useState({ classCode: mode === 'login' ? remembered?.code || '' : '', username: '', password: '', rosterName: '' })
+  const [invitedCode] = useState(() => new URLSearchParams(window.location.search).get('classCode')?.slice(0, 40) || '')
+  const [classInfo, setClassInfo] = useState<{ code: string; name: string; canEnroll: boolean } | null>(null)
+  const [editingCode, setEditingCode] = useState(false)
+  const [classError, setClassError] = useState('')
+  const lookup = useRef(0)
+  const [draft, setDraft] = useState({ classCode: invitedCode || (mode === 'login' ? remembered?.code || '' : ''), username: '', password: '', rosterName: '' })
   const [changeClass, setChangeClass] = useState(false)
   const update = (name: keyof typeof draft, value: string) => setDraft(previous => ({ ...previous, [name]: value }))
   const chooseMode = (next: EntryMode) => {
     // A remembered return code is not an enrollment invitation. Preserve typed
     // codes, but ask a new student for their teacher's enrollment code.
-    if (next === 'register' && !changeClass && draft.classCode === remembered?.code) update('classCode', '')
+    if (next === 'register' && !invitedCode && !matched?.canEnroll && !changeClass && draft.classCode === remembered?.code) update('classCode', '')
     if (next === 'login' && !changeClass && !draft.classCode && remembered) update('classCode', remembered.code)
     onModeChange(next)
   }
+  useEffect(() => {
+    const code = draft.classCode.trim().toUpperCase()
+    const sequence = ++lookup.current
+    setClassError('')
+    if (!onResolveClass || !code || mode === 'teacher-login') { setClassInfo(null); return }
+    const timer = window.setTimeout(() => {
+      void onResolveClass(code).then(info => {
+        if (lookup.current === sequence) { setClassInfo({ ...info, code }); setEditingCode(false) }
+      }).catch(() => { if (lookup.current === sequence) { setClassInfo(null); setClassError('Check the class code with your teacher.') } })
+    }, 500)
+    return () => { window.clearTimeout(timer); lookup.current++ }
+  }, [draft.classCode, mode, onResolveClass])
+  const matched = classInfo?.code === draft.classCode.trim().toUpperCase() ? classInfo : null
   const shared = { busy, fieldErrors, draft, update }
+
   return <div className="classroom-entry">
+    {mode !== 'teacher-login' && <div hidden={Boolean(matched) && !editingCode}>
+      {!changeClass && mode === 'login' && remembered && draft.classCode === remembered.code
+        ? <div className="classroom-remembered-class"><input form={ENTRY_FORM_ID} type="hidden" name="classCode" value={draft.classCode} /><p>Class: <strong>{remembered.name}</strong></p><Button variant="quiet" size="sm" disabled={busy} onClick={() => { forgetClass(); setChangeClass(true); update('classCode', '') }}>Change class</Button></div>
+        : <TextInput form={ENTRY_FORM_ID} label="Class code" name="classCode" value={draft.classCode} onChange={event => update('classCode', event.target.value)} hint="Use your teacher’s code for sign-in or a new account." icon={<KeyRound size={18} />} autoComplete="off" autoCapitalize="characters" spellCheck={false} required maxLength={32} />}
+    </div>}
+    {mode !== 'teacher-login' && (matched || classError) && <div className="classroom-code-context" aria-live="polite">
+      {matched ? <><strong>{matched.name}</strong><Button variant="quiet" size="sm" onClick={() => setEditingCode(true)}>Change class code</Button><p>{matched.canEnroll ? 'Sign in or create your account in this class.' : 'Existing students can sign in. Ask your teacher for an invite if you are new.'}</p></> : <p>Start with your teacher’s class code. Next time, we’ll remember your class.</p>}
+      {classError && <p className="classroom-help">{classError}</p>}
+    </div>}
     {mode !== 'teacher-login' && <SegmentedControl<'login' | 'register'>
       label="Student account"
       fullWidth
@@ -55,10 +84,7 @@ export function EntryView({ mode, busy, fieldErrors, onModeChange, onSubmit, onG
         { value: 'register', label: ENTRY_MODE_LABELS.register, icon: <UserRoundPlus size={16} />, disabled: busy },
       ]}
     />}
-    {mode === 'login' && <StudentSignInForm {...shared}
-      rememberedName={!changeClass && draft.classCode === remembered?.code ? remembered.name : undefined}
-      onChangeClass={() => { forgetClass(); setChangeClass(true); update('classCode', '') }}
-      onSubmit={values => onSubmit('login', values)} />}
+    {mode === 'login' && <StudentSignInForm {...shared} onSubmit={values => onSubmit('login', values)} />}
     {mode === 'register' && <EnrollForm {...shared} onSubmit={values => onSubmit('register', values)} />}
     {mode === 'teacher-login' && <TeacherSignInForm key="teacher" busy={busy} onSubmit={values => onSubmit('teacher-login', values)} onGoogle={onGoogle} />}
     <div className="classroom-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => chooseMode(mode === 'teacher-login' ? 'login' : 'teacher-login')}>{mode === 'teacher-login' ? 'Student login' : 'Teacher sign in'}</Button></div>
@@ -80,9 +106,9 @@ type StudentProps = { busy: boolean; fieldErrors: EntryFieldErrors; onSubmit: (v
 // Username and password rules are checked in ClassroomPanel (validateUsername / validatePassword) and shown as a
 // sentence on the field, so the inputs carry no pattern/minLength that would make the browser bubble win first.
 
-function StudentSignInForm({ busy, fieldErrors, onSubmit, draft, update, rememberedName, onChangeClass }: StudentProps & { rememberedName?: string; onChangeClass: () => void }) {
+function StudentSignInForm({ fieldErrors, onSubmit, draft, update }: StudentProps) {
   return <form id={ENTRY_FORM_ID} className="classroom-form" onSubmit={event => onSubmit(readForm(event))}>
-    {rememberedName ? <div className="classroom-remembered-class"><input type="hidden" name="classCode" value={draft.classCode} /><p>Class: <strong>{rememberedName}</strong></p><Button variant="quiet" size="sm" disabled={busy} onClick={onChangeClass}>Change class</Button></div> : <TextInput label="Class code" name="classCode" value={draft.classCode} onChange={event => update('classCode', event.target.value)} hint="Use the code your teacher gave you." icon={<KeyRound size={18} />} autoComplete="off" autoCapitalize="characters" spellCheck={false} required maxLength={32} />}
+
     <TextInput label="Username" name="username" value={draft.username} onChange={event => update('username', event.target.value)} error={fieldErrors.username} icon={<UserRound size={18} />} autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={24} />
     <PasswordField name="password" value={draft.password} onChange={event => update('password', event.target.value)} label="Password" error={fieldErrors.password} maxLength={128} autoComplete="current-password" required />
     <p className="classroom-help classroom-help-center">Forgot your details? Ask your teacher.</p>
@@ -91,7 +117,7 @@ function StudentSignInForm({ busy, fieldErrors, onSubmit, draft, update, remembe
 
 function EnrollForm({ fieldErrors, onSubmit, draft, update }: StudentProps) {
   return <form id={ENTRY_FORM_ID} className="classroom-form" onSubmit={event => onSubmit(readForm(event))}>
-    <TextInput label="Class code" name="classCode" value={draft.classCode} onChange={event => update('classCode', event.target.value)} hint="The code your teacher gives new students." icon={<KeyRound size={18} />} autoComplete="off" autoCapitalize="characters" spellCheck={false} required maxLength={32} />
+
     <TextInput label="Choose a username" name="username" value={draft.username} onChange={event => update('username', event.target.value)} hint={`${USERNAME_RULE} Classmates see this name.`} error={fieldErrors.username} icon={<UserRound size={18} />} autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={24} />
     <TextInput label="Name your teacher knows" name="rosterName" value={draft.rosterName} onChange={event => update('rosterName', event.target.value)} hint="Shown to your teacher only." autoComplete="off" required maxLength={80} />
     <PasswordField name="password" value={draft.password} onChange={event => update('password', event.target.value)} label="Choose a password" hint={`${PASSWORD_RULE} Remember it for next time.`} error={fieldErrors.password} maxLength={128} autoComplete="new-password" required />

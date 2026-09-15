@@ -196,3 +196,16 @@ describe('student password and alias boundaries', () => {
     expect(buckets).toEqual([[`login:${classId}:builder`, 12, 300], [`login:${classId}:builder`, 12, 300]]);
   });
 });
+
+describe('class entry lookup', () => {
+  it('returns only class name and enrollment availability and keeps old codes usable', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const rows = vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table => table === 'class_codes' ? [{ class_id: classId, can_enroll: true }] : [{ id: classId, name: 'STEM class', enrollment_open: true, teacher_id: teacherId }]);
+    const call = () => handleClassroomRequest(new Request('https://worker.test/classroom/auth/class', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ classCode: 'CLASS123' }) }), env);
+    expect(await (await call())!.json()).toEqual({ name: 'STEM class', canEnroll: true });
+    rows.mockImplementation(async table => table === 'class_codes' ? [{ class_id: classId, can_enroll: false }] : [{ name: 'STEM class', enrollment_open: true }]);
+    expect(await (await call())!.json()).toEqual({ name: 'STEM class', canEnroll: false });
+    rows.mockResolvedValue([]);
+    expect((await call())!.status).toBe(404);
+  });
+});

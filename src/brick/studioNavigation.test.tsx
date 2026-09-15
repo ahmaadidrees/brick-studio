@@ -101,7 +101,7 @@ describe('studio navigation and save context', () => {
     expect(entries[1]).toHaveTextContent('My Worlds')
     expect(entries[2]).toHaveTextContent('My Class')
     fireEvent.click(entries[2])
-    expect(screen.getByRole('dialog', { name: 'Classroom class' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Classroom signin' })).toBeInTheDocument()
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 

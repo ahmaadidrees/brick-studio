@@ -1,3 +1,4 @@
+import { ClassInvite } from './ClassInvite'
 import { useEffect, useState } from 'react'
 import { Blocks, Check, Copy, RefreshCw, Settings, Users } from 'lucide-react'
 import { Button, SegmentedControl } from '../ui'
@@ -27,6 +28,7 @@ export function ClassShell({ classes, classId, teacher, busy, section, onClassCh
     <div className="classroom-class-navigation">
       {classes.length > 0 && <SelectInput label="Class" id="classroom-class-picker" className="classroom-class-select" value={classId} disabled={busy} onChange={event => onClassChange(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectInput>}
       {!classes.length && <EmptyState title={teacher ? 'Start your first class' : 'No class yet'} message={teacher ? 'Create a class, then give students its enrollment code.' : 'Your account is not in a class right now. Ask your teacher for help.'} />}
+      {teacher && currentClass && <ClassInvite classroom={currentClass} />}
       {teacher && currentClass && <SegmentedControl<ClassSection>
         label="Class sections"
         fullWidth
@@ -89,10 +91,10 @@ export function ClassSettings({ currentClass, busy, newClassName, onNewClassName
   return <>
     {currentClass && <section className="classroom-card" aria-labelledby="classroom-access-title">
       <h3 id="classroom-access-title" className="classroom-card-title">Class access</h3>
-      <div className="classroom-codes">
+      <details className="classroom-codes"><summary>Legacy codes and troubleshooting</summary>
         <CodeCard eyebrow="For new students" label="New student enrollment code" code={currentClass.code} help={currentClass.enrollmentOpen ? 'Students choose “Join a class” and enter this code to create an account.' : 'Enrollment is closed. Open it below before sharing this code.'} />
         <CodeCard eyebrow="For existing accounts" label="Returning sign-in code" code={currentClass.loginCode} help="Students choose “Student” sign in and enter this code with their username and password." />
-      </div>
+      </details>
       <p className="classroom-help">Enrollment creates an account. Sign-in returns to an existing account.</p>
       <div className="classroom-access-row">
         <div><div className="classroom-access-title"><strong>New student enrollment</strong><StateChip open={currentClass.enrollmentOpen} /></div><small>{currentClass.enrollmentOpen ? 'Students can create new accounts with the enrollment code.' : 'New students cannot join. Existing accounts still work.'}</small></div>

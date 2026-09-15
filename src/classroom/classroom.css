@@ -242,3 +242,19 @@
 .classroom-remembered-class { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--ui-border, #dce4ef); border-radius: 12px; background: var(--ui-surface, #f8fafc); }
 .classroom-remembered-class p { margin: 0; overflow-wrap: anywhere; min-width: 0; }
 .classroom-remembered-class button { flex-shrink: 0; }
+
+.classroom-code-context { padding: 12px 14px; border-radius: 12px; background: var(--primary-soft); margin-bottom: 16px; }
+.classroom-code-context p { margin: 4px 0; font-size: 13px; }
+.classroom-invite { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: var(--surface-2); }
+.classroom-invite-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.classroom-invite-heading p { margin: 5px 0 0; font-size: 12px; color: var(--text-muted); }
+.classroom-invite-code { font-size: 18px; letter-spacing: .07em; overflow-wrap: anywhere; }
+.classroom-invite-details { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding-top: 16px; }
+.classroom-invite-details > div { flex: 1; min-width: 180px; }
+.classroom-invite-details p { font-size: 13px; }
+.classroom-invite-details label { display: grid; gap: 6px; font-size: 13px; }
+.classroom-invite-details button { margin-top: 8px; }
+.classroom-roster-row { grid-template-columns: 1fr 1fr auto auto auto; }
+@media(max-width:600px) { .classroom-roster-row { display:flex; flex-wrap:wrap; gap:10px; } }
+.classroom-class-navigation > .classroom-invite { grid-column: 1 / -1; }
+.classroom-class-navigation { align-items: start; }
