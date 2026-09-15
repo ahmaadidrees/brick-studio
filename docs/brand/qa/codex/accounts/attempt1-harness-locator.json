@@ -1,0 +1,17 @@
+{
+  "run": "qa_brand_browser_mu1z2w3v",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "origin": "http://127.0.0.1:5215",
+  "completedAt": "2026-09-15T01:08:35.047Z",
+  "checks": [
+    "Real browser teacher email sign-in against staging"
+  ],
+  "passed": false,
+  "failure": "locator.waitFor: Timeout 30000ms exceeded.",
+  "cleanup": [],
+  "fixture": {},
+  "limitations": [
+    "Teacher Google OAuth not exercised; dedicated teacher email/password used",
+    "No physical Chromebook or real student account used"
+  ]
+}

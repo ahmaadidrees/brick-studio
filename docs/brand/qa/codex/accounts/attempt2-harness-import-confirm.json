@@ -1,0 +1,25 @@
+{
+  "run": "qa_brand_browser_mu1z4e5s",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "origin": "http://127.0.0.1:5215",
+  "completedAt": "2026-09-15T01:09:08.271Z",
+  "checks": [
+    "Real browser teacher email sign-in against staging",
+    "New dedicated fixture class created through teacher UI",
+    "Student joins using enrollment code in actual browser"
+  ],
+  "passed": false,
+  "failure": "Expected values to be strictly equal:",
+  "cleanup": [
+    "synthetic student suspended",
+    "fixture class enrollment and collaboration closed"
+  ],
+  "fixture": {
+    "classId": "a48cca23-33d8-4980-9450-519af9d1b4e5",
+    "worldId": "6e292af0-345a-40ef-9b99-c6054c80a6b3"
+  },
+  "limitations": [
+    "Teacher Google OAuth not exercised; dedicated teacher email/password used",
+    "No physical Chromebook or real student account used"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "run": "qa_brand_browser_mu1z58x7",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "origin": "http://127.0.0.1:5215",
+  "completedAt": "2026-09-15T01:10:44.888Z",
+  "checks": [
+    "Real browser teacher email sign-in against staging"
+  ],
+  "passed": false,
+  "failure": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Class', { exact: true }).getByRole('option', { name: 'qa_brand_browser_mu1z58x7', exact: true })\u001b[22m\n",
+  "cleanup": [
+    "fixture class enrollment and collaboration closed"
+  ],
+  "fixture": {
+    "classId": "99999e89-aac2-42a9-8988-5f9b050ec8c0"
+  },
+  "limitations": [
+    "Teacher Google OAuth not exercised; dedicated teacher email/password used",
+    "No physical Chromebook or real student account used"
+  ]
+}
