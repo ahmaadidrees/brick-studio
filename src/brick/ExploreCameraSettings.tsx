@@ -59,7 +59,7 @@ export function StudioSettings() {
  * Escape closes only this dialog and focus returns to the trigger; `aria-modal` also pauses
  * the studio's global shortcuts through `exploreKeyboardBlocked`.
  */
-function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SettingsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const camera = useBrickStore((state) => state.exploreCameraMode)
   const keyboard = useBrickStore((state) => state.exploreKeyboardMode)
   const [motion, setMotion] = useState(readMotionPreference)

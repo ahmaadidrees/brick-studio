@@ -1,7 +1,7 @@
 import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
 import { getBuildPlateSize, type BuildPlateSize } from './buildPlate'
 import { CustomColorPicker } from './CustomColorPicker'
-import { StudioSettings } from './ExploreCameraSettings'
+import { SettingsSheet, StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
 import {
   ArrowLeft,
@@ -31,6 +31,7 @@ import {
   RotateCcw,
   RotateCw,
   Search,
+  SlidersHorizontal,
   Trash2,
   Undo2,
   X,
@@ -79,6 +80,7 @@ import { resizeSelectionDefinitions } from './customParts/resize'
 import { saveLiveWorldSeed } from './live/liveWorldSeed'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY, saveLocalBrickStudioProject } from './documentPersistence'
 import './brick-studio.css'
+import './touch-layout.css'
 import { installActiveWorldRecovery } from './activeWorldRecovery'
 
 // Lets AppErrorBoundary capture the open world (local, class, or live) from the
@@ -240,12 +242,16 @@ function useLocalStorageHealth(enabled: boolean) {
   return blocked
 }
 
-// The canvas-first shell: no docked drawer, a (+) sheet instead, and the placement bar as the
-// only control surface while a draft is armed. Mirrors the CSS compact query exactly; the
-// innerWidth fallback only covers environments without matchMedia.
+// Narrow and portrait screens use the creative dock. Landscape touch tablets
+// have room for a persistent palette without taking away the editing canvas.
 function useCompactLayout() {
   const [queries] = useState(() => ['(max-width: 900px)', '(pointer: coarse)'].map((query) => window.matchMedia?.(query) ?? null))
-  const matchesCompact = useCallback(() => queries.some((query) => query?.matches) || window.innerWidth <= 900, [queries])
+  const matchesCompact = useCallback(() => {
+    const touch = queries[1]?.matches ?? false
+    // Landscape tablets retain a palette; narrow/portrait screens use the dock.
+    const tabletPalette = touch && window.innerWidth >= 960 && window.innerHeight >= 600 && window.innerWidth > window.innerHeight
+    return !tabletPalette && (queries.some((query) => query?.matches) || window.innerWidth <= 900)
+  }, [queries])
   const [compact, setCompact] = useState(matchesCompact)
 
   useEffect(() => {
@@ -334,6 +340,7 @@ type HeaderProps = StudioDocumentCommands & {
 const NEUTRAL_WORLD_TITLE = 'My build'
 
 function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, onRenameWorld, worldTitle, saveStatus, onGoHome }: HeaderProps) {
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const mode = useBrickStore((state) => state.mode)
   const setMode = useBrickStore((state) => state.setMode)
   const hasBricks = useBrickStore((state) => state.bricks.length > 0)
@@ -360,13 +367,14 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
             onStartLiveWorld={livePolicy ? undefined : onStartLiveWorld}
             onPublishWorld={livePolicy ? undefined : onPublishWorld}
             onOpenHelp={onOpenHelp}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
           <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} className="brick-save-status" />
         </div>
       </div>
       <div className="brick-header-tools" role="group" aria-label="World tools">
-        <Button variant="quiet" className="brick-header-tool" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
-        <Button variant="quiet" className="brick-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
+        <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
+        <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
         <StudioSettings />
       </div>
@@ -375,6 +383,7 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
           ? <Button variant="primary" aria-label="Explore mode" title={hasBricks ? 'Step inside your world (2)' : 'Place a brick first, then explore'} className="brick-primary-mode" icon={<Compass size={18} />} onClick={requestExplore} disabled={!hasBricks || liveModeDisabled}>Explore<kbd aria-hidden="true">2</kbd></Button>
           : <Button variant="primary" aria-label="Back to building" className="brick-primary-mode" icon={<ArrowLeft size={18} />} onClick={requestBuild} disabled={liveModeDisabled}>Back to building<kbd aria-hidden="true">1</kbd></Button>}
       </nav>
+      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </header>
   )
 }
@@ -593,6 +602,7 @@ function usePaletteTarget() {
 
 function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
   const { onClose } = props
+  const [expanded, setExpanded] = useState(false)
   const selectionCount = useBrickStore((state) => state.selectedIds.length)
   const targetColor = usePaletteTarget()
   const panel = useRef<HTMLDivElement>(null)
@@ -619,8 +629,8 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
   return (
     <>
       <div className="brick-sheet-backdrop" data-testid="brick-sheet-backdrop" onPointerDown={onClose} aria-hidden="true" />
-      <div ref={panel} className="brick-sheet" role="dialog" aria-modal="true" aria-labelledby="brick-sheet-title" tabIndex={-1}>
-        <span className="brick-sheet-grip" aria-hidden="true" />
+      <div ref={panel} className={`brick-sheet${expanded ? ' brick-sheet-expanded' : ''}`} role="dialog" aria-modal="true" aria-labelledby="brick-sheet-title" tabIndex={-1}>
+        <button type="button" className="brick-sheet-size" aria-label={expanded ? 'Make brick drawer smaller' : 'Expand brick drawer'} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><span className="brick-sheet-grip" aria-hidden="true" /></button>
         <div className="library-title">
           <h2 className="library-heading" id="brick-sheet-title"><Box size={24} aria-hidden="true" />Bricks</h2>
           <button className="studio-icon-button" type="button" aria-label="Close brick drawer" onClick={onClose}><X size={18} /></button>
@@ -800,11 +810,11 @@ function SelectionModeControl() {
       className={`selection-mode-control ${selectionMode ? 'active' : ''}`}
       aria-pressed={selectionMode}
       aria-label={selectionMode ? 'Cancel box selection' : 'Box select bricks'}
-      title="Drag empty space to box-select. Shift-click adds to your selection."
+      title="Select several bricks by dragging a box around them."
       onClick={() => setSelectionMode(!selectionMode)}
     >
       {selectionMode ? <Check size={18} /> : <MousePointer2 size={18} />}
-      <span>{selectionMode ? 'Cancel' : 'Box select'}</span>
+      <span>{selectionMode ? 'Done' : 'Select'}</span>
     </button>
   )
 }
@@ -850,6 +860,7 @@ function EmptyState() {
  * only — there is no room for them beside six 44px targets.
  */
 function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onResize: () => void }) {
+  const [adjustOpen, setAdjustOpen] = useState(false)
   const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const bricks = useBrickStore((state) => state.bricks)
   const selectedId = useBrickStore((state) => state.selectedId)
@@ -874,9 +885,10 @@ function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onR
           <span className="selection-swatch selection-swatch-multi" aria-hidden="true"><Layers3 size={17} /></span>
           <span className="selection-chip-text"><span className="brick-eyebrow">Selection</span><strong>{count} bricks</strong></span>
         </span>
-        <TransformControls count={count} onResize={onResize} compact />
-        <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Copy ${count} selected bricks`} onClick={copy}><Clipboard size={19} /></button>
-        <button className="studio-icon-button placement-icon-button" type="button" aria-label="Paste copied bricks" onClick={paste}><ClipboardPaste size={19} /></button>
+        <button className="studio-button touch-adjust-toggle" aria-expanded={adjustOpen} onClick={() => setAdjustOpen(!adjustOpen)}><SlidersHorizontal size={18} />Adjust</button>
+        {adjustOpen && <TransformControls count={count} onResize={onResize} compact />}
+        {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Copy ${count} selected bricks`} onClick={copy}><Clipboard size={19} /></button>}
+        {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label="Paste copied bricks" onClick={paste}><ClipboardPaste size={19} /></button>}
         <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Duplicate ${count} selected bricks`} onClick={duplicate}><Copy size={19} /></button>
         <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Recolor ${count} selected bricks`} onClick={onRecolor}><Palette size={19} /></button>
         <button className="studio-icon-button placement-icon-button danger" type="button" aria-label={`Delete ${count} selected bricks`} onClick={deleteSelected}><Trash2 size={19} /></button>
@@ -893,11 +905,12 @@ function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onR
         <span className="selection-swatch" style={{ background: selected.color }} aria-hidden="true" />
         <span className="selection-chip-text"><span className="brick-eyebrow">Selected</span><strong>{part.name}</strong></span>
       </span>
-      <TransformControls count={1} onResize={onResize} compact />
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Move brick" onClick={startMove}><Move size={19} /></button>
+      <button className="studio-button touch-adjust-toggle" aria-expanded={adjustOpen} onClick={() => setAdjustOpen(!adjustOpen)}><SlidersHorizontal size={18} />Adjust</button>
+      {adjustOpen && <TransformControls count={1} onResize={onResize} compact />}
+      {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label="Move brick" onClick={startMove}><Move size={19} /></button>}
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Recolor brick" onClick={onRecolor}><Palette size={19} /></button>
       <button className="studio-icon-button placement-icon-button" type="button" aria-label="Duplicate brick" onClick={duplicate}><Copy size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={19} /></button>
+      {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={19} /></button>}
       <button className="studio-icon-button placement-icon-button danger" type="button" aria-label="Delete brick" onClick={deleteSelected}><Trash2 size={19} /></button>
     </div>
   )
@@ -931,6 +944,7 @@ function TouchPlacementBar() {
 
 type BuildShellProps = {
   compact: boolean
+  onOpenWorldSetup: (tab: 'environment' | 'character') => void
   customParts: CustomPartDefinition[]
   canEditCustomParts: boolean
   customPartHelp?: string
@@ -940,12 +954,14 @@ type BuildShellProps = {
 
 function BuildShell({
   compact,
+  onOpenWorldSetup,
   customParts,
   canEditCustomParts,
   customPartHelp,
   onCreatePart,
   onResizeSelection,
 }: BuildShellProps) {
+  const coarsePointer = useCoarsePointerPreference()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
@@ -967,6 +983,7 @@ function BuildShell({
     <div className={`build-shell${compact ? ' compact-shell' : ''}${!compact && !drawerOpen ? ' drawer-collapsed' : ''}`}>
       {compact ? (
         <>
+          <nav className="brick-creative-dock" aria-label="Creative tools">
           <button
             className="brick-drawer-fab"
             type="button"
@@ -978,6 +995,9 @@ function BuildShell({
             <Plus size={22} />
             <span>Bricks</span>
           </button>
+          <button type="button" onClick={() => onOpenWorldSetup('environment')}><Mountain size={21} /><span>Scene</span></button>
+          <button type="button" onClick={() => onOpenWorldSetup('character')}><UserRound size={21} /><span>Character</span></button>
+          </nav>
           <TouchSelectionBar onRecolor={openSheet} onResize={openResize} />
           {sheetOpen && <BrickDrawerSheet
             customParts={customParts}
@@ -1004,7 +1024,7 @@ function BuildShell({
             onClick={() => setDrawerOpen(true)}
           ><PanelLeftOpen size={18} /><span>Bricks</span></button>
         )}
-        <Inspector onResize={openResize} />
+        {coarsePointer ? <TouchSelectionBar onRecolor={() => setDrawerOpen(true)} onResize={openResize} /> : <Inspector onResize={openResize} />}
       </>}
       <EditingToolbar />
       <TouchPlacementBar />
@@ -1481,7 +1501,7 @@ export default function BrickStudioApp({
     if (cloud.world?.id === renamed.world.id) await cloud.reload()
   } : undefined
   return (
-    <main className={`brick-studio brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}${livePolicy ? ' brick-live-session' : ''}`}>
+    <main className={`brick-studio${compact ? ' brick-compact-layout' : ''}${showOnboarding ? ' brick-onboarding-open' : ''} brick-mode-${mode}${reducedMotion ? ' brick-reduced-motion' : ''}${selectionMode ? ' brick-select-mode' : ''}${livePolicy ? ' brick-live-session' : ''}`}>
       <div className="brick-canvas">
         <BrickStudioScene
           {...raceScene}
@@ -1529,6 +1549,7 @@ export default function BrickStudioApp({
         <>
           <BuildShell
             compact={compact}
+            onOpenWorldSetup={openWorldSetup}
             customParts={customParts}
             canEditCustomParts={canEditCustomParts}
             customPartHelp={customPartHelp}

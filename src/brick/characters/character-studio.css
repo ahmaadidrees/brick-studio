@@ -311,3 +311,20 @@
   .character-look { min-height: 48px; }
   .character-wardrobe__look { min-height: 44px; }
 }
+
+/* Touch browsing keeps the result beside the controls on tablets, and a small
+   live preview above them on phones. The sheet remains the only scroll owner. */
+@media (pointer: coarse) and (min-width: 760px) and (min-height: 600px) {
+  .character-studio { grid-template-columns: minmax(200px, .8fr) minmax(300px, 1.2fr); align-items: start; gap: 16px; }
+  .character-studio__presentation { position: sticky; top: 112px; }
+  .character-studio__customization { grid-column: 2; grid-row: 1 / span 2; }
+  .character-studio > .character-wardrobe { grid-column: 1; }
+  .character-studio .character-preview__stage { height: clamp(180px, 30dvh, 320px); }
+}
+@media (pointer: coarse) and (max-width: 759px) and (min-height: 600px) {
+  .character-studio__presentation { position: sticky; top: 104px; z-index: 1; gap: 0; padding: 6px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+  .character-studio__intro { display: none; }
+  .character-studio .character-preview__stage { height: 120px; }
+  .character-studio .character-preview { border: 0; box-shadow: none; }
+  .character-studio .character-preview__hint { display: none; }
+}

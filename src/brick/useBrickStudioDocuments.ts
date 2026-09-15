@@ -87,7 +87,15 @@ export function useBrickStudioDocuments(
     })
     autosaveRef.current = autosave
     loadedRef.current = true
+    // Mobile browsers can freeze or discard a tab without unmounting React.
+    // Flush the existing local-only autosave before that happens.
+    const flush = () => { autosave.flush() }
+    const visibilityChanged = () => { if (document.visibilityState === 'hidden') flush() }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', visibilityChanged)
     return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', visibilityChanged)
       loadedRef.current = false
       autosaveRef.current = null
       autosave.dispose()

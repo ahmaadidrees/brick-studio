@@ -1,0 +1,109 @@
+/* Compact screens share one creative dock and one contextual editing surface.
+   Touch landscape tablets retain the palette; pointer type alone is not a layout. */
+.brick-creative-dock { display: none; }
+.brick-sheet-size { display: grid; place-items: center; flex: 0 0 28px; width: 100%; padding: 0; border: 0; background: transparent; cursor: ns-resize; }
+.brick-sheet-size .brick-sheet-grip { margin: 0; }
+.brick-sheet-size:focus-visible { outline: 3px solid var(--studio-focus); border-radius: 8px; }
+.brick-sheet { max-height: min(68%, 560px); }
+.brick-sheet-expanded { max-height: calc(100% - var(--brick-header-block) - 12px); }
+.brick-onboarding-open .brick-toast { display: none; }
+
+.brick-compact-layout { --brick-header-height: 60px; }
+.brick-compact-layout .brick-header { grid-template-areas: 'world tools mode'; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: 44px; gap: 6px; }
+.brick-compact-layout .brick-header-world { grid-area: world; gap: 4px; }
+.brick-compact-layout .brick-header-tools { grid-area: tools; }
+.brick-compact-layout .brick-header-tools > * { flex: 0 0 auto; }
+.brick-compact-layout .brick-mode-switch { grid-area: mode; padding: 0; border: 0; }
+.brick-compact-layout .brick-header .brick-creative-header,
+.brick-compact-layout .brick-header .studio-settings-trigger { display: none; }
+.brick-compact-layout .brick-header .brand-wordmark { display: none; }
+.brick-compact-layout .brick-header .brand-mark { width: 28px; height: 28px; }
+.brick-compact-layout .brick-world-context { flex-direction: column; align-items: flex-start; gap: 0; padding-left: 4px; }
+.brick-compact-layout .studio-world-title { border: 0; padding: 0; min-height: 28px; }
+.brick-compact-layout .studio-world-title strong { max-width: min(180px, 27vw); font-size: 14px; }
+.brick-compact-layout .brick-header .brick-save-status { padding: 0; font-size: 10px; }
+.brick-compact-layout .brick-primary-mode { min-height: 44px; padding: 0 10px; font-size: 12px; }
+.brick-compact-layout .brick-primary-mode kbd { display: none; }
+.brick-compact-layout .brick-header .brick-header-tool.ui-button { min-height: 44px; min-width: 44px; padding: 2px 6px; }
+.brick-compact-layout .brick-header .brick-header-tool .ui-button-label { display: block; font-size: 10px; }
+.brick-compact-layout .studio-menu-popover { top: calc(100% + 6px); left: 8px; right: 8px; width: auto; }
+.brick-compact-layout .studio-menu { position: static; }
+.brick-compact-layout .brick-creative-dock { position: absolute; z-index: 16; bottom: max(8px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; width: min(360px, calc(100% - 16px)); padding: 5px; box-sizing: border-box; gap: 5px; border: 1px solid var(--studio-panel-border); border-radius: 20px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.brick-creative-dock > button { position: static; display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 48px; height: auto; padding: 5px 12px; border: 0; border-radius: 14px; background: transparent; color: var(--studio-ink); font: 800 11px/1.2 inherit; box-shadow: none; cursor: pointer; }
+.brick-creative-dock > .brick-drawer-fab { background: var(--studio-blue); color: white; }
+.brick-creative-dock > button:hover { background: var(--studio-panel-soft); color: var(--studio-blue-dark); }
+.brick-creative-dock > button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.brick-compact-layout .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100% - 16px); transform: none; }
+.brick-compact-layout .brick-edit-toolbar .studio-icon-button > span,
+.brick-compact-layout .brick-capacity-status,
+.brick-compact-layout .view-controls .view-home > span,
+.brick-compact-layout .view-controls button:not(.view-home) { display: none; }
+.brick-compact-layout .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
+.brick-compact-layout .brick-edit-toolbar .selection-mode-control span { display: inline; }
+.brick-compact-layout .selection-mode-control { min-height: 44px; padding: 0 10px; }
+.brick-compact-layout .touch-placement-bar,
+.brick-compact-layout .touch-selection-bar { top: auto; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 68px); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); max-width: 520px; margin-inline: auto; flex-wrap: wrap; gap: 5px; border-radius: 18px; }
+.brick-compact-layout .placement-part-chip,
+.brick-compact-layout .selection-part-chip { flex: 1 0 100%; flex-direction: row; gap: 8px; padding: 0 6px; }
+.brick-compact-layout .selection-chip-text { flex-direction: row; gap: 8px; }
+.brick-compact-layout .touch-place-button { flex: 1 1 auto; min-width: 80px; }
+.touch-selection-bar .transform-controls-compact { order: 10; flex: 1 0 100%; display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 5px; }
+.touch-selection-bar .transform-controls-compact button { width: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; min-height: 48px; border-radius: 10px; }
+.touch-selection-bar .transform-controls-compact small { position: static; width: auto; height: auto; clip-path: none; white-space: normal; font-size: 10px; }
+.touch-adjust-toggle { min-height: 44px; padding: 0 10px; }
+.touch-adjust-toggle[aria-expanded='true'] { color: var(--studio-blue-dark); background: var(--primary-soft); border-color: var(--studio-blue); }
+.brick-compact-layout .touch-selection-bar { max-height: 40%; overflow-y: auto; touch-action: pan-y; }
+.brick-compact-layout .brick-toast { top: calc(var(--brick-panel-top) + 60px); }
+
+@media (pointer: coarse) {
+  .onboarding-guide { top: calc(var(--brick-panel-top) + 62px); padding: 18px; width: min(380px, calc(100% - 32px)); max-height: calc(100% - var(--brick-header-block) - 260px); }
+  .onboarding-guide h2 { font-size: 22px; padding-right: 30px; }
+  .onboarding-guide .onboarding-intro, .onboarding-guide .onboarding-steps { display: none; }
+  .onboarding-touch-summary { margin: 12px 0; font-size: 13px; line-height: 1.5; }
+  .onboarding-touch-details { margin-bottom: 14px; font-size: 12px; line-height: 1.5; }
+  .onboarding-touch-details summary { min-height: 44px; display: flex; align-items: center; color: var(--studio-blue-dark); font-weight: 800; cursor: pointer; }
+  .onboarding-touch-details summary::before { content: '+ '; margin-right: 8px; }
+  .onboarding-touch-details[open] summary::before { content: '− '; }
+  .onboarding-touch-details p { margin: 0 0 10px; }
+  .vertical-selection-handle { width: 56px; height: 56px; }
+  .brick-primary-mode kbd { display: none; }
+}
+
+@media (pointer: coarse) and (min-width: 960px) and (min-height: 600px) and (orientation: landscape) {
+  .brick-studio { --brick-header-height: 64px; }
+  .brick-header .brand-wordmark { display: none; }
+  .brick-header .brick-header-tool.ui-button { min-height: 44px; padding: 0 10px; }
+  .build-shell .part-library { width: 260px; bottom: 12px; overflow-y: auto; touch-action: pan-y; }
+  .part-library .part-grid { min-height: 160px; }
+  .part-library .part-category { min-height: 44px; }
+  .part-library .color-grid { grid-template-columns: repeat(4, 44px); justify-content: space-between; }
+  .part-library .color-grid button { width: 44px; height: 44px; }
+  .build-shell .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: 284px; max-width: calc(100% - 296px); transform: none; }
+  .build-shell.drawer-collapsed .brick-edit-toolbar { left: 76px; }
+  .brick-history-tools .studio-icon-button > span, .brick-capacity-status { display: none; }
+  .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
+  .touch-placement-bar, .touch-selection-bar { left: 284px; right: 12px; bottom: 12px; max-width: none; flex-wrap: wrap; border-radius: 18px; }
+  .drawer-collapsed .touch-placement-bar, .drawer-collapsed .touch-selection-bar { left: 12px; }
+  .touch-selection-bar { max-height: 40%; overflow-y: auto; touch-action: pan-y; }
+  .onboarding-guide { left: calc(50% + 130px); }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .brick-compact-layout { --brick-header-height: 56px; }
+  .brick-compact-layout .brick-creative-dock { width: 184px; left: 8px; transform: none; }
+  .brick-creative-dock > button { padding: 5px; }
+  .brick-compact-layout .touch-placement-bar, .brick-compact-layout .touch-selection-bar { left: 200px; bottom: max(8px, env(safe-area-inset-bottom)); right: 8px; max-width: none; max-height: calc(100% - 126px); }
+  .brick-compact-layout .placement-part-chip { display: none; }
+  .onboarding-guide { top: var(--brick-panel-top); max-height: calc(100% - var(--brick-header-block) - 90px); }
+}
+.brick-creative-dock > button { font-family: inherit; font-size: 11px; font-weight: 800; line-height: 1.2; }
+.brick-studio.brick-compact-layout .build-shell .brick-edit-toolbar { left: max(8px, env(safe-area-inset-left)); transform: none; }
+.brick-studio.brick-compact-layout .build-shell .view-controls button:not(.view-home) { display: none; }
+@media (pointer: coarse) and (min-width: 960px) and (min-height: 600px) and (orientation: landscape) {
+  .brick-studio .build-shell:not(.compact-shell) .brick-edit-toolbar { left: 284px; transform: none; }
+  .brick-studio .build-shell.drawer-collapsed .brick-edit-toolbar { left: 76px; }
+  .brick-studio .brick-toast { top: calc(var(--brick-panel-top) + 64px); left: calc(50% + 130px); }
+}
+.brick-compact-layout .brick-header .ui-save-status-auto { width: auto; height: auto; min-height: 16px; max-width: 31vw; justify-content: flex-start; gap: 3px; }
+.brick-compact-layout .brick-header .ui-save-status-auto .ui-save-status-text { position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: hidden; }
+.brick-compact-layout .brick-header .ui-save-status-icon svg { width: 12px; height: 12px; }

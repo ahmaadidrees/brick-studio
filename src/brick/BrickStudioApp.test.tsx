@@ -624,6 +624,27 @@ describe('compact touch layout', () => {
     return fab
   }
 
+  it('keeps a landscape tablet palette and preserves selection when rotating to portrait', () => {
+    stubPointerModality(true)
+    vi.stubGlobal('innerWidth', 1024)
+    vi.stubGlobal('innerHeight', 768)
+    resetStore([brick])
+    const { container } = render(<BrickStudioApp />)
+    act(() => useBrickStore.getState().selectBrick(brick.id))
+    expect(container.querySelector('.part-library')).not.toBeNull()
+    expect(container.querySelector('.brick-inspector')).toBeNull()
+    expect(screen.getByRole('group', { name: 'Selected brick actions' })).toBeInTheDocument()
+    act(() => {
+      vi.stubGlobal('innerWidth', 768)
+      vi.stubGlobal('innerHeight', 1024)
+      window.dispatchEvent(new Event('resize'))
+    })
+    expect(container.querySelector('.part-library')).toBeNull()
+    expect(screen.getByRole('navigation', { name: 'Creative tools' })).toBeInTheDocument()
+    expect(useBrickStore.getState().selectedIds).toEqual([brick.id])
+    expect(useBrickStore.getState().bricks).toEqual([brick])
+  })
+
   it('swaps the docked drawer for a (+) button that opens a modal part-and-color sheet', () => {
     stubMediaQueries([COMPACT_LAYOUT])
     const { container } = render(<BrickStudioApp />)
@@ -704,7 +725,9 @@ describe('compact touch layout', () => {
     const probe = document.createElement('span')
     probe.style.background = BRICK_COLORS[2]
     expect(pill.querySelector<HTMLElement>('.selection-swatch')?.style.background).toBe(probe.style.background)
-    expect(Array.from(pill.querySelectorAll('button')).map((button) => button.getAttribute('aria-label')))
+    expect(within(pill).queryByRole('button', { name: /left one stud/ })).not.toBeInTheDocument()
+    fireEvent.click(within(pill).getByRole('button', { name: 'Adjust' }))
+    expect(Array.from(pill.querySelectorAll('button')).filter(button => button.getAttribute('aria-label')).map((button) => button.getAttribute('aria-label')))
       .toEqual([
         'Move brick left one stud', 'Move brick forward one stud', 'Move brick back one stud', 'Move brick right one stud',
         'Raise brick one plate', 'Lower brick one plate', 'Rotate brick', 'Resize brick',
@@ -752,7 +775,9 @@ describe('compact touch layout', () => {
 
     const pill = screen.getByRole('group', { name: '2 bricks selected' })
     expect(within(pill).getByText('2 bricks')).toBeInTheDocument()
-    expect(Array.from(pill.querySelectorAll('button')).map((button) => button.getAttribute('aria-label')))
+    expect(within(pill).queryByRole('button', { name: /left one stud/ })).not.toBeInTheDocument()
+    fireEvent.click(within(pill).getByRole('button', { name: 'Adjust' }))
+    expect(Array.from(pill.querySelectorAll('button')).filter(button => button.getAttribute('aria-label')).map((button) => button.getAttribute('aria-label')))
       .toEqual([
         'Move 2 bricks left one stud', 'Move 2 bricks forward one stud', 'Move 2 bricks back one stud', 'Move 2 bricks right one stud',
         'Raise 2 bricks one plate', 'Lower 2 bricks one plate', 'Rotate 2 bricks', 'Resize 2 bricks',

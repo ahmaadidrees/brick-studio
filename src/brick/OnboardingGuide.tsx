@@ -52,11 +52,13 @@ export function OnboardingGuide({ onDismiss }: OnboardingGuideProps) {
         <span className="fine-pointer-copy">Right-drag or Space+drag to orbit. Shift-right-drag to pan; scroll to zoom toward your cursor.</span>
         <span className="coarse-pointer-copy">Tap to position a brick, then use Place. Drag empty space to orbit; pinch to zoom.</span>
       </p>
-      <ol>
+      <p className="onboarding-touch-summary coarse-pointer-copy">Tap to position, then Place. Drag the preview to adjust it. Drag empty space to orbit; use two fingers to pan or pinch to zoom.</p>
+      <details className="onboarding-touch-details coarse-pointer-copy"><summary>Select and move bricks</summary><p>Tap Cancel to put the preview away, then tap a brick to select it. Drag selected bricks to move them, or use the height handle to raise them. Tap Select and drag a box to select a group. Tap Done to return to the camera.</p></details>
+      <ol className="onboarding-steps">
         <li><span><Shapes size={18} /></span><div><strong>Choose a brick</strong><small><span className="fine-pointer-copy">Pick any shape from the drawer.</span><span className="coarse-pointer-copy">Tap + to open the drawer and pick a shape.</span></small></div></li>
         <li><span><MousePointer2 size={18} /></span><div><strong>Position the preview</strong><small>Move it onto the plate or another brick.</small></div></li>
         <li><span><Check size={18} /></span><div><strong>Place it</strong><small><span className="fine-pointer-copy">Click or press Enter — the brush stays loaded, so keep placing.</span><span className="coarse-pointer-copy">Tap the blue Place button — the brush stays loaded, so keep placing.</span></small></div></li>
-        <li><span><MousePointer2 size={18} /></span><div><strong>Select and move</strong><small>Escape puts the brush down. Click to select; Shift-click adds bricks. Drag empty space to box-select, or drag selected bricks to move them.</small></div></li>
+        <li><span><MousePointer2 size={18} /></span><div><strong>Select and move</strong><small><span className="fine-pointer-copy">Escape puts the brush down. Click to select; Shift-click adds bricks. Drag empty space to box-select, or drag selected bricks to move them.</span><span className="coarse-pointer-copy">Tap Cancel, then tap a brick. Drag selected bricks to move them. Use Select to draw a box around a group.</span></small></div></li>
         <li><span><Gamepad2 size={18} /></span><div><strong>Explore</strong><small>Switch modes when your world is ready.</small></div></li>
       </ol>
       <button className="studio-button studio-button-primary onboarding-start" type="button" onClick={onDismiss}>Start building</button>

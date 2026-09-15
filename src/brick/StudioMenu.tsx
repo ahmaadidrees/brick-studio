@@ -1,4 +1,4 @@
-import { Download, FilePlus2, HelpCircle, MoreHorizontal, Pencil, Radio, Save, FolderOpen, Users, Upload, ChevronDown, Home } from 'lucide-react'
+import { Download, FilePlus2, HelpCircle, MoreHorizontal, Pencil, Radio, Save, FolderOpen, Users, Upload, ChevronDown, Home, Settings } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { BRAND_NAME } from '../brand'
 import { Button, Dialog, TextField } from '../ui'
@@ -21,6 +21,7 @@ type StudioMenuProps = StudioDocumentCommands & {
   onOpenMyClass?: () => void
   /** Account worlds only: guest drafts have no title field, so the entry is hidden for them. */
   onRenameWorld?: (title: string) => Promise<void>
+  onOpenSettings?: () => void
   onOpenHelp: () => void
 }
 
@@ -123,6 +124,7 @@ export function StudioMenu({
   onOpenMyClass,
   onRenameWorld,
   onOpenHelp,
+  onOpenSettings,
 }: StudioMenuProps) {
   const [open, setOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -153,6 +155,7 @@ export function StudioMenu({
   }, [open])
 
   const runAndClose = (command?: () => void) => {
+    triggerRef.current?.focus()
     command?.()
     setOpen(false)
   }
@@ -202,6 +205,7 @@ export function StudioMenu({
           <button role="menuitem" type="button" onClick={() => runAndClose(onOpenHelp)}>
             <HelpCircle size={18} /><span><strong>Help</strong><small>Show the quick start guide</small></span>
           </button>
+          {onOpenSettings && <button role="menuitem" type="button" onClick={() => runAndClose(onOpenSettings)}><Settings size={18} /><span><strong>Settings</strong><small>Camera, controls and preferences</small></span></button>}
           {buildMode && <PlacedBrickNavigator />}
         </div>
       )}
