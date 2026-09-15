@@ -1,0 +1,24 @@
+{
+  "checkedAt": "2026-09-15T15:12:54.732Z",
+  "status": "promoted and public readback passed",
+  "source": "a2629ee",
+  "frontend": "dpl_D4dsoMoGCxQniDEfEstGACPBCkPU",
+  "worker": "25338c36-785e-4ae8-b874-a8d1b747a1da",
+  "domains": [
+    {
+      "origin": "https://brickgineers.com",
+      "status": 200,
+      "exactBuildScripts": true
+    },
+    {
+      "origin": "https://virtual-legos.vercel.app",
+      "status": 200,
+      "exactBuildScripts": true
+    }
+  ],
+  "wwwStatus": 308,
+  "wwwLocation": "https://brickgineers.com/build?classroom=signin",
+  "mobileForm": true,
+  "sixCharacterCopy": true,
+  "browserErrors": []
+}

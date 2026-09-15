@@ -1,0 +1,13 @@
+{
+  "origin": "https://brickgineers.com",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "classId": "60efd8c7-5700-47a5-adee-10db0226b0aa",
+  "checks": [
+    "browser six-character enrollment, preserved fields, My Class destination",
+    "only successful class name/code remembered",
+    "cold browser login and saved nonempty world download equals authoritative database",
+    "mobile student entrance, separate teacher Google entry and guest exit"
+  ],
+  "errors": [],
+  "cleanup": "synthetic roster suspended; enrollment and collaboration closed"
+}

@@ -16,9 +16,15 @@ const teacher=await request('auth/teacher-login','POST',{email:process.env.CLASS
 const cls=(await request('classes','POST',{name:`Login browser ${Date.now()}`},teacher.session.accessToken)).class;
 const username=`qa${Date.now().toString(36)}`, password=`R${randomBytes(4).toString('hex').slice(0,5)}`;
 const browser=await chromium.launch({channel:'chrome',headless:true});
+// Protection credentials are attached only to this exact frontend origin, never the API.
+async function newContext(options) {
+ const context=await browser.newContext(options);
+ if(process.env.LOGIN_TEST_BYPASS) await context.route('**/*', route => route.continue(new URL(route.request().url()).origin === new URL(origin).origin ? {headers:{...route.request().headers(),'x-vercel-protection-bypass':process.env.LOGIN_TEST_BYPASS}} : {}));
+ return context;
+}
 let student, failure;const checks=[],errors=[];
 try{
- const context=await browser.newContext({viewport:{width:1366,height:768},acceptDownloads:true});
+ const context=await newContext({viewport:{width:1366,height:768},acceptDownloads:true});
  const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`${origin}/build?classroom=signin`);
  await page.getByLabel('Class code',{exact:true}).fill(cls.code);
@@ -40,13 +46,18 @@ try{
  const db=await fetch(`${process.env.SUPABASE_URL}/rest/v1/brick_worlds?id=eq.${world.id}&select=document`,{headers:{apikey:process.env.SUPABASE_SERVICE_ROLE_KEY,Authorization:`Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`}});
  assert.equal(db.status,200);assert.deepEqual((await db.json())[0].document,doc);
  const state=await context.storageState();await context.close();
- const cold=await browser.newContext({viewport:{width:1366,height:768},storageState:state,acceptDownloads:true});
+ const cold=await newContext({viewport:{width:1366,height:768},storageState:state,acceptDownloads:true});
  const returning=await cold.newPage();returning.on('pageerror',e=>errors.push(e.message));
  await returning.goto(`${origin}/build?classroom=signin`);
  await returning.getByRole('button',{name:'Change class',exact:true}).waitFor();
  assert.equal(await returning.getByLabel('Class code',{exact:true}).count(),0);
  assert.equal(await returning.getByLabel('Username',{exact:true}).inputValue(),'');
  assert.equal(await returning.getByLabel('Password',{exact:true}).inputValue(),'');
+ await returning.getByRole('radio',{name:'Create account',exact:true}).click();
+ assert.equal(await returning.getByLabel('Class code',{exact:true}).inputValue(),'');
+ await returning.getByRole('radio',{name:'Sign in',exact:true}).click();
+ await returning.getByRole('button',{name:'Change class',exact:true}).waitFor();
+ checks.push('remembered return code is not reused for enrollment');
  await returning.screenshot({animations:'disabled',path:`${out}/remembered-class-desktop.png`});
  for(const width of [1024,390,320]){
    await returning.setViewportSize({width,height:844});
@@ -70,7 +81,7 @@ try{
  assert.deepEqual(exported,doc);checks.push('cold browser login and saved nonempty world download equals authoritative database');
  await returning.screenshot({animations:'disabled',path:`${out}/cold-saved-world.png`});
  await cold.close();
- const guest=await browser.newContext({viewport:{width:390,height:844}});const entry=await guest.newPage();
+ const guest=await newContext({viewport:{width:390,height:844}});const entry=await guest.newPage();
  await entry.goto(origin);await entry.getByRole('link',{name:'Student login',exact:true}).first().waitFor();
  await entry.getByRole('link',{name:'Student login',exact:true}).last().click();
  await entry.getByLabel('Class code',{exact:true}).waitFor();
