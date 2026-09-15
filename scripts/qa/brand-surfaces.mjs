@@ -12,7 +12,7 @@
  *   VARIANTS=default,zoom200,reduced-motion run a subset of variants
  *   SCREENSHOT_FORMAT=png|jpeg             default png
  *   STRICT_TOUCH_TARGETS=1                 fail when a touch-viewport control is under 44 CSS px
- *   STRICT_FOCUS=1                         fail when an open dialog does not contain focus
+ *   STRICT_FOCUS=1                         fail when the topmost open dialog does not contain focus
  *   INCLUDE_PENDING=1                      also run surfaces marked `pending` (none at the moment)
  *
  * Hard checks (fail the run): the surface's expected element is visible, no `pageerror`, no horizontal page
@@ -55,8 +55,8 @@ const VARIANTS = {
 
 /**
  * Surfaces. `route` is opened first; `ready` (or any of `readyAny`) must be visible before `steps` run; `expect` (or `expectAny`)
- * must be visible afterwards; `expectPressed` names a toggle that must carry `aria-pressed="true"` (entry-intent
- * modes). `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
+ * must be visible afterwards; `expectPressed` names a toggle that must carry `aria-pressed="true"` or a radio with `aria-checked="true"`
+ * (entry-intent modes). `seed: 'fixture'` stores a 250-brick guest build before load; `quickStart`
  * keeps the onboarding guide. `scrollable` marks a document that scrolls (landing) so below-the-fold
  * controls are not "outside". `escape` presses Escape after the screenshot and expects `expect` to hide.
  */
@@ -68,7 +68,9 @@ const SURFACES = [
   // Wave 0 entry intents: the mode is proven by the pressed nav button plus its mode-only field, not by visibility alone.
   { id: 'entry-join', board: '03', route: '/build?classroom=join', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomJoin', expectAlso: ['enrollmentCode'], escape: true },
   { id: 'entry-signin', board: '03', route: '/build?classroom=signin', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomStudentSignIn', expectAlso: ['signInCode'], escape: true },
-  { id: 'entry-teacher', board: '03', route: '/build?classroom=teacher', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomTeacherSignIn', expectAlso: ['teacherEmail'], escape: true },
+  // Teacher mode leads with Google; the email/password form sits behind "Use email and password".
+  { id: 'entry-teacher', board: '03', route: '/build?classroom=teacher', ready: 'classroomDialog', expect: 'classroomDialog', expectPressed: 'classroomTeacherSignIn', expectAlso: ['teacherGoogle', 'useEmailPassword'], escape: true },
+  { id: 'entry-teacher-email', board: '03', route: '/build?classroom=teacher', ready: 'classroomDialog', steps: [{ click: 'useEmailPassword' }], expect: 'classroomDialog', expectPressed: 'classroomTeacherSignIn', expectAlso: ['teacherEmail'], escape: true },
   { id: 'quick-start', board: '06/16', route: '/build', quickStart: true, ready: 'worldMenu', expect: 'quickStart' },
   { id: 'build', board: '06', route: '/build', seed: 'fixture', ready: 'worldMenu', expect: 'exploreMode', expectAlso: ['saveStatus'], settle: 1500 },
   { id: 'build-drawer', board: '06/16', route: '/build', ready: 'worldMenu', steps: [{ clickIfVisible: 'openBrickDrawer' }], expectAny: ['brickDrawer', 'brickDrawerSheet'] },
@@ -133,7 +135,9 @@ const measure = ({ touch, scrollablePage }) => {
     if (horizontally || vertically) outside.push({ name: describe(el), rect })
     if (touch && el.tagName !== 'A' && (r.width < 44 || r.height < 44)) small.push({ name: describe(el), rect })
   }
-  const dialogs = [...document.querySelectorAll('[role=dialog][aria-modal="true"], dialog[open]')].filter(isVisible).map((el) => {
+  // Stacked modals (the color picker above the brick sheet): only the topmost one must hold focus.
+  const dialogElements = [...document.querySelectorAll('[role=dialog][aria-modal="true"], dialog[open]')].filter(isVisible)
+  const dialogs = dialogElements.map((el, index) => {
     const r = el.getBoundingClientRect()
     const labelled = document.getElementById(el.getAttribute('aria-labelledby') || '')
     return {
@@ -141,6 +145,7 @@ const measure = ({ touch, scrollablePage }) => {
       fits: r.left >= -1 && r.top >= -1 && r.right <= vw + 1 && r.bottom <= vh + 1,
       rect: [round(r.left), round(r.top), round(r.width), round(r.height)],
       containsFocus: el.contains(document.activeElement),
+      topmost: index === dialogElements.length - 1,
     }
   })
   const active = document.activeElement
@@ -197,11 +202,14 @@ async function runSurface(browser, surface, viewport, variantId) {
       if (!(await locate(page, key).first().isVisible().catch(() => false))) failures.push(`${key} not visible`)
     }
     if (surface.expectPressed) {
-      const pressed = await locate(page, surface.expectPressed).first().getAttribute('aria-pressed').catch(() => null)
-      if (pressed !== 'true') failures.push(`${surface.expectPressed} is not pressed (aria-pressed=${JSON.stringify(pressed)})`)
+      // Toggle buttons carry aria-pressed; the SegmentedControl modes are role=radio with aria-checked.
+      const target = locate(page, surface.expectPressed).first()
+      const pressed = await target.evaluate((el) => el.getAttribute('aria-pressed') ?? el.getAttribute('aria-checked')).catch(() => null)
+      if (pressed !== 'true') failures.push(`${surface.expectPressed} is not pressed/checked (aria-pressed/aria-checked=${JSON.stringify(pressed)})`)
     }
     if (surface.selectedTab) {
-      const selected = await page.getByRole('tab', { selected: true }).first().textContent().catch(() => null)
+      // Scoped to the open sheet: the brick drawer also has a (selected) category tab.
+      const selected = await locate(page, surface.expect).first().getByRole('tab', { selected: true }).first().textContent().catch(() => null)
       if (selected?.trim() !== surface.selectedTab) failures.push(`selected tab is ${JSON.stringify(selected)} not ${surface.selectedTab}`)
     }
     await page.waitForTimeout(surface.settle ?? 500)
@@ -210,7 +218,8 @@ async function runSurface(browser, surface, viewport, variantId) {
     if (checks.outside.length) failures.push(`controls outside viewport: ${checks.outside.map((c) => `${c.name} ${c.rect.join(',')}`).join('; ')}`)
     for (const dialog of checks.dialogs) {
       if (!dialog.fits) failures.push(`dialog "${dialog.name}" exceeds viewport ${dialog.rect.join(',')}`)
-      if (!dialog.containsFocus) (strictFocus ? failures : notes).push(`dialog "${dialog.name}" does not contain focus (active: ${checks.activeElement})`)
+      if (!dialog.containsFocus && dialog.topmost) (strictFocus ? failures : notes).push(`dialog "${dialog.name}" does not contain focus (active: ${checks.activeElement})`)
+      else if (!dialog.containsFocus) notes.push(`dialog "${dialog.name}" is below another open dialog; focus is in the child dialog`)
     }
     if (checks.small.length) (strictTouch ? failures : notes).push(`${checks.small.length} touch targets under 44px: ${checks.small.slice(0, 8).map((c) => `${c.name} ${c.rect[2]}x${c.rect[3]}`).join('; ')}${checks.small.length > 8 ? ' …' : ''}`)
     if (variant.reducedMotion) {

@@ -55,7 +55,7 @@ const NEEDS_TEACHER = 'needs fixture: a signed-in teacher session (sessionStorag
 const BOARDS = [
   { board: '01', slug: 'landing', state: 'start-building', route: '/', fullPage: true, expect: 'startBuilding' },
   { board: '01', slug: 'landing', state: 'continue-building', route: '/', seed: true, expect: 'continueBuilding' },
-  { board: '02', slug: 'how-it-works-teachers', route: '/', ready: 'startBuilding', expect: 'startBuilding', steps: [{ scrollToHeading: ['Three moves', 'How it works', 'Build together, actually together', 'teachers'] }] },
+  { board: '02', slug: 'how-it-works-teachers', route: '/', ready: 'startBuilding', expect: 'startBuilding', steps: [{ scrollToHeading: ['From your first brick', 'A creative space for your classroom', 'More creating', 'How it works', 'teachers'] }] },
   { board: '03', slug: 'sign-in-enrollment', state: 'join', route: '/build?classroom=join', expect: 'classroomDialog', pressed: 'classroomJoin' },
   { board: '03', slug: 'sign-in-enrollment', state: 'student-sign-in', route: '/build?classroom=signin', expect: 'classroomDialog', pressed: 'classroomStudentSignIn' },
   { board: '03', slug: 'sign-in-enrollment', state: 'teacher-sign-in', route: '/build?classroom=teacher', expect: 'classroomDialog', pressed: 'classroomTeacherSignIn' },
@@ -72,8 +72,8 @@ const BOARDS = [
   { board: '10', slug: 'custom-bricks-color', state: 'color-picker', route: '/build', ready: 'worldMenu', steps: [{ clickIfVisible: 'openBrickDrawer' }, { clickIfVisible: 'showBrickProperties' }, { click: 'anyColor' }], expect: 'colorDialog' },
   { board: '11', slug: 'guest-collaboration', state: 'create-room', route: '/live/new', ready: 'builderName', expect: 'createRoom' },
   { board: '11', slug: 'guest-collaboration', state: 'in-room-people', route: '/live/new', requires: 'live', header: true, ready: 'builderName',
-    steps: [{ fill: { locator: 'builderName', value: 'QA Builder' } }, { fill: { locator: 'roomName', value: 'Board 11 capture' } }, { click: 'createRoom' }, { waitFor: 'share' }, { clickIfVisible: 'dismissQuickStart' }, { click: 'people' }],
-    expect: 'share', settle: 1500 },
+    steps: [{ fill: { locator: 'builderName', value: 'QA Builder' } }, { fill: { locator: 'roomName', value: 'Board 11 capture' } }, { click: 'createRoom' }, { waitFor: 'people' }, { clickIfVisible: 'dismissQuickStart' }, { click: 'people' }, { waitFor: 'inviteLink' }],
+    expect: 'inviteLink', settle: 1500 },
   { board: '12', slug: 'settings-world-menu', state: 'settings', route: '/build', ready: 'worldMenu', steps: [{ click: 'settings' }], expect: 'settingsDialog' },
   { board: '12', slug: 'settings-world-menu', state: 'world-menu', route: '/build', ready: 'worldMenu', steps: [{ click: 'worldMenu' }, { waitFor: 'menuMyWorlds' }], expect: 'studioMenu' },
   { board: '13', slug: 'teacher-roster', route: '/build?classroom=class', requires: 'teacher', reason: NEEDS_TEACHER, expect: 'classroomDialog' },
@@ -138,11 +138,13 @@ async function capture(browser, entry, viewport) {
       if (!visible.some(Boolean)) throw new Error(`none of ${entry.expectAny.join(', ')} visible`)
     }
     if (entry.pressed) {
-      const pressed = await locate(page, entry.pressed).first().getAttribute('aria-pressed').catch(() => null)
-      if (pressed !== 'true') throw new Error(`${entry.pressed} is not pressed (aria-pressed=${JSON.stringify(pressed)})`)
+      // Toggle buttons carry aria-pressed; the SegmentedControl modes are role=radio with aria-checked.
+      const pressed = await locate(page, entry.pressed).first().evaluate((el) => el.getAttribute('aria-pressed') ?? el.getAttribute('aria-checked')).catch(() => null)
+      if (pressed !== 'true') throw new Error(`${entry.pressed} is not pressed/checked (aria-pressed/aria-checked=${JSON.stringify(pressed)})`)
     }
     if (entry.selectedTab) {
-      const selected = await page.getByRole('tab', { selected: true }).first().textContent().catch(() => null)
+      // Scoped to the open sheet: the brick drawer also has a (selected) category tab.
+      const selected = await locate(page, entry.expect).first().getByRole('tab', { selected: true }).first().textContent().catch(() => null)
       if (selected?.trim() !== entry.selectedTab) record.notes.push(`selected tab is ${JSON.stringify(selected)} not ${entry.selectedTab}`)
     }
     await page.waitForTimeout(entry.settle ?? 500)
