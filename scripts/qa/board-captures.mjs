@@ -55,7 +55,7 @@ const NEEDS_TEACHER = 'needs fixture: a signed-in teacher session (sessionStorag
 const BOARDS = [
   { board: '01', slug: 'landing', state: 'start-building', route: '/', fullPage: true, expect: 'startBuilding' },
   { board: '01', slug: 'landing', state: 'continue-building', route: '/', seed: true, expect: 'continueBuilding' },
-  { board: '02', slug: 'how-it-works-teachers', route: '/', ready: 'startBuilding', expect: 'startBuilding', steps: [{ scrollToHeading: ['Three moves', 'How it works', 'Build together, actually together', 'teachers'] }] },
+  { board: '02', slug: 'how-it-works-teachers', route: '/', ready: 'startBuilding', expect: 'startBuilding', steps: [{ scrollToHeading: ['From your first brick', 'A creative space for your classroom', 'More creating', 'How it works', 'teachers'] }] },
   { board: '03', slug: 'sign-in-enrollment', state: 'join', route: '/build?classroom=join', expect: 'classroomDialog', pressed: 'classroomJoin' },
   { board: '03', slug: 'sign-in-enrollment', state: 'student-sign-in', route: '/build?classroom=signin', expect: 'classroomDialog', pressed: 'classroomStudentSignIn' },
   { board: '03', slug: 'sign-in-enrollment', state: 'teacher-sign-in', route: '/build?classroom=teacher', expect: 'classroomDialog', pressed: 'classroomTeacherSignIn' },
@@ -138,8 +138,9 @@ async function capture(browser, entry, viewport) {
       if (!visible.some(Boolean)) throw new Error(`none of ${entry.expectAny.join(', ')} visible`)
     }
     if (entry.pressed) {
-      const pressed = await locate(page, entry.pressed).first().getAttribute('aria-pressed').catch(() => null)
-      if (pressed !== 'true') throw new Error(`${entry.pressed} is not pressed (aria-pressed=${JSON.stringify(pressed)})`)
+      // Toggle buttons carry aria-pressed; the SegmentedControl modes are role=radio with aria-checked.
+      const pressed = await locate(page, entry.pressed).first().evaluate((el) => el.getAttribute('aria-pressed') ?? el.getAttribute('aria-checked')).catch(() => null)
+      if (pressed !== 'true') throw new Error(`${entry.pressed} is not pressed/checked (aria-pressed/aria-checked=${JSON.stringify(pressed)})`)
     }
     if (entry.selectedTab) {
       // Scoped to the open sheet: the brick drawer also has a (selected) category tab.

@@ -124,6 +124,18 @@ mkdir -p $OUT
     multiplayer summaries and the transfer table into `docs/brand/qa/integrated/RESULTS.md`; list every failure with
     its owner lane; commit `docs/brand/qa/integrated/`.
 
+## Integrated run of 2026-09-14 (candidate `907a06c`)
+
+`docs/brand/qa/integrated/RESULTS.md` records the run: exact SHA, every command with counts, the per-board table,
+D1–D10 re-measured, new defects N1–N8 with owner lane / file / selector / viewport / severity, and evidence gaps.
+Layout of `docs/brand/qa/integrated/`: `surfaces/results.json` is the full strict matrix (275 runs; its screenshots
+were re-captured into `surfaces-evidence/` — every surface at 1366×768 and 390×844 — and `surfaces-defects/` — the
+320×740 / 844×390 / 200 % zoom rows behind N2–N5 — because the full set of 275 JPEGs was too large to keep);
+`surfaces-published-rerun/` is the published viewer after the copy-button locator fix; `refinement-ui/`,
+`character-customizer/`, `schema-roundtrip/`, `boards/` (PNG), `multiplayer-local/`, `route-transfer/`,
+`expanded-performance/` are the other harness outputs. Note for pruning scripts: `runs[].screenshot` in a surfaces
+`results.json` is relative to that output directory, not to the repo.
+
 ## Start the app under test (lane use)
 
 W8's assigned port is 5198. Use `--strictPort` so a busy port fails loudly instead of silently moving:
@@ -184,11 +196,19 @@ browser sessions); it records the load before and after so a noisy run can be re
 Surfaces are declared at the top of the script; every control it touches is looked up through
 `scripts/qa/locators.json` by role/label (`{ "role": "button", "name": "Settings" }`, `{ "label": "Room name" }`,
 regex names as `{ "regex": "..." }`). When the brand pass renames a control, edit the JSON entry, not the script.
-Locators already carry the CONTRACTS.md names: brand home link `Brickgineers` (`brandHome`), `People` (`people`,
-regex `^People`), `Build together`, `Settings`, `Scene`, `Character`, `Explore` (`exploreMode`, regex
-`^Explore( mode)?$` so the pre-brand label still matches), `Back to building`, the world title menu (`worldMenu`,
-still `World menu` — W4 must update this entry if the trigger's accessible name changes), save status
-(`saveStatus`, `role=status` named `Save status…`).
+Locators carry the names verified in the DOM of the integrated candidate: brand home link `Brickgineers Home`
+(`brandHome`), `People, N here` inside a room (`people`, regex `^People`) and `Build together` outside one,
+`Settings`, `Scene`, `Character`, `Explore mode` (`exploreMode`, regex `^Explore( mode)?$`), `Back to building`,
+the world title menu (`worldMenu`, `World menu`), the save chip (`saveStatus`, matched by
+`[role="status"][data-kind]` through the `css` locator type because its accessible name is the human label),
+classroom modes as radios `Student` / `Join a class` / `Teacher` (`aria-checked`; `expectPressed` accepts it),
+classroom dialog titles `Join your class` / `Welcome back` / `Teacher sign in` / `My Worlds` / `My Class` /
+`Choose a new password`, fields `Enrollment code` / `Class sign-in code` / `Email` (teacher email sits behind
+`Use email and password`), the mobile brick sheet `Bricks`, the live gate `Your name` / `World name` /
+`Create shared world` / `Join world`, the People panel's `Invite link` region with `Copy link`, `Export copy` and
+`Close room to new people`, the published viewer region `Published world` with `Make a copy`, and the studio menu
+items `Download build` / `Import build` / `Choose Brickgineers project file`. Stacked modals: only the topmost open
+dialog must hold focus (the color picker above the brick sheet); the selected-tab check is scoped to the open sheet.
 
 Viewports: 1366×768, 1024×768, 768×1024, 390×844 (touch), 320×740 (touch), 844×390 (touch landscape).
 Variants: `default`; `zoom200` = Chrome 200% zoom emulated as half the CSS viewport at deviceScaleFactor 2 (desktop

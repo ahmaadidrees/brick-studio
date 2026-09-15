@@ -160,7 +160,10 @@
   },
   "remix": {
     "role": "button",
-    "name": "Make a copy"
+    "name": {
+      "regex": "^(Make a copy|Save a copy of this world as your guest build)$"
+    },
+    "_note": "Wide layout says \"Make a copy\"; the compact (<= 512 px) bar uses the long aria-label. Reported as a naming inconsistency."
   },
   "remixConfirm": {
     "role": "dialog",
