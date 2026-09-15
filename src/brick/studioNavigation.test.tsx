@@ -46,7 +46,7 @@ describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
     render(<BrickStudioApp />)
     // The header uses the shared SaveStatus primitive fed from the real enum; the chip carries its source.
-    expect(screen.getByText('Saved in this browser').closest('[role="status"]')).toHaveAttribute('data-kind', 'local')
+    expect(screen.getByText('This browser only').closest('[role="status"]')).toHaveAttribute('data-kind', 'local')
     expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
     expect(screen.getByRole('menuitem', { name: /My Worlds/ })).toHaveTextContent('My Worlds')
