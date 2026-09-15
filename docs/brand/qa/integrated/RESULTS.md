@@ -1,6 +1,46 @@
 # Integrated candidate results (W8, direction I — Brickgineers)
 
-**Candidate SHA: `907a06c`** ("Lead fixes from the integrated risk review", integration branch `claude/brickgineers-brand`,
+**Final candidate SHA: `ab98e1c`** ("Keep the phone header title and save chip in one 44px row", 17:31:37 local; on top of
+`eb1bcdd` "Fix the W8 integrated-run defects N1–N8" and `af85a5f`, the merge of W8's harness fixes). The full run below
+was made at `907a06c`; the **Final re-run** section re-measures N1–N8 at `ab98e1c` with the strict matrix, the
+refinement-UI harness and the 16-board captures (`boards/` now holds the `ab98e1c` PNGs; the `907a06c` board captures
+were replaced). Multiplayer, schema, customizer, transfer and performance were not re-run (the lead's fixes touch
+`brick-studio.css`, `live-world.css`, `ui.css`, `BrickStudioApp.tsx`, `StudioMenu.tsx` layout only).
+
+## Final re-run at `ab98e1c` (2026-09-14, 17:33–17:52 local, 5190 + 5211 hot-reloaded and verified)
+
+| Command | Result |
+|---|---|
+| `QA_COMMIT=ab98e1c STRICT_TOUCH_TARGETS=1 STRICT_FOCUS=1 INCLUDE_PENDING=1 SCREENSHOT_FORMAT=jpeg UI_ORIGIN=http://127.0.0.1:5190 UI_OUTPUT=docs/brand/qa/integrated/surfaces-final node scripts/qa/brand-surfaces.mjs` | **275 runs: 256 passed, 19 failed, 0 skipped, 8 notes** (up from 194 passed at `907a06c`). **0 touch targets under 44 px anywhere.** Failures: 17 at 844×390 (N1 landscape remnant, one of them also N9/N5), 2 at 200 % zoom 1024×768 (N5 color picker, N9). The 8 notes are the expected stacked-dialog notes. Screenshots kept for every 1366×768 / 390×844 default run and every failure (69 JPEGs, 4.1 MB); `surfaces-final/results.json` |
+| `QA_COMMIT=ab98e1c UI_ORIGIN=http://127.0.0.1:5190 UI_OUTPUT=docs/brand/qa/integrated/refinement-ui-final node scripts/qa/verify-refinement-ui.mjs` | **6/7 passed**: 1366, 1024, 768, 390, 320 layouts + Home → Continue; 844×390 fails only on `World menu 201,-12,95,44` (N1 remnant). Character → Character tab, Settings fit, menu, focus return, no recovery at every viewport |
+| `QA_COMMIT=ab98e1c UI_ORIGIN=http://127.0.0.1:5211 UI_OUTPUT=docs/brand/qa/integrated/boards node scripts/qa/board-captures.mjs` | **61 entries: 51 captured, 10 need a fixture, 0 failed**; board 11 in-room-people at 1366×768 and 390×844 eyeballed for N8 (below) |
+
+### N1–N8 at `ab98e1c`
+
+| # | Status | Measurement |
+|---|---|---|
+| N1 | **Fixed at 390×844 and 320×740, still open at 844×390** | Phone header is one 44 px row (title trigger beside the icon-only save chip); every 390/320 surface passes. At 844×390 (landscape, above the 700 px phone rule) `.studio-world-title` still measures `201,-12,95,44`: the coarse-pointer `min-height: 44px; padding: 8px 4px` makes the trigger taller than its header row, which starts at y = 0, so 12 px of the hit box is above the viewport (32 px effective). 17 matrix rows + 1 refinement-UI viewport. Owner W4: apply the same one-row treatment (or a taller header row) to coarse pointers wider than 700 px |
+| N2 | **Fixed** | `Search bricks` input 44 px on touch; no sub-44 px target in any of the 275 runs |
+| N3 | **Fixed** | `world-menu` passes at 320×740 (popover anchored to the header edges, all menu items inside 8–312) |
+| N4 | **Fixed** | `explore` passes at 844×390; Build together / Character / Settings 44×44 on coarse pointers |
+| N5 | **Fixed for the Bricks sheet, still open for the color picker** | `build-drawer` at 200 % zoom 1024×768 no longer scrolls the header out (`preventScroll` on the sheet). Opening **Choose any color** from the sheet still scrolls the page: header at y −35 at `zoom200` 1024×768 (Bricks sheet top moves 56 → 15) and by 2 px at 844×390 (`Brickgineers Home 12,-2,…`, Bricks sheet top 56 → 54). Owner W5: `CustomColorPicker` focus → `focus({ preventScroll: true })` like the sheet |
+| N6 | **Fixed** | `published-viewer` / `published-remix-confirm` pass at all 11 viewport/variant combinations with `aria-label="Make a copy"` on every layout (locator still accepts the old compact name; harmless) |
+| N7 | **Fixed** | `entry-worlds/save/join/signin/teacher/teacher-email` pass at 390×844 and 320×740; the header is no longer clipped when the classroom sheet opens (it was the N1 offset) |
+| N8 | **Fixed** | Board 11 in-room-people at 1366×768 and 390×844: "Copy link" complete, invite sentences wrap inside the panel, Room buttons fit; `.live-panel-section { grid-template-columns: minmax(0, 1fr) }`. Cosmetic residue: the half-width "Get latest world" button truncates its label to "Get latest w…" at 1366 (ellipsis, not clipping) |
+
+### New at `ab98e1c`
+
+| # | Defect | Owner | File / selector | Viewports | Severity |
+|---|---|---|---|---|---|
+| N9 | Bricks drawer sheet: the colour row at the bottom of the sheet extends below the viewport and no ancestor scrolls it — `Use color #52636c / #7b5238` and `Choose any brick color` at y 381 (44 tall) on the 384-px-tall 200 % zoom 1024×768 viewport (sheet rect `0,56,512,328`), and the pressed swatch `Use color #3e83d7 254,346,46,46` 2 px below the 390-px 844×390 viewport (sheet `0,56,844,334`; the pressed swatch is 46 px, its neighbours 44). Was masked at `907a06c` by N5's header scroll | W5 (drawer sheet) | `dialog[aria-label="Bricks"]` colour row (`.part-library` colour strip) | zoom200 1024×768 (41 px), 844×390 (2 px) | non-blocker |
+
+Blockers at `ab98e1c`: **none**. Still-open non-blockers: N1 (844×390 only), N5 (color picker only), N9.
+
+---
+
+## Run at `907a06c` (superseded for N1–N8 by the section above)
+
+**Candidate SHA of this run: `907a06c`** ("Lead fixes from the integrated risk review", integration branch `claude/brickgineers-brand`,
 committed 2026-09-14 17:00:49 local). It is `7083387` (all lanes merged) + `eda37f7` (lead status doc) + the lead's
 risk-review fixes (live-room save status for pending/replaced sessions, classroom panel no longer closes on backdrop
 click, recovery download names, reduced-motion class on `<html>`, "Back to building" link on the guest join gate).
