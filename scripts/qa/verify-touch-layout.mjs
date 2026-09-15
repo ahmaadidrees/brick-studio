@@ -51,6 +51,7 @@ if(compact){
 await page.getByRole('button',{name:'Open brick drawer',exact:true}).click();
 const drawer=page.getByRole('dialog',{name:'Bricks',exact:true});await drawer.waitFor();
 await page.getByRole('button',{name:'Expand brick drawer',exact:true}).click();
+await page.waitForTimeout(300);
 await page.screenshot({path:`${out}/${name}-bricks.png`,animations:'disabled'});
 await fits(drawer,width,height);
 await drawer.getByRole('button',{name:'1 × 1 Brick',exact:true}).click();assert.equal(await drawer.count(),0);

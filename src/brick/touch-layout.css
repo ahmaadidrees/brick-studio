@@ -107,3 +107,5 @@
 .brick-compact-layout .brick-header .ui-save-status-auto { width: auto; height: auto; min-height: 16px; max-width: 31vw; justify-content: flex-start; gap: 3px; }
 .brick-compact-layout .brick-header .ui-save-status-auto .ui-save-status-text { position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: hidden; }
 .brick-compact-layout .brick-header .ui-save-status-icon svg { width: 12px; height: 12px; }
+/* A just-completed canvas action must not cover the brick sheet's search field. */
+.brick-studio:has(.brick-sheet) .brick-toast { display: none; }
