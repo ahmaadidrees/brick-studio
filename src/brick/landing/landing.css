@@ -436,7 +436,7 @@
 @media (max-width: 760px) {
   .landing-menu-toggle { display: inline-flex; }
   .landing-nav { padding-top: 14px; }
-  .landing-nav .landing-brand .brand-wordmark { font-size: 25px !important; }
+  .landing-nav .landing-brand .brand-wordmark { font-size: 24px !important; }
   .landing-nav .landing-brand .brand-mark { width: 34px; height: 34px; }
   .landing-nav-link:nth-last-child(2) { margin-left: 0; border-left: 0; }
   .landing-hero-trust { max-width: none; }
