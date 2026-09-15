@@ -28,7 +28,9 @@ in-progress state was snapshotted as a WIP commit first (its staged CSS deletion
 
 ## Merge order and gates
 
-All lanes merged at `7083387`. Next: W8 integrated run (strict surfaces matrix, refinement UI, character customizer, schema round trip, board captures, local two-client multiplayer, route transfer, performance on a quiet host) → lead fixes → final candidate. `npm run check` under Node 22 at each boundary, then the W8 run
+All lanes merged at `7083387`; risk-review fixes `907a06c`; W8 integrated run (`docs/brand/qa/integrated/RESULTS.md`);
+N1–N9 layout fixes `eb1bcdd`, `ab98e1c`, `91ad099`; W8 final re-run and lead re-check merged. **Candidate `25c9b7d`**:
+`npm run check` green (1075 + 78 tests, typechecks, build). Handoff: `docs/brand/HANDOFF.md`. `npm run check` under Node 22 at each boundary, then the W8 run
 book (surfaces matrix strict, refinement UI, character customizer, route transfer, local two-client multiplayer,
 performance on a quiet host, board captures).
 

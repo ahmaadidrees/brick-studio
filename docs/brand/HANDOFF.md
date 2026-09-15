@@ -7,7 +7,8 @@ live student data. The brand/domain pairing is still unresolved: no domain strin
 ## Candidate
 
 - Branch `claude/brickgineers-brand`, worktree `/Users/ahmaadidrees/.codex/worktrees/brand-integration`
-- **Candidate SHA: `CANDIDATE_SHA`** (clean tree; see `git log` for the lane merges)
+- **Candidate SHA: `25c9b7d91ba9511e54cbf677d3c775bf3aefac68`** (product code and evidence; the checks below ran at this
+  commit). Any later commit on the branch is documentation only (this file, `docs/brand/status/lead.md`).
 - Base of the pass: `7341db0` (codex/product-refinement); contracts `f8c7ad3`; lane branches `claude/brand-w0..w8` are
   all merged and may be deleted after review.
 - Approved visuals (untracked, read-only): `/Users/ahmaadidrees/.codex/worktrees/brick-product-refinement/outputs/branding/`
@@ -28,7 +29,22 @@ Then open http://127.0.0.1:5190/ (landing), `/build` (editor), `/build?classroom
 
 ## Checks on the candidate (Node 22.23.2)
 
-FINAL_CHECKS
+| Command | Result |
+|---|---|
+| `npm run check` (= `vitest run`, worker tests, brick-core + worker typechecks, `tsc -b && vite build`) | frontend 109 files / 1075 tests passed; worker 6 files / 78 tests passed; typechecks clean; build succeeded |
+| `npx tsc -p tsconfig.app.json --noEmit` | clean |
+| Strict surfaces matrix at `ab98e1c` (W8) | 275 runs: 256 passed, 19 failed (N1 landscape, N5 colour picker, N9), 0 targets under 44px |
+| Lead re-check of the 11 affected surfaces at `91ad099` (after the N1/N5/N9 fixes) | 99 runs: 99 passed |
+| `verify-refinement-ui.mjs` at `ab98e1c` | 6/7 (the 844×390 row failed on N1, fixed in `91ad099`) |
+| `verify-character-customizer.mjs` at `907a06c` | passed, 0 page errors |
+| `schema-roundtrip.mjs` at `907a06c` | 3/3 (schema 2, schema 3, legacy 1→2; equal after import, reload, Home → Continue → reload) |
+| `board-captures.mjs` at `ab98e1c` | 61 entries: 51 captured, 10 need an account/teacher fixture, 0 failed |
+| `verify-refinement-multiplayer.mjs` (local worker) at `907a06c` | 9/9 (invite without owner fragment, 96→128 resize propagated, export == authoritative document, cold rejoin equal) |
+| `route-transfer.mjs` at `907a06c` | landing 151.7 KB (no editor chunk), `/build` +1.6%, others ≤ +2.3% |
+| `verify-expanded-performance.mjs` at `907a06c`, quiet host | Toy Room 87 draw calls / 923,174 tris / RAF p95 16.7 ms (pre-brand 103 / 923,622 / 16.7); Sky Island and Brick Valley identical to pre-brand |
+
+Commits between `907a06c` and `25c9b7d` are layout-only CSS/TSX fixes (N1–N9), QA evidence and docs; the unit and
+build gates were re-run at `25c9b7d`.
 
 Browser acceptance (W8, `docs/brand/qa/integrated/RESULTS.md`): strict six-viewport surfaces matrix with 200% zoom and
 reduced motion, refinement UI harness (header/toolbar bounds, Character shortcut, Settings, Escape focus, Place → Home →
