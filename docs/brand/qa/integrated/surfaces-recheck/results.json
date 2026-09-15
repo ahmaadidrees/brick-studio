@@ -1,0 +1,3864 @@
+{
+  "checkedAt": "2026-09-15T00:45:11.492Z",
+  "origin": "http://127.0.0.1:5190",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      6.64,
+      6.43,
+      6.6
+    ],
+    "freeMemoryMB": 37680,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "strictTouch": true,
+  "strictFocus": true,
+  "runs": [
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              453,
+              20,
+              460,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1366x768.jpeg",
+      "durationMs": 1128
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 78,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/1366x768.jpeg",
+      "durationMs": 981
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 59,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/1366x768.jpeg",
+      "durationMs": 1983
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 76,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1366x768.jpeg",
+      "durationMs": 947
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 86,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1366x768.jpeg",
+      "durationMs": 1100
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 84,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              926,
+              0,
+              440,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/1366x768.jpeg",
+      "durationMs": 1129
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              726,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/1366x768.jpeg",
+      "durationMs": 1440
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 135,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              726,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/1366x768.jpeg",
+      "durationMs": 2166
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              293,
+              20,
+              780,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/1366x768.jpeg",
+      "durationMs": 1411
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 83,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              473,
+              107,
+              420,
+              553
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1366x768.jpeg",
+      "durationMs": 1048
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1366x768.jpeg",
+      "durationMs": 4140
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              282,
+              20,
+              460,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1024x768.jpeg",
+      "durationMs": 987
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 78,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/1024x768.jpeg",
+      "durationMs": 947
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 59,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/1024x768.jpeg",
+      "durationMs": 1946
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 76,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1024x768.jpeg",
+      "durationMs": 960
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 86,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1024x768.jpeg",
+      "durationMs": 1124
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 84,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              584,
+              0,
+              440,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/1024x768.jpeg",
+      "durationMs": 1095
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              384,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/1024x768.jpeg",
+      "durationMs": 1426
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 135,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              384,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/1024x768.jpeg",
+      "durationMs": 2151
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              122,
+              20,
+              780,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/1024x768.jpeg",
+      "durationMs": 1410
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 83,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              302,
+              107,
+              420,
+              553
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1024x768.jpeg",
+      "durationMs": 1094
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1024x768.jpeg",
+      "durationMs": 4125
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/390x844.jpeg",
+      "durationMs": 949
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/390x844.jpeg",
+      "durationMs": 926
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 13,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/390x844.jpeg",
+      "durationMs": 1950
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 62,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              324,
+              390,
+              520
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/390x844.jpeg",
+      "durationMs": 1076
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 28,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/390x844.jpeg",
+      "durationMs": 1089
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 26,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/390x844.jpeg",
+      "durationMs": 991
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/390x844.jpeg",
+      "durationMs": 1398
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 77,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/390x844.jpeg",
+      "durationMs": 2127
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/390x844.jpeg",
+      "durationMs": 1662
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 69,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              324,
+              390,
+              520
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              125,
+              390,
+              719
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/390x844.jpeg",
+      "durationMs": 1331
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/390x844.jpeg",
+      "durationMs": 3961
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/320x740.jpeg",
+      "durationMs": 952
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/320x740.jpeg",
+      "durationMs": 926
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 13,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/320x740.jpeg",
+      "durationMs": 1943
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 62,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              220,
+              320,
+              520
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/320x740.jpeg",
+      "durationMs": 1075
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 28,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/320x740.jpeg",
+      "durationMs": 982
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 26,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/320x740.jpeg",
+      "durationMs": 1005
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/320x740.jpeg",
+      "durationMs": 1400
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 77,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/320x740.jpeg",
+      "durationMs": 2112
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/320x740.jpeg",
+      "durationMs": 1635
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 69,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              220,
+              320,
+              520
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/320x740.jpeg",
+      "durationMs": 1309
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/320x740.jpeg",
+      "durationMs": 3976
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/844x390.jpeg",
+      "durationMs": 956
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 21,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/844x390.jpeg",
+      "durationMs": 941
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 14,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/844x390.jpeg",
+      "durationMs": 1929
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 63,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              844,
+              334
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/844x390.jpeg",
+      "durationMs": 977
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/844x390.jpeg",
+      "durationMs": 1007
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 27,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/844x390.jpeg",
+      "durationMs": 1002
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/844x390.jpeg",
+      "durationMs": 1407
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 78,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/844x390.jpeg",
+      "durationMs": 2112
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/844x390.jpeg",
+      "durationMs": 1617
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 70,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              844,
+              334
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/844x390.jpeg",
+      "durationMs": 1344
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/844x390.jpeg",
+      "durationMs": 4062
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              683,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1366x768-zoom200.jpeg",
+      "durationMs": 970
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 21,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/1366x768-zoom200.jpeg",
+      "durationMs": 941
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 14,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/1366x768-zoom200.jpeg",
+      "durationMs": 1927
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 63,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              683,
+              328
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1366x768-zoom200.jpeg",
+      "durationMs": 1075
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1366x768-zoom200.jpeg",
+      "durationMs": 991
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 27,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              683,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/1366x768-zoom200.jpeg",
+      "durationMs": 1096
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              683,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/1366x768-zoom200.jpeg",
+      "durationMs": 1408
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 78,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              683,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/1366x768-zoom200.jpeg",
+      "durationMs": 2154
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              683,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/1366x768-zoom200.jpeg",
+      "durationMs": 1669
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 70,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              683,
+              328
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              683,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1366x768-zoom200.jpeg",
+      "durationMs": 1084
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1366x768-zoom200.jpeg",
+      "durationMs": 3985
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1024x768-zoom200.jpeg",
+      "durationMs": 962
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 21,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/1024x768-zoom200.jpeg",
+      "durationMs": 935
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 14,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/1024x768-zoom200.jpeg",
+      "durationMs": 1926
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 63,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              512,
+              328
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1024x768-zoom200.jpeg",
+      "durationMs": 1025
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1024x768-zoom200.jpeg",
+      "durationMs": 971
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 27,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/1024x768-zoom200.jpeg",
+      "durationMs": 1036
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/1024x768-zoom200.jpeg",
+      "durationMs": 1404
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 78,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/1024x768-zoom200.jpeg",
+      "durationMs": 2123
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/1024x768-zoom200.jpeg",
+      "durationMs": 1638
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 70,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              512,
+              328
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1024x768-zoom200.jpeg",
+      "durationMs": 1330
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1024x768-zoom200.jpeg",
+      "durationMs": 4100
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              453,
+              20,
+              460,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1366x768-reduced-motion.jpeg",
+      "durationMs": 973
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 78,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/1366x768-reduced-motion.jpeg",
+      "durationMs": 985
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 59,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/1366x768-reduced-motion.jpeg",
+      "durationMs": 1981
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 76,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1366x768-reduced-motion.jpeg",
+      "durationMs": 948
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 86,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1366x768-reduced-motion.jpeg",
+      "durationMs": 1092
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 84,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              926,
+              0,
+              440,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/1366x768-reduced-motion.jpeg",
+      "durationMs": 1117
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              726,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/1366x768-reduced-motion.jpeg",
+      "durationMs": 1443
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 134,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              726,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/1366x768-reduced-motion.jpeg",
+      "durationMs": 2186
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              293,
+              20,
+              780,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/1366x768-reduced-motion.jpeg",
+      "durationMs": 1443
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 83,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              473,
+              107,
+              420,
+              553
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1366x768-reduced-motion.jpeg",
+      "durationMs": 1110
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1366x768-reduced-motion.jpeg",
+      "durationMs": 4126
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/390x844-reduced-motion.jpeg",
+      "durationMs": 955
+    },
+    {
+      "surface": "quick-start",
+      "board": "06/16",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "quick-start/390x844-reduced-motion.jpeg",
+      "durationMs": 940
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 13,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/390x844-reduced-motion.jpeg",
+      "durationMs": 1931
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 62,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              324,
+              390,
+              520
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/390x844-reduced-motion.jpeg",
+      "durationMs": 991
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 28,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/390x844-reduced-motion.jpeg",
+      "durationMs": 984
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 26,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/390x844-reduced-motion.jpeg",
+      "durationMs": 955
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/390x844-reduced-motion.jpeg",
+      "durationMs": 1349
+    },
+    {
+      "surface": "character-sheet",
+      "board": "09",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 76,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "character-sheet/390x844-reduced-motion.jpeg",
+      "durationMs": 2107
+    },
+    {
+      "surface": "create-brick",
+      "board": "10",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Create a brick",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Create a brickDesign your own brick to use in this world.Clo"
+      },
+      "consoleErrors": [],
+      "screenshot": "create-brick/390x844-reduced-motion.jpeg",
+      "durationMs": 1407
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 69,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              324,
+              390,
+              520
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              125,
+              390,
+              719
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/390x844-reduced-motion.jpeg",
+      "durationMs": 1110
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": true,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/390x844-reduced-motion.jpeg",
+      "durationMs": 3976
+    }
+  ],
+  "skipped": [],
+  "summary": {
+    "runs": 99,
+    "passed": 99,
+    "failed": 0,
+    "skipped": 0,
+    "notes": 6
+  }
+}
