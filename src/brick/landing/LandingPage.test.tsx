@@ -53,11 +53,11 @@ describe('semantics and structure', () => {
   it('places a phone-only Sign in link in the hero after the buttons (board 16)', () => {
     render(<LandingPage />)
     const hero = screen.getByRole('heading', { level: 1 }).closest('section')!
-    const signin = within(hero).getByRole('link', { name: 'Sign in' })
+    const signin = within(hero).getByRole('link', { name: 'Student login' })
     expect(signin).toHaveAttribute('href', '/build?classroom=signin')
     expect(signin.closest('.landing-hero-signin')).not.toBeNull()
     const order = [...hero.querySelectorAll('a')].map((a) => a.textContent)
-    expect(order).toEqual(['Start building', 'Join a class', 'Sign in'])
+    expect(order).toEqual(['Start building', 'Join a class', 'Student login'])
   })
 
   it('names the LEGO Group non-affiliation honestly', () => {
@@ -87,10 +87,10 @@ describe('calls to action and anchors', () => {
     for (const link of starts) expect(link).toHaveAttribute('href', '/build')
 
     const joins = screen.getAllByRole('link', { name: 'Join a class' })
-    expect(joins).toHaveLength(2)
+    expect(joins).toHaveLength(1)
     for (const link of joins) expect(link).toHaveAttribute('href', '/build?classroom=join')
 
-    const signins = screen.getAllByRole('link', { name: 'Sign in' })
+    const signins = screen.getAllByRole('link', { name: 'Student login' })
     expect(signins).toHaveLength(2)
     for (const link of signins) expect(link).toHaveAttribute('href', '/build?classroom=signin')
     expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/build?classroom=teacher')
@@ -103,7 +103,7 @@ describe('calls to action and anchors', () => {
     for (const link of screen.getAllByRole('link', { name: 'Start building' })) expect(link).toHaveAttribute('href', '/studio')
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/studio')
     for (const link of screen.getAllByRole('link', { name: 'Join a class' })) expect(link).toHaveAttribute('href', '/studio?classroom=join')
-    for (const link of screen.getAllByRole('link', { name: 'Sign in' })) expect(link).toHaveAttribute('href', '/studio?classroom=signin')
+    for (const link of screen.getAllByRole('link', { name: 'Student login' })) expect(link).toHaveAttribute('href', '/studio?classroom=signin')
     expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/studio?classroom=teacher')
   })
 

@@ -1,3 +1,4 @@
+import { rememberClass } from './rememberedClass'
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Blocks, CircleAlert, CircleCheck, LoaderCircle, LogOut, UserRound, Users } from 'lucide-react'
 import type { BrickStudioDocument } from '../brick/brickDocument'
@@ -47,7 +48,7 @@ const sameTitle = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.t
  */
 export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, onClose, onSessionChange, onSaved, beforeWorldMutation, onWorldUpdated, client = browserClassroomClient }: Props) {
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
-  const [tab, setTab] = useState<'worlds' | 'class'>(intent === 'class' ? 'class' : 'worlds')
+  const [tab, setTab] = useState<'worlds' | 'class'>(intent === 'class' || (auth?.user.role === 'student' && (intent === 'signin' || intent === 'join')) ? 'class' : 'worlds')
   const [classSection, setClassSection] = useState<ClassSection>('students')
   const [loginMode, setLoginMode] = useState<EntryMode>(initialLoginMode(intent))
   const [busy, setBusy] = useState(false)
@@ -131,12 +132,17 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   const changeMode = (mode: EntryMode) => { setLoginMode(mode); setError(''); setFieldErrors({}) }
   const authenticate = (mode: EntryMode, data: Record<string, string>) => {
     if (mode !== 'teacher-login') {
+      data = { ...data, username: (data.username ?? '').trim(), classCode: (data.classCode ?? '').trim().toUpperCase() }
       const username = validateUsername(data.username ?? '')
-      const password = mode === 'register' ? validatePassword(data.password ?? '') : ''
+      const password = mode === 'register' ? validatePassword(data.password ?? '', data.username) : ''
       if (username || password) { setError(''); setFieldErrors({ ...(username ? { username } : {}), ...(password ? { password } : {}) }); return }
     }
     setFieldErrors({})
-    void run(async () => { await client.authenticate(mode, data) })
+    void run(async () => {
+      const next = await client.authenticate(mode, data)
+      rememberClass(next)
+      if (next.user.role === 'student' && (intent === 'signin' || intent === 'join' || intent === 'class')) setTab('class')
+    })
   }
   const startGoogle = () => void run(async () => {
     const returnTo = new URL(window.location.href)

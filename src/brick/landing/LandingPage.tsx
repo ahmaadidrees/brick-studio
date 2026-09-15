@@ -270,9 +270,8 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
         <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
           <a className="landing-nav-link" href="#how-it-works">How it works</a>
           <a className="landing-nav-link" href="#teachers">For teachers</a>
-          <a className="landing-nav-link" href={signinHref}>Sign in</a>
-          <a className="ui-button ui-button-secondary landing-nav-cta" href={joinHref}>
-            <span className="ui-button-label">Join a class</span>
+          <a className="ui-button ui-button-secondary landing-nav-cta" href={signinHref}>
+            <span className="ui-button-label">Student login</span>
           </a>
         </nav>
       </header>
@@ -325,7 +324,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
               <CtaLink href={joinHref} icon={<Users size={18} />}>Join a class</CtaLink>
             </p>
             <p className="landing-hero-signin">
-              <a href={signinHref}>Sign in</a>
+              <a href={signinHref}>Student login</a>
             </p>
             <p className="landing-hero-trust">No account needed to start.</p>
           </div>
@@ -519,7 +518,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
               <dt>Sharing</dt>
               <dd>Build together creates a temporary room with an invite link you can copy. Anyone with the link can join while the room is open to new people; the owner can close it. Rooms expire about two hours after the last activity, so export a copy to keep the build.</dd>
               <dt>Students</dt>
-              <dd>Join a class with your enrollment code and choose a username and password. Returning students use the class sign-in code. Forgot your password? Ask your teacher for a temporary one.</dd>
+              <dd>Join a class with your enrollment code and choose a username and password. Returning students sign in with their class code, username and password. Forgot your password? Ask your teacher for a temporary one.</dd>
               <dt>Teachers</dt>
               <dd>Sign in with your teacher account, create a class, and give students its enrollment code. Create whole-class or group worlds from My Class and manage students from the roster.</dd>
             </dl>

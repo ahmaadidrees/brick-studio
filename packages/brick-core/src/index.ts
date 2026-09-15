@@ -6,3 +6,5 @@ export * from './protocol'
 export * from './registries'
 export * from './types'
 export * from './characterAppearance'
+
+export * from './studentPassword'

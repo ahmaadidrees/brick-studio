@@ -23,7 +23,7 @@ function fakeApi(data: { worlds?: ClassroomWorld[]; classes?: ClassroomClass[]; 
   }) as unknown as typeof fetch
 }
 const signedIn = (session: ClassroomAuthResult, fetcher: typeof fetch) => { const client = new ClassroomClient('', fetcher); client.setSession(session); return client }
-beforeEach(() => sessionStorage.clear()); afterEach(cleanup)
+beforeEach(() => { sessionStorage.clear(); localStorage.clear() }); afterEach(cleanup)
 
 describe('classroom entry flow', () => {
   it('leaves guest building available without reading or changing their draft', () => {
@@ -33,7 +33,7 @@ describe('classroom entry flow', () => {
   })
   it('offers Keep building as a guest on every entry view', () => {
     render(<ClassroomPanel {...props()} client={new ClassroomClient('', vi.fn())} />)
-    for (const mode of ['Student', 'Join a class', 'Teacher']) {
+    for (const mode of ['Sign in', 'Create account']) {
       fireEvent.click(screen.getByRole('radio', { name: mode }))
       expect(screen.getByRole('button', { name: 'Keep building as a guest' })).toBeInTheDocument()
       expect(screen.getByText('Your current build stays here while you sign in.')).toBeInTheDocument()
@@ -68,11 +68,11 @@ describe('classroom entry flow', () => {
 describe('student sign-in (board 03)', () => {
   it('shows the returning-student copy, class sign-in code and teacher recovery hint', () => {
     render(<ClassroomPanel {...props()} intent="signin" client={new ClassroomClient('', vi.fn())} />)
-    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Student login' })).toBeInTheDocument()
     expect(screen.getByText('Sign in to open your saved worlds.')).toBeInTheDocument()
-    expect(screen.getByLabelText('Class sign-in code')).toBeInTheDocument()
+    expect(screen.getByLabelText('Class code')).toBeInTheDocument()
     expect(screen.getByText('Forgot your details? Ask your teacher.')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Enrollment code')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Choose a username')).not.toBeInTheDocument()
   })
   it.each([
     ['wrong code or password', 401, 'Check your class code, username and password.'],
@@ -81,19 +81,19 @@ describe('student sign-in (board 03)', () => {
   ])('surfaces the server message for %s and keeps the typed details', async (_case, status, message) => {
     const client = new ClassroomClient('', vi.fn().mockResolvedValue(json({ error: message, code: 'x' }, status)))
     render(<ClassroomPanel {...props()} intent="signin" client={client} />)
-    fireEvent.change(screen.getByLabelText('Class sign-in code'), { target: { value: 'CLASS-456' } })
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'CLASS-456' } })
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'sky_builder' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'not-the-one' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(message)
-    expect(screen.getByLabelText('Class sign-in code')).toHaveValue('CLASS-456')
+    expect(screen.getByLabelText('Class code')).toHaveValue('CLASS-456')
     expect(screen.getByLabelText('Username')).toHaveValue('sky_builder')
     expect(screen.getByRole('button', { name: 'Sign in' })).not.toBeDisabled()
   })
   it('reports a lost connection without pretending the account changed', async () => {
     const client = new ClassroomClient('', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
     render(<ClassroomPanel {...props()} intent="signin" client={client} />)
-    fireEvent.change(screen.getByLabelText('Class sign-in code'), { target: { value: 'CLASS-456' } })
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'CLASS-456' } })
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'sky_builder' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password-1' } })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
@@ -108,8 +108,8 @@ describe('enrollment (board 03)', () => {
     render(<ClassroomPanel {...props()} client={client} />)
     expect(screen.getByRole('heading', { name: 'Join your class' })).toBeInTheDocument()
     expect(screen.getByText('Shown to your teacher only.')).toBeInTheDocument()
-    expect(screen.getByText(/At least 8 characters/)).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Enrollment code'), { target: { value: 'JOIN123' } })
+    expect(screen.getByText(/At least 6 characters/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'JOIN123' } })
     fireEvent.change(screen.getByLabelText('Choose a username'), { target: { value: 'Builder_2' } })
     fireEvent.change(screen.getByLabelText('Name your teacher knows'), { target: { value: 'Alex' } })
     const password = screen.getByLabelText('Choose a password')
@@ -127,7 +127,7 @@ describe('enrollment (board 03)', () => {
     const client = new ClassroomClient('', vi.fn())
     const authenticate = vi.spyOn(client, 'authenticate').mockResolvedValue(auth)
     render(<ClassroomPanel {...props()} intent="join" client={client} />)
-    fireEvent.change(screen.getByLabelText('Enrollment code'), { target: { value: 'JOIN123' } })
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'JOIN123' } })
     fireEvent.change(screen.getByLabelText('Choose a username'), { target: { value: '_leading' } })
     fireEvent.change(screen.getByLabelText('Name your teacher knows'), { target: { value: 'Alex' } })
     fireEvent.change(screen.getByLabelText('Choose a password'), { target: { value: 'long-enough-password' } })
@@ -136,7 +136,7 @@ describe('enrollment (board 03)', () => {
     fireEvent.change(screen.getByLabelText('Choose a username'), { target: { value: 'sky_builder' } })
     fireEvent.change(screen.getByLabelText('Choose a password'), { target: { value: 'short' } })
     fireEvent.submit(document.getElementById('classroom-entry-form')!)
-    expect(await screen.findByRole('alert')).toHaveTextContent('Passwords need 8 to 128 characters.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Passwords need 6 to 128 characters.')
     expect(authenticate).not.toHaveBeenCalled()
   })
   it.each([
@@ -145,7 +145,7 @@ describe('enrollment (board 03)', () => {
   ])('surfaces the server message for %s', async (_case, status, message) => {
     const client = new ClassroomClient('', vi.fn().mockResolvedValue(json({ error: message, code: 'x' }, status)))
     render(<ClassroomPanel {...props()} intent="join" client={client} />)
-    fireEvent.change(screen.getByLabelText('Enrollment code'), { target: { value: 'NEW-123' } })
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'NEW-123' } })
     fireEvent.change(screen.getByLabelText('Choose a username'), { target: { value: 'sky_builder' } })
     fireEvent.change(screen.getByLabelText('Name your teacher knows'), { target: { value: 'Alex' } })
     fireEvent.change(screen.getByLabelText('Choose a password'), { target: { value: 'remember-this' } })
@@ -156,9 +156,9 @@ describe('enrollment (board 03)', () => {
   it('links between joining and signing in without leaving the guest build', () => {
     const callbacks = props()
     render(<ClassroomPanel {...callbacks} intent="join" client={new ClassroomClient('', vi.fn())} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }))
-    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'New here? Join a class' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Sign in' }))
+    expect(screen.getByRole('heading', { name: 'Student login' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'Create account' }))
     expect(screen.getByRole('heading', { name: 'Join your class' })).toBeInTheDocument()
     expect(callbacks.onClose).not.toHaveBeenCalled(); expect(callbacks.getDocument).not.toHaveBeenCalled()
   })
@@ -169,17 +169,17 @@ describe('teacher sign-in (board 03)', () => {
     const client = new ClassroomClient('', vi.fn())
     const authenticate = vi.spyOn(client, 'authenticate').mockResolvedValue(auth)
     render(<ClassroomPanel {...props()} client={client} />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Student' }))
-    fireEvent.change(screen.getByLabelText('Class sign-in code'), { target: { value: 'CLASS123' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Sign in' }))
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'CLASS123' } })
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'Builder' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'test-password' } })
     fireEvent.click(screen.getByRole('button', { name: 'Show password' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     await waitFor(() => expect(authenticate).toHaveBeenCalledWith('login', { classCode: 'CLASS123', username: 'Builder', password: 'test-password' }))
-    await waitFor(() => expect(screen.getByRole('radio', { name: 'Teacher' })).not.toBeDisabled())
-    fireEvent.click(screen.getByRole('radio', { name: 'Teacher' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Teacher sign in' })).not.toBeDisabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Teacher sign in' }))
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument()
-    expect(screen.queryByLabelText('Class sign-in code')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Class code')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Use email and password' }))
     expect(screen.getByRole('button', { name: 'Use email and password' })).toHaveAttribute('aria-expanded', 'true')
@@ -694,11 +694,11 @@ describe('class access and groups (board 14)', () => {
 
 describe('entry intents', () => {
   it.each([
-    ['join', 'Join a class', 'Enrollment code'],
-    ['signin', 'Student', 'Class sign-in code'],
-    ['save', 'Join a class', 'Enrollment code'],
-    ['worlds', 'Join a class', 'Enrollment code'],
-    ['class', 'Join a class', 'Enrollment code'],
+    ['join', 'Create account', 'Class code'],
+    ['signin', 'Sign in', 'Class code'],
+    ['save', 'Create account', 'Class code'],
+    ['worlds', 'Create account', 'Class code'],
+    ['class', 'Create account', 'Class code'],
   ] as const)('opens a guest on the %s mode', (intent, mode, field) => {
     render(<ClassroomPanel {...props()} intent={intent} client={new ClassroomClient('', vi.fn())} />)
     expect(screen.getByRole('radio', { name: mode })).toHaveAttribute('aria-checked', 'true')
@@ -707,7 +707,7 @@ describe('entry intents', () => {
   })
   it('opens a guest on the teacher mode with Google first', () => {
     render(<ClassroomPanel {...props()} intent="teacher" client={new ClassroomClient('', vi.fn())} />)
-    expect(screen.getByRole('radio', { name: 'Teacher' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('heading', { name: 'Teacher sign in' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Use email and password' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('Keep building as a guest')).toBeInTheDocument()
@@ -717,8 +717,8 @@ describe('entry intents', () => {
     const fetcher = vi.fn((url: string) => Promise.resolve(json(url.endsWith('/worlds') ? { worlds: [] } : { classes: [] })))
     const client = new ClassroomClient('', fetcher as typeof fetch); client.setSession(auth)
     render(<ClassroomPanel {...props()} intent={intent} client={client} />)
-    expect(await screen.findByRole('radio', { name: 'My Worlds' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.queryByRole('radio', { name: 'Student' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('radio', { name: intent === 'join' || intent === 'signin' ? 'My Class' : 'My Worlds' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.queryByRole('radio', { name: 'Sign in' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save world' })).not.toBeInTheDocument()
   })
 
@@ -727,7 +727,7 @@ describe('entry intents', () => {
     const start = vi.spyOn(client, 'startGoogleTeacher').mockReturnValue(new Promise(() => {}))
     const callbacks = props()
     render(<ClassroomPanel {...callbacks} intent={intent} client={client} />)
-    if (intent !== 'teacher') fireEvent.click(screen.getByRole('radio', { name: 'Teacher' }))
+    if (intent !== 'teacher') fireEvent.click(screen.getByRole('button', { name: 'Teacher sign in' }))
     fireEvent.click(screen.getByRole('button', { name: 'Continue with Google' }))
     await waitFor(() => expect(start).toHaveBeenCalledWith(`/build?classroom=${intent}`))
     expect(callbacks.getDocument).toHaveBeenCalledOnce()
@@ -740,8 +740,8 @@ describe('safe states (board 15, account-owned)', () => {
     const client = new ClassroomClient('', fetcher as typeof fetch); client.setSession(auth)
     render(<ClassroomPanel {...props()} intent="worlds" client={client} />)
     expect(await screen.findByRole('alert')).toHaveTextContent('Your session expired. Sign in again.')
-    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'Student' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('heading', { name: 'Student login' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Sign in' })).toHaveAttribute('aria-checked', 'true')
     expect(client.getSession()).toBeNull()
   })
   it('keeps the guest build and reports blocked storage when Google sign-in cannot stash the draft', async () => {
@@ -765,7 +765,7 @@ describe('dialog behaviour', () => {
     const client = new ClassroomClient('', vi.fn())
     const authenticate = vi.spyOn(client, 'authenticate').mockResolvedValue(auth)
     render(<ClassroomPanel {...props()} intent="signin" client={client} />)
-    fireEvent.change(screen.getByLabelText('Class sign-in code'), { target: { value: 'CLASS-456' } })
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'CLASS-456' } })
     fireEvent.change(screen.getByLabelText('Username'), { target: { value: '_leading' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password-1' } })
     const submit = screen.getByRole('button', { name: 'Sign in' })
@@ -774,7 +774,7 @@ describe('dialog behaviour', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Usernames are 3–24 letters or numbers')
     expect(screen.getByLabelText('Username')).toHaveAttribute('aria-invalid', 'true')
     expect(authenticate).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('radio', { name: 'Join a class' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Create account' }))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
   it('lets Escape close a confirmation without closing the panel', async () => {
@@ -798,5 +798,58 @@ describe('dialog behaviour', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(callbacks.onClose).toHaveBeenCalledOnce()
     view.unmount(); expect(document.activeElement).toBe(opener); opener.remove()
+  })
+})
+
+describe('streamlined student entry', () => {
+  it('preserves student fields between sign-in and account creation without storing credentials', () => {
+    render(<ClassroomPanel {...props()} intent="signin" client={new ClassroomClient('', vi.fn())} />)
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'ROOM42' } })
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'Rover' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'orbit7' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Create account' }))
+    expect(screen.getByLabelText('Class code')).toHaveValue('ROOM42')
+    expect(screen.getByLabelText('Choose a username')).toHaveValue('Rover')
+    expect(screen.getByLabelText('Choose a password')).toHaveValue('orbit7')
+    fireEvent.change(screen.getByLabelText('Name your teacher knows'), { target: { value: 'Sam' } })
+    fireEvent.click(screen.getByRole('radio', { name: 'Sign in' }))
+    expect(screen.getByLabelText('Password')).toHaveValue('orbit7')
+    expect(localStorage.length).toBe(0)
+  })
+  it('remembers only the successful class and opens My Class, then allows changing class', async () => {
+    const fetcher = fakeApi({ classes: [classroom] }, url => url.endsWith('/auth/login') ? json({ ...auth, classes: [classroom] }) : undefined)
+    render(<ClassroomPanel {...props()} intent="signin" client={new ClassroomClient('', fetcher)} />)
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'NEW-123' } })
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'Builder' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'orbit7' } })
+    fireEvent.submit(document.getElementById('classroom-entry-form')!)
+    expect(await screen.findByRole('radio', { name: 'My Class' })).toHaveAttribute('aria-checked', 'true')
+    expect(JSON.parse(localStorage.getItem('brickgineers.last-class.v1')!)).toEqual({ name: classroom.name, code: classroom.loginCode })
+    cleanup(); sessionStorage.clear()
+    render(<ClassroomPanel {...props()} intent="signin" client={new ClassroomClient('', vi.fn())} />)
+    expect(screen.getByText(classroom.name)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Class code')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Username')).toHaveValue('')
+    expect(screen.getByLabelText('Password')).toHaveValue('')
+    fireEvent.click(screen.getByRole('button', { name: 'Change class' }))
+    expect(screen.getByLabelText('Class code')).toHaveValue('')
+    expect(localStorage.getItem('brickgineers.last-class.v1')).toBeNull()
+  })
+  it('allows a six-character new password and rejects obvious or matching passwords', async () => {
+    const client = new ClassroomClient('', vi.fn())
+    const authenticate = vi.spyOn(client, 'authenticate').mockResolvedValue(auth)
+    render(<ClassroomPanel {...props()} intent="join" client={client} />)
+    fireEvent.change(screen.getByLabelText('Class code'), { target: { value: 'ROOM42' } })
+    fireEvent.change(screen.getByLabelText('Choose a username'), { target: { value: 'rover7' } })
+    fireEvent.change(screen.getByLabelText('Name your teacher knows'), { target: { value: 'Sam' } })
+    for (const password of ['123456', 'rover7']) {
+      fireEvent.change(screen.getByLabelText('Choose a password'), { target: { value: password } })
+      fireEvent.submit(document.getElementById('classroom-entry-form')!)
+      expect(await screen.findByRole('alert')).toHaveTextContent('less easy-to-guess')
+    }
+    expect(authenticate).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Choose a password'), { target: { value: 'orbit7' } })
+    fireEvent.submit(document.getElementById('classroom-entry-form')!)
+    await waitFor(() => expect(authenticate).toHaveBeenCalledWith('register', expect.objectContaining({ password: 'orbit7' })))
   })
 })

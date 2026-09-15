@@ -238,3 +238,7 @@
   .classroom-creative-banner { display: none; }
 }
 @media (max-height: 650px) { .classroom-creative-banner { display: none; } }
+
+.classroom-remembered-class { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--ui-border, #dce4ef); border-radius: 12px; background: var(--ui-surface, #f8fafc); }
+.classroom-remembered-class p { margin: 0; overflow-wrap: anywhere; min-width: 0; }
+.classroom-remembered-class button { flex-shrink: 0; }

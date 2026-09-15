@@ -164,3 +164,35 @@ describe('live access-change kinds', () => {
     expect(await call('POST', 'auth/logout', {})).toEqual({ userId: studentId, classId, reason: 'logout', change: 'revocation' });
   });
 });
+
+describe('student password and alias boundaries', () => {
+  const call = (path: string, data: unknown) => handleClassroomRequest(new Request(`https://worker.test/classroom/auth/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }), env);
+  it('rejects short/common/username passwords before provider registration', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const request = vi.spyOn(ClassroomService.prototype, 'request');
+    for (const password of ['short', '123456', 'BUILDER']) {
+      const response = await call('register', { classCode: 'ROOM42', username: 'Builder', password });
+      expect(response?.status).toBe(400);
+    }
+    expect(request).not.toHaveBeenCalled();
+  });
+  it('keeps teacher passwords at eight characters', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const login = vi.spyOn(ClassroomService.prototype, 'login');
+    const response = await call('teacher-login', { email: 'teacher@example.invalid', password: 'orbit7' });
+    expect(response?.status).toBe(400); expect(login).not.toHaveBeenCalled();
+  });
+  it('accepts six characters for student login, retains old weak passwords, and groups aliases in one rate bucket', async () => {
+    const rate = vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table => table === 'class_codes' ? [{ class_id: classId, can_enroll: false }] : table === 'classes' ? [{ id: classId }] : table === 'students' ? [student] : []);
+    const login = vi.spyOn(ClassroomService.prototype, 'login').mockResolvedValue({ access_token: token, refresh_token: 'refresh', expires_in: 3600 });
+    vi.spyOn(ClassroomService.prototype, 'registerSession').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'authResult').mockResolvedValue({ session: { accessToken: token, refreshToken: 'refresh', expiresIn: 3600 }, user: { id: studentId, username: 'Builder', rosterName: 'Sam', role: 'student', resetRequired: false }, classes: [] });
+    for (const [code, password] of [['ALIAS1', 'orbit7'], ['ALIAS2', 'password']]) {
+      expect((await call('login', { classCode: code, username: 'Builder', password }))?.status).toBe(200);
+    }
+    expect(login).toHaveBeenCalledWith(expect.any(String), 'orbit7');
+    const buckets = rate.mock.calls.filter(([key]) => key.startsWith('login:'));
+    expect(buckets).toEqual([[`login:${classId}:builder`, 12, 300], [`login:${classId}:builder`, 12, 300]]);
+  });
+});

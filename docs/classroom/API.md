@@ -45,7 +45,7 @@ owner; teacher oversight applies to classroom/group worlds.
 Session shape: `{accessToken,refreshToken,expiresIn}`. User:
 `{id,username,rosterName,role:'teacher'|'student',resetRequired}`. Username is 3–24
 ASCII letters/numbers/underscore/hyphen, first character alphanumeric; uniqueness
-is case-insensitive within a class. Password length is 8–128. Roster name is private
+is case-insensitive within a class. New student passwords are 6–128 characters and reject a small list of common passwords, repeated characters and the username. Existing student sign-in accepts 6–128 characters without applying new-password rules; teacher password sign-in remains 8–128. All codes for one class share the same per-account login attempt bucket. Roster name is private
 to the student and teacher, max80. Temporary passwords must be changed to a different
 password. Reset-required callers may access only me, change-password, and logout.
 Refresh can maintain that restricted session but cannot clear the requirement.

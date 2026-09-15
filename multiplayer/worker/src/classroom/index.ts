@@ -1,4 +1,4 @@
-import { validateBrickStudioDocument, type BrickStudioDocument } from '@brick-studio/core';
+import { studentPasswordError, validateBrickStudioDocument, type BrickStudioDocument } from '@brick-studio/core';
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 
@@ -40,8 +40,13 @@ export function normalizeUsername(value: unknown): string {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,23}$/.test(name)) fail(400, 'invalid_username', 'Use 3–24 letters, numbers, underscores or hyphens.');
   return name;
 }
-function password(value: unknown): string {
-  if (typeof value !== 'string' || value.length < 8 || value.length > 128) fail(400, 'invalid_password', 'Use a password with 8–128 characters.');
+function password(value: unknown, minimum = 8): string {
+  if (typeof value !== 'string' || value.length < minimum || value.length > 128) fail(400, 'invalid_password', `Use a password with ${minimum}–128 characters.`);
+  return value as string;
+}
+function newStudentPassword(value: unknown, username?: string): string {
+  const error = studentPasswordError(value, username);
+  if (error) fail(400, 'invalid_password', error);
   return value as string;
 }
 export function sessionId(token: string): string {
@@ -233,10 +238,11 @@ async function route(request: Request, service: ClassroomService, path: string[]
     if (path[1] === 'register' || path[1] === 'login') {
       const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
       const username = normalizeUsername(input.username);
-      const pass = password(input.password);
-      await service.rate(`login:${code}:${username.toLowerCase()}`, 12, 300);
+      const pass = path[1] === 'register' ? newStudentPassword(input.password, username) : password(input.password, 6);
       const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
       if (!alias) fail(401, 'invalid_credentials', 'Check your class code, username and password.');
+      // All aliases for a class share one account bucket. Rotating codes cannot bypass throttling.
+      await service.rate(`login:${alias.class_id}:${username.toLowerCase()}`, 12, 300);
       const cls = (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
       if (path[1] === 'register') {
         if (!alias.can_enroll || !cls.enrollment_open) fail(403, 'enrollment_closed', 'Your teacher has closed enrollment with this code.');
@@ -305,7 +311,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     }
     if (path[1] === 'change-password') {
       if (caller.role !== 'student') fail(403, 'student_required', 'Manage teacher credentials through your sign-in provider.');
-      const pass = password(input.password);
+      const pass = newStudentPassword(input.password, caller.username);
       await service.rate(`password:${caller.id}`, 6, 600);
       return service.withCredentialLock(caller.id, async () => {
       if (caller.resetRequired) {
@@ -373,7 +379,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (input.rosterName !== undefined) changes.roster_name = cleanText(input.rosterName, 'Roster name');
       if (input.suspended !== undefined) { if (typeof input.suspended !== 'boolean') fail(400, 'invalid_input', 'suspended must be true or false.'); changes.suspended = input.suspended; changes.auth_version = student.auth_version + 1; }
       let temp: string | undefined;
-      if (input.temporaryPassword !== undefined) { temp = password(input.temporaryPassword); changes.reset_required = true; changes.auth_version = student.auth_version + 1; }
+      if (input.temporaryPassword !== undefined) { temp = newStudentPassword(input.temporaryPassword, changes.username || student.username); changes.reset_required = true; changes.auth_version = student.auth_version + 1; }
       let updated = Object.keys(changes).length ? (await service.patch('students', `user_id=eq.${student.user_id}&class_id=eq.${cls.id}&auth_version=eq.${student.auth_version}`, changes))[0] : student;
       if (!updated) fail(409, 'account_changed', 'This account changed. Refresh and try again.');
       if (temp) {

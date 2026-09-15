@@ -78,7 +78,7 @@ export function ManageStudentForm({ student, busy, headingRef, onSubmit, onToggl
       <TextInput label="Username" id="classroom-manage-username" name="username" defaultValue={student.username} required minLength={3} maxLength={24} pattern={USERNAME_PATTERN} title={USERNAME_RULE} autoCapitalize="none" spellCheck={false} autoComplete="off" />
       <TextInput label="Roster name" id="classroom-manage-roster" name="rosterName" defaultValue={student.rosterName} required maxLength={80} autoComplete="off" />
     </div>
-    <PasswordField label="Temporary password" name="temporaryPassword" autoComplete="new-password" minLength={8} maxLength={128} placeholder="Leave blank to keep the current password" hint="Setting this signs the student out and asks them to choose a new password." />
+    <PasswordField label="Temporary password" name="temporaryPassword" autoComplete="new-password" minLength={6} maxLength={128} placeholder="Leave blank to keep the current password" hint="Setting this signs the student out and asks them to choose a new password." />
     <div>
       <Button variant="secondary" size="sm" icon={<RefreshCw size={16} />} disabled={busy} onClick={event => {
         const input = event.currentTarget.form?.elements.namedItem('temporaryPassword')

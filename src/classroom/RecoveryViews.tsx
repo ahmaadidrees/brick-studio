@@ -9,8 +9,8 @@ export const RESET_FORM_ID = 'classroom-reset-form'
 /** Board 04 left: forced password change after a teacher reset. Only me / change-password / logout are allowed here. */
 export function PasswordResetView({ onSubmit }: { onSubmit: (password: string, confirm: string) => void }) {
   return <form id={RESET_FORM_ID} className="classroom-form" onSubmit={event => { const data = readForm(event); onSubmit(data.password, data.confirm) }}>
-    <PasswordField label="New password" name="password" maxLength={128} autoComplete="new-password" required minLength={8} hint={PASSWORD_RULE} />
-    <PasswordField label="Repeat new password" name="confirm" maxLength={128} autoComplete="new-password" required minLength={8} />
+    <PasswordField label="New password" name="password" maxLength={128} autoComplete="new-password" required minLength={6} hint={PASSWORD_RULE} />
+    <PasswordField label="Repeat new password" name="confirm" maxLength={128} autoComplete="new-password" required minLength={6} />
   </form>
 }
 
