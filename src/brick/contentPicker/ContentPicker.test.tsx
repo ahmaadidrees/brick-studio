@@ -61,18 +61,27 @@ describe('ContentPicker', () => {
     expect(container.querySelector('[data-preview-key="environment:toy-room"] [data-artwork="toy-room"]')).not.toBeNull()
   })
 
-  it('gives every available world and character a distinct lightweight illustration', () => {
+  it('uses real runtime portraits for characters without adding preview canvases', () => {
     const { container } = render(<ContentPicker {...baseProps} />)
 
     expect([...container.querySelectorAll('[data-artwork]')].map((node) => node.getAttribute('data-artwork'))).toEqual([
       'toy-room',
       'brick-valley',
       'sky-island',
-      'toy-figure',
-      'robot-hero',
     ])
-    expect(container.querySelectorAll('svg[data-artwork]')).toHaveLength(5)
+    expect(container.querySelectorAll('svg[data-artwork]')).toHaveLength(3)
+    expect(container.querySelector('[data-preview-key="character:toy-figure"] img')).toHaveAttribute('src', '/brand/characters/toy-figure-400.webp')
+    expect(container.querySelector('[data-preview-key="character:cc0-hero"] img')).toHaveAttribute('src', '/brand/characters/cc0-hero-400.webp')
     expect(container.querySelector('canvas, video')).toBeNull()
+  })
+
+  it('keeps the character selectable with a neutral placeholder if its portrait fails', () => {
+    const onSelectCharacter = vi.fn()
+    const { container } = render(<ContentPicker {...baseProps} onSelectCharacter={onSelectCharacter} />)
+    fireEvent.error(container.querySelector('[data-preview-key="character:toy-figure"] img')!)
+    expect(container.querySelector('[data-preview-key="character:toy-figure"] [data-artwork="character-placeholder"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: /^Toy Figure/ }))
+    expect(onSelectCharacter).toHaveBeenCalledWith('toy-figure')
   })
 
   it('announces loading and unavailable previews and skips unavailable cards during selection', () => {
