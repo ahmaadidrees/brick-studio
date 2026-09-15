@@ -8,8 +8,8 @@
     "scripts/art/media-optimize.mjs"
   ],
   "provenance": {
-    "commit": "032f492",
-    "capturedAt": "2026-09-15T01:04:26.265Z",
+    "commit": "1dbe136",
+    "capturedAt": "2026-09-15T01:09:04.833Z",
     "captureOrigin": "http://127.0.0.1:5190",
     "seed": "media-seed.mjs castle: 73 catalog bricks on a 64 plate, same build in every scene",
     "characters": "real runtime avatars (pip, fern, nova, toy-figure) standing on the plate in the Toy Room; cc0-hero excluded from marketing",
@@ -24,13 +24,13 @@
   "budgets": {
     "heroDeliveredCapBytes": 256000,
     "heroDelivered": {
-      "avif": 73517,
-      "webp": 122476
+      "avif": 73936,
+      "webp": 124462
     },
     "initialSetCapBytes": 614400,
     "initialSet": {
-      "avif": 196852,
-      "webp": 300022
+      "avif": 197257,
+      "webp": 305058
     },
     "heroDeliveredOk": true,
     "initialSetOk": true
@@ -144,8 +144,8 @@
       "file": "hero-1600.avif",
       "width": 1600,
       "height": 960,
-      "bytes": 73517,
-      "sha256": "758396efbdad95b0",
+      "bytes": 73936,
+      "sha256": "a0b6931a14b18904",
       "quality": 62,
       "initial": true
     },
@@ -153,8 +153,8 @@
       "file": "hero-1600.webp",
       "width": 1600,
       "height": 960,
-      "bytes": 122476,
-      "sha256": "816f110aef4d0288",
+      "bytes": 124462,
+      "sha256": "d5fab6606b479833",
       "quality": 84,
       "initial": true
     },
@@ -162,62 +162,62 @@
       "file": "hero-1600.png",
       "width": 1600,
       "height": 960,
-      "bytes": 243641,
-      "sha256": "2a0460699de2eb5c",
+      "bytes": 242355,
+      "sha256": "1a69704f1918adac",
       "initial": true
     },
     {
       "file": "hero-1200.avif",
       "width": 1200,
       "height": 720,
-      "bytes": 54535,
-      "sha256": "7c75026906d60600",
+      "bytes": 54471,
+      "sha256": "3388cd2d297a61e7",
       "quality": 62
     },
     {
       "file": "hero-1200.webp",
       "width": 1200,
       "height": 720,
-      "bytes": 88340,
-      "sha256": "982930054de7715e",
+      "bytes": 88376,
+      "sha256": "36c6fb176c3303e7",
       "quality": 84
     },
     {
       "file": "hero-1200.png",
       "width": 1200,
       "height": 720,
-      "bytes": 201142,
-      "sha256": "79f9615d932dda65"
+      "bytes": 192556,
+      "sha256": "bd2e9ca917bc5d4b"
     },
     {
       "file": "hero-800.avif",
       "width": 800,
       "height": 480,
-      "bytes": 32708,
-      "sha256": "e425d8e1d98fd489",
+      "bytes": 32916,
+      "sha256": "9649375c328c5f5d",
       "quality": 62
     },
     {
       "file": "hero-800.webp",
       "width": 800,
       "height": 480,
-      "bytes": 53554,
-      "sha256": "779f2d521084eed4",
+      "bytes": 54324,
+      "sha256": "8978be917434e5b5",
       "quality": 84
     },
     {
       "file": "hero-800.png",
       "width": 800,
       "height": 480,
-      "bytes": 104570,
-      "sha256": "706acdd6a4758695"
+      "bytes": 99470,
+      "sha256": "dffe568e2fb3e277"
     },
     {
       "file": "scene-toy-room-800.avif",
       "width": 800,
       "height": 500,
-      "bytes": 33696,
-      "sha256": "f9e284114a768a62",
+      "bytes": 33684,
+      "sha256": "5d7af07e8536d825",
       "quality": 62,
       "initial": true
     },
@@ -225,8 +225,8 @@
       "file": "scene-toy-room-800.webp",
       "width": 800,
       "height": 500,
-      "bytes": 55274,
-      "sha256": "8434fc07d09fa7fe",
+      "bytes": 56574,
+      "sha256": "caae3af4791f81e6",
       "quality": 84,
       "initial": true
     },
@@ -234,39 +234,39 @@
       "file": "scene-toy-room-800.png",
       "width": 800,
       "height": 500,
-      "bytes": 108785,
-      "sha256": "4b8f9a7eb8135645",
+      "bytes": 103500,
+      "sha256": "90215eafcfbbf2ea",
       "initial": true
     },
     {
       "file": "scene-toy-room-400.avif",
       "width": 400,
       "height": 250,
-      "bytes": 12678,
-      "sha256": "e90ebfac485a639c",
+      "bytes": 12540,
+      "sha256": "75af5db40f488028",
       "quality": 62
     },
     {
       "file": "scene-toy-room-400.webp",
       "width": 400,
       "height": 250,
-      "bytes": 20828,
-      "sha256": "960245b238605baf",
+      "bytes": 20692,
+      "sha256": "c1d8a97f93893f7d",
       "quality": 84
     },
     {
       "file": "scene-toy-room-400.png",
       "width": 400,
       "height": 250,
-      "bytes": 39512,
-      "sha256": "a2c67bc9faffc366"
+      "bytes": 37957,
+      "sha256": "17a438b61bbcdb0e"
     },
     {
       "file": "scene-brick-valley-800.avif",
       "width": 800,
       "height": 500,
-      "bytes": 31879,
-      "sha256": "d67ba324b4487bbc",
+      "bytes": 31487,
+      "sha256": "009f232b895156f1",
       "quality": 62,
       "initial": true
     },
@@ -274,8 +274,8 @@
       "file": "scene-brick-valley-800.webp",
       "width": 800,
       "height": 500,
-      "bytes": 43890,
-      "sha256": "a0ee75fef807ac19",
+      "bytes": 44302,
+      "sha256": "279617f785131a6d",
       "quality": 84,
       "initial": true
     },
@@ -283,39 +283,39 @@
       "file": "scene-brick-valley-800.png",
       "width": 800,
       "height": 500,
-      "bytes": 97506,
-      "sha256": "75fa362384949693",
+      "bytes": 97769,
+      "sha256": "a6d1d279b1edd269",
       "initial": true
     },
     {
       "file": "scene-brick-valley-400.avif",
       "width": 400,
       "height": 250,
-      "bytes": 11847,
-      "sha256": "8818ee5f83852759",
+      "bytes": 11955,
+      "sha256": "17c651d96fb98c50",
       "quality": 62
     },
     {
       "file": "scene-brick-valley-400.webp",
       "width": 400,
       "height": 250,
-      "bytes": 16782,
-      "sha256": "a39fcf0c633ac9a7",
+      "bytes": 17114,
+      "sha256": "46eff3977301566d",
       "quality": 84
     },
     {
       "file": "scene-brick-valley-400.png",
       "width": 400,
       "height": 250,
-      "bytes": 38046,
-      "sha256": "92c0335bc55b973d"
+      "bytes": 37449,
+      "sha256": "564a1c2759d35236"
     },
     {
       "file": "scene-sky-island-800.avif",
       "width": 800,
       "height": 500,
-      "bytes": 20669,
-      "sha256": "8379cf7f5f72b163",
+      "bytes": 20873,
+      "sha256": "e1bbdbdbe6b00873",
       "quality": 62,
       "initial": true
     },
@@ -323,8 +323,8 @@
       "file": "scene-sky-island-800.webp",
       "width": 800,
       "height": 500,
-      "bytes": 29550,
-      "sha256": "09f3a126d00df9f3",
+      "bytes": 30016,
+      "sha256": "62d528e8f08853c6",
       "quality": 84,
       "initial": true
     },
@@ -332,39 +332,39 @@
       "file": "scene-sky-island-800.png",
       "width": 800,
       "height": 500,
-      "bytes": 81030,
-      "sha256": "0f29aec4b0a87011",
+      "bytes": 81992,
+      "sha256": "b3161a208bbb2607",
       "initial": true
     },
     {
       "file": "scene-sky-island-400.avif",
       "width": 400,
       "height": 250,
-      "bytes": 8678,
-      "sha256": "9c58328e922611d8",
+      "bytes": 8786,
+      "sha256": "c5e8f8c5474559c6",
       "quality": 62
     },
     {
       "file": "scene-sky-island-400.webp",
       "width": 400,
       "height": 250,
-      "bytes": 11600,
-      "sha256": "cc146dfdc4cd728d",
+      "bytes": 11700,
+      "sha256": "6a84166e580bfe3e",
       "quality": 84
     },
     {
       "file": "scene-sky-island-400.png",
       "width": 400,
       "height": 250,
-      "bytes": 29948,
-      "sha256": "9794ff2b988fbf9e"
+      "bytes": 29857,
+      "sha256": "1afc11bfc339c603"
     },
     {
       "file": "scene-classic-800.avif",
       "width": 800,
       "height": 500,
-      "bytes": 16809,
-      "sha256": "dbbd4d3967a0257c",
+      "bytes": 16995,
+      "sha256": "dd3d388f0db1ee75",
       "quality": 62,
       "initial": true
     },
@@ -372,8 +372,8 @@
       "file": "scene-classic-800.webp",
       "width": 800,
       "height": 500,
-      "bytes": 22070,
-      "sha256": "5c28c0c4b42309a9",
+      "bytes": 22942,
+      "sha256": "66a8b2bee2077686",
       "quality": 84,
       "initial": true
     },
@@ -381,32 +381,32 @@
       "file": "scene-classic-800.png",
       "width": 800,
       "height": 500,
-      "bytes": 52344,
-      "sha256": "68ceb5724dab72b0",
+      "bytes": 51955,
+      "sha256": "759f43345803e1c1",
       "initial": true
     },
     {
       "file": "scene-classic-400.avif",
       "width": 400,
       "height": 250,
-      "bytes": 6156,
-      "sha256": "c16bcbb7bcbab837",
+      "bytes": 6129,
+      "sha256": "6a484ba9d6670863",
       "quality": 62
     },
     {
       "file": "scene-classic-400.webp",
       "width": 400,
       "height": 250,
-      "bytes": 8396,
-      "sha256": "6fcc520d81a93e0c",
+      "bytes": 8744,
+      "sha256": "27ed34c4f60c5759",
       "quality": 84
     },
     {
       "file": "scene-classic-400.png",
       "width": 400,
       "height": 250,
-      "bytes": 22014,
-      "sha256": "56a3b5dd7ebf385b"
+      "bytes": 23459,
+      "sha256": "28442892adebe55a"
     }
   ]
 }
