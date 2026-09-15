@@ -28,3 +28,14 @@ Browser touch emulation and viewport testing are not physical iPad/Chromebook ce
 ## Rollback
 
 Previous frontend: `dpl_D4dsoMoGCxQniDEfEstGACPBCkPU`, https://virtual-legos-h0sg49g4b-ahmaadidrees-projects.vercel.app . Keep the current Worker (six-character student-password support); this release changes only the frontend.
+
+## Shipped
+
+- Final product source: `75edbe0` on `codex/touch-layout-polish` (main implementation `de1aba6`).
+- Deployment: `dpl_DSYsFviv9sfebZ4r47DCFLhuoRJa`.
+- Immutable candidate: https://virtual-legos-akgm86i69-ahmaadidrees-projects.vercel.app .
+- Candidate `candidate/results.json`: all seven viewport flows pass, no page errors. Existing deployment protection was preserved; its existing automation bypass was scoped only to the exact candidate origin during verification.
+- `student-regression/`: hosted synthetic six-character enrollment, remembered class, cold login, and authoritative database-to-browser world equality pass. Teacher Google entry and guest exit remain reachable. Synthetic class cleanup is handled by the existing harness.
+- Promoted to https://brickgineers.com . `public-release.json` records exact production HTML script-asset equality to the prebuilt artifact for both public origins, followed by real public phone/tablet guest placement and screenshots.
+- Backend Worker remains `25338c36-785e-4ae8-b874-a8d1b747a1da`; this release did not deploy or reconfigure it.
+- One extra CSS polish after the full check suppresses stale canvas notifications over the brick sheet. The final Vercel production build and hosted browser matrix cover that exact final source.
