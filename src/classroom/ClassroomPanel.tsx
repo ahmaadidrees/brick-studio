@@ -242,6 +242,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     open
     variant="dialog"
     size="md"
+    closeOnBackdrop={false}
     onClose={onClose}
     title={title}
     description={description}

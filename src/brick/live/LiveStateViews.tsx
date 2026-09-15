@@ -18,7 +18,7 @@ export function friendlyReason(reason: unknown): string {
 }
 
 export async function exportLiveWorldCopy(document: BrickStudioDocument, recovery = false): Promise<string> {
-  const result = recovery ? downloadBrickStudioDocument(document, globalThis, 'brick-studio-recovery') : downloadBrickStudioDocument(document)
+  const result = recovery ? downloadBrickStudioDocument(document, globalThis, 'brickgineers-recovery') : downloadBrickStudioDocument(document)
   if (!result.ok) throw new Error(result.error.message)
   return 'Download started. Keep the .brickstudio file to reopen this copy later with Import.'
 }
@@ -106,7 +106,7 @@ export function ClassroomAccessChangedView({ snapshot, actions }: { snapshot: Li
         if (busy) return
         setBusy(true); setMessage('')
         try {
-          const result = downloadBrickStudioDocument(currentDraft, globalThis, 'brick-studio-current-draft')
+          const result = downloadBrickStudioDocument(currentDraft, globalThis, 'brickgineers-current-draft')
           if (!result.ok) throw new Error(result.error.message)
           setExportedCurrentDraft(currentDraft)
           setMessage('Current draft download started. The shared world has not confirmed these changes.')

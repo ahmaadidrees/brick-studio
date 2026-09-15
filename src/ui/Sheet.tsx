@@ -21,6 +21,8 @@ export type SheetProps = {
   initialFocusRef?: RefObject<HTMLElement | null>
   /** Set false for confirmations that must be answered (Escape/backdrop do nothing). */
   dismissible?: boolean
+  /** Clicking the backdrop closes the sheet (Escape and the close button still work when false). */
+  closeOnBackdrop?: boolean
   closeLabel?: string
   /** Extra content beside the title (a back button, a tab strip). */
   headerStart?: ReactNode
@@ -54,7 +56,7 @@ function topmostDialog() {
  * body with a persistent footer, and a bottom-sheet layout under
  * `(max-width: 900px), (pointer: coarse)`. Sits at `--z-dialog`.
  */
-export function Sheet({ open, onClose, title, description, children, footer, variant = 'sheet', size = 'md', initialFocusRef, dismissible = true, closeLabel = 'Close', headerStart, id: fixedId, className, portal = true }: SheetProps) {
+export function Sheet({ open, onClose, title, description, children, footer, variant = 'sheet', size = 'md', initialFocusRef, dismissible = true, closeOnBackdrop = true, closeLabel = 'Close', headerStart, id: fixedId, className, portal = true }: SheetProps) {
   const generatedId = useId()
   const id = fixedId ?? `sheet${generatedId}`
   const titleId = `${id}-title`
@@ -145,7 +147,7 @@ export function Sheet({ open, onClose, title, description, children, footer, var
 
   const node = (
     <div className={['ui-sheet-root', `ui-sheet-${variant}`, `ui-sheet-${size}`, className].filter(Boolean).join(' ')} data-ui-sheet="">
-      <div className="ui-sheet-backdrop" aria-hidden="true" onPointerDown={dismissible ? () => onClose() : undefined} />
+      <div className="ui-sheet-backdrop" aria-hidden="true" onPointerDown={dismissible && closeOnBackdrop ? () => onClose() : undefined} />
       <div
         ref={panel}
         id={id}

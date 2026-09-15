@@ -112,8 +112,10 @@ function DefaultLiveWorldScene({
     onGoHome: () => window.location.assign('/'),
     roomTitle: view.roomTitle,
     peopleCount: snapshot.players.length,
+    pendingOperations: snapshot.pendingOperations ?? 0,
+    sessionReplaced: snapshot.connection === 'offline' && snapshot.notice?.code === 'session_replaced',
     onOpenPeople: () => setPeoplePanelRequest((current) => ({ seq: current.seq + 1 })),
-  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, view.roomTitle])
+  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, snapshot.pendingOperations, snapshot.notice?.code, view.roomTitle])
   const contentPolicy = useMemo(() => ({
     plateSize: view.document.plateSize,
     environmentId: view.document.environmentId,

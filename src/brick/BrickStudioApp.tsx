@@ -96,6 +96,10 @@ export type BrickStudioLivePolicy = {
   peopleCount?: number
   /** Opens the live People/room panel from the header or Explore HUD. */
   onOpenPeople?: () => void
+  /** Edits the room has not confirmed yet; the header must not present them as shared. */
+  pendingOperations?: number
+  /** Another tab or device took over this participant's connection. */
+  sessionReplaced?: boolean
 }
 
 export type BrickStudioCustomPartPolicy = {
@@ -1363,6 +1367,11 @@ export default function BrickStudioApp({
   const mode = useBrickStore((state) => state.mode)
   const brickCount = useBrickStore((state) => state.bricks.length)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  // Sheets and dialogs portal to <body>, so the in-app motion preference must reach the root as well.
+  useEffect(() => {
+    document.documentElement.classList.toggle('brick-reduced-motion', reducedMotion)
+    return () => { document.documentElement.classList.remove('brick-reduced-motion') }
+  }, [reducedMotion])
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
@@ -1426,7 +1435,11 @@ export default function BrickStudioApp({
   const saveStatus: StudioSaveStatus = livePolicy
     ? {
       source: { kind: 'live', connection: livePolicy.connection },
-      detail: livePolicy.connection === 'online' ? 'Changes are shared with everyone in this world as you make them.' : 'The shared world connection and recovery details appear in the live session controls.',
+      detail: livePolicy.sessionReplaced
+        ? 'This room is open in another tab or device. Building is paused here.'
+        : livePolicy.connection === 'online' && (livePolicy.pendingOperations ?? 0) > 0
+          ? `${livePolicy.pendingOperations} ${livePolicy.pendingOperations === 1 ? 'change is' : 'changes are'} still waiting for the room to confirm.`
+          : livePolicy.connection === 'online' ? 'Changes are shared with everyone in this world as you make them.' : 'The shared world connection and recovery details appear in the live session controls.',
     }
     : cloud.world
       ? {
