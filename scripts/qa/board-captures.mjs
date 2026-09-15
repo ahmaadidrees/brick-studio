@@ -142,7 +142,8 @@ async function capture(browser, entry, viewport) {
       if (pressed !== 'true') throw new Error(`${entry.pressed} is not pressed (aria-pressed=${JSON.stringify(pressed)})`)
     }
     if (entry.selectedTab) {
-      const selected = await page.getByRole('tab', { selected: true }).first().textContent().catch(() => null)
+      // Scoped to the open sheet: the brick drawer also has a (selected) category tab.
+      const selected = await locate(page, entry.expect).first().getByRole('tab', { selected: true }).first().textContent().catch(() => null)
       if (selected?.trim() !== entry.selectedTab) record.notes.push(`selected tab is ${JSON.stringify(selected)} not ${entry.selectedTab}`)
     }
     await page.waitForTimeout(entry.settle ?? 500)

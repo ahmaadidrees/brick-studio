@@ -275,5 +275,13 @@
   "closePeoplePanel": {
     "role": "button",
     "name": "Close people panel"
+  },
+  "teacherGoogle": {
+    "role": "button",
+    "name": "Continue with Google"
+  },
+  "useEmailPassword": {
+    "role": "button",
+    "name": "Use email and password"
   }
 }
