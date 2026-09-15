@@ -83,12 +83,13 @@ export const ROOM = {
   rightWallX: 206,
 } as const
 
+/** The sunset window sits behind the desk, where both building and exploring can see it. */
 export const WINDOW = {
-  x: ROOM.leftWallX + 0.6,
-  centerY: 58,
-  centerZ: 12,
-  halfHeight: 34,
-  halfWidth: 30,
+  x: -16,
+  centerY: 27,
+  centerZ: ROOM.backWallZ + 0.8,
+  halfHeight: 23,
+  halfWidth: 24,
 } as const
 
 /**
@@ -97,7 +98,7 @@ export const WINDOW = {
  * hands are painted at ten past ten and never move.
  */
 export const CLOCK = { x: 22, y: 64, z: ROOM.backWallZ + 0.9, radius: 11 } as const
-export const POSTER = { x: 84, y: 58, z: ROOM.backWallZ + 0.5, halfWidth: 11, halfHeight: 14 } as const
+export const POSTER = { x: 44, y: 38, z: ROOM.backWallZ + 0.5, halfWidth: 9, halfHeight: 13 } as const
 
 /**
  * The desk lamp is the key light. These are world-space points: the lamp mesh,

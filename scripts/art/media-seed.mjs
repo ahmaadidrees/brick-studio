@@ -1,6 +1,6 @@
 // Seed world for marketing captures: a small castle in the Brickgineers palette on the default 64 plate.
 // Coordinates are studs (x, z), plate units (y); a brick is 3 plates tall. Every piece is a real catalog part so the
-// document passes the shared-core validation exactly as a student's world would. Kept small (under 60 bricks) so it
+// document passes the shared-core validation exactly as a student's world would. Kept small (under 80 bricks) so it
 // reads at hero size and stays cheap to render in every scene.
 
 export const SEED_COLORS = {
@@ -12,7 +12,7 @@ export const SEED_COLORS = {
   ink: '#263C51',
 }
 
-const { blue, coral, butter, white, green, ink } = SEED_COLORS
+const { blue, coral, butter, white, green } = SEED_COLORS
 
 let counter = 0
 function brick(partId, x, y, z, color, rotation = 0) {
@@ -20,7 +20,7 @@ function brick(partId, x, y, z, color, rotation = 0) {
   return { id: `seed-${counter}`, partId, x, y, z, rotation, color }
 }
 
-/** Three stacked 2×2 bricks plus a butter wedge roof. */
+/** Stacked 2×2 bricks plus a butter wedge roof. */
 function tower(x, z, colors, height = 3) {
   const pieces = []
   for (let level = 0; level < height; level += 1) pieces.push(brick('brick_2x2', x, level * 3, z, colors[level % colors.length]))
@@ -32,10 +32,10 @@ export function createSeedBricks() {
   counter = 0
   return [
     // Front towers flank the gate; back towers are a level taller.
-    ...tower(25, 33, [blue, coral, blue]),
-    ...tower(37, 33, [coral, blue, coral]),
-    ...tower(25, 27, [blue, coral, blue, coral], 4),
-    ...tower(37, 27, [coral, blue, coral, blue], 4),
+    ...tower(25, 33, [blue, blue, coral, coral, butter, blue], 6),
+    ...tower(37, 33, [blue, blue, coral, coral, butter, blue], 6),
+    ...tower(25, 27, [coral, coral, butter, butter, blue, blue, coral, butter], 8),
+    ...tower(37, 27, [coral, coral, butter, butter, blue, blue, coral, butter], 8),
 
     // Front wall with an archway gate (arch_1x4 rotated to span 4 studs along x).
     brick('arch_1x4', 30, 0, 35, coral, 1),
@@ -75,20 +75,20 @@ export function createSeedBricks() {
     brick('brick_4x4', 30, 6, 30, butter),
     brick('brick_4x4', 30, 9, 30, blue),
     brick('brick_4x4', 30, 12, 30, white),
-    brick('window_1x4', 33, 15, 30, blue, 1),
-    brick('pillar_1x1', 31, 15, 31, ink),
-    brick('brick_1x2', 32, 21, 31, coral, 1),
+    brick('brick_4x4', 30, 15, 30, blue),
+    brick('brick_4x4', 30, 18, 30, blue),
+    brick('brick_4x4', 30, 21, 30, butter),
+    brick('pillar_1x1', 31, 24, 31, butter),
+    brick('brick_1x2', 32, 30, 31, coral, 1),
 
     // Loose bricks left on the plate around the castle.
     brick('brick_2x4', 19, 0, 40, coral, 1),
     brick('brick_2x2', 42, 0, 39, butter),
     brick('brick_1x4', 17, 0, 30, blue),
     brick('slope_2x2', 44, 0, 30, green, 3),
-    brick('round_1x1', 22, 0, 36, blue),
     brick('brick_2x3', 41, 0, 43, white),
     brick('brick_1x2', 28, 0, 41, green, 1),
-    brick('cone_1x1', 22, 3, 36, butter),
-  ]
+  ].map((piece) => ({ ...piece, z: piece.z + 7 }))
 }
 
 export const SEED_WORLD = {

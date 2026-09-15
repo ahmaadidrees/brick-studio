@@ -274,7 +274,7 @@ function RoomWindow() {
   const width = WINDOW.halfWidth * 2
   const height = WINDOW.halfHeight * 2
   return (
-    <group position={[WINDOW.x, WINDOW.centerY, WINDOW.centerZ]} rotation={[0, Math.PI / 2, 0]}>
+    <group position={[WINDOW.x, WINDOW.centerY, WINDOW.centerZ]}>
       {/* Ink frame behind everything, the dusk city in front of it, glazing bars over that. */}
       <mesh position={[0, 0, 0]}>
         <boxGeometry args={[width + 7, height + 7, 1.2]} />
@@ -396,7 +396,7 @@ function DeskLamp({ features }: { features: ToyRoomFeatures }) {
         </mesh>
         <mesh position={[0, 7, 0]} castShadow>
           <sphereGeometry args={[2.7, segments, segments / 2, 0, Math.PI * 2, 0, Math.PI / 2]} />
-          <meshStandardMaterial color={PALETTE.butter} emissive="#4a3210" emissiveIntensity={0.35} metalness={0.1} roughness={0.42} />
+          <meshStandardMaterial color={PALETTE.butter} emissive="#4a3210" emissiveIntensity={0.35} metalness={0.1} roughness={0.42} side={THREE.DoubleSide} />
         </mesh>
         {/* Bulb */}
         <mesh position={[0, 2.6, 0]}>

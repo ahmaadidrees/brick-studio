@@ -61,12 +61,12 @@ function parseCamera(value, fallback) {
  * Low three-quarter view from the front of the plate with a wider lens than the editor's 45°, so the oversized lamp
  * (back-left), the castle (centre) and the book stack (right) share one frame like the approved board.
  */
-const HERO_CAMERA = parseCamera(process.env.HERO_CAMERA, { position: [2, 6, 15], target: [2, 5, -9], fov: 70 })
+const HERO_CAMERA = parseCamera(process.env.HERO_CAMERA, { position: [10, 8, 19], target: [-1, 4, -7], fov: 60 })
 /** Closer and lower for the scene cards: the same build, each environment's character around it. */
 const SCENE_CAMERA = parseCamera(process.env.SCENE_CAMERA, { position: [-8, 8, 22], target: [1, 2.5, -4], fov: 50 })
 
 const browser = await chromium.launch({ headless: true, executablePath: chromePath })
-const report = { timestamp: new Date().toISOString(), origin, outDir, captures: [] }
+const report = { timestamp: new Date().toISOString(), origin, outDir, heroCamera: HERO_CAMERA, sceneCamera: SCENE_CAMERA, captures: [] }
 
 async function openEditor(context, viewport) {
   const page = await context.newPage()
@@ -196,7 +196,12 @@ try {
         await capture(page, 'hero-master.png', await fitCanvas(page, MASTERS.hero))
       }
       if (only.has('scenes')) {
-        await placeBuildCamera(page, SCENE_CAMERA)
+        // Show each environment's identity: the room's window/lamp, or the island's floating edge.
+        const sceneCamera = process.env.SCENE_CAMERA ? SCENE_CAMERA
+          : environmentId === 'toy-room' ? HERO_CAMERA
+          : environmentId === 'sky-island' ? { position: [45, 24, 55], target: [0, 0, 0], fov: 50 }
+          : SCENE_CAMERA
+        await placeBuildCamera(page, sceneCamera)
         await settle(page, 1200)
         await capture(page, `scene-${environmentId}-master.png`, await fitCanvas(page, MASTERS.scene))
       }
