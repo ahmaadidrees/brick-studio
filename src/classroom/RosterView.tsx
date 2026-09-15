@@ -33,12 +33,17 @@ export function RosterSection({ currentClass, students, loading, search, busy, o
   const query = search.trim().toLocaleLowerCase()
   const visible = students.filter(student => `${student.rosterName} ${student.username}`.toLocaleLowerCase().includes(query))
   return <section aria-label="Class students" className="classroom-section">
-    <div className="classroom-section-heading">
-      <div><h3 className="classroom-section-title">Students</h3><p>{loading ? 'Loading students…' : `${students.length} ${students.length === 1 ? 'student' : 'students'} in ${currentClass.name}. Manage usernames, passwords, and access.`}</p></div>
-      {students.length > 0 && <Button variant="quiet" size="sm" icon={<KeyRound size={16} />} onClick={onViewCodes}>View class codes</Button>}
+    <div className="classroom-creative-banner">
+      <div><h3>Build curious minds together.</h3><p>Manage your class and keep the creativity going.</p></div>
+    </div>
+    <div className="classroom-roster-toolbar">
+      <div className="classroom-section-heading">
+        <div><h3 className="classroom-section-title">Students</h3><p>{loading ? 'Loading students…' : `${students.length} ${students.length === 1 ? 'student' : 'students'} in ${currentClass.name}. Manage usernames, passwords, and access.`}</p></div>
+        {students.length > 0 && <Button variant="quiet" size="sm" icon={<KeyRound size={16} />} onClick={onViewCodes}>View class codes</Button>}
+      </div>
+      {!loading && students.length > 0 && <TextInput label="Find a student" id="classroom-student-search" className="classroom-search" type="search" icon={<Search size={18} />} value={search} onChange={event => onSearch(event.target.value)} placeholder="Name or username" autoComplete="off" />}
     </div>
     {loading ? <p role="status" className="classroom-loading">Loading students…</p> : students.length > 0 ? <>
-      <TextInput label="Find a student" id="classroom-student-search" className="classroom-search" type="search" icon={<Search size={18} />} value={search} onChange={event => onSearch(event.target.value)} placeholder="Name or username" autoComplete="off" />
       <div className="classroom-roster" role="list" aria-label="Students in this class">
         <div className="classroom-roster-head" aria-hidden="true"><span>Roster name</span><span>Username</span><span>Status</span><span /></div>
         {visible.map(student => <div className="classroom-roster-row" role="listitem" key={student.id}>

@@ -40,7 +40,7 @@ export function SaveBuildForm({ title, busy, duplicate, onTitleChange, onSubmit,
     </div>
     <TextInput label="World name" id="classroom-save-name" value={title} onChange={event => onTitleChange(event.target.value)} required maxLength={80} autoComplete="off" />
     <div className="classroom-save-path" aria-label="Where this build is stored">
-      <span className="classroom-save-chip"><MonitorSmartphone size={16} aria-hidden="true" /> Saved in this browser</span>
+      <span className="classroom-save-chip"><MonitorSmartphone size={16} aria-hidden="true" /> This browser only</span>
       <MoveRight size={18} aria-hidden="true" />
       <span className="classroom-save-chip classroom-save-chip-cloud"><CloudUpload size={16} aria-hidden="true" /> Save online</span>
     </div>

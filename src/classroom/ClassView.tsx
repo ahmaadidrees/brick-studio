@@ -24,19 +24,21 @@ type ShellProps = {
 export function ClassShell({ classes, classId, teacher, busy, section, onClassChange, onSectionChange, children }: ShellProps) {
   const currentClass = classes.find(item => item.id === classId)
   return <section aria-label="My Class" className="classroom-section">
-    {classes.length > 0 && <SelectInput label="Class" id="classroom-class-picker" className="classroom-class-select" value={classId} disabled={busy} onChange={event => onClassChange(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectInput>}
-    {!classes.length && <EmptyState title={teacher ? 'Start your first class' : 'No class yet'} message={teacher ? 'Create a class, then give students its enrollment code.' : 'Your account is not in a class right now. Ask your teacher for help.'} />}
-    {teacher && currentClass && <SegmentedControl<ClassSection>
-      label="Class sections"
-      fullWidth
-      value={section}
-      onChange={onSectionChange}
-      options={[
-        { value: 'students', label: 'Students', icon: <Users size={16} />, disabled: busy },
-        { value: 'worlds', label: 'Shared worlds', icon: <Blocks size={16} />, disabled: busy },
-        { value: 'settings', label: 'Class settings', icon: <Settings size={16} />, disabled: busy },
-      ]}
-    />}
+    <div className="classroom-class-navigation">
+      {classes.length > 0 && <SelectInput label="Class" id="classroom-class-picker" className="classroom-class-select" value={classId} disabled={busy} onChange={event => onClassChange(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectInput>}
+      {!classes.length && <EmptyState title={teacher ? 'Start your first class' : 'No class yet'} message={teacher ? 'Create a class, then give students its enrollment code.' : 'Your account is not in a class right now. Ask your teacher for help.'} />}
+      {teacher && currentClass && <SegmentedControl<ClassSection>
+        label="Class sections"
+        fullWidth
+        value={section}
+        onChange={onSectionChange}
+        options={[
+          { value: 'students', label: 'Students', icon: <Users size={16} />, disabled: busy },
+          { value: 'worlds', label: 'Shared worlds', icon: <Blocks size={16} />, disabled: busy },
+          { value: 'settings', label: 'Class settings', icon: <Settings size={16} />, disabled: busy },
+        ]}
+      />}
+    </div>
     {children}
   </section>
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Blocks, CircleAlert, CircleCheck, LoaderCircle, LogOut, UserRound, Users } from 'lucide-react'
 import type { BrickStudioDocument } from '../brick/brickDocument'
-import { BrickMark } from '../brand'
+import { BrandLockup, BrickMark } from '../brand'
 import { Button, SegmentedControl, Sheet } from '../ui'
 import { browserClassroomClient, ClassroomError, type ClassroomClient } from './client'
 import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember, ClassroomCheckpoint } from './contracts'
@@ -180,7 +180,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
   })
   const inspectWorld = (world: ClassroomWorld) => void run(async () => {
     const [m, c] = await Promise.all([
-      client.request<{ members: ClassroomWorldMember[] }>(`/worlds/${world.id}/members`),
+      world.kind === 'personal' ? Promise.resolve({ members: [] as ClassroomWorldMember[] }) : client.request<{ members: ClassroomWorldMember[] }>(`/worlds/${world.id}/members`),
       client.request<{ checkpoints: ClassroomCheckpoint[] }>(`/worlds/${world.id}/checkpoints`),
     ])
     setSelectedWorld(world); setMembers(m.members); setCheckpoints(c.checkpoints)
@@ -247,7 +247,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     title={title}
     description={description}
     closeLabel="Close and keep building"
-    headerStart={<BrickMark size={32} title={null} className="classroom-sheet-mark" />}
+    headerStart={!auth || reset ? <BrandLockup size={28} className="classroom-entry-brand" /> : <BrickMark size={36} title={null} className="classroom-sheet-mark" />}
     className={`classroom-sheet ${!auth || reset ? 'classroom-sheet-entry' : 'classroom-sheet-account'}`}
     footer={footer}
   >

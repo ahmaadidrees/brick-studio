@@ -257,7 +257,7 @@ describe('save hand-off (board 04)', () => {
     const callbacks = { ...props(), onSaved: vi.fn() }
     render(<ClassroomPanel {...callbacks} client={signedIn(auth, fetcher)} />)
     expect(await screen.findByRole('heading', { name: 'Save this build to your account' })).toBeInTheDocument()
-    expect(screen.getByText('Saved in this browser')).toBeInTheDocument()
+    expect(screen.getByText('This browser only')).toBeInTheDocument()
     expect(screen.getByText('Save online')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('World name'), { target: { value: 'Desk Castle' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save world' }))
@@ -326,6 +326,20 @@ describe('My Worlds (board 05)', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Open' }))
     await waitFor(() => expect(callbacks.onOpenWorld).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 'world1' })))
     expect(callbacks.onClose).toHaveBeenCalled()
+  })
+  it('opens personal world recovery without requesting unsupported membership', async () => {
+    const mine = world()
+    const fetcher = fakeApi({ worlds: [mine] }, url => {
+      if (url.endsWith('/members')) return json({ error: 'Personal worlds do not have members.', code: 'private_world' }, 400)
+      if (url.endsWith('/checkpoints')) return json({ checkpoints: [{ id: 'cp1', revision: 2, createdAt: mine.updatedAt, reason: 'saved' }] })
+      return undefined
+    })
+    render(<ClassroomPanel {...props()} intent="worlds" client={signedIn(auth, fetcher)} />)
+    fireEvent.click(within(await screen.findByRole('article', { name: 'Desk Castle' })).getByRole('button', { name: 'Manage' }))
+    expect(await screen.findByRole('button', { name: 'Restore selected checkpoint' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Checkpoint')).toHaveValue('cp1')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect((fetcher as ReturnType<typeof vi.fn>).mock.calls.some(call => call[0].endsWith('/members'))).toBe(false)
   })
   it('renames through the world PATCH and duplicates through a new POST', async () => {
     const mine = world()
