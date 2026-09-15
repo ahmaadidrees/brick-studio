@@ -1,0 +1,12 @@
+{
+  "origin": "https://brickgineers.com",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "at": "2026-09-15T17:35:44.414Z",
+  "checks": [
+    "two non-owner simultaneous creations",
+    "both libraries converge",
+    "peer places other creator brick",
+    "reload preserves library and brick"
+  ],
+  "errors": []
+}
