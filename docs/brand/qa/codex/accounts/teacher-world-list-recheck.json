@@ -1,7 +1,7 @@
 {
   "source": "dfe3496",
   "workerVersion": "01b230d6-11c1-4a9b-a0ab-3b7828db83e9",
-  "checkedAt": "2026-09-15T01:19:30.375Z",
+  "checkedAt": "2026-09-15T01:20:27.913Z",
   "origin": "http://127.0.0.1:5215",
   "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
   "classesCount": 24,
@@ -9,27 +9,27 @@
     {
       "path": "/classroom/auth/teacher-login",
       "status": 200,
-      "ms": 597
+      "ms": 628
     },
     {
       "path": "/classroom/classes",
       "status": 200,
-      "ms": 156
+      "ms": 163
     },
     {
       "path": "/classroom/worlds",
       "status": 200,
-      "ms": 188
+      "ms": 247
     },
     {
       "path": "/classroom/classes/fixture/students",
       "status": 200,
-      "ms": 169
+      "ms": 124
     },
     {
       "path": "/classroom/classes/fixture/students",
       "status": 200,
-      "ms": 135
+      "ms": 113
     }
   ],
   "passed": true,
