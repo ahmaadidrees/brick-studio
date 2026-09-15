@@ -2,7 +2,7 @@
    metrics) are aliased to the semantic tokens in src/styles.css :root; only lane-local values
    are defined here so the shared palette lands unchanged. */
 .brick-studio {
-  --studio-panel-soft: var(--surface-2, #f3f0e8);
+  --studio-panel-soft: #f3f5f9;
   --studio-focus: var(--focus, #3565bf);
   --brick-header-height: 64px;
   --brick-header-block: calc(var(--brick-header-height) + env(safe-area-inset-top, 0px));
@@ -110,8 +110,8 @@
 .studio-menu-popover button:disabled { opacity: .42; cursor: default; }
 .studio-menu-popover svg { justify-self: center; color: var(--studio-blue-dark); }
 .studio-menu-popover span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.studio-menu-popover strong { font-size: 12px; }
-.studio-menu-popover small { overflow: hidden; color: var(--studio-muted); font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.studio-menu-popover strong { font-size: 14px; }
+.studio-menu-popover small { overflow: hidden; color: var(--studio-muted); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .studio-menu-section { display: grid; gap: 5px; margin-top: 4px; padding: 9px 9px 6px; border-top: 1px solid var(--studio-panel-border); }
 .studio-menu-section label { color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
 .studio-menu-section select { width: 100%; min-height: 44px; padding: 0 30px 0 9px; border: 1px solid var(--studio-panel-border); border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font: 800 11px/1.2 inherit; }
@@ -140,6 +140,9 @@
 }
 .library-title { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
 .library-title h2, .brick-inspector h2 { margin: 2px 0 0; font: 600 18px/1.1 var(--font-display, 'Fredoka'), sans-serif; }
+.library-heading { display: flex; align-items: center; gap: 10px; }
+.library-heading svg { color: var(--studio-blue); }
+.library-title .library-heading { font-size: 25px; }
 .library-collapse-button { width: 38px; min-height: 38px; height: 38px; flex: 0 0 auto; border-radius: 10px; box-shadow: none; }
 .brick-drawer-toggle {
   position: absolute;
@@ -171,13 +174,13 @@
 .part-search-clear { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 8px; color: var(--studio-muted); background: transparent; cursor: pointer; }
 .part-search-clear:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .12); }
 .part-search-clear:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.create-part-entry { flex: 0 0 auto; min-height: 52px; display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: 9px; margin: 0 1px 9px; padding: 6px 9px; border: 1px dashed rgba(88, 136, 218, .55); border-radius: 12px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .08); text-align: left; cursor: pointer; }
+.create-part-entry { flex: 0 0 auto; min-height: 52px; display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: 9px; margin: 0 1px 9px; padding: 6px 9px; border: 1px solid rgba(88, 136, 218, .55); border-radius: 12px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .08); text-align: left; cursor: pointer; }
 .create-part-entry:hover:not(:disabled) { border-style: solid; background: rgba(88, 136, 218, .14); }
 .create-part-entry:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
 .create-part-entry:disabled { opacity: .55; cursor: not-allowed; }
 .create-part-entry-icon { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; color: var(--primary-contrast, #ffffff); background: var(--studio-blue); }
 .create-part-entry > span:last-child { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.create-part-entry strong { font-size: 12px; }
+.create-part-entry strong { font-size: 14px; }
 .create-part-entry small { overflow: hidden; color: var(--studio-muted); font-size: 10px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .part-categories { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 9px; }
 .part-category { min-height: 32px; padding: 0 11px; border: 1px solid transparent; border-radius: 999px; color: var(--studio-muted); background: var(--studio-panel-soft); font: 800 11px/1 inherit; cursor: pointer; }
@@ -196,7 +199,7 @@
 .part-thumbnail-shadow { fill: rgba(38, 60, 81, .12); filter: blur(2px); }
 .library-part.active .part-thumbnail { filter: drop-shadow(0 5px 5px rgba(63, 108, 192, .24)); }
 .library-colors { flex: 0 0 auto; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--studio-panel-border); }
-.library-colors > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.library-colors > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--studio-ink); font-size: 13px; font-weight: 800; }
 
 /* ---------------------------------------------------------- inspector --- */
 
@@ -225,7 +228,7 @@
 .details-expanded .inspector-sheet-toggle svg { transform: rotate(180deg); }
 .brick-inspector section > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
 .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
-.color-grid button { aspect-ratio: 1; min-width: 27px; display: grid; place-items: center; border: 2px solid white; border-radius: 8px; color: white; box-shadow: 0 0 0 1px var(--studio-panel-border); cursor: pointer; }
+.color-grid button { aspect-ratio: 1; min-width: 27px; display: grid; place-items: center; border: 2px solid white; border-radius: 50%; color: white; box-shadow: 0 0 0 1px var(--studio-panel-border); cursor: pointer; }
 .color-grid button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
 .color-grid button.active { box-shadow: 0 0 0 2px var(--studio-ink); transform: scale(1.05); }
 .inspector-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 14px; }
@@ -259,13 +262,13 @@
 .brick-edit-toolbar { position: absolute; z-index: 13; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 4px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; touch-action: pan-x; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
 .brick-edit-toolbar > * { flex: 0 0 auto; }
 .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 138px); }
-.brick-history-tools { display: flex; gap: 0; }
+.brick-history-tools { display: flex; gap: 0; padding: 0 3px; border-radius: 10px; background: var(--studio-panel-soft); }
 .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }
 .brick-edit-toolbar .view-controls { position: static; width: auto; height: 44px; display: flex; padding: 0; border: 0; border-left: 1px solid var(--studio-panel-border); border-radius: 0; box-shadow: none; background: transparent; }
 .view-controls button { min-width: 40px; height: 44px; padding: 0 8px; border: 0; color: var(--studio-ink); background: transparent; font: 800 11px/1 inherit; cursor: pointer; }
 .view-controls button:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .1); border-radius: 9px; }
 .view-controls button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; border-radius: 9px; }
-.view-controls .view-home { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; white-space: nowrap; }
+.view-controls .view-home { margin: 0 5px; border: 1px solid var(--studio-panel-border); border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; white-space: nowrap; }
 .brick-edit-toolbar .studio-icon-button > span { white-space: nowrap; }
 .brick-edit-toolbar .selection-mode-control { position: static; height: 44px; width: auto; min-width: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); box-shadow: none; font: 800 11px/1 inherit; white-space: nowrap; cursor: pointer; }
 .brick-edit-toolbar .selection-mode-control:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
@@ -313,10 +316,10 @@
 .brick-explore-hud > * { pointer-events: auto; }
 .brick-explore-hud-start { display: flex; align-items: center; gap: 8px; }
 .brick-explore-hud-start .brick-brand-mark { border: 1px solid var(--studio-panel-border); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
-.brick-explore-back.ui-button { box-shadow: var(--shadow-md, 0 6px 18px rgba(38, 60, 81, .12)); }
+.brick-explore-back.ui-button { border-radius: 999px; box-shadow: var(--shadow-md, 0 6px 18px rgba(38, 60, 81, .12)); }
 .brick-explore-hud-end { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; min-width: 0; }
-.brick-explore-cluster { display: flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
-.brick-explore-cluster .brick-header-tool.ui-button { min-height: 40px; }
+.brick-explore-cluster { display: flex; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--studio-panel-border); border-radius: 999px; background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .12)); }
+.brick-explore-cluster .brick-header-tool.ui-button { min-height: 40px; border-radius: 999px; }
 @media (pointer: coarse) { .brick-explore-cluster .brick-header-tool.ui-button { min-height: 44px; min-width: 44px; } }
 .brick-explore-title-pill { max-width: min(280px, 60vw); display: inline-flex; align-items: center; gap: 6px; min-height: 34px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--studio-panel-border); border-radius: 999px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .1)); font-size: 12px; font-weight: 800; }
 .brick-explore-title-pill > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -560,7 +563,8 @@
   .brick-world-context { flex-direction: row; align-items: center; gap: 4px; padding-left: 6px; }
   .studio-menu { position: static; }
   .brick-header-tool .ui-button-label { display: none; }
-  .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; background: var(--studio-panel-soft); }
+  .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; flex-direction: column; gap: 2px; padding: 2px 6px; background: var(--studio-panel-soft); }
+  .brick-header-tools .brick-header-tool .ui-button-label { display: block; font-size: 10.5px; line-height: 1.15; }
   .studio-world-title strong { max-width: min(180px, 44vw); font-size: 16px; }
   .brick-header .brick-save-status { max-width: 46vw; font-size: 11px; }
   .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }
@@ -607,6 +611,33 @@
   .brick-header .brick-save-status { max-width: 42vw; font-size: 10.5px; }
   .brick-primary-mode.ui-button { padding: 0 10px; font-size: 12px; }
   .brick-header-tool.ui-button { padding: 0 6px; }
+}
+
+/* Board 06 gives the world and creative tools a clear, calm hierarchy on roomy screens. */
+@media (min-width: 1100px) and (min-height: 521px) {
+  .brick-studio { --brick-header-height: 80px; }
+  .brick-header { gap: 14px; padding-right: 16px; padding-left: 16px; }
+  .brick-header-world { gap: 16px; }
+  /* The shared lockup sets an inline size; the desktop shell scales it to board 06. */
+  .brick-brand-home .brand-wordmark { font-size: 30px !important; }
+  .brick-brand-home .brand-mark { width: 40px; height: 40px; }
+  .brick-world-context { gap: 3px; padding-left: 16px; }
+  .studio-world-title { min-height: 36px; gap: 12px; padding: 0 10px; border: 1px solid var(--studio-panel-border); border-radius: 10px; }
+  .studio-world-title strong { max-width: 220px; font-size: 18px; }
+  .brick-header .brick-save-status { padding-left: 10px; font-size: 12px; }
+  .brick-header-tools { gap: 7px; }
+  .brick-header .brick-header-tool.ui-button { min-height: 46px; padding: 0 14px; border-color: var(--studio-panel-border); background: #f9fafc; font-size: 13px; }
+  .brick-header .brick-header-tool.ui-button:hover { background: var(--studio-panel-soft); border-color: var(--studio-blue); }
+  .brick-header .brick-header-tool.ui-button[aria-expanded='true'] { color: var(--studio-blue-dark); border-color: var(--studio-blue); background: var(--primary-soft); }
+  .brick-primary-mode.ui-button { min-height: 48px; font-size: 15px; }
+  .brick-primary-mode kbd, .brick-explore-back kbd { display: none; }
+  .brick-explore-hud { top: 20px; right: 20px; left: 20px; }
+  .brick-explore-back.ui-button { min-height: 48px; padding: 0 20px; font-size: 14px; }
+  .brick-explore-hud-start { gap: 12px; }
+  .brick-explore-hud-start .brick-brand-mark { width: 48px; height: 48px; }
+  .brick-explore-cluster .brick-header-tool.ui-button { min-height: 44px; font-size: 13px; }
+  .recenter-camera, .respawn-avatar { border-radius: 999px; }
+  .shortcut-bar { gap: 6px 16px; font-size: 12px; }
 }
 
 /* --------------------------------------------------- short landscape ---- */

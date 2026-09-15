@@ -18,3 +18,16 @@
   .studio-settings-shortcuts div { flex-direction: column; gap: 2px; }
   .studio-settings-shortcuts dd { text-align: left; white-space: normal; }
 }
+
+/* Match the floating preference card from board 12 while retaining the shared modal behavior. */
+.studio-settings .ui-sheet { overflow: hidden; }
+.studio-settings .ui-sheet-title { font-size: 30px; line-height: 1.15; }
+.studio-settings .ui-sheet-description { font-size: 15px; line-height: 1.4; }
+.studio-settings .ui-segmented-track,
+.studio-settings .studio-settings-shortcuts { background: #f3f5f9; }
+.studio-settings-heading { font-size: 19px; }
+.studio-settings-shortcuts dt { color: var(--text); }
+.studio-settings-shortcuts dd { color: var(--text-muted); font-weight: 600; }
+@media (min-width: 701px) and (min-height: 521px) {
+  .studio-settings .ui-sheet { margin: 16px; height: calc(100% - 32px); border-radius: 18px; }
+}

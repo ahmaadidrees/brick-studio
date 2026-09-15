@@ -560,7 +560,7 @@ function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse:
   return (
     <aside inert={graphicsPaused} className="part-library" id="brick-part-library" aria-label="Brick drawer">
       <div className="library-title">
-        <div><span className="brick-eyebrow">Brick drawer</span><h2>Bricks</h2></div>
+        <h2 className="library-heading"><Box size={27} aria-hidden="true" />Bricks</h2>
         <button
           className="studio-icon-button library-collapse-button"
           type="button"
@@ -622,7 +622,7 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
       <div ref={panel} className="brick-sheet" role="dialog" aria-modal="true" aria-labelledby="brick-sheet-title" tabIndex={-1}>
         <span className="brick-sheet-grip" aria-hidden="true" />
         <div className="library-title">
-          <div><span className="brick-eyebrow">Brick drawer</span><h2 id="brick-sheet-title">Bricks</h2></div>
+          <h2 className="library-heading" id="brick-sheet-title"><Box size={24} aria-hidden="true" />Bricks</h2>
           <button className="studio-icon-button" type="button" aria-label="Close brick drawer" onClick={onClose}><X size={18} /></button>
         </div>
         <PartGrid {...props} onChoose={onClose} />
@@ -800,6 +800,7 @@ function SelectionModeControl() {
       className={`selection-mode-control ${selectionMode ? 'active' : ''}`}
       aria-pressed={selectionMode}
       aria-label={selectionMode ? 'Cancel box selection' : 'Box select bricks'}
+      title="Drag empty space to box-select. Shift-click adds to your selection."
       onClick={() => setSelectionMode(!selectionMode)}
     >
       {selectionMode ? <Check size={18} /> : <MousePointer2 size={18} />}
@@ -1182,7 +1183,7 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
 function ShortcutBar() {
   const coarsePointer = useCoarsePointerPreference()
   if (coarsePointer) return null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} /> Right-drag orbit · ⇧Right-drag pan · Space+drag orbit</span><span>Shift-click multi-select · Drag empty space box-select</span><span>Drag selection to move</span><span><kbd>Enter</kbd> Place</span><span><kbd>Esc</kbd> Clear</span><span><kbd>⌘C</kbd><kbd>⌘V</kbd> Copy/paste</span><span><kbd>⌘D</kbd> Duplicate</span></div>
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} aria-hidden="true" />Drag selection to move · Right-drag to orbit</span></div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands & {
