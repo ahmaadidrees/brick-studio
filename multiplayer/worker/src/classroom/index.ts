@@ -126,9 +126,38 @@ export class ClassroomService {
     }
     return world;
   }
+  classesFor(caller: Caller): Promise<Row[]> {
+    return this.rows('classes', caller.role === 'teacher' ? `teacher_id=eq.${caller.id}&order=created_at.asc` : `id=eq.${caller.classId}`);
+  }
+  /** IDs must come from classesFor: service-role queries do not enforce the caller's access. */
+  private async rowsForClasses(table: string, classIds: string[], filter: string): Promise<Row[]> {
+    const result: Row[] = [];
+    // Bound URL length while keeping ordinary teacher accounts below the Worker subrequest limit.
+    for (let start = 0; start < classIds.length; start += 50) {
+      const ids = classIds.slice(start, start + 50);
+      for (let offset = 0; ; offset += 1000) {
+        const page = await this.rows(table, `class_id=in.(${ids.join(',')})&${filter}&limit=1000&offset=${offset}`);
+        result.push(...page);
+        if (page.length < 1000) break;
+      }
+    }
+    return result;
+  }
   async me(caller: Caller) {
-    const classes = await this.rows('classes', caller.role === 'teacher' ? `teacher_id=eq.${caller.id}&order=created_at.asc` : `id=eq.${caller.classId}`);
-    return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: await Promise.all(classes.map(async row => classView(row, caller.role === 'teacher' ? (await this.rows('class_codes', `class_id=eq.${row.id}&can_enroll=eq.true&limit=1`))[0]?.code : undefined))) };
+    const classes = await this.classesFor(caller);
+    const codes = caller.role === 'teacher'
+      ? await this.rowsForClasses('class_codes', classes.map(row => row.id), 'can_enroll=eq.true&select=class_id,code&order=class_id.asc,code.asc') : [];
+    return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: classes.map(row => classView(row, codes.find(code => code.class_id === row.id)?.code)) };
+  }
+  async listWorlds(caller: Caller) {
+    const fields = 'id,title,owner_id,class_id,kind,revision,updated_at';
+    const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=${fields}&order=updated_at.desc`);
+    const classes = (await this.classesFor(caller)).filter(row => caller.role === 'teacher' || row.collaboration_open);
+    const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&select=${fields}&order=updated_at.desc,id.asc`);
+    const memberships = caller.role === 'student' && candidates.some(row => row.kind === 'group')
+      ? await this.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
+    const shared = candidates.filter(world => caller.role === 'teacher' || world.kind === 'class' || memberships.some(member => member.world_id === world.id));
+    return [...mine, ...shared].map(world => worldView(world));
   }
   async login(email: string, pass: string) { return this.request('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: pass }) }); }
   async registerSession(session: Row, student: Row) {
@@ -363,16 +392,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
   }
   if (path[0] === 'worlds') {
     if (path.length === 1 && method === 'GET') {
-      const mine = await service.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=id,title,owner_id,class_id,kind,revision,updated_at&order=updated_at.desc`);
-      const classes = (await service.me(caller)).classes;
-      const shared: Row[] = [];
-      for (const cls of classes) {
-        if (caller.role === 'student' && !cls.collaborationOpen) continue;
-        const candidates = await service.rows('worlds', `class_id=eq.${cls.id}&select=id,title,owner_id,class_id,kind,revision,updated_at&order=updated_at.desc`);
-        const memberships = caller.role === 'student' ? await service.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
-        shared.push(...candidates.filter(w => caller.role === 'teacher' || w.kind === 'class' || memberships.some(m => m.world_id === w.id)));
-      }
-      return json({ worlds: [...mine, ...shared].map(w => worldView(w)) });
+      return json({ worlds: await service.listWorlds(caller) });
     }
     if (path.length === 1 && method === 'POST') {
       const input = await body(request), kind = input.kind || 'personal';
