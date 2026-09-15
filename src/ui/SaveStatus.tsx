@@ -31,7 +31,7 @@ export function describeSaveStatus(source: SaveStatusSource): SaveStatusDescript
     case 'local':
       return source.error
         ? { label: 'Save needs attention', tone: 'error', busy: false }
-        : { label: 'Saved in this browser', tone: 'local', busy: false }
+        : { label: 'This browser only', tone: 'local', busy: false }
     case 'cloud':
       switch (source.status) {
         case 'saved': return { label: 'Saved to your account', tone: 'saved', busy: false }

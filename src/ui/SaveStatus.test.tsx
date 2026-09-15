@@ -8,7 +8,7 @@ afterEach(cleanup)
 
 describe('describeSaveStatus', () => {
   it('maps every real enum value to the contract label', () => {
-    expect(describeSaveStatus({ kind: 'local' }).label).toBe('Saved in this browser')
+    expect(describeSaveStatus({ kind: 'local' }).label).toBe('This browser only')
     const cloud: Record<CloudSaveStatus, string> = {
       saved: 'Saved to your account',
       pending: 'Waiting to save…',
@@ -73,8 +73,8 @@ describe('SaveStatus', () => {
     const status = screen.getByRole('status')
     expect(status).toHaveClass('ui-save-status-auto')
     expect(status).not.toHaveClass('ui-save-status-compact')
-    expect(status).toHaveTextContent('Saved in this browser')
-    expect(status).toHaveAttribute('title', 'Saved in this browser')
+    expect(status).toHaveTextContent('This browser only')
+    expect(status).toHaveAttribute('title', 'This browser only')
   })
 
   it('shows the storage error as the detail line', () => {
