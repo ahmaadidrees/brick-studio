@@ -5,6 +5,7 @@
 //
 // Environment:
 //   MASTERS_DIR   where media-capture.mjs wrote hero-master.png, scene-*-master.png, character-*-master.png
+//   ONLY          optional comma list of hero,scenes,characters; unselected existing files are preserved
 //   OUT_DIR       destination (default public/brand/media)
 //   AVIFENC       avifenc binary (default: first of $AVIFENC, /opt/homebrew/bin/avifenc, avifenc on PATH)
 //   SEED_LABEL    free text recorded in the manifest provenance (default: derived from media-seed.mjs)
@@ -132,10 +133,15 @@ const scratch = path.join(tmpdir(), `brickgineers-media-${process.pid}`)
 await mkdir(scratch, { recursive: true })
 await mkdir(outDir, { recursive: true })
 
-const files = []
-const notes = []
+const only = new Set((process.env.ONLY || 'hero,scenes,characters').split(',').map((part) => part.trim()))
+const selectedTargets = TARGETS.filter((target) => only.has(target.name.startsWith('hero-') ? 'hero' : target.name.startsWith('scene-') ? 'scenes' : 'characters'))
+const selectedFiles = new Set(selectedTargets.flatMap((target) => ['avif', 'webp', 'png'].map((format) => `${target.name}.${format}`)))
+let previousManifest = null
+try { previousManifest = JSON.parse(await readFile(path.join(outDir, 'manifest.json'), 'utf8')) } catch {}
+const files = (previousManifest?.files || []).filter((entry) => !selectedFiles.has(entry.file))
+const notes = files.length ? [`Retained ${files.length} unselected files from capture ${previousManifest.provenance.capturedAt} (source ${previousManifest.provenance.commit}); hero and scene recaptures do not replace verified character portraits.`] : []
 try {
-  for (const target of TARGETS) {
+  for (const target of selectedTargets) {
     const masterPath = path.join(mastersDir, target.master)
     try {
       await access(masterPath)

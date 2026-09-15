@@ -22,6 +22,7 @@
 
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import sharp from 'sharp'
 import { createSeedBricks, SEED_WORLD } from './media-seed.mjs'
 
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/Users/ahmaadidrees/.npm/_npx/e41f203b7505f1fb/node_modules/playwright/index.mjs')
@@ -174,7 +175,11 @@ async function settle(page, ms) {
 
 async function capture(page, file, clip) {
   const target = path.join(outDir, file)
-  await page.screenshot({ path: target, clip, animations: 'disabled' })
+  const buffer = await page.screenshot({ clip, animations: 'disabled' })
+  const statistics = await sharp(buffer).stats()
+  const variation = statistics.channels.slice(0, 3).reduce((sum, channel) => sum + channel.stdev, 0) / 3
+  if (variation < 6) throw new Error(`Blank or unsettled runtime capture: ${file}; existing master was preserved`)
+  await writeFile(target, buffer)
   report.captures.push({ file, width: clip.width, height: clip.height })
   console.log('captured', file, `${clip.width}×${clip.height}`)
 }
