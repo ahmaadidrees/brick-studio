@@ -13,6 +13,7 @@ import { RemoteAvatar } from './RemoteAvatar'
 import { VerticalSelectionHandle } from './VerticalSelectionHandle'
 import { getBuildPlateSize } from './buildPlate'
 import { getBuildBounds } from './bounds'
+import { getBuildVisibilityRange } from './buildVisibility'
 import {
   BUILD_CAMERA_MAX_POLAR_ANGLE,
   constrainBuildCameraNavigation,
@@ -574,9 +575,46 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const marquee = useBrickStore((state) => state.marquee)
   const bricks = useBrickStore((state) => state.bricks)
   const setViewTarget = useBrickStore((state) => state.setViewTarget)
-  const { camera, gl, size: viewportSize } = useThree()
+  const { camera, gl, scene, size: viewportSize } = useThree()
   const perspectiveCamera = camera as THREE.PerspectiveCamera
   const bounds = useMemo(() => getBuildBounds(bricks, plateSize), [bricks, plateSize])
+  const buildRadius = Math.hypot(...bounds.size) / 2
+  const originalFogs = useRef(new Map<THREE.Fog, { near: number; far: number }>())
+
+  // Build framing on portrait screens can move beyond a scene's entire fog
+  // range. Keep the actual document visible; restore scene atmosphere on Explore.
+  useFrame(() => {
+    const control = controls.current
+    if (!control) return
+    const fog = scene.fog instanceof THREE.Fog ? scene.fog : null
+    if (fog && !originalFogs.current.has(fog)) {
+      originalFogs.current.set(fog, { near: fog.near, far: fog.far })
+    }
+    const base = fog ? originalFogs.current.get(fog)! : { near: 42, far: 90 }
+    const range = getBuildVisibilityRange(camera.position.distanceTo(control.target), buildRadius, base.near, base.far)
+    if (fog) {
+      fog.near = range.fogNear
+      fog.far = range.fogFar
+    }
+    if (perspectiveCamera.far !== range.cameraFar) {
+      perspectiveCamera.far = range.cameraFar
+      perspectiveCamera.updateProjectionMatrix()
+    }
+  })
+
+  useEffect(() => {
+    const originalFar = perspectiveCamera.far
+    const fogs = originalFogs.current
+    return () => {
+      for (const [fog, range] of fogs) {
+        fog.near = range.near
+        fog.far = range.far
+      }
+      fogs.clear()
+      perspectiveCamera.far = originalFar
+      perspectiveCamera.updateProjectionMatrix()
+    }
+  }, [perspectiveCamera])
   const limits = useMemo(
     () => getBuildCameraLimits(bounds, perspectiveCamera.fov, perspectiveCamera.aspect, plateSize),
     [plateSize, bounds, perspectiveCamera.fov, perspectiveCamera.aspect, viewportSize.width, viewportSize.height],
