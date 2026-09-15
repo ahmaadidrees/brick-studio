@@ -1,0 +1,1198 @@
+{
+  "checkedAt": "2026-09-15T00:23:23.749Z",
+  "origin": "http://127.0.0.1:5190",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      5.99,
+      5.41,
+      7
+    ],
+    "freeMemoryMB": 41233,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "strictTouch": true,
+  "strictFocus": true,
+  "runs": [
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 88,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              282,
+              20,
+              460,
+              728
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1024x768.jpeg",
+      "durationMs": 1089
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 76,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1024x768.jpeg",
+      "durationMs": 963
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 86,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1024x768.jpeg",
+      "durationMs": 1063
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 83,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              302,
+              107,
+              420,
+              553
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1024x768.jpeg",
+      "durationMs": 1086
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1024x768.jpeg",
+      "durationMs": 4126
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 65,-8,88,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              65,
+              -8,
+              88,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/320x740.jpeg",
+      "durationMs": 958
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 65,-8,88,44",
+        "1 touch targets under 44px: Search bricks 244x24"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 62,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              65,
+              -8,
+              88,
+              44
+            ]
+          }
+        ],
+        "small": [
+          {
+            "name": "Search bricks",
+            "rect": [
+              50,
+              306,
+              244,
+              24
+            ]
+          }
+        ],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              220,
+              320,
+              520
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/320x740.jpeg",
+      "durationMs": 979
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 65,-8,88,44; HomeReturn to the home page 74,43,254,48; My WorldsOpen your saved builds 74,93,254,48; My ClassFind your group and build together 74,143,254,48; Save to my accountKeep this build across devices 74,193,254,48; Download buildSave a .brickstudio.json file 74,243,254,48; Import buildOpen a .brickstudio.json file 74,293,254,48; New BuildStart with a blank plate 74,343,254,48; Build togetherStart a shared world from this build 74,393,254,48; HelpShow the quick start guide 74,443,254,48"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 28,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              65,
+              -8,
+              88,
+              44
+            ]
+          },
+          {
+            "name": "HomeReturn to the home page",
+            "rect": [
+              74,
+              43,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "My WorldsOpen your saved builds",
+            "rect": [
+              74,
+              93,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "My ClassFind your group and build together",
+            "rect": [
+              74,
+              143,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "Save to my accountKeep this build across devices",
+            "rect": [
+              74,
+              193,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "Download buildSave a .brickstudio.json file",
+            "rect": [
+              74,
+              243,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "Import buildOpen a .brickstudio.json file",
+            "rect": [
+              74,
+              293,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "New BuildStart with a blank plate",
+            "rect": [
+              74,
+              343,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "Build togetherStart a shared world from this build",
+            "rect": [
+              74,
+              393,
+              254,
+              48
+            ]
+          },
+          {
+            "name": "HelpShow the quick start guide",
+            "rect": [
+              74,
+              443,
+              254,
+              48
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/320x740.jpeg",
+      "durationMs": 991
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 65,-8,88,44",
+        "1 touch targets under 44px: Search bricks 244x24"
+      ],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 69,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              65,
+              -8,
+              88,
+              44
+            ]
+          }
+        ],
+        "small": [
+          {
+            "name": "Search bricks",
+            "rect": [
+              50,
+              306,
+              244,
+              24
+            ]
+          }
+        ],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              220,
+              320,
+              520
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              59,
+              320,
+              681
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/320x740.jpeg",
+      "durationMs": 1245
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/320x740.jpeg",
+      "durationMs": 3976
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 201,-12,95,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              201,
+              -12,
+              95,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/844x390.jpeg",
+      "durationMs": 957
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 201,-12,95,44",
+        "1 touch targets under 44px: Search bricks 768x24"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 63,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              201,
+              -12,
+              95,
+              44
+            ]
+          }
+        ],
+        "small": [
+          {
+            "name": "Search bricks",
+            "rect": [
+              50,
+              142,
+              768,
+              24
+            ]
+          }
+        ],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              844,
+              334
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/844x390.jpeg",
+      "durationMs": 1079
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 201,-12,95,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              201,
+              -12,
+              95,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/844x390.jpeg",
+      "durationMs": 993
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: World menu 201,-12,95,44",
+        "1 touch targets under 44px: Search bricks 768x24"
+      ],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 70,
+        "outside": [
+          {
+            "name": "World menu",
+            "rect": [
+              201,
+              -12,
+              95,
+              44
+            ]
+          }
+        ],
+        "small": [
+          {
+            "name": "Search bricks",
+            "rect": [
+              50,
+              142,
+              768,
+              24
+            ]
+          }
+        ],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              56,
+              844,
+              334
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/844x390.jpeg",
+      "durationMs": 1265
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "3 touch targets under 44px: Build together 44x40; Character 44x40; Settings 44x40"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [
+          {
+            "name": "Build together",
+            "rect": [
+              589,
+              12,
+              44,
+              40
+            ]
+          },
+          {
+            "name": "Character",
+            "rect": [
+              635,
+              12,
+              44,
+              40
+            ]
+          },
+          {
+            "name": "Settings",
+            "rect": [
+              681,
+              12,
+              44,
+              40
+            ]
+          }
+        ],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/844x390.jpeg",
+      "durationMs": 4095
+    },
+    {
+      "surface": "entry-join",
+      "board": "03",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Join your class",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Join your classCreate an account with your teacher’s code.Cl"
+      },
+      "consoleErrors": [],
+      "screenshot": "entry-join/1024x768-zoom200.jpeg",
+      "durationMs": 955
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Brickgineers Home 8,-35,44,44; World menu 65,-39,91,28; Scene 200,-35,44,44; Character 248,-35,44,44; Build together 296,-35,44,44; Settings 344,-35,44,44; Explore mode 405,-35,99,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 63,
+        "outside": [
+          {
+            "name": "Brickgineers Home",
+            "rect": [
+              8,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "World menu",
+            "rect": [
+              65,
+              -39,
+              91,
+              28
+            ]
+          },
+          {
+            "name": "Scene",
+            "rect": [
+              200,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Character",
+            "rect": [
+              248,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Build together",
+            "rect": [
+              296,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Settings",
+            "rect": [
+              344,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Explore mode",
+            "rect": [
+              405,
+              -35,
+              99,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              15,
+              512,
+              328
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Brick drawerBricksCreate a brickChoose its shape and sizeAll"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1024x768-zoom200.jpeg",
+      "durationMs": 958
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button HomeReturn to the home page"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1024x768-zoom200.jpeg",
+      "durationMs": 1060
+    },
+    {
+      "surface": "color-picker",
+      "board": "10",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Brickgineers Home 8,-35,44,44; World menu 65,-39,91,28; Scene 200,-35,44,44; Character 248,-35,44,44; Build together 296,-35,44,44; Settings 344,-35,44,44; Explore mode 405,-35,99,44"
+      ],
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 70,
+        "outside": [
+          {
+            "name": "Brickgineers Home",
+            "rect": [
+              8,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "World menu",
+            "rect": [
+              65,
+              -39,
+              91,
+              28
+            ]
+          },
+          {
+            "name": "Scene",
+            "rect": [
+              200,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Character",
+            "rect": [
+              248,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Build together",
+            "rect": [
+              296,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Settings",
+            "rect": [
+              344,
+              -35,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Explore mode",
+            "rect": [
+              405,
+              -35,
+              99,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              15,
+              512,
+              328
+            ],
+            "containsFocus": false,
+            "topmost": false
+          },
+          {
+            "name": "Choose any color",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              512,
+              353
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Choose any colorPick a color on the wheel, then adjust its b"
+      },
+      "consoleErrors": [],
+      "screenshot": "color-picker/1024x768-zoom200.jpeg",
+      "durationMs": 1245
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 512,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 512,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1024x768-zoom200.jpeg",
+      "durationMs": 3963
+    }
+  ],
+  "skipped": [],
+  "summary": {
+    "runs": 20,
+    "passed": 9,
+    "failed": 11,
+    "skipped": 0,
+    "notes": 3
+  }
+}
