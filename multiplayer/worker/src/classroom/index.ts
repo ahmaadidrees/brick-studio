@@ -30,6 +30,11 @@ export class ClassroomHttpError extends Error {
 }
 const fail = (status: number, code: string, message: string): never => { throw new ClassroomHttpError(status, code, message); };
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+/** The provider's human-readable reason (GoTrue `msg`, `message` or `error_description`), bounded for display. */
+const providerMessage = (data: Row | null): string | undefined => {
+  const text = [data?.msg, data?.message, data?.error_description].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  return text?.trim().slice(0, 200);
+};
 const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const cleanText = (value: unknown, label: string, max = 80): string => {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) fail(400, 'invalid_input', `${label} is required (up to ${max} characters).`);
@@ -73,6 +78,9 @@ export class ClassroomService {
       if (data?.code === 'P0001' && ['brick_student_quota', 'brick_world_quota'].includes(data.message)) fail(409, 'quota_exceeded', data.message === 'brick_student_quota' ? 'This class has reached its student limit. Ask your teacher for help.' : 'You have reached the saved-world limit. Ask your teacher for help.');
       if (data?.code === '23514' && /brick_(world|checkpoint)_document_size/.test(data.message || '')) fail(413, 'too_large', 'This world exceeds the storage size limit. Your previous saved version is unchanged.');
       if (data?.code === '23505') fail(409, 'already_exists', 'That username or code is already in use.');
+      // Admin user writes (registration, temporary/reset passwords) carry no sign-in credentials: a 400/422 there is
+      // the provider's own password policy (e.g. a stricter minimum length) and must not read as a sign-in failure.
+      if (path.startsWith('/auth/v1/admin/') && (response.status === 400 || response.status === 422)) fail(400, 'invalid_password', providerMessage(data) ?? 'The account service did not accept that password. Try a longer one.');
       if (path.startsWith('/auth/') && (response.status === 400 || response.status === 401 || response.status === 422)) fail(401, 'invalid_credentials', 'Check your sign-in details and try again.');
       if (path.startsWith('/auth/') && !path.includes('/admin/') && response.status === 403) fail(401, 'session_revoked', 'Your session ended. Please sign in again.');
       if (response.status === 429) fail(429, 'rate_limited', 'Too many attempts. Please wait a few minutes.');

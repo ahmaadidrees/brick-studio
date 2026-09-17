@@ -71,6 +71,24 @@ describe('classroom account and authorization boundaries', () => {
     await expect(service.worldFor({ ...caller, id: teacherId, role: 'teacher' }, worldId)).rejects.toMatchObject({ status: 404 });
     await expect(service.worldFor(caller, worldId, true)).rejects.toMatchObject({ code: 'private_world' });
   });
+  it('reports a provider password-policy rejection on admin user writes as invalid_password, not a sign-in failure', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.startsWith('/auth/v1/admin/users')) return new Response(JSON.stringify({ code: 'weak_password', msg: 'Password should be at least 8 characters.' }), { status: 422 });
+      return new Response(JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid login credentials' }), { status: 400 });
+    });
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    // Registration and teacher-issued temporary passwords both write through the admin API.
+    await expect(service.request('/auth/v1/admin/users', { method: 'POST' })).rejects.toMatchObject({ status: 400, code: 'invalid_password', message: 'Password should be at least 8 characters.' });
+    await expect(service.request(`/auth/v1/admin/users/${studentId}`, { method: 'PUT' })).rejects.toMatchObject({ status: 400, code: 'invalid_password', message: 'Password should be at least 8 characters.' });
+    // Sign-in keeps the deliberately vague credential error.
+    await expect(service.request('/auth/v1/token?grant_type=password', { method: 'POST' })).rejects.toMatchObject({ status: 401, code: 'invalid_credentials', message: 'Check your sign-in details and try again.' });
+  });
+  it('falls back to a generic password message when the provider gives none', async () => {
+    const fetcher = vi.fn(async () => new Response('', { status: 400 }));
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    await expect(service.request('/auth/v1/admin/users', { method: 'POST' })).rejects.toMatchObject({ code: 'invalid_password', message: 'The account service did not accept that password. Try a longer one.' });
+  });
   it('fails clearly when backend configuration is unavailable', async () => {
     const response = await handleClassroomRequest(new Request('https://worker.test/classroom/me'), {});
     expect(response?.status).toBe(503);
