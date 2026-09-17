@@ -93,6 +93,8 @@
 .brick-header-tools { display: flex; align-items: center; gap: 2px; }
 .brick-header-tool.ui-button { min-width: 44px; padding: 0 12px; font-size: 12.5px; }
 .brick-header-tool.ui-button .ui-button-icon { color: var(--studio-blue-dark); }
+/* The signed-in name is the label: long roster names clip rather than push the header. */
+.brick-header-account.ui-button .ui-button-label { display: block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brick-people-count { min-width: 19px; height: 19px; display: inline-grid; place-items: center; margin-left: 6px; padding: 0 5px; border-radius: 9px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .16); font-size: 10px; vertical-align: middle; }
 
 .brick-mode-switch { display: flex; align-items: center; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--studio-panel-border); }
@@ -528,6 +530,8 @@
   .brick-header-tool .ui-button-label { display: none; }
   .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; flex-direction: column; gap: 2px; padding: 2px 6px; background: var(--studio-panel-soft); }
   .brick-header-tools .brick-header-tool .ui-button-label { display: block; font-size: 10.5px; line-height: 1.15; }
+  /* Phones keep the account icon only; the name stays in the aria-label. */
+  .brick-header-tools .brick-header-account .ui-button-label { display: none; }
   .studio-world-title strong { max-width: min(180px, 44vw); font-size: 16px; }
   .brick-header .brick-save-status { max-width: 46vw; font-size: 11px; }
   .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }

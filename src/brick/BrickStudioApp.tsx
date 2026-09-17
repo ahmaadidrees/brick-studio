@@ -329,6 +329,7 @@ type HeaderProps = StudioDocumentCommands & {
   onOpenMyWorlds?: () => void
   onOpenMyClass?: () => void
   onRenameWorld?: (title: string) => Promise<void>
+  /** Signed-in display name (roster name, else username); undefined when signed out. */
   accountLabel?: string
   worldTitle?: string
   saveStatus: StudioSaveStatus
@@ -378,7 +379,9 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
         <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
-        {onOpenMyClass && <Button variant="quiet" className="brick-header-account" aria-label={accountLabel ? 'Open My Class' : 'Open sign in'} onClick={onOpenMyClass}>{accountLabel ? 'My Class' : 'Sign in'}</Button>}
+        {onOpenMyClass && (accountLabel
+          ? <Button variant="quiet" className="brick-header-tool brick-header-account" icon={<UserRound size={17} />} title={`${accountLabel} — open My Class`} aria-label={`Account: ${accountLabel} — open My Class`} onClick={onOpenMyClass}>{accountLabel}</Button>
+          : <Button variant="quiet" className="brick-header-account" aria-label="Open sign in" onClick={onOpenMyClass}>Sign in</Button>)}
         <StudioSettings />
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
@@ -1496,7 +1499,7 @@ export default function BrickStudioApp({
           onOpenMyWorlds={() => setClassroomIntent('worlds')}
           onOpenMyClass={() => setClassroomIntent(classroomAuth ? 'class' : 'signin')}
           onRenameWorld={renameWorld}
-          accountLabel={classroomAuth?.user.username}
+          accountLabel={classroomAuth ? classroomAuth.user.rosterName || classroomAuth.user.username : undefined}
           worldTitle={cloud.world?.title}
           saveStatus={saveStatus}
           livePolicy={livePolicy}
