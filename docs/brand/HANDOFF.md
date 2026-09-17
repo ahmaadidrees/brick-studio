@@ -89,10 +89,15 @@ under `docs/brand/qa/w1..w7/`.
   original characters recolored via Blender with regenerated GLBs/previews (`assets/characters-original/**`).
 - QA: `scripts/qa/**` parameterized harnesses, surfaces matrix, board captures, schema round trip, route transfer;
   evidence under `docs/brand/qa/**`.
+- Dependency: `qrcode@1.5.4` was added (`package.json`/lockfile) for the class invite QR. It is a dynamic import in
+  `src/classroom/ClassInvite.tsx` (loaded when the invite opens), so it is not in the landing or editor initial chunks.
+- Note for Codex (hosted auth): the worker admits `https://www.brickgineers.com` as a distinct application origin next
+  to `https://brickgineers.com` (`multiplayer/worker/src/applicationOrigin.ts`). Supabase Auth's redirect allow-list
+  (teacher Google callback) must therefore include both hosts, unless `www` is redirected to the apex before the app loads.
 
 Unchanged by design: every `brick-studio.*` storage key, `.brickstudio.json`, package name, tables, worker names,
-Durable Object bindings, document schema, character/environment IDs, live protocol, `package.json`/lockfile,
-`vercel.json`, `wrangler.jsonc`, `.env*`.
+Durable Object bindings, document schema, character/environment IDs, live protocol, `package.json`/lockfile (except
+the `qrcode` addition above), `vercel.json`, `wrangler.jsonc`, `.env*`.
 
 ## Known deviations and limitations
 

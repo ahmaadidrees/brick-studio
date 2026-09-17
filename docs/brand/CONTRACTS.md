@@ -13,7 +13,9 @@ Base: `7341db0747165d2d8dacd2b0c09a5c9bf649dcb0`. Node 22 only: `export PATH=/op
 - Verify `git rev-parse --short HEAD` equals the base you were given before touching anything. Never edit other worktrees,
   never touch `~/Documents/Virtual Legos`, never use bare `git stash`.
 - No deploys, no `git push`, no merges to `main`, no dependency changes, no edits to `.env*`, `.vercel/`, `wrangler.jsonc`,
-  `vercel.json`, `package.json`, secrets, live student data, DNS, auth providers. No domain strings in source (pending decision).
+  `vercel.json`, `package.json`, secrets, live student data, DNS, auth providers. Domain strings in source: after the
+  cutover the landing may contain exactly one, the legacy-host migration link `https://brickgineers.com`
+  (`LandingPage.tsx`, pinned by the allow-list in `LandingPage.test.tsx`); nothing else may carry a domain.
 - Keep every internal identifier: `brick-studio.*` storage keys, `.brickstudio.json`, package name `rover-island`,
   `brick_*` tables, worker name, DO bindings, document schema fields, character/environment IDs, protocol.
 - Preserve guest building, link-based guest rooms, saves/classroom identity, teacher controls, multiplayer authority and
@@ -53,7 +55,8 @@ onWorldUpdated?, client?`. W3 never duplicates save logic.
 
 ## Save status (W1 primitive `SaveStatus`, W4 wires)
 
-Inputs are the real enums only: guest local (`This browser only` → label "Saved in this browser"), cloud
+Inputs are the real enums only: guest local (`{ kind: 'local' }` → label "This browser only", tone `local`;
+`{ kind: 'local', error }` → "Save needs attention", tone `error`, unchanged), cloud
 `CloudSaveStatus = 'saved' | 'pending' | 'saving' | 'error'` → "Saved to your account", "Waiting to save…",
 "Saving to your account…", "Save needs attention"; live `LiveConnectionState = 'connecting' | 'online' | 'reconnecting' |
 'offline'` → "Connecting…", "Shared world", "Reconnecting…", "Offline · edits paused". Device icon for local, cloud icon
@@ -82,7 +85,8 @@ Explore: compact HUD (Back to building, People/Character/Settings, world title p
 `public/brand/media/hero-{1600,1200,800}.{avif,webp,png}` (intrinsic sizes recorded in `public/brand/media/manifest.json`),
 `scene-{toy-room,brick-valley,sky-island,classic}-{800,400}.{avif,webp,png}`, `character-{pip,fern,nova,toy-figure}-{400}.{avif,webp,png}`.
 W2 lays out with placeholders of the same intrinsic sizes until final files land. Hero ≤ 250 KB delivered, initial marketing
-media ≤ 600 KB. Landing may not import three/store/editor and may not contain `@import` or `https:` URLs (existing tests).
+media ≤ 600 KB. Landing may not import three/store/editor and may not contain `@import` or `https:` URLs other than the
+pinned migration link above (existing tests).
 
 ## Ownership (exclusive, by file)
 
