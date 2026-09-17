@@ -10,6 +10,8 @@ describe('public home and editor routes', () => {
     expect(resolve('/#classroom').route).toBe('landing')
     expect(resolve('/build').route).toBe('build')
     expect(resolve('/welcome')).toEqual({ route: 'landing', canonicalPath: '/' })
+    expect(resolve('/join')).toEqual({ route: 'build', canonicalPath: '/build?classroom=join' })
+    expect(resolve('/join?classCode=ABC123')).toEqual({ route: 'build', canonicalPath: '/build?classCode=ABC123&classroom=join' })
   })
 
   it('preserves legacy classroom links and their fragments when moving the editor', () => {
