@@ -42,6 +42,7 @@ import {
   pointWithinInflatedRect,
   pointerTravelExceeds,
   resetBuildPointers,
+  shouldClearSelectionOnEmptyTap,
   shouldSuppressBuildTouchClick,
   takeBuildPointerCompletion,
   takeDoubleTapPlacement,
@@ -867,6 +868,17 @@ function BuildSelectionInput() {
         state.selectBricks(current.additive ? [...new Set([...state.selectedIds, ...ids])] : ids)
       } else if (!current.gesture.dragging && current.brickId) {
         state.selectBrick(current.brickId, current.additive || current.explicitMode)
+      } else if (shouldClearSelectionOnEmptyTap({
+        dragged: current.gesture.dragging,
+        hitBrickId: current.brickId,
+        additive: current.additive,
+        selectionMode: current.explicitMode,
+        hasDraft: state.draft !== null,
+        selectedCount: state.selectedIds.length,
+      })) {
+        // A still click on the plate, scenery or sky ends the selection; the trailing
+        // click is suppressed below so the plate's own handler never sees it.
+        state.clearSelection()
       }
       suppressClick.current = true
       clearSuppressTimer()
@@ -1226,7 +1238,9 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
 }
 
 function BuildTouchInput({ gesture }: { gesture: BuildGestureState }) {
-  const { gl } = useThree()
+  const { camera, gl, scene } = useThree()
+  const raycaster = useRef(new THREE.Raycaster())
+  const pointer = useRef(new THREE.Vector2())
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -1238,7 +1252,21 @@ function BuildTouchInput({ gesture }: { gesture: BuildGestureState }) {
       updateBuildPointer(gesture, event.pointerId, event.clientX, event.clientY)
     }
     const pointerUp = (event: PointerEvent) => {
-      finishBuildPointer(gesture, event.pointerId, event.clientX, event.clientY, now())
+      const completion = finishBuildPointer(gesture, event.pointerId, event.clientX, event.clientY, now())
+      if (!completion) return
+      // Sky and scenery raise no mesh event, so the plate's own tap-to-deselect never
+      // fires there. Decide here from the same tap verdict; a tap that does land on the
+      // plate or a brick still reaches its mesh handler afterwards.
+      const state = useBrickStore.getState()
+      if (state.mode !== 'build') return
+      if (shouldClearSelectionOnEmptyTap({
+        dragged: completion.intent !== 'position',
+        hitBrickId: findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current),
+        additive: event.shiftKey || event.ctrlKey || event.metaKey,
+        selectionMode: state.selectionMode,
+        hasDraft: state.draft !== null,
+        selectedCount: state.selectedIds.length,
+      })) state.clearSelection()
     }
     const pointerCancel = (event: PointerEvent) => {
       cancelBuildPointer(gesture, event.pointerId, now())
@@ -1279,7 +1307,7 @@ function BuildTouchInput({ gesture }: { gesture: BuildGestureState }) {
       unsubscribe()
       reset()
     }
-  }, [gesture, gl])
+  }, [camera, gesture, gl, scene])
 
   return null
 }

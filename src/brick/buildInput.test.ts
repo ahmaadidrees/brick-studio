@@ -24,6 +24,7 @@ import {
   pointWithinInflatedRect,
   pointerTravelExceeds,
   resetBuildPointers,
+  shouldClearSelectionOnEmptyTap,
   shouldSuppressBuildTouchClick,
   takeBuildPointerCompletion,
   takeDoubleTapPlacement,
@@ -349,5 +350,35 @@ describe('double tap to place', () => {
     const reset = firstTap()
     resetBuildPointers(reset)
     expect(reset.lastTap).toBeNull()
+  })
+})
+
+describe('tap on empty space clears the selection', () => {
+  const emptyTap = { dragged: false, hitBrickId: null, additive: false, selectionMode: false, hasDraft: false, selectedCount: 2 }
+
+  it('clears on a still, plain tap over nothing while bricks are selected', () => {
+    expect(shouldClearSelectionOnEmptyTap(emptyTap)).toBe(true)
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, selectedCount: 1 })).toBe(true)
+  })
+
+  it('does nothing when nothing is selected', () => {
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, selectedCount: 0 })).toBe(false)
+  })
+
+  it('leaves an orbit, pan or box-select drag alone', () => {
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, dragged: true })).toBe(false)
+  })
+
+  it('leaves a tap on a brick to the brick handler', () => {
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, hitBrickId: 'brick-a' })).toBe(false)
+  })
+
+  it('keeps a modifier click additive rather than clearing', () => {
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, additive: true })).toBe(false)
+  })
+
+  it('never interferes with explicit box-select mode or an armed brush', () => {
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, selectionMode: true })).toBe(false)
+    expect(shouldClearSelectionOnEmptyTap({ ...emptyTap, hasDraft: true })).toBe(false)
   })
 })
