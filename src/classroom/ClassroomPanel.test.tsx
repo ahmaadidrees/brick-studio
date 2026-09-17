@@ -6,7 +6,7 @@ import { createBrickStudioDocument } from '../brick/brickDocument'
 import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld } from './contracts'
 const auth: ClassroomAuthResult = { user: { id: 's1', username: 'Builder', rosterName: 'Alex', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 3600 } }
 const teacherAuth: ClassroomAuthResult = { ...auth, user: { ...auth.user, id: 'teacher1', username: 'ms_carter', rosterName: 'Ms. Carter', role: 'teacher' } }
-const classroom: ClassroomClass = { id: 'class1', name: 'Studio 5', loginCode: 'CLASS-456', code: 'NEW-123', enrollmentOpen: true, collaborationOpen: true }
+const classroom: ClassroomClass = { id: 'class1', name: 'Studio 5', loginCode: 'CLASS-456', code: 'NEW-123', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true }
 const student: ClassroomStudent = { id: 's1', username: 'sky_builder', rosterName: 'Alex R.', suspended: false, resetRequired: false }
 const world = (overrides: Partial<ClassroomWorld> = {}): ClassroomWorld => ({ id: 'world1', title: 'Desk Castle', ownerId: 's1', classId: null, kind: 'personal', revision: 3, updatedAt: '2026-09-10T12:00:00Z', ...overrides })
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
