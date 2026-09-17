@@ -18,4 +18,16 @@ describe('build camera atmosphere', () => {
     expect(result.cameraFar).toBeGreaterThan(336)
     expect(result.fogNear).toBeGreaterThanOrEqual(336)
   })
+
+  it('never pulls the far plane closer than the scene set it (Brick Valley horizon at 620)', () => {
+    expect(getBuildVisibilityRange(20, 10, 70, 300, 620)).toEqual({ fogNear: 70, fogFar: 300, cameraFar: 620 })
+    // A build framed beyond the scene horizon still pushes the plane out.
+    expect(getBuildVisibilityRange(600, 80, 70, 300, 620).cameraFar).toBe(730)
+  })
+
+  it('writes into a caller-owned object so per-frame use allocates nothing', () => {
+    const out = { fogNear: 0, fogFar: 0, cameraFar: 0 }
+    expect(getBuildVisibilityRange(20, 10, 42, 90, 240, out)).toBe(out)
+    expect(out).toEqual({ fogNear: 42, fogFar: 90, cameraFar: 240 })
+  })
 })

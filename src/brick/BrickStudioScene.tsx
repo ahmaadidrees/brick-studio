@@ -584,6 +584,12 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   const bounds = useMemo(() => getBuildBounds(bricks, plateSize), [bricks, plateSize])
   const buildRadius = Math.hypot(...bounds.size) / 2
   const originalFogs = useRef(new Map<THREE.Fog, { near: number; far: number }>())
+  // The far plane the scene owns (Canvas default, or an environment's own horizon
+  // such as Brick Valley's 620). Build framing only ever pushes the plane out
+  // from here and restores it on Explore.
+  const originalFar = useRef(perspectiveCamera.far)
+  const appliedFar = useRef<number | null>(null)
+  const visibilityRange = useRef({ fogNear: 0, fogFar: 0, cameraFar: 0 })
 
   // Build framing on portrait screens can move beyond a scene's entire fog
   // range. Keep the actual document visible; restore scene atmosphere on Explore.
@@ -594,8 +600,13 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     if (fog && !originalFogs.current.has(fog)) {
       originalFogs.current.set(fog, { near: fog.near, far: fog.far })
     }
+    // An environment mounting or unmounting later writes its own far plane; a
+    // value this loop did not apply is the scene's, so adopt it as the floor.
+    if (perspectiveCamera.far !== appliedFar.current) originalFar.current = perspectiveCamera.far
     const base = fog ? originalFogs.current.get(fog)! : { near: 42, far: 90 }
-    const range = getBuildVisibilityRange(camera.position.distanceTo(control.target), buildRadius, base.near, base.far)
+    const range = getBuildVisibilityRange(
+      camera.position.distanceTo(control.target), buildRadius, base.near, base.far, originalFar.current, visibilityRange.current,
+    )
     if (fog) {
       fog.near = range.fogNear
       fog.far = range.fogFar
@@ -604,10 +615,13 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
       perspectiveCamera.far = range.cameraFar
       perspectiveCamera.updateProjectionMatrix()
     }
+    appliedFar.current = range.cameraFar
   })
 
   useEffect(() => {
-    const originalFar = perspectiveCamera.far
+    // Runs after the environment's layout effects, so this sees its far plane.
+    originalFar.current = perspectiveCamera.far
+    appliedFar.current = null
     const fogs = originalFogs.current
     return () => {
       for (const [fog, range] of fogs) {
@@ -615,8 +629,9 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
         fog.far = range.far
       }
       fogs.clear()
-      perspectiveCamera.far = originalFar
+      perspectiveCamera.far = originalFar.current
       perspectiveCamera.updateProjectionMatrix()
+      appliedFar.current = null
     }
   }, [perspectiveCamera])
   const limits = useMemo(
