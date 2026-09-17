@@ -35,7 +35,8 @@ owner; teacher oversight applies to classroom/group worlds.
 | Method/path | Body | Response |
 |---|---|---|
 | POST auth/register | `{classCode,username,password,rosterName}` | `{session,user,classes}` (201) |
-| POST auth/login | `{classCode,username,password}` | `{session,user,classes}` |
+| POST auth/login | `{username,password,classCode?}` | `{session,user,classes}` |
+| POST auth/roster | `{classCode}` | `{name,canEnroll,showNames,students}` |
 | POST auth/teacher-login | `{email,password}` | `{session,user,classes}` |
 | POST auth/refresh | `{refreshToken}` | `{session,user,classes}` |
 | POST auth/change-password | `{password}` | `{session,user,classes}` |
@@ -45,7 +46,7 @@ owner; teacher oversight applies to classroom/group worlds.
 Session shape: `{accessToken,refreshToken,expiresIn}`. User:
 `{id,username,rosterName,role:'teacher'|'student',resetRequired}`. Username is 3–24
 ASCII letters/numbers/underscore/hyphen, first character alphanumeric; uniqueness
-is case-insensitive within a class. New student passwords are 6–128 characters and reject a small list of common passwords, repeated characters and the username. Existing student sign-in accepts 6–128 characters without applying new-password rules; teacher password sign-in remains 8–128. All codes for one class share the same per-account login attempt bucket. Roster name is private
+is case-insensitive and global across every class (migration 202609170001). New student passwords are 6–128 characters and reject a small list of common passwords, repeated characters and the username. Existing student sign-in accepts 6–128 characters without applying new-password rules; teacher password sign-in remains 8–128. All codes for one class share the same per-account login attempt bucket. Roster name is private
 to the student and teacher, max80. Temporary passwords must be changed to a different
 password. Reset-required callers may access only me, change-password, and logout.
 Refresh can maintain that restricted session but cannot clear the requirement.
@@ -74,15 +75,43 @@ are tighter than the generous school-NAT IP throttle; limits live in Postgres ra
 than a process-local map. Supabase's own provider abuse limits also apply and require
 real classroom-NAT validation before launch.
 
+## Username-only sign-in and the join-screen roster
+
+Usernames are unique across all classes (`brick_students(username_key)` unique index), so
+`POST auth/login` needs only `{username,password}`. Without a `classCode` the student is
+resolved by `username_key` alone; a missing username and a wrong password both answer
+401 `invalid_credentials` and share one rate bucket keyed by the username. If the database
+ever holds two rows for one username the route answers 409 `class_code_required`; a supplied
+`classCode` scopes the lookup to that class (and keeps the per-class bucket) exactly as before.
+
+Registration and teacher username edits check the username globally. A taken name answers
+409 `username_taken` with `suggestions: string[]`: three free variants (digits or `_digits`
+appended within the 24-character limit) checked against the database.
+
+`POST auth/roster` `{classCode}` is public and shares the IP bucket of `auth/class`. It
+returns `{name,canEnroll,showNames,students:[{username,displayName}]}` for the tap-your-name
+grid on the join screen. `displayName` is the first word of the roster name plus the last
+initial with a period ("Ava R."; single-word names stay as is). Suspended students are
+excluded and the list is sorted by displayName. When the class has `showNamesOnJoin:false`
+the response is `showNames:false, students:[]`. Roster names, ids and credential data never
+appear. Unknown codes answer 404 `class_not_found`; a malformed body answers 400
+`invalid_input`. Any alias for the class resolves, including rotated codes, because the
+returning sign-in code is itself the class's first alias.
+
+Teachers toggle the roster with `PATCH classes/:id {showNamesOnJoin}` (owning teacher only,
+same authorization as `enrollmentOpen`); the switch lives in Class settings as "Show names
+on the join screen". The client entry view shows Username and Password only; "I have a class
+code" reveals the optional code, which then loads the roster.
+
 ## Classes and teacher controls
 
-Class: `{id,name,loginCode,code?,enrollmentOpen,collaborationOpen}`.
+Class: `{id,name,loginCode,code?,enrollmentOpen,collaborationOpen,showNamesOnJoin}`.
 
 | Method/path | Body | Response |
 |---|---|---|
 | GET classes | — | `{classes}` |
 | POST classes | `{name}` | `{class}` |
-| PATCH classes/:id | `{name?,enrollmentOpen?,collaborationOpen?,rotateCode?}` | `{class}` |
+| PATCH classes/:id | `{name?,enrollmentOpen?,collaborationOpen?,showNamesOnJoin?,rotateCode?}` | `{class}` |
 | GET classes/:id/students | — | `{students}` |
 | PATCH classes/:id/students/:userId | `{username?,rosterName?,suspended?,temporaryPassword?}` | `{student}` |
 
