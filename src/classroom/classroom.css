@@ -3,7 +3,11 @@
 
 /* ---------- Sheet frame ---------- */
 .ui-sheet-root.classroom-sheet-entry { --sheet-width: 480px; }
-.ui-sheet-root.classroom-sheet-account { --sheet-width: 980px; }
+.ui-sheet-root.classroom-sheet-account { --sheet-width: 1100px; }
+/* Desktop: let the roster and settings use the viewport instead of scrolling inside a short dialog. Phone/touch keep the bottom-sheet rules from ui.css. */
+@media (min-width: 901px) and (pointer: fine) {
+  .ui-sheet-root.classroom-sheet-account.ui-sheet-dialog .ui-sheet { max-height: min(92dvh, 100%); }
+}
 .classroom-sheet .ui-sheet-title { font-size: 30px; letter-spacing: -.025em; }
 .classroom-sheet-mark { margin-top: 6px; }
 .classroom-sheet .ui-sheet-body { display: flex; flex-direction: column; gap: var(--space-4); background: var(--surface); }
@@ -202,21 +206,12 @@
 .classroom-world-actions { padding-top: var(--space-2); padding-bottom: var(--space-4); }
 .classroom-world-actions > .ui-button-primary { flex: 1 1 100%; min-height: var(--control-height); }
 .classroom-world-actions > .ui-button-secondary { flex: 1 1 auto; }
-.classroom-creative-banner { position: relative; overflow: hidden; isolation: isolate; display: flex; align-items: center; min-height: 142px; padding: var(--space-5); border-radius: var(--radius-lg); background: var(--bg) url('/brand/media/hero-800.webp') right 54% / 68% auto no-repeat; }
-.classroom-creative-banner::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, var(--bg) 30%, color-mix(in srgb, var(--bg) 94%, transparent) 42%, transparent 70%); }
-.classroom-creative-banner > div { max-width: 46%; }
-.classroom-creative-banner h3 { font-size: 26px; line-height: 1.1; letter-spacing: -.025em; }
-.classroom-creative-banner p { margin-top: var(--space-2); font-size: var(--text-sm); line-height: 1.4; color: var(--text-muted); }
 .classroom-roster-head { background: color-mix(in srgb, var(--primary-soft) 34%, var(--surface)); }
 .classroom-roster-username { font-family: var(--font-body); }
 @media (max-width: 600px) {
   .classroom-sheet-entry .ui-sheet-header { row-gap: 4px; }
   .classroom-sheet-entry .classroom-entry-brand { display: none; }
   .classroom-sheet-entry .ui-sheet-heading { grid-column: 1; grid-row: 1; }
-  .classroom-creative-banner { min-height: 112px; padding: var(--space-4); background-size: cover; }
-  .classroom-creative-banner::before { background: linear-gradient(90deg, var(--bg) 25%, color-mix(in srgb, var(--bg) 94%, transparent) 55%, color-mix(in srgb, var(--bg) 35%, transparent)); }
-  .classroom-creative-banner > div { max-width: 74%; }
-  .classroom-creative-banner h3 { font-size: 21px; }
   .classroom-world-art { height: 104px; }
 }
 
@@ -235,9 +230,7 @@
   .classroom-class-navigation > .classroom-class-select { flex: 1 1 100%; max-width: none; }
   .classroom-roster-toolbar { flex-direction: column; }
   .classroom-roster-toolbar > .classroom-search { flex-basis: auto; width: 100%; }
-  .classroom-creative-banner { display: none; }
 }
-@media (max-height: 650px) { .classroom-creative-banner { display: none; } }
 
 .classroom-remembered-class { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--ui-border, #dce4ef); border-radius: 12px; background: var(--ui-surface, #f8fafc); }
 .classroom-remembered-class p { margin: 0; overflow-wrap: anywhere; min-width: 0; }
