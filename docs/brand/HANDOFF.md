@@ -2,7 +2,7 @@
 
 Prepared by the Claude lead session on 2026-09-14/15. Codex owns independent review, hosted configuration, staging,
 production deployment and domain wiring. Nothing here has been pushed, deployed, or applied to auth, DNS, providers or
-live student data. The brand/domain pairing is still unresolved: no domain string exists in source.
+live student data. The domain is brickgineers.com (cut over by Codex on 2026-09-15); the only domain string in `src` is the landing's legacy-host migration link, pinned by test.
 
 ## Candidate
 
