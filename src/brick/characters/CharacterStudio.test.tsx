@@ -68,7 +68,27 @@ describe('CharacterStudio', () => {
     expect(screen.queryByRole('button', { name: 'Mix it up' })).toBeNull()
     expect(screen.getByText('Ready for adventure')).toBeInTheDocument()
   })
+  it('reports each edit as one complete draft and never mutates the input', () => {
+    const change = vi.fn()
+    const onRequestPreview = vi.fn()
+    const input: ContentPickerSelection = { environmentId: 'classic', characterId: 'toy-figure', palette: {} }
+    const snapshot = structuredClone(input)
+    render(<CharacterStudio draft={input} onDraftChange={change} characterDescriptors={characters} paletteGroups={paletteGroups} onRequestPreview={onRequestPreview} />)
+    fireEvent.click(screen.getByRole('radio', { name: /Robot Hero/ }))
+    expect(change).toHaveBeenLastCalledWith({ environmentId: 'classic', characterId: 'cc0-hero', palette: {} })
+    expect(onRequestPreview).toHaveBeenCalledWith('character', 'cc0-hero', 'selection')
+    tab('Customize')
+    fireEvent.click(within(screen.getByRole('group', { name: 'Customize categories' })).getByRole('button', { name: 'Colors' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Set Shirt to Rocket red' }))
+    expect(change).toHaveBeenLastCalledWith({ environmentId: 'classic', characterId: 'toy-figure', palette: { primary: '#e7473c' } })
+    fireEvent.click(within(screen.getByRole('group', { name: 'Customize categories' })).getByRole('button', { name: 'Head' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Curls$/ }))
+    expect(change).toHaveBeenLastCalledWith({ environmentId: 'classic', characterId: 'toy-figure', palette: {}, appearance: { ...DEFAULT_CHARACTER_APPEARANCE, hair: 'curls' } })
+    for (const call of change.mock.calls) expect(call[0]).not.toBe(input)
+    expect(input).toEqual(snapshot)
+  })
   it('keeps shuffle reversible and clears undo after an explicit edit', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
     const change = vi.fn()
     const seeded = { ...draft, appearance: { ...DEFAULT_CHARACTER_APPEARANCE, hair: 'bun' as const } }
     setup(seeded, change); tab('Customize')
@@ -80,18 +100,31 @@ describe('CharacterStudio', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mix it up' }))
     fireEvent.click(screen.getByRole('button', { name: /^Curls$/ }))
     expect(screen.queryByRole('button', { name: 'Undo mix' })).toBeNull()
+    // Drafting never persists preferences, touches the store, or writes site storage.
     expect(persistence.save).not.toHaveBeenCalled()
     expect(persistence.setState).not.toHaveBeenCalled()
+    expect(setItem).not.toHaveBeenCalled()
+    expect(localStorage.getItem('brick-studio.content-preferences.v1')).toBeNull()
+    setItem.mockRestore()
   })
   it('applies a saved look as a complete draft without persisting character preferences', () => {
     localStorage.setItem(WARDROBE_STORAGE_KEY, JSON.stringify({ version: 1, outfits: [
       { id: 'o1', name: 'Curly builder', characterId: 'toy-figure', palette: { primary: '#3e83d7' }, appearance: { hair: 'curls', accessory: 'glasses' }, favorite: true },
     ] }))
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
     const change = vi.fn(); setup({ ...draft, characterId: 'pip' }, change); tab('My looks')
     fireEvent.click(screen.getByRole('button', { name: 'Curly builder' }))
     expect(change).toHaveBeenCalledWith({ environmentId: 'classic', characterId: 'toy-figure', palette: { primary: '#3e83d7' }, appearance: { ...DEFAULT_CHARACTER_APPEARANCE, hair: 'curls', accessory: 'glasses' } })
+    expect(setItem).not.toHaveBeenCalled()
+    // Saving an outfit is the only storage write the studio makes, and only to the wardrobe key.
+    fireEvent.change(screen.getByLabelText('Outfit name'), { target: { value: 'Draft look' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save outfit' }))
+    expect(setItem).toHaveBeenCalledTimes(1)
+    expect(setItem.mock.calls[0][0]).toBe(WARDROBE_STORAGE_KEY)
     expect(persistence.save).not.toHaveBeenCalled()
     expect(persistence.setState).not.toHaveBeenCalled()
+    expect(localStorage.getItem('brick-studio.content-preferences.v1')).toBeNull()
+    setItem.mockRestore()
   })
   it('keeps navigation usable when wardrobe storage is blocked', () => {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')!
