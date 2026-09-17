@@ -25,6 +25,8 @@ type Props = {
   mode: EntryMode
   busy: boolean
   fieldErrors: EntryFieldErrors
+  /** Class code from an invite link; wins over the remembered class and survives the join/sign-in switch. */
+  invitedClassCode?: string
   onModeChange: (mode: EntryMode) => void
   onSubmit: (mode: EntryMode, values: Record<string, string>) => void
   onGoogle: () => void
@@ -32,9 +34,9 @@ type Props = {
 }
 
 /** Board 03: student sign-in/create-account switch with a separate teacher entrance. */
-export function EntryView({ mode, busy, fieldErrors, onModeChange, onSubmit, onGoogle, onResolveClass }: Props) {
+export function EntryView({ mode, busy, fieldErrors, invitedClassCode, onModeChange, onSubmit, onGoogle, onResolveClass }: Props) {
   const [remembered] = useState(readRememberedClass)
-  const [invitedCode] = useState(() => new URLSearchParams(window.location.search).get('classCode')?.slice(0, 40) || '')
+  const invitedCode = invitedClassCode?.slice(0, 40) || ''
   const [classInfo, setClassInfo] = useState<{ code: string; name: string; canEnroll: boolean } | null>(null)
   const [editingCode, setEditingCode] = useState(false)
   const [classError, setClassError] = useState('')

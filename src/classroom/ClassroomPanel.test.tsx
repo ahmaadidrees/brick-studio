@@ -839,6 +839,21 @@ describe('streamlined student entry', () => {
     expect(screen.getByLabelText('Class code')).toHaveValue('')
     expect(localStorage.getItem('brickgineers.last-class.v1')).toBeNull()
   })
+  it('prefills an invited class code over the remembered class and keeps it across join and sign-in', () => {
+    localStorage.setItem('brickgineers.last-class.v1', JSON.stringify({ code: 'OLD-999', name: 'Last year' }))
+    render(<ClassroomPanel {...props()} intent="signin" invitedClassCode="CLASS-456" client={new ClassroomClient('', vi.fn())} />)
+    expect(screen.getByLabelText('Class code')).toHaveValue('CLASS-456')
+    expect(screen.queryByText('Last year')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('radio', { name: 'Create account' }))
+    expect(screen.getByLabelText('Class code')).toHaveValue('CLASS-456')
+    fireEvent.click(screen.getByRole('radio', { name: 'Sign in' }))
+    expect(screen.getByLabelText('Class code')).toHaveValue('CLASS-456')
+    cleanup()
+    // Without an invite the remembered class still greets a returning student.
+    render(<ClassroomPanel {...props()} intent="signin" client={new ClassroomClient('', vi.fn())} />)
+    expect(screen.getByText('Last year')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Class code')).not.toBeInTheDocument()
+  })
   it('allows a six-character new password and rejects obvious or matching passwords', async () => {
     const client = new ClassroomClient('', vi.fn())
     const authenticate = vi.spyOn(client, 'authenticate').mockResolvedValue(auth)

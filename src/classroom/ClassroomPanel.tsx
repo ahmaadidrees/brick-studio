@@ -22,6 +22,8 @@ export { generateTemporaryPassword } from './panelShared'
 type Props = {
   /** Entry intent from `/build?classroom=` or the studio menu; see `ClassroomEntryIntent` in routes.ts. */
   intent: ClassroomEntryIntent
+  /** Class code from an invite link (`/build?classroom=signin&classCode=…`), consumed by BrickStudioApp; prefills entry. */
+  invitedClassCode?: string
   getDocument: () => BrickStudioDocument
   onOpenWorld: (document: BrickStudioDocument, world: ClassroomWorld) => void | Promise<void>
   onJoinWorld: (world: ClassroomWorld) => void | Promise<void>
@@ -46,7 +48,7 @@ const sameTitle = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.t
  * Account dialog: entry, forced password change, My Worlds and My Class. This component owns every
  * request and every loading/busy/error/notice state; the views under src/classroom/ are presentation only.
  */
-export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, onClose, onSessionChange, onSaved, beforeWorldMutation, onWorldUpdated, client = browserClassroomClient }: Props) {
+export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWorld, onJoinWorld, onClose, onSessionChange, onSaved, beforeWorldMutation, onWorldUpdated, client = browserClassroomClient }: Props) {
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
   const [tab, setTab] = useState<'worlds' | 'class'>((intent === 'teacher' && auth?.user.role !== 'student') || intent === 'class' || (auth?.user.role === 'student' && (intent === 'signin' || intent === 'join')) ? 'class' : 'worlds')
   const [classSection, setClassSection] = useState<ClassSection>('students')
@@ -268,7 +270,7 @@ export function ClassroomPanel({ intent, getDocument, onOpenWorld, onJoinWorld, 
     {error && <p className="classroom-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
     {notice && <p className="classroom-notice" role="status"><CircleCheck size={18} aria-hidden="true" /><span>{notice}</span></p>}
     {!auth
-      ? <EntryView mode={loginMode} busy={busy} fieldErrors={fieldErrors} onModeChange={changeMode} onSubmit={authenticate} onGoogle={startGoogle} onResolveClass={resolveClass} />
+      ? <EntryView mode={loginMode} busy={busy} fieldErrors={fieldErrors} invitedClassCode={invitedClassCode} onModeChange={changeMode} onSubmit={authenticate} onGoogle={startGoogle} onResolveClass={resolveClass} />
       : reset
         ? <PasswordResetView onSubmit={changePassword} />
         : <div className="classroom-account-body">

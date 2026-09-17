@@ -1206,15 +1206,20 @@ export default function BrickStudioApp({
   contentPolicy,
 }: BrickStudioAppProps = {}) {
   const readOnly = Boolean(publishedWorld)
-  const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(() => {
+  // Entry links carry `classroom=<intent>` and, for class invites, `classCode=`. Both are consumed
+  // once here so neither lingers in the address bar; the code is handed to the panel as a prop.
+  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string }>(() => {
     const url = new URL(window.location.href)
-    if (!url.searchParams.has('classroom')) return null
+    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode')) return { intent: null }
     // Consume the entry intent even when it is unknown so a mistyped link never lingers in the address bar.
-    const intent = parseClassroomEntryIntent(url.search)
+    const intent = url.searchParams.has('classroom') ? parseClassroomEntryIntent(url.search) : null
+    const classCode = url.searchParams.get('classCode')?.trim().slice(0, 40) || undefined
     url.searchParams.delete('classroom')
+    url.searchParams.delete('classCode')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
-    return intent
+    return { intent, classCode }
   })
+  const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(classroomEntry.intent)
   const classroomAuth = useSyncExternalStore(browserClassroomClient.subscribe, browserClassroomClient.getSession)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
   const localStorageBlocked = useLocalStorageHealth(!readOnly && !livePolicy && !cloud.world)
@@ -1552,6 +1557,7 @@ export default function BrickStudioApp({
       {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {classroomIntent && <ClassroomPanel
         intent={classroomIntent}
+        invitedClassCode={classroomEntry.classCode}
         getDocument={() => useBrickStore.getState().getDocumentSnapshot()}
         onClose={closeClassroom}
         beforeWorldMutation={cloud.flush}

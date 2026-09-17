@@ -22,7 +22,7 @@ vi.mock('../classroom/useClassroomWorld', () => ({ useClassroomWorld: () => clou
 vi.mock('./BrickStudioScene', () => ({ default: () => <div /> }))
 vi.mock('./PartThumbnail', () => ({ PartThumbnail: () => <span /> }))
 vi.mock('../classroom/ClassroomPanel', () => ({
-  ClassroomPanel: ({ intent }: { intent: string }) => <div role="dialog" aria-label={`Classroom ${intent}`} />,
+  ClassroomPanel: ({ intent, invitedClassCode }: { intent: string; invitedClassCode?: string }) => <div role="dialog" aria-label={`Classroom ${intent}`} data-class-code={invitedClassCode ?? ''} />,
 }))
 
 beforeEach(() => {
@@ -124,6 +124,23 @@ describe('studio navigation and save context', () => {
     expect(screen.queryByRole('dialog', { name: /^Classroom/ })).not.toBeInTheDocument()
     expect(window.location.pathname).toBe('/build')
     expect(window.location.search).toBe('?utm_source=poster')
+  })
+
+  it('strips an invite class code from the address bar and still prefills the panel with it', () => {
+    window.history.replaceState(null, '', '/build?classroom=signin&classCode=CLASS-456&utm_source=poster')
+    render(<BrickStudioApp />)
+    expect(screen.getByRole('dialog', { name: 'Classroom signin' })).toHaveAttribute('data-class-code', 'CLASS-456')
+    expect(window.location.search).toBe('?utm_source=poster')
+  })
+
+  it('keeps a class code from a link without an intent for a panel opened from the menu', () => {
+    window.history.replaceState(null, '', '/build?classCode=CLASS-456')
+    render(<BrickStudioApp />)
+    expect(screen.queryByRole('dialog', { name: /^Classroom/ })).not.toBeInTheDocument()
+    expect(window.location.search).toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'World menu' }))
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Studio actions' })).getByRole('menuitem', { name: /My Class/ }))
+    expect(screen.getByRole('dialog', { name: 'Classroom signin' })).toHaveAttribute('data-class-code', 'CLASS-456')
   })
 
   it('does not report an account save for a connected or offline shared world', () => {
