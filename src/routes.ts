@@ -46,6 +46,12 @@ export function resolveAppRoute(
     return { route: 'build', canonicalPath: `${BUILD_PATH}${search}${hash}` }
   }
   if (/^\/welcome\/?$/.test(pathname)) return { route: 'landing', canonicalPath: `/${search}${hash}` }
+  // Printed and projected invites say "<host>/join": open the editor's join intent, keeping any classCode.
+  if (/^\/join\/?$/.test(pathname)) {
+    const params = new URLSearchParams(search)
+    if (!params.has('classroom')) params.set('classroom', 'join')
+    return { route: 'build', canonicalPath: `${BUILD_PATH}?${params.toString()}${hash}` }
+  }
   if (pathname === '/') return { route: 'landing' }
   return { route: 'not-found' }
 }

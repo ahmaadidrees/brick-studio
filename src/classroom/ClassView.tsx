@@ -16,19 +16,21 @@ type ShellProps = {
   teacher: boolean
   busy: boolean
   section: ClassSection
+  /** Teachers arriving for class time see the invite link and QR expanded without a click. */
+  inviteExpanded?: boolean
   onClassChange: (id: string) => void
   onSectionChange: (section: ClassSection) => void
   children: React.ReactNode
 }
 
 /** Board 05 right / 13 / 14: class picker plus the teacher's Students · Shared worlds · Class settings switch. */
-export function ClassShell({ classes, classId, teacher, busy, section, onClassChange, onSectionChange, children }: ShellProps) {
+export function ClassShell({ classes, classId, teacher, busy, section, inviteExpanded = false, onClassChange, onSectionChange, children }: ShellProps) {
   const currentClass = classes.find(item => item.id === classId)
   return <section aria-label="My Class" className="classroom-section">
     <div className="classroom-class-navigation">
       {classes.length > 0 && <SelectInput label="Class" id="classroom-class-picker" className="classroom-class-select" value={classId} disabled={busy} onChange={event => onClassChange(event.target.value)}>{classes.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</SelectInput>}
       {!classes.length && <EmptyState title={teacher ? 'Start your first class' : 'No class yet'} message={teacher ? 'Create a class, then give students its enrollment code.' : 'Your account is not in a class right now. Ask your teacher for help.'} />}
-      {teacher && currentClass && <ClassInvite classroom={currentClass} />}
+      {teacher && currentClass && <ClassInvite classroom={currentClass} defaultOpen={inviteExpanded} />}
       {teacher && currentClass && <SegmentedControl<ClassSection>
         label="Class sections"
         fullWidth

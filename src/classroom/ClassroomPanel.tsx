@@ -52,6 +52,8 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
   const [tab, setTab] = useState<'worlds' | 'class'>((intent === 'teacher' && auth?.user.role !== 'student') || intent === 'class' || (auth?.user.role === 'student' && (intent === 'signin' || intent === 'join')) ? 'class' : 'worlds')
   const [classSection, setClassSection] = useState<ClassSection>('students')
+  /** A teacher arriving for class time (teacher/class intent, or signing in here) lands on Students with the invite open. */
+  const [inviteExpanded, setInviteExpanded] = useState(auth?.user.role === 'teacher' && (intent === 'class' || intent === 'teacher'))
   const [loginMode, setLoginMode] = useState<EntryMode>(initialLoginMode(intent))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -148,7 +150,7 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
     void run(async () => {
       const next = await client.authenticate(mode, data)
       rememberClass(next)
-      if (next.user.role === 'teacher' && intent !== 'save' && intent !== 'worlds') setTab('class')
+      if (next.user.role === 'teacher' && intent !== 'save' && intent !== 'worlds') { setTab('class'); setClassSection('students'); setInviteExpanded(true) }
       if (next.user.role === 'student' && (intent === 'signin' || intent === 'join' || intent === 'class')) setTab('class')
     })
   }
@@ -293,7 +295,7 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
                 ? <WorldControls world={selectedWorld} teacher={teacher} members={members} availableStudents={availableStudents} checkpoints={checkpoints} busy={busy} headingRef={detailHeading} onBack={() => setSelectedWorld(null)} onRemoveMember={member => removeMember(selectedWorld, member)} onAddMember={userId => addMember(selectedWorld, userId)} onRestore={id => restore(selectedWorld, id)} />
                 : tab === 'worlds'
                   ? <WorldsView worlds={personalWorlds} busy={busy} showSave={showSave} saveTitle={saveTitle} saveDuplicate={personalWorlds.some(world => sameTitle(world.title, saveTitle))} onToggleSave={() => setShowSave(value => !value)} onSaveTitleChange={setSaveTitle} onSave={saveBuild} onBackToBuilding={onClose} onOpen={openWorld} onRename={setRenameWorld} onDuplicate={duplicateWorld} onManage={inspectWorld} />
-                  : <ClassShell classes={classes} classId={classId} teacher={teacher} busy={busy} section={classSection} onClassChange={setClassId} onSectionChange={setClassSection}>
+                  : <ClassShell classes={classes} classId={classId} teacher={teacher} busy={busy} section={classSection} inviteExpanded={inviteExpanded} onClassChange={setClassId} onSectionChange={setClassSection}>
                     {teacher && (!currentClass || classSection === 'settings') && <ClassSettings currentClass={currentClass} busy={busy} newClassName={newClassName} onNewClassName={setNewClassName} onCreateClass={createClass} onToggleEnrollment={() => currentClass && patchClass({ enrollmentOpen: !currentClass.enrollmentOpen }, currentClass.enrollmentOpen ? 'Enrollment is closed. Existing accounts still work.' : 'Enrollment is open.')} onRotateCode={() => patchClass({ rotateCode: true }, 'New enrollment code ready. The returning sign-in code did not change.')} onToggleCollaboration={() => currentClass && patchClass({ collaborationOpen: !currentClass.collaborationOpen }, currentClass.collaborationOpen ? 'Collaboration is closed. Saved worlds are preserved.' : 'Collaboration is open.')} />}
                     {teacher && currentClass && classSection === 'students' && <RosterSection currentClass={currentClass} students={students} loading={studentsLoading} search={studentSearch} busy={busy} onSearch={setStudentSearch} onManage={(student, focus) => { studentFocus.current = focus ?? null; setEditingStudent(student) }} onViewCodes={() => setClassSection('settings')} />}
                     {currentClass && (!teacher || classSection === 'worlds') && <SharedWorldsSection currentClass={currentClass} teacher={teacher} worlds={worlds.filter(world => world.classId === classId && world.kind !== 'personal')} busy={busy} onCreate={createShared} onJoin={joinWorld} onManage={teacher ? inspectWorld : undefined} />}

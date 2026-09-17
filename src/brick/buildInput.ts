@@ -209,6 +209,29 @@ export function shouldSuppressBuildTouchClick(state: BuildGestureState, now: num
   return now <= state.suppressClickUntil
 }
 
+export type EmptySpaceTap = {
+  /** The pointer travelled past its drag threshold: an orbit, pan or box select, never a tap. */
+  dragged: boolean
+  /** Brick under the pointer when it lifted; null means plate, scenery or sky. */
+  hitBrickId: string | null
+  /** Shift/Ctrl/Cmd held: the click is building a multi-selection, not ending one. */
+  additive: boolean
+  /** Explicit box-select mode owns its own taps. */
+  selectionMode: boolean
+  /** A loaded brush or a move in flight: taps position and place, never deselect. */
+  hasDraft: boolean
+  selectedCount: number
+}
+
+/**
+ * A plain tap on empty space (plate, scenery or sky) while bricks are selected
+ * clears the selection. The same rule serves the mouse click and the touch tap;
+ * each caller supplies its own drag verdict so the existing thresholds decide.
+ */
+export function shouldClearSelectionOnEmptyTap(tap: EmptySpaceTap) {
+  return !tap.dragged && tap.hitBrickId === null && !tap.additive && !tap.selectionMode && !tap.hasDraft && tap.selectedCount > 0
+}
+
 export type ScreenBox = { left: number; top: number; right: number; bottom: number }
 
 /** A null box means the ghost projected off-screen, which can never be grabbed. */

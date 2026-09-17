@@ -10,6 +10,7 @@ import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW } from '
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS } from './parts'
 import { EXPLORE_MAX_PITCH } from './touchInput'
 import type { BrickInstance } from './types'
+import { browserClassroomClient, type ClassroomAuth } from '../classroom/client'
 
 vi.mock('./BrickStudioScene', () => ({
   default: () => <div data-testid="brick-scene" />,
@@ -330,6 +331,22 @@ describe('Brick Studio responsive controls', () => {
     render(<BrickStudioApp />)
 
     expect(screen.queryByRole('note', { name: 'Keyboard and mouse shortcuts' })).not.toBeInTheDocument()
+  })
+
+  it('tells desktop builders what Esc does for an armed brush and for a selection', () => {
+    vi.stubGlobal('innerWidth', 1440)
+    stubPointerModality(false)
+    render(<BrickStudioApp />)
+    const shortcuts = () => screen.getByRole('note', { name: 'Keyboard and mouse shortcuts' })
+    expect(useBrickStore.getState().draft).not.toBeNull()
+    expect(shortcuts()).toHaveTextContent('Esc puts the brick down')
+
+    act(() => { useBrickStore.setState({ bricks: [{ ...brick }], draft: null }); useBrickStore.getState().selectBrick('brick-a') })
+    expect(shortcuts()).toHaveTextContent('Esc clears the selection')
+    expect(shortcuts()).not.toHaveTextContent('puts the brick down')
+
+    act(() => useBrickStore.getState().clearSelection())
+    expect(shortcuts()).not.toHaveTextContent('Esc')
   })
 
   it('keeps keyboard guidance on a fine-pointer desktop and uses pointer-neutral initial status', () => {
@@ -1067,5 +1084,30 @@ describe('refined world navigation', () => {
     expect(screen.queryByRole('dialog', { name: 'Character Studio' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Scene' }))
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Scene' })).toHaveAttribute('aria-selected', 'true'))
+  })
+})
+
+describe('header account button', () => {
+  const auth: ClassroomAuth = { user: { id: '00000000-0000-4000-8000-000000000002', username: 'ava.r', rosterName: 'Ava R.', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 3600 } }
+  afterEach(() => { browserClassroomClient.setSession(null) })
+
+  it('offers Sign in while signed out', () => {
+    render(<BrickStudioApp />)
+    expect(screen.getByRole('button', { name: 'Open sign in' })).toHaveTextContent('Sign in')
+    expect(screen.queryByRole('button', { name: /Account:/ })).not.toBeInTheDocument()
+  })
+
+  it('shows the signed-in roster name and keeps My Class in the accessible name', () => {
+    browserClassroomClient.setSession(auth)
+    render(<BrickStudioApp />)
+    const account = screen.getByRole('button', { name: 'Account: Ava R. — open My Class' })
+    expect(account).toHaveTextContent('Ava R.')
+    expect(screen.queryByRole('button', { name: 'Open sign in' })).not.toBeInTheDocument()
+  })
+
+  it('falls back to the username when the roster name is blank, teachers included', () => {
+    browserClassroomClient.setSession({ ...auth, user: { ...auth.user, rosterName: '', username: 'ms.idrees', role: 'teacher' } })
+    render(<BrickStudioApp />)
+    expect(screen.getByRole('button', { name: 'Account: ms.idrees — open My Class' })).toHaveTextContent('ms.idrees')
   })
 })

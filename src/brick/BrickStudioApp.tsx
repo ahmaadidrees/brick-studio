@@ -329,6 +329,7 @@ type HeaderProps = StudioDocumentCommands & {
   onOpenMyWorlds?: () => void
   onOpenMyClass?: () => void
   onRenameWorld?: (title: string) => Promise<void>
+  /** Signed-in display name (roster name, else username); undefined when signed out. */
   accountLabel?: string
   worldTitle?: string
   saveStatus: StudioSaveStatus
@@ -378,7 +379,9 @@ function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld
         <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
         <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
-        {onOpenMyClass && <Button variant="quiet" className="brick-header-account" aria-label={accountLabel ? 'Open My Class' : 'Open sign in'} onClick={onOpenMyClass}>{accountLabel ? 'My Class' : 'Sign in'}</Button>}
+        {onOpenMyClass && (accountLabel
+          ? <Button variant="quiet" className="brick-header-tool brick-header-account" icon={<UserRound size={17} />} title={`${accountLabel} — open My Class`} aria-label={`Account: ${accountLabel} — open My Class`} onClick={onOpenMyClass}>{accountLabel}</Button>
+          : <Button variant="quiet" className="brick-header-account" aria-label="Open sign in" onClick={onOpenMyClass}>Sign in</Button>)}
         <StudioSettings />
       </div>
       <nav className="brick-mode-switch" aria-label="Studio mode">
@@ -1165,8 +1168,12 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
 
 function ShortcutBar() {
   const coarsePointer = useCoarsePointerPreference()
+  const hasDraft = useBrickStore((state) => state.draft !== null)
+  const hasSelection = useBrickStore((state) => state.selectedIds.length > 0)
   if (coarsePointer) return null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} aria-hidden="true" />Drag selection to move · Right-drag to orbit</span></div>
+  // Esc mirrors the keyboard handler: an armed brush cancels first, otherwise the selection clears.
+  const escapeHint = hasDraft ? 'puts the brick down' : hasSelection ? 'clears the selection' : null
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} aria-hidden="true" />Drag selection to move · Right-drag to orbit</span>{escapeHint && <span><kbd>Esc</kbd> {escapeHint}</span>}</div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands & {
@@ -1496,7 +1503,7 @@ export default function BrickStudioApp({
           onOpenMyWorlds={() => setClassroomIntent('worlds')}
           onOpenMyClass={() => setClassroomIntent(classroomAuth ? 'class' : 'signin')}
           onRenameWorld={renameWorld}
-          accountLabel={classroomAuth?.user.username}
+          accountLabel={classroomAuth ? classroomAuth.user.rosterName || classroomAuth.user.username : undefined}
           worldTitle={cloud.world?.title}
           saveStatus={saveStatus}
           livePolicy={livePolicy}
