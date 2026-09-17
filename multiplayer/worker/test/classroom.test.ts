@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBrickStudioDocument } from '@brick-studio/core';
-import { ClassroomService, handleClassroomRequest, normalizeUsername, revalidateClassroomWorldAccess, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
+import { ClassroomHttpError, ClassroomService, handleClassroomRequest, normalizeUsername, revalidateClassroomWorldAccess, rosterDisplayName, usernameSuggestions, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
+type Row = Record<string, any>;
 
 const studentId = '11111111-1111-4111-8111-111111111111';
 const teacherId = '22222222-2222-4222-8222-222222222222';
@@ -225,5 +226,176 @@ describe('class entry lookup', () => {
     expect(await (await call())!.json()).toEqual({ name: 'STEM class', canEnroll: false });
     rows.mockResolvedValue([]);
     expect((await call())!.status).toBe(404);
+  });
+});
+
+describe('username-only sign-in', () => {
+  const call = (path: string, data: unknown) => handleClassroomRequest(new Request(`https://worker.test/classroom/auth/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }), env);
+  const authed = { session: { accessToken: token, refreshToken: 'refresh', expiresIn: 3600 }, user: { id: studentId, username: 'Builder', rosterName: 'Sam', role: 'student' as const, resetRequired: false }, classes: [] };
+  function signIn(matches: Row[], loginResult: 'ok' | 'wrong' = 'ok') {
+    const rate = vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const rows = vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async (table, filter = '') => {
+      if (table === 'students' && filter.includes('username_key=eq.')) return matches.filter(row => !filter.includes('class_id=eq.') || filter.includes(`class_id=eq.${row.class_id}`));
+      if (table === 'students') return matches.slice(0, 1);
+      if (table === 'class_codes') return filter.includes('OTHER') ? [{ class_id: worldId, can_enroll: false }] : [{ class_id: classId, can_enroll: false }];
+      return [];
+    });
+    const login = vi.spyOn(ClassroomService.prototype, 'login').mockImplementation(async () => {
+      if (loginResult === 'wrong') throw new ClassroomHttpError(401, 'invalid_credentials', 'Check your sign-in details and try again.');
+      return { access_token: token, refresh_token: 'refresh', expires_in: 3600 };
+    });
+    vi.spyOn(ClassroomService.prototype, 'registerSession').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'authResult').mockResolvedValue(authed);
+    return { rate, rows, login, buckets: () => rate.mock.calls.filter(([key]) => key.startsWith('login:')).map(([key]) => key) };
+  }
+  it('signs a student in by username alone without touching class codes', async () => {
+    const { rows, login, buckets } = signIn([student]);
+    const response = await call('login', { username: 'Builder', password: 'orbit7' });
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toMatchObject({ user: { username: 'Builder' } });
+    expect(login).toHaveBeenCalledWith(expect.stringContaining(studentId), 'orbit7');
+    expect(rows.mock.calls.some(([table]) => table === 'class_codes')).toBe(false);
+    expect(rows.mock.calls.find(([table, filter]) => table === 'students' && filter?.includes('username_key'))?.[1]).toBe('username_key=eq.builder&limit=2');
+    expect(buckets()).toEqual(['login:builder']);
+  });
+  it('answers an unknown username and a wrong password the same way from the same bucket', async () => {
+    const missing = signIn([]);
+    const unknown = await call('login', { username: 'Builder', password: 'orbit7' });
+    expect(unknown?.status).toBe(401);
+    expect(await unknown?.json()).toMatchObject({ code: 'invalid_credentials' });
+    expect(missing.login).not.toHaveBeenCalled();
+    expect(missing.buckets()).toEqual(['login:builder']);
+    vi.restoreAllMocks();
+    const wrong = signIn([student], 'wrong');
+    const rejected = await call('login', { username: 'builder', password: 'not-it' });
+    expect(rejected?.status).toBe(401);
+    expect(await rejected?.json()).toMatchObject({ code: 'invalid_credentials' });
+    expect(wrong.buckets()).toEqual(['login:builder']);
+  });
+  it('asks for the class code only when two rows share a username, then honors it', async () => {
+    const { login, buckets } = signIn([student, { ...student, user_id: teacherId, class_id: worldId }]);
+    const ambiguous = await call('login', { username: 'Builder', password: 'orbit7' });
+    expect(ambiguous?.status).toBe(409);
+    expect(await ambiguous?.json()).toMatchObject({ code: 'class_code_required' });
+    expect(login).not.toHaveBeenCalled();
+    const scoped = await call('login', { username: 'Builder', password: 'orbit7', classCode: 'other' });
+    expect(scoped?.status).toBe(200);
+    expect(login).toHaveBeenCalledWith(expect.stringContaining(teacherId), 'orbit7');
+    expect(buckets()).toEqual(['login:builder', `login:${worldId}:builder`]);
+  });
+  it('rejects a username taken in any class at registration and offers free variants checked against the database', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const request = vi.spyOn(ClassroomService.prototype, 'request');
+    const rows = vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async (table, filter = '') => {
+      if (table === 'class_codes') return [{ class_id: classId, can_enroll: true }];
+      if (table === 'classes') return [{ id: classId, enrollment_open: true }];
+      if (table === 'students' && filter.startsWith('username_key=eq.builder&')) return [{ user_id: teacherId }];
+      if (table === 'students' && filter.startsWith('username_key=in.')) return [{ username_key: 'builder2' }, { username_key: 'builder7' }];
+      return [];
+    });
+    const response = await call('register', { classCode: 'ROOM42', username: 'Builder', password: 'remember-this', rosterName: 'Sam Rivera' });
+    expect(response?.status).toBe(409);
+    const payload = await response?.json() as Row;
+    expect(payload).toMatchObject({ code: 'username_taken' });
+    expect(payload.suggestions).toEqual(['Builder3', 'Builder4', 'Builder5']);
+    expect(rows.mock.calls.find(([table, filter]) => table === 'students' && filter?.startsWith('username_key=eq.'))?.[1]).not.toContain('class_id');
+    expect(request).not.toHaveBeenCalled();
+  });
+  it('keeps suggestions inside the username length limit', async () => {
+    const rows = vi.spyOn(ClassroomService.prototype, 'rows').mockResolvedValue([]);
+    const suggestions = await usernameSuggestions(new ClassroomService(env), 'a'.repeat(24));
+    expect(suggestions).toEqual([`${'a'.repeat(23)}2`, `${'a'.repeat(23)}3`, `${'a'.repeat(23)}7`]);
+    expect(rows).toHaveBeenCalledTimes(1);
+  });
+  it('rejects a teacher renaming a student to a username used in another class', async () => {
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue({ id: teacherId, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, authVersion: 0, sessionId: sid, token });
+    vi.spyOn(ClassroomService.prototype, 'rpc').mockResolvedValue(true);
+    vi.spyOn(ClassroomService.prototype, 'remove').mockResolvedValue(null);
+    const patch = vi.spyOn(ClassroomService.prototype, 'patch');
+    vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async (table, filter = '') => {
+      if (table === 'classes') return [{ id: classId, teacher_id: teacherId }];
+      if (table === 'students' && filter.startsWith('username_key=eq.nova&')) return filter.includes(`user_id=neq.${studentId}`) ? [{ user_id: worldId }] : [];
+      if (table === 'students' && filter.startsWith('username_key=in.')) return [];
+      if (table === 'students') return [{ ...student, username_key: 'builder' }];
+      return [];
+    });
+    const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/classes/${classId}/students/${studentId}`, { method: 'PATCH', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ username: 'Nova' }) }), env);
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toMatchObject({ code: 'username_taken', suggestions: ['Nova2', 'Nova3', 'Nova7'] });
+    expect(patch).not.toHaveBeenCalled();
+  });
+});
+
+describe('join-screen roster', () => {
+  const cls = { id: classId, teacher_id: teacherId, name: 'STEM class', login_code: 'ROOM42', enrollment_open: true, collaboration_open: true, show_names_on_join: true };
+  const roster = [
+    { user_id: studentId, username: 'sky_builder', roster_name: 'Zed Quinn', suspended: false },
+    { user_id: teacherId, username: 'ava', roster_name: '  Ava   Rose Lee ', suspended: false },
+    { user_id: worldId, username: 'solo', roster_name: 'Cher', suspended: false },
+  ];
+  const call = (body: unknown) => handleClassroomRequest(new Request('https://worker.test/classroom/auth/roster', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), env);
+  function backend(classRow: Row | null, students = roster) {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    return vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async (table, filter = '') => {
+      if (table === 'class_codes') return classRow ? [{ class_id: classId, can_enroll: false }] : [];
+      if (table === 'classes') return classRow ? [classRow] : [];
+      if (table === 'students') return students.filter(row => !filter.includes('suspended=eq.false') || !row.suspended).map(row => ({ username: row.username, roster_name: row.roster_name }));
+      return [];
+    });
+  }
+  it('lists first names with last initials, sorted, without roster names, ids or credentials', async () => {
+    const rows = backend(cls);
+    const response = await call({ classCode: 'room42' });
+    expect(response?.status).toBe(200);
+    const text = await response!.text();
+    expect(JSON.parse(text)).toEqual({ name: 'STEM class', canEnroll: false, showNames: true, students: [
+      { username: 'ava', displayName: 'Ava L.' }, { username: 'solo', displayName: 'Cher' }, { username: 'sky_builder', displayName: 'Zed Q.' },
+    ] });
+    expect(text).not.toMatch(/roster_name|rosterName|user_id|Quinn|Rose|password|auth_version/);
+    expect(rows.mock.calls.find(([table]) => table === 'students')?.[1]).toContain('suspended=eq.false');
+    expect(rows.mock.calls.find(([table]) => table === 'students')?.[1]).toContain('select=username,roster_name');
+    expect(rows.mock.calls.find(([table]) => table === 'class_codes')?.[1]).toBe('code=eq.ROOM42&limit=1');
+  });
+  it('excludes suspended students', async () => {
+    backend(cls, [...roster, { user_id: sid, username: 'paused', roster_name: 'Pat Paused', suspended: true }]);
+    expect(((await (await call({ classCode: 'ROOM42' }))!.json()) as Row).students.map((row: Row) => row.username)).toEqual(['ava', 'solo', 'sky_builder']);
+  });
+  it('returns an empty list when the teacher hides names', async () => {
+    const rows = backend({ ...cls, show_names_on_join: false });
+    expect(await (await call({ classCode: 'ROOM42' }))!.json()).toEqual({ name: 'STEM class', canEnroll: false, showNames: false, students: [] });
+    expect(rows.mock.calls.some(([table]) => table === 'students')).toBe(false);
+  });
+  it('rejects unknown codes and malformed input without a roster query', async () => {
+    const rows = backend(null);
+    const unknown = await call({ classCode: 'NOPE' });
+    expect(unknown?.status).toBe(404);
+    expect(await unknown?.json()).toMatchObject({ code: 'class_not_found' });
+    for (const body of [{}, { classCode: 42 }, { classCode: '' }, { classCode: 'x'.repeat(41) }]) {
+      const malformed = await call(body);
+      expect(malformed?.status).toBe(400);
+      expect(await malformed?.json()).toMatchObject({ code: 'invalid_input' });
+    }
+    expect(rows.mock.calls.some(([table]) => table === 'students')).toBe(false);
+  });
+  it('formats display names from any roster spelling', () => {
+    expect(rosterDisplayName('Ava Rose')).toBe('Ava R.');
+    expect(rosterDisplayName('ava')).toBe('ava');
+    expect(rosterDisplayName('  Ava   Rose   Lee ')).toBe('Ava L.');
+    expect(rosterDisplayName('Ava de la Cruz')).toBe('Ava C.');
+    expect(rosterDisplayName('')).toBe('');
+  });
+  it('lets the owning teacher toggle names on the join screen and reports it on the class', async () => {
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue({ id: teacherId, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, authVersion: 0, sessionId: sid, token });
+    vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table => table === 'classes' ? [cls] : []);
+    const patch = vi.spyOn(ClassroomService.prototype, 'patch').mockImplementation(async (_table, _filter, data) => [{ ...cls, ...data }]);
+    vi.spyOn(ClassroomService.prototype, 'insert').mockResolvedValue([]);
+    const patchClass = (body: unknown, bearer = token) => handleClassroomRequest(new Request(`https://worker.test/classroom/classes/${classId}`, { method: 'PATCH', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }), env);
+    const response = await patchClass({ showNamesOnJoin: false });
+    expect(response?.status).toBe(200);
+    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false } });
+    expect(patch).toHaveBeenCalledWith('classes', `id=eq.${classId}&teacher_id=eq.${teacherId}`, { show_names_on_join: false });
+    expect((await patchClass({ showNamesOnJoin: 'no' }))?.status).toBe(400);
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(caller);
+    expect((await patchClass({ showNamesOnJoin: false }))?.status).toBe(404);
   });
 });
