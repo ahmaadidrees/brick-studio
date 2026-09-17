@@ -9,7 +9,8 @@ for (const key of required) assert(process.env[key], `Missing ${key}`);
 assert(process.env.CLASSROOM_TEST_ALLOW_FIXTURES === 'yes', 'Explicit fixture creation flag required');
 const base = process.env.CLASSROOM_TEST_API.replace(/\/$/, '');
 const run = `qa_${Date.now().toString(36)}`;
-const password = () => `Qa!${randomBytes(20).toString('hex')}`;
+const shortPasswords = process.env.CLASSROOM_TEST_PASSWORD_LENGTH === '6';
+const password = () => shortPasswords ? `Q${randomBytes(4).toString('hex').slice(0, 5)}` : `Qa!${randomBytes(20).toString('hex')}`;
 const results = [];
 async function request(path, { method = 'GET', body, token, statuses = [200] } = {}) {
   const response = await fetch(`${base}/classroom/${path}`, {
@@ -41,6 +42,9 @@ let currentPassword = initialPassword;
 let failure;
 const fixtureUsers = new Set();
 try {
+await check('new student passwords reject short and obvious values', async () => {
+  for (const bad of ['short', '123456', run]) await request('auth/register', { method: 'POST', body: { classCode: classroom.code, username: run, password: bad, rosterName: 'Denied fixture' }, statuses: [400] });
+});
 await check('class-code registration and stable account identity', async () => {
   student = (await request('auth/register', { method: 'POST', body: { classCode: classroom.code, username: run, password: initialPassword, rosterName: 'Release test fixture' }, statuses: [201] })).data;
   fixtureUsers.add(student.user.id);
@@ -129,9 +133,10 @@ await check('teacher rename preserves world ownership', async () => {
   assert.deepEqual(reopened.document, world.document);
   await assertAuthoritativeWorld(reopened);
 });
-await check('close enrollment denies new account creation', async () => {
+await check('close enrollment denies new account creation but preserves returning login with the enrollment code', async () => {
   await request(`classes/${classroom.id}`, { method: 'PATCH', token: teacherToken, body: { enrollmentOpen: false } });
   await request('auth/register', { method: 'POST', body: { classCode: classroom.code, username: `${run}_c`, password: password(), rosterName: 'Denied fixture' }, statuses: [403, 404] });
+  await request('auth/login', { method: 'POST', body: { classCode: classroom.code, username: `${run}_new`, password: currentPassword } });
 });
  } catch (error) {
   failure = error;
@@ -148,7 +153,7 @@ await check('close enrollment denies new account creation', async () => {
     request(`classes/${classroom.id}`, { method: 'PATCH', token: teacherToken, body: { enrollmentOpen: false, collaborationOpen: false } }),
   ]);
   const cleanupFailures = rosterCleanupFailure + cleanup.filter(result => result.status === 'rejected').length;
-  const report = { run, api: base, completedAt: new Date().toISOString(), classId: classroom.id, worldId: world?.id, checks: results, passed: !failure && !cleanupFailures, cleanupFailures, limitations: ['No browser interactions or real students tested', 'Live sockets and classroom-NAT throughput require separate verification'] };
+  const report = { run, studentPasswordLength: shortPasswords ? 6 : 43, api: base, completedAt: new Date().toISOString(), classId: classroom.id, worldId: world?.id, checks: results, passed: !failure && !cleanupFailures, cleanupFailures, limitations: ['No browser interactions or real students tested', 'Live sockets and classroom-NAT throughput require separate verification'] };
   if (process.env.CLASSROOM_TEST_REPORT) await writeFile(process.env.CLASSROOM_TEST_REPORT, JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
   if (cleanupFailures) failure ??= new Error(`Fixture access shutdown failed for ${cleanupFailures} operations; inspect class ${classroom.id}`);

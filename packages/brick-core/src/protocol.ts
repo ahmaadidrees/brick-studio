@@ -1,3 +1,4 @@
+import type { CustomPartDefinition } from './types'
 import type { BrickStudioDocument } from './brickDocument'
 import type { BrickInstance, PlayerProfile } from './types'
 
@@ -37,6 +38,7 @@ type VersionedMessage = { v: typeof LIVE_PROTOCOL_VERSION }
 
 export type LiveClientMessage = VersionedMessage & (
   | { type: 'commands'; opId: string; commands: LiveBrickCommand[] }
+  | { type: 'addCustomPart'; opId: string; part: CustomPartDefinition }
   | { type: 'replaceDocument'; opId: string; expectedRevision: number; document: BrickStudioDocument }
   | { type: 'resync' }
   | { type: 'setMode'; mode: LiveWorldMode }

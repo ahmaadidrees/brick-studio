@@ -1,0 +1,26 @@
+{
+  "run": "qa_mu1yy17y",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-15T01:04:13.302Z",
+  "classId": "0f3e7cd7-b67a-48bf-bccd-8bfc8054255a",
+  "worldId": "8e75a916-d630-4c40-adc9-fa433d7153d0",
+  "checks": [
+    "class-code registration and stable account identity",
+    "durable private world creation",
+    "private world denies another student and teacher",
+    "concurrent saves yield one winner and one revision conflict",
+    "fresh login reloads authoritative saved document",
+    "checkpoint restore persists and rejects a stale revision",
+    "direct browser-role database access denied",
+    "teacher reset invalidates old bearer and refresh",
+    "temporary login requires a new password before world access",
+    "teacher rename preserves world ownership",
+    "close enrollment denies new account creation"
+  ],
+  "passed": true,
+  "cleanupFailures": 0,
+  "limitations": [
+    "No browser interactions or real students tested",
+    "Live sockets and classroom-NAT throughput require separate verification"
+  ]
+}

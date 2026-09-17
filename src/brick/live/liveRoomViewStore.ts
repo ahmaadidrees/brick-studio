@@ -49,6 +49,7 @@ export function createLiveRoomViewStore(controller: LiveRoomController) {
             color: livePlayerColor(pose.playerId),
             characterId: resolveCharacterId(player.profile.characterId),
             palette: player.profile.palette,
+            appearance: player.profile.appearance,
             position: [pose.x, pose.y, pose.z],
             facingYaw: pose.yaw,
             horizontalSpeed: pose.moving ? 1 : 0,

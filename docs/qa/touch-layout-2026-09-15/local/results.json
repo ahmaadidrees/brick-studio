@@ -1,0 +1,140 @@
+{
+  "origin": "http://127.0.0.1:5234",
+  "at": "2026-09-15T15:57:22.598Z",
+  "results": [
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "compact": true,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    },
+    {
+      "name": "narrow",
+      "width": 320,
+      "height": 568,
+      "touch": true,
+      "compact": true,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    },
+    {
+      "name": "landscape-phone",
+      "width": 844,
+      "height": 390,
+      "touch": true,
+      "compact": true,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    },
+    {
+      "name": "portrait-tablet",
+      "width": 768,
+      "height": 1024,
+      "touch": true,
+      "compact": true,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    },
+    {
+      "name": "tablet",
+      "width": 1024,
+      "height": 768,
+      "touch": true,
+      "compact": false,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    },
+    {
+      "name": "large-tablet",
+      "width": 1180,
+      "height": 820,
+      "touch": true,
+      "compact": false,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    },
+    {
+      "name": "desktop",
+      "width": 1366,
+      "height": 768,
+      "touch": false,
+      "compact": false,
+      "checks": [
+        "guest placement",
+        "selection",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings and focus restoration",
+        "palette",
+        "character",
+        "explore and return",
+        "control bounds"
+      ]
+    }
+  ],
+  "errors": []
+}

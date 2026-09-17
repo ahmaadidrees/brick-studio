@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ClassroomService, handleClassroomRequest, normalizeUsername, revalidateClassroomWorldAccess, type Caller, type ClassroomEnv } from '../src/classroom';
+import { createBrickStudioDocument } from '@brick-studio/core';
+import { ClassroomService, handleClassroomRequest, normalizeUsername, revalidateClassroomWorldAccess, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
 
 const studentId = '11111111-1111-4111-8111-111111111111';
 const teacherId = '22222222-2222-4222-8222-222222222222';
@@ -70,6 +71,24 @@ describe('classroom account and authorization boundaries', () => {
     await expect(service.worldFor({ ...caller, id: teacherId, role: 'teacher' }, worldId)).rejects.toMatchObject({ status: 404 });
     await expect(service.worldFor(caller, worldId, true)).rejects.toMatchObject({ code: 'private_world' });
   });
+  it('reports a provider password-policy rejection on admin user writes as invalid_password, not a sign-in failure', async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.startsWith('/auth/v1/admin/users')) return new Response(JSON.stringify({ code: 'weak_password', msg: 'Password should be at least 8 characters.' }), { status: 422 });
+      return new Response(JSON.stringify({ error: 'invalid_grant', error_description: 'Invalid login credentials' }), { status: 400 });
+    });
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    // Registration and teacher-issued temporary passwords both write through the admin API.
+    await expect(service.request('/auth/v1/admin/users', { method: 'POST' })).rejects.toMatchObject({ status: 400, code: 'invalid_password', message: 'Password should be at least 8 characters.' });
+    await expect(service.request(`/auth/v1/admin/users/${studentId}`, { method: 'PUT' })).rejects.toMatchObject({ status: 400, code: 'invalid_password', message: 'Password should be at least 8 characters.' });
+    // Sign-in keeps the deliberately vague credential error.
+    await expect(service.request('/auth/v1/token?grant_type=password', { method: 'POST' })).rejects.toMatchObject({ status: 401, code: 'invalid_credentials', message: 'Check your sign-in details and try again.' });
+  });
+  it('falls back to a generic password message when the provider gives none', async () => {
+    const fetcher = vi.fn(async () => new Response('', { status: 400 }));
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    await expect(service.request('/auth/v1/admin/users', { method: 'POST' })).rejects.toMatchObject({ code: 'invalid_password', message: 'The account service did not accept that password. Try a longer one.' });
+  });
   it('fails clearly when backend configuration is unavailable', async () => {
     const response = await handleClassroomRequest(new Request('https://worker.test/classroom/me'), {});
     expect(response?.status).toBe(503);
@@ -115,5 +134,96 @@ describe('classroom account and authorization boundaries', () => {
     const { service, fetcher } = serviceWith({ '/rest/v1/rpc/brick_acquire_credential_lock': true });
     await expect(service.withCredentialLock(studentId, async () => { throw new Error('network timeout'); })).rejects.toThrow('network timeout');
     expect(fetcher.mock.calls).toHaveLength(1);
+  });
+});
+
+describe('live access-change kinds', () => {
+  const checkpointId = '66666666-6666-4666-8666-666666666666';
+  const cls = { id: classId, teacher_id: teacherId, name: 'Period 1', login_code: 'PERIOD1', enrollment_open: true, collaboration_open: true };
+  const world = { id: worldId, class_id: classId, kind: 'group', owner_id: teacherId, title: 'Bridge', revision: 4, document: createBrickStudioDocument([]) };
+  const teacher: Caller = { id: teacherId, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, authVersion: 0, sessionId: sid, token };
+  function routesAs(role: Caller) {
+    const events: ClassroomAccessChange[] = [];
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(role);
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table =>
+      table === 'worlds' ? [world] : table === 'classes' ? [cls] : table === 'students' ? [student]
+        : table === 'checkpoints' ? [{ id: checkpointId, world_id: worldId, document: world.document, title: 'Bridge v1' }] : []);
+    vi.spyOn(ClassroomService.prototype, 'rpc').mockImplementation(async (name, input) =>
+      name === 'commit_world' ? { ...world, revision: world.revision + 1, title: input.p_title ?? world.title } : true);
+    vi.spyOn(ClassroomService.prototype, 'patch').mockImplementation(async (table, _filter, data) => [{ ...(table === 'classes' ? cls : student), ...data }]);
+    vi.spyOn(ClassroomService.prototype, 'insert').mockResolvedValue([]);
+    vi.spyOn(ClassroomService.prototype, 'remove').mockResolvedValue(null);
+    vi.spyOn(ClassroomService.prototype, 'request').mockImplementation(async path =>
+      path.startsWith('/auth/v1/token') ? { access_token: token, refresh_token: 'refresh', expires_in: 3600 } : path === '/auth/v1/user' ? { id: role.id } : {});
+    const call = async (method: string, path: string, body?: unknown) => {
+      const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/${path}`, {
+        method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
+      }), env, { onAccessChanged: async event => { events.push(event); } });
+      expect(response?.status, `${method} ${path}`).toBe(200);
+      return events.at(-1);
+    };
+    return call;
+  }
+  it('classifies teacher world and class mutations by their live effect', async () => {
+    const call = routesAs(teacher);
+    expect(await call('PATCH', `worlds/${worldId}`, { title: 'Bridge challenge' })).toEqual({ worldId, classId, reason: 'world_saved', change: 'metadata' });
+    expect(await call('PUT', `worlds/${worldId}`, { expectedRevision: 4, document: world.document })).toEqual({ worldId, classId, reason: 'world_saved', change: 'metadata' });
+    expect(await call('POST', `worlds/${worldId}/restore`, { checkpointId, expectedRevision: 4 })).toEqual({ worldId, classId, reason: 'world_restored', change: 'metadata' });
+    expect(await call('PATCH', `classes/${classId}`, { collaborationOpen: false })).toEqual({ classId, reason: 'class_updated', change: 'membership' });
+    expect(await call('POST', `worlds/${worldId}/members`, { userId: studentId })).toEqual({ worldId, classId, userId: undefined, reason: 'members_updated', change: 'membership' });
+    expect(await call('DELETE', `worlds/${worldId}/members/${studentId}`)).toEqual({ worldId, classId, userId: studentId, reason: 'members_updated', change: 'revocation' });
+    expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { rosterName: 'Sam R.' })).toEqual({ classId, userId: studentId, reason: 'student_updated', change: 'membership' });
+    expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { suspended: true })).toEqual({ classId, userId: studentId, reason: 'student_updated', change: 'revocation' });
+    expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { temporaryPassword: 'temporary-pass' })).toEqual({ classId, userId: studentId, reason: 'password_reset', change: 'revocation' });
+  });
+  it('classifies a student signing out as a revocation of that session only', async () => {
+    const call = routesAs(caller);
+    expect(await call('POST', 'auth/logout', {})).toEqual({ userId: studentId, classId, reason: 'logout', change: 'revocation' });
+  });
+});
+
+describe('student password and alias boundaries', () => {
+  const call = (path: string, data: unknown) => handleClassroomRequest(new Request(`https://worker.test/classroom/auth/${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }), env);
+  it('rejects short/common/username passwords before provider registration', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const request = vi.spyOn(ClassroomService.prototype, 'request');
+    for (const password of ['short', '123456', 'BUILDER']) {
+      const response = await call('register', { classCode: 'ROOM42', username: 'Builder', password });
+      expect(response?.status).toBe(400);
+    }
+    expect(request).not.toHaveBeenCalled();
+  });
+  it('keeps teacher passwords at eight characters', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const login = vi.spyOn(ClassroomService.prototype, 'login');
+    const response = await call('teacher-login', { email: 'teacher@example.invalid', password: 'orbit7' });
+    expect(response?.status).toBe(400); expect(login).not.toHaveBeenCalled();
+  });
+  it('accepts six characters for student login, retains old weak passwords, and groups aliases in one rate bucket', async () => {
+    const rate = vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table => table === 'class_codes' ? [{ class_id: classId, can_enroll: false }] : table === 'classes' ? [{ id: classId }] : table === 'students' ? [student] : []);
+    const login = vi.spyOn(ClassroomService.prototype, 'login').mockResolvedValue({ access_token: token, refresh_token: 'refresh', expires_in: 3600 });
+    vi.spyOn(ClassroomService.prototype, 'registerSession').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'authResult').mockResolvedValue({ session: { accessToken: token, refreshToken: 'refresh', expiresIn: 3600 }, user: { id: studentId, username: 'Builder', rosterName: 'Sam', role: 'student', resetRequired: false }, classes: [] });
+    for (const [code, password] of [['ALIAS1', 'orbit7'], ['ALIAS2', 'password']]) {
+      expect((await call('login', { classCode: code, username: 'Builder', password }))?.status).toBe(200);
+    }
+    expect(login).toHaveBeenCalledWith(expect.any(String), 'orbit7');
+    const buckets = rate.mock.calls.filter(([key]) => key.startsWith('login:'));
+    expect(buckets).toEqual([[`login:${classId}:builder`, 12, 300], [`login:${classId}:builder`, 12, 300]]);
+  });
+});
+
+describe('class entry lookup', () => {
+  it('returns only class name and enrollment availability and keeps old codes usable', async () => {
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    const rows = vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table => table === 'class_codes' ? [{ class_id: classId, can_enroll: true }] : [{ id: classId, name: 'STEM class', enrollment_open: true, teacher_id: teacherId }]);
+    const call = () => handleClassroomRequest(new Request('https://worker.test/classroom/auth/class', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ classCode: 'CLASS123' }) }), env);
+    expect(await (await call())!.json()).toEqual({ name: 'STEM class', canEnroll: true });
+    rows.mockImplementation(async table => table === 'class_codes' ? [{ class_id: classId, can_enroll: false }] : [{ name: 'STEM class', enrollment_open: true }]);
+    expect(await (await call())!.json()).toEqual({ name: 'STEM class', canEnroll: false });
+    rows.mockResolvedValue([]);
+    expect((await call())!.status).toBe(404);
   });
 });

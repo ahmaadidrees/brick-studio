@@ -37,3 +37,19 @@ it('propagates full-document restoration and undo to parent metadata without a f
   expect(result.current).toEqual({ environmentId: 'sky-island', customParts: [custom] })
   expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(cloud)
 })
+
+it('flushes a pending guest edit on pagehide before the debounce runs', () => {
+  renderHook(() => useBrickStudioDocuments())
+  act(() => { useBrickStore.getState().placeDraft() })
+  expect(useBrickStore.getState().bricks).toHaveLength(1)
+  expect(localStorage.getItem('brick-studio.current-project.v1')).toBeNull()
+  act(() => { window.dispatchEvent(new Event('pagehide')) })
+  const saved = JSON.parse(localStorage.getItem('brick-studio.current-project.v1')!)
+  expect(saved.bricks).toEqual(useBrickStore.getState().bricks)
+})
+
+it('never writes an account or live document through the disabled guest lifecycle', () => {
+  renderHook(() => useBrickStudioDocuments({}, false))
+  act(() => { useBrickStore.getState().placeDraft(); window.dispatchEvent(new Event('pagehide')) })
+  expect(localStorage.getItem('brick-studio.current-project.v1')).toBeNull()
+})

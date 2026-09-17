@@ -1,0 +1,8 @@
+# Cloudflare Worker secrets for local `wrangler dev`. Copy to .dev.vars (git-ignored).
+# In production set each one with `wrangler secret put <NAME>`. Names only; never commit values.
+# Descriptions: docs/classroom/API.md ("Environment and migration").
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_ANON_KEY=
+BRICK_TEACHER_IDS=
+CLASSROOM_TICKET_SECRET=

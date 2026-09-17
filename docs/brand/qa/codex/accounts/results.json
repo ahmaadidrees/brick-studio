@@ -1,0 +1,187 @@
+{
+  "run": "qa_brand_browser_mu1z4e5s",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "origin": "http://127.0.0.1:5215",
+  "completedAt": "2026-09-15T01:16:01.312Z",
+  "checks": [
+    "Real browser teacher email sign-in against staging",
+    "Reuse only the exact earlier browser fixture class and student",
+    "Synthetic student signs in through actual browser",
+    "Import a nonempty expanded build and save it to student account in browser",
+    "Personal Manage opens checkpoint recovery on hosted API",
+    "Cold context sign-in reopens the saved document with DB equality",
+    "Teacher roster and class access show synthetic student",
+    "Teacher UI changes synthetic username and sets temporary password",
+    "Student temporary login forces password replacement and preserves saved world"
+  ],
+  "timings": [
+    {
+      "path": "/classroom/auth/teacher-login",
+      "status": 200,
+      "ms": 1231
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 239
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 500,
+      "ms": 731
+    },
+    {
+      "path": "/classroom/classes/fixture/students",
+      "status": 200,
+      "ms": 169
+    },
+    {
+      "path": "/classroom/auth/login",
+      "status": 200,
+      "ms": 1016
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 329
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 504
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 224
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 394
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 201,
+      "ms": 179
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 143
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 344
+    },
+    {
+      "path": "/classroom/worlds/fixture/checkpoints",
+      "status": 200,
+      "ms": 338
+    },
+    {
+      "path": "/classroom/auth/login",
+      "status": 200,
+      "ms": 563
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 208
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 210
+    },
+    {
+      "path": "/classroom/worlds/fixture",
+      "status": 200,
+      "ms": 193
+    },
+    {
+      "path": "/classroom/worlds/fixture",
+      "status": 200,
+      "ms": 248
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 272
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 346
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 228
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 500,
+      "ms": 787
+    },
+    {
+      "path": "/classroom/classes/fixture/students",
+      "status": 200,
+      "ms": 171
+    },
+    {
+      "path": "/classroom/classes/fixture/students",
+      "status": 200,
+      "ms": 117
+    },
+    {
+      "path": "/classroom/classes/fixture/students/fixture",
+      "status": 200,
+      "ms": 529
+    },
+    {
+      "path": "/classroom/classes/fixture/students",
+      "status": 200,
+      "ms": 111
+    },
+    {
+      "path": "/classroom/auth/login",
+      "status": 200,
+      "ms": 533
+    },
+    {
+      "path": "/classroom/auth/change-password",
+      "status": 200,
+      "ms": 940
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 117
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 331
+    }
+  ],
+  "passed": true,
+  "failure": null,
+  "cleanup": [
+    "synthetic student suspended",
+    "fixture class enrollment and collaboration closed"
+  ],
+  "fixture": {
+    "classId": "a48cca23-33d8-4980-9450-519af9d1b4e5",
+    "worldId": "8bb59a9e-a240-40de-b32d-a092a8c1ba9b"
+  },
+  "limitations": [
+    "Teacher Google OAuth not exercised; dedicated teacher email/password used",
+    "No physical Chromebook or real student account used"
+  ],
+  "scope": "Nine successful browser interaction/persistence checks, followed by healthy teacher-world-list recheck. Root owns whole-release certification.",
+  "releaseReady": null,
+  "openFindings": [],
+  "resolvedBy": "teacher-world-list-recheck.json: real browser teacher/world/class requests all200 at24classes on worker01b230d6"
+}

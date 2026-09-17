@@ -1,0 +1,664 @@
+{
+  "origin": "http://127.0.0.1:5192",
+  "generatedAt": "2026-09-14T23:02:15.847Z",
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768,
+      "docOverflow": 0,
+      "landingOverflow": 0,
+      "innerWidth": 1366,
+      "heroCtaVisibleOnLoad": true,
+      "heroSignin": false,
+      "headerSignin": true
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "docOverflow": 0,
+      "landingOverflow": 0,
+      "innerWidth": 1024,
+      "heroCtaVisibleOnLoad": true,
+      "heroSignin": false,
+      "headerSignin": true
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "docOverflow": 0,
+      "landingOverflow": 0,
+      "innerWidth": 768,
+      "heroCtaVisibleOnLoad": true,
+      "heroSignin": false,
+      "headerSignin": true
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "docOverflow": 0,
+      "landingOverflow": 0,
+      "innerWidth": 390,
+      "heroCtaVisibleOnLoad": true,
+      "heroSignin": true,
+      "headerSignin": false
+    },
+    {
+      "width": 320,
+      "height": 740,
+      "docOverflow": 0,
+      "landingOverflow": 0,
+      "innerWidth": 320,
+      "heroCtaVisibleOnLoad": true,
+      "heroSignin": true,
+      "headerSignin": false
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "docOverflow": 0,
+      "landingOverflow": 0,
+      "innerWidth": 844,
+      "heroCtaVisibleOnLoad": true,
+      "heroSignin": false,
+      "headerSignin": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "sign in placement @1366x768",
+      "ok": true,
+      "detail": "{\"heroSignin\":false,\"headerSignin\":true}"
+    },
+    {
+      "name": "no horizontal overflow @1366x768",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":1366}"
+    },
+    {
+      "name": "sign in placement @1024x768",
+      "ok": true,
+      "detail": "{\"heroSignin\":false,\"headerSignin\":true}"
+    },
+    {
+      "name": "no horizontal overflow @1024x768",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":1024}"
+    },
+    {
+      "name": "sign in placement @768x1024",
+      "ok": true,
+      "detail": "{\"heroSignin\":false,\"headerSignin\":true}"
+    },
+    {
+      "name": "no horizontal overflow @768x1024",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":768}"
+    },
+    {
+      "name": "sign in placement @390x844",
+      "ok": true,
+      "detail": "{\"heroSignin\":true,\"headerSignin\":false}"
+    },
+    {
+      "name": "no horizontal overflow @390x844",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":390}"
+    },
+    {
+      "name": "sign in placement @320x740",
+      "ok": true,
+      "detail": "{\"heroSignin\":true,\"headerSignin\":false}"
+    },
+    {
+      "name": "no horizontal overflow @320x740",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":320}"
+    },
+    {
+      "name": "sign in placement @844x390",
+      "ok": true,
+      "detail": "{\"heroSignin\":false,\"headerSignin\":true}"
+    },
+    {
+      "name": "no horizontal overflow @844x390",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":844}"
+    },
+    {
+      "name": "anchor \"How it works\" scrolls #how-it-works into view",
+      "ok": true,
+      "detail": "hash=#how-it-works"
+    },
+    {
+      "name": "anchor \"For teachers\" scrolls #teachers into view",
+      "ok": true,
+      "detail": "hash=#teachers"
+    },
+    {
+      "name": "anchor \"See classroom tools\" scrolls #teachers into view",
+      "ok": true,
+      "detail": "hash=#teachers"
+    },
+    {
+      "name": "anchor \"Privacy\" scrolls #privacy into view",
+      "ok": true,
+      "detail": "hash=#privacy"
+    },
+    {
+      "name": "anchor \"Help\" scrolls #help into view",
+      "ok": true,
+      "detail": "hash=#help"
+    },
+    {
+      "name": "deep link /#teachers lands on its section",
+      "ok": true,
+      "detail": "top=15.6875"
+    },
+    {
+      "name": "deep link /#teachers stays on the landing route",
+      "ok": true,
+      "detail": "/"
+    },
+    {
+      "name": "deep link /#help lands on its section",
+      "ok": true,
+      "detail": "top=15.640625"
+    },
+    {
+      "name": "deep link /#help stays on the landing route",
+      "ok": true,
+      "detail": "/"
+    },
+    {
+      "name": "deep link /#how-it-works lands on its section",
+      "ok": true,
+      "detail": "top=15.59375"
+    },
+    {
+      "name": "deep link /#how-it-works stays on the landing route",
+      "ok": true,
+      "detail": "/"
+    },
+    {
+      "name": "keyboard order starts with skip link, nav, then hero CTAs",
+      "ok": true,
+      "detail": "Skip to content | How it works | For teachers | Sign in | Join a class | Start building | Join a class | Start building | See classroom tools"
+    },
+    {
+      "name": "focus ring is visible on keyboard focus",
+      "ok": true,
+      "detail": "[\"solid 3px\",\"solid 3px\",\"solid 3px\",\"solid 3px\",\"solid 3px\",\"solid 3px\",\"solid 3px\",\"solid 3px\",\"solid 3px\"]"
+    },
+    {
+      "name": "skip link becomes visible on focus",
+      "ok": true,
+      "detail": "{\"x\":10,\"y\":10,\"width\":147.546875,\"height\":46}"
+    },
+    {
+      "name": "skip link targets main",
+      "ok": true,
+      "detail": "#_r_0_"
+    },
+    {
+      "name": "mobile menu button visible at 390px",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "nav hidden before opening",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "nav visible after opening",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "all nav/CTA targets are at least 44px tall",
+      "ok": true,
+      "detail": "[[101,44],[340,44],[340,44],[340,44],[340,44],[358,52],[358,52],[320,52],[326,52],[358,52],[358,52],[172,52]]"
+    },
+    {
+      "name": "board 16 hero order: headline, art, buttons, Sign in",
+      "ok": true,
+      "detail": "[369.34375,409.84375,642.640625,758.640625]"
+    },
+    {
+      "name": "Escape closes the menu and returns focus",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "reduced motion disables drift animation",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "name": "reduced motion uses instant scroll",
+      "ok": true,
+      "detail": "auto"
+    },
+    {
+      "name": "200% zoom: no horizontal overflow",
+      "ok": true,
+      "detail": "{\"docOverflow\":0,\"landingOverflow\":0,\"innerWidth\":683}"
+    },
+    {
+      "name": "first visit shows Start building",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "real local draft shows Continue building",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing never mutates the draft or adds storage keys",
+      "ok": true,
+      "detail": "[] -> [\"brick-studio.current-project.v1\"]"
+    },
+    {
+      "name": "landing route loads no editor/physics/GLB chunks",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "hero media ≤ 250 KB",
+      "ok": true,
+      "detail": "5186 B"
+    },
+    {
+      "name": "initial media ≤ 600 KB",
+      "ok": true,
+      "detail": "15558 B"
+    }
+  ],
+  "transfer": {
+    "html": {
+      "bytes": 2593,
+      "gzip": 999,
+      "count": 1
+    },
+    "script": {
+      "bytes": 7927664,
+      "gzip": 1400169,
+      "count": 35
+    },
+    "stylesheet": {
+      "bytes": 0,
+      "gzip": 0,
+      "count": 0
+    },
+    "font": {
+      "bytes": 0,
+      "gzip": 0,
+      "count": 0
+    },
+    "other": {
+      "bytes": 609,
+      "gzip": 313,
+      "count": 1
+    },
+    "media": {
+      "bytes": 15558,
+      "gzip": 5994,
+      "count": 6,
+      "missing": []
+    },
+    "hero": {
+      "bytes": 5186,
+      "gzip": 1998,
+      "count": 2
+    },
+    "total": {
+      "bytes": 7946424,
+      "gzip": 1407475,
+      "count": 43
+    },
+    "entries": [
+      {
+        "url": "/",
+        "status": 200,
+        "type": "document",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/src/main.tsx?t=1789426932359",
+        "status": 200,
+        "type": "script",
+        "bytes": 11032,
+        "gzip": 4357
+      },
+      {
+        "url": "/@vite/client",
+        "status": 200,
+        "type": "script",
+        "bytes": 209791,
+        "gzip": 41979
+      },
+      {
+        "url": "/@react-refresh",
+        "status": 200,
+        "type": "script",
+        "bytes": 111894,
+        "gzip": 23891
+      },
+      {
+        "url": "/node_modules/.vite/deps/react.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 130087,
+        "gzip": 35365
+      },
+      {
+        "url": "/src/routes.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 6379,
+        "gzip": 3041
+      },
+      {
+        "url": "/src/styles.css",
+        "status": 200,
+        "type": "script",
+        "bytes": 6562,
+        "gzip": 2426
+      },
+      {
+        "url": "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 34713,
+        "gzip": 11408
+      },
+      {
+        "url": "/src/brick/errorLog.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 8063,
+        "gzip": 3516
+      },
+      {
+        "url": "/src/brick/AppErrorBoundary.tsx",
+        "status": 200,
+        "type": "script",
+        "bytes": 29651,
+        "gzip": 10205
+      },
+      {
+        "url": "/node_modules/vite/dist/client/env.mjs",
+        "status": 200,
+        "type": "script",
+        "bytes": 3478,
+        "gzip": 1297
+      },
+      {
+        "url": "/node_modules/.vite/deps/rolldown-runtime-B-1-B7_t.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 7626,
+        "gzip": 2517
+      },
+      {
+        "url": "/src/brick/brickDocument.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 326,
+        "gzip": 291
+      },
+      {
+        "url": "/src/brick/documentPersistence.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 16007,
+        "gzip": 5803
+      },
+      {
+        "url": "/src/brick/recoverySnapshot.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 7483,
+        "gzip": 3591
+      },
+      {
+        "url": "/src/brick/app-error-boundary.css",
+        "status": 200,
+        "type": "script",
+        "bytes": 4103,
+        "gzip": 1412
+      },
+      {
+        "url": "/packages/brick-core/src/brickDocument.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 34843,
+        "gzip": 10979
+      },
+      {
+        "url": "/src/brick/liveAutosaveGuard.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 2503,
+        "gzip": 1388
+      },
+      {
+        "url": "/src/brick/localProjectKeys.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 807,
+        "gzip": 555
+      },
+      {
+        "url": "/packages/brick-core/src/parts.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 54855,
+        "gzip": 15897
+      },
+      {
+        "url": "/packages/brick-core/src/buildPlate.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 1674,
+        "gzip": 985
+      },
+      {
+        "url": "/packages/brick-core/src/brickRules.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 11733,
+        "gzip": 4776
+      },
+      {
+        "url": "/node_modules/.vite/deps/react-dom_client.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 2785348,
+        "gzip": 570046
+      },
+      {
+        "url": "/node_modules/.vite/deps/react-dom.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 48822,
+        "gzip": 13657
+      },
+      {
+        "url": "/node_modules/.vite/deps/scheduler-CKa81V9t.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 34440,
+        "gzip": 9982
+      },
+      {
+        "url": "/src/brick/landing/LandingPage.tsx?t=1789426932359",
+        "status": 200,
+        "type": "script",
+        "bytes": 102436,
+        "gzip": 27146
+      },
+      {
+        "url": "/src/brand/index.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 707,
+        "gzip": 485
+      },
+      {
+        "url": "/src/ui/Button.tsx",
+        "status": 200,
+        "type": "script",
+        "bytes": 9241,
+        "gzip": 3927
+      },
+      {
+        "url": "/src/brick/landing/landing.css",
+        "status": 200,
+        "type": "script",
+        "bytes": 21512,
+        "gzip": 4771
+      },
+      {
+        "url": "/src/brick/landing/LandingArt.tsx",
+        "status": 200,
+        "type": "script",
+        "bytes": 68883,
+        "gzip": 16556
+      },
+      {
+        "url": "/src/brand/brand.ts",
+        "status": 200,
+        "type": "script",
+        "bytes": 5244,
+        "gzip": 2952
+      },
+      {
+        "url": "/src/brand/BrickMark.tsx",
+        "status": 200,
+        "type": "script",
+        "bytes": 15506,
+        "gzip": 6099
+      },
+      {
+        "url": "/src/ui/ui.css",
+        "status": 200,
+        "type": "script",
+        "bytes": 12284,
+        "gzip": 2763
+      },
+      {
+        "url": "/src/brand/Wordmark.tsx",
+        "status": 200,
+        "type": "script",
+        "bytes": 8791,
+        "gzip": 3957
+      },
+      {
+        "url": "/src/brand/brand.css",
+        "status": 200,
+        "type": "script",
+        "bytes": 1188,
+        "gzip": 553
+      },
+      {
+        "url": "/node_modules/.vite/deps/lucide-react.js?v=67a02cad",
+        "status": 200,
+        "type": "script",
+        "bytes": 4119652,
+        "gzip": 551596
+      },
+      {
+        "url": "/brand/media/hero-800.avif",
+        "status": 200,
+        "type": "image",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/brand/media/hero-800.avif",
+        "status": 200,
+        "type": "image",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/brand/media/scene-toy-room-400.avif",
+        "status": 200,
+        "type": "image",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/brand/media/scene-brick-valley-400.avif",
+        "status": 200,
+        "type": "image",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/brand/media/scene-sky-island-400.avif",
+        "status": 200,
+        "type": "image",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/brand/media/character-nova-400.avif",
+        "status": 200,
+        "type": "image",
+        "bytes": 2593,
+        "gzip": 999
+      },
+      {
+        "url": "/favicon.svg",
+        "status": 200,
+        "type": "other",
+        "bytes": 609,
+        "gzip": 313
+      }
+    ]
+  },
+  "errors": [],
+  "keyboardOrder": [
+    {
+      "name": "Skip to content",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "How it works",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "For teachers",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "Sign in",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "Join a class",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "Start building",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "Join a class",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "Start building",
+      "outline": "solid 3px"
+    },
+    {
+      "name": "See classroom tools",
+      "outline": "solid 3px"
+    }
+  ],
+  "ok": true
+}

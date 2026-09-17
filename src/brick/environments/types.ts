@@ -3,6 +3,7 @@ import type { EnvironmentDescriptor } from '../registries'
 import type { BrickMode } from '../types'
 
 export type EnvironmentRenderProps = {
+  plateSize?: number
   compact: boolean
   reducedMotion: boolean
   mode?: BrickMode

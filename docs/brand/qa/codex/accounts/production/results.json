@@ -1,0 +1,126 @@
+{
+  "checkedAt": "2026-09-15T01:27:31.304Z",
+  "origin": "https://brickgineers.com",
+  "oldHost": "https://virtual-legos.vercel.app",
+  "api": "https://brick-studio-multiplayer.brick-studio-race-worker.workers.dev",
+  "workerVersion": "c5da8fcb-a7c3-4deb-aec9-32b7bf1698fb",
+  "workerSource": "dfe3496",
+  "checks": [
+    "New-domain teacher login and both account lists return200",
+    "Student saves a nonempty128plate world on brickgineers.com",
+    "new-domain cold login opens and downloads exact authoritative saved document",
+    "old-host cold login opens and downloads exact authoritative saved document"
+  ],
+  "responses": [
+    {
+      "path": "/classroom/auth/teacher-login",
+      "status": 200,
+      "ms": 582
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 210
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 316
+    },
+    {
+      "path": "/classroom/classes/fixture/students",
+      "status": 200,
+      "ms": 137
+    },
+    {
+      "path": "/classroom/auth/login",
+      "status": 200,
+      "ms": 469
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 142
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 195
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 169
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 170
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 201,
+      "ms": 171
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 133
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 181
+    },
+    {
+      "path": "/classroom/auth/login",
+      "status": 200,
+      "ms": 545
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 132
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 160
+    },
+    {
+      "path": "/classroom/worlds/fixture",
+      "status": 200,
+      "ms": 108
+    },
+    {
+      "path": "/classroom/auth/login",
+      "status": 200,
+      "ms": 494
+    },
+    {
+      "path": "/classroom/classes",
+      "status": 200,
+      "ms": 115
+    },
+    {
+      "path": "/classroom/worlds",
+      "status": 200,
+      "ms": 173
+    },
+    {
+      "path": "/classroom/worlds/fixture",
+      "status": 200,
+      "ms": 124
+    }
+  ],
+  "passed": true,
+  "failure": null,
+  "cleanup": [
+    "Authoritative DB confirms exact synthetic student suspended and existing class still closed"
+  ],
+  "fixture": {
+    "classId": "a48cca23-33d8-4980-9450-519af9d1b4e5",
+    "worldId": "7c10d8c6-eb7c-4196-93b8-450ba4db4b88"
+  },
+  "scope": "Production browser teacher/student account proof using only an existing dedicated synthetic fixture; no new class or account created"
+}

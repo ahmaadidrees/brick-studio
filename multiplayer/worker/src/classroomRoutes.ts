@@ -1,4 +1,5 @@
 import { LIVE_MAX_DOCUMENT_BYTES } from "@brick-studio/core";
+import { isApplicationOrigin } from "./applicationOrigin";
 import { worldCreationLimiterKey } from "./worldCreationLimiter";
 import { readClassroomBody, ClassroomBodyError } from "./classroom/readBody";
 import type { Env } from "./index";
@@ -27,20 +28,9 @@ const json = (value: unknown, status = 200) =>
     },
   });
 export function allowedOrigin(origin: string | null): boolean {
-  if (!origin) return true;
-  try {
-    const u = new URL(origin);
-    return (
-      u.origin === origin &&
-      ((u.protocol === "https:" &&
-        (u.hostname === "virtual-legos.vercel.app" ||
-          /^virtual-legos-[a-z0-9-]+\.vercel\.app$/.test(u.hostname))) ||
-        (["localhost", "127.0.0.1"].includes(u.hostname) &&
-          ["http:", "https:"].includes(u.protocol)))
-    );
-  } catch {
-    return false;
-  }
+  // Non-browser clients may omit Origin; the literal opaque origin "null" is
+  // rejected. Authentication/capability checks still apply without the header.
+  return origin === null || isApplicationOrigin(origin);
 }
 function outgoing(response: Response, origin: string | null) {
   if (response.status === 101) return response;
@@ -74,7 +64,7 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ userId: event.userId, reason: event.reason }),
+          body: JSON.stringify({ userId: event.userId, reason: event.reason, change: event.change }),
         },
       );
       if (!r.ok && r.status !== 404)
@@ -263,7 +253,7 @@ export async function handleReleaseRequest(
         const { kind } = await kindResponse.json<{ kind: string }>();
         if (kind === "guest") {
           const internal = new URL(`https://world.internal/worlds/${route[1]}${route[2] ?? ""}`);
-          for (const key of ["playerId", "ownerToken", "reconnectToken", "profile"]) {
+          for (const key of ["playerId", "ownerToken", "reconnectToken", "profile", "documentSchema"]) {
             const value = url.searchParams.get(key);
             if (value !== null) internal.searchParams.set(key, value);
           }
@@ -301,6 +291,7 @@ export async function handleReleaseRequest(
         internal = new URL(
           `https://world.internal/worlds/${id.replaceAll("-", "")}${route[2] ?? ""}`,
         );
+      if (url.searchParams.get("documentSchema") === "3") internal.searchParams.set("documentSchema", "3");
       const profile = url.searchParams.get("profile");
       if (profile) internal.searchParams.set("profile", profile);
       const trustedHeaders = new Headers();

@@ -12,7 +12,7 @@ describe('production content catalog', () => {
       'classic', 'toy-room', 'brick-valley', 'sky-island',
     ])
     expect(CHARACTER_DESCRIPTORS.map(({ id }) => id)).toEqual([
-      'classic', 'toy-figure', 'cc0-hero',
+      'classic', 'toy-figure', 'cc0-hero', 'pip', 'fern', 'nova',
     ])
   })
 

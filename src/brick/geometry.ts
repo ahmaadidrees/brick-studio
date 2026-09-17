@@ -126,7 +126,10 @@ export function createBrickGeometry(part: BrickPart, options: { cache?: boolean 
         const base = conePartBaseHeight(part)
         top = base + (height - base) * (1 - radialDistance / radius)
       }
-      const stud = new THREE.CylinderGeometry(STUD * 0.235, STUD * 0.235, STUD_HEIGHT, 16)
+      // Large footprints repeat thousands of tiny studs. Eight-sided studs retain
+      // the silhouette while avoiding the normal small-part tessellation cost.
+      const segments = part.width * part.depth > 256 ? 8 : 16
+      const stud = new THREE.CylinderGeometry(STUD * 0.235, STUD * 0.235, STUD_HEIGHT, segments)
       stud.translate(localX, top + STUD_HEIGHT / 2, localZ)
       geometries.push(stud)
     }

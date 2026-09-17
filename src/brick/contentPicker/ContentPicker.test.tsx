@@ -27,25 +27,61 @@ describe('ContentPicker', () => {
     const { container } = render(<ContentPicker {...baseProps} />)
 
     expect(screen.getByRole('region', { name: 'Scene & character' })).toBeInTheDocument()
-    expect(screen.getByRole('radiogroup', { name: 'Choose a scene' })).toBeInTheDocument()
+    expect(screen.getByRole('radiogroup', { name: 'Choose your scene' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Toy Room/ })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: /Brick Valley/ })).toHaveAttribute('tabindex', '-1')
     expect(screen.getByRole('radio', { name: /Toy Figure/ })).toHaveAttribute('aria-checked', 'true')
-    expect(container.querySelector('img, canvas, video')).toBeNull()
+    expect(container.querySelector('canvas, video')).toBeNull()
+    // Scene photos are lazy, decorative and sized to W7's 16:10 media; the SVG art stays until they load.
+    for (const img of container.querySelectorAll('img')) {
+      expect(img).toHaveAttribute('loading', 'lazy')
+      expect(img).toHaveAttribute('alt', '')
+    }
   })
 
-  it('gives every available world and character a distinct lightweight illustration', () => {
+  it('layers W7 scene media over each scene illustration with the exact contract paths and drops it on error', () => {
+    const { container } = render(<ContentPicker {...baseProps} />)
+    const picture = container.querySelector('[data-preview-key="environment:toy-room"] picture')!
+    expect(picture).not.toBeNull()
+    const sources = [...picture.querySelectorAll('source')].map((source) => [source.getAttribute('type'), source.getAttribute('srcset')])
+    expect(sources).toEqual([
+      ['image/avif', '/brand/media/scene-toy-room-400.avif 400w, /brand/media/scene-toy-room-800.avif 800w'],
+      ['image/webp', '/brand/media/scene-toy-room-400.webp 400w, /brand/media/scene-toy-room-800.webp 800w'],
+    ])
+    const img = picture.querySelector('img')!
+    expect(img).toHaveAttribute('src', '/brand/media/scene-toy-room-400.png')
+    expect(img).toHaveAttribute('srcset', '/brand/media/scene-toy-room-400.png 400w, /brand/media/scene-toy-room-800.png 800w')
+    expect(img).toHaveAttribute('width', '400')
+    expect(img).toHaveAttribute('height', '250')
+    expect(container.querySelectorAll('picture')).toHaveLength(3)
+    expect(container.querySelector('[data-preview-key="character:toy-figure"] picture')).toBeNull()
+
+    fireEvent.error(img)
+    expect(container.querySelector('[data-preview-key="environment:toy-room"] picture')).toBeNull()
+    expect(container.querySelector('[data-preview-key="environment:toy-room"] [data-artwork="toy-room"]')).not.toBeNull()
+  })
+
+  it('uses real runtime portraits for characters without adding preview canvases', () => {
     const { container } = render(<ContentPicker {...baseProps} />)
 
     expect([...container.querySelectorAll('[data-artwork]')].map((node) => node.getAttribute('data-artwork'))).toEqual([
       'toy-room',
       'brick-valley',
       'sky-island',
-      'toy-figure',
-      'robot-hero',
     ])
-    expect(container.querySelectorAll('svg')).toHaveLength(5)
-    expect(container.querySelector('img, canvas, video')).toBeNull()
+    expect(container.querySelectorAll('svg[data-artwork]')).toHaveLength(3)
+    expect(container.querySelector('[data-preview-key="character:toy-figure"] img')).toHaveAttribute('src', '/brand/characters/toy-figure-400.webp')
+    expect(container.querySelector('[data-preview-key="character:cc0-hero"] img')).toHaveAttribute('src', '/brand/characters/cc0-hero-400.webp')
+    expect(container.querySelector('canvas, video')).toBeNull()
+  })
+
+  it('keeps the character selectable with a neutral placeholder if its portrait fails', () => {
+    const onSelectCharacter = vi.fn()
+    const { container } = render(<ContentPicker {...baseProps} onSelectCharacter={onSelectCharacter} />)
+    fireEvent.error(container.querySelector('[data-preview-key="character:toy-figure"] img')!)
+    expect(container.querySelector('[data-preview-key="character:toy-figure"] [data-artwork="character-placeholder"]')).not.toBeNull()
+    fireEvent.click(screen.getByRole('radio', { name: /^Toy Figure/ }))
+    expect(onSelectCharacter).toHaveBeenCalledWith('toy-figure')
   })
 
   it('announces loading and unavailable previews and skips unavailable cards during selection', () => {

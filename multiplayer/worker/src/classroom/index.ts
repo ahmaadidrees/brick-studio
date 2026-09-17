@@ -1,4 +1,4 @@
-import { validateBrickStudioDocument } from '@brick-studio/core';
+import { studentPasswordError, validateBrickStudioDocument, type BrickStudioDocument } from '@brick-studio/core';
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 
@@ -9,7 +9,19 @@ export interface ClassroomEnv {
   /** Trusted existing Supabase user UUIDs, never student-controlled metadata. */
   BRICK_TEACHER_IDS?: string;
 }
-export type ClassroomAccessChange = { classId?: string; worldId?: string; userId?: string; reason: string };
+/**
+ * How a classroom mutation affects live sockets. The host Worker forwards it to
+ * every affected WorldRoom, which never infers it from `reason` alone.
+ * - `metadata`: the stored document/title/revision changed (rename, save, restore).
+ *   Nobody loses access; rooms reload from Postgres and broadcast a snapshot.
+ * - `membership`: who may be inside changed (member added, class settings, roster
+ *   edits). Rooms re-authorize connected sessions in place and close only those
+ *   now denied; an unavailable permission check closes them (fail closed).
+ * - `revocation`: the named session(s) lost access (logout, password change or
+ *   reset, suspension, member removal). Rooms close those sockets immediately.
+ */
+export type ClassroomAccessChangeKind = 'metadata' | 'membership' | 'revocation';
+export type ClassroomAccessChange = { classId?: string; worldId?: string; userId?: string; reason: string; change: ClassroomAccessChangeKind };
 export type ClassroomHandlerOptions = { onAccessChanged?: (event: ClassroomAccessChange) => Promise<void> };
 export type ClassroomSessionIdentity = { userId: string; sessionId: string; authVersion: number };
 type Row = Record<string, any>;
@@ -18,6 +30,11 @@ export class ClassroomHttpError extends Error {
 }
 const fail = (status: number, code: string, message: string): never => { throw new ClassroomHttpError(status, code, message); };
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+/** The provider's human-readable reason (GoTrue `msg`, `message` or `error_description`), bounded for display. */
+const providerMessage = (data: Row | null): string | undefined => {
+  const text = [data?.msg, data?.message, data?.error_description].find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  return text?.trim().slice(0, 200);
+};
 const uuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const cleanText = (value: unknown, label: string, max = 80): string => {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > max) fail(400, 'invalid_input', `${label} is required (up to ${max} characters).`);
@@ -28,8 +45,13 @@ export function normalizeUsername(value: unknown): string {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,23}$/.test(name)) fail(400, 'invalid_username', 'Use 3–24 letters, numbers, underscores or hyphens.');
   return name;
 }
-function password(value: unknown): string {
-  if (typeof value !== 'string' || value.length < 8 || value.length > 128) fail(400, 'invalid_password', 'Use a password with 8–128 characters.');
+function password(value: unknown, minimum = 8): string {
+  if (typeof value !== 'string' || value.length < minimum || value.length > 128) fail(400, 'invalid_password', `Use a password with ${minimum}–128 characters.`);
+  return value as string;
+}
+function newStudentPassword(value: unknown, username?: string): string {
+  const error = studentPasswordError(value, username);
+  if (error) fail(400, 'invalid_password', error);
   return value as string;
 }
 export function sessionId(token: string): string {
@@ -56,6 +78,9 @@ export class ClassroomService {
       if (data?.code === 'P0001' && ['brick_student_quota', 'brick_world_quota'].includes(data.message)) fail(409, 'quota_exceeded', data.message === 'brick_student_quota' ? 'This class has reached its student limit. Ask your teacher for help.' : 'You have reached the saved-world limit. Ask your teacher for help.');
       if (data?.code === '23514' && /brick_(world|checkpoint)_document_size/.test(data.message || '')) fail(413, 'too_large', 'This world exceeds the storage size limit. Your previous saved version is unchanged.');
       if (data?.code === '23505') fail(409, 'already_exists', 'That username or code is already in use.');
+      // Admin user writes (registration, temporary/reset passwords) carry no sign-in credentials: a 400/422 there is
+      // the provider's own password policy (e.g. a stricter minimum length) and must not read as a sign-in failure.
+      if (path.startsWith('/auth/v1/admin/') && (response.status === 400 || response.status === 422)) fail(400, 'invalid_password', providerMessage(data) ?? 'The account service did not accept that password. Try a longer one.');
       if (path.startsWith('/auth/') && (response.status === 400 || response.status === 401 || response.status === 422)) fail(401, 'invalid_credentials', 'Check your sign-in details and try again.');
       if (path.startsWith('/auth/') && !path.includes('/admin/') && response.status === 403) fail(401, 'session_revoked', 'Your session ended. Please sign in again.');
       if (response.status === 429) fail(429, 'rate_limited', 'Too many attempts. Please wait a few minutes.');
@@ -80,11 +105,11 @@ export class ClassroomService {
     if (teachers.includes(authUser.id)) {
       const sid = sessionId(token);
       const registered = (await this.rows('teacher_sessions', `session_id=eq.${sid}&user_id=eq.${authUser.id}&revoked=eq.false&limit=1`))[0];
-      if (!registered) fail(401, 'session_revoked', 'Please sign in through Brick Studio again.');
+      if (!registered) fail(401, 'session_revoked', 'Please sign in through Brickgineers again.');
       return { id: authUser.id, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, token, authVersion: 0, sessionId: sid };
     }
     const student = (await this.rows('students', `user_id=eq.${authUser.id}&limit=1`))[0];
-    if (!student) fail(403, 'not_enrolled', 'This account is not enrolled in Brick Studio.');
+    if (!student) fail(403, 'not_enrolled', 'This account is not enrolled in Brickgineers.');
     const sid = sessionId(token);
     const registered = (await this.rows('sessions', `session_id=eq.${sid}&user_id=eq.${authUser.id}&limit=1`))[0];
     if (!registered || registered.auth_version !== student.auth_version) fail(401, 'session_revoked', 'Your account changed. Please sign in again.');
@@ -114,9 +139,38 @@ export class ClassroomService {
     }
     return world;
   }
+  classesFor(caller: Caller): Promise<Row[]> {
+    return this.rows('classes', caller.role === 'teacher' ? `teacher_id=eq.${caller.id}&order=created_at.asc` : `id=eq.${caller.classId}`);
+  }
+  /** IDs must come from classesFor: service-role queries do not enforce the caller's access. */
+  private async rowsForClasses(table: string, classIds: string[], filter: string): Promise<Row[]> {
+    const result: Row[] = [];
+    // Bound URL length while keeping ordinary teacher accounts below the Worker subrequest limit.
+    for (let start = 0; start < classIds.length; start += 50) {
+      const ids = classIds.slice(start, start + 50);
+      for (let offset = 0; ; offset += 1000) {
+        const page = await this.rows(table, `class_id=in.(${ids.join(',')})&${filter}&limit=1000&offset=${offset}`);
+        result.push(...page);
+        if (page.length < 1000) break;
+      }
+    }
+    return result;
+  }
   async me(caller: Caller) {
-    const classes = await this.rows('classes', caller.role === 'teacher' ? `teacher_id=eq.${caller.id}&order=created_at.asc` : `id=eq.${caller.classId}`);
-    return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: await Promise.all(classes.map(async row => classView(row, caller.role === 'teacher' ? (await this.rows('class_codes', `class_id=eq.${row.id}&can_enroll=eq.true&limit=1`))[0]?.code : undefined))) };
+    const classes = await this.classesFor(caller);
+    const codes = caller.role === 'teacher'
+      ? await this.rowsForClasses('class_codes', classes.map(row => row.id), 'can_enroll=eq.true&select=class_id,code&order=class_id.asc,code.asc') : [];
+    return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: classes.map(row => classView(row, codes.find(code => code.class_id === row.id)?.code)) };
+  }
+  async listWorlds(caller: Caller) {
+    const fields = 'id,title,owner_id,class_id,kind,revision,updated_at';
+    const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=${fields}&order=updated_at.desc`);
+    const classes = (await this.classesFor(caller)).filter(row => caller.role === 'teacher' || row.collaboration_open);
+    const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&select=${fields}&order=updated_at.desc,id.asc`);
+    const memberships = caller.role === 'student' && candidates.some(row => row.kind === 'group')
+      ? await this.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
+    const shared = candidates.filter(world => caller.role === 'teacher' || world.kind === 'class' || memberships.some(member => member.world_id === world.id));
+    return [...mine, ...shared].map(world => worldView(world));
   }
   async login(email: string, pass: string) { return this.request('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: pass }) }); }
   async registerSession(session: Row, student: Row) {
@@ -189,13 +243,22 @@ async function route(request: Request, service: ClassroomService, path: string[]
     const ip = request.headers.get('CF-Connecting-IP') || 'local';
     // A full class shares one school NAT: account-level buckets do the tight throttling.
     await service.rate(`ip:${ip}`, 600, 600);
+    if (path[1] === 'class') {
+      const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
+      const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
+      if (!alias) fail(404, 'class_not_found', 'Check the class code with your teacher.');
+      const cls = (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
+      if (!cls) fail(404, 'class_not_found', 'Check the class code with your teacher.');
+      return json({ name: cls.name, canEnroll: Boolean(alias.can_enroll && cls.enrollment_open) });
+    }
     if (path[1] === 'register' || path[1] === 'login') {
       const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
       const username = normalizeUsername(input.username);
-      const pass = password(input.password);
-      await service.rate(`login:${code}:${username.toLowerCase()}`, 12, 300);
+      const pass = path[1] === 'register' ? newStudentPassword(input.password, username) : password(input.password, 6);
       const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
       if (!alias) fail(401, 'invalid_credentials', 'Check your class code, username and password.');
+      // All aliases for a class share one account bucket. Rotating codes cannot bypass throttling.
+      await service.rate(`login:${alias.class_id}:${username.toLowerCase()}`, 12, 300);
       const cls = (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
       if (path[1] === 'register') {
         if (!alias.can_enroll || !cls.enrollment_open) fail(403, 'enrollment_closed', 'Your teacher has closed enrollment with this code.');
@@ -228,7 +291,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     }
     if (path[1] === 'teacher-google-start') {
       const authorizationUrl = teacherGoogleAuthorizationUrl(service.env.SUPABASE_URL!, request.headers.get('Origin'), input.codeChallenge, input.state);
-      if (!authorizationUrl) fail(400, 'invalid_oauth_request', 'Start Google sign-in again from Brick Studio.');
+      if (!authorizationUrl) fail(400, 'invalid_oauth_request', 'Start Google sign-in again from Brickgineers.');
       return json({ url: authorizationUrl });
     }
     if (path[1] === 'teacher-google') {
@@ -259,12 +322,12 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (caller.role === 'student') await service.remove('sessions', `session_id=eq.${caller.sessionId}&user_id=eq.${caller.id}`);
       else await service.patch('teacher_sessions', `session_id=eq.${caller.sessionId}&user_id=eq.${caller.id}`, { revoked: true });
       await service.request('/auth/v1/logout?scope=local', { method: 'POST' }, caller.token);
-      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'logout' });
+      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'logout', change: 'revocation' });
       return json({ ok: true });
     }
     if (path[1] === 'change-password') {
       if (caller.role !== 'student') fail(403, 'student_required', 'Manage teacher credentials through your sign-in provider.');
-      const pass = password(input.password);
+      const pass = newStudentPassword(input.password, caller.username);
       await service.rate(`password:${caller.id}`, 6, 600);
       return service.withCredentialLock(caller.id, async () => {
       if (caller.resetRequired) {
@@ -285,7 +348,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (!cleared) fail(409, 'account_changed', 'Your account changed. Please sign in again.');
       const session = await service.login(internalEmail(caller.id), pass);
       await service.registerSession(session, student);
-      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'password_changed' });
+      await options.onAccessChanged?.({ userId: caller.id, classId: caller.classId, reason: 'password_changed', change: 'revocation' });
       return json(await service.authResult(session));
       });
     }
@@ -315,7 +378,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
         code = newCode(); await service.insert('class_codes', { class_id: cls.id, code });
       } else code = (await service.rows('class_codes', `class_id=eq.${cls.id}&can_enroll=eq.true&limit=1`))[0]?.code;
       await service.audit(caller, input.rotateCode ? 'rotate_class_code' : 'update_class', cls.id);
-      await options.onAccessChanged?.({ classId: cls.id, reason: 'class_updated' });
+      await options.onAccessChanged?.({ classId: cls.id, reason: 'class_updated', change: 'membership' });
       return json({ class: classView(updated, code) });
     }
     if (path[2] === 'students' && path.length === 3 && method === 'GET') return json({ students: (await service.rows('students', `class_id=eq.${cls.id}&order=username.asc`)).map(studentView) });
@@ -332,7 +395,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (input.rosterName !== undefined) changes.roster_name = cleanText(input.rosterName, 'Roster name');
       if (input.suspended !== undefined) { if (typeof input.suspended !== 'boolean') fail(400, 'invalid_input', 'suspended must be true or false.'); changes.suspended = input.suspended; changes.auth_version = student.auth_version + 1; }
       let temp: string | undefined;
-      if (input.temporaryPassword !== undefined) { temp = password(input.temporaryPassword); changes.reset_required = true; changes.auth_version = student.auth_version + 1; }
+      if (input.temporaryPassword !== undefined) { temp = newStudentPassword(input.temporaryPassword, changes.username || student.username); changes.reset_required = true; changes.auth_version = student.auth_version + 1; }
       let updated = Object.keys(changes).length ? (await service.patch('students', `user_id=eq.${student.user_id}&class_id=eq.${cls.id}&auth_version=eq.${student.auth_version}`, changes))[0] : student;
       if (!updated) fail(409, 'account_changed', 'This account changed. Refresh and try again.');
       if (temp) {
@@ -342,23 +405,16 @@ async function route(request: Request, service: ClassroomService, path: string[]
         await service.request('/auth/v1/logout?scope=global', { method: 'POST' }, resetSession.access_token);
       }
       await service.audit(caller, temp ? 'reset_password' : 'update_student', cls.id, student.user_id);
-      await options.onAccessChanged?.({ classId: cls.id, userId: student.user_id, reason: temp ? 'password_reset' : 'student_updated' });
+      // Only an auth_version bump (suspension, temporary password) invalidates the
+      // student's sessions; a username or roster edit re-authorizes them in place.
+      await options.onAccessChanged?.({ classId: cls.id, userId: student.user_id, reason: temp ? 'password_reset' : 'student_updated', change: changes.auth_version !== undefined ? 'revocation' : 'membership' });
       return json({ student: studentView(updated) });
       });
     }
   }
   if (path[0] === 'worlds') {
     if (path.length === 1 && method === 'GET') {
-      const mine = await service.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=id,title,owner_id,class_id,kind,revision,updated_at&order=updated_at.desc`);
-      const classes = (await service.me(caller)).classes;
-      const shared: Row[] = [];
-      for (const cls of classes) {
-        if (caller.role === 'student' && !cls.collaborationOpen) continue;
-        const candidates = await service.rows('worlds', `class_id=eq.${cls.id}&select=id,title,owner_id,class_id,kind,revision,updated_at&order=updated_at.desc`);
-        const memberships = caller.role === 'student' ? await service.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
-        shared.push(...candidates.filter(w => caller.role === 'teacher' || w.kind === 'class' || memberships.some(m => m.world_id === w.id)));
-      }
-      return json({ worlds: [...mine, ...shared].map(w => worldView(w)) });
+      return json({ worlds: await service.listWorlds(caller) });
     }
     if (path.length === 1 && method === 'POST') {
       const input = await body(request), kind = input.kind || 'personal';
@@ -378,7 +434,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (updated.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
       if (updated.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
       if (updated.error) fail(404, 'not_found', 'World not found.');
-      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: 'world_saved' });
+      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: 'world_saved', change: 'metadata' });
       return json({ world: worldView(updated) });
     }
     if (path.length === 2 && method === 'PUT' || path[2] === 'restore' && method === 'POST') {
@@ -397,7 +453,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (saved.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
       if (saved.error) fail(404, 'not_found', 'World not found.');
       if (restoring) await service.audit(caller, 'restore_world', world.class_id, world.id);
-      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: restoring ? 'world_restored' : 'world_saved' });
+      await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: restoring ? 'world_restored' : 'world_saved', change: 'metadata' });
       return json({ world: worldView(saved, true) });
     }
     if (path[2] === 'checkpoints' && method === 'GET') return json({ checkpoints: (await service.rows('checkpoints', `world_id=eq.${world.id}&select=id,revision,created_at,reason&order=created_at.desc&limit=30`)).map(cp => ({ id: cp.id, revision: cp.revision, createdAt: cp.created_at, reason: cp.reason })) });
@@ -417,7 +473,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
           await service.audit(caller, 'remove_group_member', world.class_id, path[3]);
         } else fail(405, 'method_not_allowed', 'Unsupported member action.');
       }
-      if (method !== 'GET') await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id, userId: method === 'DELETE' ? path[3] : undefined, reason: 'members_updated' });
+      if (method !== 'GET') await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id, userId: method === 'DELETE' ? path[3] : undefined, reason: 'members_updated', change: method === 'DELETE' ? 'revocation' : 'membership' });
       const students = await service.rows('students', `class_id=eq.${world.class_id}&order=username.asc`);
       const members = world.kind === 'group' ? await service.rows('world_members', `world_id=eq.${world.id}`) : students.map(s => ({ user_id: s.user_id }));
       return json({ members: students.filter(s => members.some(m => m.user_id === s.user_id)).map(s => ({ id: s.user_id, username: s.username, ...(caller.role === 'teacher' ? { rosterName: s.roster_name } : {}) })) });
@@ -467,21 +523,23 @@ export async function reauthorizeClassroomSocket(env: ClassroomEnv, access: Clas
   return revalidateClassroomWorldAccess(env, access, access.worldId);
 }
 
+/** A stored world as trusted DOs consume it; every stored document was validated on write. */
+export type ClassroomWorldSnapshot = { id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document: BrickStudioDocument };
 /** Server-only helpers. The DO must authorize the caller before committing any edit. */
-export async function loadClassroomWorld(env: ClassroomEnv, worldId: string) {
+export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
-  return worldView(row, true);
+  return worldView(row, true) as ClassroomWorldSnapshot;
 }
-export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity) {
+export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const saved = await new ClassroomService(env).rpc('commit_world', { p_world_id: worldId, p_expected_revision: expectedRevision(revision), p_document: document(value), p_title: null, p_reason: 'live_edit', p_actor_id: identity.userId, p_session_id: identity.sessionId, p_auth_version: identity.authVersion });
   if (saved.error === 'conflict') throw new ClassroomHttpError(409, 'revision_conflict', 'A newer world revision exists.', { currentRevision: saved.currentRevision });
   if (saved.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
   if (saved.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
   if (saved.error) fail(404, 'not_found', 'World not found.');
-  return worldView(saved, true);
+  return worldView(saved, true) as ClassroomWorldSnapshot;
 }
 export async function listClassroomWorldIds(env: ClassroomEnv, filter: { classId?: string; userId?: string }): Promise<string[]> {
   const service = new ClassroomService(env);

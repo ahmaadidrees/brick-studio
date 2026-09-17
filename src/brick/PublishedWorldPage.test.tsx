@@ -16,7 +16,6 @@ beforeEach(() => {
     setItem: (key: string, value: string) => { entries.set(key, value) },
     removeItem: (key: string) => { entries.delete(key) },
   } })
-  HTMLDialogElement.prototype.showModal = function () { this.setAttribute('open', '') }
 })
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 it('requires explicit replacement of an existing guest draft and cancellation keeps it intact', async () => {
@@ -25,16 +24,20 @@ it('requires explicit replacement of an existing guest draft and cancellation ke
   fireEvent.click(await screen.findByText('Remix this world'))
   expect(screen.getByRole('dialog')).toBeTruthy()
   expect(window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBe('previous draft')
-  fireEvent.click(screen.getByText('Cancel'))
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
   expect(window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBe('previous draft')
   expect(screen.queryByText('Guest editor')).toBeNull()
 })
 it('recovers a legacy world into an empty guest draft without creating a race', async () => {
+  const replaceState = vi.spyOn(window.history, 'replaceState')
   render(<PublishedWorldPage />)
   fireEvent.click(await screen.findByText('Remix this world'))
   expect(screen.getByText('Guest editor')).toBeTruthy()
   expect(parseBrickStudioDocument(window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)! ).ok).toBe(true)
   expect(screen.queryByText('Start a race')).toBeNull()
+  // The copy is the guest draft now, so the address is the builder rather than the landing page.
+  expect(replaceState).toHaveBeenCalledWith(null, '', '/build')
 })
 it('keeps the legacy viewer open when local storage is blocked', async () => {
   vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => { throw new Error('blocked') })
@@ -47,7 +50,7 @@ it('replaces a draft only after confirmation and quarantines damaged prior conte
   window.localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, 'damaged but recoverable')
   render(<PublishedWorldPage />)
   fireEvent.click(await screen.findByText('Remix this world'))
-  fireEvent.click(screen.getByText('Replace draft and remix'))
+  fireEvent.click(screen.getByRole('button', { name: 'Replace draft and make a copy' }))
   expect(screen.getByText('Guest editor')).toBeTruthy()
   expect(parseBrickStudioDocument(window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)!).ok).toBe(true)
   expect(window.localStorage.getItem('brick-studio.recovery-project.v1')).toBe('damaged but recoverable')

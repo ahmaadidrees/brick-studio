@@ -12,6 +12,7 @@ export function draftFromSurfacePoint(
   draft: BrickDraft,
   originals?: readonly BrickInstance[],
   hitBrick?: BrickInstance,
+  plateSize: number = GRID_SIZE,
 ): Pick<BrickDraft, 'x' | 'y' | 'z'> {
   const size = rotatedSize(BRICK_PART_MAP[draft.partId], draft.rotation)
   const anchor = originals?.[0]
@@ -25,8 +26,8 @@ export function draftFromSurfacePoint(
     ? hitTop
     : Math.max(0, Math.round(point.y / PLATE_HEIGHT))
   return {
-    x: Math.round(point.x / STUD + GRID_SIZE / 2 - size.width / 2),
+    x: Math.round(point.x / STUD + plateSize / 2 - size.width / 2),
     y: surfaceY - lowestOffset,
-    z: Math.round(point.z / STUD + GRID_SIZE / 2 - size.depth / 2),
+    z: Math.round(point.z / STUD + plateSize / 2 - size.depth / 2),
   }
 }

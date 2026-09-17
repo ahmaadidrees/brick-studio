@@ -1,0 +1,948 @@
+{
+  "timestamp": "2026-09-14T22:59:00.371Z",
+  "origin": "http://127.0.0.1:5211",
+  "api": "http://127.0.0.1:8787",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      6.39,
+      7.2,
+      6.82
+    ],
+    "freeMemoryMB": 41537,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "steps": [
+    "Created guest world through UI",
+    "Copied guest invite through Share UI; no owner fragment",
+    "Second isolated browser joined through invite UI",
+    "Owner resized96 through Scene UI; peer received replacement",
+    "Owner resized128 through Scene UI; peer received replacement",
+    "Owner selected Toy Figure, Bun, Glasses through Character UI; peer players appearance confirmed",
+    "Owner selected Nova through UI; peer players characterId confirmed",
+    "UI export equals authoritative GET; contains edge brick on128 plate",
+    "Cold peer reload rejoined with document identical to export and authoritative GET"
+  ],
+  "socketUrl": "ws://127.0.0.1:8787/worlds/dbea41769946c74d9250b7ee26d581a2/connect",
+  "roomId": "dbea41769946c74d9250b7ee26d581a2",
+  "invite": "http://127.0.0.1:5211/live/dbea41769946c74d9250b7ee26d581a2",
+  "authoritative": {
+    "roomId": "dbea41769946c74d9250b7ee26d581a2",
+    "title": "Disposable release QA",
+    "revision": 3,
+    "mode": "build",
+    "locked": false,
+    "document": {
+      "schemaVersion": 3,
+      "plateSize": 128,
+      "partLibraryVersion": 1,
+      "environmentId": "classic",
+      "customParts": [],
+      "bricks": [
+        {
+          "id": "brick-1789426743468-r8dxhd",
+          "partId": "brick_1x1",
+          "x": 126,
+          "y": 0,
+          "z": 63,
+          "rotation": 0,
+          "color": "#3e83d7"
+        }
+      ]
+    },
+    "players": [
+      {
+        "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+        "isOwner": false,
+        "profile": {
+          "displayName": "QA Peer",
+          "characterId": "classic",
+          "appearance": {
+            "body": "classic",
+            "face": "friendly",
+            "hair": "cap",
+            "outfit": "explorer",
+            "accessory": "none",
+            "skinColor": "#f0bd86",
+            "hairColor": "#593c2e"
+          }
+        }
+      },
+      {
+        "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+        "isOwner": true,
+        "profile": {
+          "displayName": "QA Owner",
+          "characterId": "classic",
+          "appearance": {
+            "body": "classic",
+            "face": "friendly",
+            "hair": "cap",
+            "outfit": "explorer",
+            "accessory": "none",
+            "skinColor": "#f0bd86",
+            "hairColor": "#593c2e"
+          }
+        }
+      }
+    ]
+  },
+  "characterShortcutTab": "Scene",
+  "exported": {
+    "schemaVersion": 3,
+    "plateSize": 128,
+    "partLibraryVersion": 1,
+    "environmentId": "classic",
+    "customParts": [],
+    "bricks": [
+      {
+        "id": "brick-1789426743468-r8dxhd",
+        "partId": "brick_1x1",
+        "x": 126,
+        "y": 0,
+        "z": 63,
+        "rotation": 0,
+        "color": "#3e83d7"
+      }
+    ]
+  },
+  "frames": [
+    {
+      "type": "connected"
+    },
+    {
+      "type": "full-reload",
+      "path": "/index.html"
+    },
+    {
+      "type": "connected"
+    },
+    {
+      "v": 1,
+      "type": "welcome",
+      "roomId": "dbea41769946c74d9250b7ee26d581a2",
+      "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+      "isOwner": true,
+      "revision": 0,
+      "mode": "build",
+      "locked": false,
+      "document": {
+        "schemaVersion": 2,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": []
+      },
+      "players": [
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "Builder"
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "snapshot",
+      "opId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf#1",
+      "revision": 1,
+      "mode": "build",
+      "document": {
+        "schemaVersion": 3,
+        "plateSize": 96,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": []
+      }
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "snapshot",
+      "opId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf#2",
+      "revision": 2,
+      "mode": "build",
+      "document": {
+        "schemaVersion": 3,
+        "plateSize": 128,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": []
+      }
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "apply",
+      "from": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+      "opId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf#3",
+      "revision": 3,
+      "commands": [
+        {
+          "op": "place",
+          "brick": {
+            "id": "brick-1789426743468-r8dxhd",
+            "partId": "brick_1x1",
+            "x": 126,
+            "y": 0,
+            "z": 63,
+            "rotation": 0,
+            "color": "#3e83d7"
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "toy-figure",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "peerFrames": [
+    {
+      "type": "connected"
+    },
+    {
+      "v": 1,
+      "type": "welcome",
+      "roomId": "dbea41769946c74d9250b7ee26d581a2",
+      "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+      "isOwner": false,
+      "revision": 0,
+      "mode": "build",
+      "locked": false,
+      "document": {
+        "schemaVersion": 2,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": []
+      },
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "Builder"
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "Builder"
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "snapshot",
+      "opId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf#1",
+      "revision": 1,
+      "mode": "build",
+      "document": {
+        "schemaVersion": 3,
+        "plateSize": 96,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": []
+      }
+    },
+    {
+      "v": 1,
+      "type": "snapshot",
+      "opId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf#2",
+      "revision": 2,
+      "mode": "build",
+      "document": {
+        "schemaVersion": 3,
+        "plateSize": 128,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": []
+      }
+    },
+    {
+      "v": 1,
+      "type": "apply",
+      "from": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+      "opId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf#3",
+      "revision": 3,
+      "commands": [
+        {
+          "op": "place",
+          "brick": {
+            "id": "brick-1789426743468-r8dxhd",
+            "partId": "brick_1x1",
+            "x": 126,
+            "y": 0,
+            "z": 63,
+            "rotation": 0,
+            "color": "#3e83d7"
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "toy-figure",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "connected"
+    },
+    {
+      "v": 1,
+      "type": "welcome",
+      "roomId": "dbea41769946c74d9250b7ee26d581a2",
+      "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+      "isOwner": false,
+      "revision": 3,
+      "mode": "build",
+      "locked": false,
+      "document": {
+        "schemaVersion": 3,
+        "plateSize": 128,
+        "partLibraryVersion": 1,
+        "environmentId": "classic",
+        "customParts": [],
+        "bricks": [
+          {
+            "id": "brick-1789426743468-r8dxhd",
+            "partId": "brick_1x1",
+            "x": 126,
+            "y": 0,
+            "z": 63,
+            "rotation": 0,
+            "color": "#3e83d7"
+          }
+        ]
+      },
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "v": 1,
+      "type": "players",
+      "players": [
+        {
+          "playerId": "live_d3317dfe-0e2a-4c01-9fe3-4051f099771e",
+          "isOwner": false,
+          "profile": {
+            "displayName": "QA Peer",
+            "characterId": "classic",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "cap",
+              "outfit": "explorer",
+              "accessory": "none",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        },
+        {
+          "playerId": "live_fc593c54-6a33-44cf-a0e7-884d70978dbf",
+          "isOwner": true,
+          "profile": {
+            "displayName": "QA Owner",
+            "characterId": "nova",
+            "appearance": {
+              "body": "classic",
+              "face": "friendly",
+              "hair": "bun",
+              "outfit": "explorer",
+              "accessory": "glasses",
+              "skinColor": "#f0bd86",
+              "hairColor": "#593c2e"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

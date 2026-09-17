@@ -1,3 +1,4 @@
+import { getBuildPlateSize } from './buildPlate'
 import { Html } from '@react-three/drei'
 import { useThree } from '@react-three/fiber'
 import './vertical-selection-handle.css'
@@ -25,17 +26,19 @@ type Drag = {
 /** A DOM handle isolates vertical gestures from canvas orbit, marquee and brick drag. */
 export function VerticalSelectionHandle() {
   const { camera, size } = useThree()
+  const plateSize = useBrickStore(state => getBuildPlateSize(state.documentMetadata))
   const bricks = useBrickStore((state) => state.bricks)
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingSelection = useBrickStore((state) => state.movingSelection)
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const active = useRef<Drag | null>(null)
   const selected = useMemo(() => {
     const ids = new Set(selectedIds.length ? selectedIds : selectedId ? [selectedId] : [])
     return bricks.filter((brick) => ids.has(brick.id))
   }, [bricks, selectedIds, selectedId])
-  const bounds = useMemo(() => getBuildBounds(selected), [selected])
+  const bounds = useMemo(() => getBuildBounds(selected, plateSize), [selected, plateSize])
   const owned = Boolean(active.current && active.current.selection === movingSelection)
   const deltaY = owned && draft ? (draft.y - active.current!.startY) * PLATE_HEIGHT : 0
   const position: [number, number, number] = [bounds.center[0], bounds.max[1] + deltaY, bounds.center[2]]
@@ -61,7 +64,7 @@ export function VerticalSelectionHandle() {
       cancel()
     }
     const unsubscribe = useBrickStore.subscribe((state) => {
-      if (active.current && (state.mode !== 'build' || state.movingSelection !== active.current.selection)) cancel()
+      if (active.current && (state.graphicsPaused || state.mode !== 'build' || state.movingSelection !== active.current.selection)) cancel()
     })
     window.addEventListener('blur', cancel)
     window.addEventListener('resize', cancel)
@@ -120,6 +123,7 @@ export function VerticalSelectionHandle() {
         onPointerCancel={() => finish(false)}
         onLostPointerCapture={() => finish(false)}
         onClick={(event) => { event.preventDefault(); event.stopPropagation() }}
+        inert={graphicsPaused}
         className={`vertical-selection-handle${owned ? ' is-dragging' : ''}${valid ? '' : ' is-blocked'}`}
       >
         <span className="vertical-selection-handle-grip"><MoveVertical size={17} aria-hidden="true" /></span>

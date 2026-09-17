@@ -3,9 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#e9fbff" />
-    <meta name="description" content="Build a brick world, then enter it and explore." />
-    <title>Brick Studio</title>
+    <meta name="theme-color" content="#F8F4EB" />
+    <meta name="description" content="Build a brick world in your browser, then step inside and explore it — on your own, with friends, or with your class." />
+    <title>Brickgineers</title>
+
+    <!-- Fredoka/Nunito come from Google Fonts via the @import in src/styles.css; warm up both hosts. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <!-- Link previews (LinkedIn, Slack, iMessage, X). Vite replaces the VITE_PUBLIC_ORIGIN
+         placeholder at build time with the origin from .env.production, so the URLs are absolute. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Brickgineers" />
+    <meta property="og:description" content="Build a brick world in your browser, then step inside and explore it — on your own, with friends, or with your class." />
+    <meta property="og:url" content="%VITE_PUBLIC_ORIGIN%/" />
+    <meta property="og:image" content="%VITE_PUBLIC_ORIGIN%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="The Brickgineers mark, a blue and coral brick B, on a cozy toy-room desk with a lamp, a clock, stacked books and loose bricks." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Brickgineers" />
+    <meta name="twitter:description" content="Build a brick world in your browser, then step inside and explore it — on your own, with friends, or with your class." />
+    <meta name="twitter:image" content="%VITE_PUBLIC_ORIGIN%/og-image.png" />
   </head>
   <body>
     <div id="root"></div>

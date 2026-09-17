@@ -1,0 +1,180 @@
+{
+  "start": {
+    "startedAt": "2026-09-15T01:10:34.705191+00:00",
+    "sourceSHA": "18a9a9fdc51c5204219d30aee39fcad84b422198",
+    "status": " M src/brick/contentPicker/ContentPicker.test.tsx\n M src/brick/contentPicker/PreviewArtwork.tsx\n M src/brick/contentPicker/content-picker.css\n?? docs/brand/qa/codex/\n?? public/brand/characters/\n"
+  },
+  "end": {
+    "completedAt": "2026-09-15T01:18:35.496422+00:00",
+    "sourceSHA": "dfe3496493fec47ad3cb076cf3093b56c3d7039e",
+    "status": "?? docs/brand/qa/codex/accounts/cleanup-authoritative.json\n?? docs/brand/qa/codex/hosted/\n?? docs/brand/qa/codex/production-origins.json\n?? docs/brand/qa/codex/staging-origins.json\n"
+  },
+  "origin": "http://127.0.0.1:5190",
+  "strictTouch": true,
+  "strictFocus": true,
+  "runs": 275,
+  "passed": 275,
+  "failed": 0,
+  "byVariant": {
+    "default": 150,
+    "zoom200": 75,
+    "reduced-motion": 50
+  },
+  "consoleErrors": [
+    {
+      "surface": "live-unavailable",
+      "viewport": "1366x768",
+      "variant": "default",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "1024x768",
+      "variant": "default",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "768x1024",
+      "variant": "default",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "390x844",
+      "variant": "default",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "320x740",
+      "variant": "default",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "844x390",
+      "variant": "default",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "768x1024",
+      "variant": "zoom200",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "1366x768",
+      "variant": "reduced-motion",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    },
+    {
+      "surface": "live-unavailable",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "errors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "surface": "color-picker",
+      "viewport": "768x1024",
+      "variant": "default",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "390x844",
+      "variant": "default",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "320x740",
+      "variant": "default",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "844x390",
+      "variant": "default",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "1024x768",
+      "variant": "zoom200",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "768x1024",
+      "variant": "zoom200",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    },
+    {
+      "surface": "color-picker",
+      "viewport": "390x844",
+      "variant": "reduced-motion",
+      "notes": [
+        "dialog \"Bricks\" is below another open dialog; focus is in the child dialog"
+      ]
+    }
+  ],
+  "artifacts": "/tmp/brickgineers-final-matrix"
+}

@@ -1145,3 +1145,18 @@ it('does not open a socket if disposed while classroom authorization is pending'
   await Promise.resolve()
   expect(sockets).toHaveLength(0)
 })
+
+ it('rebases an unconfirmed custom brick addition over another builder snapshot', () => {
+  const h = createHarness(); welcome(h.socket());
+  const part = { id: 'custom_local', name: 'Local', template: 'solid' as const, width: 2, depth: 2, height: 3, studs: 'auto' as const };
+  const opId = h.client.addCustomPart(part);
+  expect(opId).toBeTruthy();
+  const remote = { ...part, id: 'custom_remote' };
+  const remoteBrick = brick('remote');
+  h.socket().receive({ v: 1, type: 'snapshot', revision: 1, mode: 'build', opId: 'another-player#1', document: createBrickStudioDocument([remoteBrick], { customParts: [remote] }) });
+  expect(h.callbacks.documents.at(-1)?.document.customParts.map(p => p.id)).toEqual(['custom_remote', 'custom_local']);
+  expect(h.callbacks.documents.at(-1)?.document.bricks).toEqual([remoteBrick]);
+  h.socket().receive({ v: 1, type: 'snapshot', revision: 2, mode: 'build', opId: opId!, document: createBrickStudioDocument([remoteBrick], { customParts: [remote, part] }) });
+  expect(h.client.getSnapshot().pendingOperations).toBe(0);
+  expect(h.callbacks.documents.at(-1)?.document.customParts).toHaveLength(2);
+ });

@@ -1,0 +1,921 @@
+{
+  "checkedAt": "2026-09-15T01:26:12.857Z",
+  "origin": "https://brickgineers.com",
+  "settleMs": 4000,
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      5.69,
+      5.91,
+      5.9
+    ],
+    "freeMemoryMB": 37959,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "routes": [
+    {
+      "id": "landing",
+      "path": "/",
+      "status": "ok",
+      "errors": [],
+      "document": {
+        "transferSize": 1315,
+        "decodedBodySize": 2590,
+        "domContentLoaded": 369,
+        "load": 369
+      },
+      "totalTransferKB": 168,
+      "byKind": {
+        "css": {
+          "count": 3,
+          "transferKB": 10,
+          "decodedKB": 36.5,
+          "files": [
+            {
+              "file": "/assets/LandingPage-Bb2nO8kO.css",
+              "transferKB": 4.4,
+              "decodedKB": 17.7
+            },
+            {
+              "file": "/assets/Button-gEp5pxUA.css",
+              "transferKB": 3,
+              "decodedKB": 11.4
+            },
+            {
+              "file": "/assets/index-uIYlKJeD.css",
+              "transferKB": 2.6,
+              "decodedKB": 7.4
+            }
+          ]
+        },
+        "js": {
+          "count": 7,
+          "transferKB": 83.8,
+          "decodedKB": 247.2,
+          "files": [
+            {
+              "file": "/assets/index-Bt_vkafz.js",
+              "transferKB": 63.7,
+              "decodedKB": 196
+            },
+            {
+              "file": "/assets/LandingPage-B1x0xKmh.js",
+              "transferKB": 9.1,
+              "decodedKB": 28.2
+            },
+            {
+              "file": "/assets/parts-DYLQgLTA.js",
+              "transferKB": 4,
+              "decodedKB": 9.6
+            },
+            {
+              "file": "/assets/jsx-runtime-n5LQ9ujS.js",
+              "transferKB": 3.6,
+              "decodedKB": 8.3
+            },
+            {
+              "file": "/assets/Button-jd-Pegf4.js",
+              "transferKB": 1.7,
+              "decodedKB": 3.5
+            },
+            {
+              "file": "/assets/createLucideIcon-DN0J77WO.js",
+              "transferKB": 1.1,
+              "decodedKB": 1.4
+            },
+            {
+              "file": "/assets/link-2-Bz3zA1qP.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            }
+          ]
+        },
+        "other": {
+          "count": 1,
+          "transferKB": 1.1,
+          "decodedKB": 11,
+          "files": [
+            {
+              "file": "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap",
+              "transferKB": 1.1,
+              "decodedKB": 11
+            }
+          ]
+        },
+        "image": {
+          "count": 6,
+          "transferKB": 71.8,
+          "decodedKB": 70.1,
+          "files": [
+            {
+              "file": "/brand/media/hero-800.avif",
+              "transferKB": 32.5,
+              "decodedKB": 32.2
+            },
+            {
+              "file": "/brand/media/scene-toy-room-400.avif",
+              "transferKB": 12.3,
+              "decodedKB": 12
+            },
+            {
+              "file": "/brand/media/scene-brick-valley-400.avif",
+              "transferKB": 12,
+              "decodedKB": 11.7
+            },
+            {
+              "file": "/brand/media/scene-sky-island-400.avif",
+              "transferKB": 8.8,
+              "decodedKB": 8.5
+            },
+            {
+              "file": "/brand/media/character-nova-400.avif",
+              "transferKB": 5.3,
+              "decodedKB": 5
+            },
+            {
+              "file": "/favicon.svg",
+              "transferKB": 0.9,
+              "decodedKB": 0.6
+            }
+          ]
+        }
+      },
+      "editorChunksLoaded": []
+    },
+    {
+      "id": "build",
+      "path": "/build",
+      "status": "ok",
+      "errors": [],
+      "document": {
+        "transferSize": 1315,
+        "decodedBodySize": 2590,
+        "domContentLoaded": 477,
+        "load": 478
+      },
+      "totalTransferKB": 1243.2,
+      "byKind": {
+        "js": {
+          "count": 19,
+          "transferKB": 1211,
+          "decodedKB": 3656.1,
+          "files": [
+            {
+              "file": "/assets/rapier-DJ-fG79w.js",
+              "transferKB": 781.6,
+              "decodedKB": 2184.2
+            },
+            {
+              "file": "/assets/events-b389eeca.esm-C_oOfuYP.js",
+              "transferKB": 232.3,
+              "decodedKB": 857.7
+            },
+            {
+              "file": "/assets/BrickStudioApp-CvspjSt9.js",
+              "transferKB": 102.5,
+              "decodedKB": 352.1
+            },
+            {
+              "file": "/assets/index-Bt_vkafz.js",
+              "transferKB": 63.7,
+              "decodedKB": 196
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-_Kvv_9VM.js",
+              "transferKB": 8.7,
+              "decodedKB": 25.4
+            },
+            {
+              "file": "/assets/parts-DYLQgLTA.js",
+              "transferKB": 4,
+              "decodedKB": 9.6
+            },
+            {
+              "file": "/assets/jsx-runtime-n5LQ9ujS.js",
+              "transferKB": 3.6,
+              "decodedKB": 8.3
+            },
+            {
+              "file": "/assets/classroom-DXFmr8Uo.js",
+              "transferKB": 2.4,
+              "decodedKB": 4.9
+            },
+            {
+              "file": "/assets/characterController-ZgYT22iJ.js",
+              "transferKB": 1.8,
+              "decodedKB": 3.3
+            },
+            {
+              "file": "/assets/Button-jd-Pegf4.js",
+              "transferKB": 1.7,
+              "decodedKB": 3.5
+            },
+            {
+              "file": "/assets/avatarMotion-Cye3E4ka.js",
+              "transferKB": 1.6,
+              "decodedKB": 3.1
+            },
+            {
+              "file": "/assets/geometry-DXajhFrq.js",
+              "transferKB": 1.6,
+              "decodedKB": 2.6
+            },
+            {
+              "file": "/assets/descriptor-DOk2ba9J.js",
+              "transferKB": 1.2,
+              "decodedKB": 0.9
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-D9l-HWU9.js",
+              "transferKB": 1.2,
+              "decodedKB": 2.2
+            },
+            {
+              "file": "/assets/createLucideIcon-DN0J77WO.js",
+              "transferKB": 1.1,
+              "decodedKB": 1.4
+            },
+            {
+              "file": "/assets/descriptors-DWU8D3_z.js",
+              "transferKB": 0.7,
+              "decodedKB": 0.4
+            },
+            {
+              "file": "/assets/descriptor-Mk_GU1Q2.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/descriptor-Wldv2LjA.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/constants-BWheiJ9M.js",
+              "transferKB": 0.3,
+              "decodedKB": 0.1
+            }
+          ]
+        },
+        "css": {
+          "count": 4,
+          "transferKB": 28.9,
+          "decodedKB": 130.8,
+          "files": [
+            {
+              "file": "/assets/BrickStudioApp-6ygtTFcY.css",
+              "transferKB": 19.1,
+              "decodedKB": 93.8
+            },
+            {
+              "file": "/assets/classroom-BB7L8ACt.css",
+              "transferKB": 4.2,
+              "decodedKB": 18.2
+            },
+            {
+              "file": "/assets/Button-gEp5pxUA.css",
+              "transferKB": 3,
+              "decodedKB": 11.4
+            },
+            {
+              "file": "/assets/index-uIYlKJeD.css",
+              "transferKB": 2.6,
+              "decodedKB": 7.4
+            }
+          ]
+        },
+        "other": {
+          "count": 1,
+          "transferKB": 1.1,
+          "decodedKB": 11,
+          "files": [
+            {
+              "file": "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap",
+              "transferKB": 1.1,
+              "decodedKB": 11
+            }
+          ]
+        },
+        "image": {
+          "count": 1,
+          "transferKB": 0.9,
+          "decodedKB": 0.6,
+          "files": [
+            {
+              "file": "/favicon.svg",
+              "transferKB": 0.9,
+              "decodedKB": 0.6
+            }
+          ]
+        }
+      },
+      "editorChunksLoaded": [
+        "/assets/BrickStudioApp-CvspjSt9.js",
+        "/assets/events-b389eeca.esm-C_oOfuYP.js",
+        "/assets/rapier-DJ-fG79w.js",
+        "/assets/BrickStudioApp-6ygtTFcY.css"
+      ]
+    },
+    {
+      "id": "build-character-sheet",
+      "path": "/build",
+      "status": "ok",
+      "errors": [],
+      "document": {
+        "transferSize": 1315,
+        "decodedBodySize": 2590,
+        "domContentLoaded": 426,
+        "load": 427
+      },
+      "totalTransferKB": 2615.5,
+      "byKind": {
+        "js": {
+          "count": 19,
+          "transferKB": 1211,
+          "decodedKB": 3656.1,
+          "files": [
+            {
+              "file": "/assets/rapier-DJ-fG79w.js",
+              "transferKB": 781.6,
+              "decodedKB": 2184.2
+            },
+            {
+              "file": "/assets/events-b389eeca.esm-C_oOfuYP.js",
+              "transferKB": 232.3,
+              "decodedKB": 857.7
+            },
+            {
+              "file": "/assets/BrickStudioApp-CvspjSt9.js",
+              "transferKB": 102.5,
+              "decodedKB": 352.1
+            },
+            {
+              "file": "/assets/index-Bt_vkafz.js",
+              "transferKB": 63.7,
+              "decodedKB": 196
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-_Kvv_9VM.js",
+              "transferKB": 8.7,
+              "decodedKB": 25.4
+            },
+            {
+              "file": "/assets/parts-DYLQgLTA.js",
+              "transferKB": 4,
+              "decodedKB": 9.6
+            },
+            {
+              "file": "/assets/jsx-runtime-n5LQ9ujS.js",
+              "transferKB": 3.6,
+              "decodedKB": 8.3
+            },
+            {
+              "file": "/assets/classroom-DXFmr8Uo.js",
+              "transferKB": 2.4,
+              "decodedKB": 4.9
+            },
+            {
+              "file": "/assets/characterController-ZgYT22iJ.js",
+              "transferKB": 1.8,
+              "decodedKB": 3.3
+            },
+            {
+              "file": "/assets/Button-jd-Pegf4.js",
+              "transferKB": 1.7,
+              "decodedKB": 3.5
+            },
+            {
+              "file": "/assets/avatarMotion-Cye3E4ka.js",
+              "transferKB": 1.6,
+              "decodedKB": 3.1
+            },
+            {
+              "file": "/assets/geometry-DXajhFrq.js",
+              "transferKB": 1.6,
+              "decodedKB": 2.6
+            },
+            {
+              "file": "/assets/descriptor-DOk2ba9J.js",
+              "transferKB": 1.2,
+              "decodedKB": 0.9
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-D9l-HWU9.js",
+              "transferKB": 1.2,
+              "decodedKB": 2.2
+            },
+            {
+              "file": "/assets/createLucideIcon-DN0J77WO.js",
+              "transferKB": 1.1,
+              "decodedKB": 1.4
+            },
+            {
+              "file": "/assets/descriptors-DWU8D3_z.js",
+              "transferKB": 0.7,
+              "decodedKB": 0.4
+            },
+            {
+              "file": "/assets/descriptor-Mk_GU1Q2.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/descriptor-Wldv2LjA.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/constants-BWheiJ9M.js",
+              "transferKB": 0.3,
+              "decodedKB": 0.1
+            }
+          ]
+        },
+        "css": {
+          "count": 4,
+          "transferKB": 28.9,
+          "decodedKB": 130.8,
+          "files": [
+            {
+              "file": "/assets/BrickStudioApp-6ygtTFcY.css",
+              "transferKB": 19.1,
+              "decodedKB": 93.8
+            },
+            {
+              "file": "/assets/classroom-BB7L8ACt.css",
+              "transferKB": 4.2,
+              "decodedKB": 18.2
+            },
+            {
+              "file": "/assets/Button-gEp5pxUA.css",
+              "transferKB": 3,
+              "decodedKB": 11.4
+            },
+            {
+              "file": "/assets/index-uIYlKJeD.css",
+              "transferKB": 2.6,
+              "decodedKB": 7.4
+            }
+          ]
+        },
+        "other": {
+          "count": 1,
+          "transferKB": 1.1,
+          "decodedKB": 11,
+          "files": [
+            {
+              "file": "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap",
+              "transferKB": 1.1,
+              "decodedKB": 11
+            }
+          ]
+        },
+        "image": {
+          "count": 11,
+          "transferKB": 1373.2,
+          "decodedKB": 1370,
+          "files": [
+            {
+              "file": "/assets/pip-preview-D2S-6FXd.png",
+              "transferKB": 439.8,
+              "decodedKB": 439.5
+            },
+            {
+              "file": "/assets/fern-preview-B9-aJ8Ks.png",
+              "transferKB": 437.5,
+              "decodedKB": 437.2
+            },
+            {
+              "file": "/assets/nova-preview-DjyrSk7I.png",
+              "transferKB": 434.9,
+              "decodedKB": 434.6
+            },
+            {
+              "file": "/brand/media/scene-toy-room-400.avif",
+              "transferKB": 12.3,
+              "decodedKB": 12
+            },
+            {
+              "file": "/brand/media/scene-brick-valley-400.avif",
+              "transferKB": 12,
+              "decodedKB": 11.7
+            },
+            {
+              "file": "/brand/characters/cc0-hero-400.webp",
+              "transferKB": 9.5,
+              "decodedKB": 9.2
+            },
+            {
+              "file": "/brand/media/scene-sky-island-400.avif",
+              "transferKB": 8.8,
+              "decodedKB": 8.5
+            },
+            {
+              "file": "/brand/media/scene-classic-400.avif",
+              "transferKB": 6.3,
+              "decodedKB": 6
+            },
+            {
+              "file": "/brand/characters/toy-figure-400.webp",
+              "transferKB": 6.3,
+              "decodedKB": 6
+            },
+            {
+              "file": "/brand/characters/classic-400.webp",
+              "transferKB": 4.9,
+              "decodedKB": 4.6
+            },
+            {
+              "file": "/favicon.svg",
+              "transferKB": 0.9,
+              "decodedKB": 0.6
+            }
+          ]
+        }
+      },
+      "editorChunksLoaded": [
+        "/assets/BrickStudioApp-CvspjSt9.js",
+        "/assets/events-b389eeca.esm-C_oOfuYP.js",
+        "/assets/rapier-DJ-fG79w.js",
+        "/assets/BrickStudioApp-6ygtTFcY.css"
+      ]
+    },
+    {
+      "id": "live-create",
+      "path": "/live/new",
+      "status": "ok",
+      "errors": [],
+      "document": {
+        "transferSize": 1315,
+        "decodedBodySize": 2590,
+        "domContentLoaded": 402,
+        "load": 403
+      },
+      "totalTransferKB": 1282.1,
+      "byKind": {
+        "js": {
+          "count": 21,
+          "transferKB": 1233.8,
+          "decodedKB": 3723.3,
+          "files": [
+            {
+              "file": "/assets/rapier-DJ-fG79w.js",
+              "transferKB": 781.6,
+              "decodedKB": 2184.2
+            },
+            {
+              "file": "/assets/events-b389eeca.esm-C_oOfuYP.js",
+              "transferKB": 232.3,
+              "decodedKB": 857.7
+            },
+            {
+              "file": "/assets/BrickStudioApp-CvspjSt9.js",
+              "transferKB": 102.5,
+              "decodedKB": 352.1
+            },
+            {
+              "file": "/assets/index-Bt_vkafz.js",
+              "transferKB": 63.7,
+              "decodedKB": 196
+            },
+            {
+              "file": "/assets/LiveWorldPage-CPIezT5y.js",
+              "transferKB": 22.3,
+              "decodedKB": 67
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-_Kvv_9VM.js",
+              "transferKB": 8.7,
+              "decodedKB": 25.4
+            },
+            {
+              "file": "/assets/parts-DYLQgLTA.js",
+              "transferKB": 4,
+              "decodedKB": 9.6
+            },
+            {
+              "file": "/assets/jsx-runtime-n5LQ9ujS.js",
+              "transferKB": 3.6,
+              "decodedKB": 8.3
+            },
+            {
+              "file": "/assets/classroom-DXFmr8Uo.js",
+              "transferKB": 2.4,
+              "decodedKB": 4.9
+            },
+            {
+              "file": "/assets/characterController-ZgYT22iJ.js",
+              "transferKB": 1.8,
+              "decodedKB": 3.3
+            },
+            {
+              "file": "/assets/Button-jd-Pegf4.js",
+              "transferKB": 1.7,
+              "decodedKB": 3.5
+            },
+            {
+              "file": "/assets/avatarMotion-Cye3E4ka.js",
+              "transferKB": 1.6,
+              "decodedKB": 3.1
+            },
+            {
+              "file": "/assets/geometry-DXajhFrq.js",
+              "transferKB": 1.6,
+              "decodedKB": 2.6
+            },
+            {
+              "file": "/assets/descriptor-DOk2ba9J.js",
+              "transferKB": 1.2,
+              "decodedKB": 0.9
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-D9l-HWU9.js",
+              "transferKB": 1.2,
+              "decodedKB": 2.2
+            },
+            {
+              "file": "/assets/createLucideIcon-DN0J77WO.js",
+              "transferKB": 1.1,
+              "decodedKB": 1.4
+            },
+            {
+              "file": "/assets/descriptors-DWU8D3_z.js",
+              "transferKB": 0.7,
+              "decodedKB": 0.4
+            },
+            {
+              "file": "/assets/descriptor-Wldv2LjA.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/descriptor-Mk_GU1Q2.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/link-2-Bz3zA1qP.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/constants-BWheiJ9M.js",
+              "transferKB": 0.3,
+              "decodedKB": 0.1
+            }
+          ]
+        },
+        "css": {
+          "count": 5,
+          "transferKB": 32.7,
+          "decodedKB": 145.4,
+          "files": [
+            {
+              "file": "/assets/BrickStudioApp-6ygtTFcY.css",
+              "transferKB": 19.1,
+              "decodedKB": 93.8
+            },
+            {
+              "file": "/assets/classroom-BB7L8ACt.css",
+              "transferKB": 4.2,
+              "decodedKB": 18.2
+            },
+            {
+              "file": "/assets/LiveWorldPage-BIY6LnLN.css",
+              "transferKB": 3.8,
+              "decodedKB": 14.6
+            },
+            {
+              "file": "/assets/Button-gEp5pxUA.css",
+              "transferKB": 3,
+              "decodedKB": 11.4
+            },
+            {
+              "file": "/assets/index-uIYlKJeD.css",
+              "transferKB": 2.6,
+              "decodedKB": 7.4
+            }
+          ]
+        },
+        "other": {
+          "count": 1,
+          "transferKB": 1.1,
+          "decodedKB": 11,
+          "files": [
+            {
+              "file": "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap",
+              "transferKB": 1.1,
+              "decodedKB": 11
+            }
+          ]
+        },
+        "image": {
+          "count": 2,
+          "transferKB": 13.2,
+          "decodedKB": 12.6,
+          "files": [
+            {
+              "file": "/brand/media/scene-toy-room-400.avif",
+              "transferKB": 12.3,
+              "decodedKB": 12
+            },
+            {
+              "file": "/favicon.svg",
+              "transferKB": 0.9,
+              "decodedKB": 0.6
+            }
+          ]
+        }
+      },
+      "editorChunksLoaded": [
+        "/assets/BrickStudioApp-CvspjSt9.js",
+        "/assets/events-b389eeca.esm-C_oOfuYP.js",
+        "/assets/rapier-DJ-fG79w.js",
+        "/assets/BrickStudioApp-6ygtTFcY.css"
+      ]
+    },
+    {
+      "id": "published-viewer",
+      "path": "/world#eyJ0aXRsZSI6IlFBIHRyYW5zZmVyIHdvcmxkIiwiZG9jdW1lbnQiO…",
+      "status": "ok",
+      "errors": [],
+      "document": {
+        "transferSize": 1315,
+        "decodedBodySize": 2590,
+        "domContentLoaded": 381,
+        "load": 382
+      },
+      "totalTransferKB": 1245.2,
+      "byKind": {
+        "js": {
+          "count": 20,
+          "transferKB": 1213.1,
+          "decodedKB": 3660,
+          "files": [
+            {
+              "file": "/assets/rapier-DJ-fG79w.js",
+              "transferKB": 781.6,
+              "decodedKB": 2184.2
+            },
+            {
+              "file": "/assets/events-b389eeca.esm-C_oOfuYP.js",
+              "transferKB": 232.3,
+              "decodedKB": 857.7
+            },
+            {
+              "file": "/assets/BrickStudioApp-CvspjSt9.js",
+              "transferKB": 102.5,
+              "decodedKB": 352.1
+            },
+            {
+              "file": "/assets/index-Bt_vkafz.js",
+              "transferKB": 63.7,
+              "decodedKB": 196
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-_Kvv_9VM.js",
+              "transferKB": 8.7,
+              "decodedKB": 25.4
+            },
+            {
+              "file": "/assets/parts-DYLQgLTA.js",
+              "transferKB": 4,
+              "decodedKB": 9.6
+            },
+            {
+              "file": "/assets/jsx-runtime-n5LQ9ujS.js",
+              "transferKB": 3.6,
+              "decodedKB": 8.3
+            },
+            {
+              "file": "/assets/classroom-DXFmr8Uo.js",
+              "transferKB": 2.4,
+              "decodedKB": 4.9
+            },
+            {
+              "file": "/assets/PublishedWorldPage-Di7m0bDe.js",
+              "transferKB": 2.1,
+              "decodedKB": 3.9
+            },
+            {
+              "file": "/assets/characterController-ZgYT22iJ.js",
+              "transferKB": 1.8,
+              "decodedKB": 3.3
+            },
+            {
+              "file": "/assets/Button-jd-Pegf4.js",
+              "transferKB": 1.7,
+              "decodedKB": 3.5
+            },
+            {
+              "file": "/assets/avatarMotion-Cye3E4ka.js",
+              "transferKB": 1.6,
+              "decodedKB": 3.1
+            },
+            {
+              "file": "/assets/geometry-DXajhFrq.js",
+              "transferKB": 1.6,
+              "decodedKB": 2.6
+            },
+            {
+              "file": "/assets/descriptor-DOk2ba9J.js",
+              "transferKB": 1.2,
+              "decodedKB": 0.9
+            },
+            {
+              "file": "/assets/BufferGeometryUtils-D9l-HWU9.js",
+              "transferKB": 1.2,
+              "decodedKB": 2.2
+            },
+            {
+              "file": "/assets/createLucideIcon-DN0J77WO.js",
+              "transferKB": 1.1,
+              "decodedKB": 1.4
+            },
+            {
+              "file": "/assets/descriptors-DWU8D3_z.js",
+              "transferKB": 0.7,
+              "decodedKB": 0.4
+            },
+            {
+              "file": "/assets/descriptor-Mk_GU1Q2.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/descriptor-Wldv2LjA.js",
+              "transferKB": 0.5,
+              "decodedKB": 0.2
+            },
+            {
+              "file": "/assets/constants-BWheiJ9M.js",
+              "transferKB": 0.3,
+              "decodedKB": 0.1
+            }
+          ]
+        },
+        "css": {
+          "count": 4,
+          "transferKB": 28.9,
+          "decodedKB": 130.8,
+          "files": [
+            {
+              "file": "/assets/BrickStudioApp-6ygtTFcY.css",
+              "transferKB": 19.1,
+              "decodedKB": 93.8
+            },
+            {
+              "file": "/assets/classroom-BB7L8ACt.css",
+              "transferKB": 4.2,
+              "decodedKB": 18.2
+            },
+            {
+              "file": "/assets/Button-gEp5pxUA.css",
+              "transferKB": 3,
+              "decodedKB": 11.4
+            },
+            {
+              "file": "/assets/index-uIYlKJeD.css",
+              "transferKB": 2.6,
+              "decodedKB": 7.4
+            }
+          ]
+        },
+        "other": {
+          "count": 1,
+          "transferKB": 1.1,
+          "decodedKB": 11,
+          "files": [
+            {
+              "file": "https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap",
+              "transferKB": 1.1,
+              "decodedKB": 11
+            }
+          ]
+        },
+        "image": {
+          "count": 1,
+          "transferKB": 0.9,
+          "decodedKB": 0.6,
+          "files": [
+            {
+              "file": "/favicon.svg",
+              "transferKB": 0.9,
+              "decodedKB": 0.6
+            }
+          ]
+        }
+      },
+      "editorChunksLoaded": [
+        "/assets/BrickStudioApp-CvspjSt9.js",
+        "/assets/events-b389eeca.esm-C_oOfuYP.js",
+        "/assets/rapier-DJ-fG79w.js",
+        "/assets/BrickStudioApp-6ygtTFcY.css"
+      ]
+    }
+  ]
+}

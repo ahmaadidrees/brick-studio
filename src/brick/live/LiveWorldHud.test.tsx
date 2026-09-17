@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createBrickStudioDocument } from '../brickDocument'
 import { createInitialLiveRoomSnapshot, type LiveRoomActions, type LiveRoomSnapshot } from './liveRoomModel'
-import { LiveWorldHud, type LiveWorldHudProps } from './LiveWorldHud'
+import { LivePeoplePanelContext, LiveWorldHud, type LiveWorldHudProps } from './LiveWorldHud'
 
 afterEach(cleanup)
 
@@ -56,7 +56,7 @@ function renderHud(snapshot = createSnapshot(), actions = createActions(), optio
 }
 
 describe('canvas-first live room chrome', () => {
-  it('starts compact, keeps large panels closed, and opens only one panel at a time', () => {
+  it('starts compact and opens one People panel with invite, roster and room controls', () => {
     renderHud()
 
     expect(screen.getByRole('toolbar', { name: 'Live collaboration controls' })).toBeInTheDocument()
@@ -65,19 +65,39 @@ describe('canvas-first live room chrome', () => {
     expect(screen.queryByRole('button', { name: /^Explore$/ })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'People, 2 here' }))
-    expect(screen.getByRole('dialog', { name: '2 people here' })).toHaveTextContent('Ari')
-    expect(screen.getByRole('dialog', { name: '2 people here' })).toHaveTextContent('Bo')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    const panel = screen.getByRole('dialog', { name: 'Rover playground' })
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
-    expect(screen.getByRole('dialog', { name: 'Share this live world' })).toHaveTextContent('keep your owner link for yourself')
-    expect(screen.queryByRole('dialog', { name: '2 people here' })).not.toBeInTheDocument()
+    expect(panel).toHaveTextContent('In this world (2)')
+    expect(panel).toHaveTextContent('Ari')
+    expect(panel).toHaveTextContent('Bo')
+    expect(panel).toHaveTextContent('https://example.test/live/ROOM42')
+    expect(panel).toHaveTextContent('keep your owner link for yourself')
+    expect(within(panel).getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'Leave room' })).toBeInTheDocument()
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Close people panel' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'People, 2 here' })).toHaveFocus()
+  })
+
+  it('opens the People panel from a header request and hides its own trigger while a header controls it', () => {
+    const actions = createActions()
+    const props = { snapshot: createSnapshot(), roomTitle: 'Rover playground', shareLink: 'https://example.test/live/ROOM42', copyText: vi.fn(async () => true), editingIntegrated: true, actions, onLeave: vi.fn() }
+    const { rerender } = render(<LivePeoplePanelContext.Provider value={{ seq: 0 }}><LiveWorldHud {...props} /></LivePeoplePanelContext.Provider>)
+    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    rerender(<LivePeoplePanelContext.Provider value={{ seq: 1 }}><LiveWorldHud {...props} /></LivePeoplePanelContext.Provider>)
+    expect(screen.getByRole('dialog', { name: 'Rover playground' })).toHaveFocus()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    rerender(<LivePeoplePanelContext.Provider value={{ seq: 2 }}><LiveWorldHud {...props} /></LivePeoplePanelContext.Provider>)
+    expect(screen.getByRole('dialog', { name: 'Rover playground' })).toBeInTheDocument()
   })
 
   it('preserves owner authority without adding another mode switch', () => {
     const { actions, rerender } = renderHud()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Room' }))
+    fireEvent.click(screen.getByRole('button', { name: 'People, 2 here' }))
     fireEvent.click(screen.getByRole('button', { name: 'Close room to new people' }))
     expect(actions.setLocked).toHaveBeenCalledWith(true)
     expect(screen.getByRole('dialog', { name: 'Rover playground' })).toHaveTextContent('You are the owner')
@@ -132,7 +152,7 @@ describe('canvas-first live room chrome', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(actions.reconnect).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'People, 2 last seen' }))
-    expect(screen.getByRole('dialog', { name: 'Last seen in this room' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Rover playground' })).toHaveTextContent('Last seen in this room')
     expect(screen.queryByRole('button', { name: 'Change my builder name' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Rejoin here' }))
     expect(actions.reconnect).toHaveBeenCalledOnce()
@@ -140,13 +160,11 @@ describe('canvas-first live room chrome', () => {
 
   it('distinguishes classroom invites from temporary guest rooms and keeps account names authoritative', () => {
     renderHud(createSnapshot(), createActions(), { roomKind: 'classroom', onRemixWorld: undefined, onPublishSnapshot: undefined })
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    fireEvent.click(screen.getByRole('button', { name: 'People, 2 here' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('Only classmates with access can join. They need to sign in')
     expect(screen.queryByText(/2 hours/)).not.toBeInTheDocument()
     expect(screen.queryByText(/No account needed/)).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'People, 2 here' }))
     expect(screen.queryByRole('button', { name: 'Change my builder name' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Room' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('Reopen this classroom world from My Class')
   })
 
@@ -154,7 +172,7 @@ describe('canvas-first live room chrome', () => {
     const onExportWorld = vi.fn(async () => 'Download started')
     const onRemixWorld = vi.fn(async () => 'Saved locally')
     renderHud(createSnapshot({ connection: 'offline' }), createActions(), { onExportWorld, onRemixWorld })
-    fireEvent.click(screen.getByRole('button', { name: 'Share' }))
+    fireEvent.click(screen.getByRole('button', { name: 'People, 2 last seen' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('Expires after 2 hours without activity')
     expect(screen.getByRole('dialog')).toHaveTextContent('replaces this browser’s current build')
     fireEvent.click(screen.getByRole('button', { name: 'Export copy' }))
@@ -167,7 +185,7 @@ describe('canvas-first live room chrome', () => {
     const copyText = vi.fn(async () => copied)
     const diagnostics = 'Brick Studio diagnostics\nconnection: offline\nclose: 4001'
     renderHud(createSnapshot(), { ...createActions(), exportDiagnostics: () => diagnostics }, { copyText })
-    fireEvent.click(screen.getByRole('button', { name: 'Room' }))
+    fireEvent.click(screen.getByRole('button', { name: 'People, 2 here' }))
     fireEvent.click(screen.getByRole('button', { name: 'Copy diagnostics' }))
     await waitFor(() => expect(copyText).toHaveBeenCalledWith(diagnostics))
     expect(await screen.findByText(copied ? 'Diagnostics copied. Share them when reporting a connection problem.' : 'Could not copy diagnostics. Try again.')).toBeInTheDocument()
@@ -180,7 +198,7 @@ describe('canvas-first live room chrome', () => {
     const pendingUnload = new Event('beforeunload', { cancelable: true })
     window.dispatchEvent(pendingUnload)
     expect(pendingUnload.defaultPrevented).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: 'Room' }))
+    fireEvent.click(screen.getByRole('button', { name: 'People, 2 here' }))
     expect(screen.getByRole('dialog')).toHaveTextContent('2 changes still need confirmation from the room')
     rerender(<LiveWorldHud {...options} snapshot={createSnapshot({ pendingOperations: 0 })} />)
     expect(screen.getByText('Live')).toBeInTheDocument()

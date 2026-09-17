@@ -1,19 +1,20 @@
+import { ScaledEnvironment } from '../ScaledEnvironment'
 import { SkyIslandRig, SkyIslandWorld } from './SkyIslandWorld'
 import { SKY_ISLAND, SKY_PALETTE } from './skyIsland'
 import { SKY_ISLAND_DESCRIPTOR } from './descriptor'
 import type { EnvironmentContentModule, EnvironmentRenderProps } from '../types'
 
-export function SkyIslandRigSlot({ compact, reducedMotion, mode }: EnvironmentRenderProps) {
+export function SkyIslandRigSlot({ compact, reducedMotion, mode, plateSize }: EnvironmentRenderProps) {
   return (
     <>
       <SkyIslandRig compact={compact} />
-      {mode === 'build' && <SkyIslandWorld compact={compact} reducedMotion={reducedMotion} withPhysics={false} />}
+      {mode === 'build' && <ScaledEnvironment plateSize={plateSize}><SkyIslandWorld compact={compact} reducedMotion={reducedMotion} withPhysics={false} /></ScaledEnvironment>}
     </>
   )
 }
 
-export function SkyIslandWorldSlot({ compact, reducedMotion }: EnvironmentRenderProps) {
-  return <SkyIslandWorld compact={compact} reducedMotion={reducedMotion} />
+export function SkyIslandWorldSlot({ compact, reducedMotion, plateSize }: EnvironmentRenderProps) {
+  return <ScaledEnvironment plateSize={plateSize}><SkyIslandWorld compact={compact} reducedMotion={reducedMotion} /></ScaledEnvironment>
 }
 
 const module: EnvironmentContentModule = {

@@ -1,3 +1,4 @@
+import type { CustomPartDefinition } from '@brick-studio/core'
 import type { BrickStudioDocument } from '../brickDocument'
 import {
   LIVE_MAX_DISPLAY_NAME_LENGTH,
@@ -135,6 +136,7 @@ export type LiveRoomActions = {
   setLocked: (locked: boolean) => void
   setProfile: (profile: PlayerProfile) => void
   /** Owner-only full-world metadata/document replacement; absent on legacy/test controllers. */
+  addCustomPart?: (part: CustomPartDefinition) => string | null
   replaceDocument?: (document: BrickStudioDocument) => string | null
   sendPose: (pose: LivePose) => void
   requestResync: () => void

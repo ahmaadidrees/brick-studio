@@ -1,0 +1,28 @@
+PASS two authenticated sockets receive stable identities and same initial document
+PASS concurrent edits broadcast consistently and are committed in authoritative database
+PASS teacher password reset revokes active socket and old ticket until password replacement
+PASS removing group member closes active socket and preserves contributions
+PASS closing class revokes remaining socket and blocks group discovery
+PASS reopened class cold socket loads persisted edits
+{
+  "run": "live_mu1yyopl",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "completedAt": "2026-09-15T01:05:08.568Z",
+  "classId": "3a4750ee-a944-41d9-8804-61285d4308ff",
+  "worldId": "bca01ae9-bd0b-426b-9c0c-ad976b52547a",
+  "success": true,
+  "transportRetries": 0,
+  "networkFamily": "IPv4",
+  "fixtureSetupMode": "fresh registration",
+  "checks": [
+    "two authenticated sockets receive stable identities and same initial document",
+    "concurrent edits broadcast consistently and are committed in authoritative database",
+    "teacher password reset revokes active socket and old ticket until password replacement",
+    "removing group member closes active socket and preserves contributions",
+    "closing class revokes remaining socket and blocks group discovery",
+    "reopened class cold socket loads persisted edits"
+  ],
+  "limitations": [
+    "No rendered browser, real classroom students, weak-device performance, or classroom-NAT load tested"
+  ]
+}

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState } from 'react'
 import type { CharacterPalette } from '../characters/types'
 
 type PreviewArtworkProps = {
@@ -109,109 +109,103 @@ function SkyIslandArtwork() {
   )
 }
 
-function ClassicBuilderArtwork() {
-  return (
-    <svg viewBox="0 0 200 110" preserveAspectRatio="xMidYMid slice" data-artwork="classic-builder">
-      <rect className="preview-character-studio" width="200" height="110" />
-      <ellipse className="preview-character-shadow" cx="100" cy="98" rx="43" ry="8" />
-      <g className="preview-builder">
-        <path className="preview-builder-leg-left" d="M73 72h24v27H69z" />
-        <path className="preview-builder-leg-right" d="M103 72h24l4 27h-28z" />
-        <path className="preview-builder-arm-left" d="m64 49 19 4-8 31-16-5z" />
-        <path className="preview-builder-arm-right" d="m117 53 19-4 5 30-16 5z" />
-        <path className="preview-builder-body" d="M78 44h44l5 33H73z" />
-        <path className="preview-builder-badge" d="M102 51h10v10h-10z" />
-        <rect className="preview-builder-head" x="80" y="13" width="40" height="36" rx="9" />
-        <path className="preview-builder-hair" d="M80 28V16c11-8 31-7 40 2v11l-7-6-7 4-9-7-8 7z" />
-        <circle className="preview-character-eye" cx="93" cy="32" r="2" />
-        <circle className="preview-character-eye" cx="108" cy="32" r="2" />
-        <path className="preview-character-smile" d="M94 39c4 4 9 4 13 0" />
-      </g>
-    </svg>
-  )
-}
-
-function ToyFigureArtwork() {
-  return (
-    <svg viewBox="0 0 200 110" preserveAspectRatio="xMidYMid slice" data-artwork="toy-figure">
-      <rect className="preview-character-playroom" width="200" height="110" />
-      <path className="preview-toy-rainbow" d="M-8 83c33-39 57-43 87-2M127 2c22 4 47 22 78 63" />
-      <ellipse className="preview-character-shadow" cx="100" cy="99" rx="45" ry="8" />
-      <g className="preview-toy">
-        <path className="preview-toy-leg-left" d="M75 72h23v27H70z" />
-        <path className="preview-toy-leg-right" d="M102 72h23l5 27h-28z" />
-        <circle className="preview-toy-hand" cx="61" cy="74" r="9" />
-        <circle className="preview-toy-hand" cx="139" cy="74" r="9" />
-        <path className="preview-toy-arm-left" d="m77 49-13 6-9 22 15 5 13-20z" />
-        <path className="preview-toy-arm-right" d="m123 49 13 6 9 22-15 5-13-20z" />
-        <path className="preview-toy-body" d="M78 45h44l8 32H70z" />
-        <circle className="preview-toy-emblem" cx="100" cy="60" r="8" />
-        <circle className="preview-toy-head" cx="100" cy="29" r="22" />
-        <path className="preview-toy-cap" d="M78 26c3-22 40-24 45-2-11-6-29-5-45 2Z" />
-        <circle className="preview-character-eye" cx="92" cy="30" r="2.5" />
-        <circle className="preview-character-eye" cx="108" cy="30" r="2.5" />
-        <path className="preview-character-smile" d="M91 38c6 6 13 6 19 0" />
-      </g>
-    </svg>
-  )
-}
-
-function RobotHeroArtwork() {
-  return (
-    <svg viewBox="0 0 200 110" preserveAspectRatio="xMidYMid slice" data-artwork="robot-hero">
-      <rect className="preview-character-space" width="200" height="110" />
-      <g className="preview-space-stars">
-        <circle cx="25" cy="21" r="2" /><circle cx="49" cy="45" r="1.5" /><circle cx="161" cy="20" r="2" />
-        <circle cx="178" cy="50" r="1.5" /><circle cx="139" cy="9" r="1" /><circle cx="16" cy="77" r="1" />
-      </g>
-      <ellipse className="preview-character-shadow" cx="100" cy="99" rx="48" ry="8" />
-      <g className="preview-robot">
-        <path className="preview-robot-leg-left" d="M74 70h23l-3 29H67z" />
-        <path className="preview-robot-leg-right" d="M103 70h23l7 29h-27z" />
-        <path className="preview-robot-shoulders" d="M59 47 79 39h42l20 8-7 19-14-6v22H80V60l-14 6z" />
-        <rect className="preview-robot-hand" x="57" y="61" width="14" height="12" rx="4" />
-        <rect className="preview-robot-hand" x="129" y="61" width="14" height="12" rx="4" />
-        <path className="preview-robot-chest" d="M83 45h34l7 32H76z" />
-        <path className="preview-robot-core" d="m100 51 10 8-10 11-10-11z" />
-        <path className="preview-robot-head" d="m79 17 9-9h24l9 9-3 28H82z" />
-        <path className="preview-robot-face" d="M86 22h28l-4 13H90z" />
-        <path className="preview-robot-eye" d="M92 27h16" />
-        <path className="preview-robot-antenna" d="M100 8V2" />
-        <circle className="preview-robot-antenna-tip" cx="100" cy="3" r="3" />
-      </g>
-    </svg>
-  )
+function CharacterPlaceholder() {
+  return <svg viewBox="0 0 200 110" data-artwork="character-placeholder">
+    <rect width="200" height="110" fill="var(--surface-2)" />
+    <rect x="84" y="20" width="32" height="30" rx="4" fill="var(--border-strong)" />
+    <path d="M76 56h48v30H76zM66 58h8v25h-8zM126 58h8v25h-8zM80 88h15v14H80zM105 88h15v14h-15z" fill="var(--border-strong)" />
+  </svg>
 }
 
 function FallbackArtwork({ kind }: { kind: PreviewArtworkProps['kind'] }) {
-  return kind === 'environment' ? <ClassicStudioArtwork /> : <ClassicBuilderArtwork />
+  return kind === 'environment' ? <ClassicStudioArtwork /> : <CharacterPlaceholder />
 }
 
-export function PreviewArtwork({ kind, previewKey, palette }: PreviewArtworkProps) {
+/** Static portraits of the actual runtime avatars. Draft colors and figure
+ * details are shown by the live CharacterPreview, not fabricated card artwork. */
+const CHARACTER_PREVIEWS: Record<string, string> = {
+  'character:classic': '/brand/characters/classic-400.webp',
+  'character:toy-figure': '/brand/characters/toy-figure-400.webp',
+  'character:cc0-hero': '/brand/characters/cc0-hero-400.webp',
+  'character:pip': new URL('../../../assets/characters-original/pip-preview.png', import.meta.url).href,
+  'character:fern': new URL('../../../assets/characters-original/fern-preview.png', import.meta.url).href,
+  'character:nova': new URL('../../../assets/characters-original/nova-preview.png', import.meta.url).href,
+}
+
+function CharacterPortrait({ source }: { source: string }) {
+  const [failed, setFailed] = useState(false)
+  return failed ? <CharacterPlaceholder /> : <img src={source} alt="" width={400} height={400} loading="lazy" decoding="async" onError={() => setFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+}
+
+/**
+ * Scene thumbnails delivered by W7 (contract: `public/brand/media/manifest.json`):
+ * `scene-{slug}-{800,400}.{avif,webp,png}` at 800×500 and 400×250 (16:10).
+ * They layer over the SVG art below; until a file exists (or if it fails to
+ * load) the `<img>` errors out, the picture is dropped and the SVG stays the
+ * visible thumbnail — no code change is needed when the files land.
+ */
+export const SCENE_MEDIA_SLUGS: Readonly<Record<string, string>> = {
+  'environment:classic': 'classic',
+  'environment:toy-room': 'toy-room',
+  'environment:brick-valley': 'brick-valley',
+  'environment:sky-island': 'sky-island',
+}
+const SCENE_MEDIA_BASE = `${import.meta.env.BASE_URL ?? '/'}brand/media/`.replace(/\/{2,}/g, '/')
+export const SCENE_MEDIA_WIDTHS = [400, 800] as const
+export const SCENE_MEDIA_SIZES = '(max-width: 620px) 100vw, 300px'
+
+export function sceneMediaSource(slug: string, width: (typeof SCENE_MEDIA_WIDTHS)[number], format: 'avif' | 'webp' | 'png') {
+  return `${SCENE_MEDIA_BASE}scene-${slug}-${width}.${format}`
+}
+
+function sceneSrcSet(slug: string, format: 'avif' | 'webp' | 'png') {
+  return SCENE_MEDIA_WIDTHS.map((width) => `${sceneMediaSource(slug, width, format)} ${width}w`).join(', ')
+}
+
+function ScenePhoto({ slug }: { slug: string }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
+  return (
+    <picture className="content-picker-photo">
+      <source type="image/avif" srcSet={sceneSrcSet(slug, 'avif')} sizes={SCENE_MEDIA_SIZES} />
+      <source type="image/webp" srcSet={sceneSrcSet(slug, 'webp')} sizes={SCENE_MEDIA_SIZES} />
+      <img
+        src={sceneMediaSource(slug, 400, 'png')}
+        srcSet={sceneSrcSet(slug, 'png')}
+        sizes={SCENE_MEDIA_SIZES}
+        width={400}
+        height={250}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </picture>
+  )
+}
+
+export function PreviewArtwork({ kind, previewKey }: PreviewArtworkProps) {
+  if (kind === 'character' && CHARACTER_PREVIEWS[previewKey]) return <span className="content-picker-art content-picker-art-character" data-preview-key={previewKey} aria-hidden="true">
+    <CharacterPortrait key={previewKey} source={CHARACTER_PREVIEWS[previewKey]} />
+  </span>
   let artwork
   switch (previewKey) {
     case 'environment:classic': artwork = <ClassicStudioArtwork />; break
     case 'environment:toy-room': artwork = <ToyRoomArtwork />; break
     case 'environment:brick-valley': artwork = <BrickValleyArtwork />; break
     case 'environment:sky-island': artwork = <SkyIslandArtwork />; break
-    case 'character:classic': artwork = <ClassicBuilderArtwork />; break
-    case 'character:toy-figure': artwork = <ToyFigureArtwork />; break
-    case 'character:cc0-hero': artwork = <RobotHeroArtwork />; break
     default: artwork = <FallbackArtwork kind={kind} />
   }
+  const sceneSlug = kind === 'environment' ? SCENE_MEDIA_SLUGS[previewKey] : undefined
 
   return (
     <span
       className={`content-picker-art content-picker-art-${kind}`}
       data-preview-key={previewKey}
-      style={kind === 'character' && palette ? {
-        '--preview-character-primary': palette.primary,
-        '--preview-character-secondary': palette.secondary,
-        '--preview-character-accent': palette.accent,
-      } as CSSProperties : undefined}
       aria-hidden="true"
     >
       {artwork}
+      {sceneSlug && <ScenePhoto slug={sceneSlug} />}
     </span>
   )
 }

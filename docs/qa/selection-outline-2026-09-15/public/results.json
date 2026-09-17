@@ -1,0 +1,83 @@
+{
+  "origin": "https://brickgineers.com",
+  "at": "2026-09-15T17:51:37.193Z",
+  "results": [
+    {
+      "width": 1024,
+      "height": 600,
+      "catalog": {
+        "height": 253,
+        "fullyVisible": 9
+      },
+      "checks": [
+        "category + search",
+        "one placement surface",
+        "selection color/rotate/height",
+        "exact JSON export",
+        "cold reload",
+        "camera view",
+        "palette collapse",
+        "bounded panels",
+        "mouse-only Box Select hidden"
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "catalog": {
+        "height": 357,
+        "fullyVisible": 12
+      },
+      "checks": [
+        "category + search",
+        "one placement surface",
+        "selection color/rotate/height",
+        "exact JSON export",
+        "cold reload",
+        "camera view",
+        "palette collapse",
+        "bounded panels",
+        "mouse-only Box Select hidden"
+      ]
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "catalog": {
+        "height": 405,
+        "fullyVisible": 12
+      },
+      "checks": [
+        "category + search",
+        "one placement surface",
+        "selection color/rotate/height",
+        "exact JSON export",
+        "cold reload",
+        "camera view",
+        "palette collapse",
+        "bounded panels",
+        "mouse-only Box Select hidden"
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "catalog": {
+        "height": 717,
+        "fullyVisible": 23
+      },
+      "checks": [
+        "category + search",
+        "one placement surface",
+        "selection color/rotate/height",
+        "exact JSON export",
+        "cold reload",
+        "camera view",
+        "palette collapse",
+        "bounded panels",
+        "mouse-only Box Select hidden"
+      ]
+    }
+  ],
+  "errors": []
+}

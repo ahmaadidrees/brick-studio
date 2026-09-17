@@ -96,3 +96,13 @@ describe('stored live profile', () => {
     expect(loadStoredLiveProfile(blocked)).toBeNull()
   })
 })
+
+it('retains customized appearance through stored profile and guest name entry', async () => {
+  const { normalizeCharacterAppearance } = await import('@brick-studio/core')
+  const appearance = normalizeCharacterAppearance({ hair: 'bun', accessory: 'glasses', skinColor: '#985f42' })
+  const storage = memoryStorage()
+  saveStoredLiveProfile({ displayName: 'Builder', characterId: 'toy-figure', appearance }, storage)
+  const loaded = loadStoredLiveProfile(storage)
+  expect(loaded?.appearance).toEqual(appearance)
+  expect(liveProfileWithDisplayName('New name', loaded).appearance).toEqual(appearance)
+})

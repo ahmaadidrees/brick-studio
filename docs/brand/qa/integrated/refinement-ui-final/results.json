@@ -1,0 +1,112 @@
+{
+  "checkedAt": "2026-09-15T00:39:57.007Z",
+  "origin": "http://127.0.0.1:5190",
+  "commit": "ab98e1c",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      6.86,
+      7.1,
+      6.91
+    ],
+    "freeMemoryMB": 38772,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "results": [
+    {
+      "width": 1366,
+      "height": 768,
+      "touch": false,
+      "layout": {
+        "outside": [],
+        "overlaps": []
+      },
+      "errors": [],
+      "failures": [],
+      "status": "passed"
+    },
+    {
+      "guestHomeContinue": "passed",
+      "savedBrickCount": 1
+    },
+    {
+      "width": 1024,
+      "height": 768,
+      "touch": false,
+      "layout": {
+        "outside": [],
+        "overlaps": []
+      },
+      "errors": [],
+      "failures": [],
+      "status": "passed"
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "touch": false,
+      "layout": {
+        "outside": [],
+        "overlaps": []
+      },
+      "errors": [],
+      "failures": [],
+      "status": "passed"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "layout": {
+        "outside": [],
+        "overlaps": []
+      },
+      "errors": [],
+      "failures": [],
+      "status": "passed"
+    },
+    {
+      "width": 320,
+      "height": 740,
+      "touch": true,
+      "layout": {
+        "outside": [],
+        "overlaps": []
+      },
+      "errors": [],
+      "failures": [],
+      "status": "passed"
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "touch": true,
+      "layout": {
+        "outside": [
+          {
+            "name": "World menu",
+            "x": 201.171875,
+            "y": -12,
+            "width": 95.203125,
+            "height": 44,
+            "top": -12,
+            "right": 296.375,
+            "bottom": 32,
+            "left": 201.171875
+          }
+        ],
+        "overlaps": []
+      },
+      "errors": [],
+      "failures": [
+        "controls outside 844x390: World menu 201,-12,95,44"
+      ],
+      "status": "failed"
+    }
+  ],
+  "failed": 1
+}

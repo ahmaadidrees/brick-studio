@@ -1,0 +1,42 @@
+/* One static illustration per option keeps browsing independent of the live canvas. */
+.appearance-controls .appearance-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(94px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.character-studio .appearance-controls .appearance-option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  height: auto;
+  min-height: 106px;
+  padding: 7px 6px 9px;
+  overflow: hidden;
+  border: 1px solid #dce2eb;
+  border-radius: 14px;
+  background: #f8f9fc;
+  color: #263c51;
+  box-shadow: none;
+  white-space: normal;
+}
+.character-studio .appearance-controls .appearance-option:hover {
+  background: #f0f4fc;
+  border-color: #95b0e0;
+}
+.character-studio .appearance-controls .appearance-option[aria-pressed='true'] {
+  border: 2px solid #416fc8;
+  padding: 6px 5px 8px;
+  background: #edf3ff;
+  color: #244d97;
+  box-shadow: 0 0 0 2px rgb(65 111 200 / 8%);
+}
+.appearance-option__art { width: 96px; max-width: 100%; height: 72px; flex: 0 0 72px; }
+.appearance-option__label { font-size: 12px; line-height: 1.25; font-weight: 700; }
+.appearance-controls .appearance-category { margin-bottom: 18px; }
+.appearance-controls .appearance-category:last-child { margin-bottom: 0; }
+@media (max-width: 380px) {
+  .appearance-controls .appearance-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .appearance-option__art { height: 60px; flex-basis: 60px; }
+  .character-studio .appearance-controls .appearance-option { min-height: 96px; }
+}

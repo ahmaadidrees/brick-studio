@@ -1,3 +1,4 @@
+import type { CharacterAppearance } from '@brick-studio/core'
 import { exploreKeyboardBlocked, followCameraYaw, readExploreKeys } from './explorePreferences'
 import { Edges, OrbitControls } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
@@ -10,7 +11,9 @@ import { createMotionSnapshot } from './avatarMotion'
 import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
 import { RemoteAvatar } from './RemoteAvatar'
 import { VerticalSelectionHandle } from './VerticalSelectionHandle'
+import { getBuildPlateSize } from './buildPlate'
 import { getBuildBounds } from './bounds'
+import { getBuildVisibilityRange } from './buildVisibility'
 import {
   BUILD_CAMERA_MAX_POLAR_ANGLE,
   constrainBuildCameraNavigation,
@@ -86,7 +89,6 @@ import {
   BRICK_PART_MAP,
   EXPLORER_CAPSULE_HALF_HEIGHT,
   EXPLORER_CAPSULE_RADIUS,
-  GRID_SIZE,
   STUD,
   PLATE_HEIGHT,
   brickPhysicalShapes,
@@ -109,12 +111,15 @@ import { draftFromSurfacePoint } from './surfacePlacement'
 import { playGrabTick, playPlaceClick } from './soundFeedback'
 import { selectionDrafts, selectionDraftIsValid, useBrickStore } from './store'
 import {
+  ENVIRONMENT_UNAVAILABLE_TOAST,
   RuntimeCharacterAvatar,
+  RuntimeEnvironmentBoundary,
   useRuntimeEnvironment,
   type RuntimeEnvironment,
 } from './runtimeContent'
 import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
+import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -128,6 +133,7 @@ export type RemoteRaceAvatar = RaceAvatarPose & {
   color: string
   name?: string
   characterId?: CharacterId
+  appearance?: CharacterAppearance
   palette?: CharacterPalette
 }
 
@@ -137,11 +143,14 @@ export type BrickStudioSceneProps = {
   remoteAvatarSource?: RemoteAvatarSource
   environmentId?: EnvironmentId
   localCharacterId?: CharacterId
+  localCharacterAppearance?: CharacterAppearance
   localCharacterPalette?: CharacterPalette
   onEnvironmentStatusChange?: (environmentId: EnvironmentId, status: 'ready' | 'loading' | 'unavailable') => void
 }
 
-const gridWorldSize = GRID_SIZE * STUD
+function usePlateSize() {
+  return useBrickStore(state => getBuildPlateSize(state.documentMetadata))
+}
 const PART_COLLIDER_FRICTION = 0.5
 const HOVER_GLOW_INTENSITY = 0.16
 const PLACE_POP_START_SCALE = 0.86
@@ -158,7 +167,7 @@ const EXPLORE_SAFE_POSITION_SAMPLE_FRAMES = 20
 function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBrickId?: string | null) {
   const state = useBrickStore.getState()
   return draftFromSurfacePoint(point, draft, state.movingSelection?.originals,
-    hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined)
+    hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined, getBuildPlateSize(state.documentMetadata))
 }
 
 /**
@@ -186,6 +195,8 @@ function applyTouchPositionIntent(
 }
 
 function BaseplateStuds() {
+  const plateSize = usePlateSize()
+
   const ref = useRef<THREE.InstancedMesh>(null)
   const geometry = useMemo(() => new THREE.CylinderGeometry(STUD * 0.18, STUD * 0.18, 0.075, 10), [])
 
@@ -193,18 +204,18 @@ function BaseplateStuds() {
     if (!ref.current) return
     const matrix = new THREE.Matrix4()
     let index = 0
-    for (let x = 0; x < GRID_SIZE; x += 1) {
-      for (let z = 0; z < GRID_SIZE; z += 1) {
-        matrix.makeTranslation((x + 0.5 - GRID_SIZE / 2) * STUD, 0.075, (z + 0.5 - GRID_SIZE / 2) * STUD)
+    for (let x = 0; x < plateSize; x += 1) {
+      for (let z = 0; z < plateSize; z += 1) {
+        matrix.makeTranslation((x + 0.5 - plateSize / 2) * STUD, 0.075, (z + 0.5 - plateSize / 2) * STUD)
         ref.current.setMatrixAt(index, matrix)
         index += 1
       }
     }
     ref.current.instanceMatrix.needsUpdate = true
-  }, [])
+  }, [plateSize])
 
   return (
-    <instancedMesh ref={ref} args={[geometry, undefined, GRID_SIZE * GRID_SIZE]} receiveShadow>
+    <instancedMesh ref={ref} args={[geometry, undefined, plateSize * plateSize]} receiveShadow>
       <meshStandardMaterial color="#d5dce0" roughness={0.82} />
     </instancedMesh>
   )
@@ -234,6 +245,9 @@ function Baseplate({
   cameraActive?: CameraGestureFlag
   mouseTravel?: PointerTravel
 }) {
+  const plateSize = usePlateSize()
+  const gridWorldSize = plateSize * STUD
+
   const draft = useBrickStore((state) => state.draft)
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
@@ -282,14 +296,15 @@ function Baseplate({
         />
       </mesh>
       {surface.showStuds && <BaseplateStuds />}
-      {!explore && <gridHelper args={[gridWorldSize, GRID_SIZE, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
+      {!explore && <gridHelper args={[gridWorldSize, plateSize, '#b6c0c5', '#cbd3d6']} position={[0, 0.12, 0]} />}
     </group>
   )
 }
 
 function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouseTravel }: { brick: BrickInstance; explore?: boolean; buildGesture?: BuildGestureState; cameraActive?: CameraGestureFlag; mouseTravel?: PointerTravel }) {
+  const plateSize = usePlateSize()
+
   const selectedIds = useBrickStore((state) => state.selectedIds)
-  const selectedId = useBrickStore((state) => state.selectedId)
   const draft = useBrickStore((state) => state.draft)
   const movingId = useBrickStore((state) => state.movingId)
   const movingSelection = useBrickStore((state) => state.movingSelection)
@@ -299,7 +314,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
   const setDraftPosition = useBrickStore((state) => state.setDraftPosition)
   const placeDraft = useBrickStore((state) => state.placeDraft)
   const part = BRICK_PART_MAP[brick.partId]
-  const position = brickWorldPosition(brick)
+  const position = brickWorldPosition(brick, plateSize)
   const geometry = useMemo(() => createBrickGeometry(part), [part])
   const userData = useMemo(() => ({ brickId: brick.id }), [brick.id])
   const [hovered, setHovered] = useState(false)
@@ -368,7 +383,12 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
         scale={isMoving ? 0.98 : 1}
       >
         <meshStandardMaterial color={brick.color} emissive={hoverGlow ? brick.color : '#000000'} emissiveIntensity={hoverGlow ? HOVER_GLOW_INTENSITY : 0} roughness={0.58} metalness={0.02} transparent={isMoving} opacity={isMoving ? 0.3 : 1} />
-        {selectedIds.includes(brick.id) && !explore && <Edges scale={1.025} color={selectedId === brick.id ? '#263e4b' : '#219ebc'} threshold={15} />}
+        {selectedIds.includes(brick.id) && !explore && <>
+          {/* A pale casing keeps the same blue selection legible on every brick color.
+              Keep depth testing so hidden edges do not show through other bricks. */}
+          <Edges scale={1.025} color="#eef5ff" lineWidth={4} threshold={15} depthWrite={false} renderOrder={1} toneMapped={false} />
+          <Edges scale={1.025} color="#2870ed" lineWidth={2} threshold={15} depthWrite={false} renderOrder={2} toneMapped={false} />
+        </>}
       </mesh>
     </group>
   )
@@ -385,6 +405,8 @@ function InstancedBrickGroup({
   cameraActive: CameraGestureFlag
   mouseTravel: PointerTravel
 }) {
+  const plateSize = usePlateSize()
+
   const ref = useRef<THREE.InstancedMesh>(null)
   const hoveredInstance = useRef<number | null>(null)
   const part = BRICK_PART_MAP[group.partId]
@@ -413,7 +435,7 @@ function InstancedBrickGroup({
     hoveredInstance.current = null
     for (let index = 0; index < group.bricks.length; index += 1) {
       const brick = group.bricks[index]
-      position.fromArray(brickWorldPosition(brick))
+      position.fromArray(brickWorldPosition(brick, plateSize))
       rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, brick.rotation * Math.PI / 2)
       matrix.compose(position, rotation, scale)
       mesh.setMatrixAt(index, matrix)
@@ -425,7 +447,7 @@ function InstancedBrickGroup({
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     mesh.computeBoundingBox()
     mesh.computeBoundingSphere()
-  }, [group.bricks, matrix, paintInstance, position, rotation, scale])
+  }, [plateSize, group.bricks, matrix, paintInstance, position, rotation, scale])
 
   const brickForEvent = (event: { instanceId?: number }) => (
     event.instanceId === undefined ? null : group.bricks[event.instanceId] ?? null
@@ -502,9 +524,11 @@ function DraftBrick() {
 }
 
 function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean }) {
+  const plateSize = usePlateSize()
+
   const part = BRICK_PART_MAP[draft.partId]
   const geometry = useMemo(() => createBrickGeometry(part), [part])
-  const position = brickWorldPosition(draft)
+  const position = brickWorldPosition(draft, plateSize)
   const blockedNonce = useBrickStore((state) => state.blockedNonce)
   const shakeRef = useRef<THREE.Group>(null)
   const shakeElapsed = useRef<number | null>(null)
@@ -548,24 +572,78 @@ function DraftBrickMesh({ draft, valid }: { draft: BrickDraft; valid: boolean })
 let buildCameraSpaceHeld = false
 
 function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
+  const plateSize = usePlateSize()
+
   const controls = useRef<OrbitControlsImpl | null>(null)
   const request = useBrickStore((state) => state.viewRequest)
   const marquee = useBrickStore((state) => state.marquee)
   const bricks = useBrickStore((state) => state.bricks)
   const setViewTarget = useBrickStore((state) => state.setViewTarget)
-  const { camera, gl, size: viewportSize } = useThree()
+  const { camera, gl, scene, size: viewportSize } = useThree()
   const perspectiveCamera = camera as THREE.PerspectiveCamera
-  const bounds = useMemo(() => getBuildBounds(bricks), [bricks])
+  const bounds = useMemo(() => getBuildBounds(bricks, plateSize), [bricks, plateSize])
+  const buildRadius = Math.hypot(...bounds.size) / 2
+  const originalFogs = useRef(new Map<THREE.Fog, { near: number; far: number }>())
+  // The far plane the scene owns (Canvas default, or an environment's own horizon
+  // such as Brick Valley's 620). Build framing only ever pushes the plane out
+  // from here and restores it on Explore.
+  const originalFar = useRef(perspectiveCamera.far)
+  const appliedFar = useRef<number | null>(null)
+  const visibilityRange = useRef({ fogNear: 0, fogFar: 0, cameraFar: 0 })
+
+  // Build framing on portrait screens can move beyond a scene's entire fog
+  // range. Keep the actual document visible; restore scene atmosphere on Explore.
+  useFrame(() => {
+    const control = controls.current
+    if (!control) return
+    const fog = scene.fog instanceof THREE.Fog ? scene.fog : null
+    if (fog && !originalFogs.current.has(fog)) {
+      originalFogs.current.set(fog, { near: fog.near, far: fog.far })
+    }
+    // An environment mounting or unmounting later writes its own far plane; a
+    // value this loop did not apply is the scene's, so adopt it as the floor.
+    if (perspectiveCamera.far !== appliedFar.current) originalFar.current = perspectiveCamera.far
+    const base = fog ? originalFogs.current.get(fog)! : { near: 42, far: 90 }
+    const range = getBuildVisibilityRange(
+      camera.position.distanceTo(control.target), buildRadius, base.near, base.far, originalFar.current, visibilityRange.current,
+    )
+    if (fog) {
+      fog.near = range.fogNear
+      fog.far = range.fogFar
+    }
+    if (perspectiveCamera.far !== range.cameraFar) {
+      perspectiveCamera.far = range.cameraFar
+      perspectiveCamera.updateProjectionMatrix()
+    }
+    appliedFar.current = range.cameraFar
+  })
+
+  useEffect(() => {
+    // Runs after the environment's layout effects, so this sees its far plane.
+    originalFar.current = perspectiveCamera.far
+    appliedFar.current = null
+    const fogs = originalFogs.current
+    return () => {
+      for (const [fog, range] of fogs) {
+        fog.near = range.near
+        fog.far = range.far
+      }
+      fogs.clear()
+      perspectiveCamera.far = originalFar.current
+      perspectiveCamera.updateProjectionMatrix()
+      appliedFar.current = null
+    }
+  }, [perspectiveCamera])
   const limits = useMemo(
-    () => getBuildCameraLimits(bounds, perspectiveCamera.fov, perspectiveCamera.aspect),
-    [bounds, perspectiveCamera.fov, perspectiveCamera.aspect, viewportSize.width, viewportSize.height],
+    () => getBuildCameraLimits(bounds, perspectiveCamera.fov, perspectiveCamera.aspect, plateSize),
+    [plateSize, bounds, perspectiveCamera.fov, perspectiveCamera.aspect, viewportSize.width, viewportSize.height],
   )
 
   const publishViewTarget = useCallback(() => {
     const target = controls.current?.target
     if (!target) return
-    setViewTarget(target.x / STUD + GRID_SIZE / 2, target.z / STUD + GRID_SIZE / 2)
-  }, [setViewTarget])
+    setViewTarget(target.x / STUD + plateSize / 2, target.z / STUD + plateSize / 2)
+  }, [setViewTarget, plateSize])
 
   const clampCameraNavigation = useCallback(() => {
     const control = controls.current
@@ -577,8 +655,8 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
   useEffect(() => {
     const { bricks, selectedId } = useBrickStore.getState()
     const selected = bricks.find((brick) => brick.id === selectedId)
-    const frameBounds = getBuildBounds(bricks)
-    const selectedPosition = selected ? brickWorldPosition(selected) : null
+    const frameBounds = getBuildBounds(bricks, plateSize)
+    const selectedPosition = selected ? brickWorldPosition(selected, plateSize) : null
     const pose = createBuildFramePose(
       frameBounds,
       request.preset,
@@ -785,7 +863,7 @@ function BuildSelectionInput() {
       }
       if (current.gesture.dragging && !current.brickId) {
         const rect = canvas.getBoundingClientRect()
-        const ids = selectBricksInMarquee(state.bricks, camera, rect.width, rect.height, finished.rectangle)
+        const ids = selectBricksInMarquee(state.bricks, camera, rect.width, rect.height, finished.rectangle, getBuildPlateSize(state.documentMetadata))
         state.selectBricks(current.additive ? [...new Set([...state.selectedIds, ...ids])] : ids)
       } else if (!current.gesture.dragging && current.brickId) {
         state.selectBrick(current.brickId, current.additive || current.explicitMode)
@@ -823,6 +901,9 @@ function BuildSelectionInput() {
     const blur = () => { cancelledPointerId = null; reset() }
     const visibility = () => { if (document.visibilityState !== 'visible') reset() }
     const unsubscribe = useBrickStore.subscribe((state) => {
+      // A lost WebGL context parks the gesture too: release the captured pointer so a
+      // box selection already in flight cannot finish blind after the veil appears.
+      if (state.graphicsPaused) { reset(); return }
       if ((state.mode !== 'build' && (active.current || state.marquee)) || (active.current?.explicitMode && !state.selectionMode)) reset()
     })
 
@@ -1014,7 +1095,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       if (state.draft && isConfirmationPlacementPointer(event.pointerType)) {
         const rect = canvas.getBoundingClientRect()
         const overPreview = selectionDrafts(state).some((preview, index) => {
-          const bounds = projectBrickScreenBounds({ ...preview, id: `ghost-drag-${index}` }, camera, rect.width, rect.height)
+          const bounds = projectBrickScreenBounds({ ...preview, id: `ghost-drag-${index}` }, camera, rect.width, rect.height, getBuildPlateSize(useBrickStore.getState().documentMetadata))
           return pointWithinInflatedRect(bounds, event.clientX - rect.left, event.clientY - rect.top)
         })
         if (overPreview) {
@@ -1108,6 +1189,7 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
     // Abort whenever the drag loses its subject (Cancel, placement, or leaving
     // Build) so neither the pointer id nor grabInProgress is left stranded.
     const unsubscribe = useBrickStore.subscribe((state) => {
+      if (state.graphicsPaused) { abandon(); return }
       if (state.mode !== 'build' || state.selectionMode) abortHold()
       if (activePointer.current !== null && (state.mode !== 'build' || (!state.draft && (!selectedDrag.current || selectedDrag.current.started)))) release()
     })
@@ -1298,7 +1380,9 @@ function PhysicalCollider({ shape }: { shape: PhysicalShape }) {
 }
 
 function BrickCollider({ brick }: { brick: BrickInstance }) {
-  const shapes = useMemo(() => brickPhysicalShapes(brick), [brick])
+  const plateSize = usePlateSize()
+
+  const shapes = useMemo(() => brickPhysicalShapes(brick, plateSize), [brick, plateSize])
   return (
     <>
       <RigidBody type="fixed" colliders={false}>
@@ -1313,15 +1397,19 @@ function ExplorerAvatar({
   onPose,
   characterId,
   palette,
+  appearance,
   compact,
   respawnBelowY = -30,
 }: {
   onPose?: (pose: RaceAvatarPose) => void
   characterId: CharacterId
+  appearance?: CharacterAppearance
   palette?: CharacterPalette
   compact: boolean
   respawnBelowY?: number
 }) {
+  const plateSize = usePlateSize()
+
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
   const controller = useRef<KinematicCharacterController | null>(null)
@@ -1360,10 +1448,10 @@ function ExplorerAvatar({
     EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_SIDE_CLEARANCE,
   ), [rapier])
   const fallbackSpawnCandidates = useMemo(() => createExploreSpawnCandidates({
-    gridSize: GRID_SIZE,
+    gridSize: plateSize,
     stud: STUD,
     standingY: EXPLORE_STANDING_Y,
-  }), [])
+  }), [plateSize])
   const boomDistance = useRef<number | null>(null)
   const spawnPending = useRef(true)
   const spawnAttempts = useRef(0)
@@ -1401,6 +1489,7 @@ function ExplorerAvatar({
 
   useEffect(() => {
     const down = (event: KeyboardEvent) => {
+      if (useBrickStore.getState().graphicsPaused) { keys.current.clear(); return }
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || exploreKeyboardBlocked(event.target)) { keys.current.clear(); return }
       const key = event.key.toLowerCase()
       if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift', ' '].includes(key)) {
@@ -1473,6 +1562,7 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current || !collider.current || !controller.current) return
     const store = useBrickStore.getState()
+    if (store.graphicsPaused) { keys.current.clear(); return }
     if (store.exploreRespawnNonce !== lastRespawnNonce.current) {
       lastRespawnNonce.current = store.exploreRespawnNonce
       beginSpawnSearch()
@@ -1517,6 +1607,7 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current) return
     const store = useBrickStore.getState()
+    if (store.graphicsPaused) return
 
     if (spawnPending.current) {
       if (spawnRetryFrames.current > 0) {
@@ -1615,6 +1706,7 @@ function ExplorerAvatar({
           characterId={characterId}
           motion={motion}
           palette={palette}
+          appearance={appearance}
           reducedMotion={reducedMotion}
           compact={compact}
         />
@@ -1651,30 +1743,38 @@ function ExploreScene({
   environment,
   localCharacterId,
   localCharacterPalette,
+  localCharacterAppearance,
   compact,
 }: BrickStudioSceneProps & {
   environment: RuntimeEnvironment
   localCharacterId: CharacterId
   compact: boolean
 }) {
+  const plateSize = usePlateSize()
+  const gridWorldSize = plateSize * STUD
+
   const bricks = useBrickStore((state) => state.bricks)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const EnvironmentWorld = environment.World
   return (
-    <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate>
+    <Physics gravity={[0, -9.81, 0]} timeStep={CHARACTER_FIXED_STEP} interpolate paused={graphicsPaused}>
       <RigidBody type="fixed" colliders={false}>
         <CuboidCollider args={[gridWorldSize / 2, 0.09, gridWorldSize / 2]} position={[0, -0.09, 0]} />
         <Baseplate surface={environment.surface} explore />
       </RigidBody>
-      <Suspense fallback={null}>
-        <EnvironmentWorld compact={compact} reducedMotion={reducedMotion} />
-      </Suspense>
+      <RuntimeEnvironmentBoundary environmentId={environment.resolvedId} resetKey={environment.resolvedId}>
+        <Suspense fallback={null}>
+          <EnvironmentWorld plateSize={plateSize} compact={compact} reducedMotion={reducedMotion} />
+        </Suspense>
+      </RuntimeEnvironmentBoundary>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
       <RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} />
       <ExplorerAvatar
         onPose={onLocalAvatarPose}
         characterId={localCharacterId}
         palette={localCharacterPalette}
+        appearance={localCharacterAppearance}
         compact={compact}
         respawnBelowY={environment.respawnBelowY}
       />
@@ -1735,6 +1835,7 @@ function RuntimeSceneContent({
   environmentId,
   localCharacterId,
   localCharacterPalette,
+  localCharacterAppearance,
   onLocalAvatarPose,
   onEnvironmentStatusChange,
   remoteAvatars,
@@ -1747,6 +1848,7 @@ function RuntimeSceneContent({
   compact: boolean
   mouseTravel: PointerTravel
 }) {
+  const plateSize = usePlateSize()
   const mode = useBrickStore((state) => state.mode)
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
   const environment = useRuntimeEnvironment(environmentId)
@@ -1754,7 +1856,7 @@ function RuntimeSceneContent({
 
   useEffect(() => {
     if (!environment.error) return
-    useBrickStore.setState({ toast: 'That world could not load, so Classic Studio is showing instead.' })
+    useBrickStore.setState({ toast: ENVIRONMENT_UNAVAILABLE_TOAST })
   }, [environment.error])
 
   useEffect(() => {
@@ -1770,10 +1872,12 @@ function RuntimeSceneContent({
       {usesClassicEnvironmentRig(environment.resolvedId)
         ? <ClassicStudioRig compact={compact} />
         : (
-            <Suspense fallback={<ClassicStudioRig compact={compact} />}>
-              <EnvironmentRig compact={compact} reducedMotion={reducedMotion} mode={mode} />
-              {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
-            </Suspense>
+            <RuntimeEnvironmentBoundary environmentId={environment.resolvedId} resetKey={environment.resolvedId} fallback={<ClassicStudioRig compact={compact} />}>
+              <Suspense fallback={<ClassicStudioRig compact={compact} />}>
+                <EnvironmentRig plateSize={plateSize} compact={compact} reducedMotion={reducedMotion} mode={mode} />
+                {mode === 'build' && usesStudioBuildLights(environment.resolvedId) ? <StudioLights compact={compact} /> : null}
+              </Suspense>
+            </RuntimeEnvironmentBoundary>
           )}
       {mode === 'build'
         ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} showStudioGround={usesClassicEnvironmentRig(environment.resolvedId)} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
@@ -1786,6 +1890,7 @@ function RuntimeSceneContent({
                 environment={environment}
                 localCharacterId={localCharacterId}
                 localCharacterPalette={localCharacterPalette}
+                localCharacterAppearance={localCharacterAppearance}
                 compact={compact}
               />
             </Suspense>
@@ -1802,17 +1907,20 @@ export default function BrickStudioScene({
   environmentId = 'classic',
   localCharacterId = 'classic',
   localCharacterPalette,
+  localCharacterAppearance,
 }: BrickStudioSceneProps = {}) {
   const mode = useBrickStore((state) => state.mode)
   const placeFeedback = useBrickStore((state) => state.placeFeedback)
   const compactRenderer = useCompactRenderer()
   const mouseTravel = useRef(createPointerTravel())
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
 
   // Audible confirmation is orthogonal to reduced motion — always play it.
   useEffect(() => {
     if (placeFeedback) playPlaceClick()
   }, [placeFeedback])
   return (
+    <>
     <Canvas
       onPointerDownCapture={(event) => {
         if (event.target instanceof HTMLCanvasElement) {
@@ -1824,12 +1932,19 @@ export default function BrickStudioScene({
       dpr={[1, compactRenderer ? 1.1 : 1.25]}
       camera={{ position: [14, 12, 16], fov: 45, near: 0.05, far: 240 }}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-
+      onCreated={({ gl }) => {
+        // three.js already preventDefault()s webglcontextlost so the browser can restore it.
+        // The pause lives in the store so the editor chrome, the explore rig and the
+        // physics world all park together and resume together.
+        gl.domElement.addEventListener('webglcontextlost', () => useBrickStore.getState().setGraphicsPaused(true))
+        gl.domElement.addEventListener('webglcontextrestored', () => useBrickStore.getState().setGraphicsPaused(false))
+      }}
     >
       <RuntimeSceneContent
         environmentId={environmentId}
         localCharacterId={localCharacterId}
         localCharacterPalette={localCharacterPalette}
+                localCharacterAppearance={localCharacterAppearance}
         onLocalAvatarPose={onLocalAvatarPose}
         onEnvironmentStatusChange={onEnvironmentStatusChange}
         remoteAvatars={remoteAvatars}
@@ -1838,5 +1953,7 @@ export default function BrickStudioScene({
         mouseTravel={mouseTravel.current}
       />
     </Canvas>
+    {graphicsPaused ? <GraphicsPausedOverlay /> : null}
+    </>
   )
 }

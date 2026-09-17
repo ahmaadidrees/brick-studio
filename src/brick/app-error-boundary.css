@@ -1,0 +1,169 @@
+/* Recovery screen shown by AppErrorBoundary (board 15 "load failure"). Standalone on purpose:
+   it must look right even when the rest of the studio's stylesheets never got a chance to
+   apply, so every token carries a fallback matching src/styles.css. */
+.app-recovery {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background: var(--bg, #f8f4eb);
+  color: var(--text, #263c51);
+  font-family: var(--font-body, 'Nunito', ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+.app-recovery__card {
+  width: min(520px, 100%);
+  padding: 28px 30px 26px;
+  border: 1px solid var(--border, #dcd6ca);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface, #ffffff);
+  box-shadow: var(--shadow-lg, 0 18px 44px rgba(38, 60, 81, 0.18));
+}
+
+.app-recovery__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  color: var(--text, #263c51);
+  font-family: var(--font-display, 'Fredoka', 'Nunito', ui-rounded, system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app-recovery__title {
+  margin: 0 0 10px;
+  font-family: var(--font-display, 'Fredoka', 'Nunito', ui-rounded, system-ui, sans-serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.app-recovery__lead {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-muted, #4f6478);
+}
+
+.app-recovery__error {
+  margin: 0 0 18px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 12px);
+  background: var(--danger-soft, #fbe4e0);
+  color: var(--text-muted, #4f6478);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.app-recovery__error span {
+  color: var(--danger-text, #b0432e);
+  font-weight: 800;
+}
+
+.app-recovery__actions {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+}
+
+/* One download option: the button plus the honest one-line label under it. */
+.app-recovery__option {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+
+.app-recovery__hint {
+  margin: 0;
+  color: var(--text-muted, #4f6478);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Same shape as the shared Button primitive; duplicated here so the screen survives a
+   stylesheet failure. */
+.app-recovery__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1.5px solid var(--border-strong, #b9c2cc);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface, #ffffff);
+  color: var(--text, #263c51);
+  font: 800 15px/1.2 inherit;
+  cursor: pointer;
+}
+
+.app-recovery__button:hover {
+  border-color: var(--primary, #5888da);
+  color: var(--primary-strong, #3565bf);
+  background: var(--primary-soft, #e8effb);
+}
+
+.app-recovery__button:focus-visible {
+  outline: 3px solid var(--focus, #3565bf);
+  outline-offset: 2px;
+}
+
+.app-recovery__button--primary {
+  border-color: var(--primary-strong, #3565bf);
+  background: var(--primary-strong, #3565bf);
+  color: var(--primary-contrast, #ffffff);
+  box-shadow: var(--shadow-sm, 0 1px 2px rgba(38, 60, 81, 0.08));
+}
+
+.app-recovery__button--primary:hover {
+  border-color: #2e59ac;
+  background: #2e59ac;
+  color: var(--primary-contrast, #ffffff);
+}
+
+.app-recovery__status {
+  margin: 14px 0 0;
+  color: var(--success, #1f7a46);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.app-recovery__log {
+  margin-top: 16px;
+  color: var(--text-muted, #4f6478);
+  font-size: 12px;
+}
+
+.app-recovery__log summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.app-recovery__log ol {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.app-recovery__log li {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+
+.app-recovery__log code {
+  font-size: 11px;
+}
+
+@media (max-width: 480px) {
+  .app-recovery { padding: 14px; }
+  .app-recovery__card { padding: 22px 20px; }
+  .app-recovery__title { font-size: 22px; }
+  .app-recovery__button { width: 100%; }
+}

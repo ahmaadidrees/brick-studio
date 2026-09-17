@@ -1,0 +1,45 @@
+{
+  "checkedAt": "2026-09-15T01:19:57.731Z",
+  "workerVersion": "01b230d6-11c1-4a9b-a0ab-3b7828db83e9",
+  "sourceCommit": "dfe3496",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "passed": true,
+  "classCount": 24,
+  "worldCount": 18,
+  "authoritativeListEquality": true,
+  "personalStudentWorldDenied": true,
+  "requests": [
+    {
+      "path": "auth/teacher-login",
+      "status": 200,
+      "elapsedMs": 639,
+      "cors": "https://brickgineers.com"
+    },
+    {
+      "path": "classes",
+      "status": 200,
+      "elapsedMs": 216,
+      "cors": "https://brickgineers.com"
+    },
+    {
+      "path": "worlds",
+      "status": 200,
+      "elapsedMs": 168,
+      "cors": "https://brickgineers.com"
+    },
+    {
+      "path": "worlds/8e75a916-d630-4c40-adc9-fa433d7153d0",
+      "status": 404,
+      "elapsedMs": 103,
+      "cors": "https://brickgineers.com",
+      "errorCode": "not_found"
+    },
+    {
+      "path": "auth/logout",
+      "status": 200,
+      "elapsedMs": 1222,
+      "cors": "https://brickgineers.com"
+    }
+  ],
+  "scope": "Dedicated QA teacher; read-only list checks and known synthetic private-world denial; no new classes or credential changes"
+}

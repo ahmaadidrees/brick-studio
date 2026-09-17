@@ -1,0 +1,12 @@
+{
+  "origin": "http://127.0.0.1:5234",
+  "api": "https://brick-studio-multiplayer-staging.brick-studio-race-worker.workers.dev",
+  "at": "2026-09-15T17:34:42.181Z",
+  "checks": [
+    "two non-owner simultaneous creations",
+    "both libraries converge",
+    "peer places other creator brick",
+    "reload preserves library and brick"
+  ],
+  "errors": []
+}

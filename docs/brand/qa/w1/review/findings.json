@@ -1,0 +1,5524 @@
+{
+ "landing/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 9,
+    "examples": [
+     "header.landing-nav > span.brand-lockup.landing-brand > span.brand-wordmark",
+     "section.landing-hero > div.landing-hero-copy > h1#landing-hero-title",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > h2#_r_2_"
+    ]
+   },
+   "Nunito": {
+    "count": 10,
+    "examples": [
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link",
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link",
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link"
+    ]
+   }
+  },
+  "overrides": [],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [],
+  "animations": [
+   {
+    "target": "svg.landing-hero-art > g > g.landing-drift.landing-drift-a",
+    "name": "landing-bob",
+    "duration": 5200,
+    "iterations": null
+   },
+   {
+    "target": "svg.landing-hero-art > g > g.landing-drift.landing-drift-b",
+    "name": "landing-bob",
+    "duration": 6100,
+    "iterations": null
+   },
+   {
+    "target": "svg.landing-hero-art > g > g.landing-drift.landing-drift-c",
+    "name": "landing-bob",
+    "duration": 5600,
+    "iterations": null
+   },
+   {
+    "target": "span.landing-media-fallback > svg.landing-hero-art > path.landing-twinkle.landing-twinkle-a",
+    "name": "landing-twinkle",
+    "duration": 2600,
+    "iterations": null
+   },
+   {
+    "target": "span.landing-media-fallback > svg.landing-hero-art > path.landing-twinkle.landing-twinkle-b",
+    "name": "landing-twinkle",
+    "duration": 2600,
+    "iterations": null
+   },
+   {
+    "target": "span.landing-media-fallback > svg.landing-hero-art > path.landing-twinkle.landing-twinkle-c",
+    "name": "landing-twinkle",
+    "duration": 2600,
+    "iterations": null
+   },
+   {
+    "target": "g > g > g.landing-drift.landing-drift-a",
+    "name": "landing-bob",
+    "duration": 5200,
+    "iterations": null
+   }
+  ],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "a.landing-skip",
+    "name": "Skip to content",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.landing-nav-link",
+    "name": "How it works",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.landing-nav-link",
+    "name": "For teachers",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.landing-nav-link",
+    "name": "Sign in",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Start building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Start building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "See classroom tools",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Teacher sign in",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "Try building first",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "summary",
+    "name": "Do I need an account?",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "summary",
+    "name": "Where is my work saved?",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "summary",
+    "name": "Can we build together?",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Start building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a",
+    "name": "Privacy",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "landing/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 5,
+    "examples": [
+     "header.landing-nav > span.brand-lockup.landing-brand > span.brand-wordmark",
+     "section.landing-hero > div.landing-hero-copy > h1#landing-hero-title",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > h2#_r_2_"
+    ]
+   },
+   "Nunito": {
+    "count": 8,
+    "examples": [
+     "header.landing-nav > button.ui-button.ui-button-secondary > span.ui-button-label",
+     "section.landing-hero > div.landing-hero-copy > p.landing-hero-lede",
+     "p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-primary > span.ui-button-label"
+    ]
+   }
+  },
+  "overrides": [],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [],
+  "animations": [
+   {
+    "target": "svg.landing-hero-art > g > g.landing-drift.landing-drift-a",
+    "name": "landing-bob",
+    "duration": 5200,
+    "iterations": null
+   },
+   {
+    "target": "svg.landing-hero-art > g > g.landing-drift.landing-drift-b",
+    "name": "landing-bob",
+    "duration": 6100,
+    "iterations": null
+   },
+   {
+    "target": "svg.landing-hero-art > g > g.landing-drift.landing-drift-c",
+    "name": "landing-bob",
+    "duration": 5600,
+    "iterations": null
+   },
+   {
+    "target": "span.landing-media-fallback > svg.landing-hero-art > path.landing-twinkle.landing-twinkle-a",
+    "name": "landing-twinkle",
+    "duration": 2600,
+    "iterations": null
+   },
+   {
+    "target": "span.landing-media-fallback > svg.landing-hero-art > path.landing-twinkle.landing-twinkle-b",
+    "name": "landing-twinkle",
+    "duration": 2600,
+    "iterations": null
+   },
+   {
+    "target": "span.landing-media-fallback > svg.landing-hero-art > path.landing-twinkle.landing-twinkle-c",
+    "name": "landing-twinkle",
+    "duration": 2600,
+    "iterations": null
+   },
+   {
+    "target": "g > g > g.landing-drift.landing-drift-a",
+    "name": "landing-bob",
+    "duration": 5200,
+    "iterations": null
+   }
+  ],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "a.landing-skip",
+    "name": "Skip to content",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Menu",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Start building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a",
+    "name": "Sign in",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Start building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "See classroom tools",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Teacher sign in",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-secondary",
+    "name": "Try building first",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "summary",
+    "name": "Do I need an account?",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "summary",
+    "name": "Where is my work saved?",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "summary",
+    "name": "Can we build together?",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a.ui-button.ui-button-primary",
+    "name": "Start building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a",
+    "name": "Privacy",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "a",
+    "name": "Help",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "entry-join/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 19,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.classroom-entry > div.ui-segmented.ui-segmented-md > span#_r_d_.sr-only"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option",
+    "name": "Student",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "name": "Join a class",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option",
+    "name": "Teacher",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-field.classroom-password-field > span.classroom-password > button.ui-button.ui-button-quiet",
+    "name": "Show choose a password",
+    "w": 85,
+    "h": 40
+   },
+   {
+    "element": "form#classroom-entry-form.classroom-form > div.classroom-links > button.ui-button.ui-button-quiet",
+    "name": "Already have an account? Sign ",
+    "w": 229,
+    "h": 36
+   }
+  ],
+  "smallCount": 5,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.classroom-password-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Show choose a password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Already have an account? Sig",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Create account and join",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "entry-join/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 19,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.classroom-entry > div.ui-segmented.ui-segmented-md > span#_r_d_.sr-only"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.classroom-password-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Show choose a password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Already have an account? Sig",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Create account and join",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "entry-signin/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 16,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.classroom-entry > div.ui-segmented.ui-segmented-md > span#_r_d_.sr-only"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "name": "Student",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option",
+    "name": "Join a class",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option",
+    "name": "Teacher",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-field.classroom-password-field > span.classroom-password > button.ui-button.ui-button-quiet",
+    "name": "Show password",
+    "w": 85,
+    "h": 40
+   },
+   {
+    "element": "form#classroom-entry-form.classroom-form > div.classroom-links > button.ui-button.ui-button-quiet",
+    "name": "New here? Join a class",
+    "w": 163,
+    "h": 36
+   }
+  ],
+  "smallCount": 5,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Student",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.classroom-password-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Show password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "New here? Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Sign in",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "entry-signin/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 16,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.classroom-entry > div.ui-segmented.ui-segmented-md > span#_r_d_.sr-only"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Student",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.classroom-password-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Show password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "New here? Join a class",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Sign in",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "entry-teacher/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 12,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.classroom-entry > div.ui-segmented.ui-segmented-md > span#_r_d_.sr-only"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.classroom-entry > div.classroom-teacher-entry > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option",
+    "name": "Student",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option",
+    "name": "Join a class",
+    "w": 135,
+    "h": 38
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "name": "Teacher",
+    "w": 135,
+    "h": 38
+   }
+  ],
+  "smallCount": 3,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Teacher",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Continue with Google",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Use email and password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Teacher",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Continue with Google",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Use email and password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "entry-teacher/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 12,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.classroom-entry > div.ui-segmented.ui-segmented-md > span#_r_d_.sr-only"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-segmented.ui-segmented-md > div.ui-segmented-track > button.ui-segmented-option.ui-segmented-selected",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.classroom-entry > div.classroom-teacher-entry > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Teacher",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Continue with Google",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Use email and password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close and keep building",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-segmented-option.ui-segmented-selected",
+    "name": "Teacher",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Continue with Google",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Use email and password",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep building as a guest",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "scene-sheet/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 6,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title",
+     "div.content-picker-section-heading > div > h3",
+     "button.content-picker-card > span.content-picker-card-copy > strong"
+    ]
+   },
+   "Nunito": {
+    "count": 13,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.world-character-sheet-body > div.world-character-sheet-tabs-bar > span.world-character-sheet-eyebrow"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-sheet > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-sheet-body > div.world-character-sheet-body > div.world-character-sheet-tabs-bar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(220, 214, 202) 0px 1px 0px 0px"
+   },
+   {
+    "element": "div.world-character-sheet-tabs-bar > div.world-character-sheet-tabs > button#_r_6_",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.content-picker-section > div.content-picker-grid > button.content-picker-card",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(88, 136, 218, 0.22) 0px 0px 0px 3px, rgba(38, 60, 81, 0.12) 0px 6px 18px 0p"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close without applying",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Scene",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.content-picker-card",
+    "name": "Classic Studio. The bright, ",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "64 × 64",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "96 × 96",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "128 × 128",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Cancel",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Apply",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close without applying",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Scene",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.content-picker-card",
+    "name": "Classic Studio. The bright, ",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "64 × 64",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "scene-sheet/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 7,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title",
+     "div.content-picker-section-heading > div > h3",
+     "button.content-picker-card > span.content-picker-card-copy > strong"
+    ]
+   },
+   "Nunito": {
+    "count": 15,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.world-character-sheet-body > div.world-character-sheet-tabs-bar > span.world-character-sheet-eyebrow"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-sheet > div#sheet_r_b_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-sheet > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-sheet-body > div.world-character-sheet-body > div.world-character-sheet-tabs-bar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(220, 214, 202) 0px 1px 0px 0px"
+   },
+   {
+    "element": "div.world-character-sheet-tabs-bar > div.world-character-sheet-tabs > button#_r_6_",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.content-picker-section > div.content-picker-grid > button.content-picker-card",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(88, 136, 218, 0.22) 0px 0px 0px 3px, rgba(38, 60, 81, 0.12) 0px 6px 18px 0p"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-environment",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close without applying",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Scene",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.content-picker-card",
+    "name": "Classic Studio. The bright, ",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "64 × 64",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "96 × 96",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "128 × 128",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Cancel",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Apply",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close without applying",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Scene",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.content-picker-card",
+    "name": "Classic Studio. The bright, ",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "64 × 64",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "character-sheet/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 3,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title",
+     "div.character-studio > header.character-studio__intro > h3",
+     "div.content-picker-section-heading > div > h3"
+    ]
+   },
+   "Nunito": {
+    "count": 17,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.world-character-sheet-body > div.world-character-sheet-tabs-bar > span.world-character-sheet-eyebrow"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-sheet > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-sheet-body > div.world-character-sheet-body > div.world-character-sheet-tabs-bar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(220, 214, 202) 0px 1px 0px 0px"
+   },
+   {
+    "element": "div.world-character-sheet-tabs-bar > div.world-character-sheet-tabs > button#_r_7_",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#_r_8_.world-character-sheet-tabpanel > div.character-studio > div.character-preview",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.character-preview > div.character-preview__controls > button.ui-button.ui-button-quiet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.content-picker-section > div.content-picker-grid > button.content-picker-card",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(88, 136, 218, 0.22) 0px 0px 0px 3px, rgba(38, 60, 81, 0.12) 0px 6px 18px 0p"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-character",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-character",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close without applying",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Character",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Idle",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Walk",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Run",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Jump",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Pause character animation",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.content-picker-card",
+    "name": "Classic Builder. The origina",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep Shirt when mixing",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.character-swatch",
+    "name": "Set Shirt to Brick red",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.character-swatch",
+    "name": "Set Shirt to Orange",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.character-swatch",
+    "name": "Set Shirt to Sun yellow",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "character-sheet/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 3,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title",
+     "div.character-studio > header.character-studio__intro > h3",
+     "div.content-picker-section-heading > div > h3"
+    ]
+   },
+   "Nunito": {
+    "count": 16,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.world-character-sheet-body > div.world-character-sheet-tabs-bar > span.world-character-sheet-eyebrow"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-sheet > div#sheet_r_b_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-sheet > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-sheet-body > div.world-character-sheet-body > div.world-character-sheet-tabs-bar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(220, 214, 202) 0px 1px 0px 0px"
+   },
+   {
+    "element": "div.world-character-sheet-tabs-bar > div.world-character-sheet-tabs > button#_r_7_",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#_r_8_.world-character-sheet-tabpanel > div.character-studio > div.character-preview",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.character-preview > div.character-preview__controls > button.ui-button.ui-button-quiet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.content-picker-section > div.content-picker-grid > button.content-picker-card",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(88, 136, 218, 0.22) 0px 0px 0px 3px, rgba(38, 60, 81, 0.12) 0px 6px 18px 0p"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-character",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-art.content-picker-art-character",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.06) 0px -10px 20px 0px inset"
+   },
+   {
+    "element": "div.content-picker-grid > button.content-picker-card > span.content-picker-check",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.12) 0px 6px 18px 0px, rgba(38, 60, 81, 0.08) 0px 1px 3px 0px"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close without applying",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Character",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Idle",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Walk",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Run",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Jump",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Pause character animation",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.content-picker-card",
+    "name": "Classic Builder. The origina",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Keep Shirt when mixing",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.character-swatch",
+    "name": "Set Shirt to Brick red",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.character-swatch",
+    "name": "Set Shirt to Orange",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.character-swatch",
+    "name": "Set Shirt to Sun yellow",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "create-brick/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#_r_3_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 17,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#_r_3_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.ui-field-label-row > span.ui-field-label-group > label.ui-field-label"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#_r_3_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "figure.create-brick-preview > div.create-brick-preview-stage > span.create-brick-preview-pill",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#_r_3_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close create a brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "select.ui-input.create-brick-select",
+    "name": "Classic brickSlopeOverhangCo",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.create-brick-slider",
+    "name": "Slide width",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.create-brick-number",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.create-brick-slider",
+    "name": "Slide depth",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.create-brick-number",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.create-brick-slider",
+    "name": "Slide height",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.create-brick-number",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "select.ui-input.create-brick-select",
+    "name": "Match the shapeFull gridSmoo",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Cancel",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Create and place",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "create-brick/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#_r_3_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 14,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#_r_3_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.ui-field-label-row > span.ui-field-label-group > label.ui-field-label"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-dialog > div#_r_3_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#_r_3_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "figure.create-brick-preview > div.create-brick-preview-stage > span.create-brick-preview-pill",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div#_r_3_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close create a brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "select.ui-input.create-brick-select",
+    "name": "Classic brickSlopeOverhangCo",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.create-brick-slider",
+    "name": "Slide width",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.create-brick-number",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.create-brick-slider",
+    "name": "Slide depth",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.create-brick-number",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.create-brick-slider",
+    "name": "Slide height",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.create-brick-number",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "select.ui-input.create-brick-select",
+    "name": "Match the shapeFull gridSmoo",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Cancel",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Create and place",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "color-dialog/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 8,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.ui-field-label-row > span.ui-field-label-group > label.ui-field-label"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {},
+  "radii": {},
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-sheet-body > div.brick-color-layout > div.brick-color-wheel",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.brick-color-layout > div.brick-color-wheel > span.brick-color-wheel-thumb",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(38, 60, 81) 0px 0px 0px 1.5px, rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba("
+   },
+   {
+    "element": "div.brick-color-layout > div.brick-color-value > span.brick-color-preview",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(185, 194, 204) 0px 0px 0px 1.5px, rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rg"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close color picker",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.brick-color-hex-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color hue",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color saturation",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color brightness",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Cancel",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Apply color",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close color picker",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.brick-color-hex-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color hue",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "color-dialog/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > h2#sheet_r_b_-title.ui-sheet-title"
+    ]
+   },
+   "Nunito": {
+    "count": 8,
+    "examples": [
+     "header.ui-sheet-header > div.ui-sheet-heading > p#sheet_r_b_-description.ui-sheet-description",
+     "header.ui-sheet-header > button.ui-button.ui-button-quiet > span.sr-only",
+     "div.ui-field-label-row > span.ui-field-label-group > label.ui-field-label"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {
+   "background rgb(46,89,172)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary"
+    ]
+   },
+   "border rgb(46,89,172)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary"
+    ]
+   }
+  },
+  "radii": {
+   "3px": {
+    "count": 1,
+    "examples": [
+     "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet > span.ui-sheet-grip"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div.ui-sheet-root.ui-sheet-dialog > div#sheet_r_b_.ui-sheet",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.18) 0px 18px 44px 0px, rgba(38, 60, 81, 0.08) 0px 2px 8px 0px"
+   },
+   {
+    "element": "div.ui-sheet-body > div.brick-color-layout > div.brick-color-wheel",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   },
+   {
+    "element": "div.brick-color-layout > div.brick-color-wheel > span.brick-color-wheel-thumb",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(38, 60, 81) 0px 0px 0px 1.5px, rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba("
+   },
+   {
+    "element": "div.brick-color-layout > div.brick-color-value > span.brick-color-preview",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(185, 194, 204) 0px 0px 0px 1.5px, rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rg"
+   },
+   {
+    "element": "div#sheet_r_b_.ui-sheet > footer.ui-sheet-footer > button.ui-button.ui-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 60, 81, 0.08) 0px 1px 2px 0px, rgba(38, 60, 81, 0.06) 0px 1px 6px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close color picker",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.brick-color-hex-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color hue",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color saturation",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color brightness",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-secondary",
+    "name": "Cancel",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-primary",
+    "name": "Apply color",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.ui-button.ui-button-quiet",
+    "name": "Close color picker",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input.ui-input.brick-color-hex-input",
+    "name": "",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "input",
+    "name": "Color hue",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "editor/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 3,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong",
+     "div.library-title > div > h2",
+     "div.inspector-heading > div > h2"
+    ]
+   },
+   "system-ui": {
+    "count": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "Nunito": {
+    "count": 54,
+    "examples": [
+     "nav.brick-mode-switch > button.brick-primary-mode > span",
+     "nav.brick-mode-switch > button.brick-primary-mode > kbd",
+     "div.brick-creative-actions > button.studio-button > span"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {
+   "background rgb(241,243,242)": {
+    "count": 11,
+    "alpha": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part"
+    ]
+   },
+   "color rgb(95,114,121)": {
+    "count": 9,
+    "alpha": 1,
+    "examples": [
+     "div.part-grid > button.library-part > span",
+     "div.part-grid > button.library-part > span",
+     "div.part-grid > button.library-part > span"
+    ]
+   },
+   "color rgb(111,126,131)": {
+    "count": 7,
+    "alpha": 1,
+    "examples": [
+     "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+     "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+     "main.brick-studio.brick-mode-build > div.shortcut-bar > span"
+    ]
+   },
+   "border rgb(161,176,180)": {
+    "count": 5,
+    "alpha": 0.42,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry",
+     "aside#brick-part-library.part-library > div.library-title > button.studio-icon-button.library-collapse-button"
+    ]
+   },
+   "color rgb(80,103,112)": {
+    "count": 4,
+    "alpha": 1,
+    "examples": [
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-header-actions > button.studio-icon-button.studio-settings-trigger > span"
+    ]
+   },
+   "color rgb(99,117,124)": {
+    "count": 4,
+    "alpha": 1,
+    "examples": [
+     "div.brick-edit-toolbar > div.view-controls > button",
+     "div.brick-edit-toolbar > div.view-controls > button",
+     "div.brick-edit-toolbar > div.view-controls > button"
+    ]
+   },
+   "background rgb(238,241,241)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button"
+    ]
+   },
+   "color rgb(82,105,112)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div.inspector-actions > button.inspector-sheet-primary > span",
+     "div.inspector-actions > button.inspector-sheet-primary > span",
+     "div.inspector-actions > button > span"
+    ]
+   },
+   "color rgb(138,151,154)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span"
+    ]
+   },
+   "background rgb(243,245,244)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span"
+    ]
+   },
+   "color rgb(78,101,109)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div.coordinates > span > strong",
+     "div.coordinates > span > strong",
+     "div.coordinates > span > strong"
+    ]
+   },
+   "border rgb(170,180,181)": {
+    "count": 2,
+    "alpha": 0.35,
+    "examples": [
+     "main.brick-studio.brick-mode-build > div.build-shell > aside#brick-part-library.part-library",
+     "main.brick-studio.brick-mode-build > div.build-shell > aside.brick-inspector.details-collapsed"
+    ]
+   },
+   "color rgb(137,150,154)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.library-title > div > span.brick-eyebrow",
+     "div.inspector-heading > div > span.brick-eyebrow"
+    ]
+   },
+   "color rgb(34,54,64)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.library-title > div > h2",
+     "div.inspector-heading > div > h2"
+    ]
+   },
+   "background rgb(244,242,237)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build"
+    ]
+   },
+   "color rgb(51,79,93)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong"
+    ]
+   },
+   "color rgb(83,106,116)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "background rgb(237,242,245)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch"
+    ]
+   },
+   "background rgb(52,118,193)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode"
+    ]
+   },
+   "background rgb(90,105,110)": {
+    "count": 1,
+    "alpha": 0.1,
+    "examples": [
+     "nav.brick-mode-switch > button.brick-primary-mode > kbd"
+    ]
+   },
+   "background rgb(237,245,252)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry"
+    ]
+   },
+   "color rgb(40,103,174)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-header-actions > button.studio-button.brick-collaborate-entry > span"
+    ]
+   },
+   "background rgb(238,246,253)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.build-shell > aside#brick-part-library.part-library > button.create-part-entry"
+    ]
+   },
+   "border rgb(54,122,193)": {
+    "count": 1,
+    "alpha": 0.52,
+    "examples": [
+     "div.build-shell > aside#brick-part-library.part-library > button.create-part-entry"
+    ]
+   },
+   "color rgb(46,104,159)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "button.create-part-entry > span > strong"
+    ]
+   },
+   "color rgb(118,144,161)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "button.create-part-entry > span > small"
+    ]
+   },
+   "background rgb(229,241,253)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part.active"
+    ]
+   },
+   "border rgb(62,131,215)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part.active"
+    ]
+   },
+   "color rgb(42,101,159)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.part-grid > button.library-part.active > span"
+    ]
+   },
+   "background rgb(62,131,215)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.inspector-toolbar > div.inspector-heading > span.inspector-cube"
+    ]
+   }
+  },
+  "radii": {
+   "11px": {
+    "count": 4,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary"
+    ]
+   },
+   "10px": {
+    "count": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.library-title > button.studio-icon-button.library-collapse-button"
+    ]
+   },
+   "13px": {
+    "count": 1,
+    "examples": [
+     "div.build-shell > aside#brick-part-library.part-library > button.create-part-entry"
+    ]
+   },
+   "14px": {
+    "count": 12,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.12) 0px 8px 28px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch",
+    "backdropFilter": "blur(15px)",
+    "filter": "none",
+    "boxShadow": "none"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell > aside#brick-part-library.part-library",
+    "backdropFilter": "blur(16px)",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.14) 0px 18px 44px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell > aside.brick-inspector.details-collapsed",
+    "backdropFilter": "blur(16px)",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.14) 0px 18px 44px 0px"
+   },
+   {
+    "element": "div.inspector-toolbar > div.inspector-heading > span.inspector-cube",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(0, 0, 0, 0.11) 0px -5px 0px 0px inset"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button.active",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(38, 60, 71) 0px 0px 0px 2px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button.brick-any-color",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell > div.brick-edit-toolbar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.11) 0px 8px 24px 0px"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > div.brick-toast",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.13) 0px 8px 22px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > button.studio-world-title",
+    "name": "World menu",
+    "w": 120,
+    "h": 23
+   },
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > input.visually-hidden",
+    "name": "Choose Brick Studio project fi",
+    "w": 1,
+    "h": 1
+   },
+   {
+    "element": "aside#brick-part-library.part-library > div.library-title > button.studio-icon-button.library-collapse-button",
+    "name": "Collapse brick drawer",
+    "w": 38,
+    "h": 38
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #e7473c",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #ef8d32",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #f4ca3a",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #65b85a",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #2eaa9d",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button.active",
+    "name": "Use color #3e83d7",
+    "w": 32,
+    "h": 32
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #6857d9",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #d765ae",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #f5eee0",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #a9b7bd",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #52636c",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #7b5238",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button.brick-any-color",
+    "name": "Choose any brick color",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button.view-home",
+    "name": "Frame Build",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "Top",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "Front",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "Side",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "3D",
+    "w": 40,
+    "h": 44
+   }
+  ],
+  "smallCount": 21,
+  "contrast": [
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+    "text": "X",
+    "fg": "rgb(138,151,154)",
+    "bg": "rgb(243,245,244)",
+    "ratio": 2.75,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+    "text": "Y",
+    "fg": "rgb(138,151,154)",
+    "bg": "rgb(243,245,244)",
+    "ratio": 2.75,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+    "text": "Z",
+    "fg": "rgb(138,151,154)",
+    "bg": "rgb(243,245,244)",
+    "ratio": 2.75,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div.library-title > div > span.brick-eyebrow",
+    "text": "Brick drawer",
+    "fg": "rgb(137,150,154)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.02,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div.inspector-heading > div > span.brick-eyebrow",
+    "text": "Placing",
+    "fg": "rgb(137,150,154)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.02,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "button.create-part-entry > span > small",
+    "text": "Choose its shape and size",
+    "fg": "rgb(118,144,161)",
+    "bg": "rgb(238,246,253)",
+    "ratio": 3.07,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div.build-shell > div.brick-edit-toolbar > span.brick-capacity-status",
+    "text": "0 / 1000",
+    "fg": "rgb(123,140,148)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.46,
+    "needed": 4.5,
+    "size": 10,
+    "bold": false
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Right-drag orbit · ⇧Right-drag pan · Spa",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Shift-click multi-select · Drag empty sp",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Drag selection to move",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Place",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Clear",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Copy/paste",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Duplicate",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > section > label",
+    "text": "Color",
+    "fg": "rgb(109,126,132)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 4.19,
+    "needed": 4.5,
+    "size": 10,
+    "bold": true
+   }
+  ],
+  "contrastCount": 15,
+  "focus": [
+   {
+    "element": "button.studio-world-title",
+    "name": "World menu",
+    "outline": "solid 3px rgb(142, 184, 230)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button",
+    "name": "Scene",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button",
+    "name": "Character",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button.brick-collaborate-entry",
+    "name": "Build together",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.studio-settings-trigger",
+    "name": "Settings",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.library-collapse-button",
+    "name": "Collapse brick drawer",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.create-part-entry",
+    "name": "Create a brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part",
+    "name": "1 × 1 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part",
+    "name": "1 × 2 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part",
+    "name": "1 × 4 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part",
+    "name": "2 × 2 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part",
+    "name": "2 × 3 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part.active",
+    "name": "2 × 4 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.library-part",
+    "name": "1 × 3 Brick",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "editor/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong"
+    ]
+   },
+   "system-ui": {
+    "count": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "Nunito": {
+    "count": 9,
+    "examples": [
+     "nav.brick-mode-switch > button.brick-primary-mode > span",
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-creative-actions > button.studio-button > span"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {
+   "border rgb(161,176,180)": {
+    "count": 8,
+    "alpha": 0.42,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry",
+     "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > div.brick-edit-toolbar"
+    ]
+   },
+   "background rgb(237,242,245)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch",
+     "div.build-shell.compact-shell > div.brick-edit-toolbar > button.selection-mode-control"
+    ]
+   },
+   "color rgb(80,103,112)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-creative-actions > button.studio-button > span"
+    ]
+   },
+   "background rgb(244,242,237)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build"
+    ]
+   },
+   "color rgb(51,79,93)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong"
+    ]
+   },
+   "color rgb(83,106,116)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "background rgb(52,118,193)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode"
+    ]
+   },
+   "background rgb(237,245,252)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry"
+    ]
+   },
+   "color rgb(99,117,124)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-edit-toolbar > div.view-controls > button"
+    ]
+   },
+   "color rgb(137,150,154)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.touch-placement-bar > span.placement-part-chip > span.brick-eyebrow"
+    ]
+   },
+   "color rgb(34,54,64)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.touch-placement-bar > span.placement-part-chip > strong"
+    ]
+   },
+   "border rgb(45,112,184)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.build-shell.compact-shell > div.touch-placement-bar > button.studio-button.studio-button-primary"
+    ]
+   },
+   "color rgb(79,104,111)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build > div.brick-toast"
+    ]
+   }
+  },
+  "radii": {
+   "11px": {
+    "count": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode"
+    ]
+   },
+   "26px": {
+    "count": 1,
+    "examples": [
+     "div.build-shell.compact-shell > div.touch-placement-bar > button.studio-button.studio-button-primary"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.12) 0px 8px 28px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch",
+    "backdropFilter": "blur(15px)",
+    "filter": "none",
+    "boxShadow": "none"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > button.brick-drawer-fab",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 92, 150, 0.36) 0px 12px 30px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > div.brick-edit-toolbar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.11) 0px 8px 24px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > div.touch-placement-bar",
+    "backdropFilter": "blur(16px)",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.14) 0px 18px 44px 0px"
+   },
+   {
+    "element": "div.build-shell.compact-shell > div.touch-placement-bar > button.studio-button.studio-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(44, 105, 174, 0.28) 0px 9px 24px 0px"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > div.brick-toast",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.13) 0px 8px 22px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > button.studio-world-title",
+    "name": "World menu",
+    "w": 110,
+    "h": 21
+   },
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > input.visually-hidden",
+    "name": "Choose Brick Studio project fi",
+    "w": 1,
+    "h": 1
+   }
+  ],
+  "smallCount": 2,
+  "contrast": [
+   {
+    "element": "div.touch-placement-bar > span.placement-part-chip > span.brick-eyebrow",
+    "text": "Placing",
+    "fg": "rgb(137,150,154)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.02,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   }
+  ],
+  "contrastCount": 1,
+  "focus": [
+   {
+    "element": "button.studio-world-title",
+    "name": "World menu",
+    "outline": "solid 3px rgb(142, 184, 230)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button",
+    "name": "Scene",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button",
+    "name": "Character",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button.brick-collaborate-entry",
+    "name": "Build together",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.studio-settings-trigger",
+    "name": "Settings",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.brick-drawer-fab",
+    "name": "Open brick drawer",
+    "outline": "solid 3px rgba(62, 131, 215, 0.5)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.selection-mode-control",
+    "name": "Box select bricks",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.view-home",
+    "name": "Frame Build",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button",
+    "name": "Top",
+    "outline": "solid 3px rgb(53, 101, 191)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.placement-icon-button",
+    "name": "Cancel",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.placement-icon-button",
+    "name": "Rotate",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.placement-icon-button",
+    "name": "Raise brick one plate",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-icon-button.placement-icon-button",
+    "name": "Lower brick one plate",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   },
+   {
+    "element": "button.studio-button.studio-button-primary",
+    "name": "Place positioned brick",
+    "outline": "solid 3px rgba(62, 131, 215, 0.38)",
+    "ok": true,
+    "inside": true
+   }
+  ],
+  "errors": []
+ },
+ "landing-reduced-motion/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 9,
+    "examples": [
+     "header.landing-nav > span.brand-lockup.landing-brand > span.brand-wordmark",
+     "section.landing-hero > div.landing-hero-copy > h1#landing-hero-title",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > h2#_r_2_"
+    ]
+   },
+   "Nunito": {
+    "count": 10,
+    "examples": [
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link",
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link",
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link"
+    ]
+   }
+  },
+  "overrides": [],
+  "colours": {
+   "color rgb(38,60,81)": {
+    "count": 12,
+    "alpha": 1,
+    "examples": [
+     "header.landing-nav > span.brand-lockup.landing-brand > span.brand-wordmark",
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link",
+     "header.landing-nav > nav#_r_1_ > a.landing-nav-link"
+    ]
+   },
+   "color rgb(79,100,120)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "section.landing-hero > div.landing-hero-copy > p.landing-hero-lede",
+     "section.landing-hero > div.landing-hero-actions > p.landing-hero-trust",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > p"
+    ]
+   },
+   "border rgb(220,214,202)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "section#how-it-works.landing-section.landing-how > ol.landing-steps > li.landing-step.landing-step-build",
+     "section#how-it-works.landing-section.landing-how > ol.landing-steps > li.landing-step.landing-step-explore",
+     "section#how-it-works.landing-section.landing-how > ol.landing-steps > li.landing-step.landing-step-friends"
+    ]
+   },
+   "color rgb(53,101,191)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "nav#_r_1_ > a.ui-button.ui-button-secondary > span.ui-button-label",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > span.landing-eyebrow"
+    ]
+   },
+   "background rgb(53,101,191)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.landing-hero-actions > p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-primary",
+     "li.landing-step.landing-step-build > div.landing-step-copy > span.landing-step-number"
+    ]
+   },
+   "border rgb(88,136,218)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.landing-nav > nav#_r_1_ > a.ui-button.ui-button-secondary"
+    ]
+   },
+   "background rgb(243,238,227)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "section.landing-hero > div.landing-hero-stage > span.landing-media.landing-media-loaded"
+    ]
+   },
+   "border rgb(53,101,191)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.landing-hero-actions > p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-primary"
+    ]
+   },
+   "border rgb(185,194,204)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.landing-hero-actions > p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-secondary"
+    ]
+   },
+   "background rgb(241,120,97)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "li.landing-step.landing-step-explore > div.landing-step-copy > span.landing-step-number"
+    ]
+   },
+   "background rgb(243,202,116)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "li.landing-step.landing-step-friends > div.landing-step-copy > span.landing-step-number"
+    ]
+   }
+  },
+  "radii": {},
+  "overCanvas": [],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [],
+  "errors": []
+ },
+ "landing-reduced-motion/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 5,
+    "examples": [
+     "header.landing-nav > span.brand-lockup.landing-brand > span.brand-wordmark",
+     "section.landing-hero > div.landing-hero-copy > h1#landing-hero-title",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > h2#_r_2_"
+    ]
+   },
+   "Nunito": {
+    "count": 8,
+    "examples": [
+     "header.landing-nav > button.ui-button.ui-button-secondary > span.ui-button-label",
+     "section.landing-hero > div.landing-hero-copy > p.landing-hero-lede",
+     "p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-primary > span.ui-button-label"
+    ]
+   }
+  },
+  "overrides": [],
+  "colours": {
+   "color rgb(38,60,81)": {
+    "count": 6,
+    "alpha": 1,
+    "examples": [
+     "header.landing-nav > span.brand-lockup.landing-brand > span.brand-wordmark",
+     "header.landing-nav > button.ui-button.ui-button-secondary > span.ui-button-label",
+     "section.landing-hero > div.landing-hero-copy > h1#landing-hero-title"
+    ]
+   },
+   "color rgb(79,100,120)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "section.landing-hero > div.landing-hero-copy > p.landing-hero-lede",
+     "section.landing-hero > div.landing-hero-actions > p.landing-hero-trust",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > p"
+    ]
+   },
+   "border rgb(185,194,204)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.brick-landing > header.landing-nav > button.ui-button.ui-button-secondary",
+     "div.landing-hero-actions > p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-secondary"
+    ]
+   },
+   "background rgb(53,101,191)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.landing-hero-actions > p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-primary",
+     "li.landing-step.landing-step-build > div.landing-step-copy > span.landing-step-number"
+    ]
+   },
+   "color rgb(53,101,191)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.landing-hero-actions > p.landing-hero-signin > a",
+     "section#how-it-works.landing-section.landing-how > div.landing-section-heading > span.landing-eyebrow"
+    ]
+   },
+   "background rgb(243,238,227)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "section.landing-hero > div.landing-hero-stage > span.landing-media.landing-media-loaded"
+    ]
+   },
+   "border rgb(53,101,191)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.landing-hero-actions > p.landing-cta-row.landing-cta-stack > a.ui-button.ui-button-primary"
+    ]
+   },
+   "border rgb(220,214,202)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "section#how-it-works.landing-section.landing-how > ol.landing-steps > li.landing-step.landing-step-build"
+    ]
+   }
+  },
+  "radii": {},
+  "overCanvas": [],
+  "animations": [],
+  "small": [],
+  "smallCount": 0,
+  "contrast": [],
+  "contrastCount": 0,
+  "focus": [],
+  "errors": []
+ },
+ "editor-reduced-motion/desktop": {
+  "fonts": {
+   "Fredoka": {
+    "count": 3,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong",
+     "div.library-title > div > h2",
+     "div.inspector-heading > div > h2"
+    ]
+   },
+   "system-ui": {
+    "count": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "Nunito": {
+    "count": 54,
+    "examples": [
+     "nav.brick-mode-switch > button.brick-primary-mode > span",
+     "nav.brick-mode-switch > button.brick-primary-mode > kbd",
+     "div.brick-creative-actions > button.studio-button > span"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {
+   "background rgb(241,243,242)": {
+    "count": 11,
+    "alpha": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part"
+    ]
+   },
+   "color rgb(95,114,121)": {
+    "count": 9,
+    "alpha": 1,
+    "examples": [
+     "div.part-grid > button.library-part > span",
+     "div.part-grid > button.library-part > span",
+     "div.part-grid > button.library-part > span"
+    ]
+   },
+   "color rgb(38,60,81)": {
+    "count": 8,
+    "alpha": 1,
+    "examples": [
+     "div.inspector-actions > button.inspector-sheet-primary > kbd",
+     "div.inspector-actions > button.inspector-sheet-primary > kbd",
+     "div.inspector-actions > button > kbd"
+    ]
+   },
+   "color rgb(111,126,131)": {
+    "count": 7,
+    "alpha": 1,
+    "examples": [
+     "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+     "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+     "main.brick-studio.brick-mode-build > div.shortcut-bar > span"
+    ]
+   },
+   "border rgb(161,176,180)": {
+    "count": 5,
+    "alpha": 0.42,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry",
+     "aside#brick-part-library.part-library > div.library-title > button.studio-icon-button.library-collapse-button"
+    ]
+   },
+   "border rgb(185,194,204)": {
+    "count": 5,
+    "alpha": 1,
+    "examples": [
+     "div.shortcut-bar > span > kbd",
+     "div.shortcut-bar > span > kbd",
+     "div.shortcut-bar > span > kbd"
+    ]
+   },
+   "color rgb(80,103,112)": {
+    "count": 4,
+    "alpha": 1,
+    "examples": [
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-header-actions > button.studio-icon-button.studio-settings-trigger > span"
+    ]
+   },
+   "color rgb(99,117,124)": {
+    "count": 4,
+    "alpha": 1,
+    "examples": [
+     "div.brick-edit-toolbar > div.view-controls > button",
+     "div.brick-edit-toolbar > div.view-controls > button",
+     "div.brick-edit-toolbar > div.view-controls > button"
+    ]
+   },
+   "background rgb(238,241,241)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button"
+    ]
+   },
+   "color rgb(82,105,112)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div.inspector-actions > button.inspector-sheet-primary > span",
+     "div.inspector-actions > button.inspector-sheet-primary > span",
+     "div.inspector-actions > button > span"
+    ]
+   },
+   "color rgb(138,151,154)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span"
+    ]
+   },
+   "background rgb(243,245,244)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+     "div#brick-inspector-properties.inspector-sheet > div.coordinates > span"
+    ]
+   },
+   "color rgb(78,101,109)": {
+    "count": 3,
+    "alpha": 1,
+    "examples": [
+     "div.coordinates > span > strong",
+     "div.coordinates > span > strong",
+     "div.coordinates > span > strong"
+    ]
+   },
+   "border rgb(170,180,181)": {
+    "count": 2,
+    "alpha": 0.35,
+    "examples": [
+     "main.brick-studio.brick-mode-build > div.build-shell > aside#brick-part-library.part-library",
+     "main.brick-studio.brick-mode-build > div.build-shell > aside.brick-inspector.details-collapsed"
+    ]
+   },
+   "color rgb(137,150,154)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.library-title > div > span.brick-eyebrow",
+     "div.inspector-heading > div > span.brick-eyebrow"
+    ]
+   },
+   "color rgb(34,54,64)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.library-title > div > h2",
+     "div.inspector-heading > div > h2"
+    ]
+   },
+   "background rgb(244,242,237)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build"
+    ]
+   },
+   "color rgb(51,79,93)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong"
+    ]
+   },
+   "color rgb(83,106,116)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "background rgb(237,242,245)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch"
+    ]
+   },
+   "background rgb(52,118,193)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode"
+    ]
+   },
+   "background rgb(90,105,110)": {
+    "count": 1,
+    "alpha": 0.1,
+    "examples": [
+     "nav.brick-mode-switch > button.brick-primary-mode > kbd"
+    ]
+   },
+   "background rgb(237,245,252)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry"
+    ]
+   },
+   "color rgb(40,103,174)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-header-actions > button.studio-button.brick-collaborate-entry > span"
+    ]
+   },
+   "background rgb(238,246,253)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.build-shell > aside#brick-part-library.part-library > button.create-part-entry"
+    ]
+   },
+   "border rgb(54,122,193)": {
+    "count": 1,
+    "alpha": 0.52,
+    "examples": [
+     "div.build-shell > aside#brick-part-library.part-library > button.create-part-entry"
+    ]
+   },
+   "color rgb(46,104,159)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "button.create-part-entry > span > strong"
+    ]
+   },
+   "color rgb(118,144,161)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "button.create-part-entry > span > small"
+    ]
+   },
+   "background rgb(229,241,253)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part.active"
+    ]
+   },
+   "border rgb(62,131,215)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part.active"
+    ]
+   }
+  },
+  "radii": {
+   "11px": {
+    "count": 4,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary",
+     "div#brick-inspector-properties.inspector-sheet > div.inspector-actions > button.inspector-sheet-primary"
+    ]
+   },
+   "10px": {
+    "count": 1,
+    "examples": [
+     "aside#brick-part-library.part-library > div.library-title > button.studio-icon-button.library-collapse-button"
+    ]
+   },
+   "13px": {
+    "count": 1,
+    "examples": [
+     "div.build-shell > aside#brick-part-library.part-library > button.create-part-entry"
+    ]
+   },
+   "14px": {
+    "count": 12,
+    "examples": [
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part",
+     "aside#brick-part-library.part-library > div.part-grid > button.library-part"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.12) 0px 8px 28px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch",
+    "backdropFilter": "blur(15px)",
+    "filter": "none",
+    "boxShadow": "none"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell > aside#brick-part-library.part-library",
+    "backdropFilter": "blur(16px)",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.14) 0px 18px 44px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell > aside.brick-inspector.details-collapsed",
+    "backdropFilter": "blur(16px)",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.14) 0px 18px 44px 0px"
+   },
+   {
+    "element": "div.inspector-toolbar > div.inspector-heading > span.inspector-cube",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(0, 0, 0, 0.11) 0px -5px 0px 0px inset"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button.active",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(38, 60, 71) 0px 0px 0px 2px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "section > div.color-grid > button.brick-any-color",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgb(211, 217, 218) 0px 0px 0px 1px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell > div.brick-edit-toolbar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.11) 0px 8px 24px 0px"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > div.brick-toast",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.13) 0px 8px 22px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > button.studio-world-title",
+    "name": "World menu",
+    "w": 120,
+    "h": 23
+   },
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > input.visually-hidden",
+    "name": "Choose Brick Studio project fi",
+    "w": 1,
+    "h": 1
+   },
+   {
+    "element": "aside#brick-part-library.part-library > div.library-title > button.studio-icon-button.library-collapse-button",
+    "name": "Collapse brick drawer",
+    "w": 38,
+    "h": 38
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #e7473c",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #ef8d32",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #f4ca3a",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #65b85a",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #2eaa9d",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button.active",
+    "name": "Use color #3e83d7",
+    "w": 32,
+    "h": 32
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #6857d9",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #d765ae",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #f5eee0",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #a9b7bd",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #52636c",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button",
+    "name": "Use color #7b5238",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "section > div.color-grid > button.brick-any-color",
+    "name": "Choose any brick color",
+    "w": 30,
+    "h": 30
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button.view-home",
+    "name": "Frame Build",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "Top",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "Front",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "Side",
+    "w": 40,
+    "h": 44
+   },
+   {
+    "element": "div.brick-edit-toolbar > div.view-controls > button",
+    "name": "3D",
+    "w": 40,
+    "h": 44
+   }
+  ],
+  "smallCount": 21,
+  "contrast": [
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+    "text": "X",
+    "fg": "rgb(138,151,154)",
+    "bg": "rgb(243,245,244)",
+    "ratio": 2.75,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+    "text": "Y",
+    "fg": "rgb(138,151,154)",
+    "bg": "rgb(243,245,244)",
+    "ratio": 2.75,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > div.coordinates > span",
+    "text": "Z",
+    "fg": "rgb(138,151,154)",
+    "bg": "rgb(243,245,244)",
+    "ratio": 2.75,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div.library-title > div > span.brick-eyebrow",
+    "text": "Brick drawer",
+    "fg": "rgb(137,150,154)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.02,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div.inspector-heading > div > span.brick-eyebrow",
+    "text": "Placing",
+    "fg": "rgb(137,150,154)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.02,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "button.create-part-entry > span > small",
+    "text": "Choose its shape and size",
+    "fg": "rgb(118,144,161)",
+    "bg": "rgb(238,246,253)",
+    "ratio": 3.07,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div.build-shell > div.brick-edit-toolbar > span.brick-capacity-status",
+    "text": "0 / 1000",
+    "fg": "rgb(123,140,148)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.46,
+    "needed": 4.5,
+    "size": 10,
+    "bold": false
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Right-drag orbit · ⇧Right-drag pan · Spa",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Shift-click multi-select · Drag empty sp",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Drag selection to move",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Place",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Clear",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Copy/paste",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.shortcut-bar > span",
+    "text": "Duplicate",
+    "fg": "rgb(111,126,131)",
+    "bg": "rgb(244,242,237)",
+    "ratio": 3.76,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   },
+   {
+    "element": "div#brick-inspector-properties.inspector-sheet > section > label",
+    "text": "Color",
+    "fg": "rgb(109,126,132)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 4.19,
+    "needed": 4.5,
+    "size": 10,
+    "bold": true
+   }
+  ],
+  "contrastCount": 15,
+  "focus": [],
+  "errors": []
+ },
+ "editor-reduced-motion/phone": {
+  "fonts": {
+   "Fredoka": {
+    "count": 1,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong"
+    ]
+   },
+   "system-ui": {
+    "count": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "Nunito": {
+    "count": 9,
+    "examples": [
+     "nav.brick-mode-switch > button.brick-primary-mode > span",
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-creative-actions > button.studio-button > span"
+    ]
+   }
+  },
+  "overrides": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-ink",
+    "local": "#223640",
+    "global": "#263C51"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-muted",
+    "local": "#6f8087",
+    "global": "#4F6478"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue",
+    "local": "#3e83d7",
+    "global": "#5888DA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-blue-dark",
+    "local": "#2867ae",
+    "global": "#3565BF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel",
+    "local": "rgba(255,255,255,.94)",
+    "global": "#FFFFFF"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-border",
+    "local": "rgba(161,176,180,.42)",
+    "global": "#DCD6CA"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build",
+    "name": "--studio-panel-shadow",
+    "local": "0 18px 44px rgba(47,62,68,.14)",
+    "global": "0 18px 44px rgba(38, 60, 81, 0.18), 0 2px 8px rgba(38, 60, 81, 0.08)"
+   }
+  ],
+  "colours": {
+   "border rgb(161,176,180)": {
+    "count": 8,
+    "alpha": 0.42,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry",
+     "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > div.brick-edit-toolbar"
+    ]
+   },
+   "background rgb(237,242,245)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch",
+     "div.build-shell.compact-shell > div.brick-edit-toolbar > button.selection-mode-control"
+    ]
+   },
+   "color rgb(80,103,112)": {
+    "count": 2,
+    "alpha": 1,
+    "examples": [
+     "div.brick-creative-actions > button.studio-button > span",
+     "div.brick-creative-actions > button.studio-button > span"
+    ]
+   },
+   "background rgb(244,242,237)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build"
+    ]
+   },
+   "color rgb(51,79,93)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.studio-menu.studio-world-menu > button.studio-world-title > strong"
+    ]
+   },
+   "color rgb(83,106,116)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-brand > div.brick-world-context > span.brick-save-status.brick-save-local"
+    ]
+   },
+   "background rgb(52,118,193)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode"
+    ]
+   },
+   "background rgb(237,245,252)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > div.brick-header-actions > button.studio-button.brick-collaborate-entry"
+    ]
+   },
+   "color rgb(99,117,124)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.brick-edit-toolbar > div.view-controls > button"
+    ]
+   },
+   "color rgb(137,150,154)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.touch-placement-bar > span.placement-part-chip > span.brick-eyebrow"
+    ]
+   },
+   "color rgb(34,54,64)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.touch-placement-bar > span.placement-part-chip > strong"
+    ]
+   },
+   "border rgb(45,112,184)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div.build-shell.compact-shell > div.touch-placement-bar > button.studio-button.studio-button-primary"
+    ]
+   },
+   "color rgb(79,104,111)": {
+    "count": 1,
+    "alpha": 1,
+    "examples": [
+     "div#root > main.brick-studio.brick-mode-build > div.brick-toast"
+    ]
+   }
+  },
+  "radii": {
+   "11px": {
+    "count": 1,
+    "examples": [
+     "header.brick-header.brick-header-refined > nav.brick-mode-switch > button.brick-primary-mode"
+    ]
+   },
+   "26px": {
+    "count": 1,
+    "examples": [
+     "div.build-shell.compact-shell > div.touch-placement-bar > button.studio-button.studio-button-primary"
+    ]
+   }
+  },
+  "overCanvas": [
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.12) 0px 8px 28px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > header.brick-header.brick-header-refined > nav.brick-mode-switch",
+    "backdropFilter": "blur(15px)",
+    "filter": "none",
+    "boxShadow": "none"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > button.brick-drawer-fab",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(38, 92, 150, 0.36) 0px 12px 30px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > div.brick-edit-toolbar",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(45, 61, 67, 0.11) 0px 8px 24px 0px"
+   },
+   {
+    "element": "main.brick-studio.brick-mode-build > div.build-shell.compact-shell > div.touch-placement-bar",
+    "backdropFilter": "blur(16px)",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.14) 0px 18px 44px 0px"
+   },
+   {
+    "element": "div.build-shell.compact-shell > div.touch-placement-bar > button.studio-button.studio-button-primary",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(44, 105, 174, 0.28) 0px 9px 24px 0px"
+   },
+   {
+    "element": "div#root > main.brick-studio.brick-mode-build > div.brick-toast",
+    "backdropFilter": "none",
+    "filter": "none",
+    "boxShadow": "rgba(47, 62, 68, 0.13) 0px 8px 22px 0px"
+   }
+  ],
+  "animations": [],
+  "small": [
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > button.studio-world-title",
+    "name": "World menu",
+    "w": 110,
+    "h": 21
+   },
+   {
+    "element": "div.brick-world-context > div.studio-menu.studio-world-menu > input.visually-hidden",
+    "name": "Choose Brick Studio project fi",
+    "w": 1,
+    "h": 1
+   }
+  ],
+  "smallCount": 2,
+  "contrast": [
+   {
+    "element": "div.touch-placement-bar > span.placement-part-chip > span.brick-eyebrow",
+    "text": "Placing",
+    "fg": "rgb(137,150,154)",
+    "bg": "rgb(254,254,254)",
+    "ratio": 3.02,
+    "needed": 4.5,
+    "size": 9,
+    "bold": true
+   }
+  ],
+  "contrastCount": 1,
+  "focus": [],
+  "errors": []
+ }
+}
