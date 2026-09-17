@@ -80,6 +80,7 @@ type SettingsProps = {
   onToggleEnrollment: () => void
   onRotateCode: () => void
   onToggleCollaboration: () => void
+  onToggleShowNames: () => void
 }
 
 function StateChip({ open }: { open: boolean }) {
@@ -87,7 +88,7 @@ function StateChip({ open }: { open: boolean }) {
 }
 
 /** Board 14 left: separate code cards, enrollment and collaboration boundaries, class creation. */
-export function ClassSettings({ currentClass, busy, newClassName, onNewClassName, onCreateClass, onToggleEnrollment, onRotateCode, onToggleCollaboration }: SettingsProps) {
+export function ClassSettings({ currentClass, busy, newClassName, onNewClassName, onCreateClass, onToggleEnrollment, onRotateCode, onToggleCollaboration, onToggleShowNames }: SettingsProps) {
   const [confirmClose, setConfirmClose] = useState(false)
   useEffect(() => { setConfirmClose(false) }, [currentClass?.id, currentClass?.collaborationOpen])
   return <>
@@ -111,6 +112,13 @@ export function ClassSettings({ currentClass, busy, newClassName, onNewClassName
         {currentClass.collaborationOpen
           ? <Button variant="secondary" size="sm" className="classroom-button-danger" disabled={busy} onClick={() => setConfirmClose(true)}>Close collaboration</Button>
           : <Button variant="secondary" size="sm" disabled={busy} onClick={onToggleCollaboration}>Open collaboration</Button>}
+      </div>
+      <div className="classroom-access-row">
+        <div><div className="classroom-access-title"><strong id="classroom-show-names-label">Show names on the join screen</strong></div><small>{currentClass.showNamesOnJoin ? 'Students who enter your class code can tap their first name and last initial, then type their password.' : 'Students type their username. Nothing about your roster is shown before they sign in.'}</small></div>
+        <button type="button" role="switch" className="classroom-switch" aria-checked={currentClass.showNamesOnJoin} aria-labelledby="classroom-show-names-label" disabled={busy} onClick={onToggleShowNames}>
+          <span className="classroom-switch-track" aria-hidden="true"><span className="classroom-switch-knob" /></span>
+          <span className="classroom-switch-state">{currentClass.showNamesOnJoin ? 'On' : 'Off'}</span>
+        </button>
       </div>
       <ConfirmDialog open={confirmClose} title="Close collaboration?" description={`Shared worlds in ${currentClass.name} close to students right away.`} confirmLabel="Close now" cancelLabel="Keep open" busy={busy} onCancel={() => setConfirmClose(false)} onConfirm={() => { setConfirmClose(false); onToggleCollaboration() }}>
         <p>Students in shared worlds will be disconnected right away. Saved worlds are preserved and you keep access.</p>

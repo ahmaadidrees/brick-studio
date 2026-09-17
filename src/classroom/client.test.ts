@@ -91,3 +91,35 @@ it('keeps the refreshed login when access to one world has been removed', async 
   await expect(client.request('/worlds/removed-world')).rejects.toThrow('Access to this world ended')
   expect(client.getSession()).toEqual(refreshed)
 })
+
+describe('username-only sign-in and the join roster', () => {
+  it('signs in with username and password alone and adds the class code only when given', async () => {
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(json(auth)))
+    const client = new ClassroomClient('https://classroom.test', fetcher)
+    await client.login({ username: ' builder ', password: 'orbit7' })
+    expect(fetcher.mock.calls[0][0]).toBe('https://classroom.test/classroom/auth/login')
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ username: 'builder', password: 'orbit7' })
+    await client.login({ username: 'builder', password: 'orbit7', classCode: ' room42 ' })
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({ username: 'builder', password: 'orbit7', classCode: 'ROOM42' })
+    await client.login({ username: 'builder', password: 'orbit7', classCode: '' })
+    expect(JSON.parse(fetcher.mock.calls[2][1].body)).not.toHaveProperty('classCode')
+    expect(client.getSession()).toEqual(auth)
+  })
+  it('exposes the server code and details on a rejection, such as username suggestions', async () => {
+    const client = new ClassroomClient('', vi.fn().mockResolvedValue(json({ error: 'That username is already taken.', code: 'username_taken', suggestions: ['ava2', 'ava3', 'ava7'] }, 409)))
+    const failure = await client.authenticate('register', { classCode: 'ROOM42', username: 'ava', password: 'remember-this' }).catch(error => error)
+    expect(failure).toMatchObject({ message: 'That username is already taken.', status: 409, code: 'username_taken', details: { suggestions: ['ava2', 'ava3', 'ava7'] } })
+    const ambiguous = await new ClassroomClient('', vi.fn().mockResolvedValue(json({ error: 'Add your class code.', code: 'class_code_required' }, 409))).login({ username: 'ava', password: 'orbit7' }).catch(error => error)
+    expect(ambiguous).toMatchObject({ status: 409, code: 'class_code_required', details: {} })
+    expect(client.getSession()).toBeNull()
+  })
+  it('fetches the public roster for a class code without a session', async () => {
+    const roster = { name: 'Studio 5', canEnroll: true, showNames: true, students: [{ username: 'ava', displayName: 'Ava R.' }] }
+    const fetcher = vi.fn().mockResolvedValue(json(roster))
+    const client = new ClassroomClient('https://classroom.test', fetcher)
+    await expect(client.classRoster(' room42 ')).resolves.toEqual(roster)
+    expect(fetcher.mock.calls[0][0]).toBe('https://classroom.test/classroom/auth/roster')
+    expect(fetcher.mock.calls[0][1].headers).not.toHaveProperty('Authorization')
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ classCode: 'ROOM42' })
+  })
+})

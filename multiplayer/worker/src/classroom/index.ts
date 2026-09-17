@@ -207,7 +207,43 @@ export class ClassroomService {
   }
 }
 export type Caller = { id: string; username: string; rosterName: string; role: 'teacher' | 'student'; resetRequired: boolean; classId?: string; authVersion: number; sessionId: string; token: string };
-function classView(row: Row, code?: string) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, ...(code ? { code } : {}) }; }
+function classView(row: Row, code?: string) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, ...(code ? { code } : {}) }; }
+/** Public join-screen name: first word of the roster name plus the last initial ("Ava R."); one-word names stay as is. */
+export function rosterDisplayName(rosterName: string): string {
+  const words = rosterName.trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return words[0] || '';
+  return `${words[0]} ${words[words.length - 1][0].toUpperCase()}.`;
+}
+/** Usernames are global. Throws 409 username_taken with free variants; `excludeUserId` lets a student keep their own name. */
+async function assertUsernameFree(service: ClassroomService, username: string, excludeUserId?: string) {
+  const key = username.toLowerCase();
+  const taken = await service.rows('students', `username_key=eq.${encodeURIComponent(key)}${excludeUserId ? `&user_id=neq.${excludeUserId}` : ''}&select=user_id&limit=1`);
+  if (!taken.length) return;
+  throw new ClassroomHttpError(409, 'username_taken', 'That username is already taken. Try one of these or choose another.', { suggestions: await usernameSuggestions(service, username) });
+}
+/** Three free variants of a taken username, checked against the database in one query per batch. */
+export async function usernameSuggestions(service: ClassroomService, username: string, count = 3): Promise<string[]> {
+  const stem = (suffix: string) => `${username.slice(0, 24 - suffix.length)}${suffix}`;
+  const random = () => String(10 + (crypto.getRandomValues(new Uint8Array(1))[0] % 90));
+  const batches = [['2', '3', '7', '4', '5', '8', '9', '6'].map(stem), Array.from({ length: 8 }, () => stem(random())), Array.from({ length: 8 }, () => stem(`_${random()}`))];
+  const free: string[] = [];
+  for (const batch of batches) {
+    const candidates = [...new Set(batch)].filter(name => !free.includes(name));
+    const keys = candidates.map(name => name.toLowerCase());
+    const taken = new Set((await service.rows('students', `username_key=in.(${keys.map(encodeURIComponent).join(',')})&select=username_key`)).map(row => row.username_key));
+    for (const name of candidates) if (!taken.has(name.toLowerCase()) && free.length < count) free.push(name);
+    if (free.length >= count) break;
+  }
+  return free;
+}
+/** Resolves a public class code to its alias and class rows, or 404 class_not_found. Rotated codes still identify the class. */
+async function publicClass(service: ClassroomService, input: Row): Promise<{ alias: Row; cls: Row }> {
+  const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
+  const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
+  const cls = alias && (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
+  if (!alias || !cls) fail(404, 'class_not_found', 'Check the class code with your teacher.');
+  return { alias, cls };
+}
 function worldView(row: Row, full = false) { return { id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, revision: row.revision, updatedAt: row.updated_at, ...(full ? { document: row.document } : {}) }; }
 function studentView(row: Row) { return { id: row.user_id, username: row.username, rosterName: row.roster_name, suspended: row.suspended, resetRequired: row.reset_required }; }
 function bearer(request: Request) { return request.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1] || ''; }
@@ -244,40 +280,71 @@ async function route(request: Request, service: ClassroomService, path: string[]
     // A full class shares one school NAT: account-level buckets do the tight throttling.
     await service.rate(`ip:${ip}`, 600, 600);
     if (path[1] === 'class') {
-      const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
-      const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
-      if (!alias) fail(404, 'class_not_found', 'Check the class code with your teacher.');
-      const cls = (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
-      if (!cls) fail(404, 'class_not_found', 'Check the class code with your teacher.');
+      const { alias, cls } = await publicClass(service, input);
       return json({ name: cls.name, canEnroll: Boolean(alias.can_enroll && cls.enrollment_open) });
     }
-    if (path[1] === 'register' || path[1] === 'login') {
+    if (path[1] === 'roster') {
+      // Public tap-your-name list for the join screen: first name and last initial only, never roster names, ids or credentials.
+      const { alias, cls } = await publicClass(service, input);
+      const showNames = cls.show_names_on_join !== false;
+      const students = showNames
+        ? (await service.rows('students', `class_id=eq.${cls.id}&suspended=eq.false&select=username,roster_name&order=username.asc`))
+          .map(row => ({ username: row.username as string, displayName: rosterDisplayName(row.roster_name) }))
+          .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.username.localeCompare(b.username))
+        : [];
+      return json({ name: cls.name, canEnroll: Boolean(alias.can_enroll && cls.enrollment_open), showNames, students });
+    }
+    if (path[1] === 'register') {
       const code = cleanText(input.classCode, 'Class code', 40).toUpperCase();
       const username = normalizeUsername(input.username);
-      const pass = path[1] === 'register' ? newStudentPassword(input.password, username) : password(input.password, 6);
+      const pass = newStudentPassword(input.password, username);
       const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
       if (!alias) fail(401, 'invalid_credentials', 'Check your class code, username and password.');
       // All aliases for a class share one account bucket. Rotating codes cannot bypass throttling.
       await service.rate(`login:${alias.class_id}:${username.toLowerCase()}`, 12, 300);
       const cls = (await service.rows('classes', `id=eq.${alias.class_id}&limit=1`))[0];
-      if (path[1] === 'register') {
-        if (!alias.can_enroll || !cls.enrollment_open) fail(403, 'enrollment_closed', 'Your teacher has closed enrollment with this code.');
-        await service.rate(`enroll:${cls.id}`, 120, 600);
-        const rosterName = cleanText(input.rosterName || username, 'Name your teacher knows');
-        if ((await service.rows('students', `class_id=eq.${cls.id}&username_key=eq.${encodeURIComponent(username.toLowerCase())}&limit=1`)).length) fail(409, 'already_exists', 'That username is already used in this class.');
-        const id = crypto.randomUUID();
-        const auth = await service.request('/auth/v1/admin/users', { method: 'POST', body: JSON.stringify({ id, email: internalEmail(id), password: pass, email_confirm: true, app_metadata: { brick_student: true } }) });
-        const userId = auth.id || auth.user?.id;
-        if (userId !== id) fail(502, 'account_creation_failed', 'Account creation did not complete. Ask your teacher for help.');
-        let student: Row;
-        try { student = (await service.insert('students', { user_id: id, class_id: cls.id, username, username_key: username.toLowerCase(), roster_name: rosterName }))[0]; }
-        catch (error) { await service.request(`/auth/v1/admin/users/${id}`, { method: 'DELETE' }); throw error; }
-        const session = await service.login(internalEmail(id), pass);
-        await service.registerSession(session, student);
-        return json(await service.authResult(session), 201);
+      if (!alias.can_enroll || !cls.enrollment_open) fail(403, 'enrollment_closed', 'Your teacher has closed enrollment with this code.');
+      await service.rate(`enroll:${cls.id}`, 120, 600);
+      const rosterName = cleanText(input.rosterName || username, 'Name your teacher knows');
+      await assertUsernameFree(service, username);
+      const id = crypto.randomUUID();
+      const auth = await service.request('/auth/v1/admin/users', { method: 'POST', body: JSON.stringify({ id, email: internalEmail(id), password: pass, email_confirm: true, app_metadata: { brick_student: true } }) });
+      const userId = auth.id || auth.user?.id;
+      if (userId !== id) fail(502, 'account_creation_failed', 'Account creation did not complete. Ask your teacher for help.');
+      let student: Row;
+      try { student = (await service.insert('students', { user_id: id, class_id: cls.id, username, username_key: username.toLowerCase(), roster_name: rosterName }))[0]; }
+      catch (error) {
+        await service.request(`/auth/v1/admin/users/${id}`, { method: 'DELETE' });
+        // A concurrent registration won the unique index race: answer as the pre-check would have.
+        if (error instanceof ClassroomHttpError && error.code === 'already_exists') await assertUsernameFree(service, username);
+        throw error;
       }
-      const student = (await service.rows('students', `class_id=eq.${cls.id}&username_key=eq.${encodeURIComponent(username.toLowerCase())}&limit=1`))[0];
-      if (!student) fail(401, 'invalid_credentials', 'Check your class code, username and password.');
+      const session = await service.login(internalEmail(id), pass);
+      await service.registerSession(session, student);
+      return json(await service.authResult(session), 201);
+    }
+    if (path[1] === 'login') {
+      const username = normalizeUsername(input.username);
+      const pass = password(input.password, 6);
+      const key = username.toLowerCase();
+      // Usernames are global, so the code is optional. A supplied code narrows the lookup and keeps its class bucket.
+      const code = input.classCode === undefined || input.classCode === null || input.classCode === '' ? null : cleanText(input.classCode, 'Class code', 40).toUpperCase();
+      let student: Row | undefined;
+      if (code) {
+        const alias = (await service.rows('class_codes', `code=eq.${encodeURIComponent(code)}&limit=1`))[0];
+        if (!alias) fail(401, 'invalid_credentials', 'Check your class code, username and password.');
+        // All aliases for a class share one account bucket. Rotating codes cannot bypass throttling.
+        await service.rate(`login:${alias.class_id}:${key}`, 12, 300);
+        student = (await service.rows('students', `class_id=eq.${alias.class_id}&username_key=eq.${encodeURIComponent(key)}&limit=1`))[0];
+        if (!student) fail(401, 'invalid_credentials', 'Check your class code, username and password.');
+      } else {
+        // Unknown and wrong-password attempts share this bucket, so probing for usernames is throttled the same way.
+        await service.rate(`login:${key}`, 12, 300);
+        const matches = await service.rows('students', `username_key=eq.${encodeURIComponent(key)}&limit=2`);
+        if (matches.length > 1) fail(409, 'class_code_required', 'More than one account uses this username. Add your class code to pick yours.');
+        student = matches[0];
+        if (!student) fail(401, 'invalid_credentials', 'Check your username and password.');
+      }
       if ((await service.rows('credential_locks', `user_id=eq.${student.user_id}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=1`)).length) fail(409, 'account_busy', 'Your teacher is updating this account. Please try again shortly.');
       const session = await service.login(internalEmail(student.user_id), pass);
       if (student.suspended) fail(403, 'suspended', 'Your teacher has paused your classroom account.');
@@ -368,7 +435,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     if (path.length === 2 && method === 'PATCH') {
       const input = await body(request), changes: Row = {};
       if (input.name !== undefined) changes.name = cleanText(input.name, 'Class name');
-      for (const [api, db] of [['enrollmentOpen', 'enrollment_open'], ['collaborationOpen', 'collaboration_open']]) {
+      for (const [api, db] of [['enrollmentOpen', 'enrollment_open'], ['collaborationOpen', 'collaboration_open'], ['showNamesOnJoin', 'show_names_on_join']]) {
         if (input[api] !== undefined) { if (typeof input[api] !== 'boolean') fail(400, 'invalid_input', `${api} must be true or false.`); changes[db] = input[api]; }
       }
       const updated = Object.keys(changes).length ? (await service.patch('classes', `id=eq.${cls.id}&teacher_id=eq.${caller.id}`, changes))[0] : cls;
@@ -396,7 +463,13 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (input.suspended !== undefined) { if (typeof input.suspended !== 'boolean') fail(400, 'invalid_input', 'suspended must be true or false.'); changes.suspended = input.suspended; changes.auth_version = student.auth_version + 1; }
       let temp: string | undefined;
       if (input.temporaryPassword !== undefined) { temp = newStudentPassword(input.temporaryPassword, changes.username || student.username); changes.reset_required = true; changes.auth_version = student.auth_version + 1; }
-      let updated = Object.keys(changes).length ? (await service.patch('students', `user_id=eq.${student.user_id}&class_id=eq.${cls.id}&auth_version=eq.${student.auth_version}`, changes))[0] : student;
+      if (changes.username_key !== undefined && changes.username_key !== student.username_key) await assertUsernameFree(service, changes.username, student.user_id);
+      let updated: Row | undefined;
+      try { updated = Object.keys(changes).length ? (await service.patch('students', `user_id=eq.${student.user_id}&class_id=eq.${cls.id}&auth_version=eq.${student.auth_version}`, changes))[0] : student; }
+      catch (error) {
+        if (error instanceof ClassroomHttpError && error.code === 'already_exists' && changes.username) await assertUsernameFree(service, changes.username, student.user_id);
+        throw error;
+      }
       if (!updated) fail(409, 'account_changed', 'This account changed. Refresh and try again.');
       if (temp) {
         await service.request(`/auth/v1/admin/users/${student.user_id}`, { method: 'PUT', body: JSON.stringify({ password: temp, email: internalEmail(student.user_id), email_confirm: true }) });

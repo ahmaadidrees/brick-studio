@@ -5,7 +5,7 @@ import type { BrickStudioDocument } from '../brick/brickDocument'
 import { BrandLockup, BrickMark } from '../brand'
 import { Button, SegmentedControl, Sheet } from '../ui'
 import { browserClassroomClient, ClassroomError, type ClassroomClient } from './client'
-import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember, ClassroomCheckpoint } from './contracts'
+import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember, ClassroomCheckpoint, ClassroomRoster } from './contracts'
 import { saveLocalBrickStudioProject } from '../brick/documentPersistence'
 import type { ClassroomEntryIntent } from '../routes'
 import { ENTRY_HEADLINES, EntryFooter, EntryView, type EntryFieldErrors, type EntryMode } from './EntryViews'
@@ -59,6 +59,9 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [fieldErrors, setFieldErrors] = useState<EntryFieldErrors>({})
+  /** Server hints for the entry view: free usernames after `username_taken`, and the code field after `class_code_required`. */
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([])
+  const [requireClassCode, setRequireClassCode] = useState(false)
   const [loading, setLoading] = useState(Boolean(auth && !auth.user.resetRequired))
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [newClassName, setNewClassName] = useState('')
@@ -138,7 +141,8 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
 
   // Entry -----------------------------------------------------------------------------------------
   const resolveClass = useCallback((code: string) => client.request<{ name: string; canEnroll: boolean }>('/auth/class', 'POST', { classCode: code }), [client])
-  const changeMode = (mode: EntryMode) => { setLoginMode(mode); setError(''); setFieldErrors({}) }
+  const resolveRoster = useCallback((code: string): Promise<ClassroomRoster> => client.classRoster(code), [client])
+  const changeMode = (mode: EntryMode) => { setLoginMode(mode); setError(''); setFieldErrors({}); setUsernameSuggestions([]); setRequireClassCode(false) }
   const authenticate = (mode: EntryMode, data: Record<string, string>) => {
     if (mode !== 'teacher-login') {
       data = { ...data, username: (data.username ?? '').trim(), classCode: (data.classCode ?? '').trim().toUpperCase() }
@@ -146,9 +150,18 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
       const password = mode === 'register' ? validatePassword(data.password ?? '', data.username) : ''
       if (username || password) { setError(''); setFieldErrors({ ...(username ? { username } : {}), ...(password ? { password } : {}) }); return }
     }
-    setFieldErrors({})
+    setFieldErrors({}); setUsernameSuggestions([])
     void run(async () => {
-      const next = await client.authenticate(mode, data)
+      let next: ClassroomAuthResult
+      try {
+        // Sign-in needs no class code (usernames are global); enrollment still joins a specific class.
+        next = mode === 'login' ? await client.login({ username: data.username, password: data.password ?? '', classCode: data.classCode }) : await client.authenticate(mode, data)
+      } catch (failure) {
+        if (failure instanceof ClassroomError && failure.code === 'username_taken') setUsernameSuggestions(Array.isArray(failure.details.suggestions) ? failure.details.suggestions.filter((name): name is string => typeof name === 'string') : [])
+        if (failure instanceof ClassroomError && failure.code === 'class_code_required') setRequireClassCode(true)
+        throw failure
+      }
+      setRequireClassCode(false)
       rememberClass(next)
       if (next.user.role === 'teacher' && intent !== 'save' && intent !== 'worlds') { setTab('class'); setClassSection('students'); setInviteExpanded(true) }
       if (next.user.role === 'student' && (intent === 'signin' || intent === 'join' || intent === 'class')) setTab('class')
@@ -272,7 +285,7 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
     {error && <p className="classroom-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
     {notice && <p className="classroom-notice" role="status"><CircleCheck size={18} aria-hidden="true" /><span>{notice}</span></p>}
     {!auth
-      ? <EntryView mode={loginMode} busy={busy} fieldErrors={fieldErrors} invitedClassCode={invitedClassCode} onModeChange={changeMode} onSubmit={authenticate} onGoogle={startGoogle} onResolveClass={resolveClass} />
+      ? <EntryView mode={loginMode} busy={busy} fieldErrors={fieldErrors} invitedClassCode={invitedClassCode} usernameSuggestions={usernameSuggestions} requireClassCode={requireClassCode} onModeChange={changeMode} onSubmit={authenticate} onGoogle={startGoogle} onResolveClass={resolveClass} onResolveRoster={resolveRoster} />
       : reset
         ? <PasswordResetView onSubmit={changePassword} />
         : <div className="classroom-account-body">
@@ -296,7 +309,7 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
                 : tab === 'worlds'
                   ? <WorldsView worlds={personalWorlds} busy={busy} showSave={showSave} saveTitle={saveTitle} saveDuplicate={personalWorlds.some(world => sameTitle(world.title, saveTitle))} onToggleSave={() => setShowSave(value => !value)} onSaveTitleChange={setSaveTitle} onSave={saveBuild} onBackToBuilding={onClose} onOpen={openWorld} onRename={setRenameWorld} onDuplicate={duplicateWorld} onManage={inspectWorld} />
                   : <ClassShell classes={classes} classId={classId} teacher={teacher} busy={busy} section={classSection} inviteExpanded={inviteExpanded} onClassChange={setClassId} onSectionChange={setClassSection}>
-                    {teacher && (!currentClass || classSection === 'settings') && <ClassSettings currentClass={currentClass} busy={busy} newClassName={newClassName} onNewClassName={setNewClassName} onCreateClass={createClass} onToggleEnrollment={() => currentClass && patchClass({ enrollmentOpen: !currentClass.enrollmentOpen }, currentClass.enrollmentOpen ? 'Enrollment is closed. Existing accounts still work.' : 'Enrollment is open.')} onRotateCode={() => patchClass({ rotateCode: true }, 'New enrollment code ready. The returning sign-in code did not change.')} onToggleCollaboration={() => currentClass && patchClass({ collaborationOpen: !currentClass.collaborationOpen }, currentClass.collaborationOpen ? 'Collaboration is closed. Saved worlds are preserved.' : 'Collaboration is open.')} />}
+                    {teacher && (!currentClass || classSection === 'settings') && <ClassSettings currentClass={currentClass} busy={busy} newClassName={newClassName} onNewClassName={setNewClassName} onCreateClass={createClass} onToggleEnrollment={() => currentClass && patchClass({ enrollmentOpen: !currentClass.enrollmentOpen }, currentClass.enrollmentOpen ? 'Enrollment is closed. Existing accounts still work.' : 'Enrollment is open.')} onRotateCode={() => patchClass({ rotateCode: true }, 'New enrollment code ready. The returning sign-in code did not change.')} onToggleCollaboration={() => currentClass && patchClass({ collaborationOpen: !currentClass.collaborationOpen }, currentClass.collaborationOpen ? 'Collaboration is closed. Saved worlds are preserved.' : 'Collaboration is open.')} onToggleShowNames={() => currentClass && patchClass({ showNamesOnJoin: !currentClass.showNamesOnJoin }, currentClass.showNamesOnJoin ? 'Names are hidden on the join screen. Students type their username.' : 'Names are shown on the join screen.')} />}
                     {teacher && currentClass && classSection === 'students' && <RosterSection currentClass={currentClass} students={students} loading={studentsLoading} search={studentSearch} busy={busy} onSearch={setStudentSearch} onManage={(student, focus) => { studentFocus.current = focus ?? null; setEditingStudent(student) }} onViewCodes={() => setClassSection('settings')} />}
                     {currentClass && (!teacher || classSection === 'worlds') && <SharedWorldsSection currentClass={currentClass} teacher={teacher} worlds={worlds.filter(world => world.classId === classId && world.kind !== 'personal')} busy={busy} onCreate={createShared} onJoin={joinWorld} onManage={teacher ? inspectWorld : undefined} />}
                   </ClassShell>)}

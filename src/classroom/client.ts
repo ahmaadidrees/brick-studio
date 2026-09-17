@@ -1,8 +1,11 @@
 import { BRAND_NAME } from '../brand'
-import type { ClassroomAuthResult as ClassroomAuth } from './contracts'
-export type { ClassroomUser, ClassroomClass, ClassroomWorld } from './contracts'
+import type { ClassroomAuthResult as ClassroomAuth, ClassroomLoginInput, ClassroomRoster } from './contracts'
+export type { ClassroomUser, ClassroomClass, ClassroomWorld, ClassroomRoster, ClassroomRosterStudent, ClassroomLoginInput } from './contracts'
 export type { ClassroomAuthResult as ClassroomAuth } from './contracts'
-export class ClassroomError extends Error { constructor(message: string, public status: number) { super(message) } }
+/** A rejected classroom request. `code` and `details` carry the server's machine-readable reason (e.g. `username_taken` with `suggestions`). */
+export class ClassroomError extends Error {
+  constructor(message: string, public status: number, public code = '', public details: Record<string, unknown> = {}) { super(message) }
+}
 const GOOGLE_FLOW_KEY = 'brick-studio.teacher-google.v1'
 type GoogleFlow = { state: string; verifier: string; startedAt: number; returnTo: string; accountId: string | null }
 const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
@@ -66,13 +69,25 @@ export class ClassroomClient {
     }
     const payload = await response.json().catch(() => null)
     this.assertContext(epoch)
-    if (!response.ok) throw new ClassroomError(typeof payload?.error === 'string' ? payload.error : payload?.error?.message || payload?.message || `Request failed (${response.status}).`, response.status)
+    if (!response.ok) {
+      const { error, code, ...details } = payload && typeof payload === 'object' ? payload : {}
+      throw new ClassroomError(typeof error === 'string' ? error : error?.message || payload?.message || `Request failed (${response.status}).`, response.status, typeof code === 'string' ? code : '', details)
+    }
     return payload as T
   }
   async authenticate(path: 'register' | 'login' | 'teacher-login', values: Record<string, string>) {
     const epoch = this.epoch
     const auth = await this.request<ClassroomAuth>(`/auth/${path}`, 'POST', values)
     this.assertContext(epoch); this.setSession(auth); return auth
+  }
+  /** Student sign-in by username and password; the class code is sent only when given (usernames are global). */
+  login({ username, password, classCode }: ClassroomLoginInput) {
+    const code = classCode?.trim().toUpperCase()
+    return this.authenticate('login', { username: username.trim(), password, ...(code ? { classCode: code } : {}) })
+  }
+  /** Public tap-your-name list for a class code: `{ name, canEnroll, showNames, students }` with display names only. */
+  classRoster(classCode: string) {
+    return this.request<ClassroomRoster>('/auth/roster', 'POST', { classCode: classCode.trim().toUpperCase() })
   }
   async changePassword(password: string) {
     const epoch = this.epoch

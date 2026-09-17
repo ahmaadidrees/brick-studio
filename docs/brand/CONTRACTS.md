@@ -53,6 +53,15 @@ teacher-login mode, `worlds`/`class` → tab, `save` → save flow. Existing cal
 `getDocument, onOpenWorld(document, world), onJoinWorld(world), onClose, onSessionChange?, onSaved?, beforeWorldMutation?,
 onWorldUpdated?, client?`. W3 never duplicates save logic.
 
+## Student usernames are global (2026-09-17)
+
+`brick_students.username_key` is unique across every class (migration `202609170001_brick_global_usernames.sql`), so
+`POST /classroom/auth/login` takes `{ username, password, classCode? }` and the default student sign-in shows Username and
+Password only. Enrollment still needs the class code. `POST /classroom/auth/roster` `{ classCode }` returns
+`{ name, canEnroll, showNames, students: [{ username, displayName }] }` for the tap-your-name grid; teachers switch it per
+class with `PATCH /classroom/classes/:id { showNamesOnJoin }`. Other apps (Portalblaster) are wired to these shapes; do not
+change them. `ClassroomEntryIntent`, the frozen `ClassroomPanel` callbacks and every storage key are unchanged.
+
 ## Save status (W1 primitive `SaveStatus`, W4 wires)
 
 Inputs are the real enums only: guest local (`{ kind: 'local' }` → label "This browser only", tone `local`;
