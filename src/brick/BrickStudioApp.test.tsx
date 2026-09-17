@@ -333,6 +333,22 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.queryByRole('note', { name: 'Keyboard and mouse shortcuts' })).not.toBeInTheDocument()
   })
 
+  it('tells desktop builders what Esc does for an armed brush and for a selection', () => {
+    vi.stubGlobal('innerWidth', 1440)
+    stubPointerModality(false)
+    render(<BrickStudioApp />)
+    const shortcuts = () => screen.getByRole('note', { name: 'Keyboard and mouse shortcuts' })
+    expect(useBrickStore.getState().draft).not.toBeNull()
+    expect(shortcuts()).toHaveTextContent('Esc puts the brick down')
+
+    act(() => { useBrickStore.setState({ bricks: [{ ...brick }], draft: null }); useBrickStore.getState().selectBrick('brick-a') })
+    expect(shortcuts()).toHaveTextContent('Esc clears the selection')
+    expect(shortcuts()).not.toHaveTextContent('puts the brick down')
+
+    act(() => useBrickStore.getState().clearSelection())
+    expect(shortcuts()).not.toHaveTextContent('Esc')
+  })
+
   it('keeps keyboard guidance on a fine-pointer desktop and uses pointer-neutral initial status', () => {
     vi.stubGlobal('innerWidth', 1440)
     stubPointerModality(false)

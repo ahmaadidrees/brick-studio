@@ -1168,8 +1168,12 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
 
 function ShortcutBar() {
   const coarsePointer = useCoarsePointerPreference()
+  const hasDraft = useBrickStore((state) => state.draft !== null)
+  const hasSelection = useBrickStore((state) => state.selectedIds.length > 0)
   if (coarsePointer) return null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} aria-hidden="true" />Drag selection to move · Right-drag to orbit</span></div>
+  // Esc mirrors the keyboard handler: an armed brush cancels first, otherwise the selection clears.
+  const escapeHint = hasDraft ? 'puts the brick down' : hasSelection ? 'clears the selection' : null
+  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} aria-hidden="true" />Drag selection to move · Right-drag to orbit</span>{escapeHint && <span><kbd>Esc</kbd> {escapeHint}</span>}</div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands & {

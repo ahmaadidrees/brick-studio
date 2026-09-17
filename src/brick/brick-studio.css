@@ -271,8 +271,8 @@
 .shortcut-bar kbd { min-width: 20px; height: 19px; padding: 0 4px; font-size: 8px; }
 .build-shell.drawer-collapsed ~ .shortcut-bar { left: 12px; }
 @media (min-width: 901px) and (max-width: 1180px) {
-  .shortcut-bar > span:nth-child(2),
-  .shortcut-bar > span:nth-child(n+4) { display: none; }
+  /* Mid widths keep the drag line and the Esc hint; anything beyond gives way to the canvas. */
+  .shortcut-bar > span:nth-child(n+3) { display: none; }
 }
 
 /* ------------------------------------------------------------ explore --- */
