@@ -54,13 +54,13 @@ import { PartThumbnail } from './PartThumbnail'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import type { StudioDocumentCommands } from './StudioMenu'
-import { AppHeader, classroomIntentRedirect } from '../shell'
+import { AppHeader, WORLDS_PATH, classroomIntentRedirect, goToJoin } from '../shell'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
-import { parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
+import { BUILD_PATH, parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
 import { browserClassroomClient } from '../classroom/client'
 import { useClassroomWorld } from '../classroom/useClassroomWorld'
 import type { ClassroomWorld } from '../classroom/contracts'
@@ -942,20 +942,23 @@ export default function BrickStudioApp({
   const readOnly = Boolean(publishedWorld)
   // Entry links carry `classroom=<intent>` and, for class invites, `classCode=`. Both are consumed
   // once here so neither lingers in the address bar; the code is handed to the panel as a prop.
-  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string }>(() => {
+  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string; worldId?: string }>(() => {
     const url = new URL(window.location.href)
-    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode')) return { intent: null }
+    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode') && !url.searchParams.has('world')) return { intent: null }
     // Consume the entry intent even when it is unknown so a mistyped link never lingers in the address bar.
     const intent = url.searchParams.has('classroom') ? parseClassroomEntryIntent(url.search) : null
     const classCode = url.searchParams.get('classCode')?.trim().slice(0, 40) || undefined
+    // `/worlds` opens an account world with `/build?world=<id>` (own worlds only; shared worlds use /live).
+    const worldId = url.searchParams.get('world')?.trim().slice(0, 80) || undefined
     const entrySearch = url.search
     url.searchParams.delete('classroom')
     url.searchParams.delete('classCode')
+    url.searchParams.delete('world')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     // Flows v2: only `save` opens the in-editor sheet; worlds/class/join/signin/teacher are pages now
     // (W2's classroomIntentRedirect carries an invite class code through to /join).
-    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode }
-    return { intent, classCode }
+    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode, worldId }
+    return { intent, classCode, worldId }
   })
   const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(classroomEntry.intent)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
@@ -1199,6 +1202,44 @@ export default function BrickStudioApp({
     window.location.assign('/')
   })().catch(reason => useBrickStore.setState({ toast: String(reason) })) }
   const openWorldSetup = (tab: 'environment' | 'character' = 'environment') => { setWorldSetupTab(tab); setWorldSetupOpen(true) }
+  /**
+   * The one way a cloud world enters this editor: the save sheet's Open and `/build?world=<id>`
+   * both land here. Inside a live room the world is handed to a fresh /build via the active-world key.
+   */
+  const openCloudWorld = useCallback(async (document: BrickStudioDocument, world: ClassroomWorld) => {
+    if (livePolicy) {
+      const userId = browserClassroomClient.getSession()?.user.id
+      if (userId) sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId, worldId: world.id }))
+      window.location.assign('/build')
+      return
+    }
+    await cloud.attach(world, document)
+  }, [cloud, livePolicy])
+  const [worldUnavailable, setWorldUnavailable] = useState(false)
+  const entryWorldId = readOnly ? undefined : classroomEntry.worldId
+  useEffect(() => {
+    if (!entryWorldId) return
+    // Signed out: sign in first, then come straight back to this world.
+    if (!browserClassroomClient.getSession()) {
+      goToJoin({ mode: 'signin', next: `${BUILD_PATH}?world=${encodeURIComponent(entryWorldId)}` })
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const world = await browserClassroomClient.getWorld(entryWorldId)
+        if (cancelled) return
+        if (!world.document) throw new Error('This world did not include a complete build.')
+        await openCloudWorld(world.document, world)
+      } catch {
+        // Unknown, hidden, unshared or someone else's world: keep the current build and say so.
+        if (!cancelled) setWorldUnavailable(true)
+      }
+    })()
+    return () => { cancelled = true }
+    // The entry id is read once on mount; openCloudWorld is stable for the session it belongs to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryWorldId])
   const renameWorld = cloud.world ? async (title: string) => {
     const world = cloud.world
     if (!world) return
@@ -1298,6 +1339,7 @@ export default function BrickStudioApp({
       {worldSetupOpen && contentPreview && (
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
+      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>That world isn't available. It may have been removed, hidden by your teacher, or belong to another account.</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My worlds</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
       {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {classroomIntent && <ClassroomPanel
         intent={classroomIntent}
@@ -1307,7 +1349,7 @@ export default function BrickStudioApp({
         beforeWorldMutation={cloud.flush}
         onWorldUpdated={world => { if (cloud.world?.id === world.id) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}
         onSaved={world => { if (!livePolicy) void cloud.attach(world).catch(error => useBrickStore.setState({ toast: String(error) })) }}
-        onOpenWorld={async (document, world) => { if (livePolicy) { const userId = browserClassroomClient.getSession()?.user.id; if (userId) sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId, worldId: world.id })); window.location.assign('/build'); return }; await cloud.attach(world, document) }}
+        onOpenWorld={openCloudWorld}
         onJoinWorld={async world => { const saved = await cloud.flush(); if (!saved && !window.confirm('Your latest edits are kept in this tab for recovery but are not saved online. Leave for the shared world?')) return; window.location.assign(`/live/${world.id.replaceAll('-', '')}`) }}
       />}
       {raceOverlay}

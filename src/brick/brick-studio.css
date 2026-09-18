@@ -62,6 +62,10 @@
 .brick-explore-back kbd { min-width: 17px; height: 17px; margin-left: 6px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; vertical-align: middle; }
 .brick-explore-back kbd { background: rgba(38, 60, 81, .08); }
 
+/* `/build?world=<id>` that cannot be opened: the recovery banner style with a link back to My worlds. */
+.brick-world-unavailable-link { min-height: 40px; display: inline-flex; align-items: center; padding: 0 12px; border: 1.5px solid var(--border-strong, rgba(38, 60, 81, .3)); border-radius: var(--radius-sm, 8px); color: var(--text, #263c51); background: var(--surface, #ffffff); font-weight: 800; text-decoration: none; white-space: nowrap; }
+.brick-world-unavailable-link:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+
 /* ------------------------------------------------------------- drawer --- */
 
 .part-library {

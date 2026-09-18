@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { useBrickStore } from './store'
+import { createBrickStudioDocument } from './brickDocument'
 import type { ClassroomWorld } from '../classroom/contracts'
 import type { CloudSaveStatus } from '../classroom/cloudAutosave'
 import { browserClassroomClient, type ClassroomAuth } from '../classroom/client'
@@ -22,7 +23,8 @@ const cloud = vi.hoisted(() => ({
 }))
 
 const redirect = vi.hoisted(() => vi.fn(() => true))
-vi.mock('../shell/navigation', async (importOriginal) => ({ ...(await importOriginal<typeof import('../shell/navigation')>()), classroomIntentRedirect: redirect }))
+const joinRedirect = vi.hoisted(() => vi.fn())
+vi.mock('../shell/navigation', async (importOriginal) => ({ ...(await importOriginal<typeof import('../shell/navigation')>()), classroomIntentRedirect: redirect, goToJoin: joinRedirect }))
 vi.mock('../classroom/useClassroomWorld', () => ({ useClassroomWorld: () => cloud }))
 vi.mock('./BrickStudioScene', () => ({ default: () => <div /> }))
 vi.mock('./PartThumbnail', () => ({ PartThumbnail: () => <span /> }))
@@ -45,7 +47,7 @@ beforeEach(() => {
   cloud.status = 'saved'
   cloud.error = ''
 })
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); browserClassroomClient.setSession(null); redirect.mockClear() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); browserClassroomClient.setSession(null); redirect.mockClear(); joinRedirect.mockClear(); cloud.attach.mockClear() })
 
 describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
@@ -164,6 +166,45 @@ describe('studio navigation and save context', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Account: Ava R.' }))
     fireEvent.click(within(screen.getByRole('menu', { name: 'Account' })).getByRole('menuitem', { name: 'Save this build to my account' }))
     expect(screen.getByRole('dialog', { name: 'Classroom save' })).toHaveAttribute('data-class-code', 'CLASS-456')
+  })
+
+  describe('/build?world=<id> from My worlds', () => {
+    const world: ClassroomWorld = { id: 'world-7', title: 'Sky bridge', kind: 'personal', ownerId: student.user.id, classId: null, visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: null, sharedAt: null, revision: 3, updatedAt: '2026-09-18T09:00:00Z', document: createBrickStudioDocument([{ id: 'sky-1', partId: 'brick_2x4', x: 2, y: 0, z: 2, rotation: 0, color: '#fff' }]) }
+
+    it('sends a signed-out visitor to sign in and back to the same world, stripping the param', () => {
+      window.history.replaceState(null, '', '/build?world=world-7&utm_source=poster')
+      render(<BrickStudioApp />)
+      expect(joinRedirect).toHaveBeenCalledWith({ mode: 'signin', next: '/build?world=world-7' })
+      expect(cloud.attach).not.toHaveBeenCalled()
+      expect(window.location.search).toBe('?utm_source=poster')
+    })
+
+    it('opens a signed-in owner\'s world through the same path as the save sheet', async () => {
+      browserClassroomClient.setSession(student)
+      vi.spyOn(browserClassroomClient, 'getWorld').mockResolvedValue(world)
+      window.history.replaceState(null, '', '/build?world=world-7')
+      render(<BrickStudioApp />)
+      await waitFor(() => expect(cloud.attach).toHaveBeenCalledWith(world, world.document))
+      expect(browserClassroomClient.getWorld).toHaveBeenCalledWith('world-7')
+      expect(joinRedirect).not.toHaveBeenCalled()
+      expect(window.location.search).toBe('')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('keeps the current build and links back to My worlds when the world is unavailable', async () => {
+      browserClassroomClient.setSession(student)
+      vi.spyOn(browserClassroomClient, 'getWorld').mockRejectedValue(Object.assign(new Error('World not found'), { status: 404 }))
+      const before = useBrickStore.getState().getDocumentSnapshot()
+      window.history.replaceState(null, '', '/build?world=nope')
+      render(<BrickStudioApp />)
+      const alert = await screen.findByRole('alert')
+      expect(alert).toHaveTextContent("That world isn't available")
+      expect(within(alert).getByRole('link', { name: 'Back to My worlds' })).toHaveAttribute('href', '/worlds')
+      expect(cloud.attach).not.toHaveBeenCalled()
+      expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(before)
+      fireEvent.click(within(alert).getByRole('button', { name: 'Keep building' }))
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
   })
 
   it('does not report an account save for a connected or offline shared world', () => {
