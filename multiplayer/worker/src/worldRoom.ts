@@ -370,6 +370,15 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         && Date.now() >= this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS;
       return json({ kind: !this.record || expired ? "missing" : this.record.classroomWorldId ? "classroom" : "guest" });
     }
+    // Only the outer router can call this endpoint: distinct classroom accounts connected right now, for the
+    // class page's "building now" count. Ids only, no names or world data.
+    if (url.pathname === "/internal/classroom-presence" && request.method === "GET") {
+      const userIds = !this.record?.classroomWorldId ? [] : [...new Set(this.openSockets().flatMap((socket) => {
+        const attachment = this.attachment(socket);
+        return attachment?.classroomAccess ? [attachment.classroomAccess.userId] : [];
+      }))];
+      return json({ userIds });
+    }
     // Reachable only through the authenticated outer legacy-import route.
     // A surviving owner capability recovers a private copy, never anonymous access.
     if (url.pathname === "/internal/legacy-export" && request.method === "POST") {
