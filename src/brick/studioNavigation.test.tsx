@@ -4,6 +4,7 @@ import BrickStudioApp from './BrickStudioApp'
 import { useBrickStore } from './store'
 import { createBrickStudioDocument } from './brickDocument'
 import type { ClassroomWorld } from '../classroom/contracts'
+import type { ClassroomEntryIntent } from '../routes'
 import type { CloudSaveStatus } from '../classroom/cloudAutosave'
 import { browserClassroomClient, type ClassroomAuth } from '../classroom/client'
 
@@ -22,7 +23,7 @@ const cloud = vi.hoisted(() => ({
   reload: vi.fn(),
 }))
 
-const redirect = vi.hoisted(() => vi.fn(() => true))
+const redirect = vi.hoisted(() => vi.fn<(intent: ClassroomEntryIntent, navigate?: (url: string) => void, search?: string) => boolean>(() => true))
 const joinRedirect = vi.hoisted(() => vi.fn())
 vi.mock('../shell/navigation', async (importOriginal) => ({ ...(await importOriginal<typeof import('../shell/navigation')>()), classroomIntentRedirect: redirect, goToJoin: joinRedirect }))
 vi.mock('../classroom/useClassroomWorld', () => ({ useClassroomWorld: () => cloud }))
@@ -152,6 +153,17 @@ describe('studio navigation and save context', () => {
     window.history.replaceState(null, '', '/build?classroom=join&classCode=CLASS-456&utm_source=poster')
     render(<BrickStudioApp />)
     expect(redirect).toHaveBeenCalledWith('join', undefined, '?classroom=join&classCode=CLASS-456&utm_source=poster')
+    expect(screen.queryByRole('dialog', { name: /^Classroom/ })).not.toBeInTheDocument()
+    expect(window.location.search).toBe('?utm_source=poster')
+  })
+
+  it('sends an older printed sign-in invite to the join page with its class code', async () => {
+    const { classroomIntentRedirect } = await vi.importActual<typeof import('../shell/navigation')>('../shell/navigation')
+    const navigate = vi.fn()
+    redirect.mockImplementationOnce((intent, _navigate, search) => classroomIntentRedirect(intent, navigate, search))
+    window.history.replaceState(null, '', '/build?classroom=signin&classCode=ABC&utm_source=poster')
+    render(<BrickStudioApp />)
+    expect(navigate).toHaveBeenCalledWith('/join?mode=signin&classCode=ABC')
     expect(screen.queryByRole('dialog', { name: /^Classroom/ })).not.toBeInTheDocument()
     expect(window.location.search).toBe('?utm_source=poster')
   })
