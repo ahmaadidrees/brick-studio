@@ -1,6 +1,6 @@
 export const BUILD_PATH = '/build'
 
-export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'not-found'
+export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'join' | 'worlds' | 'class' | 'class-projector' | 'not-found'
 
 /**
  * Account entry intents carried by `/build?classroom=<intent>`.
@@ -46,12 +46,11 @@ export function resolveAppRoute(
     return { route: 'build', canonicalPath: `${BUILD_PATH}${search}${hash}` }
   }
   if (/^\/welcome\/?$/.test(pathname)) return { route: 'landing', canonicalPath: `/${search}${hash}` }
-  // Printed and projected invites say "<host>/join": open the editor's join intent, keeping any classCode.
-  if (/^\/join\/?$/.test(pathname)) {
-    const params = new URLSearchParams(search)
-    if (!params.has('classroom')) params.set('classroom', 'join')
-    return { route: 'build', canonicalPath: `${BUILD_PATH}?${params.toString()}${hash}` }
-  }
+  // Account pages (flows v2). `/join` keeps its query (classCode, mode, next).
+  if (/^\/join\/?$/.test(pathname)) return { route: 'join', ...(pathname.endsWith('/') ? { canonicalPath: `/join${search}${hash}` } : {}) }
+  if (/^\/worlds\/?$/.test(pathname)) return { route: 'worlds', ...(pathname.endsWith('/') ? { canonicalPath: `/worlds${search}${hash}` } : {}) }
+  if (/^\/class\/projector\/?$/.test(pathname)) return { route: 'class-projector' }
+  if (/^\/class\/?$/.test(pathname)) return { route: 'class', ...(pathname.endsWith('/') ? { canonicalPath: `/class${search}${hash}` } : {}) }
   if (pathname === '/') return { route: 'landing' }
   return { route: 'not-found' }
 }
