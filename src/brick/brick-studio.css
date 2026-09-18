@@ -48,77 +48,19 @@
 .studio-button-primary:hover:not(:disabled) { color: var(--primary-contrast, #ffffff); background: var(--studio-blue-dark); }
 
 /* ------------------------------------------------------------- header --- */
+/* The Build header is W2's <AppHeader variant="editor"> (src/shell/shell.css); only the height
+   variables above and the Explore HUD / published-bar tool styles below live here. */
 
-.brick-header {
-  position: absolute;
-  z-index: var(--z-header, 20);
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--brick-header-block);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  align-items: center;
-  box-sizing: border-box;
-  padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
-  border-bottom: 1px solid var(--studio-panel-border);
-  background: var(--studio-panel);
-  box-shadow: 0 1px 0 rgba(38, 60, 81, .03), 0 6px 18px rgba(38, 60, 81, .06);
-  pointer-events: auto;
-}
-
-.brick-header-world { min-width: 0; display: flex; align-items: center; gap: 10px; }
-/* Brand lockup doubles as Home. Under 640px the wordmark drops (brand-lockup-wide), so the mark
-   alone stays a 44px target. A divider separates it from the world title on wide screens. */
-.brick-brand-home { min-width: 44px; justify-content: center; padding: 0 6px 0 2px; border-radius: var(--radius-md, 12px); }
-.brick-brand-home:hover { background: rgba(88, 136, 218, .1); }
-.brick-brand-home:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.brick-brand-home .brand-wordmark { font-size: 22px; }
-.brick-header-world::before { content: none; }
 .brick-brand-mark { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-md, 12px); background: transparent; cursor: pointer; }
 .brick-brand-mark:hover { background: rgba(88, 136, 218, .1); }
 .brick-brand-mark:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.brick-world-context { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-left: 10px; border-left: 1px solid var(--studio-panel-border); }
-.studio-world-title { display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 28px; padding: 0 4px; border: 0; border-radius: 6px; color: var(--studio-ink); background: transparent; cursor: pointer; text-align: left; }
-.studio-world-title strong { max-width: 260px; overflow: hidden; font: 600 17px/1.15 var(--font-display, 'Fredoka'), sans-serif; text-overflow: ellipsis; white-space: nowrap; }
-.studio-world-title svg { flex: 0 0 auto; color: var(--studio-muted); }
-.studio-world-title:hover { background: rgba(88, 136, 218, .08); }
-.studio-world-title:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-/* The save chip is the shared SaveStatus primitive; the header only tightens it to one line. */
-.brick-header .brick-save-status { min-height: 22px; padding: 0 8px 0 4px; background: transparent; border-color: transparent; font-size: 11.5px; }
-.brick-header .brick-save-status .ui-save-status-detail { display: none; }
-.brick-header .brick-save-status.ui-save-status-error, .brick-header .brick-save-status.ui-save-status-offline { padding-right: 9px; background: var(--danger-soft, #fbe4e0); border-color: var(--danger, #c9463a); }
 
-.brick-header-tools { display: flex; align-items: center; gap: 2px; }
 .brick-header-tool.ui-button { min-width: 44px; padding: 0 12px; font-size: 12.5px; }
 .brick-header-tool.ui-button .ui-button-icon { color: var(--studio-blue-dark); }
-/* The signed-in name is the label: long roster names clip rather than push the header. */
-.brick-header-account.ui-button .ui-button-label { display: block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brick-people-count { min-width: 19px; height: 19px; display: inline-grid; place-items: center; margin-left: 6px; padding: 0 5px; border-radius: 9px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .16); font-size: 10px; vertical-align: middle; }
 
-.brick-mode-switch { display: flex; align-items: center; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--studio-panel-border); }
-.brick-primary-mode.ui-button { min-width: 112px; padding: 0 16px; font-size: 13.5px; }
-.brick-primary-mode kbd, .brick-explore-back kbd { min-width: 17px; height: 17px; margin-left: 6px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; vertical-align: middle; }
+.brick-explore-back kbd { min-width: 17px; height: 17px; margin-left: 6px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; vertical-align: middle; }
 .brick-explore-back kbd { background: rgba(38, 60, 81, .08); }
-
-.studio-menu { position: relative; min-width: 0; }
-/* The placed-brick section can push the menu past a short viewport, so it scrolls; the studio
-   root is touch-action: none, hence the explicit pan-y. */
-.studio-menu-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: var(--z-sheet, 30); width: min(272px, calc(100vw - 16px)); max-height: calc(100vh - var(--brick-header-block) - 24px); display: grid; gap: 2px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 18px 48px rgba(38, 60, 81, .2)); touch-action: pan-y; }
-.studio-menu-popover button, .studio-menu-popover a { min-height: 48px; display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 8px; padding: 6px 9px; border: 0; border-radius: 10px; color: var(--studio-ink); background: transparent; text-align: left; text-decoration: none; cursor: pointer; }
-.studio-menu-popover button:hover:not(:disabled), .studio-menu-popover a:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .1); }
-.studio-menu-popover button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; }
-.studio-menu-popover button:disabled { opacity: .42; cursor: default; }
-.studio-menu-popover svg { justify-self: center; color: var(--studio-blue-dark); }
-.studio-menu-popover span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.studio-menu-popover strong { font-size: 14px; }
-.studio-menu-popover small { overflow: hidden; color: var(--studio-muted); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.studio-menu-section { display: grid; gap: 5px; margin-top: 4px; padding: 9px 9px 6px; border-top: 1px solid var(--studio-panel-border); }
-.studio-menu-section label { color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
-.studio-menu-section select { width: 100%; min-height: 44px; padding: 0 30px 0 9px; border: 1px solid var(--studio-panel-border); border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font: 800 11px/1.2 inherit; }
-.studio-menu-section select:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.studio-menu-section > span { display: block; color: var(--studio-muted); font-size: 10px; line-height: 1.35; }
 
 /* ------------------------------------------------------------- drawer --- */
 
@@ -360,10 +302,6 @@
 
 @media (pointer: coarse) {
   .fine-pointer-copy { display: none; }
-  /* The title trigger keeps its 28px layout box but grows a 44px hit area on touch. */
-  .studio-world-title { min-height: 44px; padding: 8px 4px; }
-  /* Touch layouts of any width keep title and save chip on one row so the 44px trigger fits the header. */
-  .brick-world-context { flex-direction: row; align-items: center; gap: 6px; }
   .part-search { min-height: 48px; }
   .part-search input { min-height: 44px; }
   .library-collapse-button { width: 44px; height: 44px; min-height: 44px; }
@@ -445,41 +383,19 @@
 /* -------------------------------------------------------------- tablet --- */
 
 @media (max-width: 900px) {
-  .brick-header { gap: 8px; }
   .brick-history-tools .studio-icon-button > span { display: none; }
   .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
   .brick-capacity-status { display: none; }
   .brick-header-tool .ui-button-label { display: none; }
   .brick-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
-  .brick-primary-mode.ui-button { min-width: 0; }
   .color-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }.color-grid button { min-width: 44px; width: 44px; height: 44px; }
 }
 
 /* --------------------------------------------------------------- phone --- */
 
 @media (max-width: 700px) {
-  /* Two 44px rows, 8px apart: row 1 mark + title/save + Explore, row 2 Scene / Character / People / Settings. */
   .brick-studio { --brick-header-height: 104px; }
-  .brick-header { grid-template-areas: 'world mode' 'tools tools'; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 44px 44px; align-content: center; gap: 8px; padding-right: max(8px, env(safe-area-inset-right)); padding-left: max(8px, env(safe-area-inset-left)); }
-  .brick-header-world { grid-area: world; }
-  .brick-mode-switch { grid-area: mode; margin: 0; padding-left: 0; border-left: 0; }
-  .brick-header-tools { grid-area: tools; justify-content: space-between; gap: 4px; }
-  .brick-header-tools > * { flex: 1 1 0; }
-  .brick-header-world { gap: 6px; }
-  .brick-brand-home { padding: 0 2px; }
-  /* One 44px row: title trigger beside the (icon-only) save chip, so the 44px hit box never leaves the header. */
-  .brick-world-context { flex-direction: row; align-items: center; gap: 4px; padding-left: 6px; }
-  .studio-menu { position: static; }
   .brick-header-tool .ui-button-label { display: none; }
-  .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; flex-direction: column; gap: 2px; padding: 2px 6px; background: var(--studio-panel-soft); }
-  .brick-header-tools .brick-header-tool .ui-button-label { display: block; font-size: 10.5px; line-height: 1.15; }
-  /* Phones keep the account icon only; the name stays in the aria-label. */
-  .brick-header-tools .brick-header-account .ui-button-label { display: none; }
-  .studio-world-title strong { max-width: min(180px, 44vw); font-size: 16px; }
-  .brick-header .brick-save-status { max-width: 46vw; font-size: 11px; }
-  .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }
-  .brick-primary-mode kbd { display: none; }
-  .studio-menu-popover { top: calc(100% + 6px); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); width: auto; max-height: calc(100vh - var(--brick-header-block) - 24px); }
   .brick-toast, .onboarding-guide, .scene-loading-status { top: calc(var(--brick-panel-top) + 56px); }
   .brick-toast { max-width: 80%; }
   .onboarding-guide { max-height: calc(100% - var(--brick-panel-top) - 72px - env(safe-area-inset-bottom)); overflow-y: auto; padding: 18px; border-radius: 18px; touch-action: pan-y; }
@@ -500,32 +416,13 @@
   .brick-mode-explore .explore-spawn-status, .brick-mode-explore .brick-toast, .brick-mode-explore .scene-loading-status { top: max(160px, calc(env(safe-area-inset-top) + 156px)); }
 }
 
-/* Very narrow phones: keep every header target inside 320px. */
 @media (max-width: 360px) {
-  .studio-world-title strong { max-width: 38vw; font-size: 15px; }
-  .brick-header .brick-save-status { max-width: 42vw; font-size: 10.5px; }
-  .brick-primary-mode.ui-button { padding: 0 10px; font-size: 12px; }
   .brick-header-tool.ui-button { padding: 0 6px; }
 }
 
-/* Board 06 gives the world and creative tools a clear, calm hierarchy on roomy screens. */
 @media (min-width: 1100px) and (min-height: 521px) {
   .brick-studio { --brick-header-height: 80px; }
-  .brick-header { gap: 14px; padding-right: 16px; padding-left: 16px; }
-  .brick-header-world { gap: 16px; }
-  /* The shared lockup sets an inline size; the desktop shell scales it to board 06. */
-  .brick-brand-home .brand-wordmark { font-size: 30px !important; }
-  .brick-brand-home .brand-mark { width: 40px; height: 40px; }
-  .brick-world-context { gap: 3px; padding-left: 16px; }
-  .studio-world-title { min-height: 36px; gap: 12px; padding: 0 10px; border: 1px solid var(--studio-panel-border); border-radius: 10px; }
-  .studio-world-title strong { max-width: 220px; font-size: 18px; }
-  .brick-header .brick-save-status { padding-left: 10px; font-size: 12px; }
-  .brick-header-tools { gap: 7px; }
-  .brick-header .brick-header-tool.ui-button { min-height: 46px; padding: 0 14px; border-color: var(--studio-panel-border); background: #f9fafc; font-size: 13px; }
-  .brick-header .brick-header-tool.ui-button:hover { background: var(--studio-panel-soft); border-color: var(--studio-blue); }
-  .brick-header .brick-header-tool.ui-button[aria-expanded='true'] { color: var(--studio-blue-dark); border-color: var(--studio-blue); background: var(--primary-soft); }
-  .brick-primary-mode.ui-button { min-height: 48px; font-size: 15px; }
-  .brick-primary-mode kbd, .brick-explore-back kbd { display: none; }
+  .brick-explore-back kbd { display: none; }
   .brick-explore-hud { top: 20px; right: 20px; left: 20px; }
   .brick-explore-back.ui-button { min-height: 48px; padding: 0 20px; font-size: 14px; }
   .brick-explore-hud-start { gap: 12px; }
@@ -538,12 +435,6 @@
 
 @media (max-height: 520px) and (orientation: landscape) {
   .brick-studio { --brick-header-height: 56px; }
-  .brick-header { grid-template-areas: 'world tools mode'; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: 44px; gap: 8px; }
-  .brick-header-world { grid-area: world; }
-  .brick-header-tools { grid-area: tools; justify-content: flex-end; }
-  .brick-header-tools > * { flex: 0 0 auto; }
-  .brick-mode-switch { grid-area: mode; margin: 0; padding-left: 8px; border-left: 1px solid var(--studio-panel-border); }
-  .brick-primary-mode kbd { display: none; }
   .build-shell { inset: 0; display: block; }
   /* Wide fine-pointer windows that are simply short keep the docked drawer; compact layouts
      never render it, so these rules only ever apply to the desktop shell. */

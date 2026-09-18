@@ -245,12 +245,32 @@ function SelectedState({ coarsePointer, onResize }: CommandStripProps) {
   )
 }
 
+/** Keyboard/screen-reader path to each placed brick: the list mirrors [ and ] (the shortcuts stay in the editor). */
+function JumpToBrick() {
+  const bricks = useBrickStore((state) => state.bricks)
+  const selectBrick = useBrickStore((state) => state.selectBrick)
+  const id = useId()
+  if (!bricks.length) return null
+  return (
+    <span className="command-strip-jump">
+      <label htmlFor={id}>Jump to brick</label>
+      <select id={id} value="" aria-keyshortcuts="BracketLeft BracketRight" title="Select a placed brick ([ and ] step through them)" onChange={(event) => { if (event.target.value) selectBrick(event.target.value) }}>
+        <option value="">{`Choose 1 of ${bricks.length}`}</option>
+        {bricks.map((brick, index) => (
+          <option key={brick.id} value={brick.id}>{index + 1}. {BRICK_PART_MAP[brick.partId]?.name ?? 'Brick'} — X {brick.x}, Y {brick.y}, Z {brick.z}</option>
+        ))}
+      </select>
+    </span>
+  )
+}
+
 function IdleState({ coarsePointer }: { coarsePointer: boolean }) {
   const brickCount = useBrickStore((state) => state.bricks.length)
   return (
     <div className="command-strip-row command-strip-idle" role="note" aria-label="Build hint" data-state="idle">
       <strong>Pick a brick from the drawer</strong>
       {!coarsePointer && <span className="command-strip-hint">{brickCount ? 'Click a brick to select it · Drag empty space to box-select' : 'Then click the plate to place it'}</span>}
+      <JumpToBrick />
     </div>
   )
 }

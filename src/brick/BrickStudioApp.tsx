@@ -8,11 +8,9 @@ import {
   ArrowLeft,
   Box,
   Check,
-  ChevronDown,
   ChevronUp,
   Clipboard,
   ClipboardPaste,
-  Compass,
   Copy,
   Cuboid,
   Focus,
@@ -37,7 +35,7 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
 import { BrandLockup } from '../brand'
 import { Button, SaveStatus, type SaveStatusSource } from '../ui'
@@ -55,7 +53,8 @@ import { OnboardingGuide, useBuilderOnboarding } from './OnboardingGuide'
 import { PartThumbnail } from './PartThumbnail'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
-import { StudioMenu, type StudioDocumentCommands } from './StudioMenu'
+import type { StudioDocumentCommands } from './StudioMenu'
+import { AppHeader, classroomIntentRedirect } from '../shell'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
@@ -325,75 +324,8 @@ function PeopleEntry({ livePolicy, onStartLiveWorld, compact = false }: PeopleEn
   )
 }
 
-type HeaderProps = StudioDocumentCommands & {
-  onSaveToAccount?: () => void
-  onOpenMyWorlds?: () => void
-  onOpenMyClass?: () => void
-  onRenameWorld?: (title: string) => Promise<void>
-  /** Signed-in display name (roster name, else username); undefined when signed out. */
-  accountLabel?: string
-  worldTitle?: string
-  saveStatus: StudioSaveStatus
-  livePolicy?: BrickStudioLivePolicy
-  onOpenHelp: () => void
-  onOpenWorldSetup: (tab?: 'environment' | 'character') => void
-  onGoHome: () => void
-}
-
 /** Guest drafts have no title field in the schema, so the header shows a neutral name, never the brand. */
 const NEUTRAL_WORLD_TITLE = 'My build'
-
-function Header({ onNewBuild, onImportProject, onExportProject, onStartLiveWorld, onPublishWorld, livePolicy, onOpenHelp, onOpenWorldSetup, onSaveToAccount, onOpenMyWorlds, onOpenMyClass, accountLabel, onRenameWorld, worldTitle, saveStatus, onGoHome }: HeaderProps) {
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const mode = useBrickStore((state) => state.mode)
-  const setMode = useBrickStore((state) => state.setMode)
-  const hasBricks = useBrickStore((state) => state.bricks.length > 0)
-  const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
-  const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
-  const requestExplore = () => livePolicy ? livePolicy.onRequestMode('explore') : requestExploreMode()
-  const title = worldTitle || livePolicy?.roomTitle || NEUTRAL_WORLD_TITLE
-
-  return (
-    <header className="brick-header" aria-label="Studio toolbar">
-      <div className="brick-header-world">
-        <BrandHome onGoHome={onGoHome} wordmark="wide" className="brick-brand-home" />
-        <div className="brick-world-context">
-          <StudioMenu
-            worldTitle={title}
-            onGoHome={onGoHome}
-            onSaveToAccount={onSaveToAccount}
-            onOpenMyWorlds={onOpenMyWorlds}
-            onOpenMyClass={onOpenMyClass}
-            onRenameWorld={onRenameWorld}
-            onNewBuild={livePolicy ? undefined : onNewBuild}
-            onImportProject={livePolicy ? undefined : onImportProject}
-            onExportProject={onExportProject}
-            onStartLiveWorld={livePolicy ? undefined : onStartLiveWorld}
-            onPublishWorld={livePolicy ? undefined : onPublishWorld}
-            onOpenHelp={onOpenHelp}
-            onOpenSettings={() => setSettingsOpen(true)}
-          />
-          <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} className="brick-save-status" />
-        </div>
-      </div>
-      <div className="brick-header-tools" role="group" aria-label="World tools">
-        <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
-        <Button variant="quiet" className="brick-header-tool brick-creative-header" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
-        <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
-        {onOpenMyClass && (accountLabel
-          ? <Button variant="quiet" className="brick-header-tool brick-header-account" icon={<UserRound size={17} />} title={`${accountLabel} — open My Class`} aria-label={`Account: ${accountLabel} — open My Class`} onClick={onOpenMyClass}>{accountLabel}</Button>
-          : <Button variant="quiet" className="brick-header-account" aria-label="Open sign in" onClick={onOpenMyClass}>Sign in</Button>)}
-        <StudioSettings />
-      </div>
-      <nav className="brick-mode-switch" aria-label="Studio mode">
-        {mode === 'build'
-          ? <Button variant="primary" aria-label="Explore mode" title={hasBricks ? 'Step inside your world (2)' : 'Place a brick first, then explore'} className="brick-primary-mode" icon={<Compass size={18} />} onClick={requestExplore} disabled={!hasBricks || liveModeDisabled}>Explore<kbd aria-hidden="true">2</kbd></Button>
-          : <Button variant="primary" aria-label="Back to building" className="brick-primary-mode" icon={<ArrowLeft size={18} />} onClick={requestBuild} disabled={liveModeDisabled}>Back to building<kbd aria-hidden="true">1</kbd></Button>}
-      </nav>
-      <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-    </header>
-  )
-}
 
 /** Board 15 read-only viewer chrome: the world is already in Explore; Make a copy starts a guest remix. */
 function PublishedWorldBar({ title, onRemix }: { title?: string; onRemix?: () => void }) {
@@ -1016,13 +948,16 @@ export default function BrickStudioApp({
     // Consume the entry intent even when it is unknown so a mistyped link never lingers in the address bar.
     const intent = url.searchParams.has('classroom') ? parseClassroomEntryIntent(url.search) : null
     const classCode = url.searchParams.get('classCode')?.trim().slice(0, 40) || undefined
+    const entrySearch = url.search
     url.searchParams.delete('classroom')
     url.searchParams.delete('classCode')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    // Flows v2: only `save` opens the in-editor sheet; worlds/class/join/signin/teacher are pages now
+    // (W2's classroomIntentRedirect carries an invite class code through to /join).
+    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode }
     return { intent, classCode }
   })
   const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(classroomEntry.intent)
-  const classroomAuth = useSyncExternalStore(browserClassroomClient.subscribe, browserClassroomClient.getSession)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
   const localStorageBlocked = useLocalStorageHealth(!readOnly && !livePolicy && !cloud.world)
   const closeClassroom = useCallback(() => setClassroomIntent(null), [])
@@ -1039,6 +974,7 @@ export default function BrickStudioApp({
   const [localPlateSize, setLocalPlateSize] = useState<BuildPlateSize>(() => getBuildPlateSize(publishedWorld?.document ?? {}))
   const [localAppearance, setLocalAppearance] = useState(loadCharacterPreferences)
   const [worldSetupOpen, setWorldSetupOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [worldSetupTab, setWorldSetupTab] = useState<'environment' | 'character'>('environment')
   const [contentPreview, setContentPreview] = useState<ContentPickerSelection | null>(null)
   const [environmentPreviewStatuses, setEnvironmentPreviewStatuses] = useState<Partial<Record<EnvironmentId, 'ready' | 'loading' | 'unavailable'>>>({})
@@ -1292,18 +1228,25 @@ export default function BrickStudioApp({
       {readOnly ? (
         !raceOverlay && <PublishedWorldBar title={publishedWorld?.title} onRemix={onRemix} />
       ) : mode === 'build' ? (
-        <Header
+        <AppHeader
+          variant="editor"
           {...documentCommands}
-          onSaveToAccount={() => setClassroomIntent('save')}
-          onOpenMyWorlds={() => setClassroomIntent('worlds')}
-          onOpenMyClass={() => setClassroomIntent(classroomAuth ? 'class' : 'signin')}
-          onRenameWorld={renameWorld}
-          accountLabel={classroomAuth ? classroomAuth.user.rosterName || classroomAuth.user.username : undefined}
-          worldTitle={cloud.world?.title}
-          saveStatus={saveStatus}
-          livePolicy={livePolicy}
+          onOpenSettings={() => setSettingsOpen(true)}
           onOpenHelp={onboarding.reopen}
+          worldTitle={cloud.world?.title}
+          onRenameWorld={renameWorld}
+          saveStatus={saveStatus}
           onOpenWorldSetup={openWorldSetup}
+          livePolicy={livePolicy}
+          mode={mode}
+          onRequestMode={(next) => {
+            if (livePolicy) livePolicy.onRequestMode(next)
+            else if (next === 'explore') requestExploreMode()
+            else useBrickStore.getState().setMode('build')
+          }}
+          canExplore={brickCount > 0}
+          exploreReason="Place a brick first, then explore."
+          onSaveToAccount={cloud.world || livePolicy ? undefined : () => setClassroomIntent('save')}
           onGoHome={goHome}
         />
       ) : (
@@ -1331,6 +1274,7 @@ export default function BrickStudioApp({
       ) : <TouchExploreControlsGate readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
       <Toast />
       <Announcer />
+      {!readOnly && <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
       <WorldAndCharacterSheet
         open={worldSetupOpen}
         initialTab={worldSetupTab}
