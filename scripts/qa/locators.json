@@ -33,7 +33,7 @@
   },
   "character": {
     "css": "header[aria-label=\"Studio toolbar\"] button[title=\"Character\"], .brick-header button[title=\"Character\"], button[aria-label=\"Character\"]",
-    "_note": "Scoped to the editor header: compact layouts also render a Character button in the old creative dock (reported)."
+    "_note": "Scoped to the editor header: it is the only Character button (the creative dock no longer duplicates it)."
   },
   "sceneDialog": {
     "role": "dialog",

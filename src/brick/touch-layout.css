@@ -27,8 +27,10 @@
 @media (max-height: 520px) and (orientation: landscape) {
   .brick-camera-popover { flex-direction: row; }
 }
-.brick-compact-layout .brick-creative-dock { position: absolute; z-index: 16; bottom: max(8px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; width: min(360px, calc(100% - 16px)); padding: 5px; box-sizing: border-box; gap: 5px; border: 1px solid var(--studio-panel-border); border-radius: 20px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-.brick-creative-dock > button { position: static; display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 48px; height: auto; padding: 5px 12px; border: 0; border-radius: 14px; background: transparent; color: var(--studio-ink); font: 800 11px/1.2 inherit; box-shadow: none; cursor: pointer; }
+/* The dock holds the brick drawer alone (Scene and Character are header tools), so it hugs its one
+   button instead of spanning the screen. */
+.brick-compact-layout .brick-creative-dock { position: absolute; z-index: 16; bottom: max(8px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; width: max-content; max-width: calc(100% - 16px); padding: 5px; box-sizing: border-box; gap: 5px; border: 1px solid var(--studio-panel-border); border-radius: 20px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.brick-creative-dock > button { position: static; display: flex; flex: 0 1 auto; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 116px; min-height: 48px; height: auto; padding: 5px 12px; border: 0; border-radius: 14px; background: transparent; color: var(--studio-ink); font: 800 11px/1.2 inherit; box-shadow: none; cursor: pointer; }
 .brick-creative-dock > .brick-drawer-fab { background: var(--studio-blue); color: white; }
 .brick-creative-dock > button:hover { background: var(--studio-panel-soft); color: var(--studio-blue-dark); }
 .brick-creative-dock > button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
@@ -62,7 +64,7 @@
 }
 
 @media (max-height: 520px) and (orientation: landscape) {
-  .brick-compact-layout .brick-creative-dock { width: 184px; left: 8px; transform: none; }
+  .brick-compact-layout .brick-creative-dock { left: 8px; transform: none; }
   .brick-compact-layout .brick-camera-cluster { flex-direction: row; }
   .brick-compact-layout .command-strip { right: 8px; }
   .brick-creative-dock > button { padding: 5px; }

@@ -21,7 +21,6 @@ import {
   MapPin,
   Move,
   MousePointer2,
-  Mountain,
   UserRound,
   Palette,
   PanelLeftClose,
@@ -769,20 +768,20 @@ function BuildShell({
     <div className={`build-shell${compact ? ' compact-shell' : ''}${!compact && !drawerOpen ? ' drawer-collapsed' : ''}`}>
       {compact ? (
         <>
+          {/* Scene and Character live in the header's "World tools" row; the dock keeps only the
+              brick drawer, which the header has no equivalent for. */}
           <nav className="brick-creative-dock" aria-label="Creative tools">
-          <button
-            className="brick-drawer-fab"
-            type="button"
-            aria-label="Open brick drawer"
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
-            onClick={openSheet}
-          >
-            <Plus size={22} />
-            <span>Bricks</span>
-          </button>
-          <button type="button" onClick={() => onOpenWorldSetup('environment')}><Mountain size={21} /><span>Scene</span></button>
-          <button type="button" onClick={() => onOpenWorldSetup('character')}><UserRound size={21} /><span>Character</span></button>
+            <button
+              className="brick-drawer-fab"
+              type="button"
+              aria-label="Open brick drawer"
+              aria-haspopup="dialog"
+              aria-expanded={sheetOpen}
+              onClick={openSheet}
+            >
+              <Plus size={22} />
+              <span>Bricks</span>
+            </button>
           </nav>
           {sheetOpen && <BrickDrawerSheet
             customParts={customParts}
