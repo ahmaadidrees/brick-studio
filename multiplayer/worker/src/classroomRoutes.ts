@@ -11,6 +11,7 @@ import {
   loadClassroomWorld,
   ClassroomHttpError,
   ClassroomService,
+  PRESENCE_ROOM_LIMIT,
   type ClassroomAccessChange,
 } from "./classroom";
 import {
@@ -76,11 +77,11 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
     }),
   );
 }
-/** Most live rooms one class listing will ask; beyond it the count is reported as unknown (null). */
-const PRESENCE_ROOM_LIMIT = 150;
 /**
  * Distinct classroom accounts connected to these rooms right now. Presence lives only in the WorldRoom
- * objects, so each id costs one internal fetch; rooms that never opened answer with nobody.
+ * objects, so each id costs one internal fetch; there is no registry of rooms that have opened, so an id
+ * that never did instantiates a cold object that answers with nobody. ClassroomService.buildingNow bounds
+ * the total per request and per teacher; this guard only refuses a single oversized batch.
  * Returns null (unknown) rather than a guess when the fan-out is too large or a room cannot answer.
  */
 async function liveParticipants(env: Env, worldIds: string[]): Promise<string[] | null> {

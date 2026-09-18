@@ -97,10 +97,14 @@ export class ClassroomService {
   patch(table: string, filter: string, data: Row): Promise<Row[]> { return this.request(`/rest/v1/brick_${table}?${filter}`, { method: 'PATCH', body: JSON.stringify(data) }); }
   remove(table: string, filter: string) { return this.request(`/rest/v1/brick_${table}?${filter}`, { method: 'DELETE' }); }
   rpc(name: string, data: Row): Promise<any> { return this.request(`/rest/v1/rpc/brick_${name}`, { method: 'POST', body: JSON.stringify(data) }); }
-  async rate(key: string, limit: number, seconds: number) {
+  /** Takes one token from the named bucket; false once it is empty. Throws only when the database cannot answer. */
+  async takeRate(key: string, limit: number, seconds: number): Promise<boolean> {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
     const hashed = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
-    if (!await this.rpc('take_rate_limit', { p_key: hashed, p_limit: limit, p_seconds: seconds })) fail(429, 'rate_limited', 'Too many attempts. Please wait a few minutes.');
+    return (await this.rpc('take_rate_limit', { p_key: hashed, p_limit: limit, p_seconds: seconds })) === true;
+  }
+  async rate(key: string, limit: number, seconds: number) {
+    if (!await this.takeRate(key, limit, seconds)) fail(429, 'rate_limited', 'Too many attempts. Please wait a few minutes.');
   }
   async authenticate(token: string, allowReset = false): Promise<Caller> {
     if (!token) fail(401, 'sign_in_required', 'Sign in to use classroom features.');
@@ -180,14 +184,14 @@ export class ClassroomService {
     return result;
   }
   /**
-   * `buildingNow` is filled only when the route supplies live presence (teachers' GET /classes and /me);
-   * sign-in responses report null so a login never fans out to live rooms.
+   * `buildingNow` is filled only when the route supplies live presence, which only a teacher's GET /classes does;
+   * GET /me and sign-in responses report null so opening the app or logging in never fans out to live rooms.
    */
   async me(caller: Caller, liveParticipants?: ClassroomHandlerOptions['liveParticipants']) {
     const classes = await this.classesFor(caller);
     const codes = caller.role === 'teacher'
       ? await this.rowsForClasses('class_codes', classes.map(row => row.id), 'can_enroll=eq.true&select=class_id,code&order=class_id.asc,code.asc') : [];
-    const building = caller.role === 'teacher' && liveParticipants ? await this.buildingNow(classes, liveParticipants) : new Map<string, number | null>();
+    const building = caller.role === 'teacher' && liveParticipants ? await this.buildingNow(caller, classes, liveParticipants) : new Map<string, number | null>();
     return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: classes.map(row => classView(row, codes.find(code => code.class_id === row.id)?.code, building.get(row.id) ?? null)) };
   }
   /** Live rooms per class: the class's own worlds plus its students' shared personal worlds. IDs must come from classesFor. */
@@ -199,13 +203,27 @@ export class ClassroomService {
     for (const world of await this.sharedWorldsOf(students.map(row => row.user_id), 'select=id,owner_id')) byClass.get(classOf.get(world.owner_id))?.push(world.id);
     return byClass;
   }
-  /** Distinct accounts building in each class right now; null for a class whose presence could not be read. */
-  private async buildingNow(classes: Row[], liveParticipants: NonNullable<ClassroomHandlerOptions['liveParticipants']>): Promise<Map<string, number | null>> {
-    const result = new Map<string, number | null>();
+  /**
+   * Distinct accounts building in each class right now; null for a class whose presence could not be read.
+   * Every live-capable world costs one Durable Object fetch (there is no registry of rooms that have ever opened,
+   * so an idle id still instantiates a cold object that answers with nobody). The fan-out is therefore bounded
+   * twice per request: at most PRESENCE_ROOM_LIMIT rooms in total, in class order (classes past the cap report
+   * null), and at most PRESENCE_RATE.limit requests per teacher per PRESENCE_RATE.seconds (beyond it every class
+   * reports null and the listing still succeeds). Classes with no live-capable world report 0 without a fetch.
+   */
+  private async buildingNow(caller: Caller, classes: Row[], liveParticipants: NonNullable<ClassroomHandlerOptions['liveParticipants']>): Promise<Map<string, number | null>> {
+    const result = new Map<string, number | null>(classes.map(row => [row.id, null]));
     if (!classes.length) return result;
+    const allowed = await this.takeRate(`presence:${caller.id}`, PRESENCE_RATE.limit, PRESENCE_RATE.seconds).catch(() => false);
+    if (!allowed) return result;
     const byClass = await this.liveWorldIdsByClass(classes);
+    let rooms = 0;
     for (const cls of classes) {
-      const participants = await liveParticipants(byClass.get(cls.id) ?? []);
+      const ids = byClass.get(cls.id) ?? [];
+      if (!ids.length) { result.set(cls.id, 0); continue; }
+      rooms += ids.length;
+      if (rooms > PRESENCE_ROOM_LIMIT) break;
+      const participants = await liveParticipants(ids);
       result.set(cls.id, participants ? new Set(participants).size : null);
     }
     return result;
@@ -321,6 +339,10 @@ async function publicClass(service: ClassroomService, input: Row): Promise<{ ali
 }
 /** Columns the API exposes without the document; the sharing columns come from migration 202609190001. */
 const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at';
+/** Most live rooms one GET /classes will ask for presence, across all of the teacher's classes. */
+export const PRESENCE_ROOM_LIMIT = 150;
+/** Presence fan-outs allowed per teacher: beyond it `buildingNow` is null until the window passes. */
+export const PRESENCE_RATE = { limit: 30, seconds: 60 } as const;
 /** Saved worlds per account; the database trigger (0003) enforces the same bound. */
 const WORLD_LIMIT = 50;
 type WorldAccess = { world: Row; canEdit: boolean; isOwner: boolean; ownerName: string; ownerClassId: string | null };
@@ -513,7 +535,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     }
   }
   const caller = await service.authenticate(bearer(request), path[0] === 'me');
-  if (path[0] === 'me' && method === 'GET') return json(await service.me(caller, options.liveParticipants));
+  if (path[0] === 'me' && method === 'GET') return json(await service.me(caller));
   if (path[0] === 'classes') {
     if (path.length === 1 && method === 'GET') return json({ classes: (await service.me(caller, options.liveParticipants)).classes });
     if (path.length === 1 && method === 'POST') {

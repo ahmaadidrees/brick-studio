@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBrickStudioDocument } from '@brick-studio/core';
-import { ClassroomHttpError, ClassroomService, authorizeClassroomWorld, handleClassroomRequest, listClassroomWorldIds, normalizeUsername, revalidateClassroomWorldAccess, rosterDisplayName, usernameSuggestions, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
+import { ClassroomHttpError, ClassroomService, PRESENCE_ROOM_LIMIT, authorizeClassroomWorld, handleClassroomRequest, listClassroomWorldIds, normalizeUsername, revalidateClassroomWorldAccess, rosterDisplayName, usernameSuggestions, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
 type Row = Record<string, any>;
 
 const studentId = '11111111-1111-4111-8111-111111111111';
@@ -600,7 +600,7 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     const student = backend(ben, tables([]));
     expect((await student.call('PATCH', `classes/${classId}`, { studentsCanShare: true })).status).toBe(404);
   });
-  it('reports how many accounts are building in each class from live presence, only for teachers, never at sign-in', async () => {
+  it('reports how many accounts are building in each class from live presence, only on a teacher\'s GET classes', async () => {
     const { db, fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));
     const asked: string[][] = [];
     const liveParticipants = vi.fn<(worldIds: string[]) => Promise<string[] | null>>(async worldIds => { asked.push([...worldIds].sort()); return worldIds.length ? [avaId, benId, avaId] : []; });
@@ -608,16 +608,42 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     const classes = (await call('classes')).classes as Row[];
     expect(classes.map(row => [row.id, row.buildingNow])).toEqual([[classId, 2]]);
     expect(asked).toEqual([[worldId, treehouse, copyId].sort()]);
-    expect((await call('me')).classes[0].buildingNow).toBe(2);
+    // Opening the app (GET me) never fans out to live rooms.
+    expect((await call('me')).classes[0].buildingNow).toBeNull();
     liveParticipants.mockResolvedValueOnce(null);
     expect((await call('classes')).classes[0].buildingNow).toBeNull();
-    // Sign-in responses and students never fan out to live rooms.
+    // Sign-in responses and students never fan out either.
     const service = new ClassroomService(env, fetcher as typeof fetch);
     expect((await service.me(teacher)).classes.map(row => row.buildingNow)).toEqual([null]);
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
     expect((await call('classes')).classes[0]).toMatchObject({ buildingNow: null, studentsCanShare: true });
-    expect(liveParticipants).toHaveBeenCalledTimes(3);
+    expect(liveParticipants).toHaveBeenCalledTimes(2);
     expect(db.classes[0].students_can_share).toBe(true);
+    // The presence bucket is per teacher: once it is empty the listing still succeeds with unknown counts.
+    const limited = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async (input, init) => String(input).endsWith('/rpc/brick_take_rate_limit') ? Response.json(false) : limited(input, init));
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(teacher);
+    expect((await call('classes')).classes[0].buildingNow).toBeNull();
+    expect(liveParticipants).toHaveBeenCalledTimes(2);
+    fetcher.mockImplementation(async (input, init) => String(input).endsWith('/rpc/brick_take_rate_limit') ? new Response('down', { status: 500 }) : limited(input, init));
+    expect((await call('classes')).classes[0].buildingNow).toBeNull();
+    expect(liveParticipants).toHaveBeenCalledTimes(2);
+  });
+  it('caps the presence fan-out at PRESENCE_ROOM_LIMIT rooms per listing, in class order', async () => {
+    const classRow = (n: number) => ({ ...period3(), id: `00000000-0000-4000-8000-0000000c${String(n).padStart(4, '0')}`, name: `Class ${n}` });
+    const classes = [classRow(1), classRow(2), classRow(3), classRow(4)];
+    const worldRow = (cls: Row, n: number) => ({ id: `00000000-0000-4000-8000-${cls.id.slice(-4)}${String(n).padStart(8, '0')}`, kind: 'class', class_id: cls.id, owner_id: teacherId, title: 'W', revision: 1, updated_at: '2026-09-16T10:00:00Z', class_visibility: 'private', class_can_edit: false, hidden_by_teacher: false, class_shared_at: null });
+    const worlds = [...Array.from({ length: 100 }, (_, i) => worldRow(classes[0], i)), ...Array.from({ length: 51 }, (_, i) => worldRow(classes[2], i)), worldRow(classes[3], 0)];
+    const { fetcher } = backend(teacher, { classes, students: [], worlds });
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    const liveParticipants = vi.fn(async (worldIds: string[]) => worldIds.slice(0, 3));
+    const result = (await service.me(teacher, liveParticipants)).classes.map(row => [row.name, row.buildingNow]);
+    // Class 1 fits (100 rooms), class 2 has no rooms and costs nothing, class 3 would exceed 150 in total, so it
+    // and every class after it report unknown rather than partial counts.
+    expect(result).toEqual([['Class 1', 3], ['Class 2', 0], ['Class 3', null], ['Class 4', null]]);
+    expect(liveParticipants).toHaveBeenCalledTimes(1);
+    expect(liveParticipants.mock.calls[0][0]).toHaveLength(100);
+    expect(PRESENCE_ROOM_LIMIT).toBe(150);
   });
   it('includes shared personal worlds when a class change fans out to live rooms', async () => {
     const { fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId, class_visibility: 'private' }, { ...shared(), id: sid, owner_id: cyId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));
