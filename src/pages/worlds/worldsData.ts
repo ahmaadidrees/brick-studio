@@ -1,4 +1,4 @@
-import { BUILD_PLATE_SIZES, DEFAULT_BUILD_PLATE_SIZE, type BuildPlateSize } from '@brick-studio/core'
+import { BUILD_PLATE_SIZES, DEFAULT_BUILD_PLATE_SIZE, createBrickStudioDocument, type BuildPlateSize } from '@brick-studio/core'
 import { browserClassroomClient, type ClassroomClient } from '../../classroom/client'
 import type { ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomWorld } from '../../classroom/contracts'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
@@ -74,7 +74,7 @@ export function createWorldsClient(client: ClassroomClient = browserClassroomCli
     setWorldSharing: (id, sharing) => client.request<{ world: WorldsWorld }>(`/worlds/${id}/sharing`, 'PATCH', sharing).then(world),
     setWorldHidden: (id, hidden) => client.request<{ world: WorldsWorld }>(`/worlds/${id}/visibility`, 'PATCH', { hiddenByTeacher: hidden }).then(world),
     copyWorld: id => client.request<{ world: WorldsWorld }>(`/worlds/${id}/copy`, 'POST').then(world),
-    createSharedWorld: (classId, title, kind) => client.request<{ world: WorldsWorld }>('/worlds', 'POST', { title, classId, kind }).then(world),
+    createSharedWorld: (classId, title, kind) => client.request<{ world: WorldsWorld }>('/worlds', 'POST', { title, classId, kind, document: createBrickStudioDocument([]) }).then(world),
     signOut: () => client.signOut(),
   }
 }

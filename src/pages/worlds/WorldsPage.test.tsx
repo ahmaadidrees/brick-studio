@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import WorldsPage from './WorldsPage'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 import { createFakeWorldsClient, FIXTURE_CLASS, studentSession, teacherSession } from './worldsFixtures'
-import type { WorldsClient } from './worldsData'
+import { createWorldsClient, type WorldsClient } from './worldsData'
+import type { ClassroomClient } from '../../classroom/client'
 
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -212,6 +213,30 @@ describe('teacher', () => {
     expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
   })
 
+  it('sends a document with the shared-world request, so the Worker does not reject it as an invalid document', async () => {
+    // The real client (worldsData.ts), not the fake, so a regression in what
+    // `createSharedWorld` puts on the wire is caught here.
+    const request = vi.fn(async (path: string, method = 'GET') => {
+      if (path === '/classes' && method === 'GET') return { classes: [FIXTURE_CLASS] }
+      if (path === '/worlds' && method === 'GET') return { worlds: [] }
+      return { world: { id: 'w-new', title: 'Market day', kind: 'class', ownerId: teacherSession.user.id, classId: FIXTURE_CLASS.id, revision: 1, updatedAt: '2026-09-18T00:00:00.000Z' } }
+    })
+    const classroomClient: ClassroomClient = {
+      getSession: () => teacherSession,
+      subscribe: () => () => {},
+      signOut: vi.fn(async () => {}),
+      request: request as unknown as ClassroomClient['request'],
+    } as unknown as ClassroomClient
+    draw(createWorldsClient(classroomClient))
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Market day' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start world' }))
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith('/worlds', 'POST', expect.objectContaining({ document: expect.any(Object) })))
+  })
+
   it('hides a student world from the class', async () => {
     const client = createFakeWorldsClient({ session: teacherSession })
     const setWorldHidden = vi.spyOn(client, 'setWorldHidden')
@@ -223,6 +248,33 @@ describe('teacher', () => {
 
     await waitFor(() => expect(setWorldHidden).toHaveBeenCalledWith('world-chloe-castle', true))
     expect(await screen.findByText(/is hidden from the class/)).toBeInTheDocument()
+  })
+
+  it('keeps a class section to worlds shared by that class\'s own students, for a teacher with more than one class', async () => {
+    const classA = { ...FIXTURE_CLASS, id: 'class-a', name: 'Class A' }
+    const classB = { ...FIXTURE_CLASS, id: 'class-b', name: 'Class B' }
+    const worldFor = (id: string, title: string, ownerClassId: string) => ({
+      id, title, ownerId: `owner-${id}`, classId: null, kind: 'personal' as const, revision: 1, updatedAt: '2026-09-17T00:00:00.000Z',
+      visibility: 'class' as const, canEdit: false, classCanEdit: true, ownerName: 'A Student', ownerClassId, sharedAt: '2026-09-17T00:00:00.000Z', hiddenByTeacher: false,
+    })
+    const worldA = worldFor('world-a', 'Class A Build', classA.id)
+    const worldB = worldFor('world-b', 'Class B Build', classB.id)
+
+    const client = createFakeWorldsClient({ session: teacherSession, classes: [classA, classB], worlds: [worldA, worldB] })
+    draw(client)
+    await settled()
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    expect(within(within(rail).getByRole('button', { name: /^Class A/ })).getByText('1')).toBeInTheDocument()
+    expect(within(within(rail).getByRole('button', { name: /^Class B/ })).getByText('1')).toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^Class A/ }))
+    expect(screen.getByRole('article', { name: 'Class A Build' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Class B Build' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^Class B/ }))
+    expect(screen.getByRole('article', { name: 'Class B Build' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Class A Build' })).not.toBeInTheDocument()
   })
 })
 
