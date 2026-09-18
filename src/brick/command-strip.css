@@ -85,11 +85,13 @@
 }
 
 /* Desktop shell: the docked drawer takes the left 276px, so the strip centres on the remaining canvas. */
+/* The camera column takes ~72px on the right, so the strip centres on the canvas minus that. */
+.build-shell:not(.compact-shell) .command-strip { left: calc(50% - 36px); max-width: calc(100% - 96px); }
 @media (pointer: fine) and (min-width: 901px) {
-  .build-shell:not(.compact-shell):not(.drawer-collapsed) .command-strip { left: calc(50% + 138px); max-width: calc(100% - 304px); }
+  .build-shell:not(.compact-shell):not(.drawer-collapsed) .command-strip { left: calc(50% + 102px); max-width: calc(100% - 372px); }
 }
 @media (pointer: coarse) and (min-width: 960px) and (min-height: 600px) and (orientation: landscape) {
-  .build-shell:not(.compact-shell):not(.drawer-collapsed) .command-strip { left: calc(50% + 136px); max-width: calc(100% - 300px); }
+  .build-shell:not(.compact-shell):not(.drawer-collapsed) .command-strip { left: calc(50% + 100px); max-width: calc(100% - 368px); }
 }
 
 /* Compact shell: the creative dock owns the bottom edge, the strip floats one gap above it. */
@@ -108,7 +110,7 @@
 @media (max-width: 420px) {
   .brick-compact-layout .command-strip-button > span:not(.command-strip-color-dot) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .brick-compact-layout .command-strip-button { position: relative; min-width: 44px; }
-  .brick-compact-layout .command-strip-primary > span { position: static; width: auto; height: auto; clip-path: none; }
+  .brick-compact-layout .command-strip-button.command-strip-primary > span:not(.command-strip-color-dot) { position: static; width: auto; height: auto; clip-path: none; }
   .brick-compact-layout .command-strip-popover { width: min(260px, calc(100vw - 32px)); }
 }
 

@@ -212,28 +212,35 @@
 .coordinates span { display: flex; justify-content: space-between; padding: 6px 7px; border-radius: 7px; color: var(--studio-muted); background: var(--studio-panel-soft); font-size: 9px; font-weight: 800; }
 .coordinates strong { color: var(--studio-ink); }
 
-/* ------------------------------------------------------------ toolbar --- */
+/* ----------------------------------------------------------- clusters --- */
 
-/* One compact bottom toolbar, centered in the canvas area (offset while the drawer is docked). */
-/* Scrolls sideways rather than leaving controls outside the viewport at 200% zoom or on short
-   landscape phones; the 6px padding keeps focus rings inside the scroll box. */
-.brick-edit-toolbar { position: absolute; z-index: 13; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 4px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; touch-action: pan-x; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-.brick-edit-toolbar > * { flex: 0 0 auto; }
-.build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 138px); }
+/* History (Undo / Redo, touch Select, capacity) sits top-left beside the drawer; the camera
+   cluster (Frame, Top, Front, 3D) is a column on the bottom-right edge so the command strip
+   keeps the bottom centre. Both move with the drawer state; compact layouts pin them to the
+   screen edges. */
+.brick-history-cluster { position: absolute; z-index: 13; top: var(--brick-panel-top); left: 288px; display: flex; align-items: center; gap: 4px; max-width: calc(100% - 304px - 72px); box-sizing: border-box; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.build-shell.drawer-collapsed .brick-history-cluster { left: 80px; }
+.brick-history-cluster > * { flex: 0 0 auto; }
 .brick-history-tools { display: flex; gap: 0; padding: 0 3px; border-radius: 10px; background: var(--studio-panel-soft); }
 .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }
-.brick-edit-toolbar .view-controls { position: static; width: auto; height: 44px; display: flex; padding: 0; border: 0; border-left: 1px solid var(--studio-panel-border); border-radius: 0; box-shadow: none; background: transparent; }
-.view-controls button { min-width: 40px; height: 44px; padding: 0 8px; border: 0; color: var(--studio-ink); background: transparent; font: 800 11px/1 inherit; cursor: pointer; }
-.view-controls button:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .1); border-radius: 9px; }
-.view-controls button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; border-radius: 9px; }
-.view-controls .view-home { margin: 0 5px; border: 1px solid var(--studio-panel-border); border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; white-space: nowrap; }
-.brick-edit-toolbar .studio-icon-button > span { white-space: nowrap; }
-.brick-edit-toolbar .selection-mode-control { position: static; height: 44px; width: auto; min-width: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); box-shadow: none; font: 800 11px/1 inherit; white-space: nowrap; cursor: pointer; }
-.brick-edit-toolbar .selection-mode-control:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.brick-edit-toolbar .selection-mode-control.active { background: var(--studio-blue); color: var(--primary-contrast, #ffffff); }
+.brick-history-tools .studio-icon-button > span { white-space: nowrap; }
+.selection-mode-control { height: 44px; width: auto; min-width: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); box-shadow: none; font: 800 11px/1 inherit; white-space: nowrap; cursor: pointer; }
+.selection-mode-control:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.selection-mode-control.active { background: var(--studio-blue); color: var(--primary-contrast, #ffffff); }
 .brick-capacity-status { padding: 0 10px; border-left: 1px solid var(--studio-panel-border); color: var(--studio-muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
 /* Mouse users box-select directly; coarse pointers retain the one-shot tool. */
 @media (hover: hover) and (pointer: fine) { .selection-mode-control { display: none; } }
+@media (any-pointer: coarse) { .selection-mode-control { display: flex; } }
+
+.brick-camera-cluster { position: absolute; z-index: 13; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; padding: 5px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.brick-camera-cluster[inert] { opacity: .55; }
+.brick-camera-button { width: 50px; min-height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; border: 0; border-radius: 10px; color: var(--studio-ink); background: transparent; font: 900 9.5px/1 inherit; letter-spacing: .02em; cursor: pointer; }
+.brick-camera-button span { font-size: 10px; font-weight: 900; line-height: 1; }
+.brick-camera-button svg { color: var(--studio-blue-dark); }
+.brick-camera-button:hover { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .12)); }
+.brick-camera-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; }
+.brick-camera-button.active { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .14)); box-shadow: inset 0 0 0 1px var(--studio-blue); }
+.brick-camera-frame { background: var(--studio-panel-soft); }
 
 .onboarding-guide { position: absolute; z-index: var(--z-drawer, 40); top: calc(var(--brick-header-block) + 20px); left: 50%; width: min(430px, calc(100% - 32px)); max-height: calc(100% - var(--brick-header-block) - 36px - env(safe-area-inset-bottom, 0px)); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 22px; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 24px 70px rgba(38, 60, 81, .23)); }
 .onboarding-guide h2 { margin: 5px 42px 5px 0; font: 600 24px/1.08 var(--font-display, 'Fredoka'), sans-serif; }
@@ -363,7 +370,6 @@
   .coarse-pointer-copy { display: inline; }
   .color-grid { grid-template-columns: repeat(4, 1fr); }
   .color-grid button { min-width: 44px; width: 44px; height: 44px; }
-  .view-controls button { min-width: 44px; height: 44px; }
   .part-category { min-height: 44px; padding: 0 14px; }
   .part-search-clear, .explore-hint-dismiss { width: 44px; height: 44px; }
 }
@@ -440,18 +446,13 @@
 
 @media (max-width: 900px) {
   .brick-header { gap: 8px; }
+  .brick-history-tools .studio-icon-button > span { display: none; }
+  .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
+  .brick-capacity-status { display: none; }
   .brick-header-tool .ui-button-label { display: none; }
   .brick-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
   .brick-primary-mode.ui-button { min-width: 0; }
   .color-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }.color-grid button { min-width: 44px; width: 44px; height: 44px; }
-  /* Compact layouts have no docked drawer, so the toolbar hugs the left edge above the (+) button. */
-  .brick-edit-toolbar { left: max(10px, env(safe-area-inset-left)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 68px); transform: none; }
-  .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: max(10px, env(safe-area-inset-left)); }
-  .brick-history-tools .studio-icon-button > span { display: none; }
-  .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
-  .view-controls .view-home > span { display: none; }
-  .view-controls .view-home { padding: 0; }
-  .brick-capacity-status { display: none; }
 }
 
 /* --------------------------------------------------------------- phone --- */
@@ -479,10 +480,6 @@
   .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }
   .brick-primary-mode kbd { display: none; }
   .studio-menu-popover { top: calc(100% + 6px); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); width: auto; max-height: calc(100vh - var(--brick-header-block) - 24px); }
-  .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100vw - 16px); gap: 2px; }
-  .brick-edit-toolbar .view-controls button { min-width: 44px; }
-  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+3) { display: none; }
-  .brick-edit-toolbar .selection-mode-control span { display: none; }
   .brick-toast, .onboarding-guide, .scene-loading-status { top: calc(var(--brick-panel-top) + 56px); }
   .brick-toast { max-width: 80%; }
   .onboarding-guide { max-height: calc(100% - var(--brick-panel-top) - 72px - env(safe-area-inset-bottom)); overflow-y: auto; padding: 18px; border-radius: 18px; touch-action: pan-y; }
@@ -561,11 +558,6 @@
   .brick-drawer-fab { bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); }
   .brick-sheet { max-height: calc(100% - 56px); }
   .inspector-quick-actions { display: flex; }.details-collapsed .inspector-sheet { display: none; }.details-expanded .inspector-sheet { padding-top: 12px; }
-  .brick-edit-toolbar { top: auto; bottom: 8px; left: 50%; transform: translateX(-50%); }
-  .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 166px); }
-  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
-  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(3) { display: block; }
-  .build-shell.compact-shell .brick-edit-toolbar { left: 126px; max-width: calc(100% - 134px); transform: none; }
   .brick-mode-build .brick-toast { top: calc(var(--brick-header-block) + 8px); max-width: 240px; }
   .onboarding-guide { top: calc(var(--brick-header-block) + 8px); left: 50%; width: min(430px, calc(100% - 32px)); max-height: calc(100% - var(--brick-header-block) - 16px); overflow-y: auto; transform: translateX(-50%); }
   .brick-explore-hud { top: max(8px, env(safe-area-inset-top)); }

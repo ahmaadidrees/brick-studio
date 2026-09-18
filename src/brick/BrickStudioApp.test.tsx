@@ -328,15 +328,21 @@ describe('Brick Studio responsive controls', () => {
     expect(inspector.queryByRole('region')).not.toBeInTheDocument()
   })
 
-  it('filters the docked catalog without losing the search and resets camera from the view selector', () => {
+  it('filters the docked catalog without losing the search and sets the camera from the view cluster', () => {
     render(<BrickStudioApp />)
     fireEvent.change(screen.getByRole('combobox', { name: 'Brick category' }), { target: { value: 'plates' } })
     expect(screen.queryByTitle('2 × 4 Brick')).not.toBeInTheDocument()
     expect(screen.getByTitle('2 × 4 Plate')).toBeInTheDocument()
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search bricks' }), { target: { value: '1 × 1' } })
     expect(screen.queryByTitle('2 × 4 Plate')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByRole('combobox', { name: 'Camera view' }), { target: { value: 'top' } })
+    const camera = within(screen.getByRole('group', { name: 'Camera view' }))
+    fireEvent.click(camera.getByRole('button', { name: 'Top view' }))
     expect(useBrickStore.getState().viewRequest.preset).toBe('top')
+    expect(camera.getByRole('button', { name: 'Top view' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(camera.getByRole('button', { name: 'Frame build' }))
+    expect(useBrickStore.getState().viewRequest.preset).toBe('home')
+    expect(camera.getByRole('button', { name: 'Front view' })).toBeInTheDocument()
+    expect(camera.getByRole('button', { name: '3D view' })).toBeInTheDocument()
   })
 
   it('hides mouse and Command guidance on a wide coarse-pointer layout', () => {

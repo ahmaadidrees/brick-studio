@@ -4,6 +4,7 @@ import { ColorPalette, CommandStrip } from './CommandStrip'
 import { SettingsSheet, StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
 import {
+  ArrowDownToLine,
   ArrowLeft,
   Box,
   Check,
@@ -440,20 +441,20 @@ function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup
   )
 }
 
-function EditingToolbar() {
+/** Top-left beside the drawer: history, the touch-only box-select tool and the capacity readout. */
+function HistoryCluster() {
   const undo = useBrickStore((state) => state.undo)
   const redo = useBrickStore((state) => state.redo)
   const canUndo = useBrickStore((state) => state.undoStack.length > 0 && !state.graphicsPaused)
   const canRedo = useBrickStore((state) => state.redoStack.length > 0 && !state.graphicsPaused)
   const count = useBrickStore((state) => state.bricks.length)
   const budget = useBrickStore((state) => state.brickBudget)
-  return <div className="brick-edit-toolbar" role="group" aria-label="Build tools">
+  return <div className="brick-history-cluster" role="group" aria-label="Build tools">
     <div className="brick-history-tools" role="group" aria-label="Edit history">
       <button className="studio-icon-button" type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (⌘Z)"><Undo2 size={18} aria-hidden="true" /><span>Undo</span></button>
       <button className="studio-icon-button" type="button" onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo (⇧⌘Z)"><Redo2 size={18} aria-hidden="true" /><span>Redo</span></button>
     </div>
     <SelectionModeControl />
-    <ViewControls />
     <span className="brick-capacity-status" aria-label={`${count} of ${budget} brick capacity`} title="Bricks placed of the current capacity">{count} / {budget}</span>
   </div>
 }
@@ -656,19 +657,23 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
   )
 }
 
-function ViewControls() {
-  const preset = useBrickStore(state => state.viewRequest.preset)
+const CAMERA_VIEWS: { id: ViewPreset; label: string; title: string; icon: typeof Home }[] = [
+  { id: 'top', label: 'Top', title: 'Look straight down', icon: ArrowDownToLine },
+  { id: 'front', label: 'Front', title: 'Look from the front', icon: Cuboid },
+  { id: 'perspective', label: '3D', title: 'Angled 3D view', icon: Box },
+]
+
+/** Bottom-right camera cluster: Frame plus the three view presets, pressed state from the last request. */
+function CameraCluster() {
+  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
+  const preset = useBrickStore((state) => state.viewRequest.preset)
   const requestView = useBrickStore((state) => state.requestView)
-  const views: { id: ViewPreset; label: string }[] = [
-    { id: 'top', label: 'Top' }, { id: 'front', label: 'Front' }, { id: 'right', label: 'Side' }, { id: 'perspective', label: '3D' },
-  ]
   return (
-    <div className="view-controls" role="group" aria-label="Build camera views">
-      <button type="button" className="view-home" onClick={() => requestView('home')} title="Frame the whole build (Home)" aria-label="Frame Build"><Home size={17} aria-hidden="true" /><span>Frame build</span></button>
-      <select className="camera-view-select" aria-label="Camera view" value={views.some(view => view.id === preset) ? preset : ''} onChange={event => requestView(event.target.value as ViewPreset)}>
-        <option value="" disabled>View</option>
-        {views.map(view => <option key={view.id} value={view.id}>{view.label}</option>)}
-      </select>
+    <div inert={graphicsPaused} className="brick-camera-cluster" role="group" aria-label="Camera view">
+      <button type="button" className="brick-camera-button brick-camera-frame" onClick={() => requestView('home')} title="Frame the whole build (Home)" aria-label="Frame build"><Home size={18} aria-hidden="true" /><span>Frame</span></button>
+      {CAMERA_VIEWS.map(({ id, label, title, icon: Icon }) => (
+        <button key={id} type="button" className={`brick-camera-button${preset === id ? ' active' : ''}`} aria-pressed={preset === id} aria-label={`${label} view`} title={title} onClick={() => requestView(id)}><Icon size={18} aria-hidden="true" /><span>{label}</span></button>
+      ))}
     </div>
   )
 }
@@ -791,7 +796,8 @@ function BuildShell({
           ><PanelLeftOpen size={18} /><span>Bricks</span></button>
         )}
       </>}
-      <EditingToolbar />
+      <HistoryCluster />
+      <CameraCluster />
       <CommandStrip coarsePointer={coarsePointer} onResize={openResize} />
       <CreateBrickSheet
         open={createOpen}

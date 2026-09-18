@@ -3,16 +3,14 @@
 .part-library .part-search-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .part-library .part-search { flex: 1 1 auto; min-width: 0; margin: 0; }
 .part-library .part-search input { width: 0; font-size: 12px; }
-.part-category-select, .camera-view-select { min-width: 0; min-height: 36px; padding: 0 6px; border: 1px solid var(--studio-panel-border); border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.part-category-select { min-width: 0; min-height: 36px; padding: 0 6px; border: 1px solid var(--studio-panel-border); border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .part-category-select { width: 88px; flex: 0 0 88px; }
-.part-category-select:focus-visible, .camera-view-select:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.part-category-select:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
 .part-library .create-part-entry { display: flex; gap: 6px; min-height: 32px; padding: 3px 8px; margin-bottom: 8px; }
 .part-library .create-part-entry-icon { width: 24px; height: 24px; background: transparent; color: inherit; }
 .part-library .create-part-entry strong { font-size: 12px; }
 .part-library .create-part-entry small { display: none; }
 .part-library .library-title { margin-bottom: 8px; }
-.camera-view-select { height: 40px; margin-inline: 4px; }
-.brick-compact-layout .camera-view-select { display: none; }
 
 @media (pointer: fine) and (min-width: 901px) {
   .part-library { padding: 10px; }
@@ -23,16 +21,10 @@
   .part-library .library-colors > label { font-size: 11px; margin-bottom: 6px; }
   .part-library .color-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
   .part-library .color-grid button { width: 28px; height: 28px; min-width: 28px; }
-  .brick-studio .build-shell:not(.compact-shell) .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: 288px; transform: none; max-width: calc(100% - 304px); }
-  .brick-studio .build-shell.drawer-collapsed .brick-edit-toolbar { left: 80px; }
   .brick-studio .brick-toast { top: calc(var(--brick-panel-top) + 64px); left: calc(50% + 138px); }
   .onboarding-guide { left: calc(50% + 138px); }
 }
-@media (hover: hover) and (pointer: fine) {
-  .brick-studio .brick-edit-toolbar .selection-mode-control { display: none; }
-}
 @media (any-pointer: coarse) {
-  .brick-studio .brick-edit-toolbar .selection-mode-control { display: flex; }
   .part-library .part-category-select, .part-library .create-part-entry { min-height: 44px; }
 }
 @media (pointer: fine) and (min-width: 901px) and (max-height: 520px) {
