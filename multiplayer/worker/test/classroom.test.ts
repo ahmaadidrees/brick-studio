@@ -539,6 +539,29 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     // Owners are never blocked by their teacher's settings on their own world.
     await expect(off.service.worldAccess(ava, treehouse, true)).resolves.toMatchObject({ canEdit: true, isOwner: true });
   });
+  it('lets the teacher look but never edit a shared world that is hidden, in a closed class, or with sharing off', async () => {
+    const open = backend(teacher, tables([shared({ class_can_edit: true })]));
+    await expect(open.service.worldAccess(teacher, treehouse, true, true)).resolves.toMatchObject({ canEdit: true, isOwner: false, ownerName: 'Ava R.' });
+    expect((await open.call('GET', `worlds/${treehouse}`)).body.world).toMatchObject({ canEdit: true, classCanEdit: true });
+    vi.restoreAllMocks();
+    const hidden = backend(teacher, tables([shared({ class_can_edit: true, hidden_by_teacher: true })]));
+    await expect(hidden.service.worldAccess(teacher, treehouse, true, true)).resolves.toMatchObject({ canEdit: false, isOwner: false });
+    expect((await hidden.call('GET', `worlds/${treehouse}`)).body.world).toMatchObject({ canEdit: false, classCanEdit: true, hiddenByTeacher: true });
+    expect((await hidden.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('read_only');
+    expect(hidden.db.worlds[0].revision).toBe(3);
+    vi.restoreAllMocks();
+    const closed = backend(teacher, tables([shared({ class_can_edit: true })], { ...period3(), collaboration_open: false }));
+    await expect(closed.service.worldAccess(teacher, treehouse, true, true)).resolves.toMatchObject({ canEdit: false, isOwner: false });
+    expect((await closed.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('read_only');
+    vi.restoreAllMocks();
+    const off = backend(teacher, tables([shared({ class_can_edit: true })], { ...period3(), students_can_share: false }));
+    await expect(off.service.worldAccess(teacher, treehouse, true, true)).resolves.toMatchObject({ canEdit: false, isOwner: false });
+    expect((await off.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('read_only');
+    // A classmate in the same states is refused outright, as before.
+    vi.restoreAllMocks();
+    const classmate = backend(ben, tables([shared({ class_can_edit: true })], { ...period3(), students_can_share: false }));
+    expect((await classmate.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('sharing_disabled');
+  });
   it('lets the class teacher hide and show a shared world, and nobody else', async () => {
     const own = backend(teacher, tables([shared()]));
     const hidden = await own.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: true });

@@ -187,6 +187,11 @@ time, so `GET worlds` finds classmates' shared worlds by owner (students of the 
 batches of 100 owners) and returns them after the class/group worlds. Students see them only while
 the class has `collaborationOpen` and `studentsCanShare`, never hidden ones, and never worlds of
 suspended owners; the teacher sees every shared world of their classes with `hiddenByTeacher`.
+`canEdit` for a non-owner (a classmate or the class teacher) is true only while the world is shared with
+editing, not hidden, and the owner's class has collaboration open and sharing on: the same conditions
+`brick_commit_world` checks on save, so a live session is never offered an edit the save would refuse
+(migration `202609190002_brick_teacher_edit_alignment.sql` aligns `brick_authorize_world`; the teacher
+may still look in those states).
 
 - `PATCH worlds/:id/sharing` — owner only, student role, personal world. 403 `sharing_disabled`
   when the class has sharing off. `visibility:'private'` unshares (clears `canEdit` and `sharedAt`).
