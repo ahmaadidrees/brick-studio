@@ -8,10 +8,10 @@ import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from '.
 import { PageHeader, displayName } from './PageHeader'
 import { ShareSheet } from './ShareSheet'
 import {
-  browserWorldsClient, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, matchesSearch, readLocalDraft,
+  browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
   SAVE_DRAFT_HREF, signInHref, type LocalDraft, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
-import { createFakeWorldsClient, teacherSession } from './worldsFixtures'
+import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
 import './worlds.css'
 
 type Props = {
@@ -19,6 +19,12 @@ type Props = {
   /** Replaces the current location; overridden in tests. */
   navigate?: (href: string) => void
   storage?: Pick<Storage, 'getItem'>
+  /**
+   * Which section to open. `class` selects the first class as soon as the
+   * classes load; anything else opens your own worlds. Defaults to `?view=` on
+   * the URL, which is how the account menu's "My class" reaches this page.
+   */
+  view?: 'mine' | 'class'
 }
 
 let resolvedDefault: WorldsClient | null = null
@@ -39,7 +45,7 @@ function pickDefaultClient(): WorldsClient {
     const demo = new URLSearchParams(window.location.search).get('demo')
     if (demo === 'student') return createFakeWorldsClient()
     if (demo === 'teacher') return createFakeWorldsClient({ session: teacherSession })
-    if (demo === 'closed') return createFakeWorldsClient({ classes: [{ id: 'class-1', name: 'Room 12 Builders', code: 'BRICK7', loginCode: 'ROOM12', enrollmentOpen: true, collaborationOpen: false, showNamesOnJoin: true, studentsCanShare: true }] })
+    if (demo === 'closed') return createFakeWorldsClient({ classes: [{ ...FIXTURE_CLASS, collaborationOpen: false }] })
     if (demo === 'empty') return createFakeWorldsClient({ worlds: [] })
   }
   return browserWorldsClient
@@ -66,7 +72,12 @@ function useNarrow(query = '(max-width: 1024px)') {
  * default); the teacher's variant swaps the rail for their classes and can start
  * shared worlds. Signed-out visitors go to sign-in and come back here.
  */
-export default function WorldsPage({ client: injectedClient, navigate: injectedNavigate, storage }: Props) {
+function readView(): 'mine' | 'class' {
+  if (typeof window === 'undefined') return 'mine'
+  return new URLSearchParams(window.location.search).get('view') === 'class' ? 'class' : 'mine'
+}
+
+export default function WorldsPage({ client: injectedClient, navigate: injectedNavigate, storage, view }: Props) {
   // Both defaults must stay referentially stable: they feed a store subscription
   // and an effect that would otherwise re-run on every render.
   const client = useMemo(() => injectedClient ?? defaultClient(), [injectedClient])
@@ -87,6 +98,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const [draft, setDraft] = useState<LocalDraft | null>(null)
   const narrow = useNarrow()
   const renameField = useRef<HTMLInputElement>(null)
+  /** Consumed once, when the classes arrive; switching sections by hand wins afterwards. */
+  const pendingView = useRef((view ?? readView()) === 'class')
 
   const teacher = session?.user.role === 'teacher'
   const me = session?.user.id ?? ''
@@ -101,7 +114,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     let cancelled = false
     setLoading(true)
     Promise.all([client.listWorlds(), client.listClasses()])
-      .then(([nextWorlds, nextClasses]) => { if (!cancelled) { setWorlds(nextWorlds); setClasses(nextClasses) } })
+      .then(([nextWorlds, nextClasses]) => {
+        if (cancelled) return
+        setWorlds(nextWorlds); setClasses(nextClasses)
+        if (pendingView.current && nextClasses[0]) { setSection(nextClasses[0].id); pendingView.current = false }
+      })
       .catch(failure => { if (!cancelled) setError(errorMessage(failure)) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -258,7 +275,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                   { label: 'Checkpoints', onSelect: () => openCheckpoints(world) },
                 ]} />}
               >
-                <OpenWorldButton world={world} label="Open" busy={busy} />
+                <OpenWorldButton href={buildHref(world)} label="Open" busy={busy} />
                 {(canShare || isShared(world)) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setShareWorld(world)}>{isShared(world) ? 'Sharing…' : 'Share with my class'}</Button>}
               </WorldCard>)}</div>}
           </section>
@@ -266,7 +283,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
 
         {!loading && section !== 'mine' && currentClass && <>
           {collaborationClosed
-            ? <p className="worlds-closed" role="status">Your teacher closed collaboration. Class worlds come back when it reopens.</p>
+            ? <p className="worlds-closed" role="status">{currentClass.teacherName || 'Your teacher'} closed collaboration. Class worlds come back when it reopens.</p>
             : <>
               {teacher && <StartSharedWorld busy={busy} className={currentClass.name} onCreate={createShared} />}
 
@@ -280,8 +297,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                     byline={world.ownerName}
                     chip={<AccessChip world={world} />}
                   >
-                    {world.canEdit && <OpenWorldButton world={world} label="Join" busy={busy} />}
-                    <OpenWorldButton world={world} label="Visit" variant={world.canEdit ? 'secondary' : 'primary'} busy={busy} />
+                    {world.canEdit && <OpenWorldButton href={liveHref(world)} label="Join" busy={busy} />}
+                    <OpenWorldButton href={liveHref(world)} label="Visit" variant={world.canEdit ? 'secondary' : 'primary'} busy={busy} />
                     {teacher
                       ? <Button variant="secondary" size="sm" disabled={busy} onClick={() => hide(world)}>{world.hiddenByTeacher ? 'Show to class' : 'Hide from class'}</Button>
                       : <Button variant="secondary" size="sm" disabled={busy} onClick={() => copy(world)}>Make my own copy</Button>}
@@ -293,7 +310,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                 {filter(classWorlds).length === 0
                   ? <EmptyState title="No class worlds yet" message={teacher ? 'Start a shared world above and your class can join it right away.' : 'Your teacher’s class worlds will appear here when they are ready.'} />
                   : <div className="worlds-grid">{filter(classWorlds).map(world => <WorldCard key={world.id} world={world} byline={world.ownerName}>
-                    <OpenWorldButton world={world} label="Join" busy={busy} />
+                    <OpenWorldButton href={liveHref(world)} label="Join" busy={busy} />
                     {teacher && <Button variant="secondary" size="sm" disabled={busy} onClick={() => openCheckpoints(world)}>World controls</Button>}
                   </WorldCard>)}</div>}
               </section>
