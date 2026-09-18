@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Users } from 'lucide-react'
 import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
-import { buildHref, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
+import { isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
  * Plate-pattern card art. There are no thumbnails, so the card shows the build
@@ -26,12 +26,11 @@ export function PlateArt({ world }: { world: WorldsWorld }) {
   </div>
 }
 
-/** "Shared · look only" / "Shared · build together"; visits only when the server counts them. */
+/** "Shared · look only" / "Shared · build together" on one of your own worlds. */
 export function SharingChip({ world }: { world: WorldsWorld }) {
   if (!isShared(world)) return null
   return <span className="worlds-chip-tag worlds-chip-shared">
     <Users size={14} aria-hidden="true" /> Shared · {sharedForBuilding(world) ? 'build together' : 'look only'}
-    {typeof world.visits === 'number' && world.visits > 0 && <span className="worlds-visits"> · {world.visits} {world.visits === 1 ? 'visit' : 'visits'}</span>}
   </span>
 }
 
@@ -90,7 +89,10 @@ export function WorldCard({ world, children, byline, chip, menu }: CardProps) {
   </article>
 }
 
-/** Open / Join / Visit all hand the world to the editor through `/build?world=<id>`. */
-export function OpenWorldButton({ world, label, variant = 'primary', busy }: { world: WorldsWorld; label: string; variant?: 'primary' | 'secondary'; busy?: boolean }) {
-  return <Button href={buildHref(world)} variant={variant} size="sm" icon={<Play size={16} />} disabled={busy}>{label}</Button>
+/**
+ * Open (your own world → the editor) and Join / Visit (someone else's → the live
+ * room). The caller passes the destination so the two paths stay explicit.
+ */
+export function OpenWorldButton({ href, label, variant = 'primary', busy }: { href: string; label: string; variant?: 'primary' | 'secondary'; busy?: boolean }) {
+  return <Button href={href} variant={variant} size="sm" icon={<Play size={16} />} disabled={busy}>{label}</Button>
 }

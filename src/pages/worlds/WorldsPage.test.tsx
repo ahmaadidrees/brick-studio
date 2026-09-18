@@ -57,15 +57,16 @@ describe('student', () => {
     const mate = within(shared).getByRole('article', { name: 'Pirate harbour' })
     expect(within(mate).getByText('Benji T.')).toBeInTheDocument()
     expect(within(mate).getByText(/Build together/)).toBeInTheDocument()
-    expect(within(mate).getByRole('link', { name: /Join/ })).toHaveAttribute('href', '/build?world=mate-1')
-    expect(within(mate).getByRole('link', { name: /Visit/ })).toBeInTheDocument()
+    // Joining a classmate's world goes through the live room; the Worker decides viewer or editor there.
+    expect(within(mate).getByRole('link', { name: /Join/ })).toHaveAttribute('href', '/live/mate1')
+    expect(within(mate).getByRole('link', { name: /Visit/ })).toHaveAttribute('href', '/live/mate1')
 
     const lookOnly = within(shared).getByRole('article', { name: 'Robot repair shop' })
     expect(within(lookOnly).getByText(/Look only/)).toBeInTheDocument()
     expect(within(lookOnly).queryByRole('link', { name: /Join/ })).not.toBeInTheDocument()
 
     const teacherWorlds = screen.getByRole('region', { name: 'Teacher’s worlds' })
-    expect(within(teacherWorlds).getAllByRole('link', { name: /Join/ })).toHaveLength(2)
+    expect(within(teacherWorlds).getAllByRole('link', { name: /Join/ }).map(link => link.getAttribute('href'))).toEqual(['/live/teacher1', '/live/teacher2'])
     expect(within(teacherWorlds).getByRole('article', { name: 'Our class town' })).toBeInTheDocument()
   })
 
@@ -167,11 +168,19 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(screen.getByText('Your teacher closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
+    expect(screen.getByText('Ms. Nair closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Shared by classmates' })).not.toBeInTheDocument()
     expect(screen.queryByRole('article', { name: 'Pirate harbour' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Search worlds')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: /Room 12 Builders/ })).toHaveTextContent('0')
+  })
+
+  it('falls back to "Your teacher" when the class carries no teacher name', async () => {
+    draw(createFakeWorldsClient({ classes: [{ ...FIXTURE_CLASS, collaborationOpen: false, teacherName: null }] }))
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(screen.getByText('Your teacher closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
   })
 
   it('offers an empty state to a brand new account', async () => {
@@ -222,6 +231,26 @@ describe('session and layout', () => {
     draw(createFakeWorldsClient({ session: null }))
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('/join?mode=signin&next=%2Fworlds'))
     expect(screen.getByRole('status')).toHaveTextContent('Taking you to sign in…')
+  })
+
+  it('opens the class section for ?view=class and own worlds otherwise', async () => {
+    draw(createFakeWorldsClient(), { view: 'class' })
+    await settled()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
+
+    cleanup()
+    draw(createFakeWorldsClient(), { view: 'mine' })
+    await settled()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
+  })
+
+  it('reads the view from the URL when nothing is passed', async () => {
+    window.history.replaceState(null, '', '/worlds?view=class')
+    try {
+      draw()
+      await settled()
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
+    } finally { window.history.replaceState(null, '', '/') }
   })
 
   it('keeps the account chip and studio link in the header', async () => {

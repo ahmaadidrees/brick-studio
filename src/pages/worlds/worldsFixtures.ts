@@ -13,7 +13,7 @@ const day = (offset: number) => new Date(Date.UTC(2026, 8, 17 - offset, 15, 30))
 
 export const FIXTURE_CLASS: WorldsClass = {
   id: 'class-1', name: 'Room 12 Builders', code: 'BRICK7', loginCode: 'ROOM12',
-  enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true,
+  enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, teacherName: 'Ms. Nair',
 }
 
 export const FIXTURE_STUDENTS = [
@@ -32,9 +32,9 @@ const world = (world: Partial<WorldsWorld> & Pick<WorldsWorld, 'id' | 'title' | 
 
 /** Three own worlds: one private, one shared look-only, one shared build-together. */
 export const FIXTURE_MY_WORLDS: WorldsWorld[] = [
-  world({ id: 'mine-1', title: 'Treehouse village', ownerId: 'student-1', updatedAt: day(0), canEdit: true, visits: 0 }),
-  world({ id: 'mine-2', title: 'Rocket launch pad', ownerId: 'student-1', updatedAt: day(2), canEdit: true, classCanEdit: true, visibility: 'class', sharedAt: day(1), visits: 7 }),
-  world({ id: 'mine-3', title: 'Castle on the hill', ownerId: 'student-1', updatedAt: day(6), canEdit: true, classCanEdit: false, visibility: 'class', sharedAt: day(5), visits: 3 }),
+  world({ id: 'mine-1', title: 'Treehouse village', ownerId: 'student-1', updatedAt: day(0), canEdit: true }),
+  world({ id: 'mine-2', title: 'Rocket launch pad', ownerId: 'student-1', updatedAt: day(2), canEdit: true, classCanEdit: true, visibility: 'class', sharedAt: day(1) }),
+  world({ id: 'mine-3', title: 'Castle on the hill', ownerId: 'student-1', updatedAt: day(6), canEdit: true, classCanEdit: false, visibility: 'class', sharedAt: day(5) }),
 ]
 
 /** Four classmates' shared personal worlds; two invite building, two are look-only. */

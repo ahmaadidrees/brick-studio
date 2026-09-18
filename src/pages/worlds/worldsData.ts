@@ -22,11 +22,13 @@ export type WorldsWorld = ClassroomWorld & {
   ownerName?: string
   sharedAt?: string | null
   hiddenByTeacher?: boolean
-  /** Optional class-visit counter; the chip hides itself when the server omits it. */
-  visits?: number
 }
 
-export type WorldsClass = ClassroomClass & { studentsCanShare?: boolean }
+export type WorldsClass = ClassroomClass & {
+  studentsCanShare?: boolean
+  /** Display name of the class teacher; nullable, so copy falls back to "Your teacher". */
+  teacherName?: string | null
+}
 
 export type WorldSharing = { visibility: 'private' | 'class'; canEdit: boolean }
 
@@ -105,8 +107,14 @@ export function readLocalDraft(storage: Pick<Storage, 'getItem'> = globalThis.lo
 
 // Shared helpers ----------------------------------------------------------------------------------
 
-/** The editor opens an account world from `/build?world=<id>` (see docs/flows/status/w4.md). */
+/** Opening one of your own worlds hands it to the editor (W6 owns `/build?world=`). */
 export const buildHref = (world: Pick<WorldsWorld, 'id'>) => `/build?world=${encodeURIComponent(world.id)}`
+/**
+ * Joining or visiting someone else's world goes through the live room, the way
+ * shared worlds are joined today: the room id is the world id without dashes
+ * (`LiveWorldPage`), and the Worker's `canEdit` decides viewer or editor there.
+ */
+export const liveHref = (world: Pick<WorldsWorld, 'id'>) => `/live/${world.id.replaceAll('-', '')}`
 export const SAVE_DRAFT_HREF = '/build?classroom=save'
 export const CONTINUE_DRAFT_HREF = '/build'
 export const signInHref = (next = '/worlds') => `/join?mode=signin&next=${encodeURIComponent(next)}`

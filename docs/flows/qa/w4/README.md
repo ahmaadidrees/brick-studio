@@ -10,7 +10,7 @@ run reported none.
 | `student-class-*` | Student, class section: classmates' shared worlds (Join / Visit / Make my own copy) and the teacher's worlds |
 | `student-share-sheet-*` | The share sheet on a private world, look-only preselected |
 | `student-empty-*` | New account: empty state, no browser draft |
-| `class-closed-*` | Collaboration closed: one line, no cards, no search, class count 0 |
+| `class-closed-*` | Collaboration closed: the teacher-named line, no cards, no search, class count 0 |
 | `teacher-class-*` | Teacher: class rail, "Start a shared world", "Shared by students" with Hide from class |
 
 ## Re-running

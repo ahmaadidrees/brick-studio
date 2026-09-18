@@ -108,6 +108,9 @@
   grid-template-columns: 240px minmax(0, 1fr);
   gap: var(--space-7);
   align-items: start;
+  /* The page fills the viewport, so auto rows would stretch and push a short
+     tab-row page's content into the middle of the screen. */
+  align-content: start;
 }
 
 .worlds-rail {
@@ -263,7 +266,6 @@
 .worlds-chip-shared { background: var(--accent-soft); color: var(--danger-text); }
 .worlds-chip-build { background: var(--primary-soft); color: var(--primary-strong); }
 .worlds-chip-look { background: var(--surface-2); color: var(--text-muted); }
-.worlds-visits { font-weight: 500; }
 
 .worlds-menu-wrap { position: relative; flex: none; }
 
