@@ -1,7 +1,9 @@
 /* Compact screens share one creative dock and one contextual editing surface.
    Touch landscape tablets retain the palette; pointer type alone is not a layout. */
 .brick-creative-dock { display: none; }
-.brick-sheet-size { display: grid; place-items: center; flex: 0 0 28px; width: 100%; padding: 0; border: 0; background: transparent; cursor: ns-resize; }
+/* 44px hit area for the drag grip (the visible bar stays thin): the touch contract measures the
+   button's own box, so the height lives here rather than in a ::before overlay. */
+.brick-sheet-size { display: grid; place-items: center; flex: 0 0 44px; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: ns-resize; }
 .brick-sheet-size .brick-sheet-grip { margin: 0; }
 .brick-sheet-size:focus-visible { outline: 3px solid var(--studio-focus); border-radius: 8px; }
 .brick-sheet { max-height: min(68%, 560px); }
