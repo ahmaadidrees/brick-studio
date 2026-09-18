@@ -44,6 +44,7 @@ function testClient({ classes = [CLASS], role = 'teacher' as 'teacher' | 'studen
   const client: ClassPageClient = {
     getSession: () => snapshot,
     subscribe: () => () => {},
+    signOut: vi.fn(async () => {}),
     request: request as unknown as ClassPageClient['request'],
   }
   return { client, calls, request }
