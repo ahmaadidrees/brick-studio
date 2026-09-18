@@ -95,7 +95,7 @@ it('lists what students shared with the owner, the sharing chip and the roster',
   expect(within(shared).getByText(/Bella R\./)).toHaveTextContent('Hidden from the class')
   expect(screen.getByText('Students can share: On')).toBeInTheDocument()
   expect(await screen.findByText('Aiden Kim')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Reset password for Bella Rivera' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Manage Bella Rivera' })).toBeInTheDocument()
 })
 
 it('hides a shared world and shows it again through the teacher visibility endpoint', async () => {

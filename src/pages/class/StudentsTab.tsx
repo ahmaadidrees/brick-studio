@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { Button } from '../../ui'
 import type { ClassroomStudent } from '../../classroom/contracts'
+import { ConfirmDialog } from '../../classroom/ConfirmDialog'
 import { RosterSection } from '../../classroom/RosterView'
 import { ClassCodeCard, PrintableCode } from './ClassCodeCard'
 import { classCode, worldRoomHref, type ClassPageClass, type ClassPageWorld } from './classPageData'
@@ -16,6 +18,7 @@ type Props = {
   onSearch: (value: string) => void
   onManageStudent: (student: ClassroomStudent, focus?: 'password') => void
   onToggleHidden: (world: ClassPageWorld) => void
+  onToggleSuspend: (student: ClassroomStudent) => void
   onViewSettings: () => void
 }
 
@@ -25,9 +28,10 @@ function ShareChip({ world }: { world: ClassPageWorld }) {
 }
 
 /** Code card, what students shared, then the roster. */
-export function StudentsTab({ currentClass, students, studentsLoading, search, busy, shared, onSearch, onManageStudent, onToggleHidden, onViewSettings }: Props) {
+export function StudentsTab({ currentClass, students, studentsLoading, search, busy, shared, onSearch, onManageStudent, onToggleHidden, onToggleSuspend, onViewSettings }: Props) {
   const code = classCode(currentClass)
   const sharingOff = currentClass.studentsCanShare === false
+  const [suspendTarget, setSuspendTarget] = useState<ClassroomStudent | null>(null)
   return <>
     <ClassCodeCard className={currentClass.name} code={code} projectorHref="/class/projector" />
     <PrintableCode className={currentClass.name} code={code} />
@@ -65,6 +69,21 @@ export function StudentsTab({ currentClass, students, studentsLoading, search, b
       onSearch={onSearch}
       onManage={onManageStudent}
       onViewCodes={onViewSettings}
+      actions="menu"
+      onToggleSuspend={setSuspendTarget}
     />
+    <ConfirmDialog
+      open={suspendTarget !== null}
+      title={suspendTarget?.suspended ? `Reactivate ${suspendTarget.rosterName}?` : `Suspend ${suspendTarget?.rosterName}?`}
+      description={suspendTarget?.suspended ? 'They can use classroom features again right away.' : 'Classroom access pauses until you reactivate it.'}
+      confirmLabel={suspendTarget?.suspended ? 'Reactivate' : 'Suspend now'}
+      cancelLabel="Cancel"
+      destructive={!suspendTarget?.suspended}
+      busy={busy}
+      onCancel={() => setSuspendTarget(null)}
+      onConfirm={() => { if (suspendTarget) onToggleSuspend(suspendTarget); setSuspendTarget(null) }}
+    >
+      {suspendTarget && !suspendTarget.suspended && <p>{suspendTarget.rosterName} will be signed out of shared worlds right away. Their saved worlds and contributions stay.</p>}
+    </ConfirmDialog>
   </>
 }

@@ -11,7 +11,7 @@ import type { ClassroomAuthResult, ClassroomRoster } from '../../classroom/contr
  */
 const studentAuth: ClassroomAuthResult = {
   user: { id: 's1', username: 'sky_builder', rosterName: 'Alex Rivera', role: 'student', resetRequired: false },
-  classes: [{ id: 'c1', name: 'Studio 5', loginCode: 'ROOM-42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true }],
+  classes: [{ id: 'c1', name: 'Studio 5', loginCode: 'ROOM-42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, buildingNow: null, teacherName: 'Ms. Carter' }],
   session: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 3600 },
 }
 const teacherAuth: ClassroomAuthResult = { ...studentAuth, user: { ...studentAuth.user, id: 't1', username: 'ms_carter', rosterName: 'Ms. Carter', role: 'teacher' } }
