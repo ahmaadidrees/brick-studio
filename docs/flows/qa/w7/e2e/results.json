@@ -1,0 +1,118 @@
+{
+  "checkedAt": "2026-09-18T02:01:12.749Z",
+  "origin": "http://127.0.0.1:5277",
+  "backend": {
+    "classroom": "http://127.0.0.1:8798",
+    "live": "http://127.0.0.1:8797",
+    "classroomKind": "qa-mock"
+  },
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      6.22,
+      5.72,
+      5.21
+    ],
+    "freeMemoryMB": 11804,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "steps": [
+    {
+      "id": "teacher-redirect-to-join",
+      "status": "passed",
+      "detail": "/join?mode=teacher&next=/class"
+    },
+    {
+      "id": "teacher-sign-in-email",
+      "status": "passed",
+      "detail": "teacher-login through \"Use email and password\"; GET /me: teacher, no classes"
+    },
+    {
+      "id": "teacher-name-class",
+      "status": "passed",
+      "detail": "class ROOM-11 (ae1f0d53-14e8-4b55-adce-f68e1110ca9e)"
+    },
+    {
+      "id": "teacher-copy-join-link",
+      "status": "passed",
+      "detail": "/join?classCode=ROOM-11"
+    },
+    {
+      "id": "teacher-projector",
+      "status": "passed",
+      "detail": "code ROOM-11 at 200px with QR; Close returns to /class"
+    },
+    {
+      "id": "student-open-invite",
+      "status": "passed",
+      "detail": "class chip \"Room 12 Builders\", code prefilled"
+    },
+    {
+      "id": "student-weak-password",
+      "status": "passed",
+      "detail": "three weak passwords: rule red, submit disabled (client-side checklist)"
+    },
+    {
+      "id": "student-register",
+      "status": "passed",
+      "detail": "register 201 → /worlds; GET /me: student in the class; GET /worlds: []"
+    },
+    {
+      "id": "classmate-taken-name",
+      "status": "passed",
+      "detail": "409 username_taken → picked \"maya_b2\" → 201 → /worlds"
+    },
+    {
+      "id": "student-open-studio-and-place",
+      "status": "passed",
+      "detail": "2 bricks in the guest draft"
+    },
+    {
+      "id": "student-save-to-account",
+      "status": "passed",
+      "detail": "world 1e244214-e070-4774-897a-31d333625d90 saved with 2 bricks; GET /worlds: private, canEdit"
+    },
+    {
+      "id": "student-share-look-only",
+      "status": "passed",
+      "detail": "PATCH sharing → visibility class, classCanEdit false"
+    },
+    {
+      "id": "classmate-sign-out-and-sign-in",
+      "status": "passed",
+      "detail": "username + password only (no code) → /worlds"
+    },
+    {
+      "id": "classmate-tap-your-name",
+      "status": "failed",
+      "detail": "Error: locator.evaluate: Error: strict mode violation: getByLabel(/^(Password|.+, type your password)$/) resolved to 2 elements:",
+      "evidence": "13-classmate-tap-your-name-failure.jpeg"
+    }
+  ],
+  "state": {},
+  "pageErrors": [],
+  "summary": {
+    "passed": 13,
+    "failed": 1,
+    "blocked": 0,
+    "screenshots": [
+      "01-class-first-run.jpeg",
+      "02-class-invite-step.jpeg",
+      "03-class-projector.jpeg",
+      "04-join-from-invite.jpeg",
+      "05-join-weak-password.jpeg",
+      "06-worlds-empty.jpeg",
+      "07-join-username-taken.jpeg",
+      "08-editor-placed.jpeg",
+      "09-editor-saved.jpeg",
+      "10-worlds-share-sheet.jpeg",
+      "11-worlds-shared-look.jpeg",
+      "12-join-roster.jpeg",
+      "13-classmate-tap-your-name-failure.jpeg"
+    ]
+  }
+}
