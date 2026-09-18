@@ -1,0 +1,5773 @@
+{
+  "checkedAt": "2026-09-18T20:58:04.189Z",
+  "origin": "http://127.0.0.1:5277",
+  "commit": "1156fd4",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      3.26,
+      3.57,
+      3.82
+    ],
+    "freeMemoryMB": 11237,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "classroomApi": "http://127.0.0.1:8798",
+  "classCode": "ROOM-11",
+  "strictTouch": true,
+  "strictFocus": true,
+  "strictPageScroll": false,
+  "runs": [
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 768/944"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 768,
+            "scrollHeight": 944
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/1366x768.jpeg",
+      "durationMs": 1400
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/1366x768.jpeg",
+      "durationMs": 1382
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 768/859"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 768,
+            "scrollHeight": 859
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/1366x768.jpeg",
+      "durationMs": 2482
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/1366x768.jpeg",
+      "durationMs": 1364
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 768/822"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 768,
+            "scrollHeight": 822
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/1366x768.jpeg",
+      "durationMs": 1411
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/1366x768.jpeg",
+      "durationMs": 1683
+    },
+    {
+      "surface": "worlds-student-class",
+      "board": "worlds",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Join 376,843,74,36; Join 688,843,74,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [
+          {
+            "name": "Join",
+            "rect": [
+              376,
+              843,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              688,
+              843,
+              74,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-class/1366x768.jpeg",
+      "durationMs": 1677
+    },
+    {
+      "surface": "worlds-share-sheet",
+      "board": "worlds",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Share “Treehouse Hideout” with Period 3 Makers",
+            "fits": true,
+            "rect": [
+              493,
+              128,
+              380,
+              513
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "input worlds-share"
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-share-sheet/1366x768.jpeg",
+      "durationMs": 1712
+    },
+    {
+      "surface": "worlds-teacher",
+      "board": "worlds",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Visit 376,1063,79,36; Hide from class 463,1063,122,36; Visit 688,1063,79,36; Show to class 775,1063,111,36; Join 1000,1019,74,36; Visit 1082,1019,79,36; Hide from class 1000,1063,122,36; Join 376,1396,74,36; World controls 458,1396,119,36; Join 688,1396,74,36; World controls 770,1396,119,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 30,
+        "outside": [
+          {
+            "name": "Visit",
+            "rect": [
+              376,
+              1063,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              463,
+              1063,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              688,
+              1063,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Show to class",
+            "rect": [
+              775,
+              1063,
+              111,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              1000,
+              1019,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              1082,
+              1019,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              1000,
+              1063,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              376,
+              1396,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              458,
+              1396,
+              119,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              688,
+              1396,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              770,
+              1396,
+              119,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-teacher/1366x768.jpeg",
+      "durationMs": 1668
+    },
+    {
+      "surface": "class-first-run",
+      "board": "class",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 7,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-first-run/1366x768.jpeg",
+      "durationMs": 1376
+    },
+    {
+      "surface": "class-first-run-invite",
+      "board": "class",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/909"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 909
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "h3 Invite students to Room 12 Builders"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-first-run-invite/1366x768.jpeg",
+      "durationMs": 1772
+    },
+    {
+      "surface": "class-students",
+      "board": "class",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/1355"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 38,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 1355
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-students/1366x768.jpeg",
+      "durationMs": 1679
+    },
+    {
+      "surface": "class-settings",
+      "board": "class",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/1212"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 1212
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Settings"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-settings/1366x768.jpeg",
+      "durationMs": 1407
+    },
+    {
+      "surface": "class-worlds",
+      "board": "class",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/792"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 792
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Worlds"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-worlds/1366x768.jpeg",
+      "durationMs": 1396
+    },
+    {
+      "surface": "class-projector",
+      "board": "class",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 1,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-projector/1366x768.jpeg",
+      "durationMs": 1672
+    },
+    {
+      "surface": "editor-idle",
+      "board": "editor",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 55,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-idle/1366x768.jpeg",
+      "durationMs": 2003
+    },
+    {
+      "surface": "editor-brush",
+      "board": "editor",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 59,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button 1 × 1 Brick"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-brush/1366x768.jpeg",
+      "durationMs": 1461
+    },
+    {
+      "surface": "editor-selected",
+      "board": "editor",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 60,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected/1366x768.jpeg",
+      "durationMs": 1304
+    },
+    {
+      "surface": "editor-selected-color",
+      "board": "editor",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 73,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use color #e7473c"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected-color/1366x768.jpeg",
+      "durationMs": 1612
+    },
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 768/944"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 768,
+            "scrollHeight": 944
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/1024x768.jpeg",
+      "durationMs": 1384
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/1024x768.jpeg",
+      "durationMs": 1382
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 768/859"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 768,
+            "scrollHeight": 859
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/1024x768.jpeg",
+      "durationMs": 1997
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/1024x768.jpeg",
+      "durationMs": 1375
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 768/822"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 768,
+            "scrollHeight": 822
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/1024x768.jpeg",
+      "durationMs": 1394
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: More for Lava Lab 451,826,36,36; Open 33,936,83,36; Sharing… 124,936,84,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              451,
+              826,
+              36,
+              36
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              936,
+              83,
+              36
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              124,
+              936,
+              84,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/1024x768.jpeg",
+      "durationMs": 1679
+    },
+    {
+      "surface": "worlds-student-class",
+      "board": "worlds",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Join 33,857,74,36; Visit 115,857,79,36; Make my own copy 201,857,143,36; Join 33,1190,74,36; Join 537,1190,74,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              857,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              115,
+              857,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              201,
+              857,
+              143,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1190,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              537,
+              1190,
+              74,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-class/1024x768.jpeg",
+      "durationMs": 1671
+    },
+    {
+      "surface": "worlds-share-sheet",
+      "board": "worlds",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Open 33,838,83,36; Sharing… 124,838,84,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              838,
+              83,
+              36
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              124,
+              838,
+              84,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Share “Treehouse Hideout” with Period 3 Makers",
+            "fits": true,
+            "rect": [
+              322,
+              128,
+              380,
+              513
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "input worlds-share"
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-share-sheet/1024x768.jpeg",
+      "durationMs": 1708
+    },
+    {
+      "surface": "worlds-teacher",
+      "board": "worlds",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Join 33,1044,74,36; Visit 115,1044,79,36; Hide from class 201,1044,122,36; Visit 537,1044,79,36; Hide from class 624,1044,122,36; Visit 33,1366,79,36; Show to class 120,1366,111,36; Join 537,1366,74,36; Visit 619,1366,79,36; Hide from class 705,1366,122,36; Join 33,1699,74,36; World controls 115,1699,119,36; Join 537,1699,74,36; World controls 619,1699,119,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1044,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              115,
+              1044,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              201,
+              1044,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              537,
+              1044,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              624,
+              1044,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1366,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Show to class",
+            "rect": [
+              120,
+              1366,
+              111,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              537,
+              1366,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              619,
+              1366,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              705,
+              1366,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1699,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              115,
+              1699,
+              119,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              537,
+              1699,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              619,
+              1699,
+              119,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-teacher/1024x768.jpeg",
+      "durationMs": 1691
+    },
+    {
+      "surface": "class-first-run",
+      "board": "class",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run/1024x768.jpeg",
+      "durationMs": 20072
+    },
+    {
+      "surface": "class-first-run-invite",
+      "board": "class",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run-invite/1024x768.jpeg",
+      "durationMs": 20081
+    },
+    {
+      "surface": "class-students",
+      "board": "class",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/1423"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 38,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 1423
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-students/1024x768.jpeg",
+      "durationMs": 1682
+    },
+    {
+      "surface": "class-settings",
+      "board": "class",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/1295"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 1295
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Settings"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-settings/1024x768.jpeg",
+      "durationMs": 1409
+    },
+    {
+      "surface": "class-worlds",
+      "board": "class",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 768/875"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 768,
+            "scrollHeight": 875
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Worlds"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-worlds/1024x768.jpeg",
+      "durationMs": 1411
+    },
+    {
+      "surface": "class-projector",
+      "board": "class",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 1,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-projector/1024x768.jpeg",
+      "durationMs": 1699
+    },
+    {
+      "surface": "editor-idle",
+      "board": "editor",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 55,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 421,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-idle/1024x768.jpeg",
+      "durationMs": 2150
+    },
+    {
+      "surface": "editor-brush",
+      "board": "editor",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 59,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 421,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button 1 × 1 Brick"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-brush/1024x768.jpeg",
+      "durationMs": 1476
+    },
+    {
+      "surface": "editor-selected",
+      "board": "editor",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 60,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 421,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected/1024x768.jpeg",
+      "durationMs": 1472
+    },
+    {
+      "surface": "editor-selected-color",
+      "board": "editor",
+      "viewport": "1024x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1024,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 73,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 421,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use color #e7473c"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected-color/1024x768.jpeg",
+      "durationMs": 1590
+    },
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/768x1024.jpeg",
+      "durationMs": 1396
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/768x1024.jpeg",
+      "durationMs": 1380
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/768x1024.jpeg",
+      "durationMs": 2497
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/768x1024.jpeg",
+      "durationMs": 1371
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/768x1024.jpeg",
+      "durationMs": 1378
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/768x1024.jpeg",
+      "durationMs": 1676
+    },
+    {
+      "surface": "worlds-student-class",
+      "board": "worlds",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Join 33,1190,74,36; Join 409,1190,74,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1190,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              409,
+              1190,
+              74,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-class/768x1024.jpeg",
+      "durationMs": 1671
+    },
+    {
+      "surface": "worlds-share-sheet",
+      "board": "worlds",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Share “Treehouse Hideout” with Period 3 Makers",
+            "fits": true,
+            "rect": [
+              0,
+              616,
+              768,
+              408
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "input worlds-share"
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-share-sheet/768x1024.jpeg",
+      "durationMs": 1722
+    },
+    {
+      "surface": "worlds-teacher",
+      "board": "worlds",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Join 33,1044,74,36; Visit 115,1044,79,36; Hide from class 201,1044,122,36; Visit 409,1044,79,36; Hide from class 496,1044,122,36; Visit 33,1366,79,36; Show to class 120,1366,111,36; Join 409,1366,74,36; Visit 491,1366,79,36; Hide from class 577,1366,122,36; Join 33,1699,74,36; World controls 115,1699,119,36; Join 409,1699,74,36; World controls 491,1699,119,36"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1044,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              115,
+              1044,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              201,
+              1044,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              409,
+              1044,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              496,
+              1044,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1366,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Show to class",
+            "rect": [
+              120,
+              1366,
+              111,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              409,
+              1366,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              491,
+              1366,
+              79,
+              36
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              577,
+              1366,
+              122,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1699,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              115,
+              1699,
+              119,
+              36
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              409,
+              1699,
+              74,
+              36
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              491,
+              1699,
+              119,
+              36
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-teacher/768x1024.jpeg",
+      "durationMs": 1688
+    },
+    {
+      "surface": "class-first-run",
+      "board": "class",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run/768x1024.jpeg",
+      "durationMs": 20076
+    },
+    {
+      "surface": "class-first-run-invite",
+      "board": "class",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run-invite/768x1024.jpeg",
+      "durationMs": 20080
+    },
+    {
+      "surface": "class-students",
+      "board": "class",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 1024/1580"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 38,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 1024,
+            "scrollHeight": 1580
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-students/768x1024.jpeg",
+      "durationMs": 1693
+    },
+    {
+      "surface": "class-settings",
+      "board": "class",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 1024/1295"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 1024,
+            "scrollHeight": 1295
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Settings"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-settings/768x1024.jpeg",
+      "durationMs": 1388
+    },
+    {
+      "surface": "class-worlds",
+      "board": "class",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Worlds"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-worlds/768x1024.jpeg",
+      "durationMs": 1419
+    },
+    {
+      "surface": "class-projector",
+      "board": "class",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 1,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-projector/768x1024.jpeg",
+      "durationMs": 1296
+    },
+    {
+      "surface": "editor-idle",
+      "board": "editor",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-idle/768x1024.jpeg",
+      "durationMs": 2144
+    },
+    {
+      "surface": "editor-brush",
+      "board": "editor",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 22,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Open brick drawer"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-brush/768x1024.jpeg",
+      "durationMs": 1813
+    },
+    {
+      "surface": "editor-selected",
+      "board": "editor",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 23,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected/768x1024.jpeg",
+      "durationMs": 1304
+    },
+    {
+      "surface": "editor-selected-color",
+      "board": "editor",
+      "viewport": "768x1024",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 768,
+          "height": 1024,
+          "devicePixelRatio": 1,
+          "scrollWidth": 768,
+          "scrollHeight": 1024,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 36,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use color #e7473c"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected-color/768x1024.jpeg",
+      "durationMs": 1575
+    },
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 844/931"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 844,
+            "scrollHeight": 931
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/390x844.jpeg",
+      "durationMs": 1379
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/390x844.jpeg",
+      "durationMs": 1373
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 844/858; ul.join-name-grid 144/204"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 844,
+            "scrollHeight": 858
+          },
+          {
+            "selector": "ul.join-name-grid",
+            "height": 144,
+            "scrollHeight": 204
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/390x844.jpeg",
+      "durationMs": 2478
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/390x844.jpeg",
+      "durationMs": 1381
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/390x844.jpeg",
+      "durationMs": 1413
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Open 33,823,324,44; Share with my class 33,875,324,44; More for Rainbow Rocket 313,1085,44,44; Open 33,1203,324,44; Sharing… 33,1255,324,44; More for Lava Lab 313,1465,44,44; Open 33,1583,324,44; Sharing… 33,1635,324,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              823,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Share with my class",
+            "rect": [
+              33,
+              875,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "More for Rainbow Rocket",
+            "rect": [
+              313,
+              1085,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              1203,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1255,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              313,
+              1465,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              1583,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1635,
+              324,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/390x844.jpeg",
+      "durationMs": 1678
+    },
+    {
+      "surface": "worlds-student-class",
+      "board": "worlds",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Visit 33,1034,324,44; Make my own copy 33,1086,324,44; Join 33,1416,324,44; Visit 33,1468,324,44; Make my own copy 33,1520,324,44; Join 33,1861,324,44; Join 33,2158,324,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1034,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              33,
+              1086,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1416,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1468,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              33,
+              1520,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1861,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              2158,
+              324,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-class/390x844.jpeg",
+      "durationMs": 1680
+    },
+    {
+      "surface": "worlds-share-sheet",
+      "board": "worlds",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: More for Rainbow Rocket 313,837,44,44; Open 33,955,324,44; Sharing… 33,1007,324,44; More for Lava Lab 313,1217,44,44; Open 33,1335,324,44; Sharing… 33,1387,324,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [
+          {
+            "name": "More for Rainbow Rocket",
+            "rect": [
+              313,
+              837,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              955,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1007,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              313,
+              1217,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              1335,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1387,
+              324,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Share “Treehouse Hideout” with Period 3 Makers",
+            "fits": true,
+            "rect": [
+              0,
+              335,
+              390,
+              509
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "input worlds-share"
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-share-sheet/390x844.jpeg",
+      "durationMs": 1728
+    },
+    {
+      "surface": "worlds-teacher",
+      "board": "worlds",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Visit 33,1128,324,44; Hide from class 33,1180,324,44; Join 33,1510,324,44; Visit 33,1562,324,44; Hide from class 33,1614,324,44; Join 33,1943,324,44; Visit 33,1995,324,44; Hide from class 33,2047,324,44; Visit 33,2377,324,44; Hide from class 33,2429,324,44; Visit 33,2758,324,44; Show to class 33,2810,324,44; Join 33,3140,324,44; Visit 33,3192,324,44; Hide from class 33,3244,324,44; Join 33,3585,324,44; World controls 33,3637,324,44; Join 33,3935,324,44; World controls 33,3987,324,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1128,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              1180,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1510,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1562,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              1614,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1943,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1995,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              2047,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              2377,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              2429,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              2758,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Show to class",
+            "rect": [
+              33,
+              2810,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              3140,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              3192,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              3244,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              3585,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              33,
+              3637,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              3935,
+              324,
+              44
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              33,
+              3987,
+              324,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-teacher/390x844.jpeg",
+      "durationMs": 1689
+    },
+    {
+      "surface": "class-first-run",
+      "board": "class",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run/390x844.jpeg",
+      "durationMs": 20077
+    },
+    {
+      "surface": "class-first-run-invite",
+      "board": "class",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run-invite/390x844.jpeg",
+      "durationMs": 20086
+    },
+    {
+      "surface": "class-students",
+      "board": "class",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 844/2733"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 38,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 844,
+            "scrollHeight": 2733
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-students/390x844.jpeg",
+      "durationMs": 1692
+    },
+    {
+      "surface": "class-settings",
+      "board": "class",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 844/1703"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 844,
+            "scrollHeight": 1703
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Settings"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-settings/390x844.jpeg",
+      "durationMs": 1420
+    },
+    {
+      "surface": "class-worlds",
+      "board": "class",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 844/1146"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 844,
+            "scrollHeight": 1146
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Worlds"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-worlds/390x844.jpeg",
+      "durationMs": 1411
+    },
+    {
+      "surface": "class-projector",
+      "board": "class",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 1,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-projector/390x844.jpeg",
+      "durationMs": 1682
+    },
+    {
+      "surface": "editor-idle",
+      "board": "editor",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 19,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-idle/390x844.jpeg",
+      "durationMs": 1957
+    },
+    {
+      "surface": "editor-brush",
+      "board": "editor",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 23,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Open brick drawer"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-brush/390x844.jpeg",
+      "durationMs": 1499
+    },
+    {
+      "surface": "editor-selected",
+      "board": "editor",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 24,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected/390x844.jpeg",
+      "durationMs": 1264
+    },
+    {
+      "surface": "editor-selected-color",
+      "board": "editor",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 37,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use color #e7473c"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected-color/390x844.jpeg",
+      "durationMs": 1560
+    },
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 740/1057"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 740,
+            "scrollHeight": 1057
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/320x740.jpeg",
+      "durationMs": 1377
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/320x740.jpeg",
+      "durationMs": 1377
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 740/984; ul.join-name-grid 144/204"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 740,
+            "scrollHeight": 984
+          },
+          {
+            "selector": "ul.join-name-grid",
+            "height": 144,
+            "scrollHeight": 204
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/320x740.jpeg",
+      "durationMs": 2497
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/320x740.jpeg",
+      "durationMs": 1356
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 740/820"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 740,
+            "scrollHeight": 820
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/320x740.jpeg",
+      "durationMs": 1414
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: More for Treehouse Hideout 243,729,44,44; Open 33,823,254,44; Share with my class 33,875,254,44; More for Rainbow Rocket 243,1085,44,44; Open 33,1203,254,44; Sharing… 33,1255,254,44; More for Lava Lab 243,1465,44,44; Open 33,1583,254,44; Sharing… 33,1635,254,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [
+          {
+            "name": "More for Treehouse Hideout",
+            "rect": [
+              243,
+              729,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              823,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Share with my class",
+            "rect": [
+              33,
+              875,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "More for Rainbow Rocket",
+            "rect": [
+              243,
+              1085,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              1203,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1255,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              243,
+              1465,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              1583,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1635,
+              254,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/320x740.jpeg",
+      "durationMs": 1678
+    },
+    {
+      "surface": "worlds-student-class",
+      "board": "worlds",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Make my own copy 33,705,254,44; Visit 33,1034,254,44; Make my own copy 33,1086,254,44; Join 33,1416,254,44; Visit 33,1468,254,44; Make my own copy 33,1520,254,44; Join 33,1861,254,44; Join 33,2158,254,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [
+          {
+            "name": "Make my own copy",
+            "rect": [
+              33,
+              705,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1034,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              33,
+              1086,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1416,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1468,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              33,
+              1520,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1861,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              2158,
+              254,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-class/320x740.jpeg",
+      "durationMs": 1689
+    },
+    {
+      "surface": "worlds-share-sheet",
+      "board": "worlds",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: More for Rainbow Rocket 243,837,44,44; Open 33,955,254,44; Sharing… 33,1007,254,44; More for Lava Lab 243,1217,44,44; Open 33,1335,254,44; Sharing… 33,1387,254,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [
+          {
+            "name": "More for Rainbow Rocket",
+            "rect": [
+              243,
+              837,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              955,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1007,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              243,
+              1217,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              1335,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              33,
+              1387,
+              254,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Share “Treehouse Hideout” with Period 3 Makers",
+            "fits": true,
+            "rect": [
+              0,
+              184,
+              320,
+              556
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "input worlds-share"
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-share-sheet/320x740.jpeg",
+      "durationMs": 1715
+    },
+    {
+      "surface": "worlds-teacher",
+      "board": "worlds",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Start world 33,755,254,44; Visit 33,1128,254,44; Hide from class 33,1180,254,44; Join 33,1510,254,44; Visit 33,1562,254,44; Hide from class 33,1614,254,44; Join 33,1943,254,44; Visit 33,1995,254,44; Hide from class 33,2047,254,44; Visit 33,2377,254,44; Hide from class 33,2429,254,44; Visit 33,2758,254,44; Show to class 33,2810,254,44; Join 33,3140,254,44; Visit 33,3192,254,44; Hide from class 33,3244,254,44; Join 33,3585,254,44; World controls 33,3637,254,44; Join 33,3935,254,44; World controls 33,3987,254,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [
+          {
+            "name": "Start world",
+            "rect": [
+              33,
+              755,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1128,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              1180,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1510,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1562,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              1614,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1943,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1995,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              2047,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              2377,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              2429,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              2758,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Show to class",
+            "rect": [
+              33,
+              2810,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              3140,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              3192,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              33,
+              3244,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              3585,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              33,
+              3637,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              3935,
+              254,
+              44
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              33,
+              3987,
+              254,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-teacher/320x740.jpeg",
+      "durationMs": 1682
+    },
+    {
+      "surface": "class-first-run",
+      "board": "class",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run/320x740.jpeg",
+      "durationMs": 20075
+    },
+    {
+      "surface": "class-first-run-invite",
+      "board": "class",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run-invite/320x740.jpeg",
+      "durationMs": 20101
+    },
+    {
+      "surface": "class-students",
+      "board": "class",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 740/3124"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 38,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 740,
+            "scrollHeight": 3124
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-students/320x740.jpeg",
+      "durationMs": 1681
+    },
+    {
+      "surface": "class-settings",
+      "board": "class",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 740/1808"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 740,
+            "scrollHeight": 1808
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Settings"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-settings/320x740.jpeg",
+      "durationMs": 1417
+    },
+    {
+      "surface": "class-worlds",
+      "board": "class",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 740/1233"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 740,
+            "scrollHeight": 1233
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Worlds"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-worlds/320x740.jpeg",
+      "durationMs": 1414
+    },
+    {
+      "surface": "class-projector",
+      "board": "class",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 1,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-projector/320x740.jpeg",
+      "durationMs": 1687
+    },
+    {
+      "surface": "editor-idle",
+      "board": "editor",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 19,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-idle/320x740.jpeg",
+      "durationMs": 1966
+    },
+    {
+      "surface": "editor-brush",
+      "board": "editor",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 23,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Open brick drawer"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-brush/320x740.jpeg",
+      "durationMs": 2808
+    },
+    {
+      "surface": "editor-selected",
+      "board": "editor",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 24,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected/320x740.jpeg",
+      "durationMs": 1260
+    },
+    {
+      "surface": "editor-selected-color",
+      "board": "editor",
+      "viewport": "320x740",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 320,
+          "height": 740,
+          "devicePixelRatio": 1,
+          "scrollWidth": 320,
+          "scrollHeight": 740,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 37,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use color #e7473c"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected-color/320x740.jpeg",
+      "durationMs": 1561
+    },
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 390/968"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 390,
+            "scrollHeight": 968
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/844x390.jpeg",
+      "durationMs": 1380
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 390/697"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 390,
+            "scrollHeight": 697
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/844x390.jpeg",
+      "durationMs": 1379
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 390/955"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 390,
+            "scrollHeight": 955
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/844x390.jpeg",
+      "durationMs": 2493
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 390/578"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 390,
+            "scrollHeight": 578
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/844x390.jpeg",
+      "durationMs": 1378
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 390/834"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 390,
+            "scrollHeight": 834
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/844x390.jpeg",
+      "durationMs": 1377
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: More for Treehouse Hideout 353,518,44,44; Open 33,636,83,44; Share with my class 124,636,149,44; More for Rainbow Rocket 767,518,44,44; Open 447,636,83,44; Sharing… 538,636,84,44; More for Lava Lab 353,846,44,44; Open 33,964,83,44; Sharing… 124,964,84,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [
+          {
+            "name": "More for Treehouse Hideout",
+            "rect": [
+              353,
+              518,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              636,
+              83,
+              44
+            ]
+          },
+          {
+            "name": "Share with my class",
+            "rect": [
+              124,
+              636,
+              149,
+              44
+            ]
+          },
+          {
+            "name": "More for Rainbow Rocket",
+            "rect": [
+              767,
+              518,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              447,
+              636,
+              83,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              538,
+              636,
+              84,
+              44
+            ]
+          },
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              353,
+              846,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              964,
+              83,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              124,
+              964,
+              84,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/844x390.jpeg",
+      "durationMs": 1679
+    },
+    {
+      "surface": "worlds-student-class",
+      "board": "worlds",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Join 33,535,74,44; Visit 115,535,79,44; Make my own copy 201,535,143,44; Visit 447,535,79,44; Make my own copy 534,535,143,44; Join 33,865,74,44; Visit 115,865,79,44; Make my own copy 201,865,143,44; Join 33,1206,74,44; Join 447,1206,74,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              535,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              115,
+              535,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              201,
+              535,
+              143,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              447,
+              535,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              534,
+              535,
+              143,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              865,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              115,
+              865,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Make my own copy",
+            "rect": [
+              201,
+              865,
+              143,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1206,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              447,
+              1206,
+              74,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-student-class/844x390.jpeg",
+      "durationMs": 1687
+    },
+    {
+      "surface": "worlds-share-sheet",
+      "board": "worlds",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: Brickgineers Home 12,-351,168,44; Open the studio 533,-351,125,44; Account: Ava R., Period 3 Makers 667,-351,165,44; Mine3 16,-277,109,44; Period 3 Makers5 133,-277,191,44; INPUT 548,-182,280,44; More for Lava Lab 353,383,44,44; Open 33,501,83,44; Sharing… 124,501,84,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 20,
+        "outside": [
+          {
+            "name": "Brickgineers Home",
+            "rect": [
+              12,
+              -351,
+              168,
+              44
+            ]
+          },
+          {
+            "name": "Open the studio",
+            "rect": [
+              533,
+              -351,
+              125,
+              44
+            ]
+          },
+          {
+            "name": "Account: Ava R., Period 3 Makers",
+            "rect": [
+              667,
+              -351,
+              165,
+              44
+            ]
+          },
+          {
+            "name": "Mine3",
+            "rect": [
+              16,
+              -277,
+              109,
+              44
+            ]
+          },
+          {
+            "name": "Period 3 Makers5",
+            "rect": [
+              133,
+              -277,
+              191,
+              44
+            ]
+          },
+          {
+            "name": "INPUT",
+            "rect": [
+              548,
+              -182,
+              280,
+              44
+            ]
+          },
+          {
+            "name": "More for Lava Lab",
+            "rect": [
+              353,
+              383,
+              44,
+              44
+            ]
+          },
+          {
+            "name": "Open",
+            "rect": [
+              33,
+              501,
+              83,
+              44
+            ]
+          },
+          {
+            "name": "Sharing…",
+            "rect": [
+              124,
+              501,
+              84,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Share “Treehouse Hideout” with Period 3 Makers",
+            "fits": true,
+            "rect": [
+              0,
+              31,
+              844,
+              359
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "input worlds-share"
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-share-sheet/844x390.jpeg",
+      "durationMs": 1723
+    },
+    {
+      "surface": "worlds-teacher",
+      "board": "worlds",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "controls outside viewport: title 33,356,397,44; Whole class 450,352,100,44; Assigned group 554,352,121,44; Start world 694,356,117,44; Visit 33,729,79,44; Hide from class 120,729,122,44; Join 447,729,74,44; Visit 529,729,79,44; Hide from class 615,729,122,44; Join 33,1058,74,44; Visit 115,1058,79,44; Hide from class 201,1058,122,44; Visit 447,1058,79,44; Hide from class 534,1058,122,44; Visit 33,1388,79,44; Show to class 120,1388,111,44; Join 447,1388,74,44; Visit 529,1388,79,44; Hide from class 615,1388,122,44; Join 33,1729,74,44; World controls 115,1729,119,44; Join 447,1729,74,44; World controls 529,1729,119,44"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 29,
+        "outside": [
+          {
+            "name": "title",
+            "rect": [
+              33,
+              356,
+              397,
+              44
+            ]
+          },
+          {
+            "name": "Whole class",
+            "rect": [
+              450,
+              352,
+              100,
+              44
+            ]
+          },
+          {
+            "name": "Assigned group",
+            "rect": [
+              554,
+              352,
+              121,
+              44
+            ]
+          },
+          {
+            "name": "Start world",
+            "rect": [
+              694,
+              356,
+              117,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              729,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              120,
+              729,
+              122,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              447,
+              729,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              529,
+              729,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              615,
+              729,
+              122,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1058,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              115,
+              1058,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              201,
+              1058,
+              122,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              447,
+              1058,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              534,
+              1058,
+              122,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              33,
+              1388,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Show to class",
+            "rect": [
+              120,
+              1388,
+              111,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              447,
+              1388,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "Visit",
+            "rect": [
+              529,
+              1388,
+              79,
+              44
+            ]
+          },
+          {
+            "name": "Hide from class",
+            "rect": [
+              615,
+              1388,
+              122,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              33,
+              1729,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              115,
+              1729,
+              119,
+              44
+            ]
+          },
+          {
+            "name": "Join",
+            "rect": [
+              447,
+              1729,
+              74,
+              44
+            ]
+          },
+          {
+            "name": "World controls",
+            "rect": [
+              529,
+              1729,
+              119,
+              44
+            ]
+          }
+        ],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "worlds-teacher/844x390.jpeg",
+      "durationMs": 1692
+    },
+    {
+      "surface": "class-first-run",
+      "board": "class",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run/844x390.jpeg",
+      "durationMs": 20083
+    },
+    {
+      "surface": "class-first-run-invite",
+      "board": "class",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "TimeoutError: locator.waitFor: Timeout 20000ms exceeded."
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "class-first-run-invite/844x390.jpeg",
+      "durationMs": 20081
+    },
+    {
+      "surface": "class-students",
+      "board": "class",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 390/1536"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 38,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 390,
+            "scrollHeight": 1536
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-students/844x390.jpeg",
+      "durationMs": 1671
+    },
+    {
+      "surface": "class-settings",
+      "board": "class",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 390/1301"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 18,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 390,
+            "scrollHeight": 1301
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Settings"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-settings/844x390.jpeg",
+      "durationMs": 1408
+    },
+    {
+      "surface": "class-worlds",
+      "board": "class",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.class-page 390/915"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 17,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.class-page",
+            "height": 390,
+            "scrollHeight": 915
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Worlds"
+      },
+      "consoleErrors": [],
+      "screenshot": "class-worlds/844x390.jpeg",
+      "durationMs": 1394
+    },
+    {
+      "surface": "class-projector",
+      "board": "class",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 1,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "main.class-projector-page",
+            "height": 390,
+            "scrollHeight": 514
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "class-projector/844x390.jpeg",
+      "durationMs": 1700
+    },
+    {
+      "surface": "editor-idle",
+      "board": "editor",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 19,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-idle/844x390.jpeg",
+      "durationMs": 1958
+    },
+    {
+      "surface": "editor-brush",
+      "board": "editor",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 23,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Open brick drawer"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-brush/844x390.jpeg",
+      "durationMs": 2802
+    },
+    {
+      "surface": "editor-selected",
+      "board": "editor",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 24,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected/844x390.jpeg",
+      "durationMs": 1255
+    },
+    {
+      "surface": "editor-selected-color",
+      "board": "editor",
+      "viewport": "844x390",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 844,
+          "height": 390,
+          "devicePixelRatio": 1,
+          "scrollWidth": 844,
+          "scrollHeight": 390,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 37,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use color #e7473c"
+      },
+      "consoleErrors": [],
+      "screenshot": "editor-selected-color/844x390.jpeg",
+      "durationMs": 1571
+    },
+    {
+      "surface": "join-new",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 384/907"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 11,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 384,
+            "scrollHeight": 907
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-new/1366x768-zoom200.jpeg",
+      "durationMs": 1398
+    },
+    {
+      "surface": "join-signin",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 384/636"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 384,
+            "scrollHeight": 636
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin/1366x768-zoom200.jpeg",
+      "durationMs": 1400
+    },
+    {
+      "surface": "join-signin-roster",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 384/834; ul.join-name-grid 144/204"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 16,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 384,
+            "scrollHeight": 834
+          },
+          {
+            "selector": "ul.join-name-grid",
+            "height": 144,
+            "scrollHeight": 204
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-signin-roster/1366x768-zoom200.jpeg",
+      "durationMs": 2517
+    },
+    {
+      "surface": "join-teacher",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 384/530"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 6,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 384,
+            "scrollHeight": 530
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher/1366x768-zoom200.jpeg",
+      "durationMs": 1406
+    },
+    {
+      "surface": "join-teacher-email",
+      "board": "join",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "passed",
+      "failures": [],
+      "notes": [
+        "inner scroll container(s) instead of page-level scrolling: div.join-page 384/786"
+      ],
+      "checks": {
+        "viewport": {
+          "width": 683,
+          "height": 384,
+          "devicePixelRatio": 2,
+          "scrollWidth": 683,
+          "scrollHeight": 384,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 10,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.join-page",
+            "height": 384,
+            "scrollHeight": 786
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Use email and password"
+      },
+      "consoleErrors": [],
+      "screenshot": "join-teacher-email/1366x768-zoom200.jpeg",
+      "durationMs": 1436
+    },
+    {
+      "surface": "worlds-student-mine",
+      "board": "worlds",
+      "viewport": "1366x768",
+      "variant": "zoom200",
+      "status": "failed",
+      "failures": [
+        "Error: locator.waitFor: Target page, context or browser has been closed"
+      ],
+      "notes": [],
+      "checks": null,
+      "consoleErrors": [],
+      "screenshot": "worlds-student-mine/1366x768-zoom200.jpeg",
+      "durationMs": 85
+    }
+  ],
+  "skipped": []
+}
