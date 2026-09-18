@@ -1,7 +1,11 @@
 /* /join — a page, not a dialog: the whole thing scrolls. Tokens come from styles.css. */
 
 .join-page {
-  min-height: 100%;
+  /* html/body/#root are `overflow: hidden` for the editor (styles.css), so the
+     page itself is the scroll container — the whole page scrolls, not a panel. */
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -18,6 +22,7 @@
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
+.join-page, .join-page * { box-sizing: border-box; }
 .join-header-aside { display: flex; align-items: center; gap: var(--space-2); }
 
 .join-main {
@@ -161,12 +166,14 @@
 /* ---------- Phone ---------- */
 
 @media (max-width: 700px) {
-  .join-header { padding: var(--space-3) var(--space-4); }
+  /* The corner link takes its own row rather than squeezing the lockup. */
+  .join-header { flex-wrap: wrap; row-gap: var(--space-1); padding: var(--space-3) var(--space-4); }
+  .join-header-aside { flex: 1 1 100%; }
   .join-main { padding: var(--space-4) var(--space-3) var(--space-7); }
   .join-card { padding: var(--space-5) var(--space-4); border-radius: var(--radius-md); }
   .join-headline h1 { font-size: 24px; }
   /* Two rows of names at a time, so the password field stays above a soft keyboard. */
-  .join-roster .join-name-grid { max-height: 128px; overflow-y: auto; padding-right: 2px; }
+  .join-roster .join-name-grid { max-height: 144px; overflow-y: auto; padding-right: 2px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -70,6 +70,7 @@ export function JoinExperience({
   const [classInfo, setClassInfo] = useState<ClassInfo | null>(null)
   const [classError, setClassError] = useState('')
   const [pickedName, setPickedName] = useState('')
+  const [editingCode, setEditingCode] = useState(false)
   const [classCode, setClassCode] = useState(query.classCode || (mode === 'teacher' ? '' : remembered?.code ?? ''))
   const [username, setUsername] = useState('')
   const [rosterName, setRosterName] = useState('')
@@ -115,7 +116,7 @@ export function JoinExperience({
     return () => { window.clearTimeout(timer); lookup.current++ }
   }, [trimmedCode, mode, lookupClass])
 
-  useEffect(() => { if (focusCode.current && codeInput.current) { codeInput.current.focus(); focusCode.current = false } }, [codeOpen, requireClassCode])
+  useEffect(() => { if (focusCode.current && codeInput.current) { codeInput.current.focus(); focusCode.current = false } }, [codeOpen, requireClassCode, editingCode])
 
   const changeMode = (next: JoinMode) => {
     setMode(next); setError(''); setSuggestions([]); setRequireClassCode(false); setPassword(''); setPickedName('')
@@ -169,7 +170,7 @@ export function JoinExperience({
   }
   const changeClass = () => {
     forgetClass(); setRemembered(null); setClassCode(''); setClassInfo(null); setPickedName(''); setUsername('')
-    focusCode.current = true; setCodeOpen(true)
+    focusCode.current = true; setEditingCode(true); setCodeOpen(true)
   }
 
   // Sign-in needs no class code; the field opens from the link, the button, a
@@ -181,7 +182,7 @@ export function JoinExperience({
   const cornerLink = reset ? null
     : mode === 'join' ? <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('signin')}>I already have an account</Button>
     : mode === 'teacher' ? <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('signin')}>Sign in with username instead</Button>
-    : <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('join')}>New here? Join with a class code</Button>
+    : <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('join')}>New here? Join a class</Button>
 
   const headline = reset ? { title: 'Choose a new password', lead: 'Your teacher reset your password. Pick one you will remember.' } : HEADLINES[mode]
 
@@ -211,7 +212,7 @@ export function JoinExperience({
                 <Button variant="quiet" size="sm" icon={<KeyRound size={16} />} disabled={busy} onClick={() => { focusCode.current = true; setCodeOpen(true) }}>I have a class code</Button>
               </div>}
 
-              {codeVisible && <TextInput
+              {codeVisible && <div hidden={Boolean(matched) && !editingCode && !classError}><TextInput
                 ref={codeInput}
                 label="Class code"
                 name="classCode"
@@ -227,13 +228,13 @@ export function JoinExperience({
                 spellCheck={false}
                 required={mode === 'join'}
                 maxLength={32}
-              />}
+              /></div>}
 
               {matched && <div className="join-class" aria-live="polite">
                 <span className="join-class-chip">{matched.name}</span>
                 {rememberedActive
                   ? <Button variant="quiet" size="sm" disabled={busy} onClick={changeClass}>Not you? Change class</Button>
-                  : <Button variant="quiet" size="sm" disabled={busy} onClick={() => { focusCode.current = true; setCodeOpen(true); codeInput.current?.focus() }}>Change class code</Button>}
+                  : <Button variant="quiet" size="sm" disabled={busy} onClick={() => { focusCode.current = true; setEditingCode(true); setCodeOpen(true) }}>Change class code</Button>}
                 {mode === 'join' && !matched.canEnroll && <p className="join-note">This class is not taking new accounts. If you already have one, sign in instead.</p>}
               </div>}
 

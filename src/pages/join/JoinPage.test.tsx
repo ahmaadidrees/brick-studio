@@ -232,7 +232,7 @@ describe('/join — everywhere', () => {
     setup('')
     fireEvent.click(screen.getByRole('button', { name: 'I already have an account' }))
     expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'New here? Join with a class code' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New here? Join a class' })).toBeInTheDocument()
   })
 
   it('sends an account whose password was reset to the inline reset view, not to a page', async () => {
