@@ -43,8 +43,10 @@ W6 replaces the editor's current `Header` with `AppHeader variant="editor"` once
 ## Data model (W1 owns the migration `supabase/migrations/202609190001_brick_class_sharing.sql`)
 
 - `brick_worlds`: `class_visibility text not null default 'private' check (class_visibility in ('private','class'))`,
-  `class_can_edit boolean not null default false`, `hidden_by_teacher boolean not null default false`. Personal worlds
-  keep `class_id null`; sharing resolves the owner's class through `brick_students.class_id` at read time.
+  `class_can_edit boolean not null default false`, `hidden_by_teacher boolean not null default false`, and
+  `class_shared_at timestamptz` (accepted: W1 added it to back `sharedAt`; set when the owner shares, cleared on
+  unshare, unchanged by saves). Personal worlds keep `class_id null`; sharing resolves the owner's class through
+  `brick_students.class_id` at read time.
 - `brick_classes`: `students_can_share boolean not null default true`.
 - Nothing renamed; `kind` values unchanged.
 
