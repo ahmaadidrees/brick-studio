@@ -19,40 +19,7 @@
   font-weight: 700;
 }
 
-/* Header ------------------------------------------------------------------ */
-.class-header {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-header);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-.class-header-end { display: flex; align-items: center; gap: var(--space-3); }
-.class-account-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 44px;
-  padding: 0 var(--space-2);
-}
-.class-account-avatar {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-pill);
-  background: var(--primary-soft);
-  color: var(--primary-strong);
-  font-family: var(--font-display);
-  font-weight: 700;
-}
-.class-account-text { display: flex; flex-direction: column; line-height: 1.2; }
-.class-account-text small { color: var(--text-muted); font-size: var(--text-sm); }
+/* Header lives in src/shell/AppHeader.tsx (variant="page"). */
 
 /* Body and rail ----------------------------------------------------------- */
 .class-page-body {
@@ -279,7 +246,7 @@
 /* Print -------------------------------------------------------------------- */
 .class-print-sheet { display: none; }
 @media print {
-  .class-header, .class-rail, .class-tabs, .class-section, .class-code-card, .class-banner, .class-first-run-intro { display: none !important; }
+  .app-header, .class-rail, .class-tabs, .class-section, .class-code-card, .class-banner, .class-first-run-intro { display: none !important; }
   .class-print-sheet {
     display: flex;
     flex-direction: column;
@@ -307,8 +274,6 @@
   .class-rail-divider { display: none; }
 }
 @media (max-width: 700px) {
-  .class-header { padding: var(--space-2) var(--space-4); }
-  .class-account-text { display: none; }
   .class-page-body { padding: var(--space-4) var(--space-4) var(--space-7); }
   .class-head h1 { font-size: 26px; }
   .class-code-card { flex-direction: column; align-items: flex-start; gap: var(--space-4); }

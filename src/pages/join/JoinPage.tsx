@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Check, ChevronDown, ChevronUp, KeyRound, Mail, UserRound, X } from 'lucide-react'
-import { BrandLockup } from '../../brand'
 import { Button } from '../../ui'
+import { AppHeader } from '../../shell'
 import { browserClassroomClient, ClassroomError, type ClassroomClient } from '../../classroom/client'
 import type { ClassroomAuthResult, ClassroomRosterStudent } from '../../classroom/contracts'
 import { PasswordField } from '../../classroom/PasswordField'
@@ -187,10 +187,7 @@ export function JoinExperience({
   const headline = reset ? { title: 'Choose a new password', lead: 'Your teacher reset your password. Pick one you will remember.' } : HEADLINES[mode]
 
   return <div className="join-page">
-    <header className="join-header">
-      <BrandLockup href="/" size={30} srSuffix="Home" />
-      <div className="join-header-aside">{cornerLink}</div>
-    </header>
+    <AppHeader variant="page" actions={cornerLink} />
     <main className="join-main">
       <div className={['join-card', roster ? 'join-card-wide' : ''].filter(Boolean).join(' ')}>
         <div className="join-headline">

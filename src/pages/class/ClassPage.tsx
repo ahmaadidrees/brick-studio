@@ -6,12 +6,12 @@ import type { ClassroomCheckpoint, ClassroomStudent, ClassroomWorldMember } from
 import { ManageStudentForm } from '../../classroom/RosterView'
 import { errorMessage } from '../../classroom/panelShared'
 import '../../classroom/classroom.css'
+import { AppHeader, displayNameFor, type ClassroomSessionState } from '../../shell'
 import {
   addMember, createClass, defaultClassPageClient, loadCheckpoints, loadClasses, loadMembers, loadStudents, loadWorlds,
   patchClass, patchStudent, removeMember, restoreCheckpoint, setWorldHidden, sharedByStudents, teacherWorlds,
   type ClassPageClient, type ClassPageClass, type ClassPageWorld,
 } from './classPageData'
-import { ClassPageHeader } from './ClassPageHeader'
 import { FirstRun } from './FirstRun'
 import { StudentsTab } from './StudentsTab'
 import { WorldsTab } from './WorldsTab'
@@ -154,8 +154,17 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   const name = session.user.rosterName || session.user.username
   const shared = currentClass ? sharedByStudents(worlds, currentClass.id, session.user.id) : []
 
+  const headerSession: ClassroomSessionState = {
+    status: 'teacher',
+    user: session.user,
+    classes: session.classes,
+    displayName: displayNameFor(session.user),
+    signOut: async () => run(async () => { await client.signOut() }),
+    switchAccount: async () => { await client.signOut(); navigate('/join?mode=teacher') },
+  }
+
   return <div className="class-page">
-    <ClassPageHeader name={name} />
+    <AppHeader variant="page" title="My class" actions={<Button href="/build" variant="secondary" size="sm">Open the studio</Button>} session={headerSession} />
     {error && <p className="class-banner class-banner-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
     {notice && <p className="class-banner class-banner-notice" role="status"><CircleCheck size={18} aria-hidden="true" /><span>{notice}</span></p>}
     {loading
