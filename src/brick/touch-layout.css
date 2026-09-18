@@ -17,6 +17,14 @@
    level with the history cluster on the left (200px + 56px fits 320px). */
 .brick-compact-layout .brick-camera-cluster { top: var(--brick-panel-top); bottom: auto; right: max(8px, env(safe-area-inset-right)); }
 .brick-compact-layout .brick-camera-button { width: 46px; min-height: 44px; }
+/* Short touch screens (height <= 600px): the column collapses to one "Camera" button whose popover
+   holds Frame / Top / Front / 3D, so the strip's Adjust panel can never cover the four choices. */
+.brick-camera-cluster-collapsed { padding: 4px; }
+.brick-compact-layout .brick-camera-cluster-collapsed .brick-camera-toggle { width: auto; min-width: 44px; min-height: 44px; padding: 0 8px; }
+.brick-camera-popover { position: absolute; z-index: 1; top: calc(100% + 6px); right: 0; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; padding: 5px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 18px 48px rgba(38, 60, 81, .2)); }
+@media (max-height: 520px) and (orientation: landscape) {
+  .brick-camera-popover { flex-direction: row; }
+}
 .brick-compact-layout .brick-creative-dock { position: absolute; z-index: 16; bottom: max(8px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; width: min(360px, calc(100% - 16px)); padding: 5px; box-sizing: border-box; gap: 5px; border: 1px solid var(--studio-panel-border); border-radius: 20px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
 .brick-creative-dock > button { position: static; display: flex; flex: 1 1 0; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; min-height: 48px; height: auto; padding: 5px 12px; border: 0; border-radius: 14px; background: transparent; color: var(--studio-ink); font: 800 11px/1.2 inherit; box-shadow: none; cursor: pointer; }
 .brick-creative-dock > .brick-drawer-fab { background: var(--studio-blue); color: white; }
