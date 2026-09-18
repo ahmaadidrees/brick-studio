@@ -140,9 +140,10 @@ export class ClassroomService {
    * Personal worlds: the owner always sees and edits; a classmate (or the class teacher) sees a shared one
    * (`class_visibility='class'`) and edits only with `class_can_edit`. Students are refused while the class has
    * collaboration closed or sharing disabled, or the teacher hid the world; the teacher may still look in those
-   * states but never edits (`sharedEditAllowed`, the same rule `brick_commit_world` applies). Class and group
-   * worlds keep their rules. The live-join flag stays in the signature for its callers; personal worlds are
-   * joinable by ownership or sharing.
+   * states but never edits (`sharedEditAllowed`, the same rule `brick_commit_world` applies). A suspended owner's
+   * shared world is not found for classmates (as `listWorlds` already hides it) and look-only for the teacher.
+   * Class and group worlds keep their rules. The live-join flag stays in the signature for its callers; personal
+   * worlds are joinable by ownership or sharing.
    */
   async worldAccess(caller: Caller, id: string, _requireCollaboration = false, metadataOnly = false): Promise<WorldAccess> {
     if (!uuid(id)) fail(404, 'not_found', 'World not found.');
@@ -151,15 +152,16 @@ export class ClassroomService {
     if (world.kind === 'personal') {
       if (world.owner_id === caller.id) return { world, canEdit: true, isOwner: true, ownerName: callerDisplayName(caller), ownerClassId: caller.classId ?? null };
       if (world.class_visibility !== 'class') fail(404, 'not_found', 'World not found.');
-      const owner = (await this.rows('students', `user_id=eq.${world.owner_id}&select=class_id,roster_name&limit=1`))[0];
+      const owner = (await this.rows('students', `user_id=eq.${world.owner_id}&select=class_id,roster_name,suspended&limit=1`))[0];
       if (!owner) fail(404, 'not_found', 'World not found.');
       const cls = await this.classFor(caller, owner.class_id);
       if (caller.role !== 'teacher') {
+        if (owner.suspended) fail(404, 'not_found', 'World not found.');
         if (world.hidden_by_teacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.');
         if (!cls.collaboration_open) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.');
         if (cls.students_can_share === false) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.');
       }
-      return { world, canEdit: sharedEditAllowed(world, cls), isOwner: false, ownerName: rosterDisplayName(owner.roster_name), ownerClassId: owner.class_id };
+      return { world, canEdit: sharedEditAllowed(world, cls, owner), isOwner: false, ownerName: rosterDisplayName(owner.roster_name), ownerClassId: owner.class_id };
     }
     const cls = await this.classFor(caller, world.class_id);
     if (caller.role !== 'teacher') {
@@ -248,12 +250,13 @@ export class ClassroomService {
     const fromClassmates = await this.sharedWorldsOf(owners.map(row => row.user_id), `select=${WORLD_FIELDS}&order=updated_at.desc,id.asc${caller.role === 'teacher' ? '' : '&hidden_by_teacher=eq.false'}`);
     const names = new Map(owners.map(row => [row.user_id, rosterDisplayName(row.roster_name)]));
     const classOf = new Map(owners.map(row => [row.user_id, row.class_id as string]));
+    const ownerById = new Map(owners.map(row => [row.user_id as string, row]));
     const classById = new Map(sharingClasses.map(row => [row.id as string, row]));
     const view = (world: Row, canEdit: boolean, ownerName: string, ownerClassId: string | null) => worldView(world, { canEdit, ownerName, ownerClassId, teacher: caller.role === 'teacher' });
     return [
       ...mine.map(world => view(world, true, callerDisplayName(caller), caller.classId ?? null)),
       ...shared.map(world => view(world, true, 'Teacher', world.class_id)),
-      ...fromClassmates.map(world => view(world, sharedEditAllowed(world, classById.get(classOf.get(world.owner_id) ?? '')), names.get(world.owner_id) ?? 'Classmate', classOf.get(world.owner_id) ?? null)),
+      ...fromClassmates.map(world => view(world, sharedEditAllowed(world, classById.get(classOf.get(world.owner_id) ?? ''), ownerById.get(world.owner_id)), names.get(world.owner_id) ?? 'Classmate', classOf.get(world.owner_id) ?? null)),
     ];
   }
   /** Shared personal worlds owned by the given students, in bounded batches. IDs must come from the caller's own classes. */
@@ -304,12 +307,13 @@ export type Caller = { id: string; username: string; rosterName: string; role: '
 function classView(row: Row, code?: string, buildingNow: number | null = null) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, studentsCanShare: row.students_can_share !== false, buildingNow, teacherName: null, ...(code ? { code } : {}) }; }
 /**
  * Whether a non-owner may edit a shared personal world right now: shared with editing, not hidden by the teacher,
- * and the owner's class has collaboration open and sharing on. Mirrors the checks `brick_commit_world` makes, so the
- * teacher (who may still look in those states) is never offered an edit right the save would refuse.
+ * the owner not suspended, and the owner's class has collaboration open and sharing on. Mirrors the checks
+ * `brick_commit_world` makes, so the teacher (who may still look in those states) is never offered an edit right the
+ * save would refuse.
  */
-function sharedEditAllowed(world: Row, cls: Row | undefined): boolean {
+function sharedEditAllowed(world: Row, cls: Row | undefined, owner: Row | undefined): boolean {
   return world.class_visibility === 'class' && world.class_can_edit === true && world.hidden_by_teacher !== true
-    && cls?.collaboration_open === true && cls.students_can_share !== false;
+    && owner?.suspended !== true && cls?.collaboration_open === true && cls.students_can_share !== false;
 }
 /** Owner label for the caller's own worlds: students by first name and last initial, teachers as "Teacher". */
 function callerDisplayName(caller: Caller) { return caller.role === 'teacher' ? 'Teacher' : rosterDisplayName(caller.rosterName); }

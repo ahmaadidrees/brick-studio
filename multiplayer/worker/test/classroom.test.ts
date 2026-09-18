@@ -562,6 +562,23 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     const classmate = backend(ben, tables([shared({ class_can_edit: true })], { ...period3(), students_can_share: false }));
     expect((await classmate.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('sharing_disabled');
   });
+  it('keeps a suspended owner\'s shared world away from classmates by id and live join, look-only for the teacher', async () => {
+    const paused = (): Tables => ({ ...tables([shared({ class_can_edit: true })]), students: roster().map(row => row.user_id === avaId ? { ...row, suspended: true } : row) });
+    const classmate = backend(ben, paused());
+    expect((await classmate.call('GET', `worlds/${treehouse}`)).status).toBe(404);
+    expect((await classmate.call('POST', `worlds/${treehouse}/copy`)).status).toBe(404);
+    expect((await classmate.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).status).toBe(404);
+    await expect(classmate.service.worldAccess(ben, treehouse, true, true)).rejects.toMatchObject({ status: 404, code: 'not_found' });
+    expect((await classmate.service.listWorlds(ben)).map(row => row.id)).not.toContain(treehouse);
+    vi.restoreAllMocks();
+    const asTeacher = backend(teacher, paused());
+    await expect(asTeacher.service.worldAccess(teacher, treehouse, true, true)).resolves.toMatchObject({ canEdit: false, isOwner: false, ownerName: 'Ava R.' });
+    expect((await asTeacher.call('GET', `worlds/${treehouse}`)).body.world).toMatchObject({ canEdit: false, classCanEdit: true });
+    expect((await asTeacher.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('read_only');
+    expect((await asTeacher.service.listWorlds(teacher)).find(row => row.id === treehouse)).toMatchObject({ canEdit: false, classCanEdit: true });
+    // The owner keeps their own world; authenticate() is what refuses a suspended sign-in, not world access.
+    await expect(asTeacher.service.worldAccess(ava, treehouse, true, true)).resolves.toMatchObject({ canEdit: true, isOwner: true });
+  });
   it('lets the class teacher hide and show a shared world, and nobody else', async () => {
     const own = backend(teacher, tables([shared()]));
     const hidden = await own.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: true });

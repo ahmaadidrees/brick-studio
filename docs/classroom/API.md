@@ -191,7 +191,10 @@ suspended owners; the teacher sees every shared world of their classes with `hid
 editing, not hidden, and the owner's class has collaboration open and sharing on: the same conditions
 `brick_commit_world` checks on save, so a live session is never offered an edit the save would refuse
 (migration `202609190002_brick_teacher_edit_alignment.sql` aligns `brick_authorize_world`; the teacher
-may still look in those states).
+may still look in those states). A suspended owner's shared world is `404 not_found` for classmates by
+direct id, copy and live join, exactly as the listing already hides it; the class teacher may look but
+not edit, and `brick_commit_world` refuses every non-owner while the owner is suspended (the owner
+keeps their own world).
 
 - `PATCH worlds/:id/sharing` — owner only, student role, personal world. 403 `sharing_disabled`
   when the class has sharing off. `visibility:'private'` unshares (clears `canEdit` and `sharedAt`).
