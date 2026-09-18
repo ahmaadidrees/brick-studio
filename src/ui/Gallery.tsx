@@ -7,6 +7,7 @@ import { Select } from './Select'
 import { SegmentedControl } from './SegmentedControl'
 import { SaveStatus, type SaveStatusSource } from './SaveStatus'
 import { Dialog, Sheet } from './Sheet'
+import { AccountChip, AppHeader, WorldMenu, type ClassroomSessionState } from '../shell'
 import './gallery.css'
 
 /**
@@ -23,6 +24,10 @@ export function Gallery() {
         <h1 id="ui-gallery-title">Component gallery</h1>
         <p>{BRAND_NAME} direction I — tokens, mark, wordmark and the shared primitives. Every lane builds from these; nothing here is product UI.</p>
       </header>
+
+      <GallerySection id="app-header" title="App header" description="One header for every screen (src/shell/AppHeader). Things about my build sit beside its name; things about me sit in the top-right corner. Landing = lockup + page links + account chip; page = lockup, page title, actions, chip; editor = mark (Home), title + pencil, ⋯ This build menu, save pill, Scene / Character / People, Build | Explore pill, chip. Under 700px the editor keeps mark, title, save pill, mode switch and an icon-only chip on the first row and moves the tools to a second row.">
+        <AppHeaderExample />
+      </GallerySection>
 
       <GallerySection id="header" title="Compact header" description="64–72px. Brand/home, world title menu and true save state left; Scene, Character, People, Settings right; one primary Explore action at the far edge. Under 640px the wordmark drops and the actions wrap into a second row.">
         <HeaderExample />
@@ -154,6 +159,85 @@ function HeaderExample() {
             { value: 'offline', label: 'Offline' },
           ]}
         />
+      </div>
+    </div>
+  )
+}
+
+type GalleryRole = 'guest' | 'student' | 'teacher'
+
+const noop = async () => undefined
+const GALLERY_SESSIONS: Record<GalleryRole, ClassroomSessionState> = {
+  guest: { status: 'guest', signOut: noop, switchAccount: noop },
+  student: {
+    status: 'student',
+    user: { id: 'u1', username: 'ava', rosterName: 'Ava Rodriguez', role: 'student', resetRequired: false },
+    classes: [],
+    className: 'Period 2 — Builders',
+    displayName: 'Ava R.',
+    signOut: noop,
+    switchAccount: noop,
+  },
+  teacher: {
+    status: 'teacher',
+    user: { id: 't1', username: 'Teacher', rosterName: 'Ms. Okafor', role: 'teacher', resetRequired: false },
+    classes: [],
+    displayName: 'Ms. O.',
+    signOut: noop,
+    switchAccount: noop,
+  },
+}
+
+/** The shell header in its three variants, driven by a role switch, plus both menus open for review. */
+function AppHeaderExample() {
+  const [role, setRole] = useState<GalleryRole>('student')
+  const [mode, setMode] = useState<'build' | 'explore'>('build')
+  const [live, setLive] = useState(false)
+  const session = GALLERY_SESSIONS[role]
+  const stop = (event: { preventDefault: () => void }) => event.preventDefault()
+  return (
+    <div className="ui-gallery-stack" data-gallery="app-header">
+      <div className="ui-gallery-row ui-gallery-controls">
+        <SegmentedControl<GalleryRole> label="Signed in as" showLabel size="sm" value={role} onChange={setRole} options={[{ value: 'guest', label: 'Guest' }, { value: 'student', label: 'Student' }, { value: 'teacher', label: 'Teacher' }]} />
+        <SegmentedControl<'draft' | 'live'> label="Editor session" showLabel size="sm" value={live ? 'live' : 'draft'} onChange={(value) => setLive(value === 'live')} options={[{ value: 'draft', label: 'Own build' }, { value: 'live', label: 'Shared world (guest)' }]} />
+      </div>
+      <div className="ui-gallery-header-frame" data-variant="landing" onClickCapture={stop}>
+        <AppHeader variant="landing" session={session} navigation={<nav aria-label="Gallery landing links" className="ui-gallery-landing-nav"><a href="#app-header">How it works</a><a href="#app-header">For teachers</a><a href="#app-header">Teacher login</a></nav>} />
+      </div>
+      <div className="ui-gallery-header-frame" data-variant="page" onClickCapture={stop}>
+        <AppHeader variant="page" title="My worlds" session={session} actions={<Button variant="primary" size="sm">Start a shared world</Button>} />
+      </div>
+      <div className="ui-gallery-header-frame ui-gallery-header-frame-editor" data-variant="editor">
+        <AppHeader
+          variant="editor"
+          session={session}
+          worldTitle={role === 'guest' ? undefined : 'Desk Castle'}
+          onRenameWorld={role === 'guest' ? undefined : async () => undefined}
+          saveStatus={live ? { source: { kind: 'live', connection: 'online' } } : role === 'guest' ? { source: { kind: 'local' } } : { source: { kind: 'cloud', status: 'saved' } }}
+          livePolicy={live ? { connection: 'online', isOwner: false, roomTitle: 'Team Red', peopleCount: 4, onOpenPeople: () => undefined } : undefined}
+          mode={mode}
+          onRequestMode={setMode}
+          canExplore
+          onOpenWorldSetup={() => undefined}
+          onStartLiveWorld={() => undefined}
+          onNewBuild={() => undefined}
+          onImportProject={() => undefined}
+          onExportProject={() => undefined}
+          onOpenSettings={() => undefined}
+          onOpenHelp={() => undefined}
+          onSaveToAccount={role === 'student' ? () => undefined : undefined}
+          onGoHome={() => undefined}
+        />
+      </div>
+      <div className="ui-gallery-menus">
+        <div className="ui-gallery-menu-slot">
+          <span className="ui-gallery-note">This build menu</span>
+          <WorldMenu defaultOpen onRename={() => undefined} onExportProject={() => undefined} onImportProject={() => undefined} onNewBuild={() => undefined} onOpenSettings={() => undefined} onOpenHelp={() => undefined} />
+        </div>
+        <div className="ui-gallery-menu-slot ui-gallery-menu-slot-end" onClickCapture={stop}>
+          <span className="ui-gallery-note">Account menu ({role === 'guest' ? 'signed out' : role})</span>
+          <AccountChip session={session} context="editor" onSaveToAccount={() => undefined} menuDefaultOpen={role !== 'guest'} />
+        </div>
       </div>
     </div>
   )
