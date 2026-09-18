@@ -1,0 +1,263 @@
+{
+  "origin": "http://localhost:5292",
+  "generatedAt": "2026-09-18T01:43:07.506Z",
+  "checks": [
+    {
+      "name": "gallery 1366x768 no horizontal overflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 This build slot opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 opening the account slot closes the other menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 header targets under 44px (mouse, informational)",
+      "ok": true,
+      "detail": "editor: Rename world 36x36"
+    },
+    {
+      "name": "gallery 1366x768 ⋯ opens on ArrowDown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 ⋯ focuses the first item",
+      "ok": true,
+      "detail": "Rename"
+    },
+    {
+      "name": "gallery 1366x768 ⋯ ArrowDown moves",
+      "ok": true,
+      "detail": "Download build"
+    },
+    {
+      "name": "gallery 1366x768 ⋯ popover inside viewport",
+      "ok": true,
+      "detail": "{\"x\":283.828125,\"y\":306.53125,\"width\":272,\"height\":306.5625}"
+    },
+    {
+      "name": "gallery 1366x768 ⋯ Escape closes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 ⋯ Escape returns focus",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 account menu opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 account popover inside viewport",
+      "ok": true,
+      "detail": "{\"x\":998,\"y\":306.53125,\"width\":272,\"height\":321.78125}"
+    },
+    {
+      "name": "gallery 1366x768 account Escape closes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1366x768 mode pill switches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 no horizontal overflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 This build slot opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 opening the account slot closes the other menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 header targets under 44px (mouse, informational)",
+      "ok": true,
+      "detail": "editor: Rename world 36x36"
+    },
+    {
+      "name": "gallery 1024x768 ⋯ opens on ArrowDown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 ⋯ focuses the first item",
+      "ok": true,
+      "detail": "Rename"
+    },
+    {
+      "name": "gallery 1024x768 ⋯ ArrowDown moves",
+      "ok": true,
+      "detail": "Download build"
+    },
+    {
+      "name": "gallery 1024x768 ⋯ popover inside viewport",
+      "ok": true,
+      "detail": "{\"x\":163.265625,\"y\":306.53125,\"width\":272,\"height\":306.5625}"
+    },
+    {
+      "name": "gallery 1024x768 ⋯ Escape closes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 ⋯ Escape returns focus",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 account menu opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 account popover inside viewport",
+      "ok": true,
+      "detail": "{\"x\":719,\"y\":306.53125,\"width\":272,\"height\":321.78125}"
+    },
+    {
+      "name": "gallery 1024x768 account Escape closes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 1024x768 mode pill switches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 no horizontal overflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 This build slot opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 opening the account slot closes the other menu",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 header targets ≥ 44px",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 ⋯ opens on ArrowDown",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 ⋯ focuses the first item",
+      "ok": true,
+      "detail": "Rename"
+    },
+    {
+      "name": "gallery 390x844 ⋯ ArrowDown moves",
+      "ok": true,
+      "detail": "Download build"
+    },
+    {
+      "name": "gallery 390x844 ⋯ popover inside viewport",
+      "ok": true,
+      "detail": "{\"x\":112.6875,\"y\":450.25,\"width\":272,\"height\":306.5625}"
+    },
+    {
+      "name": "gallery 390x844 ⋯ Escape closes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 ⋯ Escape returns focus",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 account menu opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 account popover inside viewport",
+      "ok": true,
+      "detail": "{\"x\":97,\"y\":450.25,\"width\":272,\"height\":321.78125}"
+    },
+    {
+      "name": "gallery 390x844 account Escape closes",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "gallery 390x844 mode pill switches",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 1366x768 no horizontal overflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 1366x768 chip → /join?mode=signin",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 1024x768 no horizontal overflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 1024x768 chip → /join?mode=signin",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 390x844 no horizontal overflow",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 390x844 chip → /join?mode=signin",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 390x844 chip ≥ 44px",
+      "ok": true,
+      "detail": "{\"x\":314.65625,\"y\":14,\"width\":44,\"height\":44}"
+    },
+    {
+      "name": "landing 390x844 mobile menu opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "landing 390x844 Escape returns focus to Menu",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "errors": [],
+  "ok": true
+}
