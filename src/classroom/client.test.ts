@@ -130,11 +130,13 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     expect(createMockClient().getSession()).toBeNull()
     const student = createMockClient({ as: 'student' })
     expect(student.getSession()?.user).toMatchObject({ role: 'student', rosterName: 'Ava Rivera' })
-    expect(student.getSession()?.classes[0]).toMatchObject({ name: 'Period 3 Makers', studentsCanShare: true, showNamesOnJoin: true })
+    expect(student.getSession()?.classes[0]).toMatchObject({ name: 'Period 3 Makers', studentsCanShare: true, showNamesOnJoin: true, teacherName: 'Mr. Idrees', buildingNow: null })
+    expect((await student.listClasses())[0].buildingNow).toBeNull()
     expect(student.getSession()?.classes[0]).not.toHaveProperty('code')
     const teacher = createMockClient({ as: 'teacher' })
     expect(teacher.getSession()?.user).toMatchObject({ role: 'teacher', rosterName: 'Mr. Idrees' })
     expect(teacher.getSession()?.classes[0].code).toBe(MOCK_CLASS_CODE)
+    expect((await teacher.listClasses())[0]).toMatchObject({ buildingNow: 3, teacherName: 'Mr. Idrees' })
     const changes = vi.fn(); const off = student.subscribe(changes)
     await student.signOut(); expect(student.getSession()).toBeNull(); expect(changes).toHaveBeenCalledTimes(1)
     off()
@@ -144,11 +146,12 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     const client = createMockClient({ as: 'student' })
     const worlds = await client.listWorlds()
     expect(worlds.map(w => w.title)).toEqual(['Treehouse Hideout', 'Rainbow Rocket', 'Lava Maze', 'Our Town', 'Bridge Team', 'Sky Bridge', 'Crystal Castle'])
-    expect(worlds.find(w => w.title === 'Sky Bridge')).toMatchObject({ visibility: 'class', canEdit: true, ownerName: 'Ben K.', kind: 'personal' })
-    expect(worlds.find(w => w.title === 'Crystal Castle')).toMatchObject({ visibility: 'class', canEdit: false, ownerName: 'Chloe M.' })
-    expect(worlds.find(w => w.title === 'Treehouse Hideout')).toMatchObject({ visibility: 'private', canEdit: true, ownerName: 'Ava R.', sharedAt: null })
+    expect(worlds.find(w => w.title === 'Sky Bridge')).toMatchObject({ visibility: 'class', canEdit: true, classCanEdit: true, ownerName: 'Ben K.', ownerClassId: MOCK_IDS.classId, kind: 'personal' })
+    expect(worlds.find(w => w.title === 'Crystal Castle')).toMatchObject({ visibility: 'class', canEdit: false, classCanEdit: false, ownerName: 'Chloe M.' })
+    expect(worlds.find(w => w.title === 'Treehouse Hideout')).toMatchObject({ visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: MOCK_IDS.classId, sharedAt: null })
+    expect(worlds.find(w => w.title === 'Rainbow Rocket')).toMatchObject({ canEdit: true, classCanEdit: false })
     expect(worlds.find(w => w.title === 'Rainbow Rocket')?.sharedAt).toEqual(expect.any(String))
-    expect(worlds.find(w => w.title === 'Our Town')).toMatchObject({ kind: 'class', ownerName: 'Teacher', canEdit: true })
+    expect(worlds.find(w => w.title === 'Our Town')).toMatchObject({ kind: 'class', ownerName: 'Teacher', canEdit: true, classCanEdit: true, ownerClassId: MOCK_IDS.classId })
     expect(worlds.every(w => !('hiddenByTeacher' in w))).toBe(true)
   })
   it('shows the teacher every shared student world including hidden ones with the flag', async () => {
@@ -219,5 +222,72 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     expect(restored).toMatchObject({ title: 'Lava Maze', revision: 5 })
     expect((await client.request<{ worlds: unknown[] }>('/worlds')).worlds).toHaveLength(8)
     await expect(client.request('/worlds/' + MOCK_IDS.worlds.town + '/members')).resolves.toMatchObject({ members: expect.arrayContaining([{ id: MOCK_IDS.ava, username: 'ava_builds' }]) })
+  })
+})
+
+describe('typed classroom calls (the surface pages use; the mock client mirrors it)', () => {
+  const world = { id: 'w1', title: 'Treehouse', ownerId: 'student1', classId: null, kind: 'personal', revision: 3, updatedAt: '2026-09-16T10:00:00Z', visibility: 'class', canEdit: true, classCanEdit: false, ownerName: 'Alex R.', ownerClassId: 'c1', sharedAt: '2026-09-15T10:00:00Z' }
+  function calls() {
+    const fetcher = vi.fn().mockImplementation((url: string) => Promise.resolve(json(url.endsWith('/worlds') ? { worlds: [world] } : url.includes('/classes') ? { classes: [], class: { id: 'c1' }, students: [] } : url.includes('checkpoints') ? { checkpoints: [] } : { world: { ...world, document: { schemaVersion: 2 } } })))
+    const client = new ClassroomClient('https://classroom.test', fetcher); client.setSession(auth)
+    const sent = () => fetcher.mock.calls.map(([url, init]) => [url.replace('https://classroom.test/classroom', ''), init.method, init.body ? JSON.parse(init.body) : undefined])
+    return { client, sent, fetcher }
+  }
+  it('sends sharing, hiding and copying to the contract routes', async () => {
+    const { client, sent } = calls()
+    expect(await client.setWorldSharing('w1', { visibility: 'class', canEdit: false })).toMatchObject({ id: 'w1', visibility: 'class' })
+    await client.setWorldHidden('w1', true)
+    await client.copyWorld('w1')
+    expect(sent()).toEqual([
+      ['/worlds/w1/sharing', 'PATCH', { visibility: 'class', canEdit: false }],
+      ['/worlds/w1/visibility', 'PATCH', { hiddenByTeacher: true }],
+      ['/worlds/w1/copy', 'POST', undefined],
+    ])
+  })
+  it('wraps the list, world, class and student routes and unwraps their envelopes', async () => {
+    const { client, sent } = calls()
+    expect(await client.listWorlds()).toEqual([world])
+    await client.listClasses(); await client.listStudents('c1'); await client.me()
+    expect(await client.getWorld('w1')).toMatchObject({ document: { schemaVersion: 2 } })
+    await client.createWorld({ title: 'New', document: { schemaVersion: 2 } as never })
+    await client.saveWorld('w1', { expectedRevision: 3, document: { schemaVersion: 2 } as never })
+    await client.renameWorld('w1', 'Renamed')
+    await client.duplicateWorld('w1')
+    await client.listCheckpoints('w1')
+    await client.restoreWorld('w1', 'cp1')
+    expect(await client.updateClass('c1', { studentsCanShare: false, showNamesOnJoin: true })).toEqual({ id: 'c1' })
+    await client.createClass('Period 4')
+    await client.updateStudent('c1', 's1', { suspended: true })
+    expect(sent()).toEqual([
+      ['/worlds', 'GET', undefined], ['/classes', 'GET', undefined], ['/classes/c1/students', 'GET', undefined], ['/me', 'GET', undefined],
+      ['/worlds/w1', 'GET', undefined],
+      ['/worlds', 'POST', { kind: 'personal', title: 'New', document: { schemaVersion: 2 } }],
+      ['/worlds/w1', 'PUT', { expectedRevision: 3, document: { schemaVersion: 2 } }],
+      ['/worlds/w1', 'PATCH', { title: 'Renamed' }],
+      ['/worlds/w1', 'GET', undefined], ['/worlds', 'POST', { kind: 'personal', title: 'Treehouse copy', document: { schemaVersion: 2 } }],
+      ['/worlds/w1/checkpoints', 'GET', undefined],
+      ['/worlds/w1', 'GET', undefined], ['/worlds/w1/restore', 'POST', { checkpointId: 'cp1', expectedRevision: 3 }],
+      ['/classes/c1', 'PATCH', { studentsCanShare: false, showNamesOnJoin: true }],
+      ['/classes', 'POST', { name: 'Period 4' }],
+      ['/classes/c1/students/s1', 'PATCH', { suspended: true }],
+    ])
+  })
+  it('registers with an upper-cased class code and an optional roster name, and resolves a class code publicly', async () => {
+    const fetcher = vi.fn().mockImplementation((url: string) => Promise.resolve(json(url.endsWith('/auth/class') ? { name: 'Studio 5', canEnroll: true } : auth)))
+    const client = new ClassroomClient('https://classroom.test', fetcher)
+    await client.register({ classCode: ' makers3 ', username: ' ava ', password: 'remember-this', rosterName: ' Ava Rivera ' })
+    expect(JSON.parse(fetcher.mock.calls[0][1].body)).toEqual({ classCode: 'MAKERS3', username: 'ava', password: 'remember-this', rosterName: 'Ava Rivera' })
+    expect(client.getSession()).toEqual(auth)
+    await client.register({ classCode: 'makers3', username: 'ben', password: 'remember-this', rosterName: '  ' })
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).not.toHaveProperty('rosterName')
+    const signedOut = new ClassroomClient('https://classroom.test', fetcher); signedOut.setSession(null)
+    await expect(signedOut.resolveClass('makers3')).resolves.toEqual({ name: 'Studio 5', canEnroll: true })
+    expect(fetcher.mock.calls[2][0]).toBe('https://classroom.test/classroom/auth/class')
+    expect(fetcher.mock.calls[2][1].headers).not.toHaveProperty('Authorization')
+  })
+  it('builds the invite link and QR target as /join?classCode=', async () => {
+    const { classJoinHref } = await import('./client')
+    expect(classJoinHref(' makers3 ', 'https://brickgineers.com')).toBe('https://brickgineers.com/join?classCode=MAKERS3')
+    expect(new URL(classJoinHref('ROOM42')).pathname).toBe('/join')
   })
 })
