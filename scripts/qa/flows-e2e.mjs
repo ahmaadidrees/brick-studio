@@ -17,7 +17,7 @@
  * Re-run: see docs/flows/qa/w7/RESULTS.md ("Commands"). Exit code 1 on any failed step; blocked steps do not fail.
  */
 import assert from 'node:assert/strict'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { hostSnapshot, launchOptions, loadChromium, localOrigin, outputDir } from './lib/env.mjs'
 import { ONBOARDING_KEY, PROJECT_KEY, loadLocators, makeLocate } from './lib/ui.mjs'
@@ -28,6 +28,8 @@ const classroomApi = (process.env.CLASSROOM_API || 'http://127.0.0.1:8798').repl
 const liveApi = (process.env.LIVE_API || 'http://127.0.0.1:8797').replace(/\/+$/, '')
 const output = await outputDir('QA_OUTPUT', 'docs/flows/qa/w7/e2e')
 const locate = makeLocate(await loadLocators())
+// Evidence is numbered per run: drop the previous run's screenshots so stale ones never read as current.
+for (const file of await readdir(output).catch(() => [])) if (/\.(jpeg|png)$/.test(file)) await rm(path.join(output, file))
 const SESSION_KEY = 'brick-studio.classroom-session.v1'
 const stamp = Date.now().toString(36).slice(-4)
 
@@ -366,7 +368,7 @@ try {
     await card.getByRole('button', { name: 'Sharing…', exact: true }).click()
     const sheet = locate(S, 'worldsShareSheet'); await sheet.waitFor()
     await sheet.getByRole('radio', { name: /^Classmates can build with me/ }).check()
-    await sheet.getByRole('button', { name: 'Share', exact: true }).click()
+    await sheet.getByRole('button', { name: 'Save sharing', exact: true }).click()
     await sheet.waitFor({ state: 'hidden' })
     await card.getByText('build together').waitFor()
     const mine = (await worldsOf(await tokenOf(S))).find((w) => w.id === worldId)

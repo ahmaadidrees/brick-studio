@@ -99,8 +99,7 @@ async function runCase(browser, testCase) {
     await page.waitForTimeout(500)
     await check('after-reload', await exportDocument(page, locate))
 
-    await locate(page, 'worldMenu').first().click()
-    await locate(page, 'menuHome').first().click()
+    await locate(page, 'brandHome').first().click()
     await locate(page, 'continueBuilding').first().waitFor({ state: 'visible', timeout: 20000 })
     await page.screenshot({ path: path.join(output, `${testCase.id}-home.png`) })
     await locate(page, 'continueBuilding').first().click()

@@ -1,30 +1,13 @@
 {
-  "_comment": "Role/label locators for the brand QA harnesses (scripts/qa/lib/ui.mjs makeLocate). Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText, `css` uses page.locator (only for controls whose accessible name is not stable, e.g. the save chip). Names verified in the DOM of the integrated candidate 7083387.",
+  "_comment": "Role/label locators for the brand QA harnesses (scripts/qa/lib/ui.mjs makeLocate). Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText, `css` uses page.locator (only for controls whose accessible name is not stable, e.g. the save chip). Names verified in the DOM of the integrated candidate 7083387. Editor chrome names follow W6 (claude/flows-v2 a384435): the ⋯ menu is the button/menu \"This build\"; Settings/Help are menu items there; camera cluster is group \"Camera view\"; My worlds / My class live in the Account menu.",
   "worldMenu": {
     "role": "button",
-    "name": "World menu"
+    "name": "This build",
+    "_note": "W6: the ⋯ menu trigger beside the world title (was \"World menu\")."
   },
   "studioMenu": {
     "role": "menu",
-    "name": "Studio actions"
-  },
-  "menuHome": {
-    "role": "menuitem",
-    "name": {
-      "regex": "^Home"
-    }
-  },
-  "menuMyWorlds": {
-    "role": "menuitem",
-    "name": {
-      "regex": "^My Worlds"
-    }
-  },
-  "menuMyClass": {
-    "role": "menuitem",
-    "name": {
-      "regex": "^My Class"
-    }
+    "name": "This build"
   },
   "menuImport": {
     "role": "menuitem",
@@ -37,8 +20,9 @@
     "_note": "SaveStatus primitive: role=status + data-kind=local|cloud|shared; its accessible name is the human label/detail, so it is matched by attribute."
   },
   "settings": {
-    "role": "button",
-    "name": "Settings"
+    "role": "menuitem",
+    "name": "Settings",
+    "_note": "Build header: This build → Settings. The Explore HUD keeps a button named Settings (exploreSettings)."
   },
   "settingsDialog": {
     "role": "dialog",
@@ -69,10 +53,9 @@
     "name": "Apply"
   },
   "exploreMode": {
-    "role": "button",
-    "name": {
-      "regex": "^Explore( mode)?$"
-    }
+    "role": "radio",
+    "name": "Explore",
+    "_note": "W6/W2: the Build | Explore pill (SegmentedControl radios); Explore HUD's return is still button \"Back to building\"."
   },
   "backToBuilding": {
     "role": "button",
@@ -258,9 +241,7 @@
   },
   "menuHelp": {
     "role": "menuitem",
-    "name": {
-      "regex": "^Help"
-    }
+    "name": "Help"
   },
   "inviteLink": {
     "role": "region",
@@ -440,7 +421,10 @@
   },
   "worldsShareConfirm": {
     "role": "button",
-    "name": "Share"
+    "name": {
+      "regex": "^(Share|Save sharing)$"
+    },
+    "_note": "\"Save sharing\" when the world is already shared."
   },
   "worldsStopSharing": {
     "role": "button",
@@ -668,5 +652,96 @@
     "name": {
       "regex": "Cannot open this (classroom )?world|This world needs a class sign-in|Opening your classroom world"
     }
+  },
+  "menuRename": {
+    "role": "menuitem",
+    "name": "Rename"
+  },
+  "menuNewBuild": {
+    "role": "menuitem",
+    "name": "New build"
+  },
+  "menuSettings": {
+    "role": "menuitem",
+    "name": "Settings"
+  },
+  "exploreSettings": {
+    "role": "button",
+    "name": "Settings"
+  },
+  "closeSettings": {
+    "role": "button",
+    "name": "Close settings"
+  },
+  "modeSwitch": {
+    "role": "radiogroup",
+    "name": "Studio mode"
+  },
+  "modeBuild": {
+    "role": "radio",
+    "name": "Build"
+  },
+  "modeExplore": {
+    "role": "radio",
+    "name": "Explore"
+  },
+  "accountChip": {
+    "role": "button",
+    "name": {
+      "regex": "^Account: "
+    }
+  },
+  "accountSignIn": {
+    "role": "link",
+    "name": "Sign in"
+  },
+  "accountMenu": {
+    "role": "menu",
+    "name": "Account"
+  },
+  "accountSaveToAccount": {
+    "role": "menuitem",
+    "name": "Save this build to my account"
+  },
+  "cameraCluster": {
+    "role": "group",
+    "name": "Camera view"
+  },
+  "cameraFrame": {
+    "role": "button",
+    "name": "Frame build"
+  },
+  "historyUndo": {
+    "role": "button",
+    "name": "Undo"
+  },
+  "historyRedo": {
+    "role": "button",
+    "name": "Redo"
+  },
+  "boxSelect": {
+    "role": "button",
+    "name": "Box select bricks"
+  },
+  "jumpToBrick": {
+    "role": "combobox",
+    "name": "Jump to brick"
+  },
+  "commandStrip": {
+    "css": "[data-testid=\"command-strip\"]"
+  },
+  "brushColor": {
+    "role": "group",
+    "name": "Brush color"
+  },
+  "stripColorDialog": {
+    "role": "dialog",
+    "name": {
+      "regex": "^(Brick color|Color all \\d+ bricks)$"
+    }
+  },
+  "stripAdjust": {
+    "role": "button",
+    "name": "Adjust"
   }
 }
