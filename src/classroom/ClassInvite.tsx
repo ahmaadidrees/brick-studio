@@ -1,3 +1,4 @@
+import { classJoinHref } from './client'
 import { useEffect, useState } from 'react'
 import { Monitor } from 'lucide-react'
 import { Button, Sheet } from '../ui'
@@ -16,10 +17,8 @@ export function ClassInvite({ classroom, defaultOpen = false }: Props) {
   const [projectorQr, setProjectorQr] = useState('')
   const [copied, setCopied] = useState(false)
   const code = classroom.code || classroom.loginCode
-  const url = new URL('/build', window.location.origin)
-  url.searchParams.set('classroom', 'signin')
-  url.searchParams.set('classCode', code)
-  const href = url.toString()
+  // Invites land on account creation: /join?classCode=<code> (contract v2).
+  const href = classJoinHref(code)
   useEffect(() => {
     let active = true
     setQr(''); setCopied(false)

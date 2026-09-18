@@ -7,7 +7,7 @@ afterEach(cleanup)
 
 const student: ClassroomAuthResult = {
   user: { id: 'u1', username: 'ava', rosterName: 'Ava Rodriguez', role: 'student', resetRequired: false },
-  classes: [{ id: 'c1', name: 'Period 2 — Builders', loginCode: 'AB7X', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true }],
+  classes: [{ id: 'c1', name: 'Period 2 — Builders', loginCode: 'AB7X', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, buildingNow: null, teacherName: null }],
   session: { accessToken: 'a', refreshToken: 'r', expiresIn: 3600 },
 }
 

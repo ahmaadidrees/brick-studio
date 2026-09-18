@@ -13,7 +13,7 @@ import type { ClassroomAuthResult, ClassroomWorld } from './contracts'
 const auth: ClassroomAuthResult = { user: { id: 'a', username: 'builder', rosterName: 'Alex', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 3600 } }
 const guest = createBrickStudioDocument([], { environmentId: 'toy-room' })
 const cloud = createBrickStudioDocument([], { environmentId: 'sky-island' })
-const world: ClassroomWorld = { id: 'world-a', title: 'A world', ownerId: 'a', classId: null, kind: 'personal', revision: 1, updatedAt: '2026-09-09', document: cloud }
+const world: ClassroomWorld = { id: 'world-a', title: 'A world', ownerId: 'a', classId: null, kind: 'personal', revision: 1, updatedAt: '2026-09-09', visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Owner', ownerClassId: null, sharedAt: null, document: cloud }
 beforeEach(() => {
   vi.useFakeTimers(); sessionStorage.clear()
   const entries = new Map<string,string>()
