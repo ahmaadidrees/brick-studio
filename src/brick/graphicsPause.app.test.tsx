@@ -73,7 +73,7 @@ describe('editing while the graphics are paused', () => {
     render(<BrickStudioApp />)
     // Grab the visible selection action before pausing; inert subtrees leave role queries.
     const deleteButton = screen.getByRole('button', { name: 'Delete brick' })
-    const inspector = deleteButton.closest('aside')
+    const inspector = deleteButton.closest('.command-strip')
     expect(inspector).not.toBeNull()
 
     act(() => useBrickStore.getState().setGraphicsPaused(true))
