@@ -21,8 +21,20 @@ type Props = {
   storage?: Pick<Storage, 'getItem'>
 }
 
-/** Dev-only preview clients for the QA screenshots: `/worlds?demo=student|teacher`. */
+let resolvedDefault: WorldsClient | null = null
+
+/**
+ * Dev-only preview clients for the QA screenshots: `/worlds?demo=student|teacher`.
+ * Resolved once per document: a fresh client on every render would resubscribe
+ * and reload in a loop.
+ */
 function defaultClient(): WorldsClient {
+  if (resolvedDefault) return resolvedDefault
+  resolvedDefault = pickDefaultClient()
+  return resolvedDefault
+}
+
+function pickDefaultClient(): WorldsClient {
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     const demo = new URLSearchParams(window.location.search).get('demo')
     if (demo === 'student') return createFakeWorldsClient()
@@ -54,7 +66,11 @@ function useNarrow(query = '(max-width: 1024px)') {
  * default); the teacher's variant swaps the rail for their classes and can start
  * shared worlds. Signed-out visitors go to sign-in and come back here.
  */
-export default function WorldsPage({ client = defaultClient(), navigate = href => window.location.replace(href), storage }: Props) {
+export default function WorldsPage({ client: injectedClient, navigate: injectedNavigate, storage }: Props) {
+  // Both defaults must stay referentially stable: they feed a store subscription
+  // and an effect that would otherwise re-run on every render.
+  const client = useMemo(() => injectedClient ?? defaultClient(), [injectedClient])
+  const navigate = useMemo(() => injectedNavigate ?? ((href: string) => window.location.replace(href)), [injectedNavigate])
   const session = useSyncExternalStore(client.subscribe, client.getSession, client.getSession)
   const [worlds, setWorlds] = useState<WorldsWorld[]>([])
   const [classes, setClasses] = useState<WorldsClass[]>([])

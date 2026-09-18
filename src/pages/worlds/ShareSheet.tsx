@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Sheet } from '../../ui'
-import { isShared, type WorldSharing, type WorldsWorld } from './worldsData'
+import { isShared, sharedForBuilding, type WorldSharing, type WorldsWorld } from './worldsData'
 
 type Props = {
   world: WorldsWorld
@@ -19,9 +19,9 @@ type Props = {
  */
 export function ShareSheet({ world, className, busy, onShare, onStopSharing, onClose }: Props) {
   const sharing = isShared(world)
-  const [canEdit, setCanEdit] = useState(sharing ? Boolean(world.canEdit) : false)
+  const [canEdit, setCanEdit] = useState(sharing ? sharedForBuilding(world) : false)
   const first = useRef<HTMLInputElement>(null)
-  useEffect(() => { setCanEdit(sharing ? Boolean(world.canEdit) : false) }, [world.id, sharing, world.canEdit])
+  useEffect(() => { setCanEdit(sharing ? sharedForBuilding(world) : false) }, [world.id, sharing, world.classCanEdit, world.canEdit])
 
   return <Sheet
     open

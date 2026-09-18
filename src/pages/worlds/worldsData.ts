@@ -11,7 +11,14 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
  */
 export type WorldsWorld = ClassroomWorld & {
   visibility?: 'private' | 'class'
+  /** What the CALLER may do with this world; an owner is always true. */
   canEdit?: boolean
+  /**
+   * What the owner let classmates do (`brick_worlds.class_can_edit`). The owner's
+   * own `canEdit` cannot answer that, so the card and the share sheet read this;
+   * it falls back to `canEdit` for a caller who is not the owner.
+   */
+  classCanEdit?: boolean
   ownerName?: string
   sharedAt?: string | null
   hiddenByTeacher?: boolean
@@ -106,6 +113,8 @@ export const signInHref = (next = '/worlds') => `/join?mode=signin&next=${encode
 
 export const isMine = (world: WorldsWorld, userId: string) => world.kind === 'personal' && world.ownerId === userId
 export const isShared = (world: WorldsWorld) => world.visibility === 'class'
+/** True when classmates may build in this world, from the owner's point of view. */
+export const sharedForBuilding = (world: WorldsWorld) => world.classCanEdit ?? Boolean(world.canEdit)
 export const plateSizeOf = (world: WorldsWorld): BuildPlateSize =>
   BUILD_PLATE_SIZES.find(size => size === world.document?.plateSize) ?? DEFAULT_BUILD_PLATE_SIZE
 

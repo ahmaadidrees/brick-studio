@@ -33,8 +33,8 @@ const world = (world: Partial<WorldsWorld> & Pick<WorldsWorld, 'id' | 'title' | 
 /** Three own worlds: one private, one shared look-only, one shared build-together. */
 export const FIXTURE_MY_WORLDS: WorldsWorld[] = [
   world({ id: 'mine-1', title: 'Treehouse village', ownerId: 'student-1', updatedAt: day(0), canEdit: true, visits: 0 }),
-  world({ id: 'mine-2', title: 'Rocket launch pad', ownerId: 'student-1', updatedAt: day(2), canEdit: true, visibility: 'class', sharedAt: day(1), visits: 7 }),
-  world({ id: 'mine-3', title: 'Castle on the hill', ownerId: 'student-1', updatedAt: day(6), canEdit: true, visibility: 'class', sharedAt: day(5), visits: 3 }),
+  world({ id: 'mine-2', title: 'Rocket launch pad', ownerId: 'student-1', updatedAt: day(2), canEdit: true, classCanEdit: true, visibility: 'class', sharedAt: day(1), visits: 7 }),
+  world({ id: 'mine-3', title: 'Castle on the hill', ownerId: 'student-1', updatedAt: day(6), canEdit: true, classCanEdit: false, visibility: 'class', sharedAt: day(5), visits: 3 }),
 ]
 
 /** Four classmates' shared personal worlds; two invite building, two are look-only. */
@@ -100,7 +100,7 @@ export function createFakeWorldsClient({ session = studentSession, worlds, class
     },
     listCheckpoints: async () => checkpoints.map(item => ({ ...item })),
     restoreCheckpoint: async id => patch(id, { revision: (list.find(item => item.id === id)?.revision ?? 1) + 1 }),
-    setWorldSharing: async (id, sharing) => patch(id, { ...sharing, sharedAt: sharing.visibility === 'class' ? new Date().toISOString() : null }),
+    setWorldSharing: async (id, sharing) => patch(id, { visibility: sharing.visibility, classCanEdit: sharing.canEdit, sharedAt: sharing.visibility === 'class' ? new Date().toISOString() : null }),
     setWorldHidden: async (id, hiddenByTeacher) => patch(id, { hiddenByTeacher }),
     copyWorld: async id => {
       const source = list.find(item => item.id === id)

@@ -36,6 +36,9 @@ describe('student', () => {
     expect(within(card).getByText(/Shared · build together/)).toBeInTheDocument()
     expect(within(card).getByRole('button', { name: 'Sharing…' })).toBeInTheDocument()
 
+    // canEdit is caller-scoped (an owner is always true); the chip reads classCanEdit.
+    expect(within(screen.getByRole('article', { name: 'Castle on the hill' })).getByText(/Shared · look only/)).toBeInTheDocument()
+
     const priv = screen.getByRole('article', { name: 'Treehouse village' })
     expect(within(priv).getByRole('button', { name: 'Share with my class' })).toBeInTheDocument()
     expect(within(priv).queryByText(/Shared ·/)).not.toBeInTheDocument()
@@ -114,6 +117,7 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('article', { name: 'Rocket launch pad' })).getByRole('button', { name: 'Sharing…' }))
+    expect(within(screen.getByRole('dialog')).getByRole('radio', { name: /build with me/ })).toBeChecked()
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Stop sharing' }))
 
     await waitFor(() => expect(setWorldSharing).toHaveBeenCalledWith('mine-2', { visibility: 'private', canEdit: false }))

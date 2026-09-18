@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Users } from 'lucide-react'
 import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
-import { buildHref, isShared, plateSizeOf, type WorldsWorld } from './worldsData'
+import { buildHref, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
  * Plate-pattern card art. There are no thumbnails, so the card shows the build
@@ -30,7 +30,7 @@ export function PlateArt({ world }: { world: WorldsWorld }) {
 export function SharingChip({ world }: { world: WorldsWorld }) {
   if (!isShared(world)) return null
   return <span className="worlds-chip-tag worlds-chip-shared">
-    <Users size={14} aria-hidden="true" /> Shared · {world.canEdit ? 'build together' : 'look only'}
+    <Users size={14} aria-hidden="true" /> Shared · {sharedForBuilding(world) ? 'build together' : 'look only'}
     {typeof world.visits === 'number' && world.visits > 0 && <span className="worlds-visits"> · {world.visits} {world.visits === 1 ? 'visit' : 'visits'}</span>}
   </span>
 }
