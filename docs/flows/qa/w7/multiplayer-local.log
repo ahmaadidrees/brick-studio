@@ -1,0 +1,88 @@
+Brickgineers
+BUILD TOGETHER
+Build together.
+
+Start a shared world from this build.
+
+Toy Room · scene illustration
+World name
+Your name
+
+Everyone in the room sees this name.
+
+Create shared world
+
+No account needed. Guest rooms are temporary and hold up to 32 builders.
+
+Temporary room. Expires after 2 hours without activity. Download a copy from People before you leave to keep your build.
+
+Keep building
+CREATED d15e822835fe6a5f430066be65a4941d ws://127.0.0.1:8797/worlds/d15e822835fe6a5f430066be65a4941d/connect
+SCENE UI Scene & character
+
+Choose a scene and customize the character you explore as.
+
+Close without applying
+MAKE IT YOURS
+Scene
+Character
+YOUR SETTING
+Choose your scene
+Classic Studio
+
+Each scene gives your build a different backdrop and feeling.
+
+Classic Studio
+The bright, familiar studio build plate.
+Toy Room
+Explore your build on a play table inside a warm bedroom diorama.
+Brick Valley
+A colorful landscape built entirely from giant toy-brick forms.
+Sky Island
+A floating meadow with waterfalls, clouds, ruins, and distant islands.
+Build plate
+NOW 64 × 64
+
+Choose the size for your building space.
+
+64 × 64
+96 × 96
+128 × 128
+
+Your creation stays centered.
+
+Classic Studio · Classic Builder
+Cancel
+Apply
+AUTH {"roomId":"d15e822835fe6a5f430066be65a4941d","title":"Disposable release QA","revision":3,"mode":"build","locked":false,"document":{"schemaVersion":3,"plateSize":128,"partLibraryVersion":1,"environmentId":"classic","customParts":[],"bricks":[{"id":"brick-1789767113124-m8gtcx","partId":"brick_1x1","x":126,"y":0,"z":63,"rotation":0,"color":"#3e83d7"}]},"players":[{"playerId":"live_be22c8f5-9672-4761-93a9-4938ecc304a3","isOwner":false,"profile":{"displayName":"QA Peer","characterId":"classic","appearance":{"body":"classic","face":"friendly","hair":"cap","outfit":"explorer","accessory":"none","skinColor":"#f0bd86","hairColor":"#593c2e"}}},{"playerId":"live_6509a9ea-615a-43d7-84aa-78b060a3034d","isOwner":true,"profile":{"displayName":"QA Owner","characterId":"classic","appearance":{"body":"classic","face":"friendly","hair":"cap","outfit":"explorer","accessory":"none","skinColor":"#f0bd86","hairColor":"#593c2e"}}}]}
+CHAR Character Studio
+Close without applying
+MAKE IT YOURS
+Scene
+Character
+Classic Builder
+
+A little more you. Try a look before you use it.
+
+Drag to turn
+Idle
+Walk
+Run
+Jump
+Pause
+Characters
+Customize
+My looks
+Character
+Classic Builder
+Classic Builder
+Toy Figure
+Robot Hero
+Pip
+Fern
+Nova
+Classic Studio · Classic Builder
+Cancel
+Use this look
+EXPORT {"schemaVersion":3,"plateSize":128,"partLibraryVersion":1,"environmentId":"classic","customParts":[],"bricks":[{"id":"brick-1789767113124-m8gtcx","partId":"brick_1x1","x":126,"y":0,"z":63,"rotation":0,"color":"#3e83d7"}]}
+mp exit 0

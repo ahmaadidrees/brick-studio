@@ -1,0 +1,205 @@
+{
+  "checkedAt": "2026-09-18T21:06:06.115Z",
+  "origin": "http://127.0.0.1:5277",
+  "backend": {
+    "classroom": "http://127.0.0.1:8798",
+    "live": "http://127.0.0.1:8797",
+    "classroomKind": "qa-mock"
+  },
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      3.34,
+      5.24,
+      4.74
+    ],
+    "freeMemoryMB": 11492,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "steps": [
+    {
+      "id": "teacher-redirect-to-join",
+      "status": "passed",
+      "detail": "/join?mode=teacher&next=/class"
+    },
+    {
+      "id": "teacher-sign-in-email",
+      "status": "passed",
+      "detail": "teacher-login through \"Use email and password\"; GET /me: teacher, no classes"
+    },
+    {
+      "id": "teacher-name-class",
+      "status": "passed",
+      "detail": "class ROOM-11 (845c1d7b-9e91-4ead-a903-2d9029ba2c5d)"
+    },
+    {
+      "id": "teacher-copy-join-link",
+      "status": "passed",
+      "detail": "/join?classCode=ROOM-11"
+    },
+    {
+      "id": "teacher-projector",
+      "status": "passed",
+      "detail": "code ROOM-11 at 200px with QR; Close returns to /class"
+    },
+    {
+      "id": "student-open-invite",
+      "status": "passed",
+      "detail": "class chip \"Room 12 Builders\", code prefilled"
+    },
+    {
+      "id": "student-weak-password",
+      "status": "passed",
+      "detail": "three weak passwords: rule red, submit disabled (client-side checklist)"
+    },
+    {
+      "id": "student-register",
+      "status": "passed",
+      "detail": "register 201 → /worlds; GET /me: student in the class; GET /worlds: []"
+    },
+    {
+      "id": "classmate-taken-name",
+      "status": "passed",
+      "detail": "409 username_taken → picked \"maya_b2\" → 201 → /worlds"
+    },
+    {
+      "id": "student-open-studio-and-place",
+      "status": "passed",
+      "detail": "2 bricks in the guest draft"
+    },
+    {
+      "id": "student-save-to-account",
+      "status": "passed",
+      "detail": "world 78f42976-c46a-4788-9612-0dc1f1d7bcfd saved with 2 bricks; GET /worlds: private, canEdit"
+    },
+    {
+      "id": "student-share-look-only",
+      "status": "passed",
+      "detail": "PATCH sharing → visibility class, classCanEdit false"
+    },
+    {
+      "id": "classmate-sign-out-and-sign-in",
+      "status": "passed",
+      "detail": "username + password only (no code) → /worlds"
+    },
+    {
+      "id": "classmate-tap-your-name",
+      "status": "passed",
+      "detail": "roster tile → focus on password → /worlds (2 tiles)"
+    },
+    {
+      "id": "classmate-sees-shared-world",
+      "status": "passed",
+      "detail": "card: owner \"Maya B.\", Look only, Visit → /live/<id>; GET /worlds: canEdit false"
+    },
+    {
+      "id": "classmate-visit-read-only",
+      "status": "blocked",
+      "detail": "Error: live room not reachable: \"Cannot open this classroom world\" — the classroom live room needs the real Worker with Supabase + CLASSROOM_TICKET_SECRET",
+      "evidence": "15-classmate-visit-read-only-failure.jpeg"
+    },
+    {
+      "id": "classmate-make-copy",
+      "status": "passed",
+      "detail": "POST copy 201 → \"Maya's Tower 7h5v (copy)\" under Mine with 2 bricks"
+    },
+    {
+      "id": "student-share-build-with-me",
+      "status": "passed",
+      "detail": "PATCH sharing → classCanEdit true"
+    },
+    {
+      "id": "classmate-join-visible",
+      "status": "passed",
+      "detail": "Join link + Build together chip; GET /worlds: canEdit true"
+    },
+    {
+      "id": "classmate-join-and-place-brick",
+      "status": "blocked",
+      "detail": "needs the classroom live room (real Worker with Supabase + CLASSROOM_TICKET_SECRET); Join href and canEdit verified above",
+      "evidence": null
+    },
+    {
+      "id": "teacher-sees-and-hides",
+      "status": "passed",
+      "detail": "PATCH visibility → hiddenByTeacher true; classmate: not listed, GET → 403 world_hidden"
+    },
+    {
+      "id": "classmate-list-without-hidden",
+      "status": "passed",
+      "detail": "Shared by classmates is empty"
+    },
+    {
+      "id": "teacher-show-again",
+      "status": "passed",
+      "detail": "PATCH visibility false → listed again"
+    },
+    {
+      "id": "student-unshare",
+      "status": "passed",
+      "detail": "PATCH sharing private → classmate GET 404, not listed"
+    },
+    {
+      "id": "classmate-ejected-on-unshare",
+      "status": "blocked",
+      "detail": "the classmate could not be inside the live room (see classmate-visit-read-only); the access loss is proven at the API (404 after unshare)",
+      "evidence": null
+    }
+  ],
+  "state": {
+    "classCode": "ROOM-11",
+    "classId": "845c1d7b-9e91-4ead-a903-2d9029ba2c5d",
+    "worldId": "78f42976-c46a-4788-9612-0dc1f1d7bcfd",
+    "inviteLink": "http://127.0.0.1:5277/join?classCode=ROOM-11",
+    "classmateUsername": "maya_b2",
+    "accounts": {
+      "teacher": {
+        "email": "qa-teacher@example.com",
+        "password": "teach-bricks",
+        "className": "Room 12 Builders"
+      },
+      "student": {
+        "username": "maya_b",
+        "password": "castle-99",
+        "worldTitle": "Maya's Tower 7h5v"
+      },
+      "classmate": {
+        "username": "maya_b2",
+        "password": "rocket-42"
+      }
+    }
+  },
+  "pageErrors": [],
+  "summary": {
+    "passed": 22,
+    "failed": 0,
+    "blocked": 3,
+    "screenshots": [
+      "01-class-first-run.jpeg",
+      "02-class-invite-step.jpeg",
+      "03-class-projector.jpeg",
+      "04-join-from-invite.jpeg",
+      "05-join-weak-password.jpeg",
+      "06-worlds-empty.jpeg",
+      "07-join-username-taken.jpeg",
+      "08-editor-placed.jpeg",
+      "09-editor-saved.jpeg",
+      "10-worlds-share-sheet.jpeg",
+      "11-worlds-shared-look.jpeg",
+      "12-join-roster.jpeg",
+      "13-worlds-classmate-look-only.jpeg",
+      "14-live-visit.jpeg",
+      "15-classmate-visit-read-only-failure.jpeg",
+      "16-worlds-copy-under-mine.jpeg",
+      "17-worlds-classmate-build-together.jpeg",
+      "18-class-shared-by-students.jpeg",
+      "19-class-hidden.jpeg",
+      "20-worlds-classmate-after-hide.jpeg",
+      "21-worlds-unshared.jpeg"
+    ]
+  }
+}

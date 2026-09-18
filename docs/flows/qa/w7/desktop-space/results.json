@@ -1,0 +1,83 @@
+{
+  "origin": "http://127.0.0.1:5277",
+  "at": "2026-09-18T21:29:29.687Z",
+  "results": [
+    {
+      "width": 1024,
+      "height": 600,
+      "catalog": {
+        "height": 253,
+        "fullyVisible": 9
+      },
+      "checks": [
+        "category + search",
+        "one placement surface (command strip)",
+        "selection color/rotate/height via strip",
+        "exact JSON export via This build",
+        "cold reload",
+        "camera cluster",
+        "drawer collapse",
+        "bounded strip and cluster",
+        "mouse-only Box Select hidden"
+      ]
+    },
+    {
+      "width": 1280,
+      "height": 720,
+      "catalog": {
+        "height": 357,
+        "fullyVisible": 12
+      },
+      "checks": [
+        "category + search",
+        "one placement surface (command strip)",
+        "selection color/rotate/height via strip",
+        "exact JSON export via This build",
+        "cold reload",
+        "camera cluster",
+        "drawer collapse",
+        "bounded strip and cluster",
+        "mouse-only Box Select hidden"
+      ]
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "catalog": {
+        "height": 405,
+        "fullyVisible": 12
+      },
+      "checks": [
+        "category + search",
+        "one placement surface (command strip)",
+        "selection color/rotate/height via strip",
+        "exact JSON export via This build",
+        "cold reload",
+        "camera cluster",
+        "drawer collapse",
+        "bounded strip and cluster",
+        "mouse-only Box Select hidden"
+      ]
+    },
+    {
+      "width": 1920,
+      "height": 1080,
+      "catalog": {
+        "height": 717,
+        "fullyVisible": 23
+      },
+      "checks": [
+        "category + search",
+        "one placement surface (command strip)",
+        "selection color/rotate/height via strip",
+        "exact JSON export via This build",
+        "cold reload",
+        "camera cluster",
+        "drawer collapse",
+        "bounded strip and cluster",
+        "mouse-only Box Select hidden"
+      ]
+    }
+  ],
+  "errors": []
+}

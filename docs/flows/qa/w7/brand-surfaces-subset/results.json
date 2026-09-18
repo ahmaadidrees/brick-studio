@@ -1,0 +1,584 @@
+{
+  "checkedAt": "2026-09-18T21:19:03.553Z",
+  "origin": "http://127.0.0.1:5277",
+  "commit": "669d334",
+  "host": {
+    "hostname": "Ahmaads-MacBook-Pro-5.local",
+    "platform": "darwin 25.5.0",
+    "cpus": 18,
+    "cpuModel": "Apple M5 Max",
+    "loadAverage": [
+      3.97,
+      3.54,
+      3.83
+    ],
+    "freeMemoryMB": 10027,
+    "totalMemoryMB": 131072,
+    "node": "v22.23.2"
+  },
+  "strictTouch": true,
+  "strictFocus": true,
+  "runs": [
+    {
+      "surface": "landing",
+      "board": "01/02",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 15,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.brick-landing",
+            "height": 768,
+            "scrollHeight": 3461
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 7,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "landing/1366x768.jpeg",
+      "durationMs": 1375
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 55,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/1366x768.jpeg",
+      "durationMs": 2030
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 59,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/1366x768.jpeg",
+      "durationMs": 1426
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 64,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Download buildSave a .brickstudio.json file"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/1366x768.jpeg",
+      "durationMs": 1080
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 67,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              910,
+              16,
+              440,
+              736
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/1366x768.jpeg",
+      "durationMs": 1365
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 71,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              726,
+              0,
+              640,
+              768
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [
+          {
+            "selector": "div.part-grid",
+            "height": 405,
+            "scrollHeight": 661
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/1366x768.jpeg",
+      "durationMs": 1430
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "1366x768",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 1366,
+          "height": 768,
+          "devicePixelRatio": 1,
+          "scrollWidth": 1366,
+          "scrollHeight": 768,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 8,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/1366x768.jpeg",
+      "durationMs": 4022
+    },
+    {
+      "surface": "landing",
+      "board": "01/02",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 14,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [
+          {
+            "selector": "div.brick-landing",
+            "height": 844,
+            "scrollHeight": 7131
+          }
+        ],
+        "reducedMotionMatches": false,
+        "runningAnimations": 7,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "landing/390x844.jpeg",
+      "durationMs": 1373
+    },
+    {
+      "surface": "build",
+      "board": "06",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 19,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "build/390x844.jpeg",
+      "durationMs": 1955
+    },
+    {
+      "surface": "build-drawer",
+      "board": "06/16",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "failed",
+      "failures": [
+        "1 touch targets under 44px: Expand brick drawer 360x28"
+      ],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 68,
+        "outside": [],
+        "small": [
+          {
+            "name": "Expand brick drawer",
+            "rect": [
+              15,
+              294,
+              360,
+              28
+            ]
+          }
+        ],
+        "dialogs": [
+          {
+            "name": "Bricks",
+            "fits": true,
+            "rect": [
+              0,
+              284,
+              390,
+              560
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div BricksCreate a brickChoose its shape and sizeAllBlocksPlates"
+      },
+      "consoleErrors": [],
+      "screenshot": "build-drawer/390x844.jpeg",
+      "durationMs": 961
+    },
+    {
+      "surface": "world-menu",
+      "board": "12",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 28,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "button Download buildSave a .brickstudio.json file"
+      },
+      "consoleErrors": [],
+      "screenshot": "world-menu/390x844.jpeg",
+      "durationMs": 977
+    },
+    {
+      "surface": "settings",
+      "board": "12",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 31,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Settings",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div SettingsMake the controls feel right for you.Close settingsE"
+      },
+      "consoleErrors": [],
+      "screenshot": "settings/390x844.jpeg",
+      "durationMs": 1078
+    },
+    {
+      "surface": "scene-sheet",
+      "board": "08",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 35,
+        "outside": [],
+        "small": [],
+        "dialogs": [
+          {
+            "name": "Scene & character",
+            "fits": true,
+            "rect": [
+              0,
+              68,
+              390,
+              776
+            ],
+            "containsFocus": true,
+            "topmost": true
+          }
+        ],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": "div Scene & characterChoose a scene and customize the character "
+      },
+      "consoleErrors": [],
+      "screenshot": "scene-sheet/390x844.jpeg",
+      "durationMs": 1371
+    },
+    {
+      "surface": "explore",
+      "board": "07",
+      "viewport": "390x844",
+      "variant": "default",
+      "status": "passed",
+      "failures": [],
+      "notes": [],
+      "checks": {
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "devicePixelRatio": 1,
+          "scrollWidth": 390,
+          "scrollHeight": 844,
+          "pageScrollsY": false
+        },
+        "overflowX": 0,
+        "controlCount": 9,
+        "outside": [],
+        "small": [],
+        "dialogs": [],
+        "scrollContainers": [],
+        "reducedMotionMatches": false,
+        "runningAnimations": 0,
+        "activeElement": null
+      },
+      "consoleErrors": [],
+      "screenshot": "explore/390x844.jpeg",
+      "durationMs": 4000
+    }
+  ],
+  "skipped": [],
+  "summary": {
+    "runs": 14,
+    "passed": 13,
+    "failed": 1,
+    "skipped": 0,
+    "notes": 0
+  }
+}

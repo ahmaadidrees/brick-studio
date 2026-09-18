@@ -74,8 +74,8 @@ const BOARDS = [
   { board: '11', slug: 'guest-collaboration', state: 'in-room-people', route: '/live/new', requires: 'live', header: true, ready: 'builderName',
     steps: [{ fill: { locator: 'builderName', value: 'QA Builder' } }, { fill: { locator: 'roomName', value: 'Board 11 capture' } }, { click: 'createRoom' }, { waitFor: 'people' }, { clickIfVisible: 'dismissQuickStart' }, { click: 'people' }, { waitFor: 'inviteLink' }],
     expect: 'inviteLink', settle: 1500 },
-  { board: '12', slug: 'settings-world-menu', state: 'settings', route: '/build', ready: 'worldMenu', steps: [{ click: 'settings' }], expect: 'settingsDialog' },
-  { board: '12', slug: 'settings-world-menu', state: 'world-menu', route: '/build', ready: 'worldMenu', steps: [{ click: 'worldMenu' }, { waitFor: 'menuMyWorlds' }], expect: 'studioMenu' },
+  { board: '12', slug: 'settings-world-menu', state: 'settings', route: '/build', ready: 'worldMenu', steps: [{ click: 'worldMenu' }, { click: 'menuSettings' }], expect: 'settingsDialog' },
+  { board: '12', slug: 'settings-world-menu', state: 'world-menu', route: '/build', ready: 'worldMenu', steps: [{ click: 'worldMenu' }, { waitFor: 'menuSettings' }], expect: 'studioMenu' },
   { board: '13', slug: 'teacher-roster', route: '/build?classroom=class', requires: 'teacher', reason: NEEDS_TEACHER, expect: 'classroomDialog' },
   { board: '14', slug: 'teacher-access-groups', route: '/build?classroom=class', requires: 'teacher', reason: NEEDS_TEACHER + ' Class settings is the third "Class sections" tab.', expect: 'classroomDialog' },
   { board: '15', slug: 'safe-states-viewer', state: 'published-viewer', route: '/world' + publishedHash, ready: 'publishedTitle', expect: 'remix', settle: 1500 },
@@ -90,7 +90,7 @@ const BOARDS = [
   { board: '16', slug: 'mobile', state: 'brick-sheet', route: '/build', seed: true, viewports: ['390x844'], ready: 'worldMenu', steps: [{ clickIfVisible: 'openBrickDrawer' }], expectAny: ['brickDrawerSheet', 'brickDrawer'], settle: 800 },
 ]
 
-const HEADER_CONTROLS = ['brandHome', 'worldMenu', 'saveStatus', 'scene', 'character', 'people', 'buildTogether', 'settings', 'exploreMode', 'backToBuilding']
+const HEADER_CONTROLS = ['brandHome', 'worldMenu', 'saveStatus', 'scene', 'character', 'people', 'buildTogether', 'modeSwitch', 'exploreMode', 'accountChip', 'accountSignIn', 'backToBuilding']
 
 const only = (name, all) => (process.env[name] ? process.env[name].split(',').map((s) => s.trim()).filter(Boolean) : all)
 const boardIds = only('BOARDS', [...new Set(BOARDS.map((b) => b.board))])
