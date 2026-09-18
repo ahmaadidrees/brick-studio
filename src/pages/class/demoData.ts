@@ -25,6 +25,7 @@ const demoClass: ClassPageClass = {
   showNamesOnJoin: true,
   studentsCanShare: true,
   buildingNow: 4,
+  teacherName: null,
 }
 
 const secondClass = { ...demoClass, id: 'class-2', name: 'After-school Club', code: 'CLUB42', loginCode: 'CLUB42', buildingNow: 0 }
@@ -39,11 +40,11 @@ const students = [
 ]
 
 const worlds: ClassPageWorld[] = [
-  { id: 'w1', title: 'Rocket Base', ownerId: 's1', classId: null, kind: 'personal', revision: 8, updatedAt: '2026-09-16T15:00:00.000Z', ownerName: 'Aiden K.', visibility: 'class', canEdit: false, sharedAt: '2026-09-16T15:02:00.000Z', hiddenByTeacher: false },
-  { id: 'w2', title: 'Treehouse Village', ownerId: 's2', classId: null, kind: 'personal', revision: 4, updatedAt: '2026-09-16T14:20:00.000Z', ownerName: 'Bella R.', visibility: 'class', canEdit: true, sharedAt: '2026-09-16T14:25:00.000Z', hiddenByTeacher: false },
-  { id: 'w3', title: 'Silly Maze', ownerId: 's4', classId: null, kind: 'personal', revision: 2, updatedAt: '2026-09-15T18:00:00.000Z', ownerName: 'Dani M.', visibility: 'class', canEdit: false, sharedAt: '2026-09-15T18:05:00.000Z', hiddenByTeacher: true },
-  { id: 'w4', title: 'Bridge Challenge', ownerId: 'teacher-1', classId: 'class-1', kind: 'class', revision: 12, updatedAt: '2026-09-17T09:00:00.000Z', ownerName: 'Ana D.', visibility: 'class', canEdit: true, sharedAt: null, hiddenByTeacher: false },
-  { id: 'w5', title: 'Group B: City Block', ownerId: 'teacher-1', classId: 'class-1', kind: 'group', revision: 3, updatedAt: '2026-09-16T09:00:00.000Z', ownerName: 'Ana D.', visibility: 'class', canEdit: true, sharedAt: null, hiddenByTeacher: false },
+  { id: 'w1', title: 'Rocket Base', ownerId: 's1', classId: null, kind: 'personal', revision: 8, updatedAt: '2026-09-16T15:00:00.000Z', ownerName: 'Aiden K.', visibility: 'class', canEdit: false, classCanEdit: true, ownerClassId: 'class-1', sharedAt: '2026-09-16T15:02:00.000Z', hiddenByTeacher: false },
+  { id: 'w2', title: 'Treehouse Village', ownerId: 's2', classId: null, kind: 'personal', revision: 4, updatedAt: '2026-09-16T14:20:00.000Z', ownerName: 'Bella R.', visibility: 'class', canEdit: true, classCanEdit: true, ownerClassId: 'class-1', sharedAt: '2026-09-16T14:25:00.000Z', hiddenByTeacher: false },
+  { id: 'w3', title: 'Silly Maze', ownerId: 's4', classId: null, kind: 'personal', revision: 2, updatedAt: '2026-09-15T18:00:00.000Z', ownerName: 'Dani M.', visibility: 'class', canEdit: false, classCanEdit: false, ownerClassId: 'class-1', sharedAt: '2026-09-15T18:05:00.000Z', hiddenByTeacher: true },
+  { id: 'w4', title: 'Bridge Challenge', ownerId: 'teacher-1', classId: 'class-1', kind: 'class', revision: 12, updatedAt: '2026-09-17T09:00:00.000Z', ownerName: 'Ana D.', visibility: 'class', canEdit: true, classCanEdit: true, ownerClassId: 'class-1', sharedAt: null, hiddenByTeacher: false },
+  { id: 'w5', title: 'Group B: City Block', ownerId: 'teacher-1', classId: 'class-1', kind: 'group', revision: 3, updatedAt: '2026-09-16T09:00:00.000Z', ownerName: 'Ana D.', visibility: 'class', canEdit: true, classCanEdit: true, ownerClassId: 'class-1', sharedAt: null, hiddenByTeacher: false },
 ]
 
 /** A client whose requests resolve from the fixtures above; writes update them in memory. */

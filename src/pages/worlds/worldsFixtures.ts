@@ -13,7 +13,7 @@ const day = (offset: number) => new Date(Date.UTC(2026, 8, 17 - offset, 15, 30))
 
 export const FIXTURE_CLASS: WorldsClass = {
   id: 'class-1', name: 'Room 12 Builders', code: 'BRICK7', loginCode: 'ROOM12',
-  enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, teacherName: 'Ms. Nair',
+  enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, buildingNow: 3, teacherName: 'Ms. Nair',
 }
 
 export const FIXTURE_STUDENTS = [
@@ -26,8 +26,8 @@ export const FIXTURE_STUDENTS = [
 ] as const
 
 const world = (world: Partial<WorldsWorld> & Pick<WorldsWorld, 'id' | 'title' | 'ownerId'>): WorldsWorld => ({
-  classId: null, kind: 'personal', revision: 4, updatedAt: day(1), visibility: 'private', canEdit: false,
-  ownerName: 'Ada R.', sharedAt: null, ...world,
+  classId: null, kind: 'personal', revision: 4, updatedAt: day(1), visibility: 'private', canEdit: false, classCanEdit: false,
+  ownerName: 'Ada R.', ownerClassId: FIXTURE_CLASS.id, sharedAt: null, ...world,
 })
 
 /** Three own worlds: one private, one shared look-only, one shared build-together. */
@@ -47,8 +47,8 @@ export const FIXTURE_CLASSMATE_WORLDS: WorldsWorld[] = [
 
 /** Two worlds the teacher started for the class. */
 export const FIXTURE_TEACHER_WORLDS: WorldsWorld[] = [
-  world({ id: 'teacher-1', title: 'Our class town', ownerId: 'teacher-1', ownerName: 'Ms. Nair', classId: FIXTURE_CLASS.id, kind: 'class', canEdit: true, updatedAt: day(1) }),
-  world({ id: 'teacher-2', title: 'Bridge challenge', ownerId: 'teacher-1', ownerName: 'Ms. Nair', classId: FIXTURE_CLASS.id, kind: 'group', canEdit: true, updatedAt: day(4) }),
+  world({ id: 'teacher-1', title: 'Our class town', ownerId: 'teacher-1', ownerName: 'Ms. Nair', classId: FIXTURE_CLASS.id, kind: 'class', canEdit: true, classCanEdit: true, updatedAt: day(1) }),
+  world({ id: 'teacher-2', title: 'Bridge challenge', ownerId: 'teacher-1', ownerName: 'Ms. Nair', classId: FIXTURE_CLASS.id, kind: 'group', canEdit: true, classCanEdit: true, updatedAt: day(4) }),
 ]
 
 export const FIXTURE_CHECKPOINTS: ClassroomCheckpoint[] = [
@@ -110,7 +110,7 @@ export function createFakeWorldsClient({ session = studentSession, worlds, class
       return copy
     },
     createSharedWorld: async (classId, title, kind) => {
-      const created: WorldsWorld = { id: `shared-${list.length}`, title, ownerId: current?.user.id ?? 'teacher-1', ownerName: 'You', classId, kind, revision: 1, updatedAt: new Date().toISOString(), visibility: 'private', canEdit: true, sharedAt: null }
+      const created: WorldsWorld = { id: `shared-${list.length}`, title, ownerId: current?.user.id ?? 'teacher-1', ownerName: 'You', classId, kind, revision: 1, updatedAt: new Date().toISOString(), visibility: 'private', canEdit: true, classCanEdit: true, ownerClassId: classId, sharedAt: null }
       list = [created, ...list]
       return created
     },
