@@ -13,17 +13,7 @@
   font-family: var(--font-body);
 }
 
-.join-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-4) var(--space-6);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
 .join-page, .join-page * { box-sizing: border-box; }
-.join-header-aside { display: flex; align-items: center; gap: var(--space-2); }
 
 .join-main {
   flex: 1;
@@ -166,9 +156,6 @@
 /* ---------- Phone ---------- */
 
 @media (max-width: 700px) {
-  /* The corner link takes its own row rather than squeezing the lockup. */
-  .join-header { flex-wrap: wrap; row-gap: var(--space-1); padding: var(--space-3) var(--space-4); }
-  .join-header-aside { flex: 1 1 100%; }
   .join-main { padding: var(--space-4) var(--space-3) var(--space-7); }
   .join-card { padding: var(--space-5) var(--space-4); border-radius: var(--radius-md); }
   .join-headline h1 { font-size: 24px; }

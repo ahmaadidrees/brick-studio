@@ -5,7 +5,7 @@ import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
-import { PageHeader, displayName } from './PageHeader'
+import { AppHeader, displayNameFor, type ClassroomSessionState } from '../../shell'
 import { ShareSheet } from './ShareSheet'
 import {
   browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
@@ -151,6 +151,16 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
 
   if (!session) return <main className="worlds-page worlds-redirect"><p role="status">Taking you to sign in…</p></main>
 
+  const headerSession: ClassroomSessionState = {
+    status: teacher ? 'teacher' : 'student',
+    user: session.user,
+    classes: session.classes,
+    className: teacher ? undefined : classes[0]?.name,
+    displayName: displayNameFor(session.user),
+    signOut: async () => run(async () => { await client.signOut() }),
+    switchAccount: async () => { await client.signOut(); navigate(signInHref('/worlds')) },
+  }
+
   const currentClass = classes.find(item => item.id === section) ?? null
   const classmateWorlds = worlds
     .filter(world => world.kind === 'personal' && world.ownerId !== me && isShared(world) && !(world.hiddenByTeacher && !teacher))
@@ -219,10 +229,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       : `${classmateWorlds.length + classWorlds.length} ${classmateWorlds.length + classWorlds.length === 1 ? 'world' : 'worlds'} ${teacher ? 'in this class' : 'to join'}`
 
   return <div className="worlds-page">
-    <PageHeader
-      session={session}
-      contextLine={teacher ? 'Teacher' : classes[0]?.name ?? 'Student'}
-      onSignOut={() => run(async () => { await client.signOut() })}
+    <AppHeader
+      variant="page"
+      title="Worlds"
+      actions={<Button href="/build" variant="secondary" size="sm">Open the studio</Button>}
+      session={headerSession}
     />
     <div className="worlds-layout">
       {narrow
@@ -371,5 +382,3 @@ function StartSharedWorld({ busy, className, onCreate }: { busy: boolean; classN
     </div>
   </form>
 }
-
-export { displayName }

@@ -56,6 +56,7 @@ export function createDemoClassPageClient(variant: DemoVariant = 'everyday'): Cl
   return {
     getSession: () => teacher,
     subscribe: () => () => {},
+    signOut: async () => {},
     request: (async (path: string, method = 'GET', body?: Record<string, unknown>) => {
       if (path === '/classes' && method === 'GET') return { classes: state.classes }
       if (path === '/worlds' && method === 'GET') return { worlds: state.worlds }

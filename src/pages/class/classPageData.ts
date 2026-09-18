@@ -25,7 +25,7 @@ export type ClassPageWorld = ClassroomWorld & {
  * the raw request method. Tests and the dev fixtures supply the same shape, so
  * the page never branches on where its data comes from.
  */
-export type ClassPageClient = Pick<ClassroomClient, 'request' | 'getSession' | 'subscribe'>
+export type ClassPageClient = Pick<ClassroomClient, 'request' | 'getSession' | 'subscribe' | 'signOut'>
 
 export const defaultClassPageClient: ClassPageClient = browserClassroomClient
 
