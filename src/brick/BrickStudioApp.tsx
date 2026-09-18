@@ -119,6 +119,10 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
     const handler = (event: KeyboardEvent) => {
       if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]')) return
       const target = event.target
+      // Any dialog, modal or not (the strip's Color popover, the People panel), and anything marked
+      // data-shortcut-pause own the keys while focus is inside them: Delete, R or ⌘D on a swatch must
+      // not edit the build underneath. Escape never reaches here from the popover (it closes it first).
+      if (target instanceof HTMLElement && target.closest('[data-shortcut-pause], [role="dialog"]')) return
       // Menu navigation and Escape belong to the menu, not the build underneath.
       if (target instanceof HTMLElement && target.closest('[role="menu"]')
         && (event.key === 'Escape' || !target.matches('select'))) return

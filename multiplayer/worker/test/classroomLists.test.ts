@@ -147,7 +147,13 @@ describe('bounded classroom lists', () => {
       const { service, paths } = fixture([cls, { id: classId(999), teacher_id: studentId }], worlds, [], roster);
       const result = await service.listWorlds(teacher);
       expect(result.map(row => [row.id, row.hiddenByTeacher])).toEqual([['whole', false], ['mine', false], ['ava-look', false], ['ben-edit', false], ['ben-hidden', true], ['paused-shared', false]]);
-      expect(result.find(row => row.id === 'ben-hidden')).toMatchObject({ canEdit: true, ownerName: 'Ben K.', visibility: 'class', ownerClassId: cls.id });
+      // A hidden world is never editable, even for the teacher who hid it (the save RPC would refuse); an open one is.
+      expect(result.find(row => row.id === 'ben-hidden')).toMatchObject({ canEdit: false, classCanEdit: true, ownerName: 'Ben K.', visibility: 'class', ownerClassId: cls.id });
+      expect(result.find(row => row.id === 'ben-edit')).toMatchObject({ canEdit: true, classCanEdit: true });
+      const closed = fixture([{ ...cls, collaboration_open: false }], worlds, [], roster);
+      expect((await closed.service.listWorlds(teacher)).find(row => row.id === 'ben-edit')).toMatchObject({ canEdit: false, classCanEdit: true });
+      const off = fixture([{ ...cls, students_can_share: false }], worlds, [], roster);
+      expect((await off.service.listWorlds(teacher)).find(row => row.id === 'ben-edit')).toMatchObject({ canEdit: false, classCanEdit: true });
       // A teacher's own personal world has no class; class worlds report their class.
       expect(result.find(row => row.id === 'whole')).toMatchObject({ ownerClassId: cls.id });
       const own = fixture([cls], [{ id: 'mine-t', kind: 'personal', owner_id: teacherId }], [], []);

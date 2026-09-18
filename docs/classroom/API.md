@@ -108,8 +108,11 @@ code" reveals the optional code, which then loads the roster.
 Class: `{id,name,loginCode,code?,enrollmentOpen,collaborationOpen,showNamesOnJoin,studentsCanShare,buildingNow,teacherName}`.
 `studentsCanShare` (default true) lets students share personal worlds with classmates (see "Shared personal worlds").
 `buildingNow` is the number of distinct accounts connected to the class's live rooms right now; it is filled only on a
-teacher's `GET classes` / `GET me` (one internal presence read per live-capable world, capped at 150 worlds), and is
-`null` at sign-in, for students, beyond the cap, or when a room cannot answer. `teacherName` is always `null`: teacher
+teacher's `GET classes` (one internal presence read per live-capable world, at most 150 rooms per request in class
+order, and at most 30 such listings per teacher per minute), and is `null` on `GET me`, at sign-in, for students, for
+the classes past the 150-room cap, while the per-teacher bucket is empty, or when a room cannot answer. A class with
+no live-capable world reports `0` without a presence read. Room objects that never opened still answer (cold, with
+nobody), so the cap and the bucket are what bound the fan-out. `teacherName` is always `null`: teacher
 accounts carry no roster name in the brick tables (the mock client returns a fixture name).
 
 | Method/path | Body | Response |
@@ -184,6 +187,14 @@ time, so `GET worlds` finds classmates' shared worlds by owner (students of the 
 batches of 100 owners) and returns them after the class/group worlds. Students see them only while
 the class has `collaborationOpen` and `studentsCanShare`, never hidden ones, and never worlds of
 suspended owners; the teacher sees every shared world of their classes with `hiddenByTeacher`.
+`canEdit` for a non-owner (a classmate or the class teacher) is true only while the world is shared with
+editing, not hidden, and the owner's class has collaboration open and sharing on: the same conditions
+`brick_commit_world` checks on save, so a live session is never offered an edit the save would refuse
+(migration `202609190002_brick_teacher_edit_alignment.sql` aligns `brick_authorize_world`; the teacher
+may still look in those states). A suspended owner's shared world is `404 not_found` for classmates by
+direct id, copy and live join, exactly as the listing already hides it; the class teacher may look but
+not edit, and `brick_commit_world` refuses every non-owner while the owner is suspended (the owner
+keeps their own world).
 
 - `PATCH worlds/:id/sharing` — owner only, student role, personal world. 403 `sharing_disabled`
   when the class has sharing off. `visibility:'private'` unshares (clears `canEdit` and `sharedAt`).
@@ -213,7 +224,9 @@ suspended owners; the teacher sees every shared world of their classes with `hid
 
 `handleClassroomRequest(request,env,{onAccessChanged,liveParticipants?})`: `liveParticipants(worldIds)`
 returns the distinct classroom user ids connected to those rooms (the Worker reads each room's
-`GET /internal/classroom-presence`, ids only) or null when unknown; it feeds `buildingNow`.
+`GET /internal/classroom-presence`, ids only) or null when unknown; it feeds `buildingNow` on a
+teacher's `GET classes` only, bounded by `PRESENCE_ROOM_LIMIT` (150 rooms per request) and the
+per-teacher `presence:` rate bucket (`PRESENCE_RATE`, 30 per minute; an empty bucket yields null).
 `onAccessChanged` invokes the awaited callback
 before returning success after access changes, resets, membership changes, world
 save/restore and logout. Event: `{classId?,worldId?,userId?,reason,change}`. Root Worker

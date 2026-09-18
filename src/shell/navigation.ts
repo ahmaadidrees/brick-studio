@@ -71,18 +71,17 @@ export function goToProjector(navigate: Navigate = browserNavigate) {
 /**
  * Where a `/build?classroom=<intent>` entry lands in flows v2. `save` stays in
  * the editor (the in-editor save sheet) and resolves to null; everything else
- * is a page. `join` keeps the class code when the entry carried one.
+ * is a page. `join` and `signin` keep the class code when the entry carried
+ * one (printed invites and the older sign-in posters both encode it).
  */
 export function classroomIntentPath(intent: ClassroomEntryIntent, search = ''): string | null {
+  const classCode = () => new URLSearchParams(search).get('classCode') ?? undefined
   switch (intent) {
     case 'save': return null
     case 'worlds': return WORLDS_PATH
     case 'class': return CLASS_PATH
-    case 'join': {
-      const classCode = new URLSearchParams(search).get('classCode') ?? undefined
-      return joinPath({ classCode })
-    }
-    case 'signin': return joinPath({ mode: 'signin' })
+    case 'join': return joinPath({ classCode: classCode() })
+    case 'signin': return joinPath({ mode: 'signin', classCode: classCode() })
     case 'teacher': return joinPath({ mode: 'teacher' })
   }
 }
