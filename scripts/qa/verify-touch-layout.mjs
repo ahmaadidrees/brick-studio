@@ -12,20 +12,21 @@ const out=process.env.TOUCH_TEST_OUTPUT || 'docs/qa/touch-layout-2026-09-15/loca
 await mkdir(out,{recursive:true});
 const locate=makeLocate(await loadLocators());
 const browser=await chromium.launch(launchOptions());
-const results=[],errors=[];
+const results=[],errors=[],failures=[];
 async function fits(locator,w,h){const r=await locator.boundingBox();assert(r&&r.x>=-1&&r.y>=-1&&r.x+r.width<=w+1&&r.y+r.height<=h+1,`Outside ${w}x${h}: ${JSON.stringify(r)}`);return r;}
-function separate(a,b,label){assert(a.x+a.width<=b.x+1||b.x+b.width<=a.x+1||a.y+a.height<=b.y+1||b.y+b.height<=a.y+1,`Overlap: ${label}`)}
+function separate(a,b,label){assert(a.x+a.width<=b.x+1||b.x+b.width<=a.x+1||a.y+a.height<=b.y+1||b.y+b.height<=a.y+1,`Overlap: ${label} (${JSON.stringify(a)} vs ${JSON.stringify(b)})`)}
 try{
 for(const [name,width,height,touch] of [['phone',390,844,true],['narrow',320,568,true],['landscape-phone',844,390,true],['portrait-tablet',768,1024,true],['tablet',1024,768,true],['large-tablet',1180,820,true],['desktop',1366,768,false]]){
 const context=await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,acceptDownloads:true});
 if(process.env.TOUCH_TEST_BYPASS) await context.route('**/*',route=>route.continue(new URL(route.request().url()).origin===new URL(origin).origin?{headers:{...route.request().headers(),'x-vercel-protection-bypass':process.env.TOUCH_TEST_BYPASS}}:{}));
 const page=await context.newPage();page.on('pageerror',e=>errors.push(`${name}: ${e.message}`));
-const soft=[];
+const soft=[];let compact=false;
+try{
 await page.goto(`${origin}/build`);
 await page.getByRole('button',{name:'Start building',exact:true}).waitFor();
 await page.screenshot({path:`${out}/${name}-onboarding.png`,animations:'disabled'});
 await page.getByRole('button',{name:'Start building',exact:true}).click();
-const compact=await page.locator('.brick-studio').evaluate(el=>el.classList.contains('brick-compact-layout'));
+compact=await page.locator('.brick-studio').evaluate(el=>el.classList.contains('brick-compact-layout'));
 // A brush is loaded by default; the strip's Place button (or Enter) places it.
 const place=locate(page,'placePositioned').first();
 if(await place.isVisible().catch(()=>false)) await place.click(); else await page.keyboard.press('Enter');
@@ -85,8 +86,9 @@ await page.screenshot({path:`${out}/${name}-explore.png`,animations:'disabled'})
 await locate(page,'backToBuilding').click();
 await locate(page,'modeBuild').waitFor();
 results.push({name,width,height,touch,compact,soft,checks:['guest placement via strip','selection via Jump to brick','height adjustment and undo','export matches saved brick','reload retains build','settings from This build menu','drawer / brush color','character','explore and return','strip, camera and history bounds']});
+}catch(error){await page.screenshot({path:`${out}/${name}-failure.png`}).catch(()=>{});const message=`${name} ${width}x${height}: ${String(error).split('\n')[0]}`;failures.push(message);console.log('failed '+message);results.push({name,width,height,touch,compact,soft,status:'failed',failure:message});}
 await context.close();}
-assert.deepEqual(errors,[]);
-await writeFile(`${out}/results.json`,JSON.stringify({origin,at:new Date().toISOString(),results,errors},null,2));
-console.log(JSON.stringify({passed:results.length,soft:results.flatMap(r=>r.soft.map(s=>`${r.name}: ${s}`)),errors}));
+await writeFile(`${out}/results.json`,JSON.stringify({origin,at:new Date().toISOString(),results,failures,errors},null,2));
+console.log(JSON.stringify({passed:results.filter(r=>r.status!=='failed').length,failed:failures,soft:results.flatMap(r=>r.soft.map(s=>`${r.name}: ${s}`)),errors}));
+assert.deepEqual(errors,[]);if(failures.length)process.exitCode=1;
 }finally{await browser.close()}

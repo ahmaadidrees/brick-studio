@@ -125,6 +125,8 @@ export function createSurfaceRunner({ origin, output, locate, format = 'png', st
     }
     const context = await browser.newContext(contextOptions)
     if (surface.session && !sessions[surface.session]) throw new Error(`surface ${surface.id} needs session "${surface.session}" but none was provided`)
+    // A session entry may be a function: surfaces that change server state (the first run creates a class) get a fresh account per run.
+    const session = surface.session ? (typeof sessions[surface.session] === 'function' ? await sessions[surface.session]() : sessions[surface.session]) : null
     await context.addInitScript(({ onboardingKey, projectKey, sessionKey, quickStart, seed, storage, session }) => {
       try {
         if (!quickStart) localStorage.setItem(onboardingKey, 'dismissed')
@@ -132,7 +134,7 @@ export function createSurfaceRunner({ origin, output, locate, format = 'png', st
         for (const [key, value] of Object.entries(storage)) localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value))
         if (session) sessionStorage.setItem(sessionKey, JSON.stringify(session))
       } catch { /* blocked storage is its own scenario */ }
-    }, { onboardingKey: ONBOARDING_KEY, projectKey: PROJECT_KEY, sessionKey: SESSION_KEY, quickStart: !!surface.quickStart, seed: surface.seed === 'fixture' ? fixtureDocument : null, storage: surface.storage ?? {}, session: surface.session ? sessions[surface.session] : null })
+    }, { onboardingKey: ONBOARDING_KEY, projectKey: PROJECT_KEY, sessionKey: SESSION_KEY, quickStart: !!surface.quickStart, seed: surface.seed === 'fixture' ? fixtureDocument : null, storage: surface.storage ?? {}, session })
     const page = await context.newPage()
     const pageErrors = [], consoleErrors = [], failures = [], notes = []
     page.on('pageerror', (error) => pageErrors.push(error.message))

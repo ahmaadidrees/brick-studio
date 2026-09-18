@@ -36,7 +36,10 @@ const health = await fetch(`${classroomApi}/__qa/health`).then((r) => r.ok).catc
 if (!health) { console.error(`No QA mock classroom backend at ${classroomApi}; start scripts/qa/lib/classroom-mock-server.mjs and point VITE_CLASSROOM_SERVER_URL at it.`); process.exit(2) }
 await fetch(`${classroomApi}/__qa/reset`, { method: 'POST' })
 const fixture = await (await fetch(`${classroomApi}/__qa/seed`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).json()
-const sessions = { student: fixture.students.ava_builds, classmate: fixture.students.ben_k, teacher: fixture.teacher, newTeacher: fixture.newTeacher }
+let fresh = 0
+// The first-run surfaces create a class, so each run signs in a brand-new teacher (teacher-login creates one per email on the mock).
+const newTeacher = async () => (await (await fetch(`${classroomApi}/classroom/auth/teacher-login`, { method: 'POST', headers: { 'content-type': 'application/json', Origin: origin }, body: JSON.stringify({ email: `qa-new-teacher-${Date.now().toString(36)}-${++fresh}@example.com`, password: 'teach-bricks' }) })).json())
+const sessions = { student: fixture.students.ava_builds, classmate: fixture.students.ben_k, teacher: fixture.teacher, newTeacher }
 const classCode = fixture.class.code
 const draft = { schemaVersion: 2, partLibraryVersion: 1, environmentId: 'toy-room', customParts: [], bricks: Array.from({ length: 34 }, (_, i) => ({ id: `d${i}`, partId: 'brick_2x4', x: 2 * i, y: 0, z: 0, rotation: 0, color: '#5888da' })) }
 

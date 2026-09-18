@@ -29,12 +29,11 @@
     "name": "Settings"
   },
   "scene": {
-    "role": "button",
-    "name": "Scene"
+    "css": "header[aria-label=\"Studio toolbar\"] button[title=\"Scene\"], .brick-header button[title=\"Scene\"], button[aria-label=\"Scene\"]"
   },
   "character": {
-    "role": "button",
-    "name": "Character"
+    "css": "header[aria-label=\"Studio toolbar\"] button[title=\"Character\"], .brick-header button[title=\"Character\"], button[aria-label=\"Character\"]",
+    "_note": "Scoped to the editor header: compact layouts also render a Character button in the old creative dock (reported)."
   },
   "sceneDialog": {
     "role": "dialog",

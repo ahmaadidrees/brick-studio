@@ -1,0 +1,16 @@
+
+ RUN  v4.1.10 /Users/ahmaadidrees/.codex/worktrees/flows-w7
+
+Not implemented: navigation to another Document
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+Not implemented: HTMLCanvasElement's getContext() method: without installing the canvas npm package
+
+ Test Files  122 passed (122)
+      Tests  1243 passed (1243)
+   Start at  14:21:08
+   Duration  14.15s (transform 7.56s, setup 7.35s, import 22.72s, tests 47.97s, environment 49.70s)
+

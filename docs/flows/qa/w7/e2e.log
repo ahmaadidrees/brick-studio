@@ -1,7 +1,7 @@
 classroom backend: qa-mock (http://127.0.0.1:8798); live: http://127.0.0.1:8797
 passed  teacher-redirect-to-join  /join?mode=teacher&next=/class
 passed  teacher-sign-in-email  teacher-login through "Use email and password"; GET /me: teacher, no classes
-passed  teacher-name-class  class ROOM-11 (96c32803-f9a1-4d04-85c8-84e6d92806c1)
+passed  teacher-name-class  class ROOM-11 (845c1d7b-9e91-4ead-a903-2d9029ba2c5d)
 passed  teacher-copy-join-link  /join?classCode=ROOM-11
 passed  teacher-projector  code ROOM-11 at 200px with QR; Close returns to /class
 passed  student-open-invite  class chip "Room 12 Builders", code prefilled
@@ -9,13 +9,13 @@ passed  student-weak-password  three weak passwords: rule red, submit disabled (
 passed  student-register  register 201 → /worlds; GET /me: student in the class; GET /worlds: []
 passed  classmate-taken-name  409 username_taken → picked "maya_b2" → 201 → /worlds
 passed  student-open-studio-and-place  2 bricks in the guest draft
-passed  student-save-to-account  world afd8f920-0c82-465d-89c2-952235b3a51b saved with 2 bricks; GET /worlds: private, canEdit
+passed  student-save-to-account  world 78f42976-c46a-4788-9612-0dc1f1d7bcfd saved with 2 bricks; GET /worlds: private, canEdit
 passed  student-share-look-only  PATCH sharing → visibility class, classCanEdit false
 passed  classmate-sign-out-and-sign-in  username + password only (no code) → /worlds
 passed  classmate-tap-your-name  roster tile → focus on password → /worlds (2 tiles)
 passed  classmate-sees-shared-world  card: owner "Maya B.", Look only, Visit → /live/<id>; GET /worlds: canEdit false
 failed  classmate-visit-read-only  Error: live room not reachable: "Cannot open this classroom world" — the classroom live room needs the real Worker with Supabase + CLASSROOM_TICKET_SECRET
-passed  classmate-make-copy  POST copy 201 → "Maya's Tower 6179 (copy)" under Mine with 2 bricks
+passed  classmate-make-copy  POST copy 201 → "Maya's Tower 7h5v (copy)" under Mine with 2 bricks
 passed  student-share-build-with-me  PATCH sharing → classCanEdit true
 passed  classmate-join-visible  Join link + Build together chip; GET /worlds: canEdit true
 blocked classmate-join-and-place-brick  needs the classroom live room (real Worker with Supabase + CLASSROOM_TICKET_SECRET); Join href and canEdit verified above

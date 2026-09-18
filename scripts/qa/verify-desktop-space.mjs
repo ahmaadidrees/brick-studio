@@ -22,7 +22,7 @@ await locate(p,'placePositioned').first().click();await locate(p,'stripCancel').
 await p.getByRole('searchbox',{name:'Search bricks',exact:true}).fill('');await p.getByRole('combobox',{name:'Brick category',exact:true}).selectOption('all');
 await locate(p,'jumpToBrick').selectOption({index:1});
 const panel=locate(p,'stripSelected');await panel.waitFor();await fits(p.locator('[data-testid="command-strip"]'),width,height);assert.equal(await panel.locator('.color-grid').count(),0);
-await panel.getByRole('button',{name:'Recolor brick',exact:true}).click();await locate(p,'stripColorDialog').waitFor();await locate(p,'anyColor').click();await p.getByRole('textbox',{name:'Hex color',exact:true}).fill('#12abcd');await p.getByRole('button',{name:'Apply color',exact:true}).click();
+await panel.getByRole('button',{name:'Recolor brick',exact:true}).click();await locate(p,'stripColorDialog').waitFor();await locate(p,'stripColorDialog').getByRole('button',{name:'Choose any brick color',exact:true}).click();await p.getByRole('textbox',{name:'Hex color',exact:true}).fill('#12abcd');await p.getByRole('button',{name:'Apply color',exact:true}).click();
 await p.keyboard.press('Escape');await locate(p,'stripColorDialog').waitFor({state:'hidden'}).catch(()=>{});
 await panel.getByRole('button',{name:'Rotate brick',exact:true}).click();await panel.getByRole('button',{name:'Adjust',exact:true}).click();await p.getByRole('button',{name:'Raise brick one plate',exact:true}).click();await fits(p.locator('[data-testid="command-strip"]'),width,height);
 await p.screenshot({path:`${out}/${width}-adjust.png`,animations:'disabled'});await panel.getByRole('button',{name:'Adjust',exact:true}).click();
