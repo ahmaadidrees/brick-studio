@@ -1,5 +1,5 @@
-import { browserClassroomClient, type ClassroomClient } from '../../classroom/client'
-import type { ClassroomCheckpoint, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
+import { browserClassroomClient } from '../../classroom/client'
+import type { ClassroomCheckpoint, ClassroomClass, ClassroomClientSurface, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
 
 /**
  * Flows v2 fields the teacher page consumes. They are optional here because
@@ -22,10 +22,11 @@ export type ClassPageWorld = ClassroomWorld & {
 
 /**
  * Everything the page needs from the classroom client: the session store plus
- * the raw request method. Tests and the dev fixtures supply the same shape, so
- * the page never branches on where its data comes from.
+ * the raw request method. This is a `ClassroomClientSurface` subset — `ClassroomClient`
+ * (real HTTP) and `createMockClient` (W1's fixture) both satisfy it as-is, so tests
+ * and the dev fixtures supply the same shape without adapting it.
  */
-export type ClassPageClient = Pick<ClassroomClient, 'request' | 'getSession' | 'subscribe' | 'signOut'>
+export type ClassPageClient = Pick<ClassroomClientSurface, 'request' | 'getSession' | 'subscribe' | 'signOut'>
 
 export const defaultClassPageClient: ClassPageClient = browserClassroomClient
 
