@@ -1,5 +1,5 @@
-import { browserClassroomClient, type ClassroomClient } from '../../classroom/client'
-import type { ClassroomCheckpoint, ClassroomClass, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
+import { browserClassroomClient } from '../../classroom/client'
+import type { ClassroomCheckpoint, ClassroomClass, ClassroomClientSurface, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
 
 /**
  * Flows v2 fields the teacher page consumes. They are optional here because
@@ -22,10 +22,11 @@ export type ClassPageWorld = ClassroomWorld & {
 
 /**
  * Everything the page needs from the classroom client: the session store plus
- * the raw request method. Tests and the dev fixtures supply the same shape, so
- * the page never branches on where its data comes from.
+ * the raw request method. This is a `ClassroomClientSurface` subset — `ClassroomClient`
+ * (real HTTP) and `createMockClient` (W1's fixture) both satisfy it as-is, so tests
+ * and the dev fixtures supply the same shape without adapting it.
  */
-export type ClassPageClient = Pick<ClassroomClient, 'request' | 'getSession' | 'subscribe' | 'signOut'>
+export type ClassPageClient = Pick<ClassroomClientSurface, 'request' | 'getSession' | 'subscribe' | 'signOut'>
 
 export const defaultClassPageClient: ClassPageClient = browserClassroomClient
 
@@ -79,9 +80,17 @@ export const restoreCheckpoint = async (client: ClassPageClient, world: ClassPag
   return result.world
 }
 
-/** Worlds a student shared with this class, newest first; hidden ones stay for the teacher. */
-export const sharedByStudents = (worlds: ClassPageWorld[], classId: string, teacherId: string) =>
-  worlds.filter(world => world.kind === 'personal' && world.ownerId !== teacherId && world.visibility === 'class' && (world.classId === null || world.classId === classId))
+/**
+ * Worlds a student shared with this class, newest first; hidden ones stay for
+ * the teacher. A shared personal world's `classId` is always null (only
+ * `ownerClassId` says whose class it came from), so a multi-class teacher
+ * must match on that instead — otherwise every class would show every
+ * student's shared world. A world with no `ownerClassId` (older data, or a
+ * fixture that never set it) falls back to showing under `firstClassId`.
+ */
+export const sharedByStudents = (worlds: ClassPageWorld[], classId: string, teacherId: string, firstClassId?: string) =>
+  worlds.filter(world => world.kind === 'personal' && world.ownerId !== teacherId && world.visibility === 'class'
+    && (world.ownerClassId === classId || (world.ownerClassId == null && classId === firstClassId)))
     .sort((a, b) => (b.sharedAt || b.updatedAt).localeCompare(a.sharedAt || a.updatedAt))
 
 /** Worlds the teacher started for the class or a group. */

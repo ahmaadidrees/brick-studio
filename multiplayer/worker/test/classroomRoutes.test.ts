@@ -446,6 +446,7 @@ describe("live presence for the class list", () => {
       WORLD_ROOMS: { idFromName: (x: string) => x, get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${room}${new URL(String(input)).pathname}`); return answer(room); } }) },
     } as unknown as Env;
     vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
+    vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name) => { if (name !== "take_rate_limit") throw new Error(`Unexpected rpc ${name}`); return true; });
     vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table, filter = "") => {
       if (table === "classes") return [{ id: classId, teacher_id: identity.userId, name: "Period 1", collaboration_open: true, students_can_share: true }];
       if (table === "worlds") return filter.includes("owner_id=in.") ? [{ id: worlds[2], owner_id: studentId }] : [{ id: worlds[0], class_id: classId }, { id: worlds[1], class_id: classId }];
@@ -463,6 +464,12 @@ describe("live presence for the class list", () => {
   it("reports null rather than a guess when a room cannot answer", async () => {
     const { list } = presenceEnv((room) => room === worlds[1].replaceAll("-", "") ? new Response("busy", { status: 503 }) : Response.json({ userIds: [] }));
     expect(await list()).toBeNull();
+  });
+  it("asks no room once the teacher's presence bucket is empty and still answers the listing", async () => {
+    const { list, asked } = presenceEnv(() => Response.json({ userIds: ["a"] }));
+    vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue(false);
+    expect(await list()).toBeNull();
+    expect(asked).toEqual([]);
   });
 });
 

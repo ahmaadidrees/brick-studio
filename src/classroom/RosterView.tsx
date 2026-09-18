@@ -1,6 +1,6 @@
 import { useState, type RefObject } from 'react'
-import { ChevronRight, KeyRound, RefreshCw, Search } from 'lucide-react'
-import { Button } from '../ui'
+import { Ban, ChevronRight, KeyRound, MoreHorizontal, Pencil, RefreshCw, Search, UserCheck } from 'lucide-react'
+import { Button, Menu, MenuItem } from '../ui'
 import type { ClassroomClass, ClassroomStudent } from './contracts'
 import { ConfirmDialog } from './ConfirmDialog'
 import { PasswordField } from './PasswordField'
@@ -26,10 +26,31 @@ type RosterProps = {
   onSearch: (value: string) => void
   onManage: (student: ClassroomStudent, focus?: 'password') => void
   onViewCodes: () => void
+  /** 'buttons' (default): Edit + Reset password inline. 'menu': one ⋯ menu with Edit, Reset password, and Suspend/Reactivate. */
+  actions?: 'buttons' | 'menu'
+  onToggleSuspend?: (student: ClassroomStudent) => void
+}
+
+/** The row's ⋯ menu for `actions="menu"`: Edit student, Reset password, Suspend/Reactivate. */
+function RosterRowMenu({ student, busy, onManage, onToggleSuspend }: { student: ClassroomStudent; busy: boolean; onManage: (student: ClassroomStudent, focus?: 'password') => void; onToggleSuspend?: (student: ClassroomStudent) => void }) {
+  const label = `Manage ${student.rosterName}`
+  return <Menu
+    label={label}
+    align="end"
+    trigger={({ ref, ...props }) => (
+      <Button ref={ref} variant="quiet" size="sm" iconOnly icon={<MoreHorizontal size={18} />} aria-label={label} disabled={busy} {...props}>{label}</Button>
+    )}
+  >
+    <MenuItem icon={<Pencil size={16} />} label="Edit student" onSelect={() => onManage(student)} />
+    <MenuItem icon={<KeyRound size={16} />} label="Reset password" onSelect={() => onManage(student, 'password')} />
+    {onToggleSuspend && (student.suspended
+      ? <MenuItem icon={<UserCheck size={16} />} label="Reactivate" onSelect={() => onToggleSuspend(student)} />
+      : <MenuItem icon={<Ban size={16} />} label="Suspend" onSelect={() => onToggleSuspend(student)} />)}
+  </Menu>
 }
 
 /** Board 13: roster name, username and status per student; no grading or analytics. */
-export function RosterSection({ currentClass, students, loading, search, busy, onSearch, onManage, onViewCodes }: RosterProps) {
+export function RosterSection({ currentClass, students, loading, search, busy, onSearch, onManage, onViewCodes, actions = 'buttons', onToggleSuspend }: RosterProps) {
   const query = search.trim().toLocaleLowerCase()
   const visible = students.filter(student => `${student.rosterName} ${student.username}`.toLocaleLowerCase().includes(query))
   return <section aria-label="Class students" className="classroom-section">
@@ -47,7 +68,9 @@ export function RosterSection({ currentClass, students, loading, search, busy, o
           <strong>{student.rosterName}</strong>
           <span className="classroom-roster-username">{student.username}</span>
           <StudentStatusChip student={student} />
-          <Button variant="secondary" size="sm" trailingIcon={<ChevronRight size={16} />} disabled={busy} aria-label={`Manage ${student.rosterName}`} onClick={() => onManage(student)}>Edit student</Button><Button variant="quiet" size="sm" disabled={busy} aria-label={`Reset password for ${student.rosterName}`} onClick={() => onManage(student, 'password')}>Reset password</Button>
+          {actions === 'menu'
+            ? <RosterRowMenu student={student} busy={busy} onManage={onManage} onToggleSuspend={onToggleSuspend} />
+            : <><Button variant="secondary" size="sm" trailingIcon={<ChevronRight size={16} />} disabled={busy} aria-label={`Manage ${student.rosterName}`} onClick={() => onManage(student)}>Edit student</Button><Button variant="quiet" size="sm" disabled={busy} aria-label={`Reset password for ${student.rosterName}`} onClick={() => onManage(student, 'password')}>Reset password</Button></>}
         </div>)}
       </div>
       {!visible.length && <p className="classroom-help" role="status">No students match “{search.trim()}”.</p>}

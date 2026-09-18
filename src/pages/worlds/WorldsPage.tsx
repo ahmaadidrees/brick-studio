@@ -136,6 +136,14 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   }
 
   const myWorlds = useMemo(() => worlds.filter(world => isMine(world, me)).sort(byNewest), [worlds, me])
+  /**
+   * A shared personal world belongs to its owner's class (`ownerClassId`). A
+   * teacher on multiple classes must not see the same student world under
+   * every class rail item; a world with no `ownerClassId` (older data, or a
+   * fixture that never set it) falls back to showing under the first class.
+   */
+  const belongsToClass = (world: WorldsWorld, classId: string) =>
+    world.ownerClassId === classId || (world.ownerClassId == null && classId === classes[0]?.id)
   const sections = useMemo(() => [
     { id: 'mine', label: teacher ? 'My worlds' : 'Mine', count: myWorlds.length },
     ...classes.map(item => ({
@@ -143,7 +151,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       label: item.name,
       // A closed class shows nothing, so its count says nothing either.
       count: item.collaborationOpen === false ? 0
-        : worlds.filter(world => world.classId === item.id || (world.kind === 'personal' && world.ownerId !== me && isShared(world))).length,
+        : worlds.filter(world => world.classId === item.id || (world.kind === 'personal' && world.ownerId !== me && isShared(world) && belongsToClass(world, item.id))).length,
     })),
   ], [classes, myWorlds.length, teacher, worlds, me])
 
@@ -163,7 +171,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
 
   const currentClass = classes.find(item => item.id === section) ?? null
   const classmateWorlds = worlds
-    .filter(world => world.kind === 'personal' && world.ownerId !== me && isShared(world) && !(world.hiddenByTeacher && !teacher))
+    .filter(world => world.kind === 'personal' && world.ownerId !== me && isShared(world) && !(world.hiddenByTeacher && !teacher)
+      && (currentClass ? belongsToClass(world, currentClass.id) : false))
     .sort(byNewest)
   const classWorlds = worlds.filter(world => world.kind !== 'personal' && world.classId === currentClass?.id).sort(byNewest)
   const collaborationClosed = Boolean(currentClass && !currentClass.collaborationOpen)
@@ -374,7 +383,7 @@ function StartSharedWorld({ busy, className, onCreate }: { busy: boolean; classN
   const [title, setTitle] = useState('')
   return <form className="worlds-start" onSubmit={event => { event.preventDefault(); if (title.trim()) { onCreate(title.trim(), kind); setTitle('') } }}>
     <h2 className="worlds-section-title">Start a shared world</h2>
-    <p className="worlds-help">Starts from the build in your studio. {className} can join it right away.</p>
+    <p className="worlds-help">Starts as an empty plate; build in it from the studio. {className} can join it right away.</p>
     <div className="worlds-start-row">
       <TextField label="Shared world name" name="title" value={title} onChange={event => setTitle(event.target.value)} required maxLength={80} autoComplete="off" />
       <SegmentedControl<'class' | 'group'> label="Access" showLabel value={kind} onChange={setKind} options={[{ value: 'class', label: 'Whole class' }, { value: 'group', label: 'Assigned group' }]} />

@@ -152,7 +152,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
 
   const firstRun = !loading && (classes.length === 0 || (!firstRunDone && createdClass !== null && classes.length === 1))
   const name = session.user.rosterName || session.user.username
-  const shared = currentClass ? sharedByStudents(worlds, currentClass.id, session.user.id) : []
+  const shared = currentClass ? sharedByStudents(worlds, currentClass.id, session.user.id, classes[0]?.id) : []
 
   const headerSession: ClassroomSessionState = {
     status: 'teacher',
@@ -208,7 +208,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
               {editingStudent
                 ? <ManageStudentForm student={editingStudent} busy={busy} headingRef={detailHeading} onSubmit={values => onUpdateStudent(editingStudent, values)} onToggleSuspend={() => onToggleSuspend(editingStudent)} onCancel={() => setEditingStudent(null)} />
                 : tab === 'students'
-                  ? <StudentsTab currentClass={currentClass} students={students} studentsLoading={studentsLoading} search={search} busy={busy} shared={shared} onSearch={setSearch} onManageStudent={onManageStudent} onToggleHidden={onToggleHidden} onViewSettings={() => setTab('settings')} />
+                  ? <StudentsTab currentClass={currentClass} students={students} studentsLoading={studentsLoading} search={search} busy={busy} shared={shared} onSearch={setSearch} onManageStudent={onManageStudent} onToggleHidden={onToggleHidden} onToggleSuspend={onToggleSuspend} onViewSettings={() => setTab('settings')} />
                   : tab === 'worlds'
                     ? <WorldsTab
                       currentClass={currentClass}

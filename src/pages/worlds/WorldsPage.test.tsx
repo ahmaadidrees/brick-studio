@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import WorldsPage from './WorldsPage'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 import { createFakeWorldsClient, FIXTURE_CLASS, studentSession, teacherSession } from './worldsFixtures'
-import type { WorldsClient } from './worldsData'
+import { createWorldsClient, type WorldsClient } from './worldsData'
+import type { ClassroomClient } from '../../classroom/client'
 
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -31,15 +32,15 @@ describe('student', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
     expect(screen.getByText('3 worlds saved to your account')).toBeInTheDocument()
 
-    const card = screen.getByRole('article', { name: 'Rocket launch pad' })
-    expect(within(card).getByRole('link', { name: /Open/ })).toHaveAttribute('href', '/build?world=mine-2')
+    const card = screen.getByRole('article', { name: 'Lava Maze' })
+    expect(within(card).getByRole('link', { name: /Open/ })).toHaveAttribute('href', '/build?world=world-ava-lava')
     expect(within(card).getByText(/Shared · build together/)).toBeInTheDocument()
     expect(within(card).getByRole('button', { name: 'Sharing…' })).toBeInTheDocument()
 
     // canEdit is caller-scoped (an owner is always true); the chip reads classCanEdit.
-    expect(within(screen.getByRole('article', { name: 'Castle on the hill' })).getByText(/Shared · look only/)).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Rainbow Rocket' })).getByText(/Shared · look only/)).toBeInTheDocument()
 
-    const priv = screen.getByRole('article', { name: 'Treehouse village' })
+    const priv = screen.getByRole('article', { name: 'Treehouse Hideout' })
     expect(within(priv).getByRole('button', { name: 'Share with my class' })).toBeInTheDocument()
     expect(within(priv).queryByText(/Shared ·/)).not.toBeInTheDocument()
   })
@@ -54,20 +55,20 @@ describe('student', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
     const shared = screen.getByRole('region', { name: 'Shared by classmates' })
-    const mate = within(shared).getByRole('article', { name: 'Pirate harbour' })
-    expect(within(mate).getByText('Benji T.')).toBeInTheDocument()
+    const mate = within(shared).getByRole('article', { name: 'Sky Bridge' })
+    expect(within(mate).getByText('Ben K.')).toBeInTheDocument()
     expect(within(mate).getByText(/Build together/)).toBeInTheDocument()
     // Joining a classmate's world goes through the live room; the Worker decides viewer or editor there.
-    expect(within(mate).getByRole('link', { name: /Join/ })).toHaveAttribute('href', '/live/mate1')
-    expect(within(mate).getByRole('link', { name: /Visit/ })).toHaveAttribute('href', '/live/mate1')
+    expect(within(mate).getByRole('link', { name: /Join/ })).toHaveAttribute('href', '/live/worldbenskybridge')
+    expect(within(mate).getByRole('link', { name: /Visit/ })).toHaveAttribute('href', '/live/worldbenskybridge')
 
-    const lookOnly = within(shared).getByRole('article', { name: 'Robot repair shop' })
+    const lookOnly = within(shared).getByRole('article', { name: 'Crystal Castle' })
     expect(within(lookOnly).getByText(/Look only/)).toBeInTheDocument()
     expect(within(lookOnly).queryByRole('link', { name: /Join/ })).not.toBeInTheDocument()
 
     const teacherWorlds = screen.getByRole('region', { name: 'Teacher’s worlds' })
-    expect(within(teacherWorlds).getAllByRole('link', { name: /Join/ }).map(link => link.getAttribute('href'))).toEqual(['/live/teacher1', '/live/teacher2'])
-    expect(within(teacherWorlds).getByRole('article', { name: 'Our class town' })).toBeInTheDocument()
+    expect(within(teacherWorlds).getAllByRole('link', { name: /Join/ }).map(link => link.getAttribute('href'))).toEqual(['/live/worldclasstown', '/live/worldgroupbridge'])
+    expect(within(teacherWorlds).getByRole('article', { name: 'Our Town' })).toBeInTheDocument()
   })
 
   it('shows the browser draft strip only when this browser holds a build', async () => {
@@ -96,9 +97,9 @@ describe('student', () => {
     draw(client)
     await settled()
 
-    fireEvent.click(within(screen.getByRole('article', { name: 'Treehouse village' })).getByRole('button', { name: 'Share with my class' }))
+    fireEvent.click(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).getByRole('button', { name: 'Share with my class' }))
     const sheet = screen.getByRole('dialog')
-    expect(within(sheet).getByRole('heading', { level: 2 })).toHaveTextContent(`Share “Treehouse village” with ${FIXTURE_CLASS.name}`)
+    expect(within(sheet).getByRole('heading', { level: 2 })).toHaveTextContent(`Share “Treehouse Hideout” with ${FIXTURE_CLASS.name}`)
     expect(within(sheet).getByRole('radio', { name: /Classmates can look/ })).toBeChecked()
     expect(within(sheet).getByText(/teacher can see this world and can hide it/)).toBeInTheDocument()
 
@@ -106,9 +107,9 @@ describe('student', () => {
     fireEvent.click(within(sheet).getByRole('button', { name: 'Share' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    expect(setWorldSharing).toHaveBeenCalledWith('mine-1', { visibility: 'class', canEdit: true })
+    expect(setWorldSharing).toHaveBeenCalledWith('world-ava-treehouse', { visibility: 'class', canEdit: true })
     expect(screen.getByRole('status')).toHaveTextContent('shared with your class')
-    expect(within(screen.getByRole('article', { name: 'Treehouse village' })).getByText(/Shared · build together/)).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).getByText(/Shared · build together/)).toBeInTheDocument()
   })
 
   it('reopens the sheet on a shared world and can stop sharing', async () => {
@@ -117,11 +118,11 @@ describe('student', () => {
     draw(client)
     await settled()
 
-    fireEvent.click(within(screen.getByRole('article', { name: 'Rocket launch pad' })).getByRole('button', { name: 'Sharing…' }))
+    fireEvent.click(within(screen.getByRole('article', { name: 'Lava Maze' })).getByRole('button', { name: 'Sharing…' }))
     expect(within(screen.getByRole('dialog')).getByRole('radio', { name: /build with me/ })).toBeChecked()
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Stop sharing' }))
 
-    await waitFor(() => expect(setWorldSharing).toHaveBeenCalledWith('mine-2', { visibility: 'private', canEdit: false }))
+    await waitFor(() => expect(setWorldSharing).toHaveBeenCalledWith('world-ava-lava', { visibility: 'private', canEdit: false }))
     expect(await screen.findByText(/is private again/)).toBeInTheDocument()
   })
 
@@ -132,10 +133,10 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    fireEvent.click(within(screen.getByRole('article', { name: 'Cloud city' })).getByRole('button', { name: 'Make my own copy' }))
+    fireEvent.click(within(screen.getByRole('article', { name: 'Crystal Castle' })).getByRole('button', { name: 'Make my own copy' }))
 
-    await waitFor(() => expect(copyWorld).toHaveBeenCalledWith('mate-3'))
-    expect(await screen.findByRole('article', { name: 'Cloud city (copy)' })).toBeInTheDocument()
+    await waitFor(() => expect(copyWorld).toHaveBeenCalledWith('world-chloe-castle'))
+    expect(await screen.findByRole('article', { name: 'Crystal Castle (copy)' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
   })
 
@@ -144,23 +145,23 @@ describe('student', () => {
     draw(client)
     await settled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'More for Castle on the hill' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More for Rainbow Rocket' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }))
     const field = within(screen.getByRole('dialog')).getByLabelText('World name')
     fireEvent.change(field, { target: { value: '' } })
-    fireEvent.change(field, { target: { value: 'Castle by the sea' } })
+    fireEvent.change(field, { target: { value: 'Rainbow Rocket 2.0' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
 
-    expect(await screen.findByRole('article', { name: 'Castle by the sea' })).toBeInTheDocument()
+    expect(await screen.findByRole('article', { name: 'Rainbow Rocket 2.0' })).toBeInTheDocument()
   })
 
   it('drops the share button when the teacher turned class sharing off', async () => {
     draw(createFakeWorldsClient({ classes: [{ ...FIXTURE_CLASS, studentsCanShare: false }] }))
     await settled()
 
-    expect(within(screen.getByRole('article', { name: 'Treehouse village' })).queryByRole('button', { name: 'Share with my class' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).queryByRole('button', { name: 'Share with my class' })).not.toBeInTheDocument()
     // A world that is already shared keeps its way back out.
-    expect(within(screen.getByRole('article', { name: 'Rocket launch pad' })).getByRole('button', { name: 'Sharing…' })).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Rainbow Rocket' })).getByRole('button', { name: 'Sharing…' })).toBeInTheDocument()
   })
 
   it('explains a closed class instead of showing class cards', async () => {
@@ -168,11 +169,11 @@ describe('student', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(screen.getByText('Ms. Nair closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
+    expect(screen.getByText('Mr. Idrees closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Shared by classmates' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('article', { name: 'Pirate harbour' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Sky Bridge' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Search worlds')).not.toBeInTheDocument()
-    expect(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: /Room 12 Builders/ })).toHaveTextContent('0')
+    expect(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: /Period 3 Makers/ })).toHaveTextContent('0')
   })
 
   it('falls back to "Your teacher" when the class carries no teacher name', async () => {
@@ -209,7 +210,31 @@ describe('teacher', () => {
 
     await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Market day', 'class'))
     expect(screen.getByRole('region', { name: 'Shared by students' })).toBeInTheDocument()
-    expect(within(screen.getByRole('article', { name: 'Pirate harbour' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+  })
+
+  it('sends a document with the shared-world request, so the Worker does not reject it as an invalid document', async () => {
+    // The real client (worldsData.ts), not the fake, so a regression in what
+    // `createSharedWorld` puts on the wire is caught here.
+    const request = vi.fn(async (path: string, method = 'GET') => {
+      if (path === '/classes' && method === 'GET') return { classes: [FIXTURE_CLASS] }
+      if (path === '/worlds' && method === 'GET') return { worlds: [] }
+      return { world: { id: 'w-new', title: 'Market day', kind: 'class', ownerId: teacherSession.user.id, classId: FIXTURE_CLASS.id, revision: 1, updatedAt: '2026-09-18T00:00:00.000Z' } }
+    })
+    const classroomClient: ClassroomClient = {
+      getSession: () => teacherSession,
+      subscribe: () => () => {},
+      signOut: vi.fn(async () => {}),
+      request: request as unknown as ClassroomClient['request'],
+    } as unknown as ClassroomClient
+    draw(createWorldsClient(classroomClient))
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Market day' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start world' }))
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith('/worlds', 'POST', expect.objectContaining({ document: expect.any(Object) })))
   })
 
   it('hides a student world from the class', async () => {
@@ -219,10 +244,37 @@ describe('teacher', () => {
     await settled()
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    fireEvent.click(within(screen.getByRole('article', { name: 'Dinosaur park' })).getByRole('button', { name: 'Hide from class' }))
+    fireEvent.click(within(screen.getByRole('article', { name: 'Crystal Castle' })).getByRole('button', { name: 'Hide from class' }))
 
-    await waitFor(() => expect(setWorldHidden).toHaveBeenCalledWith('mate-4', true))
+    await waitFor(() => expect(setWorldHidden).toHaveBeenCalledWith('world-chloe-castle', true))
     expect(await screen.findByText(/is hidden from the class/)).toBeInTheDocument()
+  })
+
+  it('keeps a class section to worlds shared by that class\'s own students, for a teacher with more than one class', async () => {
+    const classA = { ...FIXTURE_CLASS, id: 'class-a', name: 'Class A' }
+    const classB = { ...FIXTURE_CLASS, id: 'class-b', name: 'Class B' }
+    const worldFor = (id: string, title: string, ownerClassId: string) => ({
+      id, title, ownerId: `owner-${id}`, classId: null, kind: 'personal' as const, revision: 1, updatedAt: '2026-09-17T00:00:00.000Z',
+      visibility: 'class' as const, canEdit: false, classCanEdit: true, ownerName: 'A Student', ownerClassId, sharedAt: '2026-09-17T00:00:00.000Z', hiddenByTeacher: false,
+    })
+    const worldA = worldFor('world-a', 'Class A Build', classA.id)
+    const worldB = worldFor('world-b', 'Class B Build', classB.id)
+
+    const client = createFakeWorldsClient({ session: teacherSession, classes: [classA, classB], worlds: [worldA, worldB] })
+    draw(client)
+    await settled()
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    expect(within(within(rail).getByRole('button', { name: /^Class A/ })).getByText('1')).toBeInTheDocument()
+    expect(within(within(rail).getByRole('button', { name: /^Class B/ })).getByText('1')).toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^Class A/ }))
+    expect(screen.getByRole('article', { name: 'Class A Build' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Class B Build' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^Class B/ }))
+    expect(screen.getByRole('article', { name: 'Class B Build' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Class A Build' })).not.toBeInTheDocument()
   })
 })
 
@@ -258,7 +310,7 @@ describe('session and layout', () => {
     await settled()
     const header = screen.getByRole('banner')
     expect(within(header).getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/build')
-    expect(within(header).getByRole('button', { name: /Ada R\./ })).toHaveTextContent(FIXTURE_CLASS.name)
+    expect(within(header).getByRole('button', { name: /Ava R\./ })).toHaveTextContent(FIXTURE_CLASS.name)
   })
 
   it('replaces the rail with a tab row at 1024 and narrower', async () => {
@@ -286,7 +338,7 @@ describe('session and layout', () => {
     draw(client)
     await settled()
 
-    fireEvent.click(screen.getByRole('button', { name: /Ada R\./ }))
+    fireEvent.click(screen.getByRole('button', { name: /Ava R\./ }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
     await waitFor(() => expect(signOut).toHaveBeenCalled())
   })
@@ -297,12 +349,12 @@ describe('search', () => {
     draw()
     await settled()
 
-    fireEvent.change(screen.getByLabelText('Search worlds'), { target: { value: 'castle' } })
-    expect(screen.getByRole('article', { name: 'Castle on the hill' })).toBeInTheDocument()
-    expect(screen.queryByRole('article', { name: 'Treehouse village' })).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Search worlds'), { target: { value: 'lava' } })
+    expect(screen.getByRole('article', { name: 'Lava Maze' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Treehouse Hideout' })).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByLabelText('Search worlds'), { target: { value: '' } })
-    expect(screen.getByRole('article', { name: 'Treehouse village' })).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Treehouse Hideout' })).toBeInTheDocument()
   })
 })
 
@@ -310,7 +362,7 @@ describe('session identity', () => {
   it('uses first name and last initial for the signed-in student', async () => {
     draw()
     await settled()
-    expect(studentSession.user.rosterName).toBe('Ada Reyes')
-    expect(screen.getByRole('banner')).toHaveTextContent('Ada R.')
+    expect(studentSession.user.rosterName).toBe('Ava Rivera')
+    expect(screen.getByRole('banner')).toHaveTextContent('Ava R.')
   })
 })

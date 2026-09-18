@@ -240,6 +240,35 @@ describe('single-brick color', () => {
   })
 })
 
+describe('shortcut pause inside the Color popover', () => {
+  it('keeps Delete, R and Command+D away from the build while a swatch has focus, then resumes', () => {
+    resetStore([brick])
+    useBrickStore.setState({ selectedIds: [brick.id], selectedId: brick.id })
+    render(<BrickStudioApp />)
+    fireEvent.click(screen.getByRole('button', { name: 'Recolor brick' }))
+    const popover = screen.getByRole('dialog', { name: 'Brick color' })
+    expect(popover).toHaveAttribute('data-shortcut-pause')
+    const swatch = within(popover).getByRole('button', { name: `Use color ${BRICK_COLORS[3]}` })
+    swatch.focus()
+    expect(swatch).toHaveFocus()
+    const before = useBrickStore.getState().getDocumentSnapshot()
+    for (const key of ['Delete', 'Backspace', 'r', 'ArrowLeft', '[']) fireEvent.keyDown(swatch, { key })
+    fireEvent.keyDown(swatch, { key: 'd', ctrlKey: true })
+    fireEvent.keyDown(swatch, { key: 'd', metaKey: true })
+    expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(before)
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+    expect(useBrickStore.getState().selectedIds).toEqual([brick.id])
+    expect(screen.getByRole('dialog', { name: 'Brick color' })).toBeInTheDocument()
+    // Escape still closes the popover first and keeps the selection.
+    fireEvent.keyDown(swatch, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Brick color' })).not.toBeInTheDocument()
+    expect(useBrickStore.getState().selectedIds).toEqual([brick.id])
+    // With the popover gone the shortcuts reach the build again.
+    fireEvent.keyDown(document.body, { key: 'Delete' })
+    expect(useBrickStore.getState().bricks).toHaveLength(0)
+  })
+})
+
 describe('multi-selection feedback and controls', () => {
   const pair: BrickInstance[] = [
     { id: 'one', partId: 'brick_1x1', x: 4, y: 0, z: 4, rotation: 0, color: '#fff' },

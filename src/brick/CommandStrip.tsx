@@ -140,7 +140,7 @@ function ColorPopover({ color, count, onPick, onClose }: ColorPopoverProps) {
     }
   }, [onClose])
   return (
-    <div ref={panel} className="command-strip-popover" role="dialog" aria-labelledby={headingId}>
+    <div ref={panel} className="command-strip-popover" role="dialog" aria-labelledby={headingId} data-shortcut-pause="">
       <div className="command-strip-popover-title" id={headingId}>{count > 1 ? `Color all ${count} bricks` : 'Brick color'}</div>
       <ColorPalette targetColor={color} onPick={onPick} label="Brick color" />
     </div>

@@ -40,7 +40,16 @@ describe('classroomIntentRedirect', () => {
     expect(classroomIntentPath('join', '?classroom=join&classCode=ab7x')).toBe('/join?classCode=AB7X')
     expect(classroomIntentPath('signin')).toBe('/join?mode=signin')
     expect(classroomIntentPath('teacher')).toBe('/join?mode=teacher')
+    expect(classroomIntentPath('teacher', '?classroom=teacher&classCode=ab7x')).toBe('/join?mode=teacher')
     expect(classroomIntentPath('save')).toBeNull()
+  })
+
+  it('keeps the class code of an older printed sign-in invite', () => {
+    expect(classroomIntentPath('signin', '?classroom=signin&classCode=ABC')).toBe('/join?mode=signin&classCode=ABC')
+    expect(classroomIntentPath('signin', '?classroom=signin&classCode=%20ab7x%20&utm_source=poster')).toBe('/join?mode=signin&classCode=AB7X')
+    const navigate = vi.fn()
+    expect(classroomIntentRedirect('signin', navigate, '?classroom=signin&classCode=ABC')).toBe(true)
+    expect(navigate).toHaveBeenCalledWith('/join?mode=signin&classCode=ABC')
   })
 
   it('redirects and reports whether it did', () => {
