@@ -1,7 +1,16 @@
 import { BRAND_NAME } from '../brand'
-import type { ClassroomAuthResult as ClassroomAuth, ClassroomLoginInput, ClassroomRoster } from './contracts'
-export type { ClassroomUser, ClassroomClass, ClassroomWorld, ClassroomRoster, ClassroomRosterStudent, ClassroomLoginInput } from './contracts'
+import type {
+  ClassroomAuthResult as ClassroomAuth, ClassroomCheckpoint, ClassroomClass, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
+  ClassroomRegisterInput, ClassroomRoster, ClassroomStudent, ClassroomStudentPatch, ClassroomWorld, ClassroomWorldCreateInput, ClassroomWorldSaveInput, ClassroomWorldSharing,
+} from './contracts'
+export type { ClassroomUser, ClassroomClass, ClassroomWorld, ClassroomRoster, ClassroomRosterStudent, ClassroomLoginInput, ClassroomClientSurface, ClassroomWorldSharing } from './contracts'
 export type { ClassroomAuthResult as ClassroomAuth } from './contracts'
+/** Invite link and QR target for a class code: account creation first, then the class (`/join?classCode=CODE`). */
+export function classJoinHref(classCode: string, origin = window.location.origin) {
+  const url = new URL('/join', origin)
+  url.searchParams.set('classCode', classCode.trim().toUpperCase())
+  return url.toString()
+}
 /** A rejected classroom request. `code` and `details` carry the server's machine-readable reason (e.g. `username_taken` with `suggestions`). */
 export class ClassroomError extends Error {
   constructor(message: string, public status: number, public code = '', public details: Record<string, unknown> = {}) { super(message) }
@@ -10,7 +19,7 @@ const GOOGLE_FLOW_KEY = 'brick-studio.teacher-google.v1'
 type GoogleFlow = { state: string; verifier: string; startedAt: number; returnTo: string; accountId: string | null }
 const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
 const SESSION_KEY = 'brick-studio.classroom-session.v1'
-export class ClassroomClient {
+export class ClassroomClient implements ClassroomClientSurface {
   private auth: ClassroomAuth | null = null
   private refreshing: { epoch: number; promise: Promise<ClassroomAuth> } | null = null
   private epoch = 0
@@ -85,10 +94,49 @@ export class ClassroomClient {
     const code = classCode?.trim().toUpperCase()
     return this.authenticate('login', { username: username.trim(), password, ...(code ? { classCode: code } : {}) })
   }
+  /** New student account: class code, username and password (server rules), optional roster name. 409 `username_taken` carries `details.suggestions`. */
+  register({ classCode, username, password, rosterName }: ClassroomRegisterInput) {
+    const name = rosterName?.trim()
+    return this.authenticate('register', { classCode: classCode.trim().toUpperCase(), username: username.trim(), password, ...(name ? { rosterName: name } : {}) })
+  }
   /** Public tap-your-name list for a class code: `{ name, canEnroll, showNames, students }` with display names only. */
   classRoster(classCode: string) {
     return this.request<ClassroomRoster>('/auth/roster', 'POST', { classCode: classCode.trim().toUpperCase() })
   }
+  /** Public class name and whether new accounts may join with this code. */
+  resolveClass(classCode: string) {
+    return this.request<{ name: string; canEnroll: boolean }>('/auth/class', 'POST', { classCode: classCode.trim().toUpperCase() })
+  }
+  me() { return this.request<ClassroomMe>('/me') }
+  /** Own worlds, then class/group worlds, then classmates' shared worlds; every entry carries `visibility`, `canEdit`, `ownerName`, `sharedAt`. */
+  async listWorlds() { return (await this.request<{ worlds: ClassroomWorld[] }>('/worlds')).worlds }
+  async listClasses() { return (await this.request<{ classes: ClassroomClass[] }>('/classes')).classes }
+  async listStudents(classId: string) { return (await this.request<{ students: ClassroomStudent[] }>(`/classes/${classId}/students`)).students }
+  /** The world with its document; viewers of a shared world get `canEdit: false`. */
+  async getWorld(id: string) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}`)).world }
+  async createWorld(input: ClassroomWorldCreateInput) { return (await this.request<{ world: ClassroomWorld }>('/worlds', 'POST', { kind: 'personal', ...input })).world }
+  async saveWorld(id: string, input: ClassroomWorldSaveInput) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}`, 'PUT', input)).world }
+  async renameWorld(id: string, title: string) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}`, 'PATCH', { title })).world }
+  /** Own-world duplicate ("<title> copy"), the existing My Worlds action; the copy is a new private personal world. */
+  async duplicateWorld(id: string) {
+    const source = await this.getWorld(id)
+    return this.createWorld({ title: `${source.title} copy`.slice(0, 80), document: source.document!, kind: 'personal' })
+  }
+  async listCheckpoints(id: string) { return (await this.request<{ checkpoints: ClassroomCheckpoint[] }>(`/worlds/${id}/checkpoints`)).checkpoints }
+  /** Restores against the current server revision so a stale list never silently overwrites newer work. */
+  async restoreWorld(id: string, checkpointId: string) {
+    const current = await this.getWorld(id)
+    return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/restore`, 'POST', { checkpointId, expectedRevision: current.revision })).world
+  }
+  /** Owner only: `{ visibility: 'class', canEdit }` shares with classmates; `{ visibility: 'private' }` unshares. 403 `sharing_disabled` when the teacher turned sharing off. */
+  async setWorldSharing(id: string, sharing: ClassroomWorldSharing) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/sharing`, 'PATCH', sharing)).world }
+  /** Teacher of the owner's class: hide or show a shared student world. */
+  async setWorldHidden(id: string, hidden: boolean) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/visibility`, 'PATCH', { hiddenByTeacher: hidden })).world }
+  /** "Make my own copy" of any world the caller can see; 409 `world_limit` at the saved-world limit. */
+  async copyWorld(id: string) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/copy`, 'POST')).world }
+  async createClass(name: string) { return (await this.request<{ class: ClassroomClass }>('/classes', 'POST', { name })).class }
+  async updateClass(id: string, patch: ClassroomClassPatch) { return (await this.request<{ class: ClassroomClass }>(`/classes/${id}`, 'PATCH', patch)).class }
+  async updateStudent(classId: string, studentId: string, patch: ClassroomStudentPatch) { return (await this.request<{ student: ClassroomStudent }>(`/classes/${classId}/students/${studentId}`, 'PATCH', patch)).student }
   async changePassword(password: string) {
     const epoch = this.epoch
     const auth = await this.request<ClassroomAuth>('/auth/change-password', 'POST', { password })

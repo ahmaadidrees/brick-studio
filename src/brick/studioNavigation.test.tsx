@@ -53,7 +53,7 @@ describe('studio navigation and save context', () => {
   })
 
   it('keeps My Worlds navigable while a named cloud world moves through pending, saving, error and saved states', () => {
-    cloud.world = { id: 'world-one', title: 'My mountain castle', kind: 'personal', ownerId: 'student-one', classId: null, revision: 1, updatedAt: '2026-09-10T12:00:00Z' }
+    cloud.world = { id: 'world-one', title: 'My mountain castle', kind: 'personal', ownerId: 'student-one', classId: null, visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Owner', ownerClassId: null, sharedAt: null, revision: 1, updatedAt: '2026-09-10T12:00:00Z' }
     cloud.status = 'pending'
     const view = render(<BrickStudioApp />)
     expect(screen.getByText('My mountain castle')).toHaveAttribute('title', 'My mountain castle')

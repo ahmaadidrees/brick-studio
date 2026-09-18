@@ -1,0 +1,168 @@
+/* /join — a page, not a dialog: the whole thing scrolls. Tokens come from styles.css. */
+
+.join-page {
+  /* html/body/#root are `overflow: hidden` for the editor (styles.css), so the
+     page itself is the scroll container — the whole page scrolls, not a panel. */
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.join-page, .join-page * { box-sizing: border-box; }
+
+.join-main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: var(--space-7) var(--space-4) var(--space-8);
+}
+
+.join-card {
+  /* 16px body text and 48px controls on this page only. */
+  --text-md: 16px;
+  --control-height: 48px;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  font-size: 16px;
+}
+.join-card-wide { max-width: 640px; }
+
+.join-headline { display: flex; flex-direction: column; gap: var(--space-2); }
+.join-headline h1 { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 1.15; }
+.join-headline p { margin: 0; color: var(--text-muted); font-weight: 600; }
+
+.join-alert {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.join-form, .join-teacher { display: flex; flex-direction: column; gap: var(--space-5); }
+
+.join-submit { min-height: 56px; font-size: 17px; }
+
+.join-note { margin: 0; color: var(--text-muted); font-size: 14px; font-weight: 600; line-height: 1.4; }
+.join-note-center { text-align: center; }
+
+.join-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-3); }
+.join-links-start { justify-content: flex-start; }
+.join-links-footer { border-top: 1px solid var(--border); padding-top: var(--space-4); }
+
+/* ---------- Class code context ---------- */
+
+.join-class { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.join-class-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-weight: 800;
+}
+.join-class .join-note { flex-basis: 100%; }
+
+/* ---------- Rule checklists ---------- */
+
+.join-rules { display: flex; flex-direction: column; gap: 6px; margin: calc(-1 * var(--space-3)) 0 0; padding: 0; list-style: none; }
+.join-rule { display: flex; align-items: center; gap: var(--space-2); font-size: 14px; font-weight: 700; color: var(--text-muted); }
+.join-rule > svg { flex: 0 0 auto; }
+.join-rule-ok { color: var(--success); }
+.join-rule-bad { color: var(--danger-text); }
+.join-rule-pending > svg { opacity: 0.45; }
+
+/* ---------- Suggested usernames ---------- */
+
+.join-suggestions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: calc(-1 * var(--space-3)); }
+.join-chip {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--primary-strong);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.join-chip:hover { background: var(--primary-soft); }
+.join-chip[aria-pressed='true'] { background: var(--primary); color: var(--primary-contrast); }
+.join-chip:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- Tap your name ---------- */
+
+.join-roster { display: flex; flex-direction: column; gap: var(--space-3); }
+.join-roster-lead { margin: 0; font-weight: 700; }
+.join-name-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.join-name-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.join-name-tile:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-soft); }
+.join-name-tile[aria-pressed='true'] { border-color: var(--primary-strong); background: var(--primary-soft); }
+.join-name-tile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.join-name-tile:disabled { opacity: 0.6; cursor: default; }
+.join-name-tile-name { font-size: 16px; font-weight: 800; }
+.join-name-tile-username { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+
+@media (min-width: 900px) {
+  .join-name-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ---------- or ---------- */
+
+.join-or { display: flex; align-items: center; gap: var(--space-3); color: var(--text-muted); font-weight: 700; }
+.join-or::before, .join-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ---------- Phone ---------- */
+
+@media (max-width: 700px) {
+  .join-main { padding: var(--space-4) var(--space-3) var(--space-7); }
+  .join-card { padding: var(--space-5) var(--space-4); border-radius: var(--radius-md); }
+  .join-headline h1 { font-size: 24px; }
+  /* Two rows of names at a time, so the password field stays above a soft keyboard. */
+  .join-roster .join-name-grid { max-height: 144px; overflow-y: auto; padding-right: 2px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .join-page * { transition: none !important; animation: none !important; }
+}

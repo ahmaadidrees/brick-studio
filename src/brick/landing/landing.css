@@ -57,16 +57,9 @@
 
 /* -------------------------------------------------------------- header --- */
 
-.landing-nav {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: var(--page-max);
-  margin: 0 auto;
-  padding: 24px var(--page-gutter) 12px;
-}
+/* The header itself is the shell's AppHeader (landing variant); this file only styles the landing's nav links. */
+.landing-nav .app-header-brand .brand-wordmark { font-size: 40px !important; }
+.landing-nav .app-header-brand .brand-mark { width: 56px; height: 56px; }
 .landing-nav nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px 6px; }
 .landing-nav-link {
   display: inline-flex;
@@ -81,7 +74,6 @@
   white-space: nowrap;
 }
 .landing-nav-link:hover { color: var(--primary-strong); background: var(--primary-soft); }
-.landing-nav-cta { margin-left: 6px; border-color: var(--primary); color: var(--primary-strong); }
 .landing-menu-toggle { display: none; }
 
 /* The previous address keeps its own drafts and room ownership. This notice
@@ -189,8 +181,7 @@
 .landing-hero-actions .landing-cta-row { margin-top: 0; }
 .landing-hero-actions .landing-cta { font-size: 20px; }
 .landing-hero-actions .landing-cta svg { width: 22px; height: 22px; }
-.landing-nav-link:nth-last-child(2) { margin-left: 10px; border-left: 1px solid var(--border); border-radius: 0; }
-.landing-brand { gap: 10px; }
+.landing-nav-link:last-child { margin-left: 10px; border-left: 1px solid var(--border); border-radius: 0; }
 
 /* Steps (board 01 cards, board 02 numbering) */
 .landing-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
@@ -418,8 +409,8 @@
 /* ----------------------------------------------------------- responsive --- */
 
 @media (max-width: 1024px) {
-  .landing-nav .landing-brand .brand-wordmark { font-size: 30px !important; }
-  .landing-nav .landing-brand .brand-mark { width: 42px; height: 42px; }
+  .landing-nav .app-header-brand .brand-wordmark { font-size: 30px !important; }
+  .landing-nav .app-header-brand .brand-mark { width: 42px; height: 42px; }
   .landing-steps { grid-template-columns: minmax(0, 1fr); }
   .landing-step { grid-template-columns: minmax(0, 1fr) 132px; }
   .landing-features { grid-template-columns: minmax(0, 1fr); }
@@ -436,14 +427,17 @@
 @media (max-width: 760px) {
   .landing-menu-toggle { display: inline-flex; }
   .landing-nav { padding-top: 14px; }
-  .landing-nav .landing-brand .brand-wordmark { font-size: 24px !important; }
-  .landing-nav .landing-brand .brand-mark { width: 34px; height: 34px; }
-  .landing-nav-link:nth-last-child(2) { margin-left: 0; border-left: 0; }
+  .landing-nav .app-header-brand .brand-wordmark { font-size: 24px !important; }
+  .landing-nav .app-header-brand .brand-mark { width: 34px; height: 34px; }
+  .landing-nav-link:last-child { margin-left: 0; border-left: 0; }
   .landing-hero-trust { max-width: none; }
   .landing-hero-actions { padding-top: 0; }
+  /* Menu toggle and chip share the first row; the opened nav drops to a full-width second row. */
   .landing-nav { flex-wrap: wrap; }
+  .landing-nav .app-header-center { display: contents; }
   .landing-nav nav {
     display: none;
+    order: 10;
     flex: 1 1 100%;
     flex-direction: column;
     align-items: stretch;
@@ -457,7 +451,6 @@
   }
   .landing-nav nav[data-open] { display: flex; }
   .landing-nav-link { justify-content: center; }
-  .landing-nav-cta { margin-left: 0; }
   /* Board 16 order: headline, art, buttons, Sign in, reassurance. */
   .landing-hero { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'copy' 'stage' 'actions'; row-gap: 18px; padding-top: 12px; }
   .landing-hero-copy { text-align: center; }

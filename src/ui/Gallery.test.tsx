@@ -10,10 +10,10 @@ describe('Gallery', () => {
     render(<Gallery />)
     expect(screen.getByRole('heading', { level: 1, name: 'Component gallery' })).toBeInTheDocument()
     expect(screen.getAllByText(BRAND_NAME).length).toBeGreaterThan(1)
-    for (const id of ['header', 'signin', 'sheet', 'mark', 'tokens', 'buttons', 'fields', 'segmented', 'status']) {
+    for (const id of ['app-header', 'header', 'signin', 'sheet', 'mark', 'tokens', 'buttons', 'fields', 'segmented', 'status']) {
       expect(document.querySelector(`[data-gallery-section="${id}"]`), id).not.toBeNull()
     }
-    expect(screen.getByRole('link', { name: `${BRAND_NAME} Home` })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: `${BRAND_NAME} Home` }).length).toBeGreaterThanOrEqual(4)
     expect(screen.getByRole('button', { name: 'Explore' })).toHaveClass('ui-button-primary')
     expect(screen.getByRole('link', { name: 'Start building' })).toHaveClass('ui-button', 'ui-button-primary')
     expect(screen.getByLabelText('Class').tagName).toBe('SELECT')

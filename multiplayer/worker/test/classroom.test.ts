@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBrickStudioDocument } from '@brick-studio/core';
-import { ClassroomHttpError, ClassroomService, handleClassroomRequest, normalizeUsername, revalidateClassroomWorldAccess, rosterDisplayName, usernameSuggestions, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
+import { ClassroomHttpError, ClassroomService, authorizeClassroomWorld, handleClassroomRequest, listClassroomWorldIds, normalizeUsername, revalidateClassroomWorldAccess, rosterDisplayName, usernameSuggestions, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
 type Row = Record<string, any>;
 
 const studentId = '11111111-1111-4111-8111-111111111111';
@@ -67,10 +67,12 @@ describe('classroom account and authorization boundaries', () => {
     await expect(service.worldFor(caller, worldId)).rejects.toMatchObject({ code: 'class_closed' });
     await expect(service.worldFor({ ...caller, id: teacherId, role: 'teacher' }, worldId)).resolves.toMatchObject({ id: worldId });
   });
-  it('keeps personal worlds private even from a class teacher', async () => {
-    const { service } = serviceWith({ '/rest/v1/brick_worlds': [{ id: worldId, kind: 'personal', owner_id: studentId }] });
+  it('keeps unshared personal worlds private even from a class teacher, while the owner may open them live', async () => {
+    const { service, fetcher } = serviceWith({ '/rest/v1/brick_worlds': [{ id: worldId, kind: 'personal', owner_id: studentId, class_visibility: 'private' }] });
     await expect(service.worldFor({ ...caller, id: teacherId, role: 'teacher' }, worldId)).rejects.toMatchObject({ status: 404 });
-    await expect(service.worldFor(caller, worldId, true)).rejects.toMatchObject({ code: 'private_world' });
+    await expect(service.worldFor({ ...caller, id: teacherId, role: 'student', classId }, worldId)).rejects.toMatchObject({ status: 404 });
+    expect(fetcher.mock.calls.every(([url]) => !String(url).includes('brick_students'))).toBe(true);
+    await expect(service.worldAccess(caller, worldId, true)).resolves.toMatchObject({ canEdit: true, isOwner: true, ownerName: 'Sam' });
   });
   it('reports a provider password-policy rejection on admin user writes as invalid_password, not a sign-in failure', async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
@@ -392,10 +394,251 @@ describe('join-screen roster', () => {
     const patchClass = (body: unknown, bearer = token) => handleClassroomRequest(new Request(`https://worker.test/classroom/classes/${classId}`, { method: 'PATCH', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }), env);
     const response = await patchClass({ showNamesOnJoin: false });
     expect(response?.status).toBe(200);
-    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false } });
+    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false, studentsCanShare: true, buildingNow: null, teacherName: null } });
     expect(patch).toHaveBeenCalledWith('classes', `id=eq.${classId}&teacher_id=eq.${teacherId}`, { show_names_on_join: false });
     expect((await patchClass({ showNamesOnJoin: 'no' }))?.status).toBe(400);
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(caller);
     expect((await patchClass({ showNamesOnJoin: false }))?.status).toBe(404);
+  });
+});
+
+describe('shared personal worlds (flows v2 sharing model)', () => {
+  const avaId = '11111111-1111-4111-8111-00000000000a', benId = '11111111-1111-4111-8111-00000000000b', cyId = '11111111-1111-4111-8111-00000000000c';
+  const otherClassId = '33333333-3333-4333-8333-000000000002', otherTeacherId = '22222222-2222-4222-8222-000000000002';
+  const treehouse = '44444444-4444-4444-8444-00000000000a', copyId = '44444444-4444-4444-8444-0000000000cc';
+  const doc = createBrickStudioDocument([]);
+  const ava: Caller = { ...caller, id: avaId, username: 'ava_builds', rosterName: 'Ava Rivera' };
+  const ben: Caller = { ...caller, id: benId, username: 'ben_k', rosterName: 'Ben Kim' };
+  const cy: Caller = { ...caller, id: cyId, username: 'cy_other', rosterName: 'Cy Other', classId: otherClassId };
+  const teacher: Caller = { id: teacherId, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, authVersion: 0, sessionId: sid, token };
+  const otherTeacher: Caller = { ...teacher, id: otherTeacherId };
+  type Tables = { classes: Row[]; students: Row[]; worlds: Row[]; sessions?: Row[] };
+  /** A small PostgREST stand-in: eq/in/neq filters, PATCH returning the updated rows, inserts with ids, the RPCs the routes use. */
+  function backend(as: Caller, tables: Tables) {
+    const events: ClassroomAccessChange[] = [];
+    const db: Record<string, Row[]> = { classes: tables.classes, students: tables.students, worlds: tables.worlds, world_members: [], class_codes: [], checkpoints: [], audit_events: [] };
+    const matches = (row: Row, query: URLSearchParams) => [...query.entries()].every(([key, value]) => {
+      if (['select', 'limit', 'offset', 'order'].includes(key)) return true;
+      if (value.startsWith('eq.')) return String(row[key]) === value.slice(3);
+      if (value.startsWith('neq.')) return String(row[key]) !== value.slice(4);
+      if (value.startsWith('in.(')) return value.slice(4, -1).split(',').includes(String(row[key]));
+      throw new Error(`Unsupported filter ${key}=${value}`);
+    });
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input)), table = url.pathname.replace('/rest/v1/brick_', ''), method = init?.method ?? 'GET';
+      if (url.pathname.startsWith('/rest/v1/rpc/')) {
+        const name = url.pathname.replace('/rest/v1/rpc/brick_', ''), body = JSON.parse(String(init?.body));
+        if (name === 'take_rate_limit') return Response.json(true);
+        if (name === 'commit_world') { const world = db.worlds.find(row => row.id === body.p_world_id)!; return Response.json({ ...world, revision: world.revision + 1, title: body.p_title ?? world.title, document: body.p_document }); }
+        throw new Error(`Unexpected rpc ${name}`);
+      }
+      if (!(table in db)) throw new Error(`Unexpected table ${table}`);
+      const rows = db[table].filter(row => matches(row, url.searchParams));
+      if (method === 'PATCH') { const data = JSON.parse(String(init?.body)); rows.forEach(row => Object.assign(row, data)); return Response.json(rows); }
+      if (method === 'POST') { const data = { id: copyId, revision: 1, updated_at: '2026-09-17T12:00:00Z', ...JSON.parse(String(init?.body)) }; db[table].push(data); return Response.json([data]); }
+      const limit = Number(url.searchParams.get('limit') || 1000);
+      return Response.json(rows.slice(0, limit));
+    });
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(as);
+    // The routes build their own service on the module fetch; the returned service uses the same tables directly.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    const call = async (method: string, path: string, body?: unknown) => {
+      const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/${path}`, {
+        method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
+      }), env, { onAccessChanged: async event => { events.push(event); } });
+      return { status: response!.status, body: await response!.json() as Row };
+    };
+    return { call, events, db, service, fetcher };
+  }
+  const period3 = () => ({ id: classId, teacher_id: teacherId, name: 'Period 3 Makers', login_code: 'MAKERS3', enrollment_open: true, collaboration_open: true, show_names_on_join: true, students_can_share: true });
+  const roster = () => [
+    { user_id: avaId, class_id: classId, username: 'ava_builds', username_key: 'ava_builds', roster_name: 'Ava Rivera', suspended: false, reset_required: false, auth_version: 2 },
+    { user_id: benId, class_id: classId, username: 'ben_k', username_key: 'ben_k', roster_name: 'Ben Kim', suspended: false, reset_required: false, auth_version: 2 },
+    { user_id: cyId, class_id: otherClassId, username: 'cy_other', username_key: 'cy_other', roster_name: 'Cy Other', suspended: false, reset_required: false, auth_version: 2 },
+  ];
+  const world = (sharing: Row = {}) => ({ id: treehouse, owner_id: avaId, class_id: null, kind: 'personal', title: 'Treehouse Hideout', revision: 3, updated_at: '2026-09-16T10:00:00Z', document: doc, class_visibility: 'private', class_can_edit: false, hidden_by_teacher: false, class_shared_at: null, ...sharing });
+  const shared = (sharing: Row = {}) => world({ class_visibility: 'class', class_shared_at: '2026-09-15T10:00:00Z', ...sharing });
+  const tables = (worlds: Row[], cls: Row = period3()): Tables => ({ classes: [cls, { ...period3(), id: otherClassId, teacher_id: otherTeacherId, name: 'Period 4' }], students: roster(), worlds });
+
+  it('the owner shares with look-only, then with editing, and unsharing re-authorizes the live room', async () => {
+    const { call, events, db, fetcher } = backend(ava, tables([world()]));
+    const looked = await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'class', canEdit: false });
+    expect(looked.status).toBe(200);
+    expect(looked.body.world).toMatchObject({ id: treehouse, visibility: 'class', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: classId, sharedAt: expect.any(String) });
+    expect(db.worlds[0]).toMatchObject({ class_visibility: 'class', class_can_edit: false });
+    const sharedAt = db.worlds[0].class_shared_at;
+    const edit = await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'class', canEdit: true });
+    expect(edit.body.world.sharedAt).toBe(sharedAt);
+    expect(edit.body.world).toMatchObject({ canEdit: true, classCanEdit: true });
+    expect(db.worlds[0].class_can_edit).toBe(true);
+    const unshared = await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'private', canEdit: true });
+    expect(unshared.body.world).toMatchObject({ visibility: 'private', sharedAt: null, canEdit: true });
+    expect(db.worlds[0]).toMatchObject({ class_visibility: 'private', class_can_edit: false, class_shared_at: null });
+    // Every change re-authorizes the room in place: classmates lose access on unshare (owner stays), edit rights follow class_can_edit.
+    expect(events).toEqual(Array(3).fill({ worldId: treehouse, reason: 'sharing_updated', change: 'membership' }));
+    expect((await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'everyone', canEdit: true })).status).toBe(400);
+    expect((await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'class', canEdit: 'yes' })).status).toBe(400);
+  });
+  it('refuses sharing when the teacher turned it off, and from anyone but the student owner', async () => {
+    const off = backend(ava, tables([world()], { ...period3(), students_can_share: false }));
+    const refused = await off.call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'class', canEdit: false });
+    expect(refused).toEqual({ status: 403, body: { error: 'Your teacher has turned off sharing between students.', code: 'sharing_disabled' } });
+    expect(off.db.worlds[0].class_visibility).toBe('private');
+    expect(off.events).toEqual([]);
+    vi.restoreAllMocks();
+    const classmate = backend(ben, tables([shared()]));
+    expect((await classmate.call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'private', canEdit: false })).body.code).toBe('owner_required');
+    vi.restoreAllMocks();
+    const asTeacher = backend(teacher, tables([shared()]));
+    expect((await asTeacher.call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'private', canEdit: false })).body.code).toBe('student_required');
+  });
+  it('lets a classmate look but not change a look-only world, and edit one shared with editing', async () => {
+    const look = backend(ben, tables([shared()]));
+    const seen = await look.call('GET', `worlds/${treehouse}`);
+    expect(seen.status).toBe(200);
+    expect(seen.body.world).toMatchObject({ visibility: 'class', canEdit: false, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: classId, sharedAt: '2026-09-15T10:00:00Z' });
+    expect(seen.body.world.document).toEqual(doc);
+    expect((await look.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('read_only');
+    expect((await look.call('PATCH', `worlds/${treehouse}`, { title: 'Mine now' })).body.code).toBe('owner_required');
+    expect((await look.call('GET', `worlds/${treehouse}/checkpoints`)).body.code).toBe('owner_required');
+    expect((await look.call('POST', `worlds/${treehouse}/restore`, { checkpointId: sid, expectedRevision: 3 })).body.code).toBe('read_only');
+    expect(look.db.worlds[0].title).toBe('Treehouse Hideout');
+    expect(await look.service.worldAccess(ben, treehouse, true, true)).toMatchObject({ canEdit: false, isOwner: false, ownerName: 'Ava R.', ownerClassId: classId });
+    vi.restoreAllMocks();
+    const edit = backend(ben, tables([shared({ class_can_edit: true })]));
+    const saved = await edit.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc });
+    expect(saved.status).toBe(200);
+    expect(saved.body.world).toMatchObject({ revision: 4, canEdit: true, ownerName: 'Ava R.' });
+    expect((await edit.call('PATCH', `worlds/${treehouse}`, { title: 'Mine now' })).body.code).toBe('owner_required');
+    expect(await edit.service.worldAccess(ben, treehouse, true, true)).toMatchObject({ canEdit: true, isOwner: false });
+    // The owner edits whatever the sharing settings say, including a look-only world.
+    expect(await edit.service.worldAccess(ava, treehouse, true, true)).toMatchObject({ canEdit: true, isOwner: true, ownerName: 'Ava R.' });
+    expect(await look.service.worldAccess(ava, treehouse)).toMatchObject({ canEdit: true, isOwner: true });
+  });
+  it('hides shared worlds from students of another class, and unshared or hidden ones from classmates', async () => {
+    const other = backend(cy, tables([shared({ class_can_edit: true })]));
+    expect((await other.call('GET', `worlds/${treehouse}`)).status).toBe(404);
+    expect((await other.call('POST', `worlds/${treehouse}/copy`)).status).toBe(404);
+    await expect(other.service.worldAccess(otherTeacher, treehouse)).rejects.toMatchObject({ status: 404 });
+    vi.restoreAllMocks();
+    const unshared = backend(ben, tables([world({ class_can_edit: true })]));
+    expect((await unshared.call('GET', `worlds/${treehouse}`)).status).toBe(404);
+    expect(unshared.fetcher.mock.calls.every(([url]) => !String(url).includes('brick_students'))).toBe(true);
+    vi.restoreAllMocks();
+    const hidden = backend(ben, tables([shared({ hidden_by_teacher: true })]));
+    expect((await hidden.call('GET', `worlds/${treehouse}`)).body).toMatchObject({ code: 'world_hidden' });
+    await expect(hidden.service.worldAccess(ben, treehouse, true, true)).rejects.toMatchObject({ status: 403, code: 'world_hidden' });
+    await expect(hidden.service.worldAccess(teacher, treehouse, true, true)).resolves.toMatchObject({ canEdit: false, isOwner: false });
+    vi.restoreAllMocks();
+    const closed = backend(ben, tables([shared()], { ...period3(), collaboration_open: false }));
+    expect((await closed.call('GET', `worlds/${treehouse}`)).body.code).toBe('class_closed');
+    vi.restoreAllMocks();
+    const off = backend(ben, tables([shared()], { ...period3(), students_can_share: false }));
+    expect((await off.call('GET', `worlds/${treehouse}`)).body.code).toBe('sharing_disabled');
+    // Owners are never blocked by their teacher's settings on their own world.
+    await expect(off.service.worldAccess(ava, treehouse, true)).resolves.toMatchObject({ canEdit: true, isOwner: true });
+  });
+  it('lets the class teacher hide and show a shared world, and nobody else', async () => {
+    const own = backend(teacher, tables([shared()]));
+    const hidden = await own.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: true });
+    expect(hidden.status).toBe(200);
+    expect(hidden.body.world).toMatchObject({ hiddenByTeacher: true, visibility: 'class', ownerName: 'Ava R.', canEdit: false });
+    expect(own.db.worlds[0].hidden_by_teacher).toBe(true);
+    expect(own.events).toEqual([{ worldId: treehouse, reason: 'visibility_updated', change: 'membership' }]);
+    expect((await own.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: false })).body.world.hiddenByTeacher).toBe(false);
+    expect((await own.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: 'yes' })).status).toBe(400);
+    vi.restoreAllMocks();
+    const foreign = backend(otherTeacher, tables([shared()]));
+    expect((await foreign.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: true })).status).toBe(404);
+    vi.restoreAllMocks();
+    const student = backend(ben, tables([shared()]));
+    expect((await student.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: true })).body.code).toBe('teacher_required');
+    expect(student.db.worlds[0].hidden_by_teacher).toBe(false);
+    vi.restoreAllMocks();
+    const privateWorld = backend(teacher, tables([world()]));
+    expect((await privateWorld.call('PATCH', `worlds/${treehouse}/visibility`, { hiddenByTeacher: true })).status).toBe(404);
+  });
+  it('copies any visible world into a personal world titled "<title> (copy)" and stops at the world limit', async () => {
+    const { call, db, fetcher } = backend(ben, tables([shared()]));
+    const copied = await call('POST', `worlds/${treehouse}/copy`);
+    expect(copied.status).toBe(201);
+    expect(copied.body.world).toMatchObject({ id: copyId, title: 'Treehouse Hideout (copy)', ownerId: benId, classId: null, kind: 'personal', visibility: 'private', canEdit: true, ownerName: 'Ben K.', sharedAt: null, document: doc });
+    expect(db.worlds.at(-1)).toMatchObject({ owner_id: benId, class_id: null, kind: 'personal', document: doc });
+    expect(db.worlds.at(-1)).not.toHaveProperty('class_visibility');
+    vi.restoreAllMocks();
+    const full = backend(ben, tables([shared(), ...Array.from({ length: 50 }, (_, i) => ({ ...world(), id: `55555555-5555-4555-8555-${String(i).padStart(12, '0')}`, owner_id: benId }))]));
+    expect(await full.call('POST', `worlds/${treehouse}/copy`)).toEqual({ status: 409, body: { error: 'You have reached the saved-world limit. Ask your teacher for help.', code: 'world_limit' } });
+    expect(full.fetcher.mock.calls.some(([, init]) => init?.method === 'POST' && !String(init.body).includes('p_key'))).toBe(false);
+    vi.restoreAllMocks();
+    const own = backend(ava, tables([world()]));
+    expect((await own.call('POST', `worlds/${treehouse}/copy`)).body.world).toMatchObject({ title: 'Treehouse Hideout (copy)', ownerId: avaId, ownerName: 'Ava R.' });
+    vi.restoreAllMocks();
+    const long = backend(ava, tables([world({ title: 'x'.repeat(80) })]));
+    expect((await long.call('POST', `worlds/${treehouse}/copy`)).body.world.title).toHaveLength(80);
+  });
+  it('maps a database quota rejection on the copy insert to world_limit', async () => {
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'worldAccess').mockResolvedValue({ world: shared(), canEdit: false, isOwner: false, ownerName: 'Ava R.', ownerClassId: classId });
+    vi.spyOn(ClassroomService.prototype, 'rows').mockResolvedValue([]);
+    vi.spyOn(ClassroomService.prototype, 'insert').mockRejectedValue(new ClassroomHttpError(409, 'quota_exceeded', 'You have reached the saved-world limit. Ask your teacher for help.'));
+    const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/worlds/${treehouse}/copy`, { method: 'POST', headers: { authorization: `Bearer ${token}` } }), env);
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toMatchObject({ code: 'world_limit' });
+  });
+  it('lets the teacher switch student sharing per class and reports it on the class view', async () => {
+    const { call, db, events } = backend(teacher, tables([]));
+    const off = await call('PATCH', `classes/${classId}`, { studentsCanShare: false });
+    expect(off.status).toBe(200);
+    expect(off.body.class).toMatchObject({ id: classId, studentsCanShare: false, collaborationOpen: true });
+    expect(db.classes[0].students_can_share).toBe(false);
+    expect(events).toEqual([{ classId, reason: 'class_updated', change: 'membership' }]);
+    expect((await call('PATCH', `classes/${classId}`, { studentsCanShare: 'no' })).status).toBe(400);
+    expect((await call('GET', 'classes')).body.classes[0]).toMatchObject({ studentsCanShare: false });
+    vi.restoreAllMocks();
+    const student = backend(ben, tables([]));
+    expect((await student.call('PATCH', `classes/${classId}`, { studentsCanShare: true })).status).toBe(404);
+  });
+  it('reports how many accounts are building in each class from live presence, only for teachers, never at sign-in', async () => {
+    const { db, fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));
+    const asked: string[][] = [];
+    const liveParticipants = vi.fn<(worldIds: string[]) => Promise<string[] | null>>(async worldIds => { asked.push([...worldIds].sort()); return worldIds.length ? [avaId, benId, avaId] : []; });
+    const call = async (path: string) => (await handleClassroomRequest(new Request(`https://worker.test/classroom/${path}`, { headers: { authorization: `Bearer ${token}` } }), env, { liveParticipants }))!.json() as Promise<Row>;
+    const classes = (await call('classes')).classes as Row[];
+    expect(classes.map(row => [row.id, row.buildingNow])).toEqual([[classId, 2]]);
+    expect(asked).toEqual([[worldId, treehouse, copyId].sort()]);
+    expect((await call('me')).classes[0].buildingNow).toBe(2);
+    liveParticipants.mockResolvedValueOnce(null);
+    expect((await call('classes')).classes[0].buildingNow).toBeNull();
+    // Sign-in responses and students never fan out to live rooms.
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    expect((await service.me(teacher)).classes.map(row => row.buildingNow)).toEqual([null]);
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
+    expect((await call('classes')).classes[0]).toMatchObject({ buildingNow: null, studentsCanShare: true });
+    expect(liveParticipants).toHaveBeenCalledTimes(3);
+    expect(db.classes[0].students_can_share).toBe(true);
+  });
+  it('includes shared personal worlds when a class change fans out to live rooms', async () => {
+    const { fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId, class_visibility: 'private' }, { ...shared(), id: sid, owner_id: cyId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));
+    expect((await listClassroomWorldIds(env, { classId })).sort()).toEqual([worldId, treehouse].sort());
+    expect((await listClassroomWorldIds(env, { userId: benId })).sort()).toEqual([worldId, treehouse].sort());
+    expect(await listClassroomWorldIds(env, { userId: otherTeacherId })).toEqual([sid]);
+  });
+  it('issues live access as a viewer or editor from the bearer route', async () => {
+    const { fetcher } = backend(ben, tables([shared()]));
+    const request = new Request(`https://worker.test/classroom/worlds/${treehouse}/live-ticket`, { headers: { authorization: `Bearer ${token}` } });
+    await expect(authorizeClassroomWorld(request, env, treehouse)).resolves.toMatchObject({ userId: benId, worldId: treehouse, classId: null, canEdit: false, isOwner: false, isTeacher: false, role: 'student' });
+    vi.restoreAllMocks();
+    const owner = backend(ava, tables([world()]));
+    await expect(authorizeClassroomWorld(request, env, treehouse)).resolves.toMatchObject({ userId: avaId, canEdit: true, isOwner: true });
+  });
+  it('translates the new live permission codes for socket re-authorization', async () => {
+    for (const [code, status] of [['world_hidden', 403], ['sharing_disabled', 403], ['private_world', 403], ['class_closed', 403], ['not_found', 404]] as const) {
+      const { fetcher } = serviceWith({ '/rest/v1/rpc/brick_authorize_world': { error: code } });
+      vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
+      await expect(revalidateClassroomWorldAccess(env, { userId: benId, sessionId: sid, authVersion: 2 }, treehouse)).rejects.toMatchObject({ code, status });
+      vi.restoreAllMocks();
+    }
   });
 });

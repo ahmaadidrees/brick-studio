@@ -217,7 +217,7 @@ it("awaits durable socket invalidation before reporting a world control success"
     sessionId: identity.sessionId,
     token: "test",
   });
-  vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+  vi.spyOn(ClassroomService.prototype, "worldAccess").mockResolvedValue({ world, canEdit: true, isOwner: true, ownerName: "Teacher", ownerClassId: world.class_id });
   vi.spyOn(ClassroomService.prototype, "rate").mockResolvedValue(undefined);
   vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({
     ...world,
@@ -350,7 +350,7 @@ it("authorizes and initializes a cold compact classroom world instead of treatin
     id: identity.userId, username: "Student", rosterName: "Student", role: "student",
     resetRequired: false, authVersion: 2, sessionId: identity.sessionId, token: "test",
   });
-  const authorized = vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+  const authorized = vi.spyOn(ClassroomService.prototype, "worldAccess").mockResolvedValue({ world, canEdit: true, isOwner: true, ownerName: "Student", ownerClassId: world.class_id });
   vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([world]);
   const paths: string[] = [];
   const stub = { fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -393,7 +393,7 @@ describe("live invalidation routing", () => {
   it("notifies only the renamed world as metadata and never enumerates the class", async () => {
     const world = { id: identity.worldId, title: "World", revision: 3, owner_id: identity.userId, class_id: identity.userId, kind: "class", document: {} };
     vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
-    vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+    vi.spyOn(ClassroomService.prototype, "worldAccess").mockResolvedValue({ world, canEdit: true, isOwner: true, ownerName: "Teacher", ownerClassId: world.class_id });
     const rows = vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([]);
     vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({ ...world, revision: 4, title: "New title" });
     const { env, notified } = roomsEnv(() => new Response("{}"));
@@ -411,7 +411,7 @@ describe("live invalidation routing", () => {
     vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
     vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table) => {
       if (table === "classes") return [{ id: classId, teacher_id: identity.userId, name: "Period 1", collaboration_open: true }];
-      if (table === "worlds") return worlds.map((id) => ({ id }));
+      if (table === "worlds") return worlds.map((id) => ({ id, class_id: classId }));
       return [];
     });
     vi.spyOn(ClassroomService.prototype, "patch").mockImplementation(async (_table, _filter, data) => [{ id: classId, teacher_id: identity.userId, ...data }]);
@@ -433,4 +433,50 @@ describe("live invalidation routing", () => {
     expect(failed.status).toBe(503);
     expect(await failed.json()).toMatchObject({ code: "live_invalidation_failed" });
   });
+});
+
+describe("live presence for the class list", () => {
+  const teacher = { id: identity.userId, username: "Teacher", rosterName: "Teacher", role: "teacher" as const, resetRequired: false, authVersion: 0, sessionId: identity.sessionId, token: "test" };
+  const classId = identity.userId, studentId = identity.sessionId;
+  const worlds = [identity.worldId, "44444444-4444-4444-8444-444444444444", "55555555-5555-4555-8555-555555555555"];
+  function presenceEnv(answer: (room: string) => Response) {
+    const asked: string[] = [];
+    const env = {
+      SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test",
+      WORLD_ROOMS: { idFromName: (x: string) => x, get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${room}${new URL(String(input)).pathname}`); return answer(room); } }) },
+    } as unknown as Env;
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
+    vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table, filter = "") => {
+      if (table === "classes") return [{ id: classId, teacher_id: identity.userId, name: "Period 1", collaboration_open: true, students_can_share: true }];
+      if (table === "worlds") return filter.includes("owner_id=in.") ? [{ id: worlds[2], owner_id: studentId }] : [{ id: worlds[0], class_id: classId }, { id: worlds[1], class_id: classId }];
+      if (table === "students") return [{ user_id: studentId, class_id: classId }];
+      return [];
+    });
+    const list = async () => (await (await handleReleaseRequest(new Request("https://worker.test/classroom/classes", { headers: { authorization: "Bearer test" } }), env)).json() as { classes: Array<{ buildingNow: number | null }> }).classes[0].buildingNow;
+    return { list, asked };
+  }
+  it("counts distinct accounts across the class's own and shared rooms", async () => {
+    const { list, asked } = presenceEnv((room) => Response.json({ userIds: room === worlds[0].replaceAll("-", "") ? ["a", "b"] : ["b", "c"] }));
+    expect(await list()).toBe(3);
+    expect(asked.sort()).toEqual(worlds.map((id) => `${id.replaceAll("-", "")}/internal/classroom-presence`).sort());
+  });
+  it("reports null rather than a guess when a room cannot answer", async () => {
+    const { list } = presenceEnv((room) => room === worlds[1].replaceAll("-", "") ? new Response("busy", { status: 503 }) : Response.json({ userIds: [] }));
+    expect(await list()).toBeNull();
+  });
+});
+
+it("forwards viewer access (canEdit false) for a shared personal world on the ticketed live path", async () => {
+  vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({
+    ...identity, username: "ben_k", role: "student", classId: null, canEdit: false, isTeacher: false, isOwner: false,
+  });
+  vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([{ id: identity.worldId, title: "Treehouse", revision: 3, kind: "personal", class_id: null, owner_id: identity.sessionId, document: {}, class_visibility: "class", class_can_edit: false }]);
+  const calls: Request[] = [];
+  const stub = { fetch: async (input: RequestInfo | URL, init?: RequestInit) => { const req = new Request(input, init); calls.push(req); return new Response("{}", { status: new URL(req.url).pathname === "/init" ? 409 : 200 }); } };
+  const env = { SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test", CLASSROOM_TICKET_SECRET: secret, WORLD_ROOMS: { idFromName: (x: string) => x, get: () => stub } } as unknown as Env;
+  const ticket = await issueLiveTicket(identity, secret);
+  const response = await handleReleaseRequest(new Request(`https://worker.test/worlds/${identity.worldId.replaceAll("-", "")}/connect?ticket=${ticket}`, { headers: { Upgrade: "websocket" } }), env);
+  expect(response.status).toBe(200);
+  const forwarded = JSON.parse(calls.at(-1)!.headers.get("x-classroom-access")!);
+  expect(forwarded).toMatchObject({ userId: identity.userId, worldId: identity.worldId, classId: null, canEdit: false, isOwner: false });
 });
