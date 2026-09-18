@@ -14,20 +14,6 @@
 .camera-view-select { height: 40px; margin-inline: 4px; }
 .brick-compact-layout .camera-view-select { display: none; }
 
-.desktop-selection-panel { position: absolute; z-index: 13; left: 50%; bottom: 12px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px); padding: 6px; box-sizing: border-box; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-.desktop-selection-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.desktop-selection-name { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 8px; font-size: 12px; }
-.desktop-selection-actions > button, .desktop-secondary-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 10px; border: 0; border-radius: 10px; background: var(--studio-panel-soft); color: var(--studio-ink); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-.desktop-selection-actions > button:hover, .desktop-secondary-actions > button:hover { background: var(--primary-soft); }
-.desktop-selection-actions > button:focus-visible, .desktop-secondary-actions > button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.desktop-selection-actions > .danger { color: var(--danger, #aa302a); background: #f178611a; }
-.desktop-adjust[aria-expanded='true'] { color: var(--studio-blue-dark); background: var(--primary-soft); }
-.desktop-selection-details { max-height: 260px; overflow-y: auto; overscroll-behavior: contain; margin-top: 6px; padding: 8px; border-top: 1px solid var(--studio-panel-border); }
-.desktop-selection-details:focus-visible { outline: 2px solid var(--studio-focus); }
-.desktop-secondary-actions { display: flex; gap: 5px; margin-top: 8px; }
-.desktop-selection-details .coordinates { margin-top: 8px; }
-.desktop-selection-panel[inert] { opacity: .55; }
-
 @media (pointer: fine) and (min-width: 901px) {
   .part-library { padding: 10px; }
   .part-library .part-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
@@ -39,12 +25,7 @@
   .part-library .color-grid button { width: 28px; height: 28px; min-width: 28px; }
   .brick-studio .build-shell:not(.compact-shell) .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: 288px; transform: none; max-width: calc(100% - 304px); }
   .brick-studio .build-shell.drawer-collapsed .brick-edit-toolbar { left: 80px; }
-  .brick-studio .build-shell:not(.compact-shell) .touch-placement-bar { display: flex; left: 288px; right: 12px; bottom: 12px; max-width: 610px; margin-inline: auto; flex-wrap: wrap; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-  .build-shell:not(.drawer-collapsed) .desktop-selection-panel { left: calc(50% + 138px); max-width: calc(100% - 304px); }
-  .brick-studio .build-shell.drawer-collapsed .touch-placement-bar { left: 12px; }
-  .touch-placement-bar .placement-part-chip { display: none; }
   .brick-studio .brick-toast { top: calc(var(--brick-panel-top) + 64px); left: calc(50% + 138px); }
-  .empty-guide { top: calc(var(--brick-panel-top) + 64px); left: calc(50% + 138px); }
   .onboarding-guide { left: calc(50% + 138px); }
 }
 @media (hover: hover) and (pointer: fine) {
@@ -57,15 +38,4 @@
 @media (pointer: fine) and (min-width: 901px) and (max-height: 520px) {
   .brick-studio .build-shell .part-library { top: var(--brick-panel-top); bottom: 8px; height: auto; width: 264px; }
   .brick-studio .build-shell .part-library .part-search { display: flex; }
-  .desktop-selection-details { max-height: calc(100dvh - 210px); }
-}
-@media (pointer: fine) and (min-width: 901px) {
-  .brick-studio .build-shell:not(.compact-shell) .touch-placement-bar { position: absolute; z-index: 13; align-items: center; justify-content: center; gap: 6px; }
-  .touch-placement-bar[data-moving='true'] .placement-part-chip { display: flex; flex-direction: column; padding: 0 8px; font-size: 12px; }
-  .touch-placement-bar .placement-icon-button { border-radius: 10px; }
-  .touch-placement-bar .touch-place-button { min-width: 96px; }
-}
-@media (pointer: fine) and (min-width: 901px) {
-  .brick-studio .build-shell:not(.compact-shell) .touch-placement-bar { width: max-content; max-width: calc(100% - 304px); left: calc(50% + 138px); right: auto; margin: 0; transform: translateX(-50%); }
-  .brick-studio .build-shell.drawer-collapsed .touch-placement-bar { left: 50%; max-width: calc(100% - 32px); }
 }

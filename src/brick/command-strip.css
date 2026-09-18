@@ -1,0 +1,128 @@
+/* Command strip: one floating panel at the bottom-centre of the canvas (offset while the drawer is
+   docked) that swaps between idle / brush / selected. Layout rules live here; the strip never
+   overlaps the drawer (left), the camera cluster (right) or the creative dock (compact, below). */
+.command-strip {
+  position: absolute;
+  z-index: 14;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  width: max-content;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  border: 1px solid var(--studio-panel-border);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--studio-panel);
+  box-shadow: var(--studio-panel-shadow);
+  animation: command-strip-rise 200ms cubic-bezier(.2,.9,.3,1);
+  pointer-events: auto;
+}
+.command-strip[inert] { opacity: .55; }
+.command-strip-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 6px 6px 6px 10px; }
+.command-strip-idle { min-height: 44px; padding: 8px 16px; color: var(--studio-ink); font-size: 13px; }
+.command-strip-idle strong { font-size: 13px; white-space: nowrap; }
+.command-strip-hint { color: var(--studio-muted); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.command-strip-chip { min-width: 0; display: flex; align-items: center; gap: 9px; padding-right: 4px; }
+.command-strip-chip-text { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+.command-strip-chip-text strong { max-width: 180px; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.command-strip-swatch { width: 30px; height: 30px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; color: white; box-shadow: inset 0 -4px 0 rgba(0,0,0,.11), 0 0 0 1px rgba(0,0,0,.07); }
+.command-strip-swatch-multi { background: linear-gradient(145deg, #39a6c5, var(--studio-blue)); }
+.command-strip-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.command-strip-anchor { position: relative; display: inline-flex; }
+.command-strip-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--studio-ink);
+  background: var(--studio-panel-soft);
+  font: 800 12px/1 inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.command-strip-button svg { color: var(--studio-blue-dark); }
+.command-strip-button:hover:not(:disabled) { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .12)); }
+.command-strip-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.command-strip-button:disabled { opacity: .38; cursor: default; }
+.command-strip-button.active { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .12)); box-shadow: inset 0 0 0 1px var(--studio-blue); }
+.command-strip-icon { width: 44px; padding: 0; }
+.command-strip-button.danger { color: var(--danger, #aa302a); background: rgba(241, 120, 97, .14); }
+.command-strip-button.danger svg { color: currentColor; }
+.command-strip-button.danger:hover:not(:disabled) { color: var(--danger, #98403a); background: rgba(241, 120, 97, .24); }
+.command-strip-primary { min-width: 96px; color: var(--primary-contrast, #ffffff); background: var(--studio-blue); box-shadow: 0 6px 16px rgba(63, 108, 192, .26); }
+.command-strip-primary svg { color: currentColor; }
+.command-strip-primary:hover:not(:disabled) { color: var(--primary-contrast, #ffffff); background: var(--studio-blue-dark); }
+.command-strip-color-dot { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; color: white; box-shadow: inset 0 -2px 0 rgba(0,0,0,.12), 0 0 0 1px rgba(0,0,0,.08); }
+.command-strip-color-dot svg { color: white; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+
+/* Adjust: the second row keeps the precise edits (nudge, resize, move, copy/paste, focus, coordinates). */
+.command-strip-details { flex: 1 0 100%; max-height: min(260px, 40vh); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 8px 4px 2px; border-top: 1px solid var(--studio-panel-border); }
+.command-strip-details:focus-visible { outline: 2px solid var(--studio-focus); }
+.command-strip .transform-controls { display: grid; grid-template-columns: repeat(7, minmax(44px, 1fr)); gap: 5px; }
+.command-strip .transform-controls button { min-width: 44px; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font: inherit; font-size: 16px; font-weight: 900; cursor: pointer; }
+.command-strip .transform-controls button:hover { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .12)); }
+.command-strip .transform-controls button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.command-strip .transform-controls small { font-size: 9px; font-weight: 900; line-height: 1; }
+.command-strip-secondary { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.command-strip-secondary button { min-height: 40px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font: 800 12px/1 inherit; cursor: pointer; }
+.command-strip-secondary button:hover { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .12)); }
+.command-strip-secondary button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.command-strip .coordinates { margin-top: 8px; }
+
+/* Color popover: anchored above the Color button, twelve swatches + Any color. */
+.command-strip-popover { position: absolute; z-index: 2; right: 0; bottom: calc(100% + 8px); width: 236px; box-sizing: border-box; padding: 10px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 18px 48px rgba(38, 60, 81, .2)); animation: command-strip-rise 160ms ease; }
+.command-strip-popover-title { margin: 0 2px 8px; color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.command-strip-popover .color-grid { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.command-strip-popover .color-grid button { width: 36px; height: 36px; min-width: 36px; }
+@media (pointer: coarse) {
+  .command-strip-popover { width: 260px; }
+  .command-strip-popover .color-grid { grid-template-columns: repeat(4, 1fr); }
+  .command-strip-popover .color-grid button { width: 44px; height: 44px; min-width: 44px; }
+}
+
+/* Desktop shell: the docked drawer takes the left 276px, so the strip centres on the remaining canvas. */
+@media (pointer: fine) and (min-width: 901px) {
+  .build-shell:not(.compact-shell):not(.drawer-collapsed) .command-strip { left: calc(50% + 138px); max-width: calc(100% - 304px); }
+}
+@media (pointer: coarse) and (min-width: 960px) and (min-height: 600px) and (orientation: landscape) {
+  .build-shell:not(.compact-shell):not(.drawer-collapsed) .command-strip { left: calc(50% + 136px); max-width: calc(100% - 300px); }
+}
+
+/* Compact shell: the creative dock owns the bottom edge, the strip floats one gap above it. */
+.brick-compact-layout .command-strip { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 68px); width: auto; max-width: none; transform: none; }
+.brick-compact-layout .command-strip-row { padding: 6px; }
+.brick-compact-layout .command-strip-chip { flex: 1 1 auto; padding-left: 4px; }
+.brick-compact-layout .command-strip-actions { flex: 1 0 100%; margin-left: 0; justify-content: flex-end; }
+.brick-compact-layout .command-strip-button { flex: 1 1 auto; padding: 0 8px; }
+.brick-compact-layout .command-strip-button > span:not(.command-strip-color-dot) { font-size: 11px; }
+.brick-compact-layout .command-strip-icon { flex: 0 0 44px; }
+.brick-compact-layout .command-strip-details { max-height: 32vh; }
+.brick-compact-layout .command-strip .transform-controls { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+.brick-compact-layout .command-strip-popover { right: auto; left: 50%; transform: translateX(-50%); }
+.brick-compact-layout .command-strip-idle { justify-content: center; text-align: center; }
+
+@media (max-width: 420px) {
+  .brick-compact-layout .command-strip-button > span:not(.command-strip-color-dot) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .brick-compact-layout .command-strip-button { position: relative; min-width: 44px; }
+  .brick-compact-layout .command-strip-primary > span { position: static; width: auto; height: auto; clip-path: none; }
+  .brick-compact-layout .command-strip-popover { width: min(260px, calc(100vw - 32px)); }
+}
+
+/* Short landscape phones: the dock sits bottom-left, so the strip takes the rest of the bottom edge. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .brick-compact-layout .command-strip { left: 200px; right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); max-height: calc(100% - 126px); overflow-y: auto; }
+  .brick-compact-layout .command-strip-actions { flex: 1 1 auto; }
+  .brick-compact-layout .command-strip-chip { flex: 0 1 auto; }
+}
+
+@keyframes command-strip-rise { from { opacity: 0; transform: translate(-50%, 12px); } }
+.brick-compact-layout .command-strip { animation-name: command-strip-rise-flat; }
+@keyframes command-strip-rise-flat { from { opacity: 0; transform: translateY(12px); } }
+.brick-reduced-motion .command-strip, .brick-reduced-motion .command-strip-popover { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .command-strip, .command-strip-popover { animation: none !important; }
+}

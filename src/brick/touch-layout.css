@@ -41,18 +41,6 @@
 .brick-compact-layout .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
 .brick-compact-layout .brick-edit-toolbar .selection-mode-control span { display: inline; }
 .brick-compact-layout .selection-mode-control { min-height: 44px; padding: 0 10px; }
-.brick-compact-layout .touch-placement-bar,
-.brick-compact-layout .touch-selection-bar { top: auto; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 68px); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); max-width: 520px; margin-inline: auto; flex-wrap: wrap; gap: 5px; border-radius: 18px; }
-.brick-compact-layout .placement-part-chip,
-.brick-compact-layout .selection-part-chip { flex: 1 0 100%; flex-direction: row; gap: 8px; padding: 0 6px; }
-.brick-compact-layout .selection-chip-text { flex-direction: row; gap: 8px; }
-.brick-compact-layout .touch-place-button { flex: 1 1 auto; min-width: 80px; }
-.touch-selection-bar .transform-controls-compact { order: 10; flex: 1 0 100%; display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 5px; }
-.touch-selection-bar .transform-controls-compact button { width: auto; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; min-height: 48px; border-radius: 10px; }
-.touch-selection-bar .transform-controls-compact small { position: static; width: auto; height: auto; clip-path: none; white-space: normal; font-size: 10px; }
-.touch-adjust-toggle { min-height: 44px; padding: 0 10px; }
-.touch-adjust-toggle[aria-expanded='true'] { color: var(--studio-blue-dark); background: var(--primary-soft); border-color: var(--studio-blue); }
-.brick-compact-layout .touch-selection-bar { max-height: 40%; overflow-y: auto; touch-action: pan-y; }
 .brick-compact-layout .brick-toast { top: calc(var(--brick-panel-top) + 60px); }
 
 @media (pointer: coarse) {
@@ -82,9 +70,6 @@
   .build-shell.drawer-collapsed .brick-edit-toolbar { left: 76px; }
   .brick-history-tools .studio-icon-button > span, .brick-capacity-status { display: none; }
   .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
-  .touch-placement-bar, .touch-selection-bar { left: 284px; right: 12px; bottom: 12px; max-width: none; flex-wrap: wrap; border-radius: 18px; }
-  .drawer-collapsed .touch-placement-bar, .drawer-collapsed .touch-selection-bar { left: 12px; }
-  .touch-selection-bar { max-height: 40%; overflow-y: auto; touch-action: pan-y; }
   .onboarding-guide { left: calc(50% + 130px); }
 }
 
@@ -92,8 +77,6 @@
   .brick-compact-layout { --brick-header-height: 56px; }
   .brick-compact-layout .brick-creative-dock { width: 184px; left: 8px; transform: none; }
   .brick-creative-dock > button { padding: 5px; }
-  .brick-compact-layout .touch-placement-bar, .brick-compact-layout .touch-selection-bar { left: 200px; bottom: max(8px, env(safe-area-inset-bottom)); right: 8px; max-width: none; max-height: calc(100% - 126px); }
-  .brick-compact-layout .placement-part-chip { display: none; }
   .onboarding-guide { top: var(--brick-panel-top); max-height: calc(100% - var(--brick-header-block) - 90px); }
 }
 .brick-creative-dock > button { font-family: inherit; font-size: 11px; font-weight: 800; line-height: 1.2; }

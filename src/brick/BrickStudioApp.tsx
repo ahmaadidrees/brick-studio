@@ -1,6 +1,6 @@
 import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
 import { getBuildPlateSize, type BuildPlateSize } from './buildPlate'
-import { CustomColorPicker } from './CustomColorPicker'
+import { ColorPalette, CommandStrip } from './CommandStrip'
 import { SettingsSheet, StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
 import {
@@ -574,8 +574,8 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
 
 function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse: () => void }) {
   const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
-  const selectionCount = useBrickStore((state) => state.selectedIds.length)
-  const targetColor = usePaletteTarget()
+  const brushColor = useBrickStore((state) => state.activeColor)
+  const setBrushColor = useBrushColor()
   return (
     <aside inert={graphicsPaused} className="part-library" id="brick-part-library" aria-label="Brick drawer">
       <div className="library-title">
@@ -591,30 +591,31 @@ function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse:
       </div>
       <PartGrid {...gridProps} denseCatalog />
       <section className="library-colors">
-        <label><Palette size={15} aria-hidden="true" /> {selectionCount > 1 ? `Color all ${selectionCount}` : 'Color'}</label>
-        <ColorPalette targetColor={targetColor} />
+        <label><Palette size={15} aria-hidden="true" /> Brush color</label>
+        <ColorPalette targetColor={brushColor} onPick={setBrushColor} label="Brush color" />
       </section>
     </aside>
   )
 }
 
-/** The color the palette is editing: the armed draft, a single selection, or the loaded brush. */
-function usePaletteTarget() {
-  const draft = useBrickStore((state) => state.draft)
-  const bricks = useBrickStore((state) => state.bricks)
-  const selectedId = useBrickStore((state) => state.selectedId)
-  const selectedIds = useBrickStore((state) => state.selectedIds)
-  const activeColor = useBrickStore((state) => state.activeColor)
-  if (draft) return draft.color
-  if (selectedIds.length === 1) return bricks.find((brick) => brick.id === selectedId)?.color ?? activeColor
-  return activeColor
+/**
+ * The drawer palette sets only the brush: the armed draft (or the group being moved) takes the
+ * color through the store's brush path, but placed bricks are never recolored from here — the
+ * command strip's Color popover owns selection recolor. Nothing here touches history.
+ */
+function useBrushColor() {
+  return useCallback((color: string) => {
+    const state = useBrickStore.getState()
+    if (state.draft) state.setActiveColor(color)
+    else useBrickStore.setState({ activeColor: color })
+  }, [])
 }
 
 function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
   const { onClose } = props
   const [expanded, setExpanded] = useState(false)
-  const selectionCount = useBrickStore((state) => state.selectedIds.length)
-  const targetColor = usePaletteTarget()
+  const brushColor = useBrickStore((state) => state.activeColor)
+  const setBrushColor = useBrushColor()
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -647,108 +648,12 @@ function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
         </div>
         <PartGrid {...props} onChoose={onClose} />
         <section className="brick-sheet-colors">
-          <label><Palette size={15} /> {selectionCount > 1 ? `Color all ${selectionCount}` : 'Color'}</label>
-          <ColorPalette targetColor={targetColor} />
+          <label><Palette size={15} aria-hidden="true" /> Brush color</label>
+          <ColorPalette targetColor={brushColor} onPick={setBrushColor} label="Brush color" />
         </section>
       </div>
     </>
   )
-}
-
-type ColorPaletteProps = {
-  targetColor: string
-}
-
-function ColorPalette({ targetColor }: ColorPaletteProps) {
-  const [customOpen, setCustomOpen] = useState(false)
-  const customSelected = !BRICK_COLORS.some((color) => color.toLowerCase() === targetColor.toLowerCase())
-  const setColor = useBrickStore((state) => state.setActiveColor)
-  return (
-    <>
-    <div className="color-grid" aria-label="Brick color">
-      {BRICK_COLORS.map((color) => {
-        const selected = targetColor === color
-        return (
-          <button
-            key={color}
-            className={selected ? 'active' : ''}
-            style={{ background: color }}
-            onClick={() => setColor(color)}
-            aria-label={`Use color ${color}`}
-            aria-pressed={selected}
-          >
-            {selected && <Check size={13} />}
-          </button>
-        )
-      })}
-      <button type="button" className={`brick-any-color${customSelected ? ' active' : ''}`} style={customSelected ? { background: targetColor } : undefined} aria-pressed={customSelected} aria-label="Choose any brick color" title="Choose any color" aria-haspopup="dialog" onClick={() => setCustomOpen(true)}>{customSelected ? <Check size={13} /> : '+'}</button>
-    </div>
-    {customOpen && <CustomColorPicker color={targetColor} onApply={setColor} onClose={() => setCustomOpen(false)} />}
-    </>
-  )
-}
-
-function TransformControls({ count, onResize, compact = false, hideRotate = false }: { count: number; onResize: () => void; compact?: boolean; hideRotate?: boolean }) {
-  const nudge = useBrickStore((state) => state.nudge)
-  const rotate = useBrickStore((state) => state.rotate)
-  const selectionLabel = count === 1 ? 'brick' : `${count} bricks`
-  return (
-    <div className={`transform-controls${compact ? ' transform-controls-compact' : ''}`} role="group" aria-label={`Position and size ${selectionLabel}`}>
-      <button type="button" aria-label={`Move ${selectionLabel} left one stud`} onClick={() => nudge(-1, 0, 0)}><span aria-hidden="true">←</span><small>Left</small></button>
-      <button type="button" aria-label={`Move ${selectionLabel} forward one stud`} onClick={() => nudge(0, 0, -1)}><span aria-hidden="true">↑</span><small>Forward</small></button>
-      <button type="button" aria-label={`Move ${selectionLabel} back one stud`} onClick={() => nudge(0, 0, 1)}><span aria-hidden="true">↓</span><small>Back</small></button>
-      <button type="button" aria-label={`Move ${selectionLabel} right one stud`} onClick={() => nudge(1, 0, 0)}><span aria-hidden="true">→</span><small>Right</small></button>
-      <button type="button" aria-label={`Raise ${selectionLabel} one plate`} onClick={() => nudge(0, 1, 0)}><ChevronUp size={18} /><small>Raise</small></button>
-      <button type="button" aria-label={`Lower ${selectionLabel} one plate`} onClick={() => nudge(0, -1, 0)}><ChevronDown size={18} /><small>Lower</small></button>
-      {!hideRotate && <button type="button" aria-label={`Rotate ${selectionLabel}`} onClick={rotate}><RotateCw size={18} /><small>Rotate</small></button>}
-      <button type="button" aria-label={`Resize ${selectionLabel}`} onClick={onResize}><Cuboid size={18} /><small>Resize</small></button>
-    </div>
-  )
-}
-
-/** Desktop selection tools share the canvas edge; placement uses the existing strip. */
-function Inspector({ onResize }: { onResize: () => void }) {
-  const graphicsPaused = useBrickStore(state => state.graphicsPaused)
-  const bricks = useBrickStore(state => state.bricks)
-  const selectedIds = useBrickStore(state => state.selectedIds)
-  const draft = useBrickStore(state => state.draft)
-  const rotate = useBrickStore(state => state.rotate)
-  const duplicate = useBrickStore(state => state.duplicate)
-  const deleteSelected = useBrickStore(state => state.deleteSelected)
-  const copy = useBrickStore(state => state.copy)
-  const paste = useBrickStore(state => state.paste)
-  const startMove = useBrickStore(state => state.startMove)
-  const requestView = useBrickStore(state => state.requestView)
-  const setColor = useBrickStore(state => state.setActiveColor)
-  const [expanded, setExpanded] = useState(false)
-  const [colorOpen, setColorOpen] = useState(false)
-  const selected = bricks.find(brick => selectedIds.includes(brick.id))
-  const count = selectedIds.length
-  if (draft || !selected || !count) return null
-  const label = count === 1 ? 'brick' : `${count} selected bricks`
-  return <>
-    <aside inert={graphicsPaused} className="desktop-selection-panel" aria-label={count === 1 ? 'Brick inspector' : `${count} bricks selected`}>
-      <div className="desktop-selection-actions">
-        <strong className="desktop-selection-name">{count === 1 ? BRICK_PART_MAP[selected.partId]?.name : `${count} bricks selected`}</strong>
-        <button type="button" aria-label={count === 1 ? 'Recolor brick' : `Recolor ${count} selected bricks`} onClick={() => setColorOpen(true)}><Palette size={17} /><span>Color</span></button>
-        {count === 1 && <button type="button" aria-label="Rotate brick" onClick={rotate}><RotateCw size={17} /><span>Rotate</span></button>}
-        <button type="button" aria-label={`Duplicate ${label}`} onClick={duplicate}><Copy size={17} /><span>Duplicate</span></button>
-        <button type="button" aria-label={`Delete ${label}`} className="danger" onClick={deleteSelected}><Trash2 size={17} /><span>Delete</span></button>
-        <button type="button" className="desktop-adjust" aria-expanded={expanded} aria-controls="brick-inspector-properties" onClick={() => setExpanded(!expanded)}><SlidersHorizontal size={17} /><span>Adjust</span></button>
-      </div>
-      {expanded && <div className="desktop-selection-details" id="brick-inspector-properties" role="region" aria-label="Brick properties and editing actions" tabIndex={0}>
-        <TransformControls count={count} onResize={onResize} hideRotate={count === 1} />
-        <div className="desktop-secondary-actions">
-          <button type="button" onClick={startMove} aria-label={count === 1 ? 'Move brick' : 'Move selected bricks'}>Move</button>
-          <button type="button" onClick={copy} aria-label={`Copy ${label}`}>Copy</button>
-          <button type="button" onClick={paste} aria-label="Paste copied bricks">Paste</button>
-          <button type="button" onClick={() => requestView('selection')} aria-label={count === 1 ? 'Focus selected brick' : 'Focus selected bricks'}>Focus</button>
-        </div>
-        {count === 1 && <div className="coordinates"><span>X <strong>{selected.x}</strong></span><span>Height <strong>{selected.y}</strong></span><span>Z <strong>{selected.z}</strong></span></div>}
-      </div>}
-    </aside>
-    {colorOpen && <CustomColorPicker color={selected.color} onApply={setColor} onClose={() => setColorOpen(false)} />}
-  </>
 }
 
 function ViewControls() {
@@ -801,110 +706,6 @@ function MarqueeOverlay() {
         height: Math.abs(marquee.current.y - marquee.start.y),
       }}
     />
-  )
-}
-
-function EmptyState() {
-  const count = useBrickStore((state) => state.bricks.length)
-  const toast = useBrickStore((state) => state.toast)
-  if (count || toast) return null
-  return (
-    <div className="empty-guide">
-      <MousePointer2 size={22} />
-      <div>
-        <strong>Start with one brick</strong>
-        <span className="fine-pointer-copy">Choose a shape, position the blue preview, then click to place.</span>
-        <span className="coarse-pointer-copy">Tap + to choose a shape, tap to position the blue preview, then use Place.</span>
-      </div>
-    </div>
-  )
-}
-
-/**
- * The compact selection pill: same shape, position, and slide-in as the placement pill, so the
- * two read as one control surface swapping states. Coordinates live on in the desktop inspector
- * only — there is no room for them beside six 44px targets.
- */
-function TouchSelectionBar({ onRecolor, onResize }: { onRecolor: () => void; onResize: () => void }) {
-  const [adjustOpen, setAdjustOpen] = useState(false)
-  const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
-  const bricks = useBrickStore((state) => state.bricks)
-  const selectedId = useBrickStore((state) => state.selectedId)
-  const selectedIds = useBrickStore((state) => state.selectedIds)
-  const draft = useBrickStore((state) => state.draft)
-  const grabInProgress = useBrickStore((state) => state.grabInProgress)
-  const startMove = useBrickStore((state) => state.startMove)
-  const duplicate = useBrickStore((state) => state.duplicate)
-  const copy = useBrickStore((state) => state.copy)
-  const paste = useBrickStore((state) => state.paste)
-  const deleteSelected = useBrickStore((state) => state.deleteSelected)
-  const requestView = useBrickStore((state) => state.requestView)
-
-  // An armed draft hands the row to the placement pill; a captured drag freezes both pills so
-  // the only thing that animates on release is the placement pill sliding in as Moving.
-  if (draft || grabInProgress) return null
-  const count = selectedIds.length
-  if (count > 1) {
-    return (
-      <div inert={graphicsPaused} className="touch-selection-bar" role="group" aria-label={`${count} bricks selected`}>
-        <span className="selection-part-chip">
-          <span className="selection-swatch selection-swatch-multi" aria-hidden="true"><Layers3 size={17} /></span>
-          <span className="selection-chip-text"><span className="brick-eyebrow">Selection</span><strong>{count} bricks</strong></span>
-        </span>
-        <button className="studio-button touch-adjust-toggle" aria-expanded={adjustOpen} onClick={() => setAdjustOpen(!adjustOpen)}><SlidersHorizontal size={18} />Adjust</button>
-        {adjustOpen && <TransformControls count={count} onResize={onResize} compact />}
-        {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Copy ${count} selected bricks`} onClick={copy}><Clipboard size={19} /></button>}
-        {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label="Paste copied bricks" onClick={paste}><ClipboardPaste size={19} /></button>}
-        <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Duplicate ${count} selected bricks`} onClick={duplicate}><Copy size={19} /></button>
-        <button className="studio-icon-button placement-icon-button" type="button" aria-label={`Recolor ${count} selected bricks`} onClick={onRecolor}><Palette size={19} /></button>
-        <button className="studio-icon-button placement-icon-button danger" type="button" aria-label={`Delete ${count} selected bricks`} onClick={deleteSelected}><Trash2 size={19} /></button>
-      </div>
-    )
-  }
-  const selected = bricks.find((brick) => brick.id === selectedId)
-  if (!selected) return null
-  const part = BRICK_PART_MAP[selected.partId]
-  if (!part) return null
-  return (
-    <div inert={graphicsPaused} className="touch-selection-bar" role="group" aria-label="Selected brick actions">
-      <span className="selection-part-chip">
-        <span className="selection-swatch" style={{ background: selected.color }} aria-hidden="true" />
-        <span className="selection-chip-text"><span className="brick-eyebrow">Selected</span><strong>{part.name}</strong></span>
-      </span>
-      <button className="studio-button touch-adjust-toggle" aria-expanded={adjustOpen} onClick={() => setAdjustOpen(!adjustOpen)}><SlidersHorizontal size={18} />Adjust</button>
-      {adjustOpen && <TransformControls count={1} onResize={onResize} compact />}
-      {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label="Move brick" onClick={startMove}><Move size={19} /></button>}
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Recolor brick" onClick={onRecolor}><Palette size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Duplicate brick" onClick={duplicate}><Copy size={19} /></button>
-      {adjustOpen && <button className="studio-icon-button placement-icon-button" type="button" aria-label="Focus selected brick" onClick={() => requestView('selection')}><Focus size={19} /></button>}
-      <button className="studio-icon-button placement-icon-button danger" type="button" aria-label="Delete brick" onClick={deleteSelected}><Trash2 size={19} /></button>
-    </div>
-  )
-}
-
-function TouchPlacementBar() {
-  const draft = useBrickStore((state) => state.draft)
-  const movingId = useBrickStore((state) => state.movingId)
-  const movingSelection = useBrickStore((state) => state.movingSelection)
-  const grabInProgress = useBrickStore((state) => state.grabInProgress)
-  const placeDraft = useBrickStore((state) => state.placeDraft)
-  const rotate = useBrickStore((state) => state.rotate)
-  const nudge = useBrickStore((state) => state.nudge)
-  const cancelInteraction = useBrickStore((state) => state.cancelInteraction)
-  if (!draft || grabInProgress) return null
-  const part = BRICK_PART_MAP[draft.partId]
-  if (!part) return null
-  return (
-    <div className="touch-placement-bar" data-moving={Boolean(movingId || movingSelection)} role="group" aria-label="Positioned brick actions">
-      <span className="placement-part-chip"><span className="brick-eyebrow">{movingSelection?.duplicate ? 'Duplicating' : movingId ? 'Moving' : 'Placing'}</span><strong>{movingSelection && movingSelection.originals.length > 1 ? `${movingSelection.originals.length} bricks` : part.name}</strong></span>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Cancel" onClick={cancelInteraction}><X size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Rotate" disabled={(movingSelection?.originals.length ?? 0) > 1} onClick={rotate}><RotateCw size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Raise brick one plate" onClick={() => nudge(0, 1, 0)}><ChevronUp size={19} /></button>
-      <button className="studio-icon-button placement-icon-button" type="button" aria-label="Lower brick one plate" onClick={() => nudge(0, -1, 0)}><ChevronDown size={19} /></button>
-      <button className="studio-button studio-button-primary touch-place-button" type="button" aria-label={movingId ? 'Place moved brick from touch controls' : 'Place positioned brick'} onClick={() => placeDraft()}>
-        <Check size={20} /> {movingId ? 'Place move' : 'Place'}
-      </button>
-    </div>
   )
 }
 
@@ -964,7 +765,6 @@ function BuildShell({
           <button type="button" onClick={() => onOpenWorldSetup('environment')}><Mountain size={21} /><span>Scene</span></button>
           <button type="button" onClick={() => onOpenWorldSetup('character')}><UserRound size={21} /><span>Character</span></button>
           </nav>
-          <TouchSelectionBar onRecolor={openSheet} onResize={openResize} />
           {sheetOpen && <BrickDrawerSheet
             customParts={customParts}
             canCreatePart={canEditCustomParts}
@@ -990,10 +790,9 @@ function BuildShell({
             onClick={() => setDrawerOpen(true)}
           ><PanelLeftOpen size={18} /><span>Bricks</span></button>
         )}
-        {coarsePointer ? <TouchSelectionBar onRecolor={() => setDrawerOpen(true)} onResize={openResize} /> : <Inspector onResize={openResize} />}
       </>}
       <EditingToolbar />
-      <TouchPlacementBar />
+      <CommandStrip coarsePointer={coarsePointer} onResize={openResize} />
       <CreateBrickSheet
         open={createOpen}
         existingCount={customParts.length}
@@ -1164,16 +963,6 @@ function TouchExploreControls({ readOnly = false }: { readOnly?: boolean }) {
       <div className={`touch-explore-hint${hintsDismissed ? ' touch-explore-hint-dismissed' : ''}`} id="touch-explore-hint" role="note">Push farther to run · Drag to look · Pinch to zoom · Jump twice to flip{!hintsDismissed && <button type="button" className="explore-hint-dismiss" aria-label="Hide control hints" onClick={dismissHints}><X size={14} aria-hidden="true" /></button>}</div>
     </div>
   )
-}
-
-function ShortcutBar() {
-  const coarsePointer = useCoarsePointerPreference()
-  const hasDraft = useBrickStore((state) => state.draft !== null)
-  const hasSelection = useBrickStore((state) => state.selectedIds.length > 0)
-  if (coarsePointer) return null
-  // Esc mirrors the keyboard handler: an armed brush cancels first, otherwise the selection clears.
-  const escapeHint = hasDraft ? 'puts the brick down' : hasSelection ? 'clears the selection' : null
-  return <div className="shortcut-bar" role="note" aria-label="Keyboard and mouse shortcuts"><span><MousePointer2 size={14} aria-hidden="true" />Drag selection to move · Right-drag to orbit</span>{escapeHint && <span><kbd>Esc</kbd> {escapeHint}</span>}</div>
 }
 
 export type BrickStudioAppProps = StudioDocumentCommands & {
@@ -1531,8 +1320,6 @@ export default function BrickStudioApp({
             onCreatePart={createCustomPart}
             onResizeSelection={resizeSelection}
           />
-          <EmptyState />
-          <ShortcutBar />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
       ) : <TouchExploreControlsGate readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
