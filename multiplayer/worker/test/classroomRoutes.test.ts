@@ -217,7 +217,7 @@ it("awaits durable socket invalidation before reporting a world control success"
     sessionId: identity.sessionId,
     token: "test",
   });
-  vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+  vi.spyOn(ClassroomService.prototype, "worldAccess").mockResolvedValue({ world, canEdit: true, isOwner: true, ownerName: "Teacher" });
   vi.spyOn(ClassroomService.prototype, "rate").mockResolvedValue(undefined);
   vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({
     ...world,
@@ -350,7 +350,7 @@ it("authorizes and initializes a cold compact classroom world instead of treatin
     id: identity.userId, username: "Student", rosterName: "Student", role: "student",
     resetRequired: false, authVersion: 2, sessionId: identity.sessionId, token: "test",
   });
-  const authorized = vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+  const authorized = vi.spyOn(ClassroomService.prototype, "worldAccess").mockResolvedValue({ world, canEdit: true, isOwner: true, ownerName: "Student" });
   vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([world]);
   const paths: string[] = [];
   const stub = { fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -393,7 +393,7 @@ describe("live invalidation routing", () => {
   it("notifies only the renamed world as metadata and never enumerates the class", async () => {
     const world = { id: identity.worldId, title: "World", revision: 3, owner_id: identity.userId, class_id: identity.userId, kind: "class", document: {} };
     vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(teacher);
-    vi.spyOn(ClassroomService.prototype, "worldFor").mockResolvedValue(world);
+    vi.spyOn(ClassroomService.prototype, "worldAccess").mockResolvedValue({ world, canEdit: true, isOwner: true, ownerName: "Teacher" });
     const rows = vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([]);
     vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({ ...world, revision: 4, title: "New title" });
     const { env, notified } = roomsEnv(() => new Response("{}"));
