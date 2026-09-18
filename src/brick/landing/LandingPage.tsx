@@ -17,6 +17,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { BRAND_NAME, BrandLockup } from '../../brand'
 import { Button } from '../../ui/Button'
+import { AppHeader } from '../../shell'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
 import { ClassroomVignette, HeroDiorama, NovaPlaceholder, ScenePlaceholder, StepArt } from './LandingArt'
 import './landing.css'
@@ -254,28 +255,32 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
     <div className={['brick-landing', className].filter(Boolean).join(' ')}>
       <a className="landing-skip" href={`#${mainId}`}>Skip to content</a>
 
-      <header className="landing-nav" onKeyDown={onNavKeyDown}>
-        <BrandLockup size={56} className="landing-brand" />
-        <Button
-          ref={menuButton}
-          variant="secondary"
-          className="landing-menu-toggle"
-          icon={menuOpen ? <X size={20} /> : <Menu size={20} />}
-          aria-expanded={menuOpen}
-          aria-controls={navId}
-          onClick={() => setMenuOpen((open) => !open)}
-        >
-          Menu
-        </Button>
-        <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
-          <a className="landing-nav-link" href="#how-it-works">How it works</a>
-          <a className="landing-nav-link" href="#teachers">For teachers</a>
-          <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
-          <a className="ui-button ui-button-secondary landing-nav-cta" href={signinHref}>
-            <span className="ui-button-label">Student login</span>
-          </a>
-        </nav>
-      </header>
+      {/* Shared shell header: lockup = Home, page links, account chip in the corner (Sign in → /join?mode=signin). */}
+      <AppHeader
+        variant="landing"
+        className="landing-nav"
+        onKeyDown={onNavKeyDown}
+        navigation={
+          <>
+            <Button
+              ref={menuButton}
+              variant="secondary"
+              className="landing-menu-toggle"
+              icon={menuOpen ? <X size={20} /> : <Menu size={20} />}
+              aria-expanded={menuOpen}
+              aria-controls={navId}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              Menu
+            </Button>
+            <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
+              <a className="landing-nav-link" href="#how-it-works">How it works</a>
+              <a className="landing-nav-link" href="#teachers">For teachers</a>
+              <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
+            </nav>
+          </>
+        }
+      />
 
       <main id={mainId}>
         {window.location.hostname === 'virtual-legos.vercel.app' && (

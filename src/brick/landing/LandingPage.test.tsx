@@ -90,9 +90,11 @@ describe('calls to action and anchors', () => {
     expect(joins).toHaveLength(1)
     for (const link of joins) expect(link).toHaveAttribute('href', '/build?classroom=join')
 
+    // The header's student entry is the shell's account chip (flows v2); the hero keeps its own link.
     const signins = screen.getAllByRole('link', { name: 'Student login' })
-    expect(signins).toHaveLength(2)
+    expect(signins).toHaveLength(1)
     for (const link of signins) expect(link).toHaveAttribute('href', '/build?classroom=signin')
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/join?mode=signin')
     expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/build?classroom=teacher')
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/build')
     expect(screen.getByText('Continue with your teacher Google account. Email and password sign-in is also available.')).toBeInTheDocument()

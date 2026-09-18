@@ -116,7 +116,7 @@ function headerClass(variant: AppHeaderVariant, className?: string) {
 function LandingHeader({ navigation, session, className, accountMenuDefaultOpen, onKeyDown, id }: AppHeaderLandingProps) {
   return (
     <header id={id} className={headerClass('landing', className)} onKeyDown={onKeyDown}>
-      <BrandLockup href="/" size={40} srSuffix="Home" className="app-header-brand" />
+      <BrandLockup href="/" size={44} srSuffix="Home" className="app-header-brand" />
       {navigation && <div className="app-header-center">{navigation}</div>}
       <div className="app-header-end">
         <AccountChip session={session} context="landing" menuDefaultOpen={accountMenuDefaultOpen} />

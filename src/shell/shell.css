@@ -28,8 +28,6 @@
 /* ---- Landing ---- */
 .app-header-landing { position: relative; gap: 12px; max-width: var(--page-max, 1180px); margin: 0 auto; padding: 24px var(--page-gutter, 24px) 12px; background: transparent; }
 .app-header-landing .app-header-brand { padding-left: 0; }
-.app-header-landing .app-header-brand .brand-wordmark { font-size: 30px !important; }
-.app-header-landing .app-header-brand .brand-mark { width: 42px; height: 42px; }
 .app-header-landing .app-header-end { margin-left: 0; }
 
 /* ---- Page ---- */
@@ -144,8 +142,6 @@
   .shell-account-text, .shell-account-chevron { display: none; }
   .shell-account-signin.ui-button .ui-button-label { display: none; }
   .shell-account-signin.ui-button { min-width: 44px; padding: 0 10px; }
-  .app-header-landing .app-header-brand .brand-wordmark { font-size: 24px !important; }
-  .app-header-landing .app-header-brand .brand-mark { width: 34px; height: 34px; }
   .app-header-page .app-header-page-title { font-size: 16px; }
 }
 
