@@ -108,6 +108,7 @@
   color: var(--text-muted);
   font-size: var(--text-sm);
   font-weight: 700;
+  white-space: nowrap;
 }
 .class-chip-on, .class-chip-edit { background: var(--success-soft); color: var(--success); }
 .class-chip-off { background: var(--surface-2); color: var(--text-muted); }

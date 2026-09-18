@@ -27,12 +27,17 @@ type Props = {
   navigate?: (href: string) => void
 }
 
-/** Dev-only fixtures: `/class?demo=first-run` and `/class?demo=everyday` render without a worker. */
+/**
+ * Dev-only fixtures: `/class?demo=first-run` and `/class?demo=everyday` render
+ * without a worker. Resolved once, because the page keys its loading effects on
+ * the client identity.
+ */
+let resolved: ClassPageClient | null = null
 function resolveClient(): ClassPageClient {
-  if (!import.meta.env.DEV) return defaultClassPageClient
-  const demo = new URLSearchParams(window.location.search).get('demo')
-  if (!demo) return defaultClassPageClient
-  return createDemoClassPageClient((demo === 'first-run' ? 'first-run' : 'everyday') as DemoVariant)
+  if (resolved) return resolved
+  const demo = import.meta.env.DEV ? new URLSearchParams(window.location.search).get('demo') : null
+  resolved = demo ? createDemoClassPageClient((demo === 'first-run' ? 'first-run' : 'everyday') as DemoVariant) : defaultClassPageClient
+  return resolved
 }
 
 /**

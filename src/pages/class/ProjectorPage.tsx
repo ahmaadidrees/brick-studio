@@ -12,9 +12,13 @@ type Props = {
   navigate?: (href: string) => void
 }
 
+/** Resolved once; the page keys its load effect on the client identity. */
+let resolved: ClassPageClient | null = null
 function resolveClient(): ClassPageClient {
-  if (!import.meta.env.DEV) return defaultClassPageClient
-  return new URLSearchParams(window.location.search).has('demo') ? createDemoClassPageClient('everyday') : defaultClassPageClient
+  if (resolved) return resolved
+  const demo = import.meta.env.DEV && new URLSearchParams(window.location.search).has('demo')
+  resolved = demo ? createDemoClassPageClient('everyday') : defaultClassPageClient
+  return resolved
 }
 
 /**
