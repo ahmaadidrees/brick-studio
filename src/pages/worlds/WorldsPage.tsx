@@ -124,7 +124,9 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     ...classes.map(item => ({
       id: item.id,
       label: item.name,
-      count: worlds.filter(world => world.classId === item.id || (world.kind === 'personal' && world.ownerId !== me && isShared(world))).length,
+      // A closed class shows nothing, so its count says nothing either.
+      count: item.collaborationOpen === false ? 0
+        : worlds.filter(world => world.classId === item.id || (world.kind === 'personal' && world.ownerId !== me && isShared(world))).length,
     })),
   ], [classes, myWorlds.length, teacher, worlds, me])
 
@@ -138,6 +140,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     .sort(byNewest)
   const classWorlds = worlds.filter(world => world.kind !== 'personal' && world.classId === currentClass?.id).sort(byNewest)
   const collaborationClosed = Boolean(currentClass && !currentClass.collaborationOpen)
+  // The teacher can turn class sharing off; the button goes away rather than
+  // waiting for the server's `sharing_disabled`. Already-shared worlds keep
+  // their chip so a student can still stop sharing.
+  const myClass = classes[0]
+  const canShare = !teacher && myClass?.studentsCanShare !== false && myClass?.collaborationOpen !== false
   const filter = (list: WorldsWorld[]) => list.filter(world => matchesSearch(world, search))
 
   const share = (sharing: WorldSharing) => {
@@ -188,11 +195,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     <span className="worlds-rail-count">{item.count}</span>
   </button>)
 
-  const heading = section === 'mine' ? (teacher ? 'My worlds' : 'My worlds') : currentClass?.name ?? 'Class'
+  const heading = section === 'mine' ? 'My worlds' : currentClass?.name ?? 'Class'
   const counts = section === 'mine'
     ? `${myWorlds.length} ${myWorlds.length === 1 ? 'world' : 'worlds'} saved to your account`
     : collaborationClosed ? 'Collaboration is closed right now.'
-      : `${classmateWorlds.length + classWorlds.length} ${classmateWorlds.length + classWorlds.length === 1 ? 'world' : 'worlds'} to join`
+      : `${classmateWorlds.length + classWorlds.length} ${classmateWorlds.length + classWorlds.length === 1 ? 'world' : 'worlds'} ${teacher ? 'in this class' : 'to join'}`
 
   return <div className="worlds-page">
     <PageHeader
@@ -214,7 +221,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             <h1>{heading}</h1>
             <p className="worlds-counts">{counts}</p>
           </div>
-          <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />
+          {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
         </div>
 
         {error && <p className="worlds-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
@@ -252,7 +259,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                 ]} />}
               >
                 <OpenWorldButton world={world} label="Open" busy={busy} />
-                <Button variant="secondary" size="sm" disabled={busy} onClick={() => setShareWorld(world)}>{isShared(world) ? 'Sharing…' : 'Share with my class'}</Button>
+                {(canShare || isShared(world)) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setShareWorld(world)}>{isShared(world) ? 'Sharing…' : 'Share with my class'}</Button>}
               </WorldCard>)}</div>}
           </section>
         </>}

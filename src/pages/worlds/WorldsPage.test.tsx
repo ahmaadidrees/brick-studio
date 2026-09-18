@@ -153,6 +153,15 @@ describe('student', () => {
     expect(await screen.findByRole('article', { name: 'Castle by the sea' })).toBeInTheDocument()
   })
 
+  it('drops the share button when the teacher turned class sharing off', async () => {
+    draw(createFakeWorldsClient({ classes: [{ ...FIXTURE_CLASS, studentsCanShare: false }] }))
+    await settled()
+
+    expect(within(screen.getByRole('article', { name: 'Treehouse village' })).queryByRole('button', { name: 'Share with my class' })).not.toBeInTheDocument()
+    // A world that is already shared keeps its way back out.
+    expect(within(screen.getByRole('article', { name: 'Rocket launch pad' })).getByRole('button', { name: 'Sharing…' })).toBeInTheDocument()
+  })
+
   it('explains a closed class instead of showing class cards', async () => {
     draw(createFakeWorldsClient({ classes: [{ ...FIXTURE_CLASS, collaborationOpen: false }] }))
     await settled()
@@ -161,6 +170,8 @@ describe('student', () => {
     expect(screen.getByText('Your teacher closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Shared by classmates' })).not.toBeInTheDocument()
     expect(screen.queryByRole('article', { name: 'Pirate harbour' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Search worlds')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: /Room 12 Builders/ })).toHaveTextContent('0')
   })
 
   it('offers an empty state to a brand new account', async () => {

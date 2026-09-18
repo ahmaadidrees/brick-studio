@@ -234,9 +234,9 @@
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
-.worlds-card-art { height: 116px; display: grid; place-items: center; padding: var(--space-2); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.worlds-card-art { height: 116px; display: grid; place-items: center; padding: var(--space-3); background: var(--surface); border-bottom: 1px solid var(--border); }
 .worlds-card-art svg { width: auto; height: 100%; }
-.worlds-plate { fill: var(--primary-soft); }
+.worlds-plate { fill: var(--primary-soft); stroke: var(--border); stroke-width: 1.5; }
 .worlds-stud { fill: var(--primary); opacity: 0.55; }
 .worlds-card-art-shared .worlds-plate { fill: var(--accent-soft); }
 .worlds-card-art-shared .worlds-stud { fill: var(--accent); opacity: 0.6; }
