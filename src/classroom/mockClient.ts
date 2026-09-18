@@ -74,15 +74,17 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
   const now = () => new Date().toISOString()
   const wait = () => (delay > 0 ? new Promise<void>(resolve => setTimeout(resolve, delay)) : Promise.resolve())
 
-  const classView = (cls: MockClass, forTeacher: boolean): ClassroomClass => ({ id: cls.id, name: cls.name, loginCode: cls.loginCode, enrollmentOpen: cls.enrollmentOpen, collaborationOpen: cls.collaborationOpen, showNamesOnJoin: cls.showNamesOnJoin, studentsCanShare: cls.studentsCanShare, ...(forTeacher ? { code: cls.code } : {}) })
+  /** Fixture presence: Ava, Ben and Chloe are building in Period 3 right now; sign-in responses report null like the server. */
+  const buildingNow = (cls: MockClass, forTeacher: boolean, signIn: boolean) => signIn || !forTeacher ? null : cls.id === MOCK_IDS.classId ? 3 : 0
+  const classView = (cls: MockClass, forTeacher: boolean, signIn = false): ClassroomClass => ({ id: cls.id, name: cls.name, loginCode: cls.loginCode, enrollmentOpen: cls.enrollmentOpen, collaborationOpen: cls.collaborationOpen, showNamesOnJoin: cls.showNamesOnJoin, studentsCanShare: cls.studentsCanShare, buildingNow: buildingNow(cls, forTeacher, signIn), teacherName: userById(cls.teacherId)?.rosterName ?? null, ...(forTeacher ? { code: cls.code } : {}) })
   const studentView = (user: MockUser): ClassroomStudent => ({ id: user.id, username: user.username, rosterName: user.rosterName, suspended: user.suspended, resetRequired: user.resetRequired })
   const userById = (id: string) => db.users.find(user => user.id === id)
   const ownerName = (world: MockWorld) => { const owner = userById(world.ownerId); return !owner ? 'Builder' : owner.role === 'teacher' ? 'Teacher' : mockDisplayName(owner.rosterName) }
-  const meFor = (user: MockUser): ClassroomMe => ({
+  const meFor = (user: MockUser, signIn = false): ClassroomMe => ({
     user: { id: user.id, username: user.username, rosterName: user.rosterName, role: user.role, resetRequired: user.resetRequired },
-    classes: db.classes.filter(cls => user.role === 'teacher' ? cls.teacherId === user.id : cls.id === user.classId).map(cls => classView(cls, user.role === 'teacher')),
+    classes: db.classes.filter(cls => user.role === 'teacher' ? cls.teacherId === user.id : cls.id === user.classId).map(cls => classView(cls, user.role === 'teacher', signIn)),
   })
-  const sessionFor = (user: MockUser): ClassroomAuthResult => ({ ...meFor(user), session: { accessToken: `mock-access-${user.id}-${nextId++}`, refreshToken: `mock-refresh-${user.id}`, expiresIn: 3600 } })
+  const sessionFor = (user: MockUser): ClassroomAuthResult => ({ ...meFor(user, true), session: { accessToken: `mock-access-${user.id}-${nextId++}`, refreshToken: `mock-refresh-${user.id}`, expiresIn: 3600 } })
   const publish = (next: ClassroomAuthResult | null) => { auth = next; listeners.forEach(listener => listener()) }
   const caller = (allowReset = false): MockUser => {
     const user = auth && userById(auth.user.id)
@@ -125,7 +127,8 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
   }
   const worldView = (world: MockWorld, user: MockUser, canEdit: boolean, full = false): ClassroomWorld => ({
     id: world.id, title: world.title, ownerId: world.ownerId, classId: world.classId, kind: world.kind, revision: world.revision, updatedAt: world.updatedAt,
-    visibility: world.kind === 'personal' ? world.visibility : 'class', canEdit, ownerName: ownerName(world), sharedAt: world.kind === 'personal' && world.visibility === 'class' ? world.sharedAt : null,
+    visibility: world.kind === 'personal' ? world.visibility : 'class', canEdit, classCanEdit: world.kind === 'personal' ? world.classCanEdit : true, ownerName: ownerName(world), ownerClassId: world.kind === 'personal' ? userById(world.ownerId)?.classId ?? null : world.classId,
+    sharedAt: world.kind === 'personal' && world.visibility === 'class' ? world.sharedAt : null,
     ...(user.role === 'teacher' ? { hiddenByTeacher: world.hiddenByTeacher } : {}), ...(full ? { document: structuredClone(world.document) } : {}),
   })
   const listWorlds = (user: MockUser): ClassroomWorld[] => {

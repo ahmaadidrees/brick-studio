@@ -394,7 +394,7 @@ describe('join-screen roster', () => {
     const patchClass = (body: unknown, bearer = token) => handleClassroomRequest(new Request(`https://worker.test/classroom/classes/${classId}`, { method: 'PATCH', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }), env);
     const response = await patchClass({ showNamesOnJoin: false });
     expect(response?.status).toBe(200);
-    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false, studentsCanShare: true } });
+    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false, studentsCanShare: true, buildingNow: null, teacherName: null } });
     expect(patch).toHaveBeenCalledWith('classes', `id=eq.${classId}&teacher_id=eq.${teacherId}`, { show_names_on_join: false });
     expect((await patchClass({ showNamesOnJoin: 'no' }))?.status).toBe(400);
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(caller);
@@ -465,11 +465,12 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     const { call, events, db, fetcher } = backend(ava, tables([world()]));
     const looked = await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'class', canEdit: false });
     expect(looked.status).toBe(200);
-    expect(looked.body.world).toMatchObject({ id: treehouse, visibility: 'class', canEdit: true, ownerName: 'Ava R.', sharedAt: expect.any(String) });
+    expect(looked.body.world).toMatchObject({ id: treehouse, visibility: 'class', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: classId, sharedAt: expect.any(String) });
     expect(db.worlds[0]).toMatchObject({ class_visibility: 'class', class_can_edit: false });
     const sharedAt = db.worlds[0].class_shared_at;
     const edit = await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'class', canEdit: true });
     expect(edit.body.world.sharedAt).toBe(sharedAt);
+    expect(edit.body.world).toMatchObject({ canEdit: true, classCanEdit: true });
     expect(db.worlds[0].class_can_edit).toBe(true);
     const unshared = await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'private', canEdit: true });
     expect(unshared.body.world).toMatchObject({ visibility: 'private', sharedAt: null, canEdit: true });
@@ -496,14 +497,14 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     const look = backend(ben, tables([shared()]));
     const seen = await look.call('GET', `worlds/${treehouse}`);
     expect(seen.status).toBe(200);
-    expect(seen.body.world).toMatchObject({ visibility: 'class', canEdit: false, ownerName: 'Ava R.', sharedAt: '2026-09-15T10:00:00Z' });
+    expect(seen.body.world).toMatchObject({ visibility: 'class', canEdit: false, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: classId, sharedAt: '2026-09-15T10:00:00Z' });
     expect(seen.body.world.document).toEqual(doc);
     expect((await look.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc })).body.code).toBe('read_only');
     expect((await look.call('PATCH', `worlds/${treehouse}`, { title: 'Mine now' })).body.code).toBe('owner_required');
     expect((await look.call('GET', `worlds/${treehouse}/checkpoints`)).body.code).toBe('owner_required');
     expect((await look.call('POST', `worlds/${treehouse}/restore`, { checkpointId: sid, expectedRevision: 3 })).body.code).toBe('read_only');
     expect(look.db.worlds[0].title).toBe('Treehouse Hideout');
-    expect(await look.service.worldAccess(ben, treehouse, true, true)).toMatchObject({ canEdit: false, isOwner: false, ownerName: 'Ava R.' });
+    expect(await look.service.worldAccess(ben, treehouse, true, true)).toMatchObject({ canEdit: false, isOwner: false, ownerName: 'Ava R.', ownerClassId: classId });
     vi.restoreAllMocks();
     const edit = backend(ben, tables([shared({ class_can_edit: true })]));
     const saved = await edit.call('PUT', `worlds/${treehouse}`, { expectedRevision: 3, document: doc });
@@ -579,7 +580,7 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
   it('maps a database quota rejection on the copy insert to world_limit', async () => {
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
     vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
-    vi.spyOn(ClassroomService.prototype, 'worldAccess').mockResolvedValue({ world: shared(), canEdit: false, isOwner: false, ownerName: 'Ava R.' });
+    vi.spyOn(ClassroomService.prototype, 'worldAccess').mockResolvedValue({ world: shared(), canEdit: false, isOwner: false, ownerName: 'Ava R.', ownerClassId: classId });
     vi.spyOn(ClassroomService.prototype, 'rows').mockResolvedValue([]);
     vi.spyOn(ClassroomService.prototype, 'insert').mockRejectedValue(new ClassroomHttpError(409, 'quota_exceeded', 'You have reached the saved-world limit. Ask your teacher for help.'));
     const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/worlds/${treehouse}/copy`, { method: 'POST', headers: { authorization: `Bearer ${token}` } }), env);
@@ -598,6 +599,25 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     vi.restoreAllMocks();
     const student = backend(ben, tables([]));
     expect((await student.call('PATCH', `classes/${classId}`, { studentsCanShare: true })).status).toBe(404);
+  });
+  it('reports how many accounts are building in each class from live presence, only for teachers, never at sign-in', async () => {
+    const { db, fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));
+    const asked: string[][] = [];
+    const liveParticipants = vi.fn<(worldIds: string[]) => Promise<string[] | null>>(async worldIds => { asked.push([...worldIds].sort()); return worldIds.length ? [avaId, benId, avaId] : []; });
+    const call = async (path: string) => (await handleClassroomRequest(new Request(`https://worker.test/classroom/${path}`, { headers: { authorization: `Bearer ${token}` } }), env, { liveParticipants }))!.json() as Promise<Row>;
+    const classes = (await call('classes')).classes as Row[];
+    expect(classes.map(row => [row.id, row.buildingNow])).toEqual([[classId, 2]]);
+    expect(asked).toEqual([[worldId, treehouse, copyId].sort()]);
+    expect((await call('me')).classes[0].buildingNow).toBe(2);
+    liveParticipants.mockResolvedValueOnce(null);
+    expect((await call('classes')).classes[0].buildingNow).toBeNull();
+    // Sign-in responses and students never fan out to live rooms.
+    const service = new ClassroomService(env, fetcher as typeof fetch);
+    expect((await service.me(teacher)).classes.map(row => row.buildingNow)).toEqual([null]);
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
+    expect((await call('classes')).classes[0]).toMatchObject({ buildingNow: null, studentsCanShare: true });
+    expect(liveParticipants).toHaveBeenCalledTimes(3);
+    expect(db.classes[0].students_can_share).toBe(true);
   });
   it('includes shared personal worlds when a class change fans out to live rooms', async () => {
     const { fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId, class_visibility: 'private' }, { ...shared(), id: sid, owner_id: cyId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));

@@ -6,6 +6,10 @@ export type ClassroomClass = {
   id: string; name: string; code?: string; loginCode: string; enrollmentOpen: boolean; collaborationOpen: boolean; showNamesOnJoin: boolean
   /** Students may share personal worlds with classmates (teacher setting; default on). */
   studentsCanShare: boolean
+  /** Distinct accounts in this class's live rooms right now (teachers' class/me lists); null when unknown, e.g. at sign-in. */
+  buildingNow: number | null
+  /** The teacher's display name for student-facing copy; null when the server has none (teacher accounts carry no roster name). */
+  teacherName: string | null
 }
 export type ClassroomMe = { user: ClassroomUser; classes: ClassroomClass[] }
 export type ClassroomAuthResult = ClassroomMe & { session: ClassroomSession }
@@ -17,8 +21,12 @@ export type ClassroomWorld = {
   visibility: ClassroomWorldVisibility
   /** Whether the caller may change bricks: owner, shared with edit, or the class/group rules. */
   canEdit: boolean
+  /** The owner's sharing setting ("build together" vs "look only"), independent of the caller; class/group worlds are always true. */
+  classCanEdit: boolean
   /** Display name of the owner (first name plus last initial; `Teacher` for teacher-owned worlds). */
   ownerName: string
+  /** The owner's class (personal worlds keep `classId` null); null for a teacher's personal world. */
+  ownerClassId: string | null
   /** When the owner shared it with the class; null while private. */
   sharedAt: string | null
   /** Present for teachers only: the teacher hid this shared world from classmates. */

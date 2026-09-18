@@ -126,10 +126,11 @@ describe('bounded classroom lists', () => {
       const { service } = fixture([cls], worlds, [], roster);
       const result = await service.listWorlds({ ...student, rosterName: 'Sam Rivera' });
       expect(result.map(row => row.id)).toEqual(['mine', 'whole', 'ava-look', 'ben-edit']);
-      expect(result[0]).toMatchObject({ visibility: 'class', canEdit: true, ownerName: 'Sam R.', sharedAt: '2026-09-15T10:00:00Z' });
-      expect(result[1]).toMatchObject({ visibility: 'class', canEdit: true, ownerName: 'Teacher', sharedAt: null });
-      expect(result[2]).toMatchObject({ visibility: 'class', canEdit: false, ownerName: 'Ava R.', sharedAt: '2026-09-16T10:00:00Z' });
-      expect(result[3]).toMatchObject({ visibility: 'class', canEdit: true, ownerName: 'Ben K.' });
+      expect(result[0]).toMatchObject({ visibility: 'class', canEdit: true, ownerName: 'Sam R.', ownerClassId: cls.id, sharedAt: '2026-09-15T10:00:00Z' });
+      expect(result[1]).toMatchObject({ visibility: 'class', canEdit: true, ownerName: 'Teacher', ownerClassId: cls.id, sharedAt: null });
+      expect(result[2]).toMatchObject({ visibility: 'class', canEdit: false, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: cls.id, sharedAt: '2026-09-16T10:00:00Z' });
+      expect(result[3]).toMatchObject({ visibility: 'class', canEdit: true, classCanEdit: true, ownerName: 'Ben K.' });
+      expect(result[1].classCanEdit).toBe(true);
       expect(result.every(row => !('hiddenByTeacher' in row))).toBe(true);
     });
     it('reports private own worlds as private and hides classmates when sharing is off or collaboration closed', async () => {
@@ -139,13 +140,18 @@ describe('bounded classroom lists', () => {
       const paused = fixture([{ ...cls, collaboration_open: false }], worlds, [], roster);
       expect((await paused.service.listWorlds(student)).map(row => row.id)).toEqual(['mine']);
       const own = fixture([cls], [{ id: 'quiet', kind: 'personal', owner_id: studentId, class_visibility: 'private', class_can_edit: true }], [], roster);
-      expect((await own.service.listWorlds(student))[0]).toMatchObject({ id: 'quiet', visibility: 'private', canEdit: true, sharedAt: null });
+      // The owner always edits; classCanEdit still reports the sharing setting for the card.
+      expect((await own.service.listWorlds(student))[0]).toMatchObject({ id: 'quiet', visibility: 'private', canEdit: true, classCanEdit: true, sharedAt: null });
     });
     it('shows the teacher every shared student world of their classes, hidden ones flagged, never private ones', async () => {
       const { service, paths } = fixture([cls, { id: classId(999), teacher_id: studentId }], worlds, [], roster);
       const result = await service.listWorlds(teacher);
       expect(result.map(row => [row.id, row.hiddenByTeacher])).toEqual([['whole', false], ['mine', false], ['ava-look', false], ['ben-edit', false], ['ben-hidden', true], ['paused-shared', false]]);
-      expect(result.find(row => row.id === 'ben-hidden')).toMatchObject({ canEdit: true, ownerName: 'Ben K.', visibility: 'class' });
+      expect(result.find(row => row.id === 'ben-hidden')).toMatchObject({ canEdit: true, ownerName: 'Ben K.', visibility: 'class', ownerClassId: cls.id });
+      // A teacher's own personal world has no class; class worlds report their class.
+      expect(result.find(row => row.id === 'whole')).toMatchObject({ ownerClassId: cls.id });
+      const own = fixture([cls], [{ id: 'mine-t', kind: 'personal', owner_id: teacherId }], [], []);
+      expect((await own.service.listWorlds(teacher))[0]).toMatchObject({ id: 'mine-t', ownerClassId: null, ownerName: 'Teacher' });
       expect(paths.filter(url => url.pathname.endsWith('brick_worlds') && url.searchParams.get('owner_id')?.startsWith('in.')).every(url => !url.searchParams.has('hidden_by_teacher'))).toBe(true);
     });
     it('batches shared-world lookups by 100 owners', async () => {
