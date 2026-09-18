@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-09-18T20:52:15.468Z",
+  "checkedAt": "2026-09-18T21:04:58.773Z",
   "origin": "http://127.0.0.1:5277",
   "backend": {
     "classroom": "http://127.0.0.1:8798",
@@ -12,11 +12,11 @@
     "cpus": 18,
     "cpuModel": "Apple M5 Max",
     "loadAverage": [
-      2.76,
-      4.21,
-      4.03
+      5.35,
+      5.98,
+      4.93
     ],
-    "freeMemoryMB": 11073,
+    "freeMemoryMB": 11654,
     "totalMemoryMB": 131072,
     "node": "v22.23.2"
   },
@@ -34,7 +34,7 @@
     {
       "id": "teacher-name-class",
       "status": "passed",
-      "detail": "class ROOM-11 (46143cba-54e7-4424-9331-49d21cc78e6a)"
+      "detail": "class ROOM-11 (96c32803-f9a1-4d04-85c8-84e6d92806c1)"
     },
     {
       "id": "teacher-copy-join-link",
@@ -74,7 +74,7 @@
     {
       "id": "student-save-to-account",
       "status": "passed",
-      "detail": "world 189a951b-e278-4eee-a11d-c893646cb225 saved with 2 bricks; GET /worlds: private, canEdit"
+      "detail": "world afd8f920-0c82-465d-89c2-952235b3a51b saved with 2 bricks; GET /worlds: private, canEdit"
     },
     {
       "id": "student-share-look-only",
@@ -105,7 +105,7 @@
     {
       "id": "classmate-make-copy",
       "status": "passed",
-      "detail": "POST copy 201 → \"Maya's Tower po8c (copy)\" under Mine with 2 bricks"
+      "detail": "POST copy 201 → \"Maya's Tower 6179 (copy)\" under Mine with 2 bricks"
     },
     {
       "id": "student-share-build-with-me",
@@ -152,8 +152,8 @@
   ],
   "state": {
     "classCode": "ROOM-11",
-    "classId": "46143cba-54e7-4424-9331-49d21cc78e6a",
-    "worldId": "189a951b-e278-4eee-a11d-c893646cb225",
+    "classId": "96c32803-f9a1-4d04-85c8-84e6d92806c1",
+    "worldId": "afd8f920-0c82-465d-89c2-952235b3a51b",
     "inviteLink": "http://127.0.0.1:5277/join?classCode=ROOM-11",
     "classmateUsername": "maya_b2",
     "accounts": {
@@ -165,7 +165,7 @@
       "student": {
         "username": "maya_b",
         "password": "castle-99",
-        "worldTitle": "Maya's Tower po8c"
+        "worldTitle": "Maya's Tower 6179"
       },
       "classmate": {
         "username": "maya_b2",

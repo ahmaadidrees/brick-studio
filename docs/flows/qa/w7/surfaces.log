@@ -1,281 +1,159 @@
-passed default        1366x768  join-new                   1400ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/944]
-passed default        1366x768  join-signin                1382ms
-passed default        1366x768  join-signin-roster         2482ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/859]
-passed default        1366x768  join-teacher               1364ms
-passed default        1366x768  join-teacher-email         1411ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/822]
-passed default        1366x768  worlds-student-mine        1683ms
-failed default        1366x768  worlds-student-class       1677ms  controls outside viewport: Join 376,843,74,36; Join 688,843,74,36
-passed default        1366x768  worlds-share-sheet         1712ms
-failed default        1366x768  worlds-teacher             1668ms  controls outside viewport: Visit 376,1063,79,36; Hide from class 463,1063,122,36; Visit 688,1063,79,36; Show to class 775,1063,111,36; Join 1000,1019,74,36; Visit 1082,1019,79,36; Hide from class 1000,1063,122,36; Join 376,1396,74,36; World controls 458,1396,119,36; Join 688,1396,74,36; World controls 770,1396,119,36
-passed default        1366x768  class-first-run            1376ms
-passed default        1366x768  class-first-run-invite     1772ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/909]
-passed default        1366x768  class-students             1679ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1355]
-passed default        1366x768  class-settings             1407ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1212]
-passed default        1366x768  class-worlds               1396ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/792]
-passed default        1366x768  class-projector            1672ms
-passed default        1366x768  editor-idle                2003ms
-passed default        1366x768  editor-brush               1461ms
-passed default        1366x768  editor-selected            1304ms
-passed default        1366x768  editor-selected-color      1612ms
-passed default        1024x768  join-new                   1384ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/944]
-passed default        1024x768  join-signin                1382ms
-passed default        1024x768  join-signin-roster         1997ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/859]
-passed default        1024x768  join-teacher               1375ms
-passed default        1024x768  join-teacher-email         1394ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/822]
-failed default        1024x768  worlds-student-mine        1679ms  controls outside viewport: More for Lava Lab 451,826,36,36; Open 33,936,83,36; Sharing… 124,936,84,36
-failed default        1024x768  worlds-student-class       1671ms  controls outside viewport: Join 33,857,74,36; Visit 115,857,79,36; Make my own copy 201,857,143,36; Join 33,1190,74,36; Join 537,1190,74,36
-failed default        1024x768  worlds-share-sheet         1708ms  controls outside viewport: Open 33,838,83,36; Sharing… 124,838,84,36
-failed default        1024x768  worlds-teacher             1691ms  controls outside viewport: Join 33,1044,74,36; Visit 115,1044,79,36; Hide from class 201,1044,122,36; Visit 537,1044,79,36; Hide from class 624,1044,122,36; Visit 33,1366,79,36; Show to class 120,1366,111,36; Join 537,1366,74,36; Visit 619,1366,79,36; Hide from class 705,1366,122,36; Join 33,1699,74,36; World controls 115,1699,119,36; Join 537,1699,74,36; World controls 619,1699,119,36
-failed default        1024x768  class-first-run            20072ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-failed default        1024x768  class-first-run-invite     20081ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-passed default        1024x768  class-students             1682ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1423]
-passed default        1024x768  class-settings             1409ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1295]
-passed default        1024x768  class-worlds               1411ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/875]
-passed default        1024x768  class-projector            1699ms
-passed default        1024x768  editor-idle                2150ms
-passed default        1024x768  editor-brush               1476ms
-passed default        1024x768  editor-selected            1472ms
-passed default        1024x768  editor-selected-color      1590ms
-passed default        768x1024  join-new                   1396ms
-passed default        768x1024  join-signin                1380ms
-passed default        768x1024  join-signin-roster         2497ms
-passed default        768x1024  join-teacher               1371ms
-passed default        768x1024  join-teacher-email         1378ms
-passed default        768x1024  worlds-student-mine        1676ms
-failed default        768x1024  worlds-student-class       1671ms  controls outside viewport: Join 33,1190,74,36; Join 409,1190,74,36
-passed default        768x1024  worlds-share-sheet         1722ms
-failed default        768x1024  worlds-teacher             1688ms  controls outside viewport: Join 33,1044,74,36; Visit 115,1044,79,36; Hide from class 201,1044,122,36; Visit 409,1044,79,36; Hide from class 496,1044,122,36; Visit 33,1366,79,36; Show to class 120,1366,111,36; Join 409,1366,74,36; Visit 491,1366,79,36; Hide from class 577,1366,122,36; Join 33,1699,74,36; World controls 115,1699,119,36; Join 409,1699,74,36; World controls 491,1699,119,36
-failed default        768x1024  class-first-run            20076ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-failed default        768x1024  class-first-run-invite     20080ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-passed default        768x1024  class-students             1693ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 1024/1580]
-passed default        768x1024  class-settings             1388ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 1024/1295]
-passed default        768x1024  class-worlds               1419ms
-passed default        768x1024  class-projector            1296ms
-passed default        768x1024  editor-idle                2144ms
-passed default        768x1024  editor-brush               1813ms
-passed default        768x1024  editor-selected            1304ms
-passed default        768x1024  editor-selected-color      1575ms
-passed default        390x844   join-new                   1379ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 844/931]
-passed default        390x844   join-signin                1373ms
-passed default        390x844   join-signin-roster         2478ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 844/858; ul.join-name-grid 144/204]
-passed default        390x844   join-teacher               1381ms
-passed default        390x844   join-teacher-email         1413ms
-failed default        390x844   worlds-student-mine        1678ms  controls outside viewport: Open 33,823,324,44; Share with my class 33,875,324,44; More for Rainbow Rocket 313,1085,44,44; Open 33,1203,324,44; Sharing… 33,1255,324,44; More for Lava Lab 313,1465,44,44; Open 33,1583,324,44; Sharing… 33,1635,324,44
-failed default        390x844   worlds-student-class       1680ms  controls outside viewport: Visit 33,1034,324,44; Make my own copy 33,1086,324,44; Join 33,1416,324,44; Visit 33,1468,324,44; Make my own copy 33,1520,324,44; Join 33,1861,324,44; Join 33,2158,324,44
-failed default        390x844   worlds-share-sheet         1728ms  controls outside viewport: More for Rainbow Rocket 313,837,44,44; Open 33,955,324,44; Sharing… 33,1007,324,44; More for Lava Lab 313,1217,44,44; Open 33,1335,324,44; Sharing… 33,1387,324,44
-failed default        390x844   worlds-teacher             1689ms  controls outside viewport: Visit 33,1128,324,44; Hide from class 33,1180,324,44; Join 33,1510,324,44; Visit 33,1562,324,44; Hide from class 33,1614,324,44; Join 33,1943,324,44; Visit 33,1995,324,44; Hide from class 33,2047,324,44; Visit 33,2377,324,44; Hide from class 33,2429,324,44; Visit 33,2758,324,44; Show to class 33,2810,324,44; Join 33,3140,324,44; Visit 33,3192,324,44; Hide from class 33,3244,324,44; Join 33,3585,324,44; World controls 33,3637,324,44; Join 33,3935,324,44; World controls 33,3987,324,44
-failed default        390x844   class-first-run            20077ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-failed default        390x844   class-first-run-invite     20086ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-passed default        390x844   class-students             1692ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/2733]
-passed default        390x844   class-settings             1420ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1703]
-passed default        390x844   class-worlds               1411ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1146]
-passed default        390x844   class-projector            1682ms
-passed default        390x844   editor-idle                1957ms
-passed default        390x844   editor-brush               1499ms
-passed default        390x844   editor-selected            1264ms
-passed default        390x844   editor-selected-color      1560ms
-passed default        320x740   join-new                   1377ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 740/1057]
-passed default        320x740   join-signin                1377ms
-passed default        320x740   join-signin-roster         2497ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 740/984; ul.join-name-grid 144/204]
-passed default        320x740   join-teacher               1356ms
-passed default        320x740   join-teacher-email         1414ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 740/820]
-failed default        320x740   worlds-student-mine        1678ms  controls outside viewport: More for Treehouse Hideout 243,729,44,44; Open 33,823,254,44; Share with my class 33,875,254,44; More for Rainbow Rocket 243,1085,44,44; Open 33,1203,254,44; Sharing… 33,1255,254,44; More for Lava Lab 243,1465,44,44; Open 33,1583,254,44; Sharing… 33,1635,254,44
-failed default        320x740   worlds-student-class       1689ms  controls outside viewport: Make my own copy 33,705,254,44; Visit 33,1034,254,44; Make my own copy 33,1086,254,44; Join 33,1416,254,44; Visit 33,1468,254,44; Make my own copy 33,1520,254,44; Join 33,1861,254,44; Join 33,2158,254,44
-failed default        320x740   worlds-share-sheet         1715ms  controls outside viewport: More for Rainbow Rocket 243,837,44,44; Open 33,955,254,44; Sharing… 33,1007,254,44; More for Lava Lab 243,1217,44,44; Open 33,1335,254,44; Sharing… 33,1387,254,44
-failed default        320x740   worlds-teacher             1682ms  controls outside viewport: Start world 33,755,254,44; Visit 33,1128,254,44; Hide from class 33,1180,254,44; Join 33,1510,254,44; Visit 33,1562,254,44; Hide from class 33,1614,254,44; Join 33,1943,254,44; Visit 33,1995,254,44; Hide from class 33,2047,254,44; Visit 33,2377,254,44; Hide from class 33,2429,254,44; Visit 33,2758,254,44; Show to class 33,2810,254,44; Join 33,3140,254,44; Visit 33,3192,254,44; Hide from class 33,3244,254,44; Join 33,3585,254,44; World controls 33,3637,254,44; Join 33,3935,254,44; World controls 33,3987,254,44
-failed default        320x740   class-first-run            20075ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-failed default        320x740   class-first-run-invite     20101ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-passed default        320x740   class-students             1681ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/3124]
-passed default        320x740   class-settings             1417ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/1808]
-passed default        320x740   class-worlds               1414ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/1233]
-passed default        320x740   class-projector            1687ms
-passed default        320x740   editor-idle                1966ms
-passed default        320x740   editor-brush               2808ms
-passed default        320x740   editor-selected            1260ms
-passed default        320x740   editor-selected-color      1561ms
-passed default        844x390   join-new                   1380ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/968]
-passed default        844x390   join-signin                1379ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/697]
-passed default        844x390   join-signin-roster         2493ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/955]
-passed default        844x390   join-teacher               1378ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/578]
-passed default        844x390   join-teacher-email         1377ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/834]
-failed default        844x390   worlds-student-mine        1679ms  controls outside viewport: More for Treehouse Hideout 353,518,44,44; Open 33,636,83,44; Share with my class 124,636,149,44; More for Rainbow Rocket 767,518,44,44; Open 447,636,83,44; Sharing… 538,636,84,44; More for Lava Lab 353,846,44,44; Open 33,964,83,44; Sharing… 124,964,84,44
-failed default        844x390   worlds-student-class       1687ms  controls outside viewport: Join 33,535,74,44; Visit 115,535,79,44; Make my own copy 201,535,143,44; Visit 447,535,79,44; Make my own copy 534,535,143,44; Join 33,865,74,44; Visit 115,865,79,44; Make my own copy 201,865,143,44; Join 33,1206,74,44; Join 447,1206,74,44
-failed default        844x390   worlds-share-sheet         1723ms  controls outside viewport: Brickgineers Home 12,-351,168,44; Open the studio 533,-351,125,44; Account: Ava R., Period 3 Makers 667,-351,165,44; Mine3 16,-277,109,44; Period 3 Makers5 133,-277,191,44; INPUT 548,-182,280,44; More for Lava Lab 353,383,44,44; Open 33,501,83,44; Sharing… 124,501,84,44
-failed default        844x390   worlds-teacher             1692ms  controls outside viewport: title 33,356,397,44; Whole class 450,352,100,44; Assigned group 554,352,121,44; Start world 694,356,117,44; Visit 33,729,79,44; Hide from class 120,729,122,44; Join 447,729,74,44; Visit 529,729,79,44; Hide from class 615,729,122,44; Join 33,1058,74,44; Visit 115,1058,79,44; Hide from class 201,1058,122,44; Visit 447,1058,79,44; Hide from class 534,1058,122,44; Visit 33,1388,79,44; Show to class 120,1388,111,44; Join 447,1388,74,44; Visit 529,1388,79,44; Hide from class 615,1388,122,44; Join 33,1729,74,44; World controls 115,1729,119,44; Join 447,1729,74,44; World controls 529,1729,119,44
-failed default        844x390   class-first-run            20083ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-failed default        844x390   class-first-run-invite     20081ms  TimeoutError: locator.waitFor: Timeout 20000ms exceeded.
-passed default        844x390   class-students             1671ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/1536]
-passed default        844x390   class-settings             1408ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/1301]
-passed default        844x390   class-worlds               1394ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/915]
-passed default        844x390   class-projector            1700ms
-passed default        844x390   editor-idle                1958ms
-passed default        844x390   editor-brush               2802ms
-passed default        844x390   editor-selected            1255ms
-passed default        844x390   editor-selected-color      1571ms
-passed zoom200        1366x768  join-new                   1398ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/907]
-passed zoom200        1366x768  join-signin                1400ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/636]
-passed zoom200        1366x768  join-signin-roster         2517ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/834; ul.join-name-grid 144/204]
-passed zoom200        1366x768  join-teacher               1406ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/530]
-passed zoom200        1366x768  join-teacher-email         1436ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/786]
-failed zoom200        1366x768  worlds-student-mine        85ms  Error: locator.waitFor: Target page, context or browser has been closed
+passed default        1366x768  join-new                   1427ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/944]
+passed default        1366x768  join-signin                1379ms
+passed default        1366x768  join-signin-roster         2518ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/859]
+passed default        1366x768  join-teacher               887ms
+passed default        1366x768  join-teacher-email         1417ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/822]
+passed default        1366x768  worlds-student-mine        1678ms
+failed default        1366x768  worlds-student-class       1698ms  controls outside viewport: Join 376,843,74,36; Join 688,843,74,36
+passed default        1366x768  worlds-share-sheet         1724ms
+failed default        1366x768  worlds-teacher             1678ms  controls outside viewport: Join 376,1019,74,36; Visit 458,1019,79,36; Hide from class 376,1063,122,36; Join 688,1019,74,36; Visit 770,1019,79,36; Hide from class 688,1063,122,36; Visit 1000,1063,79,36; Hide from class 1087,1063,122,36; Join 376,1396,74,36; World controls 458,1396,119,36; Join 688,1396,74,36; World controls 770,1396,119,36
+passed default        1366x768  class-first-run            1395ms
+failed default        1366x768  class-first-run-invite     795ms  Error: locator.waitFor: Target page, context or browser has been closed
 node:internal/modules/run_main:123
     triggerUncaughtException(
     ^
 
-browserContext.newPage: Target page, context or browser has been closed
+browser.newContext: Target page, context or browser has been closed
 Browser logs:
 
-[pid=44808][err] [44808:11047213:0918/140417.012439:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140417.067771:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140417.067863:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140417.068591:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140417.068638:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140417.069050:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140417.069092:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140417.069182:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140417.069227:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140417.069313:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140417.069347:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140418.499104:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140418.499116:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140418.551467:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140418.551541:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140418.552229:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140418.552275:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140418.552795:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140418.552843:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140418.552946:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140418.552984:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140418.553071:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140418.553113:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140420.289531:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140420.289546:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140420.353616:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140420.353684:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140420.354463:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140420.354509:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140420.354924:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140420.354967:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140420.355066:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140420.355105:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140420.355186:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140420.355228:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140422.337118:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:370] SharedImageManager::ProduceOverlay: Trying to Produce a Overlay representation from a non-existent mailbox.
-[pid=44808][err] [44812:11047215:0918/140422.337131:ERROR:components/viz/service/display_embedder/skia_output_device_buffer_queue.cc:258] Invalid mailbox.
-[pid=44808][err] [44808:11047213:0918/140422.342603:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140422.342619:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140422.399798:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140422.399856:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140422.400929:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140422.400977:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140422.401508:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140422.401544:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140422.401647:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140422.401686:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140422.401773:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140422.401810:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140425.233272:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:370] SharedImageManager::ProduceOverlay: Trying to Produce a Overlay representation from a non-existent mailbox.
-[pid=44808][err] [44812:11047215:0918/140425.233287:ERROR:components/viz/service/display_embedder/skia_output_device_buffer_queue.cc:258] Invalid mailbox.
-[pid=44808][err] [44808:11047213:0918/140425.241216:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140425.241234:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140425.305784:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140425.305862:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140425.306700:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140425.306764:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140425.307304:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140425.307362:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140425.307455:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140425.307488:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140425.307577:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140425.307618:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140426.589609:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:370] SharedImageManager::ProduceOverlay: Trying to Produce a Overlay representation from a non-existent mailbox.
-[pid=44808][err] [44812:11047215:0918/140426.589627:ERROR:components/viz/service/display_embedder/skia_output_device_buffer_queue.cc:258] Invalid mailbox.
-[pid=44808][err] [44808:11047213:0918/140426.590412:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140426.590423:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140426.639487:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140426.639562:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140426.640246:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140426.640290:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140426.640712:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140426.640761:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140426.640860:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140426.640901:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140426.640983:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140426.641025:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140428.306974:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140428.307054:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140428.307836:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140428.307877:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140428.308373:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140428.308412:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140428.308506:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140428.308545:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140428.308638:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140428.308675:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140429.742203:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140429.742216:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140429.796297:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140429.796356:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140429.797123:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140429.797168:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140429.797607:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140429.797643:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140429.797740:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140429.797781:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140429.797859:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140429.797899:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140431.233028:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140431.233044:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140431.288165:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140431.288237:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140431.289053:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140431.289110:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140431.289554:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140431.289590:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140431.289683:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140431.289725:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140431.289812:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140431.289857:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140433.842654:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140433.842669:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140433.898019:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140433.898081:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140433.898750:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140433.898798:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140433.899270:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140433.899312:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140433.899400:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140433.899443:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140433.899527:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140433.899565:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140435.334159:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140435.334173:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140435.389998:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140435.390069:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140435.390900:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140435.390956:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140435.391449:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140435.391491:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140435.391593:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140435.391630:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140435.391710:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140435.391752:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44808:11047213:0918/140436.862644:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140436.862656:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44812:11047215:0918/140436.912037:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140436.912110:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140436.912690:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140436.912743:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140436.913127:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140436.913182:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140436.913273:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140436.913312:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047215:0918/140436.913398:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808][err] [44812:11047295:0918/140436.913439:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
-[pid=44808] <gracefully close start>
-[pid=44808][err] [44808:11047213:0918/140437.023394:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
-[pid=44808][err] [44808:11047213:0918/140437.023406:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
-    at runSurface (/Users/ahmaadidrees/.codex/worktrees/flows-w7/scripts/qa/lib/surfaces.mjs:136:32)
+<launching> /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --disable-field-trial-config --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-back-forward-cache --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-component-update --no-default-browser-check --disable-default-apps --disable-dev-shm-usage --disable-edgeupdater --disable-extensions --disable-features=AvoidUnnecessaryBeforeUnloadCheckSync,BoundaryEventDispatchTracksNodeRemoval,DestroyProfileOnBrowserClose,DialMediaRouteProvider,GlobalMediaControls,HttpsUpgrades,LensOverlay,MediaRouter,PaintHolding,ThirdPartyStoragePartitioning,Translate,AutoDeElevate,RenderDocument,OptimizationHints,msForceBrowserSignIn,msEdgeUpdateLaunchServicesPreferredVersion --enable-features=CDPScreenshotNewSurface --allow-pre-commit-input --disable-hang-monitor --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --force-color-profile=srgb --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --no-service-autorun --export-tagged-pdf --disable-search-engine-choice-screen --unsafely-disable-devtools-self-xss-warnings --edge-skip-compat-layer-relaunch --disable-infobars --disable-search-engine-choice-screen --disable-sync --enable-unsafe-swiftshader --headless --hide-scrollbars --mute-audio --blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4 --no-sandbox --user-data-dir=/var/folders/wm/_tftdgp94yb3f8shlkfmzh7w0000gn/T/playwright_chromiumdev_profile-Ts2G4z --remote-debugging-pipe --no-startup-window
+<launched> pid=47471
+[pid=47471][err] Trying to load the allocator multiple times. This is *not* supported.
+[pid=47471][err] [47475:11077011:0918/140545.227382:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140545.227589:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140545.228492:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140545.228533:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140545.229040:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140545.229084:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140545.229268:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140545.229309:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140545.229403:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140545.229446:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140546.700638:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140546.700653:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140546.757087:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140546.757159:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140546.757815:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140546.757871:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140546.758315:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140546.758372:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140546.758484:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140546.758543:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140546.758642:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140546.758684:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140548.172846:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140548.172858:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140548.227612:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140548.227698:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140548.228397:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140548.228447:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140548.228897:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140548.228941:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140548.229037:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140548.229078:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140548.229162:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140548.229204:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11076994:0918/140550.554198:ERROR:google_apis/gcm/engine/registration_request.cc:291] Registration response error message: DEPRECATED_ENDPOINT
+[pid=47471][err] [47471:11077009:0918/140550.781874:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140550.781895:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140550.838255:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140550.838323:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140550.839011:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140550.839057:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140550.839569:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140550.839610:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140550.839700:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140550.839738:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140550.839825:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140550.839861:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140551.761617:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140551.761628:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140551.816613:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140551.816696:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140551.817334:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140551.817381:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140551.818006:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140551.818052:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140551.818146:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140551.818188:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140551.818285:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140551.818328:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140553.270205:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140553.270218:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140553.321988:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140553.322051:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140553.322697:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140553.322741:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140553.323191:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140553.323233:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140553.323321:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140553.323362:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140553.323452:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140553.323497:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140555.041683:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140555.041699:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140555.090530:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140555.090585:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140555.091374:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140555.091414:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140555.092062:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140555.092105:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140555.092197:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140555.092239:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140555.092326:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140555.092366:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140556.829281:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140556.829295:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140556.881263:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140556.881322:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140556.881926:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140556.881984:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140556.882311:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140556.882371:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140556.882475:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140556.882516:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140556.882605:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140556.882648:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140558.645830:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140558.645842:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140558.698836:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140558.698905:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140558.699556:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140558.699615:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140558.700118:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140558.700191:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140558.700290:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140558.700334:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140558.700434:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140558.700472:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140600.416495:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140600.416510:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140600.480155:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140600.480221:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140600.481043:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140600.481091:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140600.481575:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140600.481614:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140600.481699:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140600.481743:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140600.481840:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140600.481881:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47471:11077009:0918/140601.902347:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140601.902359:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47475:11077011:0918/140601.958198:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140601.958279:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140601.959062:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140601.959124:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140601.959729:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140601.959799:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140601.959894:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140601.959932:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077011:0918/140601.960028:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471][err] [47475:11077090:0918/140601.960070:ERROR:ui/display/mac/cv_display_link_mac.mm:195] CVDisplayLinkCreateWithCGDisplay failed. CVReturn: -6670
+[pid=47471] <gracefully close start>
+[pid=47471][err] [47471:11077009:0918/140602.776133:ERROR:base/process/process_mac.cc:53] task_policy_set TASK_CATEGORY_POLICY: (os/kern) invalid argument (4)
+[pid=47471][err] [47471:11077009:0918/140602.776146:ERROR:base/process/process_mac.cc:98] task_policy_set TASK_SUPPRESSION_POLICY: (os/kern) invalid argument (4)
+    at async runSurface (/Users/ahmaadidrees/.codex/worktrees/flows-w7/scripts/qa/lib/surfaces.mjs:126:21)
     at async runMatrix (/Users/ahmaadidrees/.codex/worktrees/flows-w7/scripts/qa/lib/surfaces.mjs:237:21)
     at async file:///Users/ahmaadidrees/.codex/worktrees/flows-w7/scripts/qa/flows-surfaces.mjs:73:12 {
   log: []

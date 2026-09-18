@@ -129,7 +129,8 @@ export function createMockClassroom() {
     if (world.ownerId === user.id) return { world, canEdit: true, isOwner: true }
     if (world.kind === 'personal') {
       const owner = userById(world.ownerId)
-      if (world.visibility !== 'class' || !owner?.classId) fail(404, 'not_found', 'World not found.')
+      // A suspended owner's shared world is unreachable for classmates (candidate 4be3b03, cf6fad9); the teacher still sees it.
+      if (world.visibility !== 'class' || !owner?.classId || (user.role === 'student' && owner.suspended)) fail(404, 'not_found', 'World not found.')
       const cls = classFor(user, owner.classId)
       if (user.role === 'student') {
         if (world.hiddenByTeacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.')
