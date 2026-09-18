@@ -706,6 +706,8 @@ describe('compact touch layout', () => {
     })
     expect(container.querySelector('.part-library')).toBeNull()
     expect(screen.getByRole('navigation', { name: 'Creative tools' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Character' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Scene' })).toHaveLength(1)
     expect(useBrickStore.getState().selectedIds).toEqual([brick.id])
     expect(useBrickStore.getState().bricks).toEqual([brick])
   })
@@ -886,6 +888,56 @@ describe('compact touch layout', () => {
     const bar = screen.getByRole('group', { name: 'Positioned brick actions' })
     expect(within(bar).getByText('Moving')).toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Selected brick actions' })).not.toBeInTheDocument()
+  })
+
+  it('leaves the creative dock with the brick drawer alone, so Scene and Character are not doubled', () => {
+    stubMediaQueries([COMPACT_LAYOUT])
+    resetStore([brick])
+    render(<BrickStudioApp />)
+
+    const dock = screen.getByRole('navigation', { name: 'Creative tools' })
+    expect(within(dock).getAllByRole('button').map((button) => button.getAttribute('aria-label')))
+      .toEqual(['Open brick drawer'])
+    // The header's "World tools" row is the one place Scene and Character live.
+    const tools = screen.getByRole('group', { name: 'World tools' })
+    expect(within(tools).getByRole('button', { name: 'Scene' })).toBeInTheDocument()
+    expect(within(tools).getByRole('button', { name: 'Character' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Scene' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Character' })).toHaveLength(1)
+  })
+
+  it('collapses the camera cluster to one Camera button with a popover on short touch screens', () => {
+    stubMediaQueries([COMPACT_LAYOUT, '(pointer: coarse)', '(max-height: 600px) and (pointer: coarse)'])
+    resetStore([brick])
+    render(<BrickStudioApp />)
+
+    const cluster = screen.getByRole('group', { name: 'Camera view' })
+    const toggle = within(cluster).getByRole('button', { name: 'Camera' })
+    expect(within(cluster).getAllByRole('button')).toHaveLength(1)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(within(cluster).queryByRole('button', { name: 'Frame build' })).not.toBeInTheDocument()
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(within(cluster).getAllByRole('button').map((button) => button.getAttribute('aria-label')))
+      .toEqual(['Camera', 'Frame build', 'Top view', 'Front view', '3D view'])
+
+    fireEvent.click(within(cluster).getByRole('button', { name: 'Top view' }))
+    expect(useBrickStore.getState().viewRequest.preset).toBe('top')
+    // Choosing a view closes the popover and hands focus back to the trigger.
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(document.activeElement).toBe(toggle)
+  })
+
+  it('keeps the four camera buttons inline on tall touch screens', () => {
+    stubMediaQueries([COMPACT_LAYOUT, '(pointer: coarse)'])
+    resetStore([brick])
+    render(<BrickStudioApp />)
+
+    const cluster = screen.getByRole('group', { name: 'Camera view' })
+    expect(within(cluster).getAllByRole('button').map((button) => button.getAttribute('aria-label')))
+      .toEqual(['Frame build', 'Top view', 'Front view', '3D view'])
+    expect(within(cluster).queryByRole('button', { name: 'Camera' })).not.toBeInTheDocument()
   })
 
   it('shows the desktop strip with coordinates only when requested', () => {

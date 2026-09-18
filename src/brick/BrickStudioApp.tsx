@@ -7,6 +7,7 @@ import {
   ArrowDownToLine,
   ArrowLeft,
   Box,
+  Camera,
   Check,
   ChevronUp,
   Clipboard,
@@ -20,7 +21,6 @@ import {
   MapPin,
   Move,
   MousePointer2,
-  Mountain,
   UserRound,
   Palette,
   PanelLeftClose,
@@ -599,17 +599,94 @@ const CAMERA_VIEWS: { id: ViewPreset; label: string; title: string; icon: typeof
   { id: 'perspective', label: '3D', title: 'Angled 3D view', icon: Box },
 ]
 
+const SHORT_TOUCH_VIEWPORT = '(max-height: 600px) and (pointer: coarse)'
+
+/**
+ * Short touch screens (320×568, landscape phones) have no room for a four-button camera column
+ * next to a command strip whose Adjust panel can take 280 px: the column collapses to one
+ * "Camera" button and the four choices move into a popover under it.
+ */
+function useShortTouchViewport() {
+  const [short, setShort] = useState(() => window.matchMedia?.(SHORT_TOUCH_VIEWPORT).matches ?? false)
+  useEffect(() => {
+    const query = window.matchMedia?.(SHORT_TOUCH_VIEWPORT)
+    const update = () => setShort(query?.matches ?? false)
+    update()
+    query?.addEventListener?.('change', update)
+    window.addEventListener('resize', update)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      query?.removeEventListener?.('change', update)
+      window.removeEventListener('resize', update)
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [])
+  return short
+}
+
 /** Bottom-right camera cluster: Frame plus the three view presets, pressed state from the last request. */
 function CameraCluster() {
   const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const preset = useBrickStore((state) => state.viewRequest.preset)
   const requestView = useBrickStore((state) => state.requestView)
-  return (
-    <div inert={graphicsPaused} className="brick-camera-cluster" role="group" aria-label="Camera view">
-      <button type="button" className="brick-camera-button brick-camera-frame" onClick={() => requestView('home')} title="Frame the whole build (Home)" aria-label="Frame build"><Home size={18} aria-hidden="true" /><span>Frame</span></button>
+  const collapsed = useShortTouchViewport()
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const cluster = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (!collapsed) setOpen(false) }, [collapsed])
+  useEffect(() => {
+    if (!open) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return
+      event.stopPropagation()
+      event.preventDefault()
+      setOpen(false)
+      trigger.current?.focus({ preventScroll: true })
+    }
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (cluster.current?.contains(event.target as Node)) return
+      setOpen(false)
+    }
+    window.addEventListener('keydown', closeOnEscape, true)
+    window.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape, true)
+      window.removeEventListener('pointerdown', closeOnOutsidePointer)
+    }
+  }, [open])
+  const choose = (view: ViewPreset) => {
+    requestView(view)
+    if (!collapsed) return
+    setOpen(false)
+    trigger.current?.focus({ preventScroll: true })
+  }
+  const choices = (
+    <>
+      <button type="button" className="brick-camera-button brick-camera-frame" onClick={() => choose('home')} title="Frame the whole build (Home)" aria-label="Frame build"><Home size={18} aria-hidden="true" /><span>Frame</span></button>
       {CAMERA_VIEWS.map(({ id, label, title, icon: Icon }) => (
-        <button key={id} type="button" className={`brick-camera-button${preset === id ? ' active' : ''}`} aria-pressed={preset === id} aria-label={`${label} view`} title={title} onClick={() => requestView(id)}><Icon size={18} aria-hidden="true" /><span>{label}</span></button>
+        <button key={id} type="button" className={`brick-camera-button${preset === id ? ' active' : ''}`} aria-pressed={preset === id} aria-label={`${label} view`} title={title} onClick={() => choose(id)}><Icon size={18} aria-hidden="true" /><span>{label}</span></button>
       ))}
+    </>
+  )
+  if (!collapsed) {
+    return (
+      <div inert={graphicsPaused} className="brick-camera-cluster" role="group" aria-label="Camera view">{choices}</div>
+    )
+  }
+  return (
+    <div ref={cluster} inert={graphicsPaused} className="brick-camera-cluster brick-camera-cluster-collapsed" role="group" aria-label="Camera view">
+      <button
+        ref={trigger}
+        type="button"
+        className={`brick-camera-button brick-camera-toggle${open ? ' active' : ''}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Camera"
+        title="Camera views"
+        onClick={() => setOpen((value) => !value)}
+      ><Camera size={18} aria-hidden="true" /><span>Camera</span></button>
+      {open && <div className="brick-camera-popover" data-shortcut-pause="">{choices}</div>}
     </div>
   )
 }
@@ -691,20 +768,20 @@ function BuildShell({
     <div className={`build-shell${compact ? ' compact-shell' : ''}${!compact && !drawerOpen ? ' drawer-collapsed' : ''}`}>
       {compact ? (
         <>
+          {/* Scene and Character live in the header's "World tools" row; the dock keeps only the
+              brick drawer, which the header has no equivalent for. */}
           <nav className="brick-creative-dock" aria-label="Creative tools">
-          <button
-            className="brick-drawer-fab"
-            type="button"
-            aria-label="Open brick drawer"
-            aria-haspopup="dialog"
-            aria-expanded={sheetOpen}
-            onClick={openSheet}
-          >
-            <Plus size={22} />
-            <span>Bricks</span>
-          </button>
-          <button type="button" onClick={() => onOpenWorldSetup('environment')}><Mountain size={21} /><span>Scene</span></button>
-          <button type="button" onClick={() => onOpenWorldSetup('character')}><UserRound size={21} /><span>Character</span></button>
+            <button
+              className="brick-drawer-fab"
+              type="button"
+              aria-label="Open brick drawer"
+              aria-haspopup="dialog"
+              aria-expanded={sheetOpen}
+              onClick={openSheet}
+            >
+              <Plus size={22} />
+              <span>Bricks</span>
+            </button>
           </nav>
           {sheetOpen && <BrickDrawerSheet
             customParts={customParts}
