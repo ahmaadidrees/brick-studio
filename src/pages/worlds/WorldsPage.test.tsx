@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import WorldsPage from './WorldsPage'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 import { createFakeWorldsClient, FIXTURE_CLASS, studentSession, teacherSession } from './worldsFixtures'
-import type { WorldsClient } from './worldsData'
+import { createWorldsClient, type WorldsClient } from './worldsData'
+import type { ClassroomClient } from '../../classroom/client'
 
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -210,6 +211,30 @@ describe('teacher', () => {
     await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Market day', 'class'))
     expect(screen.getByRole('region', { name: 'Shared by students' })).toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+  })
+
+  it('sends a document with the shared-world request, so the Worker does not reject it as an invalid document', async () => {
+    // The real client (worldsData.ts), not the fake, so a regression in what
+    // `createSharedWorld` puts on the wire is caught here.
+    const request = vi.fn(async (path: string, method = 'GET') => {
+      if (path === '/classes' && method === 'GET') return { classes: [FIXTURE_CLASS] }
+      if (path === '/worlds' && method === 'GET') return { worlds: [] }
+      return { world: { id: 'w-new', title: 'Market day', kind: 'class', ownerId: teacherSession.user.id, classId: FIXTURE_CLASS.id, revision: 1, updatedAt: '2026-09-18T00:00:00.000Z' } }
+    })
+    const classroomClient: ClassroomClient = {
+      getSession: () => teacherSession,
+      subscribe: () => () => {},
+      signOut: vi.fn(async () => {}),
+      request: request as unknown as ClassroomClient['request'],
+    } as unknown as ClassroomClient
+    draw(createWorldsClient(classroomClient))
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Market day' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start world' }))
+
+    await waitFor(() => expect(request).toHaveBeenCalledWith('/worlds', 'POST', expect.objectContaining({ document: expect.any(Object) })))
   })
 
   it('hides a student world from the class', async () => {

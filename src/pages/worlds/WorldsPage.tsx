@@ -374,7 +374,7 @@ function StartSharedWorld({ busy, className, onCreate }: { busy: boolean; classN
   const [title, setTitle] = useState('')
   return <form className="worlds-start" onSubmit={event => { event.preventDefault(); if (title.trim()) { onCreate(title.trim(), kind); setTitle('') } }}>
     <h2 className="worlds-section-title">Start a shared world</h2>
-    <p className="worlds-help">Starts from the build in your studio. {className} can join it right away.</p>
+    <p className="worlds-help">Starts as an empty plate; build in it from the studio. {className} can join it right away.</p>
     <div className="worlds-start-row">
       <TextField label="Shared world name" name="title" value={title} onChange={event => setTitle(event.target.value)} required maxLength={80} autoComplete="off" />
       <SegmentedControl<'class' | 'group'> label="Access" showLabel value={kind} onChange={setKind} options={[{ value: 'class', label: 'Whole class' }, { value: 'group', label: 'Assigned group' }]} />
