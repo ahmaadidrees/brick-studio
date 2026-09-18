@@ -205,7 +205,7 @@ function AppHeaderExample() {
         <AppHeader variant="landing" session={session} navigation={<nav aria-label="Gallery landing links" className="ui-gallery-landing-nav"><a href="#app-header">How it works</a><a href="#app-header">For teachers</a><a href="#app-header">Teacher login</a></nav>} />
       </div>
       <div className="ui-gallery-header-frame" data-variant="page" onClickCapture={stop}>
-        <AppHeader variant="page" title="My worlds" session={session} actions={<Button variant="primary" size="sm">Start a shared world</Button>} />
+        <AppHeader variant="page" title="My worlds" session={session} actions={<Button variant="primary">Start a shared world</Button>} />
       </div>
       <div className="ui-gallery-header-frame ui-gallery-header-frame-editor" data-variant="editor">
         <AppHeader

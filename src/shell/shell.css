@@ -69,9 +69,8 @@
 /* Mode pill: the SegmentedControl restyled as one rounded switch. */
 .shell-mode-switch { display: inline-flex; }
 .shell-mode-switch .ui-segmented-track { border-radius: var(--radius-pill); padding: 3px; }
-.shell-mode-switch .ui-segmented-option { min-height: 38px; padding: 0 14px; border-radius: var(--radius-pill); font-weight: 800; }
+.shell-mode-switch .ui-segmented-option { min-height: 44px; padding: 0 14px; border-radius: var(--radius-pill); font-weight: 800; }
 .shell-mode-switch .ui-segmented-selected { background: var(--primary-strong); }
-@media (pointer: coarse) { .shell-mode-switch .ui-segmented-option { min-height: 44px; } }
 
 /* ---- Account chip ---- */
 .shell-account-chip { display: inline-flex; align-items: center; min-height: 44px; }
@@ -112,7 +111,8 @@
 /* ---- Tablet: tool labels drop, icons stay 44px ---- */
 @media (max-width: 900px) {
   .app-header-editor { gap: 8px; }
-  .app-header-tool .ui-button-label { display: none; }
+  .app-header-tool .ui-button-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .app-header-tool.ui-button { position: relative; }
   .app-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
   .app-header-title { max-width: 180px; }
 }
@@ -133,16 +133,20 @@
   .app-header-editor .app-header-tools { justify-content: space-between; gap: 4px; }
   .app-header-editor .app-header-tools > * { flex: 1 1 0; }
   .app-header-editor .app-header-mode { padding-left: 0; border-left: 0; }
-  .app-header-title { max-width: 120px; font-size: 15px; }
+  .app-header-editor .app-header-start { gap: 4px; }
+  .app-header-world { gap: 0; }
+  .app-header-title { max-width: 140px; padding: 0 2px; font-size: 15px; }
   .app-header-rename { display: none; }
   .shell-mode-switch .ui-segmented-option { padding: 0 10px; }
   .shell-mode-switch .ui-segmented-option > span:not(.ui-segmented-icon) { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .shell-mode-switch .ui-segmented-option { position: relative; min-width: 44px; }
   .shell-account-trigger { max-width: none; padding: 3px; }
   .shell-account-text, .shell-account-chevron { display: none; }
-  .shell-account-signin.ui-button .ui-button-label { display: none; }
-  .shell-account-signin.ui-button { min-width: 44px; padding: 0 10px; }
+  .shell-account-signin.ui-button .ui-button-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .shell-account-signin.ui-button { position: relative; min-width: 44px; padding: 0 10px; }
   .app-header-page .app-header-page-title { font-size: 16px; }
+  .app-header-landing .app-header-brand .brand-wordmark { font-size: 24px; }
+  .app-header-landing .app-header-brand .brand-mark { width: 34px; height: 34px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

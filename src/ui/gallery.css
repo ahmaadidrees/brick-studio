@@ -69,6 +69,7 @@
 
 /* App header (src/shell) variants and menus */
 .ui-gallery-section[data-gallery-section="app-header"] { max-width: 1200px; }
+.ui-gallery-stack > *, .ui-gallery-header-frame { min-width: 0; }
 .ui-gallery-header-frame { overflow: visible; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-sm); }
 .ui-gallery-header-frame .app-header-landing { max-width: none; padding: 12px 16px; }
 .ui-gallery-header-frame .app-header-page { border-bottom: 0; box-shadow: none; }
@@ -76,8 +77,8 @@
 .ui-gallery-landing-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 6px; }
 .ui-gallery-landing-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: var(--radius-md); color: var(--text); font-size: 14px; font-weight: 800; text-decoration: none; }
 .ui-gallery-landing-nav a:hover { color: var(--primary-strong); background: var(--primary-soft); }
-.ui-gallery-menus { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); min-height: 420px; }
-.ui-gallery-menu-slot { display: grid; align-content: start; gap: var(--space-2); justify-items: start; }
+.ui-gallery-menus { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }
+/* Room for the popover so opening one never shifts the layout. */
+.ui-gallery-menu-slot { position: relative; display: grid; align-content: start; gap: var(--space-2); justify-items: start; min-height: 440px; }
 .ui-gallery-menu-slot-end { justify-items: end; }
-.ui-gallery-menu-slot .ui-menu-popover { position: static; margin-top: 4px; animation: none; }
-@media (max-width: 700px) { .ui-gallery-landing-nav { display: none; } .ui-gallery-menus { min-height: 0; } }
+@media (max-width: 700px) { .ui-gallery-landing-nav { display: none; } }
