@@ -249,6 +249,33 @@ describe('teacher', () => {
     await waitFor(() => expect(setWorldHidden).toHaveBeenCalledWith('world-chloe-castle', true))
     expect(await screen.findByText(/is hidden from the class/)).toBeInTheDocument()
   })
+
+  it('keeps a class section to worlds shared by that class\'s own students, for a teacher with more than one class', async () => {
+    const classA = { ...FIXTURE_CLASS, id: 'class-a', name: 'Class A' }
+    const classB = { ...FIXTURE_CLASS, id: 'class-b', name: 'Class B' }
+    const worldFor = (id: string, title: string, ownerClassId: string) => ({
+      id, title, ownerId: `owner-${id}`, classId: null, kind: 'personal' as const, revision: 1, updatedAt: '2026-09-17T00:00:00.000Z',
+      visibility: 'class' as const, canEdit: false, classCanEdit: true, ownerName: 'A Student', ownerClassId, sharedAt: '2026-09-17T00:00:00.000Z', hiddenByTeacher: false,
+    })
+    const worldA = worldFor('world-a', 'Class A Build', classA.id)
+    const worldB = worldFor('world-b', 'Class B Build', classB.id)
+
+    const client = createFakeWorldsClient({ session: teacherSession, classes: [classA, classB], worlds: [worldA, worldB] })
+    draw(client)
+    await settled()
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    expect(within(within(rail).getByRole('button', { name: /^Class A/ })).getByText('1')).toBeInTheDocument()
+    expect(within(within(rail).getByRole('button', { name: /^Class B/ })).getByText('1')).toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^Class A/ }))
+    expect(screen.getByRole('article', { name: 'Class A Build' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Class B Build' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^Class B/ }))
+    expect(screen.getByRole('article', { name: 'Class B Build' })).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Class A Build' })).not.toBeInTheDocument()
+  })
 })
 
 describe('session and layout', () => {

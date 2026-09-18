@@ -152,7 +152,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
 
   const firstRun = !loading && (classes.length === 0 || (!firstRunDone && createdClass !== null && classes.length === 1))
   const name = session.user.rosterName || session.user.username
-  const shared = currentClass ? sharedByStudents(worlds, currentClass.id, session.user.id) : []
+  const shared = currentClass ? sharedByStudents(worlds, currentClass.id, session.user.id, classes[0]?.id) : []
 
   const headerSession: ClassroomSessionState = {
     status: 'teacher',

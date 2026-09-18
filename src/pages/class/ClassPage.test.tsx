@@ -98,6 +98,34 @@ it('lists what students shared with the owner, the sharing chip and the roster',
   expect(screen.getByRole('button', { name: 'Manage Bella Rivera' })).toBeInTheDocument()
 })
 
+it('scopes shared-by-students worlds to the selected class for a teacher with more than one class', async () => {
+  const CLASS2 = { ...CLASS, id: 'class-2', name: 'Room 14 Builders' }
+  const multiWorlds = [
+    { id: 'wa', title: 'Room 12 Build', ownerId: 's1', classId: null, kind: 'personal' as const, revision: 1, updatedAt: '2026-09-16T15:00:00.000Z', ownerName: 'Aiden K.', visibility: 'class' as const, canEdit: false, ownerClassId: 'class-1', sharedAt: '2026-09-16T15:02:00.000Z', hiddenByTeacher: false },
+    { id: 'wb', title: 'Room 14 Build', ownerId: 's3', classId: null, kind: 'personal' as const, revision: 1, updatedAt: '2026-09-16T15:00:00.000Z', ownerName: 'Casey T.', visibility: 'class' as const, canEdit: false, ownerClassId: 'class-2', sharedAt: '2026-09-16T15:02:00.000Z', hiddenByTeacher: false },
+  ]
+  const calls: Call[] = []
+  const request = vi.fn(async (path: string, method = 'GET') => {
+    calls.push([path, method])
+    if (path === '/classes' && method === 'GET') return { classes: [CLASS, CLASS2] }
+    if (path === '/worlds' && method === 'GET') return { worlds: multiWorlds }
+    if (path.endsWith('/students')) return { students: STUDENTS }
+    return {}
+  })
+  const snapshot = session()
+  const client: ClassPageClient = { getSession: () => snapshot, subscribe: () => () => {}, signOut: vi.fn(async () => {}), request: request as unknown as ClassPageClient['request'] }
+
+  render(<ClassPage client={client} navigate={vi.fn()} />)
+  const firstShared = await screen.findByRole('list', { name: 'Worlds students shared with this class' })
+  expect(within(firstShared).getByText('Room 12 Build')).toBeInTheDocument()
+  expect(within(firstShared).queryByText('Room 14 Build')).not.toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Room 14 Builders' }))
+  const secondShared = await screen.findByRole('list', { name: 'Worlds students shared with this class' })
+  expect(within(secondShared).getByText('Room 14 Build')).toBeInTheDocument()
+  expect(within(secondShared).queryByText('Room 12 Build')).not.toBeInTheDocument()
+})
+
 it('hides a shared world and shows it again through the teacher visibility endpoint', async () => {
   const { client, calls } = testClient()
   render(<ClassPage client={client} navigate={vi.fn()} />)
