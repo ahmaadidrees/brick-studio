@@ -1,0 +1,321 @@
+/*
+ * Teacher pages (/class and /class/projector). Tokens come from src/styles.css;
+ * reused classroom views keep their own classroom.css styling.
+ */
+
+.class-page {
+  height: 100%;
+  overflow: auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.class-page-redirect {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* Header ------------------------------------------------------------------ */
+.class-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.class-header-end { display: flex; align-items: center; gap: var(--space-3); }
+.class-account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-2);
+}
+.class-account-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.class-account-text { display: flex; flex-direction: column; line-height: 1.2; }
+.class-account-text small { color: var(--text-muted); font-size: var(--text-sm); }
+
+/* Body and rail ----------------------------------------------------------- */
+.class-page-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--space-6);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+}
+.class-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  position: sticky;
+  top: 84px;
+  align-self: start;
+}
+.class-rail-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.class-rail-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: var(--space-1); }
+.class-rail-item {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+}
+.class-rail-item:hover { background: var(--surface-2); }
+.class-rail-item-current { background: var(--primary-soft); color: var(--primary-strong); border-color: var(--primary); }
+.class-rail-divider { width: 100%; height: 1px; border: 0; background: var(--border); margin: var(--space-2) 0; }
+
+.class-page-main { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; padding: var(--space-5) var(--space-5) var(--space-8); }
+.class-page-body .class-page-main { padding: 0; }
+
+.class-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3) var(--space-4); }
+.class-head h1 { font-size: 30px; }
+.class-head-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.class-tabs { max-width: 520px; }
+
+/* Chips, banners, helpers -------------------------------------------------- */
+.class-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.class-chip-on, .class-chip-edit { background: var(--success-soft); color: var(--success); }
+.class-chip-off { background: var(--surface-2); color: var(--text-muted); }
+.class-chip-view, .class-chip-class, .class-chip-group { background: var(--primary-soft); color: var(--primary-strong); }
+.class-chip-live { background: var(--warning-soft); color: var(--warning-text); }
+
+.class-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 1180px;
+  margin: var(--space-4) auto 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+}
+.class-banner-error { background: var(--danger-soft); color: var(--danger-text); }
+.class-banner-notice { background: var(--success-soft); color: var(--success); }
+.class-help { color: var(--text-muted); font-size: var(--text-md); }
+.class-warning { color: var(--warning-text); }
+.class-loading { display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); font-weight: 700; }
+.class-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+.class-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.class-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.class-section-title { font-size: var(--text-lg); }
+.class-form { gap: var(--space-4); }
+
+/* Code card ---------------------------------------------------------------- */
+.class-code-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.class-code-qr { flex: 0 0 auto; }
+.class-code-qr img { display: block; border-radius: var(--radius-md); }
+.class-code-qr-placeholder { display: block; width: 180px; height: 180px; border-radius: var(--radius-md); background: var(--surface-2); }
+.class-code-main { display: flex; flex-direction: column; gap: var(--space-2); min-width: 240px; flex: 1 1 260px; }
+.class-code-eyebrow { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; font-size: var(--text-sm); }
+.class-code-value {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 7vw, 64px);
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--primary-strong);
+}
+.class-code-steps { color: var(--text-muted); }
+.class-code-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.class-code-fallback { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-sm); font-weight: 700; }
+
+/* Cards -------------------------------------------------------------------- */
+.class-card-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--space-3);
+}
+.class-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.class-card-hidden { background: var(--surface-2); border-style: dashed; }
+.class-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.class-card-title { font-family: var(--font-display); font-size: var(--text-lg); }
+.class-card-owner { color: var(--text-muted); font-size: var(--text-sm); }
+.class-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: auto; }
+
+/* Settings ----------------------------------------------------------------- */
+.class-setting-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+.class-setting-row:first-of-type { border-top: 0; }
+.class-setting-row small { display: block; max-width: 56ch; color: var(--text-muted); }
+.class-setting-title { display: flex; align-items: center; gap: var(--space-2); }
+
+/* First run ---------------------------------------------------------------- */
+.class-first-run { max-width: 820px; margin: 0 auto; }
+.class-first-run-intro h1 { font-size: 32px; }
+.class-first-run-intro p { color: var(--text-muted); margin-top: var(--space-2); }
+.class-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.class-step {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  opacity: 0.72;
+}
+.class-step-active { opacity: 1; border-color: var(--primary); box-shadow: var(--shadow-sm); }
+.class-step-done { opacity: 1; }
+.class-step-number {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+.class-step-active .class-step-number { background: var(--primary-strong); color: var(--primary-contrast); }
+.class-step-done .class-step-number { background: var(--success-soft); color: var(--success); }
+.class-step-body { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.class-step-title { font-size: var(--text-lg); }
+.class-step-summary { color: var(--text-muted); }
+.class-step-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.class-step-actions, .class-step-next { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+/* Projector ---------------------------------------------------------------- */
+.class-projector-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-6);
+  overflow: auto;
+  background: var(--bg);
+  text-align: center;
+}
+.class-projector-close { position: fixed; top: var(--space-4); right: var(--space-4); }
+.class-projector-name { font-family: var(--font-display); font-size: clamp(28px, 4vw, 48px); }
+.class-projector-label { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; }
+.class-projector-code-big {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(72px, 16vw, 200px);
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: var(--primary-strong);
+}
+.class-projector-qr { border-radius: var(--radius-md); background: var(--surface); }
+.class-projector-steps { font-size: clamp(16px, 2.2vw, 28px); color: var(--text); }
+
+/* Print -------------------------------------------------------------------- */
+.class-print-sheet { display: none; }
+@media print {
+  .class-header, .class-rail, .class-tabs, .class-section, .class-code-card, .class-banner, .class-first-run-intro { display: none !important; }
+  .class-print-sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+  .class-print-code { font-family: var(--font-display); font-size: 72px; letter-spacing: 0.1em; }
+  .class-print-steps { font-size: 20px; }
+}
+
+/* Responsive --------------------------------------------------------------- */
+@media (max-width: 1080px) {
+  .class-page-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .class-rail {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .class-rail-title { width: 100%; }
+  .class-rail-list { flex-direction: row; flex-wrap: wrap; width: auto; }
+  .class-rail-item { width: auto; }
+  .class-rail-divider { display: none; }
+}
+@media (max-width: 700px) {
+  .class-header { padding: var(--space-2) var(--space-4); }
+  .class-account-text { display: none; }
+  .class-page-body { padding: var(--space-4) var(--space-4) var(--space-7); }
+  .class-head h1 { font-size: 26px; }
+  .class-code-card { flex-direction: column; align-items: flex-start; gap: var(--space-4); }
+  .class-code-qr img, .class-code-qr-placeholder { width: 140px; height: 140px; }
+  .class-code-value { font-size: 44px; }
+  .class-code-actions .ui-button { flex: 1 1 100%; }
+  .class-step { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); padding: var(--space-4); }
+  .class-card-row { grid-template-columns: minmax(0, 1fr); }
+  .class-setting-row { align-items: flex-start; }
+}
