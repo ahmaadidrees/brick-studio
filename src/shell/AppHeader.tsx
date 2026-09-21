@@ -206,14 +206,6 @@ function EditorHeader({
               Rename world
             </Button>
           )}
-          <WorldMenu
-            onRename={onRenameWorld ? () => setRenaming(true) : undefined}
-            onExportProject={onExportProject}
-            onImportProject={inRoom ? undefined : onImportProject}
-            onNewBuild={inRoom ? undefined : onNewBuild}
-            onOpenSettings={onOpenSettings}
-            onOpenHelp={onOpenHelp}
-          />
         </div>
         <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} className="app-header-save" />
       </div>
@@ -227,6 +219,15 @@ function EditorHeader({
       </div>
       <div className="app-header-end">
         <AccountChip session={session} context="editor" onSaveToAccount={onSaveToAccount} menuDefaultOpen={accountMenuDefaultOpen} />
+        <WorldMenu
+          align="end"
+          onRename={onRenameWorld ? () => setRenaming(true) : undefined}
+          onExportProject={onExportProject}
+          onImportProject={inRoom ? undefined : onImportProject}
+          onNewBuild={inRoom ? undefined : onNewBuild}
+          onOpenSettings={onOpenSettings}
+          onOpenHelp={onOpenHelp}
+        />
       </div>
       {renaming && onRenameWorld && (
         <RenameWorldDialog currentTitle={title} onRename={onRenameWorld} onClose={() => setRenaming(false)} />
