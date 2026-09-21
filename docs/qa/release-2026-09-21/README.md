@@ -46,3 +46,23 @@ One verb, one sheet, same room. Mock: https://claude.ai/artifact/L5VxMHMxqAdf7f7
 - Walked on the QA mock before merge: owner invite → `/live/<id>?invited=1`; friend badge + banner + Join and build; editor Build together opens the sheet on an account world and reopens with picks preloaded.
 
 Watch for: students who reach the live room and expect their solo editor (the card's ⋯ menu has "Open alone"); a class-shared room shows "Building with" but no "Waiting for" (no roster for whole-class shares).
+
+## Fifth release — Worker write-behind commits + authorization cache (PR #16, main ba0d4c7)
+
+Worker only. No migration, no protocol or client change.
+
+- Worker: `ac8b8696-9336-4d9a-951c-a4f9678b269b`. Rollback: `npx wrangler rollback 30d085ab-c546-4bfd-a1c3-720cb8144a1d`.
+- Header change (PR #15, ⋯ This build menu at the far right) went out earlier as frontend `virtual-legos-ld74zcg27`; rollback `vercel promote virtual-legos-1xymf8s4y-ahmaadidrees-projects.vercel.app`.
+
+What changed: classroom rooms ack and broadcast an edit as soon as it is in Durable Object storage; the Supabase commit runs on a
+1 s debounce (immediately on mode/lock change, resync, last disconnect, metadata refresh), retries with backoff, adopts the DB copy
+on a revision conflict, and commits a dirty record on cold start before serving. Per-frame `authorize_world` is cached 15 s per
+socket for building frames; control frames and invalidation pushes always re-check.
+
+Measured with scripts/qa/live-latency.mjs against production after deploy (guest room, from the developer's Mac):
+brick ack p50 47 ms / p90 52 ms; burst of 20 acked within 118 ms (~1 ms room work per edit); peer saw every apply.
+Classroom room not measured end to end (needs a student login); the edit path is now the same code as the guest path,
+with the DB hop moved off it. Before: two Supabase hops per brick, ~6–9 edits/s per room.
+
+Watch for: a "Room update" notice with "Get latest" in a classroom room means a commit was delayed three times or a
+solo-editor save won a conflict; up to ~1 s of edits can be lost in that race. Rollback restores per-edit commits.
