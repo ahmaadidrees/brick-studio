@@ -3,9 +3,10 @@ import { afterEach, expect, it, vi } from 'vitest'
 import type { ClassroomAuthResult } from '../../classroom/contracts'
 import ClassPage from './ClassPage'
 import type { ClassPageClient } from './classPageData'
+import { readRememberedTeacherClass, REMEMBERED_TEACHER_CLASS_KEY } from '../../shell'
 
 vi.mock('qrcode', () => ({ toDataURL: vi.fn(async () => 'data:image/png;base64,AA==') }))
-afterEach(cleanup)
+afterEach(() => { cleanup(); window.localStorage.clear() })
 
 const session = (role: 'teacher' | 'student' = 'teacher'): ClassroomAuthResult => ({
   user: { id: 'teacher-1', username: 'mrsdiaz', rosterName: 'Ana Diaz', role, resetRequired: false },
@@ -208,4 +209,34 @@ it('falls back to the first class when ?classId= names one this teacher does not
     render(<ClassPage client={testClient().client} navigate={vi.fn()} />)
     expect(await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })).toBeInTheDocument()
   } finally { window.history.replaceState({}, '', '/') }
+})
+
+it('reopens the class this teacher last picked, and remembers a new pick', async () => {
+  const OTHER = { ...CLASS, id: 'class-2', name: 'After-school Club' }
+  window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+  render(<ClassPage client={testClient({ classes: [CLASS, OTHER] }).client} navigate={vi.fn()} />)
+  expect(await screen.findByRole('heading', { name: 'After-school Club', level: 1 })).toBeInTheDocument()
+
+  fireEvent.click(within(screen.getByRole('navigation', { name: 'Classes' })).getByRole('button', { name: 'Room 12 Builders' }))
+  expect(await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })).toBeInTheDocument()
+  expect(readRememberedTeacherClass()).toBe('class-1')
+})
+
+it('lets ?classId= override what was remembered, because a link beats yesterday', async () => {
+  const OTHER = { ...CLASS, id: 'class-2', name: 'After-school Club' }
+  window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+  window.history.replaceState({}, '', '/class?classId=class-1')
+  try {
+    render(<ClassPage client={testClient({ classes: [CLASS, OTHER] }).client} navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })).toBeInTheDocument()
+  } finally { window.history.replaceState({}, '', '/') }
+})
+
+it('forgets the remembered class when the teacher signs out', async () => {
+  window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-1' }))
+  render(<ClassPage client={testClient().client} navigate={vi.fn()} />)
+  await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })
+  fireEvent.click(screen.getByRole('button', { name: /Account/ }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
+  await waitFor(() => expect(readRememberedTeacherClass()).toBeNull())
 })

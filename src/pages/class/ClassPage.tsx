@@ -6,7 +6,7 @@ import type { ClassroomCheckpoint, ClassroomStudent, ClassroomWorldMember } from
 import { ManageStudentForm } from '../../classroom/RosterView'
 import { errorMessage } from '../../classroom/panelShared'
 import '../../classroom/classroom.css'
-import { AppHeader, displayNameFor, type ClassroomSessionState } from '../../shell'
+import { AppHeader, clearRememberedTeacherClass, displayNameFor, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import {
   addMember, createClass, defaultClassPageClient, loadCheckpoints, loadClasses, loadMembers, loadStudents, loadWorlds,
   patchClass, patchStudent, removeMember, restoreCheckpoint, setWorldHidden, sharedByStudents, teacherWorlds,
@@ -82,12 +82,11 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
     const [nextClasses, nextWorlds] = await Promise.all([loadClasses(client), loadWorlds(client)])
     setClasses(nextClasses); setWorlds(nextWorlds)
     // `?classId=` (the rail's "Open class page" on /worlds) wins once, then the
-    // teacher's own picks do.
+    // class this teacher last picked, then the first one. Later refreshes keep
+    // whatever is open.
     const requested = requestedClassId.current
     requestedClassId.current = null
-    setClassId(id => requested && nextClasses.some(item => item.id === requested)
-      ? requested
-      : nextClasses.some(item => item.id === id) ? id : nextClasses[0]?.id || '')
+    setClassId(id => !requested && nextClasses.some(item => item.id === id) ? id : pickTeacherClassId(nextClasses, requested))
   }, [client])
 
   useEffect(() => {
@@ -122,7 +121,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
 
   const onCreateClass = (name: string) => run(async () => {
     const created = await createClass(client, name)
-    await refresh(); setClassId(created.id); setCreatedClass(created)
+    await refresh(); setClassId(created.id); rememberTeacherClass(created.id); setCreatedClass(created)
     if (firstRunDone || classes.length) { setTab('settings'); setNotice(`${created.name} is ready.`) }
   })
   const onPatch = (body: Record<string, unknown>, message?: string) => run(async () => {
@@ -167,8 +166,8 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
     user: session.user,
     classes: session.classes,
     displayName: displayNameFor(session.user),
-    signOut: async () => run(async () => { await client.signOut() }),
-    switchAccount: async () => { await client.signOut(); navigate('/join?mode=teacher') },
+    signOut: async () => run(async () => { clearRememberedTeacherClass(); await client.signOut() }),
+    switchAccount: async () => { clearRememberedTeacherClass(); await client.signOut(); navigate('/join?mode=teacher') },
   }
 
   return <div className="class-page">
@@ -184,7 +183,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
             <h2 className="class-rail-title">Classes</h2>
             <ul className="class-rail-list">
               {classes.map(item => <li key={item.id}>
-                <button type="button" className={`class-rail-item${item.id === classId ? ' class-rail-item-current' : ''}`} aria-current={item.id === classId ? 'true' : undefined} disabled={busy} onClick={() => { setClassId(item.id); setEditingStudent(null); setSelectedWorld(null) }}>{item.name}</button>
+                <button type="button" className={`class-rail-item${item.id === classId ? ' class-rail-item-current' : ''}`} aria-current={item.id === classId ? 'true' : undefined} disabled={busy} onClick={() => { setClassId(item.id); rememberTeacherClass(item.id); setEditingStudent(null); setSelectedWorld(null) }}>{item.name}</button>
               </li>)}
             </ul>
             <Button variant="quiet" size="sm" icon={<Plus size={16} />} onClick={() => { setTab('settings'); setEditingStudent(null); setSelectedWorld(null) }}>New class</Button>

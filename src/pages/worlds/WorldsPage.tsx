@@ -5,7 +5,7 @@ import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
-import { AppHeader, CLASS_PATH, displayNameFor, type ClassroomSessionState } from '../../shell'
+import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import { ShareSheet } from './ShareSheet'
 import {
   browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
@@ -117,12 +117,13 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       .then(([nextWorlds, nextClasses]) => {
         if (cancelled) return
         setWorlds(nextWorlds); setClasses(nextClasses)
-        if (pendingView.current && nextClasses[0]) { setSection(nextClasses[0].id); pendingView.current = false }
+        // A teacher returns to the class they last picked; a student has one.
+        if (pendingView.current && nextClasses[0]) { setSection(teacher ? pickTeacherClassId(nextClasses) : nextClasses[0].id); pendingView.current = false }
       })
       .catch(failure => { if (!cancelled) setError(errorMessage(failure)) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [client, session])
+  }, [client, session, teacher])
 
   const reload = async () => {
     const [nextWorlds, nextClasses] = await Promise.all([client.listWorlds(), client.listClasses()])
@@ -165,8 +166,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     classes: session.classes,
     className: teacher ? undefined : classes[0]?.name,
     displayName: displayNameFor(session.user),
-    signOut: async () => run(async () => { await client.signOut() }),
-    switchAccount: async () => { await client.signOut(); navigate(signInHref('/worlds')) },
+    signOut: async () => run(async () => { clearRememberedTeacherClass(); await client.signOut() }),
+    switchAccount: async () => { clearRememberedTeacherClass(); await client.signOut(); navigate(signInHref('/worlds')) },
   }
 
   const currentClass = classes.find(item => item.id === section) ?? null
@@ -233,7 +234,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
    * pointed at it.
    */
   const railItems = sections.map(item => <Fragment key={item.id}>
-    <button type="button" className={`worlds-rail-item${item.id === section ? ' worlds-rail-current' : ''}`} aria-current={item.id === section ? 'page' : undefined} onClick={() => { setSection(item.id); setSearch('') }}>
+    <button type="button" className={`worlds-rail-item${item.id === section ? ' worlds-rail-current' : ''}`} aria-current={item.id === section ? 'page' : undefined} onClick={() => { setSection(item.id); setSearch(''); if (teacher && item.id !== 'mine') rememberTeacherClass(item.id) }}>
       <span className="worlds-rail-label">{item.id === 'mine' ? <Blocks size={16} aria-hidden="true" /> : <Users size={16} aria-hidden="true" />}{item.label}</span>
       <span className="worlds-rail-count">{item.count}</span>
     </button>

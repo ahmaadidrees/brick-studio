@@ -5,6 +5,7 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 import { createFakeWorldsClient, FIXTURE_CLASS, studentSession, teacherSession } from './worldsFixtures'
 import { createWorldsClient, type WorldsClient } from './worldsData'
 import type { ClassroomClient } from '../../classroom/client'
+import { readRememberedTeacherClass, REMEMBERED_TEACHER_CLASS_KEY } from '../../shell'
 
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -233,6 +234,30 @@ describe('teacher', () => {
 
     fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
     expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
+  })
+
+  it('opens the class the teacher last picked and remembers a new pick from the rail', async () => {
+    const SECOND = { ...FIXTURE_CLASS, id: 'class-2', name: 'After-school Club' }
+    window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+    draw(createFakeWorldsClient({ session: teacherSession, classes: [FIXTURE_CLASS, SECOND] }), { view: 'class' })
+    await settled()
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('After-school Club')
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
+
+    // "My worlds" is not a class, so it never overwrites the remembered one.
+    fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
+    expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
+  })
+
+  it('falls back to the first class when the remembered one is gone', async () => {
+    window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-gone' }))
+    draw(createFakeWorldsClient({ session: teacherSession }), { view: 'class' })
+    await settled()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
   })
 
   it('sends a document with the shared-world request, so the Worker does not reject it as an invalid document', async () => {

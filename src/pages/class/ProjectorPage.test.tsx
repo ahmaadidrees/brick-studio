@@ -3,9 +3,10 @@ import { afterEach, expect, it, vi } from 'vitest'
 import type { ClassroomAuthResult } from '../../classroom/contracts'
 import ProjectorPage from './ProjectorPage'
 import type { ClassPageClient } from './classPageData'
+import { REMEMBERED_TEACHER_CLASS_KEY } from '../../shell'
 
 vi.mock('qrcode', () => ({ toDataURL: vi.fn(async () => 'data:image/png;base64,AA==') }))
-afterEach(cleanup)
+afterEach(() => { cleanup(); window.localStorage.clear() })
 
 const CLASSES = [
   { id: 'class-1', name: 'Room 12 Builders', code: 'BRICK7', loginCode: 'OLD123', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true },
@@ -52,4 +53,16 @@ it('keeps non-teachers out', async () => {
   const studentNavigate = vi.fn()
   render(<ProjectorPage client={testClient({ role: 'student' })} navigate={studentNavigate} />)
   await waitFor(() => expect(studentNavigate).toHaveBeenCalledWith('/worlds'))
+})
+
+it('projects the class the teacher last picked in /class, not just the first one', async () => {
+  window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+  render(<ProjectorPage client={testClient()} navigate={vi.fn()} />)
+  expect(await screen.findByRole('heading', { name: 'After-school Club', level: 1 })).toBeInTheDocument()
+})
+
+it('ignores a remembered class that no longer exists', async () => {
+  window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-gone' }))
+  render(<ProjectorPage client={testClient()} navigate={vi.fn()} />)
+  expect(await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })).toBeInTheDocument()
 })
