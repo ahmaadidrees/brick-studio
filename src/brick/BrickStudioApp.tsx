@@ -54,7 +54,7 @@ import { PartThumbnail } from './PartThumbnail'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import type { StudioDocumentCommands } from './StudioMenu'
-import { AppHeader, WORLDS_PATH, classroomIntentRedirect, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession } from '../shell'
+import { AppHeader, WORLDS_PATH, classroomIntentRedirect, describeLivePresence, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession, type LivePresence } from '../shell'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
@@ -100,6 +100,8 @@ export type BrickStudioLivePolicy = {
   peopleCount?: number
   /** Opens the live People/room panel from the header or Explore HUD. */
   onOpenPeople?: () => void
+  /** Classroom rooms: who from the invited roster is here and who is still expected. */
+  presence?: LivePresence
   /** Edits the room has not confirmed yet; the header must not present them as shared. */
   pendingOperations?: number
   /** Another tab or device took over this participant's connection. */
@@ -343,8 +345,10 @@ function PeopleEntry({ livePolicy, onStartLiveWorld, compact = false }: PeopleEn
   if (livePolicy) {
     const count = livePolicy.peopleCount
     const label = count === undefined ? 'People' : `People, ${count} ${livePolicy.connection === 'online' ? 'here' : 'last seen'}`
+    const summary = describeLivePresence(livePolicy.presence)
+    const title = summary ? `${label}. ${summary}` : label
     return (
-      <Button variant="quiet" className="brick-header-tool brick-people-entry" icon={<Users size={17} />} aria-label={label} title={label} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
+      <Button variant="quiet" className="brick-header-tool brick-people-entry" icon={<Users size={17} />} aria-label={title} title={title} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
         People{count !== undefined && <strong className="brick-people-count" aria-hidden="true">{count}</strong>}
       </Button>
     )

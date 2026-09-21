@@ -143,13 +143,19 @@ describe('AppHeader editor', () => {
 
   it('live rooms: room title, People headcount, locked modes for guests, no Import / New build', () => {
     const onOpenPeople = vi.fn()
-    render(<AppHeader {...editorProps({
+    const { rerender } = render(<AppHeader {...editorProps({
       livePolicy: { connection: 'online', isOwner: false, roomTitle: 'Team Red', peopleCount: 4, onOpenPeople },
       saveStatus: { source: { kind: 'live', connection: 'online' } },
     })} />)
     expect(screen.getByText('Team Red')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'People, 4 here' }))
     expect(onOpenPeople).toHaveBeenCalledTimes(1)
+    // Classroom rooms add the roster presence to the chip's name and title.
+    rerender(<AppHeader {...editorProps({
+      livePolicy: { connection: 'online', isOwner: false, roomTitle: 'Team Red', peopleCount: 4, onOpenPeople, presence: { building: ['Ben K.'], waiting: ['Cy D.'] } },
+      saveStatus: { source: { kind: 'live', connection: 'online' } },
+    })} />)
+    expect(screen.getByRole('button', { name: 'People, 4 here. Building with Ben K. Waiting for Cy D.' })).toHaveAttribute('title', 'People, 4 here. Building with Ben K. Waiting for Cy D.')
     const group = screen.getByRole('radiogroup', { name: 'Studio mode' })
     expect(within(group).getByRole('radio', { name: 'Build' })).toBeDisabled()
     expect(within(group).getByRole('radio', { name: 'Explore' })).toBeDisabled()
