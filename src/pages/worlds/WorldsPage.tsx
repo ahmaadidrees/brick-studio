@@ -5,7 +5,7 @@ import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
-import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
+import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, NEW_BUILD_HREF, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import { ShareSheet } from './ShareSheet'
 import {
   browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
@@ -275,7 +275,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             <h1>{heading}</h1>
             <p className="worlds-counts">{counts}</p>
           </div>
-          {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
+          <div className="worlds-title-actions">
+            {/* The one obvious way to start something, on every section of this page. */}
+            <Button href={NEW_BUILD_HREF} variant="primary" icon={<Plus size={18} />}>New build</Button>
+            {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
+          </div>
         </div>
 
         {error && <p className="worlds-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}

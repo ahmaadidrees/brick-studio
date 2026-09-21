@@ -324,3 +324,9 @@
 .worlds-rail-open-class:hover { text-decoration: underline; }
 .worlds-rail-open-class:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .worlds-tabs .worlds-rail-open-class { flex: none; margin: 0; }
+
+.worlds-title-actions { display: flex; align-items: flex-end; gap: var(--space-3); flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .worlds-title-actions { width: 100%; }
+  .worlds-title-actions > .ui-button { flex: 1 1 auto; min-height: 44px; }
+}

@@ -1,7 +1,7 @@
-import { FolderOpen, LogOut, Presentation, Save, UserRoundCog, Users } from 'lucide-react'
+import { FolderOpen, LogOut, Plus, Presentation, Save, UserRoundCog, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Menu, MenuItem, MenuSeparator, type MenuTriggerProps } from '../ui'
-import { CLASS_PATH, PROJECTOR_PATH, WORLDS_PATH } from './navigation'
+import { CLASS_PATH, NEW_BUILD_HREF, PROJECTOR_PATH, WORLDS_PATH } from './navigation'
 import type { ClassroomSessionState } from './useClassroomSession'
 
 /** Which surface the menu sits on; the editor adds "Save this build to my account". */
@@ -44,6 +44,12 @@ export function AccountMenu({ session, context, onSaveToAccount, trigger, defaul
         </>
       }
     >
+      {/*
+        * Starting something new is the first thing in the menu on every page.
+        * The editor is the exception: its ⋯ menu already offers New build, and
+        * that one resets the build in place instead of navigating.
+        */}
+      {context !== 'editor' && <MenuItem icon={<Plus size={18} />} label="New build" description="Open the studio on an empty plate" href={NEW_BUILD_HREF} />}
       {teacher ? (
         <>
           <MenuItem icon={<Users size={18} />} label="My class" description="Students, worlds and settings" href={CLASS_PATH} />

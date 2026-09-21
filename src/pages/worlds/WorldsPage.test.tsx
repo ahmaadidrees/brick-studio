@@ -72,6 +72,18 @@ describe('student', () => {
     expect(within(teacherWorlds).getByRole('article', { name: 'Our Town' })).toBeInTheDocument()
   })
 
+  it('offers New build at the top of the page, on every section', async () => {
+    draw()
+    await settled()
+
+    const newBuild = screen.getByRole('link', { name: 'New build' })
+    expect(newBuild).toHaveAttribute('href', '/build')
+    expect(newBuild).toHaveClass('ui-button-primary')
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(screen.getByRole('link', { name: 'New build' })).toBeInTheDocument()
+  })
+
   it('shows the browser draft strip only when this browser holds a build', async () => {
     seedDraft(12)
     draw()

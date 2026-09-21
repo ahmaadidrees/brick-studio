@@ -10,7 +10,7 @@ export { ModeSwitch, DEFAULT_EXPLORE_REASON, DEFAULT_LOCKED_REASON, type ModeSwi
 export { RenameWorldDialog, WORLD_TITLE_MAX_LENGTH, type RenameWorldDialogProps } from './RenameWorldDialog'
 export { useClassroomSession, displayNameFor, resetClassroomSessionCache, type ClassroomSessionState, type ClassroomSessionStatus, type ClassroomSessionClient } from './useClassroomSession'
 export {
-  JOIN_PATH, WORLDS_PATH, CLASS_PATH, PROJECTOR_PATH,
+  JOIN_PATH, WORLDS_PATH, CLASS_PATH, PROJECTOR_PATH, NEW_BUILD_HREF,
   joinPath, safeNextPath, currentPath, goToJoin, goToWorlds, goToClass, goToProjector,
   classroomIntentPath, classroomIntentRedirect,
   type JoinMode, type JoinOptions, type Navigate,
