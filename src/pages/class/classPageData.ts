@@ -2,23 +2,17 @@ import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomCheckpoint, ClassroomClass, ClassroomClientSurface, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
 
 /**
- * Flows v2 fields the teacher page consumes. They are optional here because
- * `src/classroom/contracts.ts` still describes the pre-sharing shapes; once W1
- * lands its migration and client the page can read them from the shared types
- * and these two aliases can be deleted (see docs/flows/status/w5.md).
+ * Flows v2 shapes the teacher page consumes. Worlds come straight from the
+ * shared contract (`visibility` is `private`, `class` or `members`, the last
+ * with the invited classmates in `members`); the class alias stays only for
+ * the optional presence count.
  */
 export type ClassPageClass = ClassroomClass & {
   studentsCanShare?: boolean
   /** Optional presence count for the "N building now" chip; hidden when absent. */
   buildingNow?: number
 }
-export type ClassPageWorld = ClassroomWorld & {
-  ownerName?: string
-  visibility?: 'private' | 'class'
-  canEdit?: boolean
-  sharedAt?: string | null
-  hiddenByTeacher?: boolean
-}
+export type ClassPageWorld = ClassroomWorld
 
 /**
  * Everything the page needs from the classroom client: the session store plus

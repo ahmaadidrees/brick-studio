@@ -1,28 +1,14 @@
 import { BUILD_PLATE_SIZES, DEFAULT_BUILD_PLATE_SIZE, createBrickStudioDocument, type BuildPlateSize } from '@brick-studio/core'
 import { browserClassroomClient, type ClassroomClient } from '../../classroom/client'
-import type { ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomWorld } from '../../classroom/contracts'
+import type { ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 
 /**
- * `/worlds` data contract. The sharing fields come from the flows v2 worker
- * (docs/flows/CONTRACTS-V2.md → "Client"); until W1 lands them on
- * `ClassroomWorld` they are declared here so the page compiles and the fake
- * client below can serve the same shapes.
+ * `/worlds` data contract: the shared classroom shapes (docs/flows/CONTRACTS-V2.md → "Client"). `visibility` is
+ * `private`, `class` (everyone in the owner's class) or `members` (only the classmates in `members`); `canEdit` is
+ * what the CALLER may do (an owner is always true) while `classCanEdit` is what the owner let others do.
  */
-export type WorldsWorld = ClassroomWorld & {
-  visibility?: 'private' | 'class'
-  /** What the CALLER may do with this world; an owner is always true. */
-  canEdit?: boolean
-  /**
-   * What the owner let classmates do (`brick_worlds.class_can_edit`). The owner's
-   * own `canEdit` cannot answer that, so the card and the share sheet read this;
-   * it falls back to `canEdit` for a caller who is not the owner.
-   */
-  classCanEdit?: boolean
-  ownerName?: string
-  sharedAt?: string | null
-  hiddenByTeacher?: boolean
-}
+export type WorldsWorld = ClassroomWorld
 
 export type WorldsClass = ClassroomClass & {
   studentsCanShare?: boolean
@@ -30,7 +16,8 @@ export type WorldsClass = ClassroomClass & {
   teacherName?: string | null
 }
 
-export type WorldSharing = { visibility: 'private' | 'class'; canEdit: boolean }
+export type WorldSharing = ClassroomWorldSharing
+export type Classmate = ClassroomClassmate
 
 /**
  * Everything the page asks of the server. `browserWorldsClient` implements it
