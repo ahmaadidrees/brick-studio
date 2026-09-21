@@ -21,7 +21,7 @@ import {
   type PlayerProfile,
 } from "@brick-studio/core";
 import { DurableObject } from "cloudflare:workers";
-import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, revalidateClassroomWorldAccessBatch, type ClassroomEnv } from "./classroom/index";
+import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, revalidateClassroomWorldAccessBatch, type ClassroomEnv, type ClassroomSessionIdentity } from "./classroom/index";
 
 export interface WorldRoomEnv extends ClassroomEnv {
   WORLD_ROOMS: DurableObjectNamespace<WorldRoom>;
@@ -37,11 +37,21 @@ export type ClassroomSocketAccess = {
   canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string;
 };
 
+/**
+ * Why a classroom commit could not land. `blocked` and `missing` wait for a new
+ * editor or connection; every other failure retries on the alarm.
+ */
+type CommitBlock = { code: string; message: string; at: number };
+
 type WorldRoomRecord = {
   classroomWorldId?: string;
   roomId: string;
   title: string;
   document: BrickStudioDocument;
+  /**
+   * The client-facing counter: +1 per accepted edit or mode change, never
+   * rewound. For classroom rooms it is independent of the database revision.
+   */
   revision: number;
   mode: LiveWorldMode;
   locked: boolean;
@@ -52,6 +62,21 @@ type WorldRoomRecord = {
   operationOutcomes: Record<string, CachedOperationOutcome[]>;
   operationHighWater: Record<string, string>;
   expiresAt: number;
+  // --- Classroom write-behind state (absent on guest rooms) ---
+  /** The database revision this room last confirmed: the compare-and-set base of the next commit. */
+  dbRevision?: number;
+  /** Set while the in-memory document holds edits the database has not confirmed. */
+  dirtySince?: number;
+  /** When the next commit attempt is due (debounce or retry backoff). Absent while blocked. */
+  commitDueAt?: number;
+  /** Consecutive failed attempts; indexes the retry backoff. */
+  commitFailures?: number;
+  /** Every usable identity was refused (or the world is gone); cleared by the next accepted edit or commit. */
+  commitBlocked?: CommitBlock;
+  /** Whose edit the uncommitted document carries last; the first identity a commit runs as. */
+  lastEditor?: ClassroomSessionIdentity;
+  /** The world owner's (or supervising teacher's) last known session, the fallback identity. */
+  ownerIdentity?: ClassroomSessionIdentity;
 };
 
 type WorldSocketAttachment = {
@@ -76,11 +101,34 @@ type WorldSocketAttachment = {
 
 type SnapshotMessage = Extract<LiveServerMessage, { type: "snapshot" }>;
 
+/**
+ * How a classroom commit attempt ended.
+ * - `clean`: nothing to commit. `committed`: the database took the document.
+ * - `conflict`: the database had moved; the room adopted its copy.
+ * - `failed`: transient (network, 5xx, rate limit); a retry is scheduled.
+ * - `blocked`: no identity may commit right now; waits for an editor or connection.
+ * - `skipped`: the room changed identity underneath the attempt; nothing recorded.
+ */
+type CommitOutcome = "clean" | "committed" | "conflict" | "failed" | "blocked" | "skipped";
+
 type ValidationResult<T> = { ok: true; value: T } | { ok: false; code: string; message: string };
 
 export const WORLD_ROOM_TTL_MS = 2 * 60 * 60 * 1000;
 export const WORLD_ROOM_EXPIRY_GRACE_MS = 90 * 1000;
 const EXPIRY_PERSIST_INTERVAL_MS = 60 * 1000;
+/** Classroom sockets are re-checked against the database this often while any are open. */
+const CLASSROOM_REAUTH_INTERVAL_MS = 60 * 1000;
+/** A classroom commit runs this long after the first uncommitted edit, coalescing the burst behind it. */
+export const COMMIT_DEBOUNCE_MS = 1000;
+/** No uncommitted edit waits longer than this for its commit while the database is healthy. */
+export const COMMIT_MAX_LAG_MS = 5000;
+/** Retry delays after a failed commit (network, 5xx, rate limit); the last one repeats. */
+export const COMMIT_RETRY_BACKOFF_MS = [1000, 2000, 5000, 15_000];
+/** After this many consecutive failures the room tells builders that saving is delayed. */
+const COMMIT_DELAY_NOTICE_AFTER = 3;
+const SAVE_DELAYED_MESSAGE = "Saving to your class world is delayed. Your changes stay live in this room and will be saved automatically.";
+const SAVE_BLOCKED_MESSAGE = "Your changes are live in this room but could not be saved to the class world. Rejoin from My Class to keep saving.";
+const SAVE_REPLACED_MESSAGE = "Someone saved a newer version of this world, so the room reloaded it. The last few changes made here could not be kept.";
 const MAX_MESSAGES_PER_SECOND = 30;
 const MAX_MESSAGE_RATE_VIOLATIONS = 3;
 const MIN_POSE_INTERVAL_MS = 45;
@@ -335,6 +383,16 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   private record: WorldRoomRecord | null = null;
   private lastPersistedTouch = 0;
   private admissionTail: Promise<void> = Promise.resolve();
+  /** The classroom commit currently talking to the database, if any. Never two at once. */
+  private commitInFlight: Promise<CommitOutcome> | null = null;
+  /** The alarm time this object last set (null: none, undefined: unknown after a wake). */
+  private alarmAt: number | null | undefined = undefined;
+  /** When the periodic classroom re-authorization sweep is next due. */
+  private reauthDueAt = 0;
+  /** True when this object woke with uncommitted classroom edits: commit before serving anything. */
+  private wakeRecoveryPending = false;
+  /** The last "saving is delayed / blocked" notice sent, so builders hear each state once. */
+  private lastSaveNotice: "delayed" | "blocked" | null = null;
 
   constructor(ctx: DurableObjectState, env: WorldRoomEnv) {
     super(ctx, env);
@@ -354,11 +412,18 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
             }
           }
         }
+        if (stored.classroomWorldId) {
+          // Records written before write-behind committed every edit before its ack,
+          // so their room revision is the database revision.
+          stored.dbRevision ??= stored.revision;
+          this.wakeRecoveryPending = stored.dirtySince !== undefined;
+        }
       }
       this.record = stored;
       // A hibernated object has no trustworthy in-memory persistence clock. The
       // first authenticated activity after rehydrate must durably renew expiry.
       this.lastPersistedTouch = 0;
+      this.reauthDueAt = Date.now() + CLASSROOM_REAUTH_INTERVAL_MS;
     });
   }
 
@@ -378,6 +443,13 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         return attachment?.classroomAccess ? [attachment.classroomAccess.userId] : [];
       }))];
       return json({ userIds });
+    }
+    // Cold start with edits the database never confirmed: commit them before
+    // anything else looks at the room, so an init or connect sees the same
+    // world the last session left. The attempt runs once per wake; a failure
+    // keeps the edits in storage and the alarm retries.
+    if (this.wakeRecoveryPending) {
+      await this.withSerializedAdmission(() => this.flushCommit(this.requestIdentity(request)));
     }
     // Reachable only through the authenticated outer legacy-import route.
     // A surviving owner capability recovers a private copy, never anonymous access.
@@ -420,7 +492,24 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       });
     }
     if (request.method === "POST" && url.pathname === "/init" && request.headers.get("x-world-init") === "1") {
-      if (this.record) return json({ error: "already_exists" }, 409);
+      if (this.record) {
+        if (!this.record.classroomWorldId) return json({ error: "already_exists" }, 409);
+        return this.withSerializedAdmission(async () => {
+          // ensureRoom re-sends the stored world on every open. A classroom room
+          // adopts that copy only when the database is ahead of what it last
+          // confirmed; uncommitted edits are never overwritten by a stale copy.
+          let input: Partial<WorldRoomRecord> = {};
+          try { input = await request.json() as Partial<WorldRoomRecord>; } catch { /* nothing to refresh from */ }
+          if (this.record?.classroomWorldId && input.classroomWorldId === this.record.classroomWorldId && Number.isInteger(input.revision)) {
+            const parsed = validateBrickStudioDocument(input.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
+            await this.settleCommit();
+            if (parsed.ok && await this.reconcileWithDatabase({ document: parsed.document, revision: input.revision as number, title: input.title })) {
+              this.broadcastSnapshot();
+            }
+          }
+          return json({ error: "already_exists" }, 409);
+        });
+      }
       const input = await request.json() as Partial<WorldRoomRecord>;
       const initial = validateCreateWorldRequest({
         title: input.title,
@@ -440,6 +529,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         title: initial.value.title,
         document: initial.value.document,
         revision: input.classroomWorldId && Number.isInteger(input.revision) ? input.revision! : 0,
+        ...(input.classroomWorldId ? { dbRevision: Number.isInteger(input.revision) ? input.revision! : 0 } : {}),
         mode: "build",
         locked: false,
         ownerTokenVerifier: input.ownerTokenVerifier,
@@ -487,12 +577,16 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       try {
         const worldId = classroomAccess.worldId;
         classroomAccess = await revalidateClassroomWorldAccess(this.env, classroomAccess, worldId);
-        const latest = await loadClassroomWorld(this.env, worldId);
-        if (latest.revision !== this.record.revision) {
-          this.adoptClassroomWorld(latest);
-          await this.persist();
-          this.broadcastSnapshot();
+        // A stuck commit gets the freshly validated session as its first identity:
+        // the builder who just opened the world is the most likely one allowed to save it.
+        if (this.record.dirtySince !== undefined && (this.record.commitBlocked || (this.record.commitFailures ?? 0) > 0)) {
+          await this.flushCommit(classroomAccess.canEdit ? classroomAccess : undefined);
         }
+        const latest = await loadClassroomWorld(this.env, worldId);
+        // Only compare once no commit is mid-flight: a copy read while the room's
+        // own commit was landing must not be mistaken for a foreign save.
+        await this.settleCommit();
+        if (await this.reconcileWithDatabase(latest)) this.broadcastSnapshot();
       } catch { return json({ error: "classroom_access_denied" }, 403); }
     }
     const documentSchema = url.searchParams.get("documentSchema") === "3" ? 3 : 2;
@@ -565,7 +659,10 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         : { displayName: "Builder" };
       this.pruneProfileCache();
     }
-    if (classroomAccess) this.record!.profiles[playerId] = { ...this.record!.profiles[playerId], displayName: classroomAccess.username };
+    if (classroomAccess) {
+      this.record!.profiles[playerId] = { ...this.record!.profiles[playerId], displayName: classroomAccess.username };
+      this.rememberOwnerIdentity(classroomAccess);
+    }
     await this.persist();
     for (const previous of this.sessionSockets()) {
       const previousAttachment = this.attachment(previous);
@@ -576,6 +673,8 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
     this.ctx.acceptWebSocket(server);
     server.serializeAttachment(attachment);
+    // The first socket arms the periodic re-authorization sweep.
+    if (classroomAccess) await this.scheduleAlarm();
     this.send(server, {
       v: LIVE_PROTOCOL_VERSION,
       type: "welcome",
@@ -656,6 +755,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return;
     }
     if (this.record.classroomWorldId) {
+      // A hibernated socket may speak before any fetch wakes the room: start the
+      // recovery commit first so its base excludes this message.
+      if (this.wakeRecoveryPending) void this.flushCommit();
       return this.withSerializedAdmission(() => this.processSocketMessage(socket, data, bytes));
     }
     return this.processSocketMessage(socket, data, bytes);
@@ -689,6 +791,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         break;
       case "resync":
         this.sendSnapshot(socket);
+        this.requestCommit();
         break;
       case "setMode":
         await this.handleSetMode(socket, attachment, data);
@@ -706,9 +809,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     await this.touch();
   }
 
-  async webSocketClose(_socket: WebSocket, _code: number, _reason: string): Promise<void> {
+  async webSocketClose(socket: WebSocket, _code: number, _reason: string): Promise<void> {
     if (!this.record) return;
     this.broadcastPlayers();
+    // The last builder leaving is the natural end of a burst: save it now rather
+    // than a second later, and re-arm the alarm for a room with no sockets left.
+    if (this.record.classroomWorldId && !this.sessionSockets().some((open) => open !== socket)) this.requestCommit();
     await this.touch();
   }
 
@@ -720,11 +826,26 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   async alarm(): Promise<void> {
     if (!this.record) return;
     if (this.record.classroomWorldId) {
-      await this.withSerializedAdmission(async () => {
-        await this.reauthorizeClassroomSockets();
-        if (this.openSockets().length) await this.ctx.storage.setAlarm(Date.now() + 60_000);
-        else await this.ctx.storage.deleteAlarm();
-      });
+      // One alarm slot serves two purposes: the write-behind commit and the
+      // periodic re-authorization sweep. A commit alarm alone never runs the
+      // sweep early (that would add a permission RPC per burst), but the sweep
+      // is never starved: it runs whenever it is due or the alarm was not a commit.
+      this.alarmAt = null;
+      const now = Date.now();
+      const commitDue = this.record.dirtySince !== undefined && (this.record.commitDueAt ?? Infinity) <= now;
+      const reauthDue = !commitDue || now >= this.reauthDueAt;
+      const work: Promise<unknown>[] = [];
+      if (commitDue) work.push(this.flushCommit());
+      if (reauthDue) {
+        this.reauthDueAt = now + CLASSROOM_REAUTH_INTERVAL_MS;
+        work.push(this.withSerializedAdmission(async () => {
+          await this.reauthorizeClassroomSockets();
+          // Sessions that just passed the sweep are known-good identities for a blocked commit.
+          if (this.record?.dirtySince !== undefined && this.record.commitBlocked) await this.flushCommit();
+        }));
+      }
+      await Promise.all(work);
+      await this.scheduleAlarm();
       return;
     }
     const deleteAt = this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS;
@@ -763,7 +884,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const result = validateCommands(data.commands, this.record!.document);
     if (!result.ok) return this.cacheAndReject(socket, attachment.playerId, opId, result.code, result.message);
 
-    if (!await this.acceptDocument(socket, attachment, opId, result.value.document)) return;
+    if (!this.acceptDocument(attachment, result.value.document)) return;
     const outcome: CachedOperationOutcome = { opId, type: "apply", revision: this.record!.revision };
     this.rememberOutcome(attachment.playerId, outcome);
     await this.persist();
@@ -820,7 +941,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return this.cacheAndReject(socket, attachment.playerId, opId, "client_update_required", "Ask everyone in this world to refresh Brickgineers before using larger plates or bricks.");
     }
     if (!this.consumeMutationBudget(socket, attachment, "control")) return;
-    if (!await this.acceptDocument(socket, attachment, opId, document.document)) return;
+    if (!this.acceptDocument(attachment, document.document)) return;
     const outcome: CachedOperationOutcome = { opId, type: "replace", revision: this.record!.revision };
     this.rememberOutcome(attachment.playerId, outcome);
     await this.persist();
@@ -829,23 +950,34 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   /**
    * A rename, REST save or checkpoint restore changed the stored world without
-   * changing who may be inside. Adopt the authoritative document, title and
-   * revision so every later edit commits against the current revision, then
-   * broadcast the snapshot so clients rebase their pending edits on the new base.
+   * changing who may be inside. Reconciliation rule, in order:
+   * 1. Commit the room's own uncommitted edits first, with the compare-and-set.
+   *    If the database had not moved (the common case: the room was simply
+   *    behind by a debounce), the room's edits land and nothing is lost.
+   * 2. Then adopt the database copy only when it is ahead of the revision the
+   *    room last confirmed. A save that raced the commit wins that race and the
+   *    room's unconfirmed edits are dropped, because the room keeps no per-op
+   *    history to replay on top of a foreign document.
+   * 3. Broadcast the snapshot either way so clients rebase pending edits on the
+   *    confirmed base.
    */
   private async refreshClassroomWorld(input: { document?: unknown; revision?: unknown }): Promise<Response> {
+    if (this.record!.dirtySince !== undefined) await this.flushCommit();
     if (input.document !== undefined) {
       const parsed = validateBrickStudioDocument(input.document);
-      if (!parsed.ok || !Number.isInteger(input.revision) || (input.revision as number) < this.record!.revision) {
+      if (!parsed.ok || !Number.isInteger(input.revision) || (input.revision as number) < this.record!.dbRevision!) {
         return json({ error: "invalid_restore" }, 409);
       }
-      this.adoptClassroomWorld({ document: parsed.document, revision: input.revision as number });
+      await this.settleCommit();
+      await this.reconcileWithDatabase({ document: parsed.document, revision: input.revision as number });
     } else {
       try {
-        this.adoptClassroomWorld(await loadClassroomWorld(this.env, this.record!.classroomWorldId!));
+        const latest = await loadClassroomWorld(this.env, this.record!.classroomWorldId!);
+        await this.settleCommit();
+        await this.reconcileWithDatabase(latest);
       } catch {
-        // Keep the last confirmed document: the commit CAS rejects any stale edit
-        // and refreshes the room then. Report it so the route never claims success.
+        // Keep the last confirmed document: the next commit's compare-and-set
+        // detects the moved database. Report it so the route never claims success.
         return json({ error: "world_reload_failed" }, 503);
       }
     }
@@ -885,10 +1017,231 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
   }
 
-  private adoptClassroomWorld(latest: { document: BrickStudioDocument; revision: number; title?: unknown }): void {
+  /**
+   * Replace the room's document with the database copy. The room revision only
+   * ever moves forward (clients ignore snapshots below their own revision), and
+   * any uncommitted edits are dropped: their compare-and-set base no longer exists.
+   */
+  private async adoptDatabaseWorld(latest: { document: BrickStudioDocument; revision: number; title?: unknown }): Promise<void> {
+    const dropped = this.record!.dirtySince !== undefined;
     this.record!.document = latest.document;
-    this.record!.revision = latest.revision;
+    this.record!.dbRevision = latest.revision;
+    this.record!.revision = Math.max(this.record!.revision + 1, latest.revision);
     if (typeof latest.title === "string" && latest.title.trim()) this.record!.title = latest.title;
+    this.markClean();
+    await this.persist();
+    if (dropped) this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "error", code: "save_conflict", message: SAVE_REPLACED_MESSAGE });
+  }
+
+  /**
+   * Adopt the database copy when it is ahead of the last confirmed revision.
+   * True when the room changed. Callers outside a commit call `settleCommit`
+   * first so a copy read mid-commit is compared against the settled base.
+   */
+  private async reconcileWithDatabase(latest: { document: BrickStudioDocument; revision: number; title?: unknown }): Promise<boolean> {
+    if (!this.record?.classroomWorldId || latest.revision <= this.record.dbRevision!) return false;
+    await this.adoptDatabaseWorld(latest);
+    return true;
+  }
+
+  /** Wait for any commit currently talking to the database. */
+  private async settleCommit(): Promise<void> {
+    while (this.commitInFlight) await this.commitInFlight;
+  }
+
+  private markClean(): void {
+    delete this.record!.dirtySince;
+    delete this.record!.commitDueAt;
+    delete this.record!.commitFailures;
+    delete this.record!.commitBlocked;
+    this.lastSaveNotice = null;
+  }
+
+  /** An accepted classroom edit: the room is ahead of the database until the next commit lands. */
+  private markDirty(editor: ClassroomSocketAccess): void {
+    const now = Date.now();
+    const record = this.record!;
+    record.lastEditor = { userId: editor.userId, sessionId: editor.sessionId, authVersion: editor.authVersion };
+    this.rememberOwnerIdentity(editor);
+    if (record.dirtySince === undefined) {
+      record.dirtySince = now;
+      record.commitDueAt = now + COMMIT_DEBOUNCE_MS;
+    } else if (record.commitBlocked) {
+      // This editor was re-authorized moments ago, so a commit as them can land.
+      delete record.commitBlocked;
+      delete record.commitFailures;
+      record.commitDueAt = now + COMMIT_DEBOUNCE_MS;
+    }
+  }
+
+  private rememberOwnerIdentity(access: ClassroomSocketAccess): void {
+    if ((access.isOwner || access.isTeacher) && access.canEdit) {
+      this.record!.ownerIdentity = { userId: access.userId, sessionId: access.sessionId, authVersion: access.authVersion };
+    }
+  }
+
+  /** The trusted classroom session on an internal request, when the router attached one. */
+  private requestIdentity(request: Request): ClassroomSessionIdentity | undefined {
+    try {
+      const access = JSON.parse(request.headers.get("x-classroom-access") ?? "null") as ClassroomSocketAccess | null;
+      if (access && access.worldId === this.record?.classroomWorldId && access.canEdit
+          && typeof access.userId === "string" && typeof access.sessionId === "string" && Number.isInteger(access.authVersion)) {
+        return { userId: access.userId, sessionId: access.sessionId, authVersion: access.authVersion };
+      }
+    } catch { /* an unreadable header simply adds no candidate */ }
+    return undefined;
+  }
+
+  /** Bring the next commit forward to now (mode or lock change, resync, last disconnect) and start it. */
+  private requestCommit(): void {
+    if (!this.record?.classroomWorldId || this.record.dirtySince === undefined) return;
+    this.record.commitDueAt = Date.now();
+    void this.flushCommit();
+  }
+
+  /**
+   * Commit the room's uncommitted document to the database, waiting first for a
+   * commit already in flight. Never throws and never holds the admission lock
+   * while the database answers, so edits keep flowing during the round trip.
+   */
+  private async flushCommit(extra?: ClassroomSessionIdentity): Promise<CommitOutcome> {
+    this.wakeRecoveryPending = false;
+    await this.settleCommit();
+    if (!this.record?.classroomWorldId || this.record.dirtySince === undefined) return "clean";
+    const attempt = this.performCommit(extra).finally(() => { this.commitInFlight = null; });
+    this.commitInFlight = attempt;
+    return attempt;
+  }
+
+  /**
+   * Identities a commit may run as, most likely first: the session that just
+   * asked (a fresh connect), the last editor, one other connected editor, then
+   * the owner's or teacher's last known session.
+   */
+  private commitIdentities(extra?: ClassroomSessionIdentity): ClassroomSessionIdentity[] {
+    const record = this.record!;
+    const seen = new Set<string>();
+    const ordered: ClassroomSessionIdentity[] = [];
+    const add = (identity: ClassroomSessionIdentity | undefined) => {
+      if (!identity) return;
+      const key = `${identity.userId}:${identity.sessionId}:${identity.authVersion}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      ordered.push({ userId: identity.userId, sessionId: identity.sessionId, authVersion: identity.authVersion });
+    };
+    add(extra);
+    add(record.lastEditor);
+    const connected = this.openSockets().flatMap((socket) => {
+      const access = this.attachment(socket)?.classroomAccess;
+      return access?.canEdit ? [access] : [];
+    });
+    const other = connected.find((access) => !seen.has(`${access.userId}:${access.sessionId}:${access.authVersion}`));
+    add(other);
+    add(record.ownerIdentity);
+    return ordered;
+  }
+
+  private async performCommit(extra?: ClassroomSessionIdentity): Promise<CommitOutcome> {
+    const record = this.record!;
+    const worldId = record.classroomWorldId!;
+    const startedAt = Date.now();
+    // Captured synchronously: edits replace `document` rather than mutating it,
+    // so this reference stays exactly what the compare-and-set will store.
+    const base = { document: record.document, revision: record.revision, dbRevision: record.dbRevision! };
+    const stale = () => this.record !== record || record.dbRevision !== base.dbRevision;
+    let refused: CommitBlock | null = null;
+    for (const identity of this.commitIdentities(extra)) {
+      let saved: { revision: number };
+      try {
+        saved = await commitClassroomWorld(this.env, worldId, base.document, base.dbRevision, identity);
+      } catch (error) {
+        const status = isRecord(error) && typeof error.status === "number" ? error.status : 0;
+        const code = isRecord(error) && typeof error.code === "string" ? error.code : "commit_failed";
+        const message = error instanceof Error ? error.message : "The classroom save failed.";
+        if (stale()) return "skipped";
+        if (status === 401 || status === 403) {
+          refused = { code, message, at: Date.now() };
+          this.revokeIdentitySockets(identity);
+          continue;
+        }
+        if (status === 409) return this.adoptAfterConflict(startedAt);
+        if (status === 404) return this.blockCommit({ code, message, at: Date.now() }, false);
+        return this.deferCommit();
+      }
+      if (stale()) return "skipped";
+      record.dbRevision = saved.revision;
+      delete record.commitFailures;
+      delete record.commitBlocked;
+      if (record.revision === base.revision) this.markClean();
+      else {
+        // Edits arrived during the round trip: they form the next burst.
+        record.dirtySince = startedAt;
+        record.commitDueAt = Math.min(Date.now() + COMMIT_DEBOUNCE_MS, startedAt + COMMIT_MAX_LAG_MS);
+      }
+      this.lastSaveNotice = null;
+      await this.persist();
+      return "committed";
+    }
+    return this.blockCommit(refused ?? { code: "no_editor_identity", message: "No classroom session is available to save this world.", at: Date.now() }, true);
+  }
+
+  /**
+   * The database moved under the room (a solo save, rename or checkpoint restore
+   * landed first). Adopt its copy and let clients rebase; the room's own
+   * uncommitted edits are lost to that race. Without the database copy, keep the
+   * edits and retry so a transient read failure never drops them.
+   */
+  private async adoptAfterConflict(startedAt: number): Promise<CommitOutcome> {
+    let latest: { document: BrickStudioDocument; revision: number; title?: unknown };
+    try { latest = await loadClassroomWorld(this.env, this.record!.classroomWorldId!); }
+    catch { return this.deferCommit(); }
+    if (this.record?.dirtySince === undefined || this.record.dirtySince > startedAt) return "skipped";
+    if (!await this.reconcileWithDatabase(latest)) return this.deferCommit();
+    this.broadcastSnapshot();
+    return "conflict";
+  }
+
+  /** A transient failure: keep the edits, back off, and let builders know once it drags on. */
+  private async deferCommit(): Promise<CommitOutcome> {
+    const record = this.record!;
+    record.commitFailures = (record.commitFailures ?? 0) + 1;
+    const delay = COMMIT_RETRY_BACKOFF_MS[Math.min(record.commitFailures, COMMIT_RETRY_BACKOFF_MS.length) - 1];
+    record.commitDueAt = Date.now() + delay;
+    if (record.commitFailures >= COMMIT_DELAY_NOTICE_AFTER && this.lastSaveNotice !== "delayed") {
+      this.lastSaveNotice = "delayed";
+      this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "error", code: "save_conflict", message: SAVE_DELAYED_MESSAGE });
+    }
+    await this.persist();
+    return "failed";
+  }
+
+  /**
+   * Nobody may save right now (every identity refused, or the world is gone).
+   * The edits stay in durable storage; the next accepted edit, connect or
+   * re-authorization sweep tries again with a fresh identity. A retry alarm is
+   * pointless without one, so none is set.
+   */
+  private async blockCommit(reason: CommitBlock, notify: boolean): Promise<CommitOutcome> {
+    const record = this.record!;
+    record.commitBlocked = reason;
+    delete record.commitDueAt;
+    if (notify && this.lastSaveNotice !== "blocked") {
+      this.lastSaveNotice = "blocked";
+      this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "error", code: "save_conflict", message: SAVE_BLOCKED_MESSAGE });
+    }
+    await this.persist();
+    return "blocked";
+  }
+
+  /** A commit as this session was refused: the session lost access, so its sockets must rejoin. */
+  private revokeIdentitySockets(identity: ClassroomSessionIdentity): void {
+    for (const socket of this.sessionSockets()) {
+      const attachment = this.attachment(socket);
+      const access = attachment?.classroomAccess;
+      if (attachment && access && access.userId === identity.userId && access.sessionId === identity.sessionId && access.authVersion === identity.authVersion) {
+        this.revokeSocket(socket, attachment);
+      }
+    }
   }
 
   private async reauthorizeSocket(socket: WebSocket, attachment: WorldSocketAttachment): Promise<boolean> {
@@ -910,6 +1263,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     attachment.isOwner = access.isOwner || access.isTeacher;
     socket.serializeAttachment(attachment);
     this.record!.profiles[attachment.playerId] = { ...this.record!.profiles[attachment.playerId], displayName: access.username };
+    this.rememberOwnerIdentity(access);
     return true;
   }
 
@@ -920,34 +1274,17 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     this.broadcastPlayers();
   }
 
-  private async acceptDocument(socket: WebSocket, attachment: WorldSocketAttachment, opId: string, document: BrickStudioDocument): Promise<boolean> {
-    if (!this.record!.classroomWorldId) {
-      this.record!.document = document;
-      this.record!.revision += 1;
-      return true;
-    }
-    try {
-      const saved = await commitClassroomWorld(this.env, this.record!.classroomWorldId, document, this.record!.revision, attachment.classroomAccess!);
-      this.adoptClassroomWorld(saved);
-      return true;
-    } catch (error) {
-      if (isRecord(error) && (error.status === 401 || error.status === 403)) {
-        attachment.superseded = true;
-        socket.serializeAttachment(attachment);
-        socket.close(4003, "Classroom access changed. Rejoin from My Class.");
-        this.broadcastPlayers();
-        return false;
-      }
-      // Never acknowledge an edit before the durable classroom save. A concurrent
-      // restore/save may have advanced the database while this room was active.
-      try {
-        this.adoptClassroomWorld(await loadClassroomWorld(this.env, this.record!.classroomWorldId));
-        await this.persist();
-        this.broadcastSnapshot();
-      } catch { /* Retain the last confirmed document when storage is unavailable. */ }
-      await this.cacheAndReject(socket, attachment.playerId, opId, "save_conflict", "This edit was not saved. Review the refreshed world and try again.");
-      return false;
-    }
+  /**
+   * Apply an accepted edit. Guest and classroom rooms alike take it in memory
+   * and acknowledge at once; a classroom room also marks itself dirty so the
+   * write-behind commit carries the document to the database shortly after
+   * (see `flushCommit`). The caller persists the record, which arms the alarm.
+   */
+  private acceptDocument(attachment: WorldSocketAttachment, document: BrickStudioDocument): boolean {
+    this.record!.document = document;
+    this.record!.revision += 1;
+    if (this.record!.classroomWorldId && attachment.classroomAccess) this.markDirty(attachment.classroomAccess);
+    return true;
   }
 
   private async handleSetMode(
@@ -964,15 +1301,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       return;
     }
     if (!this.consumeMutationBudget(socket, attachment, "control")) return;
-    if (this.record!.classroomWorldId) {
-      try {
-        const saved = await commitClassroomWorld(this.env, this.record!.classroomWorldId, this.record!.document, this.record!.revision, attachment.classroomAccess!);
-        this.record!.revision = saved.revision;
-      } catch { return this.sendError(socket, "save_conflict", "Could not save this mode change. Rejoin the world and try again."); }
-    } else this.record!.revision += 1;
+    this.record!.revision += 1;
     this.record!.mode = data.mode;
     await this.persist();
     this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "modeChanged", mode: data.mode, revision: this.record!.revision });
+    // Switching modes ends a building burst: save what the room holds right away.
+    this.requestCommit();
   }
 
   private async handleSetLocked(
@@ -990,6 +1324,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     this.record!.locked = data.locked;
     await this.persist();
     this.broadcast({ v: LIVE_PROTOCOL_VERSION, type: "locked", locked: data.locked });
+    this.requestCommit();
   }
 
   private async handleSetProfile(
@@ -1312,9 +1647,24 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     this.record.expiresAt = Date.now() + WORLD_ROOM_TTL_MS;
     await this.ctx.storage.put("world", this.record);
     this.lastPersistedTouch = Date.now();
-    if (this.record.classroomWorldId) {
-      const scheduled = await this.ctx.storage.getAlarm();
-      if (scheduled === null || scheduled > Date.now() + 60_000) await this.ctx.storage.setAlarm(Date.now() + 60_000);
-    } else await this.ctx.storage.setAlarm(this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS);
+    if (this.record.classroomWorldId) await this.scheduleAlarm();
+    else await this.ctx.storage.setAlarm(this.record.expiresAt + WORLD_ROOM_EXPIRY_GRACE_MS);
+  }
+
+  /**
+   * Classroom rooms: one alarm at the earlier of the pending commit and the
+   * re-authorization sweep (which only matters while sockets are open). The
+   * alarm outlives hibernation, so a commit due after eviction still runs.
+   */
+  private async scheduleAlarm(): Promise<void> {
+    if (!this.record?.classroomWorldId) return;
+    const due: number[] = [];
+    if (this.record.dirtySince !== undefined && this.record.commitDueAt !== undefined) due.push(this.record.commitDueAt);
+    if (this.sessionSockets().length) due.push(this.reauthDueAt);
+    const next = due.length ? Math.min(...due) : null;
+    if (next === this.alarmAt) return;
+    if (next === null) await this.ctx.storage.deleteAlarm();
+    else await this.ctx.storage.setAlarm(next);
+    this.alarmAt = next;
   }
 }
