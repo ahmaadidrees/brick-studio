@@ -22,6 +22,78 @@
   padding: var(--space-7) var(--space-4) var(--space-8);
 }
 
+/* ---------- Layout: brand beside the card on wide screens, above it below 1024px ---------- */
+
+.join-layout {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-6);
+}
+.join-layout-wide { max-width: 640px; }
+
+@media (min-width: 1024px) {
+  .join-main { padding-left: var(--space-7); padding-right: var(--space-7); }
+  .join-layout {
+    max-width: 1000px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+    align-items: center;
+    gap: var(--space-8);
+  }
+  .join-layout-wide { max-width: 1120px; grid-template-columns: minmax(0, 1fr) minmax(0, 640px); }
+}
+
+/* ---------- Brand side ---------- */
+
+.join-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  text-align: center;
+}
+.join-brand-tagline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--primary-strong);
+}
+.join-brand-line { margin: 0; color: var(--text-muted); font-size: 15px; font-weight: 700; line-height: 1.4; }
+.join-brand-scene { display: block; width: 100%; max-width: 460px; }
+.join-brand-scene img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* Under 1024px the brand is a compact strip above the card, so the form stays high. */
+@media (max-width: 1023px) {
+  .join-brand-lockup .brand-mark { width: 34px; height: 34px; }
+  .join-brand-lockup .brand-wordmark { font-size: 25px; }
+  .join-brand-line { display: none; }
+}
+
+@media (min-width: 1024px) {
+  .join-brand {
+    align-items: flex-start;
+    gap: var(--space-5);
+    padding: var(--space-7);
+    border-radius: var(--radius-lg);
+    background: var(--primary-soft);
+    text-align: left;
+  }
+  .join-brand-tagline { font-size: 24px; }
+  .join-brand-scene { max-width: 100%; }
+}
+
 .join-card {
   /* 16px body text and 48px controls on this page only. */
   --text-md: 16px;
@@ -71,7 +143,8 @@
 .join-class-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  gap: var(--space-2);
+  min-height: 36px;
   padding: 0 var(--space-4);
   border-radius: var(--radius-pill);
   background: var(--primary-soft);
@@ -155,8 +228,14 @@
 
 /* ---------- Phone ---------- */
 
+/* The scene is the first thing to go: on a phone the password field must stay above the keyboard. */
+@media (max-width: 699px) {
+  .join-brand-scene { display: none; }
+}
+
 @media (max-width: 700px) {
   .join-main { padding: var(--space-4) var(--space-3) var(--space-7); }
+  .join-layout { gap: var(--space-4); }
   .join-card { padding: var(--space-5) var(--space-4); border-radius: var(--radius-md); }
   .join-headline h1 { font-size: 24px; }
   /* Two rows of names at a time, so the password field stays above a soft keyboard. */
