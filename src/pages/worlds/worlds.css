@@ -315,6 +315,8 @@
   .worlds-grid { grid-template-columns: minmax(0, 1fr); }
   .worlds-card-actions { flex-direction: column; align-items: stretch; }
   .worlds-card-actions .ui-button { width: 100%; min-height: 44px; }
+  /* The gear stays a 44px square instead of stretching into an unreadable wide button. */
+  .worlds-card-actions .ui-button-icon-only { width: 44px; min-width: 44px; align-self: flex-start; }
   .worlds-invite { flex-direction: column; align-items: flex-start; }
   .worlds-invite-actions { width: 100%; flex-direction: column; }
   .worlds-invite-actions .ui-button { width: 100%; }
