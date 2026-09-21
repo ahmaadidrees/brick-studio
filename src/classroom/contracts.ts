@@ -40,6 +40,13 @@ export type ClassroomWorld = {
   hiddenByTeacher?: boolean
   /** Who a members-only world is shared with; present for its owner and the class teacher, never for a fellow invitee. */
   members?: ClassroomWorldMemberSummary[]
+  /**
+   * Build-together presence (GET /worlds?presence=1 only): distinct classroom accounts in this world's live room
+   * right now, and their public display names (the caller excluded). Omitted when presence was not requested,
+   * null when the room could not be read or the fan-out was over budget. Only shared worlds carry it.
+   */
+  buildingNow?: number | null
+  buildingNames?: string[]
 }
 /**
  * `{ visibility: 'members', members }` shares with the listed classmates only (the list replaces the set; omit it to
