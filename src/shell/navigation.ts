@@ -12,6 +12,15 @@ export const WORLDS_PATH = '/worlds'
 export const CLASS_PATH = '/class'
 export const PROJECTOR_PATH = '/class/projector'
 
+/*
+ * "New build" everywhere outside the editor. It has to open the studio on an
+ * empty plate rather than reopening whatever is already in this browser, which
+ * the editor signals with `?new=1` — but `src/brick/BrickStudioApp.tsx` does
+ * not read that flag yet and belongs to another lane, so this points at plain
+ * `/build` until it does. Change this one constant then; nothing else.
+ */
+export const NEW_BUILD_HREF = '/build?new=1'
+
 /** `signin` = returning student, `teacher` = teacher sign-in; omitted = new student (code first). */
 export type JoinMode = 'signin' | 'teacher'
 

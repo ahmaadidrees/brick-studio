@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { browserClassroomClient } from '../classroom/client'
 import type { ClassroomAuthResult, ClassroomClass, ClassroomMe, ClassroomUser } from '../classroom/contracts'
 import { currentPath, goToJoin, type Navigate } from './navigation'
+import { clearRememberedTeacherClass } from './rememberedTeacherClass'
 
 /** The slice of `ClassroomClient` the hook needs (tests pass a stub). */
 export type ClassroomSessionClient = {
@@ -89,6 +90,9 @@ export function useClassroomSession(client: ClassroomSessionClient = browserClas
 
   const signOut = useCallback(async () => {
     setBusy(true)
+    // The remembered class belongs to the account that is leaving, so it goes
+    // with the session (switchAccount signs out first and is covered too).
+    clearRememberedTeacherClass()
     try { await client.signOut() } catch { /* The client already dropped the local session. */ } finally { setBusy(false) }
   }, [client])
 

@@ -2,8 +2,9 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ClassroomAuthResult, ClassroomMe } from '../classroom/contracts'
 import { displayNameFor, resetClassroomSessionCache, useClassroomSession, type ClassroomSessionClient } from './useClassroomSession'
+import { readRememberedTeacherClass, REMEMBERED_TEACHER_CLASS_KEY } from './rememberedTeacherClass'
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); window.localStorage.clear() })
 
 const student: ClassroomAuthResult = {
   user: { id: 'u1', username: 'ava', rosterName: 'Ava Rodriguez', role: 'student', resetRequired: false },
@@ -91,5 +92,21 @@ describe('useClassroomSession', () => {
     expect(client.signOut).toHaveBeenCalled()
     expect(result.current.status).toBe('guest')
     expect(navigate).toHaveBeenCalledWith('/join?mode=signin&next=%2Fworlds%3Fview%3Dclass')
+  })
+
+  it('forgets the remembered teacher class on sign-out, so the next account starts clean', async () => {
+    window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+    const client = stubClient(student)
+    const { result } = renderHook(() => useClassroomSession(client))
+    await act(async () => { await result.current.signOut() })
+    expect(readRememberedTeacherClass()).toBeNull()
+  })
+
+  it('forgets it on switchAccount too, which signs out first', async () => {
+    window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+    const client = stubClient(student)
+    const { result } = renderHook(() => useClassroomSession(client, vi.fn()))
+    await act(async () => { await result.current.switchAccount() })
+    expect(readRememberedTeacherClass()).toBeNull()
   })
 })

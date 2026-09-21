@@ -87,7 +87,9 @@ export function useClassroomWorld(enabled: boolean) {
     window.addEventListener('beforeunload', unload)
     return () => { cancelled = true; operation.current++; off(); window.removeEventListener('beforeunload', unload); stop(); release.current?.(); release.current = null }
   }, [enabled, attach, leave, stop])
-  return { world, status, error, recovery, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(), downloadRecovery: () => downloadBrickStudioDocument(controller.current?.getDocument() ?? recovery?.document ?? useBrickStore.getState().getDocumentSnapshot()), reload: async () => {
+  return { world, status, error, recovery, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(),
+  // Edits made while a world was being created online are not yet in it; queue the editor's current document for autosave.
+  scheduleCurrent: () => { controller.current?.schedule(useBrickStore.getState().getDocumentSnapshot()) }, downloadRecovery: () => downloadBrickStudioDocument(controller.current?.getDocument() ?? recovery?.document ?? useBrickStore.getState().getDocumentSnapshot()), reload: async () => {
     if (!active.current) return
     const reloading = operation.current, source = controller.current, document = source?.getDocument()
     const result = await client.request<{ world: ClassroomWorld }>(`/worlds/${active.current.id}`)
