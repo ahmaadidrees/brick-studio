@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Blocks, CircleAlert, CircleCheck, LoaderCircle, MonitorSmartphone, Plus, Search, Users } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Blocks, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, MonitorSmartphone, Plus, Search, Users } from 'lucide-react'
 import { BrickMark } from '../../brand'
 import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
-import { AppHeader, displayNameFor, type ClassroomSessionState } from '../../shell'
+import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, NEW_BUILD_HREF, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import { ShareSheet } from './ShareSheet'
 import {
   browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
@@ -117,12 +117,13 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       .then(([nextWorlds, nextClasses]) => {
         if (cancelled) return
         setWorlds(nextWorlds); setClasses(nextClasses)
-        if (pendingView.current && nextClasses[0]) { setSection(nextClasses[0].id); pendingView.current = false }
+        // A teacher returns to the class they last picked; a student has one.
+        if (pendingView.current && nextClasses[0]) { setSection(teacher ? pickTeacherClassId(nextClasses) : nextClasses[0].id); pendingView.current = false }
       })
       .catch(failure => { if (!cancelled) setError(errorMessage(failure)) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [client, session])
+  }, [client, session, teacher])
 
   const reload = async () => {
     const [nextWorlds, nextClasses] = await Promise.all([client.listWorlds(), client.listClasses()])
@@ -165,8 +166,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     classes: session.classes,
     className: teacher ? undefined : classes[0]?.name,
     displayName: displayNameFor(session.user),
-    signOut: async () => run(async () => { await client.signOut() }),
-    switchAccount: async () => { await client.signOut(); navigate(signInHref('/worlds')) },
+    signOut: async () => run(async () => { clearRememberedTeacherClass(); await client.signOut() }),
+    switchAccount: async () => { clearRememberedTeacherClass(); await client.signOut(); navigate(signInHref('/worlds')) },
   }
 
   const currentClass = classes.find(item => item.id === section) ?? null
@@ -226,10 +227,23 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     })
   }
 
-  const railItems = sections.map(item => <button key={item.id} type="button" className={`worlds-rail-item${item.id === section ? ' worlds-rail-current' : ''}`} aria-current={item.id === section ? 'page' : undefined} onClick={() => { setSection(item.id); setSearch('') }}>
-    <span className="worlds-rail-label">{item.id === 'mine' ? <Blocks size={16} aria-hidden="true" /> : <Users size={16} aria-hidden="true" />}{item.label}</span>
-    <span className="worlds-rail-count">{item.count}</span>
-  </button>)
+  /*
+   * A rail entry still only filters this page. The teacher's selected class
+   * also offers the way back to /class, because the class page is where the
+   * roster, the code and the settings live and nothing else on this page
+   * pointed at it.
+   */
+  const railItems = sections.map(item => <Fragment key={item.id}>
+    <button type="button" className={`worlds-rail-item${item.id === section ? ' worlds-rail-current' : ''}`} aria-current={item.id === section ? 'page' : undefined} onClick={() => { setSection(item.id); setSearch(''); if (teacher && item.id !== 'mine') rememberTeacherClass(item.id) }}>
+      <span className="worlds-rail-label">{item.id === 'mine' ? <Blocks size={16} aria-hidden="true" /> : <Users size={16} aria-hidden="true" />}{item.label}</span>
+      <span className="worlds-rail-count">{item.count}</span>
+    </button>
+    {teacher && item.id !== 'mine' && item.id === section && (
+      <a className="worlds-rail-open-class" href={`${CLASS_PATH}?classId=${encodeURIComponent(item.id)}`}>
+        <ExternalLink size={14} aria-hidden="true" /> Open class page
+      </a>
+    )}
+  </Fragment>)
 
   const heading = section === 'mine' ? 'My worlds' : currentClass?.name ?? 'Class'
   const counts = section === 'mine'
@@ -241,7 +255,10 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     <AppHeader
       variant="page"
       title="Worlds"
-      actions={<Button href="/build" variant="secondary" size="sm">Open the studio</Button>}
+      actions={<>
+        {teacher && <Button href={CLASS_PATH} variant="secondary" size="sm" icon={<Users size={16} />}>My class</Button>}
+        <Button href="/build" variant="secondary" size="sm">Open the studio</Button>
+      </>}
       session={headerSession}
     />
     <div className="worlds-layout">
@@ -258,7 +275,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             <h1>{heading}</h1>
             <p className="worlds-counts">{counts}</p>
           </div>
-          {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
+          <div className="worlds-title-actions">
+            {/* The one obvious way to start something, on every section of this page. */}
+            <Button href={NEW_BUILD_HREF} variant="primary" icon={<Plus size={18} />}>New build</Button>
+            {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
+          </div>
         </div>
 
         {error && <p className="worlds-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}

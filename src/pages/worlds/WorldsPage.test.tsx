@@ -5,6 +5,7 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 import { createFakeWorldsClient, FIXTURE_CLASS, studentSession, teacherSession } from './worldsFixtures'
 import { createWorldsClient, type WorldsClient } from './worldsData'
 import type { ClassroomClient } from '../../classroom/client'
+import { readRememberedTeacherClass, REMEMBERED_TEACHER_CLASS_KEY } from '../../shell'
 
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -69,6 +70,18 @@ describe('student', () => {
     const teacherWorlds = screen.getByRole('region', { name: 'Teacher’s worlds' })
     expect(within(teacherWorlds).getAllByRole('link', { name: /Join/ }).map(link => link.getAttribute('href'))).toEqual(['/live/worldclasstown', '/live/worldgroupbridge'])
     expect(within(teacherWorlds).getByRole('article', { name: 'Our Town' })).toBeInTheDocument()
+  })
+
+  it('offers New build at the top of the page, on every section', async () => {
+    draw()
+    await settled()
+
+    const newBuild = screen.getByRole('link', { name: 'New build' })
+    expect(newBuild).toHaveAttribute('href', '/build')
+    expect(newBuild).toHaveClass('ui-button-primary')
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(screen.getByRole('link', { name: 'New build' })).toBeInTheDocument()
   })
 
   it('shows the browser draft strip only when this browser holds a build', async () => {
@@ -211,6 +224,52 @@ describe('teacher', () => {
     await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Market day', 'class'))
     expect(screen.getByRole('region', { name: 'Shared by students' })).toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+  })
+
+  it('offers the way back to the class page: a header button and a link on the selected class', async () => {
+    draw(createFakeWorldsClient({ session: teacherSession }))
+    await settled()
+
+    const header = screen.getByRole('banner')
+    expect(within(header).getByRole('link', { name: 'My class' })).toHaveAttribute('href', '/class')
+    // Order matters: the class is the first thing a teacher reaches for.
+    const links = within(header).getAllByRole('link').map(link => link.textContent)
+    expect(links.indexOf('My class')).toBeLessThan(links.indexOf('Open the studio'))
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    // The rail entry still filters this page; the link is the extra way out.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
+    expect(within(rail).getByRole('link', { name: 'Open class page' })).toHaveAttribute('href', `/class?classId=${FIXTURE_CLASS.id}`)
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
+    expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
+  })
+
+  it('opens the class the teacher last picked and remembers a new pick from the rail', async () => {
+    const SECOND = { ...FIXTURE_CLASS, id: 'class-2', name: 'After-school Club' }
+    window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
+    draw(createFakeWorldsClient({ session: teacherSession, classes: [FIXTURE_CLASS, SECOND] }), { view: 'class' })
+    await settled()
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('After-school Club')
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
+
+    // "My worlds" is not a class, so it never overwrites the remembered one.
+    fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
+    expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
+  })
+
+  it('falls back to the first class when the remembered one is gone', async () => {
+    window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-gone' }))
+    draw(createFakeWorldsClient({ session: teacherSession }), { view: 'class' })
+    await settled()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
   })
 
   it('sends a document with the shared-world request, so the Worker does not reject it as an invalid document', async () => {

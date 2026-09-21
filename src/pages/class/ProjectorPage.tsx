@@ -4,6 +4,7 @@ import { Button } from '../../ui'
 import { errorMessage } from '../../classroom/panelShared'
 import { classCode, defaultClassPageClient, joinHost, loadClasses, type ClassPageClient, type ClassPageClass } from './classPageData'
 import { useJoinQr } from './ClassCodeCard'
+import { pickTeacherClassId } from '../../shell'
 import { createDemoClassPageClient } from './demoData'
 import './class.css'
 
@@ -32,7 +33,9 @@ export default function ProjectorPage({ client = resolveClient(), navigate = hre
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const requested = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('classId')
-  const current = classes.find(item => item.id === requested) || classes[0]
+  // `?classId=` first, then the class this teacher last picked in /class, so
+  // the board on the wall matches the class they are actually teaching.
+  const current = classes.find(item => item.id === pickTeacherClassId(classes, requested))
   const code = current ? classCode(current) : ''
   const qr = useJoinQr(code, 320)
 
