@@ -139,6 +139,110 @@ describe('student', () => {
     expect(await screen.findByText(/is private again/)).toBeInTheDocument()
   })
 
+  it('invites specific classmates through the sheet, shows the count on the card, and reopens with the picks', async () => {
+    const client = createFakeWorldsClient()
+    const setWorldSharing = vi.spyOn(client, 'setWorldSharing')
+    const listClassmates = vi.spyOn(client, 'listClassmates')
+    draw(client)
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).getByRole('button', { name: 'Share with my class' }))
+    const sheet = screen.getByRole('dialog')
+    expect(within(sheet).getByRole('radio', { name: new RegExp(`Everyone in ${FIXTURE_CLASS.name}`) })).toBeChecked()
+    expect(within(sheet).queryByRole('group', { name: 'Pick classmates' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(sheet).getByRole('radio', { name: /Only these classmates/ }))
+    // Nobody picked yet: the sheet says so and will not share with nobody.
+    expect(within(sheet).getByText('0 picked')).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Share' })).toBeDisabled()
+    const roster = await within(sheet).findByRole('group', { name: 'Pick classmates' })
+    expect(listClassmates).toHaveBeenCalledWith(FIXTURE_CLASS.id)
+    // Active classmates by display name, never Ava herself.
+    expect(within(roster).getAllByRole('button').map(tile => tile.textContent)).toEqual(['BBen K.', 'CChloe M.', 'DDiego S.', 'EEmma L.', 'FFinn O.'])
+    fireEvent.click(within(roster).getByRole('button', { name: /Chloe M\./ }))
+    fireEvent.click(within(roster).getByRole('button', { name: /Ben K\./ }))
+    expect(within(roster).getByRole('button', { name: /Ben K\./ })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(roster).getByRole('button', { name: /Diego S\./ })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(sheet).getByText('2 picked')).toBeInTheDocument()
+    // The look/build choice reads "They" for a quiet invite and still defaults to look only.
+    expect(within(sheet).getByRole('radio', { name: /They can look/ })).toBeChecked()
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Share' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(setWorldSharing).toHaveBeenCalledWith('world-ava-treehouse', { visibility: 'members', canEdit: false, members: ['student-chloe', 'student-ben'] })
+    expect(screen.getByRole('status')).toHaveTextContent('“Treehouse Hideout” is shared with 2 classmates. They can look.')
+    const card = screen.getByRole('article', { name: 'Treehouse Hideout' })
+    expect(within(card).getByText(/Shared · 2 classmates/)).toBeInTheDocument()
+
+    // Reopening comes back with the audience and the picks; the roster is not fetched again.
+    fireEvent.click(within(card).getByRole('button', { name: 'Sharing…' }))
+    const again = screen.getByRole('dialog')
+    expect(within(again).getByRole('radio', { name: /Only these classmates/ })).toBeChecked()
+    expect(within(again).getByText('2 picked')).toBeInTheDocument()
+    const tiles = within(again).getByRole('group', { name: 'Pick classmates' })
+    expect(within(tiles).getByRole('button', { name: /Ben K\./ })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(tiles).getByRole('button', { name: /Chloe M\./ })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(tiles).getByRole('button', { name: /Finn O\./ })).toHaveAttribute('aria-pressed', 'false')
+    expect(listClassmates).toHaveBeenCalledTimes(1)
+    // Dropping Chloe and switching to build together saves the narrowed set.
+    fireEvent.click(within(tiles).getByRole('button', { name: /Chloe M\./ }))
+    fireEvent.click(within(again).getByRole('radio', { name: /They can build with me/ }))
+    fireEvent.click(within(again).getByRole('button', { name: 'Save sharing' }))
+    await waitFor(() => expect(setWorldSharing).toHaveBeenLastCalledWith('world-ava-treehouse', { visibility: 'members', canEdit: true, members: ['student-ben'] }))
+    expect(await screen.findByText(/is shared with 1 classmate\./)).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).getByText(/Shared · 1 classmate/)).toBeInTheDocument()
+  })
+
+  it('widens a quiet invite to the whole class without sending the picks', async () => {
+    const client = createFakeWorldsClient()
+    const setWorldSharing = vi.spyOn(client, 'setWorldSharing')
+    draw(client)
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).getByRole('button', { name: 'Share with my class' }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: /Only these classmates/ }))
+    fireEvent.click(await within(screen.getByRole('dialog')).findByRole('button', { name: /Finn O\./ }))
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('radio', { name: /Everyone in/ }))
+    expect(within(screen.getByRole('dialog')).queryByRole('group', { name: 'Pick classmates' })).not.toBeInTheDocument()
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Share' }))
+    await waitFor(() => expect(setWorldSharing).toHaveBeenCalledWith('world-ava-treehouse', { visibility: 'class', canEdit: false }))
+  })
+
+  it('lists a quiet invite under Shared with you, apart from the whole-class worlds', async () => {
+    draw()
+    await settled()
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    // The invite counts toward the class section like any shared world.
+    expect(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) })).toHaveTextContent('5')
+    fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+
+    const invited = screen.getByRole('region', { name: 'Shared with you' })
+    const arcade = within(invited).getByRole('article', { name: 'Pixel Arcade' })
+    expect(within(arcade).getByText('Finn O. invited you')).toBeInTheDocument()
+    expect(within(arcade).getByText(/Build together/)).toBeInTheDocument()
+    expect(within(arcade).getByRole('link', { name: /Join/ })).toHaveAttribute('href', '/live/worldfinnarcade')
+    expect(within(arcade).getByRole('link', { name: /Visit/ })).toHaveAttribute('href', '/live/worldfinnarcade')
+    expect(within(arcade).getByRole('button', { name: 'Make my own copy' })).toBeInTheDocument()
+    // An invitee never sees who else was invited.
+    expect(within(arcade).queryByText(/classmate/)).not.toBeInTheDocument()
+
+    const shared = screen.getByRole('region', { name: 'Shared by classmates' })
+    expect(within(shared).queryByRole('article', { name: 'Pixel Arcade' })).not.toBeInTheDocument()
+    expect(within(shared).getByRole('article', { name: 'Sky Bridge' })).toBeInTheDocument()
+    // Sections keep their order: invites first, then the class, then the teacher.
+    const regions = screen.getAllByRole('region').map(region => region.getAttribute('aria-label'))
+    expect(regions.indexOf('Shared with you')).toBeLessThan(regions.indexOf('Shared by classmates'))
+  })
+
+  it('skips the Shared with you section when nobody invited this student', async () => {
+    draw(createFakeWorldsClient({ worlds: [] }))
+    await settled()
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(screen.queryByRole('region', { name: 'Shared with you' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Shared by classmates' })).toBeInTheDocument()
+  })
+
   it('copies a classmate world and shows it under Mine', async () => {
     const client = createFakeWorldsClient()
     const copyWorld = vi.spyOn(client, 'copyWorld')
@@ -307,6 +411,19 @@ describe('teacher', () => {
 
     await waitFor(() => expect(setWorldHidden).toHaveBeenCalledWith('world-chloe-castle', true))
     expect(await screen.findByText(/is hidden from the class/)).toBeInTheDocument()
+  })
+
+  it('shows a student\'s quiet invite among the shared worlds with how many classmates were invited', async () => {
+    draw(createFakeWorldsClient({ session: teacherSession }))
+    await settled()
+
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    expect(screen.queryByRole('region', { name: 'Shared with you' })).not.toBeInTheDocument()
+    const arcade = within(screen.getByRole('region', { name: 'Shared by students' })).getByRole('article', { name: 'Pixel Arcade' })
+    expect(within(arcade).getByText('Finn O.')).toBeInTheDocument()
+    expect(within(arcade).getByText('2 classmates')).toBeInTheDocument()
+    expect(within(arcade).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).queryByText(/classmate/)).not.toBeInTheDocument()
   })
 
   it('keeps a class section to worlds shared by that class\'s own students, for a teacher with more than one class', async () => {

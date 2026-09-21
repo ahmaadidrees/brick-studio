@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Users } from 'lucide-react'
 import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
-import { isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
+import { classmatesLabel, isInviteOnly, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
  * Plate-pattern card art. There are no thumbnails, so the card shows the build
@@ -26,12 +26,21 @@ export function PlateArt({ world }: { world: WorldsWorld }) {
   </div>
 }
 
-/** "Shared · look only" / "Shared · build together" on one of your own worlds. */
+/**
+ * On one of your own worlds: "Shared · look only" / "Shared · build together"
+ * for the whole class, "Shared · 3 classmates" for a quiet invite.
+ */
 export function SharingChip({ world }: { world: WorldsWorld }) {
   if (!isShared(world)) return null
   return <span className="worlds-chip-tag worlds-chip-shared">
-    <Users size={14} aria-hidden="true" /> Shared · {sharedForBuilding(world) ? 'build together' : 'look only'}
+    <Users size={14} aria-hidden="true" /> Shared · {isInviteOnly(world) ? classmatesLabel(world.members?.length ?? 0) : sharedForBuilding(world) ? 'build together' : 'look only'}
   </span>
+}
+
+/** "3 classmates" beside a student's invite-only world in the teacher's list; nothing for whole-class sharing. */
+export function InviteesChip({ world }: { world: WorldsWorld }) {
+  if (!isInviteOnly(world) || !world.members) return null
+  return <span className="worlds-chip-tag worlds-chip-invitees"><Users size={14} aria-hidden="true" /> {classmatesLabel(world.members.length)}</span>
 }
 
 export function AccessChip({ world }: { world: WorldsWorld }) {

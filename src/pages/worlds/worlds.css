@@ -207,7 +207,7 @@
 .worlds-card-heading h3 { font-family: var(--font-display); font-size: var(--text-lg); margin: 0; overflow-wrap: anywhere; }
 .worlds-card-owner { margin: 0; color: var(--text); font-weight: 600; font-size: var(--text-sm); }
 .worlds-card-saved { display: flex; align-items: center; gap: var(--space-1); margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
-.worlds-card-chips { margin: 0; }
+.worlds-card-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
 .worlds-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: auto; padding-top: var(--space-2); }
 
 .worlds-chip-tag {
@@ -270,7 +270,47 @@
 .worlds-share-option:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
 .worlds-share-option span { display: flex; flex-direction: column; gap: 2px; }
 .worlds-share-option small { color: var(--text-muted); }
+.worlds-share-options + .worlds-share-options { margin-top: var(--space-4); }
 .worlds-share-note { margin: var(--space-4) 0 0; color: var(--text-muted); font-size: var(--text-sm); }
+
+/* Invite picker: tap-to-pick classmate tiles, 44px tall, selected state carries the check. */
+.worlds-share-picker { margin: var(--space-3) 0 0; padding: var(--space-3); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); }
+.worlds-share-picker-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); font-weight: 700; }
+.worlds-share-picker-count { font-weight: 600; font-size: var(--text-sm); color: var(--text-muted); }
+.worlds-share-picker-note { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.worlds-share-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-2); }
+.worlds-share-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.worlds-share-tile:hover { border-color: var(--primary); }
+.worlds-share-tile:focus-visible { outline: 2px solid var(--primary-strong); outline-offset: 2px; }
+.worlds-share-tile-selected { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
+.worlds-share-tile-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  flex: none;
+}
+.worlds-share-tile-selected .worlds-share-tile-mark { background: var(--primary-strong); color: var(--surface); }
+.worlds-chip-invitees { background: var(--primary-soft); color: var(--primary-strong); }
 .worlds-stop-sharing { margin-right: auto; color: var(--danger-text); }
 
 .worlds-checkpoints { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }

@@ -29,6 +29,8 @@ export type WorldsClient = {
   subscribe: (listener: () => void) => () => void
   listWorlds: () => Promise<WorldsWorld[]>
   listClasses: () => Promise<WorldsClass[]>
+  /** Active classmates for the invite picker (the caller is not listed). */
+  listClassmates: (classId: string) => Promise<Classmate[]>
   renameWorld: (id: string, title: string) => Promise<WorldsWorld>
   duplicateWorld: (world: WorldsWorld) => Promise<WorldsWorld>
   listCheckpoints: (id: string) => Promise<ClassroomCheckpoint[]>
@@ -48,6 +50,7 @@ export function createWorldsClient(client: ClassroomClient = browserClassroomCli
     subscribe: client.subscribe,
     listWorlds: () => client.request<{ worlds: WorldsWorld[] }>('/worlds').then(result => result.worlds),
     listClasses: () => client.request<{ classes: WorldsClass[] }>('/classes').then(result => result.classes),
+    listClassmates: classId => client.request<{ classmates: Classmate[] }>(`/classes/${classId}/classmates`).then(result => result.classmates),
     renameWorld: (id, title) => client.request<{ world: WorldsWorld }>(`/worlds/${id}`, 'PATCH', { title }).then(world),
     duplicateWorld: async source => {
       const full = await client.request<{ world: WorldsWorld }>(`/worlds/${source.id}`)
@@ -107,7 +110,12 @@ export const CONTINUE_DRAFT_HREF = '/build'
 export const signInHref = (next = '/worlds') => `/join?mode=signin&next=${encodeURIComponent(next)}`
 
 export const isMine = (world: WorldsWorld, userId: string) => world.kind === 'personal' && world.ownerId === userId
-export const isShared = (world: WorldsWorld) => world.visibility === 'class'
+/** Shared with the whole class or with invited classmates: anything a classmate might see. */
+export const isShared = (world: WorldsWorld) => world.visibility === 'class' || world.visibility === 'members'
+/** Shared with invited classmates only (a quiet invite). */
+export const isInviteOnly = (world: WorldsWorld) => world.visibility === 'members'
+/** "3 classmates" / "1 classmate" for a members-only world; the owner and the teacher get the list, an invitee only the state. */
+export const classmatesLabel = (count: number) => `${count} ${count === 1 ? 'classmate' : 'classmates'}`
 /** True when classmates may build in this world, from the owner's point of view. */
 export const sharedForBuilding = (world: WorldsWorld) => world.classCanEdit ?? Boolean(world.canEdit)
 export const plateSizeOf = (world: WorldsWorld): BuildPlateSize =>

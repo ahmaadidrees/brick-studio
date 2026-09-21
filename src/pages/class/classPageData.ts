@@ -75,15 +75,16 @@ export const restoreCheckpoint = async (client: ClassPageClient, world: ClassPag
 }
 
 /**
- * Worlds a student shared with this class, newest first; hidden ones stay for
- * the teacher. A shared personal world's `classId` is always null (only
+ * Worlds a student shared with this class (with everyone or with invited
+ * classmates), newest first; hidden ones stay for the teacher. A shared
+ * personal world's `classId` is always null (only
  * `ownerClassId` says whose class it came from), so a multi-class teacher
  * must match on that instead — otherwise every class would show every
  * student's shared world. A world with no `ownerClassId` (older data, or a
  * fixture that never set it) falls back to showing under `firstClassId`.
  */
 export const sharedByStudents = (worlds: ClassPageWorld[], classId: string, teacherId: string, firstClassId?: string) =>
-  worlds.filter(world => world.kind === 'personal' && world.ownerId !== teacherId && world.visibility === 'class'
+  worlds.filter(world => world.kind === 'personal' && world.ownerId !== teacherId && (world.visibility === 'class' || world.visibility === 'members')
     && (world.ownerClassId === classId || (world.ownerClassId == null && classId === firstClassId)))
     .sort((a, b) => (b.sharedAt || b.updatedAt).localeCompare(a.sharedAt || a.updatedAt))
 
