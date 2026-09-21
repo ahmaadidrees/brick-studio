@@ -27,3 +27,10 @@ Owner walkthrough on a local build against the real database. Production smoke a
 ## Rollback
 Frontend: `vercel promote virtual-legos-20s6vv5yh-ahmaadidrees-projects.vercel.app` (pre-flows). Worker:
 `wrangler rollback c45477bd-df82-43f3-a0a7-bc0f841bba3b`. Migrations are additive; existing worlds stay private.
+
+# Release 2026-09-21 (third) — classmate invites and the /join brand panel
+
+Product commit `638e226` (PR #11). Frontend `virtual-legos-91jfexooc`. Worker `114ecbd5-07fe-41e0-b9b4-3318c94c8e57`.
+Migration `202609210001_brick_world_invites.sql` applied to the shared project before the Worker deploy (constraint now
+allows 'members'; authorize/commit RPCs admit listed members). Checks: 124 files / 1,279 frontend tests, 183 worker
+tests, typechecks, build. Rollback: frontend `virtual-legos-dttdd6ces`, Worker `8633c78e`; the migration is additive.
