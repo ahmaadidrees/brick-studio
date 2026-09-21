@@ -19,7 +19,7 @@ export const PROJECTOR_PATH = '/class/projector'
  * not read that flag yet and belongs to another lane, so this points at plain
  * `/build` until it does. Change this one constant then; nothing else.
  */
-export const NEW_BUILD_HREF = '/build'
+export const NEW_BUILD_HREF = '/build?new=1'
 
 /** `signin` = returning student, `teacher` = teacher sign-in; omitted = new student (code first). */
 export type JoinMode = 'signin' | 'teacher'

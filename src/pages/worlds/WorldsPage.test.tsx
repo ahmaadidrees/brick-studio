@@ -77,7 +77,7 @@ describe('student', () => {
     await settled()
 
     const newBuild = screen.getByRole('link', { name: 'New build' })
-    expect(newBuild).toHaveAttribute('href', '/build')
+    expect(newBuild).toHaveAttribute('href', '/build?new=1')
     expect(newBuild).toHaveClass('ui-button-primary')
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
