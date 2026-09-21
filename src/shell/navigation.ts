@@ -90,6 +90,13 @@ export function goToLiveWorld(worldId: string, options: { invited?: boolean } = 
   navigate(liveWorldPath(worldId, options))
 }
 
+/** The seeded guest room ("Build together" for guests and teachers). */
+export const NEW_LIVE_ROOM_PATH = '/live/new'
+
+export function goToNewLiveRoom(navigate: Navigate = browserNavigate) {
+  navigate(NEW_LIVE_ROOM_PATH)
+}
+
 /**
  * Where a `/build?classroom=<intent>` entry lands in flows v2. `save` stays in
  * the editor (the in-editor save sheet) and resolves to null; everything else

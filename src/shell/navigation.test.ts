@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { classroomIntentPath, classroomIntentRedirect, goToClass, goToJoin, goToLiveWorld, goToProjector, goToWorlds, joinPath, liveWorldPath, safeNextPath } from './navigation'
+import { classroomIntentPath, classroomIntentRedirect, goToClass, goToJoin, goToLiveWorld, goToNewLiveRoom, goToProjector, goToWorlds, joinPath, liveWorldPath, safeNextPath } from './navigation'
 
 describe('joinPath', () => {
   it('builds the join URL from mode, class code and next', () => {
@@ -38,6 +38,8 @@ describe('goTo helpers', () => {
     const navigate = vi.fn()
     goToLiveWorld(id, { invited: true }, navigate)
     expect(navigate).toHaveBeenCalledWith('/live/00000000000040008000000000000001?invited=1')
+    goToNewLiveRoom(navigate)
+    expect(navigate).toHaveBeenLastCalledWith('/live/new')
   })
 })
 

@@ -54,7 +54,7 @@ import { PartThumbnail } from './PartThumbnail'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import type { StudioDocumentCommands } from './StudioMenu'
-import { AppHeader, WORLDS_PATH, classroomIntentRedirect, goToJoin } from '../shell'
+import { AppHeader, WORLDS_PATH, classroomIntentRedirect, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession } from '../shell'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
@@ -63,7 +63,8 @@ import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { BUILD_PATH, parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
 import { browserClassroomClient, ClassroomError } from '../classroom/client'
 import { useClassroomWorld } from '../classroom/useClassroomWorld'
-import type { ClassroomWorld } from '../classroom/contracts'
+import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../classroom/contracts'
+import { InviteSheet, inviteAudienceLabel } from '../classroom/InviteSheet'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
 import {
   CHARACTER_DESCRIPTORS,
@@ -248,6 +249,14 @@ function hasPendingCloudResume(userId: string) {
 
 /** Header state while a fresh build is being created in the account, or after that failed. */
 type AutoAccountSave = { status: 'idle' } | { status: 'saving' } | { status: 'error'; error: string; retryable: boolean }
+
+/** The in-editor "Build together" sheet: which account world, whose classmates, and whether a request is in flight. */
+type InviteSheetState = { world: ClassroomWorld; classId: string; classmates: ClassroomClassmate[] | null; classmatesError?: string; busy: boolean }
+
+/** "Shared with Ben K. They can look…" — display names end in an initial's period, so never add a second one. */
+function endSentence(text: string) {
+  return text.endsWith('.') ? text : `${text}.`
+}
 
 /**
  * Blocked storage is the one guest-save failure the header can report truthfully on its own:
@@ -1067,7 +1076,11 @@ export default function BrickStudioApp({
     return { intent, classCode, worldId, newBuild }
   })
   const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(classroomEntry.intent)
+  const [inviteSheet, setInviteSheet] = useState<InviteSheetState | null>(null)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
+  // Build together needs the student's class (classmates come from `/classes/<id>/classmates`) and its name for the sheet.
+  const session = useClassroomSession()
+  const studentClassId = session.status === 'student' ? session.classes?.[0]?.id : undefined
   const localStorageBlocked = useLocalStorageHealth(!readOnly && !livePolicy && !cloud.world)
   const closeClassroom = useCallback(() => setClassroomIntent(null), [])
   const [localEnvironmentId, setLocalEnvironmentId] = useState<EnvironmentId>(
@@ -1197,7 +1210,7 @@ export default function BrickStudioApp({
     setLocalCustomParts(result.definitions)
     return true
   }, [customPartPolicy, customParts])
-  useBuilderShortcuts(!readOnly && !classroomIntent && !worldSetupOpen && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
+  useBuilderShortcuts(!readOnly && !classroomIntent && !worldSetupOpen && !inviteSheet && (!livePolicy || livePolicy.connection === 'online'), livePolicy)
   useReactiveBrickBudget()
   useReducedMotionPreference()
   const mode = useBrickStore((state) => state.mode)
@@ -1211,6 +1224,105 @@ export default function BrickStudioApp({
   const selectionMode = useBrickStore((state) => state.selectionMode)
   const compact = useCompactLayout()
   const onboarding = useBuilderOnboarding()
+  /**
+   * A signed-in builder's fresh build becomes an account world on its first placed brick or import, so
+   * cloud autosave runs from then on without a Save step. A browser draft that already had bricks when
+   * the editor opened (built while signed out) is left alone: it keeps the Save to my account flow.
+   * Guests are untouched. If creation fails the draft stays in this browser and the header says so.
+   */
+  const [autoSave, setAutoSave] = useState<AutoAccountSave>({ status: 'idle' })
+  const cloudRef = useRef(cloud)
+  cloudRef.current = cloud
+  const autoSaveRef = useRef(autoSave)
+  autoSaveRef.current = autoSave
+  // `/build?world=<id>` attaches asynchronously; until it settles no other world may be created.
+  const entryWorldPending = useRef(false)
+  // Attaching the new world re-runs the subscription effect below, so the in-flight state and the
+  // unmount guard live for the component, not for one subscription.
+  const creating = useRef(false)
+  const unmounted = useRef(false)
+  useEffect(() => () => { unmounted.current = true }, [])
+  /**
+   * Creates the account world for the current draft and attaches it; resolves null when that failed
+   * (the header explains, and the draft stays in this browser). Shared by the first-brick auto-create
+   * and by Build together on an unsaved fresh build.
+   */
+  const createAccountWorld = useCallback(async (): Promise<ClassroomWorld | null> => {
+    creating.current = true
+    setAutoSave({ status: 'saving' })
+    const document = useBrickStore.getState().getDocumentSnapshot()
+    const sent = JSON.stringify(document)
+    try {
+      const world = await browserClassroomClient.createWorld({ title: AUTO_WORLD_TITLE, document })
+      if (unmounted.current) return null
+      await cloudRef.current.attach(world)
+      if (unmounted.current) return null
+      // attach() rebuilds the brick array, so compare content: only edits made during the request need saving.
+      if (JSON.stringify(useBrickStore.getState().getDocumentSnapshot()) !== sent) cloudRef.current.scheduleCurrent()
+      // The draft was blank before this build, so the browser copy attach() preserved is not a
+      // separate build; the account now owns it.
+      clearLocalBrickStudioProject(localStorage)
+      setAutoSave({ status: 'idle' })
+      return world
+    } catch (reason) {
+      if (unmounted.current) return null
+      const message = reason instanceof Error ? reason.message : 'Could not save this build to your account.'
+      const retryable = reason instanceof ClassroomError && reason.status === 0
+      setAutoSave({ status: 'error', retryable, error: `${message} This build stays in this browser for now. Use Save this build to my account to try again.` })
+      return null
+    } finally { creating.current = false }
+  }, [])
+  /**
+   * Build together (mock board "Owner lands in the room"). A signed-in student on an account world
+   * invites classmates through the one InviteSheet and lands in the world's live room; an unsaved
+   * fresh build becomes an account world first. Guests and teachers keep the seeded /live/new room.
+   */
+  // The latest sharing the server confirmed, so reopening the sheet preloads audience and picks.
+  const sharedWorld = useRef<ClassroomWorld | null>(null)
+  const openInviteSheet = useCallback((world: ClassroomWorld, classId: string) => {
+    const current = sharedWorld.current?.id === world.id ? sharedWorld.current : world
+    setInviteSheet({ world: current, classId, classmates: null, busy: false })
+    const forThisWorld = (update: (sheet: InviteSheetState) => InviteSheetState) => setInviteSheet(sheet => sheet && sheet.world.id === world.id ? update(sheet) : sheet)
+    browserClassroomClient.request<{ classmates: ClassroomClassmate[] }>(`/classes/${classId}/classmates`)
+      .then(result => forThisWorld(sheet => ({ ...sheet, classmates: result.classmates })))
+      .catch(reason => forThisWorld(sheet => ({ ...sheet, classmates: [], classmatesError: reason instanceof Error ? reason.message : 'Could not load your classmates. Try again.' })))
+  }, [])
+  const patchSharing = useCallback(async (sheet: InviteSheetState, sharing: ClassroomWorldSharing) => {
+    setInviteSheet({ ...sheet, busy: true })
+    try {
+      if (!await cloud.flush()) {
+        useBrickStore.setState({ toast: 'Your account world is still saving. Wait for it to save, then start Build together again.' })
+        setInviteSheet(current => current ? { ...current, busy: false } : current)
+        return null
+      }
+      const result = await browserClassroomClient.request<{ world: ClassroomWorld }>(`/worlds/${sheet.world.id}/sharing`, 'PATCH', sharing)
+      sharedWorld.current = result.world
+      return result.world
+    } catch (reason) {
+      useBrickStore.setState({ toast: reason instanceof Error ? reason.message : 'Could not share this world. Try again.' })
+      setInviteSheet(current => current ? { ...current, busy: false } : current)
+      return null
+    }
+  }, [cloud])
+  const submitInvite = async (sharing: ClassroomWorldSharing) => {
+    const sheet = inviteSheet
+    if (!sheet || sheet.busy) return
+    const world = await patchSharing(sheet, sharing)
+    if (!world) return
+    // Building together: the owner goes into the room the friends' "Join and build" opens. The sheet
+    // stays busy while the page navigates away.
+    if (sharing.canEdit) { goToLiveWorld(world.id, { invited: true }); return }
+    useBrickStore.setState({ toast: `${endSentence(`Shared with ${inviteAudienceLabel(sharing, sheet.classmates ?? [])}`)} They can look from their Worlds page.` })
+    setInviteSheet(null)
+  }
+  const stopSharing = async () => {
+    const sheet = inviteSheet
+    if (!sheet || sheet.busy) return
+    const world = await patchSharing(sheet, { visibility: 'private', canEdit: false })
+    if (!world) return
+    useBrickStore.setState({ toast: 'Stopped sharing. Only you can open this world now.' })
+    setInviteSheet(null)
+  }
   const startCurrentWorldLive = useCallback(() => {
     void (async () => {
       try {
@@ -1220,18 +1332,34 @@ export default function BrickStudioApp({
             return
           }
         }
+        const userId = signedInUserId()
+        if (studentClassId && userId) {
+          let world = cloud.world
+          if (!world) {
+            if (creating.current || entryWorldPending.current || hasPendingCloudResume(userId)) {
+              useBrickStore.setState({ toast: 'Your build is still being saved to your account. Try Build together again in a moment.' })
+              return
+            }
+            world = await createAccountWorld()
+            if (!world) {
+              useBrickStore.setState({ toast: 'Could not save this build to your account, so it cannot be shared yet. Try again in a moment.' })
+              return
+            }
+          }
+          if (world.kind === 'personal') { openInviteSheet(world, studentClassId); return }
+        }
         const document = useBrickStore.getState().getDocumentSnapshot()
         if (!cloud.world) {
           const saved = saveLocalBrickStudioProject(window.localStorage, document)
           if (!saved.ok) throw new Error(saved.error.message)
         }
         saveLiveWorldSeed(document)
-        window.location.assign('/live/new')
+        goToNewLiveRoom()
       } catch (reason) {
         useBrickStore.setState({ toast: reason instanceof Error ? reason.message : 'Could not prepare your build. Export a copy before trying again.' })
       }
     })()
-  }, [cloud])
+  }, [cloud, studentClassId, createAccountWorld, openInviteSheet])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild: onNewBuild ?? (cloud.world ? () => { void (async () => {
       if (!window.confirm('Start a new build? Your current world stays saved in your account.')) return
@@ -1267,52 +1395,11 @@ export default function BrickStudioApp({
     if (useBrickStore.getState().bricks.length > 0) newBuildCommand.current()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  /**
-   * A signed-in builder's fresh build becomes an account world on its first placed brick or import, so
-   * cloud autosave runs from then on without a Save step. A browser draft that already had bricks when
-   * the editor opened (built while signed out) is left alone: it keeps the Save to my account flow.
-   * Guests are untouched. If creation fails the draft stays in this browser and the header says so.
-   */
-  const [autoSave, setAutoSave] = useState<AutoAccountSave>({ status: 'idle' })
-  const cloudRef = useRef(cloud)
-  cloudRef.current = cloud
-  const autoSaveRef = useRef(autoSave)
-  autoSaveRef.current = autoSave
-  // `/build?world=<id>` attaches asynchronously; until it settles no other world may be created.
-  const entryWorldPending = useRef(false)
-  const autoCreateEnabled = !readOnly && !livePolicy && !cloud.world
-  // Attaching the new world re-runs the subscription effect below, so the in-flight state and the
-  // unmount guard live for the component, not for one subscription.
-  const creating = useRef(false)
-  const unmounted = useRef(false)
-  useEffect(() => () => { unmounted.current = true }, [])
   // Any attached world (automatic or from the save sheet) supersedes an earlier automatic-save failure.
   useEffect(() => { if (cloud.world) setAutoSave({ status: 'idle' }) }, [cloud.world])
+  const autoCreateEnabled = !readOnly && !livePolicy && !cloud.world
   useEffect(() => {
     if (!autoCreateEnabled) return
-    const create = async () => {
-      creating.current = true
-      setAutoSave({ status: 'saving' })
-      const document = useBrickStore.getState().getDocumentSnapshot()
-      const sent = JSON.stringify(document)
-      try {
-        const world = await browserClassroomClient.createWorld({ title: AUTO_WORLD_TITLE, document })
-        if (unmounted.current) return
-        await cloudRef.current.attach(world)
-        if (unmounted.current) return
-        // attach() rebuilds the brick array, so compare content: only edits made during the request need saving.
-        if (JSON.stringify(useBrickStore.getState().getDocumentSnapshot()) !== sent) cloudRef.current.scheduleCurrent()
-        // The draft was blank before this build, so the browser copy attach() preserved is not a
-        // separate build; the account now owns it.
-        clearLocalBrickStudioProject(localStorage)
-        setAutoSave({ status: 'idle' })
-      } catch (reason) {
-        if (unmounted.current) return
-        const message = reason instanceof Error ? reason.message : 'Could not save this build to your account.'
-        const retryable = reason instanceof ClassroomError && reason.status === 0
-        setAutoSave({ status: 'error', retryable, error: `${message} This build stays in this browser for now. Use Save this build to my account to try again.` })
-      } finally { creating.current = false }
-    }
     const unsubscribe = useBrickStore.subscribe((state, previous) => {
       if (state.bricks === previous.bricks || state.bricks.length === 0 || creating.current || cloudRef.current.world) return
       const userId = signedInUserId()
@@ -1321,10 +1408,10 @@ export default function BrickStudioApp({
       // First bricks on a blank plate start a world; after a connection failure any later edit retries.
       const firstEdit = previous.bricks.length === 0
       if (!firstEdit && !(current.status === 'error' && current.retryable)) return
-      void create()
+      void createAccountWorld()
     })
     return unsubscribe
-  }, [autoCreateEnabled])
+  }, [autoCreateEnabled, createAccountWorld])
   useLayoutEffect(() => {
     if (!publishedWorld) return
     registerCustomParts(publishedWorld.document.customParts)
@@ -1522,6 +1609,16 @@ export default function BrickStudioApp({
       )}
       {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>That world isn't available. It may have been removed, hidden by your teacher, or belong to another account.</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My worlds</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
       {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
+      {inviteSheet && <InviteSheet
+        world={inviteSheet.world}
+        className={session.className ?? 'your class'}
+        classmates={inviteSheet.classmates}
+        classmatesError={inviteSheet.classmatesError}
+        busy={inviteSheet.busy}
+        onInvite={sharing => { void submitInvite(sharing) }}
+        onStopSharing={inviteSheet.world.visibility !== 'private' ? () => { void stopSharing() } : undefined}
+        onClose={() => { if (!inviteSheet.busy) setInviteSheet(null) }}
+      />}
       {classroomIntent && <ClassroomPanel
         intent={classroomIntent}
         invitedClassCode={classroomEntry.classCode}
