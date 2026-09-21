@@ -12,7 +12,7 @@ export { useClassroomSession, displayNameFor, resetClassroomSessionCache, type C
 export { useInviteCount, invitesWaitingLabel, resetInviteCountCache, INVITE_COUNT_TTL_MS, type InviteCountClient } from './useInviteCount'
 export {
   JOIN_PATH, WORLDS_PATH, CLASS_PATH, PROJECTOR_PATH, NEW_BUILD_HREF,
-  joinPath, safeNextPath, currentPath, goToJoin, goToWorlds, goToClass, goToProjector,
+  joinPath, safeNextPath, currentPath, goToJoin, goToWorlds, goToClass, goToProjector, liveWorldPath, goToLiveWorld,
   classroomIntentPath, classroomIntentRedirect,
   type JoinMode, type JoinOptions, type Navigate,
 } from './navigation'
