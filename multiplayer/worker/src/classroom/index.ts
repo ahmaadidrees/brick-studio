@@ -270,7 +270,7 @@ export class ClassroomService {
     const ownerById = new Map(owners.map(row => [row.user_id as string, row]));
     const classById = new Map(sharingClasses.map(row => [row.id as string, row]));
     const view = (world: Row, canEdit: boolean, ownerName: string, ownerClassId: string | null) => worldView(world, { canEdit, ownerName, ownerClassId, teacher: caller.role === 'teacher', members: membersByWorld.get(world.id) });
-    const listing = [
+    const listing: Array<ReturnType<typeof view> & Partial<WorldPresence>> = [
       ...mine.map(world => view(world, true, callerDisplayName(caller), caller.classId ?? null)),
       ...shared.map(world => view(world, true, 'Teacher', world.class_id)),
       ...fromClassmates.map(world => view(world, sharedEditAllowed(world, classById.get(classOf.get(world.owner_id) ?? ''), ownerById.get(world.owner_id)), names.get(world.owner_id) ?? 'Classmate', classOf.get(world.owner_id) ?? null)),
@@ -290,8 +290,8 @@ export class ClassroomService {
    * `buildingNow: null, buildingNames: []` and the listing still succeeds. Names come from `known` (the owners the
    * listing already resolved), then one bounded roster lookup; the caller's teachers read as "Teacher".
    */
-  private async presenceByWorld(caller: Caller, rooms: string[], presence: NonNullable<ClassroomHandlerOptions['liveParticipantsByWorld']>, known: Map<string, string>, teacherIds: Set<string>) {
-    const result = new Map<string, { buildingNow: number | null; buildingNames: string[] }>(rooms.map(id => [id, { buildingNow: null, buildingNames: [] }]));
+  private async presenceByWorld(caller: Caller, rooms: string[], presence: NonNullable<ClassroomHandlerOptions['liveParticipantsByWorld']>, known: Map<string, string>, teacherIds: Set<string>): Promise<Map<string, WorldPresence>> {
+    const result = new Map<string, WorldPresence>(rooms.map(id => [id, { buildingNow: null, buildingNames: [] }]));
     if (!rooms.length) return result;
     const allowed = await this.takeRate(`presence:${caller.id}`, PRESENCE_RATE.limit, PRESENCE_RATE.seconds).catch(() => false);
     if (!allowed) return result;
@@ -454,6 +454,8 @@ export const WORLD_MEMBER_LIMIT = 30;
 /** Personal-world sharing states that admit someone other than the owner (migration 202609210001). */
 const isSharedVisibility = (value: unknown): value is 'class' | 'members' => value === 'class' || value === 'members';
 type WorldMemberSummary = { id: string; displayName: string };
+/** `GET /worlds?presence=1` fields on a shared world: distinct accounts in its live room and their names (caller excluded). */
+type WorldPresence = { buildingNow: number | null; buildingNames: string[] };
 type WorldAccess = { world: Row; canEdit: boolean; isOwner: boolean; ownerName: string; ownerClassId: string | null };
 type WorldViewContext = { full?: boolean; canEdit?: boolean; ownerName?: string; ownerClassId?: string | null; teacher?: boolean; members?: WorldMemberSummary[] };
 function worldView(row: Row, context: WorldViewContext = {}) {
