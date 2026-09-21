@@ -61,7 +61,7 @@ import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } fro
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { BUILD_PATH, parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
-import { browserClassroomClient } from '../classroom/client'
+import { browserClassroomClient, ClassroomError } from '../classroom/client'
 import { useClassroomWorld } from '../classroom/useClassroomWorld'
 import type { ClassroomWorld } from '../classroom/contracts'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
@@ -78,7 +78,7 @@ import { CreateBrickSheet } from './customParts/CreateBrickSheet'
 import { ResizeBrickSheet, type ResizeDelta } from './customParts/ResizeBrickSheet'
 import { resizeSelectionDefinitions } from './customParts/resize'
 import { saveLiveWorldSeed } from './live/liveWorldSeed'
-import { BRICK_STUDIO_LOCAL_STORAGE_KEY, saveLocalBrickStudioProject } from './documentPersistence'
+import { BRICK_STUDIO_LOCAL_STORAGE_KEY, clearLocalBrickStudioProject, saveLocalBrickStudioProject } from './documentPersistence'
 import './brick-studio.css'
 import './touch-layout.css'
 import './desktop-layout.css'
@@ -228,6 +228,26 @@ function useCoarsePointerPreference() {
 
   return coarsePointer
 }
+
+const ACTIVE_CLOUD_WORLD_KEY = 'brick-studio.active-cloud-world.v1'
+const AUTO_WORLD_TITLE = 'Untitled build'
+
+/** A signed-in account that can own worlds right now (a forced password reset cannot save). */
+function signedInUserId() {
+  const session = browserClassroomClient.getSession()
+  return session && !session.user.resetRequired ? session.user.id : null
+}
+
+/** True while this account still has a world to resume (an in-flight resume must not race a new world). */
+function hasPendingCloudResume(userId: string) {
+  try {
+    const raw = sessionStorage.getItem(ACTIVE_CLOUD_WORLD_KEY)
+    return raw !== null && (JSON.parse(raw) as { userId?: string }).userId === userId
+  } catch { return false }
+}
+
+/** Header state while a fresh build is being created in the account, or after that failed. */
+type AutoAccountSave = { status: 'idle' } | { status: 'saving' } | { status: 'error'; error: string; retryable: boolean }
 
 /**
  * Blocked storage is the one guest-save failure the header can report truthfully on its own:
@@ -1023,9 +1043,13 @@ export default function BrickStudioApp({
   const readOnly = Boolean(publishedWorld)
   // Entry links carry `classroom=<intent>` and, for class invites, `classCode=`. Both are consumed
   // once here so neither lingers in the address bar; the code is handed to the panel as a prop.
-  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string; worldId?: string }>(() => {
+  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string; worldId?: string; newBuild?: boolean }>(() => {
     const url = new URL(window.location.href)
-    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode') && !url.searchParams.has('world')) return { intent: null }
+    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode') && !url.searchParams.has('world') && !url.searchParams.has('new')) return { intent: null }
+    // `/build?new=1` starts a fresh build: the current draft is cleared after the same confirm as the
+    // New build menu item, and a previously open account world is not resumed on top of it.
+    const newBuild = url.searchParams.get('new') === '1'
+    if (newBuild) { try { sessionStorage.removeItem(ACTIVE_CLOUD_WORLD_KEY) } catch { /* nothing to resume */ } }
     // Consume the entry intent even when it is unknown so a mistyped link never lingers in the address bar.
     const intent = url.searchParams.has('classroom') ? parseClassroomEntryIntent(url.search) : null
     const classCode = url.searchParams.get('classCode')?.trim().slice(0, 40) || undefined
@@ -1035,11 +1059,12 @@ export default function BrickStudioApp({
     url.searchParams.delete('classroom')
     url.searchParams.delete('classCode')
     url.searchParams.delete('world')
+    url.searchParams.delete('new')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     // Flows v2: only `save` opens the in-editor sheet; worlds/class/join/signin/teacher are pages now
     // (W2's classroomIntentRedirect carries an invite class code through to /join).
-    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode, worldId }
-    return { intent, classCode, worldId }
+    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode, worldId, newBuild }
+    return { intent, classCode, worldId, newBuild }
   })
   const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(classroomEntry.intent)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
@@ -1209,7 +1234,7 @@ export default function BrickStudioApp({
   }, [cloud])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild: onNewBuild ?? (cloud.world ? () => { void (async () => {
-      if (!window.confirm('Start a new guest build? Your account world will remain saved separately.')) return
+      if (!window.confirm('Start a new build? Your current world stays saved in your account.')) return
       const saved = await cloud.flush()
       if (!saved && !window.confirm('Some edits are only in recovery storage. Download a recovery copy before leaving if needed. Continue?')) return
       cloud.leave()
@@ -1230,6 +1255,76 @@ export default function BrickStudioApp({
       setLocalCustomParts(document.customParts)
     },
   })
+  // `/build?new=1`: the draft is loaded by the effect above, so the confirm sees the real build. A blank
+  // draft needs no confirm. The guest path of onNewBuild owns the message; the cloud path never applies
+  // here because the entry parser dropped the resume key before any world could attach.
+  const newBuildCommand = useRef(documentCommands.onNewBuild)
+  newBuildCommand.current = documentCommands.onNewBuild
+  const newBuildEntryHandled = useRef(false)
+  useEffect(() => {
+    if (!classroomEntry.newBuild || readOnly || livePolicy || newBuildEntryHandled.current) return
+    newBuildEntryHandled.current = true
+    if (useBrickStore.getState().bricks.length > 0) newBuildCommand.current()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  /**
+   * A signed-in builder's fresh build becomes an account world on its first placed brick or import, so
+   * cloud autosave runs from then on without a Save step. A browser draft that already had bricks when
+   * the editor opened (built while signed out) is left alone: it keeps the Save to my account flow.
+   * Guests are untouched. If creation fails the draft stays in this browser and the header says so.
+   */
+  const [autoSave, setAutoSave] = useState<AutoAccountSave>({ status: 'idle' })
+  const cloudRef = useRef(cloud)
+  cloudRef.current = cloud
+  const autoSaveRef = useRef(autoSave)
+  autoSaveRef.current = autoSave
+  // `/build?world=<id>` attaches asynchronously; until it settles no other world may be created.
+  const entryWorldPending = useRef(false)
+  const autoCreateEnabled = !readOnly && !livePolicy && !cloud.world
+  // Attaching the new world re-runs the subscription effect below, so the in-flight state and the
+  // unmount guard live for the component, not for one subscription.
+  const creating = useRef(false)
+  const unmounted = useRef(false)
+  useEffect(() => () => { unmounted.current = true }, [])
+  // Any attached world (automatic or from the save sheet) supersedes an earlier automatic-save failure.
+  useEffect(() => { if (cloud.world) setAutoSave({ status: 'idle' }) }, [cloud.world])
+  useEffect(() => {
+    if (!autoCreateEnabled) return
+    const create = async () => {
+      creating.current = true
+      setAutoSave({ status: 'saving' })
+      const document = useBrickStore.getState().getDocumentSnapshot()
+      const sent = JSON.stringify(document)
+      try {
+        const world = await browserClassroomClient.createWorld({ title: AUTO_WORLD_TITLE, document })
+        if (unmounted.current) return
+        await cloudRef.current.attach(world)
+        if (unmounted.current) return
+        // attach() rebuilds the brick array, so compare content: only edits made during the request need saving.
+        if (JSON.stringify(useBrickStore.getState().getDocumentSnapshot()) !== sent) cloudRef.current.scheduleCurrent()
+        // The draft was blank before this build, so the browser copy attach() preserved is not a
+        // separate build; the account now owns it.
+        clearLocalBrickStudioProject(localStorage)
+        setAutoSave({ status: 'idle' })
+      } catch (reason) {
+        if (unmounted.current) return
+        const message = reason instanceof Error ? reason.message : 'Could not save this build to your account.'
+        const retryable = reason instanceof ClassroomError && reason.status === 0
+        setAutoSave({ status: 'error', retryable, error: `${message} This build stays in this browser for now. Use Save this build to my account to try again.` })
+      } finally { creating.current = false }
+    }
+    const unsubscribe = useBrickStore.subscribe((state, previous) => {
+      if (state.bricks === previous.bricks || state.bricks.length === 0 || creating.current || cloudRef.current.world) return
+      const userId = signedInUserId()
+      if (!userId || entryWorldPending.current || hasPendingCloudResume(userId)) return
+      const current = autoSaveRef.current
+      // First bricks on a blank plate start a world; after a connection failure any later edit retries.
+      const firstEdit = previous.bricks.length === 0
+      if (!firstEdit && !(current.status === 'error' && current.retryable)) return
+      void create()
+    })
+    return unsubscribe
+  }, [autoCreateEnabled])
   useLayoutEffect(() => {
     if (!publishedWorld) return
     registerCustomParts(publishedWorld.document.customParts)
@@ -1257,6 +1352,10 @@ export default function BrickStudioApp({
         source: { kind: 'cloud', status: cloud.status },
         detail: cloud.status === 'saved' ? 'Your latest changes are saved to your account.' : cloud.status === 'error' ? cloud.error || 'Your latest changes are not saved online. Use the recovery controls before leaving.' : 'Your latest changes are not saved online yet. Keep this tab open.',
       }
+      : autoSave.status === 'saving'
+        ? { source: { kind: 'cloud', status: 'saving' }, detail: 'Creating a world in your account for this build.' }
+        : autoSave.status === 'error'
+          ? { source: { kind: 'local', error: autoSave.error }, detail: autoSave.error }
       : localStorageBlocked
         ? {
           source: { kind: 'local', error: 'This browser blocked local storage, so this build cannot be saved here.' },
@@ -1290,7 +1389,7 @@ export default function BrickStudioApp({
   const openCloudWorld = useCallback(async (document: BrickStudioDocument, world: ClassroomWorld) => {
     if (livePolicy) {
       const userId = browserClassroomClient.getSession()?.user.id
-      if (userId) sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId, worldId: world.id }))
+      if (userId) sessionStorage.setItem(ACTIVE_CLOUD_WORLD_KEY, JSON.stringify({ userId, worldId: world.id }))
       window.location.assign('/build')
       return
     }
@@ -1298,6 +1397,7 @@ export default function BrickStudioApp({
   }, [cloud, livePolicy])
   const [worldUnavailable, setWorldUnavailable] = useState(false)
   const entryWorldId = readOnly ? undefined : classroomEntry.worldId
+  entryWorldPending.current = Boolean(entryWorldId) && !cloud.world && !worldUnavailable
   useEffect(() => {
     if (!entryWorldId) return
     // Signed out: sign in first, then come straight back to this world.
@@ -1368,7 +1468,7 @@ export default function BrickStudioApp({
           }}
           canExplore={brickCount > 0}
           exploreReason="Place a brick first, then explore."
-          onSaveToAccount={cloud.world || livePolicy ? undefined : () => setClassroomIntent('save')}
+          onSaveToAccount={cloud.world || livePolicy || autoSave.status === 'saving' ? undefined : () => setClassroomIntent('save')}
           onGoHome={goHome}
         />
       ) : (
