@@ -14,6 +14,7 @@ import { ClassroomService } from "../src/classroom/index";
 import { handleReleaseRequest } from "../src/classroomRoutes";
 import type { Env as WorkerEnv } from "../src/index";
 import {
+  ACCESS_CACHE_TTL_MS,
   newWorldId, newOwnerToken, ownerTokenVerifier,
   WORLD_ROOM_EXPIRY_GRACE_MS,
   WORLD_ROOM_TTL_MS,
@@ -24,18 +25,10 @@ import {
   worldCreationLimiterKey,
   type WorldCreationLimiter,
 } from "../src/worldCreationLimiter";
-
-type Message = Record<string, unknown> & { type: string };
-
-const sockets: WebSocket[] = [];
-
-function brick(id: string, x = 2, z = 2): BrickInstance {
-  return { id, partId: "brick_1x2", x, y: 0, z, rotation: 0, color: "#3e83d7" };
-}
-
-function worldDocument(bricks: BrickInstance[] = []): BrickStudioDocument {
-  return createBrickStudioDocument(bricks);
-}
+import {
+  Inbox, applied, bricksOf, brick, classId, commitGate, fixture, join, openRoom, randomWorldUuid, routeEnv, saveNow, send, snapshotted,
+  sockets, stillOpen, teacherCaller, withClockAhead, worldDocument,
+} from "./classroomFixture";
 
 function largeWorld(count: number): BrickInstance[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -69,34 +62,6 @@ async function createWorld(document = worldDocument(), displayName = "  Ada   Bu
   return response.json<{ roomId: string; ownerToken: string }>();
 }
 
-class Inbox {
-  private readonly messages: Message[] = [];
-  private readonly waiters: Array<() => void> = [];
-
-  constructor(readonly socket: WebSocket) {
-    socket.addEventListener("message", (event) => {
-      this.messages.push(JSON.parse(String(event.data)) as Message);
-      this.waiters.splice(0).forEach((resolve) => resolve());
-    });
-  }
-
-  async next(type: string, timeoutMs = 3_000): Promise<Message> {
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline) {
-      const index = this.messages.findIndex((message) => message.type === type);
-      if (index >= 0) return this.messages.splice(index, 1)[0];
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error(`Timed out waiting for ${type}`)), Math.max(1, deadline - Date.now()));
-        this.waiters.push(() => {
-          clearTimeout(timeout);
-          resolve();
-        });
-      });
-    }
-    throw new Error(`Timed out waiting for ${type}`);
-  }
-}
-
 async function connectWorld(roomId: string, playerId: string, ownerToken?: string, reconnectToken?: string, documentSchema = 2) {
   const url = new URL(`https://worker.test/worlds/${roomId}/connect`);
   url.searchParams.set("playerId", playerId);
@@ -113,10 +78,6 @@ async function connectWorld(roomId: string, playerId: string, ownerToken?: strin
   socket.accept();
   const welcome = await inbox.next("welcome");
   return { response, socket, inbox, welcome };
-}
-
-function send(socket: WebSocket, value: unknown) {
-  socket.send(JSON.stringify(value));
 }
 
 function nextClose(socket: WebSocket, timeoutMs = 3_000): Promise<CloseEvent> {
@@ -884,6 +845,10 @@ it("enforces trusted classroom identity and immediate group revocation without d
     if (name === "authorize_world_batch") { if (batchUnavailable) throw new Error("permission provider unavailable"); return input.p_identities.map(() => ({ ...access, classId })); }
     return commit(name, input);
   });
+  const stored = () => runInDurableObject(stub, async (_instance: WorldRoom, state: DurableObjectState) =>
+    (await state.storage.get<{ revision: number; dbRevision: number; dirtySince?: number; commitFailures?: number; document: BrickStudioDocument }>("world"))!);
+  // The write-behind retry alarm must not consume a one-shot commit answer meant for a later step.
+  const disarm = () => runInDurableObject(stub, async (_instance: WorldRoom, state: DurableObjectState) => state.storage.deleteAlarm());
   const denied = await stub.fetch(`https://internal/worlds/${roomId}/connect?playerId=spoofed`, { headers: { Upgrade: "websocket" } });
   expect(denied.status).toBe(401);
   const response = await stub.fetch(`https://internal/worlds/${roomId}/connect?playerId=spoofed`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
@@ -895,15 +860,33 @@ it("enforces trusted classroom identity and immediate group revocation without d
   expect(await inbox.next("welcome")).toMatchObject({ playerId: access.userId, players: [{ playerId: access.userId, profile: { displayName: "TrueName" } }] });
   send(socket, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Imposter" } });
   expect(await inbox.next("players")).toMatchObject({ players: [{ profile: { displayName: "TrueName" } }] });
+
+  // The connect adopted the stored world (revision 1) over the guest record. An
+  // edit is acknowledged at once; the database is only asked afterwards, and an
+  // unavailable database keeps the edit in the room rather than rejecting it.
   send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#1`, commands: [{ op: "place", brick: brick("unsaved") }] });
-  expect(await inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 1, document: { bricks: [] } });
+  expect(await inbox.next("apply")).toMatchObject({ opId: `${access.userId}#1`, revision: 2 });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+  expect(bricksOf((await inbox.next("snapshot")).document)).toEqual(["unsaved"]);
+  await vi.waitFor(() => expect(commit).toHaveBeenCalledTimes(1));
+  await vi.waitFor(async () => expect((await stored()).commitFailures).toBe(1));
+  expect(bricksOf((await stored()).document)).toEqual(["unsaved"]);
+  await disarm();
+
+  // A restore landed in the database meanwhile: the retry conflicts and the room
+  // adopts the restored copy, telling everyone the unsaved edit was lost.
   commit.mockImplementationOnce(async () => {
     fixtureWorld.revision = 2;
     fixtureWorld.document = worldDocument([brick("teacher-restored", 20, 20)]);
     return { error: "conflict", currentRevision: 2 };
   });
-  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("stale-write") }] });
-  expect(await inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 2, document: { bricks: [brick("teacher-restored", 20, 20)] } });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+  await inbox.next("snapshot");
+  expect(await inbox.next("error")).toMatchObject({ code: "save_conflict" });
+  expect(await inbox.next("snapshot")).toMatchObject({ revision: 3, document: { bricks: [brick("teacher-restored", 20, 20)] } });
+  expect(await stored()).toMatchObject({ revision: 3, dbRevision: 2 });
+
+  // The commit carries the trusted identity of the editor, against the confirmed revision.
   commit.mockImplementationOnce(async (_name, input) => {
     expect(input).toMatchObject({ p_expected_revision: 2, p_actor_id: access.userId, p_session_id: access.sessionId, p_auth_version: 1 });
     fixtureWorld.revision = 3;
@@ -911,24 +894,35 @@ it("enforces trusted classroom identity and immediate group revocation without d
     return fixtureWorld;
   });
   send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#3`, commands: [{ op: "place", brick: brick("durable") }] });
-  expect(await inbox.next("apply")).toMatchObject({ revision: 3, opId: `${access.userId}#3` });
-  expect(fixtureWorld.document.bricks.map(b => b.id)).toEqual(["teacher-restored", "durable"]);
-  // A slow durable write must not trap presence behind the command queue or
-  // rate-limit normally spaced arrivals when that queue finally drains.
-  let releaseCommit!: () => void;
-  let enteredCommit!: () => void;
-  const entered = new Promise<void>(resolve => { enteredCommit = resolve; });
-  commit.mockImplementationOnce(async (_name, input) => {
-    enteredCommit();
-    await new Promise<void>(resolve => { releaseCommit = resolve; });
+  expect(await inbox.next("apply")).toMatchObject({ revision: 4, opId: `${access.userId}#3` });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+  await inbox.next("snapshot");
+  await vi.waitFor(() => expect(fixtureWorld.document.bricks.map(b => b.id)).toEqual(["teacher-restored", "durable"]));
+  await vi.waitFor(async () => expect((await stored()).dirtySince).toBeUndefined());
+
+  // A slow durable write never sits in the message path: presence and further
+  // edits flow while the database is still answering the previous commit.
+  commit.mockImplementation(async (_name, input) => {
     fixtureWorld.revision += 1;
     fixtureWorld.document = input.p_document;
     return fixtureWorld;
   });
+  const gate = commitGate();
+  let entered = false;
+  commit.mockImplementationOnce(async (_name, input) => {
+    entered = true;
+    await gate.wait();
+    fixtureWorld.revision += 1;
+    fixtureWorld.document = input.p_document;
+    return fixtureWorld;
+  });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#4`, commands: [{ op: "place", brick: brick("slow-durable", 30, 30) }] });
+  expect(await inbox.next("apply")).toMatchObject({ revision: 5, opId: `${access.userId}#4` });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+  await inbox.next("snapshot");
+  await vi.waitFor(() => expect(entered).toBe(true));
   await runInDurableObject(stub, async (instance: WorldRoom, state: DurableObjectState) => {
     const server = state.getWebSockets()[0];
-    const pending = instance.webSocketMessage(server, JSON.stringify({ v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#4`, commands: [{ op: "place", brick: brick("slow-durable", 30, 30) }] }));
-    await entered;
     const start = Date.now();
     let clock = start;
     const time = vi.spyOn(Date, "now").mockImplementation(() => clock);
@@ -941,10 +935,18 @@ it("enforces trusted classroom identity and immediate group revocation without d
       expect(attachment.lastPoseAt).toBe(clock);
       expect(attachment.messageRateViolations).toBe(0);
       expect(attachment.superseded).toBe(false);
-    } finally { time.mockRestore(); releaseCommit(); }
-    await pending;
+    } finally { time.mockRestore(); }
   });
-  expect(await inbox.next("apply")).toMatchObject({ revision: 4, opId: `${access.userId}#4` });
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#5`, commands: [{ op: "place", brick: brick("while-saving", 40, 40) }] });
+  expect(await inbox.next("apply")).toMatchObject({ revision: 6, opId: `${access.userId}#5` });
+  expect(fixtureWorld.document.bricks.map(b => b.id)).not.toContain("slow-durable");
+  gate.release();
+  await vi.waitFor(() => expect(fixtureWorld.document.bricks.map(b => b.id)).toContain("slow-durable"));
+  send(socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+  await inbox.next("snapshot");
+  await vi.waitFor(() => expect(fixtureWorld.document.bricks.map(b => b.id)).toEqual(["teacher-restored", "durable", "slow-durable", "while-saving"]));
+  await vi.waitFor(async () => expect((await stored()).dirtySince).toBeUndefined());
+
   const closed = new Promise<number>(resolve => socket.addEventListener("close", event => resolve(event.code)));
   expect((await stub.fetch("https://internal/internal/classroom-invalidate", { method: "POST", body: JSON.stringify({ userId: access.userId }) })).status).toBe(200);
   expect(await closed).toBe(4003);
@@ -958,9 +960,13 @@ it("enforces trusted classroom identity and immediate group revocation without d
     active.accept();
     await activeInbox.next("welcome");
     const revoked = new Promise<number>(resolve => active.addEventListener("close", event => resolve(event.code)));
+    // A change the database never announced (no invalidation push) is caught by
+    // the first building frame after the permission window; pushes close sooner.
     revocation = change;
-    send(active, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("unauthorized") }] });
-    expect(await revoked).toBe(4003);
+    await withClockAhead(ACCESS_CACHE_TTL_MS + 100, async () => {
+      send(active, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("unauthorized") }] });
+      expect(await revoked).toBe(4003);
+    });
   }
   revocation = "none";
   const idleResponse = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
@@ -1056,164 +1062,19 @@ it("bounds anonymous creation requests and retains per-IP creation limits", asyn
 });
 
 describe("classroom invalidation", () => {
-  const classId = "00000000-0000-4000-8000-0000000000c1";
-  const teacher = { id: "00000000-0000-4000-8000-0000000000a1", sessionId: "00000000-0000-4000-8000-0000000000a2" };
-  const teacherCaller = { id: teacher.id, username: "Teacher", rosterName: "Teacher", role: "teacher" as const, resetRequired: false, authVersion: 0, sessionId: teacher.sessionId, token: "teacher" };
-  const fakeEnv = { SUPABASE_URL: "https://fake-db.test", SUPABASE_SERVICE_ROLE_KEY: "test", SUPABASE_ANON_KEY: "test", BRICK_TEACHER_IDS: teacher.id };
-  const workerEnv = env as unknown as WorkerEnv;
-  const routeEnv = {
-    ...fakeEnv, CLASSROOM_TICKET_SECRET: "test-only-secret-".repeat(4),
-    WORLD_ROOMS: workerEnv.WORLD_ROOMS, WORLD_CREATION_LIMITER: workerEnv.WORLD_CREATION_LIMITER, RACE_ROOMS: workerEnv.RACE_ROOMS,
-  } as WorkerEnv;
-  type FixtureWorld = { id: string; class_id: string; kind: "group" | "class"; owner_id: string; title: string; revision: number; document: BrickStudioDocument };
-  type FixtureStudent = { user_id: string; username: string; roster_name: string; class_id: string; auth_version: number; suspended: boolean; reset_required: boolean; session_id: string };
-  type Access = { userId: string; username: string; role: "teacher" | "student"; worldId: string; classId: string; canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string };
-
-  const randomWorldUuid = () => {
-    const hex = newWorldId();
-    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-  };
-
-  // A tiny stand-in for the classroom Postgres schema and its authorization RPCs,
-  // shared by the router and every Durable Object through the service prototype.
-  function fixture(worldIds: string[]) {
-    const db = {
-      worlds: worldIds.map((id): FixtureWorld => ({ id, class_id: classId, kind: "group", owner_id: teacher.id, title: "Period 1 build", revision: 1, document: worldDocument() })),
-      students: [1, 2, 3].map((n): FixtureStudent => ({
-        user_id: `00000000-0000-4000-8000-0000000000${n}1`, username: `Builder${n}`, roster_name: `Student ${n}`, class_id: classId,
-        auth_version: 1, suspended: false, reset_required: false, session_id: `00000000-0000-4000-8000-0000000000${n}2`,
-      })),
-      classes: [{ id: classId, teacher_id: teacher.id, name: "Period 1", login_code: "PERIOD1", enrollment_open: true, collaboration_open: true }],
-      members: [] as Array<{ world_id: string; user_id: string }>,
-      batchUnavailable: false,
-      worldsUnavailable: false,
-      commits: [] as Array<{ worldId: string; expectedRevision: number; actorId: string }>,
-    };
-    for (const world of db.worlds) for (const student of db.students.slice(0, 2)) db.members.push({ world_id: world.id, user_id: student.user_id });
-    const matches = (row: Record<string, unknown>, filter: string) => filter.split("&").every((part) => {
-      const [key, value] = part.split("=eq.");
-      return value === undefined || String(row[key]) === value;
-    });
-    const tables = (): Record<string, Array<Record<string, unknown>>> => ({
-      worlds: db.worlds, students: db.students, classes: db.classes, world_members: db.members,
-      sessions: db.students.map((student) => ({ session_id: student.session_id, user_id: student.user_id, auth_version: student.auth_version })),
-      teacher_sessions: [{ session_id: teacher.sessionId, user_id: teacher.id, revoked: false }],
-    });
-    const authorize = (worldId: string, userId: string, sessionId: string, authVersion: number, teacherAllowed: boolean) => {
-      const world = db.worlds.find((candidate) => candidate.id === worldId);
-      const cls = db.classes[0];
-      if (teacherAllowed && authVersion === 0) {
-        if (userId !== teacher.id || sessionId !== teacher.sessionId) return { error: "session_revoked" };
-        if (!world) return { error: "not_found" };
-        return { userId, username: "Teacher", role: "teacher", worldId, classId: cls.id, canEdit: true, isTeacher: true, isOwner: world.owner_id === userId, authVersion, sessionId };
-      }
-      const student = db.students.find((candidate) => candidate.user_id === userId);
-      if (!student || student.auth_version !== authVersion || student.session_id !== sessionId) return { error: "session_revoked" };
-      if (student.suspended) return { error: "suspended" };
-      if (!world) return { error: "not_found" };
-      if (!cls.collaboration_open) return { error: "class_closed" };
-      if (world.kind === "group" && !db.members.some((member) => member.world_id === worldId && member.user_id === userId)) return { error: "not_found" };
-      return { userId, username: student.username, role: "student", worldId, classId: cls.id, canEdit: true, isTeacher: false, isOwner: false, authVersion, sessionId };
-    };
-    vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table, filter = "") => {
-      if (table === "worlds" && db.worldsUnavailable) throw new Error("database unavailable");
-      return (tables()[table] ?? []).filter((row) => matches(row, filter));
-    });
-    const rpc = vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name, input) => {
-      if (name === "authorize_world") return authorize(input.p_world_id, input.p_user_id, input.p_session_id, input.p_auth_version, input.p_teacher_allowed);
-      if (name === "authorize_world_batch") {
-        if (db.batchUnavailable) throw new Error("permission provider unavailable");
-        return input.p_identities.map((identity: { userId: string; sessionId: string; authVersion: number; teacherAllowed: boolean }) =>
-          authorize(input.p_world_id, identity.userId, identity.sessionId, identity.authVersion, identity.teacherAllowed));
-      }
-      if (name === "commit_world") {
-        const world = db.worlds.find((candidate) => candidate.id === input.p_world_id);
-        if (!world) return { error: "not_found" };
-        db.commits.push({ worldId: world.id, expectedRevision: input.p_expected_revision, actorId: input.p_actor_id });
-        if (world.revision !== input.p_expected_revision) return { error: "conflict", currentRevision: world.revision };
-        world.revision += 1;
-        world.document = input.p_document;
-        if (typeof input.p_title === "string") world.title = input.p_title;
-        return { ...world };
-      }
-      if (name === "take_rate_limit" || name === "acquire_credential_lock") return true;
-      throw new Error(`Unexpected rpc ${name}`);
-    });
-    const batchChecks = () => rpc.mock.calls.filter(([name]) => name === "authorize_world_batch").length;
-    const studentAccess = (index: number, worldId: string): Access => {
-      const student = db.students[index];
-      return { userId: student.user_id, username: student.username, role: "student", worldId, classId, canEdit: true, isTeacher: false, isOwner: false, authVersion: student.auth_version, sessionId: student.session_id };
-    };
-    const teacherAccess = (worldId: string): Access => ({ userId: teacher.id, username: "Teacher", role: "teacher", worldId, classId, canEdit: true, isTeacher: true, isOwner: true, authVersion: 0, sessionId: teacher.sessionId });
-    return { db, batchChecks, studentAccess, teacherAccess };
-  }
-
-  async function openRoom(world: FixtureWorld) {
-    const roomId = world.id.replaceAll("-", "");
-    const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
-    const initialized = await stub.fetch("https://world.internal/init", {
-      method: "POST", headers: { "x-world-init": "1", "content-type": "application/json" },
-      body: JSON.stringify({ roomId, classroomWorldId: world.id, revision: world.revision, title: world.title, document: world.document, initialOwnerProfile: { displayName: "Builder" }, ownerTokenVerifier: await ownerTokenVerifier(newOwnerToken()) }),
-    });
-    expect(initialized.status).toBe(201); await initialized.text();
-    await runInDurableObject(stub, async (instance: WorldRoom) => { Object.assign((instance as unknown as { env: object }).env, fakeEnv); });
-    return {
-      roomId, stub,
-      invalidate: async (body: Record<string, unknown>) => {
-        const response = await stub.fetch("https://world.internal/internal/classroom-invalidate", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-        return { status: response.status, body: await response.json<Record<string, unknown>>() };
-      },
-      state: async (access: Access) => {
-        const response = await stub.fetch(`https://world.internal/worlds/${roomId}`, { headers: { "x-classroom-access": JSON.stringify(access) } });
-        expect(response.status).toBe(200);
-        return response.json<{ title: string; revision: number; document: BrickStudioDocument; players: Array<{ playerId: string }> }>();
-      },
-    };
-  }
-  type Room = Awaited<ReturnType<typeof openRoom>>;
-
-  async function join(room: Room, access: Access) {
-    const response = await room.stub.fetch(`https://world.internal/worlds/${room.roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
-    expect(response.status).toBe(101);
-    const socket = response.webSocket!;
-    sockets.push(socket);
-    const inbox = new Inbox(socket);
-    socket.accept();
-    const welcome = await inbox.next("welcome");
-    const closed = new Promise<number>((resolve) => socket.addEventListener("close", (event) => resolve(event.code)));
-    let sequence = 0;
-    const edit = (id: string, x: number, z = 0) => {
-      sequence += 1;
-      const opId = `${access.userId}#${sequence}`;
-      send(socket, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId, commands: [{ op: "place", brick: brick(id, x, z) }] });
-      return opId;
-    };
-    return { access, socket, inbox, welcome, closed, edit };
-  }
-  type Builder = Awaited<ReturnType<typeof join>>;
-
-  const stillOpen = (closed: Promise<number>) => Promise.race([
-    closed.then((code) => `closed ${code}`),
-    new Promise<string>((resolve) => setTimeout(() => resolve("open"), 150)),
-  ]);
-  // Every connected builder receives every broadcast; drain them so inboxes stay in step.
-  const applied = async (opId: string, revision: number, ...builders: Builder[]) => {
-    for (const builder of builders) expect(await builder.inbox.next("apply")).toMatchObject({ opId, revision });
-  };
-  const snapshotted = async (revision: number, ...builders: Builder[]) => {
-    for (const builder of builders) expect(await builder.inbox.next("snapshot")).toMatchObject({ revision });
-  };
-  const bricksOf = (document: unknown) => (document as BrickStudioDocument).bricks.map((placed) => placed.id);
-
   afterEach(() => vi.restoreAllMocks());
 
-  it("keeps every builder connected through a rename and commits later edits against the refreshed revision", async () => {
+  it("keeps every builder connected through a rename and commits later bursts against the refreshed revision", async () => {
     const { db, studentAccess } = fixture([randomWorldUuid()]);
     const world = db.worlds[0];
     const room = await openRoom(world);
     const first = await join(room, studentAccess(0, world.id));
     const second = await join(room, studentAccess(1, world.id));
+    await first.inbox.next("players");
     await applied(first.edit("first-before", 0), 2, first, second);
+    await saveNow(first, db);
+    expect(db.commits).toEqual([expect.objectContaining({ expectedRevision: 1 })]);
+    expect(world.revision).toBe(2);
 
     // The teacher renames through the REST route: Postgres has already advanced
     // the revision when the live event reaches the room.
@@ -1226,27 +1087,40 @@ describe("classroom invalidation", () => {
     }
     expect(await room.state(first.access)).toMatchObject({ title: "Bridge challenge", revision: 3 });
 
+    // Two builders' edits are acknowledged at once and coalesce into one commit
+    // against the refreshed revision.
     await applied(first.edit("first-after", 4), 4, first, second);
     await applied(second.edit("second-after", 8), 5, first, second);
-    expect(db.commits.slice(-2).map((commit) => commit.expectedRevision)).toEqual([3, 4]);
+    await saveNow(second, db);
+    expect(db.commits.slice(1)).toEqual([expect.objectContaining({ expectedRevision: 3, actorId: second.access.userId })]);
     expect(bricksOf(world.document)).toEqual(["first-before", "first-after", "second-after"]);
+    expect(world.revision).toBe(4);
 
-    // An edit that races a second rename: the database moved on before the room heard.
+    // An edit that races a second rename: the database moved on before the room
+    // heard. The edit is acknowledged, its commit conflicts, and the room reloads
+    // the saved copy, so the raced edit is lost to that race and everyone is told.
     world.revision = 6; world.title = "Bridge challenge, day two";
-    second.edit("raced", 12);
-    const rejected = await second.inbox.next("reject");
-    expect(rejected).toMatchObject({ code: "save_conflict", revision: 6 });
-    expect(bricksOf(rejected.document)).toEqual(["first-before", "first-after", "second-after"]);
-    expect(db.commits.at(-1)).toMatchObject({ expectedRevision: 5 });
+    await applied(second.edit("raced", 12), 6, first, second);
+    await saveNow(second, db);
+    for (const builder of [first, second]) {
+      expect(await builder.inbox.next("error")).toMatchObject({ code: "save_conflict" });
+      const snapshot = await builder.inbox.next("snapshot");
+      expect(snapshot).toMatchObject({ revision: 7 });
+      expect(bricksOf(snapshot.document)).toEqual(["first-before", "first-after", "second-after"]);
+    }
+    expect(db.commitAttempts).toBe(3);
+    expect(db.commits).toHaveLength(2);
     expect(bricksOf(world.document)).not.toContain("raced");
-    await snapshotted(6, first, second);
+    expect(await room.state(first.access)).toMatchObject({ title: "Bridge challenge, day two", revision: 7 });
 
     // The late live event re-confirms the same base for everyone, and building continues.
     expect((await room.invalidate({ reason: "world_saved", change: "metadata" })).status).toBe(200);
-    await snapshotted(6, first, second);
-    expect(await room.state(first.access)).toMatchObject({ title: "Bridge challenge, day two", revision: 6 });
-    await applied(second.edit("retry", 12), 7, first, second);
+    await snapshotted(7, first, second);
+    expect(await room.state(first.access)).toMatchObject({ title: "Bridge challenge, day two", revision: 7 });
+    await applied(second.edit("retry", 12), 8, first, second);
+    await saveNow(second, db);
     expect(db.commits.at(-1)).toMatchObject({ expectedRevision: 6 });
+    expect(bricksOf(world.document)).toEqual(["first-before", "first-after", "second-after", "retry"]);
     expect(await stillOpen(first.closed)).toBe("open");
     expect(await stillOpen(second.closed)).toBe("open");
   });
@@ -1262,13 +1136,19 @@ describe("classroom invalidation", () => {
     expect(unavailable).toMatchObject({ status: 503, body: { error: "world_reload_failed" } });
     expect(await stillOpen(builder.closed)).toBe("open");
 
+    // Building continues on the stale base. The next commit's compare-and-set
+    // finds the moved database and the room reloads the renamed world.
     db.worldsUnavailable = false;
-    builder.edit("stale", 0);
-    expect(await builder.inbox.next("reject")).toMatchObject({ code: "save_conflict", revision: 2 });
-    await snapshotted(2, builder);
+    await applied(builder.edit("stale", 0), 2, builder);
+    await saveNow(builder, db);
+    expect(await builder.inbox.next("error")).toMatchObject({ code: "save_conflict" });
+    await snapshotted(3, builder);
     expect(bricksOf(world.document)).toEqual([]);
-    expect(await room.state(builder.access)).toMatchObject({ title: "Renamed while the database was away", revision: 2 });
-    await applied(builder.edit("fresh", 0), 3, builder);
+    expect(await room.state(builder.access)).toMatchObject({ title: "Renamed while the database was away", revision: 3 });
+    await applied(builder.edit("fresh", 0), 4, builder);
+    await saveNow(builder, db);
+    expect(db.commits.at(-1)).toMatchObject({ expectedRevision: 2 });
+    expect(bricksOf(world.document)).toEqual(["fresh"]);
   });
 
   it("re-authorizes existing members in place when a member is added and closes only a removed member", async () => {
