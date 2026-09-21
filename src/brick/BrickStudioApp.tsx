@@ -1043,9 +1043,13 @@ export default function BrickStudioApp({
   const readOnly = Boolean(publishedWorld)
   // Entry links carry `classroom=<intent>` and, for class invites, `classCode=`. Both are consumed
   // once here so neither lingers in the address bar; the code is handed to the panel as a prop.
-  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string; worldId?: string }>(() => {
+  const [classroomEntry] = useState<{ intent: ClassroomEntryIntent | null; classCode?: string; worldId?: string; newBuild?: boolean }>(() => {
     const url = new URL(window.location.href)
-    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode') && !url.searchParams.has('world')) return { intent: null }
+    if (!url.searchParams.has('classroom') && !url.searchParams.has('classCode') && !url.searchParams.has('world') && !url.searchParams.has('new')) return { intent: null }
+    // `/build?new=1` starts a fresh build: the current draft is cleared after the same confirm as the
+    // New build menu item, and a previously open account world is not resumed on top of it.
+    const newBuild = url.searchParams.get('new') === '1'
+    if (newBuild) { try { sessionStorage.removeItem(ACTIVE_CLOUD_WORLD_KEY) } catch { /* nothing to resume */ } }
     // Consume the entry intent even when it is unknown so a mistyped link never lingers in the address bar.
     const intent = url.searchParams.has('classroom') ? parseClassroomEntryIntent(url.search) : null
     const classCode = url.searchParams.get('classCode')?.trim().slice(0, 40) || undefined
@@ -1055,11 +1059,12 @@ export default function BrickStudioApp({
     url.searchParams.delete('classroom')
     url.searchParams.delete('classCode')
     url.searchParams.delete('world')
+    url.searchParams.delete('new')
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     // Flows v2: only `save` opens the in-editor sheet; worlds/class/join/signin/teacher are pages now
     // (W2's classroomIntentRedirect carries an invite class code through to /join).
-    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode, worldId }
-    return { intent, classCode, worldId }
+    if (intent && intent !== 'save' && classroomIntentRedirect(intent, undefined, entrySearch)) return { intent: null, classCode, worldId, newBuild }
+    return { intent, classCode, worldId, newBuild }
   })
   const [classroomIntent, setClassroomIntent] = useState<ClassroomEntryIntent | null>(classroomEntry.intent)
   const cloud = useClassroomWorld(!readOnly && !livePolicy)
@@ -1250,6 +1255,18 @@ export default function BrickStudioApp({
       setLocalCustomParts(document.customParts)
     },
   })
+  // `/build?new=1`: the draft is loaded by the effect above, so the confirm sees the real build. A blank
+  // draft needs no confirm. The guest path of onNewBuild owns the message; the cloud path never applies
+  // here because the entry parser dropped the resume key before any world could attach.
+  const newBuildCommand = useRef(documentCommands.onNewBuild)
+  newBuildCommand.current = documentCommands.onNewBuild
+  const newBuildEntryHandled = useRef(false)
+  useEffect(() => {
+    if (!classroomEntry.newBuild || readOnly || livePolicy || newBuildEntryHandled.current) return
+    newBuildEntryHandled.current = true
+    if (useBrickStore.getState().bricks.length > 0) newBuildCommand.current()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   /**
    * A signed-in builder's fresh build becomes an account world on its first placed brick or import, so
    * cloud autosave runs from then on without a Save step. A browser draft that already had bricks when
