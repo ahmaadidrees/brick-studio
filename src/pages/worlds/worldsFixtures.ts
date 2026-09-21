@@ -44,6 +44,7 @@ export function createFakeWorldsClient({ session, worlds, classes, checkpoints }
     subscribe: mock.subscribe,
     listWorlds: async () => worlds ? worlds.map(item => ({ ...item })) : mock.listWorlds(),
     listClasses: async () => classes ? classes.map(item => ({ ...item })) : mock.listClasses(),
+    listClassmates: classId => mock.listClassmates(classId),
     renameWorld: (id, title) => mock.renameWorld(id, title),
     duplicateWorld: source => mock.duplicateWorld(source.id),
     listCheckpoints: id => checkpoints ? Promise.resolve(checkpoints.map(item => ({ ...item }))) : mock.listCheckpoints(id),

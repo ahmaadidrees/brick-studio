@@ -1,14 +1,15 @@
 import { createBrickStudioDocument, studentPasswordError, type BrickStudioDocument } from '@brick-studio/core'
 import { ClassroomError } from './client'
 import type {
-  ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
+  ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
   ClassroomRegisterInput, ClassroomRoster, ClassroomStudent, ClassroomStudentPatch, ClassroomWorld, ClassroomWorldCreateInput,
-  ClassroomWorldMember, ClassroomWorldSaveInput, ClassroomWorldSharing, ClassroomWorldVisibility,
+  ClassroomWorldMember, ClassroomWorldMemberSummary, ClassroomWorldSaveInput, ClassroomWorldSharing, ClassroomWorldVisibility,
 } from './contracts'
 
 /**
  * In-memory classroom client with the flows v2 fixture (docs/flows/CONTRACTS-V2.md): one class, six students, Ava's
- * three own worlds, four classmates' worlds with mixed sharing, two teacher worlds. Pages build against this until the
+ * three own worlds, five classmates' worlds with mixed sharing (one shared with invited classmates only), two teacher
+ * worlds. Pages build against this until the
  * Worker lands; it mirrors the real routes and error codes (`username_taken` with suggestions, `sharing_disabled`,
  * `world_limit`, `revision_conflict`, `read_only`). Nothing here touches the network or storage.
  */
@@ -23,8 +24,10 @@ type MockCheckpoint = ClassroomCheckpoint & { worldId: string; title: string; do
 export const MOCK_IDS = {
   classId: 'class-period-3', teacherId: 'teacher-idrees',
   ava: 'student-ava', ben: 'student-ben', chloe: 'student-chloe', diego: 'student-diego', emma: 'student-emma', finn: 'student-finn',
-  worlds: { treehouse: 'world-ava-treehouse', rocket: 'world-ava-rocket', lava: 'world-ava-lava', skyBridge: 'world-ben-sky-bridge', castle: 'world-chloe-castle', moonBase: 'world-diego-moon-base', garden: 'world-emma-garden', town: 'world-class-town', bridgeTeam: 'world-group-bridge' },
+  worlds: { treehouse: 'world-ava-treehouse', rocket: 'world-ava-rocket', lava: 'world-ava-lava', skyBridge: 'world-ben-sky-bridge', castle: 'world-chloe-castle', moonBase: 'world-diego-moon-base', garden: 'world-emma-garden', arcade: 'world-finn-arcade', town: 'world-class-town', bridgeTeam: 'world-group-bridge' },
 } as const
+/** Invited classmates per members-only world (server: 30). */
+export const MOCK_WORLD_MEMBER_LIMIT = 30
 export const MOCK_CLASS_CODE = 'MAKERS3'
 export const MOCK_PASSWORD = 'brick-time'
 
@@ -52,6 +55,8 @@ function fixture() {
     world(MOCK_IDS.worlds.castle, 'Crystal Castle', MOCK_IDS.chloe, 3, { visibility: 'class', classCanEdit: false, sharedAt: day(3) }),
     world(MOCK_IDS.worlds.moonBase, 'Moon Base', MOCK_IDS.diego, 1, { visibility: 'class', classCanEdit: true, hiddenByTeacher: true, sharedAt: day(6) }),
     world(MOCK_IDS.worlds.garden, 'Secret Garden', MOCK_IDS.emma, 7),
+    // Quiet invite: Finn shared with Ava and Chloe only; Ben, Diego and Emma never see it.
+    world(MOCK_IDS.worlds.arcade, 'Pixel Arcade', MOCK_IDS.finn, 2, { visibility: 'members', classCanEdit: true, sharedAt: day(2, 16), members: [MOCK_IDS.ava, MOCK_IDS.chloe] }),
     world(MOCK_IDS.worlds.town, 'Our Town', MOCK_IDS.teacherId, 0, { kind: 'class', classId: MOCK_IDS.classId, visibility: 'class' }),
     world(MOCK_IDS.worlds.bridgeTeam, 'Bridge Team', MOCK_IDS.teacherId, 4, { kind: 'group', classId: MOCK_IDS.classId, visibility: 'class', members: [MOCK_IDS.ava, MOCK_IDS.ben] }),
   ]
@@ -109,9 +114,11 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
     if (world.ownerId === user.id) return { world, canEdit: true, isOwner: true }
     if (world.kind === 'personal') {
       const owner = userById(world.ownerId)
-      if (world.visibility !== 'class' || !owner?.classId) fail(404, 'not_found', 'World not found.')
+      if (world.visibility === 'private' || !owner?.classId) fail(404, 'not_found', 'World not found.')
       const cls = classFor(user, owner!.classId!)
       if (user.role === 'student') {
+        if (world.visibility === 'members' && !world.members.includes(user.id)) fail(404, 'not_found', 'World not found.')
+        if (owner!.suspended) fail(404, 'not_found', 'World not found.')
         if (world.hiddenByTeacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.')
         if (!cls.collaborationOpen) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.')
         if (!cls.studentsCanShare) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.')
@@ -125,10 +132,17 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
     }
     return { world, canEdit: true, isOwner: false }
   }
+  /** Invitees of a members-only world by display name, in the picker's order. */
+  const memberSummaries = (world: MockWorld): ClassroomWorldMemberSummary[] => world.members
+    .map(id => userById(id)).filter((member): member is MockUser => Boolean(member))
+    .map(member => ({ id: member.id, displayName: mockDisplayName(member.rosterName) }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id))
   const worldView = (world: MockWorld, user: MockUser, canEdit: boolean, full = false): ClassroomWorld => ({
     id: world.id, title: world.title, ownerId: world.ownerId, classId: world.classId, kind: world.kind, revision: world.revision, updatedAt: world.updatedAt,
     visibility: world.kind === 'personal' ? world.visibility : 'class', canEdit, classCanEdit: world.kind === 'personal' ? world.classCanEdit : true, ownerName: ownerName(world), ownerClassId: world.kind === 'personal' ? userById(world.ownerId)?.classId ?? null : world.classId,
-    sharedAt: world.kind === 'personal' && world.visibility === 'class' ? world.sharedAt : null,
+    sharedAt: world.kind === 'personal' && world.visibility !== 'private' ? world.sharedAt : null,
+    // Who is invited is the owner's and the teacher's business, never a fellow invitee's.
+    ...(world.kind === 'personal' && world.visibility === 'members' && (world.ownerId === user.id || user.role === 'teacher') ? { members: memberSummaries(world) } : {}),
     ...(user.role === 'teacher' ? { hiddenByTeacher: world.hiddenByTeacher } : {}), ...(full ? { document: structuredClone(world.document) } : {}),
   })
   const listWorlds = (user: MockUser): ClassroomWorld[] => {
@@ -138,7 +152,10 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
     const shared = db.worlds.filter(world => world.kind !== 'personal' && classIds.includes(world.classId!) && (user.role === 'teacher' || world.kind === 'class' || world.members.includes(user.id))).map(world => worldView(world, user, true))
     const sharingClasses = classes.filter(cls => user.role === 'teacher' || cls.studentsCanShare)
     const classmates = db.users.filter(other => other.role === 'student' && other.id !== user.id && sharingClasses.some(cls => cls.id === other.classId) && (user.role === 'teacher' || !other.suspended)).map(other => other.id)
-    const fromClassmates = db.worlds.filter(world => world.kind === 'personal' && world.visibility === 'class' && classmates.includes(world.ownerId) && (user.role === 'teacher' || !world.hiddenByTeacher)).map(world => worldView(world, user, world.classCanEdit))
+    const fromClassmates = db.worlds
+      .filter(world => world.kind === 'personal' && world.visibility !== 'private' && classmates.includes(world.ownerId) && (user.role === 'teacher' || !world.hiddenByTeacher))
+      .filter(world => user.role === 'teacher' || world.visibility !== 'members' || world.members.includes(user.id))
+      .map(world => worldView(world, user, world.classCanEdit))
     const byDate = (a: ClassroomWorld, b: ClassroomWorld) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
     return [...mine.sort(byDate), ...shared.sort(byDate), ...fromClassmates.sort(byDate)]
   }
@@ -239,6 +256,13 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
         db.classes.push(cls)
         return { class: classView(cls, true) }
       }
+      if (parts[2] === 'classmates' && parts.length === 3 && method === 'GET') {
+        const own = classFor(user, parts[1])
+        const classmates: ClassroomClassmate[] = db.users.filter(other => other.role === 'student' && other.classId === own.id && !other.suspended && other.id !== user.id)
+          .map(other => ({ id: other.id, displayName: mockDisplayName(other.rosterName) }))
+          .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id))
+        return { classmates }
+      }
       const cls = classFor(user, parts[1], true)
       if (parts.length === 2 && method === 'PATCH') {
         if (input.name !== undefined) { const name = typeof input.name === 'string' ? input.name.trim() : ''; if (!name || name.length > 80) fail(400, 'invalid_input', 'Class name is required (up to 80 characters).'); cls.name = name }
@@ -293,12 +317,25 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
       if (parts[2] === 'sharing' && method === 'PATCH') {
         if (user.role !== 'student') fail(403, 'student_required', 'Only students share their own worlds with the class.')
         if (!isOwner || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can share this world.')
-        if (!['private', 'class'].includes(String(input.visibility))) fail(400, 'invalid_input', 'visibility must be private or class.')
+        if (!['private', 'class', 'members'].includes(String(input.visibility))) fail(400, 'invalid_input', 'visibility must be private, class or members.')
         const wantsEdit = isBoolean(input.canEdit, 'canEdit')
         const cls = classFor(user, user.classId!)
         if (!cls.studentsCanShare) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.')
         const visibility = input.visibility as ClassroomWorldVisibility
-        world.visibility = visibility; world.classCanEdit = visibility === 'class' && wantsEdit; world.sharedAt = visibility === 'class' ? world.sharedAt ?? now() : null
+        if (visibility === 'members') {
+          // A given list replaces the invitees (validated first, so a refused list changes nothing); an omitted list keeps them.
+          if (input.members !== undefined) {
+            if (!Array.isArray(input.members) || input.members.some(id => typeof id !== 'string')) fail(400, 'invalid_input', 'members must be a list of student ids.')
+            const ids = [...new Set(input.members as string[])]
+            if (ids.includes(user.id)) fail(400, 'invalid_member', 'You already own this world.')
+            if (ids.length > MOCK_WORLD_MEMBER_LIMIT) fail(400, 'too_many_members', `Pick up to ${MOCK_WORLD_MEMBER_LIMIT} classmates.`)
+            if (ids.some(id => { const other = userById(id); return !other || other.role !== 'student' || other.classId !== user.classId || other.suspended })) fail(400, 'invalid_member', 'Choose active students in your class.')
+            if (!ids.length) fail(400, 'invalid_input', 'Pick at least one classmate.')
+            world.members = ids
+          } else if (!world.members.length) fail(400, 'invalid_input', 'Pick at least one classmate.')
+        } else world.members = []
+        const sharing = visibility !== 'private'
+        world.visibility = visibility; world.classCanEdit = sharing && wantsEdit; world.sharedAt = sharing ? world.sharedAt ?? now() : null
         return { world: worldView(world, user, true) }
       }
       if (parts[2] === 'visibility' && method === 'PATCH') {
@@ -351,6 +388,7 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
     listWorlds: async () => (await request<{ worlds: ClassroomWorld[] }>('/worlds')).worlds,
     listClasses: async () => (await request<{ classes: ClassroomClass[] }>('/classes')).classes,
     listStudents: async classId => (await request<{ students: ClassroomStudent[] }>(`/classes/${classId}/students`)).students,
+    listClassmates: async classId => (await request<{ classmates: ClassroomClassmate[] }>(`/classes/${classId}/classmates`)).classmates,
     getWorld: async id => (await request<{ world: ClassroomWorld }>(`/worlds/${id}`)).world,
     createWorld: async (input: ClassroomWorldCreateInput) => (await request<{ world: ClassroomWorld }>('/worlds', 'POST', input)).world,
     saveWorld: async (id, input: ClassroomWorldSaveInput) => (await request<{ world: ClassroomWorld }>(`/worlds/${id}`, 'PUT', input)).world,

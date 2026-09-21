@@ -145,7 +145,7 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
   it('lists own, class, group and classmates shared worlds for a student with the contract fields', async () => {
     const client = createMockClient({ as: 'student' })
     const worlds = await client.listWorlds()
-    expect(worlds.map(w => w.title)).toEqual(['Treehouse Hideout', 'Rainbow Rocket', 'Lava Maze', 'Our Town', 'Bridge Team', 'Sky Bridge', 'Crystal Castle'])
+    expect(worlds.map(w => w.title)).toEqual(['Treehouse Hideout', 'Rainbow Rocket', 'Lava Maze', 'Our Town', 'Bridge Team', 'Sky Bridge', 'Pixel Arcade', 'Crystal Castle'])
     expect(worlds.find(w => w.title === 'Sky Bridge')).toMatchObject({ visibility: 'class', canEdit: true, classCanEdit: true, ownerName: 'Ben K.', ownerClassId: MOCK_IDS.classId, kind: 'personal' })
     expect(worlds.find(w => w.title === 'Crystal Castle')).toMatchObject({ visibility: 'class', canEdit: false, classCanEdit: false, ownerName: 'Chloe M.' })
     expect(worlds.find(w => w.title === 'Treehouse Hideout')).toMatchObject({ visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: MOCK_IDS.classId, sharedAt: null })
@@ -153,11 +153,18 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     expect(worlds.find(w => w.title === 'Rainbow Rocket')?.sharedAt).toEqual(expect.any(String))
     expect(worlds.find(w => w.title === 'Our Town')).toMatchObject({ kind: 'class', ownerName: 'Teacher', canEdit: true, classCanEdit: true, ownerClassId: MOCK_IDS.classId })
     expect(worlds.every(w => !('hiddenByTeacher' in w))).toBe(true)
+    // Finn invited Ava and Chloe only: Ava sees it as an invitee (never the list); Ben does not see it at all.
+    expect(worlds.find(w => w.title === 'Pixel Arcade')).toMatchObject({ visibility: 'members', canEdit: true, classCanEdit: true, ownerName: 'Finn O.', sharedAt: expect.any(String) })
+    expect(worlds.find(w => w.title === 'Pixel Arcade')).not.toHaveProperty('members')
+    await client.login({ username: 'ben_k', password: MOCK_PASSWORD })
+    expect((await client.listWorlds()).map(w => w.title)).not.toContain('Pixel Arcade')
+    await expect(client.getWorld(MOCK_IDS.worlds.arcade)).rejects.toMatchObject({ status: 404 })
   })
   it('shows the teacher every shared student world including hidden ones with the flag', async () => {
     const client = createMockClient({ as: 'teacher' })
     const worlds = await client.listWorlds()
-    expect(worlds.filter(w => w.kind === 'personal' && w.ownerId !== MOCK_IDS.teacherId).map(w => [w.title, w.hiddenByTeacher])).toEqual([['Sky Bridge', false], ['Moon Base', true], ['Rainbow Rocket', false], ['Crystal Castle', false], ['Lava Maze', false]])
+    expect(worlds.filter(w => w.kind === 'personal' && w.ownerId !== MOCK_IDS.teacherId).map(w => [w.title, w.hiddenByTeacher])).toEqual([['Sky Bridge', false], ['Moon Base', true], ['Rainbow Rocket', false], ['Pixel Arcade', false], ['Crystal Castle', false], ['Lava Maze', false]])
+    expect(worlds.find(w => w.title === 'Pixel Arcade')).toMatchObject({ visibility: 'members', members: [{ id: MOCK_IDS.ava, displayName: 'Ava R.' }, { id: MOCK_IDS.chloe, displayName: 'Chloe M.' }] })
     const shown = await client.setWorldHidden(MOCK_IDS.worlds.moonBase, false)
     expect(shown.hiddenByTeacher).toBe(false)
     expect((await createMockClient({ as: 'student' }).listWorlds()).some(w => w.title === 'Moon Base')).toBe(false)
@@ -178,6 +185,29 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     await ownClass.login({ username: 'ava_builds', password: MOCK_PASSWORD })
     await expect(ownClass.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'class', canEdit: false })).rejects.toMatchObject({ status: 403, code: 'sharing_disabled' })
     expect((await ownClass.listWorlds()).map(w => w.title)).not.toContain('Sky Bridge')
+  })
+  it('invites chosen classmates, reports them to the owner, replaces or keeps the set, and clears it on unshare', async () => {
+    const client = createMockClient({ as: 'student' })
+    expect(await client.listClassmates(MOCK_IDS.classId)).toEqual([
+      { id: MOCK_IDS.ben, displayName: 'Ben K.' }, { id: MOCK_IDS.chloe, displayName: 'Chloe M.' }, { id: MOCK_IDS.diego, displayName: 'Diego S.' }, { id: MOCK_IDS.emma, displayName: 'Emma L.' }, { id: MOCK_IDS.finn, displayName: 'Finn O.' },
+    ])
+    const invited = await client.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'members', canEdit: false, members: [MOCK_IDS.chloe, MOCK_IDS.ben] })
+    expect(invited).toMatchObject({ visibility: 'members', classCanEdit: false, sharedAt: expect.any(String), members: [{ id: MOCK_IDS.ben, displayName: 'Ben K.' }, { id: MOCK_IDS.chloe, displayName: 'Chloe M.' }] })
+    expect((await client.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'members', canEdit: true })).members).toHaveLength(2)
+    expect((await client.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'members', canEdit: true, members: [MOCK_IDS.ben] })).members).toEqual([{ id: MOCK_IDS.ben, displayName: 'Ben K.' }])
+    for (const members of [[], [MOCK_IDS.ava], [MOCK_IDS.teacherId], ['nobody'], Array.from({ length: 31 }, (_, i) => `student-${i}`)]) {
+      await expect(client.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'members', canEdit: true, members })).rejects.toMatchObject({ status: 400 })
+    }
+    expect((await client.getWorld(MOCK_IDS.worlds.treehouse)).members).toEqual([{ id: MOCK_IDS.ben, displayName: 'Ben K.' }])
+    const unshared = await client.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'private', canEdit: false })
+    expect(unshared).toMatchObject({ visibility: 'private', sharedAt: null }); expect(unshared).not.toHaveProperty('members')
+    expect((await client.setWorldSharing(MOCK_IDS.worlds.treehouse, { visibility: 'members', canEdit: false }).catch(e => e)).status).toBe(400)
+    // Invitees see the world; the class teacher too; fellow invitees never learn who else is invited.
+    const chloe = createMockClient(); await chloe.login({ username: 'chloe_m', password: MOCK_PASSWORD })
+    const arcade = await chloe.getWorld(MOCK_IDS.worlds.arcade)
+    expect(arcade).toMatchObject({ visibility: 'members', canEdit: true, ownerName: 'Finn O.' }); expect(arcade).not.toHaveProperty('members')
+    expect((await chloe.listClassmates(MOCK_IDS.classId)).map(c => c.id)).not.toContain(MOCK_IDS.chloe)
+    expect((await createMockClient({ as: 'teacher' }).getWorld(MOCK_IDS.worlds.arcade)).members).toHaveLength(2)
   })
   it('keeps viewers read-only, copies any visible world, and stops at the world limit', async () => {
     const client = createMockClient({ as: 'student', worldLimit: 4 })
@@ -220,7 +250,7 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     expect(checkpoints[0]).toMatchObject({ reason: 'rename', revision: 3 })
     const restored = await client.restoreWorld(MOCK_IDS.worlds.lava, checkpoints[0].id)
     expect(restored).toMatchObject({ title: 'Lava Maze', revision: 5 })
-    expect((await client.request<{ worlds: unknown[] }>('/worlds')).worlds).toHaveLength(8)
+    expect((await client.request<{ worlds: unknown[] }>('/worlds')).worlds).toHaveLength(9)
     await expect(client.request('/worlds/' + MOCK_IDS.worlds.town + '/members')).resolves.toMatchObject({ members: expect.arrayContaining([{ id: MOCK_IDS.ava, username: 'ava_builds' }]) })
   })
 })

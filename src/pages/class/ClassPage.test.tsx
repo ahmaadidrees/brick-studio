@@ -127,6 +127,27 @@ it('scopes shared-by-students worlds to the selected class for a teacher with mo
   expect(within(secondShared).queryByText('Room 12 Build')).not.toBeInTheDocument()
 })
 
+it('lists a student world shared with invited classmates only, with how many were invited', async () => {
+  const invite = { id: 'wi', title: 'Pixel Arcade', ownerId: 's1', classId: null, kind: 'personal' as const, revision: 2, updatedAt: '2026-09-16T16:00:00.000Z', ownerName: 'Aiden K.', visibility: 'members' as const, canEdit: true, classCanEdit: true, ownerClassId: 'class-1', sharedAt: '2026-09-16T16:02:00.000Z', hiddenByTeacher: false, members: [{ id: 's2', displayName: 'Bella R.' }, { id: 's3', displayName: 'Casey T.' }, { id: 's4', displayName: 'Dev P.' }] }
+  const request = vi.fn(async (path: string, method = 'GET') => {
+    if (path === '/classes' && method === 'GET') return { classes: [CLASS] }
+    if (path === '/worlds' && method === 'GET') return { worlds: [...WORLDS, invite] }
+    if (path.endsWith('/students')) return { students: STUDENTS }
+    return {}
+  })
+  const snapshot = session()
+  const client: ClassPageClient = { getSession: () => snapshot, subscribe: () => () => {}, signOut: vi.fn(async () => {}), request: request as unknown as ClassPageClient['request'] }
+
+  render(<ClassPage client={client} navigate={vi.fn()} />)
+  const shared = await screen.findByRole('list', { name: 'Worlds students shared with this class' })
+  const card = within(shared).getByText('Pixel Arcade').closest('li')!
+  expect(within(card).getByText('3 classmates')).toBeInTheDocument()
+  expect(within(card).getByText('Build together')).toBeInTheDocument()
+  expect(within(card).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+  // Whole-class sharing never shows a count.
+  expect(within(within(shared).getByText('Rocket Base').closest('li')!).queryByText(/classmate/)).not.toBeInTheDocument()
+})
+
 it('hides a shared world and shows it again through the teacher visibility endpoint', async () => {
   const { client, calls } = testClient()
   render(<ClassPage client={client} navigate={vi.fn()} />)

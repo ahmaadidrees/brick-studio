@@ -49,6 +49,16 @@ W6 replaces the editor's current `Header` with `AppHeader variant="editor"` once
   `brick_students.class_id` at read time.
 - `brick_classes`: `students_can_share boolean not null default true`.
 - Nothing renamed; `kind` values unchanged.
+- Quiet invites (migration `202609210001_brick_world_invites.sql`, 2026-09-21): `class_visibility` also allows
+  `'members'` — "only these classmates". The invitees live in `brick_world_members (world_id, user_id)`, the same
+  table group worlds use, and exist only while the world is members-only. `brick_authorize_world` /
+  `brick_commit_world` admit a non-owner student to a members world only when listed there, under the same class
+  conditions as `'class'` sharing; the teacher sees it like any shared world. Nobody is notified.
+  Worker: `PATCH /classroom/worlds/:id/sharing` takes `visibility: 'private'|'class'|'members'` plus optional
+  `members: string[]` (same class, active, not the owner, 1–30; a given list replaces the set, an omitted list keeps
+  it, `private`/`class` clear it). `GET /classroom/worlds` lists a members world for its invitees with
+  `visibility: 'members'` and tells the owner and the teacher who is invited (`members: [{ id, displayName }]`).
+  `GET /classroom/classes/:id/classmates` feeds the invite picker (`{ id, displayName }` of active classmates).
 
 ## Worker endpoints (W1 owns `multiplayer/worker/src/classroom/**` and tests)
 

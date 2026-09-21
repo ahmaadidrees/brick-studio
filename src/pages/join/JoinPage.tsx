@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Check, ChevronDown, ChevronUp, KeyRound, Mail, UserRound, X } from 'lucide-react'
 import { Button } from '../../ui'
 import { AppHeader } from '../../shell'
+import { BRAND_TAGLINE, BrandLockup, BrickMark } from '../../brand'
 import { browserClassroomClient, ClassroomError, type ClassroomClient } from '../../classroom/client'
 import type { ClassroomAuthResult, ClassroomRosterStudent } from '../../classroom/contracts'
 import { PasswordField } from '../../classroom/PasswordField'
@@ -23,6 +24,13 @@ const HEADLINES: Record<JoinMode, { title: string; lead: string }> = {
   join: { title: 'Join your class', lead: 'Start with the code your teacher gave you.' },
   signin: { title: 'Welcome back', lead: 'Sign in to open your worlds.' },
   teacher: { title: 'Teacher sign in', lead: 'Open your class and your students’ worlds.' },
+}
+
+/** One welcoming line beside the form, per mode. Decoration, not instruction: the form says what to do. */
+const BRAND_LINES: Record<JoinMode, string> = {
+  join: 'Create your account and build alongside your class.',
+  signin: 'Your class is waiting. Pick your name and start building.',
+  teacher: 'Sign in to open your class.',
 }
 
 /** Server rejections a student can act on, in their words. Anything else keeps the server sentence. */
@@ -189,107 +197,121 @@ export function JoinExperience({
   return <div className="join-page">
     <AppHeader variant="page" actions={cornerLink} />
     <main className="join-main">
-      <div className={['join-card', roster ? 'join-card-wide' : ''].filter(Boolean).join(' ')}>
-        <div className="join-headline">
-          <h1>{headline.title}</h1>
-          <p>{headline.lead}</p>
+      <div className={['join-layout', roster ? 'join-layout-wide' : ''].filter(Boolean).join(' ')}>
+        {/* Brand side: the lockup, the tagline and the Toy Room. Presentation only —
+            every instruction a student needs lives in the card beside it. */}
+        <aside className="join-brand">
+          <BrandLockup className="join-brand-lockup" size={56} />
+          <p className="join-brand-tagline">{BRAND_TAGLINE}</p>
+          <picture className="join-brand-scene">
+            <source srcSet="/brand/media/scene-toy-room-800.avif" type="image/avif" />
+            <source srcSet="/brand/media/scene-toy-room-800.webp" type="image/webp" />
+            <img src="/brand/media/scene-toy-room-800.png" width={800} height={500} alt="" loading="lazy" decoding="async" />
+          </picture>
+          <p className="join-brand-line">{BRAND_LINES[mode]}</p>
+        </aside>
+        <div className={['join-card', roster ? 'join-card-wide' : ''].filter(Boolean).join(' ')}>
+          <div className="join-headline">
+            <h1>{headline.title}</h1>
+            <p>{headline.lead}</p>
+          </div>
+          {error && <p className="join-alert" role="alert">{error}</p>}
+
+          {reset
+            ? <>
+              <PasswordResetView onSubmit={changePassword} />
+              <Button type="submit" form={RESET_FORM_ID} variant="primary" fullWidth className="join-submit" loading={busy} loadingLabel="Saving your password…">Set my new password</Button>
+              <div className="join-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => run(() => client.signOut())}>Sign out</Button></div>
+            </>
+            : mode === 'teacher'
+              ? <TeacherEntry busy={busy} open={teacherPasswordOpen} onToggle={() => setTeacherPasswordOpen(value => !value)} onGoogle={startGoogle} onSubmit={submitTeacher} />
+              : <form className="join-form" onSubmit={event => { event.preventDefault(); if (mode === 'join') submitJoin(); else submitSignIn() }}>
+                {mode === 'signin' && !codeVisible && <div className="join-links join-links-start">
+                  <Button variant="quiet" size="sm" icon={<KeyRound size={16} />} disabled={busy} onClick={() => { focusCode.current = true; setCodeOpen(true) }}>I have a class code</Button>
+                </div>}
+
+                {codeVisible && <div hidden={Boolean(matched) && !editingCode && !classError}><TextInput
+                  ref={codeInput}
+                  label="Class code"
+                  name="classCode"
+                  value={classCode}
+                  onChange={event => { setClassCode(event.target.value); setPickedName('') }}
+                  hint={requireClassCode
+                    ? 'Two accounts use this username. Your class code picks yours.'
+                    : mode === 'join' ? 'Your teacher’s code, like ROOM-42.' : 'Optional. Your teacher’s code shows your class list.'}
+                  error={classError || undefined}
+                  icon={<KeyRound size={18} />}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  spellCheck={false}
+                  required={mode === 'join'}
+                  maxLength={32}
+                /></div>}
+
+                {matched && <div className="join-class" aria-live="polite">
+                  <span className="join-class-chip"><BrickMark size={18} title={null} />{matched.name}</span>
+                  {rememberedActive
+                    ? <Button variant="quiet" size="sm" disabled={busy} onClick={changeClass}>Not you? Change class</Button>
+                    : <Button variant="quiet" size="sm" disabled={busy} onClick={() => { focusCode.current = true; setEditingCode(true); setCodeOpen(true) }}>Change class code</Button>}
+                  {mode === 'join' && !matched.canEnroll && <p className="join-note">This class is not taking new accounts. If you already have one, sign in instead.</p>}
+                </div>}
+
+                {roster && <div className="join-roster">
+                  <p className="join-roster-lead" id="join-roster-label">Tap your name, then type your password.</p>
+                  <ul className="join-name-grid" aria-labelledby="join-roster-label">
+                    {roster.map(student => <li key={student.username}>
+                      <button type="button" className="join-name-tile" disabled={busy} aria-pressed={username === student.username} onClick={() => pickStudent(student)}>
+                        <span className="join-name-tile-name">{student.displayName}</span>
+                        <span className="join-name-tile-username">{student.username}</span>
+                      </button>
+                    </li>)}
+                  </ul>
+                </div>}
+
+                <TextInput
+                  label={mode === 'join' ? 'Choose a username' : 'Username'}
+                  name="username"
+                  value={username}
+                  onChange={event => { setUsername(event.target.value); setPickedName('') }}
+                  hint={mode === 'join' ? 'Classmates see this name.' : undefined}
+                  icon={<UserRound size={18} />}
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  required
+                  maxLength={24}
+                />
+                {mode === 'join' && <RuleList id="join-username-rules" label="Username rules" rules={usernameChecks} />}
+                {mode === 'join' && suggestions.length > 0 && <div className="join-suggestions" role="group" aria-label="Usernames that are free">
+                  <span className="join-note">Free right now:</span>
+                  {suggestions.map(name => <button key={name} type="button" className="join-chip" aria-pressed={username === name} onClick={() => setUsername(name)}>{name}</button>)}
+                </div>}
+
+                {mode === 'join' && <TextInput label="Name your teacher knows" name="rosterName" value={rosterName} onChange={event => setRosterName(event.target.value)} hint="Shown to your teacher only." autoComplete="off" required maxLength={80} />}
+
+                <PasswordField
+                  id={PASSWORD_ID}
+                  name="password"
+                  label={pickedName ? `${pickedName}, type your password` : mode === 'join' ? 'Choose a password' : 'Password'}
+                  value={password}
+                  onChange={event => setPassword(event.target.value)}
+                  autoComplete={mode === 'join' ? 'new-password' : 'current-password'}
+                  required
+                  maxLength={128}
+                />
+                {mode === 'join' && <RuleList id="join-password-rules" label="Password rules" rules={passwordChecks} />}
+
+                <Button type="submit" variant="primary" fullWidth className="join-submit" disabled={mode === 'join' && !joinReady} loading={busy} loadingLabel={mode === 'join' ? 'Creating your account…' : 'Signing you in…'}>
+                  {mode === 'join' ? 'Create account and join' : 'Sign in'}
+                </Button>
+                {mode === 'signin' && <p className="join-note join-note-center">Forgot it? Ask your teacher.</p>}
+              </form>}
+
+          {!reset && <div className="join-links join-links-footer">
+            {mode !== 'teacher' && <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('teacher')}>I’m a teacher</Button>}
+            <Button variant="quiet" size="sm" href="/build">Keep building as a guest</Button>
+          </div>}
         </div>
-        {error && <p className="join-alert" role="alert">{error}</p>}
-
-        {reset
-          ? <>
-            <PasswordResetView onSubmit={changePassword} />
-            <Button type="submit" form={RESET_FORM_ID} variant="primary" fullWidth className="join-submit" loading={busy} loadingLabel="Saving your password…">Set my new password</Button>
-            <div className="join-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => run(() => client.signOut())}>Sign out</Button></div>
-          </>
-          : mode === 'teacher'
-            ? <TeacherEntry busy={busy} open={teacherPasswordOpen} onToggle={() => setTeacherPasswordOpen(value => !value)} onGoogle={startGoogle} onSubmit={submitTeacher} />
-            : <form className="join-form" onSubmit={event => { event.preventDefault(); if (mode === 'join') submitJoin(); else submitSignIn() }}>
-              {mode === 'signin' && !codeVisible && <div className="join-links join-links-start">
-                <Button variant="quiet" size="sm" icon={<KeyRound size={16} />} disabled={busy} onClick={() => { focusCode.current = true; setCodeOpen(true) }}>I have a class code</Button>
-              </div>}
-
-              {codeVisible && <div hidden={Boolean(matched) && !editingCode && !classError}><TextInput
-                ref={codeInput}
-                label="Class code"
-                name="classCode"
-                value={classCode}
-                onChange={event => { setClassCode(event.target.value); setPickedName('') }}
-                hint={requireClassCode
-                  ? 'Two accounts use this username. Your class code picks yours.'
-                  : mode === 'join' ? 'Your teacher’s code, like ROOM-42.' : 'Optional. Your teacher’s code shows your class list.'}
-                error={classError || undefined}
-                icon={<KeyRound size={18} />}
-                autoComplete="off"
-                autoCapitalize="characters"
-                spellCheck={false}
-                required={mode === 'join'}
-                maxLength={32}
-              /></div>}
-
-              {matched && <div className="join-class" aria-live="polite">
-                <span className="join-class-chip">{matched.name}</span>
-                {rememberedActive
-                  ? <Button variant="quiet" size="sm" disabled={busy} onClick={changeClass}>Not you? Change class</Button>
-                  : <Button variant="quiet" size="sm" disabled={busy} onClick={() => { focusCode.current = true; setEditingCode(true); setCodeOpen(true) }}>Change class code</Button>}
-                {mode === 'join' && !matched.canEnroll && <p className="join-note">This class is not taking new accounts. If you already have one, sign in instead.</p>}
-              </div>}
-
-              {roster && <div className="join-roster">
-                <p className="join-roster-lead" id="join-roster-label">Tap your name, then type your password.</p>
-                <ul className="join-name-grid" aria-labelledby="join-roster-label">
-                  {roster.map(student => <li key={student.username}>
-                    <button type="button" className="join-name-tile" disabled={busy} aria-pressed={username === student.username} onClick={() => pickStudent(student)}>
-                      <span className="join-name-tile-name">{student.displayName}</span>
-                      <span className="join-name-tile-username">{student.username}</span>
-                    </button>
-                  </li>)}
-                </ul>
-              </div>}
-
-              <TextInput
-                label={mode === 'join' ? 'Choose a username' : 'Username'}
-                name="username"
-                value={username}
-                onChange={event => { setUsername(event.target.value); setPickedName('') }}
-                hint={mode === 'join' ? 'Classmates see this name.' : undefined}
-                icon={<UserRound size={18} />}
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                required
-                maxLength={24}
-              />
-              {mode === 'join' && <RuleList id="join-username-rules" label="Username rules" rules={usernameChecks} />}
-              {mode === 'join' && suggestions.length > 0 && <div className="join-suggestions" role="group" aria-label="Usernames that are free">
-                <span className="join-note">Free right now:</span>
-                {suggestions.map(name => <button key={name} type="button" className="join-chip" aria-pressed={username === name} onClick={() => setUsername(name)}>{name}</button>)}
-              </div>}
-
-              {mode === 'join' && <TextInput label="Name your teacher knows" name="rosterName" value={rosterName} onChange={event => setRosterName(event.target.value)} hint="Shown to your teacher only." autoComplete="off" required maxLength={80} />}
-
-              <PasswordField
-                id={PASSWORD_ID}
-                name="password"
-                label={pickedName ? `${pickedName}, type your password` : mode === 'join' ? 'Choose a password' : 'Password'}
-                value={password}
-                onChange={event => setPassword(event.target.value)}
-                autoComplete={mode === 'join' ? 'new-password' : 'current-password'}
-                required
-                maxLength={128}
-              />
-              {mode === 'join' && <RuleList id="join-password-rules" label="Password rules" rules={passwordChecks} />}
-
-              <Button type="submit" variant="primary" fullWidth className="join-submit" disabled={mode === 'join' && !joinReady} loading={busy} loadingLabel={mode === 'join' ? 'Creating your account…' : 'Signing you in…'}>
-                {mode === 'join' ? 'Create account and join' : 'Sign in'}
-              </Button>
-              {mode === 'signin' && <p className="join-note join-note-center">Forgot it? Ask your teacher.</p>}
-            </form>}
-
-        {!reset && <div className="join-links join-links-footer">
-          {mode !== 'teacher' && <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('teacher')}>I’m a teacher</Button>}
-          <Button variant="quiet" size="sm" href="/build">Keep building as a guest</Button>
-        </div>}
       </div>
     </main>
   </div>

@@ -22,9 +22,13 @@ type Props = {
   onViewSettings: () => void
 }
 
-/** "Look only" / "Build together" reads the sharing choice the student made. */
+/** "Look only" / "Build together" reads the sharing choice the student made; a quiet invite adds "3 classmates". */
 function ShareChip({ world }: { world: ClassPageWorld }) {
-  return <span className={`class-chip class-chip-${world.canEdit ? 'edit' : 'view'}`}>{world.canEdit ? 'Build together' : 'Look only'}</span>
+  const count = world.visibility === 'members' ? world.members?.length ?? 0 : null
+  return <>
+    <span className={`class-chip class-chip-${world.canEdit ? 'edit' : 'view'}`}>{world.canEdit ? 'Build together' : 'Look only'}</span>
+    {count !== null && <span className="class-chip class-chip-group">{count} {count === 1 ? 'classmate' : 'classmates'}</span>}
+  </>
 }
 
 /** Code card, what students shared, then the roster. */

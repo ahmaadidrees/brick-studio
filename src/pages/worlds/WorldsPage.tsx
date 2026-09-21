@@ -4,12 +4,12 @@ import { BrickMark } from '../../brand'
 import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
-import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
+import { AccessChip, CardMenu, InviteesChip, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
 import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, NEW_BUILD_HREF, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import { ShareSheet } from './ShareSheet'
 import {
-  browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
-  SAVE_DRAFT_HREF, signInHref, type LocalDraft, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
+  browserWorldsClient, buildHref, byNewest, classmatesLabel, CONTINUE_DRAFT_HREF, isInviteOnly, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
+  SAVE_DRAFT_HREF, signInHref, type Classmate, type LocalDraft, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
 import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
 import './worlds.css'
@@ -92,6 +92,9 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const [section, setSection] = useState('mine')
   const [search, setSearch] = useState('')
   const [shareWorld, setShareWorld] = useState<WorldsWorld | null>(null)
+  /** The invite picker's roster: loaded the first time a share sheet opens, kept for the page's life. */
+  const [classmates, setClassmates] = useState<Classmate[] | null>(null)
+  const [classmatesError, setClassmatesError] = useState('')
   const [renameTarget, setRenameTarget] = useState<WorldsWorld | null>(null)
   const [checkpointTarget, setCheckpointTarget] = useState<WorldsWorld | null>(null)
   const [checkpoints, setCheckpoints] = useState<ClassroomCheckpoint[]>([])
@@ -171,10 +174,13 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   }
 
   const currentClass = classes.find(item => item.id === section) ?? null
-  const classmateWorlds = worlds
+  const sharedInClass = worlds
     .filter(world => world.kind === 'personal' && world.ownerId !== me && isShared(world) && !(world.hiddenByTeacher && !teacher)
       && (currentClass ? belongsToClass(world, currentClass.id) : false))
     .sort(byNewest)
+  // A student's quiet invites get their own section; the teacher sees them among the rest with an invitees chip.
+  const invitedWorlds = teacher ? [] : sharedInClass.filter(isInviteOnly)
+  const classmateWorlds = teacher ? sharedInClass : sharedInClass.filter(world => !isInviteOnly(world))
   const classWorlds = worlds.filter(world => world.kind !== 'personal' && world.classId === currentClass?.id).sort(byNewest)
   const collaborationClosed = Boolean(currentClass && !currentClass.collaborationOpen)
   // The teacher can turn class sharing off; the button goes away rather than
@@ -188,12 +194,21 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     const target = shareWorld
     if (!target) return
     run(async () => {
-      await client.setWorldSharing(target.id, sharing)
+      const saved = await client.setWorldSharing(target.id, sharing)
       await reload(); setShareWorld(null)
       setNotice(sharing.visibility === 'private'
         ? `“${target.title}” is private again.`
-        : `“${target.title}” is shared with your class. Classmates can ${sharing.canEdit ? 'build with you' : 'look'}.`)
+        : sharing.visibility === 'members'
+          ? `“${target.title}” is shared with ${classmatesLabel(saved.members?.length ?? sharing.members?.length ?? 0)}. They can ${sharing.canEdit ? 'build with you' : 'look'}.`
+          : `“${target.title}” is shared with your class. Classmates can ${sharing.canEdit ? 'build with you' : 'look'}.`)
     })
+  }
+  /** Opens the share sheet; the invite picker's roster loads once, in the background, and never blocks the sheet. */
+  const openShare = (world: WorldsWorld) => {
+    setShareWorld(world)
+    if (classmates !== null || teacher || !myClass) return
+    setClassmatesError('')
+    client.listClassmates(myClass.id).then(setClassmates).catch(failure => setClassmatesError(errorMessage(failure)))
   }
   const rename = (title: string) => {
     const target = renameTarget
@@ -317,7 +332,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                 ]} />}
               >
                 <OpenWorldButton href={buildHref(world)} label="Open" busy={busy} />
-                {(canShare || isShared(world)) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => setShareWorld(world)}>{isShared(world) ? 'Sharing…' : 'Share with my class'}</Button>}
+                {(canShare || isShared(world)) && <Button variant="secondary" size="sm" disabled={busy} onClick={() => openShare(world)}>{isShared(world) ? 'Sharing…' : 'Share with my class'}</Button>}
               </WorldCard>)}</div>}
           </section>
         </>}
@@ -328,6 +343,21 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             : <>
               {teacher && <StartSharedWorld busy={busy} className={currentClass.name} onCreate={createShared} />}
 
+              {/* Quiet invites: only the classmates the owner picked see this section, and only when it has something. */}
+              {!teacher && filter(invitedWorlds).length > 0 && <section aria-label="Shared with you" className="worlds-section">
+                <h2 className="worlds-section-title">Shared with you</h2>
+                <div className="worlds-grid">{filter(invitedWorlds).map(world => <WorldCard
+                  key={world.id}
+                  world={world}
+                  byline={`${world.ownerName} invited you`}
+                  chip={<AccessChip world={world} />}
+                >
+                  {world.canEdit && <OpenWorldButton href={liveHref(world)} label="Join" busy={busy} />}
+                  <OpenWorldButton href={liveHref(world)} label="Visit" variant={world.canEdit ? 'secondary' : 'primary'} busy={busy} />
+                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => copy(world)}>Make my own copy</Button>
+                </WorldCard>)}</div>
+              </section>}
+
               <section aria-label={teacher ? 'Shared by students' : 'Shared by classmates'} className="worlds-section">
                 <h2 className="worlds-section-title">{teacher ? 'Shared by students' : 'Shared by classmates'}</h2>
                 {filter(classmateWorlds).length === 0
@@ -336,7 +366,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                     key={world.id}
                     world={world}
                     byline={world.ownerName}
-                    chip={<AccessChip world={world} />}
+                    chip={<><AccessChip world={world} />{teacher && <InviteesChip world={world} />}</>}
                   >
                     {world.canEdit && <OpenWorldButton href={liveHref(world)} label="Join" busy={busy} />}
                     <OpenWorldButton href={liveHref(world)} label="Visit" variant={world.canEdit ? 'secondary' : 'primary'} busy={busy} />
@@ -364,6 +394,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       world={shareWorld}
       className={classes[0]?.name ?? 'your class'}
       busy={busy}
+      classmates={classmates}
+      classmatesError={classmatesError || undefined}
       onShare={share}
       onStopSharing={() => share({ visibility: 'private', canEdit: false })}
       onClose={() => setShareWorld(null)}

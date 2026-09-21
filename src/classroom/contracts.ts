@@ -14,8 +14,15 @@ export type ClassroomClass = {
 export type ClassroomMe = { user: ClassroomUser; classes: ClassroomClass[] }
 export type ClassroomAuthResult = ClassroomMe & { session: ClassroomSession }
 export type ClassroomStudent = { id: string; username: string; rosterName: string; suspended: boolean; resetRequired: boolean }
-/** Who in the owner's class may see a personal world. `class` worlds and `group` worlds always report `class`. */
-export type ClassroomWorldVisibility = 'private' | 'class'
+/**
+ * Who in the owner's class may see a personal world: nobody, everyone, or only the invited classmates (`members`,
+ * listed in `ClassroomWorld.members`). `class` worlds and `group` worlds always report `class`.
+ */
+export type ClassroomWorldVisibility = 'private' | 'class' | 'members'
+/** An invited classmate of a members-only world: id plus the public display name (first name, last initial). */
+export type ClassroomWorldMemberSummary = { id: string; displayName: string }
+/** A classmate the invite picker can choose: the same shape, active students of the caller's class only. */
+export type ClassroomClassmate = ClassroomWorldMemberSummary
 export type ClassroomWorld = {
   id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document?: BrickStudioDocument
   visibility: ClassroomWorldVisibility
@@ -31,8 +38,14 @@ export type ClassroomWorld = {
   sharedAt: string | null
   /** Present for teachers only: the teacher hid this shared world from classmates. */
   hiddenByTeacher?: boolean
+  /** Who a members-only world is shared with; present for its owner and the class teacher, never for a fellow invitee. */
+  members?: ClassroomWorldMemberSummary[]
 }
-export type ClassroomWorldSharing = { visibility: ClassroomWorldVisibility; canEdit: boolean }
+/**
+ * `{ visibility: 'members', members }` shares with the listed classmates only (the list replaces the set; omit it to
+ * keep the current invitees). `members` is ignored for the other visibilities.
+ */
+export type ClassroomWorldSharing = { visibility: ClassroomWorldVisibility; canEdit: boolean; members?: string[] }
 export type ClassroomCheckpoint = { id: string; revision: number; createdAt: string; reason: string }
 export type ClassroomWorldMember = { id: string; username: string; rosterName?: string }
 export type ClassroomError = { error: string; code: string; currentRevision?: number; suggestions?: string[] }
@@ -68,6 +81,8 @@ export interface ClassroomClientSurface {
   listWorlds(): Promise<ClassroomWorld[]>
   listClasses(): Promise<ClassroomClass[]>
   listStudents(classId: string): Promise<ClassroomStudent[]>
+  /** Active classmates of the caller's class (teachers: of that class) for the invite picker; the caller is not listed. */
+  listClassmates(classId: string): Promise<ClassroomClassmate[]>
   getWorld(id: string): Promise<ClassroomWorld>
   createWorld(input: ClassroomWorldCreateInput): Promise<ClassroomWorld>
   saveWorld(id: string, input: ClassroomWorldSaveInput): Promise<ClassroomWorld>

@@ -1,9 +1,9 @@
 import { BRAND_NAME } from '../brand'
 import type {
-  ClassroomAuthResult as ClassroomAuth, ClassroomCheckpoint, ClassroomClass, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
+  ClassroomAuthResult as ClassroomAuth, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
   ClassroomRegisterInput, ClassroomRoster, ClassroomStudent, ClassroomStudentPatch, ClassroomWorld, ClassroomWorldCreateInput, ClassroomWorldSaveInput, ClassroomWorldSharing,
 } from './contracts'
-export type { ClassroomUser, ClassroomClass, ClassroomWorld, ClassroomRoster, ClassroomRosterStudent, ClassroomLoginInput, ClassroomClientSurface, ClassroomWorldSharing } from './contracts'
+export type { ClassroomUser, ClassroomClass, ClassroomClassmate, ClassroomWorld, ClassroomRoster, ClassroomRosterStudent, ClassroomLoginInput, ClassroomClientSurface, ClassroomWorldSharing } from './contracts'
 export type { ClassroomAuthResult as ClassroomAuth } from './contracts'
 /** Invite link and QR target for a class code: account creation first, then the class (`/join?classCode=CODE`). */
 export function classJoinHref(classCode: string, origin = window.location.origin) {
@@ -112,6 +112,8 @@ export class ClassroomClient implements ClassroomClientSurface {
   async listWorlds() { return (await this.request<{ worlds: ClassroomWorld[] }>('/worlds')).worlds }
   async listClasses() { return (await this.request<{ classes: ClassroomClass[] }>('/classes')).classes }
   async listStudents(classId: string) { return (await this.request<{ students: ClassroomStudent[] }>(`/classes/${classId}/students`)).students }
+  /** Active classmates (id + display name) for the invite picker; a student may only ask about their own class. */
+  async listClassmates(classId: string) { return (await this.request<{ classmates: ClassroomClassmate[] }>(`/classes/${classId}/classmates`)).classmates }
   /** The world with its document; viewers of a shared world get `canEdit: false`. */
   async getWorld(id: string) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}`)).world }
   async createWorld(input: ClassroomWorldCreateInput) { return (await this.request<{ world: ClassroomWorld }>('/worlds', 'POST', { kind: 'personal', ...input })).world }
@@ -128,7 +130,11 @@ export class ClassroomClient implements ClassroomClientSurface {
     const current = await this.getWorld(id)
     return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/restore`, 'POST', { checkpointId, expectedRevision: current.revision })).world
   }
-  /** Owner only: `{ visibility: 'class', canEdit }` shares with classmates; `{ visibility: 'private' }` unshares. 403 `sharing_disabled` when the teacher turned sharing off. */
+  /**
+   * Owner only: `{ visibility: 'class', canEdit }` shares with the whole class, `{ visibility: 'members', canEdit, members }`
+   * with the listed classmates only, `{ visibility: 'private' }` unshares. 403 `sharing_disabled` when the teacher turned
+   * sharing off; 400 `invalid_member` / `too_many_members` for a bad list.
+   */
   async setWorldSharing(id: string, sharing: ClassroomWorldSharing) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/sharing`, 'PATCH', sharing)).world }
   /** Teacher of the owner's class: hide or show a shared student world. */
   async setWorldHidden(id: string, hidden: boolean) { return (await this.request<{ world: ClassroomWorld }>(`/worlds/${id}/visibility`, 'PATCH', { hiddenByTeacher: hidden })).world }

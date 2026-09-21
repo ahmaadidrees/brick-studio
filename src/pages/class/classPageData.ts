@@ -2,23 +2,17 @@ import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomCheckpoint, ClassroomClass, ClassroomClientSurface, ClassroomStudent, ClassroomWorld, ClassroomWorldMember } from '../../classroom/contracts'
 
 /**
- * Flows v2 fields the teacher page consumes. They are optional here because
- * `src/classroom/contracts.ts` still describes the pre-sharing shapes; once W1
- * lands its migration and client the page can read them from the shared types
- * and these two aliases can be deleted (see docs/flows/status/w5.md).
+ * Flows v2 shapes the teacher page consumes. Worlds come straight from the
+ * shared contract (`visibility` is `private`, `class` or `members`, the last
+ * with the invited classmates in `members`); the class alias stays only for
+ * the optional presence count.
  */
 export type ClassPageClass = ClassroomClass & {
   studentsCanShare?: boolean
   /** Optional presence count for the "N building now" chip; hidden when absent. */
   buildingNow?: number
 }
-export type ClassPageWorld = ClassroomWorld & {
-  ownerName?: string
-  visibility?: 'private' | 'class'
-  canEdit?: boolean
-  sharedAt?: string | null
-  hiddenByTeacher?: boolean
-}
+export type ClassPageWorld = ClassroomWorld
 
 /**
  * Everything the page needs from the classroom client: the session store plus
@@ -81,15 +75,16 @@ export const restoreCheckpoint = async (client: ClassPageClient, world: ClassPag
 }
 
 /**
- * Worlds a student shared with this class, newest first; hidden ones stay for
- * the teacher. A shared personal world's `classId` is always null (only
+ * Worlds a student shared with this class (with everyone or with invited
+ * classmates), newest first; hidden ones stay for the teacher. A shared
+ * personal world's `classId` is always null (only
  * `ownerClassId` says whose class it came from), so a multi-class teacher
  * must match on that instead — otherwise every class would show every
  * student's shared world. A world with no `ownerClassId` (older data, or a
  * fixture that never set it) falls back to showing under `firstClassId`.
  */
 export const sharedByStudents = (worlds: ClassPageWorld[], classId: string, teacherId: string, firstClassId?: string) =>
-  worlds.filter(world => world.kind === 'personal' && world.ownerId !== teacherId && world.visibility === 'class'
+  worlds.filter(world => world.kind === 'personal' && world.ownerId !== teacherId && (world.visibility === 'class' || world.visibility === 'members')
     && (world.ownerClassId === classId || (world.ownerClassId == null && classId === firstClassId)))
     .sort((a, b) => (b.sharedAt || b.updatedAt).localeCompare(a.sharedAt || a.updatedAt))
 
