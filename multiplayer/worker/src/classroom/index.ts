@@ -781,7 +781,8 @@ async function route(request: Request, service: ClassroomService, path: string[]
       await service.rate(`create-world:${caller.id}`, 60, 3600);
       if ((await service.rows('worlds', `owner_id=eq.${caller.id}&select=id&limit=${WORLD_LIMIT}`)).length >= WORLD_LIMIT) fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
       let created: Row;
-      // The stored row is authoritative: live edits commit there before they are acknowledged.
+      // The stored row is the durable copy. A live room commits its edits to it write-behind (about a second
+      // after they are acknowledged), so a copy taken mid-burst may trail the room by that much.
       try { created = (await service.insert('worlds', { owner_id: caller.id, class_id: null, kind: 'personal', title: `${world.title} (copy)`.slice(0, 80), document: world.document }))[0]; }
       catch (error) { if (error instanceof ClassroomHttpError && error.code === 'quota_exceeded') fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.'); throw error; }
       await service.audit(caller, 'copy_world', world.class_id || undefined, world.id);

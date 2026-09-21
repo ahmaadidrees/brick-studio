@@ -38,8 +38,9 @@ export type ClassroomSocketAccess = {
 };
 
 /**
- * Why a classroom commit could not land. `blocked` and `missing` wait for a new
- * editor or connection; every other failure retries on the alarm.
+ * Why a classroom commit cannot land right now: every usable session was
+ * refused, or the world is gone. Such a room waits for a new editor or
+ * connection rather than retrying on the alarm.
  */
 type CommitBlock = { code: string; message: string; at: number };
 
@@ -501,10 +502,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
           let input: Partial<WorldRoomRecord> = {};
           try { input = await request.json() as Partial<WorldRoomRecord>; } catch { /* nothing to refresh from */ }
           if (this.record?.classroomWorldId && input.classroomWorldId === this.record.classroomWorldId && Number.isInteger(input.revision)) {
-            const parsed = validateBrickStudioDocument(input.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
             await this.settleCommit();
-            if (parsed.ok && await this.reconcileWithDatabase({ document: parsed.document, revision: input.revision as number, title: input.title })) {
-              this.broadcastSnapshot();
+            if ((input.revision as number) > this.record.dbRevision!) {
+              const parsed = validateBrickStudioDocument(input.document, { maxBricks: BRICK_STUDIO_MAX_BRICKS });
+              if (parsed.ok && await this.reconcileWithDatabase({ document: parsed.document, revision: input.revision as number, title: input.title })) {
+                this.broadcastSnapshot();
+              }
             }
           }
           return json({ error: "already_exists" }, 409);
@@ -1147,7 +1150,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     const startedAt = Date.now();
     // Captured synchronously: edits replace `document` rather than mutating it,
     // so this reference stays exactly what the compare-and-set will store.
-    const base = { document: record.document, revision: record.revision, dbRevision: record.dbRevision! };
+    const base = { document: record.document, dbRevision: record.dbRevision! };
     const stale = () => this.record !== record || record.dbRevision !== base.dbRevision;
     let refused: CommitBlock | null = null;
     for (const identity of this.commitIdentities(extra)) {
@@ -1172,9 +1175,11 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       record.dbRevision = saved.revision;
       delete record.commitFailures;
       delete record.commitBlocked;
-      if (record.revision === base.revision) this.markClean();
+      // The document is replaced, never mutated, so identity says whether edits
+      // arrived during the round trip (a mode change alone bumps only the revision).
+      if (record.document === base.document) this.markClean();
       else {
-        // Edits arrived during the round trip: they form the next burst.
+        // Those edits form the next burst.
         record.dirtySince = startedAt;
         record.commitDueAt = Math.min(Date.now() + COMMIT_DEBOUNCE_MS, startedAt + COMMIT_MAX_LAG_MS);
       }
