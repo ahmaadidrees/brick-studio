@@ -1,5 +1,5 @@
 import { createBrickStudioDocument } from '@brick-studio/core'
-import { createMockClient, type MockRole } from '../../classroom/mockClient'
+import { createMockClient, MOCK_IDS, type MockRole } from '../../classroom/mockClient'
 import type { ClassroomAuthResult, ClassroomCheckpoint } from '../../classroom/contracts'
 import type { WorldsClient, WorldsClass, WorldsWorld } from './worldsData'
 
@@ -42,7 +42,11 @@ export function createFakeWorldsClient({ session, worlds, classes, checkpoints }
   return {
     getSession: mock.getSession,
     subscribe: mock.subscribe,
-    listWorlds: async () => worlds ? worlds.map(item => ({ ...item })) : mock.listWorlds(),
+    // Lane A widens the mock's `listWorlds` to honour `?presence=1`; until then the extra argument is
+    // ignored and the presence fields are simply absent, which is exactly what the page must survive.
+    listWorlds: async options => worlds
+      ? worlds.map(item => ({ ...item }))
+      : (mock.listWorlds as (input?: { presence?: boolean }) => Promise<WorldsWorld[]>)(options),
     listClasses: async () => classes ? classes.map(item => ({ ...item })) : mock.listClasses(),
     listClassmates: classId => mock.listClassmates(classId),
     renameWorld: (id, title) => mock.renameWorld(id, title),
@@ -54,5 +58,18 @@ export function createFakeWorldsClient({ session, worlds, classes, checkpoints }
     copyWorld: id => mock.copyWorld(id),
     createSharedWorld: (classId, title, kind) => mock.createWorld({ title, document: createBrickStudioDocument([]), kind, classId }),
     signOut: () => mock.signOut(),
+  }
+}
+
+/**
+ * A hand-built world for the presence and invite-banner cases, where the test needs to pin
+ * `buildingNames` / `members` / `sharedAt` rather than take whatever the shared fixture holds.
+ * Everything is a plain `personal` world in Period 3 unless the override says otherwise.
+ */
+export function fixtureWorld(overrides: Partial<WorldsWorld> & Pick<WorldsWorld, 'id' | 'title'>): WorldsWorld {
+  return {
+    ownerId: MOCK_IDS.ava, classId: null, kind: 'personal', revision: 3, updatedAt: '2026-09-17T10:00:00.000Z',
+    visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: MOCK_IDS.classId,
+    sharedAt: null, ...overrides,
   }
 }

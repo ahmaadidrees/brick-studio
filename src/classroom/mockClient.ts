@@ -145,7 +145,15 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
     ...(world.kind === 'personal' && world.visibility === 'members' && (world.ownerId === user.id || user.role === 'teacher') ? { members: memberSummaries(world) } : {}),
     ...(user.role === 'teacher' ? { hiddenByTeacher: world.hiddenByTeacher } : {}), ...(full ? { document: structuredClone(world.document) } : {}),
   })
-  const listWorlds = (user: MockUser): ClassroomWorld[] => {
+  /** Fixture live rooms for `GET /worlds?presence=1`: Ava and Ben are building in Chloe's castle; every other room is empty. */
+  const liveRooms: Record<string, string[]> = { [MOCK_IDS.worlds.castle]: [MOCK_IDS.ava, MOCK_IDS.ben] }
+  const withPresence = (view: ClassroomWorld, user: MockUser): ClassroomWorld => {
+    if (view.visibility === 'private') return view
+    const present = liveRooms[view.id] ?? []
+    const buildingNames = present.filter(id => id !== user.id).map(id => userById(id)).filter((other): other is MockUser => !!other).map(other => mockDisplayName(other.rosterName)).sort((a, b) => a.localeCompare(b))
+    return { ...view, buildingNow: present.length, buildingNames }
+  }
+  const listWorlds = (user: MockUser, presence = false): ClassroomWorld[] => {
     const mine = db.worlds.filter(world => world.ownerId === user.id && world.kind === 'personal').map(world => worldView(world, user, true))
     const classes = db.classes.filter(cls => user.role === 'teacher' ? cls.teacherId === user.id : cls.id === user.classId && cls.collaborationOpen)
     const classIds = classes.map(cls => cls.id)
@@ -157,7 +165,8 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
       .filter(world => user.role === 'teacher' || world.visibility !== 'members' || world.members.includes(user.id))
       .map(world => worldView(world, user, world.classCanEdit))
     const byDate = (a: ClassroomWorld, b: ClassroomWorld) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)
-    return [...mine.sort(byDate), ...shared.sort(byDate), ...fromClassmates.sort(byDate)]
+    const listing = [...mine.sort(byDate), ...shared.sort(byDate), ...fromClassmates.sort(byDate)]
+    return presence ? listing.map(view => withPresence(view, user)) : listing
   }
   const cleanTitle = (value: unknown, fallback?: string) => {
     const title = typeof value === 'string' ? value.trim() : ''
@@ -197,7 +206,8 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
 
   /** The same routes as the Worker, so `request()` callers (existing panel code) work unchanged against the fixture. */
   const route = (method: string, path: string, body: unknown): unknown => {
-    const parts = path.replace(/^\//, '').split('?')[0].split('/')
+    const [pathname, search = ''] = path.replace(/^\//, '').split('?')
+    const parts = pathname.split('/'), query = new URLSearchParams(search)
     const input = isObject(body)
     if (parts[0] === 'auth' && method === 'POST') {
       if (parts[1] === 'class') { const cls = classByCode(String(input.classCode ?? '')); return { name: cls.name, canEnroll: cls.enrollmentOpen } }
@@ -282,7 +292,7 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
       }
     }
     if (parts[0] === 'worlds') {
-      if (parts.length === 1 && method === 'GET') return { worlds: listWorlds(user) }
+      if (parts.length === 1 && method === 'GET') return { worlds: listWorlds(user, query.get('presence') === '1') }
       if (parts.length === 1 && method === 'POST') {
         const kind = (input.kind ?? 'personal') as ClassroomWorld['kind']
         if (!['personal', 'class', 'group'].includes(kind)) fail(400, 'invalid_input', 'Unknown world kind.')

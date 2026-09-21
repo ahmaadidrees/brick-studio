@@ -7,6 +7,7 @@ import { ModeSwitch, type StudioMode } from './ModeSwitch'
 import { RenameWorldDialog } from './RenameWorldDialog'
 import type { ClassroomSessionState } from './useClassroomSession'
 import { WorldMenu } from './WorldMenu'
+import { describeLivePresence, type LivePresence } from './livePresence'
 import './shell.css'
 
 /*
@@ -50,6 +51,8 @@ export type HeaderLivePolicy = {
   peopleCount?: number
   /** Opens the live People/room panel. */
   onOpenPeople?: () => void
+  /** Classroom rooms: who from the invited roster is here and who is still expected. */
+  presence?: LivePresence
   /** Edits the room has not confirmed yet (surfaces through `saveStatus.detail`). */
   pendingOperations?: number
   /** Another tab or device took over this participant's connection. */
@@ -152,8 +155,10 @@ function PeopleEntry({ livePolicy, onStartLiveWorld }: PeopleEntryProps) {
   if (livePolicy) {
     const count = livePolicy.peopleCount
     const label = count === undefined ? 'People' : `People, ${count} ${livePolicy.connection === 'online' ? 'here' : 'last seen'}`
+    const summary = describeLivePresence(livePolicy.presence)
+    const title = summary ? `${label}. ${summary}` : label
     return (
-      <Button variant="quiet" className="app-header-tool app-header-people" icon={<Users size={17} />} aria-label={label} title={label} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
+      <Button variant="quiet" className="app-header-tool app-header-people" icon={<Users size={17} />} aria-label={title} title={title} onClick={livePolicy.onOpenPeople} disabled={!livePolicy.onOpenPeople}>
         People{count !== undefined && <strong className="app-header-people-count" aria-hidden="true">{count}</strong>}
       </Button>
     )

@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Users } from 'lucide-react'
 import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
-import { classmatesLabel, isInviteOnly, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
+import { buildingCount, classmatesLabel, isInviteOnly, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
  * Plate-pattern card art. There are no thumbnails, so the card shows the build
@@ -34,6 +34,37 @@ export function SharingChip({ world }: { world: WorldsWorld }) {
   if (!isShared(world)) return null
   return <span className="worlds-chip-tag worlds-chip-shared">
     <Users size={14} aria-hidden="true" /> Shared · {isInviteOnly(world) ? classmatesLabel(world.members?.length ?? 0) : sharedForBuilding(world) ? 'build together' : 'look only'}
+  </span>
+}
+
+/**
+ * The owner's own shared card, once there is anyone to name: "Ava P. is here" for everyone in the
+ * room right now, then "Ben K. invited" for the classmates who were asked but have not arrived.
+ * Two of each, then a "+N" chip. With nothing to name it falls back to the plain sharing chip, so a
+ * card renders the same whether or not presence came back (`buildingNames` is absent without it).
+ */
+export function PresenceChips({ world }: { world: WorldsWorld }) {
+  const here = world.buildingNames ?? []
+  const invited = (world.members ?? []).map(member => member.displayName).filter(name => !here.includes(name))
+  if (here.length === 0 && invited.length === 0) return <SharingChip world={world} />
+  return <>
+    {here.slice(0, 2).map(name => <span key={`here-${name}`} className="worlds-chip-tag worlds-chip-here">
+      <span className="worlds-live-dot" aria-hidden="true" /> {name} is here
+    </span>)}
+    {here.length > 2 && <span className="worlds-chip-tag worlds-chip-here">+{here.length - 2} more</span>}
+    {invited.slice(0, 2).map(name => <span key={`invited-${name}`} className="worlds-chip-tag worlds-chip-invitees">
+      <Users size={14} aria-hidden="true" /> {name} invited
+    </span>)}
+    {invited.length > 2 && <span className="worlds-chip-tag worlds-chip-invitees">+{invited.length - 2}</span>}
+  </>
+}
+
+/** "2 building now" on a classmate's or an invited world: somebody is in that room this second. */
+export function BuildingChip({ world }: { world: WorldsWorld }) {
+  const count = buildingCount(world)
+  if (count <= 0) return null
+  return <span className="worlds-chip-tag worlds-chip-building">
+    <span className="worlds-live-dot" aria-hidden="true" /> {count} building now
   </span>
 }
 

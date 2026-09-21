@@ -3,6 +3,7 @@ import { Button } from '../ui'
 import { AccountMenu, type AccountMenuContext } from './AccountMenu'
 import { currentPath, joinPath } from './navigation'
 import { useClassroomSession, type ClassroomSessionState } from './useClassroomSession'
+import { invitesWaitingLabel, useInviteCount } from './useInviteCount'
 
 export type AccountChipProps = {
   /** Override the live session (gallery, tests); otherwise `useClassroomSession()`. */
@@ -13,6 +14,8 @@ export type AccountChipProps = {
   /** Opens the account menu on mount (gallery). */
   menuDefaultOpen?: boolean
   className?: string
+  /** Override the fetched invite count (gallery, tests); otherwise `useInviteCount()` for signed-in students. */
+  inviteCount?: number
 }
 
 /** First letter of the display name for the avatar disc. */
@@ -26,11 +29,14 @@ export function avatarInitial(name: string | undefined): string {
  * `/join?mode=signin` (pages add `next` so sign-in returns here). Signed in:
  * avatar initial, first name + last initial and a context line (class name
  * for students, "Teacher" for teachers) opening `AccountMenu`. Under 700px
- * only the avatar shows; the name stays for screen readers.
+ * only the avatar shows; the name stays for screen readers. Students with
+ * classmate invites they have not looked at get a coral count on the avatar.
  */
-export function AccountChip({ session: override, context = 'page', onSaveToAccount, menuDefaultOpen, className }: AccountChipProps) {
+export function AccountChip({ session: override, context = 'page', onSaveToAccount, menuDefaultOpen, className, inviteCount: inviteOverride }: AccountChipProps) {
   const live = useClassroomSession()
   const session = override ?? live
+  const fetchedInvites = useInviteCount(session)
+  const inviteCount = inviteOverride ?? fetchedInvites
   const classes = ['shell-account-chip', className].filter(Boolean).join(' ')
 
   if (session.status === 'guest') {
@@ -49,16 +55,22 @@ export function AccountChip({ session: override, context = 'page', onSaveToAccou
 
   const name = session.displayName ?? session.user?.username ?? ''
   const contextLine = session.status === 'teacher' ? 'Teacher' : session.className
-  const accessibleName = contextLine && contextLine !== name ? `Account: ${name}, ${contextLine}` : `Account: ${name}`
+  const invitesLabel = invitesWaitingLabel(inviteCount)
+  const baseName = contextLine && contextLine !== name ? `Account: ${name}, ${contextLine}` : `Account: ${name}`
+  const accessibleName = invitesLabel ? `${baseName}, ${invitesLabel}` : baseName
   return (
     <AccountMenu
       session={session}
       context={context}
       onSaveToAccount={onSaveToAccount}
+      inviteCount={inviteCount}
       defaultOpen={menuDefaultOpen}
       trigger={({ ref, ...props }) => (
         <button ref={ref} type="button" className={`${classes} shell-account-trigger`} aria-label={accessibleName} title={accessibleName} {...props}>
-          <span className="shell-account-avatar" aria-hidden="true">{avatarInitial(name)}</span>
+          <span className="shell-account-avatar" aria-hidden="true">
+            {avatarInitial(name)}
+            {invitesLabel && <span className="shell-account-badge" aria-label={invitesLabel}>{inviteCount > 9 ? '9+' : inviteCount}</span>}
+          </span>
           <span className="shell-account-text" aria-hidden="true">
             <span className="shell-account-name">{name}</span>
             {contextLine && contextLine !== name && <span className="shell-account-context">{contextLine}</span>}

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClassroomClient } from './client'
-import type { ClassroomAuthResult } from './contracts'
+import type { ClassroomAuthResult, ClassroomWorld } from './contracts'
 const auth: ClassroomAuthResult = { user: { id: 'student1', username: 'builder', rosterName: 'Alex', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'access1', refreshToken: 'refresh1', expiresIn: 3600 } }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 beforeEach(() => sessionStorage.clear())
@@ -141,6 +141,20 @@ describe('mock client fixture (flows v2 pages build against this until the Worke
     await student.signOut(); expect(student.getSession()).toBeNull(); expect(changes).toHaveBeenCalledTimes(1)
     off()
     expect((await student.listStudents(MOCK_IDS.classId).catch(e => e)).code).toBe('sign_in_required')
+  })
+  it('reports fixture presence on shared worlds only when GET /worlds carries ?presence=1', async () => {
+    const client = createMockClient({ as: 'student' })
+    const plain = await client.listWorlds()
+    expect(plain.some(w => 'buildingNow' in w || 'buildingNames' in w)).toBe(false)
+    const { worlds } = await client.request<{ worlds: ClassroomWorld[] }>('/worlds?presence=1')
+    // Ava (the caller) and Ben are in Chloe's castle: counted, but only Ben is named.
+    expect(worlds.find(w => w.title === 'Crystal Castle')).toMatchObject({ buildingNow: 2, buildingNames: ['Ben K.'] })
+    expect(worlds.filter(w => w.visibility !== 'private' && w.title !== 'Crystal Castle').map(w => [w.buildingNow, w.buildingNames])).toEqual(Array(6).fill([0, []]))
+    expect(worlds.find(w => w.title === 'Treehouse Hideout')).not.toHaveProperty('buildingNow')
+    await client.signOut(); await client.login({ username: 'ben_k', password: MOCK_PASSWORD })
+    expect((await client.request<{ worlds: ClassroomWorld[] }>('/worlds?presence=1')).worlds.find(w => w.title === 'Crystal Castle')).toMatchObject({ buildingNow: 2, buildingNames: ['Ava R.'] })
+    await client.signOut(); await client.login({ username: 'chloe_m', password: MOCK_PASSWORD })
+    expect((await client.request<{ worlds: ClassroomWorld[] }>('/worlds?presence=1')).worlds.find(w => w.title === 'Crystal Castle')).toMatchObject({ buildingNow: 2, buildingNames: ['Ava R.', 'Ben K.'] })
   })
   it('lists own, class, group and classmates shared worlds for a student with the contract fields', async () => {
     const client = createMockClient({ as: 'student' })

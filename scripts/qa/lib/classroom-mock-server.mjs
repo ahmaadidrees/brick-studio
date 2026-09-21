@@ -93,8 +93,10 @@ export function createMockClassroom() {
     id: world.id, title: world.title, ownerId: world.ownerId, classId: world.classId, kind: world.kind, revision: world.revision, updatedAt: world.updatedAt,
     visibility: world.kind === 'personal' ? world.visibility : 'class', canEdit, classCanEdit: world.kind === 'personal' ? world.classCanEdit : true,
     ownerName: ownerName(world), ownerClassId: world.kind === 'personal' ? (userById(world.ownerId)?.classId ?? null) : world.classId,
-    sharedAt: world.kind === 'personal' && world.visibility === 'class' ? world.sharedAt : null,
+    sharedAt: world.kind === 'personal' && world.visibility !== 'private' ? world.sharedAt : null,
     ...(caller.role === 'teacher' ? { hiddenByTeacher: world.hiddenByTeacher } : {}),
+    ...(world.kind === 'personal' && world.visibility === 'members' && (caller.id === world.ownerId || caller.role === 'teacher')
+      ? { members: world.members.map((id) => { const u = userById(id); return { id, displayName: u ? displayName(u.rosterName) : 'Classmate' } }) } : {}),
     ...(full ? { document: structuredClone(world.document) } : {}),
   })
 
@@ -130,7 +132,8 @@ export function createMockClassroom() {
     if (world.kind === 'personal') {
       const owner = userById(world.ownerId)
       // A suspended owner's shared world is unreachable for classmates (candidate 4be3b03, cf6fad9); the teacher still sees it.
-      if (world.visibility !== 'class' || !owner?.classId || (user.role === 'student' && owner.suspended)) fail(404, 'not_found', 'World not found.')
+      const invited = world.visibility === 'class' || (world.visibility === 'members' && (user.role === 'teacher' || world.members.includes(user.id)))
+      if (!invited || !owner?.classId || (user.role === 'student' && owner.suspended)) fail(404, 'not_found', 'World not found.')
       const cls = classFor(user, owner.classId)
       if (user.role === 'student') {
         if (world.hiddenByTeacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.')
@@ -154,7 +157,7 @@ export function createMockClassroom() {
     const sharingClasses = classes.filter((c) => user.role === 'teacher' || c.studentsCanShare)
     const classmates = db.users.filter((o) => o.role === 'student' && o.id !== user.id && sharingClasses.some((c) => c.id === o.classId) && (user.role === 'teacher' || !o.suspended)).map((o) => o.id)
     const classmateWorlds = db.worlds
-      .filter((w) => w.kind === 'personal' && w.visibility === 'class' && classmates.includes(w.ownerId) && (user.role === 'teacher' || !w.hiddenByTeacher))
+      .filter((w) => w.kind === 'personal' && (w.visibility === 'class' || (w.visibility === 'members' && (user.role === 'teacher' || w.members.includes(user.id)))) && classmates.includes(w.ownerId) && (user.role === 'teacher' || !w.hiddenByTeacher))
       .map((w) => worldView(w, user, w.classCanEdit))
     return [...mine, ...shared, ...classmateWorlds]
   }
@@ -256,6 +259,13 @@ export function createMockClassroom() {
         db.classes.push(cls)
         return { status: 201, body: { class: classView(cls, true) } }
       }
+      if (parts[2] === 'classmates' && parts.length === 3 && method === 'GET') {
+        // Mirrors the Worker: the caller's own class (a teacher's class), active students only, id + display name.
+        const own = classFor(user, parts[1])
+        const classmates = db.users.filter((u) => u.role === 'student' && u.classId === own.id && u.id !== user.id && !u.suspended)
+          .map((u) => ({ id: u.id, displayName: displayName(u.rosterName) })).sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id))
+        return { status: 200, body: { classmates } }
+      }
       const cls = classFor(user, parts[1], true)
       if (parts.length === 2 && method === 'PATCH') {
         if (body.name !== undefined) cls.name = cleanText(body.name, 'Class name')
@@ -295,11 +305,17 @@ export function createMockClassroom() {
       if (parts[2] === 'sharing' && parts.length === 3 && method === 'PATCH') {
         if (user.role !== 'student') fail(403, 'student_required', 'Only students share their own worlds with the class.')
         if (!a.isOwner || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can share this world.')
-        if (body.visibility !== 'private' && body.visibility !== 'class') fail(400, 'invalid_input', 'visibility must be private or class.')
+        if (!['private', 'class', 'members'].includes(body.visibility)) fail(400, 'invalid_input', 'visibility must be private, class or members.')
         if (typeof body.canEdit !== 'boolean') fail(400, 'invalid_input', 'canEdit must be true or false.')
         const cls = classFor(user, user.classId)
         if (!cls.studentsCanShare) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.')
-        const sharing = body.visibility === 'class'
+        const sharing = body.visibility !== 'private'
+        if (body.visibility === 'members' && body.members !== undefined) {
+          if (!Array.isArray(body.members)) fail(400, 'invalid_input', 'members must be a list of classmate ids.')
+          const valid = db.users.filter((u) => u.role === 'student' && u.classId === user.classId && u.id !== user.id && !u.suspended).map((u) => u.id)
+          world.members = [...new Set(body.members.filter((id) => valid.includes(id)))]
+        }
+        if (body.visibility !== 'members') world.members = []
         world.visibility = body.visibility; world.classCanEdit = sharing && body.canEdit; world.sharedAt = sharing ? world.sharedAt ?? now() : null
         return { status: 200, body: { world: worldView(world, user, true) } }
       }

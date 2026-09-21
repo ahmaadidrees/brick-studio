@@ -6,12 +6,29 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
 import { useBrickStore } from './store'
 import type { BrickInstance } from './types'
 import { browserClassroomClient, ClassroomError, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
+import type { InviteSheetProps } from '../classroom/InviteSheet'
+import { goToLiveWorld, goToNewLiveRoom } from '../shell/navigation'
 
 /**
  * A signed-in builder's fresh build becomes an account world on its first brick, through the real
  * useClassroomWorld hook and cloud autosave; only the classroom HTTP calls are stubbed.
  */
-vi.mock('../shell/navigation', async (importOriginal) => ({ ...(await importOriginal<typeof import('../shell/navigation')>()), goToJoin: vi.fn() }))
+vi.mock('../shell/navigation', async (importOriginal) => ({ ...(await importOriginal<typeof import('../shell/navigation')>()), goToJoin: vi.fn(), goToLiveWorld: vi.fn(), goToNewLiveRoom: vi.fn() }))
+// Lane A owns the real sheet; the editor is tested against its props contract.
+vi.mock('../classroom/InviteSheet', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../classroom/InviteSheet')>()),
+  InviteSheet: (props: InviteSheetProps) => (
+    <div role="dialog" aria-modal="true" aria-label="Who do you want to build with?">
+      <p>{props.className}</p>
+      <p>{props.classmates === null ? 'Loading classmates' : props.classmatesError ?? (props.classmates.map(mate => mate.displayName).join(', ') || 'Nobody else yet')}</p>
+      <p>{props.world.visibility === 'members' ? `Shared with ${props.world.members?.map(member => member.displayName).join(', ')}` : props.world.visibility}</p>
+      <button type="button" disabled={props.busy} onClick={() => props.onInvite({ visibility: 'members', canEdit: true, members: ['u-ben'] })}>Invite Ben K. and build</button>
+      <button type="button" disabled={props.busy} onClick={() => props.onInvite({ visibility: 'class', canEdit: false })}>Invite the class to look</button>
+      {props.onStopSharing && <button type="button" onClick={props.onStopSharing}>Stop sharing</button>}
+      <button type="button" onClick={props.onClose}>Close</button>
+    </div>
+  ),
+}))
 vi.mock('./BrickStudioScene', () => ({ default: () => <div /> }))
 vi.mock('./PartThumbnail', () => ({ PartThumbnail: () => <span /> }))
 vi.mock('../classroom/ClassroomPanel', () => ({ ClassroomPanel: ({ intent }: { intent: string }) => <div role="dialog" aria-label={`Classroom ${intent}`} /> }))
@@ -25,14 +42,19 @@ function serverWorld(document: ClassroomWorld['document'], revision = 1): Classr
   return { id: 'world-new', title: 'Untitled build', kind: 'personal', ownerId: student.user.id, classId: null, visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: null, sharedAt: null, revision, updatedAt: '2026-09-21T09:00:00Z', document }
 }
 
-/** Stubs POST /worlds and PUT /worlds/:id; every call is recorded for assertions. */
+/** Stubs POST /worlds and PUT /worlds/:id (plus the classmates and sharing routes Build together uses); every call is recorded for assertions. */
 function stubClassroomServer(create: (body: { title: string; document: ClassroomWorld['document'] }) => Promise<ClassroomWorld> | ClassroomWorld) {
   const calls: { path: string; method: string; body: unknown }[] = []
   vi.spyOn(browserClassroomClient, 'request').mockImplementation(async (path: string, method = 'GET', body?: unknown) => {
-    // The account chip refreshes `/me` on mount; only world traffic matters here.
-    if (path !== '/me') calls.push({ path, method, body })
+    // The account chip refreshes `/me` and lists `/worlds` (invite badge) on mount; only world writes matter here.
+    if (path !== '/me' && !(path === '/worlds' && method === 'GET')) calls.push({ path, method, body })
     if (path === '/worlds' && method === 'POST') return { world: await create(body as { title: string; document: ClassroomWorld['document'] }) } as never
     if (path.startsWith('/worlds/') && method === 'PUT') { const { document, expectedRevision } = body as { document: ClassroomWorld['document']; expectedRevision: number }; return { world: serverWorld(document, expectedRevision + 1) } as never }
+    if (path === '/classes/c1/classmates') return { classmates: [{ id: 'u-ben', displayName: 'Ben K.' }] } as never
+    if (path === '/worlds/world-new/sharing' && method === 'PATCH') {
+      const sharing = body as { visibility: ClassroomWorld['visibility']; canEdit: boolean; members?: string[] }
+      return { world: { ...serverWorld(createBrickStudioDocument([brickA]), 2), visibility: sharing.visibility, classCanEdit: sharing.canEdit, sharedAt: sharing.visibility === 'private' ? null : '2026-09-21T10:00:00Z', members: sharing.visibility === 'members' ? [{ id: 'u-ben', displayName: 'Ben K.' }] : undefined } } as never
+    }
     throw new Error(`Unexpected classroom request ${method} ${path}`)
   })
   return calls
@@ -187,5 +209,83 @@ describe('/build?new=1', () => {
     render(<BrickStudioApp />)
     expect(confirm).toHaveBeenCalledTimes(1)
     expect(useBrickStore.getState().bricks).toEqual([])
+  })
+})
+
+describe('Build together from the editor', () => {
+  const classmate: ClassroomAuth = { ...student, classes: [{ id: 'c1', name: 'Room 12', loginCode: 'ABC', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, buildingNow: 0, teacherName: 'Ms. Idrees' }] }
+  const toast = () => useBrickStore.getState().toast
+  beforeEach(() => { vi.mocked(goToLiveWorld).mockClear(); vi.mocked(goToNewLiveRoom).mockClear() })
+
+  it('opens the invite sheet for a student on an account world and lands them in the live room after inviting', async () => {
+    browserClassroomClient.setSession(classmate)
+    const calls = stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Who do you want to build with?' })
+    expect(sheet).toHaveTextContent('Room 12')
+    await waitFor(() => expect(sheet).toHaveTextContent('Ben K.'))
+    expect(calls).toContainEqual({ path: '/classes/c1/classmates', method: 'GET', body: undefined })
+    expect(goToNewLiveRoom).not.toHaveBeenCalled()
+    // Shortcuts pause behind the sheet: Delete must not touch the build.
+    fireEvent.keyDown(document.body, { key: 'Delete' })
+    expect(useBrickStore.getState().bricks).toHaveLength(1)
+
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Invite Ben K. and build' }))
+    await waitFor(() => expect(goToLiveWorld).toHaveBeenCalledWith('world-new', { invited: true }))
+    expect(calls).toContainEqual({ path: '/worlds/world-new/sharing', method: 'PATCH', body: { visibility: 'members', canEdit: true, members: ['u-ben'] } })
+  })
+
+  it('creates the account world first when a student starts Build together on an unsaved fresh build', async () => {
+    browserClassroomClient.setSession(classmate)
+    const calls = stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    expect(pillText()).toContain('This browser only')
+    fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
+    await screen.findByRole('dialog', { name: 'Who do you want to build with?' })
+    expect(calls[0]).toMatchObject({ path: '/worlds', method: 'POST', body: { title: 'Untitled build' } })
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    expect(JSON.parse(sessionStorage.getItem(ACTIVE_KEY)!)).toEqual({ userId: student.user.id, worldId: 'world-new' })
+    expect(goToNewLiveRoom).not.toHaveBeenCalled()
+  })
+
+  it('look-only sharing stays in the editor with a toast, and reopening preloads the sharing', async () => {
+    browserClassroomClient.setSession(classmate)
+    stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Who do you want to build with?' })
+    expect(within(sheet).queryByRole('button', { name: 'Stop sharing' })).not.toBeInTheDocument()
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Invite the class to look' }))
+    await waitFor(() => expect(toast()).toBe('Shared with the class. They can look from their Worlds page.'))
+    expect(screen.queryByRole('dialog', { name: 'Who do you want to build with?' })).not.toBeInTheDocument()
+    expect(goToLiveWorld).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
+    const reopened = await screen.findByRole('dialog', { name: 'Who do you want to build with?' })
+    expect(reopened).toHaveTextContent('class')
+    fireEvent.click(within(reopened).getByRole('button', { name: 'Stop sharing' }))
+    await waitFor(() => expect(toast()).toBe('Stopped sharing. Only you can open this world now.'))
+  })
+
+  it('guests and teachers keep the seeded guest room', async () => {
+    stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
+    await waitFor(() => expect(goToNewLiveRoom).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('dialog', { name: 'Who do you want to build with?' })).not.toBeInTheDocument()
+    cleanup()
+    vi.mocked(goToNewLiveRoom).mockClear()
+    browserClassroomClient.setSession({ ...classmate, user: { ...classmate.user, role: 'teacher' } })
+    render(<BrickStudioApp />)
+    fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
+    await waitFor(() => expect(goToNewLiveRoom).toHaveBeenCalledTimes(1))
+    expect(screen.queryByRole('dialog', { name: 'Who do you want to build with?' })).not.toBeInTheDocument()
   })
 })

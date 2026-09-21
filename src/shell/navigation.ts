@@ -78,6 +78,26 @@ export function goToProjector(navigate: Navigate = browserNavigate) {
 }
 
 /**
+ * The live room of an account world: `/live/<id without dashes>`. `invited` marks the owner's
+ * arrival right after inviting classmates (the room toasts once and strips the flag).
+ */
+export function liveWorldPath(worldId: string, { invited = false }: { invited?: boolean } = {}): string {
+  const path = `/live/${worldId.replaceAll('-', '')}`
+  return invited ? `${path}?invited=1` : path
+}
+
+export function goToLiveWorld(worldId: string, options: { invited?: boolean } = {}, navigate: Navigate = browserNavigate) {
+  navigate(liveWorldPath(worldId, options))
+}
+
+/** The seeded guest room ("Build together" for guests and teachers). */
+export const NEW_LIVE_ROOM_PATH = '/live/new'
+
+export function goToNewLiveRoom(navigate: Navigate = browserNavigate) {
+  navigate(NEW_LIVE_ROOM_PATH)
+}
+
+/**
  * Where a `/build?classroom=<intent>` entry lands in flows v2. `save` stays in
  * the editor (the in-editor save sheet) and resolves to null; everything else
  * is a page. `join` and `signin` keep the class code when the entry carried

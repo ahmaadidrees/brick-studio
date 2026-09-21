@@ -99,6 +99,26 @@ async function liveParticipants(env: Env, worldIds: string[]): Promise<string[] 
     return null;
   }
 }
+/**
+ * The same fan-out keyed by world for `GET /worlds?presence=1`: who is in each room. One internal fetch per id,
+ * so ClassroomService.presenceByWorld bounds the batch and the per-caller rate; this guard only refuses one
+ * oversized batch. Null (unknown) for the whole batch when any room cannot answer, never a guess.
+ */
+async function liveParticipantsByWorld(env: Env, worldIds: string[]): Promise<Map<string, string[]> | null> {
+  if (worldIds.length > PRESENCE_ROOM_LIMIT) return null;
+  try {
+    const rooms = await Promise.all(worldIds.map(async (id): Promise<[string, string[]]> => {
+      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(id.replaceAll("-", "")));
+      const r = await stub.fetch("https://world.internal/internal/classroom-presence");
+      if (!r.ok) throw new Error("presence_unavailable");
+      const { userIds } = await r.json<{ userIds: unknown }>();
+      return [id, Array.isArray(userIds) ? userIds.filter((value): value is string => typeof value === "string") : []];
+    }));
+    return new Map(rooms);
+  } catch {
+    return null;
+  }
+}
 async function ensureRoom(env: Env, worldId: string) {
   const world = await loadClassroomWorld(env, worldId),
     roomId = worldId.replaceAll("-", "");
@@ -329,6 +349,7 @@ export async function handleReleaseRequest(
     const response = await handleClassroomRequest(request, env, {
       onAccessChanged: (event) => invalidate(env, event),
       liveParticipants: (worldIds) => liveParticipants(env, worldIds),
+      liveParticipantsByWorld: (worldIds) => liveParticipantsByWorld(env, worldIds),
     });
     return outgoing(response ?? json({ code: "not_found" }, 404), origin);
   } catch (error) {

@@ -6,10 +6,13 @@ import BrickStudioApp from './BrickStudioApp'
 import type { RaceAvatarPose } from './BrickStudioScene'
 import type { RemoteAvatarSource } from './remoteAvatarSource'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
-import { LIVE_MAX_PLAYERS, type LiveWorldMode } from './liveProtocol'
+import { LIVE_MAX_PLAYERS, type LivePlayer, type LiveWorldMode } from './liveProtocol'
 import { createLiveRoomClient, getLiveWorld, hasSavedLiveRoomIdentity } from './liveRoomClient'
 import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
+import { InviteSheet, inviteAudienceLabel } from '../classroom/InviteSheet'
+import type { ClassroomClassmate, ClassroomWorldSharing } from '../classroom/contracts'
+import { formatNameList, type LivePresence } from '../shell/livePresence'
 import { createLiveRoomConnector, defaultConnectLiveRoom } from './live/liveRoomConnector'
 import type { PlayerProfile } from './types'
 import { LivePeoplePanelContext, LiveWorldHud, type LivePeoplePanelRequest } from './live/LiveWorldHud'
@@ -43,6 +46,8 @@ export type LiveWorldSceneView = {
   setProfile: (profile: PlayerProfile) => void
   /** The HUD; whatever renders the scene must layer this on top. */
   overlay: ReactNode
+  /** Classroom rooms: who from the invited roster is here and who is still expected (header People chip). */
+  presence?: LivePresence
 }
 
 export type LiveWorldPageProps = {
@@ -115,7 +120,8 @@ function DefaultLiveWorldScene({
     pendingOperations: snapshot.pendingOperations ?? 0,
     sessionReplaced: snapshot.connection === 'offline' && snapshot.notice?.code === 'session_replaced',
     onOpenPeople: () => setPeoplePanelRequest((current) => ({ seq: current.seq + 1 })),
-  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, snapshot.pendingOperations, snapshot.notice?.code, view.roomTitle])
+    presence: view.presence,
+  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, snapshot.pendingOperations, snapshot.notice?.code, view.roomTitle, view.presence])
   const contentPolicy = useMemo(() => ({
     plateSize: view.document.plateSize,
     environmentId: view.document.environmentId,
@@ -184,6 +190,47 @@ function DefaultLiveWorldScene({
     </LivePeoplePanelContext.Provider>
   )
 }
+
+/**
+ * Classroom presence for a shared personal world: invited classmates (and anyone else) in the room, and invited
+ * classmates who have not arrived. Player ids are account ids in classroom rooms, so the roster matches by id and
+ * the public display name wins over the room profile's username. Undefined while the world is unknown or private.
+ */
+export function classroomPresence(world: Pick<ClassroomWorld, 'visibility' | 'members'> | null | undefined, players: LivePlayer[], selfId: string): LivePresence | undefined {
+  if (!world || world.visibility === 'private') return undefined
+  const members = world.members ?? []
+  const building = players.filter(player => player.playerId !== selfId)
+    .map(player => members.find(member => member.id === player.playerId)?.displayName || player.profile.displayName)
+    .filter(Boolean)
+  const waiting = members.filter(member => member.id !== selfId && !players.some(player => player.playerId === member.id)).map(member => member.displayName)
+  return { building, waiting }
+}
+
+/** "Invites sent. Ben K. and Cy D. will find “Castle” on their Worlds page." (audience from the world's members when known). */
+export function invitesSentToast(world: Pick<ClassroomWorld, 'title' | 'visibility' | 'members'> | null | undefined, fallbackTitle: string): string {
+  const title = world?.title || fallbackTitle
+  const audience = !world ? 'They' : world.visibility === 'class' ? 'The class' : formatNameList((world.members ?? []).map(member => member.displayName)) || 'They'
+  return `Invites sent. ${audience} will find “${title}” on their Worlds page.`
+}
+
+/** "Shared with Ben K. They can look from their Worlds page." (display names end in a period already). */
+export function sharedLookOnlyToast(sharing: ClassroomWorldSharing, classmates: ClassroomClassmate[]): string {
+  const audience = `Shared with ${inviteAudienceLabel(sharing, classmates)}`
+  return `${audience.endsWith('.') ? audience : `${audience}.`} They can look from their Worlds page.`
+}
+
+/** Reads and strips `?invited=1` (the owner arriving right after inviting) so a refresh does not repeat the toast. */
+function consumeInvitedArrival(): boolean {
+  try {
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('invited') !== '1') return false
+    url.searchParams.delete('invited')
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    return true
+  } catch { return false }
+}
+
+type LiveInviteSheetState = { classmates: ClassroomClassmate[] | null; classmatesError?: string; busy: boolean }
 
 export function classroomWorldIdFromPath(pathname: string): string | null {
   const id = /^\/live\/([a-f0-9]{32})\/?$/i.exec(pathname)?.[1];
@@ -284,6 +331,43 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
     return () => { active = false; };
   }, [auth.user.id, client, roomId, props.fetchWorldSummary, retry]);
   const session = useLiveRoomSession({ connectRoom, roomId: ready ? roomId : null, profile: ready ? profile : null });
+  // The account world behind this room: sharing, members (owner only) and title for invites and presence copy.
+  // undefined = not read yet, null = could not be read (the room works without it).
+  const [world, setWorld] = useState<ClassroomWorld | null | undefined>(undefined);
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    client.request<{ world: ClassroomWorld }>(`/worlds/${worldId}`).then(result => { if (active) setWorld(result.world); }, () => { if (active) setWorld(null); });
+    return () => { active = false; };
+  }, [ready, client, worldId, retry]);
+  const [invitedArrival] = useState(consumeInvitedArrival);
+  const [invitedToastShown, setInvitedToastShown] = useState(false);
+  useEffect(() => {
+    if (!invitedArrival || invitedToastShown || world === undefined) return;
+    setInvitedToastShown(true);
+    useBrickStore.setState({ toast: invitesSentToast(world, title) });
+  }, [invitedArrival, invitedToastShown, world, title]);
+  const classId = auth.classes[0]?.id;
+  const [inviteSheet, setInviteSheet] = useState<LiveInviteSheetState | null>(null);
+  const openInviteSheet = () => {
+    if (!classId) return;
+    setInviteSheet({ classmates: null, busy: false });
+    client.request<{ classmates: ClassroomClassmate[] }>(`/classes/${classId}/classmates`)
+      .then(result => setInviteSheet(sheet => sheet ? { ...sheet, classmates: result.classmates } : sheet))
+      .catch(reason => setInviteSheet(sheet => sheet ? { ...sheet, classmates: [], classmatesError: friendlyReason(reason) } : sheet));
+  };
+  const patchSharing = async (sharing: ClassroomWorldSharing, describe: (world: ClassroomWorld) => string) => {
+    setInviteSheet(sheet => sheet ? { ...sheet, busy: true } : sheet);
+    try {
+      const result = await client.request<{ world: ClassroomWorld }>(`/worlds/${worldId}/sharing`, 'PATCH', sharing);
+      setWorld(result.world);
+      useBrickStore.setState({ toast: describe(result.world) });
+      setInviteSheet(null);
+    } catch (reason) {
+      useBrickStore.setState({ toast: `Could not update sharing. ${friendlyReason(reason)}` });
+      setInviteSheet(sheet => sheet ? { ...sheet, busy: false } : sheet);
+    }
+  };
   if (error && canRecover) return <main className="live-world-page"><section className="live-gate-card live-blocked-card">
     <h1>Bring this older world into My Worlds</h1>
     <p>Your owner link can recover this build into your account if the older room is still available.</p>
@@ -314,12 +398,27 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
     session.actions.setProfile(safe);
   };
   const actions = { ...session.actions, setProfile };
-  const overlay = <LiveWorldHud snapshot={snapshot} roomTitle={title} roomKind="classroom"
-    shareLink={liveGuestLink(window.location.origin, roomId)} copyText={props.copyText ?? defaultCopyText}
-    editingIntegrated actions={actions} onLeave={() => window.location.assign('/build')}
-    onExportWorld={() => exportLiveWorldCopy(snapshot.document!)}
-    onExportRecovery={snapshot.recoveryDocument ? () => exportLiveWorldCopy(snapshot.recoveryDocument!, true) : undefined} />;
-  const view: LiveWorldSceneView = { roomTitle: title, document: snapshot.document, mode: snapshot.mode, revision: snapshot.revision, selfProfile: profile, setProfile, overlay };
+  const presence = classroomPresence(world, snapshot.players, auth.user.id);
+  const canInvite = snapshot.isOwner && world?.kind === 'personal' && Boolean(classId);
+  const overlay = <>
+    <LiveWorldHud snapshot={snapshot} roomTitle={title} roomKind="classroom"
+      shareLink={liveGuestLink(window.location.origin, roomId)} copyText={props.copyText ?? defaultCopyText}
+      editingIntegrated actions={actions} onLeave={() => window.location.assign('/build')}
+      onExportWorld={() => exportLiveWorldCopy(snapshot.document!)}
+      onExportRecovery={snapshot.recoveryDocument ? () => exportLiveWorldCopy(snapshot.recoveryDocument!, true) : undefined}
+      onInviteMore={canInvite ? openInviteSheet : undefined}
+      presence={presence} />
+    {inviteSheet && world && <InviteSheet
+      world={world}
+      className={auth.classes[0]?.name ?? 'your class'}
+      classmates={inviteSheet.classmates}
+      classmatesError={inviteSheet.classmatesError}
+      busy={inviteSheet.busy}
+      onInvite={sharing => { void patchSharing(sharing, updated => sharing.canEdit ? invitesSentToast(updated, title) : sharedLookOnlyToast(sharing, inviteSheet.classmates ?? [])); }}
+      onStopSharing={world.visibility !== 'private' ? () => { void patchSharing({ visibility: 'private', canEdit: false }, () => 'Stopped sharing. Only you can open this world now.'); } : undefined}
+      onClose={() => { if (!inviteSheet.busy) setInviteSheet(null); }} />}
+  </>;
+  const view: LiveWorldSceneView = { roomTitle: title, document: snapshot.document, mode: snapshot.mode, revision: snapshot.revision, selfProfile: profile, setProfile, overlay, presence };
   return props.renderWorld ? <>{props.renderWorld(view)}</> : <DefaultLiveWorldScene view={view} snapshot={snapshot} actions={actions} remoteAvatarSource={session.remoteAvatarSource} />;
 }
 

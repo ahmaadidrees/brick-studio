@@ -1,0 +1,90 @@
+/* Invite sheet ("Who do you want to build with?") — shared by /worlds, the editor strip and the live room.
+   Dialog variant of the Sheet primitive; the body scrolls, the roster scrolls again inside it past ~8 names so
+   the whole thing fits a Chromebook (1366×768) and an iPad in portrait without the footer leaving the screen. */
+
+.invite-sheet .ui-sheet { --sheet-width: 480px; }
+
+.invite-sheet-class { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
+.invite-sheet-class-name { font-weight: 800; font-size: var(--text-md); color: var(--text); }
+/* The chip keeps the 44px target on touch screens while reading as a chip beside the class label. */
+.invite-sheet-everyone { min-height: 44px; border-radius: var(--radius-pill); font-weight: 700; }
+
+.invite-sheet-note { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) 0; color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; }
+
+/* Two columns of pill tiles; four rows show before the roster scrolls inside the sheet. */
+.invite-sheet-roster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  max-height: calc(4 * 48px + 3 * var(--space-2));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px;
+  margin: 0 -2px;
+  -webkit-overflow-scrolling: touch;
+}
+.invite-sheet-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  min-width: 0;
+  padding: 0 var(--space-3) 0 var(--space-1);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .12s, background .12s, color .12s;
+}
+.invite-sheet-tile:hover:not(:disabled) { border-color: var(--primary); }
+.invite-sheet-tile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.invite-sheet-tile:disabled { opacity: .6; cursor: default; }
+.invite-sheet-tile-selected { border-color: var(--primary-strong); background: var(--primary-soft); color: var(--primary-strong); box-shadow: inset 0 0 0 1px var(--primary-strong); }
+.invite-sheet-tile-disc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--text-md);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.invite-sheet-tile-selected .invite-sheet-tile-disc { background: var(--primary-strong); color: var(--primary-contrast); }
+.invite-sheet-tile-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Look-only switch row. */
+.invite-sheet-look { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2); }
+.invite-sheet-look-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.invite-sheet-look-text small { color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; line-height: 1.35; }
+.invite-sheet-switch { display: inline-flex; align-items: center; gap: var(--space-2); flex: 0 0 auto; min-height: 44px; padding: 0 var(--space-2); border: 0; border-radius: var(--radius-pill); background: transparent; color: var(--text); font: inherit; font-weight: 800; cursor: pointer; }
+.invite-sheet-switch:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.invite-sheet-switch:disabled { opacity: .6; cursor: default; }
+.invite-sheet-switch-track { position: relative; display: inline-block; width: 44px; height: 26px; border-radius: 13px; background: var(--text-muted); transition: background .15s; }
+.invite-sheet-switch-knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform .15s; }
+.invite-sheet-switch[aria-checked="true"] .invite-sheet-switch-track { background: var(--primary-strong); }
+.invite-sheet-switch[aria-checked="true"] .invite-sheet-switch-knob { transform: translateX(18px); }
+.invite-sheet-switch-state { min-width: 2ch; font-size: var(--text-sm); }
+
+/* Footer: the teacher line above the action row; Stop sharing sits at the far left. */
+.invite-sheet .ui-sheet-footer { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+.invite-sheet-teacher { margin: 0; color: var(--text-muted); font-size: var(--text-sm); font-weight: 600; }
+.invite-sheet-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+.invite-sheet-stop { margin-right: auto; }
+.invite-sheet-submit { min-width: 0; max-width: 100%; }
+.invite-sheet-submit .ui-button-label { overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 480px) {
+  .invite-sheet-actions .ui-button-primary { flex: 1 1 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .invite-sheet-tile, .invite-sheet-switch-track, .invite-sheet-switch-knob { transition: none; }
+}

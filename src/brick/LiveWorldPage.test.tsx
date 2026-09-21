@@ -1,13 +1,27 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import LiveWorldPage, { classroomWorldIdFromPath, legacyOwnerToken } from './LiveWorldPage'
-import { ClassroomClient, type ClassroomAuth } from '../classroom/client'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import LiveWorldPage, { classroomPresence, classroomWorldIdFromPath, invitesSentToast, legacyOwnerToken, sharedLookOnlyToast } from './LiveWorldPage'
+import { ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
+import type { InviteSheetProps } from '../classroom/InviteSheet'
+import { useBrickStore } from './store'
 import { createBrickStudioDocument } from './brickDocument'
 import { saveLiveWorldSeed, LIVE_WORLD_SEED_KEY } from './live/liveWorldSeed'
 import { saveLocalBrickStudioProject, loadLocalBrickStudioProject } from './documentPersistence'
 import * as persistence from './documentPersistence'
 import { createInitialLiveRoomSnapshot, type ConnectLiveRoom } from './live/liveRoomModel'
 vi.mock('./BrickStudioApp', () => ({ default: () => <div>Builder scene</div> }))
+// Lane A owns the real sheet; the room is tested against its props contract.
+vi.mock('../classroom/InviteSheet', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../classroom/InviteSheet')>()),
+  InviteSheet: (props: InviteSheetProps) => (
+    <div role="dialog" aria-modal="true" aria-label="Who do you want to build with?">
+      <p>{props.className}</p>
+      <p>{props.classmates === null ? 'Loading classmates' : props.classmates.map(mate => mate.displayName).join(', ')}</p>
+      <button type="button" disabled={props.busy} onClick={() => props.onInvite({ visibility: 'members', canEdit: true, members: ['u-ben', 'u-cy'] })}>Invite Ben K. and Cy D. and build</button>
+      <button type="button" onClick={props.onClose}>Close</button>
+    </div>
+  ),
+}))
 const id = '00000000-0000-4000-8000-000000000001'
 const roomId = id.replaceAll('-', '')
 const auth: ClassroomAuth = { user: { id: '00000000-0000-4000-8000-000000000002', username: 'ActualName', rosterName: 'Alex', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'token', refreshToken: 'refresh', expiresIn: 3600 } }
@@ -159,3 +173,103 @@ it('allows explicit classroom rejoin when the first connection was replaced befo
   fireEvent.click(screen.getByRole('button', { name: 'Rejoin here' }));
   expect(reconnect).toHaveBeenCalledOnce();
 });
+
+describe('build together in a classroom room', () => {
+  const owner: ClassroomAuth = { ...auth, classes: [{ id: 'c1', name: 'Room 12', loginCode: 'ABC', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: true, studentsCanShare: true, buildingNow: 0, teacherName: 'Ms. Idrees' }] }
+  const ben = { id: 'u-ben', displayName: 'Ben K.' }
+  const cy = { id: 'u-cy', displayName: 'Cy D.' }
+  const castle: ClassroomWorld = { id, title: 'Castle', ownerId: owner.user.id, classId: null, kind: 'personal', revision: 3, updatedAt: '2026-09-21T09:00:00Z', visibility: 'members', canEdit: true, classCanEdit: true, ownerName: 'Alex', ownerClassId: 'c1', sharedAt: '2026-09-21T09:00:00Z', members: [ben] }
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
+  function ownerClient(world: ClassroomWorld | null = castle) {
+    const calls: { path: string; method: string; body: unknown }[] = []
+    const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      const path = url.slice(url.indexOf('/classroom') + '/classroom'.length)
+      const method = init?.method ?? 'GET'
+      calls.push({ path, method, body: init?.body ? JSON.parse(init.body as string) : undefined })
+      if (path === '/me') return json({ user: owner.user, classes: owner.classes })
+      if (path === `/worlds/${id}/sharing` && method === 'PATCH') {
+        const sharing = JSON.parse(init!.body as string) as { visibility: ClassroomWorld['visibility']; canEdit: boolean }
+        return json({ world: { ...castle, visibility: sharing.visibility, classCanEdit: sharing.canEdit, members: [ben, cy] } })
+      }
+      if (path === `/worlds/${id}`) return world ? json({ world }) : json({ error: 'Not found', code: 'not_found' }, 404)
+      if (path === '/classes/c1/classmates') return json({ classmates: [ben, cy] })
+      return json({ error: `Unexpected ${method} ${path}`, code: 'test' }, 500)
+    })
+    const c = new ClassroomClient('', fetcher as unknown as typeof fetch); c.setSession(owner)
+    return { c, calls }
+  }
+  function ownerConnector(players: { playerId: string; isOwner: boolean; profile: { displayName: string } }[]) {
+    const snapshot = { ...createInitialLiveRoomSnapshot(roomId, true), connection: 'online' as const, syncing: false, selfPlayerId: owner.user.id, document: createBrickStudioDocument([]), players }
+    return vi.fn(() => ({ getSnapshot: () => snapshot, subscribe: () => () => {}, disconnect: vi.fn(), actions: { setProfile: vi.fn(), setMode: vi.fn(), setLocked: vi.fn(), sendPose: vi.fn(), requestResync: vi.fn() } })) as unknown as ConnectLiveRoom
+  }
+  const summary = () => vi.fn().mockRejectedValueOnce(Object.assign(new Error('Sign in required'), { status: 401 })).mockResolvedValue({ roomId, mode: 'build', title: 'Castle', locked: false, playerCount: 1 })
+  beforeEach(() => { useBrickStore.setState({ toast: null }); window.history.replaceState(null, '', '/') })
+
+  it('toasts the invites on ?invited=1 arrival, names the audience from the world, and strips the flag', async () => {
+    window.history.replaceState(null, '', `/live/${roomId}?invited=1`)
+    const { c } = ownerClient()
+    render(<LiveWorldPage classroomClient={c} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} connectRoom={ownerConnector([{ playerId: owner.user.id, isOwner: true, profile: { displayName: 'ActualName' } }])} fetchWorldSummary={summary()} renderWorld={view => <>{view.overlay}</>} />)
+    await waitFor(() => expect(useBrickStore.getState().toast).toBe('Invites sent. Ben K. will find “Castle” on their Worlds page.'))
+    expect(window.location.search).toBe('')
+    expect(window.location.pathname).toBe(`/live/${roomId}`)
+  })
+
+  it('falls back to a generic line when the world cannot be read, and never toasts without the flag', async () => {
+    window.history.replaceState(null, '', `/live/${roomId}?invited=1`)
+    const { c } = ownerClient(null)
+    render(<LiveWorldPage classroomClient={c} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} connectRoom={ownerConnector([])} fetchWorldSummary={summary()} renderWorld={view => <>{view.overlay}</>} />)
+    await waitFor(() => expect(useBrickStore.getState().toast).toBe('Invites sent. They will find “Castle” on their Worlds page.'))
+    cleanup()
+    useBrickStore.setState({ toast: null })
+    const { c: plain } = ownerClient()
+    render(<LiveWorldPage classroomClient={plain} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} connectRoom={ownerConnector([])} fetchWorldSummary={summary()} renderWorld={view => <>{view.overlay}</>} />)
+    await screen.findByRole('button', { name: /^People, 0 here/ })
+    await act(async () => { await Promise.resolve() })
+    expect(useBrickStore.getState().toast).toBeNull()
+  })
+
+  it('lets the owner of a personal world invite more classmates from the People panel without leaving the room', async () => {
+    const { c, calls } = ownerClient()
+    render(<LiveWorldPage classroomClient={c} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} connectRoom={ownerConnector([{ playerId: owner.user.id, isOwner: true, profile: { displayName: 'ActualName' } }, { playerId: 'u-ben', isOwner: false, profile: { displayName: 'ben.k' } }])} fetchWorldSummary={summary()} renderWorld={view => <>{view.overlay}<span data-testid="presence">{JSON.stringify(view.presence)}</span></>} />)
+    // Presence copy uses the roster's display names and reaches the header's People chip.
+    const people = await screen.findByRole('button', { name: 'People, 2 here. Building with Ben K.' })
+    await waitFor(() => expect(screen.getByTestId('presence')).toHaveTextContent('{"building":["Ben K."],"waiting":[]}'))
+    fireEvent.click(people)
+    const panel = screen.getByRole('dialog', { name: 'Castle' })
+    expect(panel).toHaveTextContent('Building with Ben K.')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Invite more' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Who do you want to build with?' })
+    expect(sheet).toHaveTextContent('Room 12')
+    await waitFor(() => expect(sheet).toHaveTextContent('Ben K., Cy D.'))
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Invite Ben K. and Cy D. and build' }))
+    await waitFor(() => expect(useBrickStore.getState().toast).toBe('Invites sent. Ben K. and Cy D. will find “Castle” on their Worlds page.'))
+    expect(calls).toContainEqual({ path: `/worlds/${id}/sharing`, method: 'PATCH', body: { visibility: 'members', canEdit: true, members: ['u-ben', 'u-cy'] } })
+    expect(screen.queryByRole('dialog', { name: 'Who do you want to build with?' })).not.toBeInTheDocument()
+    // The refreshed roster now waits for Cy.
+    await waitFor(() => expect(screen.getByTestId('presence')).toHaveTextContent('{"building":["Ben K."],"waiting":["Cy D."]}'))
+    expect(window.location.pathname).toBe('/')
+  })
+
+  it('hides Invite more from guests of the room', async () => {
+    const { c } = ownerClient({ ...castle, ownerId: 'someone-else' })
+    const snapshot = { ...createInitialLiveRoomSnapshot(roomId, false), connection: 'online' as const, syncing: false, selfPlayerId: owner.user.id, document: createBrickStudioDocument([]), players: [{ playerId: owner.user.id, isOwner: false, profile: { displayName: 'ActualName' } }] }
+    const connectRoom = vi.fn(() => ({ getSnapshot: () => snapshot, subscribe: () => () => {}, disconnect: vi.fn(), actions: { setProfile: vi.fn(), setMode: vi.fn(), setLocked: vi.fn(), sendPose: vi.fn(), requestResync: vi.fn() } })) as unknown as ConnectLiveRoom
+    render(<LiveWorldPage classroomClient={c} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} connectRoom={connectRoom} fetchWorldSummary={summary()} renderWorld={view => <>{view.overlay}</>} />)
+    fireEvent.click(await screen.findByRole('button', { name: /^People, 1 here/ }))
+    await act(async () => { await Promise.resolve() })
+    expect(within(screen.getByRole('dialog', { name: 'Castle' })).queryByRole('button', { name: 'Invite more' })).not.toBeInTheDocument()
+  })
+
+  it('derives presence and invite copy from the world roster', () => {
+    const self = owner.user.id
+    const inRoom = (playerId: string, displayName: string) => ({ playerId, isOwner: playerId === self, profile: { displayName } })
+    expect(classroomPresence(undefined, [inRoom(self, 'me')], self)).toBeUndefined()
+    expect(classroomPresence({ visibility: 'private' }, [inRoom(self, 'me')], self)).toBeUndefined()
+    expect(classroomPresence({ visibility: 'members', members: [ben, cy] }, [inRoom(self, 'me'), inRoom('u-ben', 'ben.k'), inRoom('guest', 'Dana')], self)).toEqual({ building: ['Ben K.', 'Dana'], waiting: ['Cy D.'] })
+    expect(classroomPresence({ visibility: 'class' }, [inRoom(self, 'me'), inRoom('u-ben', 'ben.k')], self)).toEqual({ building: ['ben.k'], waiting: [] })
+    expect(invitesSentToast({ title: 'Castle', visibility: 'class' }, 'Room')).toBe('Invites sent. The class will find “Castle” on their Worlds page.')
+    expect(invitesSentToast({ title: '', visibility: 'members', members: [ben, cy, { id: 'u-d', displayName: 'Dee F.' }] }, 'Fallback')).toBe('Invites sent. Ben K., Cy D. and Dee F. will find “Fallback” on their Worlds page.')
+    expect(sharedLookOnlyToast({ visibility: 'members', canEdit: false, members: ['u-ben'] }, [ben])).toBe('Shared with Ben K. They can look from their Worlds page.')
+    expect(sharedLookOnlyToast({ visibility: 'class', canEdit: false }, [])).toBe('Shared with the class. They can look from their Worlds page.')
+  })
+})
