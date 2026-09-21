@@ -9,9 +9,11 @@ export { WorldMenu, type WorldMenuProps } from './WorldMenu'
 export { ModeSwitch, DEFAULT_EXPLORE_REASON, DEFAULT_LOCKED_REASON, type ModeSwitchProps, type StudioMode } from './ModeSwitch'
 export { RenameWorldDialog, WORLD_TITLE_MAX_LENGTH, type RenameWorldDialogProps } from './RenameWorldDialog'
 export { useClassroomSession, displayNameFor, resetClassroomSessionCache, type ClassroomSessionState, type ClassroomSessionStatus, type ClassroomSessionClient } from './useClassroomSession'
+export { formatNameList, presenceLines, describeLivePresence, type LivePresence } from './livePresence'
+export { useInviteCount, invitesWaitingLabel, resetInviteCountCache, INVITE_COUNT_TTL_MS, type InviteCountClient } from './useInviteCount'
 export {
   JOIN_PATH, WORLDS_PATH, CLASS_PATH, PROJECTOR_PATH, NEW_BUILD_HREF,
-  joinPath, safeNextPath, currentPath, goToJoin, goToWorlds, goToClass, goToProjector,
+  joinPath, safeNextPath, currentPath, goToJoin, goToWorlds, goToClass, goToProjector, liveWorldPath, goToLiveWorld, NEW_LIVE_ROOM_PATH, goToNewLiveRoom,
   classroomIntentPath, classroomIntentRedirect,
   type JoinMode, type JoinOptions, type Navigate,
 } from './navigation'

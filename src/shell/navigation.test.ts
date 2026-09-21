@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { classroomIntentPath, classroomIntentRedirect, goToClass, goToJoin, goToProjector, goToWorlds, joinPath, safeNextPath } from './navigation'
+import { classroomIntentPath, classroomIntentRedirect, goToClass, goToJoin, goToLiveWorld, goToNewLiveRoom, goToProjector, goToWorlds, joinPath, liveWorldPath, safeNextPath } from './navigation'
 
 describe('joinPath', () => {
   it('builds the join URL from mode, class code and next', () => {
@@ -29,6 +29,17 @@ describe('goTo helpers', () => {
     goToClass(navigate)
     goToProjector(navigate)
     expect(navigate.mock.calls.map(([url]) => url)).toEqual(['/join?mode=signin&next=%2Fworlds', '/worlds', '/class', '/class/projector'])
+  })
+
+  it('opens the live room of an account world, flagging the owner arrival after inviting', () => {
+    const id = '00000000-0000-4000-8000-000000000001'
+    expect(liveWorldPath(id)).toBe('/live/00000000000040008000000000000001')
+    expect(liveWorldPath(id, { invited: true })).toBe('/live/00000000000040008000000000000001?invited=1')
+    const navigate = vi.fn()
+    goToLiveWorld(id, { invited: true }, navigate)
+    expect(navigate).toHaveBeenCalledWith('/live/00000000000040008000000000000001?invited=1')
+    goToNewLiveRoom(navigate)
+    expect(navigate).toHaveBeenLastCalledWith('/live/new')
   })
 })
 

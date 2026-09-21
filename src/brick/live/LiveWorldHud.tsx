@@ -8,11 +8,13 @@ import {
   Share2,
   Sparkles,
   Unlock,
+  UserPlus,
   Users,
   X,
 } from 'lucide-react'
 import { createContext, useContext, useEffect, useId, useRef, useState, type MouseEvent } from 'react'
 import { Button } from '../../ui'
+import { describeLivePresence, presenceLines, type LivePresence } from '../../shell/livePresence'
 import type { LiveWorldMode } from '../liveProtocol'
 import { CopyInviteButton } from './CopyInviteButton'
 import { LiveStatusChip } from './LiveStatusChip'
@@ -45,6 +47,10 @@ export type LiveWorldHudProps = {
   onExportRecovery?: () => Promise<string>
   /** No frozen wire message ends a room yet, so this renders only when an integration provides it. */
   onEndRoom?: () => void
+  /** Classroom room owned by the caller: opens the invite sheet from the People panel ("Invite more"). */
+  onInviteMore?: () => void
+  /** Classroom rooms: who from the invited roster is here and who is still expected. */
+  presence?: LivePresence
 }
 
 type LocalNote = { tone: 'ok' | 'warn'; message: string }
@@ -76,6 +82,8 @@ export function LiveWorldHud({
   onExportWorld,
   onExportRecovery,
   onEndRoom,
+  onInviteMore,
+  presence,
 }: LiveWorldHudProps) {
   const { connection, syncing, mode, locked, isOwner, players, selfPlayerId, notice } = snapshot
   const [panelOpen, setPanelOpen] = useState(false)
@@ -106,6 +114,9 @@ export function LiveWorldHud({
   const needsLeaveWarning = hasPendingChanges || Boolean(recoveryDocument && (!recoveryExported || (snapshot.recoveryDocumentCount ?? 1) > 1))
   const pendingMessage = `${pendingOperations} ${pendingOperations === 1 ? 'change still needs' : 'changes still need'} confirmation from the room.`
   const peopleLabel = `People, ${players.length} ${online ? 'here' : 'last seen'}`
+  const presenceCopy = presenceLines(presence)
+  const presenceSummary = describeLivePresence(presence)
+  const peopleTitle = presenceSummary ? `${peopleLabel}. ${presenceSummary}` : peopleLabel
 
   useEffect(() => {
     if (!needsLeaveWarning) return
@@ -187,7 +198,7 @@ export function LiveWorldHud({
         <div className="live-toolbar" role="toolbar" aria-label="Live collaboration controls">
           <LiveStatusChip connection={connection} syncing={syncing} sessionReplaced={sessionReplaced} pendingOperations={pendingOperations} />
           {!headerRequest && (
-            <Button variant="quiet" size="sm" icon={<Users size={16} />} aria-label={peopleLabel} aria-controls={panelOpen ? panelId : undefined} aria-expanded={panelOpen} onClick={togglePanel}>
+            <Button variant="quiet" size="sm" icon={<Users size={16} />} aria-label={peopleTitle} title={peopleTitle} aria-controls={panelOpen ? panelId : undefined} aria-expanded={panelOpen} onClick={togglePanel}>
               People<strong className="live-people-count" aria-hidden="true">{players.length}</strong>
             </Button>
           )}
@@ -225,12 +236,18 @@ export function LiveWorldHud({
 
               <section className="live-panel-section" aria-labelledby={`${panelId}-people`}>
                 <h3 id={`${panelId}-people`}>{online ? `In this world (${players.length})` : 'Last seen in this room'}</h3>
+                {presenceCopy.length > 0 && (
+                  <p className="live-presence-summary">{presenceCopy.map(line => <span key={line}>{line}</span>)}</p>
+                )}
                 <PresenceRoster
                   inline
                   players={players}
                   selfPlayerId={selfPlayerId}
                   onRename={guestRoom && online ? (displayName) => actions.setProfile({ ...(selfPlayer?.profile ?? { displayName }), displayName }) : undefined}
                 />
+                {onInviteMore && (
+                  <Button variant="secondary" fullWidth className="live-invite-more" icon={<UserPlus size={16} />} disabled={!online} onClick={onInviteMore}>Invite more</Button>
+                )}
               </section>
 
               <section className="live-panel-section" aria-labelledby={`${panelId}-room`}>
