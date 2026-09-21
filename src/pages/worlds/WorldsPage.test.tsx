@@ -213,6 +213,28 @@ describe('teacher', () => {
     expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
   })
 
+  it('offers the way back to the class page: a header button and a link on the selected class', async () => {
+    draw(createFakeWorldsClient({ session: teacherSession }))
+    await settled()
+
+    const header = screen.getByRole('banner')
+    expect(within(header).getByRole('link', { name: 'My class' })).toHaveAttribute('href', '/class')
+    // Order matters: the class is the first thing a teacher reaches for.
+    const links = within(header).getAllByRole('link').map(link => link.textContent)
+    expect(links.indexOf('My class')).toBeLessThan(links.indexOf('Open the studio'))
+
+    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
+    expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
+
+    fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
+    // The rail entry still filters this page; the link is the extra way out.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
+    expect(within(rail).getByRole('link', { name: 'Open class page' })).toHaveAttribute('href', `/class?classId=${FIXTURE_CLASS.id}`)
+
+    fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
+    expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
+  })
+
   it('sends a document with the shared-world request, so the Worker does not reject it as an invalid document', async () => {
     // The real client (worldsData.ts), not the fake, so a regression in what
     // `createSharedWorld` puts on the wire is caught here.

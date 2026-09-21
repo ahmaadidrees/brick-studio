@@ -192,3 +192,20 @@ it('renames the class and creates another one from Settings', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Create class' }))
   await waitFor(() => expect(calls).toContainEqual(['/classes', 'POST', { name: 'Club' }]))
 })
+
+it('opens the class named by ?classId=, so the rail link on /worlds lands on the right class', async () => {
+  const OTHER = { ...CLASS, id: 'class-2', name: 'After-school Club' }
+  window.history.replaceState({}, '', '/class?classId=class-2')
+  try {
+    render(<ClassPage client={testClient({ classes: [CLASS, OTHER] }).client} navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'After-school Club', level: 1 })).toBeInTheDocument()
+  } finally { window.history.replaceState({}, '', '/') }
+})
+
+it('falls back to the first class when ?classId= names one this teacher does not have', async () => {
+  window.history.replaceState({}, '', '/class?classId=not-mine')
+  try {
+    render(<ClassPage client={testClient().client} navigate={vi.fn()} />)
+    expect(await screen.findByRole('heading', { name: 'Room 12 Builders', level: 1 })).toBeInTheDocument()
+  } finally { window.history.replaceState({}, '', '/') }
+})

@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Blocks, CircleAlert, CircleCheck, LoaderCircle, MonitorSmartphone, Plus, Search, Users } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Blocks, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, MonitorSmartphone, Plus, Search, Users } from 'lucide-react'
 import { BrickMark } from '../../brand'
 import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, CardMenu, OpenWorldButton, SharingChip, WorldCard } from './WorldCard'
-import { AppHeader, displayNameFor, type ClassroomSessionState } from '../../shell'
+import { AppHeader, CLASS_PATH, displayNameFor, type ClassroomSessionState } from '../../shell'
 import { ShareSheet } from './ShareSheet'
 import {
   browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
@@ -226,10 +226,23 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     })
   }
 
-  const railItems = sections.map(item => <button key={item.id} type="button" className={`worlds-rail-item${item.id === section ? ' worlds-rail-current' : ''}`} aria-current={item.id === section ? 'page' : undefined} onClick={() => { setSection(item.id); setSearch('') }}>
-    <span className="worlds-rail-label">{item.id === 'mine' ? <Blocks size={16} aria-hidden="true" /> : <Users size={16} aria-hidden="true" />}{item.label}</span>
-    <span className="worlds-rail-count">{item.count}</span>
-  </button>)
+  /*
+   * A rail entry still only filters this page. The teacher's selected class
+   * also offers the way back to /class, because the class page is where the
+   * roster, the code and the settings live and nothing else on this page
+   * pointed at it.
+   */
+  const railItems = sections.map(item => <Fragment key={item.id}>
+    <button type="button" className={`worlds-rail-item${item.id === section ? ' worlds-rail-current' : ''}`} aria-current={item.id === section ? 'page' : undefined} onClick={() => { setSection(item.id); setSearch('') }}>
+      <span className="worlds-rail-label">{item.id === 'mine' ? <Blocks size={16} aria-hidden="true" /> : <Users size={16} aria-hidden="true" />}{item.label}</span>
+      <span className="worlds-rail-count">{item.count}</span>
+    </button>
+    {teacher && item.id !== 'mine' && item.id === section && (
+      <a className="worlds-rail-open-class" href={`${CLASS_PATH}?classId=${encodeURIComponent(item.id)}`}>
+        <ExternalLink size={14} aria-hidden="true" /> Open class page
+      </a>
+    )}
+  </Fragment>)
 
   const heading = section === 'mine' ? 'My worlds' : currentClass?.name ?? 'Class'
   const counts = section === 'mine'
@@ -241,7 +254,10 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     <AppHeader
       variant="page"
       title="Worlds"
-      actions={<Button href="/build" variant="secondary" size="sm">Open the studio</Button>}
+      actions={<>
+        {teacher && <Button href={CLASS_PATH} variant="secondary" size="sm" icon={<Users size={16} />}>My class</Button>}
+        <Button href="/build" variant="secondary" size="sm">Open the studio</Button>
+      </>}
       session={headerSession}
     />
     <div className="worlds-layout">

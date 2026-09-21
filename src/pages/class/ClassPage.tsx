@@ -66,6 +66,8 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   /** Stays on the stepper until the teacher leaves it, even though the class now exists. */
   const [firstRunDone, setFirstRunDone] = useState(false)
   const [createdClass, setCreatedClass] = useState<ClassPageClass | null>(null)
+  /** `?classId=` on the URL; consumed the first time the classes load. */
+  const requestedClassId = useRef(typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('classId'))
   const studentFocus = useRef<'password' | null>(null)
   const detailHeading = useRef<HTMLHeadingElement>(null)
 
@@ -79,7 +81,13 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   const refresh = useCallback(async () => {
     const [nextClasses, nextWorlds] = await Promise.all([loadClasses(client), loadWorlds(client)])
     setClasses(nextClasses); setWorlds(nextWorlds)
-    setClassId(id => nextClasses.some(item => item.id === id) ? id : nextClasses[0]?.id || '')
+    // `?classId=` (the rail's "Open class page" on /worlds) wins once, then the
+    // teacher's own picks do.
+    const requested = requestedClassId.current
+    requestedClassId.current = null
+    setClassId(id => requested && nextClasses.some(item => item.id === requested)
+      ? requested
+      : nextClasses.some(item => item.id === id) ? id : nextClasses[0]?.id || '')
   }, [client])
 
   useEffect(() => {
