@@ -473,6 +473,52 @@ describe("live presence for the class list", () => {
   });
 });
 
+describe("live presence for the Worlds list (?presence=1)", () => {
+  const student = { id: identity.sessionId, username: "ben_k", rosterName: "Ben Kim", role: "student" as const, classId: identity.userId, resetRequired: false, authVersion: 0, sessionId: identity.sessionId, token: "test" };
+  const own = identity.worldId, classWorld = "44444444-4444-4444-8444-444444444444";
+  function presenceEnv(answer: (room: string) => Response) {
+    const asked: string[] = [];
+    const env = {
+      SUPABASE_URL: "https://supabase.test", SUPABASE_ANON_KEY: "test", SUPABASE_SERVICE_ROLE_KEY: "test",
+      WORLD_ROOMS: { idFromName: (x: string) => x, get: (room: string) => ({ fetch: async (input: RequestInfo | URL) => { asked.push(`${room}${new URL(String(input)).pathname}`); return answer(room); } }) },
+    } as unknown as Env;
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue(student);
+    vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name) => { if (name !== "take_rate_limit") throw new Error(`Unexpected rpc ${name}`); return true; });
+    vi.spyOn(ClassroomService.prototype, "rows").mockImplementation(async (table, filter = "") => {
+      if (table === "classes") return [{ id: identity.userId, teacher_id: "teacher", name: "Period 1", collaboration_open: true, students_can_share: true }];
+      if (table === "worlds") {
+        if (filter.includes("owner_id=in.")) return [];
+        if (filter.includes("owner_id=eq.")) return [{ id: own, owner_id: student.id, kind: "personal", title: "Mine", class_visibility: "class", class_can_edit: true }];
+        return [{ id: classWorld, class_id: identity.userId, kind: "class", owner_id: "teacher", title: "Class" }];
+      }
+      if (table === "students") return filter.includes("user_id=in.") ? [{ user_id: "a", roster_name: "Ava Rivera" }] : [];
+      return [];
+    });
+    const list = async (query: string) => (await (await handleReleaseRequest(new Request(`https://worker.test/classroom/worlds${query}`, { headers: { authorization: "Bearer test" } }), env)).json() as { worlds: Array<Record<string, unknown>> }).worlds;
+    return { list, asked };
+  }
+  it("asks each shared room and names everyone but the caller", async () => {
+    const { list, asked } = presenceEnv((room) => Response.json({ userIds: room === own.replaceAll("-", "") ? [student.id, "a"] : ["a", "teacher"] }));
+    const worlds = await list("?presence=1");
+    expect(worlds.map((row) => [row.id, row.buildingNow, row.buildingNames])).toEqual([[own, 2, ["Ava R."]], [classWorld, 2, ["Ava R.", "Teacher"]]]);
+    expect(asked.sort()).toEqual([own, classWorld].map((id) => `${id.replaceAll("-", "")}/internal/classroom-presence`).sort());
+  });
+  it("adds nothing and asks no room without the flag", async () => {
+    const { list, asked } = presenceEnv(() => Response.json({ userIds: ["a"] }));
+    const worlds = await list("");
+    expect(worlds.some((row) => "buildingNow" in row || "buildingNames" in row)).toBe(false);
+    expect(asked).toEqual([]);
+  });
+  it("reports null for every room when one cannot answer, and once the caller's presence bucket is empty", async () => {
+    const failing = presenceEnv((room) => room === classWorld.replaceAll("-", "") ? new Response("busy", { status: 503 }) : Response.json({ userIds: ["a"] }));
+    expect((await failing.list("?presence=1")).map((row) => [row.buildingNow, row.buildingNames])).toEqual([[null, []], [null, []]]);
+    const limited = presenceEnv(() => Response.json({ userIds: ["a"] }));
+    vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue(false);
+    expect((await limited.list("?presence=1")).map((row) => row.buildingNow)).toEqual([null, null]);
+    expect(limited.asked).toEqual([]);
+  });
+});
+
 it("forwards viewer access (canEdit false) for a shared personal world on the ticketed live path", async () => {
   vi.spyOn(ClassroomService.prototype, "rpc").mockResolvedValue({
     ...identity, username: "ben_k", role: "student", classId: null, canEdit: false, isTeacher: false, isOwner: false,

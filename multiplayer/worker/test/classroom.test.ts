@@ -685,6 +685,75 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     expect(liveParticipants.mock.calls[0][0]).toHaveLength(100);
     expect(PRESENCE_ROOM_LIMIT).toBe(150);
   });
+  describe('GET /worlds?presence=1', () => {
+    // Ava owns the shared treehouse (class), Ben shares the sky bridge with Ava only (members), the class has a group world.
+    const skyBridge = '44444444-4444-4444-8444-0000000000b1', teamWorld = '44444444-4444-4444-8444-0000000000c1';
+    const fixture = () => tables([
+      shared({ class_can_edit: true }), world({ id: copyId, title: 'Private draft' }),
+      { ...shared(), id: skyBridge, owner_id: benId, title: 'Sky Bridge', class_visibility: 'members', class_can_edit: true },
+      { id: teamWorld, kind: 'class', class_id: classId, owner_id: teacherId, title: 'Our Town', revision: 1, updated_at: '2026-09-16T10:00:00Z', class_visibility: 'private', class_can_edit: false, hidden_by_teacher: false, class_shared_at: null },
+    ]);
+    const withPresence = (as: Caller, byWorld: (ids: string[]) => Promise<Map<string, string[]> | null>) => {
+      const { db, fetcher } = backend(as, fixture());
+      db.world_members.push({ world_id: skyBridge, user_id: avaId });
+      const liveParticipantsByWorld = vi.fn(byWorld);
+      const list = async (query = '?presence=1') => {
+        const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/worlds${query}`, { headers: { authorization: `Bearer ${token}` } }), env, { liveParticipantsByWorld });
+        return { status: response!.status, worlds: (await response!.json() as Row).worlds as Row[] };
+      };
+      return { db, fetcher, list, liveParticipantsByWorld };
+    };
+    const presence = (ids: string[]) => new Map(ids.map(id => [id, id === treehouse ? [avaId, benId, benId] : id === skyBridge ? [benId, teacherId] : []]));
+    it('adds who is building in every shared world, the caller counted but never named, and asks rooms own-first', async () => {
+      const { list, liveParticipantsByWorld } = withPresence(ava, async ids => presence(ids));
+      const { status, worlds } = await list();
+      expect(status).toBe(200);
+      expect(worlds.map(row => [row.id, row.buildingNow, row.buildingNames])).toEqual([
+        [treehouse, 2, ['Ben K.']], [copyId, undefined, undefined], [teamWorld, 0, []], [skyBridge, 2, ['Ben K.', 'Teacher']],
+      ]);
+      expect(worlds[1]).not.toHaveProperty('buildingNow');
+      expect(liveParticipantsByWorld).toHaveBeenCalledTimes(1);
+      expect(liveParticipantsByWorld.mock.calls[0][0]).toEqual([treehouse, skyBridge, teamWorld]);
+    });
+    it('is byte-identical to the plain listing without the flag and never fans out', async () => {
+      const { list, liveParticipantsByWorld } = withPresence(ava, async ids => presence(ids));
+      const plain = await list('');
+      expect(plain.worlds.some(row => 'buildingNow' in row || 'buildingNames' in row)).toBe(false);
+      expect(liveParticipantsByWorld).not.toHaveBeenCalled();
+      const other = await list('?presence=0');
+      expect(JSON.stringify(other.worlds)).toBe(JSON.stringify(plain.worlds));
+      expect(liveParticipantsByWorld).not.toHaveBeenCalled();
+    });
+    it('reports null counts once the caller\'s presence bucket is empty, or when the rooms cannot answer, still with a 200', async () => {
+      const { list, fetcher, liveParticipantsByWorld } = withPresence(ava, async ids => presence(ids));
+      const normal = fetcher.getMockImplementation()!;
+      fetcher.mockImplementation(async (input, init) => String(input).endsWith('/rpc/brick_take_rate_limit') ? Response.json(false) : normal(input, init));
+      const limited = await list();
+      expect(limited.status).toBe(200);
+      expect(limited.worlds.map(row => [row.id, row.buildingNow, row.buildingNames])).toEqual([[treehouse, null, []], [copyId, undefined, undefined], [teamWorld, null, []], [skyBridge, null, []]]);
+      expect(liveParticipantsByWorld).not.toHaveBeenCalled();
+      fetcher.mockImplementation(normal);
+      liveParticipantsByWorld.mockResolvedValueOnce(null);
+      expect((await list()).worlds.map(row => row.buildingNow)).toEqual([null, undefined, null, null]);
+      liveParticipantsByWorld.mockRejectedValueOnce(new Error('rooms down'));
+      const failed = await list();
+      expect(failed.status).toBe(200);
+      expect(failed.worlds.map(row => row.buildingNow)).toEqual([null, undefined, null, null]);
+    });
+    it('caps the fan-out at PRESENCE_ROOM_LIMIT rooms in priority order and leaves the rest unknown', async () => {
+      const many = Array.from({ length: 160 }, (_, i) => ({ ...shared(), id: `44444444-4444-4444-8444-${String(i).padStart(12, '0')}`, owner_id: benId, title: `W${i}` }));
+      const { fetcher } = backend(ava, tables([shared(), ...many]));
+      const service = new ClassroomService(env, fetcher as typeof fetch);
+      const byWorld = vi.fn(async (ids: string[]) => new Map(ids.map(id => [id, [benId]])));
+      const worlds = await service.listWorlds(ava, byWorld);
+      expect(byWorld).toHaveBeenCalledTimes(1);
+      expect(byWorld.mock.calls[0][0]).toHaveLength(PRESENCE_ROOM_LIMIT);
+      expect(byWorld.mock.calls[0][0][0]).toBe(treehouse);
+      expect(worlds[0]).toMatchObject({ id: treehouse, buildingNow: 1, buildingNames: ['Ben K.'] });
+      expect(worlds.filter(row => row.buildingNow === 1)).toHaveLength(PRESENCE_ROOM_LIMIT);
+      expect(worlds.filter(row => row.buildingNow === null)).toHaveLength(161 - PRESENCE_ROOM_LIMIT);
+    });
+  });
   it('includes shared personal worlds when a class change fans out to live rooms', async () => {
     const { fetcher } = backend(teacher, tables([shared(), { ...shared(), id: copyId, owner_id: benId, class_visibility: 'private' }, { ...shared(), id: sid, owner_id: cyId }, { id: worldId, kind: 'class', class_id: classId, owner_id: teacherId }]));
     expect((await listClassroomWorldIds(env, { classId })).sort()).toEqual([worldId, treehouse].sort());

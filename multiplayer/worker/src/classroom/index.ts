@@ -26,6 +26,11 @@ export type ClassroomHandlerOptions = {
   onAccessChanged?: (event: ClassroomAccessChange) => Promise<void>;
   /** Distinct classroom accounts connected to these live rooms right now, or null when presence is unavailable. */
   liveParticipants?: (worldIds: string[]) => Promise<string[] | null>;
+  /**
+   * Classroom accounts connected to each of these live rooms right now, keyed by world id, or null when presence
+   * is unavailable for the batch (too many rooms, or a room that could not answer). Powers `GET /worlds?presence=1`.
+   */
+  liveParticipantsByWorld?: (worldIds: string[]) => Promise<Map<string, string[]> | null>;
 };
 export type ClassroomSessionIdentity = { userId: string; sessionId: string; authVersion: number };
 type Row = Record<string, any>;
@@ -235,7 +240,11 @@ export class ClassroomService {
     }
     return result;
   }
-  async listWorlds(caller: Caller) {
+  /**
+   * With `presence` (the route's `liveParticipantsByWorld`, only for `GET /worlds?presence=1`) every shared world the
+   * caller can see also carries `buildingNow`/`buildingNames`; without it the listing is exactly what it always was.
+   */
+  async listWorlds(caller: Caller, presence?: ClassroomHandlerOptions['liveParticipantsByWorld']) {
     const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=${WORLD_FIELDS}&order=updated_at.desc`);
     const allClasses = await this.classesFor(caller);
     const classes = allClasses.filter(row => caller.role === 'teacher' || row.collaboration_open);
@@ -261,11 +270,49 @@ export class ClassroomService {
     const ownerById = new Map(owners.map(row => [row.user_id as string, row]));
     const classById = new Map(sharingClasses.map(row => [row.id as string, row]));
     const view = (world: Row, canEdit: boolean, ownerName: string, ownerClassId: string | null) => worldView(world, { canEdit, ownerName, ownerClassId, teacher: caller.role === 'teacher', members: membersByWorld.get(world.id) });
-    return [
+    const listing = [
       ...mine.map(world => view(world, true, callerDisplayName(caller), caller.classId ?? null)),
       ...shared.map(world => view(world, true, 'Teacher', world.class_id)),
       ...fromClassmates.map(world => view(world, sharedEditAllowed(world, classById.get(classOf.get(world.owner_id) ?? ''), ownerById.get(world.owner_id)), names.get(world.owner_id) ?? 'Classmate', classOf.get(world.owner_id) ?? null)),
     ];
+    if (!presence) return listing;
+    // Rooms in priority order: the caller's own shared worlds, then worlds classmates shared with them, then class/group worlds.
+    const ownShared = mine.filter(world => isSharedVisibility(world.class_visibility)).map(world => world.id as string);
+    const rooms = [...ownShared, ...fromClassmates.map(world => world.id as string), ...shared.map(world => world.id as string)];
+    const live = await this.presenceByWorld(caller, rooms, presence, names, new Set(allClasses.map(row => row.teacher_id as string)));
+    return listing.map(world => { const room = live.get(world.id); return room ? { ...world, ...room } : world; });
+  }
+  /**
+   * `buildingNow` (distinct accounts in the room, the caller included) and `buildingNames` (their display names,
+   * the caller excluded, alphabetical) for each of the given shared worlds. Bounded like the teacher's class list:
+   * at most PRESENCE_ROOM_LIMIT rooms per listing in the given order (the rest report null) and the caller's
+   * `presence:<id>` bucket (PRESENCE_RATE); over budget, or when the rooms cannot answer, every world reports
+   * `buildingNow: null, buildingNames: []` and the listing still succeeds. Names come from `known` (the owners the
+   * listing already resolved), then one bounded roster lookup; the caller's teachers read as "Teacher".
+   */
+  private async presenceByWorld(caller: Caller, rooms: string[], presence: NonNullable<ClassroomHandlerOptions['liveParticipantsByWorld']>, known: Map<string, string>, teacherIds: Set<string>) {
+    const result = new Map<string, { buildingNow: number | null; buildingNames: string[] }>(rooms.map(id => [id, { buildingNow: null, buildingNames: [] }]));
+    if (!rooms.length) return result;
+    const allowed = await this.takeRate(`presence:${caller.id}`, PRESENCE_RATE.limit, PRESENCE_RATE.seconds).catch(() => false);
+    if (!allowed) return result;
+    const asked = rooms.slice(0, PRESENCE_ROOM_LIMIT);
+    const byWorld = await presence(asked).catch(() => null);
+    if (!byWorld) return result;
+    const userIds = [...new Set([...byWorld.values()].flat())];
+    const names = new Map(known);
+    const unknown = userIds.filter(id => id !== caller.id && !names.has(id) && !teacherIds.has(id));
+    for (let start = 0; start < unknown.length; start += 100) {
+      const rows = await this.rows('students', `user_id=in.(${unknown.slice(start, start + 100).join(',')})&select=user_id,roster_name`).catch(() => [] as Row[]);
+      for (const row of rows) names.set(row.user_id, rosterDisplayName(row.roster_name));
+    }
+    for (const id of asked) {
+      const present = byWorld.get(id);
+      if (!present) continue;
+      const distinct = [...new Set(present)];
+      const buildingNames = distinct.filter(user => user !== caller.id).map(user => names.get(user) ?? (teacherIds.has(user) ? 'Teacher' : null)).filter((name): name is string => name !== null).sort((a, b) => a.localeCompare(b));
+      result.set(id, { buildingNow: distinct.length, buildingNames });
+    }
+    return result;
   }
   /** Shared personal worlds (whole class or invited classmates) owned by the given students, in bounded batches. IDs must come from the caller's own classes. */
   async sharedWorldsOf(ownerIds: string[], filter: string): Promise<Row[]> {
@@ -673,7 +720,9 @@ async function route(request: Request, service: ClassroomService, path: string[]
   }
   if (path[0] === 'worlds') {
     if (path.length === 1 && method === 'GET') {
-      return json({ worlds: await service.listWorlds(caller) });
+      // `?presence=1` (the Worlds page) adds who is building in each shared world; plain GET /worlds never fans out.
+      const presence = new URL(request.url).searchParams.get('presence') === '1' ? options.liveParticipantsByWorld : undefined;
+      return json({ worlds: await service.listWorlds(caller, presence) });
     }
     if (path.length === 1 && method === 'POST') {
       const input = await body(request), kind = input.kind || 'personal';
