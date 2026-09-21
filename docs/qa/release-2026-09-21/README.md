@@ -40,7 +40,7 @@ tests, typechecks, build. Rollback: frontend `virtual-legos-dttdd6ces`, Worker `
 One verb, one sheet, same room. Mock: https://claude.ai/artifact/L5VxMHMxqAdf7f7g5AucWt
 
 - Frontend: `virtual-legos-1xymf8s4y` (Ready, production). Rollback: `vercel promote virtual-legos-91jfexooc-ahmaadidrees-projects.vercel.app`.
-- Worker: `30d085ab-c546-4bfd-a1c3-720cb8144a1d`. Rollback: `npx wrangler rollback 3f5718b5-0c82-4175-9f45-51164bfdfaf6`.
+- Worker: `30d085ab-c546-4bfd-a1c3-720cb8144a1d`. Rollback: `npx wrangler rollback 114ecbd5-07fe-41e0-b9b4-3318c94c8e57`.
 - No migration. `GET /worlds?presence=1` is additive (per-world `buildingNow` / `buildingNames`, bounded by PRESENCE_ROOM_LIMIT and the per-caller presence rate).
 - Verified on production: InviteSheet / WorldsPage chunks carry the new copy; presence route answers 401 unauthenticated.
 - Walked on the QA mock before merge: owner invite → `/live/<id>?invited=1`; friend badge + banner + Join and build; editor Build together opens the sheet on an account world and reopens with picks preloaded.
