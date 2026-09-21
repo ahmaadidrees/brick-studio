@@ -138,7 +138,8 @@ export class ClassroomService {
   /**
    * Visibility and edit rights for one world, mirroring `brick_authorize_world` in the migration.
    * Personal worlds: the owner always sees and edits; a classmate (or the class teacher) sees a shared one
-   * (`class_visibility='class'`) and edits only with `class_can_edit`. Students are refused while the class has
+   * (`class_visibility='class'`, or `'members'` when brick_world_members lists the classmate) and edits only
+   * with `class_can_edit`. Students are refused while the class has
    * collaboration closed or sharing disabled, or the teacher hid the world; the teacher may still look in those
    * states but never edits (`sharedEditAllowed`, the same rule `brick_commit_world` applies). A suspended owner's
    * shared world is not found for classmates (as `listWorlds` already hides it) and look-only for the teacher.
@@ -151,11 +152,13 @@ export class ClassroomService {
     if (!world) fail(404, 'not_found', 'World not found.');
     if (world.kind === 'personal') {
       if (world.owner_id === caller.id) return { world, canEdit: true, isOwner: true, ownerName: callerDisplayName(caller), ownerClassId: caller.classId ?? null };
-      if (world.class_visibility !== 'class') fail(404, 'not_found', 'World not found.');
+      if (!isSharedVisibility(world.class_visibility)) fail(404, 'not_found', 'World not found.');
       const owner = (await this.rows('students', `user_id=eq.${world.owner_id}&select=class_id,roster_name,suspended&limit=1`))[0];
       if (!owner) fail(404, 'not_found', 'World not found.');
       const cls = await this.classFor(caller, owner.class_id);
       if (caller.role !== 'teacher') {
+        // Invited classmates only: anyone else in the class gets the same not_found as a private world.
+        if (world.class_visibility === 'members' && !(await this.rows('world_members', `world_id=eq.${id}&user_id=eq.${caller.id}&limit=1`)).length) fail(404, 'not_found', 'World not found.');
         if (owner.suspended) fail(404, 'not_found', 'World not found.');
         if (world.hidden_by_teacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.');
         if (!cls.collaboration_open) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.');
@@ -237,9 +240,6 @@ export class ClassroomService {
     const allClasses = await this.classesFor(caller);
     const classes = allClasses.filter(row => caller.role === 'teacher' || row.collaboration_open);
     const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&select=${WORLD_FIELDS}&order=updated_at.desc,id.asc`);
-    const memberships = caller.role === 'student' && candidates.some(row => row.kind === 'group')
-      ? await this.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
-    const shared = candidates.filter(world => caller.role === 'teacher' || world.kind === 'class' || memberships.some(member => member.world_id === world.id));
     // Classmates' shared personal worlds: resolved through the owners' brick_students rows (personal worlds keep
     // class_id null). Students need collaboration_open and students_can_share and never see hidden worlds; the
     // teacher sees every shared world of their classes, hidden ones flagged.
@@ -247,26 +247,67 @@ export class ClassroomService {
     const owners = sharingClasses.length
       ? (await this.rowsForClasses('students', sharingClasses.map(row => row.id), `select=user_id,class_id,roster_name,suspended&order=user_id.asc`))
           .filter(row => row.user_id !== caller.id && (caller.role === 'teacher' || !row.suspended)) : [];
-    const fromClassmates = await this.sharedWorldsOf(owners.map(row => row.user_id), `select=${WORLD_FIELDS}&order=updated_at.desc,id.asc${caller.role === 'teacher' ? '' : '&hidden_by_teacher=eq.false'}`);
+    const sharedByClassmates = await this.sharedWorldsOf(owners.map(row => row.user_id), `select=${WORLD_FIELDS}&order=updated_at.desc,id.asc${caller.role === 'teacher' ? '' : '&hidden_by_teacher=eq.false'}`);
+    // One membership read covers assigned group worlds and classmates' members-only worlds.
+    const memberships = caller.role === 'student' && (candidates.some(row => row.kind === 'group') || sharedByClassmates.some(row => row.class_visibility === 'members'))
+      ? await this.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
+    const isMember = (world: Row) => memberships.some(member => member.world_id === world.id);
+    const shared = candidates.filter(world => caller.role === 'teacher' || world.kind === 'class' || isMember(world));
+    const fromClassmates = sharedByClassmates.filter(world => caller.role === 'teacher' || world.class_visibility !== 'members' || isMember(world));
+    // Who a members-only world is shared with: reported to its owner and to the teacher, never to a fellow invitee.
+    const membersByWorld = await this.membersOf([...mine, ...(caller.role === 'teacher' ? fromClassmates : [])].filter(world => world.class_visibility === 'members').map(world => world.id));
     const names = new Map(owners.map(row => [row.user_id, rosterDisplayName(row.roster_name)]));
     const classOf = new Map(owners.map(row => [row.user_id, row.class_id as string]));
     const ownerById = new Map(owners.map(row => [row.user_id as string, row]));
     const classById = new Map(sharingClasses.map(row => [row.id as string, row]));
-    const view = (world: Row, canEdit: boolean, ownerName: string, ownerClassId: string | null) => worldView(world, { canEdit, ownerName, ownerClassId, teacher: caller.role === 'teacher' });
+    const view = (world: Row, canEdit: boolean, ownerName: string, ownerClassId: string | null) => worldView(world, { canEdit, ownerName, ownerClassId, teacher: caller.role === 'teacher', members: membersByWorld.get(world.id) });
     return [
       ...mine.map(world => view(world, true, callerDisplayName(caller), caller.classId ?? null)),
       ...shared.map(world => view(world, true, 'Teacher', world.class_id)),
       ...fromClassmates.map(world => view(world, sharedEditAllowed(world, classById.get(classOf.get(world.owner_id) ?? ''), ownerById.get(world.owner_id)), names.get(world.owner_id) ?? 'Classmate', classOf.get(world.owner_id) ?? null)),
     ];
   }
-  /** Shared personal worlds owned by the given students, in bounded batches. IDs must come from the caller's own classes. */
+  /** Shared personal worlds (whole class or invited classmates) owned by the given students, in bounded batches. IDs must come from the caller's own classes. */
   async sharedWorldsOf(ownerIds: string[], filter: string): Promise<Row[]> {
     const result: Row[] = [];
     for (let start = 0; start < ownerIds.length; start += 100) {
       const ids = ownerIds.slice(start, start + 100);
-      result.push(...await this.rows('worlds', `owner_id=in.(${ids.join(',')})&kind=eq.personal&class_visibility=eq.class&${filter}`));
+      result.push(...await this.rows('worlds', `owner_id=in.(${ids.join(',')})&kind=eq.personal&class_visibility=in.(class,members)&${filter}`));
     }
     return result;
+  }
+  /** Invited classmates of members-only worlds, by world id, with display names. World ids must already be authorized for the caller. */
+  async membersOf(worldIds: string[]): Promise<Map<string, WorldMemberSummary[]>> {
+    const result = new Map<string, WorldMemberSummary[]>();
+    if (!worldIds.length) return result;
+    const rows: Row[] = [];
+    for (let start = 0; start < worldIds.length; start += 100) rows.push(...await this.rows('world_members', `world_id=in.(${worldIds.slice(start, start + 100).join(',')})&select=world_id,user_id`));
+    const userIds = [...new Set(rows.map(row => row.user_id as string))];
+    const names = new Map<string, string>();
+    for (let start = 0; start < userIds.length; start += 100) {
+      for (const row of await this.rows('students', `user_id=in.(${userIds.slice(start, start + 100).join(',')})&select=user_id,roster_name`)) names.set(row.user_id, rosterDisplayName(row.roster_name));
+    }
+    for (const id of worldIds) result.set(id, []);
+    for (const row of rows) { const name = names.get(row.user_id); if (name !== undefined) result.get(row.world_id)?.push({ id: row.user_id, displayName: name }); }
+    for (const list of result.values()) list.sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id));
+    return result;
+  }
+  /**
+   * Replaces the invitees of the caller's members-only world. Every id must be an active student of the owner's
+   * class other than the owner; one to WORLD_MEMBER_LIMIT of them. Validation completes before the set is touched,
+   * so a refused list changes nothing. Returns the resulting member ids.
+   */
+  async replaceMembers(caller: Caller, worldId: string, members: unknown): Promise<string[]> {
+    if (!Array.isArray(members) || members.some(id => typeof id !== 'string' || !uuid(id))) fail(400, 'invalid_input', 'members must be a list of student ids.');
+    const ids = [...new Set(members as string[])];
+    if (ids.includes(caller.id)) fail(400, 'invalid_member', 'You already own this world.');
+    if (ids.length > WORLD_MEMBER_LIMIT) fail(400, 'too_many_members', `Pick up to ${WORLD_MEMBER_LIMIT} classmates.`);
+    if (!ids.length) fail(400, 'invalid_input', 'Pick at least one classmate.');
+    const found = new Set((await this.rows('students', `class_id=eq.${caller.classId}&user_id=in.(${ids.join(',')})&suspended=eq.false&select=user_id`)).map(row => row.user_id));
+    if (ids.some(id => !found.has(id))) fail(400, 'invalid_member', 'Choose active students in your class.');
+    await this.remove('world_members', `world_id=eq.${worldId}`);
+    await this.request('/rest/v1/brick_world_members?on_conflict=world_id,user_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(ids.map(user_id => ({ world_id: worldId, user_id }))) });
+    return ids;
   }
   async login(email: string, pass: string) { return this.request('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: pass }) }); }
   async registerSession(session: Row, student: Row) {
@@ -312,7 +353,7 @@ function classView(row: Row, code?: string, buildingNow: number | null = null) {
  * save would refuse.
  */
 function sharedEditAllowed(world: Row, cls: Row | undefined, owner: Row | undefined): boolean {
-  return world.class_visibility === 'class' && world.class_can_edit === true && world.hidden_by_teacher !== true
+  return isSharedVisibility(world.class_visibility) && world.class_can_edit === true && world.hidden_by_teacher !== true
     && owner?.suspended !== true && cls?.collaboration_open === true && cls.students_can_share !== false;
 }
 /** Owner label for the caller's own worlds: students by first name and last initial, teachers as "Teacher". */
@@ -361,14 +402,20 @@ export const PRESENCE_ROOM_LIMIT = 150;
 export const PRESENCE_RATE = { limit: 30, seconds: 60 } as const;
 /** Saved worlds per account; the database trigger (0003) enforces the same bound. */
 const WORLD_LIMIT = 50;
+/** Invited classmates per members-only world. */
+export const WORLD_MEMBER_LIMIT = 30;
+/** Personal-world sharing states that admit someone other than the owner (migration 202609210001). */
+const isSharedVisibility = (value: unknown): value is 'class' | 'members' => value === 'class' || value === 'members';
+type WorldMemberSummary = { id: string; displayName: string };
 type WorldAccess = { world: Row; canEdit: boolean; isOwner: boolean; ownerName: string; ownerClassId: string | null };
-type WorldViewContext = { full?: boolean; canEdit?: boolean; ownerName?: string; ownerClassId?: string | null; teacher?: boolean };
+type WorldViewContext = { full?: boolean; canEdit?: boolean; ownerName?: string; ownerClassId?: string | null; teacher?: boolean; members?: WorldMemberSummary[] };
 function worldView(row: Row, context: WorldViewContext = {}) {
-  const visibility = row.kind === 'personal' ? (row.class_visibility === 'class' ? 'class' : 'private') : 'class';
+  const visibility = row.kind === 'personal' ? (isSharedVisibility(row.class_visibility) ? row.class_visibility : 'private') : 'class';
   return {
     id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, revision: row.revision, updatedAt: row.updated_at,
     visibility, canEdit: context.canEdit ?? true, classCanEdit: row.kind === 'personal' ? row.class_can_edit === true : true, ownerName: context.ownerName ?? 'Teacher', ownerClassId: context.ownerClassId ?? row.class_id ?? null,
-    sharedAt: row.kind === 'personal' && visibility === 'class' ? row.class_shared_at ?? null : null,
+    sharedAt: row.kind === 'personal' && visibility !== 'private' ? row.class_shared_at ?? null : null,
+    ...(context.members ? { members: context.members } : {}),
     ...(context.teacher ? { hiddenByTeacher: row.hidden_by_teacher === true } : {}), ...(context.full ? { document: row.document } : {}),
   };
 }
@@ -561,6 +608,15 @@ async function route(request: Request, service: ClassroomService, path: string[]
       await service.insert('class_codes', { class_id: cls.id, code });
       return json({ class: classView(cls, code) }, 201);
     }
+    if (path[2] === 'classmates' && path.length === 3 && method === 'GET') {
+      // The invite picker: active students of the caller's own class (or a teacher's class) as id + display
+      // name only. Roster names, usernames and suspended accounts stay on the teacher's roster route.
+      const own = await service.classFor(caller, path[1]);
+      const classmates = (await service.rows('students', `class_id=eq.${own.id}&suspended=eq.false&user_id=neq.${caller.id}&select=user_id,roster_name&order=user_id.asc`))
+        .map(row => ({ id: row.user_id as string, displayName: rosterDisplayName(row.roster_name) }))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id));
+      return json({ classmates });
+    }
     const cls = await service.classFor(caller, path[1], true);
     if (path.length === 2 && method === 'PATCH') {
       const input = await body(request), changes: Row = {};
@@ -636,19 +692,28 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (caller.role !== 'student') fail(403, 'student_required', 'Only students share their own worlds with the class.');
       if (!access.isOwner || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can share this world.');
       const input = await body(request);
-      if (input.visibility !== 'private' && input.visibility !== 'class') fail(400, 'invalid_input', 'visibility must be private or class.');
+      if (input.visibility !== 'private' && !isSharedVisibility(input.visibility)) fail(400, 'invalid_input', 'visibility must be private, class or members.');
       if (typeof input.canEdit !== 'boolean') fail(400, 'invalid_input', 'canEdit must be true or false.');
       const cls = await service.classFor(caller, caller.classId!);
       if (cls.students_can_share === false) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.');
-      const sharing = input.visibility === 'class';
+      const sharing = input.visibility !== 'private';
+      // Invitees exist only while the world is members-only: a given list replaces the set (validated first, so a
+      // refused list changes nothing); an omitted list keeps the current invitees; other visibilities clear them.
+      let members: WorldMemberSummary[] | undefined;
+      if (input.visibility === 'members') {
+        const ids = input.members === undefined ? (await service.membersOf([world.id])).get(world.id)!.map(member => member.id) : await service.replaceMembers(caller, world.id, input.members);
+        if (!ids.length) fail(400, 'invalid_input', 'Pick at least one classmate.');
+      }
       const updated = (await service.patch('worlds', `id=eq.${world.id}&owner_id=eq.${caller.id}&select=${WORLD_FIELDS}`, {
         class_visibility: input.visibility, class_can_edit: sharing && input.canEdit, class_shared_at: sharing ? world.class_shared_at ?? new Date().toISOString() : null,
       }))[0];
       if (!updated) fail(404, 'not_found', 'World not found.');
+      if (input.visibility === 'members') members = (await service.membersOf([world.id])).get(world.id);
+      else if (world.class_visibility === 'members') await service.remove('world_members', `world_id=eq.${world.id}`);
       await service.audit(caller, sharing ? 'share_world' : 'unshare_world', cls.id, world.id);
-      // Live sockets re-authorize in place: unsharing or removing editing closes classmates (the owner stays).
+      // Live sockets re-authorize in place: unsharing, removing editing or dropping an invitee closes them (the owner stays).
       await options.onAccessChanged?.({ worldId: world.id, reason: 'sharing_updated', change: 'membership' });
-      return json({ world: worldView(updated, ownView(caller, false)) });
+      return json({ world: worldView(updated, { ...ownView(caller, false), members }) });
     }
     if (path[2] === 'visibility' && path.length === 3 && method === 'PATCH') {
       if (caller.role !== 'teacher') fail(403, 'teacher_required', 'Only the class teacher can hide a shared world.');

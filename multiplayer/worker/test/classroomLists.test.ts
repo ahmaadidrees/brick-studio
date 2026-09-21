@@ -20,22 +20,27 @@ function fixture(classes: Row[], worlds: Row[], memberships: Row[] = [], student
         ? classes.filter(row => `eq.${row.teacher_id}` === query.get('teacher_id'))
         : classes.filter(row => `eq.${row.id}` === query.get('id'));
     } else if (url.pathname.endsWith('brick_world_members')) {
-      rows = memberships.filter(row => `eq.${row.user_id}` === query.get('user_id'));
+      rows = query.has('user_id')
+        ? memberships.filter(row => `eq.${row.user_id}` === query.get('user_id'))
+        : memberships.filter(row => query.get('world_id')!.slice(4, -1).split(',').includes(row.world_id));
     } else if (url.pathname.endsWith('brick_class_codes')) {
       expect(query.get('can_enroll')).toBe('eq.true');
       const ids = query.get('class_id')!.slice(4, -1).split(',');
       rows = classes.filter(row => ids.includes(row.id)).map(row => ({ class_id: row.id, code: `CODE${row.id}` }));
     } else if (url.pathname.endsWith('brick_students')) {
-      const ids = query.get('class_id')!.slice(4, -1).split(',');
-      rows = students.filter(row => ids.includes(row.class_id));
+      if (query.has('user_id')) rows = students.filter(row => query.get('user_id')!.slice(4, -1).split(',').includes(row.user_id));
+      else {
+        const ids = query.get('class_id')!.slice(4, -1).split(',');
+        rows = students.filter(row => ids.includes(row.class_id));
+      }
     } else if (url.pathname.endsWith('brick_worlds')) {
       if (query.get('owner_id')?.startsWith('in.(')) {
-        // Classmates' shared personal worlds, resolved by owner in bounded batches.
+        // Classmates' shared personal worlds (whole class or invited classmates), resolved by owner in bounded batches.
         expect(query.get('kind')).toBe('eq.personal');
-        expect(query.get('class_visibility')).toBe('eq.class');
+        expect(query.get('class_visibility')).toBe('in.(class,members)');
         const owners = query.get('owner_id')!.slice(4, -1).split(',');
         expect(owners.length).toBeLessThanOrEqual(100);
-        rows = worlds.filter(row => row.kind === 'personal' && row.class_visibility === 'class' && owners.includes(row.owner_id) && (!query.has('hidden_by_teacher') || !row.hidden_by_teacher));
+        rows = worlds.filter(row => row.kind === 'personal' && ['class', 'members'].includes(row.class_visibility) && owners.includes(row.owner_id) && (!query.has('hidden_by_teacher') || !row.hidden_by_teacher));
       } else if (query.has('owner_id')) {
         expect(query.get('kind')).toBe('eq.personal');
         rows = worlds.filter(row => row.kind === 'personal' && `eq.${row.owner_id}` === query.get('owner_id'));
@@ -159,6 +164,41 @@ describe('bounded classroom lists', () => {
       const own = fixture([cls], [{ id: 'mine-t', kind: 'personal', owner_id: teacherId }], [], []);
       expect((await own.service.listWorlds(teacher))[0]).toMatchObject({ id: 'mine-t', ownerClassId: null, ownerName: 'Teacher' });
       expect(paths.filter(url => url.pathname.endsWith('brick_worlds') && url.searchParams.get('owner_id')?.startsWith('in.')).every(url => !url.searchParams.has('hidden_by_teacher'))).toBe(true);
+    });
+    describe('members-only worlds (quiet invites)', () => {
+      const invite = { id: 'ava-invite', kind: 'personal', owner_id: ava, class_visibility: 'members', class_can_edit: true, class_shared_at: '2026-09-17T10:00:00Z' };
+      const mine = { id: 'mine-invite', kind: 'personal', owner_id: studentId, class_visibility: 'members', class_can_edit: false, class_shared_at: '2026-09-17T11:00:00Z' };
+      const memberships = [{ world_id: 'ava-invite', user_id: studentId }, { world_id: 'ava-invite', user_id: paused }, { world_id: 'mine-invite', user_id: ben }, { world_id: 'mine-invite', user_id: ava }];
+      it('lists a members world for an invitee with visibility members and canEdit per the owner, and never who else was invited', async () => {
+        const { service, paths } = fixture([cls], [...worlds, invite], memberships, roster);
+        const result = await service.listWorlds(student);
+        const seen = result.find(row => row.id === 'ava-invite');
+        expect(seen).toMatchObject({ visibility: 'members', canEdit: true, classCanEdit: true, ownerName: 'Ava R.', ownerClassId: cls.id, sharedAt: '2026-09-17T10:00:00Z' });
+        expect(seen).not.toHaveProperty('members');
+        expect(paths.filter(url => url.pathname.endsWith('brick_world_members'))).toHaveLength(1);
+      });
+      it('hides a members world from a classmate who was not invited, and from students of another class', async () => {
+        const { service } = fixture([cls], [...worlds, invite], memberships.filter(row => row.user_id !== studentId), roster);
+        expect((await service.listWorlds(student)).map(row => row.id)).not.toContain('ava-invite');
+        const other = fixture([{ ...cls, id: classId(1) }], [...worlds, invite], memberships, roster);
+        expect((await other.service.listWorlds({ ...student, classId: classId(1) })).map(row => row.id)).not.toContain('ava-invite');
+      });
+      it('tells the owner who is invited, by display name, and reports the same to the teacher', async () => {
+        const { service } = fixture([cls], [...worlds, mine], memberships, roster);
+        const own = (await service.listWorlds(student)).find(row => row.id === 'mine-invite');
+        expect(own).toMatchObject({ visibility: 'members', canEdit: true, classCanEdit: false, members: [{ id: ava, displayName: 'Ava R.' }, { id: ben, displayName: 'Ben K.' }] });
+        const seenByTeacher = (await service.listWorlds(teacher)).find(row => row.id === 'mine-invite');
+        expect(seenByTeacher).toMatchObject({ visibility: 'members', hiddenByTeacher: false, ownerName: 'Sam R.', members: [{ id: ava, displayName: 'Ava R.' }, { id: ben, displayName: 'Ben K.' }] });
+      });
+      it('keeps the class rules: a hidden members world, sharing off or a closed class hides it from invitees', async () => {
+        const hidden = fixture([cls], [...worlds, { ...invite, hidden_by_teacher: true }], memberships, roster);
+        expect((await hidden.service.listWorlds(student)).map(row => row.id)).not.toContain('ava-invite');
+        expect((await hidden.service.listWorlds(teacher)).find(row => row.id === 'ava-invite')).toMatchObject({ hiddenByTeacher: true, canEdit: false });
+        const off = fixture([{ ...cls, students_can_share: false }], [...worlds, invite], memberships, roster);
+        expect((await off.service.listWorlds(student)).map(row => row.id)).not.toContain('ava-invite');
+        const closed = fixture([{ ...cls, collaboration_open: false }], [...worlds, invite], memberships, roster);
+        expect((await closed.service.listWorlds(student)).map(row => row.id)).not.toContain('ava-invite');
+      });
     });
     it('batches shared-world lookups by 100 owners', async () => {
       const many = Array.from({ length: 250 }, (_, i) => ({ user_id: `22222222-2222-4222-8222-${String(i).padStart(12, '0')}`, class_id: cls.id, roster_name: `Kid ${i}`, suspended: false }));
