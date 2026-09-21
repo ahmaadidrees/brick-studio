@@ -1,0 +1,140 @@
+{
+  "origin": "http://127.0.0.1:5277",
+  "at": "2026-09-18T21:32:33.979Z",
+  "results": [
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "touch": true,
+      "compact": true,
+      "soft": [],
+      "checks": [
+        "guest placement via strip",
+        "selection via Jump to brick",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings from This build menu",
+        "drawer / brush color",
+        "character",
+        "explore and return",
+        "strip, camera and history bounds"
+      ]
+    },
+    {
+      "name": "narrow",
+      "width": 320,
+      "height": 568,
+      "touch": true,
+      "compact": true,
+      "soft": [],
+      "status": "failed",
+      "failure": "narrow 320x568: AssertionError [ERR_ASSERTION]: Overlap: command strip / camera cluster ({\"x\":8,\"y\":209.25,\"width\":304,\"height\":282.75} vs {\"x\":254,\"y\":116,\"width\":58,\"height\":200})"
+    },
+    {
+      "name": "landscape-phone",
+      "width": 844,
+      "height": 390,
+      "touch": true,
+      "compact": true,
+      "soft": [],
+      "checks": [
+        "guest placement via strip",
+        "selection via Jump to brick",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings from This build menu",
+        "drawer / brush color",
+        "character",
+        "explore and return",
+        "strip, camera and history bounds"
+      ]
+    },
+    {
+      "name": "portrait-tablet",
+      "width": 768,
+      "height": 1024,
+      "touch": true,
+      "compact": true,
+      "soft": [],
+      "checks": [
+        "guest placement via strip",
+        "selection via Jump to brick",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings from This build menu",
+        "drawer / brush color",
+        "character",
+        "explore and return",
+        "strip, camera and history bounds"
+      ]
+    },
+    {
+      "name": "tablet",
+      "width": 1024,
+      "height": 768,
+      "touch": true,
+      "compact": false,
+      "soft": [],
+      "checks": [
+        "guest placement via strip",
+        "selection via Jump to brick",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings from This build menu",
+        "drawer / brush color",
+        "character",
+        "explore and return",
+        "strip, camera and history bounds"
+      ]
+    },
+    {
+      "name": "large-tablet",
+      "width": 1180,
+      "height": 820,
+      "touch": true,
+      "compact": false,
+      "soft": [],
+      "checks": [
+        "guest placement via strip",
+        "selection via Jump to brick",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings from This build menu",
+        "drawer / brush color",
+        "character",
+        "explore and return",
+        "strip, camera and history bounds"
+      ]
+    },
+    {
+      "name": "desktop",
+      "width": 1366,
+      "height": 768,
+      "touch": false,
+      "compact": false,
+      "soft": [],
+      "checks": [
+        "guest placement via strip",
+        "selection via Jump to brick",
+        "height adjustment and undo",
+        "export matches saved brick",
+        "reload retains build",
+        "settings from This build menu",
+        "drawer / brush color",
+        "character",
+        "explore and return",
+        "strip, camera and history bounds"
+      ]
+    }
+  ],
+  "failures": [
+    "narrow 320x568: AssertionError [ERR_ASSERTION]: Overlap: command strip / camera cluster ({\"x\":8,\"y\":209.25,\"width\":304,\"height\":282.75} vs {\"x\":254,\"y\":116,\"width\":58,\"height\":200})"
+  ],
+  "errors": []
+}

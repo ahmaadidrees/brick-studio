@@ -1,0 +1,3 @@
+failed narrow 320x568: AssertionError [ERR_ASSERTION]: Overlap: command strip / camera cluster ({"x":8,"y":209.25,"width":304,"height":282.75} vs {"x":254,"y":116,"width":58,"height":200})
+{"passed":6,"failed":["narrow 320x568: AssertionError [ERR_ASSERTION]: Overlap: command strip / camera cluster ({\"x\":8,\"y\":209.25,\"width\":304,\"height\":282.75} vs {\"x\":254,\"y\":116,\"width\":58,\"height\":200})"],"soft":[],"errors":[]}
+touch exit 1

@@ -1,0 +1,308 @@
+/**
+ * `/worlds` page. Semantic tokens only (src/styles.css); nothing here overrides
+ * a src/ui primitive. Layout: rail + content at 1366, two cards per row at
+ * 1024 with the rail folded into a tab row, one card per row at 390 with
+ * full-width 44px buttons.
+ */
+
+.worlds-page {
+  /* html/body/#root are overflow:hidden for the editor, so the page owns its scroll: the whole page scrolls. */
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+}
+
+.worlds-redirect { display: grid; place-items: center; padding: var(--space-8); color: var(--text-muted); }
+
+/* Header lives in src/shell/AppHeader.tsx (variant="page"); only the card menu
+   below (WorldCard's CardMenu) still belongs to this page. */
+
+.worlds-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: var(--z-sheet);
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+.worlds-menu button {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.worlds-menu button:hover { background: var(--surface-2); }
+.worlds-menu button:focus-visible { outline: 3px solid var(--focus); outline-offset: -2px; }
+
+/* Layout ---------------------------------------------------------------- */
+
+.worlds-layout {
+  flex: 1;
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  padding: var(--space-6);
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+  /* The page fills the viewport, so auto rows would stretch and push a short
+     tab-row page's content into the middle of the screen. */
+  align-content: start;
+}
+
+.worlds-rail {
+  position: sticky;
+  top: 84px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.worlds-rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.worlds-rail-label { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.worlds-rail-label svg { color: var(--text-muted); flex: none; }
+.worlds-rail-count { color: var(--text-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.worlds-rail-item:hover { background: var(--surface-2); }
+.worlds-rail-item:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.worlds-rail-current { background: var(--primary-soft); border-color: var(--primary); }
+.worlds-rail-current .worlds-rail-label svg { color: var(--primary-strong); }
+.worlds-rail-new {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  margin-top: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--primary-strong);
+  font-weight: 700;
+  text-decoration: none;
+}
+.worlds-rail-new:hover { background: var(--primary-soft); }
+
+.worlds-tabs {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.worlds-tabs .worlds-rail-item {
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  padding: 0 var(--space-4);
+}
+.worlds-tabs .worlds-rail-current { background: var(--primary-soft); border-color: var(--primary); }
+
+.worlds-main { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
+
+.worlds-title-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.worlds-title-row h1 { font-family: var(--font-display); font-size: 30px; margin: 0; }
+.worlds-counts { margin: var(--space-1) 0 0; color: var(--text-muted); }
+.worlds-search { width: min(280px, 100%); }
+
+.worlds-error, .worlds-notice, .worlds-loading, .worlds-closed {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+}
+.worlds-error { background: var(--danger-soft); color: var(--danger-text); }
+.worlds-notice { background: var(--success-soft); color: var(--success); }
+.worlds-loading { color: var(--text-muted); }
+.worlds-closed { background: var(--warning-soft); color: var(--warning-text); font-weight: 600; }
+
+/* Draft strip ----------------------------------------------------------- */
+
+.worlds-draft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+.worlds-draft > svg { color: var(--text-muted); flex: none; }
+.worlds-draft-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.worlds-draft-text small { color: var(--text-muted); }
+.worlds-draft-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Sections and cards ---------------------------------------------------- */
+
+.worlds-section { display: flex; flex-direction: column; gap: var(--space-4); }
+.worlds-section-title { font-family: var(--font-display); font-size: var(--text-lg); margin: 0; }
+.worlds-help { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+
+.worlds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.worlds-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.worlds-card-art { height: 116px; display: grid; place-items: center; padding: var(--space-3); background: var(--surface); border-bottom: 1px solid var(--border); }
+.worlds-card-art svg { width: auto; height: 100%; }
+.worlds-plate { fill: var(--primary-soft); stroke: var(--border); stroke-width: 1.5; }
+.worlds-stud { fill: var(--primary); opacity: 0.55; }
+.worlds-card-art-shared .worlds-plate { fill: var(--accent-soft); }
+.worlds-card-art-shared .worlds-stud { fill: var(--accent); opacity: 0.6; }
+.worlds-card-art-class .worlds-plate { fill: var(--warning-soft); }
+.worlds-card-art-class .worlds-stud { fill: var(--brand-butter); opacity: 0.9; }
+
+.worlds-card-body { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); flex: 1; }
+.worlds-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.worlds-card-heading h3 { font-family: var(--font-display); font-size: var(--text-lg); margin: 0; overflow-wrap: anywhere; }
+.worlds-card-owner { margin: 0; color: var(--text); font-weight: 600; font-size: var(--text-sm); }
+.worlds-card-saved { display: flex; align-items: center; gap: var(--space-1); margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.worlds-card-chips { margin: 0; }
+.worlds-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: auto; padding-top: var(--space-2); }
+
+.worlds-chip-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.worlds-chip-shared { background: var(--accent-soft); color: var(--danger-text); }
+.worlds-chip-build { background: var(--primary-soft); color: var(--primary-strong); }
+.worlds-chip-look { background: var(--surface-2); color: var(--text-muted); }
+
+.worlds-menu-wrap { position: relative; flex: none; }
+
+.worlds-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+}
+.worlds-empty h3 { font-family: var(--font-display); margin: 0 0 var(--space-1); }
+.worlds-empty p { margin: 0 0 var(--space-3); color: var(--text-muted); }
+
+/* Teacher: start a shared world ----------------------------------------- */
+
+.worlds-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.worlds-start-row { display: flex; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; }
+.worlds-start-row .ui-field { flex: 1 1 240px; }
+
+/* Share sheet ----------------------------------------------------------- */
+
+.worlds-share-options { display: flex; flex-direction: column; gap: var(--space-3); border: 0; margin: 0; padding: 0; }
+.worlds-share-options legend { font-weight: 700; padding: 0 0 var(--space-2); }
+.worlds-share-option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.worlds-share-option:hover { border-color: var(--primary); }
+.worlds-share-option input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary-strong); flex: none; }
+.worlds-share-option:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.worlds-share-option span { display: flex; flex-direction: column; gap: 2px; }
+.worlds-share-option small { color: var(--text-muted); }
+.worlds-share-note { margin: var(--space-4) 0 0; color: var(--text-muted); font-size: var(--text-sm); }
+.worlds-stop-sharing { margin-right: auto; color: var(--danger-text); }
+
+.worlds-checkpoints { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.worlds-checkpoints li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.worlds-checkpoints div { display: flex; flex-direction: column; }
+.worlds-checkpoints small { color: var(--text-muted); }
+
+/* Responsive ------------------------------------------------------------ */
+
+@media (max-width: 1024px) {
+  .worlds-layout { grid-template-columns: minmax(0, 1fr); gap: var(--space-5); padding: var(--space-5) var(--space-4); }
+  .worlds-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .worlds-layout { padding: var(--space-4) var(--space-4) var(--space-8); }
+  .worlds-title-row h1 { font-size: 24px; }
+  .worlds-search { width: 100%; }
+  .worlds-grid { grid-template-columns: minmax(0, 1fr); }
+  .worlds-card-actions { flex-direction: column; align-items: stretch; }
+  .worlds-card-actions .ui-button { width: 100%; min-height: 44px; }
+  .worlds-draft { flex-direction: column; align-items: flex-start; }
+  .worlds-draft-actions { width: 100%; flex-direction: column; }
+  .worlds-draft-actions .ui-button { width: 100%; min-height: 44px; }
+  .worlds-empty { flex-direction: column; text-align: center; }
+  .worlds-start-row { flex-direction: column; align-items: stretch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worlds-page *, .worlds-page *::before, .worlds-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

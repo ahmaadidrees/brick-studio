@@ -1403,3 +1403,42 @@ it("broadcasts and persists bounded appearance changes for another builder", asy
   const updated = await guest.inbox!.next("players");
   expect(updated).toMatchObject({ players: expect.arrayContaining([expect.objectContaining({ playerId: "owner_style", profile: expect.objectContaining({ appearance: expect.objectContaining({ hair: "bun", accessory: "glasses", body: "broad" }) }) })]) });
 });
+
+it("reports distinct connected classroom accounts for the class list without world data", async () => {
+  const { roomId } = await createWorld();
+  const workerEnv = env as unknown as WorkerEnv;
+  const stub = workerEnv.WORLD_ROOMS.get(workerEnv.WORLD_ROOMS.idFromName(roomId));
+  // A guest room never counts toward a class.
+  expect(await (await stub.fetch("https://world.internal/internal/classroom-presence")).json()).toEqual({ userIds: [] });
+  const worldId = "00000000-0000-4000-8000-000000000001";
+  await runInDurableObject(stub, async (_instance: WorldRoom, state: DurableObjectState) => {
+    const record = await state.storage.get<Record<string, unknown>>("world");
+    await state.storage.put("world", { ...record, classroomWorldId: worldId });
+  });
+  await evictDurableObject(stub);
+  await runInDurableObject(stub, async (instance: WorldRoom) => {
+    Object.assign((instance as unknown as { env: object }).env, { SUPABASE_URL: "https://fake-db.test", SUPABASE_SERVICE_ROLE_KEY: "test", SUPABASE_ANON_KEY: "test" });
+  });
+  const access = (userId: string, sessionId: string, canEdit: boolean) => ({ userId, username: `u-${userId.slice(-1)}`, role: "student", worldId, classId: null, canEdit, isTeacher: false, isOwner: false, authVersion: 1, sessionId });
+  // Admission re-authorizes each session against the database: answer with the presented identity.
+  vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name, input) => name === "authorize_world"
+    ? { userId: input.p_user_id, sessionId: input.p_session_id, authVersion: input.p_auth_version, username: `u-${String(input.p_user_id).slice(-1)}`, role: "student", worldId, classId: null, canEdit: true, isTeacher: false, isOwner: false }
+    : true);
+  vi.spyOn(ClassroomService.prototype, "rows").mockResolvedValue([{ id: worldId, class_id: null, kind: "personal", owner_id: "owner", title: "Treehouse", revision: 1, document: worldDocument() }]);
+  const ava = access("00000000-0000-4000-8000-00000000000a", "00000000-0000-4000-8000-0000000000a1", true);
+  const ben = access("00000000-0000-4000-8000-00000000000b", "00000000-0000-4000-8000-0000000000b1", false);
+  for (const who of [ava, ben, { ...ava, sessionId: "00000000-0000-4000-8000-0000000000a2" }]) {
+    const response = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(who) } });
+    expect(response.status).toBe(101);
+    const socket = response.webSocket!;
+    sockets.push(socket);
+    socket.accept();
+  }
+  const presence = await stub.fetch("https://world.internal/internal/classroom-presence");
+  const text = await presence.text();
+  expect(JSON.parse(text)).toEqual({ userIds: [ava.userId, ben.userId] });
+  expect(text).not.toMatch(/username|title|document|bricks/);
+  // The public boundary never exposes the internal endpoint.
+  const external = await workerFetch("https://worker.test/internal/classroom-presence");
+  expect(external.status).toBe(404); await external.text();
+});

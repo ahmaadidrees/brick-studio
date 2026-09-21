@@ -105,13 +105,21 @@ code" reveals the optional code, which then loads the roster.
 
 ## Classes and teacher controls
 
-Class: `{id,name,loginCode,code?,enrollmentOpen,collaborationOpen,showNamesOnJoin}`.
+Class: `{id,name,loginCode,code?,enrollmentOpen,collaborationOpen,showNamesOnJoin,studentsCanShare,buildingNow,teacherName}`.
+`studentsCanShare` (default true) lets students share personal worlds with classmates (see "Shared personal worlds").
+`buildingNow` is the number of distinct accounts connected to the class's live rooms right now; it is filled only on a
+teacher's `GET classes` (one internal presence read per live-capable world, at most 150 rooms per request in class
+order, and at most 30 such listings per teacher per minute), and is `null` on `GET me`, at sign-in, for students, for
+the classes past the 150-room cap, while the per-teacher bucket is empty, or when a room cannot answer. A class with
+no live-capable world reports `0` without a presence read. Room objects that never opened still answer (cold, with
+nobody), so the cap and the bucket are what bound the fan-out. `teacherName` is always `null`: teacher
+accounts carry no roster name in the brick tables (the mock client returns a fixture name).
 
 | Method/path | Body | Response |
 |---|---|---|
 | GET classes | — | `{classes}` |
 | POST classes | `{name}` | `{class}` |
-| PATCH classes/:id | `{name?,enrollmentOpen?,collaborationOpen?,showNamesOnJoin?,rotateCode?}` | `{class}` |
+| PATCH classes/:id | `{name?,enrollmentOpen?,collaborationOpen?,showNamesOnJoin?,studentsCanShare?,rotateCode?}` | `{class}` |
 | GET classes/:id/students | — | `{students}` |
 | PATCH classes/:id/students/:userId | `{username?,rosterName?,suspended?,temporaryPassword?}` | `{student}` |
 
@@ -122,10 +130,20 @@ student classroom-world access while preserving personal building and saved data
 
 ## Worlds, groups, recovery
 
-World: `{id,title,ownerId,classId,kind,revision,updatedAt,document?}`. kind is personal,
-group, or class. Personal worlds are owner-only. Shared worlds are created by the
-class teacher; group access requires explicit membership, class worlds include all
-active class students. List omits document; get/create/save/restore include it.
+World: `{id,title,ownerId,classId,kind,revision,updatedAt,visibility,canEdit,classCanEdit,ownerName,ownerClassId,sharedAt,hiddenByTeacher?,document?}`.
+kind is personal, group, or class. Personal worlds belong to their owner and may be shared
+with the owner's class (below). Class and group worlds are created by the class teacher;
+group access requires explicit membership, class worlds include all active class students.
+List omits document; get/create/save/restore/copy include it.
+
+- `visibility`: `private` or `class` (class and group worlds always report `class`).
+- `canEdit`: whether the caller may change bricks (owner; classmate of a world shared with
+  editing; class/group rules). `classCanEdit` is the owner's sharing setting itself ("build
+  together" vs "look only"), independent of the caller; true for class and group worlds.
+- `ownerName`: first name plus last initial of the owner (`Teacher` for teacher-owned worlds).
+  `ownerClassId`: the owner's class (personal worlds keep `classId` null); null for a teacher's
+  personal world. `sharedAt`: when the owner shared it; null while private.
+- `hiddenByTeacher`: teachers only; the class teacher hid this shared world from classmates.
 
 | Method/path | Body | Response |
 |---|---|---|
@@ -139,6 +157,9 @@ active class students. List omits document; get/create/save/restore include it.
 | GET worlds/:id/members | — | `{members}` |
 | POST worlds/:id/members | `{userId}` | `{members}` |
 | DELETE worlds/:id/members/:userId | — | `{members}` |
+| PATCH worlds/:id/sharing | `{visibility:'private'|'class',canEdit}` | `{world}` |
+| PATCH worlds/:id/visibility | `{hiddenByTeacher}` | `{world}` |
+| POST worlds/:id/copy | — | 201 `{world}` |
 
 Members may be changed only by the class teacher and only for group worlds. Removed
 members cannot rejoin through copied IDs/links; existing contributions remain. Member
@@ -157,9 +178,56 @@ validates its complete document, and returns201 `{world}`. It is limited to10/mi
 per account. Missing/expired legacy records return404; this cannot recover data that
 has already expired or been deleted. Reset-required accounts cannot import.
 
+### Shared personal worlds
+
+Migration `202609190001_brick_class_sharing.sql`: `brick_worlds.class_visibility` (`private`|`class`),
+`class_can_edit`, `hidden_by_teacher`, `class_shared_at`; `brick_classes.students_can_share`. Personal
+worlds keep `class_id` null; the owner's class is resolved through `brick_students.class_id` at read
+time, so `GET worlds` finds classmates' shared worlds by owner (students of the caller's class, in
+batches of 100 owners) and returns them after the class/group worlds. Students see them only while
+the class has `collaborationOpen` and `studentsCanShare`, never hidden ones, and never worlds of
+suspended owners; the teacher sees every shared world of their classes with `hiddenByTeacher`.
+`canEdit` for a non-owner (a classmate or the class teacher) is true only while the world is shared with
+editing, not hidden, and the owner's class has collaboration open and sharing on: the same conditions
+`brick_commit_world` checks on save, so a live session is never offered an edit the save would refuse
+(migration `202609190002_brick_teacher_edit_alignment.sql` aligns `brick_authorize_world`; the teacher
+may still look in those states). A suspended owner's shared world is `404 not_found` for classmates by
+direct id, copy and live join, exactly as the listing already hides it; the class teacher may look but
+not edit, and `brick_commit_world` refuses every non-owner while the owner is suspended (the owner
+keeps their own world).
+
+- `PATCH worlds/:id/sharing` — owner only, student role, personal world. 403 `sharing_disabled`
+  when the class has sharing off. `visibility:'private'` unshares (clears `canEdit` and `sharedAt`).
+  Every change re-authorizes the live room (`sharing_updated`, `membership`): classmates lose the
+  room on unshare, keep it with refreshed `canEdit` otherwise; the owner always stays.
+- `PATCH worlds/:id/visibility` — teacher of the owner's class only, shared personal worlds
+  (unshared ones are 404 to the teacher). Hiding re-authorizes the room (`visibility_updated`).
+- `POST worlds/:id/copy` — anyone who can see the world; creates a private personal world for the
+  caller titled `<title> (copy)` from the stored document (live edits commit there first). 409
+  `world_limit` at 50 saved worlds. Rate: shared with world creation (60/hour).
+- Reads by a classmate: `GET worlds/:id` returns the document with `canEdit`. `PUT` by a viewer
+  is 403 `read_only`; rename, restore and checkpoints of a personal world are owner-only
+  (403 `owner_required`), also for the teacher. A student of another class gets 404. Errors for
+  classmates: 403 `world_hidden`, `class_closed`, `sharing_disabled`.
+- Live join (`/worlds/:id`, `/worlds/:id/connect`, `live-ticket`): the owner always enters as an
+  editor (also on an unshared world); classmates and the class teacher enter a shared world with
+  `canEdit` = `class_can_edit`; students are refused while hidden, collaboration closed or sharing
+  off. `brick_authorize_world` and `brick_commit_world` enforce the same rules for socket
+  re-authorization and live commits (`private_world`, `world_hidden`, `sharing_disabled`,
+  `class_closed`; `access_revoked` on commit). `classId` in the live access is null for personal
+  worlds. Class-level invalidation (`listClassroomWorldIds`) covers the class's own worlds and its
+  students' shared personal worlds.
+- Invite links and the class QR point to `/join?classCode=<code>` (`classJoinHref` in
+  `src/classroom/client.ts`).
+
 ## Live integration
 
-`handleClassroomRequest(request,env,{onAccessChanged})` invokes the awaited callback
+`handleClassroomRequest(request,env,{onAccessChanged,liveParticipants?})`: `liveParticipants(worldIds)`
+returns the distinct classroom user ids connected to those rooms (the Worker reads each room's
+`GET /internal/classroom-presence`, ids only) or null when unknown; it feeds `buildingNow` on a
+teacher's `GET classes` only, bounded by `PRESENCE_ROOM_LIMIT` (150 rooms per request) and the
+per-teacher `presence:` rate bucket (`PRESENCE_RATE`, 30 per minute; an empty bucket yields null).
+`onAccessChanged` invokes the awaited callback
 before returning success after access changes, resets, membership changes, world
 save/restore and logout. Event: `{classId?,worldId?,userId?,reason,change}`. Root Worker
 must notify affected live DOs; `listClassroomWorldIds(env,{classId?,userId?})` enumerates

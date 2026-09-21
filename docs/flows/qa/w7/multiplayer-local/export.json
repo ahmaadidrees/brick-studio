@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "plateSize": 128,
+  "partLibraryVersion": 1,
+  "environmentId": "classic",
+  "customParts": [],
+  "bricks": [
+    {
+      "id": "brick-1789767113124-m8gtcx",
+      "partId": "brick_1x1",
+      "x": 126,
+      "y": 0,
+      "z": 63,
+      "rotation": 0,
+      "color": "#3e83d7"
+    }
+  ]
+}

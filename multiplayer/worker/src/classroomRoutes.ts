@@ -11,6 +11,7 @@ import {
   loadClassroomWorld,
   ClassroomHttpError,
   ClassroomService,
+  PRESENCE_ROOM_LIMIT,
   type ClassroomAccessChange,
 } from "./classroom";
 import {
@@ -75,6 +76,28 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
         );
     }),
   );
+}
+/**
+ * Distinct classroom accounts connected to these rooms right now. Presence lives only in the WorldRoom
+ * objects, so each id costs one internal fetch; there is no registry of rooms that have opened, so an id
+ * that never did instantiates a cold object that answers with nobody. ClassroomService.buildingNow bounds
+ * the total per request and per teacher; this guard only refuses a single oversized batch.
+ * Returns null (unknown) rather than a guess when the fan-out is too large or a room cannot answer.
+ */
+async function liveParticipants(env: Env, worldIds: string[]): Promise<string[] | null> {
+  if (worldIds.length > PRESENCE_ROOM_LIMIT) return null;
+  try {
+    const rooms = await Promise.all(worldIds.map(async (id) => {
+      const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(id.replaceAll("-", "")));
+      const r = await stub.fetch("https://world.internal/internal/classroom-presence");
+      if (!r.ok) throw new Error("presence_unavailable");
+      const { userIds } = await r.json<{ userIds: unknown }>();
+      return Array.isArray(userIds) ? userIds.filter((value): value is string => typeof value === "string") : [];
+    }));
+    return [...new Set(rooms.flat())];
+  } catch {
+    return null;
+  }
 }
 async function ensureRoom(env: Env, worldId: string) {
   const world = await loadClassroomWorld(env, worldId),
@@ -305,6 +328,7 @@ export async function handleReleaseRequest(
     }
     const response = await handleClassroomRequest(request, env, {
       onAccessChanged: (event) => invalidate(env, event),
+      liveParticipants: (worldIds) => liveParticipants(env, worldIds),
     });
     return outgoing(response ?? json({ code: "not_found" }, 404), origin);
   } catch (error) {

@@ -1,0 +1,210 @@
+passed default        1366x768  join-new                   1702ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/944]
+passed default        1366x768  join-signin                1388ms
+passed default        1366x768  join-signin-roster         2546ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/859]
+passed default        1366x768  join-teacher               1373ms
+passed default        1366x768  join-teacher-email         1430ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/822]
+passed default        1366x768  worlds-student-mine        1216ms
+passed default        1366x768  worlds-student-class       1681ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/920]
+passed default        1366x768  worlds-share-sheet         1725ms
+passed default        1366x768  worlds-teacher             1671ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/1473]
+passed default        1366x768  class-first-run            1391ms
+passed default        1366x768  class-first-run-invite     1809ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/909]
+passed default        1366x768  class-students             1681ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1355]
+passed default        1366x768  class-settings             1408ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1212]
+passed default        1366x768  class-worlds               1415ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/792]
+passed default        1366x768  class-projector            1675ms
+passed default        1366x768  editor-idle                1994ms
+passed default        1366x768  editor-brush               1763ms
+passed default        1366x768  editor-selected            1745ms
+passed default        1366x768  editor-selected-color      1822ms
+passed default        1024x768  join-new                   1699ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/944]
+passed default        1024x768  join-signin                2155ms
+passed default        1024x768  join-signin-roster         2509ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/859]
+passed default        1024x768  join-teacher               1376ms
+passed default        1024x768  join-teacher-email         1413ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/822]
+passed default        1024x768  worlds-student-mine        1694ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/1009]
+passed default        1024x768  worlds-student-class       1687ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/1263]
+passed default        1024x768  worlds-share-sheet         1727ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/911]
+passed default        1024x768  worlds-teacher             1678ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/1772]
+passed default        1024x768  class-first-run            1377ms
+passed default        1024x768  class-first-run-invite     1812ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/909]
+passed default        1024x768  class-students             1688ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1423]
+passed default        1024x768  class-settings             1409ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1295]
+passed default        1024x768  class-worlds               1431ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/875]
+passed default        1024x768  class-projector            1679ms
+passed default        1024x768  editor-idle                1968ms
+passed default        1024x768  editor-brush               1778ms
+passed default        1024x768  editor-selected            1383ms
+passed default        1024x768  editor-selected-color      1594ms
+passed default        768x1024  join-new                   1380ms
+passed default        768x1024  join-signin                1396ms
+passed default        768x1024  join-signin-roster         2498ms
+passed default        768x1024  join-teacher               1366ms
+passed default        768x1024  join-teacher-email         932ms
+passed default        768x1024  worlds-student-mine        1680ms
+passed default        768x1024  worlds-student-class       1675ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 1024/1263]
+passed default        768x1024  worlds-share-sheet         1742ms
+passed default        768x1024  worlds-teacher             1700ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 1024/1772]
+passed default        768x1024  class-first-run            1374ms
+passed default        768x1024  class-first-run-invite     1791ms
+passed default        768x1024  class-students             1677ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 1024/1580]
+passed default        768x1024  class-settings             1398ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 1024/1295]
+passed default        768x1024  class-worlds               1414ms
+passed default        768x1024  class-projector            1683ms
+passed default        768x1024  editor-idle                1967ms
+passed default        768x1024  editor-brush               2041ms
+passed default        768x1024  editor-selected            1744ms
+passed default        768x1024  editor-selected-color      1787ms
+passed default        390x844   join-new                   1379ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 844/931]
+passed default        390x844   join-signin                1396ms
+passed default        390x844   join-signin-roster         2490ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 844/858; ul.join-name-grid 144/204]
+passed default        390x844   join-teacher               1363ms
+passed default        390x844   join-teacher-email         1412ms
+passed default        390x844   worlds-student-mine        1679ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/1736]
+passed default        390x844   worlds-student-class       1692ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/2259]
+passed default        390x844   worlds-share-sheet         1711ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/1488]
+passed default        390x844   worlds-teacher             1688ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/4088]
+passed default        390x844   class-first-run            1382ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/947]
+passed default        390x844   class-first-run-invite     1793ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1399]
+passed default        390x844   class-students             1666ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/2519]
+passed default        390x844   class-settings             1376ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1703]
+passed default        390x844   class-worlds               1414ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1146]
+passed default        390x844   class-projector            1679ms
+passed default        390x844   editor-idle                2431ms
+passed default        390x844   editor-brush               2025ms
+passed default        390x844   editor-selected            1742ms
+passed default        390x844   editor-selected-color      1558ms
+passed default        320x740   join-new                   1367ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 740/1057]
+passed default        320x740   join-signin                1392ms
+passed default        320x740   join-signin-roster         2489ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 740/984; ul.join-name-grid 144/204]
+passed default        320x740   join-teacher               1375ms
+passed default        320x740   join-teacher-email         1414ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 740/820]
+passed default        320x740   worlds-student-mine        1212ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 740/1736]
+passed default        320x740   worlds-student-class       1677ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 740/2259]
+passed default        320x740   worlds-share-sheet         1727ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 740/1488]
+passed default        320x740   worlds-teacher             1686ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 740/4106]
+passed default        320x740   class-first-run            1377ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/969]
+passed default        320x740   class-first-run-invite     1812ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/1443]
+passed default        320x740   class-students             1678ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/2768]
+passed default        320x740   class-settings             1406ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/1808]
+passed default        320x740   class-worlds               1414ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 740/1233]
+passed default        320x740   class-projector            1677ms
+passed default        320x740   editor-idle                2444ms
+passed default        320x740   editor-brush               2796ms
+passed default        320x740   editor-selected            1261ms
+passed default        320x740   editor-selected-color      1559ms
+passed default        844x390   join-new                   1374ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/968]
+passed default        844x390   join-signin                1381ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/697]
+passed default        844x390   join-signin-roster         2495ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/955]
+passed default        844x390   join-teacher               1365ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/578]
+passed default        844x390   join-teacher-email         1417ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 390/834]
+passed default        844x390   worlds-student-mine        1679ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 390/1045]
+passed default        844x390   worlds-student-class       1695ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 390/1287]
+passed default        844x390   worlds-share-sheet         1724ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 390/943]
+passed default        844x390   worlds-teacher             1690ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 390/1810]
+passed default        844x390   class-first-run            1380ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/627]
+passed default        844x390   class-first-run-invite     1812ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/913]
+passed default        844x390   class-students             1675ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/1536]
+passed default        844x390   class-settings             1417ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/1301]
+passed default        844x390   class-worlds               1413ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 390/915]
+passed default        844x390   class-projector            1678ms
+passed default        844x390   editor-idle                2497ms
+passed default        844x390   editor-brush               2776ms
+passed default        844x390   editor-selected            1262ms
+passed default        844x390   editor-selected-color      1559ms
+passed zoom200        1366x768  join-new                   1698ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/907]
+passed zoom200        1366x768  join-signin                1393ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/636]
+passed zoom200        1366x768  join-signin-roster         2511ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/834; ul.join-name-grid 144/204]
+passed zoom200        1366x768  join-teacher               1407ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/530]
+passed zoom200        1366x768  join-teacher-email         947ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/786]
+passed zoom200        1366x768  worlds-student-mine        1698ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/1712]
+passed zoom200        1366x768  worlds-student-class       1705ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/2259]
+passed zoom200        1366x768  worlds-share-sheet         1735ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/1464]
+passed zoom200        1366x768  worlds-teacher             1694ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/4064]
+passed zoom200        1366x768  class-first-run            1389ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/771]
+passed zoom200        1366x768  class-first-run-invite     1833ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/1275]
+passed zoom200        1366x768  class-students             1721ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/2224]
+passed zoom200        1366x768  class-settings             1426ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/1275]
+passed zoom200        1366x768  class-worlds               1416ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/1013]
+passed zoom200        1366x768  class-projector            1716ms
+passed zoom200        1366x768  editor-idle                2426ms
+passed zoom200        1366x768  editor-brush               3244ms
+passed zoom200        1366x768  editor-selected            1264ms
+passed zoom200        1366x768  editor-selected-color      1561ms
+passed zoom200        1024x768  join-new                   1413ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/907]
+passed zoom200        1024x768  join-signin                1396ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/636]
+passed zoom200        1024x768  join-signin-roster         2530ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/834; ul.join-name-grid 144/204]
+passed zoom200        1024x768  join-teacher               1409ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/530]
+passed zoom200        1024x768  join-teacher-email         1429ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 384/786]
+passed zoom200        1024x768  worlds-student-mine        1700ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/1712]
+passed zoom200        1024x768  worlds-student-class       1694ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/2259]
+passed zoom200        1024x768  worlds-share-sheet         1740ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/1464]
+passed zoom200        1024x768  worlds-teacher             1707ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 384/4082]
+passed zoom200        1024x768  class-first-run            1389ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/815]
+passed zoom200        1024x768  class-first-run-invite     1833ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/1299]
+passed zoom200        1024x768  class-students             1696ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/2251]
+passed zoom200        1024x768  class-settings             1430ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/1479]
+passed zoom200        1024x768  class-worlds               1428ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 384/1013]
+passed zoom200        1024x768  class-projector            1713ms
+passed zoom200        1024x768  editor-idle                2427ms
+passed zoom200        1024x768  editor-brush               3242ms
+passed zoom200        1024x768  editor-selected            1263ms
+passed zoom200        1024x768  editor-selected-color      1560ms
+passed zoom200        768x1024  join-new                   1694ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 512/907]
+passed zoom200        768x1024  join-signin                1416ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 512/636]
+passed zoom200        768x1024  join-signin-roster         2496ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 512/834; ul.join-name-grid 144/204]
+passed zoom200        768x1024  join-teacher               1410ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 512/530]
+passed zoom200        768x1024  join-teacher-email         1426ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 512/786]
+passed zoom200        768x1024  worlds-student-mine        1697ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 512/1712]
+passed zoom200        768x1024  worlds-student-class       1706ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 512/2259]
+passed zoom200        768x1024  worlds-share-sheet         1734ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 512/1464]
+passed zoom200        768x1024  worlds-teacher             1708ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 512/4082]
+passed zoom200        768x1024  class-first-run            1403ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 512/947]
+passed zoom200        768x1024  class-first-run-invite     1812ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 512/1375]
+passed zoom200        768x1024  class-students             1713ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 512/2377]
+passed zoom200        768x1024  class-settings             1428ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 512/1699]
+passed zoom200        768x1024  class-worlds               1430ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 512/1110]
+passed zoom200        768x1024  class-projector            1710ms
+passed zoom200        768x1024  editor-idle                2439ms
+passed zoom200        768x1024  editor-brush               2794ms
+passed zoom200        768x1024  editor-selected            1266ms
+passed zoom200        768x1024  editor-selected-color      1558ms
+passed reduced-motion 1366x768  join-new                   1397ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/944]
+passed reduced-motion 1366x768  join-signin                1380ms
+passed reduced-motion 1366x768  join-signin-roster         2494ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/859]
+passed reduced-motion 1366x768  join-teacher               1374ms
+passed reduced-motion 1366x768  join-teacher-email         1379ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 768/822]
+passed reduced-motion 1366x768  worlds-student-mine        1681ms
+passed reduced-motion 1366x768  worlds-student-class       1213ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/920]
+passed reduced-motion 1366x768  worlds-share-sheet         1732ms
+passed reduced-motion 1366x768  worlds-teacher             1697ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 768/1473]
+passed reduced-motion 1366x768  class-first-run            1392ms
+passed reduced-motion 1366x768  class-first-run-invite     1794ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/909]
+passed reduced-motion 1366x768  class-students             1675ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1355]
+passed reduced-motion 1366x768  class-settings             1387ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/1212]
+passed reduced-motion 1366x768  class-worlds               1433ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 768/792]
+passed reduced-motion 1366x768  class-projector            1678ms
+passed reduced-motion 1366x768  editor-idle                1979ms
+passed reduced-motion 1366x768  editor-brush               1451ms
+passed reduced-motion 1366x768  editor-selected            1300ms
+passed reduced-motion 1366x768  editor-selected-color      1476ms
+passed reduced-motion 390x844   join-new                   1679ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 844/931]
+passed reduced-motion 390x844   join-signin                1370ms
+passed reduced-motion 390x844   join-signin-roster         2009ms  [inner scroll container(s) instead of page-level scrolling: div.join-page 844/858; ul.join-name-grid 144/204]
+passed reduced-motion 390x844   join-teacher               1378ms
+passed reduced-motion 390x844   join-teacher-email         892ms
+passed reduced-motion 390x844   worlds-student-mine        1695ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/1736]
+passed reduced-motion 390x844   worlds-student-class       1679ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/2259]
+passed reduced-motion 390x844   worlds-share-sheet         1726ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/1488]
+passed reduced-motion 390x844   worlds-teacher             1675ms  [inner scroll container(s) instead of page-level scrolling: div.worlds-page 844/4088]
+passed reduced-motion 390x844   class-first-run            1377ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/947]
+passed reduced-motion 390x844   class-first-run-invite     1794ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1399]
+passed reduced-motion 390x844   class-students             1674ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/2519]
+passed reduced-motion 390x844   class-settings             1407ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1703]
+passed reduced-motion 390x844   class-worlds               1398ms  [inner scroll container(s) instead of page-level scrolling: div.class-page 844/1146]
+passed reduced-motion 390x844   class-projector            1671ms
+passed reduced-motion 390x844   editor-idle                1947ms
+passed reduced-motion 390x844   editor-brush               1432ms
+passed reduced-motion 390x844   editor-selected            1249ms
+passed reduced-motion 390x844   editor-selected-color      1390ms
+{"result":"passed","output":"docs/flows/qa/w7/surfaces","runs":209,"passed":209,"failed":0,"skipped":0,"notes":123}

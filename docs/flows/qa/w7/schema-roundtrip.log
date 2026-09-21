@@ -1,0 +1,4 @@
+passed schema-2         after-import=passed after-reload=passed after-home-continue-reload=passed
+passed schema-3         after-import=passed after-reload=passed after-home-continue-reload=passed
+passed schema-1-legacy  after-import=passed after-reload=passed after-home-continue-reload=passed
+{"result":"passed","output":"docs/flows/qa/w7/schema-roundtrip","cases":3,"passed":3,"failed":0}

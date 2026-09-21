@@ -16,6 +16,10 @@ const LiveWorldPage = lazy(() => import('./brick/LiveWorldPage'))
 const LandingPage = lazy(() => import('./brick/landing/LandingPage'))
 // Dev-only component gallery; the production bundle drops the chunk along with this branch.
 const UiGallery = import.meta.env.DEV ? lazy(() => import('./ui/Gallery')) : null
+const JoinPage = lazy(() => import('./pages/join/JoinPage'))
+const WorldsPage = lazy(() => import('./pages/worlds/WorldsPage'))
+const ClassPage = lazy(() => import('./pages/class/ClassPage'))
+const ProjectorPage = lazy(() => import('./pages/class/ProjectorPage'))
 const { route, canonicalPath } = resolveAppRoute(window.location)
 if (canonicalPath) window.history.replaceState(null, '', canonicalPath)
 const experience = route === 'teacher-callback'
@@ -28,6 +32,14 @@ const experience = route === 'teacher-callback'
     ? <PublishedWorldPage />
     : route === 'build'
       ? <BrickStudioApp />
+    : route === 'join'
+      ? <JoinPage />
+    : route === 'worlds'
+      ? <WorldsPage />
+    : route === 'class'
+      ? <ClassPage />
+    : route === 'class-projector'
+      ? <ProjectorPage />
     : route === 'dev-ui' && UiGallery
       ? <UiGallery />
       : <main style={{ padding: '3rem', maxWidth: 640, margin: 'auto' }}><h1>We couldn't find that page</h1><p>Your saved builds are still available.</p><p><a href="/">Home</a> · <a href="/build">Open the studio</a></p></main>

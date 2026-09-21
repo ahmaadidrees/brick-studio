@@ -1,0 +1,15 @@
+passed default        1366x768  landing                    1375ms
+passed default        1366x768  build                      2030ms
+passed default        1366x768  build-drawer               1426ms
+passed default        1366x768  world-menu                 1080ms
+passed default        1366x768  settings                   1365ms
+passed default        1366x768  scene-sheet                1430ms
+passed default        1366x768  explore                    4022ms
+passed default        390x844   landing                    1373ms
+passed default        390x844   build                      1955ms
+failed default        390x844   build-drawer               961ms  1 touch targets under 44px: Expand brick drawer 360x28
+passed default        390x844   world-menu                 977ms
+passed default        390x844   settings                   1078ms
+passed default        390x844   scene-sheet                1371ms
+passed default        390x844   explore                    4000ms
+{"result":"failed","output":"docs/flows/qa/w7/brand-surfaces-subset","runs":14,"passed":13,"failed":1,"skipped":0,"notes":0}

@@ -5,7 +5,7 @@ import { createCloudAutosave, recoveryKey } from './cloudAutosave'
 import type { ClassroomAuthResult, ClassroomWorld } from './contracts'
 const auth: ClassroomAuthResult = { user: { id: 'a', username: 'builder', rosterName: 'Alex', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 3600 } }
 const doc = createBrickStudioDocument([])
-const world: ClassroomWorld = { id: 'world-a', title: 'A world', ownerId: 'a', classId: null, kind: 'personal', revision: 1, updatedAt: '2026-09-09', document: doc }
+const world: ClassroomWorld = { id: 'world-a', title: 'A world', ownerId: 'a', classId: null, kind: 'personal', revision: 1, updatedAt: '2026-09-09', visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Owner', ownerClassId: null, sharedAt: null, document: doc }
 const changed = { ...doc, environmentId: 'toy-room' as const }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 function setup(fetcher: typeof fetch) {

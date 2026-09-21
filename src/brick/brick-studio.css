@@ -48,78 +48,23 @@
 .studio-button-primary:hover:not(:disabled) { color: var(--primary-contrast, #ffffff); background: var(--studio-blue-dark); }
 
 /* ------------------------------------------------------------- header --- */
+/* The Build header is W2's <AppHeader variant="editor"> (src/shell/shell.css); only the height
+   variables above and the Explore HUD / published-bar tool styles below live here. */
 
-.brick-header {
-  position: absolute;
-  z-index: var(--z-header, 20);
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--brick-header-block);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 10px;
-  align-items: center;
-  box-sizing: border-box;
-  padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left));
-  border-bottom: 1px solid var(--studio-panel-border);
-  background: var(--studio-panel);
-  box-shadow: 0 1px 0 rgba(38, 60, 81, .03), 0 6px 18px rgba(38, 60, 81, .06);
-  pointer-events: auto;
-}
-
-.brick-header-world { min-width: 0; display: flex; align-items: center; gap: 10px; }
-/* Brand lockup doubles as Home. Under 640px the wordmark drops (brand-lockup-wide), so the mark
-   alone stays a 44px target. A divider separates it from the world title on wide screens. */
-.brick-brand-home { min-width: 44px; justify-content: center; padding: 0 6px 0 2px; border-radius: var(--radius-md, 12px); }
-.brick-brand-home:hover { background: rgba(88, 136, 218, .1); }
-.brick-brand-home:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.brick-brand-home .brand-wordmark { font-size: 22px; }
-.brick-header-world::before { content: none; }
 .brick-brand-mark { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--radius-md, 12px); background: transparent; cursor: pointer; }
 .brick-brand-mark:hover { background: rgba(88, 136, 218, .1); }
 .brick-brand-mark:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.brick-world-context { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-left: 10px; border-left: 1px solid var(--studio-panel-border); }
-.studio-world-title { display: flex; align-items: center; gap: 6px; max-width: 100%; min-height: 28px; padding: 0 4px; border: 0; border-radius: 6px; color: var(--studio-ink); background: transparent; cursor: pointer; text-align: left; }
-.studio-world-title strong { max-width: 260px; overflow: hidden; font: 600 17px/1.15 var(--font-display, 'Fredoka'), sans-serif; text-overflow: ellipsis; white-space: nowrap; }
-.studio-world-title svg { flex: 0 0 auto; color: var(--studio-muted); }
-.studio-world-title:hover { background: rgba(88, 136, 218, .08); }
-.studio-world-title:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-/* The save chip is the shared SaveStatus primitive; the header only tightens it to one line. */
-.brick-header .brick-save-status { min-height: 22px; padding: 0 8px 0 4px; background: transparent; border-color: transparent; font-size: 11.5px; }
-.brick-header .brick-save-status .ui-save-status-detail { display: none; }
-.brick-header .brick-save-status.ui-save-status-error, .brick-header .brick-save-status.ui-save-status-offline { padding-right: 9px; background: var(--danger-soft, #fbe4e0); border-color: var(--danger, #c9463a); }
 
-.brick-header-tools { display: flex; align-items: center; gap: 2px; }
 .brick-header-tool.ui-button { min-width: 44px; padding: 0 12px; font-size: 12.5px; }
 .brick-header-tool.ui-button .ui-button-icon { color: var(--studio-blue-dark); }
-/* The signed-in name is the label: long roster names clip rather than push the header. */
-.brick-header-account.ui-button .ui-button-label { display: block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brick-people-count { min-width: 19px; height: 19px; display: inline-grid; place-items: center; margin-left: 6px; padding: 0 5px; border-radius: 9px; color: var(--studio-blue-dark); background: rgba(88, 136, 218, .16); font-size: 10px; vertical-align: middle; }
 
-.brick-mode-switch { display: flex; align-items: center; margin-left: 4px; padding-left: 12px; border-left: 1px solid var(--studio-panel-border); }
-.brick-primary-mode.ui-button { min-width: 112px; padding: 0 16px; font-size: 13.5px; }
-.brick-primary-mode kbd, .brick-explore-back kbd { min-width: 17px; height: 17px; margin-left: 6px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; vertical-align: middle; }
+.brick-explore-back kbd { min-width: 17px; height: 17px; margin-left: 6px; padding: 0 4px; border: 0; border-radius: 5px; color: inherit; background: rgba(255, 255, 255, .22); font-size: 9px; line-height: 17px; vertical-align: middle; }
 .brick-explore-back kbd { background: rgba(38, 60, 81, .08); }
 
-.studio-menu { position: relative; min-width: 0; }
-/* The placed-brick section can push the menu past a short viewport, so it scrolls; the studio
-   root is touch-action: none, hence the explicit pan-y. */
-.studio-menu-popover { position: absolute; top: calc(100% + 6px); left: 0; z-index: var(--z-sheet, 30); width: min(272px, calc(100vw - 16px)); max-height: calc(100vh - var(--brick-header-block) - 24px); display: grid; gap: 2px; overflow-y: auto; overscroll-behavior: contain; padding: 8px; border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 18px 48px rgba(38, 60, 81, .2)); touch-action: pan-y; }
-.studio-menu-popover button, .studio-menu-popover a { min-height: 48px; display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 8px; padding: 6px 9px; border: 0; border-radius: 10px; color: var(--studio-ink); background: transparent; text-align: left; text-decoration: none; cursor: pointer; }
-.studio-menu-popover button:hover:not(:disabled), .studio-menu-popover a:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .1); }
-.studio-menu-popover button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; }
-.studio-menu-popover button:disabled { opacity: .42; cursor: default; }
-.studio-menu-popover svg { justify-self: center; color: var(--studio-blue-dark); }
-.studio-menu-popover span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.studio-menu-popover strong { font-size: 14px; }
-.studio-menu-popover small { overflow: hidden; color: var(--studio-muted); font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
-.studio-menu-section { display: grid; gap: 5px; margin-top: 4px; padding: 9px 9px 6px; border-top: 1px solid var(--studio-panel-border); }
-.studio-menu-section label { color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
-.studio-menu-section select { width: 100%; min-height: 44px; padding: 0 30px 0 9px; border: 1px solid var(--studio-panel-border); border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font: 800 11px/1.2 inherit; }
-.studio-menu-section select:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
-.studio-menu-section > span { display: block; color: var(--studio-muted); font-size: 10px; line-height: 1.35; }
-
+/* `/build?world=<id>` that cannot be opened: the recovery banner style with a link back to My worlds. */
+.brick-world-unavailable-link { min-height: 40px; display: inline-flex; align-items: center; padding: 0 12px; border: 1.5px solid var(--border-strong, rgba(38, 60, 81, .3)); border-radius: var(--radius-sm, 8px); color: var(--text, #263c51); background: var(--surface, #ffffff); font-weight: 800; text-decoration: none; white-space: nowrap; }
+.brick-world-unavailable-link:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
 
 /* ------------------------------------------------------------- drawer --- */
 
@@ -205,7 +150,6 @@
 
 /* ---------------------------------------------------------- inspector --- */
 
-
 .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .color-grid button { aspect-ratio: 1; min-width: 27px; display: grid; place-items: center; border: 2px solid white; border-radius: 50%; color: white; box-shadow: 0 0 0 1px var(--studio-panel-border); cursor: pointer; }
 .color-grid button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
@@ -213,39 +157,37 @@
 .coordinates { display: grid; grid-template-columns: repeat(3,1fr); gap: 5px; margin-top: 12px; }
 .coordinates span { display: flex; justify-content: space-between; padding: 6px 7px; border-radius: 7px; color: var(--studio-muted); background: var(--studio-panel-soft); font-size: 9px; font-weight: 800; }
 .coordinates strong { color: var(--studio-ink); }
-.transform-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
-.transform-controls button { min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font: inherit; font-size: 17px; font-weight: 900; cursor: pointer; }
-.transform-controls button:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .12); }
-.transform-controls button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.transform-controls small { font-size: 8px; font-weight: 900; line-height: 1; }
 
-/* ------------------------------------------------------------ toolbar --- */
+/* ----------------------------------------------------------- clusters --- */
 
-/* One compact bottom toolbar, centered in the canvas area (offset while the drawer is docked). */
-/* Scrolls sideways rather than leaving controls outside the viewport at 200% zoom or on short
-   landscape phones; the 6px padding keeps focus rings inside the scroll box. */
-.brick-edit-toolbar { position: absolute; z-index: 13; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 4px; max-width: calc(100% - 24px); box-sizing: border-box; padding: 6px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; touch-action: pan-x; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-.brick-edit-toolbar > * { flex: 0 0 auto; }
-.build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 138px); }
+/* History (Undo / Redo, touch Select, capacity) sits top-left beside the drawer; the camera
+   cluster (Frame, Top, Front, 3D) is a column on the bottom-right edge so the command strip
+   keeps the bottom centre. Both move with the drawer state; compact layouts pin them to the
+   screen edges. */
+.brick-history-cluster { position: absolute; z-index: 13; top: var(--brick-panel-top); left: 288px; display: flex; align-items: center; gap: 4px; max-width: calc(100% - 304px - 72px); box-sizing: border-box; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.build-shell.drawer-collapsed .brick-history-cluster { left: 80px; }
+.brick-history-cluster > * { flex: 0 0 auto; }
 .brick-history-tools { display: flex; gap: 0; padding: 0 3px; border-radius: 10px; background: var(--studio-panel-soft); }
 .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }
-.brick-edit-toolbar .view-controls { position: static; width: auto; height: 44px; display: flex; padding: 0; border: 0; border-left: 1px solid var(--studio-panel-border); border-radius: 0; box-shadow: none; background: transparent; }
-.view-controls button { min-width: 40px; height: 44px; padding: 0 8px; border: 0; color: var(--studio-ink); background: transparent; font: 800 11px/1 inherit; cursor: pointer; }
-.view-controls button:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .1); border-radius: 9px; }
-.view-controls button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; border-radius: 9px; }
-.view-controls .view-home { margin: 0 5px; border: 1px solid var(--studio-panel-border); border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; white-space: nowrap; }
-.brick-edit-toolbar .studio-icon-button > span { white-space: nowrap; }
-.brick-edit-toolbar .selection-mode-control { position: static; height: 44px; width: auto; min-width: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); box-shadow: none; font: 800 11px/1 inherit; white-space: nowrap; cursor: pointer; }
-.brick-edit-toolbar .selection-mode-control:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.brick-edit-toolbar .selection-mode-control.active { background: var(--studio-blue); color: var(--primary-contrast, #ffffff); }
+.brick-history-tools .studio-icon-button > span { white-space: nowrap; }
+.selection-mode-control { height: 44px; width: auto; min-width: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; border: 0; border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); box-shadow: none; font: 800 11px/1 inherit; white-space: nowrap; cursor: pointer; }
+.selection-mode-control:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.selection-mode-control.active { background: var(--studio-blue); color: var(--primary-contrast, #ffffff); }
 .brick-capacity-status { padding: 0 10px; border-left: 1px solid var(--studio-panel-border); color: var(--studio-muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
 /* Mouse users box-select directly; coarse pointers retain the one-shot tool. */
 @media (hover: hover) and (pointer: fine) { .selection-mode-control { display: none; } }
+@media (any-pointer: coarse) { .selection-mode-control { display: flex; } }
 
-.empty-guide { position: absolute; z-index: 8; top: calc(var(--brick-header-block) + 16px); left: 50%; display: flex; align-items: center; gap: 10px; transform: translateX(-50%); max-width: 350px; padding: 11px 14px; border: 1px solid var(--studio-panel-border); border-radius: 14px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 9px 24px rgba(38, 60, 81, .11)); pointer-events: none; }
-.empty-guide svg { color: var(--studio-blue); flex: 0 0 auto; }
-.empty-guide div { display: flex; flex-direction: column; }.empty-guide strong { font-size: 12px; }.empty-guide span { margin-top: 2px; color: var(--studio-muted); font-size: 10px; }
-.touch-placement-bar, .touch-selection-bar { display: none; }
+.brick-camera-cluster { position: absolute; z-index: 13; right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; padding: 5px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.brick-camera-cluster[inert] { opacity: .55; }
+.brick-camera-button { width: 50px; min-height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px 2px; border: 0; border-radius: 10px; color: var(--studio-ink); background: transparent; font: 900 9.5px/1 inherit; letter-spacing: .02em; cursor: pointer; }
+.brick-camera-button span { font-size: 10px; font-weight: 900; line-height: 1; }
+.brick-camera-button svg { color: var(--studio-blue-dark); }
+.brick-camera-button:hover { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .12)); }
+.brick-camera-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -3px; }
+.brick-camera-button.active { color: var(--studio-blue-dark); background: var(--primary-soft, rgba(88, 136, 218, .14)); box-shadow: inset 0 0 0 1px var(--studio-blue); }
+.brick-camera-frame { background: var(--studio-panel-soft); }
+
 .onboarding-guide { position: absolute; z-index: var(--z-drawer, 40); top: calc(var(--brick-header-block) + 20px); left: 50%; width: min(430px, calc(100% - 32px)); max-height: calc(100% - var(--brick-header-block) - 36px - env(safe-area-inset-bottom, 0px)); box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 22px; transform: translateX(-50%); border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--shadow-lg, 0 24px 70px rgba(38, 60, 81, .23)); }
 .onboarding-guide h2 { margin: 5px 42px 5px 0; font: 600 24px/1.08 var(--font-display, 'Fredoka'), sans-serif; }
 .onboarding-intro { margin: 0 38px 16px 0; color: var(--studio-muted); font-size: 12px; line-height: 1.45; }
@@ -265,15 +207,6 @@
 .brick-mode-explore .brick-toast, .brick-mode-explore .scene-loading-status { top: max(72px, calc(env(safe-area-inset-top) + 68px)); }
 /* In a shared world the People panel (live-hud at --z-drawer) must stay readable over a passing hint. */
 .brick-live-session .brick-toast { z-index: var(--z-sheet, 30); }
-/* Hints wrap as complete phrases, never as skinny columns over the canvas. */
-.shortcut-bar { position: absolute; z-index: 10; right: 12px; bottom: 70px; left: 290px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; color: var(--studio-muted); font-size: 10px; font-weight: 700; line-height: 1.45; pointer-events: none; }
-.shortcut-bar > span { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
-.shortcut-bar kbd { min-width: 20px; height: 19px; padding: 0 4px; font-size: 8px; }
-.build-shell.drawer-collapsed ~ .shortcut-bar { left: 12px; }
-@media (min-width: 901px) and (max-width: 1180px) {
-  /* Mid widths keep the drag line and the Esc hint; anything beyond gives way to the canvas. */
-  .shortcut-bar > span:nth-child(n+3) { display: none; }
-}
 
 /* ------------------------------------------------------------ explore --- */
 
@@ -373,18 +306,12 @@
 
 @media (pointer: coarse) {
   .fine-pointer-copy { display: none; }
-  /* The title trigger keeps its 28px layout box but grows a 44px hit area on touch. */
-  .studio-world-title { min-height: 44px; padding: 8px 4px; }
-  /* Touch layouts of any width keep title and save chip on one row so the 44px trigger fits the header. */
-  .brick-world-context { flex-direction: row; align-items: center; gap: 6px; }
   .part-search { min-height: 48px; }
   .part-search input { min-height: 44px; }
   .library-collapse-button { width: 44px; height: 44px; min-height: 44px; }
   .coarse-pointer-copy { display: inline; }
-  .shortcut-bar { display: none; }
   .color-grid { grid-template-columns: repeat(4, 1fr); }
   .color-grid button { min-width: 44px; width: 44px; height: 44px; }
-  .view-controls button { min-width: 44px; height: 44px; }
   .part-category { min-height: 44px; padding: 0 14px; }
   .part-search-clear, .explore-hint-dismiss { width: 44px; height: 44px; }
 }
@@ -455,109 +382,30 @@
   .brick-sheet-colors > label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: var(--studio-muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
   .brick-sheet .color-grid { grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); }
 
-  /* One floating pill in two states: placing (part chip, four icon-only steps, one filled
-     Place) and selected (swatch chip plus icon-only edits). Same box, same corner, same
-     slide-in, and they never coexist — an armed draft hides the selection pill. */
-  .touch-placement-bar,
-  .touch-selection-bar {
-    position: absolute;
-    z-index: 14;
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(10px, env(safe-area-inset-bottom));
-    left: auto;
-    max-width: calc(100% - 134px);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    box-sizing: border-box;
-    padding: 6px;
-    border: 1px solid var(--studio-panel-border);
-    border-radius: 32px;
-    background: var(--studio-panel);
-    box-shadow: var(--studio-panel-shadow);
-    animation: brick-bar-rise 220ms cubic-bezier(.2,.9,.3,1);
-  }
-  .placement-part-chip { min-width: 0; display: flex; flex: 0 1 auto; flex-direction: column; justify-content: center; gap: 2px; padding: 0 10px 0 12px; }
-  .selection-part-chip { min-width: 0; display: flex; flex: 0 1 auto; align-items: center; gap: 9px; padding: 0 8px 0 6px; }
-  .selection-chip-text { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
-  .placement-part-chip strong, .selection-chip-text strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
-  .selection-swatch { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 10px; color: white; box-shadow: inset 0 -4px 0 rgba(0,0,0,.11), 0 0 0 1px rgba(0,0,0,.07); }
-  .selection-swatch-multi { background: linear-gradient(145deg, #39a6c5, var(--studio-blue)); }
-  .placement-icon-button { flex: 0 0 auto; border-radius: 50%; box-shadow: none; }
-  .placement-icon-button.danger { border-color: rgba(241, 120, 97, .5); color: var(--danger, #aa302a); background: rgba(241, 120, 97, .14); }
-  .placement-icon-button.danger:hover:not(:disabled) { border-color: rgba(241, 120, 97, .7); color: var(--danger, #98403a); background: rgba(241, 120, 97, .22); }
-  .touch-place-button { flex: 0 0 auto; min-width: 118px; min-height: 48px; border-radius: 26px; font-size: 13px; }
-  .transform-controls-compact { display: flex; flex: 0 0 auto; gap: 5px; }
-  .transform-controls-compact button { width: 44px; height: 44px; min-height: 44px; flex: 0 0 44px; border: 1px solid var(--studio-panel-border); border-radius: 50%; background: var(--studio-panel-soft); }
-  .transform-controls-compact small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
 /* -------------------------------------------------------------- tablet --- */
 
 @media (max-width: 900px) {
-  .brick-header { gap: 8px; }
-  .brick-header-tool .ui-button-label { display: none; }
-  .brick-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
-  .brick-primary-mode.ui-button { min-width: 0; }
-  .color-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }.color-grid button { min-width: 44px; width: 44px; height: 44px; }
-  /* Compact layouts have no docked drawer, so the toolbar hugs the left edge above the (+) button. */
-  .brick-edit-toolbar { left: max(10px, env(safe-area-inset-left)); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 68px); transform: none; }
-  .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: max(10px, env(safe-area-inset-left)); }
   .brick-history-tools .studio-icon-button > span { display: none; }
   .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
-  .view-controls .view-home > span { display: none; }
-  .view-controls .view-home { padding: 0; }
   .brick-capacity-status { display: none; }
-  .shortcut-bar { display: none; }
-  .empty-guide { max-width: 260px; }
+  .brick-header-tool .ui-button-label { display: none; }
+  .brick-header-tool.ui-button { min-width: 44px; padding: 0 10px; }
+  .color-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; }.color-grid button { min-width: 44px; width: 44px; height: 44px; }
 }
 
 /* --------------------------------------------------------------- phone --- */
 
 @media (max-width: 700px) {
-  /* Two 44px rows, 8px apart: row 1 mark + title/save + Explore, row 2 Scene / Character / People / Settings. */
   .brick-studio { --brick-header-height: 104px; }
-  .brick-header { grid-template-areas: 'world mode' 'tools tools'; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 44px 44px; align-content: center; gap: 8px; padding-right: max(8px, env(safe-area-inset-right)); padding-left: max(8px, env(safe-area-inset-left)); }
-  .brick-header-world { grid-area: world; }
-  .brick-mode-switch { grid-area: mode; margin: 0; padding-left: 0; border-left: 0; }
-  .brick-header-tools { grid-area: tools; justify-content: space-between; gap: 4px; }
-  .brick-header-tools > * { flex: 1 1 0; }
-  .brick-header-world { gap: 6px; }
-  .brick-brand-home { padding: 0 2px; }
-  /* One 44px row: title trigger beside the (icon-only) save chip, so the 44px hit box never leaves the header. */
-  .brick-world-context { flex-direction: row; align-items: center; gap: 4px; padding-left: 6px; }
-  .studio-menu { position: static; }
   .brick-header-tool .ui-button-label { display: none; }
-  .brick-header-tools .brick-header-tool.ui-button { min-height: 44px; flex-direction: column; gap: 2px; padding: 2px 6px; background: var(--studio-panel-soft); }
-  .brick-header-tools .brick-header-tool .ui-button-label { display: block; font-size: 10.5px; line-height: 1.15; }
-  /* Phones keep the account icon only; the name stays in the aria-label. */
-  .brick-header-tools .brick-header-account .ui-button-label { display: none; }
-  .studio-world-title strong { max-width: min(180px, 44vw); font-size: 16px; }
-  .brick-header .brick-save-status { max-width: 46vw; font-size: 11px; }
-  .brick-primary-mode.ui-button { min-width: 0; padding: 0 12px; font-size: 13px; }
-  .brick-primary-mode kbd { display: none; }
-  .studio-menu-popover { top: calc(100% + 6px); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); width: auto; max-height: calc(100vh - var(--brick-header-block) - 24px); }
-  .brick-edit-toolbar { top: var(--brick-panel-top); bottom: auto; left: max(8px, env(safe-area-inset-left)); max-width: calc(100vw - 16px); gap: 2px; }
-  .brick-edit-toolbar .view-controls button { min-width: 44px; }
-  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+3) { display: none; }
-  .brick-edit-toolbar .selection-mode-control span { display: none; }
-  .empty-guide { display: none; }
   .brick-toast, .onboarding-guide, .scene-loading-status { top: calc(var(--brick-panel-top) + 56px); }
   .brick-toast { max-width: 80%; }
   .onboarding-guide { max-height: calc(100% - var(--brick-panel-top) - 72px - env(safe-area-inset-bottom)); overflow-y: auto; padding: 18px; border-radius: 18px; touch-action: pan-y; }
   .onboarding-guide h2 { font-size: 20px; }
   .onboarding-guide ol { grid-template-columns: 1fr; }
-  /* The (+) button owns the bottom-left corner, so both pill states float one 8px gap above
-     it (8px inset + 56px button). Phone width cannot fit the chip beside the controls, so the
-     chip takes its own row. */
   .brick-drawer-fab { bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); }
-  .touch-placement-bar, .touch-selection-bar { right: max(8px, env(safe-area-inset-right)); bottom: calc(max(8px, env(safe-area-inset-bottom)) + 64px); left: max(8px, env(safe-area-inset-left)); max-width: none; flex-wrap: wrap; row-gap: 3px; border-radius: 24px; }
-  .placement-part-chip { flex: 1 0 100%; flex-direction: row; align-items: center; gap: 8px; padding: 2px 8px 0 12px; }
-  .selection-part-chip { flex: 1 0 100%; padding: 2px 8px 0 6px; }
-  .selection-chip-text { flex-direction: row; align-items: center; gap: 8px; }
-  .transform-controls-compact { flex: 1 0 100%; display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); }
-  .transform-controls-compact button { width: auto; border-radius: 13px; }
-  .touch-place-button { flex: 1 1 auto; min-width: 104px; }
   /* Explore HUD on phones: icon-only cluster, short Back label, title pill under the cluster. */
   .brick-explore-hud { right: max(8px, env(safe-area-inset-right)); left: max(8px, env(safe-area-inset-left)); gap: 8px; }
   .brick-explore-hud-start { gap: 6px; }
@@ -572,51 +420,25 @@
   .brick-mode-explore .explore-spawn-status, .brick-mode-explore .brick-toast, .brick-mode-explore .scene-loading-status { top: max(160px, calc(env(safe-area-inset-top) + 156px)); }
 }
 
-/* Very narrow phones: keep every header target inside 320px. */
 @media (max-width: 360px) {
-  .studio-world-title strong { max-width: 38vw; font-size: 15px; }
-  .brick-header .brick-save-status { max-width: 42vw; font-size: 10.5px; }
-  .brick-primary-mode.ui-button { padding: 0 10px; font-size: 12px; }
   .brick-header-tool.ui-button { padding: 0 6px; }
 }
 
-/* Board 06 gives the world and creative tools a clear, calm hierarchy on roomy screens. */
 @media (min-width: 1100px) and (min-height: 521px) {
   .brick-studio { --brick-header-height: 80px; }
-  .brick-header { gap: 14px; padding-right: 16px; padding-left: 16px; }
-  .brick-header-world { gap: 16px; }
-  /* The shared lockup sets an inline size; the desktop shell scales it to board 06. */
-  .brick-brand-home .brand-wordmark { font-size: 30px !important; }
-  .brick-brand-home .brand-mark { width: 40px; height: 40px; }
-  .brick-world-context { gap: 3px; padding-left: 16px; }
-  .studio-world-title { min-height: 36px; gap: 12px; padding: 0 10px; border: 1px solid var(--studio-panel-border); border-radius: 10px; }
-  .studio-world-title strong { max-width: 220px; font-size: 18px; }
-  .brick-header .brick-save-status { padding-left: 10px; font-size: 12px; }
-  .brick-header-tools { gap: 7px; }
-  .brick-header .brick-header-tool.ui-button { min-height: 46px; padding: 0 14px; border-color: var(--studio-panel-border); background: #f9fafc; font-size: 13px; }
-  .brick-header .brick-header-tool.ui-button:hover { background: var(--studio-panel-soft); border-color: var(--studio-blue); }
-  .brick-header .brick-header-tool.ui-button[aria-expanded='true'] { color: var(--studio-blue-dark); border-color: var(--studio-blue); background: var(--primary-soft); }
-  .brick-primary-mode.ui-button { min-height: 48px; font-size: 15px; }
-  .brick-primary-mode kbd, .brick-explore-back kbd { display: none; }
+  .brick-explore-back kbd { display: none; }
   .brick-explore-hud { top: 20px; right: 20px; left: 20px; }
   .brick-explore-back.ui-button { min-height: 48px; padding: 0 20px; font-size: 14px; }
   .brick-explore-hud-start { gap: 12px; }
   .brick-explore-hud-start .brick-brand-mark { width: 48px; height: 48px; }
   .brick-explore-cluster .brick-header-tool.ui-button { min-height: 44px; font-size: 13px; }
   .recenter-camera, .respawn-avatar { border-radius: 999px; }
-  .shortcut-bar { gap: 6px 16px; font-size: 12px; }
 }
 
 /* --------------------------------------------------- short landscape ---- */
 
 @media (max-height: 520px) and (orientation: landscape) {
   .brick-studio { --brick-header-height: 56px; }
-  .brick-header { grid-template-areas: 'world tools mode'; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: 44px; gap: 8px; }
-  .brick-header-world { grid-area: world; }
-  .brick-header-tools { grid-area: tools; justify-content: flex-end; }
-  .brick-header-tools > * { flex: 0 0 auto; }
-  .brick-mode-switch { grid-area: mode; margin: 0; padding-left: 8px; border-left: 1px solid var(--studio-panel-border); }
-  .brick-primary-mode kbd { display: none; }
   .build-shell { inset: 0; display: block; }
   /* Wide fine-pointer windows that are simply short keep the docked drawer; compact layouts
      never render it, so these rules only ever apply to the desktop shell. */
@@ -631,20 +453,6 @@
   .brick-drawer-fab { bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); }
   .brick-sheet { max-height: calc(100% - 56px); }
   .inspector-quick-actions { display: flex; }.details-collapsed .inspector-sheet { display: none; }.details-expanded .inspector-sheet { padding-top: 12px; }
-  .brick-edit-toolbar { top: auto; bottom: 8px; left: 50%; transform: translateX(-50%); }
-  .build-shell:not(.compact-shell):not(.drawer-collapsed) .brick-edit-toolbar { left: calc(50% + 166px); }
-  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(-n+2) { display: none; }
-  .brick-edit-toolbar .view-controls button:not(.view-home):nth-last-child(3) { display: block; }
-  .build-shell.compact-shell .brick-edit-toolbar { left: 126px; max-width: calc(100% - 134px); transform: none; }
-  .touch-placement-bar, .touch-selection-bar { top: auto; right: 8px; bottom: 8px; left: auto; max-width: calc(100% - 320px); flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin; touch-action: pan-x; }
-  .touch-placement-bar > *, .touch-selection-bar > * { flex-shrink: 0; }
-  .placement-part-chip { flex: 0 1 auto; flex-direction: column; align-items: stretch; padding: 0 10px 0 12px; }
-  .selection-part-chip { flex: 0 1 auto; padding: 0 8px 0 6px; }
-  .selection-chip-text { flex-direction: column; align-items: stretch; gap: 2px; }
-  .touch-place-button { flex: 0 0 auto; }
-  .build-shell.compact-shell .touch-placement-bar,
-  .build-shell.compact-shell .touch-selection-bar { max-width: calc(100% - 370px); }
-  .empty-guide { display: none; }
   .brick-mode-build .brick-toast { top: calc(var(--brick-header-block) + 8px); max-width: 240px; }
   .onboarding-guide { top: calc(var(--brick-header-block) + 8px); left: 50%; width: min(430px, calc(100% - 32px)); max-height: calc(100% - var(--brick-header-block) - 16px); overflow-y: auto; transform: translateX(-50%); }
   .brick-explore-hud { top: max(8px, env(safe-area-inset-top)); }
@@ -656,13 +464,12 @@
 
 @keyframes brick-fade-in { from { opacity: 0; } }
 @keyframes brick-sheet-rise { from { opacity: .4; transform: translate3d(0, 100%, 0); } }
-@keyframes brick-bar-rise { from { opacity: 0; transform: translate3d(0, 16px, 0); } }
 
 /* The store flag mirrors the media query for canvases and anything mounted before it resolves. */
-.brick-reduced-motion .brick-sheet, .brick-reduced-motion .brick-sheet-backdrop, .brick-reduced-motion .touch-placement-bar, .brick-reduced-motion .touch-selection-bar { animation: none; }
+.brick-reduced-motion .brick-sheet, .brick-reduced-motion .brick-sheet-backdrop { animation: none; }
 .brick-reduced-motion .ui-spin { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .brick-studio *, .brick-studio *::before, .brick-studio *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
-  .brick-sheet, .brick-sheet-backdrop, .touch-placement-bar, .touch-selection-bar { animation: none !important; }
+  .brick-sheet, .brick-sheet-backdrop { animation: none !important; }
 }

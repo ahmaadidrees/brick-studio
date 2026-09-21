@@ -22,7 +22,11 @@ export interface ClassroomEnv {
  */
 export type ClassroomAccessChangeKind = 'metadata' | 'membership' | 'revocation';
 export type ClassroomAccessChange = { classId?: string; worldId?: string; userId?: string; reason: string; change: ClassroomAccessChangeKind };
-export type ClassroomHandlerOptions = { onAccessChanged?: (event: ClassroomAccessChange) => Promise<void> };
+export type ClassroomHandlerOptions = {
+  onAccessChanged?: (event: ClassroomAccessChange) => Promise<void>;
+  /** Distinct classroom accounts connected to these live rooms right now, or null when presence is unavailable. */
+  liveParticipants?: (worldIds: string[]) => Promise<string[] | null>;
+};
 export type ClassroomSessionIdentity = { userId: string; sessionId: string; authVersion: number };
 type Row = Record<string, any>;
 export class ClassroomHttpError extends Error {
@@ -93,10 +97,14 @@ export class ClassroomService {
   patch(table: string, filter: string, data: Row): Promise<Row[]> { return this.request(`/rest/v1/brick_${table}?${filter}`, { method: 'PATCH', body: JSON.stringify(data) }); }
   remove(table: string, filter: string) { return this.request(`/rest/v1/brick_${table}?${filter}`, { method: 'DELETE' }); }
   rpc(name: string, data: Row): Promise<any> { return this.request(`/rest/v1/rpc/brick_${name}`, { method: 'POST', body: JSON.stringify(data) }); }
-  async rate(key: string, limit: number, seconds: number) {
+  /** Takes one token from the named bucket; false once it is empty. Throws only when the database cannot answer. */
+  async takeRate(key: string, limit: number, seconds: number): Promise<boolean> {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
     const hashed = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
-    if (!await this.rpc('take_rate_limit', { p_key: hashed, p_limit: limit, p_seconds: seconds })) fail(429, 'rate_limited', 'Too many attempts. Please wait a few minutes.');
+    return (await this.rpc('take_rate_limit', { p_key: hashed, p_limit: limit, p_seconds: seconds })) === true;
+  }
+  async rate(key: string, limit: number, seconds: number) {
+    if (!await this.takeRate(key, limit, seconds)) fail(429, 'rate_limited', 'Too many attempts. Please wait a few minutes.');
   }
   async authenticate(token: string, allowReset = false): Promise<Caller> {
     if (!token) fail(401, 'sign_in_required', 'Sign in to use classroom features.');
@@ -123,21 +131,44 @@ export class ClassroomService {
     if (!row || (caller.role === 'teacher' ? row.teacher_id !== caller.id : teacherOnly || caller.classId !== id)) fail(404, 'not_found', 'Class not found.');
     return row;
   }
+  /** The world row when the caller may see it (404 otherwise). Use `worldAccess` when the caller's edit right matters. */
   async worldFor(caller: Caller, id: string, requireCollaboration = false, metadataOnly = false): Promise<Row> {
+    return (await this.worldAccess(caller, id, requireCollaboration, metadataOnly)).world;
+  }
+  /**
+   * Visibility and edit rights for one world, mirroring `brick_authorize_world` in the migration.
+   * Personal worlds: the owner always sees and edits; a classmate (or the class teacher) sees a shared one
+   * (`class_visibility='class'`) and edits only with `class_can_edit`. Students are refused while the class has
+   * collaboration closed or sharing disabled, or the teacher hid the world; the teacher may still look in those
+   * states but never edits (`sharedEditAllowed`, the same rule `brick_commit_world` applies). A suspended owner's
+   * shared world is not found for classmates (as `listWorlds` already hides it) and look-only for the teacher.
+   * Class and group worlds keep their rules. The live-join flag stays in the signature for its callers; personal
+   * worlds are joinable by ownership or sharing.
+   */
+  async worldAccess(caller: Caller, id: string, _requireCollaboration = false, metadataOnly = false): Promise<WorldAccess> {
     if (!uuid(id)) fail(404, 'not_found', 'World not found.');
-    const world = (await this.rows('worlds', `id=eq.${id}&limit=1${metadataOnly ? '&select=id,class_id,owner_id,kind' : ''}`))[0];
+    const world = (await this.rows('worlds', `id=eq.${id}&limit=1${metadataOnly ? `&select=${WORLD_FIELDS}` : ''}`))[0];
     if (!world) fail(404, 'not_found', 'World not found.');
     if (world.kind === 'personal') {
-      if (world.owner_id !== caller.id) fail(404, 'not_found', 'World not found.');
-      if (requireCollaboration) fail(403, 'private_world', 'Only classroom worlds can be joined together.');
-      return world;
+      if (world.owner_id === caller.id) return { world, canEdit: true, isOwner: true, ownerName: callerDisplayName(caller), ownerClassId: caller.classId ?? null };
+      if (world.class_visibility !== 'class') fail(404, 'not_found', 'World not found.');
+      const owner = (await this.rows('students', `user_id=eq.${world.owner_id}&select=class_id,roster_name,suspended&limit=1`))[0];
+      if (!owner) fail(404, 'not_found', 'World not found.');
+      const cls = await this.classFor(caller, owner.class_id);
+      if (caller.role !== 'teacher') {
+        if (owner.suspended) fail(404, 'not_found', 'World not found.');
+        if (world.hidden_by_teacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.');
+        if (!cls.collaboration_open) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.');
+        if (cls.students_can_share === false) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.');
+      }
+      return { world, canEdit: sharedEditAllowed(world, cls, owner), isOwner: false, ownerName: rosterDisplayName(owner.roster_name), ownerClassId: owner.class_id };
     }
     const cls = await this.classFor(caller, world.class_id);
     if (caller.role !== 'teacher') {
       if (!cls.collaboration_open) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.');
       if (world.kind === 'group' && !(await this.rows('world_members', `world_id=eq.${id}&user_id=eq.${caller.id}&limit=1`)).length) fail(404, 'not_found', 'World not found.');
     }
-    return world;
+    return { world, canEdit: true, isOwner: world.owner_id === caller.id, ownerName: 'Teacher', ownerClassId: world.class_id };
   }
   classesFor(caller: Caller): Promise<Row[]> {
     return this.rows('classes', caller.role === 'teacher' ? `teacher_id=eq.${caller.id}&order=created_at.asc` : `id=eq.${caller.classId}`);
@@ -156,21 +187,86 @@ export class ClassroomService {
     }
     return result;
   }
-  async me(caller: Caller) {
+  /**
+   * `buildingNow` is filled only when the route supplies live presence, which only a teacher's GET /classes does;
+   * GET /me and sign-in responses report null so opening the app or logging in never fans out to live rooms.
+   */
+  async me(caller: Caller, liveParticipants?: ClassroomHandlerOptions['liveParticipants']) {
     const classes = await this.classesFor(caller);
     const codes = caller.role === 'teacher'
       ? await this.rowsForClasses('class_codes', classes.map(row => row.id), 'can_enroll=eq.true&select=class_id,code&order=class_id.asc,code.asc') : [];
-    return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: classes.map(row => classView(row, codes.find(code => code.class_id === row.id)?.code)) };
+    const building = caller.role === 'teacher' && liveParticipants ? await this.buildingNow(caller, classes, liveParticipants) : new Map<string, number | null>();
+    return { user: { id: caller.id, username: caller.username, rosterName: caller.rosterName, role: caller.role, resetRequired: caller.resetRequired }, classes: classes.map(row => classView(row, codes.find(code => code.class_id === row.id)?.code, building.get(row.id) ?? null)) };
+  }
+  /** Live rooms per class: the class's own worlds plus its students' shared personal worlds. IDs must come from classesFor. */
+  async liveWorldIdsByClass(classes: Row[]): Promise<Map<string, string[]>> {
+    const ids = classes.map(row => row.id), byClass = new Map<string, string[]>(ids.map(id => [id, []]));
+    for (const world of await this.rowsForClasses('worlds', ids, 'select=id,class_id')) byClass.get(world.class_id)?.push(world.id);
+    const students = await this.rowsForClasses('students', ids, 'select=user_id,class_id');
+    const classOf = new Map(students.map(row => [row.user_id, row.class_id]));
+    for (const world of await this.sharedWorldsOf(students.map(row => row.user_id), 'select=id,owner_id')) byClass.get(classOf.get(world.owner_id))?.push(world.id);
+    return byClass;
+  }
+  /**
+   * Distinct accounts building in each class right now; null for a class whose presence could not be read.
+   * Every live-capable world costs one Durable Object fetch (there is no registry of rooms that have ever opened,
+   * so an idle id still instantiates a cold object that answers with nobody). The fan-out is therefore bounded
+   * twice per request: at most PRESENCE_ROOM_LIMIT rooms in total, in class order (classes past the cap report
+   * null), and at most PRESENCE_RATE.limit requests per teacher per PRESENCE_RATE.seconds (beyond it every class
+   * reports null and the listing still succeeds). Classes with no live-capable world report 0 without a fetch.
+   */
+  private async buildingNow(caller: Caller, classes: Row[], liveParticipants: NonNullable<ClassroomHandlerOptions['liveParticipants']>): Promise<Map<string, number | null>> {
+    const result = new Map<string, number | null>(classes.map(row => [row.id, null]));
+    if (!classes.length) return result;
+    const allowed = await this.takeRate(`presence:${caller.id}`, PRESENCE_RATE.limit, PRESENCE_RATE.seconds).catch(() => false);
+    if (!allowed) return result;
+    const byClass = await this.liveWorldIdsByClass(classes);
+    let rooms = 0;
+    for (const cls of classes) {
+      const ids = byClass.get(cls.id) ?? [];
+      if (!ids.length) { result.set(cls.id, 0); continue; }
+      rooms += ids.length;
+      if (rooms > PRESENCE_ROOM_LIMIT) break;
+      const participants = await liveParticipants(ids);
+      result.set(cls.id, participants ? new Set(participants).size : null);
+    }
+    return result;
   }
   async listWorlds(caller: Caller) {
-    const fields = 'id,title,owner_id,class_id,kind,revision,updated_at';
-    const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=${fields}&order=updated_at.desc`);
-    const classes = (await this.classesFor(caller)).filter(row => caller.role === 'teacher' || row.collaboration_open);
-    const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&select=${fields}&order=updated_at.desc,id.asc`);
+    const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=${WORLD_FIELDS}&order=updated_at.desc`);
+    const allClasses = await this.classesFor(caller);
+    const classes = allClasses.filter(row => caller.role === 'teacher' || row.collaboration_open);
+    const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&select=${WORLD_FIELDS}&order=updated_at.desc,id.asc`);
     const memberships = caller.role === 'student' && candidates.some(row => row.kind === 'group')
       ? await this.rows('world_members', `user_id=eq.${caller.id}&select=world_id`) : [];
     const shared = candidates.filter(world => caller.role === 'teacher' || world.kind === 'class' || memberships.some(member => member.world_id === world.id));
-    return [...mine, ...shared].map(world => worldView(world));
+    // Classmates' shared personal worlds: resolved through the owners' brick_students rows (personal worlds keep
+    // class_id null). Students need collaboration_open and students_can_share and never see hidden worlds; the
+    // teacher sees every shared world of their classes, hidden ones flagged.
+    const sharingClasses = classes.filter(row => caller.role === 'teacher' || row.students_can_share !== false);
+    const owners = sharingClasses.length
+      ? (await this.rowsForClasses('students', sharingClasses.map(row => row.id), `select=user_id,class_id,roster_name,suspended&order=user_id.asc`))
+          .filter(row => row.user_id !== caller.id && (caller.role === 'teacher' || !row.suspended)) : [];
+    const fromClassmates = await this.sharedWorldsOf(owners.map(row => row.user_id), `select=${WORLD_FIELDS}&order=updated_at.desc,id.asc${caller.role === 'teacher' ? '' : '&hidden_by_teacher=eq.false'}`);
+    const names = new Map(owners.map(row => [row.user_id, rosterDisplayName(row.roster_name)]));
+    const classOf = new Map(owners.map(row => [row.user_id, row.class_id as string]));
+    const ownerById = new Map(owners.map(row => [row.user_id as string, row]));
+    const classById = new Map(sharingClasses.map(row => [row.id as string, row]));
+    const view = (world: Row, canEdit: boolean, ownerName: string, ownerClassId: string | null) => worldView(world, { canEdit, ownerName, ownerClassId, teacher: caller.role === 'teacher' });
+    return [
+      ...mine.map(world => view(world, true, callerDisplayName(caller), caller.classId ?? null)),
+      ...shared.map(world => view(world, true, 'Teacher', world.class_id)),
+      ...fromClassmates.map(world => view(world, sharedEditAllowed(world, classById.get(classOf.get(world.owner_id) ?? ''), ownerById.get(world.owner_id)), names.get(world.owner_id) ?? 'Classmate', classOf.get(world.owner_id) ?? null)),
+    ];
+  }
+  /** Shared personal worlds owned by the given students, in bounded batches. IDs must come from the caller's own classes. */
+  async sharedWorldsOf(ownerIds: string[], filter: string): Promise<Row[]> {
+    const result: Row[] = [];
+    for (let start = 0; start < ownerIds.length; start += 100) {
+      const ids = ownerIds.slice(start, start + 100);
+      result.push(...await this.rows('worlds', `owner_id=in.(${ids.join(',')})&kind=eq.personal&class_visibility=eq.class&${filter}`));
+    }
+    return result;
   }
   async login(email: string, pass: string) { return this.request('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: pass }) }); }
   async registerSession(session: Row, student: Row) {
@@ -207,7 +303,20 @@ export class ClassroomService {
   }
 }
 export type Caller = { id: string; username: string; rosterName: string; role: 'teacher' | 'student'; resetRequired: boolean; classId?: string; authVersion: number; sessionId: string; token: string };
-function classView(row: Row, code?: string) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, ...(code ? { code } : {}) }; }
+/** `teacherName` is null: teacher accounts are bare auth users with no roster name in the brick tables. */
+function classView(row: Row, code?: string, buildingNow: number | null = null) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, studentsCanShare: row.students_can_share !== false, buildingNow, teacherName: null, ...(code ? { code } : {}) }; }
+/**
+ * Whether a non-owner may edit a shared personal world right now: shared with editing, not hidden by the teacher,
+ * the owner not suspended, and the owner's class has collaboration open and sharing on. Mirrors the checks
+ * `brick_commit_world` makes, so the teacher (who may still look in those states) is never offered an edit right the
+ * save would refuse.
+ */
+function sharedEditAllowed(world: Row, cls: Row | undefined, owner: Row | undefined): boolean {
+  return world.class_visibility === 'class' && world.class_can_edit === true && world.hidden_by_teacher !== true
+    && owner?.suspended !== true && cls?.collaboration_open === true && cls.students_can_share !== false;
+}
+/** Owner label for the caller's own worlds: students by first name and last initial, teachers as "Teacher". */
+function callerDisplayName(caller: Caller) { return caller.role === 'teacher' ? 'Teacher' : rosterDisplayName(caller.rosterName); }
 /** Public join-screen name: first word of the roster name plus the last initial ("Ava R."); one-word names stay as is. */
 export function rosterDisplayName(rosterName: string): string {
   const words = rosterName.trim().split(/\s+/).filter(Boolean);
@@ -244,7 +353,28 @@ async function publicClass(service: ClassroomService, input: Row): Promise<{ ali
   if (!alias || !cls) fail(404, 'class_not_found', 'Check the class code with your teacher.');
   return { alias, cls };
 }
-function worldView(row: Row, full = false) { return { id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, revision: row.revision, updatedAt: row.updated_at, ...(full ? { document: row.document } : {}) }; }
+/** Columns the API exposes without the document; the sharing columns come from migration 202609190001. */
+const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at';
+/** Most live rooms one GET /classes will ask for presence, across all of the teacher's classes. */
+export const PRESENCE_ROOM_LIMIT = 150;
+/** Presence fan-outs allowed per teacher: beyond it `buildingNow` is null until the window passes. */
+export const PRESENCE_RATE = { limit: 30, seconds: 60 } as const;
+/** Saved worlds per account; the database trigger (0003) enforces the same bound. */
+const WORLD_LIMIT = 50;
+type WorldAccess = { world: Row; canEdit: boolean; isOwner: boolean; ownerName: string; ownerClassId: string | null };
+type WorldViewContext = { full?: boolean; canEdit?: boolean; ownerName?: string; ownerClassId?: string | null; teacher?: boolean };
+function worldView(row: Row, context: WorldViewContext = {}) {
+  const visibility = row.kind === 'personal' ? (row.class_visibility === 'class' ? 'class' : 'private') : 'class';
+  return {
+    id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, revision: row.revision, updatedAt: row.updated_at,
+    visibility, canEdit: context.canEdit ?? true, classCanEdit: row.kind === 'personal' ? row.class_can_edit === true : true, ownerName: context.ownerName ?? 'Teacher', ownerClassId: context.ownerClassId ?? row.class_id ?? null,
+    sharedAt: row.kind === 'personal' && visibility === 'class' ? row.class_shared_at ?? null : null,
+    ...(context.teacher ? { hiddenByTeacher: row.hidden_by_teacher === true } : {}), ...(context.full ? { document: row.document } : {}),
+  };
+}
+const accessView = (access: WorldAccess, caller: Caller, full = false) => worldView(access.world, { full, canEdit: access.canEdit, ownerName: access.ownerName, ownerClassId: access.ownerClassId, teacher: caller.role === 'teacher' });
+/** View context for a world the caller just created or copied. */
+const ownView = (caller: Caller, full = true): WorldViewContext => ({ full, canEdit: true, ownerName: callerDisplayName(caller), ownerClassId: caller.classId ?? null, teacher: caller.role === 'teacher' });
 function studentView(row: Row) { return { id: row.user_id, username: row.username, rosterName: row.roster_name, suspended: row.suspended, resetRequired: row.reset_required }; }
 function bearer(request: Request) { return request.headers.get('authorization')?.match(/^Bearer (.+)$/i)?.[1] || ''; }
 function internalEmail(id: string) { return `brick-${id}@students.invalid`; }
@@ -423,7 +553,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
   const caller = await service.authenticate(bearer(request), path[0] === 'me');
   if (path[0] === 'me' && method === 'GET') return json(await service.me(caller));
   if (path[0] === 'classes') {
-    if (path.length === 1 && method === 'GET') return json({ classes: (await service.me(caller)).classes });
+    if (path.length === 1 && method === 'GET') return json({ classes: (await service.me(caller, options.liveParticipants)).classes });
     if (path.length === 1 && method === 'POST') {
       if (caller.role !== 'teacher') fail(403, 'teacher_required', 'Only teachers can create classes.');
       const input = await body(request), code = newCode();
@@ -435,7 +565,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     if (path.length === 2 && method === 'PATCH') {
       const input = await body(request), changes: Row = {};
       if (input.name !== undefined) changes.name = cleanText(input.name, 'Class name');
-      for (const [api, db] of [['enrollmentOpen', 'enrollment_open'], ['collaborationOpen', 'collaboration_open'], ['showNamesOnJoin', 'show_names_on_join']]) {
+      for (const [api, db] of [['enrollmentOpen', 'enrollment_open'], ['collaborationOpen', 'collaboration_open'], ['showNamesOnJoin', 'show_names_on_join'], ['studentsCanShare', 'students_can_share']]) {
         if (input[api] !== undefined) { if (typeof input[api] !== 'boolean') fail(400, 'invalid_input', `${api} must be true or false.`); changes[db] = input[api]; }
       }
       const updated = Object.keys(changes).length ? (await service.patch('classes', `id=eq.${cls.id}&teacher_id=eq.${caller.id}`, changes))[0] : cls;
@@ -495,12 +625,54 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (kind !== 'personal') await service.classFor(caller, input.classId, true);
       await service.rate(`create-world:${caller.id}`, 60, 3600);
       const created = (await service.insert('worlds', { owner_id: caller.id, class_id: kind === 'personal' ? null : input.classId, kind, title: cleanText(input.title || 'My world', 'World title'), document: document(input.document) }))[0];
-      return json({ world: worldView(created, true) }, 201);
+      return json({ world: worldView(created, ownView(caller)) }, 201);
     }
-    const world = await service.worldFor(caller, path[1]);
-    if (path.length === 2 && method === 'GET') return json({ world: worldView(world, true) });
+    const access = await service.worldAccess(caller, path[1]), { world } = access;
+    // Personal worlds belong to their owner: classmates and the teacher may look (and edit live when shared with
+    // editing), but renaming, restoring and recovery history stay with the owner. Class/group worlds keep teacher control.
+    const controls = access.isOwner || (world.kind !== 'personal' && caller.role === 'teacher');
+    if (path.length === 2 && method === 'GET') return json({ world: accessView(access, caller, true) });
+    if (path[2] === 'sharing' && path.length === 3 && method === 'PATCH') {
+      if (caller.role !== 'student') fail(403, 'student_required', 'Only students share their own worlds with the class.');
+      if (!access.isOwner || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can share this world.');
+      const input = await body(request);
+      if (input.visibility !== 'private' && input.visibility !== 'class') fail(400, 'invalid_input', 'visibility must be private or class.');
+      if (typeof input.canEdit !== 'boolean') fail(400, 'invalid_input', 'canEdit must be true or false.');
+      const cls = await service.classFor(caller, caller.classId!);
+      if (cls.students_can_share === false) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.');
+      const sharing = input.visibility === 'class';
+      const updated = (await service.patch('worlds', `id=eq.${world.id}&owner_id=eq.${caller.id}&select=${WORLD_FIELDS}`, {
+        class_visibility: input.visibility, class_can_edit: sharing && input.canEdit, class_shared_at: sharing ? world.class_shared_at ?? new Date().toISOString() : null,
+      }))[0];
+      if (!updated) fail(404, 'not_found', 'World not found.');
+      await service.audit(caller, sharing ? 'share_world' : 'unshare_world', cls.id, world.id);
+      // Live sockets re-authorize in place: unsharing or removing editing closes classmates (the owner stays).
+      await options.onAccessChanged?.({ worldId: world.id, reason: 'sharing_updated', change: 'membership' });
+      return json({ world: worldView(updated, ownView(caller, false)) });
+    }
+    if (path[2] === 'visibility' && path.length === 3 && method === 'PATCH') {
+      if (caller.role !== 'teacher') fail(403, 'teacher_required', 'Only the class teacher can hide a shared world.');
+      if (world.kind !== 'personal') fail(400, 'invalid_input', 'Only shared student worlds can be hidden.');
+      const input = await body(request);
+      if (typeof input.hiddenByTeacher !== 'boolean') fail(400, 'invalid_input', 'hiddenByTeacher must be true or false.');
+      const updated = (await service.patch('worlds', `id=eq.${world.id}&select=${WORLD_FIELDS}`, { hidden_by_teacher: input.hiddenByTeacher }))[0];
+      if (!updated) fail(404, 'not_found', 'World not found.');
+      await service.audit(caller, input.hiddenByTeacher ? 'hide_world' : 'show_world', undefined, world.id);
+      await options.onAccessChanged?.({ worldId: world.id, reason: 'visibility_updated', change: 'membership' });
+      return json({ world: accessView({ ...access, world: updated }, caller) });
+    }
+    if (path[2] === 'copy' && path.length === 3 && method === 'POST') {
+      await service.rate(`create-world:${caller.id}`, 60, 3600);
+      if ((await service.rows('worlds', `owner_id=eq.${caller.id}&select=id&limit=${WORLD_LIMIT}`)).length >= WORLD_LIMIT) fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
+      let created: Row;
+      // The stored row is authoritative: live edits commit there before they are acknowledged.
+      try { created = (await service.insert('worlds', { owner_id: caller.id, class_id: null, kind: 'personal', title: `${world.title} (copy)`.slice(0, 80), document: world.document }))[0]; }
+      catch (error) { if (error instanceof ClassroomHttpError && error.code === 'quota_exceeded') fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.'); throw error; }
+      await service.audit(caller, 'copy_world', world.class_id || undefined, world.id);
+      return json({ world: worldView(created, ownView(caller)) }, 201);
+    }
     if (path.length === 2 && method === 'PATCH') {
-      if (world.owner_id !== caller.id && caller.role !== 'teacher') fail(403, 'owner_required', 'Only the owner or teacher can rename this world.');
+      if (!controls) fail(403, 'owner_required', 'Only the owner or teacher can rename this world.');
       const input = await body(request);
       const updated = await service.rpc('commit_world', { p_world_id: world.id, p_expected_revision: world.revision, p_document: world.document, p_title: cleanText(input.title, 'World title'), p_reason: 'rename', p_actor_id: caller.id, p_session_id: caller.sessionId, p_auth_version: caller.authVersion });
       if (updated.error === 'conflict') throw new ClassroomHttpError(409, 'revision_conflict', 'Someone saved a newer version. Refresh before renaming.', { currentRevision: updated.currentRevision });
@@ -508,13 +680,14 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (updated.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
       if (updated.error) fail(404, 'not_found', 'World not found.');
       await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: 'world_saved', change: 'metadata' });
-      return json({ world: worldView(updated) });
+      return json({ world: accessView({ ...access, world: updated }, caller) });
     }
     if (path.length === 2 && method === 'PUT' || path[2] === 'restore' && method === 'POST') {
       const input = await body(request), restoring = path[2] === 'restore';
+      if (!access.canEdit) fail(403, 'read_only', 'You do not have editing access to this world.');
       let doc: unknown, title: string | null = input.title === undefined ? null : cleanText(input.title, 'World title');
       if (restoring) {
-        if (world.owner_id !== caller.id && caller.role !== 'teacher') fail(403, 'owner_required', 'Only the owner or teacher can restore this world.');
+        if (!controls) fail(403, 'owner_required', 'Only the owner or teacher can restore this world.');
         if (!uuid(input.checkpointId)) fail(400, 'invalid_input', 'Choose a valid checkpoint.');
         const cp = (await service.rows('checkpoints', `id=eq.${input.checkpointId}&world_id=eq.${world.id}&limit=1`))[0];
         if (!cp) fail(404, 'not_found', 'Checkpoint not found.');
@@ -527,8 +700,9 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (saved.error) fail(404, 'not_found', 'World not found.');
       if (restoring) await service.audit(caller, 'restore_world', world.class_id, world.id);
       await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id || undefined, reason: restoring ? 'world_restored' : 'world_saved', change: 'metadata' });
-      return json({ world: worldView(saved, true) });
+      return json({ world: accessView({ ...access, world: saved }, caller, true) });
     }
+    if (path[2] === 'checkpoints' && method === 'GET' && !controls) fail(403, 'owner_required', 'Only the owner can see the recovery history of this world.');
     if (path[2] === 'checkpoints' && method === 'GET') return json({ checkpoints: (await service.rows('checkpoints', `world_id=eq.${world.id}&select=id,revision,created_at,reason&order=created_at.desc&limit=30`)).map(cp => ({ id: cp.id, revision: cp.revision, createdAt: cp.created_at, reason: cp.reason })) });
     if (path[2] === 'members') {
       if (world.kind === 'personal') fail(400, 'private_world', 'Personal worlds do not have group members.');
@@ -559,14 +733,15 @@ async function route(request: Request, service: ClassroomService, path: string[]
 export async function authorizeClassroomWorld(request: Request, env: ClassroomEnv, worldId: string) {
   const service = new ClassroomService(env);
   const caller = await service.authenticate(bearer(request));
-  const world = await service.worldFor(caller, worldId, true, true);
-  return { userId: caller.id, username: caller.username, role: caller.role, worldId: world.id as string, classId: world.class_id as string, canEdit: true, isTeacher: caller.role === 'teacher', isOwner: world.owner_id === caller.id, authVersion: caller.authVersion, sessionId: caller.sessionId };
+  const { world, canEdit, isOwner } = await service.worldAccess(caller, worldId, true, true);
+  return { userId: caller.id, username: caller.username, role: caller.role, worldId: world.id as string, classId: (world.class_id ?? null) as string | null, canEdit, isTeacher: caller.role === 'teacher', isOwner, authVersion: caller.authVersion, sessionId: caller.sessionId };
 }
 
-export type ClassroomWorldAccess = { userId: string; username: string; role: 'teacher' | 'student'; worldId: string; classId: string; canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string };
+/** Live permissions for one session. `classId` is null for personal worlds (shared ones resolve the owner's class). */
+export type ClassroomWorldAccess = { userId: string; username: string; role: 'teacher' | 'student'; worldId: string; classId: string | null; canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string };
 function accessError(code: string): ClassroomHttpError {
   const status = code === 'session_revoked' ? 401 : code === 'not_found' ? 404 : 403;
-  const messages: Record<string, string> = { session_revoked: 'Please sign in again.', suspended: 'Your teacher has paused your classroom account.', password_change_required: 'Choose a new password to continue.', class_closed: 'Your teacher has closed classroom collaboration.', private_world: 'Only classroom worlds can be joined together.', not_found: 'World not found.' };
+  const messages: Record<string, string> = { session_revoked: 'Please sign in again.', suspended: 'Your teacher has paused your classroom account.', password_change_required: 'Choose a new password to continue.', class_closed: 'Your teacher has closed classroom collaboration.', private_world: 'This world is not shared with the class.', world_hidden: 'Your teacher hid this world from the class.', sharing_disabled: 'Your teacher has turned off sharing between students.', not_found: 'World not found.' };
   return new ClassroomHttpError(status, code, messages[code] || 'Classroom access changed.');
 }
 function validIdentity(identity: ClassroomSessionIdentity) {
@@ -603,7 +778,7 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
-  return worldView(row, true) as ClassroomWorldSnapshot;
+  return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }
 export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
@@ -612,17 +787,22 @@ export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, v
   if (saved.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
   if (saved.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');
   if (saved.error) fail(404, 'not_found', 'World not found.');
-  return worldView(saved, true) as ClassroomWorldSnapshot;
+  return worldView(saved, { full: true }) as ClassroomWorldSnapshot;
 }
+/**
+ * Live rooms a class-level change can affect: the class's own worlds plus personal worlds its students have
+ * shared (those keep class_id null, so they are found through the owners).
+ */
 export async function listClassroomWorldIds(env: ClassroomEnv, filter: { classId?: string; userId?: string }): Promise<string[]> {
   const service = new ClassroomService(env);
-  if (filter.classId && uuid(filter.classId)) return (await service.rows('worlds', `class_id=eq.${filter.classId}&select=id`)).map(w => w.id);
+  const worldsOfClass = async (classId: string) => [...new Set((await service.liveWorldIdsByClass([{ id: classId }])).get(classId))];
+  if (filter.classId && uuid(filter.classId)) return worldsOfClass(filter.classId);
   if (filter.userId && uuid(filter.userId)) {
     const student = (await service.rows('students', `user_id=eq.${filter.userId}&limit=1`))[0];
-    if (student) return (await service.rows('worlds', `class_id=eq.${student.class_id}&select=id`)).map(w => w.id);
+    if (student) return worldsOfClass(student.class_id);
     const classes = await service.rows('classes', `teacher_id=eq.${filter.userId}&select=id`);
-    const worlds = await Promise.all(classes.map(c => service.rows('worlds', `class_id=eq.${c.id}&select=id`)));
-    return worlds.flat().map(w => w.id);
+    const worlds = await Promise.all(classes.map(c => worldsOfClass(c.id)));
+    return [...new Set(worlds.flat())];
   }
   return [];
 }

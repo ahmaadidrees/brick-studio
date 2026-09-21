@@ -1,30 +1,13 @@
 {
-  "_comment": "Role/label locators for the brand QA harnesses (scripts/qa/lib/ui.mjs makeLocate). Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText, `css` uses page.locator (only for controls whose accessible name is not stable, e.g. the save chip). Names verified in the DOM of the integrated candidate 7083387.",
+  "_comment": "Role/label locators for the brand QA harnesses (scripts/qa/lib/ui.mjs makeLocate). Update labels here when the brand pass renames a control; a name may be a string (exact) or {\"regex\": \"...\"}. `label` uses getByLabel, `text` uses getByText, `css` uses page.locator (only for controls whose accessible name is not stable, e.g. the save chip). Names verified in the DOM of the integrated candidate 7083387. Editor chrome names follow W6 (claude/flows-v2 a384435): the ⋯ menu is the button/menu \"This build\"; Settings/Help are menu items there; camera cluster is group \"Camera view\"; My worlds / My class live in the Account menu.",
   "worldMenu": {
     "role": "button",
-    "name": "World menu"
+    "name": "This build",
+    "_note": "W6: the ⋯ menu trigger beside the world title (was \"World menu\")."
   },
   "studioMenu": {
     "role": "menu",
-    "name": "Studio actions"
-  },
-  "menuHome": {
-    "role": "menuitem",
-    "name": {
-      "regex": "^Home"
-    }
-  },
-  "menuMyWorlds": {
-    "role": "menuitem",
-    "name": {
-      "regex": "^My Worlds"
-    }
-  },
-  "menuMyClass": {
-    "role": "menuitem",
-    "name": {
-      "regex": "^My Class"
-    }
+    "name": "This build"
   },
   "menuImport": {
     "role": "menuitem",
@@ -37,20 +20,20 @@
     "_note": "SaveStatus primitive: role=status + data-kind=local|cloud|shared; its accessible name is the human label/detail, so it is matched by attribute."
   },
   "settings": {
-    "role": "button",
-    "name": "Settings"
+    "role": "menuitem",
+    "name": "Settings",
+    "_note": "Build header: This build → Settings. The Explore HUD keeps a button named Settings (exploreSettings)."
   },
   "settingsDialog": {
     "role": "dialog",
     "name": "Settings"
   },
   "scene": {
-    "role": "button",
-    "name": "Scene"
+    "css": "header[aria-label=\"Studio toolbar\"] button[title=\"Scene\"], .brick-header button[title=\"Scene\"], button[aria-label=\"Scene\"]"
   },
   "character": {
-    "role": "button",
-    "name": "Character"
+    "css": "header[aria-label=\"Studio toolbar\"] button[title=\"Character\"], .brick-header button[title=\"Character\"], button[aria-label=\"Character\"]",
+    "_note": "Scoped to the editor header: it is the only Character button (the creative dock no longer duplicates it)."
   },
   "sceneDialog": {
     "role": "dialog",
@@ -69,10 +52,9 @@
     "name": "Apply"
   },
   "exploreMode": {
-    "role": "button",
-    "name": {
-      "regex": "^Explore( mode)?$"
-    }
+    "role": "radio",
+    "name": "Explore",
+    "_note": "W6/W2: the Build | Explore pill (SegmentedControl radios); Explore HUD's return is still button \"Back to building\"."
   },
   "backToBuilding": {
     "role": "button",
@@ -258,9 +240,7 @@
   },
   "menuHelp": {
     "role": "menuitem",
-    "name": {
-      "regex": "^Help"
-    }
+    "name": "Help"
   },
   "inviteLink": {
     "role": "region",
@@ -286,5 +266,481 @@
   "useEmailPassword": {
     "role": "button",
     "name": "Use email and password"
+  },
+  "_flows": "Flows v2 pages (/join, /worlds, /class, /class/projector) and the W6 command strip. Names verified in the DOM of claude/flows-v2 69065f4 (pages) and claude/flows-w6 (strip).",
+  "joinHeading": {
+    "role": "heading",
+    "name": {
+      "regex": "^(Join your class|Welcome back|Teacher sign in|Choose a new password)$"
+    }
+  },
+  "joinClassCode": {
+    "label": "Class code"
+  },
+  "joinClassChip": {
+    "css": ".join-class-chip"
+  },
+  "joinUsername": {
+    "label": "Choose a username"
+  },
+  "joinRosterName": {
+    "label": "Name your teacher knows"
+  },
+  "joinPassword": {
+    "label": "Choose a password"
+  },
+  "joinSubmit": {
+    "role": "button",
+    "name": "Create account and join"
+  },
+  "joinUsernameRules": {
+    "css": "#join-username-rules"
+  },
+  "joinPasswordRules": {
+    "css": "#join-password-rules"
+  },
+  "joinSuggestions": {
+    "role": "group",
+    "name": "Usernames that are free"
+  },
+  "joinAlert": {
+    "role": "alert"
+  },
+  "joinAlreadyHaveAccount": {
+    "role": "button",
+    "name": "I already have an account"
+  },
+  "joinNewHere": {
+    "role": "button",
+    "name": "New here? Join a class"
+  },
+  "joinImTeacher": {
+    "role": "button",
+    "name": "I’m a teacher"
+  },
+  "joinGuest": {
+    "role": "link",
+    "name": "Keep building as a guest"
+  },
+  "signinUsername": {
+    "label": "Username"
+  },
+  "signinPassword": {
+    "css": "#join-password",
+    "_note": "PasswordField relabels it to \"<Name>, type your password\" after a roster tap and its show/hide toggle carries the same words, so the stable id is used."
+  },
+  "signinSubmit": {
+    "role": "button",
+    "name": "Sign in"
+  },
+  "signinHaveCode": {
+    "role": "button",
+    "name": "I have a class code"
+  },
+  "signinRosterLead": {
+    "text": "Tap your name, then type your password."
+  },
+  "signinRosterGrid": {
+    "css": ".join-name-grid"
+  },
+  "signinChangeClass": {
+    "role": "button",
+    "name": "Not you? Change class"
+  },
+  "teacherPassword": {
+    "label": "Password"
+  },
+  "worldsMain": {
+    "css": "#worlds-main"
+  },
+  "worldsHeading": {
+    "role": "heading",
+    "level": 1,
+    "name": {
+      "regex": ".*"
+    }
+  },
+  "worldsSectionsNav": {
+    "role": "navigation",
+    "name": "Worlds sections"
+  },
+  "worldsMineRail": {
+    "css": ".worlds-rail-item",
+    "_note": "First item is Mine / My worlds; class items follow."
+  },
+  "worldsSaved": {
+    "role": "region",
+    "name": "Saved to your account"
+  },
+  "worldsDraft": {
+    "role": "region",
+    "name": "Build in progress"
+  },
+  "worldsSharedByClassmates": {
+    "role": "region",
+    "name": "Shared by classmates"
+  },
+  "worldsSharedByStudents": {
+    "role": "region",
+    "name": "Shared by students"
+  },
+  "worldsTeacherWorlds": {
+    "role": "region",
+    "name": "Teacher’s worlds"
+  },
+  "worldsOpenStudio": {
+    "role": "link",
+    "name": "Open the studio"
+  },
+  "worldsShare": {
+    "role": "button",
+    "name": "Share with my class"
+  },
+  "worldsSharing": {
+    "role": "button",
+    "name": "Sharing…"
+  },
+  "worldsShareSheet": {
+    "role": "dialog",
+    "name": {
+      "regex": "^Share “.*” with "
+    }
+  },
+  "worldsShareLook": {
+    "role": "radio",
+    "name": {
+      "regex": "^Classmates can look"
+    }
+  },
+  "worldsShareBuild": {
+    "role": "radio",
+    "name": {
+      "regex": "^Classmates can build with me"
+    }
+  },
+  "worldsShareConfirm": {
+    "role": "button",
+    "name": {
+      "regex": "^(Share|Save sharing)$"
+    },
+    "_note": "\"Save sharing\" when the world is already shared."
+  },
+  "worldsStopSharing": {
+    "role": "button",
+    "name": "Stop sharing"
+  },
+  "worldsMakeCopy": {
+    "role": "button",
+    "name": "Make my own copy"
+  },
+  "worldsVisit": {
+    "role": "link",
+    "name": "Visit"
+  },
+  "worldsJoin": {
+    "role": "link",
+    "name": "Join"
+  },
+  "worldsHide": {
+    "role": "button",
+    "name": {
+      "regex": "^(Hide from class|Show to class)$"
+    }
+  },
+  "worldsNotice": {
+    "role": "status"
+  },
+  "worldsAccountChip": {
+    "css": ".worlds-chip, .shell-account-trigger",
+    "_note": "W4 local chip until W2's AppHeader lands on the page (then .shell-account-trigger)."
+  },
+  "worldsAccountMenu": {
+    "role": "menu",
+    "name": "Account"
+  },
+  "accountSignOut": {
+    "role": "menuitem",
+    "name": "Sign out"
+  },
+  "accountMyClass": {
+    "role": "menuitem",
+    "name": "My class"
+  },
+  "accountMyWorlds": {
+    "role": "menuitem",
+    "name": "My worlds"
+  },
+  "classFirstRunHeading": {
+    "role": "heading",
+    "name": "Set up your class"
+  },
+  "classFirstName": {
+    "label": "Class name"
+  },
+  "classCreate": {
+    "role": "button",
+    "name": "Create class"
+  },
+  "classCodeValue": {
+    "css": ".class-code-value"
+  },
+  "classCodeQr": {
+    "role": "img",
+    "name": {
+      "regex": "^Scan to join "
+    }
+  },
+  "classShowOnProjector": {
+    "role": "link",
+    "name": "Show on projector"
+  },
+  "classCopyJoinLink": {
+    "role": "button",
+    "name": {
+      "regex": "^(Copy join link|Link copied)$"
+    }
+  },
+  "classPrintQr": {
+    "role": "button",
+    "name": "Print QR"
+  },
+  "classStudentsIn": {
+    "role": "button",
+    "name": "My students are in"
+  },
+  "classGoToPage": {
+    "role": "button",
+    "name": "Go to my class page"
+  },
+  "classHeading": {
+    "css": "#class-name-title"
+  },
+  "classTabStudents": {
+    "role": "radio",
+    "name": "Students"
+  },
+  "classTabWorlds": {
+    "role": "radio",
+    "name": "Worlds"
+  },
+  "classTabSettings": {
+    "role": "radio",
+    "name": "Settings"
+  },
+  "classSharedList": {
+    "role": "list",
+    "name": "Worlds students shared with this class"
+  },
+  "classHideFromClass": {
+    "role": "button",
+    "name": "Hide from class"
+  },
+  "classShowAgain": {
+    "role": "button",
+    "name": "Show again"
+  },
+  "classSharingSwitch": {
+    "role": "switch",
+    "name": "Students can share their own builds"
+  },
+  "classSettingsHeading": {
+    "role": "heading",
+    "name": "Class settings"
+  },
+  "classStartWorldHeading": {
+    "role": "heading",
+    "name": "Start a shared world"
+  },
+  "classNotice": {
+    "role": "status"
+  },
+  "projectorHeading": {
+    "css": "#class-projector-title"
+  },
+  "projectorCode": {
+    "css": ".class-projector-code-big"
+  },
+  "projectorQr": {
+    "role": "img",
+    "name": {
+      "regex": "^Scan to join "
+    }
+  },
+  "projectorClose": {
+    "role": "link",
+    "name": "Close"
+  },
+  "saveSheetHeading": {
+    "role": "heading",
+    "name": "Save this build to your account"
+  },
+  "saveWorldName": {
+    "label": "World name"
+  },
+  "saveWorld": {
+    "role": "button",
+    "name": {
+      "regex": "^(Save world|Save as a new world anyway)$"
+    }
+  },
+  "keepBuilding": {
+    "role": "button",
+    "name": "Keep building"
+  },
+  "partButton1x1": {
+    "css": "button[title=\"1 × 1 Brick\"]",
+    "_note": "Part tile in the drawer; its accessible name is the title."
+  },
+  "placePositioned": {
+    "role": "button",
+    "name": {
+      "regex": "^Place (positioned brick|brick|moved brick|duplicate)$"
+    }
+  },
+  "stripBrush": {
+    "role": "group",
+    "name": "Positioned brick actions",
+    "_note": "W6 command strip, brush loaded / moving."
+  },
+  "stripSelected": {
+    "role": "group",
+    "name": {
+      "regex": "^(Selected brick actions|\\d+ bricks selected)$"
+    },
+    "_note": "W6 command strip, selection state."
+  },
+  "stripIdle": {
+    "role": "note",
+    "name": "Build hint",
+    "_note": "W6 command strip, idle state."
+  },
+  "stripCancel": {
+    "role": "button",
+    "name": "Cancel"
+  },
+  "stripRotate": {
+    "role": "button",
+    "name": {
+      "regex": "^Rotate"
+    }
+  },
+  "stripDuplicate": {
+    "role": "button",
+    "name": {
+      "regex": "^Duplicate "
+    }
+  },
+  "stripRecolor": {
+    "role": "button",
+    "name": {
+      "regex": "^Recolor "
+    }
+  },
+  "stripDelete": {
+    "role": "button",
+    "name": {
+      "regex": "^Delete "
+    }
+  },
+  "undo": {
+    "role": "button",
+    "name": "Undo"
+  },
+  "liveBlockedOrHud": {
+    "role": "heading",
+    "name": {
+      "regex": "Cannot open this (classroom )?world|This world needs a class sign-in|Opening your classroom world"
+    }
+  },
+  "menuRename": {
+    "role": "menuitem",
+    "name": "Rename"
+  },
+  "menuNewBuild": {
+    "role": "menuitem",
+    "name": "New build"
+  },
+  "menuSettings": {
+    "role": "menuitem",
+    "name": "Settings"
+  },
+  "exploreSettings": {
+    "role": "button",
+    "name": "Settings"
+  },
+  "closeSettings": {
+    "role": "button",
+    "name": "Close settings"
+  },
+  "modeSwitch": {
+    "role": "radiogroup",
+    "name": "Studio mode"
+  },
+  "modeBuild": {
+    "role": "radio",
+    "name": "Build"
+  },
+  "modeExplore": {
+    "role": "radio",
+    "name": "Explore"
+  },
+  "accountChip": {
+    "role": "button",
+    "name": {
+      "regex": "^Account: "
+    }
+  },
+  "accountSignIn": {
+    "role": "link",
+    "name": "Sign in"
+  },
+  "accountMenu": {
+    "role": "menu",
+    "name": "Account"
+  },
+  "accountSaveToAccount": {
+    "role": "menuitem",
+    "name": "Save this build to my account"
+  },
+  "cameraCluster": {
+    "role": "group",
+    "name": "Camera view"
+  },
+  "cameraFrame": {
+    "role": "button",
+    "name": "Frame build"
+  },
+  "historyUndo": {
+    "role": "button",
+    "name": "Undo"
+  },
+  "historyRedo": {
+    "role": "button",
+    "name": "Redo"
+  },
+  "boxSelect": {
+    "role": "button",
+    "name": "Box select bricks"
+  },
+  "jumpToBrick": {
+    "role": "combobox",
+    "name": "Jump to brick"
+  },
+  "commandStrip": {
+    "css": "[data-testid=\"command-strip\"]"
+  },
+  "brushColor": {
+    "role": "group",
+    "name": "Brush color"
+  },
+  "stripColorDialog": {
+    "role": "dialog",
+    "name": {
+      "regex": "^(Brick color|Color all \\d+ bricks)$"
+    }
+  },
+  "stripAdjust": {
+    "role": "button",
+    "name": "Adjust"
   }
 }

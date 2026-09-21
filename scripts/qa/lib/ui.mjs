@@ -26,8 +26,9 @@ export function makeLocate(locators) {
     const spec = locators[key]
     if (!spec) throw new Error(`locators.json has no entry "${key}"`)
     const name = spec.name && typeof spec.name === 'object' ? new RegExp(spec.name.regex) : spec.name
-    if (spec.role) return page.getByRole(spec.role, { name, ...(typeof name === 'string' ? { exact: spec.exact ?? true } : {}) })
-    if (spec.label) return page.getByLabel(spec.label, { exact: true })
+    if (spec.role) return page.getByRole(spec.role, { name, ...(typeof name === 'string' ? { exact: spec.exact ?? true } : {}), ...(spec.level ? { level: spec.level } : {}) })
+    // A label may be a regex too (a field that is relabelled at runtime, e.g. "<Name>, type your password").
+    if (spec.label) return typeof spec.label === 'object' ? page.getByLabel(new RegExp(spec.label.regex)) : page.getByLabel(spec.label, { exact: true })
     if (spec.text) return page.getByText(spec.text, { exact: true })
     if (spec.css) return page.locator(spec.css)
     throw new Error(`locators.json entry "${key}" needs role, label, text or css`)
