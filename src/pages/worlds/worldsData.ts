@@ -27,7 +27,12 @@ export type Classmate = ClassroomClassmate
 export type WorldsClient = {
   getSession: () => ClassroomAuthResult | null
   subscribe: (listener: () => void) => () => void
-  listWorlds: () => Promise<WorldsWorld[]>
+  /**
+   * Every world the account can open. `{ presence: true }` asks for build-together presence
+   * (`GET /worlds?presence=1` → `buildingNow` / `buildingNames` on shared worlds); a server or a
+   * mock that does not answer it simply leaves the fields off, so callers must render without them.
+   */
+  listWorlds: (options?: { presence?: boolean }) => Promise<WorldsWorld[]>
   listClasses: () => Promise<WorldsClass[]>
   /** Active classmates for the invite picker (the caller is not listed). */
   listClassmates: (classId: string) => Promise<Classmate[]>
@@ -48,7 +53,7 @@ export function createWorldsClient(client: ClassroomClient = browserClassroomCli
   return {
     getSession: client.getSession,
     subscribe: client.subscribe,
-    listWorlds: () => client.request<{ worlds: WorldsWorld[] }>('/worlds').then(result => result.worlds),
+    listWorlds: options => client.request<{ worlds: WorldsWorld[] }>(options?.presence ? '/worlds?presence=1' : '/worlds').then(result => result.worlds),
     listClasses: () => client.request<{ classes: WorldsClass[] }>('/classes').then(result => result.classes),
     listClassmates: classId => client.request<{ classmates: Classmate[] }>(`/classes/${classId}/classmates`).then(result => result.classmates),
     renameWorld: (id, title) => client.request<{ world: WorldsWorld }>(`/worlds/${id}`, 'PATCH', { title }).then(world),
@@ -120,6 +125,20 @@ export const classmatesLabel = (count: number) => `${count} ${count === 1 ? 'cla
 export const sharedForBuilding = (world: WorldsWorld) => world.classCanEdit ?? Boolean(world.canEdit)
 export const plateSizeOf = (world: WorldsWorld): BuildPlateSize =>
   BUILD_PLATE_SIZES.find(size => size === world.document?.plateSize) ?? DEFAULT_BUILD_PLATE_SIZE
+
+/**
+ * "Ava P.", "Ava P. and Ben K.", "Ava P., Ben K. and Chloe M." — the live line under an invite and
+ * anywhere else this page reads a handful of classmate names out loud.
+ */
+export const nameList = (names: string[]) =>
+  names.length <= 1 ? names[0] ?? '' : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+
+/** "Finn O." → "FO": the initials on an invite's owner disc. Decorative, so it never has to be perfect. */
+export const initialsOf = (name: string) =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part.charAt(0).toLocaleUpperCase()).join('') || '?'
+
+/** How many accounts are in this world's live room right now; 0 when presence was not asked for or could not be read. */
+export const buildingCount = (world: WorldsWorld) => world.buildingNow ?? 0
 
 /** Newest first, the order every list on this page uses. */
 export const byNewest = (a: WorldsWorld, b: WorldsWorld) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)

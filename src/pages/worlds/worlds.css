@@ -251,67 +251,50 @@
 .worlds-start-row { display: flex; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; }
 .worlds-start-row .ui-field { flex: 1 1 240px; }
 
-/* Share sheet ----------------------------------------------------------- */
+/* Invites and presence ------------------------------------------------- */
 
-.worlds-share-options { display: flex; flex-direction: column; gap: var(--space-3); border: 0; margin: 0; padding: 0; }
-.worlds-share-options legend { font-weight: 700; padding: 0 0 var(--space-2); }
-.worlds-share-option {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  min-height: var(--control-height);
-  padding: var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
+/* The one live signal on this page: somebody is in that room this second. */
+.worlds-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex: none;
 }
-.worlds-share-option:hover { border-color: var(--primary); }
-.worlds-share-option input { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary-strong); flex: none; }
-.worlds-share-option:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
-.worlds-share-option span { display: flex; flex-direction: column; gap: 2px; }
-.worlds-share-option small { color: var(--text-muted); }
-.worlds-share-options + .worlds-share-options { margin-top: var(--space-4); }
-.worlds-share-note { margin: var(--space-4) 0 0; color: var(--text-muted); font-size: var(--text-sm); }
+.worlds-chip-building { background: var(--success-soft); color: var(--success); }
+.worlds-chip-here { background: var(--success-soft); color: var(--success); }
 
-/* Invite picker: tap-to-pick classmate tiles, 44px tall, selected state carries the check. */
-.worlds-share-picker { margin: var(--space-3) 0 0; padding: var(--space-3); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); }
-.worlds-share-picker-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); font-weight: 700; }
-.worlds-share-picker-count { font-weight: 600; font-size: var(--text-sm); color: var(--text-muted); }
-.worlds-share-picker-note { display: flex; align-items: center; gap: var(--space-2); margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
-.worlds-share-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-2); }
-.worlds-share-tile {
+/* "Finn O. invited you to build Pixel Arcade", above the student's own worlds. */
+.worlds-invites { display: flex; flex-direction: column; gap: var(--space-3); }
+.worlds-invite {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height);
-  padding: 0 var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-lg);
 }
-.worlds-share-tile:hover { border-color: var(--primary); }
-.worlds-share-tile:focus-visible { outline: 2px solid var(--primary-strong); outline-offset: 2px; }
-.worlds-share-tile-selected { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
-.worlds-share-tile-mark {
+.worlds-invite-disc {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: var(--surface-2);
-  color: var(--text-muted);
-  font-size: var(--text-sm);
+  background: var(--primary-strong);
+  color: var(--primary-contrast);
+  font-family: var(--font-display);
+  font-size: var(--text-md);
   flex: none;
 }
-.worlds-share-tile-selected .worlds-share-tile-mark { background: var(--primary-strong); color: var(--surface); }
+.worlds-invite-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.worlds-invite-text strong { overflow-wrap: anywhere; }
+.worlds-invite-live { display: flex; align-items: center; gap: var(--space-2); color: var(--success); font-weight: 600; font-size: var(--text-sm); }
+.worlds-invite-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; flex: none; }
+.worlds-invite-actions .ui-button { min-height: 44px; }
+
 .worlds-chip-invitees { background: var(--primary-soft); color: var(--primary-strong); }
-.worlds-stop-sharing { margin-right: auto; color: var(--danger-text); }
 
 .worlds-checkpoints { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .worlds-checkpoints li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
@@ -332,6 +315,11 @@
   .worlds-grid { grid-template-columns: minmax(0, 1fr); }
   .worlds-card-actions { flex-direction: column; align-items: stretch; }
   .worlds-card-actions .ui-button { width: 100%; min-height: 44px; }
+  /* The gear stays a 44px square instead of stretching into an unreadable wide button. */
+  .worlds-card-actions .ui-button-icon-only { width: 44px; min-width: 44px; align-self: flex-start; }
+  .worlds-invite { flex-direction: column; align-items: flex-start; }
+  .worlds-invite-actions { width: 100%; flex-direction: column; }
+  .worlds-invite-actions .ui-button { width: 100%; }
   .worlds-draft { flex-direction: column; align-items: flex-start; }
   .worlds-draft-actions { width: 100%; flex-direction: column; }
   .worlds-draft-actions .ui-button { width: 100%; min-height: 44px; }
