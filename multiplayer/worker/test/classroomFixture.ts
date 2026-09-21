@@ -177,12 +177,21 @@ export function fixture(worldIds: string[]) {
     throw new Error(`Unexpected rpc ${name}`);
   });
   const batchChecks = () => rpc.mock.calls.filter(([name]) => name === "authorize_world_batch").length;
+  /** Single-session permission checks (`authorize_world`) so far, optionally for one user. */
+  const authorizeChecks = (userId?: string) => rpc.mock.calls.filter(([name, input]) => name === "authorize_world" && (!userId || input.p_user_id === userId)).length;
   const studentAccess = (index: number, worldId: string): Access => {
     const student = db.students[index];
     return { userId: student.user_id, username: student.username, role: "student", worldId, classId, canEdit: true, isTeacher: false, isOwner: false, authVersion: student.auth_version, sessionId: student.session_id };
   };
   const teacherAccess = (worldId: string): Access => ({ userId: teacher.id, username: "Teacher", role: "teacher", worldId, classId, canEdit: true, isTeacher: true, isOwner: true, authVersion: 0, sessionId: teacher.sessionId });
-  return { db, batchChecks, studentAccess, teacherAccess };
+  return { db, batchChecks, authorizeChecks, studentAccess, teacherAccess };
+}
+
+/** Run `action` with the room's (and the test's) clock advanced by `ms`. */
+export async function withClockAhead<T>(ms: number, action: () => Promise<T>): Promise<T> {
+  const now = Date.now() + ms;
+  const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+  try { return await action(); } finally { clock.mockRestore(); }
 }
 
 export async function openRoom(world: FixtureWorld) {

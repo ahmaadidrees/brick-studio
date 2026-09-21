@@ -14,6 +14,7 @@ import { ClassroomService } from "../src/classroom/index";
 import { handleReleaseRequest } from "../src/classroomRoutes";
 import type { Env as WorkerEnv } from "../src/index";
 import {
+  ACCESS_CACHE_TTL_MS,
   newWorldId, newOwnerToken, ownerTokenVerifier,
   WORLD_ROOM_EXPIRY_GRACE_MS,
   WORLD_ROOM_TTL_MS,
@@ -26,7 +27,7 @@ import {
 } from "../src/worldCreationLimiter";
 import {
   Inbox, applied, bricksOf, brick, classId, commitGate, fixture, join, openRoom, randomWorldUuid, routeEnv, saveNow, send, snapshotted,
-  sockets, stillOpen, teacherCaller, worldDocument,
+  sockets, stillOpen, teacherCaller, withClockAhead, worldDocument,
 } from "./classroomFixture";
 
 function largeWorld(count: number): BrickInstance[] {
@@ -959,9 +960,13 @@ it("enforces trusted classroom identity and immediate group revocation without d
     active.accept();
     await activeInbox.next("welcome");
     const revoked = new Promise<number>(resolve => active.addEventListener("close", event => resolve(event.code)));
+    // A change the database never announced (no invalidation push) is caught by
+    // the first building frame after the permission window; pushes close sooner.
     revocation = change;
-    send(active, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("unauthorized") }] });
-    expect(await revoked).toBe(4003);
+    await withClockAhead(ACCESS_CACHE_TTL_MS + 100, async () => {
+      send(active, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#2`, commands: [{ op: "place", brick: brick("unauthorized") }] });
+      expect(await revoked).toBe(4003);
+    });
   }
   revocation = "none";
   const idleResponse = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });

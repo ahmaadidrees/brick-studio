@@ -83,6 +83,12 @@ type WorldRoomRecord = {
 type WorldSocketAttachment = {
   documentSchema?: number;
   classroomAccess?: ClassroomSocketAccess;
+  /**
+   * When `classroomAccess` was last confirmed by the database (connect, a
+   * per-frame re-check, or the sweep). Building frames trust it for
+   * ACCESS_CACHE_TTL_MS; absent on attachments from before this release.
+   */
+  accessCheckedAt?: number;
   playerId: string;
   isOwner: boolean;
   connectedAt: number;
@@ -119,6 +125,15 @@ export const WORLD_ROOM_EXPIRY_GRACE_MS = 90 * 1000;
 const EXPIRY_PERSIST_INTERVAL_MS = 60 * 1000;
 /** Classroom sockets are re-checked against the database this often while any are open. */
 const CLASSROOM_REAUTH_INTERVAL_MS = 60 * 1000;
+/**
+ * A building frame (commands, addCustomPart, setProfile, resync) trusts a
+ * successful permission check this recent instead of asking the database again.
+ * Revocations push into the room at once and the sweep re-checks everyone, so
+ * the window only bounds a change nothing announced. Owner controls always re-check.
+ */
+export const ACCESS_CACHE_TTL_MS = 15_000;
+const ACCESS_CACHED_FRAMES = ["commands", "addCustomPart", "setProfile", "resync"];
+const ACCESS_CHECKED_FRAMES = [...ACCESS_CACHED_FRAMES, "replaceDocument", "setMode", "setLocked"];
 /** A classroom commit runs this long after the first uncommitted edit, coalescing the burst behind it. */
 export const COMMIT_DEBOUNCE_MS = 1000;
 /** No uncommitted edit waits longer than this for its commit while the database is healthy. */
@@ -643,7 +658,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       documentSchema,
       playerId,
       isOwner,
-      ...(classroomAccess ? { classroomAccess } : {}),
+      ...(classroomAccess ? { classroomAccess, accessCheckedAt: now } : {}),
       connectedAt: now,
       connectionId: randomHex(8),
       superseded: false,
@@ -771,8 +786,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     // A queued frame may have lost access while waiting. Re-read its attachment.
     const attachment = this.attachment(socket);
     if (!attachment || !this.record || attachment.superseded || this.currentSocket(attachment) !== socket) return;
-    if (attachment.classroomAccess && ["commands", "addCustomPart", "replaceDocument", "setMode", "setLocked", "setProfile", "resync"].includes(data.type)) {
-      if (!await this.reauthorizeSocket(socket, attachment)) return;
+    if (attachment.classroomAccess && ACCESS_CHECKED_FRAMES.includes(data.type)) {
+      // Building frames reuse a recent check so a room is not serialized on one
+      // database hop per brick; owner controls are rare and always re-check.
+      const cached = ACCESS_CACHED_FRAMES.includes(data.type)
+        && Date.now() - (attachment.accessCheckedAt ?? 0) < ACCESS_CACHE_TTL_MS;
+      if (!cached && !await this.reauthorizeSocket(socket, attachment)) return;
     }
     if (attachment.classroomAccess && !attachment.classroomAccess.canEdit
         && ["commands", "addCustomPart", "replaceDocument", "setMode", "setLocked"].includes(data.type)) {
@@ -1265,6 +1284,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (!current || current.superseded || this.currentSocket(current) !== socket) return false;
     Object.assign(attachment, current);
     attachment.classroomAccess = access;
+    attachment.accessCheckedAt = Date.now();
     attachment.isOwner = access.isOwner || access.isTeacher;
     socket.serializeAttachment(attachment);
     this.record!.profiles[attachment.playerId] = { ...this.record!.profiles[attachment.playerId], displayName: access.username };

@@ -7,10 +7,10 @@
 import { LIVE_PROTOCOL_VERSION } from "@brick-studio/core";
 import { evictDurableObject, runDurableObjectAlarm } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { COMMIT_DEBOUNCE_MS, COMMIT_RETRY_BACKOFF_MS } from "../src/worldRoom";
+import { ACCESS_CACHE_TTL_MS, COMMIT_DEBOUNCE_MS, COMMIT_RETRY_BACKOFF_MS } from "../src/worldRoom";
 import {
   alarmAfter, applied, brick, bricksOf, commitGate, fixture, join, openRoom, randomWorldUuid, saveNow, send, snapshotted, sockets,
-  stillOpen, teacher, worldDocument,
+  stillOpen, teacher, withClockAhead, worldDocument,
 } from "./classroomFixture";
 
 afterEach(() => {
@@ -340,5 +340,105 @@ describe("classroom write-behind commits", () => {
     expect(batchChecks()).toBe(1);
     expect(await stillOpen(builder.closed)).toBe("open");
     expect(await room.alarmAt()).toBe(clock.now + 60_000);
+  });
+});
+
+describe("classroom permission cache", () => {
+  it("checks a builder's access once per window, not once per brick", async () => {
+    const { db, authorizeChecks, studentAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const builder = await join(room, studentAccess(0, world.id));
+    const user = builder.access.userId;
+    expect(authorizeChecks(user)).toBe(1); // the connect
+
+    const opIds = Array.from({ length: 20 }, (_, index) => builder.edit(`burst-${index}`, index));
+    for (const [index, opId] of opIds.entries()) await applied(opId, 2 + index, builder);
+    send(builder.socket, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Ignored", characterId: "toy-figure" } });
+    await builder.inbox.next("players");
+    send(builder.socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+    expect(await builder.inbox.next("snapshot")).toMatchObject({ revision: 21 });
+    expect(authorizeChecks(user)).toBe(1);
+
+    // The first frame after the window re-checks once, and the window restarts from that check.
+    await withClockAhead(ACCESS_CACHE_TTL_MS + 100, () => applied(builder.edit("after-window", 30), 22, builder));
+    expect(authorizeChecks(user)).toBe(2);
+    await withClockAhead(ACCESS_CACHE_TTL_MS + 200, () => applied(builder.edit("fresh-again", 31), 23, builder));
+    expect(authorizeChecks(user)).toBe(2);
+    await saveNow(builder, db);
+    expect(bricksOf(world.document)).toHaveLength(22);
+  });
+
+  it("re-checks at once on an invalidation push, and catches a silent revocation when the window ends", async () => {
+    const { db, authorizeChecks, batchChecks, studentAccess, teacherAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const builder = await join(room, studentAccess(0, world.id));
+    const user = builder.access.userId;
+    await applied(builder.edit("first", 0), 2, builder);
+    expect(authorizeChecks(user)).toBe(1);
+    expect(batchChecks()).toBe(0);
+
+    // A membership push bypasses the window: the room asks the database now and, with
+    // access still granted, the builder keeps building on the refreshed check.
+    expect((await room.invalidate({ reason: "members_updated", change: "membership", userId: user })).status).toBe(200);
+    expect(batchChecks()).toBe(1);
+    expect(await stillOpen(builder.closed)).toBe("open");
+    await applied(builder.edit("still-cached", 4), 3, builder);
+    expect(authorizeChecks(user)).toBe(1);
+
+    // A revocation nothing announced (the database changed without a push) is
+    // trusted for the rest of the window, then the next frame re-checks and closes the socket.
+    db.students[0].auth_version = 2;
+    await applied(builder.edit("inside-window", 8), 4, builder);
+    expect(authorizeChecks(user)).toBe(1);
+    await withClockAhead(ACCESS_CACHE_TTL_MS + 100, async () => {
+      builder.edit("after-window", 12);
+      expect(await builder.closed).toBe(4003);
+    });
+    expect(authorizeChecks(user)).toBe(2);
+    expect(builder.inbox.peek("apply")).toEqual([]);
+    expect(bricksOf((await room.stored()).document)).toEqual(["first", "still-cached", "inside-window"]);
+
+    // A push that finds access denied closes the socket immediately, whatever the window says.
+    const second = await join(room, studentAccess(1, world.id));
+    await applied(second.edit("second", 16), 5, second);
+    db.students[1].auth_version = 2;
+    expect((await room.invalidate({ reason: "password_reset", change: "membership", userId: second.access.userId })).status).toBe(200);
+    expect(await second.closed).toBe(4003);
+    expect(batchChecks()).toBe(2);
+
+    // Leave the room clean: the teacher's session carries the stranded edits (both
+    // students are refused), either on connect (if the alarm already found the room
+    // blocked) or on the resync.
+    const supervising = await join(room, teacherAccess(world.id));
+    send(supervising.socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+    await supervising.inbox.next("snapshot");
+    await vi.waitFor(async () => expect((await room.stored()).dirtySince).toBeUndefined());
+    expect(db.commits.at(-1)).toMatchObject({ actorId: teacher.id });
+    expect(bricksOf(world.document)).toEqual(["first", "still-cached", "inside-window", "second"]);
+  });
+
+  it("owner controls re-check every time", async () => {
+    const { db, authorizeChecks, teacherAccess } = fixture([randomWorldUuid()]);
+    const world = db.worlds[0];
+    const room = await openRoom(world);
+    const supervising = await join(room, teacherAccess(world.id));
+    expect(authorizeChecks(teacher.id)).toBe(1);
+    send(supervising.socket, { v: LIVE_PROTOCOL_VERSION, type: "setMode", mode: "explore" });
+    expect(await supervising.inbox.next("modeChanged")).toMatchObject({ mode: "explore" });
+    send(supervising.socket, { v: LIVE_PROTOCOL_VERSION, type: "setMode", mode: "build" });
+    expect(await supervising.inbox.next("modeChanged")).toMatchObject({ mode: "build" });
+    send(supervising.socket, { v: LIVE_PROTOCOL_VERSION, type: "setLocked", locked: true });
+    expect(await supervising.inbox.next("locked")).toMatchObject({ locked: true });
+    expect(authorizeChecks(teacher.id)).toBe(4);
+    // A lock change does not bump the revision; the brick is the fourth revision step.
+    await applied(supervising.edit("teacher-brick", 0), 4, supervising);
+    expect(authorizeChecks(teacher.id)).toBe(4);
+    // Leave the room clean (a resync is cached, so this adds no check).
+    send(supervising.socket, { v: LIVE_PROTOCOL_VERSION, type: "resync" });
+    await supervising.inbox.next("snapshot");
+    await vi.waitFor(async () => expect((await room.stored()).dirtySince).toBeUndefined());
+    expect(authorizeChecks(teacher.id)).toBe(4);
   });
 });
