@@ -14,22 +14,24 @@ export type WorldMenuProps = {
   onOpenHelp?: () => void
   /** Opens on mount (gallery). */
   defaultOpen?: boolean
+  /** Which edge of the trigger the menu hangs from; `end` at the far right of the header. */
+  align?: 'start' | 'end'
   className?: string
 }
 
 /**
- * The ⋯ "This build" menu beside the world title: Rename, Download build,
+ * The ⋯ "This build" menu at the far right of the editor header (after the account chip): Rename, Download build,
  * Import build, New build, then Settings and Help. Entries whose callback is
  * missing are disabled rather than hidden so the menu keeps its shape across
  * guest, account and live sessions (a live room has no Import / New build).
  */
-export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBuild, onOpenSettings, onOpenHelp, defaultOpen, className }: WorldMenuProps) {
+export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBuild, onOpenSettings, onOpenHelp, defaultOpen, align = 'start', className }: WorldMenuProps) {
   const importRef = useRef<HTMLInputElement>(null)
   return (
     <>
       <Menu
         label="This build"
-        align="start"
+        align={align}
         defaultOpen={defaultOpen}
         className={className}
         trigger={({ ref, ...props }) => (
