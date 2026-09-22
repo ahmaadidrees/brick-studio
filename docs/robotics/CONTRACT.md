@@ -1,125 +1,183 @@
-# Robot Workshop v2 — design contract
+# Robot Workshop v2 — design contract (v2.1)
 
-Status: agreed direction, 2026-09-21. Mock: https://claude.ai/artifact/CbqvHx8SHnaTRRZEFyyAKG (boards 1, 1b, 2, 3).
-Supersedes the separate "Robots" mode on `codex/robotics-workshop`; the engine under `src/robotics/**` on that branch
-(assembly compiler, hinge compiler, Blockly catalog, runtime and arbiter, raycast drivetrain, local persistence, Explore
-ride) is the intended implementation and is ported onto current `main`, not merged.
+Status: agreed direction, revised 2026-09-22 after two rounds of Codex review. Mock:
+https://claude.ai/artifact/CbqvHx8SHnaTRRZEFyyAKG (boards 1, 1b, 1c wiring, 2, 3).
+Supersedes the separate "Robots" mode on `codex/robotics-workshop`. Pieces of that branch's engine under
+`src/robotics/**` (Blockly catalog, runtime and actuator arbiter, local persistence, Explore ride) are expected to carry
+over; the assembly compiler and drivetrain are **not** assumed to survive (section 10).
 
 This document is what the prototype is checked against. Anything not stated here is open; anything stated here changes
 only by editing this file.
 
+## 0. The standard
+
+**A student can explain the chain from their code, through the hub and the motor, to the part that moves, and can point
+to where that chain is broken.** Every screen, block and message in this design exists to make that chain visible.
+Section 9 turns it into acceptance tests.
+
 ## 1. Principles
 
-1. **Robotics is ordinary building with new bricks.** Motors, wheels, sensors, lights, hinge motors, turbo pods, seats and
+1. **Robotics is ordinary building with new bricks.** Hub, motors, axles, wheels, sensors, lights, hinges, seats and
    buttons live in the brick drawer under a *Robotics* category and are placed, moved, rotated and deleted like any brick.
    There is no Robots entrance, sheet or mode.
-2. **All programming is blocks.** No text mode. Blockly, one editable source per program, a derived bounded IR at run time.
-3. **Inputs are things a program reads.** Keyboard, on-screen joystick and buttons are blocks (`when joystick moves`,
-   `joystick up amount`, `when key up pressed`). There is no built-in "drive yourself" that bypasses the program. A beginner
-   block `drive using joystick` exists and is replaceable by individual motor blocks.
-4. **Explore is the payoff.** A creation with a seat can be ridden in Explore; its program reads the rider's keys or
+2. **How it is built and connected determines what it can do.** Nothing moves by selection, grouping or naming. A motor
+   with nothing on its axle spins its output and moves nothing else.
+3. **All programming is blocks.** No text mode. Blockly, one editable source per program, a derived bounded IR at run time.
+4. **Inputs are things a program reads.** Keyboard, on-screen joystick and buttons are blocks. There is no built-in
+   "drive yourself" that bypasses the program. A beginner block `drive using joystick` exists and is replaceable by
+   individual motor blocks.
+5. **Explore is the payoff.** A creation with a seat can be ridden in Explore; its program reads the rider's keys or
    joystick. Explore never runs anything the student did not program.
-5. **Free build first.** Starters are ordinary worlds that arrive with a creation, a half-finished program and a goal.
+6. **Free build first.** Starters are ordinary worlds that arrive with a creation, a half-finished program and a goal.
    They appear on Worlds under *Robotics starters*; the primary action beside them is *Free build with motors*.
+7. **Virtual conveniences are visible and reversible.** Assisted wiring, snap-to-axle and auto-routed cables save fiddling;
+   none of them hides a connection or changes one the student made.
 
-## 2. Creations: what is one machine (board 1b)
+## 2. The three relationships
 
-- A **creation** is the set of bricks that move together. Membership is **stud connectivity**: bricks joined by studs,
-  transitively, from the placed part. Touching without a stud joint is not membership.
-- Placing the **first powered part** (motor, hinge motor, turbo pod) on a group that is not yet a creation opens the
-  *creation card*: the proposed members are highlighted in the world, the card shows the count, the parts found and a
-  name field, and offers **Code this creation** / **Not now**. Membership is adjusted by tapping bricks in or out while the
-  card is open. Confirming names the creation; declining leaves the bricks as plain bricks and the part inert.
-- Adding a part to an existing creation never reopens the card; the parts strip in Code updates.
-- A **hinge motor** splits one creation into a **base** and an **arm**: the arm is the stud-connected set on the hinge's
-  moving face. The card shows both (blue base, coral arm). A creation may contain several hinges; each arm is one body.
-- Copy: the card says what is joined and what the part can do (*"7 bricks move together"*, *"Wheels on both motors, so
-  it can roll"*). It never claims the creation can drive, run or work.
-- **Two creations touching** stay two creations. Merging is an explicit act: place a brick that stud-joins them, and the
-  card reopens for the union with the larger creation's name proposed.
-- Deleting the last powered part turns a creation back into plain bricks after confirmation; its programs are kept on the
-  world record for 30 days so an undo or re-add restores them.
-- The world header (Scene / Character / Invite) is unchanged. A world's creations are listed in Code, not in the header.
+The model keeps three questions apart. The UI asks them in plain words and never mixes them.
 
-## 3. Code view (board 2)
+| Relationship | Question a student asks | What it is |
+|---|---|---|
+| **Assembly** | Is it attached? | Structural joints: studs and pins. Bricks joined this way move as one rigid body. |
+| **Mechanism** | Can it move? | Motor output → axle; axle → wheel; hinge between a base body and an arm body. A mechanism relates two bodies. |
+| **Control** | Is it plugged in? | A device (motor, sensor, light, button) connected by a cable to a port on a hub. |
 
-- Layout: category rail (colors fixed per category), block palette (collapsible), scripts, and the **stage** on the right.
+- A **creation** is a *name* over a set of bodies that a student chose to treat as one thing (a buggy, a gate, a crane).
+  It organizes and labels; it never attaches, moves or wires anything. Membership follows assembly and mechanism links
+  from the parts the student named; a body reachable only through a cable is **not** part of the creation.
+- A hub may control a motor on a different mechanism than the one it sits on (a base hub driving a pivoting arm). That
+  is normal and the model must represent it.
+
+## 3. Parts (first milestone set)
+
+Hub (4 ports A–D), motor (output axle on one face), axle (short/long), wheel (fits an axle), distance sensor, light,
+button, hinge (a pin joint with a defined swing axis), seat. Studs and pins are properties of every brick.
+**Out of the first milestone:** gears, transmissions, turbo pods and other power-ups, second hub.
+
+Attachment rules the placement system enforces and shows:
+- A wheel snaps onto a free axle end; elsewhere it is a decorative brick and the card says so.
+- A motor's output face accepts one axle; a wheel on that axle turns with the motor.
+- A hinge connects exactly two bodies; the arm is whatever is stud-attached on its moving face.
+- Cables connect one device to one port. A port holds one cable.
+
+## 4. Creations and the creation card (board 1b)
+
+- Placing the **first powered part** (motor or hinge with a motor) on bricks that are not yet a creation opens the
+  *creation card*: bodies found are highlighted (assembly in blue, a moving arm in coral), the card lists parts found,
+  offers a name and **Code this creation** / **Not now**.
+- The card **reports** structure; it does not edit it. There is no "tap a brick to add it". To include a brick, attach it.
+- Copy states what is attached and what a part can do (*"7 bricks attached · 2 wheels on motors, so it can roll"*). It
+  never claims the creation can drive or work.
+- Two creations touching stay two creations. Attaching them with a brick reopens the card for the union.
+- Removing the last powered part turns a creation back into plain bricks after confirmation; its programs stay on the
+  world record for 30 days.
+
+## 5. Wiring (board 1c)
+
+Per project setting **Wiring: assisted (default) / manual**, shown in the creation card and in Code.
+
+Assisted:
+1. Starter builds include a visible hub. Free builds get a hub from the drawer like any part.
+2. Placing a device with a hub in the same creation **suggests** a valid connection: the cable is drawn, the port
+   highlighted, and a brief line says *"Left motor connected to port A"*.
+3. Assisted wiring **only adds**. It never moves, swaps or removes an existing connection.
+4. No hub, or all ports used: the device is placed unpowered and the card explains what is needed (*"Add a hub"*,
+   *"Port A–D are full. Unplug something or add a hub"*).
+
+Always (assisted or manual):
+- Selecting a device or a port highlights the other end, the cable, the device's name and port, its current reading or
+  output, and (in Code) the blocks that reference it.
+- Students can unplug (drag the cable end off or press Unplug), plug into another port (drag to a port or pick from a
+  list), rename a device, and swap two devices' ports.
+- Cables route automatically. There is no cable positioning.
+- A disconnected device is visibly unplugged in Build, and every block referencing it shows *"Not plugged in"* in Code.
+
+## 6. Code view (board 2)
+
+- Layout: category rail (fixed colors), collapsible block palette, scripts, and the **stage** on the right.
 - **First run** of any program: one script, one goal line, palette collapsed, controller blocks out of sight unless the
   starter is a controller starter. The rail stays visible.
-- Controls are labeled words with icons: **Run**, **Stop**, **Reset**. No unlabeled flag or stop sign.
+- Controls are labeled words with icons: **Run**, **Stop**, **Reset**.
 - Every script starts from a hat: `when run`, `when <sensor> sees something`, `when <button> pressed`,
   `when joystick moves`, `when key <k> pressed`, `when controls update` (advanced).
-- Block vocabulary uses studs, degrees, seconds and percent. Never X/Y/Z. Distance unit default **studs**
-  (open decision; cm is the alternative).
-- Beginner motion: `drive <direction> at <n> %`, `turn <direction> at <n> %`, `stop motors`, `drive using joystick`.
-  Advanced: `set <motor> to <n> %`. Both ship in one toolbox, helper first.
+- Blocks name the student's parts (*left motor*, *arm motor*, *front sensor*) and units are studs, degrees, seconds and
+  percent. Never X/Y/Z. Distance unit default **studs**.
+- Motor blocks are real motor blocks: `run <motor> at <n> %`, `turn <motor> to <n> °`, `<motor> position`,
+  `<motor> speed`, `stop <motor>`.
+- Helper blocks (`drive <direction> at <n> %`, `turn <direction>`, `drive using joystick`) operate on a **configured
+  drive pair**: two motors with wheels, proposed automatically when the shape allows and shown in the creation card
+  (*"Drive: left motor + right motor"*). The student can inspect and change the pair. A helper with no drive pair shows
+  *"Choose two drive motors first"*.
 
-## 4. The stage: test plate and my world
+## 7. The stage: test plate and my world
 
 The stage is a **preview** of the creation running its program. Two places to run, one creation, one code:
 
-1. **Same creation, same code in both.** Switching Test plate ↔ My world never edits the program or the creation.
-2. **Testing never removes or relocates the authored creation.** The world's bricks are untouched by anything that
-   happens on the stage. Positions in the world after a run are exactly what they were before.
-3. **Reset restores the authored starting state**: the creation's pose as built, program stopped, sensors idle.
-4. **Test props belong to the testing space.** The wall, pad or gate post a starter supplies exist on the test plate only
-   and are never pasted into the world. (This retires the pasted-props defect on the old branch.)
-5. **World-dependent creations test in context.** A gate, a signal post or a sensor room defaults to *My world*, where
-   the run plays inside the world with the same guarantees (2) and (3). A rover defaults to *Test plate*. The default is
-   per creation kind and can be flipped.
+1. **Same creation, same code in both.** Switching Test plate ↔ My world never edits the program or the construction.
+2. **A run never edits the construction.** Positions, attachments and connections after a run are exactly what they were
+   before it. Code edits made in the Code view are saved as usual.
+3. **Reset restores the authored starting state**: every body at its built pose, program stopped, sensors idle.
+4. **Test props belong to the testing space.** The wall, pad or post a starter supplies exist on the test plate only.
+5. **World-dependent creations test in context.** A gate or signal post defaults to *My world*; a rover to *Test plate*.
+   The default is per creation kind and can be flipped.
 
-Explore is not a test: in Explore the creation runs for real and its motion persists until the student rebuilds.
+**Explore.** Explore runs programs for real inside the world session but writes nothing to the construction. Leaving
+Explore, or pressing Reset in Build, returns every creation to its authored pose. What persists across sessions is the
+construction and the programs, never a run's motion.
 
-## 5. Running: one rule for competing scripts
+## 8. Running
 
-- Each tick, at most **one command per actuator**. Autonomous scripts run first; the controller script
-  (`when joystick moves` / `when controls update`) is evaluated **last** and wins for the actuators it writes that tick.
-- A `stop motors` from an autonomous script therefore holds only until the controller writes again. This is the rule the
-  runtime already implements; it is **not** presented to beginners.
+- Each tick: sample inputs and sensors → autonomous scripts → the controller script (`when joystick moves` /
+  `when controls update`) last → the arbiter keeps at most **one command per actuator**, controller wins for actuators it
+  wrote → physics → readings. Readings shown on the stage are the values the blocks read.
 - Starters keep autonomous driving and controller driving as **separate example programs**. Combining them is a later
-  lesson ("Who's driving?"), where the rule above is taught explicitly.
-- Sensors are sampled once per tick, before scripts run; readings shown on the stage are the same values the blocks read.
+  lesson where the rule above is taught explicitly.
+- **Shared rooms are deferred.** In pass 1, Code and Run are unavailable in a live room, with a one-line explanation;
+  building with robotics parts still works and the construction syncs like any bricks. Synchronized running is a later
+  gate with its own contract.
 
-## 6. Inputs
+## 9. Acceptance — prototype spike
 
-- Joystick: an on-screen control shown on the stage (and in Explore on touch devices) exposing `up`, `right` in -1..1 and
-  a button. Keyboard maps to the same values (arrows/WASD, space). A program never knows which one is present.
-- The stage has an **Input** switch, Joystick / Keys, for testing without a keyboard. It changes the visible control only.
+Built on current `main` behind a robotics flag. Real Chrome, 1366×768 and iPad. Small parts set of section 3.
 
-## 7. Persistence and sharing
+**Rover, from loose parts:** place a hub, two motors, two axles, two wheels and a distance sensor on a plate. Confirm and
+name the creation. Assisted wiring connects each device with the explanation line. Code opens on the test plate in the
+first-run state. Run: the rover drives and stops before the wall; readings match the blocks. Reconnect the left motor to
+port C; the block updates, the rover still runs. Reset restores the pose. Open the controller starter, Run, drive with the
+on-screen joystick. Back to build: construction unchanged (bricks, poses, attachments, cables identical), programs saved.
+Explore: ride it, drive with keys, hop off; leave Explore, construction unchanged.
 
-- Creations and programs are part of the world document (a versioned `robotics` section), so they autosave, share,
-  duplicate and checkpoint with the world. No separate namespace, no separate storage key.
-- Live rooms: pass 1 runs programs **locally per client** from the shared document; motion is not synchronized between
-  builders. Running a creation in a shared room shows a "runs on your screen only" note. Synchronized running is a
-  later gate.
+**Gate, from loose parts:** build a frame, place a hinge and a door on its moving face, a motor on the hinge, a hub and a
+distance sensor. The card shows base and arm. Code defaults to My world; `when front sensor sees something → turn arm
+motor to 90°` runs in place. Reset returns the door to closed. Construction unchanged after the run.
+
+**The five failures, each built deliberately, each diagnosable from what the app shows:**
+
+| Student does | Student sees | The app makes the cause findable by |
+|---|---|---|
+| Leaves a wheel off its axle | motor spins, wheel stays still | wheel card says *"Not on an axle"*; motor output visibly turning |
+| Mounts one motor backwards | rover turns instead of driving straight | drive pair in the card shows one motor *reversed*; readings show opposite speeds |
+| Points the sensor sideways | sensor never sees the wall | sensor beam drawn on the stage; card says which way it faces |
+| Builds the arm into the frame | arm stops moving | stage highlights the contact; readings show position stuck |
+| Unplugs a motor | code cannot control it | device shown unplugged in Build; its blocks say *"Not plugged in"* |
+
+Each flow includes save, reload and reopen with everything intact.
+
+## 10. Implementation posture
+
+- Port from `codex/robotics-workshop` only what the spike proves useful; the Blockly catalog, runtime, arbiter, local
+  persistence and Explore ride are expected to; the assembly compiler and drivetrain are expected **not** to survive as
+  designed, because they assume a rover. Whether their code survives is decided by the spike's evidence, not up front.
+- Creations, connections and programs live in the world document (a versioned `robotics` section) so they autosave,
+  share, duplicate and checkpoint with the world. No separate store.
 - Storage keys, tables, RPCs and the live protocol are unchanged by this work.
 
-## 8. Prototype spike — acceptance
-
-Built on current `main` behind a robotics flag, with the `src/robotics` engine ported from `codex/robotics-workshop`.
-
-**Buggy flow (must pass, real Chrome, 1366×768 and iPad):**
-1. Place two motors, two wheels and a distance sensor on a plate from the Robotics category.
-2. The creation card appears on the first motor; confirm and name it.
-3. Code opens on the test plate with the creation and a wall; the first-run state shows one script and one goal.
-4. Run: the buggy drives and stops before the wall; readings match the blocks. Stop, Reset restore the start pose.
-5. Switch Input to Joystick, open the controller starter, Run, drive with the on-screen stick.
-6. Back to build: the world is byte-identical to before Code was opened (document diff empty).
-7. Explore: walk to the buggy, ride it, drive with keys, hop off.
-
-**Gate flow (must pass):**
-1. Build a frame, place a hinge motor and a door brick on its moving face; the card shows base and arm.
-2. Code defaults to My world; `when front sensor sees something → move hinge to 90°` runs in place.
-3. Reset returns the door to closed; the world document is unchanged after the run.
-
-**Non-goals for the spike:** turbo pod, missions/verdicts, Chromebook performance numbers, synchronized live running.
-
-## 9. Open decisions (defaults if unanswered)
+## 11. Open decisions (defaults if unanswered)
 
 | Decision | Default |
 |---|---|
 | Distance unit | studs |
-| Robotics in shared/live worlds in pass 1 | allowed, runs locally per client with a note |
-| Beginner blocks | helper first, raw motor blocks in the same toolbox |
+| Wiring mode | assisted, per project setting |
+| Beginner blocks | helpers on a configured drive pair, plus real motor blocks in the same toolbox |
 | Where starters live | Worlds → Robotics starters |
