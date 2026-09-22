@@ -59,7 +59,8 @@ export const ROBOTICS_PART_IDS = {
 } as const
 
 export const AXLE_ROD_RADIUS = 0.09
-export const WHEEL_RADIUS = plates(4) - 0.02
+/** Slightly more than the 4-plate hole height: on the ground a wheel lifts a 1-plate chassis clear of the plate. */
+export const WHEEL_RADIUS = plates(4) + 0.04
 export const WHEEL_HALF_WIDTH = 0.24
 export const MOTOR_SOCKET_RADIUS = 0.3
 export const HINGE_TURNTABLE_RADIUS = studs(1) - 0.08
