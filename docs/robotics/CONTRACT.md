@@ -1,6 +1,6 @@
-# Robot Workshop v2 — design contract (v2.1)
+# Robot Workshop v2 — design contract (v2.2)
 
-Status: agreed direction, revised 2026-09-22 after two rounds of Codex review. Mock:
+Status: agreed direction, revised 2026-09-22 (v2.2) after three rounds of Codex review; spike authorized. Mock:
 https://claude.ai/artifact/CbqvHx8SHnaTRRZEFyyAKG (boards 1, 1b, 1c wiring, 2, 3).
 Supersedes the separate "Robots" mode on `codex/robotics-workshop`. Pieces of that branch's engine under
 `src/robotics/**` (Blockly catalog, runtime and actuator arbiter, local persistence, Explore ride) are expected to carry
@@ -20,8 +20,8 @@ Section 9 turns it into acceptance tests.
 1. **Robotics is ordinary building with new bricks.** Hub, motors, axles, wheels, sensors, lights, hinges, seats and
    buttons live in the brick drawer under a *Robotics* category and are placed, moved, rotated and deleted like any brick.
    There is no Robots entrance, sheet or mode.
-2. **How it is built and connected determines what it can do.** Nothing moves by selection, grouping or naming. A motor
-   with nothing on its axle spins its output and moves nothing else.
+2. **How it is built and connected determines what it can do.** Nothing moves by selection, grouping or naming. An
+   unplugged motor is inert. A powered motor with nothing on its axle spins its output and moves nothing else.
 3. **All programming is blocks.** No text mode. Blockly, one editable source per program, a derived bounded IR at run time.
 4. **Inputs are things a program reads.** Keyboard, on-screen joystick and buttons are blocks. There is no built-in
    "drive yourself" that bypasses the program. A beginner block `drive using joystick` exists and is replaceable by
@@ -51,27 +51,33 @@ The model keeps three questions apart. The UI asks them in plain words and never
 
 ## 3. Parts (first milestone set)
 
-Hub (4 ports A–D), motor (output axle on one face), axle (short/long), wheel (fits an axle), distance sensor, light,
-button, hinge (a pin joint with a defined swing axis), seat. Studs and pins are properties of every brick.
-**Out of the first milestone:** gears, transmissions, turbo pods and other power-ups, second hub.
+Hub (4 ports A–D, one per creation in this milestone), motor (output socket on one face), axle (short/long), wheel
+(axle hole), distance sensor (an obvious sensing face), light, button, hinge motor, seat. Studs and pins are properties
+of every brick. Every part's shape shows how it connects: the motor's socket, the axle as a separate piece passing into
+motor and wheel, the wheel's hole, the hub's labeled sockets, the sensor's face, the hinge motor's fixed and moving sides.
+**Out of the first milestone:** gears, transmissions, turbo pods and other power-ups, a second hub.
 
 Attachment rules the placement system enforces and shows:
 - A wheel snaps onto a free axle end; elsewhere it is a decorative brick and the card says so.
 - A motor's output face accepts one axle; a wheel on that axle turns with the motor.
-- A hinge connects exactly two bodies; the arm is whatever is stud-attached on its moving face.
+- A **hinge motor** is one part with a **fixed side** (studs onto the frame body) and a **moving side** (studs onto the
+  arm). Its axis is the hinge axis; **zero degrees is the arm's built pose**; the frame is anchored by being stud-attached
+  to the plate or the world. There is no separate axle in the gate: the motor's output *is* the hinge. What fixes the
+  housing, what couples output to arm, what anchors the frame and what defines zero are therefore all visible in the build.
 - Cables connect one device to one port. A port holds one cable.
 
 ## 4. Creations and the creation card (board 1b)
 
-- Placing the **first powered part** (motor or hinge with a motor) on bricks that are not yet a creation opens the
-  *creation card*: bodies found are highlighted (assembly in blue, a moving arm in coral), the card lists parts found,
-  offers a name and **Code this creation** / **Not now**.
+- Placing the **first device of any kind** (hub, motor, hinge motor, sensor, light, button) on bricks that are not yet a
+  creation opens the *creation card*: bodies found are highlighted (assembly in blue, a moving arm in coral), the card
+  lists parts found, offers a name and **Code this creation** / **Not now**. A hub, a sensor and a light with no motor is
+  a valid creation (a signal post).
 - The card **reports** structure; it does not edit it. There is no "tap a brick to add it". To include a brick, attach it.
 - Copy states what is attached and what a part can do (*"7 bricks attached · 2 wheels on motors, so it can roll"*). It
   never claims the creation can drive or work.
 - Two creations touching stay two creations. Attaching them with a brick reopens the card for the union.
-- Removing the last powered part turns a creation back into plain bricks after confirmation; its programs stay on the
-  world record for 30 days.
+- Removing hardware never dissolves a creation. The name and programs stay; blocks that reference a missing device say
+  so (*"front sensor is missing"*). A creation is deleted only by the student, from its card.
 
 ## 5. Wiring (board 1c)
 
@@ -79,11 +85,12 @@ Per project setting **Wiring: assisted (default) / manual**, shown in the creati
 
 Assisted:
 1. Starter builds include a visible hub. Free builds get a hub from the drawer like any part.
-2. Placing a device with a hub in the same creation **suggests** a valid connection: the cable is drawn, the port
-   highlighted, and a brief line says *"Left motor connected to port A"*.
-3. Assisted wiring **only adds**. It never moves, swaps or removes an existing connection.
+2. Placing a device with a hub in the same creation **connects it** to the first free port on placement: the cable is
+   drawn, the port highlighted, and a brief line says *"Left motor connected to port A"*, with **Undo**.
+3. Assisted wiring **only adds**. It never moves, swaps or removes an existing connection, and a device the student
+   unplugged on purpose stays unplugged until they plug it in.
 4. No hub, or all ports used: the device is placed unpowered and the card explains what is needed (*"Add a hub"*,
-   *"Port A–D are full. Unplug something or add a hub"*).
+   *"Ports A–D are full. Unplug something"*).
 
 Always (assisted or manual):
 - Selecting a device or a port highlights the other end, the cable, the device's name and port, its current reading or
@@ -148,9 +155,19 @@ port C; the block updates, the rover still runs. Reset restores the pose. Open t
 on-screen joystick. Back to build: construction unchanged (bricks, poses, attachments, cables identical), programs saved.
 Explore: ride it, drive with keys, hop off; leave Explore, construction unchanged.
 
-**Gate, from loose parts:** build a frame, place a hinge and a door on its moving face, a motor on the hinge, a hub and a
-distance sensor. The card shows base and arm. Code defaults to My world; `when front sensor sees something → turn arm
-motor to 90°` runs in place. Reset returns the door to closed. Construction unchanged after the run.
+**Gate, from loose parts:** build a frame stud-attached to the plate, place a hinge motor with its fixed side on the frame,
+a door on its moving side, a hub and a distance sensor. The card shows base and arm and the hinge's zero. Code defaults
+to My world; `when front sensor sees something → turn arm motor to 90°` swings the door about the hinge axis and nothing
+else. Reset returns the door to zero. Construction unchanged after the run.
+
+**Signal post, from loose parts:** hub, distance sensor, light, no motor. It is a creation; `when front sensor sees
+something → set light to red` runs in My world.
+
+**Spike order and gate:** (1) mechanics — motor–axle–wheel chain and the driven hinge assembled from loose parts with
+recognizable connection geometry, moving for the right reasons; (2) wiring and blocks — the rover and gate run, then
+the five failures are built and diagnosed; (3) preservation and usability — Reset, editing during a run, save and reopen,
+real placement and wiring at 1366×768 and on iPad. **Explore riding waits behind checkpoint (1).** The spike's question:
+*does assembling, programming, breaking and repairing this feel like a coherent robotics kit?*
 
 **The five failures, each built deliberately, each diagnosable from what the app shows:**
 
@@ -162,7 +179,7 @@ motor to 90°` runs in place. Reset returns the door to closed. Construction unc
 | Builds the arm into the frame | arm stops moving | stage highlights the contact; readings show position stuck |
 | Unplugs a motor | code cannot control it | device shown unplugged in Build; its blocks say *"Not plugged in"* |
 
-Each flow includes save, reload and reopen with everything intact.
+Each flow includes save, reload and reopen with everything intact, and editing a program while it runs.
 
 ## 10. Implementation posture
 
