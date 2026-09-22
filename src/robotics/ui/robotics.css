@@ -6,9 +6,10 @@
   position: absolute;
   z-index: 15;
   top: var(--brick-panel-top, calc(var(--brick-header-block) + 12px));
-  right: max(12px, env(safe-area-inset-right));
-  width: min(360px, calc(100% - 24px));
-  max-height: calc(100% - var(--brick-header-block) - 170px);
+  /* Left of the camera cluster's column so the card can run down beside it. */
+  right: calc(max(12px, env(safe-area-inset-right)) + 72px);
+  width: min(360px, calc(100% - 96px));
+  max-height: calc(100% - var(--brick-header-block) - 96px);
   box-sizing: border-box;
   overflow-y: auto;
   overscroll-behavior: contain;

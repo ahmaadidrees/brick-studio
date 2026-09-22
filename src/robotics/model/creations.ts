@@ -138,6 +138,23 @@ export function creationComponent(input: DeriveInput, brickId: string): string[]
   return reachable(prepare(input), [brickId])
 }
 
+/**
+ * Only a brick that attaches by studs can anchor a creation. Axles and wheels join
+ * through mechanism links alone, so a wheel left lying beside the buggy is not the
+ * buggy's, even if the student named the buggy while it was on its axle.
+ */
+export function isAnchorableBrick(brick: BrickInstance, partMap: PartMap): boolean {
+  const part = partMap[brick.partId]
+  if (!part) return false
+  const spec = roboticsSpec(brick.partId)
+  return !spec || spec.studsTop || spec.tubesBottom
+}
+
+export function anchorableBrickIds(input: Pick<DeriveInput, 'bricks' | 'partMap'>, brickIds: readonly string[]): string[] {
+  const byId = new Map(input.bricks.map((brick) => [brick.id, brick]))
+  return brickIds.filter((id) => { const brick = byId.get(id); return brick ? isAnchorableBrick(brick, input.partMap) : true })
+}
+
 const facingFromNormal = (normal: Vec3, forward: Vec3 | null): FacingWord => {
   if (Math.abs(normal.y) > 0.5) return normal.y > 0 ? 'up' : 'down'
   if (forward) {
@@ -190,7 +207,7 @@ function defaultTestSpace(kind: CreationKind): TestSpace {
 
 function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: boolean): DerivedCreation {
   const { input, mechanisms, joints, bricksById } = derivation
-  const brickIds = reachable(derivation, record.anchorBrickIds)
+  const brickIds = reachable(derivation, anchorableBrickIds(input, record.anchorBrickIds))
   const members = new Set(brickIds)
   const device = (brick: BrickInstance, role: RoboticsPartRole): DerivedDevice => {
     const port = devicePort(input, brick.id)

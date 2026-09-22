@@ -204,6 +204,15 @@ describe('creations', () => {
     expect(empty.brickIds).toHaveLength(0)
   })
 
+  it('a wheel the student named stays the creation\'s only while it is on its axle', () => {
+    const anchors = roverBricks().map((brick) => brick.id)
+    const [attached] = deriveCreations(fixtureInput(roverBricks(), section(anchors)))
+    expect(attached.brickIds).toHaveLength(9)
+    const [loose] = deriveCreations(fixtureInput(roverBricks({ leftWheelOff: true }), section(anchors)))
+    expect(loose.brickIds).not.toContain(ROVER_IDS.leftWheel)
+    expect(loose.wheels.find((wheel) => wheel.brickId === ROVER_IDS.leftWheel)?.note).toBe('Not on an axle · the nearest axle end is 1 stud away')
+  })
+
   it('two creations touching stay two; a brick reachable only through a cable is not a member', () => {
     const bricks = [...roverBricks(), ...signalPostBricks()]
     const wired: RoboticsSection = { ...emptyRoboticsSection(), creations: [{ id: 'r', name: 'Rover', anchorBrickIds: [ROVER_IDS.hub] }, { id: 's', name: 'Post', anchorBrickIds: [SIGNAL_IDS.hub] }], connections: [{ deviceId: ROVER_IDS.leftMotor, hubId: SIGNAL_IDS.hub, port: 'A' }] }

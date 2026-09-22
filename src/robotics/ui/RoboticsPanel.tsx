@@ -13,7 +13,11 @@ import './robotics.css'
  * from names, cables and the run space, which are the student's own words.
  */
 export function RoboticsPanel({ compact = false }: { compact?: boolean }) {
-  useEffect(() => { installRoboticsWatcher() }, [])
+  useEffect(() => {
+    installRoboticsWatcher()
+    // Dev-only hook for the QA harness (scripts/qa/robotics-spike-cp1.mjs): the stores, nothing else.
+    if (import.meta.env.DEV) (window as unknown as { __robotics?: unknown }).__robotics = { brickStore: useBrickStore, roboticsStore: useRoboticsStore }
+  }, [])
   const card = useRoboticsStore((state) => state.card)
   return (
     <>

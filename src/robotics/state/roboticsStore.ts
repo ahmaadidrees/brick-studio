@@ -4,7 +4,7 @@ import { createPartMap } from '../../brick/parts'
 import { useBrickStore, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { connect, planAssistedConnection } from '../model/control'
-import { creationComponent, defaultCreationName, deriveCreations, deviceName, type DeriveInput, type DerivedCreation } from '../model/creations'
+import { anchorableBrickIds, creationComponent, defaultCreationName, deriveCreations, deviceName, type DeriveInput, type DerivedCreation } from '../model/creations'
 import { readRoboticsSection, writeRoboticsSection, type RoboticsSection, type TestSpace } from '../model/section'
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
@@ -158,11 +158,11 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     let section = model.section
     let id = card.creationId
     if (id) {
-      section = { ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, name: trimmed, anchorBrickIds: [...new Set([...creation.anchorBrickIds, ...card.anchorBrickIds])] } : creation)) }
+      section = { ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, name: trimmed, anchorBrickIds: [...new Set([...creation.anchorBrickIds, ...anchorableBrickIds(model.input, card.anchorBrickIds)])] } : creation)) }
       writeSection(section, 'Rename creation')
     } else {
       id = creationId()
-      section = { ...section, creations: [...section.creations, { id, name: trimmed, anchorBrickIds: [...card.anchorBrickIds] }] }
+      section = { ...section, creations: [...section.creations, { id, name: trimmed, anchorBrickIds: anchorableBrickIds(model.input, card.anchorBrickIds) }] }
       writeSection(section, `Name creation ${trimmed}`)
     }
     set({ card: null, model: computeModel(useBrickStore.getState()) })
