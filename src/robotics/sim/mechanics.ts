@@ -18,7 +18,8 @@ import { DEFAULT_HINGE_SPEC, HINGE_MOTOR_DAMPING, HINGE_MOTOR_STIFFNESS, createH
  * axle only spins its output. A motor with no cable is inert. Bodies that are
  * anchored (studded to the plate in My world) are fixed; everything that is not
  * part of the creation is static scenery. The document is never written: Reset is
- * `dispose()` and a fresh `createMechanics`.
+ * `dispose()` and a fresh `createMechanics`. Time is a fixed-step accumulator (see
+ * the clock policy below), so the motion is the same at every frame rate.
  *
  * What did not survive from `codex/robotics-workshop`: the raycast vehicle
  * (`simulation/models/raycastVehicle.ts`) — it fakes wheels with rays and needs a
@@ -35,7 +36,18 @@ export const WHEEL_FRICTION = 1.6
 /** Low so a chassis that drags a plate skids instead of gripping. */
 export const CHASSIS_FRICTION = 0.12
 export const SCENERY_FRICTION = 0.6
-const MAX_SUBSTEPS = 12
+/**
+ * Clock policy. Frame time accumulates and the world advances in whole fixed steps,
+ * so one elapsed second is one simulated second at 60, 90, 144 or 240 fps alike;
+ * the fraction of a step left over carries into the next frame. The backlog is
+ * capped at `MAX_BACKLOG_SECONDS`: a stall (a hidden tab, a long frame, a paused
+ * debugger) never replays as a burst of steps — the simulation simply pauses for
+ * the time that was dropped. `step` therefore runs at most `MAX_SUBSTEPS` steps.
+ */
+export const MAX_SUBSTEPS = 12
+export const MAX_BACKLOG_SECONDS = MAX_SUBSTEPS * FIXED_STEP
+/** Floating-point slack when deciding a step is due (a 1/90 s frame must not lose its third step to rounding). */
+const STEP_EPSILON = FIXED_STEP * 1e-6
 
 export type MechanicsInput = {
   rapier: RapierModule
@@ -53,8 +65,15 @@ export type Mechanics = {
   readonly bodyIds: string[]
   /** Bricks whose pose the simulation owns while it runs (the scene hides the studio's copies). */
   readonly simulatedBrickIds: ReadonlySet<string>
+  /** Simulated time: the number of fixed steps taken times `FIXED_STEP`. */
   readonly elapsed: number
+  /** Frame time received but not yet simulated, always less than one fixed step after `step`. */
+  readonly backlog: number
+  /** Wall time dropped by the backlog cap (see the clock policy), for diagnostics. */
+  readonly droppedSeconds: number
+  readonly disposed: boolean
   bodyOfBrick(brickId: string): string | null
+  /** Advances the clock by `seconds` of frame time (non-finite or negative input is ignored). */
   step(seconds: number): void
   /** Returns false when the motor is inert (not plugged in, or not this creation's). */
   setMotorPower(motorId: string, power: number): boolean
@@ -230,6 +249,8 @@ export function createMechanics(input: MechanicsInput): Mechanics {
   const measureHinge = (drive: HingeDrive) => radiansToDegrees(relativeTwist(drive.baseBody, drive.armBody, drive.axis))
 
   let elapsed = 0
+  let backlog = 0
+  let droppedSeconds = 0
   let disposed = false
 
   const substep = () => {
@@ -262,21 +283,31 @@ export function createMechanics(input: MechanicsInput): Mechanics {
     bodyIds: [...rapierBodies.keys()],
     simulatedBrickIds,
     get elapsed() { return elapsed },
+    get backlog() { return backlog },
+    get droppedSeconds() { return droppedSeconds },
+    get disposed() { return disposed },
     bodyOfBrick: (brickId) => bodyOfBrick.get(brickId) ?? null,
     step(seconds) {
-      if (disposed) return
-      const count = Math.min(MAX_SUBSTEPS, Math.max(1, Math.round(seconds / FIXED_STEP)))
-      for (let index = 0; index < count; index += 1) substep()
+      if (disposed || !Number.isFinite(seconds) || seconds <= 0) return
+      const wanted = backlog + seconds
+      backlog = Math.min(wanted, MAX_BACKLOG_SECONDS)
+      droppedSeconds += wanted - backlog
+      let count = 0
+      while (backlog >= FIXED_STEP - STEP_EPSILON && count < MAX_SUBSTEPS) {
+        substep()
+        backlog = Math.max(0, backlog - FIXED_STEP)
+        count += 1
+      }
     },
     setMotorPower(motorId, power) {
       const drive = drives.get(motorId)
-      if (!drive || !drive.plugged || !Number.isFinite(power)) return false
+      if (disposed || !drive || !drive.plugged || !Number.isFinite(power)) return false
       drive.power = Math.max(-1, Math.min(1, power))
       return true
     },
     setHingeTarget(hingeId, degrees) {
       const drive = hinges.get(hingeId)
-      if (!drive || !drive.plugged || drive.locked || !drive.joint) return false
+      if (disposed || !drive || !drive.plugged || drive.locked || !drive.joint) return false
       drive.state = requestHingeTarget(drive.state, DEFAULT_HINGE_SPEC, degrees)
       return true
     },
@@ -286,6 +317,7 @@ export function createMechanics(input: MechanicsInput): Mechanics {
     },
     poses() {
       const result = new Map<string, BodyPose>()
+      if (disposed) return result
       for (const [id, body] of rapierBodies) {
         const t = body.translation()
         const r = body.rotation()
@@ -308,6 +340,7 @@ export function createMechanics(input: MechanicsInput): Mechanics {
     },
     contacts() {
       const reports: ContactReport[] = []
+      if (disposed) return reports
       for (const bodyId of armBodyIds) {
         for (const collider of collidersOfBody.get(bodyId) ?? []) {
           world.contactPairsWith(collider, (other) => {

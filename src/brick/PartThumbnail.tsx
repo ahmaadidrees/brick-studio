@@ -82,6 +82,12 @@ function triangleLighting(
   }
 }
 
+/** The part's geometry as the thumbnail shows it: turned so a declared connection face points at the thumbnail camera. */
+function thumbnailGeometry(part: BrickPart) {
+  const geometry = createBrickGeometry(part)
+  return part.thumbnailTurn ? geometry.clone().rotateY((part.thumbnailTurn * Math.PI) / 2) : geometry
+}
+
 function createPartThumbnailModel(part: BrickPart): PartThumbnailModel {
   const cached = thumbnailCache.get(part.id)
   if (cached) {
@@ -90,7 +96,7 @@ function createPartThumbnailModel(part: BrickPart): PartThumbnailModel {
     return cached
   }
 
-  const geometry = createBrickGeometry(part)
+  const geometry = thumbnailGeometry(part)
   const positions = geometry.getAttribute('position')
   const indices = geometry.getIndex()
   const rawPolygons: Array<ThumbnailPolygon & { vertices: ProjectedVertex[] }> = []
@@ -189,9 +195,11 @@ export const PartThumbnail = memo(function PartThumbnail({ part }: PartThumbnail
 
   useEffect(() => {
     if (!visible || activeColor === null) return
-    const cached = getCachedPartThumbnail(part, activeColor)
+    // A part with its own colour is drawn in it, so the drawer tells its parts apart whatever the brush.
+    const color = part.defaultColor ?? activeColor
+    const cached = getCachedPartThumbnail(part, color)
     const update = () => {
-      const url = cached ?? renderPartThumbnail(part, activeColor)
+      const url = cached ?? renderPartThumbnail(part, color)
       const model = url ? null : createPartThumbnailModel(part)
       setResult({
         part,

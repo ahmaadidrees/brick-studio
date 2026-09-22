@@ -1,18 +1,24 @@
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { getBuildBounds } from '../../brick/bounds'
+import { getBuildPlateSize } from '../../brick/buildPlate'
 import { createBrickGeometry } from '../../brick/geometry'
-import { BRICK_PART_MAP } from '../../brick/parts'
+import { BRICK_PART_MAP, STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { brickIdOfNode, isArmNode } from '../model/assembly'
 import { deriveCandidate, type DerivedCreation } from '../model/creations'
 import { brickFrame, toWorldDirection, toWorldPoint, type BrickFrame } from '../model/grid'
+import { snapDraftToConnector } from '../model/snap'
 import type { Vec3 } from '../model/vec'
 import { MOTOR_SOCKET_RADIUS, roboticsSpec } from '../parts/catalog'
 import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
 import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/roboticsStore'
 import type { HingeReport } from '../sim/mechanics'
+import { registerDraftSnapper } from './draftSnap'
+import { framePoseInFreeArea, measureCanvasInsets } from './framing'
 
 /**
  * What the robotics prototype adds to the build scene: body highlights for the
@@ -230,6 +236,66 @@ function SimBodies({ sim, model, creation }: { sim: SimState; model: RoboticsMod
   )
 }
 
+/** While the layer is mounted, the studio's ghost snaps onto connectors (`draftSnap.ts`, `model/snap.ts`). */
+function ConnectorSnapping() {
+  useEffect(() => {
+    registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => snapDraftToConnector({ draft, hitBrick, hitPoint, bricks, partMap: useRoboticsStore.getState().model.input.partMap, plateSize }))
+    return () => registerDraftSnapper(null)
+  }, [])
+  return null
+}
+
+/**
+ * Answers the store's frame requests: the creation's bricks framed inside the part of
+ * the canvas the drawer, the card and the command strip leave free (`framing.ts`).
+ * Measured a frame later so the card that opened with the request has laid out.
+ */
+function CreationFraming() {
+  const request = useRoboticsStore((state) => state.frameRequest)
+  const { camera, controls, gl } = useThree()
+  useEffect(() => {
+    if (!request) return
+    const handle = requestAnimationFrame(() => {
+      const state = useBrickStore.getState()
+      const ids = new Set(request.brickIds)
+      const bricks = state.bricks.filter((brick) => ids.has(brick.id))
+      if (!bricks.length || !(camera instanceof THREE.PerspectiveCamera)) return
+      const plateSize = getBuildPlateSize(state.documentMetadata)
+      const canvas = gl.domElement
+      const viewport = { width: canvas.clientWidth || 1, height: canvas.clientHeight || 1 }
+      const pose = framePoseInFreeArea(getBuildBounds(bricks, plateSize), camera.fov, viewport, measureCanvasInsets(canvas))
+      camera.position.set(pose.position.x, pose.position.y, pose.position.z)
+      const orbit = controls as OrbitControlsImpl | null
+      if (orbit?.target) {
+        orbit.target.set(pose.target.x, pose.target.y, pose.target.z)
+        orbit.update()
+      } else camera.lookAt(pose.target.x, pose.target.y, pose.target.z)
+      state.setViewTarget(pose.target.x / STUD + plateSize / 2, pose.target.z / STUD + plateSize / 2)
+    })
+    return () => cancelAnimationFrame(handle)
+  }, [request, camera, controls, gl])
+  return null
+}
+
+/** Dev only: lets the QA harness aim a real pointer at a connector by projecting world points to the page. */
+function DevProjector() {
+  const { camera, gl } = useThree()
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const host = window as unknown as { __robotics?: Record<string, unknown> }
+    const hook = (host.__robotics = host.__robotics ?? {})
+    hook.project = (point: Vec3) => {
+      const projected = new THREE.Vector3(point.x, point.y, point.z).project(camera)
+      const rect = gl.domElement.getBoundingClientRect()
+      return { x: rect.left + ((projected.x + 1) / 2) * rect.width, y: rect.top + ((1 - projected.y) / 2) * rect.height, inFront: projected.z < 1 }
+    }
+    hook.canvasRect = () => { const rect = gl.domElement.getBoundingClientRect(); return { left: rect.left, top: rect.top, width: rect.width, height: rect.height } }
+    hook.insets = () => measureCanvasInsets(gl.domElement)
+    return () => { delete hook.project; delete hook.canvasRect; delete hook.insets }
+  }, [camera, gl])
+  return null
+}
+
 export default function RoboticsBuildLayer() {
   const model = useRoboticsStore((state) => state.model)
   const card = useRoboticsStore((state) => state.card)
@@ -256,6 +322,9 @@ export default function RoboticsBuildLayer() {
 
   return (
     <>
+      <ConnectorSnapping />
+      <CreationFraming />
+      <DevProjector />
       {highlights.filter((entry) => !sim || !sim.hiddenBrickIds.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
       <HubPortLabels bricks={visible} plateSize={plateSize} />
       <StaticMotorOutputs bricks={visible} plateSize={plateSize} />

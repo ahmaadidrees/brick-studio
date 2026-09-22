@@ -449,7 +449,8 @@ function suggestedDraft(
   const centerZ = origin?.z ?? plateSize / 2
   const x = Math.max(0, Math.min(plateSize - part.width, Math.floor(centerX - part.width / 2)))
   const z = Math.max(0, Math.min(plateSize - part.depth, Math.floor(centerZ - part.depth / 2)))
-  return { partId, x, y: supportHeightForFootprint(bricks, x, z, part.width, part.depth), z, rotation: 0, color }
+  // A part that declares its own colour (a robotics part) arms in it; the brush is not changed.
+  return { partId, x, y: supportHeightForFootprint(bricks, x, z, part.width, part.depth), z, rotation: 0, color: part.defaultColor ?? color }
 }
 
 function describeBrick(brick: BrickInstance, index: number, count: number) {

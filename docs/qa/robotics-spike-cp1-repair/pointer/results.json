@@ -1,0 +1,398 @@
+{
+  "origin": "http://127.0.0.1:5232",
+  "viewport": "1366x768",
+  "input": "real mouse and keyboard via Playwright CDP; positions from the studio's own world→screen projection",
+  "at": "2026-09-22T17:20:15.827Z",
+  "results": [
+    {
+      "id": "ghost:6 × 8 Plate at 28,0,26",
+      "ok": true,
+      "detail": "6 × 8 Plate at 28,0,26: ghost at 28,0,26 r0 after aiming at (705, 383)"
+    },
+    {
+      "id": "placed:6 × 8 Plate at 28,0,26",
+      "ok": true,
+      "detail": "6 × 8 Plate at 28,0,26: placed by click (plate_6x8 at 28,0,26)"
+    },
+    {
+      "id": "ghost:Hub at 29,1,27",
+      "ok": true,
+      "detail": "Hub at 29,1,27: ghost at 29,1,27 r0 after aiming at (729, 361)"
+    },
+    {
+      "id": "placed:Hub at 29,1,27",
+      "ok": true,
+      "detail": "Hub at 29,1,27: placed by click (robo_hub at 29,1,27)"
+    },
+    {
+      "id": "A.card-opens-on-first-device",
+      "ok": true,
+      "detail": "placing the hub on non-creation bricks opens the creation card"
+    },
+    {
+      "id": "A.framed-in-free-area",
+      "ok": true,
+      "detail": "the card framed the pair inside the free canvas area (insets L276 R444 B66; 16 corners checked)"
+    },
+    {
+      "id": "A.named-on-card",
+      "ok": true,
+      "detail": "the card named the creation"
+    },
+    {
+      "id": "ghost:Left motor (turned twice with R)",
+      "ok": true,
+      "detail": "Left motor (turned twice with R): ghost at 28,1,31 r2 after aiming at (492, 429)"
+    },
+    {
+      "id": "placed:Left motor (turned twice with R)",
+      "ok": true,
+      "detail": "Left motor (turned twice with R): placed by click (robo_motor at 28,1,31)"
+    },
+    {
+      "id": "A.no-card-for-second-device",
+      "ok": true,
+      "detail": "the motor joined the creation without reopening the card"
+    },
+    {
+      "id": "A.wiring-left-motor",
+      "ok": true,
+      "detail": "assisted wiring line: Left motor connected to port A"
+    },
+    {
+      "id": "ghost:Right motor",
+      "ok": true,
+      "detail": "Right motor: ghost at 31,1,31 r0 after aiming at (569, 470)"
+    },
+    {
+      "id": "placed:Right motor",
+      "ok": true,
+      "detail": "Right motor: placed by click (robo_motor at 31,1,31)"
+    },
+    {
+      "id": "A.wiring-right-motor",
+      "ok": true,
+      "detail": "assisted wiring line: Right motor connected to port B"
+    },
+    {
+      "id": "ghost:Short axle snapped into the left motor socket",
+      "ok": true,
+      "detail": "Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (484, 369)"
+    },
+    {
+      "id": "placed:Short axle snapped into the left motor socket",
+      "ok": true,
+      "detail": "Short axle snapped into the left motor socket: placed by click (robo_axle_short at 26,0,32)"
+    },
+    {
+      "id": "ghost:Short axle snapped into the right motor socket",
+      "ok": true,
+      "detail": "Short axle snapped into the right motor socket: ghost at 34,0,32 r0 after aiming at (564, 406)"
+    },
+    {
+      "id": "placed:Short axle snapped into the right motor socket",
+      "ok": true,
+      "detail": "Short axle snapped into the right motor socket: placed by click (robo_axle_short at 34,0,32)"
+    },
+    {
+      "id": "A.axles-read-as-in-sockets",
+      "ok": true,
+      "detail": "both motors report an axle: [true,true]"
+    },
+    {
+      "id": "ghost:Wheel snapped onto the left axle end",
+      "ok": true,
+      "detail": "Wheel snapped onto the left axle end: ghost at 25,0,31 r0 after aiming at (432, 372)"
+    },
+    {
+      "id": "placed:Wheel snapped onto the left axle end",
+      "ok": true,
+      "detail": "Wheel snapped onto the left axle end: placed by click (robo_wheel at 25,0,31)"
+    },
+    {
+      "id": "ghost:Wheel snapped onto the right axle end",
+      "ok": true,
+      "detail": "Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (643, 477)"
+    },
+    {
+      "id": "placed:Wheel snapped onto the right axle end",
+      "ok": true,
+      "detail": "Wheel snapped onto the right axle end: placed by click (robo_wheel at 36,0,31)"
+    },
+    {
+      "id": "ghost:Distance sensor (from the top view)",
+      "ok": true,
+      "detail": "Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (683, 234)"
+    },
+    {
+      "id": "placed:Distance sensor (from the top view)",
+      "ok": true,
+      "detail": "Distance sensor (from the top view): placed by click (robo_distance_sensor at 30,1,26)"
+    },
+    {
+      "id": "A.wiring-sensor",
+      "ok": true,
+      "detail": "assisted wiring line: Front sensor connected to port C"
+    },
+    {
+      "id": "A.still-no-card",
+      "ok": true,
+      "detail": "seven more parts and the card never reopened"
+    },
+    {
+      "id": "A.one-creation",
+      "ok": true,
+      "detail": "one creation over 9 bricks and 3 bodies"
+    },
+    {
+      "id": "A.wheels-on-motors",
+      "ok": true,
+      "detail": "wheels: [{\"id\":\"brick-1790097587638-tnz3fl\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790097588320-fdp25o\",\"onAxle\":true,\"note\":null}]"
+    },
+    {
+      "id": "A.ready-line",
+      "ok": true,
+      "detail": "ready line: Axles and wheels on both motors, so it can roll"
+    },
+    {
+      "id": "A.part-colours",
+      "ok": true,
+      "detail": "the parts arrived in their own colours"
+    },
+    {
+      "id": "A.rover-framed",
+      "ok": true,
+      "detail": "the whole rover framed inside the free area (72 corners)"
+    },
+    {
+      "id": "A.rolls",
+      "ok": true,
+      "detail": "after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°"
+    },
+    {
+      "id": "A.clock",
+      "ok": true,
+      "detail": "simulated 2.61 s in about 2.6 s of wall time"
+    },
+    {
+      "id": "A.reset-document-unchanged",
+      "ok": true,
+      "detail": "document identical after Nudge + Reset"
+    },
+    {
+      "id": "ghost:1 × 1 brick placed while the rover ran",
+      "ok": true,
+      "detail": "1 × 1 brick placed while the rover ran: ghost at 36,0,28 r0 after aiming at (741, 453)"
+    },
+    {
+      "id": "placed:1 × 1 brick placed while the rover ran",
+      "ok": true,
+      "detail": "1 × 1 brick placed while the rover ran: placed by click (brick_1x1 at 36,0,28)"
+    },
+    {
+      "id": "A.edit-retires-run",
+      "ok": true,
+      "detail": "an edit while the nudge ran retired it and the studio shows the built pose"
+    },
+    {
+      "id": "A.edit-kept",
+      "ok": true,
+      "detail": "the brick placed during the run is part of the construction"
+    },
+    {
+      "id": "A.edit-undone",
+      "ok": true,
+      "detail": "Undo removed only that brick: the document is the pre-run document again"
+    },
+    {
+      "id": "A.wheel-selected",
+      "ok": true,
+      "detail": "clicking the wheel selects it"
+    },
+    {
+      "id": "A.wheel-off-note",
+      "ok": true,
+      "detail": "wheel card: Not on an axle · the nearest axle end is 1 stud away"
+    },
+    {
+      "id": "A.wheel-off-selected-part",
+      "ok": true,
+      "detail": "selected wheel says Not on an axle"
+    },
+    {
+      "id": "A.wheel-off-motor-spins",
+      "ok": true,
+      "detail": "left motor output turned 290°, wheel stayed, body moved 0.00"
+    },
+    {
+      "id": "A.wheel-back-on",
+      "ok": true,
+      "detail": "nudged back, the wheel is on its axle again"
+    },
+    {
+      "id": "A.document-as-built",
+      "ok": true,
+      "detail": "the construction is exactly what was built"
+    },
+    {
+      "id": "D.round-trip",
+      "ok": true,
+      "detail": "the document round-trips through autosave and a cold reload byte for byte"
+    },
+    {
+      "id": "D.creation-survives",
+      "ok": true,
+      "detail": "creation name and all three cables survive the reload"
+    },
+    {
+      "id": "ghost:6 × 8 Plate at 20,0,20",
+      "ok": true,
+      "detail": "6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (641, 262)"
+    },
+    {
+      "id": "placed:6 × 8 Plate at 20,0,20",
+      "ok": true,
+      "detail": "6 × 8 Plate at 20,0,20: placed by click (plate_6x8 at 20,0,20)"
+    },
+    {
+      "id": "ghost:Left post",
+      "ok": true,
+      "detail": "Left post: ghost at 20,1,20 r0 after aiming at (656, 221)"
+    },
+    {
+      "id": "placed:Left post",
+      "ok": true,
+      "detail": "Left post: placed by click (pillar_1x1 at 20,1,20)"
+    },
+    {
+      "id": "ghost:Right post",
+      "ok": true,
+      "detail": "Right post: ghost at 25,1,20 r0 after aiming at (755, 246)"
+    },
+    {
+      "id": "placed:Right post",
+      "ok": true,
+      "detail": "Right post: placed by click (pillar_1x1 at 25,1,20)"
+    },
+    {
+      "id": "ghost:Sill (turned once)",
+      "ok": true,
+      "detail": "Sill (turned once): ghost at 21,1,21 r1 after aiming at (678, 242)"
+    },
+    {
+      "id": "placed:Sill (turned once)",
+      "ok": true,
+      "detail": "Sill (turned once): placed by click (plate_2x4 at 21,1,21)"
+    },
+    {
+      "id": "ghost:Hinge motor on the sill",
+      "ok": true,
+      "detail": "Hinge motor on the sill: ghost at 21,2,21 r0 after aiming at (658, 229)"
+    },
+    {
+      "id": "placed:Hinge motor on the sill",
+      "ok": true,
+      "detail": "Hinge motor on the sill: placed by click (robo_hinge_motor at 21,2,21)"
+    },
+    {
+      "id": "B.card-on-hinge",
+      "ok": true,
+      "detail": "placing the hinge motor opens the card"
+    },
+    {
+      "id": "ghost:Door on the turntable (turned once)",
+      "ok": true,
+      "detail": "Door on the turntable (turned once): ghost at 21,8,21 r1 after aiming at (651, 327)"
+    },
+    {
+      "id": "placed:Door on the turntable (turned once)",
+      "ok": true,
+      "detail": "Door on the turntable (turned once): placed by click (brick_1x4 at 21,8,21)"
+    },
+    {
+      "id": "ghost:Hub",
+      "ok": true,
+      "detail": "Hub: ghost at 20,1,24 r0 after aiming at (520, 443)"
+    },
+    {
+      "id": "placed:Hub",
+      "ok": true,
+      "detail": "Hub: placed by click (robo_hub at 20,1,24)"
+    },
+    {
+      "id": "B.hub-powers-waiting-hinge",
+      "ok": true,
+      "detail": "hub arrival wires the hinge: Arm motor connected to port A"
+    },
+    {
+      "id": "B.no-card-for-hub",
+      "ok": true,
+      "detail": "the hub joined the gate without reopening the card"
+    },
+    {
+      "id": "ghost:Sensor on the hub",
+      "ok": true,
+      "detail": "Sensor on the hub: ghost at 21,7,27 r0 after aiming at (465, 405)"
+    },
+    {
+      "id": "placed:Sensor on the hub",
+      "ok": true,
+      "detail": "Sensor on the hub: placed by click (robo_distance_sensor at 21,7,27)"
+    },
+    {
+      "id": "B.base-and-arm",
+      "ok": true,
+      "detail": "gate: 2 bodies, 1 arm, hinge carries 1 brick"
+    },
+    {
+      "id": "B.my-world",
+      "ok": true,
+      "detail": "a gate runs in my world by default"
+    },
+    {
+      "id": "B.swings",
+      "ok": true,
+      "detail": "hinge at 60.0°, frame unmoved"
+    },
+    {
+      "id": "B.reset-unchanged",
+      "ok": true,
+      "detail": "document identical after the swing + Reset"
+    },
+    {
+      "id": "ghost:Bridge brick 1 (from the top view)",
+      "ok": true,
+      "detail": "Bridge brick 1 (from the top view): ghost at 23,2,21 r0 after aiming at (735, 341)"
+    },
+    {
+      "id": "placed:Bridge brick 1 (from the top view)",
+      "ok": true,
+      "detail": "Bridge brick 1 (from the top view): placed by click (brick_2x2 at 23,2,21)"
+    },
+    {
+      "id": "ghost:Bridge brick 2 (from the top view)",
+      "ok": true,
+      "detail": "Bridge brick 2 (from the top view): ghost at 23,5,21 r0 after aiming at (738, 337)"
+    },
+    {
+      "id": "placed:Bridge brick 2 (from the top view)",
+      "ok": true,
+      "detail": "Bridge brick 2 (from the top view): placed by click (brick_2x2 at 23,5,21)"
+    },
+    {
+      "id": "B.locked",
+      "ok": true,
+      "detail": "the arm is built into the frame: locked true"
+    },
+    {
+      "id": "B.locked-line",
+      "ok": true,
+      "detail": "ready line: Arm motor's arm is built into the frame, so it can't swing"
+    },
+    {
+      "id": "B.locked-nudge-explains",
+      "ok": true,
+      "detail": "nudge on a locked hinge: The arm is built into the frame, so it cannot swing."
+    }
+  ]
+}

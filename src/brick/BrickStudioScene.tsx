@@ -122,6 +122,7 @@ import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
 import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { snapDraft } from '../robotics/scene/draftSnap'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
@@ -173,8 +174,21 @@ const EXPLORE_SAFE_POSITION_SAMPLE_FRAMES = 20
 /** Target the actual raycast surface; layout validation provides the blocked preview. */
 function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBrickId?: string | null) {
   const state = useBrickStore.getState()
-  return draftFromSurfacePoint(point, draft, state.movingSelection?.originals,
-    hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined, getBuildPlateSize(state.documentMetadata))
+  const hitBrick = hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined
+  const plateSize = getBuildPlateSize(state.documentMetadata)
+  // Robot Workshop spike: a ghost hovering a part it connects to (an axle over a motor's
+  // socket, a wheel over an axle end) snaps onto the connector. Answers null unless the
+  // robotics layer is mounted and registered a snapper; a group move never snaps.
+  if (hitBrick && !state.movingSelection) {
+    const others = state.movingId ? state.bricks.filter((brick) => brick.id !== state.movingId) : state.bricks
+    const snapped = snapDraft(draft, hitBrick, point, others, plateSize)
+    if (snapped) {
+      // `rotate` turns the armed ghost in place without touching history; the caller positions it.
+      for (let turn = 0; turn < 4 && useBrickStore.getState().draft?.rotation !== snapped.rotation; turn += 1) state.rotate()
+      return snapped
+    }
+  }
+  return draftFromSurfacePoint(point, draft, state.movingSelection?.originals, hitBrick, plateSize)
 }
 
 /**

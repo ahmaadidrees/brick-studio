@@ -169,7 +169,8 @@ export function renderPartThumbnail(part: BrickPart, color: string): string | nu
   if (!active) return null
 
   try {
-    const geometry = createBrickGeometry(part)
+    // A declared thumbnail turn shows a connection face that points away from the fixed camera.
+    const geometry = part.thumbnailTurn ? createBrickGeometry(part).clone().rotateY((part.thumbnailTurn * Math.PI) / 2) : createBrickGeometry(part)
     geometry.computeBoundingBox()
     const box = geometry.boundingBox
     if (!box) return null

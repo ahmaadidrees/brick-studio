@@ -15,8 +15,12 @@ import './robotics.css'
 export function RoboticsPanel({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     installRoboticsWatcher()
-    // Dev-only hook for the QA harness (scripts/qa/robotics-spike-cp1.mjs): the stores, nothing else.
-    if (import.meta.env.DEV) (window as unknown as { __robotics?: unknown }).__robotics = { brickStore: useBrickStore, roboticsStore: useRoboticsStore }
+    // Dev-only hook for the QA harnesses (scripts/qa/robotics-spike-cp1*.mjs): the stores, plus what
+    // the scene layer adds (a world→screen projector, so a harness can aim a real pointer at a socket).
+    if (import.meta.env.DEV) {
+      const host = window as unknown as { __robotics?: Record<string, unknown> }
+      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore })
+    }
   }, [])
   const card = useRoboticsStore((state) => state.card)
   return (

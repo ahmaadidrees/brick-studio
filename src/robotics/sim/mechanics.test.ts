@@ -7,7 +7,7 @@ import { GATE_IDS, ROVER_IDS, gateBricks, roverBricks } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsConnection, type RoboticsSection } from '../model/section'
 import { rotateByQuat, type Vec3 } from '../model/vec'
 import { installRoboticsParts } from '../parts/install'
-import { createMechanics, type Mechanics } from './mechanics'
+import { FIXED_STEP, MAX_BACKLOG_SECONDS, createMechanics, type Mechanics } from './mechanics'
 
 beforeAll(async () => {
   await RAPIER.init()
@@ -195,5 +195,59 @@ describe('gate mechanics', () => {
     run(mechanics, 1)
     expect(Math.abs(mechanics.hingeReport(GATE_IDS.hinge)!.angle)).toBeLessThan(1)
     mechanics.dispose()
+  })
+})
+
+describe('the clock', () => {
+  const rover = () => build(roverBricks(), ROVER_IDS.hub, ROVER_WIRING).mechanics
+
+  it.each([30, 60, 90, 144, 240])('one elapsed second supplied as %i frames advances one simulated second', (fps) => {
+    const mechanics = rover()
+    for (let frame = 0; frame < fps; frame += 1) mechanics.step(1 / fps)
+    expect(mechanics.elapsed).toBeCloseTo(1, 2)
+    expect(mechanics.backlog).toBeLessThan(FIXED_STEP)
+    expect(mechanics.droppedSeconds).toBe(0)
+    mechanics.dispose()
+  })
+
+  it('the motion is the same at 60 and 144 fps', () => {
+    const poses = [60, 144].map((fps) => {
+      const mechanics = rover()
+      mechanics.setMotorPower(ROVER_IDS.leftMotor, 0.4)
+      mechanics.setMotorPower(ROVER_IDS.rightMotor, -0.4)
+      for (let frame = 0; frame < fps * 2; frame += 1) mechanics.step(1 / fps)
+      const pose = chassisPose(mechanics)
+      mechanics.dispose()
+      return pose
+    })
+    expect(poses[1].position.z).toBeCloseTo(poses[0].position.z, 3)
+    expect(poses[1].position.x).toBeCloseTo(poses[0].position.x, 3)
+  })
+
+  it('a stall is dropped, not replayed: one long frame runs at most the cap and the rest is forgotten', () => {
+    const mechanics = rover()
+    mechanics.step(5)
+    expect(mechanics.elapsed).toBeCloseTo(MAX_BACKLOG_SECONDS, 6)
+    expect(mechanics.backlog).toBeLessThan(1e-9)
+    expect(mechanics.droppedSeconds).toBeCloseTo(5 - MAX_BACKLOG_SECONDS, 6)
+    mechanics.step(1 / 60)
+    expect(mechanics.elapsed).toBeCloseTo(MAX_BACKLOG_SECONDS + 1 / 60, 6)
+    mechanics.dispose()
+  })
+
+  it('ignores nonsense frame times and everything after dispose', () => {
+    const mechanics = rover()
+    mechanics.step(Number.NaN)
+    mechanics.step(-1)
+    mechanics.step(Number.POSITIVE_INFINITY)
+    expect(mechanics.elapsed).toBe(0)
+    mechanics.dispose()
+    expect(mechanics.disposed).toBe(true)
+    mechanics.step(1 / 60)
+    expect(mechanics.elapsed).toBe(0)
+    expect(mechanics.poses().size).toBe(0)
+    expect(mechanics.contacts()).toEqual([])
+    expect(mechanics.setMotorPower(ROVER_IDS.leftMotor, 0.4)).toBe(false)
+    expect(mechanics.setHingeTarget(GATE_IDS.hinge, 10)).toBe(false)
   })
 })

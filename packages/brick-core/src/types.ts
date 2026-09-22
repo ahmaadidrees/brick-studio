@@ -16,6 +16,15 @@ export type BrickPart = {
   kind: BrickKind
   icon: string
   studs?: 'auto' | 'full' | 'none'
+  /**
+   * A part with its own colour: choosing it arms the ghost in this colour instead of
+   * the brush, and the drawer draws its thumbnail in it, so a hub, a motor and a wheel
+   * are told apart at a glance. The brush colour itself is untouched. Stock bricks
+   * leave this unset and take the brush.
+   */
+  defaultColor?: string
+  /** Quarter turns applied to the drawer thumbnail only, so a connection face that points away from the thumbnail camera is shown. */
+  thumbnailTurn?: 0 | 1 | 2 | 3
 }
 
 export type BrickInstance = {
