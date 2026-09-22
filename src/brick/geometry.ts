@@ -17,6 +17,37 @@ const ROUND_SEGMENTS = 24
 const STUD_HEIGHT = 0.1
 const geometryCache = new Map<string, THREE.BufferGeometry>()
 
+/**
+ * Geometry builders a feature registers for its own part ids (the Robot Workshop's
+ * hub, motor, axle, wheel…). A registered builder replaces the stock shape for that
+ * id everywhere `createBrickGeometry` is used: the build scene, instanced groups,
+ * Explore, thumbnails. Stock parts never reach the registry.
+ */
+const partGeometryBuilders = new Map<string, (part: BrickPart) => THREE.BufferGeometry>()
+
+export function registerPartGeometryBuilder(partId: string, builder: (part: BrickPart) => THREE.BufferGeometry) {
+  partGeometryBuilders.set(partId, builder)
+  geometryCache.delete(partId)
+}
+
+/** Stud geometry for one footprint cell, shared with feature builders so their studs match the studio's. */
+export function createStudGeometry(localX: number, top: number, localZ: number, segments = 16) {
+  const stud = new THREE.CylinderGeometry(STUD * 0.235, STUD * 0.235, STUD_HEIGHT, segments)
+  stud.translate(localX, top + STUD_HEIGHT / 2, localZ)
+  return stud
+}
+
+/** Merge helper shared with feature builders: levels indexed/unindexed inputs the way the stock builder does. */
+export function mergeBrickGeometries(geometries: THREE.BufferGeometry[], label: string) {
+  const indexed = geometries.every((geometry) => geometry.getIndex() !== null)
+  const inputs = indexed ? geometries : geometries.map((geometry) => geometry.getIndex() ? geometry.toNonIndexed() : geometry)
+  const merged = mergeGeometries(inputs, false)
+  for (const geometry of new Set([...geometries, ...inputs])) geometry.dispose()
+  if (!merged) throw new Error(`Could not merge geometry for ${label}`)
+  merged.computeVertexNormals()
+  return merged
+}
+
 function box(width: number, height: number, depth: number, x: number, y: number, z: number) {
   const geometry = new THREE.BoxGeometry(width, height, depth)
   geometry.translate(x, y, z)
@@ -45,6 +76,13 @@ export function createBrickGeometry(part: BrickPart, options: { cache?: boolean 
   const cache = options.cache !== false
   const cached = cache ? geometryCache.get(part.id) : undefined
   if (cached) return cached
+
+  const registered = partGeometryBuilders.get(part.id)
+  if (registered) {
+    const built = registered(part)
+    if (cache) geometryCache.set(part.id, built)
+    return built
+  }
 
   const { width, depth, height } = partWorldSize(part)
   const geometries: THREE.BufferGeometry[] = []

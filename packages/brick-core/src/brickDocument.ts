@@ -25,6 +25,14 @@ export type BrickStudioDocumentV1 = {
   bricks: BrickInstance[]
 }
 
+/**
+ * Additive, versioned section owned by the Robot Workshop (`src/robotics/model`).
+ * The core only guarantees it is a plain JSON object with an integer `version`; its
+ * shape is validated by the feature that reads it. Documents without it are the
+ * documents of today and load unchanged; documents with it round-trip it verbatim.
+ */
+export type RoboticsSectionEnvelope = { version: number } & Record<string, unknown>
+
 export type BrickStudioDocument = {
   schemaVersion: typeof BRICK_STUDIO_SCHEMA_VERSION | typeof BRICK_STUDIO_EXPANDED_SCHEMA_VERSION
   partLibraryVersion: number
@@ -32,6 +40,7 @@ export type BrickStudioDocument = {
   customParts: CustomPartDefinition[]
   plateSize?: BuildPlateSize
   bricks: BrickInstance[]
+  robotics?: RoboticsSectionEnvelope
 }
 
 export type BrickStudioDocumentErrorCode =
@@ -152,6 +161,24 @@ export type CreateBrickStudioDocumentOptions = {
   plateSize?: BuildPlateSize
   environmentId?: EnvironmentId
   customParts?: CustomPartDefinition[]
+  robotics?: RoboticsSectionEnvelope
+}
+
+function cloneRoboticsSection(section: RoboticsSectionEnvelope): RoboticsSectionEnvelope {
+  return JSON.parse(JSON.stringify(section)) as RoboticsSectionEnvelope
+}
+
+/** The envelope check the core makes: a plain JSON object carrying an integer `version` of at least 1. */
+export function isRoboticsSectionEnvelope(value: unknown): value is RoboticsSectionEnvelope {
+  if (!isRecord(value)) return false
+  const version = value.version
+  if (!Number.isInteger(version) || typeof version !== 'number' || version < 1) return false
+  try {
+    JSON.stringify(value)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function createBrickStudioDocument(
@@ -168,6 +195,8 @@ export function createBrickStudioDocument(
     environmentId: options.environmentId ?? DEFAULT_ENVIRONMENT_ID,
     customParts: (options.customParts ?? []).map(cloneCustomPart),
     bricks: bricks.map(cloneBrick),
+    // Key order matters for the byte-identical round trip tests: the section trails the bricks.
+    ...(options.robotics ? { robotics: cloneRoboticsSection(options.robotics) } : {}),
   }
 }
 
@@ -238,12 +267,17 @@ export function validateBrickStudioDocument(
     bricks.push(validated)
   }
 
+  if (value.robotics !== undefined && !isRoboticsSectionEnvelope(value.robotics)) {
+    return fail('invalid-document', 'This document carries an unreadable robotics section.')
+  }
+
   return {
     ok: true,
     document: createBrickStudioDocument(bricks, {
       environmentId: environmentId as EnvironmentId,
       customParts,
       plateSize,
+      ...(value.robotics !== undefined ? { robotics: value.robotics } : {}),
     }),
   }
 }
@@ -258,6 +292,7 @@ export function resizeBuildPlate(document: BrickStudioDocument, size: BuildPlate
     environmentId: document.environmentId,
     customParts: document.customParts,
     plateSize: size,
+    ...(document.robotics ? { robotics: document.robotics } : {}),
   })
   const result = validateBrickStudioDocument(resized)
   if (!result.ok && (result.error.code === 'invalid-layout' || result.error.code === 'invalid-brick')) {

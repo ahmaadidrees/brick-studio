@@ -59,6 +59,8 @@ export type ExplorePosition = { x: number; y: number; z: number }
 export type BrickState = {
   documentMetadata: CreateBrickStudioDocumentOptions
   setDocumentMetadata: (metadata: CreateBrickStudioDocumentOptions) => void
+  /** Replaces the document's robotics section as one undoable, document-level edit (`null` removes it). */
+  setRoboticsSection: (robotics: CreateBrickStudioDocumentOptions['robotics'] | null, label?: string) => void
   getDocumentSnapshot: () => BrickStudioDocument
   mode: BrickMode
   bricks: BrickInstance[]
@@ -494,10 +496,29 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   clipboard: null,
   documentMetadata: {},
   setDocumentMetadata: (metadata) => {
-    const next = { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts ?? [] }
+    // Hosts pass plate/environment/custom-part metadata only; the robotics section they do
+    // not know about stays as it is. A document load or `setRoboticsSection` replaces it.
+    const robotics = 'robotics' in metadata ? metadata.robotics : get().documentMetadata.robotics
+    const next = { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts ?? [], ...(robotics ? { robotics } : {}) }
     if (JSON.stringify(get().documentMetadata) === JSON.stringify(next)) return
     registerCustomParts(metadata.customParts ?? [])
-    set({ documentMetadata: { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts?.map((part) => ({ ...part })) ?? [] } })
+    set({ documentMetadata: { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts?.map((part) => ({ ...part })) ?? [], ...(robotics ? { robotics } : {}) } })
+  },
+  setRoboticsSection: (robotics, label = 'Robotics change') => {
+    const state = get()
+    const beforeDocument = state.getDocumentSnapshot()
+    const documentMetadata = { ...state.documentMetadata, ...(robotics ? { robotics } : {}) }
+    if (!robotics) delete documentMetadata.robotics
+    const afterDocument = createBrickStudioDocument(state.bricks, documentMetadata)
+    if (JSON.stringify(beforeDocument) === JSON.stringify(afterDocument)) return
+    const selectedNow = effectiveSelectedIds(state)
+    set({
+      documentMetadata,
+      // A document-level entry: bricks are untouched, so the deltas stay empty and undo/redo
+      // swap the whole snapshot exactly like New Build and Import do.
+      undoStack: appendHistory(state.undoStack, { ...historyEntry([], label, null, selectedNow, selectedNow), documentBefore: beforeDocument, documentAfter: afterDocument }),
+      redoStack: [],
+    })
   },
   getDocumentSnapshot: () => createBrickStudioDocument(get().bricks, get().documentMetadata),
   undoStack: [],
@@ -1000,7 +1021,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     set({
       mode: 'build',
       bricks: nextBricks,
-      documentMetadata: { plateSize: result.document.plateSize, environmentId: result.document.environmentId, customParts: result.document.customParts },
+      documentMetadata: { plateSize: result.document.plateSize, environmentId: result.document.environmentId, customParts: result.document.customParts, ...(result.document.robotics ? { robotics: result.document.robotics } : {}) },
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
@@ -1033,7 +1054,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     set((state) => ({
       mode: 'build',
       bricks: restoredBricks,
-      documentMetadata: { plateSize: result.document.plateSize, environmentId: result.document.environmentId, customParts: result.document.customParts },
+      documentMetadata: { plateSize: result.document.plateSize, environmentId: result.document.environmentId, customParts: result.document.customParts, ...(result.document.robotics ? { robotics: result.document.robotics } : {}) },
       ...selectionPatch([]),
       activePartId: null,
       draft: null,
@@ -1064,7 +1085,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     const brushArmed = !previous.documentBefore && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (previous.documentBefore) registerCustomParts(previous.documentBefore.customParts)
     set({
-      ...(previous.documentBefore ? { documentMetadata: { plateSize: previous.documentBefore.plateSize, environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts }, activePartId: null, clipboard: null } : {}),
+      ...(previous.documentBefore ? { documentMetadata: { plateSize: previous.documentBefore.plateSize, environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts, ...(previous.documentBefore.robotics ? { robotics: previous.documentBefore.robotics } : {}) }, activePartId: null, clipboard: null } : {}),
       bricks: previous.documentBefore?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, previous, 'undo'),
       undoStack: state.undoStack.slice(0, -1),
       redoStack: appendHistory(state.redoStack, previous),
@@ -1086,7 +1107,7 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     const brushArmed = !next.documentAfter && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (next.documentAfter) registerCustomParts(next.documentAfter.customParts)
     set({
-      ...(next.documentAfter ? { documentMetadata: { plateSize: next.documentAfter.plateSize, environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts }, activePartId: null, clipboard: null } : {}),
+      ...(next.documentAfter ? { documentMetadata: { plateSize: next.documentAfter.plateSize, environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts, ...(next.documentAfter.robotics ? { robotics: next.documentAfter.robotics } : {}) }, activePartId: null, clipboard: null } : {}),
       bricks: next.documentAfter?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, next, 'redo'),
       undoStack: appendHistory(state.undoStack, next),
       redoStack: state.redoStack.slice(0, -1),

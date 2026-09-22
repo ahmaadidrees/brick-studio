@@ -72,6 +72,25 @@ export const BRICK_PARTS: BrickPart[] = [
 export const STOCK_PART_MAP: Readonly<Record<string, BrickPart>> = Object.freeze(Object.assign(Object.create(null), Object.fromEntries(BRICK_PARTS.map((part) => [part.id, part]))))
 export const BRICK_PART_MAP: Record<string, BrickPart> = Object.assign(Object.create(null), STOCK_PART_MAP)
 const runtimeCustomPartIds = new Set<string>()
+/**
+ * Parts a feature flag adds beside the stock library (the Robot Workshop prototype's
+ * hub, motors, axles and wheels). They validate, place, render and collide like stock
+ * parts once registered; nothing registers them unless the feature is on, so an
+ * unflagged studio never sees the ids and rejects documents that use them.
+ */
+const extensionParts: Record<string, BrickPart> = Object.create(null)
+
+export function registerExtensionParts(parts: readonly BrickPart[]) {
+  for (const part of parts) {
+    if (Object.hasOwn(STOCK_PART_MAP, part.id)) throw new Error(`Extension part "${part.id}" collides with a stock part.`)
+    extensionParts[part.id] = part
+    BRICK_PART_MAP[part.id] = part
+  }
+}
+
+export function extensionPartIds(): string[] {
+  return Object.keys(extensionParts)
+}
 
 const CUSTOM_TEMPLATE_KIND: Record<CustomPartTemplate, BrickKind> = {
   solid: 'brick',
@@ -100,7 +119,7 @@ export function customPartToBrickPart(definition: CustomPartDefinition): BrickPa
 }
 
 export function createPartMap(customParts: CustomPartDefinition[] = []): Record<string, BrickPart> {
-  return Object.assign(Object.create(null), STOCK_PART_MAP,
+  return Object.assign(Object.create(null), STOCK_PART_MAP, extensionParts,
     Object.fromEntries(customParts.map((definition) => [definition.id, customPartToBrickPart(definition)])))
 }
 
