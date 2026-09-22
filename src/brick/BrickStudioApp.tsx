@@ -35,7 +35,7 @@ import {
   Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
 import { BrandLockup } from '../brand'
 import { Button, SaveStatus, type SaveStatusSource } from '../ui'
@@ -58,6 +58,11 @@ import { AppHeader, WORLDS_PATH, classroomIntentRedirect, describeLivePresence, 
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
+import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { ROBOTICS_PARTS, isRoboticsPart } from '../robotics/parts/catalog'
+
+// Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): the chunk is never requested without the flag.
+const RoboticsPanel = lazy(() => import('../robotics/ui/RoboticsPanel').then((module) => ({ default: module.RoboticsPanel })))
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { BUILD_PATH, parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
@@ -437,19 +442,21 @@ type PartGridProps = {
   customPartHelp?: string
 }
 
-type PartCategory = 'all' | 'blocks' | 'plates' | 'slopes' | 'shapes' | 'custom'
+type PartCategory = 'all' | 'blocks' | 'plates' | 'slopes' | 'shapes' | 'robotics' | 'custom'
 const PART_CATEGORIES: { id: PartCategory; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'blocks', label: 'Blocks' },
   { id: 'plates', label: 'Plates' },
   { id: 'slopes', label: 'Slopes' },
   { id: 'shapes', label: 'Shapes' },
+  { id: 'robotics', label: 'Robotics' },
   { id: 'custom', label: 'My bricks' },
 ]
 
 /** Categories are derived from the real part kinds; nothing here invents shapes the catalog lacks. */
 function partCategory(part: { kind: string; id: string }, customIds: ReadonlySet<string>): PartCategory {
   if (customIds.has(part.id)) return 'custom'
+  if (isRoboticsPart(part.id)) return 'robotics'
   if (part.kind === 'brick') return 'blocks'
   if (part.kind === 'plate') return 'plates'
   if (part.kind === 'slope' || part.kind === 'invertedSlope' || part.kind === 'stair') return 'slopes'
@@ -462,12 +469,14 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<PartCategory>('all')
   const searchId = useId()
+  const robotics = isRoboticsPrototypeEnabled()
   const parts = useMemo(() => [
     ...BRICK_PARTS,
+    ...(robotics ? ROBOTICS_PARTS : []),
     ...customParts.map(customPartToBrickPart),
-  ], [customParts])
+  ], [customParts, robotics])
   const customIds = useMemo(() => new Set(customParts.map((part) => part.id)), [customParts])
-  const categories = useMemo(() => PART_CATEGORIES.filter((entry) => entry.id !== 'custom' || customParts.length > 0), [customParts.length])
+  const categories = useMemo(() => PART_CATEGORIES.filter((entry) => (entry.id !== 'custom' || customParts.length > 0) && (entry.id !== 'robotics' || robotics)), [customParts.length, robotics])
   const trimmedQuery = query.trim().toLowerCase()
   const visibleParts = useMemo(() => parts.filter((part) => {
     if (category !== 'all' && partCategory(part, customIds) !== category) return false
@@ -845,6 +854,7 @@ function BuildShell({
       <HistoryCluster />
       <CameraCluster />
       <CommandStrip coarsePointer={coarsePointer} onResize={openResize} />
+      {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><RoboticsPanel compact={compact} /></Suspense>}
       <CreateBrickSheet
         open={createOpen}
         existingCount={customParts.length}

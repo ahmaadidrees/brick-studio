@@ -133,16 +133,24 @@ export function buildButton(part: BrickPart) {
   return mergeBrickGeometries([base, cap], part.id)
 }
 
-export function buildHingeMotor(part: BrickPart) {
-  const { width, depth, height } = partWorldSize(part)
+/** The hinge motor's fixed side: the housing under the turntable. */
+export function buildHingeHousing(part: BrickPart) {
+  const { width, depth } = partWorldSize(part)
   const housingHeight = plates(4) - 0.01
+  return mergeBrickGeometries([box(width, housingHeight, depth)], `${part.id}:housing`)
+}
+
+/** The hinge motor's moving side: the turntable with its studs and a rim notch that shows the angle. */
+export function buildHingeTurntable(part: BrickPart) {
+  const { height } = partWorldSize(part)
   const turntableHeight = height - plates(4)
-  const housing = box(width, housingHeight, depth)
   const turntable = yCylinder(HINGE_TURNTABLE_RADIUS, turntableHeight, 28, 0, plates(4) + turntableHeight / 2, 0)
-  // A notch on the rim so the turntable's angle is visible while it turns.
   const notch = box(0.12, turntableHeight + 0.02, 0.1, HINGE_TURNTABLE_RADIUS - 0.04, plates(4) + turntableHeight / 2, 0)
-  const studsGeometry = studsOnTop(part, height)
-  return mergeBrickGeometries([housing, turntable, notch, ...studsGeometry], part.id)
+  return mergeBrickGeometries([turntable, notch, ...studsOnTop(part, height)], `${part.id}:turntable`)
+}
+
+export function buildHingeMotor(part: BrickPart) {
+  return mergeBrickGeometries([buildHingeHousing(part), buildHingeTurntable(part)], part.id)
 }
 
 export function buildSeat(part: BrickPart) {

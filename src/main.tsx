@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './styles.css'
 import { AppErrorBoundary } from './brick/AppErrorBoundary'
 import { installBrickStudioErrorListeners } from './brick/errorLog'
+import { installRoboticsParts } from './robotics/parts/install'
 import { resolveAppRoute } from './routes'
 import { BRAND_NAME } from './brand'
 
 // Prefixed console logging plus a small in-memory ring buffer for the recovery screen.
 installBrickStudioErrorListeners()
+// Robot Workshop spike: registers its parts only when VITE_ROBOTICS_PROTOTYPE=1 (a no-op otherwise).
+installRoboticsParts()
 
 const TeacherGoogleCallback = lazy(() => import('./classroom/TeacherGoogleCallback'))
 const BrickStudioApp = lazy(() => import('./brick/BrickStudioApp'))

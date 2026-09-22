@@ -5,7 +5,7 @@ import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
 import { CapsuleCollider, ConvexHullCollider, CuboidCollider, Physics, RigidBody, RoundCuboidCollider, useRapier, type RapierCollider, type RapierRigidBody } from '@react-three/rapier'
 import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { createMotionSnapshot } from './avatarMotion'
 import { useRemoteAvatars, type RemoteAvatarSource } from './remoteAvatarSource'
@@ -121,6 +121,12 @@ import {
 import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
 import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
+import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
+
+// Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
+// mechanics nudge. The chunk is never requested without the flag.
+const RoboticsBuildLayer = lazy(() => import('../robotics/scene/RoboticsBuildLayer'))
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -1344,7 +1350,8 @@ function BuildScene({
   surface: RuntimeEnvironment['surface']
   showStudioGround: boolean
 }) {
-  const bricks = useBrickStore((state) => state.bricks)
+  // While a robotics nudge runs, the robotics layer draws the moving bricks itself.
+  const bricks = useVisibleBricks(useBrickStore((state) => state.bricks))
   const selectedIds = useBrickStore((state) => state.selectedIds)
   const selectedId = useBrickStore((state) => state.selectedId)
   const movingId = useBrickStore((state) => state.movingId)
@@ -1377,6 +1384,7 @@ function BuildScene({
       <BuildCamera gestureActive={cameraGestureActive} />
       <BuildTouchInput gesture={gesture.current} />
       <MouseTravelTracker travel={mouseTravel} />
+      {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><RoboticsBuildLayer /></Suspense>}
       {showStudioGround && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial color="#f5f2ec" roughness={1} />
