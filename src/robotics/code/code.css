@@ -332,7 +332,9 @@
 .robo-code-blockly .blocklyToolboxCategoryLabel { padding: 0; color: var(--robo-ink); font-weight: 800; font-size: 12px; line-height: 1.1; font-family: inherit; cursor: pointer; }
 .robo-code-blockly .blocklyToolboxSelected .blocklyToolboxCategoryLabel { color: var(--robo-ink); }
 .robo-code-blockly .blocklyFlyoutBackground { fill: #fbf8f2; fill-opacity: 1; }
-.robo-code-blockly .blocklyFlyout { filter: drop-shadow(1px 0 0 #e3dccd); }
+/* Above the scripts' own scrollbars (z 20, drawn after it): a palette floating over the scripts had its
+   bottom 15 px, the last block's lower half in a short stacked editor, under the horizontal scrollbar. */
+.robo-code-blockly .blocklyFlyout { z-index: 25; filter: drop-shadow(1px 0 0 #e3dccd); }
 .robo-code-blockly .blocklyScrollbarHandle { fill: #cfc5b3; }
 .robo-code-blockly .blocklyMainBackground { stroke: none; }
 
@@ -512,13 +514,53 @@
   .blocklyDialog { font-family: var(--font-body, 'Nunito'), ui-rounded, system-ui, sans-serif; }
   .blocklyDialog .blocklyDialogInput { min-height: 44px; padding: 0 12px; box-sizing: border-box; border-radius: 10px; font: inherit; font-size: 18px; }
   .blocklyDialog .blocklyDialogButtonRow button { min-width: 88px; min-height: 44px; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 800; }
+  /* Blockly's dropdown menus ("forward ▾", a motor's name). */
+  .blocklyDropDownDiv .blocklyMenuItem { display: flex; align-items: center; min-height: 44px; box-sizing: border-box; }
+  /* Nothing a finger uses sits in the bottom 16 px, where an iPad's home indicator takes swipes. */
+  .robo-all-blocks { bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .robo-zoom { bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
+  .robo-code-stagefoot { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
 }
 
-/* An iPad in portrait (a stage about 340 px wide): Run, Stop and Reset keep one row and the status
-   goes beside Test plate / My world, so starting or stopping a run never moves Reset or the switch. */
+/* A narrow stage: Run, Stop and Reset keep one row and the status goes beside Test plate / My world,
+   so starting or stopping a run never moves Reset or the switch. The readings keep one row of
+   fixed-width chips, so a value that grows ("40 · 40 %") never pushes the next chip onto a new row. */
 @media (max-width: 900px) {
   .robo-code-stagebar > .robo-seg { order: 1; }
   .robo-code-stagebar > .robo-status { order: 2; flex: 1 1 0; }
+  .robo-code-readings { flex-wrap: nowrap; }
+  .robo-read { flex: 0 1 176px; min-width: 0; }
+  .robo-read small, .robo-read strong { overflow: hidden; text-overflow: ellipsis; }
+  .robo-read span { white-space: normal; }
+}
+
+/* Portrait up to 900 px wide (an iPad held upright): the Code view stacks. The editor spans the top
+   half, full width, so a starter script fits at a finger-sized scale; the stage (bar, readings, the
+   creation, joystick, goal) is the bottom half over the canvas. framing.ts reads the editor as a top
+   inset here. Keep the query in step with STACKED_LAYOUT_QUERY in blocklySetup.ts. */
+@media (orientation: portrait) and (max-width: 900px) {
+  .robo-code-editor, .robo-code-stage { --robo-stack-editor: calc((100% - var(--brick-header-block)) * 0.5); }
+  .robo-code-editor {
+    right: 0;
+    bottom: auto;
+    width: auto;
+    height: var(--robo-stack-editor);
+    border-right: 0;
+    border-bottom: 1px solid var(--robo-line);
+    box-shadow: 0 6px 22px rgba(38, 60, 81, .08);
+  }
+  .build-shell > .robo-code-stage { top: calc(var(--brick-header-block) + var(--robo-stack-editor)); left: 0; }
+  /* The rail in two columns, so its nine rows fit the shorter editor without scrolling. */
+  .robo-code-blockly .blocklyToolbox { width: 141px; }
+  .robo-code-blockly .blocklyToolboxCategoryGroup { display: grid; grid-template-columns: repeat(2, 64px); column-gap: 4px; }
+  .robo-code-blockly .blocklyToolboxCategory { min-height: 50px; }
+  .robo-code-notice { left: 152px; }
+  /* The whole width for the stage bar: one row, the status taking what Run, Stop, the switch and Reset leave. */
+  .robo-code-stagebar { flex-wrap: nowrap; }
+  .robo-code-stagebar > .robo-break, .robo-code-stagebar > .robo-spacer { display: none; }
+  .robo-code-stagebar > .robo-status { order: 1; flex: 1 1 0; min-width: 0; }
+  .robo-code-stagebar > .robo-seg { order: 2; }
+  .robo-code-stagebar > .robo-button { order: 3; }
 }
 
 @media (prefers-reduced-motion: reduce) {

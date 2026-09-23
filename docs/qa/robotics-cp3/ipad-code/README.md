@@ -181,3 +181,106 @@ reopen it, and that a later focus with no press does select. Temporarily removin
 - **"Hidden Windows" pill.** Automation sessions leave hidden Safari windows. Some screenshots show iPadOS's "N Hidden
   Windows" pill over the bottom centre, where it covers the zoom cluster. WebDriver touches pass under it; a finger would
   not. This comes from the automation, not the app.
+
+## Second pass: the portrait layout stacks (2026-09-23, after `f279758`)
+
+This pass merged `claude/robotics-spike` at `f279758`. That merge brought the lead's stage framing: the camera looks
+straight at the creation, `setViewOffset` shifts the image into the free area, and the orbit's `maxDistance` is raised
+to at least 1.2× the framed distance. On top of it, this pass fixed findings 1, 3, 5, 7, 8 and 9. After every step the
+iPad harness and `robotics-cp2-code.mjs` (desktop Chrome) were re-run.
+
+| Step | iPad (portrait) | Desktop Chrome |
+|---|---|---|
+| Merge `f279758` (finding 2: lead) | 35/38. The wall is inside the stage (x 639–768 of 480–820). Failing: the 3 off screen, More blocks 12 px from the bottom, not stacked | 51/51 |
+| Stacked portrait layout (finding 1) | 38/38 | 51/51 |
+| `-webkit-user-select` for the whole studio (finding 3) | 39/39, with a new long-press check in Build | 51/51 |
+| Menu items, scale 1.0, chips, panel text, bottom gap (findings 5, 7, 8, 9) | **39/39** | **51/51** |
+
+Evidence is in `after-fixes/`: 16 screenshots, `results.json` and `before-fix-studio-long-press-selects-text.jpg`. The
+earlier evidence in this folder records the first pass. `npx vitest run` passes 1672 of 1672.
+
+Measured in portrait (820×1094):
+
+- **Layout.** The editor is 820×515 across the top and the stage 820×515 below it. `measureCanvasInsets` reports top
+  674 (the editor, the stage bar and the readings), left 0 and bottom 51 (the goal).
+- **The 3.** The starter script is 608 px wide at scale 1.0. The 3 sits at x 682–692 inside the 679 px scripts area,
+  and the number ovals are 40×32 (they were 31×25).
+- **The wall.** It spans x 390–628, y 771–905, inside the stage's free area (x 0–820, y 738–1043). Recomputed in the
+  page, the planned framing box and the drawn one match exactly (x 128–684 both, scale 1.00).
+- **The palette.** Motion is 353 px wide at scale 1.0. Its last block sits below a 394 px editor, so the harness scrolls
+  the palette 150 px with a vertical drag on the palette's background, as a student would.
+- **Readings.** They stay 94 px tall while running (they grew to 155 px before).
+- **Small targets and text.** Blockly's menu items are 103×44. There are no small targets on any robotics surface, and
+  nothing under 13 px on touch except the studio header.
+
+### Product changes in this pass
+
+`src/robotics/scene/framing.ts`
+- `MIN_FREE_HEIGHT_SHARE = 0.2` is used for the height in `freeArea`; the width keeps 0.35. A wide, short stage strip
+  (820×305) is not a sliver. No current desktop or landscape layout has a free height between 20% and 35%, so they
+  frame as before.
+- `measureCanvasInsets`: the drawer and the Code view's editor are now read in separate loops. The editor is a **top**
+  inset when it spans the canvas's width from its top edge, and a left inset otherwise, as before. The stage bar and
+  readings count as top when they sit in the upper half of what is left below the editor.
+
+`src/robotics/code/code.css`
+- `.robo-code-blockly .blocklyFlyout { z-index: 25 }`. A palette floating over the scripts had its bottom 15 px under
+  the scripts' horizontal scrollbar (z 20, drawn later). In the short stacked editor that is the last block's lower
+  half, and a touch there grabbed the scrollbar.
+- Touch block additions:
+  - `.blocklyDropDownDiv .blocklyMenuItem { min-height: 44px }`.
+  - `.robo-all-blocks` and `.robo-zoom` sit at `bottom: max(16px, safe-area)`.
+  - `.robo-code-stagefoot` gets `padding-bottom: max(16px, safe-area)`.
+- `@media (max-width: 900px)`: the reading chips stay on one row with a fixed `flex: 0 1 176px` basis. The detail line
+  wraps inside its chip.
+- New `@media (orientation: portrait) and (max-width: 900px)` block:
+  - The editor is full width at 50% of the canvas height; the stage sits below it.
+  - The rail becomes two columns (141 px wide, rows 50 px tall).
+  - The stage bar is one row, in the order Run, Stop, status (flexible), Test plate / My world, Reset.
+
+`src/robotics/code/blocklySetup.ts`
+- New `STACKED_LAYOUT_QUERY`, `stackedLayout()`, `touchStackedLayout()` and `TOUCH_STACKED_START_SCALE = 1`.
+- `startScaleFor(width, touchStacked)` returns 1.0 in the stacked layout on touch and the old scales otherwise.
+
+`src/robotics/code/BlocklyWorkspace.tsx`
+- `paletteFloats(width, stacked)`: the palette always floats in the stacked layout. Pinned there, the Sensing palette
+  (over 500 px at scale 1.0) would leave the scripts a sliver.
+- `openPaletteIfRoomy` uses the same rule.
+
+`src/robotics/ui/robotics.css`, touch block
+- The card and panel text are 13 px (the compact panel was 12).
+- The field labels, pills, Nudge note, sim status, compact part rows and the wiring line are 13 px.
+- The hub's port chips are 24×24 at 13 px.
+
+`src/brick/brick-studio.css`
+- `.brick-studio` gets `-webkit-user-select: none; -webkit-touch-callout: none` next to `user-select: none`.
+- New rule: `.brick-studio :is(input, textarea, [contenteditable]:not([contenteditable='false']))` sets
+  `-webkit-user-select: text; user-select: text; -webkit-touch-callout: default`.
+- Before this, a 0.8 s press on the creation panel's first line selected text and raised Copy / Find Selection /
+  Look Up / Translate (`after-fixes/before-fix-studio-long-press-selects-text.jpg`).
+
+`src/brick/live/live-world.css`
+- `.live-share-link` adds `-webkit-user-select: all`, so the share link stays selectable in Safari under the new
+  studio rule.
+
+Tests:
+- `framing.test.ts` adds the Code view beside the stage and the stacked Code view: insets, the free strip and the view
+  offset.
+- `BlocklyWorkspace.test.tsx` checks that the palette floats when stacked and that blocks start at scale 1.0 only
+  when stacked on touch.
+
+### Still open
+
+- **Finding 4 (keyboard type).** Not changed. Blockly's prompt input is `type="text"` with no `inputmode`, so a real
+  iPad shows the full keyboard. The fix is a prompt installed through `Blockly.dialog.setPrompt` that renders
+  `inputmode="decimal"`, and the software keyboard cannot be exercised on this simulator to check it.
+- **Finding 6 (desktop pinned palette width).** Not changed. At 1366×768 the pinned palette's width stays reserved
+  after it closes. The fix is a `MetricsManager` subclass that reports 0×0 for a hidden flyout.
+- **The studio header** keeps 12.5 px labels on touch ("This browser only", Scene, Character, People, Build, Explore).
+  They belong to the studio, outside this lane.
+- **The lead's toast placement** in the Code view (`right: 16px; bottom: 72px`) lands on the joystick's corner of the
+  stage in both layouts. Not seen in this run, because no toast fired.
+- **The stacked editor is 394 px of scripts tall.** Long programs scroll sooner than beside the stage. The palette
+  scrolls by a drag on its background, and the harness covers that.
+- **Landscape** is still untested on the simulator (no scripted rotation). The side-by-side layout is unchanged there,
+  and desktop Chrome at 1366×768 and 1024×768 passes 51 of 51.

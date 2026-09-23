@@ -16,7 +16,9 @@
  * The journey: open Code from the creation panel; Run (the rover stops before the wall) and Reset; drag the
  * scripts to reach the 3, tap it, change it to 6 in the prompt, tap OK, run again; open the Motion palette, drag
  * a block into the script, drag it back out onto the rail to delete it, choose from a dropdown; "+" → Joystick
- * drive, Run, drive with the on-screen joystick and the Keys pad; Test plate / My world; Back to build. At each
+ * drive, Run, drive with the on-screen joystick and the Keys pad; Test plate / My world; Back to build. In portrait
+ * it also checks the stacked layout (editor across the top, stage below, framing insets read that way), that a long
+ * press on studio text selects nothing, and that no control sits in the bottom 16 px. At each
  * stage it records targets under 44 px, text under 13 px, what is cut off, whether the page scrolled or zoomed,
  * and a screenshot of the whole simulated screen (JPEG, 1 px per CSS px).
  *
@@ -202,7 +204,8 @@ function installQa() {
       scale: workspace.scale, scrollX: Math.round(workspace.scrollX), scrollY: Math.round(workspace.scrollY),
       paletteOpen: flyout.isVisible(), paletteFloats: flyout.autoClose, category: toolbox.getSelectedItem()?.getName?.() ?? null,
       paletteWidth: flyout.isVisible() ? Math.round(document.querySelector('.robo-code-blockly .blocklyFlyout').getBoundingClientRect().width) : 0,
-      scriptsLeft: Math.round(host.left + metrics.getAbsoluteMetrics().left), scriptsWidth: Math.round(metrics.getViewMetrics().width), hostRight: Math.round(host.right),
+      scriptsLeft: Math.round(host.left + metrics.getAbsoluteMetrics().left), scriptsWidth: Math.round(metrics.getViewMetrics().width), hostRight: Math.round(host.right), hostTop: Math.round(host.top), hostBottom: Math.round(host.bottom),
+      railWidth: Math.round(toolbox.getWidth()), rail: (() => { const r = document.querySelector('.robo-code-blockly .blocklyToolbox').getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height } })(),
       categories: document.querySelectorAll('.robo-code-blockly .blocklyToolboxCategory').length,
       topBlocks: workspace.getTopBlocks(true).map((block) => ({ type: block.type, ...rectOf(block.getSvgRoot().querySelector('.blocklyPath')) })),
     }
@@ -336,15 +339,18 @@ function framingProbe() {
     const canvas = document.querySelector('canvas'); const rect = canvas.getBoundingClientRect()
     const viewport = { width: canvas.clientWidth, height: canvas.clientHeight }
     const insets = framing.measureCanvasInsets(canvas)
-    const pose = framing.framePoseInFreeArea(box, 45, viewport, insets)
+    // The stage looks straight at the creation (slide = false) and shifts the image by viewOffsetFor (PanelViewOffset).
+    const pose = framing.framePoseInFreeArea(box, 45, viewport, insets, 'home', null, false)
+    const offset = framing.viewOffsetFor(viewport, insets)
     const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y, z: a.z - b.z })
     const norm = (v) => { const l = Math.hypot(v.x, v.y, v.z); return { x: v.x / l, y: v.y / l, z: v.z / l } }
     const f = norm(sub(pose.target, pose.position)); const r = norm({ x: -f.z, y: 0, z: f.x }); const u = { x: r.y * f.z - r.z * f.y, y: r.z * f.x - r.x * f.z, z: r.x * f.y - r.y * f.x }
-    const planned = (p) => { const rel = sub(p, pose.position); const d = rel.x * f.x + rel.y * f.y + rel.z * f.z; const sx = rel.x * r.x + rel.y * r.y + rel.z * r.z; const sy = rel.x * u.x + rel.y * u.y + rel.z * u.z; const hh = d * Math.tan((22.5 * Math.PI) / 180); const hw = (hh * viewport.width) / viewport.height; return { x: rect.left + viewport.width / 2 + (sx / hw) * (viewport.width / 2), y: rect.top + viewport.height / 2 - (sy / hh) * (viewport.height / 2) } }
-    const plannedX = [], drawnX = []
-    for (const x of [box.min[0], box.max[0]]) for (const z of [box.min[2], box.max[2]]) for (const y of [box.min[1], box.max[1]]) { plannedX.push(planned({ x, y, z }).x); drawnX.push(hook.project({ x, y, z }).x) }
+    const planned = (p) => { const rel = sub(p, pose.position); const d = rel.x * f.x + rel.y * f.y + rel.z * f.z; const sx = rel.x * r.x + rel.y * r.y + rel.z * r.z; const sy = rel.x * u.x + rel.y * u.y + rel.z * u.z; const hh = d * Math.tan((22.5 * Math.PI) / 180); const hw = (hh * viewport.width) / viewport.height; return { x: rect.left + offset.x + viewport.width / 2 + (sx / hw) * (viewport.width / 2), y: rect.top + offset.y + viewport.height / 2 - (sy / hh) * (viewport.height / 2) } }
+    const plannedX = [], drawnX = [], plannedY = [], drawnY = []
+    for (const x of [box.min[0], box.max[0]]) for (const z of [box.min[2], box.max[2]]) for (const y of [box.min[1], box.max[1]]) { const a = planned({ x, y, z }); const b = hook.project({ x, y, z }); plannedX.push(a.x); drawnX.push(b.x); plannedY.push(a.y); drawnY.push(b.y) }
     const span = (list) => [Math.round(Math.min(...list)), Math.round(Math.max(...list))]
-    return { plannedDistance: Math.round(pose.distance * 10) / 10, plannedX: span(plannedX), drawnX: span(drawnX), scale: Math.round(((Math.max(...drawnX) - Math.min(...drawnX)) / (Math.max(...plannedX) - Math.min(...plannedX))) * 100) / 100, free: framing.freeArea(viewport, insets) }
+    const camera = hook.cameraDistance ? hook.cameraDistance() : null
+    return { plannedDistance: Math.round(pose.distance * 10) / 10, cameraDistance: camera, insets, offset, plannedX: span(plannedX), drawnX: span(drawnX), plannedY: span(plannedY), drawnY: span(drawnY), scale: Math.round(((Math.max(...drawnX) - Math.min(...drawnX)) / (Math.max(...plannedX) - Math.min(...plannedX))) * 100) / 100, free: framing.freeArea(viewport, insets) }
   })()
 }
 
@@ -420,6 +426,22 @@ try {
   const builtConstruction = await construction()
   const builtSpace = await robo((state) => state.model.creations[0].testSpace ?? null)
   await stage('build-panel')
+  // A long press on studio text (the creation panel's first line) must not select it: iPadOS would raise its
+  // Copy / Look Up / Translate callout over the panel. Text fields stay selectable.
+  const panelLine = await target({ css: '[data-testid="robotics-panel"] .robotics-lines li' })
+  if (panelLine.found && panelLine.hit) {
+    await qa(() => { document.getSelection()?.removeAllRanges(); return true })
+    await sim.gesture([
+      { type: 'pointerMove', duration: 0, origin: 'viewport', x: Math.round(panelLine.cx), y: Math.round(panelLine.cy) },
+      { type: 'pointerDown', button: 0 },
+      { type: 'pause', duration: 800 },
+      { type: 'pointerUp', button: 0 },
+    ])
+    await sleep(700)
+    const selectedText = await qa(() => { const text = document.getSelection()?.toString() ?? ''; document.getSelection()?.removeAllRanges(); return text })
+    const fields = await qa(() => ({ studio: getComputedStyle(document.querySelector('.brick-studio')).webkitUserSelect, name: getComputedStyle(document.querySelector('[data-testid="robotics-panel"] input') ?? document.body).webkitUserSelect }))
+    record('studio:long-press-selects-nothing', !selectedText && fields.studio === 'none' && fields.name === 'text', selectedText ? `a long press on "${panelLine.name}" selected "${selectedText}" (the studio's -webkit-user-select is ${fields.studio})` : `a 0.8 s press on "${panelLine.name.slice(0, 40)}…" selected nothing (studio -webkit-user-select ${fields.studio}; the panel's name field stays ${fields.name})`)
+  }
 
   /* 1. Open Code from the creation panel. */
   console.log('\n1. Open the Code view by touch')
@@ -446,12 +468,21 @@ try {
   const blocked = Object.entries(controls).filter(([, c]) => !c.inView || !c.onTop).map(([name, c]) => `${name} (${c.hitBy ?? 'off screen'})`)
   const smallControls = Object.entries(controls).filter(([, c]) => c.width < 44 || c.height < 44).map(([name, c]) => `${name} ${c.width}×${c.height}`)
   record('first-run:controls-reachable', blocked.length === 0 && railRows.every((row) => row.bottom <= env.height && row.height >= 44), `every Code control is on screen and on top at the tap point${blocked.length ? `, except ${blocked.join(', ')}` : ''}; the nine rail rows end at y ${Math.max(...railRows.map((row) => row.bottom))} of ${env.height} (rows ${railRows[0].width}×${railRows[0].height})${smallControls.length ? `; under 44 px: ${smallControls.join(', ')}` : '; all at least 44 px'}`)
+  const lowControls = Object.entries(controls).filter(([, c]) => c.bottomGap !== null && c.bottomGap < 16).map(([name, c]) => `${name} ${c.bottomGap} px`)
+  record('first-run:controls-above-bottom-edge', lowControls.length === 0, lowControls.length ? `controls closer than 16 px to the bottom edge (the home-indicator swipe zone on an iPad): ${lowControls.join(', ')}` : `every control is at least 16 px above the bottom edge (closest: ${Math.min(...Object.values(controls).map((c) => c.bottomGap ?? Infinity))} px)`)
+  // The portrait layout: the editor across the top, the stage (bar, readings, joystick, goal) below it over the canvas.
+  const split = await qa(() => { const r = (css) => { const el = document.querySelector(css); if (!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), width: Math.round(b.width), height: Math.round(b.height), bottom: Math.round(b.bottom), right: Math.round(b.right) } }; return { editor: r('.robo-code-editor'), stage: r('.robo-code-stage'), canvas: r('canvas'), insets: window.__robotics.insets(), stacked: matchMedia('(orientation: portrait) and (max-width: 900px)').matches } })
+  measured.split = split
+  if (split.stacked) {
+    const stackedOk = split.editor.x === 0 && split.editor.width === env.width && split.stage.x === 0 && split.stage.width === env.width && Math.abs(split.stage.y - split.editor.bottom) <= 1 && split.insets.top > split.editor.bottom - split.canvas.y && split.insets.left === 0
+    record('layout:portrait-stacked', stackedOk, `portrait: the editor spans the top (${split.editor.width}×${split.editor.height} at y ${split.editor.y}) and the stage the bottom (${split.stage.width}×${split.stage.height} at y ${split.stage.y}); framing insets top ${Math.round(split.insets.top)}, left ${Math.round(split.insets.left)}, bottom ${Math.round(split.insets.bottom)} px`)
+  }
   record('first-run:page-inside-viewport', openLayout.outside.length === 0 && openLayout.page.offsetTop === 0 && openLayout.page.scrollY === 0, `the Code view fits the ${env.width}×${env.height} Safari viewport (surfaces outside it: ${openLayout.outside.join(', ') || 'none'}); visual viewport offset ${openLayout.page.offsetTop}, page scroll ${openLayout.page.scrollY}: nothing sits under Safari's bars`)
   // The goal names the 3: is it on screen?
   const three = await field('stop-before-wall:studs', 'NUM')
-  const threeOnScreen = three && three.x >= ws.scriptsLeft && three.x + three.width <= ws.hostRight
+  const threeOnScreen = three && three.x >= ws.scriptsLeft && three.x + three.width <= ws.hostRight && three.y >= ws.hostTop && three.y + three.height <= ws.hostBottom
   record('first-run:goal-number-on-screen', Boolean(threeOnScreen), `the goal says "change 3 to 6"; the 3 is at x ${Math.round(three?.x)}–${Math.round(three?.x + three?.width)} while the scripts area ends at x ${ws.hostRight} (script ${Math.round(ws.topBlocks[0].width)} px wide at scale ${ws.scale} in a ${ws.scriptsWidth} px scripts area)`)
-  if (!threeOnScreen) note('major', 'first-run-script-cut-off', `In portrait the editor is 480 px wide (\`--robo-editor-width: clamp(480px, 58vw, 900px)\`), so the scripts area is ${ws.scriptsWidth} px; the starter's "wait until … sees something closer than 3 studs" block is ${Math.round(ws.topBlocks[0].width)} px at the start scale ${ws.scale}. The 3 the goal line names starts at x ${Math.round(three?.x)}, past the editor's right edge (under the stage). A student has to know to drag the scripts sideways to find it.`)
+  if (!threeOnScreen && ws.hostRight < env.width - 1) note('major', 'first-run-script-cut-off', `In portrait the editor is 480 px wide (\`--robo-editor-width: clamp(480px, 58vw, 900px)\`), so the scripts area is ${ws.scriptsWidth} px; the starter's "wait until … sees something closer than 3 studs" block is ${Math.round(ws.topBlocks[0].width)} px at the start scale ${ws.scale}. The 3 the goal line names starts at x ${Math.round(three?.x)}, past the editor's right edge (under the stage). A student has to know to drag the scripts sideways to find it.`)
   const wallView = async () => qa(() => {
     const hook = window.__robotics; const wall = hook.stageStore.getState().stage?.controller.props.find((prop) => prop.kind === 'wall')
     if (!wall) return null
@@ -491,7 +522,7 @@ try {
   measured.firstRunTrace = trace.map((entry) => `${entry.t.toFixed(2)}s d=${entry.distance?.toFixed(2)} v=${entry.speed.toFixed(2)} chip=${entry.chip}`)
   const minDistance = Math.min(...trace.map((entry) => entry.distance))
   record('run:drives-and-stops-before-wall', Boolean(runTap.ok && restObs && trace.some((entry) => entry.speed > 2) && restObs.hit && restObs.distance > 1.5 && restObs.distance < 3 && minDistance > 1.5), `tapped Run: top speed ${Math.max(...trace.map((entry) => entry.speed)).toFixed(2)} studs/s; at rest the sensor reads ${restObs?.distance?.toFixed(2)} studs (never under ${minDistance.toFixed(2)}): stopped before the wall`)
-  record('run:readings-update', restObs?.chips['Front sensor'] === `${restObs?.distance?.toFixed(1)} studs` && restObs?.chips.Speed === `${restObs?.speed.toFixed(1)} st/s` && new Set(trace.map((entry) => entry.chip)).size > 5 && /^Running ·/.test(restObs?.status ?? ''), `the Front sensor chip went through ${new Set(trace.map((entry) => entry.chip)).size} values (12.0 studs → ${restObs?.chips['Front sensor']}); Speed chip "${restObs?.chips.Speed}"; status "${restObs?.status}"`)
+  record('run:readings-update', restObs?.chips['Front sensor'] === `${restObs?.distance?.toFixed(1)} studs` && restObs?.chips.Speed === `${restObs?.speed.toFixed(1)} st/s` && new Set(trace.map((entry) => entry.chip)).size > 5 && /^(Running|Done) ·/.test(restObs?.status ?? ''), `the Front sensor chip went through ${new Set(trace.map((entry) => entry.chip)).size} values (12.0 studs → ${restObs?.chips['Front sensor']}); Speed chip "${restObs?.chips.Speed}"; status "${restObs?.status}"`)
   const same = (a, b) => a && b && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
   record('run:stage-bar-steady', Boolean(barDuring && same(barBefore.reset, barDuring.reset) && same(barBefore.seg, barDuring.seg) && barBefore.readings?.y === barDuring.readings?.y), `while "${barDuring?.status}" shows, Reset stays at ${JSON.stringify(barDuring?.reset)} (was ${JSON.stringify(barBefore.reset)}), Test plate / My world at ${JSON.stringify(barDuring?.seg)} (was ${JSON.stringify(barBefore.seg)}), the readings start at y ${barDuring?.readings?.y} (was ${barBefore.readings?.y})`)
   measured.readingsHeight = { ready: barBefore.readings?.height, running: barDuring?.readings?.height }
@@ -521,14 +552,17 @@ try {
   const scrollBefore = await wsState()
   const threeNow = await field('stop-before-wall:studs', 'NUM')
   // Drag the scripts' background left until the 3 has room (a finger on empty scripts, below the blocks).
-  const need = Math.max(0, Math.round(threeNow.x + threeNow.width + 40 - scrollBefore.hostRight))
-  const lane = { y: Math.round(scrollBefore.topBlocks[0].y + scrollBefore.topBlocks[0].height + 220) }
-  if (need > 0) await touchDrag(line({ x: 400, y: lane.y }, { x: 400 - need, y: lane.y }, 8), { stepMs: 45 })
+  // Always at least 40 px, so the workspace drag itself is exercised even when the 3 is already in view.
+  const need = Math.max(40, Math.round(threeNow.x + threeNow.width + 40 - scrollBefore.hostRight))
+  const scriptBottom = Math.max(...scrollBefore.topBlocks.map((b) => b.y + b.height))
+  const lane = { y: Math.round(Math.min(scriptBottom + 120, scrollBefore.hostBottom - 40)) }
+  const laneX = Math.round(Math.min(scrollBefore.hostRight - 60, scrollBefore.scriptsLeft + need + 160))
+  await touchDrag(line({ x: laneX, y: lane.y }, { x: laneX - need, y: lane.y }, 8), { stepMs: 45 })
   await sleep(500)
   const scrolled = await wsState()
   const threeReached = await field('stop-before-wall:studs', 'NUM')
   const pageAfterScroll = await page()
-  record('edit:drag-scripts', need === 0 || (Math.abs(scrolled.scrollX - scrollBefore.scrollX - -need) < 12 && threeReached.x + threeReached.width <= scrolled.hostRight && samePage(pageBefore, pageAfterScroll)), `a one-finger drag of ${need} px on empty scripts moved them ${scrolled.scrollX - scrollBefore.scrollX} px; the 3 is now at x ${Math.round(threeReached.x)}–${Math.round(threeReached.x + threeReached.width)}; the page did ${samePage(pageBefore, pageAfterScroll) ? 'not' : ''} scroll or zoom (${JSON.stringify(pageAfterScroll)})`)
+  record('edit:drag-scripts', (Math.abs(scrolled.scrollX - scrollBefore.scrollX - -need) < 12 && threeReached.x + threeReached.width <= scrolled.hostRight && samePage(pageBefore, pageAfterScroll)), `a one-finger drag of ${need} px on empty scripts moved them ${scrolled.scrollX - scrollBefore.scrollX} px; the 3 is now at x ${Math.round(threeReached.x)}–${Math.round(threeReached.x + threeReached.width)}; the page did ${samePage(pageBefore, pageAfterScroll) ? 'not' : ''} scroll or zoom (${JSON.stringify(pageAfterScroll)})`)
   await stage('scripts-dragged')
   await sim.tap(threeReached.cx, threeReached.cy)
   await sleep(800)
@@ -587,7 +621,27 @@ try {
   record('palette:tap-again-closes', !closedByTap.paletteOpen && closedByTap.category === null && closedByTap.scriptsWidth === beforePalette.scriptsWidth, `tapping Motion again closed the palette (open: ${closedByTap.paletteOpen}); the scripts area is ${closedByTap.scriptsWidth} px`)
   await tapRail('Motion')
   // Drag "stop Left motor · A" out of the palette and under "stop motors".
-  const source = await block({ flyout: true, type: 'robo_stop_motor' })
+  let source = await block({ flyout: true, type: 'robo_stop_motor' })
+  // The palette is taller than a short (stacked) editor at a finger's scale: when the block is below the palette's
+  // visible part, scroll the palette the way a student does, with a vertical drag on its empty right-hand side.
+  let paletteScroll = 0
+  const paletteBox = await qa(() => { const flyout = document.querySelector('.robo-code-blockly .blocklyFlyout').getBoundingClientRect(); const host = document.querySelector('.robo-code-blockly').getBoundingClientRect(); return { x: flyout.x, right: flyout.right, top: Math.max(flyout.top, host.top), bottom: Math.min(flyout.bottom, host.bottom) } })
+  if (source && source.y + source.height > paletteBox.bottom - 24) {
+    paletteScroll = Math.round(source.y + source.height - paletteBox.bottom + 60)
+    // A spot on the palette's own background (not a block, not its scrollbar), low enough to drag up from.
+    const spot = await qa((box, need) => {
+      for (let y = Math.round(box.bottom - 30); y > box.top + need; y -= 6) {
+        for (let x = Math.round(box.right - 40); x > box.x + 40; x -= 8) {
+          if (document.elementFromPoint(x, y)?.classList.contains('blocklyFlyoutBackground')) return { x, y }
+        }
+      }
+      return null
+    }, paletteBox, paletteScroll)
+    if (spot) await touchDrag(line(spot, { x: spot.x, y: spot.y - paletteScroll }, 8), { stepMs: 45 })
+    await sleep(500)
+    source = await block({ flyout: true, type: 'robo_stop_motor' })
+  }
+  measured.paletteScroll = { box: paletteBox, scrolledBy: paletteScroll, sourceAfter: source && { y: Math.round(source.y), height: Math.round(source.height) } }
   const anchor = await block({ id: 'stop-before-wall:stop' })
   let dragIn = null
   if (source && anchor) {
@@ -603,13 +657,14 @@ try {
     const saved = (await programs())[0]
     const after = await wsState()
     dragIn = { added, samples: samples.length, pageStill: pageStill(samples, pageBefore) }
-    record('palette:drag-block-in', Boolean(added && added.under === 'stop-before-wall:stop' && saved.workspace.includes('"robo_stop_motor"') && !after.paletteOpen && pageStill(samples, pageBefore)), `a touch drag from the palette to under "stop motors" added "stop ${added?.text}" (snapped under ${added?.under}); saved (revision ${saved.revision}); the palette ${after.paletteOpen ? 'stayed open' : 'went back in as the drag began'}; the page ${pageStill(samples, pageBefore) ? 'never scrolled or zoomed' : 'DID scroll or zoom'} over ${samples.length} samples`)
+    record('palette:drag-block-in', Boolean(added && added.under === 'stop-before-wall:stop' && saved.workspace.includes('"robo_stop_motor"') && !after.paletteOpen && pageStill(samples, pageBefore)), `${paletteScroll ? `the palette was scrolled ${paletteScroll} px by a vertical drag to reach its last block; ` : ''}a touch drag from the palette to under "stop motors" added "stop ${added?.text}" (snapped under ${added?.under}); saved (revision ${saved.revision}); the palette ${after.paletteOpen ? 'stayed open' : 'went back in as the drag began'}; the page ${pageStill(samples, pageBefore) ? 'never scrolled or zoomed' : 'DID scroll or zoom'} over ${samples.length} samples`)
     await stage('block-dragged-in')
     // Delete: drag it onto the rail.
     const addedRect = await block({ id: added?.id })
     if (addedRect) {
       const hitOk = await qa((x, y, id) => { const el = document.elementFromPoint(x, y); const group = el?.closest('.blocklyDraggable'); return group?.getAttribute('data-id') === id }, addedRect.x + 16, addedRect.cy, added.id)
-      const railDrop = { x: 36, y: Math.round(anchor.y + 260) }
+      const railNow = (await wsState()).rail
+      const railDrop = { x: Math.round(railNow.x + railNow.width / 2), y: Math.round(railNow.y + Math.min(railNow.height / 2, 200)) }
       await qa(() => window.__qa.sample())
       await touchDrag(line({ x: addedRect.x + 16, y: addedRect.cy }, railDrop, 12), { stepMs: 40, holdEnd: 250 })
       await sleep(900)
@@ -622,7 +677,9 @@ try {
     }
   } else record('palette:drag-block-in', false, `could not find ${source ? '' : 'the palette block'}${anchor ? '' : ' the script block'}`)
   measured.dragIn = dragIn
-  // A dropdown: "forward ▾" → backward, then back to forward.
+  // A dropdown: "forward ▾" → backward, then back to forward. A palette still open (a failed drag) is put away first.
+  const openCategory = (await wsState()).category
+  if (openCategory) await tapRail(openCategory)
   const direction = await field('stop-before-wall:drive', 'DIRECTION')
   let menu = null
   if (direction && direction.x >= (await wsState()).scriptsLeft) {
@@ -647,7 +704,7 @@ try {
   await sleep(600)
   const renaming = await qa(() => { const input = document.querySelector('.robo-tab-rename'); return input ? { focused: document.activeElement === input, value: input.value, height: Math.round(input.getBoundingClientRect().height) } : null })
   const scriptsSpot = await wsState()
-  await sim.tap(Math.round((scriptsSpot.scriptsLeft + scriptsSpot.hostRight) / 2), Math.round(env.height - 200))
+  await sim.tap(Math.round((scriptsSpot.scriptsLeft + scriptsSpot.hostRight) / 2), Math.round(scriptsSpot.hostBottom - 60))
   await sleep(500)
   const tabName = await qa(() => document.querySelector('[role=tab][aria-selected=true]')?.textContent)
   record('tab:double-tap-rename', Boolean(renaming?.focused && renaming.value === 'Stop before the wall' && tabName === 'Stop before the wall' && (await page()).scale === 1), `a double tap on the tab opened its rename field (${renaming?.height} px tall, focused ${renaming?.focused}) without zooming the page; a tap on the scripts closed it, name kept ("${tabName}")`)

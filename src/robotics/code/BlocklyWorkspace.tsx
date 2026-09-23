@@ -7,7 +7,7 @@ import { compileContextFor, compileProgram } from '../program/compile'
 import { deviceOptions } from '../program/devices'
 import type { BlockDiagnostic, CompileResult, DiagnosticSeverity, RoboticsProgram } from '../program/types'
 import { DEVICE_FIELD_KINDS } from '../program/catalog/blocks'
-import { ensureBlocklyReady, setDeviceOptionsProvider, startScaleFor, workspaceOptions } from './blocklySetup'
+import { ensureBlocklyReady, setDeviceOptionsProvider, stackedLayout, startScaleFor, workspaceOptions } from './blocklySetup'
 import { saveWorkspace } from './programActions'
 
 /** Real edits rest this long before the workspace is written to the document. */
@@ -94,8 +94,10 @@ export const PALETTE_OPEN_MIN_WIDTH = 720
  * and nothing beside Sensing, and Blockly keeps a pinned palette's width reserved after it
  * closes, so the scripts stayed pushed off the editor's right edge.
  */
-export function paletteFloats(containerWidth: number): boolean {
-  return containerWidth < PALETTE_OPEN_MIN_WIDTH
+export function paletteFloats(containerWidth: number, stacked = stackedLayout()): boolean {
+  // Stacked in portrait the editor is full width but short, its rail two columns wide, and the
+  // Sensing palette at a finger's scale is over 500 px: pinned, it would leave the scripts a sliver.
+  return stacked || containerWidth < PALETTE_OPEN_MIN_WIDTH
 }
 
 /** Pins or floats the palette for the scripts area's width (a floating one is put away first). */
@@ -125,7 +127,7 @@ function placeScripts(workspace: Blockly.WorkspaceSvg) {
 function openPaletteIfRoomy(workspace: Blockly.WorkspaceSvg, container: HTMLElement | null, collapsed: boolean) {
   const toolbox = workspace.getToolbox()
   if (!toolbox) return
-  if (collapsed || (container?.clientWidth ?? 0) < PALETTE_OPEN_MIN_WIDTH) toolbox.clearSelection()
+  if (collapsed || paletteFloats(container?.clientWidth ?? 0)) toolbox.clearSelection()
   else if (!toolbox.getSelectedItem()) toolbox.selectItemByPosition(0)
 }
 

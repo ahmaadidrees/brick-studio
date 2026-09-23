@@ -1,0 +1,2820 @@
+{
+  "origin": "http://127.0.0.1:5248",
+  "at": "2026-09-23T12:55:46.865Z",
+  "device": {
+    "name": "iPad Air 11-inch (M4)",
+    "udid": "F219AEB2-3E29-41D4-91AB-6BA943B005D7",
+    "safari": "26.5"
+  },
+  "input": "W3C touch actions through safaridriver to Safari on the iOS Simulator; tap points from element rects, Blockly block and field rects (window.__robotics.codeWorkspace) and the studio projection (canvas)",
+  "env": {
+    "height": 1094,
+    "screen": [
+      820,
+      1180
+    ],
+    "maxTouchPoints": 5,
+    "coarse": true,
+    "dpr": 2,
+    "width": 820,
+    "anyCoarse": true,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+    "portrait": true,
+    "compact": true,
+    "hover": false
+  },
+  "passed": 39,
+  "total": 39,
+  "results": [
+    {
+      "id": "env:touch-portrait",
+      "ok": true,
+      "detail": "the page sees a touch device in portrait: pointer coarse true, hover false, maxTouchPoints 5, 820×1094 CSS px of a 820×1180 screen (Safari's bars take the rest)"
+    },
+    {
+      "id": "build:rover-named",
+      "ok": true,
+      "detail": "one creation \"Mars buggy\" over 9 bricks (Axles and wheels on both motors, so it can roll); the name field was focused by a tap and filled by a script input event, \"Not now\" tapped"
+    },
+    {
+      "id": "studio:long-press-selects-nothing",
+      "ok": true,
+      "detail": "a 0.8 s press on \"✓9 bricks attached · 1 hub, 2 motors, 2 …\" selected nothing (studio -webkit-user-select none; the panel's name field stays text)"
+    },
+    {
+      "id": "open:code-button",
+      "ok": true,
+      "detail": "tapped \"Code\" (61×44 px) in the creation panel; the Code view opened"
+    },
+    {
+      "id": "first-run:state",
+      "ok": true,
+      "detail": "first run: 1 script, palette collapsed, 9 rail rows, goal \"Try it: change 3 to 6. Does it stop earlier or later?\""
+    },
+    {
+      "id": "first-run:controls-reachable",
+      "ok": true,
+      "detail": "every Code control is on screen and on top at the tap point; the nine rail rows end at y 450 of 1094 (rows 64×50); all at least 44 px"
+    },
+    {
+      "id": "first-run:controls-above-bottom-edge",
+      "ok": true,
+      "detail": "every control is at least 16 px above the bottom edge (closest: 71 px)"
+    },
+    {
+      "id": "layout:portrait-stacked",
+      "ok": true,
+      "detail": "portrait: the editor spans the top (820×515 at y 64) and the stage the bottom (820×515 at y 579); framing insets top 674, left 0, bottom 51 px"
+    },
+    {
+      "id": "first-run:page-inside-viewport",
+      "ok": true,
+      "detail": "the Code view fits the 820×1094 Safari viewport (surfaces outside it: none); visual viewport offset 0, page scroll 0: nothing sits under Safari's bars"
+    },
+    {
+      "id": "first-run:goal-number-on-screen",
+      "ok": true,
+      "detail": "the goal says \"change 3 to 6\"; the 3 is at x 682–692 while the scripts area ends at x 820 (script 108 px wide at scale 1 in a 679 px scripts area)"
+    },
+    {
+      "id": "stage:wall-framed",
+      "ok": true,
+      "detail": "the test plate's wall spans x 390–628, y 771–905 on screen; the stage's free area is x 0–820, y 738–1043"
+    },
+    {
+      "id": "run:drives-and-stops-before-wall",
+      "ok": true,
+      "detail": "tapped Run: top speed 3.34 studs/s; at rest the sensor reads 2.47 studs (never under 2.47): stopped before the wall"
+    },
+    {
+      "id": "run:readings-update",
+      "ok": true,
+      "detail": "the Front sensor chip went through 16 values (12.0 studs → 2.5 studs); Speed chip \"0.0 st/s\"; status \"Done · 4.1 s\""
+    },
+    {
+      "id": "run:stage-bar-steady",
+      "ok": true,
+      "detail": "while \"Running · 1.0 s\" shows, Reset stays at {\"y\":589,\"x\":726,\"width\":84,\"height\":44} (was {\"y\":589,\"x\":726,\"width\":84,\"height\":44}), Test plate / My world at {\"y\":589,\"x\":630,\"width\":87,\"height\":44} (was {\"y\":589,\"x\":630,\"width\":87,\"height\":44}), the readings start at y 644 (was 644)"
+    },
+    {
+      "id": "run:rover-in-view-at-rest",
+      "ok": true,
+      "detail": "at rest the chassis centre is at (436, 890); the stage's free area is x 0–820, y 738–1043"
+    },
+    {
+      "id": "reset:built-pose",
+      "ok": true,
+      "detail": "tapped Reset: every body within 0.0062 of its built pose, sensor 12 studs, status \"Ready\""
+    },
+    {
+      "id": "edit:drag-scripts",
+      "ok": true,
+      "detail": "a one-finger drag of 40 px on empty scripts moved them -40 px; the 3 is now at x 642–652; the page did not scroll or zoom ({\"scrollY\":0,\"scrollX\":0,\"offsetTop\":0,\"offsetLeft\":0,\"docScrollTop\":0,\"bodyScrollTop\":0,\"scale\":1})"
+    },
+    {
+      "id": "edit:tap-number-opens-prompt",
+      "ok": true,
+      "detail": "tapping the 3 (its round block is 40×32 px on screen) opened Blockly's own modal \"Change value:\" prompt (on a touch device Blockly edits numbers in a <dialog>, not in place): input 266×44 (18px, type text, inputmode null), OK 88×44, Cancel 88×44"
+    },
+    {
+      "id": "edit:prompt-targets-44",
+      "ok": true,
+      "detail": "the prompt's input, OK and Cancel are 44, 44 and 44 px tall"
+    },
+    {
+      "id": "edit:number-saved",
+      "ok": true,
+      "detail": "after OK the field reads 6; saved as revision 1 (was 0); the prompt closed"
+    },
+    {
+      "id": "edit:stops-earlier",
+      "ok": true,
+      "detail": "with 6 the rover rests 5.48 studs from the wall (with 3: 2.47)"
+    },
+    {
+      "id": "palette:opens-over-scripts",
+      "ok": true,
+      "detail": "tapping Motion opened a 353 px palette over the scripts; the scripts area stays 679 px (was 679) and the script stays at x 177"
+    },
+    {
+      "id": "palette:tap-again-closes",
+      "ok": true,
+      "detail": "tapping Motion again closed the palette (open: false); the scripts area is 679 px"
+    },
+    {
+      "id": "palette:drag-block-in",
+      "ok": true,
+      "detail": "the palette was scrolled 150 px by a vertical drag to reach its last block; a touch drag from the palette to under \"stop motors\" added \"stop Left motor · A\" (snapped under stop-before-wall:stop); saved (revision 3); the palette went back in as the drag began; the page never scrolled or zoomed over 18 samples"
+    },
+    {
+      "id": "palette:drag-block-out-deletes",
+      "ok": true,
+      "detail": "a touch drag of that block (grabbed on the block: true) onto the rail deleted it; saved (revision 5); the page never scrolled or zoomed"
+    },
+    {
+      "id": "edit:dropdown-by-tap",
+      "ok": true,
+      "detail": "tapping \"forward ▾\" (98×36 px) opened a menu of \"forward\" 103×44, \"backward\" 103×44; tapping \"backward\" set backward"
+    },
+    {
+      "id": "tab:double-tap-rename",
+      "ok": true,
+      "detail": "a double tap on the tab opened its rename field (44 px tall, focused true) without zooming the page; a tap on the scripts closed it, name kept (\"Stop before the wall\")"
+    },
+    {
+      "id": "program:joystick-drive-added",
+      "ok": true,
+      "detail": "\"+\" then \"Joystick drive\": tabs Stop before the wall | Joystick drive (active); menu items stop-before-wall 276×67, joystick-drive 276×83, blank 276×51"
+    },
+    {
+      "id": "program:script-in-view-after-switch",
+      "ok": true,
+      "detail": "switching programs with the palette open: the palette went in, and \"when joystick moves\" is at x 177–350 in a scripts area x 141–820"
+    },
+    {
+      "id": "joystick:drives",
+      "ok": true,
+      "detail": "a touch drag of the knob 14 px up read \"up 9, right 0\", \"up 29, right 0\", \"up 41, right 0\" while held; the rover reached 3.38 studs/s and moved 3.4 studs (wall 12.0 → 8.6 studs)"
+    },
+    {
+      "id": "joystick:release-stops",
+      "ok": true,
+      "detail": "lifting the finger centred the stick (\"up 0, right 0\") and the motors stopped (0, 0 %)"
+    },
+    {
+      "id": "joystick:page-still",
+      "ok": true,
+      "detail": "the page never scrolled or zoomed during the joystick drag (19 samples) and no text was selected"
+    },
+    {
+      "id": "keys:hold-selects-nothing",
+      "ok": true,
+      "detail": "holding ↑ selected no text and raised no callout"
+    },
+    {
+      "id": "keys:hold-up",
+      "ok": true,
+      "detail": "holding ↑ (48×44 px) lit it for 9 samples and drove 8.91 studs/s (wall 12.0 → 3.4); lifting stopped the motors"
+    },
+    {
+      "id": "space:my-world",
+      "ok": true,
+      "detail": "tapped \"My world\": the stage is in myWorld (props: none), the creation's run space is saved as myWorld"
+    },
+    {
+      "id": "space:test-plate",
+      "ok": true,
+      "detail": "tapped \"Test plate\": the stage is in testPlate (props: wall), saved as testPlate"
+    },
+    {
+      "id": "back:construction-unchanged",
+      "ok": true,
+      "detail": "tapped \"Back to build\": Code view closed, stage closed, creation panel back; bricks, cables, device names and the creation exactly as built (run space testPlate → testPlate)"
+    },
+    {
+      "id": "back:programs-kept",
+      "ok": true,
+      "detail": "both programs kept: Stop before the wall r7, Joystick drive r0"
+    },
+    {
+      "id": "page-errors",
+      "ok": true,
+      "detail": "no uncaught errors or rejections on the page"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "harness",
+      "id": "prompt-typing-not-drivable",
+      "detail": "WebDriver typing into the focused prompt fired key events but inserted no text (still \"3\"); the 6 was entered with a script-dispatched input event, then OK was tapped. The software keyboard was not exercised (the simulator has a hardware keyboard connected)."
+    }
+  ],
+  "measured": {
+    "firstRun": {
+      "workspace": {
+        "scale": 1,
+        "scriptsLeft": 141,
+        "scriptsWidth": 679,
+        "script": {
+          "x": 177,
+          "height": 72.5,
+          "y": 212,
+          "cy": 248.25,
+          "width": 108,
+          "type": "robo_when_run",
+          "cx": 231
+        }
+      },
+      "fields": {
+        "blockTextPx": 16,
+        "fields": [
+          {
+            "text": "forward",
+            "block": "robo_drive",
+            "height": 36,
+            "width": 98,
+            "field": "DIRECTION"
+          },
+          {
+            "text": "40",
+            "block": "robo_number",
+            "height": 32,
+            "width": 42,
+            "field": "NUM"
+          },
+          {
+            "text": "Front sensor · C",
+            "block": "robo_sensor_sees",
+            "height": 36,
+            "width": 156,
+            "field": "SENSOR"
+          },
+          {
+            "text": "3",
+            "block": "robo_number",
+            "height": 32,
+            "width": 40,
+            "field": "NUM"
+          }
+        ]
+      },
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "controls": {
+        "back": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 129,
+          "height": 44,
+          "bottomGap": 980
+        },
+        "tab": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 151,
+          "height": 44,
+          "bottomGap": 920
+        },
+        "add": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 44,
+          "height": 44,
+          "bottomGap": 920
+        },
+        "run": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 71,
+          "height": 44,
+          "bottomGap": 461
+        },
+        "stop": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 74,
+          "height": 44,
+          "bottomGap": 461
+        },
+        "reset": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 84,
+          "height": 44,
+          "bottomGap": 461
+        },
+        "testPlate": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 90,
+          "height": 44,
+          "bottomGap": 461
+        },
+        "myWorld": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 87,
+          "height": 44,
+          "bottomGap": 461
+        },
+        "frame": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 44,
+          "height": 44,
+          "bottomGap": 71
+        },
+        "zoomOut": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 44,
+          "height": 44,
+          "bottomGap": 540
+        },
+        "zoomIn": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 44,
+          "height": 44,
+          "bottomGap": 540
+        },
+        "recenter": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 44,
+          "height": 44,
+          "bottomGap": 540
+        },
+        "moreBlocks": {
+          "inView": true,
+          "onTop": true,
+          "hitBy": null,
+          "width": 60,
+          "height": 44,
+          "bottomGap": 536
+        }
+      },
+      "railRows": [
+        {
+          "bottom": 242,
+          "width": 64,
+          "name": "Events",
+          "height": 50
+        },
+        {
+          "bottom": 242,
+          "width": 64,
+          "name": "Motion",
+          "height": 50
+        },
+        {
+          "bottom": 294,
+          "width": 64,
+          "name": "Sensing",
+          "height": 50
+        },
+        {
+          "bottom": 294,
+          "width": 64,
+          "name": "Input",
+          "height": 50
+        },
+        {
+          "bottom": 346,
+          "width": 64,
+          "name": "Light",
+          "height": 50
+        },
+        {
+          "bottom": 346,
+          "width": 64,
+          "name": "Control",
+          "height": 50
+        },
+        {
+          "bottom": 398,
+          "width": 64,
+          "name": "Logic",
+          "height": 50
+        },
+        {
+          "bottom": 398,
+          "width": 64,
+          "name": "Math",
+          "height": 50
+        },
+        {
+          "bottom": 450,
+          "width": 64,
+          "name": "Variables",
+          "height": 50
+        }
+      ]
+    },
+    "split": {
+      "stage": {
+        "y": 579,
+        "width": 820,
+        "height": 515,
+        "x": 0,
+        "right": 820,
+        "bottom": 1094
+      },
+      "insets": {
+        "right": 0,
+        "top": 674,
+        "left": 0,
+        "bottom": 51
+      },
+      "canvas": {
+        "y": 64,
+        "width": 820,
+        "height": 1030,
+        "x": 0,
+        "right": 820,
+        "bottom": 1094
+      },
+      "editor": {
+        "y": 64,
+        "width": 820,
+        "height": 515,
+        "x": 0,
+        "right": 820,
+        "bottom": 579
+      },
+      "stacked": true
+    },
+    "framing": {
+      "wall": {
+        "free": {
+          "right": 820,
+          "top": 738,
+          "left": 0,
+          "bottom": 1043
+        },
+        "right": 628,
+        "top": 771,
+        "left": 390,
+        "bottom": 905
+      },
+      "plan": {
+        "cameraDistance": null,
+        "insets": {
+          "right": 0,
+          "top": 674,
+          "left": 0,
+          "bottom": 51
+        },
+        "offset": {
+          "x": 0,
+          "y": 311.5
+        },
+        "drawnX": [
+          128,
+          684
+        ],
+        "drawnY": [
+          751,
+          1091
+        ],
+        "scale": 1,
+        "plannedY": [
+          751,
+          1091
+        ],
+        "free": {
+          "left": 0,
+          "right": 820,
+          "top": 674,
+          "height": 305,
+          "width": 820,
+          "bottom": 979
+        },
+        "plannedX": [
+          128,
+          684
+        ],
+        "plannedDistance": 50.4
+      }
+    },
+    "firstRunTrace": [
+      "0.00s d=12.00 v=0.00 chip=12.0 studs",
+      "0.16s d=11.86 v=1.68 chip=11.9 studs",
+      "0.38s d=11.36 v=2.72 chip=11.4 studs",
+      "0.57s d=10.77 v=3.09 chip=10.8 studs",
+      "0.78s d=10.14 v=3.23 chip=10.1 studs",
+      "0.99s d=9.43 v=3.29 chip=9.4 studs",
+      "1.41s d=8.05 v=3.33 chip=8.1 studs",
+      "1.63s d=7.32 v=3.33 chip=7.3 studs",
+      "1.82s d=6.66 v=3.34 chip=6.7 studs",
+      "2.02s d=5.99 v=3.33 chip=6.0 studs",
+      "2.24s d=5.27 v=3.33 chip=5.3 studs",
+      "2.46s d=4.55 v=3.33 chip=4.5 studs",
+      "2.66s d=3.88 v=3.33 chip=3.9 studs",
+      "2.88s d=3.16 v=3.33 chip=3.2 studs",
+      "3.08s d=2.64 v=1.48 chip=2.6 studs",
+      "3.27s d=2.48 v=0.29 chip=2.5 studs",
+      "3.49s d=2.47 v=0.00 chip=2.5 studs"
+    ],
+    "readingsHeight": {
+      "ready": 94,
+      "running": 94
+    },
+    "prompt": {
+      "ok": {
+        "y": 567,
+        "cx": 499,
+        "height": 44,
+        "x": 455,
+        "cy": 588.5,
+        "width": 88
+      },
+      "input": {
+        "x": 277,
+        "height": 44,
+        "inputmode": null,
+        "y": 515,
+        "cy": 536.5,
+        "width": 266,
+        "fontSize": "18px",
+        "value": "3",
+        "type": "text",
+        "cx": 410,
+        "focused": true
+      },
+      "cancel": {
+        "y": 567,
+        "cx": 403,
+        "height": 44,
+        "x": 359,
+        "cy": 588.5,
+        "width": 88
+      },
+      "open": true,
+      "rect": {
+        "y": 467,
+        "cx": 410,
+        "height": 161,
+        "x": 260,
+        "cy": 547,
+        "width": 300
+      },
+      "label": "Change value:",
+      "modal": true
+    },
+    "stopsAt": {
+      "with3": 2.47,
+      "with6": 5.48
+    },
+    "paletteScroll": {
+      "box": {
+        "top": 184,
+        "x": 141,
+        "right": 494,
+        "bottom": 578
+      },
+      "scrolledBy": 150,
+      "sourceAfter": {
+        "y": 510,
+        "height": 60
+      }
+    },
+    "dragIn": {
+      "added": {
+        "id": "3e1}A!HAer!x]jY*j;,q",
+        "text": "Left motor · A",
+        "under": "stop-before-wall:stop"
+      },
+      "samples": 18,
+      "pageStill": true
+    },
+    "dropdown": {
+      "shown": true,
+      "items": [
+        {
+          "cx": 279.4453125,
+          "height": 44,
+          "text": "forward",
+          "width": 103,
+          "cy": 363,
+          "fontSize": "13px"
+        },
+        {
+          "cx": 279.4453125,
+          "height": 44,
+          "text": "backward",
+          "width": 103,
+          "cy": 407,
+          "fontSize": "13px"
+        }
+      ]
+    },
+    "fieldsAfterEdit": {
+      "blockTextPx": 16,
+      "fields": [
+        {
+          "text": "forward",
+          "block": "robo_drive",
+          "height": 36,
+          "width": 98,
+          "field": "DIRECTION"
+        },
+        {
+          "text": "40",
+          "block": "robo_number",
+          "height": 32,
+          "width": 42,
+          "field": "NUM"
+        },
+        {
+          "text": "Front sensor · C",
+          "block": "robo_sensor_sees",
+          "height": 36,
+          "width": 156,
+          "field": "SENSOR"
+        },
+        {
+          "text": "6",
+          "block": "robo_number",
+          "height": 32,
+          "width": 40,
+          "field": "NUM"
+        }
+      ]
+    },
+    "joystick": {
+      "stickRect": {
+        "y": 903,
+        "x": 688,
+        "width": 120,
+        "height": 120
+      },
+      "axesWhileHeld": [
+        "up 9, right 0",
+        "up 29, right 0",
+        "up 41, right 0"
+      ],
+      "heldSamples": 12,
+      "topSpeed": 3.38,
+      "sensor": [
+        12,
+        8.57
+      ],
+      "movedStuds": 3.4325496319218702,
+      "pageStill": true,
+      "samples": [
+        "0.71s up 9, right 0 v=0.00 d=12.00",
+        "0.81s up 29, right 0 v=0.12 d=12.00",
+        "0.92s up 41, right 0 v=0.74 d=11.96",
+        "1.02s up 41, right 0 v=1.68 d=11.83",
+        "1.12s up 41, right 0 v=2.31 d=11.63",
+        "1.22s up 41, right 0 v=2.72 d=11.38",
+        "1.32s up 41, right 0 v=2.97 d=11.09",
+        "1.42s up 41, right 0 v=3.14 d=10.78",
+        "1.52s up 41, right 0 v=3.25 d=10.46",
+        "1.62s up 41, right 0 v=3.31 d=10.14",
+        "1.72s up 41, right 0 v=3.36 d=9.80",
+        "1.83s up 41, right 0 v=3.38 d=9.41",
+        "1.94s up 0, right 0 v=3.17 d=9.04",
+        "2.05s up 0, right 0 v=1.74 d=8.78",
+        "2.15s up 0, right 0 v=0.91 d=8.66",
+        "2.25s up 0, right 0 v=0.39 d=8.59",
+        "2.35s up 0, right 0 v=0.06 d=8.57",
+        "2.45s up 0, right 0 v=0.00 d=8.57",
+        "2.65s up 0, right 0 v=0.00 d=8.57"
+      ]
+    },
+    "keys": {
+      "upKey": {
+        "y": 883,
+        "x": 708,
+        "width": 48,
+        "height": 44
+      },
+      "heldSamples": 9,
+      "topSpeed": 8.91,
+      "sensor": [
+        12,
+        3.43
+      ]
+    }
+  },
+  "smallTargets": [],
+  "smallText": [
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "This browser only"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Scene"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Character"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "People"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Build"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Explore"
+    }
+  ],
+  "stages": [
+    {
+      "name": "build-panel",
+      "shot": "01-build-panel.jpg",
+      "layout": {
+        "rects": {
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 880
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "code-first-run",
+      "shot": "02-code-first-run.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "running",
+      "shot": "03-running.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "stopped-before-wall",
+      "shot": "04-stopped-before-wall.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ],
+      "restOnScreen": {
+        "y": 890,
+        "freeLeft": 0,
+        "freeRight": 820,
+        "x": 436,
+        "freeTop": 738,
+        "freeBottom": 1043
+      }
+    },
+    {
+      "name": "scripts-dragged",
+      "shot": "05-scripts-dragged.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "change-value-prompt",
+      "shot": "06-change-value-prompt.jpg",
+      "layout": {
+        "rects": {
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "prompt": {
+            "y": 467,
+            "x": 260,
+            "width": 300,
+            "height": 161
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ],
+      "prompt": {
+        "ok": {
+          "y": 567,
+          "cx": 499,
+          "height": 44,
+          "x": 455,
+          "cy": 588.5,
+          "width": 88
+        },
+        "input": {
+          "x": 277,
+          "height": 44,
+          "inputmode": null,
+          "y": 515,
+          "cy": 536.5,
+          "width": 266,
+          "fontSize": "18px",
+          "value": "3",
+          "type": "text",
+          "cx": 410,
+          "focused": true
+        },
+        "cancel": {
+          "y": 567,
+          "cx": 403,
+          "height": 44,
+          "x": 359,
+          "cy": 588.5,
+          "width": 88
+        },
+        "open": true,
+        "rect": {
+          "y": 467,
+          "cx": 410,
+          "height": 161,
+          "x": 260,
+          "cy": 547,
+          "width": 300
+        },
+        "label": "Change value:",
+        "modal": true
+      }
+    },
+    {
+      "name": "stops-earlier",
+      "shot": "07-stops-earlier.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "palette-motion",
+      "shot": "08-palette-motion.jpg",
+      "layout": {
+        "rects": {
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "palette": {
+            "y": 184,
+            "x": 141,
+            "width": 353,
+            "height": 394
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "block-dragged-in",
+      "shot": "09-block-dragged-in.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "block-dragged-out",
+      "shot": "10-block-dragged-out.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "dropdown-menu",
+      "shot": "11-dropdown-menu.jpg",
+      "layout": {
+        "rects": {
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "dropdown": {
+            "y": 336,
+            "x": 223,
+            "width": 113,
+            "height": 98
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ],
+      "menu": {
+        "shown": true,
+        "items": [
+          {
+            "cx": 279.4453125,
+            "height": 44,
+            "text": "forward",
+            "width": 103,
+            "cy": 363,
+            "fontSize": "13px"
+          },
+          {
+            "cx": 279.4453125,
+            "height": 44,
+            "text": "backward",
+            "width": 103,
+            "cy": 407,
+            "fontSize": "13px"
+          }
+        ]
+      }
+    },
+    {
+      "name": "starters-menu",
+      "shot": "12-starters-menu.jpg",
+      "layout": {
+        "rects": {
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "stageFoot": {
+            "y": 967,
+            "x": 0,
+            "width": 820,
+            "height": 76
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "starters": {
+            "y": 180,
+            "x": 221,
+            "width": 290,
+            "height": 240
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ],
+      "starters": [
+        {
+          "height": 67,
+          "starter": "stop-before-wall",
+          "width": 276,
+          "right": 504,
+          "onTop": true
+        },
+        {
+          "height": 83,
+          "starter": "joystick-drive",
+          "width": 276,
+          "right": 504,
+          "onTop": true
+        },
+        {
+          "height": 51,
+          "starter": "blank",
+          "width": 276,
+          "right": 504,
+          "onTop": true
+        }
+      ]
+    },
+    {
+      "name": "joystick-program",
+      "shot": "13-joystick-program.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 833,
+            "x": 0,
+            "width": 820,
+            "height": 210
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ],
+      "stick": {
+        "y": 903,
+        "x": 688,
+        "width": 120,
+        "height": 120
+      }
+    },
+    {
+      "name": "keys",
+      "shot": "14-keys.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 813,
+            "x": 0,
+            "width": 820,
+            "height": 230
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "my-world",
+      "shot": "15-my-world.jpg",
+      "layout": {
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "goal": {
+            "y": 1043,
+            "x": 0,
+            "width": 820,
+            "height": 51
+          },
+          "moreBlocks": {
+            "y": 514,
+            "x": 6,
+            "width": 60,
+            "height": 44
+          },
+          "stageBar": {
+            "y": 579,
+            "x": 0,
+            "width": 820,
+            "height": 65
+          },
+          "stageFoot": {
+            "y": 833,
+            "x": 0,
+            "width": 820,
+            "height": 210
+          },
+          "tabs": {
+            "y": 121,
+            "x": 0,
+            "width": 820,
+            "height": 63
+          },
+          "rail": {
+            "y": 184,
+            "x": 0,
+            "width": 141,
+            "height": 394
+          },
+          "codeHead": {
+            "y": 64,
+            "x": 0,
+            "width": 820,
+            "height": 57
+          },
+          "scripts": {
+            "y": 184,
+            "x": 0,
+            "width": 820,
+            "height": 394
+          },
+          "zoom": {
+            "y": 506,
+            "x": 662,
+            "width": 144,
+            "height": 52
+          },
+          "readings": {
+            "y": 644,
+            "x": 0,
+            "width": 820,
+            "height": 94
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    },
+    {
+      "name": "back-to-build",
+      "shot": "16-back-to-build.jpg",
+      "layout": {
+        "rects": {
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 880
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          }
+        },
+        "viewport": {
+          "width": 820,
+          "dpr": 2,
+          "height": 1094
+        },
+        "outside": [],
+        "page": {
+          "scrollY": 0,
+          "scrollX": 0,
+          "offsetTop": 0,
+          "offsetLeft": 0,
+          "docScrollTop": 0,
+          "bodyScrollTop": 0,
+          "scale": 1
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        }
+      ]
+    }
+  ]
+}

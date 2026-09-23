@@ -103,6 +103,11 @@
   .robotics-field input { min-height: 44px; font-size: 16px; }
   .robotics-lines, .robotics-parts, .robotics-selected { font-size: 13px; }
   .robotics-card-head span, .robotics-structure p { font-size: 13px; }
+  /* No panel text under 13 px on touch: the labels ("Runs", "Wiring", "Nudge", a motor's name), the notes
+     ("mechanics only · no code yet", "Built pose"), the pills and the hub's port chips. */
+  .robotics-card, .robotics-panel, .robotics-card.compact, .robotics-panel.compact { font-size: 13px; }
+  .robotics-field, .robotics-pill, .robotics-nudge header span, .robotics-nudge-status, .robotics-parts.compact li, .robotics-wiring-line { font-size: 13px; }
+  .robotics-port-chip { width: 24px; height: 24px; font-size: 13px; }
 }
 
 /* In the Code view a studio message sits at the bottom of the stage, never over the stage bar or the editor. */
