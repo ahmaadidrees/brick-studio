@@ -5,7 +5,7 @@
     "1366x768 (journey and screens)",
     "1024x768 (screens)"
   ],
-  "at": "2026-09-23T16:17:33.993Z",
+  "at": "2026-09-23T16:51:19.658Z",
   "passed": 116,
   "failed": 0,
   "journey": [
@@ -19,7 +19,7 @@
         "rotation": 2
       },
       "placed": {
-        "id": "brick-1790180216494-rwiueq",
+        "id": "brick-1790182241852-mi22nh",
         "partId": "robo_motor",
         "x": 28,
         "y": 1,
@@ -38,7 +38,7 @@
         "rotation": 0
       },
       "placed": {
-        "id": "brick-1790180218294-bvwjzs",
+        "id": "brick-1790182243652-qcigve",
         "partId": "robo_axle_short",
         "x": 34,
         "y": 0,
@@ -57,7 +57,7 @@
         "rotation": 0
       },
       "placed": {
-        "id": "brick-1790180219427-pluiw2",
+        "id": "brick-1790182244767-l5wcmt",
         "partId": "robo_axle_short",
         "x": 26,
         "y": 0,
@@ -76,7 +76,7 @@
         "rotation": 0
       },
       "placed": {
-        "id": "brick-1790180220545-4hxc3u",
+        "id": "brick-1790182245885-p2hixi",
         "partId": "robo_wheel",
         "x": 36,
         "y": 0,
@@ -95,7 +95,7 @@
         "rotation": 0
       },
       "placed": {
-        "id": "brick-1790180221659-a1v6i5",
+        "id": "brick-1790182247001-7lb29i",
         "partId": "robo_wheel",
         "x": 25,
         "y": 0,
@@ -144,7 +144,7 @@
     {
       "id": "ghost:plate (drawer)",
       "ok": true,
-      "detail": "plate (drawer): the ghost shows plate_6x8 at 28,0,26 r0 under the mouse at (839, 358)"
+      "detail": "plate (drawer): the ghost shows plate_6x8 at 28,0,26 r0 under the mouse at (839, 356)"
     },
     {
       "id": "placed:plate (drawer)",
@@ -524,12 +524,12 @@
     {
       "id": "1366.gate-not-ready",
       "ok": true,
-      "detail": "1366: Try it is off; \"Add a sensor so it sees who walks up.\""
+      "detail": "1366: Try it is off; \"Add a sensor so it can see.\""
     },
     {
       "id": "1366.gate.words",
       "ok": true,
-      "detail": "no developer words and no port letters in 194 characters"
+      "detail": "no developer words and no port letters in 184 characters"
     },
     {
       "id": "1366.gate.targets",
@@ -659,12 +659,12 @@
     {
       "id": "1024.gate-not-ready",
       "ok": true,
-      "detail": "1024: Try it is off; \"Add a sensor so it sees who walks up.\""
+      "detail": "1024: Try it is off; \"Add a sensor so it can see.\""
     },
     {
       "id": "1024.gate.words",
       "ok": true,
-      "detail": "no developer words and no port letters in 194 characters"
+      "detail": "no developer words and no port letters in 184 characters"
     },
     {
       "id": "1024.gate.targets",

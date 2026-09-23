@@ -1,0 +1,1354 @@
+{
+  "harness": "scripts/qa/robotics-cp2-wiring.mjs",
+  "origin": "http://127.0.0.1:5253",
+  "viewport": "1366x768",
+  "ranAt": "2026-09-23T16:38:29.826Z",
+  "passed": 53,
+  "failed": 0,
+  "results": [
+    {
+      "id": "W0.more-has-wiring-toggle",
+      "ok": true,
+      "detail": "the robot panel’s More shows \"Wiring: assisted / manual\", assisted pressed"
+    },
+    {
+      "id": "W0.left-motor-A",
+      "ok": true,
+      "detail": "assisted: Left motor connected to port A"
+    },
+    {
+      "id": "W0.sensor-C",
+      "ok": true,
+      "detail": "assisted: Front sensor connected to port C"
+    },
+    {
+      "id": "W0.section",
+      "ok": true,
+      "detail": "cables: [\"A\",\"B\",\"C\"]"
+    },
+    {
+      "id": "W0.cables-drawn",
+      "ok": true,
+      "detail": "3 cables drawn, 0 loose ends, none lit"
+    },
+    {
+      "id": "W0.cables-lifted",
+      "ok": true,
+      "detail": "every cable arcs above both of its ends (lifts 1.68, 1.68, 1.46)"
+    },
+    {
+      "id": "W1.hub-selected",
+      "ok": true,
+      "detail": "clicking the hub at (617, 361) selects it (brick-1790181495515-ejrek4)"
+    },
+    {
+      "id": "W1.hub-ports",
+      "ok": true,
+      "detail": "hub inspector: ALeft motor | BRight motor | CFront sensor | DPort D · free"
+    },
+    {
+      "id": "W1.port-selects-device",
+      "ok": true,
+      "detail": "clicking port C in the hub list selects the front sensor; its inspector says Port C"
+    },
+    {
+      "id": "W1.sensor-moved",
+      "ok": true,
+      "detail": "sensor on D; toast: Front sensor moved to port D. Port C is free again."
+    },
+    {
+      "id": "W2.motor-selected",
+      "ok": true,
+      "detail": "clicking the left motor at (520, 380) selects it"
+    },
+    {
+      "id": "W2.inspector-port-A",
+      "ok": true,
+      "detail": "inspector: Port A; chips A:this B:used C:free D:used"
+    },
+    {
+      "id": "W2.reading-stopped",
+      "ok": true,
+      "detail": "Right now: Stopped"
+    },
+    {
+      "id": "W2.block-label",
+      "ok": true,
+      "detail": "block: run Left motor · A ▾ at 40 %"
+    },
+    {
+      "id": "W2.cable-lit",
+      "ok": true,
+      "detail": "the selected motor’s cable is the one lit"
+    },
+    {
+      "id": "W2.moved-to-C",
+      "ok": true,
+      "detail": "section: left motor on C; inspector: Port C"
+    },
+    {
+      "id": "W2.toast",
+      "ok": true,
+      "detail": "toast: Left motor moved to port C. Port A is free again."
+    },
+    {
+      "id": "W2.cable-redrawn",
+      "ok": true,
+      "detail": "the cable now runs to port C, still lit"
+    },
+    {
+      "id": "W2.undo-label",
+      "ok": true,
+      "detail": "history: Move Left motor to port C"
+    },
+    {
+      "id": "W2.block-follows",
+      "ok": true,
+      "detail": "block: run Left motor · C ▾ at 40 %"
+    },
+    {
+      "id": "W3.unplugged",
+      "ok": true,
+      "detail": "section: null; inspector: Unplugged · No power"
+    },
+    {
+      "id": "W3.not-plugged-in-pill",
+      "ok": true,
+      "detail": "block: run Left motor ▾ at 40 %Not plugged in"
+    },
+    {
+      "id": "W3.loose-stub",
+      "ok": true,
+      "detail": "the scene draws a loose cable with a red plug and no cable to the hub"
+    },
+    {
+      "id": "W3.toast",
+      "ok": true,
+      "detail": "toast: Left motor is unplugged. Blocks that use it show “Not plugged in”."
+    },
+    {
+      "id": "W3.panel-row",
+      "ok": true,
+      "detail": "the creation panel row says Not plugged in"
+    },
+    {
+      "id": "W4.plugged",
+      "ok": true,
+      "detail": "section: A; toast: Left motor connected to port A."
+    },
+    {
+      "id": "W4.stub-gone",
+      "ok": true,
+      "detail": "the loose end is gone; the cable is back"
+    },
+    {
+      "id": "W5.swapped",
+      "ok": true,
+      "detail": "left on B, right on A"
+    },
+    {
+      "id": "W5.toast",
+      "ok": true,
+      "detail": "toast: Swapped ports. Left motor is on port B, Right motor is on port A."
+    },
+    {
+      "id": "W5.label",
+      "ok": true,
+      "detail": "history: Swap ports of Left motor and Right motor"
+    },
+    {
+      "id": "W6.renamed",
+      "ok": true,
+      "detail": "devices: {\"brick-1790181496545-gevlg7\":{\"name\":\"Big wheel\"}}"
+    },
+    {
+      "id": "W6.label-and-toast",
+      "ok": true,
+      "detail": "history: Rename Left motor to Big wheel; toast: Left motor is now called Big wheel. Blocks that use it show the new name."
+    },
+    {
+      "id": "W6.block-and-panel",
+      "ok": true,
+      "detail": "block: run Big wheel · B ▾ at 40 %"
+    },
+    {
+      "id": "W7.live-reading",
+      "ok": true,
+      "detail": "Right now while the nudge runs: 40 % · output at 124°"
+    },
+    {
+      "id": "W7.edit-retires-run",
+      "ok": true,
+      "detail": "the wiring edit retired the running nudge; the studio shows the built pose (the motor tests say \"Stopped\")"
+    },
+    {
+      "id": "W7.reading-back-to-rest",
+      "ok": true,
+      "detail": "Right now after the run: Stopped"
+    },
+    {
+      "id": "W8.manual",
+      "ok": true,
+      "detail": "mode manual; toast: Wiring: manual. New parts wait for you to plug them in."
+    },
+    {
+      "id": "W8.light-unplugged",
+      "ok": true,
+      "detail": "light cable: null; line: Light placed · plug it into a port in its panel"
+    },
+    {
+      "id": "W8.light-stub",
+      "ok": true,
+      "detail": "the light shows a loose cable end"
+    },
+    {
+      "id": "W8.light-selected",
+      "ok": true,
+      "detail": "clicking the light selects it"
+    },
+    {
+      "id": "W8.light-inspector",
+      "ok": true,
+      "detail": "inspector: Unplugged"
+    },
+    {
+      "id": "W9.right-selected",
+      "ok": true,
+      "detail": "clicking the right motor selects it (brick-1790181496676-tpkaem); Port A"
+    },
+    {
+      "id": "W9.deleted",
+      "ok": true,
+      "detail": "the right motor is gone"
+    },
+    {
+      "id": "W9.cable-kept",
+      "ok": true,
+      "detail": "its cable stays in the document (stale), so Undo can restore it"
+    },
+    {
+      "id": "W9.cable-not-drawn",
+      "ok": true,
+      "detail": "a stale cable is not drawn"
+    },
+    {
+      "id": "W9.port-free-was",
+      "ok": true,
+      "detail": "hub inspector: APort A · free (was Right motor) | BPort B · free | CBig wheel | DFront sensor"
+    },
+    {
+      "id": "W9.undo-restores",
+      "ok": true,
+      "detail": "Undo brings the motor back and the section is exactly as before the delete"
+    },
+    {
+      "id": "W9.cable-back",
+      "ok": true,
+      "detail": "the cable is drawn again on port A"
+    },
+    {
+      "id": "W9.inspector-back",
+      "ok": true,
+      "detail": "after Undo the right motor is selected again: Port A, its cable lit"
+    },
+    {
+      "id": "W10.round-trip",
+      "ok": true,
+      "detail": "cables, names and the wiring mode survive autosave and reload"
+    },
+    {
+      "id": "W10.drawn-after-reload",
+      "ok": true,
+      "detail": "3 cables and the light's loose end drawn after reload"
+    },
+    {
+      "id": "W11.selected-zoomed",
+      "ok": true,
+      "detail": "zoomed in, clicking Big wheel selects it and lights its cable"
+    },
+    {
+      "id": "console.clean",
+      "ok": true,
+      "detail": "no console errors or page errors"
+    }
+  ],
+  "steps": [
+    {
+      "step": "W0 assisted wiring",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {},
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W1 sensor moved to D",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        }
+      ],
+      "devices": {},
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": true,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W2 left motor moved to C",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {},
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W3 unplugged",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        }
+      ],
+      "devices": {},
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "lit": true,
+            "tip": {
+              "x": -0.6819999999999999,
+              "y": 1.56,
+              "z": 0.31
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": "W4 plugged into A",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        }
+      ],
+      "devices": {},
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W5 swapped",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        }
+      ],
+      "devices": {},
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W6 renamed",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "B"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "B",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W7 moved to C during a run",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "assisted",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W8 manual",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "manual",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": []
+      }
+    },
+    {
+      "step": "W8 light placed in manual",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "manual",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": [
+          {
+            "deviceId": "brick-1790181503665-lg2mke",
+            "lit": false,
+            "tip": {
+              "x": 0.9299999999999999,
+              "y": 0.13999999999999999,
+              "z": -1.42
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": "W9 right motor deleted",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "manual",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": [
+          {
+            "deviceId": "brick-1790181503665-lg2mke",
+            "lit": false,
+            "tip": {
+              "x": 0.9299999999999999,
+              "y": 0.13999999999999999,
+              "z": -1.42
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": "W9 delete undone",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "manual",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": true,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": [
+          {
+            "deviceId": "brick-1790181503665-lg2mke",
+            "lit": false,
+            "tip": {
+              "x": 0.9299999999999999,
+              "y": 0.13999999999999999,
+              "z": -1.42
+            }
+          }
+        ]
+      }
+    },
+    {
+      "step": "W10 reloaded",
+      "connections": [
+        {
+          "deviceId": "brick-1790181496676-tpkaem",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "A"
+        },
+        {
+          "deviceId": "brick-1790181497332-4nkaet",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "D"
+        },
+        {
+          "deviceId": "brick-1790181496545-gevlg7",
+          "hubId": "brick-1790181495515-ejrek4",
+          "port": "C"
+        }
+      ],
+      "devices": {
+        "brick-1790181496545-gevlg7": {
+          "name": "Big wheel"
+        }
+      },
+      "wiring": "manual",
+      "drawn": {
+        "cables": [
+          {
+            "deviceId": "brick-1790181496545-gevlg7",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "C",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.992,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181496676-tpkaem",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "A",
+            "lit": false,
+            "lift": 1.6800000000000002,
+            "from": {
+              "x": -0.24800000000000005,
+              "y": 1.26,
+              "z": 0.31
+            },
+            "to": {
+              "x": -1.8599999999999999,
+              "y": 0.72,
+              "z": -2.48
+            }
+          },
+          {
+            "deviceId": "brick-1790181497332-4nkaet",
+            "hubId": "brick-1790181495515-ejrek4",
+            "port": "D",
+            "lit": false,
+            "lift": 1.46,
+            "from": {
+              "x": -0.62,
+              "y": 0.72,
+              "z": -3.286
+            },
+            "to": {
+              "x": 0.62,
+              "y": 0.72,
+              "z": -1.2399999999999998
+            }
+          }
+        ],
+        "stubs": [
+          {
+            "deviceId": "brick-1790181503665-lg2mke",
+            "lit": false,
+            "tip": {
+              "x": 0.9299999999999999,
+              "y": 0.13999999999999999,
+              "z": -1.42
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "shots": [
+    "W0-more-wiring-toggle.png",
+    "W1-rover-cables.png",
+    "W1-rover-cables-closeup.png",
+    "W2-hub-inspector.png",
+    "W3-left-motor-port-A.png",
+    "W3-left-motor-port-A-closeup.png",
+    "W4-moved-to-C.png",
+    "W4-moved-to-C-closeup.png",
+    "W5-unplugged.png",
+    "W5-unplugged-closeup.png",
+    "W6-swapped.png",
+    "W6-swapped-closeup.png",
+    "W7-renamed.png",
+    "W8-live-reading.png",
+    "W9-manual-light-unplugged.png",
+    "W9-manual-light-unplugged-closeup.png",
+    "W10-deleted-port-free-was.png",
+    "W10-deleted-port-free-was-closeup.png",
+    "W11-undo-cable-back.png",
+    "W11-undo-cable-back-closeup.png",
+    "W12-reloaded.png",
+    "W13-zoomed-selected-cable.png"
+  ]
+}

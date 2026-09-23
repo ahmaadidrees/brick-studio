@@ -263,7 +263,8 @@ function PlayButtons({ creation, live, reasonId }: { creation: DerivedCreation; 
 /**
  * The robot's next steps as big rows: done ones checked, the one to do now highlighted,
  * the ones after it still tappable (a student may build in any order). Once the robot is
- * ready the done steps fold into one line and ideas follow.
+ * ready only "Ready to drive!" (or "Ready to try!") stays, and ideas follow. With a part
+ * picked, only the step to do now stays above that part's panel.
  */
 function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreation; live: boolean; focus: boolean; reasonId: string }) {
   const model = useRoboticsStore((state) => state.model)

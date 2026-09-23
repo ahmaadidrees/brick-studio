@@ -66,6 +66,8 @@ async function openStudio(width, height) {
   s.draft = () => s.brick((state) => state.draft && { partId: state.draft.partId, x: state.draft.x, y: state.draft.y, z: state.draft.z, rotation: state.draft.rotation })
   s.lastBrick = () => s.brick((state) => { const b = state.bricks[state.bricks.length - 1]; return b && { id: b.id, partId: b.partId, x: b.x, y: b.y, z: b.z, rotation: b.rotation } })
   s.count = () => s.brick((state) => state.bricks.length)
+  /** The studio's start-up message ("Opened a blank build.") says nothing about robots: clear it so it is not in the shots. */
+  s.clearToast = () => page.evaluate(() => window.__robotics.brickStore.setState({ toast: null }))
   /** The next steps as the panel shows them: each row's step id, state and words. */
   s.rows = () => s.steps.locator('li[data-step]').evaluateAll((items) => items.map((item) => ({ id: item.dataset.step, state: item.dataset.state, text: item.querySelector('.robotics-step-text')?.firstChild?.textContent?.trim() ?? item.textContent.trim() })))
   s.currentText = async () => { const current = s.steps.locator('[aria-current=step]'); return (await current.count()) ? (await current.first().locator('.robotics-step-text').textContent()).trim() : null }
@@ -118,6 +120,7 @@ const s = await openStudio(1366, 768)
 const { page, sleep } = s
 // A fresh page is already blank (a New build there would only say so in a toast over the shots).
 if (await s.count()) await s.brick((state) => state.newBuild())
+await s.clearToast()
 await s.brick((state) => state.requestView('home'))
 await sleep(600)
 
@@ -294,7 +297,7 @@ async function screens(t) {
   const tag = String(t.width)
   console.log(`\nC. Screens at ${t.width}×${t.height}`)
   if (await t.count()) await t.brick((state) => state.newBuild())
-  await t.brick((state) => { state.toast = null })
+  await t.clearToast()
   await t.sleep(200)
   await place(t, { partId: 'plate_6x8', x: 28, y: 0, z: 26 })
   await place(t, { partId: 'robo_hub', x: 29, y: 1, z: 27 })

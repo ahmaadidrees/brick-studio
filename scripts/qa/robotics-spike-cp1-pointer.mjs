@@ -179,7 +179,9 @@ check('A.named-on-card', (await creations())[0]?.name === 'Pointer buggy', 'the 
 ids.leftMotor = (await placeByPointer({ partId: 'robo_motor', point: world(29.5, 1, 32.5), rotation: 2, expect: { x: 28, y: 1, z: 31 }, note: 'Left motor (turned twice with R)' })).id
 check('A.no-card-for-second-device', (await cardState()) === null, 'the motor joined the creation without reopening the card')
 check('A.wiring-left-motor', (await wiringNote()) === 'Left motor connected to port A', `assisted wiring line: ${await wiringNote()}`)
-ids.rightMotor = (await placeByPointer({ partId: 'robo_motor', point: world(32.5, 1, 32.5), expect: { x: 31, y: 1, z: 31 }, note: 'Right motor' })).id
+// Lane S: a motor near a plate's edge faces out over it, and at a corner keeps the edge it already faces, so on
+// the way in from the drawer it can catch the back edge: aim nearer the right edge than the back one.
+ids.rightMotor = (await placeByPointer({ partId: 'robo_motor', point: world(33.3, 1, 32.4), expect: { x: 31, y: 1, z: 31 }, note: 'Right motor' })).id
 check('A.wiring-right-motor', (await wiringNote()) === 'Right motor connected to port B', `assisted wiring line: ${await wiringNote()}`)
 
 // Axles: hover the motor, the ghost snaps into its socket.
