@@ -73,3 +73,8 @@
 .robotics-link-button:hover { background: var(--studio-panel-soft); }
 .robotics-link-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
 .brick-mode-explore .robotics-card, .brick-mode-explore .robotics-panel, .brick-mode-explore .robotics-wiring-line { display: none; }
+/* With a robotics card or panel on the right, the studio toast centres in the canvas between the drawer and
+   the panel instead of landing on the panel's name field (desktop and landscape tablet layouts only). */
+@media (pointer: fine) and (min-width: 901px), (pointer: coarse) and (min-width: 960px) and (min-height: 600px) and (orientation: landscape) {
+  .brick-studio:has(.robotics-card, .robotics-panel) .brick-toast { left: calc(50% - 86px); max-width: min(420px, calc(100% - 760px)); }
+}
