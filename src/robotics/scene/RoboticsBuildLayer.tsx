@@ -22,6 +22,7 @@ import { registerDraftSnapper } from './draftSnap'
 import { registerCanvasInsets } from './cameraInsets'
 import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets, viewOffsetFor } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
+import DriveFollow from './DriveFollow'
 import StageLayer from './StageLayer'
 
 /**
@@ -390,6 +391,7 @@ export default function RoboticsBuildLayer() {
       <Cables />
       {sim && simCreation && <SimBodies sim={sim} model={model} creation={simCreation} />}
       <StageLayer />
+      <DriveFollow />
     </>
   )
 }
