@@ -16,6 +16,7 @@ import type { Vec3 } from '../model/vec'
 import { MOTOR_SOCKET_RADIUS, roboticsSpec } from '../parts/catalog'
 import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
 import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/roboticsStore'
+import Cables from '../wiring/Cables'
 import type { HingeReport } from '../sim/mechanics'
 import { registerDraftSnapper } from './draftSnap'
 import { framePoseInFreeArea, measureCanvasInsets } from './framing'
@@ -329,6 +330,7 @@ export default function RoboticsBuildLayer() {
       {highlights.filter((entry) => !sim || !sim.hiddenBrickIds.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
       <HubPortLabels bricks={visible} plateSize={plateSize} />
       <StaticMotorOutputs bricks={visible} plateSize={plateSize} />
+      <Cables />
       {sim && simCreation && <SimBodies sim={sim} model={model} creation={simCreation} />}
     </>
   )
