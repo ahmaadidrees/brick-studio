@@ -51,11 +51,13 @@ export function StagePanel(props: StagePanelProps) {
         <button type="button" className="robo-stop" aria-label="Stop" title="Stop: the program ends and every motor brakes" onClick={props.onStop} disabled={!running} data-testid="robo-stop">
           <Octagon size={18} aria-hidden="true" /><span>Stop</span>
         </button>
-        <span className={`robo-status ${status.tone}`} role="status" data-testid="robo-status"><span className="robo-status-dot" aria-hidden="true" />{status.text}</span>
+        <span className={`robo-status ${status.tone}`} role="status" title={status.detail} data-testid="robo-status"><span className="robo-status-dot" aria-hidden="true" />{status.text}</span>
         <span className="robo-spacer" />
         <button type="button" className="robo-button" onClick={props.onReset} disabled={loading && !observation} title="Back to the built pose, program stopped" data-testid="robo-reset">
           <RotateCcw size={15} aria-hidden="true" />Reset
         </button>
+        {/* Always a second row: the bar keeps one height whatever the status says. */}
+        <span className="robo-break" aria-hidden="true" />
         <div className="robo-seg" role="group" aria-label="Where to test">
           <button type="button" className={space === 'testPlate' ? 'on' : ''} aria-pressed={space === 'testPlate'} onClick={() => props.onSpace('testPlate')}>Test plate</button>
           <button type="button" className={space === 'myWorld' ? 'on' : ''} aria-pressed={space === 'myWorld'} onClick={() => props.onSpace('myWorld')}>My world</button>

@@ -77,9 +77,9 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
   // Open: studio keys off, no half-finished build gesture, a program to show, a stage to run it on.
   useEffect(() => {
     const release = suspendStudioShortcuts()
-    const brickState = useBrickStore.getState()
-    brickState.cancelInteraction()
-    brickState.clearSelection()
+    // No half-finished move, no armed brush (a click on the stage must never place a brick), no selection.
+    useBrickStore.getState().cancelInteraction()
+    useBrickStore.getState().selectBrick(null)
     if (!ensureProgramFor(creation)) setError('This creation’s programs could not be opened.')
     void useStageStore.getState().openStage(creation.id)
     return () => {
@@ -90,16 +90,17 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creation.id])
 
-  // Frame the creation (and its wall or visitor) into the stage area when a stage first opens and when the space changes.
-  const framedSpace = useRef<RunSpace | null>(null)
+  // Frame the creation and its wall or visitor into the stage area (never under a panel):
+  // when the stage first opens, and on every reset (Reset, a program switch, the space switch).
+  const framed = useRef(false)
   const frame = useCallback(() => {
     const current = useStageStore.getState().stage
     const points = current && current.creationId === creation.id ? propFramePoints(current.controller.props) : []
     useRoboticsStore.getState().requestFrame(creation.brickIds, points)
   }, [creation.id, creation.brickIds])
   useEffect(() => {
-    if (!stage || framedSpace.current === stage.space) return
-    framedSpace.current = stage.space
+    if (!stage || framed.current) return
+    framed.current = true
     frame()
   }, [stage, frame])
 
@@ -112,7 +113,8 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
     setRan(null)
     setRunBlocked(null)
     useStageStore.getState().resetStage()
-  }, [])
+    frame()
+  }, [frame])
 
   const run = () => {
     const handle = workspace.current

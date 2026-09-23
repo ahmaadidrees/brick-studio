@@ -18,7 +18,7 @@ export type BlocklyWorkspaceHandle = {
   flush: () => void
   /** Compiles the workspace as it is right now (after `flush`, the saved program). */
   compileNow: () => CompileResult | null
-  /** Scrolls a block into view, selects it and opens its warning bubble. */
+  /** Scrolls a block's script into view and opens the block's warning bubble. */
   revealBlock: (blockId: string) => void
   zoomBy: (steps: number) => void
   recenter: () => void
@@ -82,6 +82,28 @@ function refreshDeviceFields(workspace: Blockly.WorkspaceSvg) {
       }
     }
   })
+}
+
+/** A scripts area at least this wide opens with the palette out (the mock's full state); a narrower one keeps it in. */
+export const PALETTE_OPEN_MIN_WIDTH = 720
+
+/**
+ * Puts the scripts at the top left of the scripts area, as in the mock. The palette never
+ * closes by itself (`autoClose` off), so Blockly counts it in the workspace's left edge and
+ * scripts shown here start beside it, never under it.
+ */
+function placeScripts(workspace: Blockly.WorkspaceSvg) {
+  if (!workspace.getTopBlocks(false).length) { workspace.scrollCenter(); return }
+  const box = workspace.getBlocksBoundingBox()
+  workspace.scroll(36 - box.left * workspace.scale, 28 - box.top * workspace.scale)
+}
+
+/** Opens the palette for a program that is past its first run, when there is room beside it. */
+function openPaletteIfRoomy(workspace: Blockly.WorkspaceSvg, container: HTMLElement | null, collapsed: boolean) {
+  const toolbox = workspace.getToolbox()
+  if (!toolbox) return
+  if (collapsed || (container?.clientWidth ?? 0) < PALETTE_OPEN_MIN_WIDTH) toolbox.clearSelection()
+  else if (!toolbox.getSelectedItem()) toolbox.selectItemByPosition(0)
 }
 
 /**
@@ -207,7 +229,6 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
       loadedIdRef.current = next.id
     }
     workspace.clearUndo()
-    workspace.scrollCenter()
     compileJson(next.workspace)
   }, [compileJson])
 
@@ -229,7 +250,11 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
     }
     workspace.addChangeListener(onChange)
     load(programRef.current)
-    if (!paletteCollapsed) workspace.getToolbox()?.selectItemByPosition(0)
+    openPaletteIfRoomy(workspace, container, paletteCollapsed)
+    placeScripts(workspace)
+    // Dev only: the QA harness (scripts/qa/robotics-cp2-code.mjs) aims a real pointer at blocks and fields.
+    const host = window as unknown as { __robotics?: Record<string, unknown> }
+    if (import.meta.env.DEV) host.__robotics = Object.assign(host.__robotics ?? {}, { codeWorkspace: () => workspaceRef.current })
     return () => {
       workspace.removeChangeListener(onChange)
       if (saveTimerRef.current !== null) saveNow()
@@ -250,7 +275,8 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
     if (!workspace || loadedIdRef.current === program.id) return
     if (saveTimerRef.current !== null) saveNow()
     load(program)
-    if (paletteCollapsed) workspace.getToolbox()?.clearSelection()
+    openPaletteIfRoomy(workspace, containerRef.current, paletteCollapsed)
+    placeScripts(workspace)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [program.id])
 
@@ -315,8 +341,8 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
       const workspace = workspaceRef.current
       const block = workspace?.getBlockById(blockId)
       if (!workspace || !block) return
-      workspace.centerOnBlock(blockId)
-      block.select()
+      // Scroll just enough to show its whole script (not centre the one block), and leave the red outline visible.
+      workspace.scrollBoundsIntoView(block.getRootBlock().getBoundingRectangle(), 24)
       const icon = block.getIcon(Blockly.icons.IconType.WARNING) as Blockly.icons.WarningIcon | undefined
       void icon?.setBubbleVisible(true)
     },
@@ -325,7 +351,7 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
       const workspace = workspaceRef.current
       if (!workspace) return
       workspace.setScale(startScaleFor(containerRef.current?.clientWidth ?? 0))
-      workspace.scrollCenter()
+      placeScripts(workspace)
     },
     setPaletteOpen: (open) => {
       const toolbox = workspaceRef.current?.getToolbox()

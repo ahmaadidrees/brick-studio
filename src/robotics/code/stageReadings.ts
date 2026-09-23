@@ -104,14 +104,18 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
   return chips
 }
 
-export type StageStatus = { text: string; tone: 'idle' | 'running' | 'stopped' | 'loading' }
+export type StageStatus = { text: string; tone: 'idle' | 'running' | 'stopped' | 'loading'; /** A longer line for the tooltip. */ detail?: string }
 
 /** "Running · 2.1 s", "Stopped", "Ready". */
 export function stageStatus(observation: RunObservation | null, loading: boolean): StageStatus {
-  if (loading && !observation) return { text: 'Getting the stage ready…', tone: 'loading' }
+  if (loading && !observation) return { text: 'Getting ready…', tone: 'loading' }
   if (!observation || observation.phase === 'ready') return { text: 'Ready', tone: 'idle' }
   if (observation.phase === 'stopped') return { text: 'Stopped', tone: 'stopped' }
-  return { text: `Running · ${observation.timeSeconds.toFixed(1)} s${observation.idle ? ' · scripts done' : ''}`, tone: 'running' }
+  return {
+    text: `Running · ${observation.timeSeconds.toFixed(1)} s`,
+    tone: 'running',
+    ...(observation.idle ? { detail: 'Every script has finished. Motors keep their last command until Stop.' } : {}),
+  }
 }
 
 const INPUT_BLOCKS = new Set(['robo_when_joystick_moves', 'robo_when_controls_update', 'robo_joystick', 'robo_key_held', 'robo_when_key_pressed', 'robo_drive_joystick'])

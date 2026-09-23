@@ -94,9 +94,9 @@ export function roboTheme(): Blockly.Theme {
 export const BLOCKLY_MEDIA = '/blockly-media/'
 
 export const WIDE_START_SCALE = 0.82
-export const NARROW_START_SCALE = 0.72
+export const NARROW_START_SCALE = 0.78
 /** Scripts areas narrower than this start zoomed out so a starter script fits at 1024×768. */
-export const NARROW_WORKSPACE_PX = 560
+export const NARROW_WORKSPACE_PX = 680
 
 export function startScaleFor(width: number): number {
   return width > 0 && width < NARROW_WORKSPACE_PX ? NARROW_START_SCALE : WIDE_START_SCALE
@@ -143,7 +143,8 @@ function installInkTextStyle() {
   const roots = INK_TEXT_BLOCK_TYPES.map((type) => `.robo-code-blockly .${type}`)
   const style = document.createElement('style')
   style.id = 'robo-ink-text'
-  style.textContent = `${roots.map((root) => `${root} > .blocklyText, ${root} > g > .blocklyText, ${root} > .blocklyNonEditableField > text, ${root} > .blocklyDropdownField:not(.blocklyFieldRect) > text`).join(',\n')} { fill: #263C51; }\n`
-    + `${roots.map((root) => `${root} > .blocklyDropdownField .blocklyDropdownArrow, ${root} > g > image`).join(',\n')} { filter: brightness(0.2); }\n`
+  // Labels and the block's own dropdowns (zelos draws dropdown text white with !important).
+  style.textContent = `${roots.map((root) => `${root} > g > .blocklyText`).join(',\n')} { fill: #263C51 !important; }\n`
+    + `${roots.map((root) => `${root} > .blocklyDropdownField > image`).join(',\n')} { filter: brightness(0.25); }\n`
   document.head.appendChild(style)
 }

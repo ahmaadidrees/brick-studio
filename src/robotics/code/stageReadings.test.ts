@@ -65,10 +65,10 @@ describe('readings chips', () => {
 
 describe('status, input and framing', () => {
   it('words the stage status', () => {
-    expect(stageStatus(null, true).text).toBe('Getting the stage ready…')
+    expect(stageStatus(null, true).text).toBe('Getting ready…')
     expect(stageStatus(observation({ phase: 'ready' }), false).text).toBe('Ready')
     expect(stageStatus(observation(), false).text).toBe('Running · 2.1 s')
-    expect(stageStatus(observation({ idle: true }), false).text).toBe('Running · 2.1 s · scripts done')
+    expect(stageStatus(observation({ idle: true }), false)).toMatchObject({ text: 'Running · 2.1 s', detail: 'Every script has finished. Motors keep their last command until Stop.' })
     expect(stageStatus(observation({ phase: 'stopped' }), false).text).toBe('Stopped')
   })
 

@@ -84,7 +84,9 @@ describe('opening a creation for the first time', () => {
     expect(workspace.getBlockById('stop-before-wall:sees')!.getField('SENSOR')!.getText()).toBe('Front sensor · C')
   })
 
-  it('reopens an edited program with the full palette open', async () => {
+  it('reopens an edited program with the full palette, open when the scripts area is wide', async () => {
+    // jsdom lays nothing out: give the Blockly host the width it has at 1366×768.
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('robo-code-blockly') ? 820 : 0 })
     loadWorld()
     await openCode()
     const [program] = storedPrograms()

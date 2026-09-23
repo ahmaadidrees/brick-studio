@@ -3,7 +3,9 @@
  * Escape, the 1/2 mode keys, ⌘Z/⌘C/⌘V/⌘D) must not fire: the construction is not what the
  * student is editing, and Blockly owns copy, paste, undo and delete inside its workspace.
  * `useBuilderShortcuts` in `src/brick/BrickStudioApp.tsx` asks `studioShortcutsSuspended()`
- * first. Kept import-free, like `scene/hiddenBricks.ts`, so the studio pays nothing for it.
+ * first, and the scene's drag-to-move and long-press grab ask `studioEditingSuspended()`, so
+ * a drag on a scenery brick in My world cannot move it (the camera still orbits).
+ * Kept import-free, like `scene/hiddenBricks.ts`, so the studio pays nothing for it.
  */
 let holds = 0
 
@@ -21,3 +23,6 @@ export function suspendStudioShortcuts(): () => void {
 export function studioShortcutsSuspended(): boolean {
   return holds > 0
 }
+
+/** The same hold, read by the scene's build pointer gestures (move a brick, long-press grab). */
+export const studioEditingSuspended = studioShortcutsSuspended
