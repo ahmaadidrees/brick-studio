@@ -5,42 +5,90 @@
     "1024x768",
     "1024x768 touch"
   ],
-  "at": "2026-09-23T20:03:34.802Z",
+  "at": "2026-09-23T21:36:15.293Z",
   "runsPerFirstTryCheck": 5,
   "measured": {
     "gate": [
       {
         "run": 1,
-        "seenAtSeconds": 1.9,
+        "seenAtSeconds": 2,
         "seenWhile": "arriving",
-        "armWhenTheyStop": 74.7,
-        "maxArm": 90,
-        "workedAtSeconds": 2.2,
-        "line": "It worked! The gate opened.",
-        "armAfter": 0,
-        "visitorAfter": "away"
-      },
-      {
-        "run": 2,
-        "seenAtSeconds": 1.9,
-        "seenWhile": "arriving",
-        "armWhenTheyStop": 75.4,
+        "armWhenTheyStop": 70.2,
         "maxArm": 90,
         "workedAtSeconds": 2.3,
         "line": "It worked! The gate opened.",
         "armAfter": 0,
-        "visitorAfter": "away"
+        "visitorAfter": "away",
+        "standing": {
+          "clearOfTheFrontStuds": 2.3,
+          "onCanvas": true,
+          "underPanels": 0,
+          "bodyColor": [
+            231,
+            164,
+            67
+          ],
+          "box": {
+            "left": 250,
+            "top": 384,
+            "right": 373,
+            "bottom": 551
+          }
+        }
+      },
+      {
+        "run": 2,
+        "seenAtSeconds": 2,
+        "seenWhile": "arriving",
+        "armWhenTheyStop": 70.9,
+        "maxArm": 90,
+        "workedAtSeconds": 2.2,
+        "line": "It worked! The gate opened.",
+        "armAfter": 0,
+        "visitorAfter": "away",
+        "standing": {
+          "clearOfTheFrontStuds": 2.3,
+          "onCanvas": true,
+          "underPanels": 0,
+          "bodyColor": [
+            231,
+            164,
+            67
+          ],
+          "box": {
+            "left": 250,
+            "top": 384,
+            "right": 373,
+            "bottom": 551
+          }
+        }
       },
       {
         "run": 3,
         "seenAtSeconds": 2,
         "seenWhile": "arriving",
-        "armWhenTheyStop": 75.4,
+        "armWhenTheyStop": 70.9,
         "maxArm": 90,
         "workedAtSeconds": 2.2,
         "line": "It worked! The gate opened.",
         "armAfter": 0,
-        "visitorAfter": "away"
+        "visitorAfter": "away",
+        "standing": {
+          "clearOfTheFrontStuds": 2.3,
+          "onCanvas": true,
+          "underPanels": 0,
+          "bodyColor": [
+            231,
+            164,
+            67
+          ],
+          "box": {
+            "left": 250,
+            "top": 384,
+            "right": 373,
+            "bottom": 551
+          }
+        }
       },
       {
         "run": 4,
@@ -51,7 +99,23 @@
         "workedAtSeconds": 2.2,
         "line": "It worked! The gate opened.",
         "armAfter": 0,
-        "visitorAfter": "away"
+        "visitorAfter": "away",
+        "standing": {
+          "clearOfTheFrontStuds": 2.3,
+          "onCanvas": true,
+          "underPanels": 0,
+          "bodyColor": [
+            231,
+            164,
+            67
+          ],
+          "box": {
+            "left": 250,
+            "top": 384,
+            "right": 373,
+            "bottom": 551
+          }
+        }
       },
       {
         "run": 5,
@@ -59,23 +123,39 @@
         "seenWhile": "arriving",
         "armWhenTheyStop": 70.9,
         "maxArm": 90,
-        "workedAtSeconds": 2.2,
+        "workedAtSeconds": 2.3,
         "line": "It worked! The gate opened.",
         "armAfter": 0,
-        "visitorAfter": "away"
+        "visitorAfter": "away",
+        "standing": {
+          "clearOfTheFrontStuds": 2.3,
+          "onCanvas": true,
+          "underPanels": 0,
+          "bodyColor": [
+            231,
+            164,
+            67
+          ],
+          "box": {
+            "left": 250,
+            "top": 384,
+            "right": 373,
+            "bottom": 551
+          }
+        }
       }
     ],
     "signal": [
       {
         "run": 1,
-        "standingSamples": 23,
+        "standingSamples": 24,
         "redWhileStanding": true,
         "lightAfter": null,
         "line": "It worked! The light came on."
       },
       {
         "run": 2,
-        "standingSamples": 24,
+        "standingSamples": 25,
         "redWhileStanding": true,
         "lightAfter": null,
         "line": "It worked! The light came on."
@@ -89,14 +169,14 @@
       },
       {
         "run": 4,
-        "standingSamples": 24,
+        "standingSamples": 25,
         "redWhileStanding": true,
         "lightAfter": null,
         "line": "It worked! The light came on."
       },
       {
         "run": 5,
-        "standingSamples": 24,
+        "standingSamples": 25,
         "redWhileStanding": true,
         "lightAfter": null,
         "line": "It worked! The light came on."
@@ -105,9 +185,9 @@
     "signalLightInBuild": {
       "brickColor": "#c6ced4",
       "pixel": [
-        222,
+        223,
         225,
-        226
+        227
       ]
     },
     "signalLightOnStage": {
@@ -129,37 +209,37 @@
         "maxArm": 45,
         "line": "It worked! The gate opened.",
         "chips": [
-          "Front sensor3 steps awaysees something",
+          "Door sensor3 steps awaysees something",
           "Arm motoropenturned to 45"
         ]
       },
       {
         "run": 2,
         "statusBefore": "Ready",
-        "maxArm": 45,
+        "maxArm": 45.1,
         "line": "It worked! The gate opened.",
         "chips": [
-          "Front sensor3 steps awaysees something",
+          "Door sensor3 steps awaysees something",
           "Arm motoropenturned to 45"
         ]
       },
       {
         "run": 3,
         "statusBefore": "Ready",
-        "maxArm": 45,
+        "maxArm": 45.1,
         "line": "It worked! The gate opened.",
         "chips": [
-          "Front sensor3 steps awaysees something",
+          "Door sensor3 steps awaysees something",
           "Arm motoropenturned to 45"
         ]
       },
       {
         "run": 4,
         "statusBefore": "Ready",
-        "maxArm": 45,
+        "maxArm": 45.1,
         "line": "It worked! The gate opened.",
         "chips": [
-          "Front sensor3 steps awaysees something",
+          "Door sensor3 steps awaysees something",
           "Arm motoropenturned to 45"
         ]
       },
@@ -169,7 +249,7 @@
         "maxArm": 45,
         "line": "It worked! The gate opened.",
         "chips": [
-          "Front sensor3 steps awaysees something",
+          "Door sensor3 steps awaysees something",
           "Arm motoropenturned to 45"
         ]
       }
@@ -182,19 +262,29 @@
       "detail": "placed from the drawer; the panel's next step reads \"Ready to try!\""
     },
     {
+      "id": "A.door-sensor",
+      "ok": true,
+      "detail": "the kit's sensor is called \"Door sensor\" and looks out of the gate's front (the near side, toward the camera); Try it's chips: [\"Door sensor\",\"Arm motor\"]"
+    },
+    {
       "id": "A.before",
       "ok": true,
       "detail": "before: arm 0°, sensor sees nothing, \"Press the big button. Watch what happens.\""
     },
     {
+      "id": "A.run1.open-ground",
+      "ok": true,
+      "detail": "run 1: they stood in open ground in front of the gate (their back 2.3 studs clear of its front edge), the whole figure on screen (250–373 × 384–551 px) under none of the panels, their shirt showing [231,164,67]"
+    },
+    {
       "id": "A.run1.first-try-opens",
       "ok": true,
-      "detail": "run 1: seen while still walking up (1.9 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+      "detail": "run 1: seen while still walking up (2.0 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
     },
     {
       "id": "A.run1.open-before-they-stop",
       "ok": true,
-      "detail": "run 1: the gate was already 75° open when the visitor stopped"
+      "detail": "run 1: the gate was already 70° open when the visitor stopped"
     },
     {
       "id": "A.run1.it-worked",
@@ -209,7 +299,7 @@
     {
       "id": "A.kid-words",
       "ok": true,
-      "detail": "no \"studs\" or \"°\" in the Try it lines: \"Front sensorsees nothingArm motorclosed It worked! The gate opened.\""
+      "detail": "no \"studs\" or \"°\" in the Try it lines: \"Door sensorsees nothingArm motorclosed It worked! The gate opened.\""
     },
     {
       "id": "A.ready-row-after",
@@ -222,14 +312,19 @@
       "detail": "one more brick on the gate's plate: \"Ready to try!\""
     },
     {
+      "id": "A.run2.open-ground",
+      "ok": true,
+      "detail": "run 2: they stood in open ground in front of the gate (their back 2.3 studs clear of its front edge), the whole figure on screen (250–373 × 384–551 px) under none of the panels, their shirt showing [231,164,67]"
+    },
+    {
       "id": "A.run2.first-try-opens",
       "ok": true,
-      "detail": "run 2: seen while still walking up (1.9 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+      "detail": "run 2: seen while still walking up (2.0 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
     },
     {
       "id": "A.run2.open-before-they-stop",
       "ok": true,
-      "detail": "run 2: the gate was already 75° open when the visitor stopped"
+      "detail": "run 2: the gate was already 71° open when the visitor stopped"
     },
     {
       "id": "A.run2.it-worked",
@@ -242,6 +337,11 @@
       "detail": "run 2: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
     },
     {
+      "id": "A.run3.open-ground",
+      "ok": true,
+      "detail": "run 3: they stood in open ground in front of the gate (their back 2.3 studs clear of its front edge), the whole figure on screen (250–373 × 384–551 px) under none of the panels, their shirt showing [231,164,67]"
+    },
+    {
       "id": "A.run3.first-try-opens",
       "ok": true,
       "detail": "run 3: seen while still walking up (2.0 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
@@ -249,7 +349,7 @@
     {
       "id": "A.run3.open-before-they-stop",
       "ok": true,
-      "detail": "run 3: the gate was already 75° open when the visitor stopped"
+      "detail": "run 3: the gate was already 71° open when the visitor stopped"
     },
     {
       "id": "A.run3.it-worked",
@@ -260,6 +360,11 @@
       "id": "A.run3.closes-after",
       "ok": true,
       "detail": "run 3: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "A.run4.open-ground",
+      "ok": true,
+      "detail": "run 4: they stood in open ground in front of the gate (their back 2.3 studs clear of its front edge), the whole figure on screen (250–373 × 384–551 px) under none of the panels, their shirt showing [231,164,67]"
     },
     {
       "id": "A.run4.first-try-opens",
@@ -280,6 +385,11 @@
       "id": "A.run4.closes-after",
       "ok": true,
       "detail": "run 4: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "A.run5.open-ground",
+      "ok": true,
+      "detail": "run 5: they stood in open ground in front of the gate (their back 2.3 studs clear of its front edge), the whole figure on screen (250–373 × 384–551 px) under none of the panels, their shirt showing [231,164,67]"
     },
     {
       "id": "A.run5.first-try-opens",
@@ -309,12 +419,12 @@
     {
       "id": "C.build-looks-off",
       "ok": true,
-      "detail": "in Build the kit's light looks off: a pale grey lamp (#c6ced4; the pixels under its dome [222,225,226])"
+      "detail": "in Build the kit's light looks off: a pale grey lamp (#c6ced4; the pixels under its dome [223,225,227])"
     },
     {
       "id": "C.run1.on-while-there",
       "ok": true,
-      "detail": "run 1: off until they walked into the beam, red for all 23 samples while they stood there"
+      "detail": "run 1: off until they walked into the beam, red for all 24 samples while they stood there"
     },
     {
       "id": "C.run1.off-after",
@@ -329,7 +439,7 @@
     {
       "id": "C.run2.on-while-there",
       "ok": true,
-      "detail": "run 2: off until they walked into the beam, red for all 24 samples while they stood there"
+      "detail": "run 2: off until they walked into the beam, red for all 25 samples while they stood there"
     },
     {
       "id": "C.run2.off-after",
@@ -349,7 +459,7 @@
     {
       "id": "C.run4.on-while-there",
       "ok": true,
-      "detail": "run 4: off until they walked into the beam, red for all 24 samples while they stood there"
+      "detail": "run 4: off until they walked into the beam, red for all 25 samples while they stood there"
     },
     {
       "id": "C.run4.off-after",
@@ -359,7 +469,7 @@
     {
       "id": "C.run5.on-while-there",
       "ok": true,
-      "detail": "run 5: off until they walked into the beam, red for all 24 samples while they stood there"
+      "detail": "run 5: off until they walked into the beam, red for all 25 samples while they stood there"
     },
     {
       "id": "C.run5.off-after",
@@ -369,12 +479,12 @@
     {
       "id": "D.turned-still-works",
       "ok": true,
-      "detail": "the sensor turned to face the near side: the visitor came to where it now looks (side of the beam, 3 steps away) and \"It worked! The gate opened.\""
+      "detail": "the Door sensor turned round (it keeps its name, \"Door sensor\") to look at the door (the far side): the visitor came to where it now looks, between the hub and the door (side of the beam, 3 steps away), and \"It worked! The gate opened.\""
     },
     {
       "id": "D.blocked-says-why",
       "ok": true,
-      "detail": "with a wall of its own bricks in front of its sensor (14 bricks in the robot) the visitor walked up to the gate's front, was never seen, and the stage says \"The sensor didn’t see them. It looks this way\" with an arrow along the beam (-26° on screen)"
+      "detail": "with a wall of its own bricks between its sensor and the door (14 bricks in the robot) the visitor walked up to the gate's front, was never seen, and the stage says \"The sensor didn’t see them. It looks this way\" with an arrow along the beam (-26° on screen)"
     },
     {
       "id": "D.blocked-ready-row",
@@ -399,7 +509,7 @@
     {
       "id": "E.kid-words",
       "ok": true,
-      "detail": "Code's stage chips: [\"Front sensor3 steps awaysees something\",\"Arm motoropenturned to 45\"]"
+      "detail": "Code's stage chips: [\"Door sensor3 steps awaysees something\",\"Arm motoropenturned to 45\"]"
     },
     {
       "id": "E.changed-then-walk",
