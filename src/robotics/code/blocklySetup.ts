@@ -47,6 +47,38 @@ class RailCategory extends Blockly.ToolboxCategory {
     super.setSelected(isSelected)
     if (this.rowDiv_) this.rowDiv_.style.backgroundColor = ''
   }
+
+  /** Focus selects a row (keyboard), except the focus a tap brings with it (see `RailToolbox`). */
+  override onNodeFocus() {
+    const toolbox = this.getParentToolbox()
+    if (toolbox instanceof RailToolbox && toolbox.pressedJustNow()) return
+    super.onNodeFocus()
+  }
+}
+
+/**
+ * The rail's toolbox. iPadOS Safari focuses a tapped rail row after the finger lifts (with the
+ * click), when Blockly's own pointer guard is already off, and focusing a row selects it: a tap
+ * on the open category closed the palette at pointerdown and that focus opened it straight back.
+ * Focus that follows a press on the rail this closely is that press, already handled.
+ */
+export const RAIL_PRESS_FOCUS_MS = 1000
+export class RailToolbox extends Blockly.Toolbox {
+  private pressedAt = -Infinity
+
+  pressedJustNow(): boolean {
+    return performance.now() - this.pressedAt < RAIL_PRESS_FOCUS_MS
+  }
+
+  protected override onClick_(event: PointerEvent) {
+    this.pressedAt = performance.now()
+    super.onClick_(event)
+  }
+
+  override onTreeFocus(node: Blockly.IFocusableNode, previousTree: Blockly.IFocusableTree | null) {
+    if (node !== this && this.pressedJustNow()) return
+    super.onTreeFocus(node, previousTree)
+  }
 }
 
 /** Idempotent: messages, the category class and the block definitions. */
@@ -118,6 +150,7 @@ export function workspaceOptions(toolbox: unknown, startScale: number): Blockly.
     move: { scrollbars: { horizontal: true, vertical: true }, drag: true, wheel: true },
     toolboxPosition: 'start',
     horizontalLayout: false,
+    plugins: { toolbox: RailToolbox },
   }
 }
 
