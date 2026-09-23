@@ -5,7 +5,7 @@
     "1024x768"
   ],
   "input": "real mouse and clicks via Playwright; positions from the studio's own world→screen projection",
-  "at": "2026-09-23T16:05:44.529Z",
+  "at": "2026-09-23T16:12:09.452Z",
   "clicksToFirstPlacedBuggy": 3,
   "tapsToFirstPlacedBuggyByTouch": 5,
   "results": [
