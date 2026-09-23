@@ -59,7 +59,8 @@
   .kit-robots-choice-text strong { font-size: 17px; }
   .kit-robots-choice-text small { font-size: 15px; }
   .kit-shelf-heading { font-size: 17px; }
-  .kit-cards { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  /* Two across in a tablet's docked drawer; a row of four in the wider sheet. */
+  .kit-cards { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
   .kit-card-name { font-size: 17px; }
   .kit-card-words { font-size: 15px; }
 }

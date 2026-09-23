@@ -73,6 +73,8 @@ describe('the drawer on a desktop', () => {
     const strip = within(screen.getByRole('group', { name: 'Positioned brick actions' }))
     expect(strip.getByText('Placing')).toBeInTheDocument()
     expect(strip.getByText('Buggy')).toBeInTheDocument()
+    // A kit stands on the ground and turns once placed: no raise, lower or turn while it is in hand.
+    for (const name of ['Rotate', 'Raise brick one plate', 'Lower brick one plate']) expect(strip.getByRole('button', { name })).toBeDisabled()
     fireEvent.click(strip.getByRole('button', { name: 'Place Buggy' }))
     expect(useBrickStore.getState().bricks).toHaveLength(9)
     expect(robotNames()).toEqual(['Buggy'])

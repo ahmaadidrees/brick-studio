@@ -448,8 +448,10 @@ function rotateBrickGroup(bricks: BrickInstance[]): BrickInstance[] | null {
     const nextSize = rotatedSize(BRICK_PART_MAP[brick.partId], rotation)
     const centerX2 = brick.x * 2 + size.width
     const centerZ2 = brick.z * 2 + size.depth
-    const nextCenterX2 = pivotX2 - (centerZ2 - pivotZ2)
-    const nextCenterZ2 = pivotZ2 + (centerX2 - pivotX2)
+    // The same quarter turn `rotation + 1` gives each part (local +X toward -Z), so the group turns
+    // rigidly: a slope still faces out, a robot's axle stays in its motor's socket.
+    const nextCenterX2 = pivotX2 + (centerZ2 - pivotZ2)
+    const nextCenterZ2 = pivotZ2 - (centerX2 - pivotX2)
     const x2 = nextCenterX2 - nextSize.width
     const z2 = nextCenterZ2 - nextSize.depth
     if (x2 % 2 !== 0 || z2 % 2 !== 0) return null

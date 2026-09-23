@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { getBuildPlateSize } from '../../brick/buildPlate'
+import { STUD } from '../../brick/parts'
 import { findGroupPasteDrafts, useBrickStore, validateBrickGroup, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { readiness } from '../drive/readiness'
@@ -7,7 +8,8 @@ import type { DerivedCreation } from '../model/creations'
 import { writeRoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
 import { computeModel, useRoboticsStore } from '../state/roboticsStore'
-import { kitAt, kitById, placeKitInSection, type Kit, type KitId } from './kits'
+import type { Vec3 } from '../model/vec'
+import { kitAt, kitById, kitFootprint, placeKitInSection, type Kit, type KitId } from './kits'
 
 /**
  * Placing a kit (docs/robotics/KID-UX.md §K). A kit is armed as the studio's own group ghost:
@@ -67,6 +69,22 @@ export function armKit(kitId: KitId): boolean {
   return true
 }
 
+/**
+ * Studs of ground kept in view around a placed kit: a little of where it will drive or where someone
+ * walks up to it, without the camera closing in on the kit alone or pulling far back from it.
+ */
+const ROOM_AROUND_STUDS = 3
+
+/** The ground corners around the placed kit, `ROOM_AROUND_STUDS` out, for the frame request. */
+function roomAround(placed: readonly BrickInstance[], plateSize: number): Vec3[] {
+  const minX = Math.min(...placed.map((brick) => brick.x))
+  const minZ = Math.min(...placed.map((brick) => brick.z))
+  const { width, depth } = kitFootprint(placed)
+  const xs = [minX - ROOM_AROUND_STUDS, minX + width + ROOM_AROUND_STUDS]
+  const zs = [minZ - ROOM_AROUND_STUDS, minZ + depth + ROOM_AROUND_STUDS]
+  return xs.flatMap((x) => zs.map((z) => ({ x: (x - plateSize / 2) * STUD, y: 0, z: (z - plateSize / 2) * STUD })))
+}
+
 /** The newest undo entry that placed exactly these bricks, counted from the top of the stack. */
 function entriesSincePlacement(placedIds: readonly string[]): number {
   const stack = useBrickStore.getState().undoStack
@@ -91,7 +109,9 @@ function finishPlacement(kit: Kit, placedIds: string[]) {
   const robotics = useRoboticsStore.getState()
   robotics.refreshModel()
   const robot = useRoboticsStore.getState().model.creations.find((creation) => creation.id === placement.creationId) ?? null
-  robotics.requestFrame(robot?.brickIds ?? placedIds)
+  // The new robot framed with ground around it, so the camera does not close in on it alone.
+  const placed = useBrickStore.getState().bricks.filter((candidate) => placedIds.includes(candidate.id))
+  robotics.requestFrame(robot?.brickIds ?? placedIds, roomAround(placed, getBuildPlateSize(useBrickStore.getState().documentMetadata)))
   const message = placedMessage(kit, placement.name, placement.joined.length > 0, robot)
   useBrickStore.setState({ toast: message, announcement: message })
 }

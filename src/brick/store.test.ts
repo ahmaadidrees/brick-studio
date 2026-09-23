@@ -589,9 +589,10 @@ describe('atomic group clipboard and history', () => {
 
     useBrickStore.getState().rotate()
 
+    // A quarter turn the way a single brick turns (+X toward -Z), so every part turns with the group.
     expect(useBrickStore.getState().bricks).toEqual([
-      { ...pair[0], x: 11, z: 9, rotation: 1 },
-      { ...pair[1], x: 11, z: 11, rotation: 1 },
+      { ...pair[0], x: 11, z: 11, rotation: 1 },
+      { ...pair[1], x: 11, z: 9, rotation: 1 },
     ])
     expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Rotate 2 bricks')
     useBrickStore.getState().undo()

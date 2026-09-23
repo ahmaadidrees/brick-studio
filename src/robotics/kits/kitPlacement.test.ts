@@ -126,7 +126,12 @@ describe('placing a kit', () => {
     expect(readiness(robot)).toEqual({ kind: 'drive', ready: true, reason: null })
     expect(useRoboticsStore.getState().card).toBeNull()
     expect(useRoboticsStore.getState().wiringNote).toBeNull()
-    expect(useRoboticsStore.getState().frameRequest?.brickIds).toEqual(robot.brickIds)
+    // Framed with ground around it: three studs out from the kit's footprint on every side.
+    const frame = useRoboticsStore.getState().frameRequest
+    expect(frame?.brickIds).toEqual(robot.brickIds)
+    expect(frame?.points).toHaveLength(4)
+    expect(Math.min(...frame!.points!.map((point) => point.x))).toBeCloseTo((26 - 3 - 32) * 0.62)
+    expect(Math.max(...frame!.points!.map((point) => point.z))).toBeCloseTo((36 + 3 - 32) * 0.62)
     // The whole kit is selected, its plate last, so the panel shows the robot.
     expect(new Set(brickState().selectedIds)).toEqual(new Set(ids))
     expect(brickState().selectedId).toBe(ids[0])
@@ -198,6 +203,15 @@ describe('placing a kit', () => {
     brickState().placeDraft()
     expect(brickState().bricks.every((brick) => brick.color === '#ef8d32')).toBe(true)
     expect(readiness(robots()[0]).ready).toBe(true)
+  })
+
+  it('the placed kit stays selected, so Rotate turns the whole robot and it still drives', () => {
+    placeKit('buggy', 29, 28)
+    brickState().rotate()
+    expect(brickState().undoStack.at(-1)?.label).toBe('Rotate 9 bricks')
+    const [robot] = robots()
+    expect(robot.brickIds).toHaveLength(9)
+    expect(readiness(robot)).toEqual({ kind: 'drive', ready: true, reason: null })
   })
 
   it('in manual wiring, the kit still comes plugged in', () => {
