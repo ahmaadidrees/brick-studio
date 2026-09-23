@@ -134,7 +134,8 @@ mount your own component or add your own action, in as few lines as possible. Th
 ## 9. Rules for every lane
 
 - Node: `PATH=/opt/homebrew/opt/node@22/bin:$PATH`. Never `npm run check` (its build bakes production URLs); run
-  `npx vitest run`, `npx tsc --noEmit -p tsconfig.json`, `npx tsc -p packages/brick-core/tsconfig.json` and
+  `npx vitest run`, `npx tsc --noEmit -p tsconfig.app.json` (not `tsconfig.json`: it has `files: []` and only
+  references other configs, so it checks nothing), `npx tsc -p packages/brick-core/tsconfig.json` and
   `npx vite build --mode robotics --outDir <scratch>` separately.
 - Dev server: `npx vite --mode robotics --port <your port> --strictPort --host 127.0.0.1` from your worktree. Evidence
   comes from real Chrome via Playwright (`scripts/qa/lib/env.mjs`), never from an embedded pane, which throttles clocks.

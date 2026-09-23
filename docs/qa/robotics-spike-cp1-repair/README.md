@@ -54,7 +54,7 @@ coordinates, no fixture. The ghost's pose is read back before every click.
 the panel rename, **49/49** (rover, wheel off, same-sign turn, save/reload, gate, locked gate, signal post, legacy
 document, drawer category).
 
-Tests: `npx vitest run` (full frontend suite: 131 files, 1409 tests after the review fixes, all passing; 1365 before this pass), `tsc --noEmit -p tsconfig.json`,
+Tests: `npx vitest run` (full frontend suite: 131 files, 1409 tests after the review fixes, all passing; 1365 before this pass), `tsc --noEmit -p tsconfig.app.json`,
 `tsc -p packages/brick-core/tsconfig.json`, `vite build --mode robotics`. New unit coverage: the clock at 30–240 fps and
 the backlog cap (`mechanics.test.ts`), precise wiring Undo, cancelled and superseded starts, cable-edit vs rename
 retirement, the behaviour key, a run never writing (`roboticsStore.test.ts`), connector snapping against the rover
@@ -72,6 +72,10 @@ A second read of the repair found three problems, fixed in the follow-up commit:
   the hub the box meets the hub even though the rod clears it. That refusal now names the part in the way: *"The axle
   fits Left motor's socket, but there it would overlap Hub. Turn or move the motor so its socket faces open space."*
   With the socket facing open space the snapped axle places and reads as in the socket. Both are unit tests.
+
+Method correction: `tsc --noEmit -p tsconfig.json` (used here and in the Codex QA) checks nothing, because that
+config has `files: []` and only references `tsconfig.app.json` and `tsconfig.node.json`. Both real configs were run on
+the integration branch on 2026-09-23 and pass.
 
 Contract gap noted for checkpoint 2: a device that bridges two creations no longer reopens the card for their union
 (contract §4); neither version implemented the union.
