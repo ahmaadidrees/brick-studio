@@ -1,6 +1,7 @@
 /* Robot Workshop panels (behind VITE_ROBOTICS_PROTOTYPE). Top-right, under the header,
    clear of the history cluster (top-left), the command strip (bottom-centre) and the
-   camera cluster (bottom-right). */
+   camera cluster (bottom-right). Kid-UX pass (docs/robotics/KID-UX.md): 14 px text on a
+   desktop, 15 px on touch, every control a finger or a mouse uses at least 44 px. */
 .robotics-card,
 .robotics-panel {
   position: absolute;
@@ -15,65 +16,113 @@
   overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   padding: 14px;
   border: 1px solid var(--studio-panel-border);
   border-radius: var(--radius-lg, 16px);
   color: var(--studio-ink);
   background: var(--studio-panel);
   box-shadow: var(--studio-panel-shadow);
-  font-size: 12.5px;
+  font-size: 14px;
   line-height: 1.35;
 }
 .robotics-panel.collapsed { gap: 0; }
-.robotics-card.compact, .robotics-panel.compact { top: calc(var(--brick-header-block) + 8px); width: min(300px, calc(100% - 16px)); max-height: calc(100% - var(--brick-header-block) - 150px); font-size: 12px; }
-.robotics-card-head { display: flex; flex-direction: column; gap: 2px; }
-.robotics-card-head strong { font-size: 15px; }
-.robotics-card-head span { color: var(--studio-muted); font-weight: 700; }
-.robotics-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.robotics-name { flex: 1 1 auto; min-width: 0; min-height: 34px; padding: 0 8px; border: 1px solid transparent; border-radius: 9px; font-family: inherit; font-weight: 900; font-size: 15px; line-height: 1.2; color: var(--studio-ink); background: transparent; }
-.robotics-name:hover, .robotics-name:focus { border-color: var(--studio-panel-border); background: var(--studio-panel-soft); outline: none; }
-.robotics-field { display: flex; flex-direction: column; gap: 5px; font-size: 10.5px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--studio-muted); }
-.robotics-field input { min-height: 40px; padding: 0 10px; border: 2px solid var(--studio-panel-border); border-radius: 10px; font-family: inherit; font-weight: 900; font-size: 15px; line-height: 1.2; color: var(--studio-ink); background: var(--studio-panel); }
+.robotics-card.compact, .robotics-panel.compact { top: calc(var(--brick-header-block) + 8px); width: min(320px, calc(100% - 16px)); max-height: calc(100% - var(--brick-header-block) - 150px); }
+
+/* ------------------------------------------------------------- the card --- */
+.robotics-card-form { display: flex; flex-direction: column; gap: 14px; margin: 0; }
+.robotics-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.robotics-card-head strong { font-family: var(--font-display, inherit); font-size: 20px; font-weight: 700; line-height: 1.2; }
+.robotics-help-button { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 2px solid var(--studio-panel-border); border-radius: 999px; font-family: inherit; font-size: 18px; font-weight: 900; line-height: 1; color: var(--studio-blue-dark, #3565bf); background: var(--studio-panel); cursor: pointer; }
+.robotics-help-button[aria-expanded='true'] { border-color: var(--studio-blue, #5888da); background: var(--primary-soft, #e8effb); }
+.robotics-help-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.robotics-card-why { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; color: var(--studio-ink); background: var(--studio-panel-soft); font-weight: 700; }
+.robotics-card-why p { margin: 0; }
+.robotics-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 800; color: var(--studio-muted); }
+.robotics-field input { min-height: 48px; box-sizing: border-box; padding: 0 12px; border: 2px solid var(--studio-panel-border); border-radius: 12px; font-family: inherit; font-weight: 900; font-size: 18px; line-height: 1.2; color: var(--studio-ink); background: var(--studio-panel); }
 .robotics-field input:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.robotics-structure { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; background: var(--studio-panel-soft); }
-.robotics-structure p { margin: 0; color: var(--studio-muted); font-weight: 700; }
-.robotics-structure-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.robotics-pill { flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; white-space: nowrap; }
-.robotics-pill.blue { color: #2f5fb3; background: #e8effb; }
-.robotics-pill.coral { color: #c95a45; background: #fde7e2; }
-.robotics-pill.red { color: #a12c1d; background: #ffd9d3; }
+
+/* ------------------------------------------------ big buttons (card, panel) --- */
+.robotics-big-button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; border: 2px solid var(--studio-panel-border); border-radius: 14px; font-family: inherit; font-size: 17px; font-weight: 900; line-height: 1; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 1px 2px rgba(38, 60, 81, .08)); cursor: pointer; }
+.robotics-big-button:hover:not(:disabled) { border-color: rgba(88, 136, 218, .6); color: var(--studio-blue-dark, #3565bf); }
+.robotics-big-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.robotics-big-button.primary { border-color: var(--studio-blue-dark, #3565bf); color: #fff; background: var(--studio-blue, #5888da); box-shadow: 0 8px 20px rgba(63, 108, 192, .26); }
+.robotics-big-button.primary:hover:not(:disabled) { color: #fff; background: var(--studio-blue-dark, #3565bf); }
+.robotics-big-button:disabled { cursor: default; }
+.robotics-card-go { width: 100%; }
+
+/* ------------------------------------------------------------ the panel --- */
+.robotics-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.robotics-panel-title { font-size: 17px; }
+.robotics-name { flex: 1 1 auto; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 0 10px; border: 2px solid transparent; border-radius: 10px; font-family: var(--font-display, inherit); font-weight: 700; font-size: 20px; line-height: 1.2; color: var(--studio-ink); background: transparent; }
+.robotics-name:hover { border-color: var(--studio-panel-border); }
+.robotics-name:focus { border-color: var(--studio-blue, #5888da); background: var(--studio-panel-soft); outline: none; }
+.robotics-play { display: flex; gap: 8px; }
+.robotics-play .robotics-big-button { flex: 1 1 0; }
+.robotics-play-button { flex-grow: 2 !important; }
+.robotics-play-button.ready:not(:disabled) { border-color: #17693c; color: #fff; background: var(--success, #1f7a46); box-shadow: 0 8px 20px rgba(31, 122, 70, .28); }
+.robotics-play-button.ready:hover:not(:disabled) { color: #fff; background: #17693c; }
+.robotics-play-button:disabled { border-style: dashed; color: var(--studio-muted); background: var(--studio-panel-soft); box-shadow: none; }
+.robotics-code-button:disabled { opacity: .45; }
+
+.robotics-section-title, .robotics-subtitle { margin: 0; font-size: 13px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; color: var(--studio-muted); }
+.robotics-subtitle { margin-top: 4px; }
+.robotics-steps { display: flex; flex-direction: column; gap: 8px; }
+.robotics-step-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.robotics-step { display: flex; align-items: center; gap: 10px; }
+.robotics-step.done { min-height: 30px; padding: 0 6px; color: var(--studio-muted); font-weight: 800; }
+.robotics-step.done .robotics-step-text { text-decoration: none; }
+.robotics-step-check { flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 999px; color: #fff; background: var(--success, #1f7a46); }
+.robotics-step.waiting { min-height: 44px; padding: 4px 10px; border: 2px dashed var(--studio-panel-border); border-radius: 14px; color: var(--studio-muted); font-weight: 800; }
+.robotics-step-button { width: 100%; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 8px; border: 2px solid var(--studio-panel-border); border-radius: 14px; font-family: inherit; font-size: 15px; font-weight: 800; line-height: 1.25; text-align: left; color: var(--studio-ink); background: var(--studio-panel); cursor: pointer; }
+.robotics-step-button:hover:not(:disabled) { border-color: rgba(88, 136, 218, .6); background: rgba(88, 136, 218, .06); }
+.robotics-step-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.robotics-step-button:disabled { opacity: .5; cursor: default; }
+.robotics-step-button.current { border-color: var(--studio-blue, #5888da); background: var(--primary-soft, #e8effb); box-shadow: 0 0 0 3px rgba(88, 136, 218, .22); font-weight: 900; }
+.robotics-step-button.current::after { content: ''; flex: 0 0 auto; width: 10px; height: 10px; margin-left: auto; border-top: 3px solid var(--studio-blue-dark, #3565bf); border-right: 3px solid var(--studio-blue-dark, #3565bf); transform: rotate(45deg); }
+.robotics-step-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.robotics-step-text small { font-size: 14px; font-weight: 700; color: var(--studio-muted); }
+.robotics-step-icon { flex: 0 0 auto; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--studio-panel-soft); overflow: hidden; }
+.robotics-step-icon .part-thumbnail { width: 32px; height: 32px; filter: none; }
+.robotics-step-icon.symbol { color: var(--studio-blue-dark, #3565bf); background: var(--primary-soft, #e8effb); }
+.robotics-step-icon.symbol.drive, .robotics-step-icon.symbol.try { color: #fff; background: var(--success, #1f7a46); }
+.robotics-step-icon.symbol.fix { color: var(--danger-text, #b0432e); background: var(--danger-soft, #fbe4e0); }
+
+/* Folded sections: Parts and More. */
+.robotics-fold { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--studio-panel-border); padding-top: 8px; }
+.robotics-fold-toggle { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 0; border-radius: 10px; font-family: inherit; font-size: 15px; font-weight: 900; color: var(--studio-ink); background: transparent; cursor: pointer; text-align: left; }
+.robotics-fold-toggle small { font-size: 14px; font-weight: 700; color: var(--studio-muted); }
+.robotics-fold-toggle svg { margin-left: auto; color: var(--studio-muted); transition: transform .15s ease; }
+.robotics-fold.open .robotics-fold-toggle svg { transform: rotate(180deg); }
+.robotics-fold-toggle:hover { background: var(--studio-panel-soft); }
+.robotics-fold-toggle:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.robotics-fold-body { display: flex; flex-direction: column; gap: 10px; }
+
 .robotics-lines { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; font-weight: 700; }
 .robotics-lines li { display: flex; align-items: flex-start; gap: 8px; }
-.robotics-check, .robotics-dot { flex: 0 0 auto; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; font-weight: 900; }
-.robotics-check { color: #1f6b3e; background: #e4f4ea; }
-.robotics-dot { color: var(--studio-muted); background: var(--studio-panel-soft); }
-.robotics-parts { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; font-weight: 700; }
-.robotics-parts li { padding: 5px 8px; border-radius: 8px; background: var(--studio-panel-soft); }
+.robotics-parts { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; font-weight: 700; }
+.robotics-parts li { padding: 6px 9px; border-radius: 9px; background: var(--studio-panel-soft); }
 .robotics-parts li.warn { background: #fff4d6; }
 .robotics-parts li.bad { color: #a12c1d; background: #ffe1dc; }
 .robotics-parts li.selected { box-shadow: inset 0 0 0 2px var(--studio-blue, #3e83d7); }
-.robotics-parts.compact li { padding: 4px 7px; font-size: 11.5px; }
-.robotics-selected { margin: 0; padding: 8px 10px; border-radius: 10px; font-weight: 700; color: var(--studio-ink); background: #e8effb; }
-.robotics-card-actions { display: flex; justify-content: flex-end; gap: 8px; }
-.robotics-card-actions .studio-button { min-height: 40px; padding: 0 14px; border-radius: 999px; font-weight: 900; }
+.robotics-selected { margin: 0; padding: 10px 12px; border-radius: 12px; font-weight: 700; color: var(--studio-ink); background: #e8effb; }
 .robotics-space { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--studio-muted); font-weight: 800; }
-.robotics-chip { min-height: 30px; padding: 0 10px; border: 1px solid var(--studio-panel-border); border-radius: 999px; font-family: inherit; font-weight: 800; font-size: 11.5px; line-height: 1; color: var(--studio-ink); background: var(--studio-panel); cursor: pointer; }
+.robotics-chip { min-height: 44px; padding: 0 14px; border: 1px solid var(--studio-panel-border); border-radius: 999px; font-family: inherit; font-weight: 800; font-size: 14px; line-height: 1; color: var(--studio-ink); background: var(--studio-panel); cursor: pointer; }
 .robotics-chip.active { color: #fff; border-color: var(--studio-blue-dark, #2f5fb3); background: var(--studio-blue, #3e83d7); }
+.robotics-chip:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
 .robotics-nudge { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px dashed var(--studio-panel-border); border-radius: 12px; }
 .robotics-nudge header { display: flex; align-items: baseline; gap: 8px; }
-.robotics-nudge header span { color: var(--studio-muted); font-size: 11px; font-weight: 800; }
+.robotics-nudge header span { color: var(--studio-muted); font-size: 14px; font-weight: 800; }
 .robotics-nudge-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
-.robotics-nudge-row .studio-button { min-height: 30px; padding: 0 9px; border-radius: 8px; font-size: 11.5px; font-weight: 900; }
+.robotics-nudge-row .studio-button { min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 14px; font-weight: 900; }
 .robotics-nudge-label { flex: 1 0 100%; font-weight: 900; }
-.robotics-nudge-status { color: var(--studio-muted); font-size: 11px; font-weight: 800; }
+.robotics-nudge-status { color: var(--studio-muted); font-size: 14px; font-weight: 800; }
 .robotics-contact { margin: 0; padding: 6px 8px; border-radius: 8px; color: #a12c1d; background: #ffe1dc; font-weight: 800; }
-.robotics-wiring-line { position: absolute; z-index: 16; top: calc(var(--brick-header-block) + 12px); left: 50%; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box; transform: translateX(-50%); padding: 9px 12px; border: 1px solid var(--studio-panel-border); border-radius: 11px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-md, 0 8px 22px rgba(38, 60, 81, .13)); font-size: 12px; font-weight: 800; }
-.robotics-link-button { border: 0; padding: 2px 6px; border-radius: 6px; font-family: inherit; font-weight: 900; font-size: 12px; line-height: 1.2; color: var(--studio-blue-dark, #2f5fb3); background: transparent; cursor: pointer; }
+.robotics-wiring-line { position: absolute; z-index: 16; top: calc(var(--brick-header-block) + 12px); left: 50%; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box; transform: translateX(-50%); padding: 6px 8px 6px 14px; border: 1px solid var(--studio-panel-border); border-radius: 11px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-md, 0 8px 22px rgba(38, 60, 81, .13)); font-size: 14px; font-weight: 800; }
+.robotics-link-button { min-width: 44px; min-height: 44px; border: 0; padding: 0 10px; border-radius: 8px; font-family: inherit; font-weight: 900; font-size: 14px; line-height: 1.2; color: var(--studio-blue-dark, #2f5fb3); background: transparent; cursor: pointer; }
 .robotics-link-button:hover { background: var(--studio-panel-soft); }
 .robotics-link-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
-.robotics-code-button { min-height: 32px; padding: 0 14px; border-radius: 999px; font-weight: 900; }
-.robotics-live-line { margin: 0; padding: 7px 10px; border-radius: 9px; color: var(--studio-muted); background: var(--studio-panel-soft); font-weight: 800; }
+.robotics-live-line { margin: 0; padding: 8px 10px; border-radius: 9px; color: var(--studio-muted); background: var(--studio-panel-soft); font-weight: 800; }
 .brick-mode-explore .robotics-card, .brick-mode-explore .robotics-panel, .brick-mode-explore .robotics-wiring-line { display: none; }
 /* With a robotics card or panel on the right, the studio toast centres in the canvas between the drawer and
    the panel instead of landing on the panel's name field (desktop and landscape tablet layouts only). */
@@ -83,8 +132,12 @@
 
 /* Hub ports as chips: filled when a cable is in the port, outlined when free (was "A● B○", which read as letters). */
 .robotics-port-chips { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
-.robotics-port-chip { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; border: 2px solid #4a5d70; font-size: 11px; font-weight: 900; color: #263c51; background: #fff; }
+.robotics-port-chip { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; border: 2px solid #4a5d70; font-size: 12px; font-weight: 900; color: #263c51; background: #fff; }
 .robotics-port-chip.used { color: #fff; background: #4a5d70; }
+
+/* The device inspector inside the panel keeps to the panel's type sizes (wiring.css sizes it for itself). */
+.robotics-panel .wiring-sub, .robotics-panel .wiring-hint, .robotics-panel .wiring-note, .robotics-panel .wiring-block, .robotics-panel .wiring-row, .robotics-panel .wiring-pill, .robotics-panel .wiring-hub-port, .robotics-panel .wiring-button { font-size: 14px; }
+.robotics-panel .wiring-label { font-size: 13px; }
 
 /* With the panel on the right, the wiring line sits in the canvas between the drawer and the panel (desktop and
    landscape tablet); in the compact layout it sits on the left under the history cluster, clear of the panel. */
@@ -93,21 +146,17 @@
 }
 .brick-compact-layout .robotics-wiring-line { top: calc(var(--brick-header-block) + 76px); left: max(8px, env(safe-area-inset-left)); transform: none; max-width: calc(100% - 340px); }
 
-/* Touch: every control a finger uses is at least 44 px (Apple HIG, WCAG 2.5.5). */
+/* Touch: 15 px text or larger, every control a finger uses at least 44 px (Apple HIG, WCAG 2.5.5). */
 @media (any-pointer: coarse) {
-  .robotics-nudge-row .studio-button, .robotics-card-actions .studio-button { min-height: 44px; padding: 0 14px; font-size: 13px; }
-  .robotics-chip { min-height: 44px; padding: 0 14px; font-size: 13px; }
-  .robotics-code-button { min-height: 44px; font-size: 13px; }
-  .robotics-link-button { min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 13px; }
-  .robotics-name { min-height: 44px; font-size: 16px; }
-  .robotics-field input { min-height: 44px; font-size: 16px; }
-  .robotics-lines, .robotics-parts, .robotics-selected { font-size: 13px; }
-  .robotics-card-head span, .robotics-structure p { font-size: 13px; }
-  /* No panel text under 13 px on touch: the labels ("Runs", "Wiring", "Nudge", a motor's name), the notes
-     ("mechanics only · no code yet", "Built pose"), the pills and the hub's port chips. */
-  .robotics-card, .robotics-panel, .robotics-card.compact, .robotics-panel.compact { font-size: 13px; }
-  .robotics-field, .robotics-pill, .robotics-nudge header span, .robotics-nudge-status, .robotics-parts.compact li, .robotics-wiring-line { font-size: 13px; }
-  .robotics-port-chip { width: 24px; height: 24px; font-size: 13px; }
+  .robotics-card, .robotics-panel, .robotics-card.compact, .robotics-panel.compact { font-size: 15px; }
+  .robotics-field, .robotics-step-button, .robotics-fold-toggle, .robotics-chip, .robotics-link-button, .robotics-nudge-row .studio-button,
+  .robotics-nudge header span, .robotics-nudge-status, .robotics-step-text small, .robotics-fold-toggle small, .robotics-wiring-line,
+  .robotics-section-title, .robotics-subtitle, .robotics-parts, .robotics-lines, .robotics-selected { font-size: 15px; }
+  .robotics-step-button { min-height: 56px; }
+  .robotics-name { min-height: 48px; font-size: 20px; }
+  .robotics-field input { min-height: 52px; font-size: 18px; }
+  .robotics-port-chip { width: 26px; height: 26px; font-size: 15px; }
+  .robotics-panel .wiring-sub, .robotics-panel .wiring-hint, .robotics-panel .wiring-note, .robotics-panel .wiring-block, .robotics-panel .wiring-row, .robotics-panel .wiring-pill, .robotics-panel .wiring-hub-port, .robotics-panel .wiring-button, .robotics-panel .wiring-label { font-size: 15px; }
 }
 
 /* In the Code view a studio message sits at the top-left of the stage under the readings: never over the stage

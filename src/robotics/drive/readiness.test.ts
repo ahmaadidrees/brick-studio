@@ -35,6 +35,23 @@ describe('readiness', () => {
     expect(readiness(creationOf(gateBricks(), GATE_IDS.hinge, wires))).toEqual({ kind: 'try', ready: true, reason: null })
     expect(readiness(creationOf(gateBricks({ builtIntoFrame: true }), GATE_IDS.hinge, wires)).reason).toMatch(/stuck to the frame/)
   })
+  it('a rover stands on a plate: a motor on the bare ground asks for one first', () => {
+    const motorAlone = [{ id: 'm', partId: 'robo_motor', x: 30, y: 0, z: 30, rotation: 0 as const, color: '#52636c' }]
+    expect(readiness(creationOf(motorAlone, 'm', []))).toEqual({ kind: 'drive', ready: false, reason: 'Put a plate down. Then move the motor onto it.' })
+  })
+  it('motors facing into the robot are turned before any axle goes in', () => {
+    const facingIn = roverBricks().filter((brick) => ![ROVER_IDS.leftAxle, ROVER_IDS.rightAxle, ROVER_IDS.leftWheel, ROVER_IDS.rightWheel].includes(brick.id as never))
+      .map((brick) => (brick.id === ROVER_IDS.leftMotor ? { ...brick, rotation: 0 as const } : brick.id === ROVER_IDS.rightMotor ? { ...brick, rotation: 2 as const } : brick))
+    expect(readiness(creationOf(facingIn, ROVER_IDS.hub, ROVER_WIRES)).reason).toBe('Turn the left motor to face out.')
+  })
+  it('a gate needs an arm and a sensor before it can be tried', () => {
+    const wires: RoboticsConnection[] = [{ deviceId: GATE_IDS.hinge, hubId: GATE_IDS.hub, port: 'A' }]
+    expect(readiness(creationOf(gateBricks().filter((brick) => brick.id !== GATE_IDS.door && brick.id !== GATE_IDS.sensor), GATE_IDS.hinge, wires)).reason).toBe('Put a long brick on top of Arm motor. It will swing.')
+    expect(readiness(creationOf(gateBricks().filter((brick) => brick.id !== GATE_IDS.sensor), GATE_IDS.hinge, wires))).toEqual({ kind: 'try', ready: false, reason: 'Add a sensor so it sees who walks up.' })
+  })
+  it('a hub alone has nothing to play yet', () => {
+    expect(readiness(creationOf(roverBricks().filter((brick) => brick.id === ROVER_IDS.plate || brick.id === ROVER_IDS.hub), ROVER_IDS.hub, []))).toEqual({ kind: null, ready: false, reason: 'Add motors to make it move, or a sensor and a light.' })
+  })
   it('a signal post can be tried', () => {
     const wires: RoboticsConnection[] = [{ deviceId: SIGNAL_IDS.sensor, hubId: SIGNAL_IDS.hub, port: 'A' }, { deviceId: SIGNAL_IDS.light, hubId: SIGNAL_IDS.hub, port: 'B' }]
     expect(readiness(creationOf(signalPostBricks(), SIGNAL_IDS.hub, wires))).toEqual({ kind: 'try', ready: true, reason: null })
