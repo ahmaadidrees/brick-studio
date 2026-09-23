@@ -79,7 +79,8 @@ export function framePoseInFreeArea(
  * Code view's editor (left), the creation card or robotics panel (right), the command
  * strip or the Code view's goal line (bottom) and the Code view's stage bar and readings
  * (top). In portrait the Code view stacks: its editor spans the canvas's width across the
- * top, so it is a top inset and the stage bar and readings below it add to it.
+ * top, so it is a top inset and the stage bar and readings below it add to it. The Drive
+ * view's bar (top), speed or results (bottom) and joystick or button column (right) count too.
  * Elements that are hidden or off the canvas count for nothing.
  */
 export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = document): CanvasInsets {
@@ -98,17 +99,17 @@ export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = docu
     if (acrossTheTop) insets.top = Math.max(insets.top, rect.bottom - frame.top)
     else if (rect.left < frame.left + frame.width / 2) insets.left = Math.max(insets.left, rect.right - frame.left)
   }
-  for (const element of root.querySelectorAll<HTMLElement>('.robotics-card, .robotics-panel')) {
+  for (const element of root.querySelectorAll<HTMLElement>('.robotics-card, .robotics-panel, .robo-drive-side')) {
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.right > frame.left + frame.width / 2) insets.right = Math.max(insets.right, frame.right - rect.left)
   }
-  for (const element of root.querySelectorAll<HTMLElement>('.command-strip, .robo-code-goal')) {
+  for (const element of root.querySelectorAll<HTMLElement>('.command-strip, .robo-code-goal, .robo-drive-foot')) {
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.top > frame.top + frame.height / 2) insets.bottom = Math.max(insets.bottom, frame.bottom - rect.top)
   }
   // The Code view's stage bar and readings sit over the top of the stage (below the editor when it is stacked on top).
   const stageTop = frame.top + insets.top
-  for (const element of root.querySelectorAll<HTMLElement>('.robo-code-stagebar, .robo-code-readings')) {
+  for (const element of root.querySelectorAll<HTMLElement>('.robo-code-stagebar, .robo-code-readings, .robo-drive-bar')) {
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.bottom < stageTop + (frame.bottom - stageTop) / 2) insets.top = Math.max(insets.top, rect.bottom - frame.top)
   }

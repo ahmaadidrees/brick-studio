@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
+import { useDriveView } from '../drive/driveViewState'
 import { deriveCandidate, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
@@ -11,6 +12,8 @@ import './robotics.css'
 
 /** The Code view (Blockly and all) loads only when a creation is opened in it. */
 const CodeView = lazy(() => import('../code/CodeView'))
+/** The Drive view (Drive / Try it) loads only when a robot is opened in it. */
+const DriveView = lazy(() => import('../drive/DriveView'))
 
 /**
  * The Robot Workshop's build-mode panels (checkpoint 1): the assisted-wiring line,
@@ -26,14 +29,16 @@ export function RoboticsPanel({ compact = false, live = false }: { compact?: boo
     // the scene layer adds (a world→screen projector, so a harness can aim a real pointer at a socket).
     if (import.meta.env.DEV) {
       const host = window as unknown as { __robotics?: Record<string, unknown> }
-      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore, stageStore: useStageStore, codeView: useCodeView })
+      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore, stageStore: useStageStore, codeView: useCodeView, driveView: useDriveView })
     }
   }, [])
   const card = useRoboticsStore((state) => state.card)
   const coding = useCodeView((state) => state.creationId !== null)
+  const driving = useDriveView((state) => state.creationId !== null)
   // Contract §8: no Code or Run in a live room.
   useEffect(() => { if (live && coding) useCodeView.getState().closeCode() }, [live, coding])
   if (coding && !live) return <Suspense fallback={null}><CodeView /></Suspense>
+  if (driving) return <Suspense fallback={null}><DriveView live={live} /></Suspense>
   return (
     <>
       <WiringLine />
