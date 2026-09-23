@@ -346,6 +346,16 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     expect(robotics().wiringNote?.text).toBe('Right motor connected to port A')
   })
 
+  it('the line goes away with the part it is about (Undo)', () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Buggy', false)
+    place(ROBOTICS_PART_IDS.motor, 35, 0, 30)
+    expect(robotics().wiringNote?.brickId).toBeDefined()
+    useBrickStore.getState().undo()
+    expect(robotics().wiringNote).toBeNull()
+  })
+
   it('beside a robot whose card is still open, it names the robot the card is about', () => {
     place('plate_6x8', 28, 0, 26)
     place(ROBOTICS_PART_IDS.hub, 29, 1, 27)

@@ -86,6 +86,12 @@ describe('placement advice', () => {
     })
   })
 
+  it('with no room left on the plate it says what still works: stack it on the robot', () => {
+    // The finished rover: both side spots, the front and the back of its plate are taken.
+    const section: RoboticsSection = { ...emptyRoboticsSection(), creations: [{ id: 'rover', name: 'Buggy', anchorBrickIds: [ROVER_IDS.plate, ROVER_IDS.hub] }] }
+    expect(adviceFor([...roverBricks(), brick('extra', ROBOTICS_PART_IDS.motor, 30, 0, 37)], section, 'extra')?.text).toBe("Right motor isn't on Buggy yet. Stack it on Buggy.")
+  })
+
   it('a sensor or a light beside it says the same; one on it says nothing', () => {
     const { bricks, section } = buggy()
     expect(adviceFor([...bricks, brick('eyes', ROBOTICS_PART_IDS.distanceSensor, 30, 0, 23)], section, 'eyes')?.text).toBe("Front sensor isn't on Buggy yet. Put it on Buggy's plate.")

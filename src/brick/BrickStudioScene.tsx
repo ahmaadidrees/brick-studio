@@ -1205,7 +1205,14 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
           if (!point) return
           const x = direct.anchor.x + Math.round((point.x - direct.origin.x) / STUD)
           const z = direct.anchor.z + Math.round((point.z - direct.origin.z) / STUD)
-          state.setDraftPosition(x, direct.anchor.y, z)
+          // Robot Workshop: one dragged part snaps as an armed one does (a wheel dragged near its axle end goes on),
+          // measured from where the dragged part is; a group drag never snaps.
+          const plateSize = getBuildPlateSize(state.documentMetadata)
+          const [atX, atY, atZ] = brickWorldPosition({ ...direct.anchor, x, z }, plateSize)
+          const snapped = state.movingSelection?.originals.length === 1 ? snapDraft(state.draft, null, { x: atX, y: atY, z: atZ }, state.bricks.filter((brick) => brick.id !== state.movingId), plateSize) : null
+          if ((snapped?.rotation ?? direct.anchor.rotation) !== state.draft.rotation) turnDraftTo(snapped?.rotation ?? direct.anchor.rotation)
+          if (snapped) state.setDraftPosition(snapped.x, snapped.y, snapped.z)
+          else state.setDraftPosition(x, direct.anchor.y, z)
           return
         }
         if (!grabbedBrick.current) updatePointerTravel(ghostTravel.current, event.clientX, event.clientY)

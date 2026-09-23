@@ -20,9 +20,14 @@
   pointer-events: none;
   user-select: none;
 }
-.robotics-connect-label.is-hint { color: #0b6b3a; border-color: #12b76a; }
 .robotics-connect-label.is-gap { color: #a4161a; border-color: #e5383b; }
 .robotics-connect-label.is-advice { color: #7a3d00; border-color: #f0a020; }
+/* The pointer is at the part the line is about (an axle aimed at a motor on the ground): the line stands out. */
+.robotics-connect-label.is-emphasis { background: #fff4d6; box-shadow: 0 0 0 4px rgba(240, 160, 32, 0.35), 0 4px 14px rgba(31, 42, 51, 0.2); animation: robotics-connect-nudge 900ms ease-in-out infinite alternate; }
+@keyframes robotics-connect-nudge { from { transform: scale(1); } to { transform: scale(1.06); } }
+@media (prefers-reduced-motion: reduce) {
+  .robotics-connect-label.is-emphasis { animation: none; }
+}
 
 @media (pointer: coarse) {
   .robotics-connect-label { font-size: 15px; }

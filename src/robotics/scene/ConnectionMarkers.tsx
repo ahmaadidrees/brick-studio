@@ -1,5 +1,5 @@
 import { Edges, Html } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useSyncExternalStore, type RefObject } from 'react'
 import * as THREE from 'three'
 import { draftIsValid } from '../../brick/brickRules'
@@ -26,12 +26,14 @@ import './connectionMarkers.css'
  * motor is armed, every place it can connect glows: free motor sockets and loose wheels'
  * holes for an axle, free axle ends for a wheel (motors with nothing in their socket are
  * shown dimmed, and say "Put an axle in first" when the pointer comes near), and the free
- * stretches of robot plates' long sides for a motor. Each target has a ring at the
- * connector and a pad where the part would sit, so it can be aimed at from any side. The
- * snapped ghost gets a green outline and its target brightens.
+ * stretches of robot plates' long sides for a motor. Each target has a ring (or, for a
+ * motor, a bar with arrows pointing out over the edge) at the connector and a pad where the
+ * part would sit, so it can be aimed at from any side; rings and bars never shrink below a
+ * readable size when the camera is far. The snapped ghost gets a green outline, seen even
+ * through the robot, and its target brightens.
  *
- * Always, in build mode: a red gap marker on every near miss (a wheel or an axle next to
- * a connector without connecting) and, next to a motor standing on the bare ground, why it
+ * Always, in build mode: a red gap marker on every near miss (a wheel or an axle next to a
+ * connector without connecting) and, next to a motor standing on the bare ground, why it
  * cannot take a wheel. Nothing here takes a pointer event or writes to the document.
  */
 const TARGET = '#12b76a'
@@ -60,26 +62,43 @@ function facing(direction: Vec3): THREE.Quaternion {
   return new THREE.Quaternion().setFromUnitVectors(Z_AXIS, new THREE.Vector3(direction.x, direction.y, direction.z).normalize())
 }
 
-/** Gently breathing opacity for a set of materials: `lit` holds them steady and bright. */
-function useBreathing(materials: RefObject<(THREE.Material | null)[]>, levels: { base: number; swing: number; lit: number }[], lit: boolean) {
+type Level = { base: number; swing: number; lit: number }
+
+/**
+ * Per frame: breathing opacity for a marker's materials (`lit` holds them steady and bright),
+ * and how much to enlarge it so a feature `worldSize` across near `anchor` is at least
+ * `pixels` on screen (1 up close, up to 3 when the camera is far).
+ */
+function useMarkerFrame(materials: RefObject<(THREE.Material | null)[]>, levels: Level[], lit: boolean, anchor: Vec3, worldSize: number, pixels: number, apply: (factor: number) => void) {
+  const { camera, size } = useThree()
+  const point = useMemo(() => new THREE.Vector3(anchor.x, anchor.y, anchor.z), [anchor.x, anchor.y, anchor.z])
   useFrame(({ clock }) => {
     const wave = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 3.6)
     materials.current?.forEach((material, index) => {
-      if (!material) return
-      const level = levels[index]
-      material.opacity = lit ? level.lit : level.base + level.swing * wave
+      const level = levels[Math.min(index, levels.length - 1)]
+      if (material && level) material.opacity = lit ? level.lit : level.base + level.swing * wave
     })
+    let factor = 1
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const perUnit = size.height / (2 * camera.position.distanceTo(point) * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2))
+      factor = Math.min(3, Math.max(1, pixels / (worldSize * perUnit)))
+    }
+    apply(factor)
   })
 }
 
 type Footprint = { center: Vec3; width: number; depth: number }
 
-function footprintOf(pose: SnapPose, part: BrickPart, plateSize: number): Footprint {
-  const size = rotatedSize(part, pose.rotation)
+function footprintOf(poses: readonly SnapPose[], part: BrickPart, plateSize: number): Footprint {
+  const size = rotatedSize(part, poses[0].rotation)
+  const x0 = Math.min(...poses.map((pose) => pose.x))
+  const x1 = Math.max(...poses.map((pose) => pose.x)) + size.width
+  const z0 = Math.min(...poses.map((pose) => pose.z))
+  const z1 = Math.max(...poses.map((pose) => pose.z)) + size.depth
   return {
-    center: { x: (pose.x + size.width / 2 - plateSize / 2) * STUD, y: pose.y * PLATE_HEIGHT, z: (pose.z + size.depth / 2 - plateSize / 2) * STUD },
-    width: size.width * STUD,
-    depth: size.depth * STUD,
+    center: { x: ((x0 + x1) / 2 - plateSize / 2) * STUD, y: poses[0].y * PLATE_HEIGHT, z: ((z0 + z1) / 2 - plateSize / 2) * STUD },
+    width: (x1 - x0) * STUD,
+    depth: (z1 - z0) * STUD,
   }
 }
 
@@ -92,80 +111,93 @@ function Pad({ footprint, color, materialRef, inset = 0.1 }: { footprint: Footpr
   )
 }
 
-/** A ring at the connector, facing out of it: drawn normally, plus a faint copy seen through whatever hides it. */
-function ConnectorRing({ at, direction, radius, color, lit, materials, offset }: { at: Vec3; direction: Vec3; radius: number; color: string; lit: boolean; materials: RefObject<(THREE.Material | null)[]>; offset: number }) {
-  const quaternion = useMemo(() => facing(direction), [direction])
-  const position = add(at, scale(direction, 0.05))
-  return (
-    <group position={[position.x, position.y, position.z]} quaternion={quaternion} scale={lit ? radius * 1.18 : radius}>
-      <mesh geometry={ring} raycast={noRaycast} renderOrder={5}>
-        <meshBasicMaterial ref={(material) => { materials.current![offset] = material }} color={lit ? TARGET_LIT : color} transparent opacity={0.8} depthWrite={false} toneMapped={false} />
-      </mesh>
-      <mesh geometry={ring} raycast={noRaycast} renderOrder={6}>
-        <meshBasicMaterial ref={(material) => { materials.current![offset + 1] = material }} color={color} transparent opacity={0.25} depthTest={false} depthWrite={false} toneMapped={false} />
-      </mesh>
-    </group>
-  )
-}
+/** Ring, see-through ring, pad. */
+const CONNECTOR_LEVELS: Level[] = [{ base: 0.6, swing: 0.4, lit: 1 }, { base: 0.3, swing: 0.25, lit: 0.75 }, { base: 0.3, swing: 0.25, lit: 0.65 }]
 
-const CONNECTOR_LEVELS = [{ base: 0.55, swing: 0.4, lit: 1 }, { base: 0.3, swing: 0.22, lit: 0.7 }, { base: 0.18, swing: 0.22, lit: 0.6 }]
-
+/** A socket, a wheel hole or an axle end the armed part can connect to: a ring facing out of it, and a pad where the part would sit. */
 function ConnectorTarget({ target, part, plateSize, lit }: { target: SnapTarget; part: BrickPart; plateSize: number; lit: boolean }) {
   const materials = useRef<(THREE.Material | null)[]>([])
-  useBreathing(materials, CONNECTOR_LEVELS, lit)
-  const radius = target.kind === 'wheel-hole' ? 0.2 : target.kind === 'axle-end' ? 0.3 : 0.36
-  const footprint = useMemo(() => footprintOf(target.pose, part, plateSize), [target.pose, part, plateSize])
+  const group = useRef<THREE.Group>(null)
+  const radius = (target.kind === 'wheel-hole' ? 0.2 : target.kind === 'axle-end' ? 0.3 : 0.36) * (lit ? 1.18 : 1)
+  useMarkerFrame(materials, CONNECTOR_LEVELS, lit, target.point, radius, 14, (factor) => group.current?.scale.setScalar(radius * factor))
+  const quaternion = useMemo(() => facing(target.outward), [target.outward])
+  const position = add(target.point, scale(target.outward, 0.05))
+  const footprint = useMemo(() => footprintOf([target.pose], part, plateSize), [target.pose, part, plateSize])
   return (
     <group>
-      <ConnectorRing at={target.point} direction={target.outward} radius={radius} color={TARGET} lit={lit} materials={materials} offset={0} />
+      <group ref={group} position={[position.x, position.y, position.z]} quaternion={quaternion} scale={radius}>
+        <mesh geometry={ring} raycast={noRaycast} renderOrder={5}>
+          <meshBasicMaterial ref={(material) => { materials.current[0] = material }} color={lit ? TARGET_LIT : TARGET} transparent opacity={0.8} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <mesh geometry={ring} raycast={noRaycast} renderOrder={6}>
+          <meshBasicMaterial ref={(material) => { materials.current[1] = material }} color={TARGET} transparent opacity={0.3} depthTest={false} depthWrite={false} toneMapped={false} />
+        </mesh>
+      </group>
       <Pad footprint={footprint} color={lit ? TARGET_LIT : TARGET} materialRef={(material) => { materials.current[2] = material }} />
     </group>
   )
 }
 
-const EDGE_LEVELS = [{ base: 0.5, swing: 0.4, lit: 1 }, { base: 0.45, swing: 0.4, lit: 1 }]
+/** Bar, arrows, pad. */
+const EDGE_LEVELS: Level[] = [{ base: 0.55, swing: 0.4, lit: 1 }, { base: 0.55, swing: 0.4, lit: 1 }, { base: 0.22, swing: 0.2, lit: 0.5 }]
 
-/** A free stretch of a plate edge where a motor fits: a glowing bar on the edge with arrows pointing out over it. */
-function EdgeTarget({ run, lit }: { run: EdgeRun; lit: boolean }) {
+/**
+ * A free stretch of a plate edge where a motor fits: a glowing bar on the edge, arrows
+ * pointing out over it (the way the motor's socket will face), and a pad over the spots.
+ */
+function EdgeTarget({ run, part, plateSize, lit }: { run: EdgeRun; part: BrickPart; plateSize: number; lit: boolean }) {
   const materials = useRef<(THREE.Material | null)[]>([])
-  useBreathing(materials, EDGE_LEVELS, lit)
+  const bar = useRef<THREE.Mesh>(null)
+  const arrows = useRef<(THREE.Mesh | null)[]>([])
   const along = sub(run.to, run.from)
   const length = Math.hypot(along.x, along.z)
   const yaw = Math.atan2(-along.z, along.x)
   const width = 0.2
-  const mid = add(add(run.from, scale(along, 0.5)), scale(run.outward, -width / 2))
+  const middle = add(run.from, scale(along, 0.5))
   const arrowYaw = Math.atan2(-run.outward.z, run.outward.x)
-  const arrows = Math.max(1, Math.round(length / (STUD * 2)))
+  const count = Math.max(1, Math.round(length / (STUD * 2)))
+  const footprint = useMemo(() => footprintOf(run.poses, part, plateSize), [run.poses, part, plateSize])
+  useMarkerFrame(materials, EDGE_LEVELS, lit, middle, width, 7, (factor) => {
+    // Thicker, never longer: the bar still spans exactly the free stretch.
+    const inward = scale(run.outward, (-width * factor) / 2)
+    bar.current?.position.set(middle.x + inward.x, middle.y + 0.13, middle.z + inward.z)
+    bar.current?.scale.set(length, 0.06 * factor, width * factor)
+    arrows.current.forEach((arrow) => arrow?.scale.setScalar((lit ? 1.3 : 1.1) * factor))
+  })
   const color = lit ? TARGET_LIT : TARGET
   return (
     <group>
-      <mesh geometry={unitBox} position={[mid.x, mid.y + 0.13, mid.z]} rotation={[0, yaw, 0]} scale={[length, 0.06, width]} raycast={noRaycast} renderOrder={5}>
+      <mesh ref={bar} geometry={unitBox} rotation={[0, yaw, 0]} raycast={noRaycast} renderOrder={5}>
         <meshBasicMaterial ref={(material) => { materials.current[0] = material }} color={color} transparent opacity={0.8} depthWrite={false} toneMapped={false} />
       </mesh>
-      {Array.from({ length: arrows }, (_, index) => {
-        const at = add(add(run.from, scale(along, (index + 0.5) / arrows)), scale(run.outward, 0.28))
+      {Array.from({ length: count }, (_, index) => {
+        const at = add(add(run.from, scale(along, (index + 0.5) / count)), scale(run.outward, 0.3))
         return (
-          <mesh key={index} geometry={chevron} position={[at.x, at.y + 0.02, at.z]} rotation={[0, arrowYaw, 0]} scale={lit ? 1.3 : 1.1} raycast={noRaycast} renderOrder={5}>
-            <meshBasicMaterial ref={(material) => { if (index === 0) materials.current[1] = material }} color={color} transparent opacity={0.8} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
+          <mesh key={index} ref={(mesh) => { arrows.current[index] = mesh }} geometry={chevron} position={[at.x, at.y + 0.02, at.z]} rotation={[0, arrowYaw, 0]} raycast={noRaycast} renderOrder={5}>
+            <meshBasicMaterial ref={(material) => { materials.current[1] = material }} color={color} transparent opacity={0.8} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
           </mesh>
         )
       })}
+      <Pad footprint={footprint} color={color} materialRef={(material) => { materials.current[2] = material }} inset={0.14} />
     </group>
   )
 }
 
 /** A motor with nothing in its socket while a wheel is armed: dimmed, it needs an axle first. */
 function DimSocket({ at, direction }: { at: Vec3; direction: Vec3 }) {
+  const mesh = useRef<THREE.Mesh>(null)
+  const none = useRef<(THREE.Material | null)[]>([])
+  useMarkerFrame(none, [], false, at, 0.36, 12, (factor) => mesh.current?.scale.setScalar(0.36 * factor))
   const quaternion = useMemo(() => facing(direction), [direction])
   const position = add(at, scale(direction, 0.05))
   return (
-    <mesh geometry={ring} position={[position.x, position.y, position.z]} quaternion={quaternion} scale={0.36} raycast={noRaycast} renderOrder={5}>
+    <mesh ref={mesh} geometry={ring} position={[position.x, position.y, position.z]} quaternion={quaternion} scale={0.36} raycast={noRaycast} renderOrder={5}>
       <meshBasicMaterial color={DIM} transparent opacity={0.55} depthWrite={false} toneMapped={false} />
     </mesh>
   )
 }
 
-/** The snapped ghost: a green glow and outline over the studio's own ghost. */
+/** The snapped ghost: a green outline over the studio's own ghost and a green glow seen even through the robot. */
 function SnappedGhost({ draft, part, plateSize }: { draft: BrickDraft; part: BrickPart; plateSize: number }) {
   const geometry = useMemo(() => createBrickGeometry(part), [part])
   useEffect(() => () => geometry.dispose(), [geometry])
@@ -173,24 +205,28 @@ function SnappedGhost({ draft, part, plateSize }: { draft: BrickDraft; part: Bri
   return (
     <group position={[origin.x, origin.y, origin.z]} rotation={[0, (draft.rotation * Math.PI) / 2, 0]}>
       <mesh geometry={geometry} scale={1.07} raycast={noRaycast} renderOrder={7}>
-        <meshBasicMaterial color={TARGET_LIT} transparent opacity={0.2} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial color={TARGET_LIT} transparent opacity={0.26} depthTest={false} depthWrite={false} toneMapped={false} />
         <Edges scale={1} color={TARGET_LIT} lineWidth={3} threshold={20} renderOrder={8} toneMapped={false} />
       </mesh>
     </group>
   )
 }
 
-function Label({ at, text, tone }: { at: Vec3; text: string; tone: 'hint' | 'gap' | 'advice' }) {
+function Label({ at, text, tone, emphasis = false }: { at: Vec3; text: string; tone: 'gap' | 'advice'; emphasis?: boolean }) {
   return (
     <Html position={[at.x, at.y, at.z]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
-      <div className={`robotics-connect-label is-${tone}`} data-testid={`robotics-connect-label-${tone}`}>{text}</div>
+      <div className={`robotics-connect-label is-${tone}${emphasis ? ' is-emphasis' : ''}`} data-testid={`robotics-connect-label-${tone}`}>{text}</div>
     </Html>
   )
 }
 
+const GAP_LEVELS: Level[] = [{ base: 0.6, swing: 0.4, lit: 1 }, { base: 0.3, swing: 0.2, lit: 0.5 }, { base: 0.7, swing: 0.3, lit: 1 }]
+
+/** A near miss: a red ring on the loose part's connector and a red bar across the gap. */
 function GapMark({ marker }: { marker: GapMarker }) {
   const materials = useRef<(THREE.Material | null)[]>([])
-  useBreathing(materials, [{ base: 0.6, swing: 0.4, lit: 1 }, { base: 0.25, swing: 0.2, lit: 0.5 }, { base: 0.7, swing: 0.3, lit: 1 }], false)
+  const group = useRef<THREE.Group>(null)
+  useMarkerFrame(materials, GAP_LEVELS, false, marker.at, 0.3, 14, (factor) => group.current?.scale.setScalar(0.3 * factor))
   const quaternion = useMemo(() => facing(marker.axis), [marker.axis])
   const gap = sub(marker.to, marker.at)
   const length = Math.hypot(gap.x, gap.y, gap.z)
@@ -198,7 +234,7 @@ function GapMark({ marker }: { marker: GapMarker }) {
   const lineQuaternion = length > 1e-6 ? facing(gap) : new THREE.Quaternion()
   return (
     <group>
-      <group position={[marker.at.x, marker.at.y, marker.at.z]} quaternion={quaternion} scale={0.3}>
+      <group ref={group} position={[marker.at.x, marker.at.y, marker.at.z]} quaternion={quaternion} scale={0.3}>
         <mesh geometry={ring} raycast={noRaycast} renderOrder={5}>
           <meshBasicMaterial ref={(material) => { materials.current[0] = material }} color={GAP} transparent opacity={0.9} depthWrite={false} toneMapped={false} />
         </mesh>
@@ -215,7 +251,7 @@ function GapMark({ marker }: { marker: GapMarker }) {
   )
 }
 
-const HINT_TEXT: Record<string, string> = { 'needs-axle': 'Put an axle in first', 'motor-on-ground': 'Put the motor on a plate first' }
+export const HINT_TEXT: Record<string, string> = { 'needs-axle': 'Put an axle in first', 'motor-on-ground': 'Put the motor on a plate first' }
 
 type Summary = {
   armed: string | null
@@ -226,7 +262,7 @@ type Summary = {
   ghostSnapped: boolean
   hint: string | null
   gaps: { key: string; brickId: string; text: string }[]
-  labels: { brickId: string; text: string; tone: string }[]
+  labels: { brickId: string; text: string; tone: string; emphasis: boolean }[]
 }
 let summary: Summary = { armed: null, targets: [], runs: [], dimSockets: [], snappedKey: null, ghostSnapped: false, hint: null, gaps: [], labels: [] }
 
@@ -236,6 +272,8 @@ const topOf = (brick: BrickInstance, partMap: PartMap, plateSize: number, lift: 
   const origin = brickOriginFor(brick, part, plateSize)
   return { x: origin.x, y: origin.y + part.height * PLATE_HEIGHT + lift, z: origin.z }
 }
+
+type PartLabel = { brickId: string; at: Vec3; text: string; tone: 'gap' | 'advice'; emphasis: boolean }
 
 export default function ConnectionMarkers() {
   const mode = useBrickStore((state) => state.mode)
@@ -271,19 +309,26 @@ export default function ConnectionMarkers() {
   const ghostSnapped = Boolean(snappedHere && draft && armedPart && draftIsValid(draft, others as BrickInstance[], null, partMap, plateSize))
   const hint = armedPartId && snapState.hint?.partId === armedPartId && !snappedHere ? snapState.hint : null
 
-  // Always in build mode: near misses, motors on the bare ground, and the part the latest advice line is about.
-  const gaps = useMemo(() => (active ? gapMarkers(visible, partMap, plateSize) : []), [active, visible, partMap, plateSize])
+  // Always in build mode: near misses (not on a part being moved), motors on the bare ground, and the part the latest advice line is about.
+  const gaps = useMemo(() => (active ? gapMarkers(visible, partMap, plateSize).filter((marker) => marker.brickId !== movingId) : []), [active, visible, partMap, plateSize, movingId])
   const grounded = useMemo(() => new Set(active ? motorsOnBareGround(visible) : []), [active, visible])
   const labels = useMemo(() => {
     if (!active) return []
-    const list: { brickId: string; at: Vec3; text: string; tone: 'advice' }[] = []
+    const list: PartLabel[] = []
     for (const brick of visible) {
       const advice = grounded.has(brick.id) ? BARE_GROUND_TEXT : note?.brickId === brick.id ? note.text : null
       const at = advice ? topOf(brick, partMap, plateSize, 0.42) : null
-      if (advice && at) list.push({ brickId: brick.id, at, text: advice, tone: 'advice' })
+      // A hint about a motor that already says why (on the bare ground) makes that line stand out instead of adding another.
+      if (advice && at) list.push({ brickId: brick.id, at, text: advice, tone: 'advice', emphasis: hint?.brickId === brick.id })
+    }
+    if (hint && !list.some((label) => label.brickId === hint.brickId)) list.push({ brickId: hint.brickId, at: { x: hint.point.x, y: hint.point.y + 0.5, z: hint.point.z }, text: HINT_TEXT[hint.kind] ?? '', tone: 'advice', emphasis: true })
+    for (const marker of gaps) {
+      // The motor's own line already says it is too low; the red ring shows where.
+      if (marker.text === GAP_TEXT.motorTooLow && grounded.has(marker.targetId)) continue
+      list.push({ brickId: marker.brickId, at: { x: marker.at.x, y: marker.at.y + 0.55, z: marker.at.z }, text: marker.text, tone: 'gap', emphasis: false })
     }
     return list
-  }, [active, visible, grounded, note, partMap, plateSize])
+  }, [active, visible, grounded, note, hint, gaps, partMap, plateSize])
 
   useEffect(() => {
     summary = {
@@ -295,7 +340,7 @@ export default function ConnectionMarkers() {
       ghostSnapped,
       hint: hint ? HINT_TEXT[hint.kind] ?? null : null,
       gaps: gaps.map((gap) => ({ key: gap.key, brickId: gap.brickId, text: gap.text })),
-      labels: labels.map((label) => ({ brickId: label.brickId, text: label.text, tone: label.tone })),
+      labels: labels.map((label) => ({ brickId: label.brickId, text: label.text, tone: label.tone, emphasis: label.emphasis })),
     }
   })
 
@@ -304,23 +349,18 @@ export default function ConnectionMarkers() {
     const host = window as unknown as { __robotics?: Record<string, unknown> }
     const hook = (host.__robotics = host.__robotics ?? {})
     hook.connections = () => summary
-    hook.snapState = () => draftSnapState()
-    return () => { delete hook.connections; delete hook.snapState }
+    return () => { delete hook.connections }
   }, [])
 
   if (!active) return null
   return (
     <>
       {armedPart && targets.map((target) => <ConnectorTarget key={target.key} target={target} part={armedPart} plateSize={plateSize} lit={target.key === snappedKey} />)}
-      {runs.map((run) => <EdgeTarget key={`${run.key}:${run.poses[0].x},${run.poses[0].z}`} run={run} lit={run.key === snappedKey && run.poses.some((pose) => pose.x === draft?.x && pose.z === draft?.z)} />)}
+      {armedPart && runs.map((run) => <EdgeTarget key={`${run.key}:${run.poses[0].x},${run.poses[0].z}`} run={run} part={armedPart} plateSize={plateSize} lit={run.key === snappedKey && run.poses.some((pose) => pose.x === draft?.x && pose.z === draft?.z)} />)}
       {dimSockets.map((motor) => <DimSocket key={motor.motorId} at={motor.socket.point} direction={motor.socket.normal} />)}
       {ghostSnapped && draft && armedPart && <SnappedGhost draft={draft} part={armedPart} plateSize={plateSize} />}
-      {hint && <Label at={{ x: hint.point.x, y: hint.point.y + 0.5, z: hint.point.z }} text={HINT_TEXT[hint.kind] ?? ''} tone="hint" />}
       {gaps.map((marker) => <GapMark key={marker.key} marker={marker} />)}
-      {gaps.filter((marker) => !(marker.text === GAP_TEXT.motorTooLow && grounded.has(marker.targetId))).map((marker) => (
-        <Label key={`label:${marker.key}`} at={{ x: marker.at.x, y: marker.at.y + 0.55, z: marker.at.z }} text={marker.text} tone="gap" />
-      ))}
-      {labels.map((label) => <Label key={`advice:${label.brickId}`} at={label.at} text={label.text} tone={label.tone} />)}
+      {labels.map((label) => <Label key={`${label.tone}:${label.brickId}`} at={label.at} text={label.text} tone={label.tone} emphasis={label.emphasis} />)}
     </>
   )
 }

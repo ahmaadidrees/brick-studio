@@ -20,8 +20,9 @@ import { add, distance, scale, type Vec3 } from './vec'
  *   construction.
  * - A **motor** hovered over a plate near one of its edges turns so its socket faces out
  *   over that edge and sits flush with it, sliding along the edge to the nearest spot with
- *   room; away from edges the student's own rotation stands. Over bare ground near a
- *   robot's plate it goes onto that plate's edge instead, where there is room.
+ *   room; at a corner the student's own turn (R) picks between the two edges, and away from
+ *   edges it stands as turned. Over bare ground near a robot's plate it goes onto that
+ *   plate's edge instead, where there is room.
  *
  * Anything else answers null and placement is the studio's own. Nothing here edits the
  * document; the scene draws the same targets (`createSnapContext`) as glowing markers.
@@ -99,7 +100,8 @@ export type SnapContext = {
 }
 
 export type SnapInput = {
-  draft: Pick<BrickDraft, 'partId'>
+  /** The armed part; its rotation (the student's R) settles a corner, where two edges are about as near. */
+  draft: Pick<BrickDraft, 'partId'> & Partial<Pick<BrickDraft, 'rotation'>>
   /** The brick under the pointer; null over the bare baseplate. */
   hitBrick?: BrickInstance | null
   /** Where the pointer hit, world units. */
@@ -148,7 +150,7 @@ export function findSnap(input: SnapInput): SnapOutcome {
   const context = input.context && input.context.bricks === bricks && input.context.partMap === partMap && input.context.plateSize === plateSize
     ? input.context
     : createSnapContext(bricks, partMap, plateSize)
-  if (spec.role === 'motor') return { found: findMotorSnap(context, part, hitBrick, hitPoint), hint: null }
+  if (spec.role === 'motor') return { found: findMotorSnap(context, part, hitBrick, hitPoint, draft.rotation ?? null), hint: null }
   if (!spec.axle && !spec.wheel) return { found: null, hint: null }
   const found = nearestTarget(context.connectorTargets(draft.partId), hitBrick, hitPoint, part, plateSize)
   if (found) return { found: { pose: found.pose, target: found }, hint: null }
@@ -264,13 +266,18 @@ function edgeDistance(rect: Rect, px: number, pz: number, edge: PlateEdge): numb
   }
 }
 
-/** Edges within reach, nearest first; near-ties go to the long sides. */
-function edgesByDistance(rect: Rect, px: number, pz: number, reach: number): PlateEdge[] {
+/**
+ * Edges within reach, nearest first. At a corner, where two edges are about as near, the
+ * student's own turn decides (the edge the motor already faces, within three quarters of a
+ * stud), and after that the long sides (within a quarter stud).
+ */
+function edgesByDistance(rect: Rect, px: number, pz: number, reach: number, rotation: number | null): PlateEdge[] {
   const preferred = preferredEdges(rect)
   return PLATE_EDGES
-    .map((edge) => ({ edge, d: edgeDistance(rect, px, pz, edge), rank: preferred.includes(edge) ? 0 : 1 }))
+    .map((edge) => ({ edge, d: edgeDistance(rect, px, pz, edge) }))
     .filter((entry) => entry.d <= reach)
-    .sort((a, b) => (Math.abs(a.d - b.d) > 0.25 ? a.d - b.d : a.rank - b.rank || a.d - b.d))
+    .map((entry) => ({ ...entry, score: entry.d - (EDGE_ROTATION[entry.edge] === rotation ? 0.75 : 0) - (preferred.includes(entry.edge) ? 0.25 : 0) }))
+    .sort((a, b) => a.score - b.score || a.d - b.d)
     .map((entry) => entry.edge)
 }
 
@@ -319,14 +326,14 @@ function edgeTarget(context: SnapContext, motorPart: BrickPart, plate: BrickInst
   return { key: `${plate.id}:${edge}`, kind: 'plate-edge', brickId: plate.id, ownerIds: [plate.id], point, outward, pose, blocked }
 }
 
-function findMotorSnap(context: SnapContext, motorPart: BrickPart, hitBrick: BrickInstance | null, hitPoint: Vec3): SnapFound | null {
+function findMotorSnap(context: SnapContext, motorPart: BrickPart, hitBrick: BrickInstance | null, hitPoint: Vec3, rotation: number | null): SnapFound | null {
   const px = hitPoint.x / STUD + context.plateSize / 2
   const pz = hitPoint.z / STUD + context.plateSize / 2
   const hitPart = hitBrick ? context.partMap[hitBrick.partId] : undefined
   if (hitBrick && isPlatePart(hitPart)) {
     // Over a plate: near an edge the motor faces out over it, sliding along to the nearest spot with room.
     const rect = plateRect(hitBrick, hitPart)
-    const edges = edgesByDistance(rect, Math.min(rect.x1, Math.max(rect.x0, px)), Math.min(rect.z1, Math.max(rect.z0, pz)), EDGE_REACH_STUDS)
+    const edges = edgesByDistance(rect, Math.min(rect.x1, Math.max(rect.x0, px)), Math.min(rect.z1, Math.max(rect.z0, pz)), EDGE_REACH_STUDS, rotation)
     for (const edge of edges) {
       const slots = edgeSlots(hitBrick, hitPart, motorPart, edge)
       const pose = nearestFreeSlot(context, motorPart.id, slots, slots.slotOf(px, pz))
@@ -350,13 +357,30 @@ function findMotorSnap(context: SnapContext, motorPart: BrickPart, hitBrick: Bri
     .filter((entry) => entry.d <= PLATE_REACH_STUDS)
     .sort((a, b) => a.d - b.d)
   for (const { plate, rect } of plates) {
-    for (const edge of edgesByDistance(rect, px, pz, PLATE_REACH_STUDS)) {
+    for (const edge of edgesByDistance(rect, px, pz, PLATE_REACH_STUDS, rotation)) {
       const slots = edgeSlots(plate, context.partMap[plate.partId]!, motorPart, edge)
       const pose = nearestFreeSlot(context, motorPart.id, slots, slots.slotOf(px, pz))
       if (pose) return { pose, target: edgeTarget(context, motorPart, plate, edge, pose, false) }
     }
   }
   return null
+}
+
+/** Every spot along any edge of this plate where a motor fits, facing out (for "is there room on the plate?"). */
+export function freeMotorSpots(context: SnapContext, plateId: string, motorPartId: string = ROBOTICS_PART_IDS.motor): SnapPose[] {
+  const plate = context.bricks.find((brick) => brick.id === plateId)
+  const platePart = plate ? context.partMap[plate.partId] : undefined
+  const motorPart = context.partMap[motorPartId]
+  if (!plate || !isPlatePart(platePart) || !motorPart) return []
+  const spots: SnapPose[] = []
+  for (const edge of PLATE_EDGES) {
+    const slots = edgeSlots(plate, platePart, motorPart, edge)
+    for (let slot = slots.lo; slot <= slots.hi; slot += 1) {
+      const pose = slots.pose(slot)
+      if (fits(context, motorPartId, pose)) spots.push(pose)
+    }
+  }
+  return spots
 }
 
 function motorEdgeRunsFor(context: SnapContext, partId: string): EdgeRun[] {

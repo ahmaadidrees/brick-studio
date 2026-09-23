@@ -26,8 +26,8 @@ const plateSize = 64
 /** Plate grid coordinates (studs from the corner; y in plates) to world units, the studio's rule. */
 const world = (x: number, y: number, z: number): Vec3 => ({ x: (x - plateSize / 2) * STUD, y: y * PLATE_HEIGHT, z: (z - plateSize / 2) * STUD })
 const byId = (bricks: BrickInstance[], id: string) => bricks.find((brick) => brick.id === id)!
-const find = (bricks: BrickInstance[], partId: string, hitPoint: Vec3, hitId: string | null = null) =>
-  findSnap({ draft: { partId }, hitBrick: hitId ? byId(bricks, hitId) : null, hitPoint, bricks, partMap, plateSize })
+const find = (bricks: BrickInstance[], partId: string, hitPoint: Vec3, hitId: string | null = null, rotation?: 0 | 1 | 2 | 3) =>
+  findSnap({ draft: { partId, rotation }, hitBrick: hitId ? byId(bricks, hitId) : null, hitPoint, bricks, partMap, plateSize })
 const pose = (found: ReturnType<typeof find>) => found.found?.pose ?? null
 const brick = (id: string, partId: string, x: number, y: number, z: number, rotation: 0 | 1 | 2 | 3 = 0): BrickInstance => ({ id, partId, x, y, z, rotation, color: '#52636c' })
 const placed = (bricks: BrickInstance[], partId: string, at: SnapPose, id = 'new') => [...bricks, { ...at, id, partId, color: '#000000' }]
@@ -158,6 +158,16 @@ describe('motors orient themselves on a plate edge', () => {
     expect(pose(find([brick('plate', 'plate_6x8', 28, 0, 26)], ROBOTICS_PART_IDS.motor, world(29.5, 1, 32.5), 'plate'))).toEqual({ x: 28, y: 1, z: 31, rotation: 2 })
     // The same plate turned a quarter runs along X: its long sides are the far and near edges.
     expect(pose(find([brick('plate', 'plate_6x8', 28, 0, 26, 1)], ROBOTICS_PART_IDS.motor, world(29.5, 1, 30.5), 'plate'))).toEqual({ x: 28, y: 1, z: 29, rotation: 3 })
+  })
+
+  it('at a corner the student\'s own turn picks the edge; one clearly nearer edge still wins', () => {
+    const plate = [brick('plate', 'plate_6x8', 28, 0, 26)]
+    // Turned to face the near side (R three times), a motor at the near-left corner goes on the near edge...
+    expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(29.4, 1, 32.6), 'plate', 3))).toEqual({ x: 28, y: 1, z: 31, rotation: 3 })
+    // ...turned to face left (R twice), on the left edge, even with the pointer a little nearer the near edge.
+    expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(29.8, 1, 32.6), 'plate', 2))).toEqual({ x: 28, y: 1, z: 31, rotation: 2 })
+    // Away from the corner the nearer edge wins whatever the turn.
+    expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(28.6, 1, 30), 'plate', 3))).toEqual({ x: 28, y: 1, z: 29, rotation: 2 })
   })
 
   it('slides along the edge to the nearest spot with room', () => {

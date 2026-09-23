@@ -1,7 +1,9 @@
+import { draftIsValid } from '../../brick/brickRules'
 import { rotatedSize } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { creationComponent, deviceName, type DeriveInput, type DerivedCreation } from './creations'
+import { createSnapContext, freeMotorSpots } from './snap'
 
 /**
  * What to tell a student right after a device lands somewhere it cannot work
@@ -9,7 +11,9 @@ import { creationComponent, deviceName, type DeriveInput, type DerivedCreation }
  *
  * - **Not attached**: a device beside a robot (within a few studs) but not on it names the
  *   robot and how to attach it: "Right motor isn't on Buggy yet. Put it on Buggy's plate."
- *   A device whose own bricks carry a hub is a robot of its own and is left alone.
+ *   The how is always something that works: the plate only when it has room for the device
+ *   (for a motor, a spot on an edge facing out), else stacking it on the robot. A device
+ *   whose own bricks carry a hub is a robot of its own and is left alone.
  * - **Bare ground**: a motor standing on the baseplate can never take an axle and a wheel
  *   (its socket is one plate lower than an axle on the ground), so it says
  *   "Put motors on a plate so wheels reach the ground".
@@ -48,12 +52,31 @@ export function motorsOnBareGround(bricks: readonly BrickInstance[]): string[] {
 
 function notAttachedText(input: DeriveInput, robot: Robot, device: BrickInstance): string {
   const name = deviceName(input, device)
-  const hasPlate = robot.brickIds.some((id) => {
-    const brick = input.bricks.find((candidate) => candidate.id === id)
-    return brick ? input.partMap[brick.partId]?.kind === 'plate' : false
-  })
-  const how = hasPlate ? `Put it on ${robot.name}'s plate.` : roboticsSpec(device.partId)?.role === 'motor' ? 'Put them both on a plate.' : `Stack it on ${robot.name}.`
+  const plates = robot.brickIds.map((id) => input.bricks.find((candidate) => candidate.id === id)).filter((brick): brick is BrickInstance => Boolean(brick && input.partMap[brick.partId]?.kind === 'plate'))
+  const motor = roboticsSpec(device.partId)?.role === 'motor'
+  const how = plates.some((plate) => hasRoomOnPlate(input, plate, device)) ? `Put it on ${robot.name}'s plate.`
+    : motor && !plates.length ? 'Put them both on a plate.'
+      : `Stack it on ${robot.name}.`
   return `${name} isn't on ${robot.name} yet. ${how}`
+}
+
+/** Is there a spot on the plate's top where the device fits (a motor: on an edge, facing out)? */
+function hasRoomOnPlate(input: DeriveInput, plate: BrickInstance, device: BrickInstance): boolean {
+  const others = input.bricks.filter((brick) => brick.id !== device.id)
+  if (roboticsSpec(device.partId)?.role === 'motor') return freeMotorSpots(createSnapContext(others, input.partMap, input.plateSize), plate.id, device.partId).length > 0
+  const platePart = input.partMap[plate.partId]
+  const devicePart = input.partMap[device.partId]
+  if (!platePart || !devicePart) return false
+  const rect = footprint(plate, input)!
+  for (const rotation of [0, 1] as const) {
+    const size = rotatedSize(devicePart, rotation)
+    for (let x = rect.x0; x + size.width <= rect.x1; x += 1) {
+      for (let z = rect.z0; z + size.depth <= rect.z1; z += 1) {
+        if (draftIsValid({ partId: device.partId, x, y: plate.y + platePart.height, z, rotation, color: device.color }, others, null, input.partMap, input.plateSize)) return true
+      }
+    }
+  }
+  return false
 }
 
 type Rect = { x0: number; x1: number; z0: number; z1: number }

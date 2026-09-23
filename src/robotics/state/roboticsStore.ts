@@ -445,6 +445,8 @@ export function installRoboticsWatcher() {
     const bricksChanged = state.bricks !== previous.bricks
     if (bricksChanged || state.documentMetadata !== previous.documentMetadata) {
       robotics.refreshModel()
+      // A line about a part that is gone (Undo, Delete) no longer applies.
+      if (robotics.wiringNote?.brickId && !state.bricks.some((brick) => brick.id === robotics.wiringNote?.brickId)) robotics.dismissWiringNote()
       // An edit while a nudge runs, or is still starting, retires it: the construction, never
       // the simulation, is the truth. A change that leaves the behaviour key alone (a rename)
       // is not such an edit.
