@@ -1,7 +1,7 @@
 {
   "origin": "http://127.0.0.1:5241",
-  "viewport": "1366x768",
-  "at": "2026-09-23T18:43:04.800Z",
+  "viewport": "1366x768 (T and V: 1024x768)",
+  "at": "2026-09-23T21:44:05.143Z",
   "results": [
     {
       "id": "A.kit-armed",
@@ -26,7 +26,7 @@
     {
       "id": "B.near",
       "ok": true,
-      "detail": "walked up with W; the Buggy is near (creation-muega1tr-k05cl)"
+      "detail": "walked up with W; the Buggy is near (creation-muempz2y-z1xgv)"
     },
     {
       "id": "B.card-near",
@@ -51,7 +51,7 @@
     {
       "id": "D.bumped-and-stopped",
       "ok": true,
-      "detail": "W held 7 s: the Buggy drove 26 studs and stopped against the curb (its front 0.03 units past the plate’s edge: contact overlap with the curb, speed 0.007 over the last second)"
+      "detail": "W held 7 s: the Buggy drove 26 studs and stopped against the curb (its front 0.03 units past the plate’s edge: contact overlap with the curb, speed 0.003 over the last second)"
     },
     {
       "id": "D.stayed-riding",
@@ -66,7 +66,7 @@
     {
       "id": "D.hop-off-at-the-curb",
       "ok": true,
-      "detail": "E at the curb: the character stands on the plate beside the Buggy ({\"x\":-4.822,\"y\":0.385,\"z\":-17.371}), inside no collider; the curb is put away; Ride is offered again"
+      "detail": "E at the curb: the character stands on the plate beside the Buggy ({\"x\":-4.819,\"y\":0.385,\"z\":-17.371}), inside no collider; the curb is put away; Ride is offered again"
     },
     {
       "id": "D.backs-away",
@@ -74,14 +74,19 @@
       "detail": "rode again from the curb (E); S held 0.9 s: backed 3.8 studs away from it"
     },
     {
+      "id": "D.turns-and-drives-off",
+      "ok": true,
+      "detail": "nose on the curb again, ← held 1.5 s turned it 104° on the spot, then W 1.5 s drove it 13.5 studs off along the edge; still riding"
+    },
+    {
       "id": "E.brought-back",
       "ok": true,
-      "detail": "back to the start: phase riding, generation 1 → 2, chassis 0.05 units from where it was built"
+      "detail": "back to the start: phase riding, generation 1 → 2, chassis 0.042 units from where it was built"
     },
     {
       "id": "E.still-seated",
       "ok": true,
-      "detail": "the rider is on the seat at the start (0.016 units off it), not put down"
+      "detail": "the rider is on the seat at the start (0.014 units off it), not put down"
     },
     {
       "id": "E.card-back",
@@ -91,17 +96,17 @@
     {
       "id": "E.drives-again",
       "ok": true,
-      "detail": "W still held: it drove 12.2 studs from the start in 1.2 s"
+      "detail": "W still held: it drove 11.9 studs from the start in 1.2 s"
     },
     {
       "id": "E.mirror-follows",
       "ok": true,
-      "detail": "the new generation's bodies are mirrored (3/3) and follow the chassis (mirror -7.582 vs -7.582)"
+      "detail": "the new generation's bodies are mirrored (3/3) and follow the chassis (mirror -7.438 vs -7.438)"
     },
     {
       "id": "E.quick-succession",
       "ok": true,
-      "detail": "three more trips back to the start (generations 3, 4, 5), one a frame after the last: no errors, still riding, driving again (6.8 studs out)"
+      "detail": "three more trips back to the start (generations 3, 4, 5), one a frame after the last: no errors, still riding, driving again (6.9 studs out)"
     },
     {
       "id": "F.hopped-off",
@@ -146,12 +151,72 @@
     {
       "id": "T.stick-drives",
       "ok": true,
-      "detail": "the stick drove the Buggy 13.8 studs; the curb is drawn"
+      "detail": "the stick drove the Buggy 13.4 studs; the curb is drawn"
     },
     {
       "id": "T.hop-off-tap",
       "ok": true,
       "detail": "a tap on Hop off put the character down beside the Buggy"
+    },
+    {
+      "id": "V.tower-buggy",
+      "ok": true,
+      "detail": "“Buggy”: 15 bricks with a five-brick tower and the seat on top; the robot panel shows “Ride it in Explore”"
+    },
+    {
+      "id": "V.panel-rides-seated",
+      "ok": true,
+      "detail": "one click: Explore opened with her riding 344 ms later, on the seat 4.73 units up (0 off it), the camera behind her"
+    },
+    {
+      "id": "V.riding-hud",
+      "ok": true,
+      "detail": "riding: the walking key help is hidden, the card sits at the bottom (top 667 px, bottom 754 px of 768)"
+    },
+    {
+      "id": "V.ride-card-beside-tall-robot",
+      "ok": true,
+      "detail": "on the ground beside it (feet at 0, the seat 4.34 up): the Ride card with a 52 px Ride button, up in 20 of 20 samples over 2 s; the key help is back"
+    },
+    {
+      "id": "V.card-follows-her",
+      "ok": true,
+      "detail": "walked away to 9.2 studs from it: the Ride card went; walked back: it came up again at 2.9 studs"
+    },
+    {
+      "id": "V.camera-out-of-robot",
+      "ok": true,
+      "detail": "her back to the robot, 3.6 studs from it, Recenter: the camera is 5.89 units from her head (before the fix it sat at 0.65 there), inside 0 colliders"
+    },
+    {
+      "id": "V.zoom-works",
+      "ok": true,
+      "detail": "scroll-zoom out: 5.89 → 10.898 units, inside nothing"
+    },
+    {
+      "id": "V.recenter-works",
+      "ok": true,
+      "detail": "Recenter again: back to 5.891 units (the default 6.1), inside nothing"
+    },
+    {
+      "id": "V.camera-walking-by",
+      "ok": true,
+      "detail": "walking along and around it (49 samples, as close as 0 studs to it): the camera never came closer than 5.89 units to her head and was never inside a collider"
+    },
+    {
+      "id": "V.back-at-robot",
+      "ok": true,
+      "detail": "walked back up to it: the Ride card is up"
+    },
+    {
+      "id": "V.ride-button-seats-her",
+      "ok": true,
+      "detail": "the Ride button (a real click) put her on the seat 4.73 units up"
+    },
+    {
+      "id": "V.tall-drives",
+      "ok": true,
+      "detail": "W 1.2 s drove the tall Buggy 10.5 studs"
     },
     {
       "id": "no-crash",
@@ -166,7 +231,7 @@
     {
       "id": "console-clean",
       "ok": true,
-      "detail": "no console errors at all"
+      "detail": "no console errors (besides 4 × the studio's passive-wheel message on scroll-zoom)"
     }
   ],
   "measurements": {
@@ -231,27 +296,31 @@
         "z": 0.007
       },
       "pushedChassis": {
-        "x": -0.02,
+        "x": -0.016,
         "y": 0.035,
         "z": -16.132
       },
-      "nearestFrontZ": -19.867,
+      "nearestFrontZ": -19.869,
       "plateEdgeZ": -19.84,
-      "frontToEdge": -0.027,
+      "frontToEdge": -0.029,
       "lastSpeeds": [
-        0.001,
         0.004,
-        0.003,
+        0.005,
+        0.006,
+        0.006,
         0.002,
+        0.011,
+        0.009,
         0.002,
         0.004,
-        0.004,
-        0.004,
-        0.004,
-        0.007
+        0.003
       ],
       "maxRiderToSeat": 0.14,
       "samples": 68
+    },
+    "curbManoeuvre": {
+      "turnedDeg": 103.9,
+      "droveOffStuds": 13.48
     },
     "backToStart": {
       "brought": true,
@@ -262,8 +331,8 @@
         4,
         5
       ],
-      "riderToSeat": 0.016,
-      "droveAfterStuds": 12.16
+      "riderToSeat": 0.014,
+      "droveAfterStuds": 11.94
     },
     "touch": {
       "card": {
@@ -274,10 +343,25 @@
         "buttonHeight": 44,
         "detailPx": 15
       },
-      "droveStuds": 13.75
+      "droveStuds": 13.37
+    },
+    "tallCamera": {
+      "recenteredToHead": 5.89,
+      "zoomedToHead": 10.898,
+      "recenteredAgainToHead": 5.891,
+      "walkSamples": 49,
+      "walkClosestToHead": 5.891,
+      "walkNearestToRobotStuds": 0,
+      "walkInsideMax": 0
     }
   },
   "consoleErrors": [],
+  "knownStudioConsoleErrors": [
+    "[tall] Unable to preventDefault inside passive event listener invocation.",
+    "[tall] Unable to preventDefault inside passive event listener invocation.",
+    "[tall] Unable to preventDefault inside passive event listener invocation.",
+    "[tall] Unable to preventDefault inside passive event listener invocation."
+  ],
   "pageErrors": [],
   "screenshots": [
     "A1-buggy-with-seat.png",
@@ -290,6 +374,12 @@
     "E2-driving-again-after-the-start.png",
     "F1-riding-again.png",
     "H1-ride-again-after-the-edit.png",
-    "T1-touch-riding-drive-with-the-stick.png"
+    "T1-touch-riding-drive-with-the-stick.png",
+    "V1-panel-ride-it-in-explore.png",
+    "V2-arrived-seated-whole-robot-framed.png",
+    "V3-ride-button-beside-tall-robot.png",
+    "V4-recentered-beside-robot.png",
+    "V5-zoomed-out-beside-robot.png",
+    "V6-riding-the-tall-buggy.png"
   ]
 }
