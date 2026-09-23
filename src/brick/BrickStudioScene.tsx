@@ -1679,6 +1679,8 @@ function ExplorerAvatar({
       store.requestRespawn()
       return
     }
+    // Dev builds show where the explorer is, for scripted play-testing and the demo recordings (scripts/demo).
+    if (import.meta.env.DEV) (window as unknown as { __explorer: unknown }).__explorer = { x: position.x, y: position.y, z: position.z, grounded: observedGrounded.current }
     safePositionFrames.current += 1
     if (observedGrounded.current && safePositionFrames.current >= EXPLORE_SAFE_POSITION_SAMPLE_FRAMES) {
       safePositionFrames.current = 0

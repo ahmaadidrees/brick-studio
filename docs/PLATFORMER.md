@@ -144,6 +144,21 @@ npm run check                     # includes the platformer-core tests and typec
 node scripts/qa/platformer-2d.mjs # browser pass over the guest flows (UI_ORIGIN, default http://127.0.0.1:5199)
 ```
 
+Demo videos (for the site and social posts) are recorded from the running dev server, frame by frame, so they come
+out smooth however slow the machine is. They need `ffmpeg` (`brew install ffmpeg`):
+
+```sh
+DEMO_OUT=demo-out node scripts/demo/record-2d.mjs # build a 2D world, then play it
+DEMO_OUT=demo-out node scripts/demo/record-3d.mjs # build a staircase in 3D, then climb it
+DEMO_OUT=demo-out node scripts/demo/social-cut.mjs # both, with title cards, for LinkedIn and other feeds
+```
+
+Each recording writes a 1080p MP4, a smaller MP4 and WebM for the web, a square cut and a poster image; the social
+cut joins them into one 16:9 and one square video with the words on screen (feeds play videos muted).
+`DEMO_PREVIEW=1` runs a recording's storyboard without saving frames, to check the timing, and
+`node scripts/demo/encode.mjs build-3d` encodes a recording again from its saved frames. `scripts/demo/lib/studio.mjs`
+has the tools for writing another one.
+
 ## Deploying
 
 The Worker must go out before the site, because the site calls the new routes. Deploy the Worker to staging first:

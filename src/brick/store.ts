@@ -1180,3 +1180,6 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   }),
   clearToast: () => set({ toast: null }),
 }))
+
+// Dev builds expose the store for scripted play-testing and the demo recordings (scripts/demo), like the 2D session.
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __brickStore: typeof useBrickStore }).__brickStore = useBrickStore
