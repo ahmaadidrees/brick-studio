@@ -4,6 +4,7 @@ import type { BrickInstance } from '../../brick/types'
 import { lastTryKey, recordLastTry, startWatch, watchStep, type WalkWatch } from '../drive/tryOutcome'
 import type { DerivedCreation } from '../model/creations'
 import type { PartMap } from '../model/grid'
+import type { RoboticsSection } from '../model/section'
 import { referencedDevices } from '../program/devices'
 import { activeProgramOf } from '../program/programs'
 import type { DeviceId, ProgramKey } from '../program/types'
@@ -129,7 +130,7 @@ function rebuild(notice: StageNotice) {
 }
 
 /** The first of the creation's sensors the active program names: the one "Someone walks up" walks up to. */
-function programSensor(section: ReturnType<typeof computeModel>['section'], creation: DerivedCreation): DeviceId | null {
+function programSensor(section: RoboticsSection, creation: DerivedCreation): DeviceId | null {
   const program = activeProgramOf(section, creation.id)
   if (!program) return null
   const own = new Set(creation.sensors.map((sensor) => sensor.brickId))

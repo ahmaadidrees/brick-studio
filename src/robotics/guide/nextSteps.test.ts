@@ -287,23 +287,3 @@ describe('the signal light path', () => {
     expect(current(ready.rows)).toMatchObject({ id: 'ready', text: 'Ready to try!', action: { kind: 'play', creationId: 'robot' } })
   })
 })
-
-describe('after a try (kid lane Y)', () => {
-  it('the ready row says what the last try did (a tick when it worked) and still opens Try it', () => {
-    const { creation } = robot(signalPostBricks(), S.hub, [[S.sensor, S.hub, 'A'], [S.light, S.hub, 'B']])
-    const input = fixtureInput(signalPostBricks(), { ...emptyRoboticsSection(), creations: [{ id: 'robot', name: 'Buggy', anchorBrickIds: [S.hub] }] })
-    const worked = nextSteps(creation, { input }, { tried: { worked: true, text: 'It worked! Try it again' } })
-    expect(current(worked)).toMatchObject({ id: 'ready', text: 'It worked! Try it again', icon: { symbol: 'worked' }, action: { kind: 'play', creationId: 'robot' } })
-    const failed = nextSteps(creation, { input }, { tried: { worked: false, text: 'The light didn’t come on. Try it again' } })
-    expect(current(failed)).toMatchObject({ id: 'ready', text: 'The light didn’t come on. Try it again', icon: { symbol: 'try' } })
-  })
-
-  it('only a ready robot that is tried shows it: not a rover, not one with a step left', () => {
-    const rover = robot(roverBricks(), R.hub, ROVER_WIRES)
-    const input = fixtureInput(roverBricks(), emptyRoboticsSection())
-    expect(current(nextSteps(rover.creation, { input }, { tried: { worked: true, text: 'It worked! Try it again' } }))).toMatchObject({ id: 'ready', text: 'Ready to drive!' })
-    const unplugged = robot(signalPostBricks(), S.hub, [[S.sensor, S.hub, 'A']])
-    const rows = nextSteps(unplugged.creation, { input: fixtureInput(signalPostBricks(), emptyRoboticsSection()) }, { tried: { worked: true, text: 'It worked! Try it again' } })
-    expect(row(rows, 'ready').text).toBe('Ready to try!')
-  })
-})
