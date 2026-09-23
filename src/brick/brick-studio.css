@@ -14,7 +14,17 @@
   color: var(--studio-ink);
   background: var(--bg, #f8f4eb);
   touch-action: none;
+  /* Safari (iPadOS 26.5) reads only the prefixed property: without it a long press selects a label and
+     raises Copy / Look Up / Translate over the studio. */
+  -webkit-user-select: none;
   user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Text fields stay selectable and editable, with their usual callout. */
+.brick-studio :is(input, textarea, [contenteditable]:not([contenteditable='false'])) {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .brick-canvas { position: absolute; inset: 0; }

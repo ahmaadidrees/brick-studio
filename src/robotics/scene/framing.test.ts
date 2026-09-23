@@ -85,6 +85,33 @@ describe('measureCanvasInsets', () => {
     const canvas = { getBoundingClientRect: () => rect(0, 56, 1366, 712) } as unknown as HTMLElement
     expect(measureCanvasInsets(canvas, root([element('robotics-panel', rect(0, 0, 0, 0))]))).toEqual(NO_INSETS)
   })
+
+  it('reads the Code view beside the stage: the editor on the left, the bar and readings on top, the goal below', () => {
+    const canvas = { getBoundingClientRect: () => rect(0, 56, 1366, 712) } as unknown as HTMLElement
+    const insets = measureCanvasInsets(canvas, root([
+      element('robo-code-editor', rect(0, 56, 820, 712)),
+      element('robo-code-stagebar', rect(820, 56, 546, 60)),
+      element('robo-code-readings', rect(820, 116, 546, 82)),
+      element('robo-code-goal', rect(820, 768 - 51, 546, 51)),
+    ]))
+    expect(insets).toEqual({ left: 820, right: 0, top: 142, bottom: 51 })
+  })
+
+  it('reads the Code view stacked in portrait: the editor across the top, the stage bar and readings under it', () => {
+    // An iPad Air in portrait: the canvas under the studio header, the editor over its top half.
+    const canvas = { getBoundingClientRect: () => rect(0, 64, 820, 1030) } as unknown as HTMLElement
+    const insets = measureCanvasInsets(canvas, root([
+      element('robo-code-editor', rect(0, 64, 820, 515)),
+      element('robo-code-stagebar', rect(0, 579, 820, 60)),
+      element('robo-code-readings', rect(0, 639, 820, 82)),
+      element('robo-code-goal', rect(0, 1094 - 51, 820, 51)),
+    ]))
+    expect(insets).toEqual({ left: 0, right: 0, top: 721 - 64, bottom: 51 })
+    // The stage strip (820×322) is a short but wide free area, not a sliver: framing and the view offset use it.
+    const free = freeArea({ width: 820, height: 1030 }, insets)
+    expect(free).toMatchObject({ left: 0, right: 820, top: 657, bottom: 979 })
+    expect(viewOffsetFor({ width: 820, height: 1030 }, insets)).toEqual({ x: 0, y: (657 + 979) / 2 - 515 })
+  })
 })
 
 describe('presets and travel', () => {

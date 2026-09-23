@@ -9,7 +9,7 @@ import type { CompileResult, RoboticsProgram } from '../program/types'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { moveDeviceToPort } from '../wiring/actions'
 import { BlocklyWorkspace, SAVE_DEBOUNCE_MS, diagnosticsByBlock, paletteFloats, type BlocklyWorkspaceHandle } from './BlocklyWorkspace'
-import { RAIL_PRESS_FOCUS_MS, RailToolbox } from './blocklySetup'
+import { RAIL_PRESS_FOCUS_MS, RailToolbox, startScaleFor } from './blocklySetup'
 import { ROVER_SECTION, loadWorld, programRecord, storedPrograms, stubBlocklyLayout } from './codeTestFixtures'
 
 /**
@@ -155,6 +155,13 @@ describe('<BlocklyWorkspace>', () => {
     // jsdom lays nothing out, so the scripts area reads 0 px wide: narrow.
     render(<Harness program={program} />)
     expect(paletteFloats(0)).toBe(true)
+    // Stacked in portrait (the editor full width but short) the palette floats however wide the editor is.
+    expect(paletteFloats(820, true)).toBe(true)
+    expect(paletteFloats(820, false)).toBe(false)
+    // Blocks start at a finger's size only in the stacked layout on a touch screen.
+    expect(startScaleFor(820, true)).toBe(1)
+    expect(startScaleFor(820, false)).toBe(0.82)
+    expect(startScaleFor(600, false)).toBe(0.78)
     expect(workspace().getToolbox()!.getFlyout()!.autoClose).toBe(true)
     expect(workspace().getToolbox()!.getSelectedItem()).toBeNull()
     cleanup()

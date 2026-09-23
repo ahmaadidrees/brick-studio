@@ -125,13 +125,31 @@ export function roboTheme(): Blockly.Theme {
 /** Blockly asks for this folder only for its cursors and menu sprites; `code.css` replaces all of them, so nothing is fetched. */
 export const BLOCKLY_MEDIA = '/blockly-media/'
 
+/**
+ * The Code view stacks in portrait up to 900 px wide (`code.css`): the editor across the top half,
+ * the stage below. Keep this query in step with the stylesheet's.
+ */
+export const STACKED_LAYOUT_QUERY = '(orientation: portrait) and (max-width: 900px)'
+
+export function stackedLayout(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(STACKED_LAYOUT_QUERY).matches
+}
+
 export const WIDE_START_SCALE = 0.82
 export const NARROW_START_SCALE = 0.78
+/** Stacked on a touch screen the editor has the full width: blocks start at a finger's size. */
+export const TOUCH_STACKED_START_SCALE = 1
 /** Scripts areas narrower than this start zoomed out so a starter script fits at 1024×768. */
 export const NARROW_WORKSPACE_PX = 680
 
-export function startScaleFor(width: number): number {
+export function startScaleFor(width: number, touchStacked = touchStackedLayout()): number {
+  if (touchStacked) return TOUCH_STACKED_START_SCALE
   return width > 0 && width < NARROW_WORKSPACE_PX ? NARROW_START_SCALE : WIDE_START_SCALE
+}
+
+/** The stacked layout on a touch screen (an iPad held upright). */
+export function touchStackedLayout(): boolean {
+  return stackedLayout() && window.matchMedia('(any-pointer: coarse)').matches
 }
 
 export function workspaceOptions(toolbox: unknown, startScale: number): Blockly.BlocklyOptions {

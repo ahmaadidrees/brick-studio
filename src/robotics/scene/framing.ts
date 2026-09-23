@@ -15,8 +15,14 @@ export type CanvasInsets = { left: number; right: number; top: number; bottom: n
 
 export const NO_INSETS: CanvasInsets = { left: 0, right: 0, top: 0, bottom: 0 }
 
-/** Below this share of the viewport the panels are ignored: framing into a sliver helps nobody. */
+/** Below this share of the viewport's width the side panels are ignored: framing into a sliver helps nobody. */
 const MIN_FREE_SHARE = 0.35
+/**
+ * The height gets a lower bar: a wide, short strip is still a good stage. The Code view stacked
+ * in portrait gives the stage the bottom half, minus its bar, readings and goal line: about a
+ * third of the canvas height (820×322 px on an iPad Air), across the whole width.
+ */
+const MIN_FREE_HEIGHT_SHARE = 0.2
 
 type Vec = { x: number; y: number; z: number }
 const UP: Vec = { x: 0, y: 1, z: 0 }
@@ -32,7 +38,7 @@ export function freeArea(viewport: { width: number; height: number }, insets: Ca
   let top = Math.max(0, insets.top)
   let bottom = Math.max(top, viewport.height - Math.max(0, insets.bottom))
   if (right - left < viewport.width * MIN_FREE_SHARE) { left = 0; right = viewport.width }
-  if (bottom - top < viewport.height * MIN_FREE_SHARE) { top = 0; bottom = viewport.height }
+  if (bottom - top < viewport.height * MIN_FREE_HEIGHT_SHARE) { top = 0; bottom = viewport.height }
   return { left, right, top, bottom, width: right - left, height: bottom - top }
 }
 
@@ -71,7 +77,9 @@ export function framePoseInFreeArea(
 /**
  * What covers the canvas right now, as insets in canvas pixels: the brick drawer or the
  * Code view's editor (left), the creation card or robotics panel (right), the command
- * strip or the Code view's goal line (bottom) and the Code view's stage bar (top).
+ * strip or the Code view's goal line (bottom) and the Code view's stage bar and readings
+ * (top). In portrait the Code view stacks: its editor spans the canvas's width across the
+ * top, so it is a top inset and the stage bar and readings below it add to it.
  * Elements that are hidden or off the canvas count for nothing.
  */
 export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = document): CanvasInsets {
@@ -79,9 +87,16 @@ export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = docu
   const insets: CanvasInsets = { ...NO_INSETS }
   if (frame.width <= 0 || frame.height <= 0) return insets
   const overlaps = (rect: DOMRect) => rect.width > 0 && rect.height > 0 && rect.right > frame.left && rect.left < frame.right && rect.bottom > frame.top && rect.top < frame.bottom
-  for (const element of root.querySelectorAll<HTMLElement>('.part-library, .robo-code-editor')) {
+  for (const element of root.querySelectorAll<HTMLElement>('.part-library')) {
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.left < frame.left + frame.width / 2) insets.left = Math.max(insets.left, rect.right - frame.left)
+  }
+  for (const element of root.querySelectorAll<HTMLElement>('.robo-code-editor')) {
+    const rect = element.getBoundingClientRect()
+    if (!overlaps(rect)) continue
+    const acrossTheTop = rect.left <= frame.left + 1 && rect.right >= frame.right - 1 && rect.top <= frame.top + 1
+    if (acrossTheTop) insets.top = Math.max(insets.top, rect.bottom - frame.top)
+    else if (rect.left < frame.left + frame.width / 2) insets.left = Math.max(insets.left, rect.right - frame.left)
   }
   for (const element of root.querySelectorAll<HTMLElement>('.robotics-card, .robotics-panel')) {
     const rect = element.getBoundingClientRect()
@@ -91,10 +106,11 @@ export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = docu
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.top > frame.top + frame.height / 2) insets.bottom = Math.max(insets.bottom, frame.bottom - rect.top)
   }
-  // The Code view's stage bar and readings sit over the top of the stage.
+  // The Code view's stage bar and readings sit over the top of the stage (below the editor when it is stacked on top).
+  const stageTop = frame.top + insets.top
   for (const element of root.querySelectorAll<HTMLElement>('.robo-code-stagebar, .robo-code-readings')) {
     const rect = element.getBoundingClientRect()
-    if (overlaps(rect) && rect.bottom < frame.top + frame.height / 2) insets.top = Math.max(insets.top, rect.bottom - frame.top)
+    if (overlaps(rect) && rect.bottom < stageTop + (frame.bottom - stageTop) / 2) insets.top = Math.max(insets.top, rect.bottom - frame.top)
   }
   return insets
 }
