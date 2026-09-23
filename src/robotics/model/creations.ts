@@ -68,6 +68,16 @@ export type DerivedSensor = DerivedDevice & { normal: Vec3; facing: FacingWord }
 
 export type DrivePair = { leftId: string; rightId: string; reversedIds: string[]; forward: Vec3 }
 
+/**
+ * Every motor that drives (KID-UX, four-wheel cars): the motors with a wheel whose axles lie
+ * along the drive axis, on the side of the robot their wheels are on (left or right of its
+ * middle, looking forward), each side in build order. A motor whose socket faces right runs
+ * the robot backward at positive power, so it is in `reversedIds` whichever side it is on
+ * (a mirror-mounted right motor is; one hung outboard with its socket facing in is not).
+ * The drive pair is the first motor of each side.
+ */
+export type DriveSides = { left: string[]; right: string[]; reversedIds: string[]; forward: Vec3 }
+
 export type DerivedCreation = {
   id: string
   name: string
@@ -88,6 +98,8 @@ export type DerivedCreation = {
   axles: { brickId: string; motorId: string | null; wheelIds: string[] }[]
   wheels: DerivedWheel[]
   drivePair: DrivePair | null
+  /** Null exactly when `drivePair` is: its first left and first right motors are the pair. */
+  driveSides: DriveSides | null
   /** Which way it would drive: the drive pair's forward, or, with a wheel missing, the forward its motors' axles give. */
   driveForward: Vec3 | null
   lines: { attached: string; parts: string; ready: string }
@@ -280,24 +292,41 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
     wheels.push({ brickId: link.wheelId, onAxle: false, axleId: null, motorId: null, note: `Not on an axle${where ? ` · the nearest axle end is ${where}` : ''}` })
   }
 
-  // Drive pair (contract §6): two motors with wheels whose axles are parallel.
-  let drivePair: DrivePair | null = null
-  const driven = motors.filter((motor) => motor.wheelIds.length > 0)
-  for (let i = 0; i < driven.length && !drivePair; i += 1) {
-    for (let j = i + 1; j < driven.length && !drivePair; j += 1) {
-      const a = driven[i]
-      const b = driven[j]
-      if (Math.abs(dot(a.socketNormal, b.socketNormal)) < 0.999) continue
-      const axleAxis = a.socketNormal
-      const sensorForward = sensors.map((sensor) => sensor.normal).find((normal) => Math.abs(dot(normal, axleAxis)) < 0.01 && Math.abs(normal.y) < 0.5)
-      const forward = sensorForward ?? (Math.abs(axleAxis.x) > 0.5 ? { x: 0, y: 0, z: -1 } : { x: -1, y: 0, z: 0 })
+  // Drive sides (contract §6, KID-UX): the motors with wheels whose axles lie along one axis, split
+  // by which side of the robot their wheels stand on. The axis with the most of them drives (the
+  // first parallel pair in build order breaks a tie, as the pair was chosen before there were
+  // sides); wheels all in one line, one behind the other, make no sides. The drive pair is the
+  // first motor of each side, so a two-motor rover's pair is what it always was.
+  const forwardFor = (axleAxis: Vec3): Vec3 => sensors.map((sensor) => sensor.normal).find((normal) => Math.abs(dot(normal, axleAxis)) < 0.01 && Math.abs(normal.y) < 0.5)
+    ?? (Math.abs(axleAxis.x) > 0.5 ? { x: 0, y: 0, z: -1 } : { x: -1, y: 0, z: 0 })
+  const driven = motors.filter((motor) => motor.wheelIds.length > 0 && Math.abs(motor.socketNormal.y) < 0.5)
+  let driveSides: DriveSides | null = null
+  for (let i = 0; i < driven.length; i += 1) {
+    for (let j = i + 1; j < driven.length; j += 1) {
+      const axleAxis = driven[i].socketNormal
+      if (Math.abs(dot(axleAxis, driven[j].socketNormal)) < 0.999) continue
+      const onAxis = driven.filter((motor) => Math.abs(dot(motor.socketNormal, axleAxis)) >= 0.999)
+      if (driveSides && onAxis.length <= driveSides.left.length + driveSides.right.length) continue
+      const forward = forwardFor(axleAxis)
       const left = cross(UP, forward)
-      const leftMotor = dot(a.socketNormal, left) >= dot(b.socketNormal, left) ? a : b
-      const rightMotor = leftMotor === a ? b : a
-      const reversedIds = [a, b].filter((motor) => dot(cross(motor.socketNormal, UP), forward) < 0).map((motor) => motor.brickId)
-      drivePair = { leftId: leftMotor.brickId, rightId: rightMotor.brickId, reversedIds, forward }
+      // How far to the robot's left each motor's wheels stand.
+      const leftness = new Map(onAxis.map((motor) => [motor.brickId, motor.wheelIds.reduce((sum, id) => sum + dot(mechanisms.wheelById.get(id)!.center, left), 0) / motor.wheelIds.length]))
+      const min = Math.min(...leftness.values())
+      const max = Math.max(...leftness.values())
+      if (max - min < 1e-3) continue
+      const middle = (min + max) / 2
+      driveSides = {
+        left: onAxis.filter((motor) => leftness.get(motor.brickId)! >= middle).map((motor) => motor.brickId),
+        right: onAxis.filter((motor) => leftness.get(motor.brickId)! < middle).map((motor) => motor.brickId),
+        reversedIds: onAxis.filter((motor) => dot(cross(motor.socketNormal, UP), forward) < 0).map((motor) => motor.brickId),
+        forward,
+      }
     }
   }
+  const pairIds = driveSides ? [driveSides.left[0], driveSides.right[0]] : []
+  const drivePair: DrivePair | null = driveSides
+    ? { leftId: pairIds[0], rightId: pairIds[1], reversedIds: driveSides.reversedIds.filter((id) => pairIds.includes(id)), forward: driveSides.forward }
+    : null
   // The shape of a rover without its wheels: two motors with axles whose sockets line up. A rover
   // that loses a wheel stays a rover (same run space, same wall ahead); only driving it needs the pair.
   let driveForward: Vec3 | null = drivePair?.forward ?? null
@@ -399,9 +428,21 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
     armBodyIds,
     hubs, motors, hinges, sensors, lights, buttons, seats, axles, wheels,
     drivePair,
+    driveSides,
     driveForward,
     lines: { attached, parts, ready },
   }
+}
+
+/**
+ * The motors a drive command runs, by side, when the creation can drive: its sides, or just its
+ * pair for a creation that carries a pair and no sides. Null without a drive pair, so a creation
+ * whose pair is taken away cannot drive through its sides either.
+ */
+export function driveSidesOf(creation: Pick<DerivedCreation, 'drivePair'> & { driveSides?: DriveSides | null }): DriveSides | null {
+  const pair = creation.drivePair
+  if (!pair) return null
+  return creation.driveSides ?? { left: [pair.leftId], right: [pair.rightId], reversedIds: [...pair.reversedIds], forward: pair.forward }
 }
 
 export function deriveCreations(input: DeriveInput): DerivedCreation[] {

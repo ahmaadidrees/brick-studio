@@ -1,4 +1,4 @@
-import type { DerivedCreation, DerivedDevice } from '../model/creations'
+import { driveSidesOf, type DerivedCreation, type DerivedDevice, type DerivedMotor, type DriveSides } from '../model/creations'
 import type { RunObservation } from '../run/types'
 import { walkBlocks } from '../program/workspaceJson'
 
@@ -13,7 +13,7 @@ export type ReadingChip = {
   id: string
   label: string
   value: string
-  /** A second, smaller line (a drive pair's speeds, a motor's position). */
+  /** A second, smaller line (the drive's speeds, a motor's position). */
   detail?: string
   tone: ReadingTone
   /** A light's colour. */
@@ -30,6 +30,72 @@ const round = (value: number) => {
 }
 const signed = (value: number) => `${round(value) < 0 ? '−' : ''}${Math.abs(round(value))}`
 const unplugged = (device: DerivedDevice, label = device.name): ReadingChip => ({ id: device.brickId, label, value: 'not plugged in', tone: 'warn' })
+/** "Left motor", "Left motor and Right motor", "3 motors". */
+const someMotors = (motors: readonly DerivedMotor[]) => (motors.length > 2 ? `${motors.length} motors` : motors.map((motor) => motor.name).join(' and '))
+
+/**
+ * The drive, by side, every motor on it counted, as the creation feels it: a motor that faces
+ * the other way is flipped, so "drive forward at 40 %" reads Left 40 · Right 40 and two raw
+ * "run … at 50 %" blocks on a mirror-mounted pair read Left 50 · Right −50, with speeds of
+ * opposite signs: the two sides fight and the robot turns. A side reads its busiest motor; one
+ * of its motors left still (a program written before the car had four wheels) is named.
+ */
+function driveChip(creation: DerivedCreation, sides: DriveSides, observation: RunObservation | null): ReadingChip {
+  const reversed = new Set(sides.reversedIds)
+  const felt = (motor: DerivedMotor, percent: number) => (reversed.has(motor.brickId) ? -percent : percent)
+  const motorsOf = (ids: readonly string[]) => ids.flatMap((id) => creation.motors.filter((motor) => motor.brickId === id))
+  const left = motorsOf(sides.left)
+  const right = motorsOf(sides.right)
+  const all = [...left, ...right]
+  const names = left.length === 1 && right.length === 1 ? `${left[0].name} · ${right[0].name}` : `${left.length} on the left · ${right.length} on the right`
+  const speedOf = (motor: DerivedMotor) => {
+    const reading = observation?.motors[motor.brickId]
+    return reading ? reading.forwardPercent ?? felt(motor, reading.speedPercent) : null
+  }
+  const sideSpeed = (list: readonly DerivedMotor[]) => {
+    const speeds = list.map(speedOf).filter((speed): speed is number => speed !== null)
+    return speeds.length ? speeds.reduce((sum, speed) => sum + speed, 0) / speeds.length : null
+  }
+
+  const missing = all.filter((motor) => !motor.plugged)
+  if (missing.length) {
+    // While it runs, the motors still plugged in show that they turn.
+    const running = all.filter((motor) => motor.plugged)
+    const one = running.length === 1 ? speedOf(running[0]) : null
+    const [l, r] = [sideSpeed(left.filter((motor) => motor.plugged)), sideSpeed(right.filter((motor) => motor.plugged))]
+    const detail = !observation || !running.length ? names
+      : running.length === 1 ? (one === null ? names : `${running[0].name} speed ${signed(one)} %`)
+        : `speed ${l === null ? '—' : signed(l)} · ${r === null ? '—' : signed(r)} %`
+    return { id: 'drive', label: 'Motors', value: `${someMotors(missing)} not plugged in`, tone: 'warn', detail }
+  }
+  if (!observation || !left.length || !right.length || all.some((motor) => !observation.motors[motor.brickId])) return { id: 'drive', label: 'Motors', value: '—', detail: names, tone: 'idle' }
+
+  const read = (list: readonly DerivedMotor[]) => list.map((motor) => ({ motor, power: felt(motor, observation.motors[motor.brickId].powerPercent), speed: speedOf(motor)! }))
+  const [readLeft, readRight] = [read(left), read(right)]
+  const busiest = (side: typeof readLeft) => side.reduce((best, entry) => (Math.abs(entry.power) > Math.abs(best.power) ? entry : best)).power
+  const [powerLeft, powerRight] = [busiest(readLeft), busiest(readRight)]
+  const [speedLeft, speedRight] = [sideSpeed(left)!, sideSpeed(right)!]
+  const fighting = Math.abs(speedLeft) > 5 && Math.abs(speedRight) > 5 && Math.sign(speedLeft) !== Math.sign(speedRight)
+  // Motors not doing what their side does: running the other way, or left still.
+  const odd = [...readLeft.map((entry) => ({ ...entry, side: powerLeft })), ...readRight.map((entry) => ({ ...entry, side: powerRight }))].filter((entry) => Math.abs(entry.side) >= 1)
+  const against = odd.filter((entry) => Math.abs(entry.power) >= 1 && Math.sign(entry.power) !== Math.sign(entry.side)).map((entry) => entry.motor)
+  const still = odd.filter((entry) => Math.abs(entry.power) < 1).map((entry) => entry.motor)
+  let why = ''
+  if (fighting) {
+    // Say why a block that says 50 reads −50 here: the motor faces the other way.
+    const flipped = all.filter((motor) => reversed.has(motor.brickId))
+    if (flipped.length === 1) why = `${flipped[0].name} faces the other way`
+    else if (flipped.length > 1) why = `${flipped.every((motor) => right.includes(motor)) ? 'the right motors' : flipped.every((motor) => left.includes(motor)) ? 'the left motors' : `${flipped.length} motors`} face the other way`
+  } else if (against.length) why = `${someMotors(against)} ${against.length === 1 ? 'runs' : 'run'} the other way`
+  else if (still.length) why = `${someMotors(still)} ${still.length === 1 ? 'is' : 'are'} not running`
+  return {
+    id: 'drive',
+    label: 'Motors',
+    value: `Left ${signed(powerLeft)} · Right ${signed(powerRight)} %`,
+    detail: `speed ${signed(speedLeft)} · ${signed(speedRight)} %${why ? ` · ${why}` : ''}`,
+    tone: fighting || against.length ? 'bad' : still.length ? 'warn' : 'live',
+  }
+}
 
 /** The readings chips for the devices this creation has, in the order the mock reads them: sensors, drive, motors, arms, lights, buttons. */
 export function readingChips(creation: DerivedCreation, observation: RunObservation | null): ReadingChip[] {
@@ -45,40 +111,11 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
       tone: !reading ? 'idle' : 'live',
     })
   }
-  const pair = creation.drivePair
-  const pairIds = new Set(pair ? [pair.leftId, pair.rightId] : [])
-  if (pair) {
-    const left = creation.motors.find((motor) => motor.brickId === pair.leftId)
-    const right = creation.motors.find((motor) => motor.brickId === pair.rightId)
-    const a = observation?.motors[pair.leftId]
-    const b = observation?.motors[pair.rightId]
-    const names = `${left?.name ?? 'Left motor'} · ${right?.name ?? 'Right motor'}`
-    if ((left && !left.plugged) || (right && !right.plugged)) {
-      const missing = [left, right].filter((motor) => motor && !motor.plugged).map((motor) => motor!.name)
-      // While it runs, the one still plugged in shows that it turns (as the creation feels it).
-      const other = [left, right].find((motor) => motor?.plugged)
-      const turning = other ? observation?.motors[other.brickId] : undefined
-      const otherSpeed = turning ? turning.forwardPercent ?? (pair.reversedIds.includes(other!.brickId) ? -turning.speedPercent : turning.speedPercent) : null
-      chips.push({ id: 'drive', label: 'Motors', value: `${missing.join(' and ')} not plugged in`, tone: 'warn', detail: otherSpeed === null ? names : `${other!.name} speed ${signed(otherSpeed)} %` })
-    } else if (a && b) {
-      // The pair reads as the creation feels it: a motor mounted reversed is flipped, so "drive
-      // forward at 40 %" reads 40 · 40 and two raw "run … at 50 %" blocks on a reversed pair read
-      // 50 · −50, with speeds of opposite signs: the two motors fight and the rover turns.
-      const reversed = new Set(pair.reversedIds)
-      const powerOf = (id: string, percent: number) => (reversed.has(id) ? -percent : percent)
-      const forwardA = a.forwardPercent ?? powerOf(pair.leftId, a.speedPercent)
-      const forwardB = b.forwardPercent ?? powerOf(pair.rightId, b.speedPercent)
-      const fighting = Math.abs(forwardA) > 5 && Math.abs(forwardB) > 5 && Math.sign(forwardA) !== Math.sign(forwardB)
-      // Fighting: say why a block that says 40 reads −40 here (the motor is mounted the other way round).
-      const reversedName = fighting ? creation.motors.find((motor) => reversed.has(motor.brickId))?.name : undefined
-      chips.push({ id: 'drive', label: 'Motors', value: `${signed(powerOf(pair.leftId, a.powerPercent))} · ${signed(powerOf(pair.rightId, b.powerPercent))} %`, detail: `speed ${signed(forwardA)} · ${signed(forwardB)} %${reversedName ? ` · ${reversedName} is mounted reversed` : ''}`, tone: fighting ? 'bad' : 'live' })
-    } else {
-      chips.push({ id: 'drive', label: 'Motors', value: '—', detail: names, tone: 'idle' })
-    }
-    chips.push({ id: 'speed', label: 'Speed', value: live ? `${observation.speedStudsPerSecond.toFixed(1)} st/s` : '—', tone: live ? 'live' : 'idle' })
-  }
+  const sides = driveSidesOf(creation)
+  const sideIds = new Set(sides ? [...sides.left, ...sides.right] : [])
+  if (sides) chips.push(driveChip(creation, sides, observation), { id: 'speed', label: 'Speed', value: live ? `${observation.speedStudsPerSecond.toFixed(1)} st/s` : '—', tone: live ? 'live' : 'idle' })
   for (const motor of creation.motors) {
-    if (pairIds.has(motor.brickId)) continue
+    if (sideIds.has(motor.brickId)) continue
     if (!motor.plugged) { chips.push(unplugged(motor)); continue }
     const reading = observation?.motors[motor.brickId]
     chips.push(reading

@@ -49,6 +49,52 @@ export function roverBricks(options: { leftWheelOff?: boolean; rightMotorSocketI
   return bricks
 }
 
+export const FOUR_WHEEL_IDS = {
+  frontPlate: '4wd-front-plate', backPlate: '4wd-back-plate', hub: '4wd-hub',
+  frontLeftMotor: '4wd-front-left-motor', frontRightMotor: '4wd-front-right-motor', backLeftMotor: '4wd-back-left-motor', backRightMotor: '4wd-back-right-motor',
+  frontLeftAxle: '4wd-front-left-axle', frontRightAxle: '4wd-front-right-axle', backLeftAxle: '4wd-back-left-axle', backRightAxle: '4wd-back-right-axle',
+  frontLeftWheel: '4wd-front-left-wheel', frontRightWheel: '4wd-front-right-wheel', backLeftWheel: '4wd-back-left-wheel', backRightWheel: '4wd-back-right-wheel',
+} as const
+
+/**
+ * Four-wheel car (KID-UX, "every motor drives"): the car a student makes of the rover by
+ * adding a pair. Two 6×8 plates end to end make a 6×16 chassis; the hub stands across the
+ * seam, so its tubes join the two plates into one body. A motor on each side at the front
+ * and at the back, each socket facing out, a short axle in each and a wheel on each axle,
+ * like the rover's. The wheels sit seven studs apart front to back (eleven across), so the car
+ * turns on the spot as well as it drives. No sensor: the four motors take the hub's four ports.
+ * Forward is -Z. `backLeftWheelOff` leaves the back-left wheel a stud off its axle;
+ * `backRightFacingBack` turns the back-right motor to face backward, its axle and wheel behind it.
+ */
+export function fourWheelBricks(options: { backLeftWheelOff?: boolean; backRightFacingBack?: boolean } = {}): BrickInstance[] {
+  const ids = FOUR_WHEEL_IDS
+  const bricks = [
+    brick(ids.frontPlate, 'plate_6x8', 28, 0, 18, 0, BLUE),
+    brick(ids.backPlate, 'plate_6x8', 28, 0, 26, 0, BLUE),
+    brick(ids.hub, ROBOTICS_PART_IDS.hub, 29, 1, 24, 0, WHITE),
+    brick(ids.frontLeftMotor, ROBOTICS_PART_IDS.motor, 28, 1, 21, 2, GREY),
+    brick(ids.frontRightMotor, ROBOTICS_PART_IDS.motor, 31, 1, 21, 0, GREY),
+    brick(ids.backLeftMotor, ROBOTICS_PART_IDS.motor, 28, 1, 28, 2, GREY),
+    brick(ids.backRightMotor, ROBOTICS_PART_IDS.motor, 31, 1, 28, 0, GREY),
+    brick(ids.frontLeftAxle, ROBOTICS_PART_IDS.axleShort, 26, 0, 22, 0, GREY),
+    brick(ids.frontRightAxle, ROBOTICS_PART_IDS.axleShort, 34, 0, 22, 0, GREY),
+    brick(ids.backLeftAxle, ROBOTICS_PART_IDS.axleShort, 26, 0, 29, 0, GREY),
+    brick(ids.backRightAxle, ROBOTICS_PART_IDS.axleShort, 34, 0, 29, 0, GREY),
+    brick(ids.frontLeftWheel, ROBOTICS_PART_IDS.wheel, 25, 0, 21, 0, '#1f2a33'),
+    brick(ids.frontRightWheel, ROBOTICS_PART_IDS.wheel, 36, 0, 21, 0, '#1f2a33'),
+    brick(ids.backLeftWheel, ROBOTICS_PART_IDS.wheel, options.backLeftWheelOff ? 24 : 25, 0, 28, 0, '#1f2a33'),
+    brick(ids.backRightWheel, ROBOTICS_PART_IDS.wheel, 36, 0, 28, 0, '#1f2a33'),
+  ]
+  if (options.backRightFacingBack) {
+    // A quarter turn: the socket faces +Z from the plate's back edge; the axle and wheel stand behind it.
+    const at = (id: string, x: number, z: number, rotation: 0 | 1 | 2 | 3) => Object.assign(bricks.find((candidate) => candidate.id === id)!, { x, z, rotation })
+    at(ids.backRightMotor, 31, 31, 3)
+    at(ids.backRightAxle, 32, 34, 1)
+    at(ids.backRightWheel, 31, 36, 1)
+  }
+  return bricks
+}
+
 export const GATE_IDS = {
   plate: 'gate-plate', leftPost: 'gate-left-post', leftPostTop: 'gate-left-post-top', rightPost: 'gate-right-post', rightPostTop: 'gate-right-post-top', lintel: 'gate-lintel',
   sill: 'gate-sill', hinge: 'gate-hinge', door: 'gate-door', hub: 'gate-hub', sensor: 'gate-sensor', bridge: 'gate-bridge',

@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import { GATE_IDS, ROVER_IDS, SIGNAL_IDS } from '../model/fixtures'
-import { wiredGate, wiredRover, wiredSignalPost } from '../program/testFixtures'
+import { FOUR_WHEEL_IDS, GATE_IDS, ROVER_IDS, SIGNAL_IDS } from '../model/fixtures'
+import { wiredFourWheel, wiredGate, wiredRover, wiredSignalPost } from '../program/testFixtures'
 import { starterFor } from '../program/starters'
 import { installRoboticsParts } from '../parts/install'
 import type { MotorReading, RunObservation } from '../run/types'
@@ -27,7 +27,7 @@ describe('readings chips', () => {
     }))
     expect(chips.map((chip) => [chip.label, chip.value, chip.detail ?? '', chip.tone])).toEqual([
       ['Front sensor', '2.6 studs', '', 'live'],
-      ['Motors', '40 · 40 %', 'speed 38 · 37 %', 'live'],
+      ['Motors', 'Left 40 · Right 40 %', 'speed 38 · 37 %', 'live'],
       ['Speed', '2.4 st/s', '', 'live'],
     ])
   })
@@ -39,7 +39,7 @@ describe('readings chips', () => {
       motors: { [ROVER_IDS.leftMotor]: motor({ powerPercent: 50, speedPercent: 45, forwardPercent: 45 }), [ROVER_IDS.rightMotor]: motor({ powerPercent: 50, speedPercent: 45, forwardPercent: -45 }) },
     }))
     expect(chips[0].value).toBe('nothing seen')
-    expect(chips[1]).toMatchObject({ value: '50 · −50 %', detail: 'speed 45 · −45 % · Right motor is mounted reversed', tone: 'bad' })
+    expect(chips[1]).toMatchObject({ value: 'Left 50 · Right −50 %', detail: 'speed 45 · −45 % · Right motor faces the other way', tone: 'bad' })
   })
 
   it('says which part is not plugged in, and shows dashes before a stage exists', () => {
@@ -64,6 +64,61 @@ describe('readings chips', () => {
     const chip = readingChips(creation, observation({ lights: { [SIGNAL_IDS.light]: 'red' } })).find((candidate) => candidate.id === SIGNAL_IDS.light)
     expect(chip).toMatchObject({ value: 'red', swatch: '#ff3b30' })
     expect(readingChips(creation, observation({ lights: { [SIGNAL_IDS.light]: null } })).find((candidate) => candidate.id === SIGNAL_IDS.light)?.value).toBe('off')
+  })
+})
+
+describe('the Motors chip on a four-wheel car (every motor counted)', () => {
+  const ids = FOUR_WHEEL_IDS
+  /** Readings as the run controller reports them: the right side's motors run reversed. */
+  const car = (felt: Record<string, number>, speed = (percent: number) => percent * 0.97) => Object.fromEntries(Object.entries(felt).map(([id, power]) => {
+    const reversed = id === ids.frontRightMotor || id === ids.backRightMotor
+    return [id, motor({ powerPercent: reversed ? -power : power, speedPercent: reversed ? -speed(power) : speed(power), forwardPercent: speed(power) })]
+  }))
+
+  it('one chip for all four motors, by side, and the speed', () => {
+    const { creation } = wiredFourWheel()
+    const chips = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 40, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 40 }), speedStudsPerSecond: 3.9 }))
+    expect(chips.map((chip) => [chip.label, chip.value, chip.detail ?? '', chip.tone])).toEqual([
+      ['Motors', 'Left 40 · Right 40 %', 'speed 39 · 39 %', 'live'],
+      ['Speed', '3.9 st/s', '', 'live'],
+    ])
+    expect(readingChips(creation, null).map((chip) => [chip.label, chip.value, chip.detail ?? ''])).toEqual([['Motors', '—', '2 on the left · 2 on the right'], ['Speed', '—', '']])
+  })
+
+  it('a program that runs only the first two motors: the chip names the two left still', () => {
+    const { creation } = wiredFourWheel()
+    const chip = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 0, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 0 }, (percent) => percent / 2) }))[0]
+    expect(chip).toMatchObject({ value: 'Left 40 · Right 40 %', detail: 'speed 10 · 10 % · Left motor and Right motor are not running', tone: 'warn' })
+  })
+
+  it('raw blocks at 50 % on all four: the sides fight and the chip says the right motors face the other way', () => {
+    const { creation } = wiredFourWheel()
+    const motors = Object.fromEntries([ids.frontLeftMotor, ids.backLeftMotor, ids.frontRightMotor, ids.backRightMotor].map((id) => {
+      const right = id === ids.frontRightMotor || id === ids.backRightMotor
+      return [id, motor({ powerPercent: 50, speedPercent: 45, forwardPercent: right ? -45 : 45 })]
+    }))
+    expect(readingChips(creation, observation({ motors }))[0]).toMatchObject({ value: 'Left 50 · Right −50 %', detail: 'speed 45 · −45 % · the right motors face the other way', tone: 'bad' })
+  })
+
+  it('a motor on a side running against the others is named', () => {
+    const { creation } = wiredFourWheel()
+    const chip = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: -40, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 40 }, () => 0) }))[0]
+    expect(chip).toMatchObject({ value: 'Left 40 · Right 40 %', detail: 'speed 0 · 0 % · Left motor runs the other way', tone: 'bad' })
+  })
+
+  it('an unplugged motor on either side; the rest show that they turn', () => {
+    const { creation } = wiredFourWheel({ unplug: [ids.backRightMotor] })
+    expect(readingChips(creation, null)[0]).toMatchObject({ value: 'Right motor not plugged in', detail: '2 on the left · 2 on the right', tone: 'warn' })
+    const running = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 40, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 0 }) }))[0]
+    expect(running).toMatchObject({ value: 'Right motor not plugged in', detail: 'speed 39 · 39 %', tone: 'warn' })
+    const three = wiredFourWheel({ unplug: [ids.frontLeftMotor, ids.backLeftMotor, ids.backRightMotor] }).creation
+    expect(readingChips(three, null)[0].value).toBe('3 motors not plugged in')
+  })
+
+  it('a motor facing the wrong way is not on a side: it keeps its own chip', () => {
+    const { creation } = wiredFourWheel({ backRightFacingBack: true })
+    const chips = readingChips(creation, observation({ motors: { ...car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 40, [ids.frontRightMotor]: 40 }), [ids.backRightMotor]: motor({ powerPercent: 0, speedPercent: 0, positionDegrees: 0 }) } }))
+    expect(chips.map((chip) => [chip.label, chip.value])).toEqual([['Motors', 'Left 40 · Right 40 %'], ['Speed', '0.0 st/s'], ['Back motor', '0 %']])
   })
 })
 
