@@ -1,11 +1,12 @@
 import type RAPIER from '@dimforge/rapier3d-compat'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { ConvexHullCollider, CuboidCollider, RigidBody, RoundCuboidCollider, useRapier, type RapierRigidBody } from '@react-three/rapier'
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type * as THREE from 'three'
 import { followCameraYaw } from '../../brick/explorePreferences'
 import { createBrickGeometry } from '../../brick/geometry'
 import { BRICK_PART_MAP, EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS, PLATE_HEIGHT, brickPhysicalShapes, type PhysicalShape } from '../../brick/parts'
+import { CAMERA_PROBE_RADIUS } from '../../brick/scenePhysics'
 import { useBrickStore } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { brickIdOfNode, isArmNode } from '../model/assembly'
@@ -16,10 +17,11 @@ import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
 import type { TestProp } from '../run/types'
 import { WALL_CAP_COLOR, brickWallTile } from '../scene/brickWall'
 import type { RapierModule } from '../sim/colliders'
+import { createCameraLift } from './cameraLift'
 import { findHopOffPlacement, hopOffShapes } from './hopOff'
 import { createMirrorRegistry, type MirrorWorld } from './mirrors'
 import { isCurbProp } from './plateCurb'
-import { setExploreRideHandler } from './rideBridge'
+import { setExploreCameraHandler, setExploreRideHandler } from './rideBridge'
 import { installRideKeys } from './rideKeys'
 import { yawOf } from './rideModel'
 import { advanceRides, bringBackRide, footprintOf, lastAvatarPosition, liveRide, liveRides, rideAvatarFrame, riderBodyHandle, seatOf, useExploreRideStore, type LiveRide } from './rideStore'
@@ -56,6 +58,7 @@ const ORIGIN: [number, number, number] = [0, 0, 0]
 
 export default function ExploreRides() {
   const { rapier, world } = useRapier()
+  const camera = useThree((state) => state.camera)
   const liveIds = useExploreRideStore((state) => state.liveIds)
   // The ridden creation while its rider is on board (riding or hopping off): its curb is drawn.
   const ridden = useExploreRideStore((state) => (state.phase !== 'walking' ? state.riding : null))
@@ -65,23 +68,28 @@ export default function ExploreRides() {
     const store = useExploreRideStore.getState()
     store.enter(rapier as unknown as RapierModule)
     setExploreRideHandler(rideAvatarFrame)
+    // The camera rises over a big build (a robot, parked or not) instead of closing in on the character's head.
+    const cameraWorld = world as unknown as RAPIER.World
+    const avatarBody = () => { const handle = riderBodyHandle(); return handle === null ? undefined : cameraWorld.getRigidBody(handle) ?? undefined }
+    setExploreCameraHandler(createCameraLift(cameraWorld, new (rapier as unknown as RapierModule).Ball(CAMERA_PROBE_RADIUS), avatarBody))
     const removeKeys = installRideKeys()
     return () => {
       removeKeys()
+      setExploreCameraHandler(null)
       setExploreRideHandler(null)
       useExploreRideStore.getState().leave()
       mirrors.clear()
     }
-  }, [rapier])
+  }, [rapier, world])
 
   // Dev-only hook for the QA harnesses (scripts/qa/robotics-cp4-explore.mjs, robotics-kid-ride.mjs).
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const host = window as unknown as { __robotics?: Record<string, unknown> }
     const hook = (host.__robotics = host.__robotics ?? {})
-    hook.exploreRides = { store: useExploreRideStore, debug: () => rideDebug(world as unknown as RAPIER.World, rapier as unknown as RapierModule), bringBack: bringBackRide }
+    hook.exploreRides = { store: useExploreRideStore, debug: () => rideDebug(world as unknown as RAPIER.World, rapier as unknown as RapierModule, camera), bringBack: bringBackRide }
     return () => { delete hook.exploreRides }
-  }, [world, rapier])
+  }, [world, rapier, camera])
 
   const lastYaw = useRef<number | null>(null)
   useFrame((_, delta) => {
@@ -263,9 +271,16 @@ const round = (value: number) => Math.round(value * 1000) / 1000
 const roundPoint = (point: Point) => ({ x: round(point.x), y: round(point.y), z: round(point.z) })
 
 /** Dev only: what the harness measures (never shipped behaviour). */
-function rideDebug(world: RAPIER.World, rapier: RapierModule) {
+function rideDebug(world: RAPIER.World, rapier: RapierModule, camera: THREE.Camera) {
   const state = useExploreRideStore.getState()
   const avatar = lastAvatarPosition()
+  const handle = riderBodyHandle()
+  const avatarBody = handle === null ? undefined : world.getRigidBody(handle) ?? undefined
+  // Where the follow camera is: how far from the character's head (its target), and how many colliders its lens sits inside.
+  const lens = { x: camera.position.x, y: camera.position.y, z: camera.position.z }
+  let cameraInside = 0
+  world.intersectionsWithShape(lens, { x: 0, y: 0, z: 0, w: 1 }, new rapier.Ball(0.12), () => { cameraInside += 1; return true }, undefined, undefined, undefined, avatarBody)
+  const cameraToTarget = avatar ? Math.hypot(lens.x - avatar.x, lens.y - (avatar.y + 0.52), lens.z - avatar.z) : null
   const mirrorWorld = world as unknown as MirrorWorld
   const mirrorHandles = mirrors.handles(mirrorWorld)
   let avatarOverlaps = 0
@@ -315,5 +330,8 @@ function rideDebug(world: RAPIER.World, rapier: RapierModule) {
     }),
     notice: state.notice?.text ?? null,
     curbDrawn: [...drawnCurb],
+    camera: roundPoint(lens),
+    cameraToTarget: cameraToTarget === null ? null : round(cameraToTarget),
+    cameraInside,
   }
 }

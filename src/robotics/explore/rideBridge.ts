@@ -27,3 +27,21 @@ export function setExploreRideHandler(next: Handler | null) {
 export function exploreRideFrame(avatar: RideAvatarBody): RideAvatarFrame | null {
   return handler ? handler(avatar) : null
 }
+
+/**
+ * The follow camera beside a big build (`cameraLift.ts`). The character's camera calls
+ * `exploreCameraBoom(target, direction, distance, delta)` each frame with its orbit's boom (a
+ * unit vector from the target) before it checks what is in the way, and uses the answer instead
+ * when there is one: the boom risen over a build that would pull the camera in onto her head.
+ * Null (keep the orbit's boom) without the flag, when nothing is in the way, and outside Explore.
+ */
+type CameraHandler = (query: { target: RideVector; direction: RideVector; distance: number; delta: number }) => RideVector | null
+let cameraHandler: CameraHandler | null = null
+
+export function setExploreCameraHandler(next: CameraHandler | null) {
+  cameraHandler = next
+}
+
+export function exploreCameraBoom(target: RideVector, direction: RideVector, distance: number, delta: number): RideVector | null {
+  return cameraHandler ? cameraHandler({ target, direction, distance, delta }) : null
+}

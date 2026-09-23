@@ -127,7 +127,7 @@ import { clearDraftSnap, snapDraft } from '../robotics/scene/draftSnap'
 import { framePoseInFreeArea } from '../robotics/scene/framing'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 import { studioEditingSuspended } from '../robotics/code/studioKeys'
-import { exploreRideFrame } from '../robotics/explore/rideBridge'
+import { exploreCameraBoom, exploreRideFrame } from '../robotics/explore/rideBridge'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
 // mechanics nudge. The chunk is never requested without the flag.
@@ -1766,6 +1766,9 @@ function ExplorerAvatar({
     const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
     const direction = cameraDirection.current.copy(boom).normalize()
+    // Robot Workshop spike (null without the flag): a boom a big build would cut short rises over it instead.
+    const risen = exploreCameraBoom(target, direction, desiredDistance, Math.min(delta, 0.05))
+    if (risen) direction.set(risen.x, risen.y, risen.z)
     const obstruction = findCameraObstruction(
       world,
       target,
