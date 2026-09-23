@@ -17,7 +17,9 @@
  * in a row while driving to stress the remount. One edit (Undo then Redo through the brick store, as a
  * student's Ctrl+Z and Ctrl+Shift+Z) retires the ride and puts the rider down: the exact remount the crash
  * came from, followed by Ride again. Before that second visit the remembered spawn point is cleared, so
- * the character starts behind the Buggy as on a first visit.
+ * the character starts behind the Buggy as on a first visit. Last, a touch pass at 1024×768 (Chrome's touch
+ * emulation): one finger on the Explore stick walks up, a tap on Ride, the card says "Drive with the stick.",
+ * the stick drives, a tap on Hop off.
  *
  *   PATH=/opt/homebrew/opt/node@22/bin:$PATH UI_ORIGIN=http://127.0.0.1:5241 node scripts/qa/robotics-kid-ride.mjs
  *
@@ -177,9 +179,20 @@ await page.keyboard.up('w')
 await page.evaluate(() => window.__robotics.brickStore.setState({ touchYaw: window.__robotics.brickStore.getState().touchYaw + 1.1, touchPitch: 0.62, exploreManualLookAt: Date.now() }))
 await sleep(900)
 await shot('D2-against-the-curb-side-view')
+// Hop off right there, against the curb, and get back on.
+await page.keyboard.press('e')
+const offAtCurb = await waitFor(async () => { const d = await debug(); return d.phase === 'walking' ? d : null }, { timeout: 4000 })
+await sleep(500)
+const besideCurb = await debug()
+check('D.hop-off-at-the-curb', offAtCurb && Math.abs(besideCurb.avatar.y - 0.385) < 0.06 && Math.abs(besideCurb.avatar.x) < PLATE_HALF && Math.abs(besideCurb.avatar.z) < PLATE_HALF && besideCurb.avatarOverlaps === 0 && besideCurb.curbDrawn.length === 0 && besideCurb.nearestId === buggy.id,
+  `E at the curb: the character stands on the plate beside the Buggy (${JSON.stringify(besideCurb.avatar)}), inside no collider; the curb is put away; Ride is offered again`)
+await shot('D3-hopped-off-at-the-curb')
+await page.keyboard.press('e')
+const backOn = await waitFor(async () => { const d = await debug(); return d.phase === 'riding' ? d : null }, { timeout: 3000 })
+await sleep(300)
 const backUp = await hold('s', 900)
 const backedTo = (await debug()).rides[0]
-check('D.backs-away', distance(backedTo.chassis, pushed.chassis) / STUD > 2 && backUp.every((sample) => sample.phase === 'riding'), `S held 0.9 s: backed ${round(distance(backedTo.chassis, pushed.chassis) / STUD, 1)} studs away from the curb`)
+check('D.backs-away', backOn && distance(backedTo.chassis, pushed.chassis) / STUD > 2 && backUp.every((sample) => sample.phase === 'riding'), `rode again from the curb (E); S held 0.9 s: backed ${round(distance(backedTo.chassis, pushed.chassis) / STUD, 1)} studs away from it`)
 
 /* ---------------------------------------------------------------- E. back to the start, seated */
 console.log('\nE. Back to the start (forced: the curb stops the Buggy, so a car past it is simulated), still seated, keys still drive')
@@ -284,6 +297,75 @@ await page.keyboard.press('e')
 await waitFor(async () => { const d = await debug(); return d.phase === 'walking' ? d : null }, { timeout: 4000 })
 await page.getByRole('button', { name: 'Back to building' }).click()
 await page.waitForFunction(() => window.__robotics.brickStore.getState().mode === 'build', null, { timeout: 10_000 })
+
+/* ---------------------------------------------------------------- T. touch */
+console.log('\nT. Touch at 1024×768: walk up with the stick, tap Ride, drive with the stick, tap Hop off')
+const touchContext = await browser.newContext({ viewport: { width: 1024, height: 768 }, deviceScaleFactor: 1, hasTouch: true, isMobile: true })
+await touchContext.addInitScript(({ onboardingKey }) => { window.localStorage.setItem(onboardingKey, 'dismissed') }, { onboardingKey: ONBOARDING_KEY })
+const tablet = await touchContext.newPage()
+tablet.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(`[touch] ${message.text()}`) })
+tablet.on('pageerror', (error) => pageErrors.push(`[touch] ${String(error)}`))
+await tablet.goto(`${origin}/build`)
+await tablet.evaluate((key) => window.localStorage.removeItem(key), PROJECT_KEY)
+await tablet.reload()
+await tablet.waitForFunction(() => Boolean(window.__robotics?.stageStore && window.__robotics?.armKit), null, { timeout: 30_000 })
+const tabletBrick = (fn, arg) => tablet.evaluate(({ src, arg }) => new Function('state', 'arg', `return (${src})(state, arg)`)(window.__robotics.brickStore.getState(), arg), { src: fn.toString(), arg })
+const tabletDebug = () => tablet.evaluate(() => window.__robotics.exploreRides?.debug() ?? null)
+await tabletBrick((state) => state.newBuild())
+await tablet.evaluate(() => window.__robotics.armKit('buggy'))
+await tabletBrick((state) => { state.setDraftPosition(28, 0, 26); return state.placeDraft() })
+await tablet.waitForTimeout(300)
+const tabletHub = await tabletBrick((state) => state.bricks.find((entry) => entry.partId === 'robo_hub'))
+await tabletBrick((state, h) => { state.choosePart('robo_seat'); state.setDraftPosition(h.x + 1, h.y + 6, h.z + 1); const ok = state.placeDraft(); state.cancelInteraction(); return ok }, tabletHub)
+await tablet.waitForTimeout(300)
+await tablet.getByRole('radio', { name: 'Explore' }).tap()
+await tablet.waitForFunction(() => Boolean(window.__robotics.exploreRides) && window.__robotics.brickStore.getState().exploreSpawnStatus === 'ready', null, { timeout: 15_000 })
+await tablet.waitForTimeout(600)
+const cdp = await touchContext.newCDPSession(tablet)
+const stickBox = await tablet.getByLabel('Movement joystick').boundingBox()
+const stickCentre = { x: stickBox.x + stickBox.width / 2, y: stickBox.y + stickBox.height / 2 }
+async function stickUp(until, timeout) {
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: stickCentre.x, y: stickCentre.y, id: 1 }] })
+  for (let step = 1; step <= 10; step += 1) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: stickCentre.x, y: stickCentre.y - 4.2 * step, id: 1 }] })
+    await tablet.waitForTimeout(16)
+  }
+  const start = Date.now()
+  let value = null
+  while (Date.now() - start < timeout) {
+    value = await until()
+    if (value) break
+    await tablet.waitForTimeout(50)
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  return value
+}
+const tabletNear = await stickUp(async () => { const d = await tabletDebug(); return d?.nearestId ? d : null }, 6000)
+await tablet.waitForTimeout(400)
+check('T.walked-up-by-touch', Boolean(tabletNear), 'one finger on the Explore stick walked the character up to the Buggy')
+await tablet.getByRole('button', { name: 'Ride' }).tap()
+await tablet.waitForFunction(() => window.__robotics.exploreRides.debug().phase === 'riding', null, { timeout: 4000 })
+await tablet.waitForTimeout(500)
+const touchCard = await tablet.evaluate(() => {
+  const element = document.querySelector('.explore-ride-prompt[data-visible="true"]')
+  const visible = (selector) => { const node = element?.querySelector(selector); return node && getComputedStyle(node).display !== 'none' ? node.textContent : null }
+  const button = element?.querySelector('.explore-ride-prompt-button')
+  return { label: visible('.explore-ride-prompt-label'), detail: visible('.explore-ride-prompt-detail'), hint: visible('.explore-ride-prompt-hint'), button: button?.textContent ?? null, buttonHeight: button ? Math.round(button.getBoundingClientRect().height) : 0, detailPx: element ? parseFloat(getComputedStyle(element.querySelector('.explore-ride-prompt-detail')).fontSize) : 0 }
+})
+check('T.card-touch', touchCard.label === 'Riding Buggy' && touchCard.detail === 'Drive with the stick.' && touchCard.hint === null && touchCard.button === 'Hop off' && touchCard.buttonHeight >= 44 && touchCard.detailPx >= 15,
+  `card on touch: “${touchCard.label}” / “${touchCard.detail}” / [${touchCard.button}] ${touchCard.buttonHeight} px tall, text ${touchCard.detailPx} px; no key hint`)
+const touchFrom = (await tabletDebug()).rides[0].chassis
+await stickUp(async () => null, 1200)
+await tablet.waitForTimeout(500)
+const touchTo = await tabletDebug()
+check('T.stick-drives', touchTo.phase === 'riding' && distance(touchTo.rides[0].chassis, touchFrom) / STUD > 3 && touchTo.curbDrawn.length === 4, `the stick drove the Buggy ${round(distance(touchTo.rides[0].chassis, touchFrom) / STUD, 1)} studs; the curb is drawn`)
+await tablet.screenshot({ path: path.join(out, 'T1-touch-riding-drive-with-the-stick.png') })
+shots.push('T1-touch-riding-drive-with-the-stick.png')
+await tablet.getByRole('button', { name: 'Hop off' }).tap()
+const touchWalking = await tablet.waitForFunction(() => window.__robotics.exploreRides.debug().phase === 'walking', null, { timeout: 4000 }).then(() => true, () => false)
+check('T.hop-off-tap', touchWalking, 'a tap on Hop off put the character down beside the Buggy')
+measurements.touch = { card: touchCard, droveStuds: round(distance(touchTo.rides[0].chassis, touchFrom) / STUD, 2) }
+await touchContext.close()
 
 /* ---------------------------------------------------------------- errors */
 const crashed = await page.evaluate(() => /tripped over a brick/i.test(document.body.innerText))

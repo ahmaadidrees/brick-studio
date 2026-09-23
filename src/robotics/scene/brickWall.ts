@@ -37,14 +37,23 @@ export function brickWallTexture(): THREE.CanvasTexture | null {
   return wallTexture
 }
 
-/** The brick pattern tiled at brick scale over a wall of this size (world units), or null without a document. */
+const tiles = new Map<string, THREE.CanvasTexture>()
+/**
+ * The brick pattern tiled at brick scale over a wall of this size (world units), or null without a
+ * document. One texture per size for the session, shared by every wall that size: walls come and go
+ * with every stage and every ride, and a clone per wall was never disposed.
+ */
 export function brickWallTile(size: Vec3): THREE.CanvasTexture | null {
+  const along = Math.max(size.x, size.z)
+  const key = `${along.toFixed(3)}:${size.y.toFixed(3)}`
+  const cached = tiles.get(key)
+  if (cached) return cached
   const base = brickWallTexture()
   if (!base) return null
   const tile = base.clone()
-  const along = Math.max(size.x, size.z)
   tile.repeat.set(along / (8 * STUD), size.y / (6 * PLATE_HEIGHT))
   tile.needsUpdate = true
+  tiles.set(key, tile)
   return tile
 }
 
