@@ -8,7 +8,8 @@ import { installRoboticsParts } from '../parts/install'
 import type { CompileResult, RoboticsProgram } from '../program/types'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { moveDeviceToPort } from '../wiring/actions'
-import { BlocklyWorkspace, SAVE_DEBOUNCE_MS, diagnosticsByBlock, type BlocklyWorkspaceHandle } from './BlocklyWorkspace'
+import { BlocklyWorkspace, SAVE_DEBOUNCE_MS, diagnosticsByBlock, paletteFloats, type BlocklyWorkspaceHandle } from './BlocklyWorkspace'
+import { RAIL_PRESS_FOCUS_MS, RailToolbox } from './blocklySetup'
 import { ROVER_SECTION, loadWorld, programRecord, storedPrograms, stubBlocklyLayout } from './codeTestFixtures'
 
 /**
@@ -147,6 +148,50 @@ describe('<BlocklyWorkspace>', () => {
     expect(classes('hat').contains('robo-diag-warning')).toBe(false)
     const warning = workspace().getBlockById('run')!.getIcon(Blockly.icons.IconType.WARNING)
     expect(warning?.getText()).toBe('Left motor is not plugged in')
+  })
+
+  it('floats the palette over a narrow scripts area (an iPad) and pins it beside a wide one', () => {
+    const { program } = setup(programRecord('p1', runMotor(ROVER_IDS.leftMotor)))
+    // jsdom lays nothing out, so the scripts area reads 0 px wide: narrow.
+    render(<Harness program={program} />)
+    expect(paletteFloats(0)).toBe(true)
+    expect(workspace().getToolbox()!.getFlyout()!.autoClose).toBe(true)
+    expect(workspace().getToolbox()!.getSelectedItem()).toBeNull()
+    cleanup()
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('robo-code-blockly') ? 820 : 0 })
+    render(<Harness program={program} />)
+    expect(workspace().getToolbox()!.getFlyout()!.autoClose).toBe(false)
+    expect(workspace().getToolbox()!.getSelectedItem()).not.toBeNull()
+  })
+
+  it('a tap on the open rail row closes the palette even though iPadOS Safari focuses the row after the tap', () => {
+    const { program } = setup(programRecord('p1', runMotor(ROVER_IDS.leftMotor)))
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.classList.contains('robo-code-blockly') ? 820 : 0 })
+    render(<Harness program={program} />)
+    const toolbox = workspace().getToolbox() as RailToolbox
+    expect(toolbox).toBeInstanceOf(RailToolbox)
+    const open = toolbox.getSelectedItem() as Blockly.ToolboxCategory
+    expect(open).not.toBeNull()
+    // The press: Blockly's pointerdown handler finds the row by its id and, since it is open, closes it.
+    const press = (row: Blockly.ToolboxCategory) => (toolbox as unknown as { onClick_: (event: PointerEvent) => void }).onClick_({ target: row.getClickTarget(), button: 0, preventDefault() {} } as unknown as PointerEvent)
+    act(() => press(open))
+    expect(toolbox.getSelectedItem()).toBeNull()
+    // WebKit then focuses the tapped row, after the finger has lifted: the palette stays closed.
+    act(() => Blockly.getFocusManager().focusNode(open))
+    expect(toolbox.getSelectedItem()).toBeNull()
+    expect(toolbox.getFlyout()!.isVisible()).toBe(false)
+    // Focus that is not a tap's (the keyboard, a moment later) still opens a row.
+    const now = performance.now()
+    vi.spyOn(performance, 'now').mockReturnValue(now + RAIL_PRESS_FOCUS_MS + 1)
+    const scrollIntoView = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = () => {}
+    try {
+      const next = toolbox.getToolboxItems().find((item) => item !== open && item.isSelectable()) as Blockly.ToolboxCategory
+      act(() => Blockly.getFocusManager().focusNode(next))
+      expect(toolbox.getSelectedItem()).toBe(next)
+    } finally {
+      Element.prototype.scrollIntoView = scrollIntoView
+    }
   })
 
   it('groups diagnostics by block with the worst severity first', () => {

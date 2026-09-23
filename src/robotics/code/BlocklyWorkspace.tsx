@@ -88,9 +88,32 @@ function refreshDeviceFields(workspace: Blockly.WorkspaceSvg) {
 export const PALETTE_OPEN_MIN_WIDTH = 720
 
 /**
- * Puts the scripts at the top left of the scripts area, as in the mock. The palette never
- * closes by itself (`autoClose` off), so Blockly counts it in the workspace's left edge and
- * scripts shown here start beside it, never under it.
+ * Below `PALETTE_OPEN_MIN_WIDTH` the palette floats (Blockly's `autoClose`): it opens over the
+ * scripts and goes back in when a block is taken out of it or the scripts are tapped. Pinned
+ * beside the scripts, it left an iPad in portrait (a 408 px scripts area) 126 px beside Motion
+ * and nothing beside Sensing, and Blockly keeps a pinned palette's width reserved after it
+ * closes, so the scripts stayed pushed off the editor's right edge.
+ */
+export function paletteFloats(containerWidth: number): boolean {
+  return containerWidth < PALETTE_OPEN_MIN_WIDTH
+}
+
+/** Pins or floats the palette for the scripts area's width (a floating one is put away first). */
+function fitPalette(workspace: Blockly.WorkspaceSvg, containerWidth: number) {
+  const flyout = workspace.getToolbox()?.getFlyout()
+  const floats = paletteFloats(containerWidth)
+  if (!flyout || flyout.autoClose === floats) return
+  if (floats) workspace.getToolbox()?.clearSelection()
+  flyout.autoClose = floats
+  workspace.recordDragTargets()
+  // Re-apply the scroll against the new left edge (a pinned palette counted in it; a floating one does not).
+  workspace.scroll(workspace.scrollX, workspace.scrollY)
+}
+
+/**
+ * Puts the scripts at the top left of the scripts area, as in the mock. A pinned palette
+ * (wide scripts area) is counted in the workspace's left edge, so scripts shown here start
+ * beside it, never under it; a floating one is closed whenever scripts are placed.
  */
 function placeScripts(workspace: Blockly.WorkspaceSvg) {
   if (!workspace.getTopBlocks(false).length) { workspace.scrollCenter(); return }
@@ -243,7 +266,7 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
     const workspace = Blockly.inject(container, workspaceOptions(toolbox, startScaleFor(container.clientWidth)))
     workspaceRef.current = workspace
     const flyout = workspace.getToolbox()?.getFlyout()
-    if (flyout) flyout.autoClose = false
+    if (flyout) flyout.autoClose = paletteFloats(container.clientWidth)
     const onChange = (event: Blockly.Events.Abstract) => {
       if (event.isUiEvent || loadingRef.current || event.type === Blockly.Events.FINISHED_LOADING) return
       scheduleSave()
@@ -322,11 +345,16 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
     highlightedRef.current = next
   }, [activeKey])
 
-  // Resize: re-lay out the SVG only; scroll and zoom are Blockly's own and survive.
+  // Resize: re-lay out the SVG (scroll and zoom are Blockly's own and survive), and pin or float the palette for the new width.
   useEffect(() => {
     const container = containerRef.current
     if (!container || typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(() => { if (workspaceRef.current) Blockly.svgResize(workspaceRef.current) })
+    const observer = new ResizeObserver(() => {
+      const workspace = workspaceRef.current
+      if (!workspace) return
+      Blockly.svgResize(workspace)
+      fitPalette(workspace, container.clientWidth)
+    })
     observer.observe(container)
     return () => observer.disconnect()
   }, [])
