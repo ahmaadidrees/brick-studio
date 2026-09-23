@@ -1,6 +1,5 @@
 import { rotatedSize } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
-import { roboticsSpec } from '../parts/catalog'
 import type { DeriveInput, DerivedCreation } from './creations'
 import { deriveMechanisms, type Mechanisms } from './mechanism'
 
@@ -101,5 +100,3 @@ export function wheelSummary(spinning: number, loose: readonly Pick<WheelSpin, '
   if (loose.length && driving) parts.push(loose.length === 1 ? 'It stays here when you drive.' : 'They stay here when you drive.')
   return parts.join(' ')
 }
-
-export const isWheelPart = (partId: string) => roboticsSpec(partId)?.role === 'wheel'

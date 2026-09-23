@@ -10,7 +10,7 @@ import {
   type EdgeSlots, type PlateEdge, type Rect, type SnapPose,
 } from './plateEdges'
 import { socketCoveredBy, socketOf, socketRoomOf } from './socketRoom'
-import { add, distance, scale, type Vec3 } from './vec'
+import { distance, type Vec3 } from './vec'
 
 // The geometry this module has always offered, now shared from `plateEdges.ts`.
 export { EDGE_OUTWARD, EDGE_ROTATION, PLATE_EDGES, connectorPose, edgeSlots, isPlatePart, plateRect, preferredEdges }
@@ -79,7 +79,7 @@ export type EdgeRun = {
   poses: SnapPose[]
 }
 
-export type SnapHintKind = 'needs-axle' | 'motor-on-ground'
+export type SnapHintKind = 'needs-axle' | 'motor-on-ground' | 'motor-too-high'
 /** No snap, but the pointer is at a connector that cannot take the part yet; the scene says why. */
 export type SnapHint = { kind: SnapHintKind; brickId: string; point: Vec3 }
 
@@ -187,11 +187,12 @@ function connectorTargetsFor(context: SnapContext, partId: string): SnapTarget[]
   const targets: SnapTarget[] = []
   const push = (target: Omit<SnapTarget, 'blocked'>) => targets.push({ ...target, blocked: !fits(context, partId, target.pose) })
   if (spec.axle) {
-    // Free motor sockets only: an axle through a loose wheel's hole turns nothing (see the note above).
+    // Free motor sockets only: an axle through a loose wheel's hole turns nothing (see the note above);
+    // and only where the axle lies on the ground, so its wheel touches the ground (not a motor on the hub).
     for (const motor of mechanisms.motors) {
       if (motor.axleId) continue
       const pose = validPose(rawPose(part, spec.axle.center, motor.socket.point, motor.socket.normal, spec.axle.halfLength, plateSize), part, plateSize)
-      if (pose) push({ key: `socket:${motor.motorId}`, kind: 'socket', brickId: motor.motorId, ownerIds: [motor.motorId], point: motor.socket.point, outward: motor.socket.normal, pose })
+      if (pose && pose.y === 0) push({ key: `socket:${motor.motorId}`, kind: 'socket', brickId: motor.motorId, ownerIds: [motor.motorId], point: motor.socket.point, outward: motor.socket.normal, pose })
     }
   } else if (spec.wheel) {
     for (const axle of mechanisms.axles) {
@@ -222,8 +223,10 @@ function nearestTarget(targets: readonly SnapTarget[], hitBrick: BrickInstance |
 
 /**
  * A connector the part cannot take yet: a wheel at a motor with nothing in its socket
- * ("put an axle in first"), or an axle at a motor standing on the ground, whose socket is
- * one plate lower than an axle on the ground can reach ("put the motor on a plate first").
+ * ("put an axle in first"), an axle at a motor standing on the ground, whose socket is
+ * one plate lower than an axle on the ground can reach ("put the motor on a plate first"),
+ * or an axle at a motor standing higher than a plate on the ground (on the hub), whose wheel
+ * could never touch the ground (kid-UX lane W).
  */
 function hintFor(context: SnapContext, armed: 'axle' | 'wheel', hitBrick: BrickInstance | null, hitPoint: Vec3): SnapHint | null {
   const axlePart = context.partMap[ROBOTICS_PART_IDS.axleShort]
@@ -235,12 +238,13 @@ function hintFor(context: SnapContext, armed: 'axle' | 'wheel', hitBrick: BrickI
     const raw = rawPose(axlePart, axleSpec.axle.center, motor.socket.point, motor.socket.normal, axleSpec.axle.halfLength, context.plateSize)
     if (!raw) continue
     const low = raw.y < 0
-    if (armed === 'axle' && !low) continue // a socket an axle can reach is a target, not a hint
+    const high = raw.y > 0
+    if (armed === 'axle' && !low && !high) continue // a socket an axle can reach is a target, not a hint
     const reach = hitBrick?.id === motor.motorId ? 0 : distanceToBox(hitPoint, poseBox({ ...raw, y: Math.max(0, raw.y) }, axlePart, context.plateSize))
     if (reach > SNAP_REACH_STUDS * STUD) continue
     const tie = distance(hitPoint, motor.socket.point)
     if (!best || reach < best.reach - 1e-9 || (Math.abs(reach - best.reach) <= 1e-9 && tie < best.tie)) {
-      best = { hint: { kind: low ? 'motor-on-ground' : 'needs-axle', brickId: motor.motorId, point: motor.socket.point }, reach, tie }
+      best = { hint: { kind: armed === 'axle' && high ? 'motor-too-high' : low ? 'motor-on-ground' : 'needs-axle', brickId: motor.motorId, point: motor.socket.point }, reach, tie }
     }
   }
   return best?.hint ?? null

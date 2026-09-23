@@ -1,0 +1,655 @@
+{
+  "harness": "scripts/qa/robotics-kid-wheels.mjs",
+  "origin": "http://127.0.0.1:5242",
+  "input": "real mouse and keyboard via Playwright CDP (D: touch taps); aim points from the studio's own world→screen projection",
+  "at": "2026-09-23T20:59:35.649Z",
+  "passed": 97,
+  "failed": 0,
+  "counts": {
+    "A": {
+      "drivenStuds": 14.02,
+      "placements": 9,
+      "fixes": 4,
+      "lookedConnectedButWasNot": 0,
+      "log": [
+        {
+          "label": "robot plate",
+          "wheels": 0,
+          "spinning": 0,
+          "marked": 0,
+          "misleading": 0
+        },
+        {
+          "label": "wheel front left",
+          "wheels": 1,
+          "spinning": 0,
+          "marked": 1,
+          "misleading": 0
+        },
+        {
+          "label": "wheel front right",
+          "wheels": 2,
+          "spinning": 0,
+          "marked": 2,
+          "misleading": 0
+        },
+        {
+          "label": "wheel back left",
+          "wheels": 3,
+          "spinning": 0,
+          "marked": 3,
+          "misleading": 0
+        },
+        {
+          "label": "wheel back right",
+          "wheels": 4,
+          "spinning": 0,
+          "marked": 4,
+          "misleading": 0
+        },
+        {
+          "label": "fix: back right",
+          "wheels": 4,
+          "spinning": 1,
+          "marked": 3,
+          "misleading": 0
+        },
+        {
+          "label": "fix wheel 1",
+          "wheels": 4,
+          "spinning": 2,
+          "marked": 2,
+          "misleading": 0
+        },
+        {
+          "label": "fix wheel 2",
+          "wheels": 4,
+          "spinning": 3,
+          "marked": 1,
+          "misleading": 0
+        },
+        {
+          "label": "fix wheel 3",
+          "wheels": 4,
+          "spinning": 4,
+          "marked": 0,
+          "misleading": 0
+        },
+        {
+          "label": "hub on the front motors",
+          "wheels": 4,
+          "spinning": 4,
+          "marked": 0,
+          "misleading": 0
+        },
+        {
+          "label": "leftover wheel 29",
+          "wheels": 5,
+          "spinning": 4,
+          "marked": 1,
+          "misleading": 0
+        },
+        {
+          "label": "leftover wheel 31",
+          "wheels": 6,
+          "spinning": 4,
+          "marked": 2,
+          "misleading": 0
+        },
+        {
+          "label": "leftover wheel 33",
+          "wheels": 7,
+          "spinning": 4,
+          "marked": 3,
+          "misleading": 0
+        }
+      ],
+      "creationId": "creation-muel528k-nug4m"
+    },
+    "B": {
+      "placements": 4,
+      "lookedConnectedButWasNot": 0,
+      "wheel": "brick-1790197143649-t89och"
+    },
+    "C": {
+      "placements": 4,
+      "lookedConnectedButWasNot": 0,
+      "rotateNames": [
+        "Left motor",
+        "Left motor",
+        "Left motor"
+      ]
+    },
+    "D": {
+      "ghost": {
+        "partId": "robo_motor",
+        "x": 29,
+        "y": 1,
+        "z": 33,
+        "rotation": 2
+      },
+      "motor": {
+        "id": "brick-1790197161983-mzdlog",
+        "partId": "robo_motor",
+        "x": 29,
+        "y": 1,
+        "z": 33,
+        "rotation": 2
+      },
+      "lookedConnectedButWasNot": 0
+    },
+    "E": {
+      "placements": 3,
+      "fixes": 3
+    }
+  },
+  "shots": [
+    "W01-robot-plate-tile.png",
+    "W02-wheel-cant-spin.png",
+    "W03-four-wheels-marked.png",
+    "W04-first-fix-card.png",
+    "W05-loose-wheels-in-panel.png",
+    "W06-four-wheels-spin.png",
+    "W07-ready-with-loose-wheels.png",
+    "W08-parts-loose-apart.png",
+    "W09-driving.png",
+    "W10-no-room-other-side.png",
+    "W11-no-room-wheel.png",
+    "W12-motor-over-hub-goes-to-side.png",
+    "W13-other-side-green.png",
+    "W14-no-room-red-preview.png",
+    "W15-turn-it-arrow.png",
+    "W16-touch-ghost-on-side.png",
+    "W17-touch-wheel-line.png",
+    "W18-touch-wheel-fixed.png",
+    "W19-seat-beside.png",
+    "W20-seat-on-top.png"
+  ],
+  "results": [
+    {
+      "id": "A:robot-plate-first",
+      "ok": true,
+      "detail": "the first tile after \"Robot parts\" is {\"testId\":\"robot-plate-part\",\"text\":\"Robot plate\"}"
+    },
+    {
+      "id": "A:robot-plate-arms",
+      "ok": true,
+      "detail": "the Robot plate tile armed plate_6x8"
+    },
+    {
+      "id": "A:ghost:robot plate",
+      "ok": true,
+      "detail": "robot plate: aimed near, the ghost shows 28,0,26 r0"
+    },
+    {
+      "id": "A:placed:robot plate",
+      "ok": true,
+      "detail": "robot plate: one click placed it at 28,0,26 r0"
+    },
+    {
+      "id": "A:ghost:wheel front left",
+      "ok": true,
+      "detail": "wheel front left: aimed near, the ghost shows 28,1,26 r0"
+    },
+    {
+      "id": "A:placed:wheel front left",
+      "ok": true,
+      "detail": "wheel front left: one click placed it at 28,1,26 r0"
+    },
+    {
+      "id": "A:cant-spin-line:front left",
+      "ok": true,
+      "detail": "the line: \"This wheel can't spin yet. It needs an axle in a motor.\" [Add a motor for it]"
+    },
+    {
+      "id": "A:cant-spin-mark:front left",
+      "ok": true,
+      "detail": "on the wheel: the red can't-spin mark and the line (1 marked)"
+    },
+    {
+      "id": "A:ghost:wheel front right",
+      "ok": true,
+      "detail": "wheel front right: aimed near, the ghost shows 33,1,26 r0"
+    },
+    {
+      "id": "A:placed:wheel front right",
+      "ok": true,
+      "detail": "wheel front right: one click placed it at 33,1,26 r0"
+    },
+    {
+      "id": "A:cant-spin-line:front right",
+      "ok": true,
+      "detail": "the line: \"This wheel can't spin yet. It needs an axle in a motor.\" [Add a motor for it]"
+    },
+    {
+      "id": "A:cant-spin-mark:front right",
+      "ok": true,
+      "detail": "on the wheel: the red can't-spin mark and the line (2 marked)"
+    },
+    {
+      "id": "A:ghost:wheel back left",
+      "ok": true,
+      "detail": "wheel back left: aimed near, the ghost shows 28,1,31 r0"
+    },
+    {
+      "id": "A:placed:wheel back left",
+      "ok": true,
+      "detail": "wheel back left: one click placed it at 28,1,31 r0"
+    },
+    {
+      "id": "A:cant-spin-line:back left",
+      "ok": true,
+      "detail": "the line: \"This wheel can't spin yet. It needs an axle in a motor.\" [Add a motor for it]"
+    },
+    {
+      "id": "A:cant-spin-mark:back left",
+      "ok": true,
+      "detail": "on the wheel: the red can't-spin mark and the line (3 marked)"
+    },
+    {
+      "id": "A:ghost:wheel back right",
+      "ok": true,
+      "detail": "wheel back right: aimed near, the ghost shows 33,1,31 r0"
+    },
+    {
+      "id": "A:placed:wheel back right",
+      "ok": true,
+      "detail": "wheel back right: one click placed it at 33,1,31 r0"
+    },
+    {
+      "id": "A:cant-spin-line:back right",
+      "ok": true,
+      "detail": "the line: \"This wheel can't spin yet. It needs an axle in a motor.\" [Add a motor for it]"
+    },
+    {
+      "id": "A:cant-spin-mark:back right",
+      "ok": true,
+      "detail": "on the wheel: the red can't-spin mark and the line (4 marked)"
+    },
+    {
+      "id": "A:four-loose-wheels",
+      "ok": true,
+      "detail": "four wheels on the plate, none spinning, every one marked; no robot yet (a wheel is not a robot: the fix makes one)"
+    },
+    {
+      "id": "A:fix-one",
+      "ok": true,
+      "detail": "the back-right wheel now stands on the ground at 36,0,31 on an axle in a new motor, and spins"
+    },
+    {
+      "id": "A:fix-one-undo",
+      "ok": true,
+      "detail": "one history entry: \"Add a motor for the wheel\""
+    },
+    {
+      "id": "A:fix-one-line",
+      "ok": true,
+      "detail": "the line: \"Added a motor and an axle. The wheel can spin now!\""
+    },
+    {
+      "id": "A:loose-line",
+      "ok": true,
+      "detail": "under the steps: \"1 wheel spins. 3 wheels aren't on an axle.\""
+    },
+    {
+      "id": "A:loose-numbers",
+      "ok": true,
+      "detail": "the scene numbers the loose wheels 1, 2, 3, as the rows do"
+    },
+    {
+      "id": "A:all-wheels-spin",
+      "ok": true,
+      "detail": "after three taps on Fix wheel 1: 4 of 4 wheels spin"
+    },
+    {
+      "id": "A:nothing-in-the-air",
+      "ok": true,
+      "detail": "every motor stands on the plate (y 1), every axle and wheel on the ground (y 0): plate_6x8@0 wheel@0 wheel@0 wheel@0 wheel@0 axle_short@0 motor@1 axle_short@0 motor@1 axle_short@0 motor@1 axle_short@0 motor@1"
+    },
+    {
+      "id": "A:motor-names",
+      "ok": true,
+      "detail": "four motors, named by where they stand: Back left motor, Back right motor, Front left motor, Front right motor"
+    },
+    {
+      "id": "A:hub-step",
+      "ok": true,
+      "detail": "the next step: \"Add a hub. It is the robot’s brain.\""
+    },
+    {
+      "id": "A:ghost:hub on the front motors",
+      "ok": true,
+      "detail": "hub on the front motors: aimed near, the ghost shows 29,7,26 r0"
+    },
+    {
+      "id": "A:placed:hub on the front motors",
+      "ok": true,
+      "detail": "hub on the front motors: one click placed it at 29,7,26 r0"
+    },
+    {
+      "id": "A:plugged",
+      "ok": true,
+      "detail": "the hub plugged every motor in: ports A, B, C, D"
+    },
+    {
+      "id": "A:ready",
+      "ok": true,
+      "detail": "\"Ready to drive!\", Drive on"
+    },
+    {
+      "id": "A:model-agrees",
+      "ok": true,
+      "detail": "model.creations[0].wheels: 4 wheels, 4 on an axle in a motor — the four the harness placed"
+    },
+    {
+      "id": "A:ghost:leftover wheel 29",
+      "ok": true,
+      "detail": "leftover wheel 29: aimed near, the ghost shows 29,0,36 r0"
+    },
+    {
+      "id": "A:placed:leftover wheel 29",
+      "ok": true,
+      "detail": "leftover wheel 29: one click placed it at 29,0,36 r0"
+    },
+    {
+      "id": "A:ghost:leftover wheel 31",
+      "ok": true,
+      "detail": "leftover wheel 31: aimed near, the ghost shows 31,0,36 r0"
+    },
+    {
+      "id": "A:placed:leftover wheel 31",
+      "ok": true,
+      "detail": "leftover wheel 31: one click placed it at 31,0,36 r0"
+    },
+    {
+      "id": "A:ghost:leftover wheel 33",
+      "ok": true,
+      "detail": "leftover wheel 33: aimed near, the ghost shows 33,0,36 r0"
+    },
+    {
+      "id": "A:placed:leftover wheel 33",
+      "ok": true,
+      "detail": "leftover wheel 33: one click placed it at 33,0,36 r0"
+    },
+    {
+      "id": "A:ready-with-loose",
+      "ok": true,
+      "detail": "still ready, Drive on"
+    },
+    {
+      "id": "A:ready-loose-line",
+      "ok": true,
+      "detail": "under \"Ready to drive!\": \"4 wheels spin. 3 wheels aren't on an axle. They stay here when you drive.\""
+    },
+    {
+      "id": "A:model-leftovers",
+      "ok": true,
+      "detail": "the model still counts 4 wheels on the car; the 3 leftovers are not its wheels (and each carries its red mark)"
+    },
+    {
+      "id": "A:parts-apart",
+      "ok": true,
+      "detail": "Parts: \"14 bricks attached · 1 hub, 4 motors, 4 wheels, 4 axles · 3 loose wheels\""
+    },
+    {
+      "id": "A:leftovers-not-driven",
+      "ok": true,
+      "detail": "the three loose wheels are not part of the car on the test plate"
+    },
+    {
+      "id": "A:drives",
+      "ok": true,
+      "detail": "ArrowUp held 2.5 s drove Speedy 14.0 studs forward"
+    },
+    {
+      "id": "A:leftovers-still-here",
+      "ok": true,
+      "detail": "back in the build, the three loose wheels are where they were"
+    },
+    {
+      "id": "A:taken-off",
+      "ok": true,
+      "detail": "Take it off, three times: the loose wheels are gone and the loose-wheel line with them"
+    },
+    {
+      "id": "A:counts",
+      "ok": true,
+      "detail": "9 placements and 4 fixes, 0 that looked connected but were not"
+    },
+    {
+      "id": "B:ghost:4 × 6 plate",
+      "ok": true,
+      "detail": "4 × 6 plate: aimed near, the ghost shows 30,0,26 r0"
+    },
+    {
+      "id": "B:placed:4 × 6 plate",
+      "ok": true,
+      "detail": "4 × 6 plate: one click placed it at 30,0,26 r0"
+    },
+    {
+      "id": "B:ghost:hub over the far end",
+      "ok": true,
+      "detail": "hub over the far end: aimed near, the ghost shows 30,1,25 r0"
+    },
+    {
+      "id": "B:placed:hub over the far end",
+      "ok": true,
+      "detail": "hub over the far end: one click placed it at 30,1,25 r0"
+    },
+    {
+      "id": "B:ghost:motor near the left side",
+      "ok": true,
+      "detail": "motor near the left side: aimed near, the ghost shows 30,1,29 r2 with the green snapped outline"
+    },
+    {
+      "id": "B:placed:motor near the left side",
+      "ok": true,
+      "detail": "motor near the left side: one click placed it at 30,1,29 r2"
+    },
+    {
+      "id": "B:other-side-no-room-row",
+      "ok": true,
+      "detail": "the row: \"Put a motor on the other side. No room there. Try a bigger plate.\""
+    },
+    {
+      "id": "B:other-side-red",
+      "ok": true,
+      "detail": "the other side: red at {\"x\":31,\"y\":1,\"z\":29,\"rotation\":0}, the left motor outlined, \"No room for a motor here. Try a bigger plate.\" above it"
+    },
+    {
+      "id": "B:ghost:wheel at the near-right corner",
+      "ok": true,
+      "detail": "wheel at the near-right corner: aimed near, the ghost shows 33,1,29 r0"
+    },
+    {
+      "id": "B:placed:wheel at the near-right corner",
+      "ok": true,
+      "detail": "wheel at the near-right corner: one click placed it at 33,1,29 r0"
+    },
+    {
+      "id": "B:wheel-line",
+      "ok": true,
+      "detail": "the line: \"This wheel can't spin yet. It needs an axle in a motor.\""
+    },
+    {
+      "id": "B:no-room",
+      "ok": true,
+      "detail": "\"No room for a motor here. Try a bigger plate.\"; outlined: 1 part(s); a red motor where it would go; nothing moved"
+    },
+    {
+      "id": "B:no-room-outlined",
+      "ok": true,
+      "detail": "the motor in the way is outlined"
+    },
+    {
+      "id": "B:counts",
+      "ok": true,
+      "detail": "0 that looked connected but were not (the wheel carries its red mark)"
+    },
+    {
+      "id": "C:ghost:robot plate",
+      "ok": true,
+      "detail": "robot plate: aimed near, the ghost shows 28,0,26 r0"
+    },
+    {
+      "id": "C:placed:robot plate",
+      "ok": true,
+      "detail": "robot plate: one click placed it at 28,0,26 r0"
+    },
+    {
+      "id": "C:ghost:hub",
+      "ok": true,
+      "detail": "hub: aimed near, the ghost shows 29,1,27 r0"
+    },
+    {
+      "id": "C:placed:hub",
+      "ok": true,
+      "detail": "hub: one click placed it at 29,1,27 r0"
+    },
+    {
+      "id": "C:not-on-hub",
+      "ok": true,
+      "detail": "aimed at the hub's top, the ghost goes to the left side of the plate: 28,1,31 r2"
+    },
+    {
+      "id": "C:ghost:motor aimed at the hub",
+      "ok": true,
+      "detail": "motor aimed at the hub: aimed near, the ghost shows 28,1,31 r2 with the green snapped outline"
+    },
+    {
+      "id": "C:placed:motor aimed at the hub",
+      "ok": true,
+      "detail": "motor aimed at the hub: one click placed it at 28,1,31 r2"
+    },
+    {
+      "id": "C:other-side-row",
+      "ok": true,
+      "detail": "the row: \"Put a motor on the other side.\""
+    },
+    {
+      "id": "C:armed-across",
+      "ok": true,
+      "detail": "the row armed the motor across from the first: 31,1,31 r0"
+    },
+    {
+      "id": "C:green-target",
+      "ok": true,
+      "detail": "a green motor-shaped target at {\"x\":31,\"y\":1,\"z\":31,\"rotation\":0}"
+    },
+    {
+      "id": "C:ghost:motor on the green spot, near its back corner",
+      "ok": true,
+      "detail": "motor on the green spot, near its back corner: aimed near, the ghost shows 31,1,31 r0 with the green snapped outline"
+    },
+    {
+      "id": "C:placed:motor on the green spot, near its back corner",
+      "ok": true,
+      "detail": "motor on the green spot, near its back corner: one click placed it at 31,1,31 r0"
+    },
+    {
+      "id": "C:faces-out",
+      "ok": true,
+      "detail": "it faces out to the right: \"Right motor\", socket open"
+    },
+    {
+      "id": "C:step-ticked",
+      "ok": true,
+      "detail": "\"A motor on each side\" is done only now: \"Put an axle in Left motor.\""
+    },
+    {
+      "id": "C:full-red",
+      "ok": true,
+      "detail": "with both sides full the ghost is red: \"No room on the plate. Try a bigger plate.\", outlined 1"
+    },
+    {
+      "id": "C:not-placed-on-hub",
+      "ok": true,
+      "detail": "the click placed nothing; no motor on the hub"
+    },
+    {
+      "id": "C:rotate-keeps-name",
+      "ok": true,
+      "detail": "after each Rotate: Left motor, Left motor, Left motor"
+    },
+    {
+      "id": "C:turned-wrong-way",
+      "ok": true,
+      "detail": "turned three times it no longer faces a side (facing-in, crossways): an arrow shows where Turn it puts it"
+    },
+    {
+      "id": "C:turn-row",
+      "ok": true,
+      "detail": "the row, in kid words: \"Turn Left motor around.\""
+    },
+    {
+      "id": "C:turned",
+      "ok": true,
+      "detail": "one tap turned it back to face out: 28,1,31 r2, still \"Left motor\""
+    },
+    {
+      "id": "D:touch-device",
+      "ok": true,
+      "detail": "the page sees a touch screen: hover none true, pointer coarse true"
+    },
+    {
+      "id": "D:ghost-on-side",
+      "ok": true,
+      "detail": "the motor's ghost starts on a side of the plate (29,1,33 r2), not on the hub (top at y 7)"
+    },
+    {
+      "id": "D:placed-on-side",
+      "ok": true,
+      "detail": "Place alone put the motor at 29,1,33 r2: on the plate's side, facing out"
+    },
+    {
+      "id": "D:touch-wheel-line",
+      "ok": true,
+      "detail": "a wheel tapped onto the plate: \"This wheel can't spin yet. It needs an axle in a motor.\", its button 156×44 px, the line inside the screen"
+    },
+    {
+      "id": "D:touch-fixed",
+      "ok": true,
+      "detail": "one tap: the wheel spins ({\"id\":\"brick-1790197163833-xivnk7\",\"spins\":true,\"marked\":false}), \"Added a motor and an axle. The wheel can spin now!\""
+    },
+    {
+      "id": "E:seat-line",
+      "ok": true,
+      "detail": "a seat on the ground beside Buggy: \"This seat isn't on Buggy yet.\" [Put it on top]"
+    },
+    {
+      "id": "E:seat-on",
+      "ok": true,
+      "detail": "one tap put it on Buggy at 31,7,29 (height 7): \"The seat is on Buggy now.\""
+    },
+    {
+      "id": "E:seat-rides",
+      "ok": true,
+      "detail": "the seat is on the very top, one of the robot’s seats: it can be ridden in Explore"
+    },
+    {
+      "id": "E:light-line",
+      "ok": true,
+      "detail": "a light on the ground beside Buggy: \"This light isn't on Buggy yet.\" [Put it on top]"
+    },
+    {
+      "id": "E:light-on",
+      "ok": true,
+      "detail": "one tap put it on Buggy at 33,7,29 (height 7): \"Light is on Buggy now.\""
+    },
+    {
+      "id": "E:sensor-line",
+      "ok": true,
+      "detail": "a sensor on the ground beside Buggy: \"This sensor isn't on Buggy yet.\" [Put it on Buggy]"
+    },
+    {
+      "id": "E:sensor-on",
+      "ok": true,
+      "detail": "one tap put it on Buggy at 29,1,28 (height 1): \"Front sensor is on Buggy now.\""
+    },
+    {
+      "id": "console.clean",
+      "ok": true,
+      "detail": "no console errors or page errors"
+    }
+  ]
+}

@@ -169,13 +169,6 @@ function studdedOnTop(layout: Layout, brick: BrickInstance): string[] {
 
 const roleOf = (brick: BrickInstance | undefined) => (brick ? roboticsSpec(brick.partId)?.role ?? null : null)
 
-/** Motors standing on a plate (bottom on its top, footprints overlapping). */
-function motorsOn(layout: Layout, plate: BrickInstance, ignore: ReadonlySet<string>): BrickInstance[] {
-  const platePart = layout.input.partMap[plate.partId]!
-  const rect = footprintOf(plate, platePart)
-  return layout.input.bricks.filter((brick) => !ignore.has(brick.id) && roleOf(brick) === 'motor' && brick.y === plate.y + platePart.height && overlap(rect, footprintOf(brick, layout.input.partMap[brick.partId]!)))
-}
-
 type Axis = 'x' | 'z'
 const EDGES_ON: Readonly<Record<Axis, readonly PlateEdge[]>> = { x: ['left', 'right'], z: ['far', 'near'] }
 const axisOfEdge = (edge: PlateEdge): Axis => (edge === 'left' || edge === 'right' ? 'x' : 'z')
@@ -184,7 +177,7 @@ const axisOfEdge = (edge: PlateEdge): Axis => (edge === 'left' || edge === 'righ
  * The axis a plate's motors face along: across its long sides, always (a car's motors go on its
  * sides). A motor facing the front or the back of the plate is "crossways" and gets turned instead.
  */
-function driveAxis(layout: Layout, plate: BrickInstance, _ignore?: ReadonlySet<string>): Axis {
+function driveAxis(layout: Layout, plate: BrickInstance): Axis {
   return axisOfEdge(preferredEdges(plateRect(plate, layout.input.partMap[plate.partId]!))[0])
 }
 
@@ -220,7 +213,8 @@ function chainAt(layout: Layout, socket: SocketFrame, carried: BrickInstance | n
   const wheelPart = partMap[WHEEL]
   const wheel = roboticsSpec(WHEEL)?.wheel
   const axlePose = axle ? axlePoseAt(socket, partMap, plateSize, axlePartId) : null
-  if (!axle || !axlePose || !wheelPart || !wheel) return { ok: false, blockers: [] }
+  // The axle (and so its wheel) must rest on the ground: a motor higher up could never drive.
+  if (!axle || !axlePose || axlePose.y !== 0 || !wheelPart || !wheel) return { ok: false, blockers: [] }
   const axleBlockers = layout.blockers(axlePartId, axlePose, ignore, extra)
   if (axleBlockers.length) return { ok: false, blockers: axleBlockers }
   const end = add(socket.point, scale(socket.normal, 2 * axle.halfLength))
@@ -262,7 +256,8 @@ export function planWheelFix(input: DeriveInput, wheelId: string, mechanisms: Me
       if (end.motorId || end.wheelId || !onSocketSide(layout, holder, end.outward, from)) continue
       const wheelSpec = roboticsSpec(WHEEL)!.wheel!
       const pose = connectorPose(wheelPart, wheelSpec.center, end.point, end.outward, wheelSpec.halfThickness, input.plateSize)
-      if (!pose || !layout.fits(WHEEL, pose, ignore)) continue
+      // Only an axle end low enough for the wheel to stand on the ground.
+      if (!pose || pose.y !== 0 || !layout.fits(WHEEL, pose, ignore)) continue
       const distance = travel(from, centerOf(pose, wheelPart))
       if (distance > EXISTING_REACH_STUDS) continue
       const name = deviceName(input, holder)
@@ -288,7 +283,7 @@ export function planWheelFix(input: DeriveInput, wheelId: string, mechanisms: Me
   for (const plate of plates) {
     const platePart = input.partMap[plate.partId]!
     const rect = plateRect(plate, platePart)
-    for (const edge of edgesToward(rect, driveAxis(layout, plate, ignore), from)) {
+    for (const edge of edgesToward(rect, driveAxis(layout, plate), from)) {
       const slots = edgeSlots(plate, platePart, motorPart, edge)
       for (const slot of nearestFirst(slots.lo, slots.hi, slots.slotOf(from.x, from.z))) {
         const motorPose = slots.pose(slot)
@@ -425,7 +420,7 @@ function openMotorSpots(layout: Layout, plates: readonly BrickInstance[], from: 
   const spots: { pose: SnapPose; cost: number }[] = []
   for (const plate of plates) {
     const platePart = layout.input.partMap[plate.partId]!
-    const axis = driveAxis(layout, plate, ignore)
+    const axis = driveAxis(layout, plate)
     for (const edge of PLATE_EDGES) {
       const slots = edgeSlots(plate, platePart, motorPart, edge)
       for (let slot = slots.lo; slot <= slots.hi; slot += 1) {

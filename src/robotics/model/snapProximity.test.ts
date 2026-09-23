@@ -73,6 +73,14 @@ describe('proximity snap: an axle', () => {
     expect(find(bricks, ROBOTICS_PART_IDS.axleShort, world(21.5, 0, 32.5)).found).toBeNull()
   })
 
+  it('at a motor standing on the hub there is nothing to snap to either: its wheel could never touch the ground (kid-UX lane W)', () => {
+    const bricks = [...plateAndHub(), brick('up', ROBOTICS_PART_IDS.motor, 29, 7, 27, 0)]
+    const result = find(bricks, ROBOTICS_PART_IDS.axleShort, world(33.5, 8, 28.5), 'up')
+    expect(result.found).toBeNull()
+    expect(result.hint).toMatchObject({ kind: 'motor-too-high', brickId: 'up' })
+    expect(createSnapContext(bricks, partMap, plateSize).connectorTargets(ROBOTICS_PART_IDS.axleShort)).toEqual([])
+  })
+
   it('at a motor standing on the ground there is nothing to snap to, and the hint says why', () => {
     // Its socket is 3 plates up; an axle on the ground has its rod 4 plates up.
     const bricks = [brick('grounded', ROBOTICS_PART_IDS.motor, 30, 0, 30)]

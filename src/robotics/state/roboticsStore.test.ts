@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createPartMap } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
-import { snapDraftToConnector } from '../model/snap'
+import { findSnap, snapDraftToConnector } from '../model/snap'
 import { registerDraftSnapper, snapDraft } from '../scene/draftSnap'
 import { disconnect } from '../model/control'
 import { createProgram, setActiveProgram } from '../program/programs'
@@ -301,26 +301,30 @@ describe('a motor on a hub (the Codex QA case)', () => {
   beforeAll(() => registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => snapDraftToConnector({ draft, hitBrick, hitPoint, bricks, partMap: createPartMap([]), plateSize })))
   afterAll(() => registerDraftSnapper(null))
 
-  it('with the socket facing open space, the snapped axle places and reads as in the socket', () => {
+  it('a motor on top of the hub takes no axle: its wheel could never touch the ground, and the hint says so (kid-UX lane W, Sam)', () => {
     const motor = motorOnHub(0)
-    const pose = snapAxleTo(motor)!
-    expect(pose).not.toBeNull()
-    for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
-    useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
-    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(snapAxleTo(motor)).toBeNull()
+    const draft = useBrickStore.getState().draft!
+    const bricks = useBrickStore.getState().bricks
+    const outcome = findSnap({ draft, hitBrick: bricks.find((brick) => brick.id === motor)!, hitPoint: { x: 0, y: 0, z: 0 }, bricks, partMap: createPartMap([]), plateSize: 64 })
+    expect(outcome).toMatchObject({ found: null, hint: { kind: 'motor-too-high', brickId: motor } })
     useBrickStore.getState().cancelInteraction()
-    const axle = useBrickStore.getState().bricks.at(-1)!.id
-    expect(robotics().model.creations[0].motors[0].axleId).toBe(axle)
+    // The step says to move it down to a side of the plate (here there is no plate: it asks for one).
+    expect(robotics().model.creations[0].motors[0].socketRoom).toBe('high')
   })
 
-  it('with the socket facing over the hub, the refusal names the hub instead of the generic line', () => {
-    const motor = motorOnHub(2)
+  it('with the socket facing into the hub, the snapped axle is refused and the refusal names the hub', () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Post', false)
+    // A motor at the back of the plate, turned to face the far side: its socket looks straight into the hub.
+    const motor = place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 1)
     const pose = snapAxleTo(motor)!
-    expect(pose).not.toBeNull()
+    expect(pose).toMatchObject({ y: 0, rotation: 1 })
     for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
     useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
     expect(useBrickStore.getState().placeDraft()).toBe(false)
-    expect(useBrickStore.getState().toast).toBe("The axle can't go there. Hub is in the way. Turn or move the motor so its socket faces open space.")
+    expect(useBrickStore.getState().toast).toBe("The axle can't go there. 6 × 8 Plate and Hub are in the way. Turn or move the motor so its socket faces open space.")
     useBrickStore.getState().cancelInteraction()
   })
 })

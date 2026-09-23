@@ -366,7 +366,7 @@ function OtherSideTarget({ spot, part, plateSize, lit }: { spot: OtherSideSpot; 
   return <PartGhost part={part} pose={spot.pose} plateSize={plateSize} color={color} opacity={spot.free ? (lit ? 0.45 : 0.32) : 0.28} />
 }
 
-export const HINT_TEXT: Record<string, string> = { 'needs-axle': 'Put an axle in first', 'motor-on-ground': 'Put the motor on a plate first' }
+export const HINT_TEXT: Record<string, string> = { 'needs-axle': 'Put an axle in first', 'motor-on-ground': 'Put the motor on a plate first', 'motor-too-high': 'Too high. Its wheel can\'t touch the ground.' }
 
 type Summary = {
   armed: string | null

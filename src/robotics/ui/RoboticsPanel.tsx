@@ -294,7 +294,7 @@ function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreat
           {shown.map((row) => <StepRow key={row.id} row={row} live={live} textId={row.state === 'current' && row.id !== 'ready' ? reasonId : undefined} />)}
         </ol>
       )}
-      {!focus && !live && <LooseWheels creation={creation} ready={ready} />}
+      {!focus && <LooseWheels creation={creation} ready={ready && !live} />}
       {choices.length > 0 && (
         <>
           <h4 className="robotics-subtitle">What should it do?</h4>
@@ -405,8 +405,8 @@ function DriveSidesLines({ creation }: { creation: DerivedCreation }) {
 }
 
 /**
- * What the Parts fold lists: the counts, with the wheels on the car and the loose ones apart
- * ("2 wheels on the car · 3 loose wheels"), each loose wheel with Fix and Take it off.
+ * What the Parts fold lists: the counts, the wheels on the car apart from the loose ones
+ * ("1 hub, 2 motors, 2 wheels, 2 axles · 3 loose wheels"), each loose wheel with Fix and Take it off.
  */
 function PartsBody({ creation, selectedId }: { creation: DerivedCreation; selectedId: string | null }) {
   const loose = useLooseWheels(creation)
