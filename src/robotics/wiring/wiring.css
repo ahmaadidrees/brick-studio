@@ -1,0 +1,54 @@
+/* Wiring in Build: the device inspector, the hub's ports and the wiring-mode toggle
+   (contract §5, the mock's Wiring board). Lives inside the creation panel; every
+   control is a real button at least 44 px tall. */
+.wiring-inspector { display: flex; flex-direction: column; gap: 10px; }
+.wiring-head { display: flex; align-items: center; gap: 10px; }
+.wiring-head-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.wiring-icon { flex: 0 0 auto; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: #c95a45; background: #fde7e2; }
+.wiring-icon.role-hub { color: #4a5d70; background: var(--studio-panel-soft); }
+.wiring-icon.role-distance-sensor { color: #2f5fb3; background: #e8effb; }
+.wiring-icon.role-light { color: #b0402a; background: #ffe6d9; }
+.wiring-icon.role-button { color: #9a5b12; background: #fff1d6; }
+.wiring-icon.role-hinge-motor { color: #1f7a70; background: #dff4f1; }
+.wiring-name { min-height: 44px; box-sizing: border-box; width: 100%; padding: 2px 0; border: 0; border-bottom: 2px solid var(--studio-panel-border); border-radius: 0; font: 800 16px/1.2 inherit; color: var(--studio-ink); background: transparent; }
+.wiring-name:hover { border-bottom-color: var(--studio-muted); }
+.wiring-name:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; border-bottom-color: var(--studio-blue, #3e83d7); }
+.wiring-sub { color: var(--studio-muted); font-size: 12.5px; font-weight: 700; }
+.wiring-box { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--studio-panel-soft); }
+.wiring-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; font-weight: 700; }
+.wiring-row strong { text-align: right; }
+.wiring-label { font-size: 11px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; color: var(--studio-muted); }
+.wiring-pill { display: inline-flex; align-items: center; flex: 0 0 auto; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 900; white-space: nowrap; }
+.wiring-pill.green { color: #1f6b3e; background: #e4f4ea; }
+.wiring-pill.red { color: #c9342e; background: #fde7e2; }
+.wiring-chips { display: flex; gap: 6px; }
+.wiring-port { width: 44px; height: 44px; box-sizing: border-box; display: grid; place-items: center; padding: 0; border: 2px solid #263c51; border-radius: 10px; font: 900 15px/1 inherit; color: #fff; background: #4a5d70; cursor: pointer; }
+.wiring-port.free, .wiring-port.stale { border-color: #1f6b3e; background: #3fa36b; }
+.wiring-port.stale { background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255, 255, 255, .22) 6px 9px); }
+.wiring-port.this { color: #263c51; border-color: #c9a65a; background: #f3ca74; box-shadow: 0 0 0 4px #fff1c2; cursor: default; }
+.wiring-port.this:disabled { opacity: 1; }
+.wiring-port:not(:disabled):hover { filter: brightness(1.08); }
+.wiring-port:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.wiring-note { margin: 0; font-size: 12px; font-weight: 800; color: #1f6b3e; }
+.wiring-hint { margin: 0; font-size: 12.5px; font-weight: 600; color: var(--studio-muted); }
+.wiring-code { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.wiring-block { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; min-height: 34px; box-sizing: border-box; padding: 4px 10px; border-radius: 8px; color: #fff; font-size: 12.5px; font-weight: 800; box-shadow: 0 2px 0 rgba(0, 0, 0, .18); }
+.wiring-block.motion { background: #3565bf; }
+.wiring-block.sensing { background: #5888da; }
+.wiring-block.light { background: #f17861; }
+.wiring-block.events { color: #263c51; background: #e0a030; }
+.wiring-dd { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; background: rgba(255, 255, 255, .28); }
+.wiring-dd.value { color: #263c51; background: #fff; }
+.wiring-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.wiring-actions:empty { display: none; }
+.wiring-button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; font: 900 13.5px/1 inherit; color: var(--studio-ink); background: #f3eee3; cursor: pointer; }
+.wiring-button.primary { color: #fff; background: #3565bf; }
+.wiring-button:hover { filter: brightness(.97); }
+.wiring-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.wiring-hub-ports { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.wiring-hub-port { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; box-sizing: border-box; padding: 0 8px 0 0; border: 0; border-radius: 12px; font: 800 13px/1.2 inherit; color: var(--studio-ink); background: transparent; text-align: left; }
+.wiring-hub-port .wiring-port { width: 36px; height: 36px; cursor: inherit; }
+button.wiring-hub-port { cursor: pointer; background: var(--studio-panel-soft); }
+button.wiring-hub-port:hover { box-shadow: inset 0 0 0 2px var(--studio-panel-border); }
+button.wiring-hub-port:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.wiring-mode .robotics-chip { min-height: 44px; padding: 0 14px; }

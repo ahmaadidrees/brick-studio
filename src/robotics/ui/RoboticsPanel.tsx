@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useBrickStore } from '../../brick/store'
 import { deriveCandidate, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
-import { roboticsSpec } from '../parts/catalog'
+import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
+import { DeviceInspector } from '../wiring/DeviceInspector'
+import { WiringModeToggle } from '../wiring/WiringModeToggle'
 import './robotics.css'
 
 /**
@@ -102,6 +104,7 @@ function CreationCard({ compact }: { compact: boolean }) {
         <li><span className="robotics-dot">·</span>{creation.lines.ready}</li>
       </ul>
       <PartRows creation={creation} compact />
+      <WiringModeToggle />
       <div className="robotics-card-actions">
         <button type="button" className="studio-button" onClick={() => { confirm(name, false); close() }}>Not now</button>
         <button type="button" className="studio-button studio-button-primary" onClick={() => confirm(name, true)}>Code this creation</button>
@@ -165,7 +168,7 @@ function CreationPanel({ compact }: { compact: boolean }) {
       </header>
       {!collapsed && (
         <>
-          {selected && selectedSpec && <SelectedPart creation={creation} brickId={selected.id} role={selectedSpec.role} />}
+          {selected && selectedSpec && (isDeviceRole(selectedSpec.role) ? <DeviceInspector brickId={selected.id} creation={creation} /> : <SelectedPart creation={creation} brickId={selected.id} role={selectedSpec.role} />)}
           {creation && (
             <>
               <ul className="robotics-lines">
@@ -179,6 +182,7 @@ function CreationPanel({ compact }: { compact: boolean }) {
                 <button type="button" className={`robotics-chip${creation.testSpace === 'testPlate' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'testPlate'} onClick={() => setTestSpace(creation.id, 'testPlate')}>on the test plate</button>
                 <button type="button" className={`robotics-chip${creation.testSpace === 'myWorld' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'myWorld'} onClick={() => setTestSpace(creation.id, 'myWorld')}>in my world</button>
               </div>
+              <WiringModeToggle />
               <NudgeControls creation={creation} />
             </>
           )}

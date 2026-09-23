@@ -167,7 +167,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
         ? componentBricks.filter((candidate) => candidate.id !== brick.id && isDevicePart(candidate.partId) && roboticsSpec(candidate.partId)?.role !== 'hub')
         : [brick]
       for (const device of devices) {
-        const plan = planAssistedConnection(section, device, hubIds)
+        const plan = planAssistedConnection(section, device, hubIds, new Set(brickState.bricks.map((candidate) => candidate.id)))
         if (plan.ok) {
           section = connect(section, device.id, plan.hubId, plan.port)
           added.push({ deviceId: device.id, hubId: plan.hubId, port: plan.port })
@@ -175,7 +175,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
         } else if (plan.reason === 'no-hub') refusal = `${deviceName(model.input, device)} placed unpowered · add a hub to plug it in`
         else if (plan.reason === 'ports-full') refusal = `Ports A–D are full. Unplug something to plug in ${deviceName(model.input, device)}`
       }
-    }
+    } else if (spec.role !== 'hub') refusal = `${deviceName(model.input, brick)} placed · plug it into a port in its panel`
     if (lines.length) {
       if (existing) {
         // The same write refreshes the creation's anchors to its whole component (section.ts:
