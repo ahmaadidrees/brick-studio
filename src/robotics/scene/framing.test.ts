@@ -3,7 +3,7 @@ import { getBuildBounds } from '../../brick/bounds'
 import { createBuildFramePose } from '../../brick/buildCamera'
 import { roverBricks } from '../model/fixtures'
 import { installRoboticsParts } from '../parts/install'
-import { boundsWithPoints, framePoseInFreeArea, freeArea, measureCanvasInsets, NO_INSETS } from './framing'
+import { boundsWithPoints, framePoseInFreeArea, freeArea, measureCanvasInsets, NO_INSETS, viewOffsetFor } from './framing'
 
 // The rover fixture uses robotics parts; the studio's part map must know them before bounds are read.
 installRoboticsParts(true)
@@ -106,5 +106,22 @@ describe('presets and travel', () => {
     const grown = boundsWithPoints(bounds, [{ x: bounds.center[0], y: 0, z: bounds.min[2] - 5 }])
     expect(grown.min[2]).toBeLessThan(bounds.min[2] - 5)
     expect(grown.max).toEqual(bounds.max)
+  })
+})
+
+describe('view offset instead of a sideways slide', () => {
+  const bounds = getBuildBounds(roverBricks(), 64)
+  const insets = { left: 280, right: 450, top: 0, bottom: 70 }
+
+  it('without the slide the camera looks straight at the build, fitted to the free area', () => {
+    const pose = framePoseInFreeArea(bounds, FOV, viewport, insets, 'home', null, false)
+    expect(pose.target).toEqual({ x: bounds.center[0], y: bounds.center[1], z: bounds.center[2] })
+    expect(pose.distance).toBeGreaterThan(framePoseInFreeArea(bounds, FOV, viewport).distance)
+  })
+
+  it('the offset is the free area centre relative to the viewport centre', () => {
+    const free = freeArea(viewport, insets)
+    expect(viewOffsetFor(viewport, insets)).toEqual({ x: (free.left + free.right) / 2 - viewport.width / 2, y: (free.top + free.bottom) / 2 - viewport.height / 2 })
+    expect(viewOffsetFor(viewport, NO_INSETS)).toEqual({ x: 0, y: 0 })
   })
 })

@@ -1,27 +1,27 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768 (journeys), 1366x768 and 1024x768 (screens)",
-  "at": "2026-09-23T08:42:44.937Z",
+  "at": "2026-09-23T12:27:09.858Z",
   "measured": {
     "roverFirstRun": {
-      "stoppedAtStuds": 2.48,
-      "minimumStuds": 2.48,
+      "stoppedAtStuds": 2.45,
+      "minimumStuds": 2.45,
       "trace": [
         "0.00s:12.00",
-        "0.19s:11.79",
-        "0.43s:11.20",
-        "0.65s:10.54",
-        "0.99s:9.43",
-        "1.32s:8.35",
-        "1.52s:7.66",
-        "1.74s:6.93",
-        "2.06s:5.88",
-        "2.27s:5.16",
-        "2.48s:4.46",
-        "2.82s:3.35",
-        "3.02s:2.73",
-        "3.25s:2.50",
-        "3.58s:2.48"
+        "0.16s:11.86",
+        "0.39s:11.32",
+        "0.72s:10.31",
+        "0.94s:9.60",
+        "1.27s:8.50",
+        "1.51s:7.72",
+        "1.82s:6.67",
+        "2.06s:5.89",
+        "2.27s:5.17",
+        "2.51s:4.39",
+        "2.74s:3.61",
+        "3.08s:2.64",
+        "3.29s:2.46",
+        "3.51s:2.45"
       ]
     },
     "stopsEarlier": {
@@ -29,9 +29,9 @@
       "with6": 5.47
     },
     "joystick": {
-      "up": 3.4,
+      "up": 3.39,
       "sensorBefore": 12,
-      "sensorPushed": 9.27,
+      "sensorPushed": 9.3,
       "releasedSpeed": 0
     },
     "gate": {
@@ -113,12 +113,12 @@
     {
       "id": "R2.drives",
       "ok": true,
-      "detail": "top speed 3.33 studs/s"
+      "detail": "top speed 3.34 studs/s"
     },
     {
       "id": "R2.stops-before-wall",
       "ok": true,
-      "detail": "the sensor read 2.48 studs at rest (never under 2.48): it never touched the wall"
+      "detail": "the sensor read 2.45 studs at rest (never under 2.45): it never touched the wall"
     },
     {
       "id": "R2.readings-are-the-blocks-values",
@@ -128,7 +128,7 @@
     {
       "id": "R2.status",
       "ok": true,
-      "detail": "status: Done · 4.1 s"
+      "detail": "status: Done · 4.2 s"
     },
     {
       "id": "R3.reset",
@@ -163,7 +163,7 @@
     {
       "id": "R4b.dragged-in",
       "ok": true,
-      "detail": "dragged \"stop Left motor · A\" out of the palette: Left motor · A (value brick-1790152904159-so44e2)"
+      "detail": "dragged \"stop Left motor · A\" out of the palette: Left motor · A (value brick-1790166369063-g4uaw9)"
     },
     {
       "id": "R4b.snapped",
@@ -188,7 +188,7 @@
     {
       "id": "R5.select-motor",
       "ok": true,
-      "detail": "clicking the left motor at (517, 381) selects it"
+      "detail": "clicking the left motor at (520, 382) selects it"
     },
     {
       "id": "R5.port-C",
@@ -213,7 +213,7 @@
     {
       "id": "R7.joystick-drives",
       "ok": true,
-      "detail": "mouse-dragging the stick up: 3.40 studs/s forward, wall 12.0 → 9.3 studs; chip \"Motors 41 · 41 % (speed 35 · 35 %)\""
+      "detail": "mouse-dragging the stick up: 3.39 studs/s forward, wall 12.0 → 9.3 studs; chip \"Motors 41 · 41 % (speed 34 · 36 %)\""
     },
     {
       "id": "R7.joystick-release",
@@ -223,7 +223,7 @@
     {
       "id": "R7.arrow-up",
       "ok": true,
-      "detail": "ArrowUp held: 6.63 studs/s, wall 12.0 → 10.7 studs"
+      "detail": "ArrowUp held: 7.11 studs/s, wall 12.0 → 10.3 studs"
     },
     {
       "id": "R7.arrow-left",
@@ -268,7 +268,7 @@
     {
       "id": "G.scenery-in-view",
       "ok": true,
-      "detail": "the scenery brick is on the stage at (1144, 567)"
+      "detail": "the scenery brick is on the stage at (1116, 562)"
     },
     {
       "id": "G.stage-never-edits",

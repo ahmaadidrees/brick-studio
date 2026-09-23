@@ -88,6 +88,8 @@ export type DerivedCreation = {
   axles: { brickId: string; motorId: string | null; wheelIds: string[] }[]
   wheels: DerivedWheel[]
   drivePair: DrivePair | null
+  /** Which way it would drive: the drive pair's forward, or, with a wheel missing, the forward its motors' axles give. */
+  driveForward: Vec3 | null
   lines: { attached: string; parts: string; ready: string }
 }
 
@@ -296,6 +298,20 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
       drivePair = { leftId: leftMotor.brickId, rightId: rightMotor.brickId, reversedIds, forward }
     }
   }
+  // The shape of a rover without its wheels: two motors with axles whose sockets line up. A rover
+  // that loses a wheel stays a rover (same run space, same wall ahead); only driving it needs the pair.
+  let driveForward: Vec3 | null = drivePair?.forward ?? null
+  if (!driveForward) {
+    const axled = motors.filter((motor) => motor.axleId)
+    for (let i = 0; i < axled.length && !driveForward; i += 1) {
+      for (let j = i + 1; j < axled.length && !driveForward; j += 1) {
+        const axleAxis = axled[i].socketNormal
+        if (Math.abs(dot(axleAxis, axled[j].socketNormal)) < 0.999) continue
+        const sensorForward = sensors.map((sensor) => sensor.normal).find((normal) => Math.abs(dot(normal, axleAxis)) < 0.01 && Math.abs(normal.y) < 0.5)
+        driveForward = sensorForward ?? (Math.abs(axleAxis.x) > 0.5 ? { x: 0, y: 0, z: -1 } : { x: -1, y: 0, z: 0 })
+      }
+    }
+  }
   const forward = drivePair?.forward ?? null
   for (const motor of motors) {
     if (motor.wheelIds.length === 0) continue
@@ -307,7 +323,7 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
 
   // Bodies, in the space this creation runs in.
   const hasHinge = brickIds.some((id) => roboticsSpec(bricksById.get(id)!.partId)?.hinge)
-  const provisionalKind: CreationKind = drivePair ? 'rover' : hasHinge ? 'gate' : hubs.length > 0 && (sensors.length > 0 || lights.length > 0 || buttons.length > 0) && motors.length === 0 ? 'signal' : 'creation'
+  const provisionalKind: CreationKind = driveForward ? 'rover' : hasHinge ? 'gate' : hubs.length > 0 && (sensors.length > 0 || lights.length > 0 || buttons.length > 0) && motors.length === 0 ? 'signal' : 'creation'
   const testSpace = record.testSpace ?? defaultTestSpace(provisionalKind)
   const graph = deriveBodies(input.bricks, input.partMap, input.plateSize, { anchorToWorld: testSpace === 'myWorld', joints, mechanisms })
   // In My world every brick studded to the plate joins the one anchored body; only the creation's own
@@ -383,6 +399,7 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
     armBodyIds,
     hubs, motors, hinges, sensors, lights, buttons, seats, axles, wheels,
     drivePair,
+    driveForward,
     lines: { attached, parts, ready },
   }
 }

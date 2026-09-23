@@ -710,7 +710,7 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     // Robot Workshop spike: with its panels over the canvas, frame into the part a student can see.
     const insets = currentCanvasInsets()
     const pose = insets
-      ? framePoseInFreeArea(frameBounds, perspectiveCamera.fov, { width: viewportSize.width, height: viewportSize.height }, insets, request.preset, selectedTarget)
+      ? framePoseInFreeArea(frameBounds, perspectiveCamera.fov, { width: viewportSize.width, height: viewportSize.height }, insets, request.preset, selectedTarget, false)
       : createBuildFramePose(frameBounds, request.preset, perspectiveCamera.fov, perspectiveCamera.aspect, selectedTarget)
     camera.position.set(pose.position.x, pose.position.y, pose.position.z)
     controls.current?.target.set(pose.target.x, pose.target.y, pose.target.z)

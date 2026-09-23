@@ -1,7 +1,7 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
-  "at": "2026-09-23T08:40:57.300Z",
+  "at": "2026-09-23T12:25:33.028Z",
   "results": [
     {
       "id": "A.card-opens-on-first-device",
@@ -46,7 +46,7 @@
     {
       "id": "A.two-wheels-on-motors",
       "ok": true,
-      "detail": "wheels: [{\"id\":\"brick-1790152832379-sitsiu\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790152832515-ml5lb1\",\"onAxle\":true,\"note\":null}]"
+      "detail": "wheels: [{\"id\":\"brick-1790166308074-zehzkz\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790166308209-8t5ui8\",\"onAxle\":true,\"note\":null}]"
     },
     {
       "id": "A.ready-line",
@@ -56,7 +56,7 @@
     {
       "id": "A.drive-pair-reversed",
       "ok": true,
-      "detail": "drive pair reversed: [\"brick-1790152831984-54htcj\"]"
+      "detail": "drive pair reversed: [\"brick-1790166307681-0se9vn\"]"
     },
     {
       "id": "A.card-stays-closed-for-existing",
@@ -106,7 +106,7 @@
     {
       "id": "A.wheel-off-motor-spins",
       "ok": true,
-      "detail": "left motor output turned 289°, wheel stayed (not simulated), body moved 0.00"
+      "detail": "left motor output turned 290°, wheel stayed (not simulated), body moved 0.00"
     },
     {
       "id": "A.wheel-back-on",
@@ -196,7 +196,7 @@
     {
       "id": "B.locked",
       "ok": true,
-      "detail": "locked; bridging joint [[\"brick-1790152852668-fxo471\",\"brick-1790152845404-pbuw4b\"]]"
+      "detail": "locked; bridging joint [[\"brick-1790166328414-kuibf3\",\"brick-1790166321132-uk2qub\"]]"
     },
     {
       "id": "B.locked-line",

@@ -1,36 +1,36 @@
 
 A. Rover assembled with the mouse
-PASS ghost:6 × 8 Plate at 28,0,26 — 6 × 8 Plate at 28,0,26: ghost at 28,0,26 r0 after aiming at (828, 377)
+PASS ghost:6 × 8 Plate at 28,0,26 — 6 × 8 Plate at 28,0,26: ghost at 28,0,26 r0 after aiming at (839, 360)
 PASS placed:6 × 8 Plate at 28,0,26 — 6 × 8 Plate at 28,0,26: placed by click (plate_6x8 at 28,0,26)
-PASS ghost:Hub at 29,1,27 — Hub at 29,1,27: ghost at 29,1,27 r0 after aiming at (845, 359)
+PASS ghost:Hub at 29,1,27 — Hub at 29,1,27: ghost at 29,1,27 r0 after aiming at (859, 338)
 PASS placed:Hub at 29,1,27 — Hub at 29,1,27: placed by click (robo_hub at 29,1,27)
 PASS A.card-opens-on-first-device — placing the hub on non-creation bricks opens the creation card
 PASS A.framed-in-free-area — the card framed the pair inside the free canvas area (insets L276 R444 B66; 16 corners checked)
   shot P1-hub-card-framed.png
 PASS A.named-on-card — the card named the creation
-PASS ghost:Left motor (turned twice with R) — Left motor (turned twice with R): ghost at 28,1,31 r2 after aiming at (492, 429)
+PASS ghost:Left motor (turned twice with R) — Left motor (turned twice with R): ghost at 28,1,31 r2 after aiming at (493, 430)
 PASS placed:Left motor (turned twice with R) — Left motor (turned twice with R): placed by click (robo_motor at 28,1,31)
 PASS A.no-card-for-second-device — the motor joined the creation without reopening the card
 PASS A.wiring-left-motor — assisted wiring line: Left motor connected to port A
-PASS ghost:Right motor — Right motor: ghost at 31,1,31 r0 after aiming at (569, 470)
+PASS ghost:Right motor — Right motor: ghost at 31,1,31 r0 after aiming at (578, 474)
 PASS placed:Right motor — Right motor: placed by click (robo_motor at 31,1,31)
 PASS A.wiring-right-motor — assisted wiring line: Right motor connected to port B
-PASS ghost:Short axle snapped into the left motor socket — Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (484, 369)
+PASS ghost:Short axle snapped into the left motor socket — Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (489, 372)
 PASS placed:Short axle snapped into the left motor socket — Short axle snapped into the left motor socket: placed by click (robo_axle_short at 26,0,32)
-PASS ghost:Short axle snapped into the right motor socket — Short axle snapped into the right motor socket: ghost at 34,0,32 r0 after aiming at (564, 406)
+PASS ghost:Short axle snapped into the right motor socket — Short axle snapped into the right motor socket: ghost at 34,0,32 r0 after aiming at (577, 413)
 PASS placed:Short axle snapped into the right motor socket — Short axle snapped into the right motor socket: placed by click (robo_axle_short at 34,0,32)
   shot P2-axles-snapped.png
 PASS A.axles-read-as-in-sockets — both motors report an axle: [true,true]
-PASS ghost:Wheel snapped onto the left axle end — Wheel snapped onto the left axle end: ghost at 25,0,31 r0 after aiming at (432, 372)
+PASS ghost:Wheel snapped onto the left axle end — Wheel snapped onto the left axle end: ghost at 25,0,31 r0 after aiming at (429, 372)
 PASS placed:Wheel snapped onto the left axle end — Wheel snapped onto the left axle end: placed by click (robo_wheel at 25,0,31)
-PASS ghost:Wheel snapped onto the right axle end — Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (643, 477)
+PASS ghost:Wheel snapped onto the right axle end — Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (661, 484)
 PASS placed:Wheel snapped onto the right axle end — Wheel snapped onto the right axle end: placed by click (robo_wheel at 36,0,31)
-PASS ghost:Distance sensor (from the top view) — Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (601, 299)
+PASS ghost:Distance sensor (from the top view) — Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (599, 298)
 PASS placed:Distance sensor (from the top view) — Distance sensor (from the top view): placed by click (robo_distance_sensor at 30,1,26)
 PASS A.wiring-sensor — assisted wiring line: Front sensor connected to port C
 PASS A.still-no-card — seven more parts and the card never reopened
 PASS A.one-creation — one creation over 9 bricks and 3 bodies
-PASS A.wheels-on-motors — wheels: [{"id":"brick-1790152617328-kydi8x","onAxle":true,"note":null},{"id":"brick-1790152618011-saqrlf","onAxle":true,"note":null}]
+PASS A.wheels-on-motors — wheels: [{"id":"brick-1790165891065-kl9ov0","onAxle":true,"note":null},{"id":"brick-1790165891729-m2aftv","onAxle":true,"note":null}]
 PASS A.ready-line — ready line: Axles and wheels on both motors, so it can roll
 PASS A.part-colours — the parts arrived in their own colours
 PASS A.rover-framed — the whole rover framed inside the free area (72 corners)
@@ -39,7 +39,7 @@ PASS A.rolls — after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°
 PASS A.clock — simulated 2.61 s in about 2.6 s of wall time
   shot P4-rover-rolls.png
 PASS A.reset-document-unchanged — document identical after Nudge + Reset
-PASS ghost:1 × 1 brick placed while the rover ran — 1 × 1 brick placed while the rover ran: ghost at 36,0,28 r0 after aiming at (731, 431)
+PASS ghost:1 × 1 brick placed while the rover ran — 1 × 1 brick placed while the rover ran: ghost at 36,0,28 r0 after aiming at (733, 431)
 PASS placed:1 × 1 brick placed while the rover ran — 1 × 1 brick placed while the rover ran: placed by click (brick_1x1 at 36,0,28)
 PASS A.edit-retires-run — an edit while the nudge ran retired it and the studio shows the built pose
 PASS A.edit-kept — the brick placed during the run is part of the construction
@@ -59,24 +59,24 @@ PASS D.creation-survives — creation name and all three cables survive the relo
   shot P7-reloaded.png
 
 B. Gate assembled with the mouse
-PASS ghost:6 × 8 Plate at 20,0,20 — 6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (744, 275)
+PASS ghost:6 × 8 Plate at 20,0,20 — 6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (785, 253)
 PASS placed:6 × 8 Plate at 20,0,20 — 6 × 8 Plate at 20,0,20: placed by click (plate_6x8 at 20,0,20)
-PASS ghost:Left post — Left post: ghost at 20,1,20 r0 after aiming at (747, 238)
+PASS ghost:Left post — Left post: ghost at 20,1,20 r0 after aiming at (798, 213)
 PASS placed:Left post — Left post: placed by click (pillar_1x1 at 20,1,20)
-PASS ghost:Right post — Right post: ghost at 25,1,20 r0 after aiming at (839, 261)
+PASS ghost:Right post — Right post: ghost at 25,1,20 r0 after aiming at (883, 237)
 PASS placed:Right post — Right post: placed by click (pillar_1x1 at 25,1,20)
-PASS ghost:Sill (turned once) — Sill (turned once): ghost at 21,1,21 r1 after aiming at (772, 257)
+PASS ghost:Sill (turned once) — Sill (turned once): ghost at 21,1,21 r1 after aiming at (817, 232)
 PASS placed:Sill (turned once) — Sill (turned once): placed by click (plate_2x4 at 21,1,21)
-PASS ghost:Hinge motor on the sill — Hinge motor on the sill: ghost at 21,2,21 r0 after aiming at (754, 246)
+PASS ghost:Hinge motor on the sill — Hinge motor on the sill: ghost at 21,2,21 r0 after aiming at (800, 222)
 PASS placed:Hinge motor on the sill — Hinge motor on the sill: placed by click (robo_hinge_motor at 21,2,21)
 PASS B.card-on-hinge — placing the hinge motor opens the card
-PASS ghost:Door on the turntable (turned once) — Door on the turntable (turned once): ghost at 21,8,21 r1 after aiming at (651, 327)
+PASS ghost:Door on the turntable (turned once) — Door on the turntable (turned once): ghost at 21,8,21 r1 after aiming at (646, 326)
 PASS placed:Door on the turntable (turned once) — Door on the turntable (turned once): placed by click (brick_1x4 at 21,8,21)
-PASS ghost:Hub — Hub: ghost at 20,1,24 r0 after aiming at (520, 443)
+PASS ghost:Hub — Hub: ghost at 20,1,24 r0 after aiming at (521, 444)
 PASS placed:Hub — Hub: placed by click (robo_hub at 20,1,24)
 PASS B.hub-powers-waiting-hinge — hub arrival wires the hinge: Arm motor connected to port A
 PASS B.no-card-for-hub — the hub joined the gate without reopening the card
-PASS ghost:Sensor on the hub — Sensor on the hub: ghost at 21,7,27 r0 after aiming at (465, 405)
+PASS ghost:Sensor on the hub — Sensor on the hub: ghost at 21,7,27 r0 after aiming at (473, 409)
 PASS placed:Sensor on the hub — Sensor on the hub: placed by click (robo_distance_sensor at 21,7,27)
 PASS B.base-and-arm — gate: 2 bodies, 1 arm, hinge carries 1 brick
 PASS B.my-world — a gate runs in my world by default
@@ -84,9 +84,9 @@ PASS B.my-world — a gate runs in my world by default
 PASS B.swings — hinge at 60.0°, frame unmoved
   shot P9-gate-swings.png
 PASS B.reset-unchanged — document identical after the swing + Reset
-PASS ghost:Bridge brick 1 (from the top view) — Bridge brick 1 (from the top view): ghost at 23,2,21 r0 after aiming at (638, 335)
+PASS ghost:Bridge brick 1 (from the top view) — Bridge brick 1 (from the top view): ghost at 23,2,21 r0 after aiming at (635, 333)
 PASS placed:Bridge brick 1 (from the top view) — Bridge brick 1 (from the top view): placed by click (brick_2x2 at 23,2,21)
-PASS ghost:Bridge brick 2 (from the top view) — Bridge brick 2 (from the top view): ghost at 23,5,21 r0 after aiming at (637, 332)
+PASS ghost:Bridge brick 2 (from the top view) — Bridge brick 2 (from the top view): ghost at 23,5,21 r0 after aiming at (636, 331)
 PASS placed:Bridge brick 2 (from the top view) — Bridge brick 2 (from the top view): placed by click (brick_2x2 at 23,5,21)
 PASS B.locked — the arm is built into the frame: locked true
 PASS B.locked-line — ready line: Arm motor's arm is built into the frame, so it can't swing

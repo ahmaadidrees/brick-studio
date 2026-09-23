@@ -1,7 +1,7 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
-  "at": "2026-09-23T08:38:15.064Z",
+  "at": "2026-09-23T12:19:29.559Z",
   "results": [
     {
       "id": "A.rover-built",
@@ -21,7 +21,7 @@
     {
       "id": "A.driving",
       "ok": true,
-      "detail": "1.5 s after Run: 3.33 studs/s, sensor 7.94 studs"
+      "detail": "1.5 s after Run: 3.33 studs/s, sensor 8.05 studs"
     },
     {
       "id": "A.stops-before-wall",
@@ -31,12 +31,12 @@
     {
       "id": "A.distance-shrinks",
       "ok": true,
-      "detail": "sensor every 0.25 s: 12 → 11.67 → 11 → 10.22 → 9.41 → 8.58 → 7.75 → 6.91 → 6.08 → 5.25 → 4.41 → 3.58 → 2.78 → 2.49 → 2.47 → 2.47 → 2.47"
+      "detail": "sensor every 0.25 s: 12 → 11.67 → 11 → 10.22 → 9.41 → 8.58 → 7.74 → 6.91 → 6.08 → 5.24 → 4.41 → 3.58 → 2.78 → 2.49 → 2.47 → 2.47 → 2.47"
     },
     {
       "id": "A.real-time",
       "ok": true,
-      "detail": "program time 4.06 s over 4.06 s of wall time since Run (stalls dropped since the stage opened: 0.000 s)"
+      "detail": "program time 4.01 s over 4.01 s of wall time since Run (stalls dropped since the stage opened: 0.000 s)"
     },
     {
       "id": "A.reset",

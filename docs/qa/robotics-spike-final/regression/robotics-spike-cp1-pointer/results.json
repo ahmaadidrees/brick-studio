@@ -2,12 +2,12 @@
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
   "input": "real mouse and keyboard via Playwright CDP; positions from the studio's own world→screen projection",
-  "at": "2026-09-23T08:37:25.253Z",
+  "at": "2026-09-23T12:18:39.171Z",
   "results": [
     {
       "id": "ghost:6 × 8 Plate at 28,0,26",
       "ok": true,
-      "detail": "6 × 8 Plate at 28,0,26: ghost at 28,0,26 r0 after aiming at (828, 377)"
+      "detail": "6 × 8 Plate at 28,0,26: ghost at 28,0,26 r0 after aiming at (839, 360)"
     },
     {
       "id": "placed:6 × 8 Plate at 28,0,26",
@@ -17,7 +17,7 @@
     {
       "id": "ghost:Hub at 29,1,27",
       "ok": true,
-      "detail": "Hub at 29,1,27: ghost at 29,1,27 r0 after aiming at (845, 359)"
+      "detail": "Hub at 29,1,27: ghost at 29,1,27 r0 after aiming at (859, 338)"
     },
     {
       "id": "placed:Hub at 29,1,27",
@@ -42,7 +42,7 @@
     {
       "id": "ghost:Left motor (turned twice with R)",
       "ok": true,
-      "detail": "Left motor (turned twice with R): ghost at 28,1,31 r2 after aiming at (492, 429)"
+      "detail": "Left motor (turned twice with R): ghost at 28,1,31 r2 after aiming at (493, 430)"
     },
     {
       "id": "placed:Left motor (turned twice with R)",
@@ -62,7 +62,7 @@
     {
       "id": "ghost:Right motor",
       "ok": true,
-      "detail": "Right motor: ghost at 31,1,31 r0 after aiming at (569, 470)"
+      "detail": "Right motor: ghost at 31,1,31 r0 after aiming at (578, 474)"
     },
     {
       "id": "placed:Right motor",
@@ -77,7 +77,7 @@
     {
       "id": "ghost:Short axle snapped into the left motor socket",
       "ok": true,
-      "detail": "Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (484, 369)"
+      "detail": "Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (489, 372)"
     },
     {
       "id": "placed:Short axle snapped into the left motor socket",
@@ -87,7 +87,7 @@
     {
       "id": "ghost:Short axle snapped into the right motor socket",
       "ok": true,
-      "detail": "Short axle snapped into the right motor socket: ghost at 34,0,32 r0 after aiming at (564, 406)"
+      "detail": "Short axle snapped into the right motor socket: ghost at 34,0,32 r0 after aiming at (577, 413)"
     },
     {
       "id": "placed:Short axle snapped into the right motor socket",
@@ -102,7 +102,7 @@
     {
       "id": "ghost:Wheel snapped onto the left axle end",
       "ok": true,
-      "detail": "Wheel snapped onto the left axle end: ghost at 25,0,31 r0 after aiming at (432, 372)"
+      "detail": "Wheel snapped onto the left axle end: ghost at 25,0,31 r0 after aiming at (429, 372)"
     },
     {
       "id": "placed:Wheel snapped onto the left axle end",
@@ -112,7 +112,7 @@
     {
       "id": "ghost:Wheel snapped onto the right axle end",
       "ok": true,
-      "detail": "Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (643, 477)"
+      "detail": "Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (661, 484)"
     },
     {
       "id": "placed:Wheel snapped onto the right axle end",
@@ -122,7 +122,7 @@
     {
       "id": "ghost:Distance sensor (from the top view)",
       "ok": true,
-      "detail": "Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (601, 299)"
+      "detail": "Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (599, 298)"
     },
     {
       "id": "placed:Distance sensor (from the top view)",
@@ -147,7 +147,7 @@
     {
       "id": "A.wheels-on-motors",
       "ok": true,
-      "detail": "wheels: [{\"id\":\"brick-1790152617328-kydi8x\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790152618011-saqrlf\",\"onAxle\":true,\"note\":null}]"
+      "detail": "wheels: [{\"id\":\"brick-1790165891065-kl9ov0\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790165891729-m2aftv\",\"onAxle\":true,\"note\":null}]"
     },
     {
       "id": "A.ready-line",
@@ -182,7 +182,7 @@
     {
       "id": "ghost:1 × 1 brick placed while the rover ran",
       "ok": true,
-      "detail": "1 × 1 brick placed while the rover ran: ghost at 36,0,28 r0 after aiming at (731, 431)"
+      "detail": "1 × 1 brick placed while the rover ran: ghost at 36,0,28 r0 after aiming at (733, 431)"
     },
     {
       "id": "placed:1 × 1 brick placed while the rover ran",
@@ -247,7 +247,7 @@
     {
       "id": "ghost:6 × 8 Plate at 20,0,20",
       "ok": true,
-      "detail": "6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (744, 275)"
+      "detail": "6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (785, 253)"
     },
     {
       "id": "placed:6 × 8 Plate at 20,0,20",
@@ -257,7 +257,7 @@
     {
       "id": "ghost:Left post",
       "ok": true,
-      "detail": "Left post: ghost at 20,1,20 r0 after aiming at (747, 238)"
+      "detail": "Left post: ghost at 20,1,20 r0 after aiming at (798, 213)"
     },
     {
       "id": "placed:Left post",
@@ -267,7 +267,7 @@
     {
       "id": "ghost:Right post",
       "ok": true,
-      "detail": "Right post: ghost at 25,1,20 r0 after aiming at (839, 261)"
+      "detail": "Right post: ghost at 25,1,20 r0 after aiming at (883, 237)"
     },
     {
       "id": "placed:Right post",
@@ -277,7 +277,7 @@
     {
       "id": "ghost:Sill (turned once)",
       "ok": true,
-      "detail": "Sill (turned once): ghost at 21,1,21 r1 after aiming at (772, 257)"
+      "detail": "Sill (turned once): ghost at 21,1,21 r1 after aiming at (817, 232)"
     },
     {
       "id": "placed:Sill (turned once)",
@@ -287,7 +287,7 @@
     {
       "id": "ghost:Hinge motor on the sill",
       "ok": true,
-      "detail": "Hinge motor on the sill: ghost at 21,2,21 r0 after aiming at (754, 246)"
+      "detail": "Hinge motor on the sill: ghost at 21,2,21 r0 after aiming at (800, 222)"
     },
     {
       "id": "placed:Hinge motor on the sill",
@@ -302,7 +302,7 @@
     {
       "id": "ghost:Door on the turntable (turned once)",
       "ok": true,
-      "detail": "Door on the turntable (turned once): ghost at 21,8,21 r1 after aiming at (651, 327)"
+      "detail": "Door on the turntable (turned once): ghost at 21,8,21 r1 after aiming at (646, 326)"
     },
     {
       "id": "placed:Door on the turntable (turned once)",
@@ -312,7 +312,7 @@
     {
       "id": "ghost:Hub",
       "ok": true,
-      "detail": "Hub: ghost at 20,1,24 r0 after aiming at (520, 443)"
+      "detail": "Hub: ghost at 20,1,24 r0 after aiming at (521, 444)"
     },
     {
       "id": "placed:Hub",
@@ -332,7 +332,7 @@
     {
       "id": "ghost:Sensor on the hub",
       "ok": true,
-      "detail": "Sensor on the hub: ghost at 21,7,27 r0 after aiming at (465, 405)"
+      "detail": "Sensor on the hub: ghost at 21,7,27 r0 after aiming at (473, 409)"
     },
     {
       "id": "placed:Sensor on the hub",
@@ -362,7 +362,7 @@
     {
       "id": "ghost:Bridge brick 1 (from the top view)",
       "ok": true,
-      "detail": "Bridge brick 1 (from the top view): ghost at 23,2,21 r0 after aiming at (638, 335)"
+      "detail": "Bridge brick 1 (from the top view): ghost at 23,2,21 r0 after aiming at (635, 333)"
     },
     {
       "id": "placed:Bridge brick 1 (from the top view)",
@@ -372,7 +372,7 @@
     {
       "id": "ghost:Bridge brick 2 (from the top view)",
       "ok": true,
-      "detail": "Bridge brick 2 (from the top view): ghost at 23,5,21 r0 after aiming at (637, 332)"
+      "detail": "Bridge brick 2 (from the top view): ghost at 23,5,21 r0 after aiming at (636, 331)"
     },
     {
       "id": "placed:Bridge brick 2 (from the top view)",

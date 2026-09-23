@@ -157,6 +157,10 @@ describe('creations', () => {
     expect(creation.motors.find((motor) => motor.brickId === ROVER_IDS.leftMotor)!.axleId).toBe(ROVER_IDS.leftAxle)
     expect(creation.lines.ready).toContain('1 motor with a wheel')
     expect(creation.drivePair).toBeNull()
+    // Still a rover: same run space, and it still knows which way is forward (the sensor's facing).
+    expect(creation.kind).toBe('rover')
+    expect(creation.testSpace).toBe('testPlate')
+    expect(creation.driveForward).toEqual({ x: 0, y: 0, z: -1 })
   })
 
   it('sensor pointed sideways says so', () => {

@@ -20,7 +20,7 @@ import Cables from '../wiring/Cables'
 import type { HingeReport } from '../sim/mechanics'
 import { registerDraftSnapper } from './draftSnap'
 import { registerCanvasInsets } from './cameraInsets'
-import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets } from './framing'
+import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets, viewOffsetFor } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
 import StageLayer from './StageLayer'
 
@@ -268,7 +268,7 @@ function CreationFraming() {
       const plateSize = getBuildPlateSize(state.documentMetadata)
       const canvas = gl.domElement
       const viewport = { width: canvas.clientWidth || 1, height: canvas.clientHeight || 1 }
-      const pose = framePoseInFreeArea(boundsWithPoints(getBuildBounds(bricks, plateSize), request.points ?? []), camera.fov, viewport, measureCanvasInsets(canvas))
+      const pose = framePoseInFreeArea(boundsWithPoints(getBuildBounds(bricks, plateSize), request.points ?? []), camera.fov, viewport, measureCanvasInsets(canvas), 'home', null, false)
       camera.position.set(pose.position.x, pose.position.y, pose.position.z)
       const orbit = controls as OrbitControlsImpl | null
       if (orbit?.target) {
@@ -279,6 +279,43 @@ function CreationFraming() {
     })
     return () => cancelAnimationFrame(handle)
   }, [request, camera, controls, gl])
+  return null
+}
+
+/**
+ * Keeps what the camera looks at in the middle of the canvas area the panels leave free by
+ * shifting the rendered image (`setViewOffset`), not the camera: orbiting then pivots on the
+ * build instead of swinging it out of view, and picking stays exact. Eases when panels open
+ * or close; cleared when the layer unmounts (Explore uses the same camera).
+ */
+function PanelViewOffset() {
+  const { camera, gl } = useThree()
+  const applied = useRef({ x: 0, y: 0 })
+  const frame = useRef(0)
+  const target = useRef({ x: 0, y: 0 })
+  useEffect(() => () => {
+    if (camera instanceof THREE.PerspectiveCamera) camera.clearViewOffset()
+  }, [camera])
+  useFrame((_, delta) => {
+    if (!(camera instanceof THREE.PerspectiveCamera)) return
+    const canvas = gl.domElement
+    const width = canvas.clientWidth
+    const height = canvas.clientHeight
+    if (width <= 0 || height <= 0) return
+    // Measuring the panels is a few layout reads; every fourth frame is plenty.
+    if (frame.current++ % 4 === 0) target.current = viewOffsetFor({ width, height }, measureCanvasInsets(canvas))
+    const ease = Math.min(1, delta * 10)
+    const next = { x: applied.current.x + (target.current.x - applied.current.x) * ease, y: applied.current.y + (target.current.y - applied.current.y) * ease }
+    if (Math.abs(next.x - target.current.x) < 0.5) next.x = target.current.x
+    if (Math.abs(next.y - target.current.y) < 0.5) next.y = target.current.y
+    const view = camera.view
+    if (next.x === 0 && next.y === 0) {
+      if (view?.enabled) camera.clearViewOffset()
+    } else if (!view?.enabled || view.fullWidth !== width || view.fullHeight !== height || view.offsetX !== -next.x || view.offsetY !== -next.y) {
+      camera.setViewOffset(width, height, -next.x, -next.y, width, height)
+    }
+    applied.current = next
+  })
   return null
 }
 
@@ -342,6 +379,7 @@ export default function RoboticsBuildLayer() {
       <ConnectorSnapping />
       <CreationFraming />
       <PresetInsets />
+      <PanelViewOffset />
       <DevProjector />
       {highlights.filter((entry) => !hidden?.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
       <HubPortLabels bricks={visible} plateSize={plateSize} />

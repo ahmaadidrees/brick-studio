@@ -43,12 +43,18 @@ export function framePoseInFreeArea(
   insets: CanvasInsets = NO_INSETS,
   preset: ViewPreset = 'home',
   selectedTarget: BuildCameraPoint | null = null,
+  /**
+   * True: slide the camera so the build lands in the free area. False: keep looking straight at
+   * the build (orbit pivots on it) and let `viewOffsetFor` shift the image instead.
+   */
+  slide = true,
 ): BuildFramePose {
   const free = freeArea(viewport, insets)
   const halfFov = (verticalFovDegrees * Math.PI) / 360
   // Only `free.height` of the viewport's rows are usable: the same as a narrower vertical field of view.
   const effectiveFov = (2 * Math.atan(Math.tan(halfFov) * (free.height / viewport.height)) * 180) / Math.PI
   const pose = createBuildFramePose(bounds, preset, effectiveFov, free.width / free.height, selectedTarget)
+  if (!slide) return pose
   // Slide the camera so the creation's centre appears at the free area's centre.
   const offsetX = (free.left + free.right) / 2 - viewport.width / 2
   const offsetY = (free.top + free.bottom) / 2 - viewport.height / 2
@@ -106,4 +112,14 @@ export function boundsWithPoints(bounds: BuildBounds, points: readonly Vec[], pa
     }
   }
   return { min, max, center: [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2], size: [max[0] - min[0], max[1] - min[1], max[2] - min[2]], empty: false }
+}
+
+/**
+ * How far to shift the rendered image (pixels) so what the camera looks at appears at the
+ * free area's centre: pass `-x, -y` as `setViewOffset`'s offsets. Projection-only, so
+ * orbiting pivots on the build and pointer picking stays exact.
+ */
+export function viewOffsetFor(viewport: { width: number; height: number }, insets: CanvasInsets): { x: number; y: number } {
+  const free = freeArea(viewport, insets)
+  return { x: (free.left + free.right) / 2 - viewport.width / 2, y: (free.top + free.bottom) / 2 - viewport.height / 2 }
 }

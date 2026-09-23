@@ -510,7 +510,7 @@ async function failureReversed() {
   }
   check('F2.run.turns', Math.abs(yaw) > 60 && drift < 1 && meanSpeed < 0.5, `it spun ${Math.abs(yaw).toFixed(0)}° on the spot instead of driving straight: it turned about a point ${drift.toFixed(2)} studs from midway between its wheels, forward speed averaged ${meanSpeed.toFixed(2)} st/s (chip "Speed ${speedChip?.value}")`)
   check('F2.run.opposite-speeds', last.motors[ids.leftMotor].forwardPercent > 20 && last.motors[ids.rightMotor].forwardPercent < -20, `forward speeds as the creation feels them: left ${last.motors[ids.leftMotor].forwardPercent} %, right ${last.motors[ids.rightMotor].forwardPercent} % (both commanded +40)`)
-  check('F2.run.chip', drive && /^40 · −40 %$/.test(drive.value) && /^speed \d+ · −\d+ %$/.test(drive.detail ?? '') && drive.tone === 'bad', `the stage's Motors chip: ${drive?.value} (${drive?.detail}), tone ${drive?.tone}`)
+  check('F2.run.chip', drive && /^40 · −40 %$/.test(drive.value) && /^speed \d+ · −\d+ % · Right motor is mounted reversed$/.test(drive.detail ?? '') && drive.tone === 'bad', `the stage's Motors chip: ${drive?.value} (${drive?.detail}), tone ${drive?.tone}`)
   if (!shotTaken) await shot('F2b-code-raw-blocks-rover-turns')
 
   // Repair, typed while it still spins: the right motor at −40. The run keeps the program it started with.

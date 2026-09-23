@@ -69,7 +69,9 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
       const forwardA = a.forwardPercent ?? powerOf(pair.leftId, a.speedPercent)
       const forwardB = b.forwardPercent ?? powerOf(pair.rightId, b.speedPercent)
       const fighting = Math.abs(forwardA) > 5 && Math.abs(forwardB) > 5 && Math.sign(forwardA) !== Math.sign(forwardB)
-      chips.push({ id: 'drive', label: 'Motors', value: `${signed(powerOf(pair.leftId, a.powerPercent))} · ${signed(powerOf(pair.rightId, b.powerPercent))} %`, detail: `speed ${signed(forwardA)} · ${signed(forwardB)} %`, tone: fighting ? 'bad' : 'live' })
+      // Fighting: say why a block that says 40 reads −40 here (the motor is mounted the other way round).
+      const reversedName = fighting ? creation.motors.find((motor) => reversed.has(motor.brickId))?.name : undefined
+      chips.push({ id: 'drive', label: 'Motors', value: `${signed(powerOf(pair.leftId, a.powerPercent))} · ${signed(powerOf(pair.rightId, b.powerPercent))} %`, detail: `speed ${signed(forwardA)} · ${signed(forwardB)} %${reversedName ? ` · ${reversedName} is mounted reversed` : ''}`, tone: fighting ? 'bad' : 'live' })
     } else {
       chips.push({ id: 'drive', label: 'Motors', value: '—', detail: names, tone: 'idle' })
     }

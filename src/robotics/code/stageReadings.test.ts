@@ -39,7 +39,7 @@ describe('readings chips', () => {
       motors: { [ROVER_IDS.leftMotor]: motor({ powerPercent: 50, speedPercent: 45, forwardPercent: 45 }), [ROVER_IDS.rightMotor]: motor({ powerPercent: 50, speedPercent: 45, forwardPercent: -45 }) },
     }))
     expect(chips[0].value).toBe('nothing seen')
-    expect(chips[1]).toMatchObject({ value: '50 · −50 %', detail: 'speed 45 · −45 %', tone: 'bad' })
+    expect(chips[1]).toMatchObject({ value: '50 · −50 %', detail: 'speed 45 · −45 % · Right motor is mounted reversed', tone: 'bad' })
   })
 
   it('says which part is not plugged in, and shows dashes before a stage exists', () => {

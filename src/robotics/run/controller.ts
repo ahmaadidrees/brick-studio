@@ -104,9 +104,10 @@ function extentAlong(creation: DerivedCreation, geometry: Geometry, axis: Vec3):
  * Props are in world units: a wall's centre and full size, a visitor's box centre per path point.
  */
 export function defaultProps(creation: DerivedCreation, space: RunSpace, geometry: Geometry): TestProp[] {
-  if (creation.drivePair) {
+  const driveForward = creation.drivePair?.forward ?? creation.driveForward
+  if (driveForward) {
     if (space !== 'testPlate') return []
-    const forward = normalize({ ...creation.drivePair.forward, y: 0 })
+    const forward = normalize({ ...driveForward, y: 0 })
     const lateral = cross(UP, forward)
     const along = extentAlong(creation, geometry, forward)
     const across = extentAlong(creation, geometry, lateral)
