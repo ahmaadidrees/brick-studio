@@ -149,6 +149,11 @@
   .brick-studio:has(.robotics-card, .robotics-panel) .robotics-wiring-line { left: calc(50% - 86px); max-width: min(520px, calc(100% - 760px)); }
 }
 .brick-compact-layout .robotics-wiring-line { top: calc(var(--brick-header-block) + 76px); left: max(8px, env(safe-area-inset-left)); transform: none; max-width: calc(100% - 340px); }
+/* Compact layout (portrait tablet): the studio toast ("Buggy is ready to drive!") goes on the left under the wiring
+   line's row, clear of the robot panel on the right, instead of over its Drive button. */
+@media (min-width: 700px) {
+  .brick-compact-layout:has(.robotics-card, .robotics-panel) .brick-toast { top: calc(var(--brick-header-block) + 136px); left: max(8px, env(safe-area-inset-left)); transform: none; max-width: calc(100% - 350px); text-align: left; }
+}
 
 /* Touch: 15 px text or larger, every control a finger uses at least 44 px (Apple HIG, WCAG 2.5.5). */
 @media (any-pointer: coarse) {
