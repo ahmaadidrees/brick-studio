@@ -55,12 +55,14 @@ const row = (rows: NextStep[], id: string) => rows.find((candidate) => candidate
 const R = ROVER_IDS
 const ROVER_WIRES: Wire[] = [[R.leftMotor, R.hub, 'A'], [R.rightMotor, R.hub, 'B'], [R.sensor, R.hub, 'C']]
 const DRESSED_WIRES: Wire[] = [...ROVER_WIRES, ['light', R.hub, 'D']]
-/** The rover with its first four ideas done: a light and a seat in their own colours, a brick on the hub. */
+/** A tower of 2 × 2 bricks on the hub's back corner (x 31–32, z 29–30), `count` high. */
+const tower = (count: number, prefix = 'roof') => Array.from({ length: count }, (_, index) => ({ ...at(`${prefix}-${index}`, 'brick_2x2', 31, 7 + 3 * index, 29), color: '#e7473c' }))
+/** The rover with its first four ideas done: a light and a seat in their own colours, five bricks stacked on the hub. */
 const dressedRover = (extra: BrickInstance[] = []) => [
   ...roverBricks(),
   { ...at('light', ROBOTICS_PART_IDS.light, 29, 7, 27), color: '#e7473c' },
-  { ...at('seat', ROBOTICS_PART_IDS.seat, 30, 7, 28), color: '#3e83d7' },
-  { ...at('roof', 'brick_2x2', 31, 7, 29), color: '#e7473c' },
+  { ...at('seat', ROBOTICS_PART_IDS.seat, 29, 7, 28), color: '#3e83d7' },
+  ...tower(5),
   ...extra,
 ]
 
@@ -151,7 +153,7 @@ describe('the rover path', () => {
     expect(rows.filter((candidate) => candidate.group === 'step').every((candidate) => candidate.state === 'done' || candidate.id === 'ready')).toBe(true)
     const ideas = rows.filter((candidate) => candidate.group === 'idea')
     expect(ideas.map((idea) => `${idea.id}:${idea.state}`)).toEqual(['idea-sensor:done', 'idea-light:todo', 'idea-seat:todo', 'idea-stack:todo'])
-    expect(ideas.map((idea) => idea.text)).toEqual(['Add a sensor at the front. It is the robot’s eyes.', 'Add a light on top.', 'Add a seat. Ride it in Explore.', 'Stack bricks on top. They ride along.'])
+    expect(ideas.map((idea) => idea.text)).toEqual(['Add a sensor at the front. It is the robot’s eyes.', 'Add a light on top.', 'Add a seat. Ride it in Explore.', 'Stack 5 bricks on top. They ride along.'])
     // The light, the seat and the stacked bricks come already on the robot's top (lane P).
     expect(row(rows, 'idea-light').action).toEqual({ kind: 'arm', partId: ROBOTICS_PART_IDS.light, rotation: 0, onRobot: 'robot' })
     expect(row(rows, 'idea-seat').action).toMatchObject({ kind: 'arm', partId: ROBOTICS_PART_IDS.seat, onRobot: 'robot' })
@@ -311,12 +313,12 @@ describe('more ideas once the first ones are done (lane P)', () => {
     expect(row(rows, 'ideas-done')).toMatchObject({ text: FIRST_IDEAS_DONE, state: 'done', action: null })
     expect(row(rows, 'idea-paint')).toMatchObject({ text: 'Paint it your colors.', state: 'todo', action: { kind: 'paint', creationId: 'robot' }, icon: { symbol: 'paint' } })
     expect(row(rows, 'idea-name')).toMatchObject({ text: 'Give it a name of your own.', state: 'todo', action: { kind: 'rename', creationId: 'robot' }, icon: { symbol: 'name' } })
-    expect(row(rows, 'idea-taller')).toMatchObject({ text: 'Build it taller. Stack 5 bricks on it.', state: 'todo', action: { kind: 'arm', partId: 'brick_2x2', rotation: 0, repeat: true } })
+    expect(row(rows, 'idea-taller')).toMatchObject({ text: 'Build it taller · 5 of 10', state: 'todo', action: { kind: 'arm', partId: 'brick_2x2', rotation: 0, repeat: true } })
     expect(row(rows, 'idea-code')).toMatchObject({ text: 'Make it stop at a wall. Try it in Code.', state: 'todo', action: { kind: 'code', creationId: 'robot', starter: 'stop-before-wall' }, icon: { symbol: 'code' } })
   })
 
-  it('each is done by doing it (painted, named, five bricks stacked, the program made) and stays tappable, so the list never ends empty-handed', () => {
-    const stack = [10, 13, 16, 19].map((y, index) => ({ ...at(`stack-${index}`, 'brick_2x2', 31, y, 29), color: '#65b85a' }))
+  it('each is done by doing it (painted, named, ten bricks stacked, the program made) and stays tappable, so the list never ends empty-handed', () => {
+    const stack = tower(5, 'more').map((brick) => ({ ...brick, y: brick.y + 15 }))
     // The hub repainted: a body part no longer in its own colour.
     const bricks = dressedRover(stack).map((brick) => (brick.id === R.hub ? { ...brick, color: '#e7473c' } : brick))
     const section = {
@@ -331,14 +333,17 @@ describe('more ideas once the first ones are done (lane P)', () => {
     expect(ideas(rows).filter((idea) => idea.id !== 'ideas-done').every((idea) => idea.action !== null)).toBe(true)
   })
 
-  it('a default name is not the student’s own; four stacked bricks are not five', () => {
+  it('a default name is not the student’s own; the stack ideas count toward their goals', () => {
     for (const name of ['Buggy', 'Buggy 2', 'Robot', 'My robot', 'Signal light 3']) {
       const section = { ...emptyRoboticsSection(), creations: [{ id: 'robot', name, anchorBrickIds: [R.hub] }], connections: DRESSED_WIRES.map(([deviceId, hubId, port]) => ({ deviceId, hubId, port })) }
       const input = fixtureInput(dressedRover(), section)
       expect(row(nextSteps(deriveCreations(input)[0], { input }), 'idea-name').state).toBe('todo')
     }
-    const three = [10, 13, 16].map((y, index) => ({ ...at(`stack-${index}`, 'brick_2x2', 31, y, 29), color: '#65b85a' }))
-    expect(row(robot(dressedRover(three), R.hub, DRESSED_WIRES).rows, 'idea-taller').state).toBe('todo')
+    // Two bricks on: the first stack idea says how far along it is, and is not ticked yet.
+    const dressedButTwo = [...roverBricks(), { ...at('light', ROBOTICS_PART_IDS.light, 29, 7, 27), color: '#e7473c' }, { ...at('seat', ROBOTICS_PART_IDS.seat, 29, 7, 28), color: '#3e83d7' }, ...tower(2)]
+    expect(row(robot(dressedButTwo, R.hub, DRESSED_WIRES).rows, 'idea-stack')).toMatchObject({ text: 'Stack 5 bricks on top · 2 of 5', state: 'todo' })
+    // Eight on: "Build it taller" is on its way to ten.
+    expect(row(robot(dressedRover(tower(3, 'more').map((brick) => ({ ...brick, y: brick.y + 15 }))), R.hub, DRESSED_WIRES).rows, 'idea-taller')).toMatchObject({ text: 'Build it taller · 8 of 10', state: 'todo' })
   })
 
   it('a rover without a sensor has no Code idea; a signal light gets paint, name and the light’s color in Code', () => {

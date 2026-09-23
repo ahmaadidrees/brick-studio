@@ -90,6 +90,9 @@ const LOOKS: Vec3 = { x: 0, y: 0, z: -1 }
 const PLATE_PART = 'plate_6x8'
 const ARM_PART = 'brick_1x4'
 const STACK_PART = 'brick_2x2'
+/** Bricks stacked on a robot that tick "Stack … bricks on top" (acceptance: five or more), then "Build it taller". */
+export const STACK_GOAL = 5
+export const TALLER_GOAL = 10
 
 const arm = (partId: string, rotation: Rotation = 0): StepAction => ({ kind: 'arm', partId, rotation })
 /** A part the row asks for several of: it stays armed after each one lands. */
@@ -211,7 +214,7 @@ function roverIdeas(creation: DerivedCreation, model: Pick<RoboticsModel, 'input
   const turnSensor = !facingFront && creation.sensors.length > 0 ? creation.sensors[0] : null
   const turnText = creation.sensors.length === 1 ? 'Turn the sensor to face the front.' : `Turn ${turnSensor?.name ?? 'a sensor'} to face the front.`
   // Bricks of the student's own on top: anything that is not a robotics part or the plate it stands on.
-  const stacked = stackedBricks(creation, model) > 0
+  const stacked = stackedBricks(creation, model)
   const idea = (id: string, text: string, done: boolean, action: StepAction, icon: StepIcon): NextStep => ({ id, group: 'idea', text, state: done ? 'done' : 'todo', action: done ? null : action, icon })
   return [
     turnSensor
@@ -219,7 +222,7 @@ function roverIdeas(creation: DerivedCreation, model: Pick<RoboticsModel, 'input
       : idea('idea-sensor', 'Add a sensor at the front. It is the robot’s eyes.', facingFront !== null, arm(ROBOTICS_PART_IDS.distanceSensor, rotationToward(LOOKS, forward)), { part: ROBOTICS_PART_IDS.distanceSensor }),
     idea('idea-light', 'Add a light on top.', creation.lights.length > 0, armOn(creation.id, ROBOTICS_PART_IDS.light), { part: ROBOTICS_PART_IDS.light }),
     idea('idea-seat', 'Add a seat. Ride it in Explore.', creation.seats.length > 0, armOn(creation.id, ROBOTICS_PART_IDS.seat, rotationToward(LOOKS, forward)), { part: ROBOTICS_PART_IDS.seat }),
-    idea('idea-stack', 'Stack bricks on top. They ride along.', stacked, armMany(STACK_PART, creation.id), { part: STACK_PART }),
+    idea('idea-stack', stacked > 0 && stacked < STACK_GOAL ? `Stack ${STACK_GOAL} bricks on top · ${stacked} of ${STACK_GOAL}` : `Stack ${STACK_GOAL} bricks on top. They ride along.`, stacked >= STACK_GOAL, armMany(STACK_PART, creation.id), { part: STACK_PART }),
   ]
 }
 
@@ -255,8 +258,8 @@ const evergreen = (id: string, text: string, done: boolean, action: StepAction, 
 
 /**
  * Ideas that make the robot theirs and really work today: paint it (opens Paint), name it (the name
- * field), build it taller (a rover: five bricks stacked on it), and change what it does in Code (its
- * kind's starter: stop at a wall, how far the gate opens, the light's colour).
+ * field), build it taller (a rover: ten bricks stacked on it, counted as it grows), and change what
+ * it does in Code (its kind's starter: stop at a wall, how far the gate opens, the light's colour).
  */
 function moreIdeas(path: 'rover' | 'gate' | 'signal', creation: DerivedCreation, model: Pick<RoboticsModel, 'input'>): NextStep[] {
   const id = creation.id
@@ -266,7 +269,9 @@ function moreIdeas(path: 'rover' | 'gate' | 'signal', creation: DerivedCreation,
     evergreen('idea-name', 'Give it a name of your own.', !DEFAULT_NAME.test(creation.name.trim()), { kind: 'rename', creationId: id }, { symbol: 'name' }),
   ]
   if (path === 'rover') {
-    ideas.push(evergreen('idea-taller', 'Build it taller. Stack 5 bricks on it.', stackedBricks(creation, model) >= 5, armMany(STACK_PART, id), { part: STACK_PART }))
+    // Counted toward the goal as it grows ("Build it taller · 6 of 10"; Ava saw the stack idea tick after one brick).
+    const stacked = stackedBricks(creation, model)
+    ideas.push(evergreen('idea-taller', stacked >= TALLER_GOAL ? `Build it taller: ${TALLER_GOAL} bricks on it.` : `Build it taller · ${stacked} of ${TALLER_GOAL}`, stacked >= TALLER_GOAL, armMany(STACK_PART, id), { part: STACK_PART }))
     if (creation.sensors.length > 0) ideas.push(evergreen('idea-code', 'Make it stop at a wall. Try it in Code.', hasProgram('stop-before-wall'), { kind: 'code', creationId: id, starter: 'stop-before-wall' }, { symbol: 'code' }))
   } else if (path === 'gate') {
     ideas.push(evergreen('idea-code', 'Change how far it opens. Try it in Code.', hasProgram('smart-gate'), { kind: 'code', creationId: id, starter: 'smart-gate' }, { symbol: 'code' }))

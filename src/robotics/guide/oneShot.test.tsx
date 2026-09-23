@@ -96,7 +96,9 @@ describe('the ideas, from the panel', () => {
     for (const [partId, x, y, z, rotation] of [
       [ROBOTICS_PART_IDS.motor, 31, 1, 31, 0], [ROBOTICS_PART_IDS.motor, 28, 1, 31, 2], [ROBOTICS_PART_IDS.axleShort, 34, 0, 32, 0], [ROBOTICS_PART_IDS.axleShort, 26, 0, 32, 0],
       [ROBOTICS_PART_IDS.wheel, 36, 0, 31, 0], [ROBOTICS_PART_IDS.wheel, 25, 0, 31, 0], [ROBOTICS_PART_IDS.distanceSensor, 30, 1, 26, 0],
-      [ROBOTICS_PART_IDS.light, 29, 7, 27, 0], [ROBOTICS_PART_IDS.seat, 30, 7, 29, 0], ['brick_2x2', 31, 7, 27, 0],
+      [ROBOTICS_PART_IDS.light, 29, 7, 27, 0], [ROBOTICS_PART_IDS.seat, 30, 7, 29, 0],
+      // Five bricks stacked on the hub (the stack idea counts to five).
+      ['brick_2x2', 31, 7, 27, 0], ['brick_2x2', 31, 10, 27, 0], ['brick_2x2', 31, 13, 27, 0], ['brick_2x2', 31, 16, 27, 0], ['brick_2x2', 31, 19, 27, 0],
     ] as const) place(partId, x, y, z, rotation)
   }
 

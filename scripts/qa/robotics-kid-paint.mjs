@@ -330,6 +330,16 @@ check('A6.flash', flash?.brickId === placedLight.id, 'the new light flashes')
 await desk.shot('09-idea-placed-once')
 await desk.sleep(1300)
 
+// A6b. An idea with a count says how far along it is: two bricks on top, "2 of 5", not ticked.
+await page.getByTestId('robotics-ideas').getByRole('button', { name: /^Stack 5 bricks on top/ }).click()
+await desk.sleep(200)
+for (let brick = 0; brick < 2; brick += 1) { await page.getByRole('button', { name: 'Place positioned brick' }).click(); await desk.sleep(300) }
+await page.keyboard.press('Escape')
+await desk.sleep(300)
+const stackRow = page.getByTestId('robotics-ideas').locator('[data-step="idea-stack"]')
+check('A6.counts', (await stackRow.textContent()).includes('Stack 5 bricks on top · 2 of 5') && (await stackRow.getAttribute('data-state')) === 'todo', `after two bricks the idea reads "${(await stackRow.textContent()).trim()}" and is not ticked`)
+await desk.shot('09b-stack-idea-2-of-5')
+
 // A7. The drawer remembers Robots across a reload.
 await page.waitForTimeout(1200)
 check('A7.robots-before', (await page.getByLabel('Brick category').inputValue()) === 'robotics', 'the drawer shows Robots')
