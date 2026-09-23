@@ -25,6 +25,10 @@ export type ObjKind = (typeof OBJECT_KINDS)[number]
 export type Theme = 'day' | 'underground'
 export const THEMES: Theme[] = ['day', 'underground']
 
+/** How the level is drawn: the original pixel art, or the cartoon look built from toy bricks. Looks only. */
+export type LevelStyle = 'pixel' | 'cartoon'
+export const STYLES: LevelStyle[] = ['pixel', 'cartoon']
+
 export interface LevelObject {
   /** Random positive 31-bit id, chosen by whoever placed it. */
   id: number
@@ -43,6 +47,7 @@ export interface LevelDesign {
   width: number
   height: number
   theme: Theme
+  style: LevelStyle
   /** Row-major, y = 0 is the top row. */
   tiles: Uint8Array
   /** What each ? block or brick releases, same indexing as tiles. */
@@ -52,7 +57,8 @@ export interface LevelDesign {
 
 export const SINGLETON_KINDS: ReadonlySet<ObjKind> = new Set(['start', 'goal'])
 
-export function createBlankLevel(width = 120, height = 27, title = 'Untitled level'): LevelDesign {
+/** New levels start in the cartoon look; levels saved before looks existed open as pixel art. */
+export function createBlankLevel(width = 120, height = 27, title = 'Untitled level', style: LevelStyle = 'cartoon'): LevelDesign {
   const tiles = new Uint8Array(width * height)
   for (let y = height - 2; y < height; y++) {
     for (let x = 0; x < width; x++) tiles[y * width + x] = T.GROUND
@@ -62,6 +68,7 @@ export function createBlankLevel(width = 120, height = 27, title = 'Untitled lev
     width,
     height,
     theme: 'day',
+    style,
     tiles,
     contents: new Uint8Array(width * height),
     objects: [
@@ -91,6 +98,8 @@ export interface LevelJson {
   w: number
   h: number
   theme: Theme
+  /** Absent in levels saved before looks existed, which are pixel art. */
+  style?: LevelStyle
   /** Run-length encoded tiles, see encodeRuns. */
   tiles: string
   contents: string
@@ -142,6 +151,7 @@ export function levelToJson(level: LevelDesign): LevelJson {
     w: level.width,
     h: level.height,
     theme: level.theme,
+    style: level.style,
     tiles: encodeRuns(level.tiles),
     contents: encodeRuns(level.contents),
     objects: level.objects.map((o) => [o.id, OBJECT_KINDS.indexOf(o.kind), o.x, o.y, o.dir, o.alt]),
@@ -182,5 +192,6 @@ export function levelFromJson(raw: unknown): LevelDesign {
   }
   const title = typeof j.title === 'string' ? j.title.slice(0, 60) : 'Untitled level'
   const theme: Theme = j.theme === 'underground' ? 'underground' : 'day'
-  return { title, width: w, height: h, theme, tiles, contents, objects }
+  const style: LevelStyle = j.style === 'cartoon' ? 'cartoon' : 'pixel'
+  return { title, width: w, height: h, theme, style, tiles, contents, objects }
 }

@@ -128,12 +128,27 @@ try {
     await page.getByRole('button', { name: 'Collapse block drawer' }).click()
     await page.getByRole('button', { name: 'Open block drawer' }).click()
     await drawer.waitFor()
+    // New levels start in the cartoon look, drawn at the screen's resolution.
+    assert.equal(await page.evaluate(() => window.__game2d.timeline.world.design.style), 'cartoon')
+    assert(await page.evaluate(() => window.__game2d.renderer.canvas.width > window.__game2d.renderer.width), 'the cartoon look is not drawn at screen resolution')
     await page.getByRole('button', { name: 'Scene', exact: true }).click()
+    await page.getByRole('radiogroup', { name: 'Look' }).waitFor()
+    await shot(page, 'desktop-scene-sheet')
+    const design = (field, value, label) =>
+      page.waitForFunction(([f, v]) => window.__game2d.timeline.world.design[f] === v, [field, value], { timeout: 8000 }).catch(async () => {
+        throw new Error(`${label}: design is ${JSON.stringify(await page.evaluate(() => ({ style: window.__game2d.timeline.world.design.style, theme: window.__game2d.timeline.world.design.theme, paused: window.__game2d.paused })))}`)
+      })
     await page.getByRole('radio', { name: /Underground/ }).click()
-    await page.waitForFunction(() => window.__game2d.timeline.world.design.theme === 'underground')
-    await page.getByRole('button', { name: 'Scene', exact: true }).click()
+    await design('theme', 'underground', 'Underground')
     await page.getByRole('radio', { name: /^Day/ }).click()
-    await page.waitForFunction(() => window.__game2d.timeline.world.design.theme === 'day')
+    await design('theme', 'day', 'Day')
+    await page.getByRole('radio', { name: /^Pixel/ }).click()
+    await design('style', 'pixel', 'Pixel')
+    await page.waitForFunction(() => window.__game2d.renderer.canvas.width === window.__game2d.renderer.width)
+    await page.getByRole('radio', { name: /^Cartoon/ }).click()
+    await design('style', 'cartoon', 'Cartoon')
+    await page.keyboard.press('Escape')
+    await page.getByRole('dialog', { name: 'Scene' }).waitFor({ state: 'detached' })
     await page.getByRole('radio', { name: 'Play' }).click()
     await page.locator('.p2d-game.p2d-playing').waitFor()
     await page.getByRole('radio', { name: 'Build' }).click()
@@ -238,6 +253,18 @@ try {
     await page.waitForFunction((c) => window.__game2d.timeline.world.design.tiles.reduce((m, t) => m + (t ? 1 : 0), 0) > c, n)
     await g.waitForFunction((c) => window.__game2d.timeline.world.design.tiles.reduce((m, t) => m + (t ? 1 : 0), 0) > c, n, { timeout: 5000 })
     await shot(page, 'room-host-building')
+  })
+
+  await step('room: the host changes the look and the guest sees it', async () => {
+    const g = guest.page
+    await page.getByRole('button', { name: 'Scene', exact: true }).click()
+    await page.getByRole('radio', { name: /^Pixel/ }).click()
+    await g.waitForFunction(() => window.__game2d.timeline.world.design.style === 'pixel', null, { timeout: 5000 })
+    await shot(g, 'room-guest-pixel')
+    await page.getByRole('radio', { name: /^Cartoon/ }).click()
+    await g.waitForFunction(() => window.__game2d.timeline.world.design.style === 'cartoon', null, { timeout: 5000 })
+    await page.keyboard.press('Escape')
+    await page.getByRole('dialog', { name: 'Scene' }).waitFor({ state: 'detached' })
   })
 
   await step('room: "Only I can build" locks the guest out of building', async () => {

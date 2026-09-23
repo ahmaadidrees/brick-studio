@@ -23,6 +23,7 @@ import { Remotes } from '../net/remotes'
 import { playerColor } from '../render/art/palette'
 import type { PlayerPose } from '../render/art/characters'
 import { Renderer, formatTime, type Hud, type Particle, type PlayerLook, type View } from '../render/renderer'
+import { drawSprite } from '../render/skin'
 import { Camera } from './camera'
 import { Editor } from '../editor/editor'
 import { loadBest, saveBest } from './records'
@@ -414,6 +415,11 @@ export class GameSession {
     }
     this.emit({ t: 'edit', ops })
     this.edited()
+    // A paused solo game (a sheet is open) still shows the change right away: step the world one tick to apply it.
+    if (this.solo && this.paused) {
+      this.timeline.advanceTo(this.timeline.tick + 1)
+      this.syncCtx()
+    }
   }
 
   private edited() {
@@ -729,24 +735,21 @@ export class GameSession {
       localNum: this.player.num,
       localCheckpoint: this.player.checkpoint,
       hud: build ? null : this.hud(),
-      overlay: (ctx, atlas) => {
-        if (build) this.editor.drawOverlay(ctx, atlas, w, this.camera.x, this.camera.y, this.renderer.width, this.renderer.height, this.frameCount)
-        const cx = Math.round(this.camera.x)
-        const cy = Math.round(this.camera.y)
+      overlay: (ctx, skin, cx, cy) => {
+        if (build) this.editor.drawOverlay(ctx, skin, w, cx, cy, this.renderer.width, this.renderer.height, this.frameCount)
         for (const c of cursors) {
           const color = playerColor(c.num)[0]
-          const sx = Math.round(c.x * TILE) - cx
-          const sy = Math.round(c.y * TILE) - cy
+          const sx = skin.snap(c.x * TILE) - cx
+          const sy = skin.snap(c.y * TILE) - cy
           ctx.strokeStyle = color
           ctx.lineWidth = 2
           ctx.strokeRect(sx + 1, sy + 1, TILE - 2, TILE - 2)
           if (c.item && c.item !== 'eraser') {
             ctx.globalAlpha = 0.7
-            const icon = atlas.get(cursorIcon(c.item))
-            ctx.drawImage(icon, sx + TILE - 4, sy + TILE - 4, 10, 10)
+            drawSprite(ctx, skin.sprite(cursorIcon(c.item)), sx + TILE - 4, sy + TILE - 4, 10, 10)
             ctx.globalAlpha = 1
           }
-          atlas.text(ctx, c.name, sx, sy - 10, color)
+          skin.label(ctx, c.name, sx + TILE / 2, sy + 1, color)
         }
       },
     }

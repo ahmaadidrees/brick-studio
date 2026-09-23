@@ -562,7 +562,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           <canvas ref={canvasRef} className="p2d-canvas" />
         </div>
 
-        {build && s && <BuildShell editor={s.editor} theme={s.timeline.world.design.theme} compact={compact} touch={touch} drawerOpen={drawerOpen} onDrawerOpen={setDrawerOpen} />}
+        {build && s && <BuildShell editor={s.editor} theme={s.timeline.world.design.theme} look={s.timeline.world.design.style} compact={compact} touch={touch} drawerOpen={drawerOpen} onDrawerOpen={setDrawerOpen} />}
 
         {!build && s && (
           <div className="p2d-play-tools" onClickCapture={releaseFocus}>
@@ -716,7 +716,22 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         />
       )}
       {s && <PeopleSheet open={people} onClose={() => setPeople(false)} session={s} onInvite={invite} inviteLink={inviteLink} />}
-      {s && <SceneSheet open={scene} onClose={() => setScene(false)} design={s.timeline.world.design} lockedReason={sceneLocked} onPick={(theme) => s.applyEdit([{ o: 'theme', theme }])} />}
+      {s && (
+        <SceneSheet
+          open={scene}
+          onClose={() => setScene(false)}
+          design={s.timeline.world.design}
+          lockedReason={sceneLocked}
+          onStyle={(style) => {
+            s.applyEdit([{ o: 'style', style }])
+            refresh((n) => n + 1)
+          }}
+          onTheme={(theme) => {
+            s.applyEdit([{ o: 'theme', theme }])
+            refresh((n) => n + 1)
+          }}
+        />
+      )}
       {sharing && cloudWorld && (
         <InviteSheet
           world={cloudWorld}

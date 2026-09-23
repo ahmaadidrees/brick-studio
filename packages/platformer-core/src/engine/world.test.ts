@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { demoLevel } from '../levels/demo'
-import type { WorldEvent } from './events'
-import { levelFromJson, levelToJson } from './level'
+import { isValidEvent, type WorldEvent } from './events'
+import { createBlankLevel, levelFromJson, levelToJson } from './level'
 import { T } from './tiles'
 import {
   EK,
@@ -172,5 +172,31 @@ describe('level format', () => {
     expect(() => levelFromJson({ ...j, w: 5000 })).toThrow()
     expect(() => levelFromJson({ ...j, tiles: 'Z' })).toThrow()
     expect(() => levelFromJson({ ...j, objects: [[1, 99, 0, 0, 1, 0]] })).toThrow()
+  })
+
+  it('keeps the look: new levels are cartoon, levels saved before looks existed are pixel', () => {
+    expect(createBlankLevel(40, 20).style).toBe('cartoon')
+    const j = levelToJson(createBlankLevel(40, 20))
+    expect(j.style).toBe('cartoon')
+    expect(levelFromJson(JSON.parse(JSON.stringify(j))).style).toBe('cartoon')
+    const { style: _dropped, ...old } = j
+    expect(levelFromJson(old).style).toBe('pixel')
+    expect(levelFromJson({ ...j, style: 'watercolor' }).style).toBe('pixel')
+  })
+})
+
+describe('looks', () => {
+  it('an edit changes the look, and the fingerprint follows it', () => {
+    const w = createWorld(createBlankLevel(40, 20))
+    const before = hashWorld(w)
+    const ev: WorldEvent = { t: 'edit', ops: [{ o: 'style', style: 'pixel' }] }
+    expect(isValidEvent(ev, w.width, w.height)).toBe(true)
+    advanceWorld(w, [{ ev, by: 1 }])
+    expect(w.design.style).toBe('pixel')
+    expect(hashWorld(w)).not.toBe(before)
+  })
+
+  it('rejects looks that do not exist', () => {
+    expect(isValidEvent({ t: 'edit', ops: [{ o: 'style', style: 'watercolor' }] }, 40, 20)).toBe(false)
   })
 })

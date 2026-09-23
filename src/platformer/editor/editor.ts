@@ -4,7 +4,7 @@ import { SINGLETON_KINDS, randomObjectId, type LevelObject, type ObjKind } from 
 import { C, T, holdsContent } from '@brick-studio/platformer-core/engine/tiles'
 import type { World } from '@brick-studio/platformer-core/engine/world'
 import type { SoundName } from '../audio/sound'
-import type { Atlas } from '../render/atlas'
+import { drawSprite, type Skin } from '../render/skin'
 import { PALETTE, type PaletteItem } from './palette'
 
 /*
@@ -320,19 +320,19 @@ export class Editor {
 
   // --- Drawing --------------------------------------------------------------------------------
 
-  drawOverlay(ctx: CanvasRenderingContext2D, atlas: Atlas, w: World, camX: number, camY: number, viewW: number, viewH: number, frame: number) {
-    camX = Math.round(camX)
-    camY = Math.round(camY)
+  /** Build mode's drawing over the level, in world pixels from the camera the frame used (already rounded as the look needs). */
+  drawOverlay(ctx: CanvasRenderingContext2D, skin: Skin, w: World, camX: number, camY: number, viewW: number, viewH: number, frame: number) {
     const x0 = Math.max(0, Math.floor(camX / TILE))
     const y0 = Math.max(0, Math.floor(camY / TILE))
     const x1 = Math.min(w.width - 1, Math.floor((camX + viewW) / TILE))
     const y1 = Math.min(w.height - 1, Math.floor((camY + viewH) / TILE))
     // Grid
-    ctx.fillStyle = 'rgba(255,255,255,0.10)'
-    for (let x = x0; x <= x1 + 1; x++) ctx.fillRect(x * TILE - camX, Math.max(0, -camY), 1, Math.min(viewH, w.height * TILE - camY))
-    for (let y = y0; y <= y1 + 1; y++) ctx.fillRect(Math.max(0, -camX), y * TILE - camY, Math.min(viewW, w.width * TILE - camX), 1)
+    const line = skin.grid.width
+    ctx.fillStyle = skin.grid.color
+    for (let x = x0; x <= x1 + 1; x++) ctx.fillRect(x * TILE - camX, Math.max(0, -camY), line, Math.min(viewH, w.height * TILE - camY))
+    for (let y = y0; y <= y1 + 1; y++) ctx.fillRect(Math.max(0, -camX), y * TILE - camY, Math.min(viewW, w.width * TILE - camX), line)
     // Outside the level
-    ctx.fillStyle = 'rgba(13,11,22,0.55)'
+    ctx.fillStyle = skin.style === 'pixel' ? 'rgba(13,11,22,0.55)' : 'rgba(38,60,81,0.42)'
     if (camX < 0) ctx.fillRect(0, 0, -camX, viewH)
     const right = w.width * TILE - camX
     if (right < viewW) ctx.fillRect(right, 0, viewW - right, viewH)
@@ -345,8 +345,8 @@ export class Editor {
         const t = w.tiles[i]
         const c = w.design.contents[i]
         if ((t !== T.QBLOCK && t !== T.BRICK) || c === C.NONE || (t === T.QBLOCK && c === C.COIN)) continue
-        const icon = atlas.get(c === C.GROW ? 'grow' : c === C.SPARK ? 'sparkitem:1' : 'coin:0')
-        ctx.drawImage(icon, x * TILE - camX + 4, y * TILE - camY + 3, 8, 8)
+        const icon = skin.sprite(c === C.GROW ? 'grow' : c === C.SPARK ? 'sparkitem:1' : 'coin:0')
+        drawSprite(ctx, icon, x * TILE - camX + 4, y * TILE - camY + 3, 8, 8)
       }
     }
     // Where enemies and gizmos start (the live ones wander off)
@@ -354,11 +354,13 @@ export class Editor {
     for (const o of w.design.objects) {
       const key = ghostKey(o)
       if (!key) continue
-      const img = atlas.get(key)
-      const px = o.kind === 'platform' ? o.x * TILE : o.x * TILE + TILE / 2 - img.width / 2
-      const py = o.kind === 'platform' ? o.y * TILE : (o.y + 1) * TILE - img.height
-      if (px - camX > viewW || px + img.width - camX < 0 || py - camY > viewH || py + img.height - camY < 0) continue
-      ctx.drawImage(img, Math.round(px) - camX, Math.round(py) - camY)
+      const img = skin.sprite(key)
+      const px = o.kind === 'platform' ? o.x * TILE : o.x * TILE + TILE / 2 - img.w / 2
+      const py = o.kind === 'platform' ? o.y * TILE : (o.y + 1) * TILE - img.h
+      if (px - camX > viewW || px + img.w - camX < 0 || py - camY > viewH || py + img.h - camY < 0) continue
+      // Platforms are placed by their top-left corner (their studs reach above it); the rest stand on their cell.
+      const anchored = o.kind === 'platform'
+      drawSprite(ctx, img, skin.snap(px) + (anchored ? 0 : img.ox) - camX, skin.snap(py) + (anchored ? 0 : img.oy) - camY)
       if (o.kind === 'platform') {
         ctx.fillStyle = '#ffcf33'
         const d = o.dir * 5 * TILE
@@ -377,24 +379,44 @@ export class Editor {
       const sy = hy * TILE - camY
       if (this.erasing) {
         ctx.strokeStyle = '#ff5a4a'
-        ctx.lineWidth = 1
-        ctx.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1)
-        ctx.fillStyle = '#ff5a4a'
-        for (let k = 3; k < 13; k++) {
-          ctx.fillRect(sx + k, sy + k, 1, 1)
-          ctx.fillRect(sx + 15 - k, sy + k, 1, 1)
+        if (skin.style === 'pixel') {
+          ctx.lineWidth = 1
+          ctx.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1)
+          ctx.fillStyle = '#ff5a4a'
+          for (let k = 3; k < 13; k++) {
+            ctx.fillRect(sx + k, sy + k, 1, 1)
+            ctx.fillRect(sx + 15 - k, sy + k, 1, 1)
+          }
+        } else {
+          ctx.lineWidth = 1.2
+          ctx.lineCap = 'round'
+          ctx.beginPath()
+          ctx.roundRect(sx + 0.6, sy + 0.6, TILE - 1.2, TILE - 1.2, 3)
+          ctx.moveTo(sx + 4, sy + 4)
+          ctx.lineTo(sx + 12, sy + 12)
+          ctx.moveTo(sx + 12, sy + 4)
+          ctx.lineTo(sx + 4, sy + 12)
+          ctx.stroke()
         }
       } else {
         const key = cursorKey(this.item, this.dir)
-        const img = atlas.get(key)
+        const img = skin.sprite(key)
         ctx.globalAlpha = 0.6 + 0.2 * Math.sin(frame / 8)
-        const ox = this.item.place.kind === 'object' && this.item.place.obj === 'platform' ? 0 : TILE / 2 - img.width / 2
-        const oy = this.item.place.kind === 'object' && this.item.place.obj === 'platform' ? 0 : TILE - img.height
-        ctx.drawImage(img, Math.round(sx + ox), Math.round(sy + oy))
+        const platform = this.item.place.kind === 'object' && this.item.place.obj === 'platform'
+        const ox = platform ? 0 : TILE / 2 - img.w / 2
+        const oy = platform ? 0 : TILE - img.h
+        drawSprite(ctx, img, skin.snap(sx + ox) + (platform ? 0 : img.ox), skin.snap(sy + oy) + (platform ? 0 : img.oy))
         ctx.globalAlpha = 1
         ctx.strokeStyle = '#ffffff'
-        ctx.lineWidth = 1
-        ctx.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1)
+        if (skin.style === 'pixel') {
+          ctx.lineWidth = 1
+          ctx.strokeRect(sx + 0.5, sy + 0.5, TILE - 1, TILE - 1)
+        } else {
+          ctx.lineWidth = 1.2
+          ctx.beginPath()
+          ctx.roundRect(sx + 0.6, sy + 0.6, TILE - 1.2, TILE - 1.2, 3)
+          ctx.stroke()
+        }
       }
     }
   }

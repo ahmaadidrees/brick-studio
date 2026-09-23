@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Blocks, Eraser } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import type { Theme } from '@brick-studio/platformer-core/engine/level'
+import type { LevelStyle, Theme } from '@brick-studio/platformer-core/engine/level'
 import { ALL_CATEGORY, DrawerFab, DrawerPanel, DrawerSheet, DrawerToggle, HistoryTools, PartPicker, type DrawerItem, type DrawerLabels } from '../../shell'
 import type { Editor } from '../editor/editor'
 import { CATEGORIES, PALETTE } from '../editor/palette'
@@ -32,6 +32,8 @@ const themedIcon = (icon: string, theme: Theme) => icon.replace(/:day$/, `:${the
 interface Props {
   editor: Editor
   theme: Theme
+  /** The level's look: the drawer shows its blocks the way the level draws them. */
+  look: LevelStyle
   /** Narrow and portrait screens: a button and a bottom sheet instead of the docked drawer. */
   compact: boolean
   touch: boolean
@@ -43,12 +45,12 @@ interface Props {
  * Building a 2D level, laid out like the 3D studio: the block drawer on the left (the same drawer as the 3D bricks),
  * Undo and Redo beside it, and a strip along the bottom saying what a click places.
  */
-export function BuildShell({ editor, theme, compact, touch, drawerOpen, onDrawerOpen }: Props) {
+export function BuildShell({ editor, theme, look, compact, touch, drawerOpen, onDrawerOpen }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
   const items = useMemo<DrawerItem[]>(
-    () => PALETTE.map((it) => ({ id: it.id, name: it.label, category: it.category, thumbnail: <Art k={themedIcon(it.icon, theme)} box={40} className="p2d-part-art" /> })),
-    [theme],
+    () => PALETTE.map((it) => ({ id: it.id, name: it.label, category: it.category, thumbnail: <Art k={themedIcon(it.icon, theme)} box={40} look={look} className="p2d-part-art" /> })),
+    [theme, look],
   )
   const searchText = useCallback((item: DrawerItem) => `${item.id} ${CATEGORY_LABEL.get(item.category as never) ?? ''}`, [])
   const choose = (id: string) => {
@@ -91,13 +93,13 @@ export function BuildShell({ editor, theme, compact, touch, drawerOpen, onDrawer
       <div className="brick-history-cluster p2d-history" role="group" aria-label="Build tools">
         <HistoryTools onUndo={() => editor.undo()} onRedo={() => editor.redo()} canUndo={editor.undoStack.length > 0} canRedo={editor.redoStack.length > 0} />
       </div>
-      <PlacingStrip editor={editor} theme={theme} touch={touch} />
+      <PlacingStrip editor={editor} theme={theme} look={look} touch={touch} />
     </div>
   )
 }
 
 /** What a click (or tap) does right now, and the two tools that change it: flip and erase. */
-function PlacingStrip({ editor, theme, touch }: { editor: Editor; theme: Theme; touch: boolean }) {
+function PlacingStrip({ editor, theme, look, touch }: { editor: Editor; theme: Theme; look: LevelStyle; touch: boolean }) {
   const item = editor.item
   const erasing = editor.erasing
   const flips = !erasing && (item.category === 'enemies' || item.category === 'gizmos')
@@ -108,7 +110,7 @@ function PlacingStrip({ editor, theme, touch }: { editor: Editor; theme: Theme; 
     <div className="p2d-strip" role="group" aria-label="Placing">
       <div className="p2d-strip-chip" aria-live="polite">
         <span className="p2d-strip-swatch" aria-hidden="true">
-          {erasing ? <Eraser size={20} /> : <Art k={themedIcon(item.icon, theme)} box={30} />}
+          {erasing ? <Eraser size={20} /> : <Art k={themedIcon(item.icon, theme)} box={30} look={look} />}
         </span>
         <span className="p2d-strip-text">
           <span className="p2d-strip-kicker">{erasing ? 'Erasing' : 'Placing'}</span>

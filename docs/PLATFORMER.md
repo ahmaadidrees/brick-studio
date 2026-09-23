@@ -42,6 +42,26 @@ it, and it never loads three.js, Rapier or the 3D studio. `src/platformer/routes
 - `multiplayer/worker/src/platformerRoom.ts`: the `PlatformerRoom` Durable Object, one per live 2D room.
 - `multiplayer/worker/src/classroomRoutes.ts`: the HTTP routes below; `classroom/index.ts` knows world formats.
 
+## Looks
+
+Every level has a look, `style` in the level format: **cartoon** (toy bricks, the default for new levels) or **pixel**
+(the original pixel art). Levels saved before looks existed have no `style` and open as pixel art, so nothing anyone
+made changes by itself. The builder picks the look in Scene, next to the scene (Day or Underground); it is an edit
+like the scene (`{ o: 'style' }`), so in a room everyone sees the switch, and it never changes how the game plays.
+
+The renderer (`src/platformer/render/renderer.ts`) walks the world the same way for both looks and asks a skin
+(`render/skin.ts`) for pictures by the same art keys, for the background and for the HUD, so the editor, the entities
+and the camera never know which look is on:
+
+- `render/pixelSkin.ts` draws the pixel art one pixel per world pixel; the page scales the canvas up, crisp.
+- `render/cartoon/` draws at the screen's own resolution: `tiles.ts` (bricks with studs on open tops; ground laid as
+  two-wide bricks in a running bond), `builder.ts` (the Classic Builder in a hard hat, as a small rig that swings per
+  pose; the shirt is the player's colour), `things.ts` (creatures, power-ups, course pieces, effects), `scenery.ts`
+  (sky, hills and brick trees; the cave) and `cartoonSkin.ts` (pictures made on first use at the screen's scale).
+
+All cartoon art is original and drawn in code: there are no image files to license or load. The block drawer and the
+Scene previews show blocks and levels in the level's own look.
+
 ## Saving
 
 - **Guests**: levels save in the browser (`localStorage`, key `brick-studio.2d.drafts.v1`) a second after each

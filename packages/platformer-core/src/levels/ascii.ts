@@ -1,5 +1,5 @@
 import { C, T } from '../engine/tiles'
-import type { LevelDesign, LevelObject, ObjKind, Theme } from '../engine/level'
+import type { LevelDesign, LevelObject, LevelStyle, ObjKind, Theme } from '../engine/level'
 
 /**
  * Levels written as text, one character per tile. Handy for hand-built courses and tests.
@@ -47,7 +47,7 @@ const OBJECTS: Record<string, [ObjKind, 1 | -1, 0 | 1]> = {
   z: ['spark', 1, 0],
 }
 
-export function levelFromAscii(rows: string[], title = 'Level', theme: Theme = 'day'): LevelDesign {
+export function levelFromAscii(rows: string[], title = 'Level', theme: Theme = 'day', style: LevelStyle = 'cartoon'): LevelDesign {
   const height = rows.length
   const width = rows[0].length
   rows.forEach((r, i) => {
@@ -72,7 +72,7 @@ export function levelFromAscii(rows: string[], title = 'Level', theme: Theme = '
       objects.push({ id: nextId++, kind: obj[0], x, y, dir: obj[1], alt: obj[2] })
     }
   }
-  return { title, width, height, theme, tiles, contents, objects }
+  return { title, width, height, theme, style, tiles, contents, objects }
 }
 
 /** Join level screens side by side. Every screen must have the same number of rows. */

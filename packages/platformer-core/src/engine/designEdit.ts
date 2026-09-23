@@ -44,6 +44,10 @@ export function editDesign(d: LevelDesign, op: EditOp): boolean {
       if (d.theme === op.theme) return false
       d.theme = op.theme
       return true
+    case 'style':
+      if (d.style === op.style) return false
+      d.style = op.style
+      return true
     case 'title':
       if (d.title === op.title) return false
       d.title = op.title

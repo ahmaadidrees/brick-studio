@@ -4,6 +4,7 @@ import type { EditOp, WorldEvent } from './events'
 import {
   OBJECT_KINDS,
   SINGLETON_KINDS,
+  STYLES,
   THEMES,
   decodeRuns,
   encodeRuns,
@@ -465,6 +466,10 @@ function applyOp(w: World, op: EditOp): boolean {
       if (d.theme === op.theme) return false
       d.theme = op.theme
       return true
+    case 'style':
+      if (d.style === op.style) return false
+      d.style = op.style
+      return true
     case 'title':
       if (d.title === op.title) return false
       d.title = op.title
@@ -857,6 +862,7 @@ export function hashWorld(w: World): number {
     mix(o.alt)
   }
   mix(THEMES.indexOf(w.design.theme))
+  mix(STYLES.indexOf(w.design.style))
   return h >>> 0
 }
 

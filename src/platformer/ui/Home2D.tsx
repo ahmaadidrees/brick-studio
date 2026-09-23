@@ -45,7 +45,7 @@ export function Home2D() {
       COURSES.map((c) => {
         const level = c.level()
         const best = loadBest(`course:${c.id}`)
-        return { c, level, thumb: levelThumb(level, `course:${c.id}`), sub: best >= 0 ? `Best ${formatTime(best)}` : c.blurb }
+        return { c, level, thumb: levelThumb(level, `course:${c.id}:${level.style}`), sub: best >= 0 ? `Best ${formatTime(best)}` : c.blurb }
       }),
     [],
   )
@@ -94,7 +94,7 @@ export function Home2D() {
             </p>
           </div>
           <div className="p2d-hero-art" aria-hidden="true">
-            <img src={courses[0].thumb} alt="" />
+            <img src={courses[0].thumb} alt="" className={courses[0].level.style === 'cartoon' ? 'p2d-smooth' : undefined} />
           </div>
         </section>
 
@@ -108,7 +108,7 @@ export function Home2D() {
           <h2 id="p2d-courses">Play a course</h2>
           <div className="p2d-cards">
             {courses.map(({ c, level, thumb, sub }) => (
-              <LevelCard key={c.id} thumb={thumb} title={c.title} sub={sub}>
+              <LevelCard key={c.id} thumb={thumb} smooth={level.style === 'cartoon'} title={c.title} sub={sub}>
                 <Button href={`/2d/play/${c.id}`} variant="primary" size="sm" icon={<Play size={16} />}>
                   Play
                 </Button>
@@ -129,7 +129,7 @@ export function Home2D() {
           )}
           {worldsError && <p className="p2d-error">{worldsError}</p>}
           <div className="p2d-cards">
-            <LevelCard thumb={levelThumb(createBlankLevel(160, 27, 'My level'), 'blank')} title="New level" sub="A start, a floor and a flag" badge>
+            <LevelCard thumb={levelThumb(createBlankLevel(160, 27, 'My level'), 'blank:cartoon')} smooth title="New level" sub="A start, a floor and a flag" badge>
               <Button href="/2d/build?new=1" variant="primary" size="sm" icon={<Plus size={16} />}>
                 Start
               </Button>
@@ -147,7 +147,7 @@ export function Home2D() {
               </LevelCard>
             ))}
             {local.map(({ d, level }) => (
-              <LevelCard key={d.id} thumb={levelThumb(level, `draft:${d.id}:${d.updated}`)} title={d.title} sub={`This browser only · ${formatSavedDate(new Date(d.updated).toISOString())}`} onDelete={() => remove(d)}>
+              <LevelCard key={d.id} thumb={levelThumb(level, `draft:${d.id}:${d.updated}`)} smooth={level.style === 'cartoon'} title={d.title} sub={`This browser only · ${formatSavedDate(new Date(d.updated).toISOString())}`} onDelete={() => remove(d)}>
                 <Button href={`/2d/build?draft=${encodeURIComponent(d.id)}`} variant="primary" size="sm" icon={<Hammer size={16} />}>
                   Open
                 </Button>
@@ -187,11 +187,11 @@ export function Home2D() {
   )
 }
 
-function LevelCard({ thumb, title, sub, badge, onDelete, children }: { thumb?: string; title: string; sub: string; badge?: boolean; onDelete?: () => void; children: React.ReactNode }) {
+function LevelCard({ thumb, smooth, title, sub, badge, onDelete, children }: { thumb?: string; smooth?: boolean; title: string; sub: string; badge?: boolean; onDelete?: () => void; children: React.ReactNode }) {
   return (
     <article className="p2d-level-card" aria-label={title}>
       <div className="p2d-thumb-box">
-        {thumb ? <img className="p2d-thumb" src={thumb} alt="" draggable={false} /> : <LevelArt />}
+        {thumb ? <img className={`p2d-thumb${smooth ? ' p2d-smooth' : ''}`} src={thumb} alt="" draggable={false} /> : <LevelArt />}
         {badge && (
           <span className="p2d-badge" aria-hidden="true">
             <Plus size={28} />
@@ -218,8 +218,8 @@ function LevelCard({ thumb, title, sub, badge, onDelete, children }: { thumb?: s
 export function LevelArt() {
   return (
     <span className="p2d-level-art">
-      <Art k="q:0" scale={3} className="p2d-level-art-block" />
-      <Art k="p:1:small:stand:0" scale={3} className="p2d-level-art-hero" />
+      <Art k="q:0" scale={3} look="cartoon" className="p2d-level-art-block" />
+      <Art k="p:1:small:stand:0" scale={3} look="cartoon" className="p2d-level-art-hero" />
     </span>
   )
 }

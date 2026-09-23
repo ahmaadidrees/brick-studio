@@ -1,4 +1,4 @@
-import { OBJECT_KINDS, THEMES, type LevelJson, type LevelObject, type Theme } from './level'
+import { OBJECT_KINDS, STYLES, THEMES, type LevelJson, type LevelObject, type LevelStyle, type Theme } from './level'
 import { CONTENT_ID_COUNT, TILE_ID_COUNT } from './tiles'
 
 /** A change a builder makes to the level design. */
@@ -8,6 +8,7 @@ export type EditOp =
   | { o: 'del'; id: number }
   | { o: 'move'; id: number; x: number; y: number }
   | { o: 'theme'; theme: Theme }
+  | { o: 'style'; style: LevelStyle }
   | { o: 'title'; title: string }
 
 /**
@@ -61,6 +62,8 @@ function validOp(op: unknown, w: number, h: number): op is EditOp {
       return isId(o.id) && inRange(o.x, 0, w - 1) && inRange(o.y, 0, h - 1)
     case 'theme':
       return THEMES.includes(o.theme as Theme)
+    case 'style':
+      return STYLES.includes(o.style as LevelStyle)
     case 'title':
       return typeof o.title === 'string' && o.title.length <= 60
     default:

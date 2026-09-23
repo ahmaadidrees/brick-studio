@@ -12,6 +12,11 @@
   user-select: none;
 }
 
+.p2d-art.p2d-art-cartoon,
+.p2d-part-art.p2d-art-cartoon {
+  image-rendering: auto;
+}
+
 /* ---------- Pages (home, notices) ---------- */
 
 .p2d-page {
@@ -127,6 +132,12 @@
   height: 100%;
   object-fit: cover;
   image-rendering: pixelated;
+}
+
+/* Cartoon pictures are smooth; pixel ones stay crisp. */
+.p2d-thumb.p2d-smooth,
+.p2d-hero-art img.p2d-smooth {
+  image-rendering: auto;
 }
 
 .p2d-badge {
@@ -1149,6 +1160,21 @@
 
 /* ---------- Scene (the header's Scene in 2D) ---------- */
 
+.p2d-scene-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.p2d-scene-group h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
 .p2d-scenes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1175,7 +1201,6 @@
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  image-rendering: pixelated;
 }
 
 .p2d-scene-text {

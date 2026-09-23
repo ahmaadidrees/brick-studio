@@ -17,7 +17,8 @@ export function levelThumb(design: LevelDesign, cacheKey: string): string {
   // One renderer for every thumbnail keeps its art cache warm.
   renderer ??= new Renderer(document.createElement('canvas'))
   const r = renderer
-  r.resize(THUMB_W, THUMB_H, 1)
+  // Pixel art is crisp at one pixel per world pixel (the page scales it up); the cartoon look is drawn at 2×.
+  r.configure(THUMB_W, THUMB_H, design.style === 'cartoon' ? 2 : 1)
   const start = design.objects.find((o) => o.kind === 'start')
   const sx = start ? start.x * TILE + TILE / 2 : 2 * TILE
   const sy = start ? (start.y + 1) * TILE : (design.height - 2) * TILE

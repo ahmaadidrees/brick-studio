@@ -5,7 +5,7 @@ import { PALETTE } from '../editor/palette'
 import { BuildShell } from './BuildShell'
 
 // The game's pixel art is drawn on canvases, which jsdom does not have.
-vi.mock('./art', () => ({ Art: ({ k }: { k: string }) => <img alt="" data-art={k} /> }))
+vi.mock('./art', () => ({ Art: ({ k, look }: { k: string; look?: string }) => <img alt="" data-art={k} data-look={look} /> }))
 
 function fakeEditor(overrides: Partial<Editor> = {}) {
   const editor = {
@@ -25,7 +25,7 @@ function fakeEditor(overrides: Partial<Editor> = {}) {
 }
 
 const shell = (editor: Editor, props: Partial<Parameters<typeof BuildShell>[0]> = {}) =>
-  render(<BuildShell editor={editor} theme="day" compact={false} touch={false} drawerOpen onDrawerOpen={vi.fn()} {...props} />)
+  render(<BuildShell editor={editor} theme="day" look="cartoon" compact={false} touch={false} drawerOpen onDrawerOpen={vi.fn()} {...props} />)
 
 describe('2D build shell', () => {
   afterEach(cleanup)
@@ -67,7 +67,7 @@ describe('2D build shell', () => {
     expect(editor.setErasing).toHaveBeenCalledWith(true)
 
     const erasing = fakeEditor({ erasing: true })
-    rerender(<BuildShell editor={erasing} theme="day" compact={false} touch={false} drawerOpen onDrawerOpen={vi.fn()} />)
+    rerender(<BuildShell editor={erasing} theme="day" look="cartoon" compact={false} touch={false} drawerOpen onDrawerOpen={vi.fn()} />)
     expect(screen.getByRole('group', { name: 'Placing' })).toHaveTextContent('ErasingEraser')
     expect(screen.getByRole('button', { name: 'Erase' })).toHaveAttribute('aria-pressed', 'true')
   })
@@ -85,7 +85,7 @@ describe('2D build shell', () => {
     const { rerender } = shell(fakeEditor(), { onDrawerOpen })
     fireEvent.click(screen.getByRole('button', { name: 'Collapse block drawer' }))
     expect(onDrawerOpen).toHaveBeenCalledWith(false)
-    rerender(<BuildShell editor={fakeEditor()} theme="day" compact={false} touch={false} drawerOpen={false} onDrawerOpen={onDrawerOpen} />)
+    rerender(<BuildShell editor={fakeEditor()} theme="day" look="cartoon" compact={false} touch={false} drawerOpen={false} onDrawerOpen={onDrawerOpen} />)
     fireEvent.click(screen.getByRole('button', { name: 'Open block drawer' }))
     expect(onDrawerOpen).toHaveBeenCalledWith(true)
   })

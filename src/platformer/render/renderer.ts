@@ -1,10 +1,11 @@
 import { SUB, TILE } from '@brick-studio/platformer-core/engine/constants'
+import type { LevelStyle } from '@brick-studio/platformer-core/engine/level'
 import { T, isAnimated } from '@brick-studio/platformer-core/engine/tiles'
 import { EK, ES, type Entity, type World } from '@brick-studio/platformer-core/engine/world'
-import { tileKey } from './art/library'
-import { PAL } from './art/palette'
 import type { PlayerPose } from './art/characters'
-import { Atlas } from './atlas'
+import { CartoonSkin } from './cartoon/cartoonSkin'
+import { PixelSkin } from './pixelSkin'
+import { drawSprite, type Skin } from './skin'
 
 export interface PlayerLook {
   num: number
@@ -54,8 +55,8 @@ export interface View {
   localNum: number
   localCheckpoint: number
   hud: Hud | null
-  /** Drawn after the world, before the HUD (editor overlays). */
-  overlay?: (ctx: CanvasRenderingContext2D, atlas: Atlas) => void
+  /** Drawn after the world, before the HUD (editor overlays), in world pixels from the camera the frame used. */
+  overlay?: (ctx: CanvasRenderingContext2D, skin: Skin, camX: number, camY: number) => void
 }
 
 const CHUNK = 16
@@ -68,41 +69,69 @@ interface Chunk {
   dirty: boolean
 }
 
-const hash = (n: number) => {
-  let x = Math.imul(n ^ 0x9e3779b9, 0x85ebca6b)
-  x ^= x >>> 13
-  x = Math.imul(x, 0xc2b2ae35)
-  return ((x ^ (x >>> 16)) >>> 0) / 4294967296
-}
-
+/**
+ * Draws the game. How it looks comes from the level's style: pixel art is drawn one pixel per world pixel and scaled
+ * up by the page; the cartoon look is drawn at the screen's own resolution. Either way the view is the same number
+ * of world pixels, so the camera, the editor and the game never need to know which look is on.
+ */
 export class Renderer {
-  readonly atlas = new Atlas()
   readonly ctx: CanvasRenderingContext2D
+  /** The view in world pixels. */
   width = 400
   height = 240
+  /** Screen pixels per world pixel. */
   scale = 1
+  private skin: Skin
+  private pixel = new PixelSkin()
+  private cartoon: CartoonSkin | null = null
   private chunks = new Map<number, Chunk>()
   private shadow: Uint8Array | null = null
   private shadowKey = ''
   private bumped = new Set<number>()
+  private cssW = 0
+  private cssH = 0
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d', { alpha: false })!
+    this.skin = this.pixel
   }
 
-  /** Fit the canvas to its box with whole-number pixel scaling. */
+  /** Fit the canvas to its box with whole-number scaling. */
   resize(cssW: number, cssH: number, dpr: number) {
     const pw = Math.max(1, Math.floor(cssW * dpr))
     const ph = Math.max(1, Math.floor(cssH * dpr))
     const s = Math.max(1, Math.min(Math.floor(ph / 224), Math.floor(pw / 320)))
-    this.scale = s
-    this.width = Math.min(Math.ceil(pw / s), 640)
-    this.height = Math.min(Math.ceil(ph / s), 360)
-    this.canvas.width = this.width
-    this.canvas.height = this.height
-    this.canvas.style.width = `${(this.width * s) / dpr}px`
-    this.canvas.style.height = `${(this.height * s) / dpr}px`
-    this.ctx.imageSmoothingEnabled = false
+    this.configure(Math.min(Math.ceil(pw / s), 640), Math.min(Math.ceil(ph / s), 360), s, dpr)
+  }
+
+  /** Set the view directly: `width` × `height` world pixels at `scale` screen pixels each (thumbnails). */
+  configure(width: number, height: number, scale: number, dpr = 1) {
+    this.width = width
+    this.height = height
+    this.scale = scale
+    this.cssW = (width * scale) / dpr
+    this.cssH = (height * scale) / dpr
+    this.applySkin(this.skin.style)
+  }
+
+  /** The skin for a style, at the current scale; sizes the canvas for it. */
+  private applySkin(style: LevelStyle) {
+    if (style === 'cartoon') {
+      if (!this.cartoon || this.cartoon.scale !== this.scale) this.cartoon = new CartoonSkin(this.scale)
+      this.skin = this.cartoon
+    } else this.skin = this.pixel
+    const k = this.skin.scale
+    this.canvas.width = this.width * k
+    this.canvas.height = this.height * k
+    this.canvas.style.width = `${this.cssW}px`
+    this.canvas.style.height = `${this.cssH}px`
+    this.canvas.style.imageRendering = style === 'cartoon' ? 'auto' : ''
+    this.chunks.clear()
+  }
+
+  /** The look being drawn (for pictures elsewhere in the interface). */
+  get style(): LevelStyle {
+    return this.skin.style
   }
 
   /** Convert a CSS-pixel point on the canvas to world pixels. */
@@ -112,62 +141,33 @@ export class Renderer {
   }
 
   draw(v: View) {
-    const ctx = this.ctx
     const w = v.world
-    const camX = Math.round(v.camX)
-    const camY = Math.round(v.camY)
-    ctx.imageSmoothingEnabled = false
+    if (w.design.style !== this.skin.style) this.applySkin(w.design.style)
+    const skin = this.skin
+    const ctx = this.ctx
+    const k = skin.scale
+    ctx.setTransform(k, 0, 0, k, 0, 0)
+    ctx.imageSmoothingEnabled = k > 1
+    ctx.imageSmoothingQuality = 'high'
     ctx.globalAlpha = 1
-    this.background(v, camX, camY)
+    const camX = skin.snap(v.camX)
+    const camY = skin.snap(v.camY)
+    skin.background(ctx, v, camX, camY, this.width, this.height)
     this.syncTiles(w)
     // Items still rising out of their block are drawn behind it.
     for (const e of w.entities) if ((e.kind === EK.GROW || e.kind === EK.SPARK_ITEM) && e.state === ES.EMERGING) this.entity(e, v.frame, camX, camY)
-    this.tiles(w, v.frame, camX, camY)
+    if (skin.chunked) this.tilesChunked(w, v.frame, camX, camY)
+    else this.tilesEach(w, v.frame, camX, camY)
     this.course(v, camX, camY)
     for (const e of w.entities) if (!((e.kind === EK.GROW || e.kind === EK.SPARK_ITEM) && e.state === ES.EMERGING)) this.entity(e, v.frame, camX, camY)
     for (const p of v.players) if (p.num !== v.localNum) this.player(p, camX, camY)
     for (const p of v.players) if (p.num === v.localNum) this.player(p, camX, camY)
     this.particles(v.particles, camX, camY)
-    v.overlay?.(ctx, this.atlas)
-    if (v.hud) this.hud(v.hud)
+    v.overlay?.(ctx, skin, camX, camY)
+    if (v.hud) skin.hud(ctx, v.hud, this.width, this.height)
   }
 
   // -------------------------------------------------------------------------------------------
-
-  private background(v: View, camX: number, camY: number) {
-    const ctx = this.ctx
-    const w = v.world
-    const underground = w.design.theme === 'underground'
-    ctx.fillStyle = underground ? PAL.skyUnder : PAL.sky
-    ctx.fillRect(0, 0, this.width, this.height)
-    // Below the level (visible when touch buttons push the view down): solid earth.
-    const below = w.height * TILE - camY
-    if (below < this.height) {
-      ctx.fillStyle = underground ? PAL.stoneMortar : PAL.mortar
-      ctx.fillRect(0, below, this.width, this.height - below)
-    }
-    if (underground) return
-    // Scenery sits on the level's ground line and scrolls sideways more slowly than the level.
-    const groundY = w.height * TILE - camY - 2 * TILE
-    const layers: { key: string; spacing: number; par: number; y: (h: number) => number; salt: number }[] = [
-      { key: 'cloud:big', spacing: 300, par: 0.15, y: () => groundY - 200, salt: 1 },
-      { key: 'cloud:small', spacing: 220, par: 0.22, y: () => groundY - 150, salt: 2 },
-      { key: 'hill:big:far', spacing: 380, par: 0.3, y: (h) => groundY - h + 14, salt: 3 },
-      { key: 'hill:small:near', spacing: 260, par: 0.55, y: (h) => groundY - h + 4, salt: 4 },
-    ]
-    for (const L of layers) {
-      const img = this.atlas.get(L.key)
-      const offset = camX * L.par
-      const first = Math.floor((offset - img.width) / L.spacing)
-      const last = Math.ceil((offset + this.width) / L.spacing)
-      for (let i = first; i <= last; i++) {
-        const r = hash(i * 7 + L.salt)
-        if (r < 0.25) continue
-        const x = Math.round(i * L.spacing + r * L.spacing * 0.5 - offset)
-        ctx.drawImage(img, x, Math.round(L.y(img.height)))
-      }
-    }
-  }
 
   /** Mark chunks whose tiles changed since they were drawn. */
   private syncTiles(w: World) {
@@ -229,8 +229,8 @@ export class Renderer {
             c.animated.push(i)
             continue
           }
-          const k = tileKey(w.tiles, w.width, w.height, x, y, w.design.theme, 0)
-          if (k) g.drawImage(this.atlas.get(k), (x - cx * CHUNK) * TILE, (y - cy * CHUNK) * TILE)
+          const k = this.skin.tileKey(w.tiles, w.width, w.height, x, y, w.design.theme, 0)
+          if (k) drawSprite(g, this.skin.sprite(k), (x - cx * CHUNK) * TILE, (y - cy * CHUNK) * TILE)
         }
       }
       c.dirty = false
@@ -238,7 +238,8 @@ export class Renderer {
     return c
   }
 
-  private tiles(w: World, frame: number, camX: number, camY: number) {
+  /** Pixel art: the level pre-drawn in chunks, with animated and bumped tiles on top. */
+  private tilesChunked(w: World, frame: number, camX: number, camY: number) {
     const ctx = this.ctx
     const cx0 = Math.max(0, Math.floor(camX / CHUNK_PX))
     const cy0 = Math.max(0, Math.floor(camY / CHUNK_PX))
@@ -253,11 +254,33 @@ export class Renderer {
         for (const i of c.animated) {
           const x = i % w.width
           const y = (i / w.width) | 0
-          const k = tileKey(w.tiles, w.width, w.height, x, y, w.design.theme, Math.floor(frame / 8))
+          const k = this.skin.tileKey(w.tiles, w.width, w.height, x, y, w.design.theme, Math.floor(frame / 8))
           if (!k) continue
           const dy = BUMP_OFFSET[bumpOf.get(i) ?? 0] ?? 0
-          ctx.drawImage(this.atlas.get(k), x * TILE - camX, y * TILE - camY + dy)
+          drawSprite(ctx, this.skin.sprite(k), x * TILE - camX, y * TILE - camY + dy)
         }
+      }
+    }
+  }
+
+  /** The cartoon look: every visible tile from its cached picture, top row first so studs sit behind the row above. */
+  private tilesEach(w: World, frame: number, camX: number, camY: number) {
+    const ctx = this.ctx
+    const x0 = Math.max(0, Math.floor(camX / TILE) - 1)
+    const y0 = Math.max(0, Math.floor(camY / TILE) - 1)
+    const x1 = Math.min(w.width - 1, Math.floor((camX + this.width) / TILE) + 1)
+    const y1 = Math.min(w.height - 1, Math.floor((camY + this.height) / TILE) + 1)
+    const bumpOf = new Map<number, number>()
+    for (const b of w.bumps) bumpOf.set(b.ty * w.width + b.tx, b.timer)
+    const f = Math.floor(frame / 8)
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const i = y * w.width + x
+        if (w.tiles[i] === T.EMPTY) continue
+        const k = this.skin.tileKey(w.tiles, w.width, w.height, x, y, w.design.theme, f)
+        if (!k) continue
+        const dy = BUMP_OFFSET[bumpOf.get(i) ?? 0] ?? 0
+        drawSprite(ctx, this.skin.sprite(k), x * TILE - camX, y * TILE - camY + dy)
       }
     }
   }
@@ -280,13 +303,14 @@ export class Renderer {
         x -= TILE
         y -= 16
       } else continue
-      const img = this.atlas.get(key)
-      if (x - camX > this.width || x + img.width - camX < 0 || y - camY > this.height || y + img.height - camY < 0) continue
-      ctx.drawImage(img, x - camX, y - camY)
+      const s = this.skin.sprite(key)
+      if (x - s.ox - camX > this.width || x - s.ox + s.w - camX < 0 || y - s.oy - camY > this.height || y - s.oy + s.h - camY < 0) continue
+      drawSprite(ctx, s, x - camX, y - camY)
     }
   }
 
   private entity(e: Entity, frame: number, camX: number, camY: number) {
+    const skin = this.skin
     const ex = e.x / SUB
     const ey = e.y / SUB
     if (ex - camX > this.width + 32 || ex - camX < -64 || ey - camY > this.height + 32 || ey - camY < -64) return
@@ -309,7 +333,7 @@ export class Renderer {
         key = `spiky:${(frame >> 4) % 2 ? 2 : 1}${flip}`
         break
       case EK.PLATFORM:
-        this.ctx.drawImage(this.atlas.get('lift'), Math.round(ex) - camX, Math.round(ey) - camY)
+        drawSprite(this.ctx, skin.sprite('lift'), skin.snap(ex) - camX, skin.snap(ey) - camY)
         return
       case EK.GROW:
         key = 'grow'
@@ -327,81 +351,39 @@ export class Renderer {
         return
     }
     if (dead) key += '|v'
-    const img = this.atlas.get(key)
-    let dx = Math.round(ex + e.w / SUB / 2 - img.width / 2)
-    const dy = Math.round(ey + e.h / SUB - img.height)
+    const s = skin.sprite(key)
+    let dx = skin.snap(ex + e.w / SUB / 2 - s.w / 2)
+    const dy = skin.snap(ey + e.h / SUB - s.h)
     if (e.kind === EK.SHELLBUG && e.state === ES.SHELL && e.timer > 420) dx += (frame >> 1) % 2 ? 1 : -1
-    this.ctx.drawImage(img, dx - camX, dy - camY)
+    drawSprite(this.ctx, s, dx + s.ox - camX, dy + s.oy - camY)
   }
 
   private player(p: PlayerLook, camX: number, camY: number) {
     if (!p.visible) return
     const ctx = this.ctx
+    const skin = this.skin
     const key = `p:${p.num}:${p.size}:${p.pose}:${p.spark ? 1 : 0}${p.facing < 0 ? '|f' : ''}`
-    const img = this.atlas.get(key)
-    const x = Math.round(p.x - img.width / 2) - camX
-    let y = Math.round(p.y - img.height) - camY
+    const s = skin.sprite(key)
+    const x = skin.snap(p.x - s.w / 2) - camX
+    let y = skin.snap(p.y - s.h) - camY
     if (p.alpha !== undefined) ctx.globalAlpha = p.alpha
     if (p.squash) {
-      const h = Math.round(img.height * 0.6)
-      y += img.height - h
-      ctx.drawImage(img, x - 1, y, img.width + 2, h)
-    } else ctx.drawImage(img, x, y)
+      const h = skin.snap(s.h * 0.6)
+      y += s.h - h
+      drawSprite(ctx, s, x - 1 + s.ox, y + s.oy, s.w + 2, h)
+    } else drawSprite(ctx, s, x + s.ox, y + s.oy)
     ctx.globalAlpha = 1
-    if (p.name) {
-      const tw = this.atlas.textWidth(p.name)
-      this.atlas.text(ctx, p.name, Math.round(p.x - tw / 2) - camX, y - 11, '#ffffff')
-    }
+    if (p.name) skin.label(ctx, p.name, p.x - camX, y, '#ffffff')
   }
 
   private particles(list: Particle[], camX: number, camY: number) {
+    const skin = this.skin
     for (const q of list) {
       const f = Math.min(q.frames - 1, Math.floor((q.age / q.life) * q.frames))
       let key = q.frames > 1 ? `${q.key}:${f}` : q.key
       if (q.spin && (q.age >> 2) % 2) key += '|f'
-      const img = this.atlas.get(key)
-      this.ctx.drawImage(img, Math.round(q.x - img.width / 2) - camX, Math.round(q.y - img.height / 2) - camY)
-    }
-  }
-
-  private hud(h: Hud) {
-    const ctx = this.ctx
-    const a = this.atlas
-    ctx.drawImage(a.get('coin:0'), 4, 3)
-    a.text(ctx, `x${String(h.coins).padStart(2, '0')}`, 19, 7)
-    // Run meter: six arrows and a P.
-    for (let i = 0; i < 6; i++) {
-      const lit = h.pmeter > i
-      ctx.fillStyle = lit ? '#ffffff' : '#3b4560'
-      const x = 6 + i * 7
-      ctx.fillRect(x, 22, 2, 5)
-      ctx.fillRect(x + 2, 23, 2, 3)
-      ctx.fillRect(x + 4, 24, 1, 1)
-    }
-    const pOn = h.pFull
-    ctx.fillStyle = pOn ? '#ffcf33' : '#3b4560'
-    ctx.fillRect(49, 20, 11, 9)
-    a.text(ctx, 'P', 51, 21, pOn ? '#1d1a2e' : '#8a94a6')
-    if (h.timeTicks !== null) a.text(ctx, `TIME ${formatTime(h.timeTicks)}`, 4, 33)
-    if (h.message) this.banner(h.message, h.sub)
-  }
-
-  private banner(msg: string, sub?: string) {
-    const ctx = this.ctx
-    const w = this.atlas.textWidth(msg) * 2
-    const x = Math.round((this.width - w) / 2)
-    const y = Math.round(this.height * 0.3)
-    ctx.fillStyle = 'rgba(29,26,46,0.75)'
-    ctx.fillRect(x - 8, y - 6, w + 16, sub ? 38 : 28)
-    // Big text: draw each glyph canvas at double size.
-    const tmp = document.createElement('canvas')
-    tmp.width = this.atlas.textWidth(msg)
-    tmp.height = 9
-    this.atlas.text(tmp.getContext('2d')!, msg, 0, 0, '#ffcf33')
-    ctx.drawImage(tmp, x, y, tmp.width * 2, 18)
-    if (sub) {
-      const sw = this.atlas.textWidth(sub)
-      this.atlas.text(ctx, sub, Math.round((this.width - sw) / 2), y + 21, '#ffffff')
+      const s = skin.sprite(key)
+      drawSprite(this.ctx, s, skin.snap(q.x - s.w / 2) + s.ox - camX, skin.snap(q.y - s.h / 2) + s.oy - camY)
     }
   }
 }

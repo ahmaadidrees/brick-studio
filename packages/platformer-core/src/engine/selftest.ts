@@ -45,7 +45,7 @@ export function runReferenceScenario(): number {
 }
 
 /** The fingerprint the scenario must produce in every engine (computed in Node / V8). */
-export const REFERENCE_HASH = 449399357
+export const REFERENCE_HASH = 1718094492
 
 /**
  * Three players' timelines receive the same events after different random delays and rewind to
@@ -82,4 +82,4 @@ export function runRollbackScenario(): number[] {
   return players.map((tl) => hashWorld(tl.world))
 }
 
-export const ROLLBACK_HASH = 3987168231
+export const ROLLBACK_HASH = 389827926
