@@ -15,6 +15,7 @@ import { computeModel } from '../state/roboticsStore'
 import { CURB_PROP_IDS, plateHalfWidth } from './plateCurb'
 import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection, towerRoverBricks } from './rideFixtures'
 import { BACK_TO_START, RIDER_STANDING_Y, rideLimit, yawOf } from './rideModel'
+import { RIDE_REQUEST_SECONDS, requestRide } from './rideRequest'
 import {
   BUILD_CHANGED, DISMOUNT_MIN_SECONDS, advanceRides, bringBackRide, liveRide, rideAvatarFrame, resetExploreRideForTests, seatOf, useExploreRideStore, type RideEnvironment,
 } from './rideStore'
@@ -179,6 +180,40 @@ describe('the ride state machine', () => {
     expect(seated.mode).toBe('seat')
     expect(seated.position.y).toBeCloseTo(seatOf(live).point.y + RIDER_STANDING_Y, 6)
     expect(seated.position.y).toBeGreaterThan(4)
+  })
+
+  it('Ride it in Explore: a ride asked for from Build seats her on the first frame in Explore, the camera behind her', () => {
+    load()
+    useBrickStore.setState({ touchYaw: 0.3 })
+    requestRide(RIDE_CREATION_ID)
+    ride().enter(RAPIER as unknown as RapierModule)
+    // Wherever she spawned, far from the robot.
+    const far = body(12, RIDER_STANDING_Y, 12)
+    const seated = rideAvatarFrame(far)!
+    expect(ride()).toMatchObject({ phase: 'riding', riding: RIDE_CREATION_ID })
+    const live = liveRide(RIDE_CREATION_ID)!
+    expect(seated.mode).toBe('seat')
+    expect(seated.position.y).toBeCloseTo(seatOf(live).point.y + RIDER_STANDING_Y, 6)
+    expect(useBrickStore.getState().touchYaw).toBeCloseTo(seatOf(live).facingYaw, 6)
+    // Taken once: hopping off and walking does not ride again by itself.
+    ride().hopOff()
+    frames(1.5)
+    expect(rideAvatarFrame(far)?.mode).toBe('place')
+    expect(rideAvatarFrame(far)).toBeNull()
+    expect(ride().phase).toBe('walking')
+  })
+
+  it('a request that is never taken goes stale, and leaving Explore drops it', () => {
+    load()
+    requestRide(RIDE_CREATION_ID, Date.now() - (RIDE_REQUEST_SECONDS + 1) * 1000)
+    ride().enter(RAPIER as unknown as RapierModule)
+    expect(rideAvatarFrame(body(12, RIDER_STANDING_Y, 12))).toBeNull()
+    expect(ride().phase).toBe('walking')
+    requestRide(RIDE_CREATION_ID)
+    ride().leave()
+    ride().enter(RAPIER as unknown as RapierModule)
+    expect(rideAvatarFrame(body(12, RIDER_STANDING_Y, 12))).toBeNull()
+    expect(ride().phase).toBe('walking')
   })
 
   it('rides again from where it was parked, with a fresh program run', () => {

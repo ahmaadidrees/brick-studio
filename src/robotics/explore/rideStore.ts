@@ -12,6 +12,7 @@ import type { RapierModule } from '../sim/colliders'
 import { computeModel, simBehaviorKey } from '../state/roboticsStore'
 import type { HopOffRange } from './hopOff'
 import { plateCurb } from './plateCurb'
+import { clearRideRequest, takeRideRequest } from './rideRequest'
 import type { RideAvatarBody, RideAvatarFrame } from './rideBridge'
 import {
   BACK_TO_START, IDENTITY_POSE, RIDE_KEEP_STUDS, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
@@ -382,6 +383,7 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
     lastAvatar = null
     avatarHandle = null
     heldKeys.clear()
+    clearRideRequest()
     unsubscribe?.()
     unsubscribe = null
     if (noticeTimer) clearTimeout(noticeTimer)
@@ -537,14 +539,27 @@ export function rideAvatarFrame(avatar: RideAvatarBody): RideAvatarFrame | null 
   }
   if (state.phase === 'walking') {
     updateNearest(lastAvatar)
-    return null
+    if (!rideRequested()) return null
   }
-  const ride = state.riding ? live.get(state.riding) : null
+  const current = useExploreRideStore.getState()
+  const ride = current.riding ? live.get(current.riding) : null
   if (ride) {
     const seat = seatOf(ride)
     lastSeat = { mode: 'seat', position: riderPosition(seat), facingYaw: seat.facingYaw }
   }
   return lastSeat
+}
+
+/**
+ * A ride asked for from Build (the robot panel's "Ride it in Explore", `rideRequest.ts`): on the
+ * character's first frame in Explore she goes straight onto the seat, the camera behind her.
+ */
+function rideRequested(): boolean {
+  const creationId = takeRideRequest()
+  if (!creationId || !useExploreRideStore.getState().ride(creationId)) return false
+  const ride = live.get(creationId)
+  if (ride) useBrickStore.setState({ touchYaw: seatOf(ride).facingYaw })
+  return true
 }
 
 /** For tests: the store and the module state back to nothing. */

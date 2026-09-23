@@ -45,3 +45,6 @@
   .explore-ride-prompt-button { min-height: 44px; min-width: 88px; }
   .explore-ride-prompt[data-state='ride'] .explore-ride-prompt-button { min-height: 56px; min-width: 120px; }
 }
+
+/* The robot panel's "Ride it in Explore" (build mode), under Drive and Code. */
+.robotics-ride-button { width: 100%; margin-top: 8px; }
