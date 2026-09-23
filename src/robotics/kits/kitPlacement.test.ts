@@ -7,7 +7,7 @@ import { installRoboticsParts } from '../parts/install'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { armKit, installKitWatcher, useKitStore } from './kitPlacement'
 import { kitById, type KitId } from './kits'
-import { kitUnderAnOverhang } from './kitTestFixtures'
+import { kitBetweenTwoRobots, kitUnderAnOverhang } from './kitTestFixtures'
 
 /**
  * Kits through the real stores, the way the studio drives them: the drawer arms the kit, the
@@ -249,6 +249,22 @@ describe('a kit built onto a saved robot', () => {
     expect(useRoboticsStore.getState().card).toBeNull()
     expect(brickState().toast).toBe('The Robot base is part of Signal light now.')
     expect(brickState().undoStack.map((entry) => entry.label)).toEqual(['Add a Robot base to Signal light'])
+    brickState().undo()
+    expect(snapshot()).toBe(before)
+  })
+
+  it('touching two robots, the join card asks what to call them, and one Undo still takes the kit away', () => {
+    const { existing, section: saved, base } = kitBetweenTwoRobots()
+    useBrickStore.setState({ bricks: existing })
+    brickState().setRoboticsSection(writeRoboticsSection(saved), 'Saved')
+    useBrickStore.setState({ undoStack: [] })
+    useRoboticsStore.getState().refreshModel()
+    const before = snapshot()
+    placeKit('robot-base', base[0].x, base[0].z)
+    expect(useRoboticsStore.getState().card?.joining?.names).toEqual(['Arm A', 'Arm B'])
+    expect(section().creations.map((creation) => creation.name)).toEqual(['Arm A', 'Arm B'])
+    expect(brickState().toast).toBe('The Robot base joins Arm A and Arm B.')
+    expect(brickState().undoStack.map((entry) => entry.label)).toEqual(['Add a Robot base'])
     brickState().undo()
     expect(snapshot()).toBe(before)
   })

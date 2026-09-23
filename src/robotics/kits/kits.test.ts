@@ -8,7 +8,7 @@ import { emptyRoboticsSection, type RoboticsSection } from '../model/section'
 import { ROBOTICS_PART_IDS, isRoboticsPart, roboticsSpec } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
 import { KITS, kitAt, kitById, kitFootprint, placeKitInSection, uniqueRobotName, type Kit } from './kits'
-import { kitUnderAnOverhang } from './kitTestFixtures'
+import { kitBetweenTwoRobots, kitUnderAnOverhang } from './kitTestFixtures'
 
 beforeAll(() => installRoboticsParts(true))
 
@@ -160,5 +160,15 @@ describe('a kit built onto a saved robot', () => {
     expect(placement.name).toBe('Signal light')
     expect(placement.section.creations).toHaveLength(1)
     expect(placement.section.creations[0].anchorBrickIds).toEqual(expect.arrayContaining(base.map((brick) => brick.id)))
+  })
+
+  it('touching two saved robots: only its cables are written and no robot is named (the join card names them)', () => {
+    const { existing, section, base } = kitBetweenTwoRobots()
+    expect(validateBrickGroup(base, existing, 5000, PLATE).valid).toBe(true)
+    const input = fixtureInput([...existing, ...base], section)
+    const placement = placeKitInSection({ input, section, creations: deriveCreations(input) }, kitById('robot-base'), base.map((brick) => brick.id), 'unused')
+    expect(placement.joined.map((creation) => creation.id)).toEqual(['a', 'b'])
+    expect(placement.creationId).toBeNull()
+    expect(placement.section.creations).toEqual(section.creations)
   })
 })

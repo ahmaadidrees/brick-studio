@@ -19,3 +19,23 @@ export function kitUnderAnOverhang(): { existing: BrickInstance[]; section: Robo
   return { existing: [...signal, arm], section, base }
 }
 
+
+/**
+ * Two saved robots (a hub with an arm on its top each) and a Robot base placed between them so
+ * that both arms rest on its hub: a kit that joins two robots at once.
+ */
+export function kitBetweenTwoRobots(): { existing: BrickInstance[]; section: RoboticsSection; base: BrickInstance[] } {
+  const brick = (id: string, partId: string, x: number, y: number, z: number, rotation: 0 | 1 = 0): BrickInstance => ({ id, partId, x, y, z, rotation, color: '#52636c' })
+  const existing = [
+    brick('a-hub', ROBOTICS_PART_IDS.hub, 17, 1, 18),
+    brick('a-arm', 'brick_1x4', 20, 7, 20, 1),
+    brick('b-hub', ROBOTICS_PART_IDS.hub, 29, 1, 18),
+    brick('b-arm', 'brick_1x4', 26, 7, 21, 1),
+  ]
+  const section: RoboticsSection = {
+    ...emptyRoboticsSection(),
+    creations: [{ id: 'a', name: 'Arm A', anchorBrickIds: ['a-hub', 'a-arm'] }, { id: 'b', name: 'Arm B', anchorBrickIds: ['b-hub', 'b-arm'] }],
+  }
+  const base = kitById('robot-base').bricks.map((candidate) => ({ ...candidate, x: candidate.x + 22, z: candidate.z + 17 }))
+  return { existing, section, base }
+}

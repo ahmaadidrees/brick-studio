@@ -102,7 +102,7 @@ function finishPlacement(kit: Kit, placedIds: string[]) {
   // The whole kit stays selected, its base plate last: the panel follows the selected brick, so it
   // shows the robot rather than one of its parts, and Rotate, Color or Delete act on all of it.
   brickStore.selectBricks([...placedIds.slice(1), placedIds[0]])
-  const label = placement.joined.length ? `Add a ${kit.name} to ${placement.name}` : `Add ${placement.name}`
+  const label = !placement.joined.length ? `Add ${placement.name}` : placement.creationId ? `Add a ${kit.name} to ${placement.name}` : `Add a ${kit.name}`
   useBrickStore.getState().setRoboticsSection(writeRoboticsSection(placement.section), label)
   const steps = entriesSincePlacement(placedIds)
   if (steps > 0) useBrickStore.getState().mergeHistory(steps, label)
@@ -112,12 +112,13 @@ function finishPlacement(kit: Kit, placedIds: string[]) {
   // The new robot framed with ground around it, so the camera does not close in on it alone.
   const placed = useBrickStore.getState().bricks.filter((candidate) => placedIds.includes(candidate.id))
   robotics.requestFrame(robot?.brickIds ?? placedIds, roomAround(placed, getBuildPlateSize(useBrickStore.getState().documentMetadata)))
-  const message = placedMessage(kit, placement.name, placement.joined.length > 0, robot)
+  const message = placedMessage(kit, placement.name, placement.joined, robot)
   useBrickStore.setState({ toast: message, announcement: message })
 }
 
-function placedMessage(kit: Kit, name: string, joined: boolean, robot: DerivedCreation | null): string {
-  if (joined) return robot ? `The ${kit.name} is part of ${name} now.` : `The ${kit.name} joined two robots.`
+function placedMessage(kit: Kit, name: string, joined: readonly DerivedCreation[], robot: DerivedCreation | null): string {
+  if (joined.length > 1) return `The ${kit.name} joins ${joined.map((creation) => creation.name).join(' and ')}.`
+  if (joined.length) return `The ${kit.name} is part of ${name} now.`
   if (!robot) return `${name} is on the plate.`
   const state = readiness(robot)
   if (state.ready) return state.kind === 'drive' ? `${name} is ready to drive!` : `${name} is ready. Try it!`
