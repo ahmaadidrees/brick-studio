@@ -1,0 +1,132 @@
+
+A. A car from parts at 1366×768, aimed near
+PASS A:ghost:plate — plate: aimed near, the ghost shows 28,0,26 r0 (not snapped)
+PASS A:placed:plate — plate: one click placed it at 28,0,26 r0
+PASS A:ghost:hub — hub: aimed near, the ghost shows 29,1,27 r0 (not snapped)
+PASS A:placed:hub — hub: one click placed it at 29,1,27 r0
+PASS A:named — the robot is called Buggy (named through the card's Not now)
+PASS A:motor-targets — motor armed, the mouse on open ground: 2 glowing edge stretches (left, right)
+  shot S1-motor-targets-1366.png
+PASS A:ghost:motor beside the left side (on the ground, 1.6 studs off, level with the hub) — motor beside the left side (on the ground, 1.6 studs off, level with the hub): aimed near, the ghost shows 28,1,31 r2 with the green snapped outline (brick-1790180646732-ua4ei2:left)
+  shot S2-motor-snapped-1366.png
+PASS A:placed:motor beside the left side (on the ground, 1.6 studs off, level with the hub) — motor beside the left side (on the ground, 1.6 studs off, level with the hub): one click placed it at 28,1,31 r2
+PASS A:left-motor-on — the left motor is on Buggy
+PASS A:left-motor-wired — wiring line: Left motor connected to port AUndo×
+PASS A:ghost:motor over the plate near the right edge, beside the hub — motor over the plate near the right edge, beside the hub: aimed near, the ghost shows 31,1,31 r0 with the green snapped outline (brick-1790180646732-ua4ei2:right)
+PASS A:placed:motor over the plate near the right edge, beside the hub — motor over the plate near the right edge, beside the hub: one click placed it at 31,1,31 r0
+PASS A:right-motor-on — the right motor is on Buggy
+PASS A:axle-targets — axle armed: 2 glowing sockets
+  shot S3-axle-targets-1366.png
+PASS A:ghost:axle aimed at the ground a stud past the left socket — axle aimed at the ground a stud past the left socket: aimed near, the ghost shows 26,0,32 r0 with the green snapped outline (socket:brick-1790180650677-rvfhxe)
+  shot S4-axle-snapped-1366.png
+PASS A:placed:axle aimed at the ground a stud past the left socket — axle aimed at the ground a stud past the left socket: one click placed it at 26,0,32 r0
+PASS A:left-axle-in — the left axle is in the left motor
+PASS A:ghost:axle aimed at the ground a stud past the right socket — axle aimed at the ground a stud past the right socket: aimed near, the ghost shows 34,0,32 r0 with the green snapped outline (socket:brick-1790180651451-lovjl1)
+PASS A:placed:axle aimed at the ground a stud past the right socket — axle aimed at the ground a stud past the right socket: one click placed it at 34,0,32 r0
+PASS A:right-axle-in — the right axle is in the right motor
+PASS A:wheel-targets — wheel armed: 2 glowing axle ends
+  shot S5-wheel-targets-1366.png
+PASS A:ghost:wheel aimed near the left axle end — wheel aimed near the left axle end: aimed near, the ghost shows 25,0,31 r0 with the green snapped outline (end:brick-1790180653594-84v7yy:0)
+  shot S6-wheel-snapped-1366.png
+PASS A:placed:wheel aimed near the left axle end — wheel aimed near the left axle end: one click placed it at 25,0,31 r0
+PASS A:left-wheel-on — the left wheel is on its axle
+PASS A:ghost:wheel aimed near the right axle end — wheel aimed near the right axle end: aimed near, the ghost shows 36,0,31 r0 with the green snapped outline (end:brick-1790180654365-1jhd5r:1)
+PASS A:placed:wheel aimed near the right axle end — wheel aimed near the right axle end: one click placed it at 36,0,31 r0
+PASS A:right-wheel-on — the right wheel is on its axle
+PASS A:can-drive — readiness(): {"kind":"drive","ready":true,"reason":null}
+PASS A:no-gaps — no red gap markers on the finished car (0)
+  shot S7-car-ready-1366.png
+PASS A:counts — 8 placements, 0 that looked connected but were not
+PASS A:ghost:motor dropped on the ground behind Buggy — motor dropped on the ground behind Buggy: aimed near, the ghost shows 30,0,37 r0 (not snapped)
+PASS A:placed:motor dropped on the ground behind Buggy — motor dropped on the ground behind Buggy: one click placed it at 30,0,37 r0
+PASS A:not-attached-line — wiring line: Right motor isn't on Buggy yet. Stack it on Buggy.×
+PASS A:bare-ground-label — next to the motor: ["Put motors on a plate so wheels reach the ground"]
+PASS A:no-second-robot — no second robot and no card for it
+  shot S8-motor-on-ground-1366.png
+PASS A:stray-undone — Undo took the stray motor away
+PASS A:wheel-selected — clicking the wheel selects it
+PASS A:gap-marker — gap markers: ["Put the wheel on the axle"]
+  shot S9-near-miss-1366.png
+PASS A:ghost:the wheel dragged back near its axle end — the wheel dragged back near its axle end: mid-drag the ghost shows 25,0,31 r0 with the green snapped outline
+  shot S9b-near-miss-dragged-back-1366.png
+PASS A:moved:the wheel dragged back near its axle end — the wheel dragged back near its axle end: letting go put it at 25,0,31
+PASS A:gap-fixed — moved back with a snap: no gap marker, still ready to drive
+
+B. The owner's first try, replayed
+PASS B:ghost:hub on the bare ground — hub on the bare ground: aimed near, the ghost shows 20,0,28 r0 (not snapped)
+PASS B:placed:hub on the bare ground — hub on the bare ground: one click placed it at 20,0,28 r0
+PASS B:ghost:motor on the ground beside the hub — motor on the ground beside the hub: aimed near, the ghost shows 25,0,28 r0 (not snapped)
+PASS B:placed:motor on the ground beside the hub — motor on the ground beside the hub: one click placed it at 25,0,28 r0
+PASS B:no-second-robot — the motor did not start a second robot asking for a hub
+PASS B:not-attached-line — wiring line: Right motor isn't on Robo yet. Put them both on a plate.×
+PASS B:bare-ground-label — next to the motor: ["Put motors on a plate so wheels reach the ground"]
+  shot S10-owner-motor-beside-hub-1366.png
+PASS B:no-false-snap — aimed in front of the socket: no snap, hint "Put the motor on a plate first"
+  shot S11-owner-axle-hint-1366.png
+PASS B:gap-marker — the axle that points into the ring but is not in it gets a red gap marker (["Put the motor on a plate"])
+  shot S12-owner-axle-gap-1366.png
+PASS B:counts — 0 placements looked connected but were not (the axle beside the grounded motor is marked red)
+
+D. A motor dropped on the ground beside the robot, fixed with one drag
+PASS D:ghost:plate — plate: aimed near, the ghost shows 28,0,26 r0 (not snapped)
+PASS D:placed:plate — plate: one click placed it at 28,0,26 r0
+PASS D:ghost:hub — hub: aimed near, the ghost shows 29,1,27 r0 (not snapped)
+PASS D:placed:hub — hub: one click placed it at 29,1,27 r0
+PASS D:ghost:left motor beside the left side — left motor beside the left side: aimed near, the ghost shows 28,1,31 r2 with the green snapped outline (brick-1790180670213-zavs5u:left)
+PASS D:placed:left motor beside the left side — left motor beside the left side: one click placed it at 28,1,31 r2
+PASS D:ghost:second motor dropped on the ground, too far out to be pulled on — second motor dropped on the ground, too far out to be pulled on: aimed near, the ghost shows 37,0,30 r0 (not snapped)
+PASS D:placed:second motor dropped on the ground, too far out to be pulled on — second motor dropped on the ground, too far out to be pulled on: one click placed it at 37,0,30 r0
+PASS D:not-attached-line — wiring line: Right motor isn't on Buggy yet. Put it on Buggy's plate.×
+PASS D:motor-selected — clicking the motor selects it
+PASS D:ghost:the motor dragged toward the plate — the motor dragged toward the plate: mid-drag the ghost shows 31,1,31 r0 with the green snapped outline
+  shot S13-motor-dragged-on-1366.png
+PASS D:moved:the motor dragged toward the plate — the motor dragged toward the plate: letting go put it at 31,1,31
+PASS D:plugged-in — wiring line: Right motor connected to port BUndo×
+PASS D:no-ground-label — the motor is on the plate: its "on the ground" line is gone
+PASS D:on-buggy — the motor is part of Buggy
+  shot S14-motor-on-plate-1366.png
+
+C. A car from parts at 1024×768, aimed near
+PASS C:ghost:plate — plate: aimed near, the ghost shows 28,0,26 r0 (not snapped)
+PASS C:placed:plate — plate: one click placed it at 28,0,26 r0
+PASS C:ghost:hub — hub: aimed near, the ghost shows 29,1,27 r0 (not snapped)
+PASS C:placed:hub — hub: one click placed it at 29,1,27 r0
+PASS C:named — the robot is called Buggy (named through the card's Not now)
+PASS C:motor-targets — motor armed, the mouse on open ground: 2 glowing edge stretches (left, right)
+  shot S1-motor-targets-1024.png
+PASS C:ghost:motor beside the left side (on the ground, 1.6 studs off, level with the hub) — motor beside the left side (on the ground, 1.6 studs off, level with the hub): aimed near, the ghost shows 28,1,31 r2 with the green snapped outline (brick-1790180678977-hry429:left)
+  shot S2-motor-snapped-1024.png
+PASS C:placed:motor beside the left side (on the ground, 1.6 studs off, level with the hub) — motor beside the left side (on the ground, 1.6 studs off, level with the hub): one click placed it at 28,1,31 r2
+PASS C:left-motor-on — the left motor is on Buggy
+PASS C:left-motor-wired — wiring line: Left motor connected to port AUndo×
+PASS C:ghost:motor over the plate near the right edge, beside the hub — motor over the plate near the right edge, beside the hub: aimed near, the ghost shows 31,1,31 r0 with the green snapped outline (brick-1790180678977-hry429:right)
+PASS C:placed:motor over the plate near the right edge, beside the hub — motor over the plate near the right edge, beside the hub: one click placed it at 31,1,31 r0
+PASS C:right-motor-on — the right motor is on Buggy
+PASS C:axle-targets — axle armed: 2 glowing sockets
+  shot S3-axle-targets-1024.png
+PASS C:ghost:axle aimed at the ground a stud past the left socket — axle aimed at the ground a stud past the left socket: aimed near, the ghost shows 26,0,32 r0 with the green snapped outline (socket:brick-1790180688066-os4edl)
+  shot S4-axle-snapped-1024.png
+PASS C:placed:axle aimed at the ground a stud past the left socket — axle aimed at the ground a stud past the left socket: one click placed it at 26,0,32 r0
+PASS C:left-axle-in — the left axle is in the left motor
+PASS C:ghost:axle aimed at the ground a stud past the right socket — axle aimed at the ground a stud past the right socket: aimed near, the ghost shows 34,0,32 r0 with the green snapped outline (socket:brick-1790180688831-8cjg7m)
+PASS C:placed:axle aimed at the ground a stud past the right socket — axle aimed at the ground a stud past the right socket: one click placed it at 34,0,32 r0
+PASS C:right-axle-in — the right axle is in the right motor
+PASS C:wheel-targets — wheel armed: 2 glowing axle ends
+  shot S5-wheel-targets-1024.png
+PASS C:ghost:wheel aimed near the left axle end — wheel aimed near the left axle end: aimed near, the ghost shows 25,0,31 r0 with the green snapped outline (end:brick-1790180690700-q1qw8n:0)
+  shot S6-wheel-snapped-1024.png
+PASS C:placed:wheel aimed near the left axle end — wheel aimed near the left axle end: one click placed it at 25,0,31 r0
+PASS C:left-wheel-on — the left wheel is on its axle
+PASS C:ghost:wheel aimed near the right axle end — wheel aimed near the right axle end: aimed near, the ghost shows 36,0,31 r0 with the green snapped outline (end:brick-1790180691474-jasibu:1)
+PASS C:placed:wheel aimed near the right axle end — wheel aimed near the right axle end: one click placed it at 36,0,31 r0
+PASS C:right-wheel-on — the right wheel is on its axle
+PASS C:can-drive — readiness(): {"kind":"drive","ready":true,"reason":null}
+PASS C:no-gaps — no red gap markers on the finished car (0)
+  shot S7-car-ready-1024.png
+PASS C:counts — 8 placements, 0 that looked connected but were not
+
+96/96 checks passed
+  A 1366x768: 8 placements, 0 looked connected but were not
+  B 1366x768: 3 placements, 0 looked connected but were not
+  D 1366x768: 4 placements, 0 looked connected but were not
+  C 1024x768: 8 placements, 0 looked connected but were not

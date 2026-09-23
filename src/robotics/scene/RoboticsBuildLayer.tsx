@@ -11,17 +11,20 @@ import type { BrickInstance } from '../../brick/types'
 import { brickIdOfNode, isArmNode } from '../model/assembly'
 import { deriveCandidate, type DerivedCreation } from '../model/creations'
 import { brickFrame, toWorldDirection, toWorldPoint, type BrickFrame } from '../model/grid'
-import { snapDraftToConnector } from '../model/snap'
+import { findSnap } from '../model/snap'
 import type { Vec3 } from '../model/vec'
 import { MOTOR_SOCKET_RADIUS, roboticsSpec } from '../parts/catalog'
 import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
 import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/roboticsStore'
 import Cables from '../wiring/Cables'
 import type { HingeReport } from '../sim/mechanics'
-import { registerDraftSnapper } from './draftSnap'
+import ConnectionMarkers from './ConnectionMarkers'
+import { registerDraftSnapper, reportSnapHint } from './draftSnap'
+import { sharedSnapContext } from './snapContext'
 import { registerCanvasInsets } from './cameraInsets'
 import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets, viewOffsetFor } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
+import DriveFollow from './DriveFollow'
 import StageLayer from './StageLayer'
 
 /**
@@ -241,10 +244,21 @@ function SimBodies({ sim, model, creation }: { sim: SimState; model: RoboticsMod
   )
 }
 
-/** While the layer is mounted, the studio's ghost snaps onto connectors (`draftSnap.ts`, `model/snap.ts`). */
+/**
+ * While the layer is mounted, the studio's ghost snaps onto connectors and robot plate edges
+ * (`draftSnap.ts`, `model/snap.ts`), answering from the same context the target markers draw.
+ */
 function ConnectorSnapping() {
   useEffect(() => {
-    registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => snapDraftToConnector({ draft, hitBrick, hitPoint, bricks, partMap: useRoboticsStore.getState().model.input.partMap, plateSize }))
+    registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => {
+      const partMap = useRoboticsStore.getState().model.input.partMap
+      const context = sharedSnapContext(bricks, partMap, plateSize)
+      const outcome = findSnap({ draft, hitBrick, hitPoint, bricks: context.bricks, partMap, plateSize, context })
+      reportSnapHint(outcome.hint ? { partId: draft.partId, ...outcome.hint } : null)
+      if (!outcome.found) return null
+      const { pose, target } = outcome.found
+      return { ...pose, target: { key: target.key, kind: target.kind, brickId: target.brickId } }
+    })
     return () => registerDraftSnapper(null)
   }, [])
   return null
@@ -388,8 +402,10 @@ export default function RoboticsBuildLayer() {
       <HubPortLabels bricks={visible} plateSize={plateSize} />
       <StaticMotorOutputs bricks={visible} plateSize={plateSize} />
       <Cables />
+      <ConnectionMarkers />
       {sim && simCreation && <SimBodies sim={sim} model={model} creation={simCreation} />}
       <StageLayer />
+      <DriveFollow />
     </>
   )
 }
