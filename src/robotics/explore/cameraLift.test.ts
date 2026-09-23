@@ -1,7 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { CAMERA_MIN_DISTANCE, CAMERA_PROBE_RADIUS, findCameraObstruction, resolveCameraBoomDistance } from '../../brick/scenePhysics'
-import { LIFT, boomAt, boomClearance, createCameraLift, isBlocked, liftPitch } from './cameraLift'
+import { LIFT, UNWEDGE, boomAt, boomClearance, createCameraLift, isBlocked, liftPitch, touchesAt, unwedgedTarget } from './cameraLift'
 
 /**
  * The follow camera beside a big build, in a real Rapier world laid out like Explore: the plate
@@ -75,6 +75,46 @@ describe('the camera beside a tall robot', () => {
     expect(armLength(world, avatar, boomAt(INTO_ROBOT, far), 10.9)).toBeGreaterThan(0.9 * 10.9)
   })
 
+  it('a zoomed-out boom the robot would cut to 55 % rises too, so zooming out shows', () => {
+    const { world, avatar, probe } = scene()
+    // Three and a half studs off the robot, her back to it.
+    const off = { ...TARGET, z: 2.2 }
+    const query = { target: off, direction: boomAt(INTO_ROBOT, DEFAULT_PITCH), distance: 10.9 }
+    const own = boomClearance(world, query, probe, avatar)
+    expect(own).toBeLessThan(0.8 * 10.9)
+    const pitch = liftPitch(world, query, probe, avatar)!
+    expect(pitch).toBeGreaterThan(DEFAULT_PITCH)
+    expect(boomClearance(world, { ...query, direction: boomAt(INTO_ROBOT, pitch) }, probe, avatar)).toBeGreaterThanOrEqual(0.9 * 10.9)
+  })
+
+  it('in the wheel well (her head just over an axle, between a wheel and a motor) it looks from just above them: the arm is not pinned there', () => {
+    const world = new RAPIER.World({ x: 0, y: -9.81, z: 0 })
+    const avatar = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0.385, 0))
+    world.createCollider(RAPIER.ColliderDesc.capsule(0.18, 0.18), avatar)
+    const parts = world.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+    // A wheel to her left (1.52 tall), a motor to her right (0.9 tall), and an axle across between them whose
+    // surface is 0.26 below her head: inside the arm's padding (0.3) but outside its probe (0.22), so it is
+    // not one of the colliders the arm ignores as already overlapping.
+    world.createCollider(RAPIER.ColliderDesc.cuboid(0.31, 0.76, 0.76).setTranslation(-0.73, 0.76, 0), parts)
+    world.createCollider(RAPIER.ColliderDesc.cuboid(0.62, 0.45, 0.62).setTranslation(1.12, 0.45, 0), parts)
+    world.createCollider(RAPIER.ColliderDesc.capsule(0.62, 0.09).setRotation({ x: 0, y: 0, z: Math.SQRT1_2, w: Math.SQRT1_2 }).setTranslation(0, TARGET.y - 0.26 - 0.09, 0), parts)
+    world.step()
+    const probe = new RAPIER.Ball(CAMERA_PROBE_RADIUS)
+    // Every boom from her head is cut at once, even straight up: the tester's close-ups under the axle.
+    for (const pitch of [DEFAULT_PITCH, 1.2, LIFT.maxPitch]) expect(armLength(world, avatar, boomAt(INTO_ROBOT, pitch), DEFAULT_DISTANCE)).toBeCloseTo(CAMERA_MIN_DISTANCE, 6)
+    expect(touchesAt(world, RAPIER, TARGET, avatar)).toBe(true)
+    const above = unwedgedTarget(world, RAPIER, TARGET, avatar)!
+    expect(above.y - TARGET.y).toBeGreaterThan(0)
+    expect(above.y - TARGET.y).toBeLessThanOrEqual(UNWEDGE.maxUp + 1e-9)
+    // From there a boom clears (risen if need be), so the camera is out of the wheel well, not on her head.
+    const pitch = liftPitch(world, { target: above, direction: boomAt(INTO_ROBOT, DEFAULT_PITCH), distance: DEFAULT_DISTANCE }, probe, avatar) ?? DEFAULT_PITCH
+    const hit = findCameraObstruction(world, above, { x: 0, y: 0, z: 0, w: 1 }, boomAt(INTO_ROBOT, pitch), probe, DEFAULT_DISTANCE, avatar)
+    expect(resolveCameraBoomDistance(null, DEFAULT_DISTANCE, hit?.time_of_impact ?? null, 1 / 60)).toBeGreaterThan(0.8 * DEFAULT_DISTANCE)
+    // Out in the open her head is clear: keep looking at it.
+    const open = scene({ robot: false })
+    expect(unwedgedTarget(open.world, RAPIER, TARGET, open.avatar)).toBeNull()
+  })
+
   it('nothing in the way, or the robot on the other side: no rise', () => {
     const open = scene({ robot: false })
     expect(liftPitch(open.world, { target: TARGET, direction: boomAt(INTO_ROBOT, DEFAULT_PITCH), distance: DEFAULT_DISTANCE }, open.probe, open.avatar)).toBeNull()
@@ -98,6 +138,8 @@ describe('the camera beside a tall robot', () => {
     const into = boomAt(INTO_ROBOT, DEFAULT_PITCH)
     const first = frame(into)!
     expect(first.y).toBeGreaterThan(into.y)
+    // Not a single frame where the arm would still pin the camera on her head: an eased step that is still cut goes straight up.
+    expect(armLength(world, avatar, first, DEFAULT_DISTANCE)).toBeGreaterThan(0.9 * DEFAULT_DISTANCE)
     let last = first
     for (let index = 0; index < 30; index += 1) last = frame(into)!
     const target = liftPitch(world, { target: TARGET, direction: into, distance: DEFAULT_DISTANCE }, probe, avatar)!

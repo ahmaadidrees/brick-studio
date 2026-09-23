@@ -1,5 +1,5 @@
 import type RAPIER from '@dimforge/rapier3d-compat'
-import { CAMERA_SURFACE_PADDING, findCameraObstruction } from '../../brick/scenePhysics'
+import { CAMERA_PROBE_RADIUS, CAMERA_SURFACE_PADDING, findCameraObstruction } from '../../brick/scenePhysics'
 import type { Vec3 } from '../model/vec'
 
 /**
@@ -12,18 +12,16 @@ import type { Vec3 } from '../model/vec'
  * and the arm cuts every distance to the same 0.65. The robot's own static bricks do this before it
  * is ever ridden, and a parked robot's solid mirror bodies do it after.
  *
- * Here a boom the build would cut hard rises over it instead: the least steep pitch, up to nearly
- * overhead, whose boom is clear at the distance the student zoomed to. Rising is quick and settling
- * back is slow, so it glides; the studio's arm still shortens whatever remains in the way, so the
- * camera never ends up inside anything. The zoomed distance is kept, so zoom and Recenter move the
- * camera again.
+ * Here a boom the build would cut short rises over it instead: the least steep pitch, up to nearly
+ * overhead, whose boom is clear at the distance the student zoomed to. It rises quickly and settles
+ * back gently, but goes straight there when an eased step would still be cut (the arm pulls in at
+ * once); the studio's arm still shortens whatever remains in the way, so the camera never ends up
+ * inside anything. The zoomed distance is kept, so zoom and Recenter move the camera again.
  */
 export const LIFT = Object.freeze({
-  /** Cut to under this fraction of the wanted distance… */
-  blockedFraction: 0.45,
-  /** …or under this many units (whichever is more, but never more than 80 % of the distance): blocked. */
-  blockedUnder: 2.5,
-  /** A risen boom this clear (fraction of the wanted distance) is good. */
+  /** A boom the arm would cut to under this fraction of the distance the student zoomed to is blocked: zooming out must show. */
+  blockedFraction: 0.8,
+  /** A risen boom this clear (fraction of the wanted distance) is good; the gap to `blockedFraction` keeps it from flickering. */
   clearFraction: 0.9,
   /** How steep it may rise, radians (the student's own orbit stops at 1.08; straight down is degenerate for lookAt). */
   maxPitch: 1.45,
@@ -35,6 +33,13 @@ export const LIFT = Object.freeze({
 })
 
 export type CameraWorld = Pick<RAPIER.World, 'castShape' | 'intersectionsWithShape'>
+
+/**
+ * How far above her head the camera may look instead, when her head is wedged among parts (a wheel
+ * well under an axle): the arm's cast starts within its padding of a wheel or motor there, so every
+ * direction is cut at once and no rise helps (a tester's 048 and 050). Tried in these steps.
+ */
+export const UNWEDGE = Object.freeze({ maxUp: 1.5, step: 0.25 })
 export type BoomQuery = { target: Vec3; direction: Vec3; distance: number }
 
 const IDENTITY = { x: 0, y: 0, z: 0, w: 1 }
@@ -55,9 +60,9 @@ export function boomClearance(world: CameraWorld, query: BoomQuery, probe: RAPIE
   return hit ? Math.max(0, hit.time_of_impact - CAMERA_SURFACE_PADDING) : query.distance
 }
 
-/** Whether a boom cut to `clearance` of `distance` is cut hard enough to rise instead. */
+/** Whether a boom cut to `clearance` of `distance` is cut enough to rise instead. */
 export function isBlocked(clearance: number, distance: number): boolean {
-  return clearance < Math.min(distance * 0.8, Math.max(LIFT.blockedUnder, distance * LIFT.blockedFraction))
+  return clearance < distance * LIFT.blockedFraction
 }
 
 /**
@@ -79,6 +84,31 @@ export function liftPitch(world: CameraWorld, query: BoomQuery, probe: RAPIER.Sh
   return best.clearance >= Math.max(own + 1, 1.5) ? best.pitch : null
 }
 
+/** Whether the arm's padded probe at `at` already touches something (not her own body, nothing made not solid). */
+export function touchesAt(world: CameraWorld, rapier: Pick<typeof RAPIER, 'Ball'>, at: Vec3, exclude?: RAPIER.RigidBody): boolean {
+  let touching = false
+  world.intersectionsWithShape(at, IDENTITY, new rapier.Ball(CAMERA_PROBE_RADIUS + CAMERA_SURFACE_PADDING), (collider) => {
+    if (!collider.isEnabled()) return true
+    touching = true
+    return false
+  }, undefined, undefined, undefined, exclude)
+  return touching
+}
+
+/**
+ * Where the camera should look when her head (`head`, the studio's usual target) is wedged among
+ * parts: the lowest point up to `UNWEDGE.maxUp` above it that is clear, or null when her head is
+ * clear (keep looking at it) or nothing above is.
+ */
+export function unwedgedTarget(world: CameraWorld, rapier: Pick<typeof RAPIER, 'Ball'>, head: Vec3, exclude?: RAPIER.RigidBody): Vec3 | null {
+  if (!touchesAt(world, rapier, head, exclude)) return null
+  for (let up = UNWEDGE.step; up <= UNWEDGE.maxUp + 1e-9; up += UNWEDGE.step) {
+    const at = { x: head.x, y: head.y + up, z: head.z }
+    if (!touchesAt(world, rapier, at, exclude)) return at
+  }
+  return null
+}
+
 /**
  * The camera's boom for this frame: the orbit's, or risen over a build and eased there and back.
  * Null while no rise is under way (the studio keeps its own boom). One per Explore visit.
@@ -86,14 +116,20 @@ export function liftPitch(world: CameraWorld, query: BoomQuery, probe: RAPIER.Sh
 export function createCameraLift(world: CameraWorld, probe: RAPIER.Shape, exclude: () => RAPIER.RigidBody | undefined) {
   let risen: number | null = null
   const lift = (query: BoomQuery & { delta: number }): Vec3 | null => {
+    const body = exclude()
     const orbitPitch = pitchOf(query.direction)
-    const wanted = liftPitch(world, query, probe, exclude()) ?? orbitPitch
+    const yaw = yawOf(query.direction)
+    const wanted = liftPitch(world, query, probe, body) ?? orbitPitch
     const from = risen ?? orbitPitch
-    const rate = wanted > from ? LIFT.riseRate : LIFT.settleRate
-    const next = from + (wanted - from) * (1 - Math.exp(-rate * Math.max(0, query.delta)))
+    const rising = wanted > from
+    let next = from + (wanted - from) * (1 - Math.exp(-(rising ? LIFT.riseRate : LIFT.settleRate) * Math.max(0, query.delta)))
+    // Never linger where the arm would cut the boom short (it pulls in at once; the ease takes a few frames):
+    // if the eased pitch is still blocked, go straight to the wanted one, up or down. That one is the orbit's
+    // own boom (clear), a clear risen one, or the one with the most room.
+    if (Math.abs(next - wanted) > 1e-3 && next > orbitPitch && isBlocked(boomClearance(world, { ...query, direction: boomAt(yaw, next) }, probe, body), query.distance)) next = wanted
     risen = wanted === orbitPitch && Math.abs(next - orbitPitch) < 0.01 ? null : next
     if (risen === null || risen <= orbitPitch) return null
-    return boomAt(yawOf(query.direction), Math.min(LIFT.maxPitch, risen))
+    return boomAt(yaw, Math.min(LIFT.maxPitch, risen))
   }
   return Object.assign(lift, { reset: () => { risen = null }, risenPitch: () => risen })
 }

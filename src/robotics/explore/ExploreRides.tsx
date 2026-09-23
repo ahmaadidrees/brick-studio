@@ -17,7 +17,7 @@ import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
 import type { TestProp } from '../run/types'
 import { WALL_CAP_COLOR, brickWallTile } from '../scene/brickWall'
 import type { RapierModule } from '../sim/colliders'
-import { createCameraLift } from './cameraLift'
+import { createCameraLift, unwedgedTarget } from './cameraLift'
 import { findHopOffPlacement, hopOffShapes } from './hopOff'
 import { createMirrorRegistry, type MirrorWorld } from './mirrors'
 import { isCurbProp } from './plateCurb'
@@ -72,8 +72,14 @@ export default function ExploreRides() {
     const cameraWorld = world as unknown as RAPIER.World
     const avatarBody = () => { const handle = riderBodyHandle(); return handle === null ? undefined : cameraWorld.getRigidBody(handle) ?? undefined }
     setExploreCameraHandler(createCameraLift(cameraWorld, new (rapier as unknown as RapierModule).Ball(CAMERA_PROBE_RADIUS), avatarBody))
-    // While riding, the camera frames the robot rather than only the rider's head.
-    setExploreCameraTargetHandler(rideCameraTarget)
+    // While riding, the camera frames the robot rather than only the rider's head; walking with her head
+    // wedged among parts (a wheel well), it looks from just above them.
+    setExploreCameraTargetHandler(() => {
+      const riding = rideCameraTarget()
+      if (riding) return riding
+      const avatar = lastAvatarPosition()
+      return avatar ? unwedgedTarget(cameraWorld, rapier as unknown as RapierModule, { x: avatar.x, y: avatar.y + 0.52, z: avatar.z }, avatarBody()) : null
+    })
     const removeKeys = installRideKeys()
     return () => {
       removeKeys()
