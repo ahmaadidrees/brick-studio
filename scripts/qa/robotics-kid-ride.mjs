@@ -168,7 +168,7 @@ const maxSeatGap = Math.max(...toEdge.map((sample) => sample.avatarToSeat))
 const lastSpeeds = toEdge.slice(-10).map((sample) => sample.speed)
 measurements.edge = { builtChassis, pushedChassis: pushed.chassis, nearestFrontZ: round(nearestFront), plateEdgeZ: round(-PLATE_HALF), frontToEdge: round(nearestFront + PLATE_HALF), lastSpeeds, maxRiderToSeat: round(maxSeatGap), samples: toEdge.length }
 check('D.bumped-and-stopped', Math.max(...lastSpeeds) < 0.3 && nearestFront > -PLATE_HALF - 0.05 && nearestFront < -PLATE_HALF + 1.5,
-  `W held 7 s: the Buggy drove ${round(distance(builtChassis, pushed.chassis) / STUD, 1)} studs and stopped against the curb (its front ${round(nearestFront + PLATE_HALF, 2)} units inside the plate's edge, speed ${lastSpeeds.at(-1)} over the last second)`)
+  `W held 7 s: the Buggy drove ${round(distance(builtChassis, pushed.chassis) / STUD, 1)} studs and stopped against the curb (its front ${round(Math.abs(nearestFront + PLATE_HALF), 2)} units ${nearestFront < -PLATE_HALF ? 'past the plate’s edge: contact overlap with the curb' : 'short of the plate’s edge'}, speed ${lastSpeeds.at(-1)} over the last second)`)
 check('D.stayed-riding', stillRiding && pushed.chassis.y > builtChassis.y - 0.1 && pushed.chassis.y < builtChassis.y + 0.1, `never thrown out, never sent back (phase riding, generation ${builtGeneration}, no notice, every sample); chassis height ${pushed.chassis.y} vs ${builtChassis.y} (it did not climb the curb)`)
 check('D.rider-on-seat', maxSeatGap < 0.15, `the rider stayed on the seat the whole way (at most ${round(maxSeatGap, 3)} units off it)`)
 await page.keyboard.down('w')

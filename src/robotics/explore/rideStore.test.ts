@@ -329,7 +329,10 @@ describe('the ride state machine', () => {
     const second = liveRide(RIDE_CREATION_ID)!
     frames(0.5)
     ride().setRideKey('up', false)
+    expect(ride().notice?.text).toBe(BACK_TO_START)
     ride().hopOff()
+    // The line was about the ride: it does not follow the rider onto the ground.
+    expect(ride().notice).toBeNull()
     frames(1.5)
     expect(ride()).toMatchObject({ phase: 'walking', riding: null, liveIds: [RIDE_CREATION_ID] })
     const parked = seatOf(second).point

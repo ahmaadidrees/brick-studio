@@ -427,7 +427,8 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
     releaseKeys(ride)
     heldKeys.clear()
     dismount = { creationId: state.riding, elapsed: 0, waitForStop: true }
-    set({ phase: 'dismounting' })
+    // "Back to the start!" was about the ride; it does not follow the rider onto the ground.
+    set({ phase: 'dismounting', ...(state.notice?.text === BACK_TO_START ? { notice: null } : {}) })
   },
 
   pressRideKey: () => {
