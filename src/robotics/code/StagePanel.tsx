@@ -18,6 +18,8 @@ export type StagePanelProps = {
   space: RunSpace
   hasVisitor: boolean
   showInput: boolean
+  /** The program drives with the helpers only: sides running opposite ways are a turn it asked for (see `programTurnsOnPurpose`). */
+  turnsOnPurpose?: boolean
   /** Why Run did not start (a compile error), in the student's words. */
   runBlocked: string | null
   /** The saved program is newer than the one running. */
@@ -40,7 +42,7 @@ export function StagePanel(props: StagePanelProps) {
   const { creation, observation, loading, space, hasVisitor, showInput, runBlocked, changed, notice, goal, highlightGoal } = props
   const status = stageStatus(observation, loading)
   const running = observation?.phase === 'running'
-  const chips = readingChips(creation, observation)
+  const chips = readingChips(creation, observation, { turnsOnPurpose: props.turnsOnPurpose })
   const visitorBusy = observation?.visitorPhase === 'arriving' || observation?.visitorPhase === 'here' || observation?.visitorPhase === 'leaving'
   return (
     <section className="robo-code-stage" aria-label="Stage" data-testid="robo-stage">

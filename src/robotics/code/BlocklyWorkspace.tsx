@@ -319,7 +319,7 @@ export function BlocklyWorkspace({ program, creation, firstRun, paletteCollapsed
 
   // A device renamed, re-plugged or removed: relabel the dropdowns and recompile.
   const deviceKey = JSON.stringify([...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons].map((device) => [device.brickId, device.name, device.port?.port ?? null]))
-    + JSON.stringify(creation.drivePair)
+    + JSON.stringify(creation.drivePair) + JSON.stringify(creation.driveSides)
   const deviceKeyRef = useRef(deviceKey)
   useEffect(() => {
     const workspace = workspaceRef.current

@@ -377,8 +377,10 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const { sim, model } = get()
     const creation = model.creations.find((candidate) => candidate.id === id)
     if (!sim || !creation?.drivePair) return
-    const reversed = new Set(creation.drivePair.reversedIds)
-    for (const motorId of [creation.drivePair.leftId, creation.drivePair.rightId]) sim.mechanics.setMotorPower(motorId, reversed.has(motorId) ? -power : power)
+    // Every motor that drives (a four-wheel car's four), each flipped when it faces the other way.
+    const sides = creation.driveSides ?? { left: [creation.drivePair.leftId], right: [creation.drivePair.rightId], reversedIds: creation.drivePair.reversedIds }
+    const reversed = new Set(sides.reversedIds)
+    for (const motorId of [...sides.left, ...sides.right]) sim.mechanics.setMotorPower(motorId, reversed.has(motorId) ? -power : power)
   },
   stopAll: () => get().sim?.mechanics.stopAll(),
   /** Discards the running simulation and cancels any start still in flight. The document is untouched. */
