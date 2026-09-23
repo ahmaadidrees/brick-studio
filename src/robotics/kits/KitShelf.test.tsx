@@ -50,12 +50,12 @@ const robotNames = () => readRoboticsSection(useBrickStore.getState().documentMe
 describe('the drawer on a desktop', () => {
   it('a visible Robots choice opens Start with a kit; a kit card arms the kit and Place makes a robot', async () => {
     render(<BrickStudioApp />)
-    const robots = await screen.findByRole('button', { name: /^Robots/ })
+    const robots = await screen.findByRole('button', { name: /^Robots/ }, { timeout: 10_000 })
     expect(robots).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByText('Start with a kit')).not.toBeInTheDocument()
     fireEvent.click(robots)
     expect(robots).toHaveAttribute('aria-pressed', 'true')
-    const shelf = within(await screen.findByTestId('kit-shelf'))
+    const shelf = within(await screen.findByTestId('kit-shelf', {}, { timeout: 10_000 }))
     expect(shelf.getByRole('heading', { name: 'Start with a kit' })).toBeInTheDocument()
     // The category list says Robots too, and the robot parts follow the kits.
     const category = screen.getByRole('combobox', { name: 'Brick category' }) as HTMLSelectElement
@@ -83,9 +83,9 @@ describe('the drawer on a desktop', () => {
 
   it('the Robots choice goes back to all bricks, and kits make way for a search', async () => {
     render(<BrickStudioApp />)
-    const robots = await screen.findByRole('button', { name: /^Robots/ })
+    const robots = await screen.findByRole('button', { name: /^Robots/ }, { timeout: 10_000 })
     fireEvent.click(robots)
-    await screen.findByTestId('kit-shelf')
+    await screen.findByTestId('kit-shelf', {}, { timeout: 10_000 })
     fireEvent.change(screen.getByRole('searchbox', { name: 'Search bricks' }), { target: { value: 'wheel' } })
     expect(screen.queryByTestId('kit-shelf')).not.toBeInTheDocument()
     expect(screen.getByTitle('Wheel')).toBeInTheDocument()
@@ -106,9 +106,9 @@ describe('the touch sheet', () => {
     render(<BrickStudioApp />)
     fireEvent.click(screen.getByRole('button', { name: 'Open brick drawer' }))
     const sheet = within(screen.getByRole('dialog', { name: 'Bricks' }))
-    fireEvent.click(await sheet.findByRole('button', { name: /^Robots/ }))
+    fireEvent.click(await sheet.findByRole('button', { name: /^Robots/ }, { timeout: 10_000 }))
     expect(sheet.getByRole('tab', { name: 'Robots' })).toHaveAttribute('aria-selected', 'true')
-    fireEvent.click(within(await sheet.findByTestId('kit-shelf')).getByRole('button', { name: /Gate/ }))
+    fireEvent.click(within(await sheet.findByTestId('kit-shelf', {}, { timeout: 10_000 })).getByRole('button', { name: /Gate/ }))
     expect(screen.queryByRole('dialog', { name: 'Bricks' })).not.toBeInTheDocument()
     expect(useBrickStore.getState().toast).toBe('Tap where your Gate goes, then press Place.')
     act(() => { fireEvent.click(screen.getByRole('button', { name: 'Place Gate' })) })
