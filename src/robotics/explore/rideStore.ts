@@ -111,6 +111,8 @@ export const DISMOUNT_MAX_SECONDS = 0.9
 export const STOPPED_SPEED = 0.25
 /** A ride starts with the follow camera at least this steep (radians), so the rider shows over the seat's back. */
 export const RIDE_CAMERA_PITCH = 0.8
+/** …and at least this far back (world units), so the road ahead shows over the creation instead of its hub. */
+export const RIDE_CAMERA_DISTANCE = 9.5
 const SETTLE_SPEED = 0.02
 const SETTLE_SECONDS = 0.6
 const NOTICE_SECONDS = 5
@@ -365,6 +367,7 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
     set({ riding: id, phase: 'riding', nearestId: null, liveIds: [...live.keys()], programStopped: false, notice: null })
     syncHidden()
     if (brickState.touchPitch < RIDE_CAMERA_PITCH) useBrickStore.setState({ touchPitch: RIDE_CAMERA_PITCH })
+    if (brickState.touchCameraDistance < RIDE_CAMERA_DISTANCE) brickState.setTouchCameraDistance(RIDE_CAMERA_DISTANCE)
     return true
   },
 
