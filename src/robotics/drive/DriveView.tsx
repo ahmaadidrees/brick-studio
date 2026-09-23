@@ -368,8 +368,7 @@ function TryFoot({ creation, stage, observation }: { creation: DerivedCreation; 
             <div className={`robo-drive-hint robo-drive-result ${line.tone}`} id={hintId} role="status" data-testid="robo-try-result" data-verdict={walk.verdict ?? undefined}>
               <p>
                 {line.tone === 'good' && <CircleCheck size={20} aria-hidden="true" />}
-                <span>{line.text}</span>
-                {line.pointsAtBeam && <BeamArrow />}
+                <span>{line.text}{line.pointsAtBeam && <> <BeamArrow /></>}</span>
               </p>
               {line.pointsAtCode && (
                 <button type="button" className="robo-drive-code-link" onClick={openCode} data-testid="robo-try-open-code">

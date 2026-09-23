@@ -263,7 +263,7 @@
   font-weight: 900;
   cursor: pointer;
 }
-.robo-beam-arrow { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #f4ca3a; color: #263c51; transition: transform .2s; }
+.robo-beam-arrow { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #f4ca3a; color: #263c51; vertical-align: middle; transition: transform .2s; }
 
 /* ------------------------------------------------------------------ not ready, live room */
 

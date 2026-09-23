@@ -392,7 +392,10 @@ function StageScene({ session }: { session: StageSession }) {
   const pointed = useRef<string | null>(null)
   pointed.current = pointedSensor
   const pointer = useRef<THREE.Mesh | null>(null)
-  useEffect(() => { if (!pointedSensor) setBeamScreenAngle(null) }, [pointedSensor])
+  useEffect(() => {
+    if (!pointedSensor) setBeamScreenAngle(null)
+    return () => setBeamScreenAngle(null)
+  }, [pointedSensor])
 
   useEffect(() => {
     setHiddenBrickIds(controller.hiddenBrickIds)

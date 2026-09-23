@@ -80,8 +80,7 @@ export function StagePanel(props: StagePanelProps) {
           ? (
             <p className={`robo-line walk ${props.walkLine.tone}`} role="status" data-testid="robo-try-result" data-verdict={props.walkVerdict ?? undefined}>
               {props.walkLine.tone === 'good' && <CircleCheck size={17} aria-hidden="true" />}
-              <span>{props.walkLine.text}</span>
-              {props.walkLine.pointsAtBeam && <BeamArrow />}
+              <span>{props.walkLine.text}{props.walkLine.pointsAtBeam && <> <BeamArrow /></>}</span>
             </p>
           )
           : props.walking && <p className="robo-line walk" role="status" data-testid="robo-try-result">Here they come. Watch the sensor.</p>}
