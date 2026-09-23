@@ -510,7 +510,7 @@ async function failureReversed() {
   }
   check('F2.run.turns', Math.abs(yaw) > 60 && drift < 1 && meanSpeed < 0.5, `it spun ${Math.abs(yaw).toFixed(0)}° on the spot instead of driving straight: it turned about a point ${drift.toFixed(2)} studs from midway between its wheels, forward speed averaged ${meanSpeed.toFixed(2)} st/s (chip "Speed ${speedChip?.value}")`)
   check('F2.run.opposite-speeds', last.motors[ids.leftMotor].forwardPercent > 20 && last.motors[ids.rightMotor].forwardPercent < -20, `forward speeds as the creation feels them: left ${last.motors[ids.leftMotor].forwardPercent} %, right ${last.motors[ids.rightMotor].forwardPercent} % (both commanded +40)`)
-  check('F2.run.chip', drive && /^40 · −40 %$/.test(drive.value) && /^speed \d+ · −\d+ % · Right motor is mounted reversed$/.test(drive.detail ?? '') && drive.tone === 'bad', `the stage's Motors chip: ${drive?.value} (${drive?.detail}), tone ${drive?.tone}`)
+  check('F2.run.chip', drive && /^Left 40 · Right −40 %$/.test(drive.value) && /^speed \d+ · −\d+ % · Right motor faces the other way$/.test(drive.detail ?? '') && drive.tone === 'bad', `the stage's Motors chip: ${drive?.value} (${drive?.detail}), tone ${drive?.tone}`)
   if (!shotTaken) await shot('F2b-code-raw-blocks-rover-turns')
 
   // Repair, typed while it still spins: the right motor at −40. The run keeps the program it started with.
@@ -530,7 +530,7 @@ async function failureReversed() {
   const fixed = await poseOf(ids.hub)
   const fixedChip = (await chips()).Motors
   measured.F2.repaired = { yawDegrees: Number(yawOf(fixed.rotation).toFixed(2)), forwardStuds: Number((-(fixed.position.z - fixStart.position.z) / STUD).toFixed(2)), chip: fixedChip }
-  check('F2.repair', Math.abs(yawOf(fixed.rotation)) < 3 && -(fixed.position.z - fixStart.position.z) / STUD > 2 && fixedChip?.value === '40 · 40 %', `Reset, Run: with "run Right motor at −40 %" it drives straight: yaw ${yawOf(fixed.rotation).toFixed(1)}°, ${(-(fixed.position.z - fixStart.position.z) / STUD).toFixed(1)} studs in 1.3 s, chip ${fixedChip?.value}`)
+  check('F2.repair', Math.abs(yawOf(fixed.rotation)) < 3 && -(fixed.position.z - fixStart.position.z) / STUD > 2 && fixedChip?.value === 'Left 40 · Right 40 %', `Reset, Run: with "run Right motor at −40 %" it drives straight: yaw ${yawOf(fixed.rotation).toFixed(1)}°, ${(-(fixed.position.z - fixStart.position.z) / STUD).toFixed(1)} studs in 1.3 s, chip ${fixedChip?.value}`)
   await shot('F2d-repaired-right-at-minus-40')
   await resetStage()
 
@@ -544,7 +544,7 @@ async function failureReversed() {
   const straight = await poseOf(ids.hub)
   const helperChip = (await chips()).Motors
   measured.F2.driveHelper = { yawDegrees: Number(yawOf(straight.rotation).toFixed(2)), forwardStuds: Number((-(straight.position.z - start.position.z) / STUD).toFixed(2)), left: helper.motors[ids.leftMotor].powerPercent, right: helper.motors[ids.rightMotor].powerPercent, chip: helperChip }
-  check('F2.helper-goes-straight', Math.abs(yawOf(straight.rotation)) < 3 && -(straight.position.z - start.position.z) / STUD > 2 && helper.motors[ids.rightMotor].powerPercent === -40 && helperChip?.value === '40 · 40 %', `"drive forward at 40 %" sends ${helper.motors[ids.leftMotor].powerPercent} and ${helper.motors[ids.rightMotor].powerPercent} (the pair knows the right motor is reversed): straight, yaw ${yawOf(straight.rotation).toFixed(1)}°, chip ${helperChip?.value}`)
+  check('F2.helper-goes-straight', Math.abs(yawOf(straight.rotation)) < 3 && -(straight.position.z - start.position.z) / STUD > 2 && helper.motors[ids.rightMotor].powerPercent === -40 && helperChip?.value === 'Left 40 · Right 40 %', `"drive forward at 40 %" sends ${helper.motors[ids.leftMotor].powerPercent} and ${helper.motors[ids.rightMotor].powerPercent} (the pair knows the right motor is reversed): straight, yaw ${yawOf(straight.rotation).toFixed(1)}°, chip ${helperChip?.value}`)
   await resetStage()
   await page.getByRole('tab', { name: 'My program' }).click()
   await sleep(500)
@@ -625,7 +625,7 @@ async function failureReversedOtherWay() {
   const end = await poseOf(ids.hub)
   const drive = (await chips()).Motors
   measured.F2d = { program, yawDegrees: Number(yawOf(end.rotation).toFixed(2)), forwardStuds: Number((-(end.position.z - start.position.z) / STUD).toFixed(2)), left: o.motors[ids.leftMotor], right: o.motors[ids.rightMotor], chip: drive }
-  check('F2d.run.straight', Math.abs(yawOf(end.rotation)) < 3 && measured.F2d.forwardStuds > 2 && drive?.value === '40 · 40 %', `${program.join(' → ')}: it drives straight, ${measured.F2d.forwardStuds} studs in 1.5 s, yaw ${yawOf(end.rotation).toFixed(1)}°, chip ${drive?.value} (${drive?.detail})`)
+  check('F2d.run.straight', Math.abs(yawOf(end.rotation)) < 3 && measured.F2d.forwardStuds > 2 && drive?.value === 'Left 40 · Right 40 %', `${program.join(' → ')}: it drives straight, ${measured.F2d.forwardStuds} studs in 1.5 s, yaw ${yawOf(end.rotation).toFixed(1)}°, chip ${drive?.value} (${drive?.detail})`)
   await shot('F2f-code-same-way-raw-blocks-straight')
   await resetStage()
   await back()
