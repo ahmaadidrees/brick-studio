@@ -1,10 +1,12 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { StrictMode } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { GATE_SECTION, loadWorld, storedPrograms, storedSection } from '../code/codeTestFixtures'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { studioShortcutsSuspended } from '../code/studioKeys'
+import { CURB_PROP_IDS, plateHalfWidth } from '../explore/plateCurb'
 import { FOUR_WHEEL_IDS, GATE_IDS, ROVER_IDS, SIGNAL_IDS, fourWheelBricks, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
@@ -159,7 +161,7 @@ describe('Drive', () => {
     await running('testPlate')
     fireEvent.click(screen.getByRole('button', { name: 'My world' }))
     await running('myWorld')
-    expect(stage().controller.props).toEqual([])
+    expect(stage().controller.props.map((prop) => prop.id)).toEqual([...CURB_PROP_IDS])
     expect(stage().creation.bodies.every((body) => !body.anchored)).toBe(true)
     expect(storedSection().creations[0].testSpace).toBeUndefined()
     fireEvent.keyDown(window, { key: 'ArrowUp' })
@@ -175,6 +177,24 @@ describe('Drive', () => {
     await running('testPlate')
     expect(stage().controller.props.map((prop) => prop.id)).toEqual(COURSE_IDS)
     expect(documentJson()).toBe(before)
+  })
+
+  it('My world has the curb a ride in Explore has: driven flat out at the plate’s edge, the robot stops there', async () => {
+    loadWorld()
+    await openDrive()
+    await running('testPlate')
+    fireEvent.click(screen.getByRole('button', { name: 'My world' }))
+    await running('myWorld')
+    // The Buggy's nose starts 6 studs in front of the plate's middle; the plate's edge is 32 studs out.
+    const room = plateHalfWidth(64) - 6 * STUD
+    fireEvent.keyDown(window, { key: 'ArrowUp' })
+    advance(8)
+    const pushed = travelled()
+    const speed = Math.abs(stage().controller.observe().speedStudsPerSecond)
+    fireEvent.keyUp(window, { key: 'ArrowUp' })
+    expect(pushed).toBeGreaterThan(room - 0.5)
+    expect(pushed).toBeLessThan(room + 0.05)
+    expect(speed).toBeLessThan(0.5)
   })
 
   it('a four-wheel car drives too: all four motors, from the keys, on its own course', async () => {

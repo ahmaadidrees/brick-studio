@@ -1,11 +1,11 @@
 import type RAPIER from '@dimforge/rapier3d-compat'
 import { useFrame } from '@react-three/fiber'
 import { ConvexHullCollider, CuboidCollider, RigidBody, RoundCuboidCollider, useRapier, type RapierRigidBody } from '@react-three/rapier'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import type * as THREE from 'three'
 import { followCameraYaw } from '../../brick/explorePreferences'
 import { createBrickGeometry } from '../../brick/geometry'
-import { BRICK_PART_MAP, EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS, brickPhysicalShapes, type PhysicalShape } from '../../brick/parts'
+import { BRICK_PART_MAP, EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS, PLATE_HEIGHT, brickPhysicalShapes, type PhysicalShape } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { brickIdOfNode, isArmNode } from '../model/assembly'
@@ -13,12 +13,16 @@ import { brickFrame } from '../model/grid'
 import { rotateByQuat } from '../model/vec'
 import { roboticsSpec } from '../parts/catalog'
 import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
+import type { TestProp } from '../run/types'
+import { WALL_CAP_COLOR, brickWallTile } from '../scene/brickWall'
 import type { RapierModule } from '../sim/colliders'
 import { findHopOffPlacement, hopOffShapes } from './hopOff'
+import { createMirrorRegistry, type MirrorWorld } from './mirrors'
+import { isCurbProp } from './plateCurb'
 import { setExploreRideHandler } from './rideBridge'
 import { installRideKeys } from './rideKeys'
 import { yawOf } from './rideModel'
-import { advanceRides, footprintOf, lastAvatarPosition, liveRide, liveRides, rideAvatarFrame, riderBodyHandle, seatOf, useExploreRideStore, type LiveRide } from './rideStore'
+import { advanceRides, bringBackRide, footprintOf, lastAvatarPosition, liveRide, liveRides, rideAvatarFrame, riderBodyHandle, seatOf, useExploreRideStore, type LiveRide } from './rideStore'
 
 /**
  * Riding in Explore, the scene half (checkpoint 4). Mounted inside `ExploreScene`'s
@@ -38,6 +42,12 @@ import { advanceRides, footprintOf, lastAvatarPosition, liveRide, liveRides, rid
  * While a creation is live the studio's static copy of its bricks is hidden
  * (`scene/hiddenBricks.ts`); unmounting (leaving Explore) disposes every controller, so
  * every creation is back where it was built.
+ *
+ * The mirrored bodies are found through `mirrors.ts`, by ride generation and only while the
+ * Explore world still holds them: a ride that is retired, brought back to the start or ridden
+ * again remounts its bodies, and a removed body must never be touched (Rapier's WASM panics and
+ * the studio crashes). While a creation is ridden, the curb it drives against (the same walls as
+ * in its controller's world, `plateCurb.ts`) is drawn at the plate's edge.
  */
 const PART_COLLIDER_FRICTION = 0.5
 const FORWARD = { x: 0, z: 1 }
@@ -47,6 +57,8 @@ const ORIGIN: [number, number, number] = [0, 0, 0]
 export default function ExploreRides() {
   const { rapier, world } = useRapier()
   const liveIds = useExploreRideStore((state) => state.liveIds)
+  // The ridden creation while its rider is on board (riding or hopping off): its curb is drawn.
+  const ridden = useExploreRideStore((state) => (state.phase !== 'walking' ? state.riding : null))
   const shapes = useMemo(() => hopOffShapes(rapier as unknown as RapierModule), [rapier])
 
   useEffect(() => {
@@ -58,15 +70,16 @@ export default function ExploreRides() {
       removeKeys()
       setExploreRideHandler(null)
       useExploreRideStore.getState().leave()
+      mirrors.clear()
     }
   }, [rapier])
 
-  // Dev-only hook for the QA harness (scripts/qa/robotics-cp4-explore.mjs).
+  // Dev-only hook for the QA harnesses (scripts/qa/robotics-cp4-explore.mjs, robotics-kid-ride.mjs).
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const host = window as unknown as { __robotics?: Record<string, unknown> }
     const hook = (host.__robotics = host.__robotics ?? {})
-    hook.exploreRides = { store: useExploreRideStore, debug: () => rideDebug(world as unknown as RAPIER.World, rapier as unknown as RapierModule) }
+    hook.exploreRides = { store: useExploreRideStore, debug: () => rideDebug(world as unknown as RAPIER.World, rapier as unknown as RapierModule), bringBack: bringBackRide }
     return () => { delete hook.exploreRides }
   }, [world, rapier])
 
@@ -81,8 +94,10 @@ export default function ExploreRides() {
     })
     const rideState = useExploreRideStore.getState()
     for (const ride of liveRides()) {
-      const bodies = mirrors.get(ride.creationId)
-      if (!bodies) continue
+      // Only this ride's own bodies, still in the world: right after a ride is (re)built its bodies
+      // are not mounted yet, and the bodies of the ride it replaced are gone or going.
+      const bodies = mirrors.bodies(world, ride.creationId, ride.generation)
+      if (!bodies.size) continue
       // The creation being ridden is not solid in the Explore world until its rider is put down:
       // the rider sits inside it, and the follow camera's obstruction probe would otherwise stop
       // at the seat back. A parked creation is solid again (hop-off spots are outside its footprint).
@@ -111,17 +126,19 @@ export default function ExploreRides() {
     if (nextYaw !== brick.touchYaw) useBrickStore.setState({ touchYaw: nextYaw })
   }, CLOCK_PRIORITY)
 
+  const curb = ridden ? liveRide(ridden)?.controller.props.filter(isCurbProp) ?? [] : []
   return (
     <group name="explore-rides">
       {liveIds.map((id) => <LiveCreation key={id} creationId={id} />)}
+      {curb.map((prop) => <CurbWall key={prop.id} prop={prop} />)}
     </group>
   )
 }
 
 /* ------------------------------------------------------------------ mirrored bodies */
 
-/** Per live creation: its controller body id → the kinematic body mirroring it in the Explore world. */
-const mirrors = new Map<string, Map<string, RapierRigidBody>>()
+/** Per live creation and ride generation: its controller body id → the kinematic body mirroring it in the Explore world. */
+const mirrors = createMirrorRegistry<RapierRigidBody>()
 
 function setSolid(body: RapierRigidBody, solid: boolean) {
   for (let index = 0; index < body.numColliders(); index += 1) {
@@ -134,26 +151,35 @@ function LiveCreation({ creationId }: { creationId: string }) {
   const ride = liveRide(creationId)
   const byId = useMemo(() => new Map((ride?.bricks ?? []).map((brick) => [brick.id, brick])), [ride])
   if (!ride) return null
-  const register = (bodyId: string) => (body: RapierRigidBody | null) => {
-    let bodies = mirrors.get(creationId)
-    if (!bodies) { bodies = new Map(); mirrors.set(creationId, bodies) }
-    if (body) bodies.set(bodyId, body)
-    else bodies.delete(bodyId)
-  }
   return (
+    // A new generation (a rebuilt ride of the same creation) remounts every body.
     <group key={ride.generation} name={`explore-ride:${creationId}`}>
       {ride.creation.bodies.map((body) => (
-        // Props stay constant: a changed rigid-body prop makes @react-three/rapier re-seat the body from its group.
-        <RigidBody key={body.id} ref={register(body.id)} type="kinematicPosition" colliders={false} position={ORIGIN}>
+        <MirrorBody key={body.id} creationId={creationId} generation={ride.generation} bodyId={body.id}>
           {body.nodes.map((node) => {
             const brick = byId.get(brickIdOfNode(node)!)
             if (!brick) return null
             return <RideBrick key={node} brick={brick} node={node} plateSize={ride.plateSize} solid={!isArmNode(node)} />
           })}
-        </RigidBody>
+        </MirrorBody>
       ))}
     </group>
   )
+}
+
+/**
+ * One kinematic body mirroring a controller body, registered for its ride generation while it is
+ * mounted. Its `<RigidBody>` creates the Rapier body in its own effect, which runs before this
+ * one; its cleanup removes the body from the world, and this one's drops the registration.
+ */
+function MirrorBody({ creationId, generation, bodyId, children }: { creationId: string; generation: number; bodyId: string; children: ReactNode }) {
+  const body = useRef<RapierRigidBody>(null)
+  useEffect(() => {
+    mirrors.register(creationId, generation, bodyId, body)
+    return () => mirrors.unregister(creationId, generation, bodyId, body)
+  }, [creationId, generation, bodyId])
+  // Props stay constant: a changed rigid-body prop makes @react-three/rapier re-seat the body from its group.
+  return <RigidBody ref={body} type="kinematicPosition" colliders={false} position={ORIGIN}>{children}</RigidBody>
 }
 
 const hingeGeometries = new Map<string, THREE.BufferGeometry>()
@@ -197,6 +223,39 @@ function MirrorCollider({ shape }: { shape: PhysicalShape }) {
   return <CuboidCollider args={shape.halfExtents} position={shape.center} friction={PART_COLLIDER_FRICTION} />
 }
 
+/* ------------------------------------------------------------------ the curb */
+
+/** The curb walls mounted now (the dev hook reports them). */
+const drawnCurb = new Set<string>()
+
+/**
+ * One wall of the curb, drawn like the Test plate's fence (brick pattern, darker cap). It is the
+ * controller's own wall, so what the rider sees is exactly what the robot bumps into; drawn down to
+ * the plate's underside so it reads as the plate's raised rim, not a wall floating beside it.
+ */
+function CurbWall({ prop }: { prop: Extract<TestProp, { kind: 'wall' }> }) {
+  useEffect(() => {
+    drawnCurb.add(prop.id)
+    return () => { drawnCurb.delete(prop.id) }
+  }, [prop.id])
+  const bottom = prop.center.y - prop.size.y / 2 - PLATE_HEIGHT
+  const top = prop.center.y + prop.size.y / 2
+  const size = useMemo(() => ({ x: prop.size.x, y: top - bottom, z: prop.size.z }), [prop.size.x, prop.size.z, top, bottom])
+  const texture = useMemo(() => brickWallTile(size), [size])
+  return (
+    <group position={[prop.center.x, (top + bottom) / 2, prop.center.z]} name={`explore-curb:${prop.id}`}>
+      <mesh castShadow receiveShadow userData={{ exploreCurbId: prop.id }}>
+        <boxGeometry args={[size.x, size.y, size.z]} />
+        <meshStandardMaterial color="#ffffff" map={texture ?? undefined} roughness={0.85} />
+      </mesh>
+      <mesh position={[0, size.y / 2 + 0.03, 0]} castShadow>
+        <boxGeometry args={[size.x + 0.04, 0.06, size.z + 0.04]} />
+        <meshStandardMaterial color={WALL_CAP_COLOR} roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
+
 /* ------------------------------------------------------------------ evidence */
 
 type Point = { x: number; y: number; z: number }
@@ -207,8 +266,8 @@ const roundPoint = (point: Point) => ({ x: round(point.x), y: round(point.y), z:
 function rideDebug(world: RAPIER.World, rapier: RapierModule) {
   const state = useExploreRideStore.getState()
   const avatar = lastAvatarPosition()
-  const mirrorHandles = new Set<number>()
-  for (const bodies of mirrors.values()) for (const body of bodies.values()) mirrorHandles.add(body.handle)
+  const mirrorWorld = world as unknown as MirrorWorld
+  const mirrorHandles = mirrors.handles(mirrorWorld)
   let avatarOverlaps = 0
   if (avatar) {
     // A capsule a hair smaller than the character's: touching is fine, being inside is not.
@@ -233,10 +292,11 @@ function rideDebug(world: RAPIER.World, rapier: RapierModule) {
       const footprint = footprintOf(ride)
       const velocity = ride.controller.mechanics.bodyVelocity(ride.seatBodyId)
       const pose = ride.controller.poses().get(ride.seatBodyId)
-      const mirrored = mirrors.get(ride.creationId)?.get(ride.seatBodyId)
+      const mirrored = mirrors.body(mirrorWorld, ride.creationId, ride.generation, ride.seatBodyId)
       return {
         creationId: ride.creationId,
         name: ride.name,
+        generation: ride.generation,
         frozen: ride.frozen,
         controllerPhase: ride.controller.phase,
         program: ride.program ? { source: ride.program.source, name: ride.program.name, programId: ride.program.programId } : null,
@@ -248,9 +308,12 @@ function rideDebug(world: RAPIER.World, rapier: RapierModule) {
         speed: velocity ? round(Math.hypot(velocity.x, velocity.z)) : 0,
         footprint: { center: roundPoint(footprint.center), halfX: round(footprint.halfX), halfZ: round(footprint.halfZ), axisX: roundPoint(footprint.axisX) },
         hiddenBricks: ride.controller.hiddenBrickIds.size,
-        mirroredBodies: mirrors.get(ride.creationId)?.size ?? 0,
+        mirroredBodies: mirrors.bodies(mirrorWorld, ride.creationId, ride.generation).size,
         bodies: ride.creation.bodies.length,
+        curb: ride.controller.props.filter(isCurbProp).map((prop) => ({ id: prop.id, center: roundPoint(prop.center), size: roundPoint(prop.size) })),
       }
     }),
+    notice: state.notice?.text ?? null,
+    curbDrawn: [...drawnCurb],
   }
 }

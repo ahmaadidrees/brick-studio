@@ -272,7 +272,8 @@ async function drivePart(width, height) {
   await s.waitStage('myWorld')
   const mine = await s.stageInfo()
   const creationBricks = Object.keys(ids).length
-  check(`${tag}.D5.my-world`, mine.props.length === 0 && mine.hidden === creationBricks && mine.simulated === creationBricks && mine.bodies.every((anchored) => !anchored) && (await page.getByRole('button', { name: 'My world' }).getAttribute('aria-pressed')) === 'true', `My world: no course, the student's ${scenery.length} scenery bricks stay drawn by the studio (only the robot's ${creationBricks} bricks are the stage's), and the robot is free to roll`)
+  // No course in My world; only the curb at the plate's edge (lane R: the same walls a ride in Explore drives against).
+  check(`${tag}.D5.my-world`, JSON.stringify(mine.props) === JSON.stringify(['curb-z-max', 'curb-z-min', 'curb-x-min', 'curb-x-max']) && mine.hidden === creationBricks && mine.simulated === creationBricks && mine.bodies.every((anchored) => !anchored) && (await page.getByRole('button', { name: 'My world' }).getAttribute('aria-pressed')) === 'true', `My world: no course, only the curb at the plate's edge (${mine.props.join(', ')}); the student's ${scenery.length} scenery bricks stay drawn by the studio (only the robot's ${creationBricks} bricks are the stage's), and the robot is free to roll`)
   const worldStart = await s.chassis(ids.hub)
   await page.keyboard.down('ArrowUp')
   await sleep(700)

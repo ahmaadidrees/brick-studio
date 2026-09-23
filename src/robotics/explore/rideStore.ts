@@ -1,6 +1,4 @@
 import { create } from 'zustand'
-import { getBuildPlateSize } from '../../brick/buildPlate'
-import { STUD } from '../../brick/parts'
 import { useBrickStore, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import type { DerivedCreation } from '../model/creations'
@@ -13,9 +11,10 @@ import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { RapierModule } from '../sim/colliders'
 import { computeModel, simBehaviorKey } from '../state/roboticsStore'
 import type { HopOffRange } from './hopOff'
+import { plateCurb } from './plateCurb'
 import type { RideAvatarBody, RideAvatarFrame } from './rideBridge'
 import {
-  IDENTITY_POSE, chooseRideProgram, footprintInWorld, hopOffPoints, localFootprint, rideCandidates, rideReach, riderPosition, seatInWorld, seatMountAtBuild, yawOf,
+  BACK_TO_START, IDENTITY_POSE, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
   type Footprint, type Pose, type RideCandidate, type RideProgramChoice, type SeatMount, type SeatWorld,
 } from './rideModel'
 
@@ -23,16 +22,22 @@ import {
  * Riding in Explore (checkpoint 4): the state machine and the live creations.
  *
  *   walking ──ride──▶ riding ──hop off──▶ dismounting ──free ground found──▶ walking
- *      ▲                 │                                                     │
+ *      ▲               │  ▲                                                    │
+ *      │               └──┘ back to the start (a fresh run where it was built, rider on board)
  *      └── leave Explore (every creation back to its authored pose) ◀──────────┘
  *
  * - `enter(rapier)` when the Explore scene mounts: the candidates (saved creations with a
  *   seat) are read from the document. `leave()` when it unmounts disposes every live
  *   creation, so leaving Explore returns every creation to its authored pose.
  * - `ride(id)` builds the creation's run controller in My world (world bricks are static
- *   scenery; the creation's own bodies are free, so a rover built on the plate can roll),
- *   picks its controller program (`chooseRideProgram`) and runs it. The rider's keys and
- *   the touch stick feed the program's input, never the character.
+ *   scenery; the creation's own bodies are free, so a rover built on the plate can roll;
+ *   a curb just outside the plate's edge keeps it on the plate, `plateCurb.ts`), picks its
+ *   controller program (`chooseRideProgram`) and runs it. The rider's keys and the touch
+ *   stick feed the program's input, never the character.
+ * - A ride never throws its rider off. If the ridden creation still gets past the curb, falls
+ *   or lies tipped over (`rideTrouble`), it goes back to where it was built with the rider on
+ *   the seat: a fresh controller and program run, the keys still held still driving, and one
+ *   line, "Back to the start!".
  * - `hopOff()` stops the program (every motor brakes) and waits for the creation to stop;
  *   then the scene finds free ground beside it and the character is put down there. The
  *   creation stays where it stopped, simulated until it settles, for the rest of the visit.
@@ -91,7 +96,9 @@ export type LiveRide = {
   settled: number
   /** Parked and still: the scene stops advancing it. */
   frozen: boolean
-  /** Distinguishes a rebuilt ride of the same creation (the scene remounts its bodies). */
+  /** Seconds the ridden creation has lain tipped over. */
+  tipped: number
+  /** Distinguishes a rebuilt ride of the same creation (the scene remounts its bodies, and never touches the old ones). */
   generation: number
 }
 
@@ -116,6 +123,8 @@ export const RIDE_CAMERA_DISTANCE = 9.5
 const SETTLE_SPEED = 0.02
 const SETTLE_SECONDS = 0.6
 const NOTICE_SECONDS = 5
+/** The notice after an edit of the construction sent every live creation back. */
+export const BUILD_CHANGED = 'The build changed, so robots went back to the start.'
 
 const live = new Map<string, LiveRide>()
 const seatMounts = new Map<string, SeatMount[]>()
@@ -131,6 +140,8 @@ let unsubscribe: (() => void) | null = null
 let noticeNonce = 0
 let rideGeneration = 0
 let noticeTimer: ReturnType<typeof setTimeout> | null = null
+/** The program keys the rider holds down (a ride brought back to the start keeps them). */
+const heldKeys = new Set<ProgramKey>()
 
 const INITIAL = { active: false, liveRoom: false, candidates: [] as RideCandidate[], nearestId: null, riding: null, phase: 'walking' as RidePhase, liveIds: [] as string[], programStopped: false, notice: null }
 
@@ -230,7 +241,8 @@ function showNotice(text: string) {
   }, NOTICE_SECONDS * 1000)
 }
 
-function buildRide(creationId: string, avatar: Vec3 | null): LiveRide | null {
+/** A live ride of the creation at its built pose: the seat `seatBrickId` if given, else the one nearest the character. */
+function buildRide(creationId: string, avatar: Vec3 | null, seatBrickId?: string): LiveRide | null {
   if (!rapierModule) return null
   const brickState = useBrickStore.getState()
   const model = computeModel(brickState)
@@ -238,7 +250,8 @@ function buildRide(creationId: string, avatar: Vec3 | null): LiveRide | null {
   if (!creation || !creation.seats.length) return null
   // The seat nearest the character (a creation may have more than one).
   const mounts = seatMounts.get(creationId) ?? []
-  const seat = [...mounts].sort((a, b) => (avatar ? Math.hypot(a.point.x - avatar.x, a.point.z - avatar.z) - Math.hypot(b.point.x - avatar.x, b.point.z - avatar.z) : 0))[0]
+  const seat = (seatBrickId ? mounts.find((mount) => mount.brickId === seatBrickId) : undefined)
+    ?? [...mounts].sort((a, b) => (avatar ? Math.hypot(a.point.x - avatar.x, a.point.z - avatar.z) - Math.hypot(b.point.x - avatar.x, b.point.z - avatar.z) : 0))[0]
     ?? (() => {
       const brick = brickState.bricks.find((candidate) => candidate.id === creation.seats[0])
       const part = brick ? model.input.partMap[brick.partId] : undefined
@@ -246,13 +259,50 @@ function buildRide(creationId: string, avatar: Vec3 | null): LiveRide | null {
     })()
   const footprint = localFootprint(brickState.bricks, creation.brickIds, model.input.partMap, model.input.plateSize)
   if (!seat || !footprint) return null
-  const controller = createRunController({ rapier: rapierModule, bricks: brickState.bricks, partMap: model.input.partMap, plateSize: model.input.plateSize, creation, space: 'myWorld', props: [] })
+  const controller = createRunController({ rapier: rapierModule, bricks: brickState.bricks, partMap: model.input.partMap, plateSize: model.input.plateSize, creation, space: 'myWorld', props: plateCurb(model.input.plateSize) })
   const seatBodyId = controller.bodyOfBrick(seat.brickId)
   if (!seatBodyId) {
     controller.dispose()
     return null
   }
-  return { creationId, name: creation.name, controller, creation, bricks: brickState.bricks, plateSize: model.input.plateSize, seat, seatBodyId, footprint, program: null, settled: 0, frozen: false, generation: ++rideGeneration }
+  return { creationId, name: creation.name, controller, creation, bricks: brickState.bricks, plateSize: model.input.plateSize, seat, seatBodyId, footprint, program: null, settled: 0, frozen: false, tipped: 0, generation: ++rideGeneration }
+}
+
+/** Runs the creation's controller program on a live ride, fresh from its current pose. False when it has none. */
+function startProgram(ride: LiveRide): boolean {
+  const brickState = useBrickStore.getState()
+  const choice = chooseRideProgram(computeModel(brickState).section, ride.creation, worldBrickIds(brickState))
+  if (!choice) return false
+  releaseKeys(ride)
+  ride.controller.run(createProgramRuntime(choice.ir, { fixedStep: ride.controller.mechanics.fixedStep }))
+  ride.program = choice
+  ride.frozen = false
+  ride.settled = 0
+  ride.tipped = 0
+  return true
+}
+
+/**
+ * The ridden creation back where it was built, the rider still on the seat: a fresh controller
+ * (a new generation, so the scene remounts its bodies) running the same program from the start,
+ * the keys the rider holds still pressed, and one line. The rider is never put down for this.
+ */
+function bringBack(current: LiveRide): boolean {
+  const id = current.creationId
+  const next = buildRide(id, null, current.seat.brickId)
+  if (!next || !startProgram(next)) {
+    // Cannot happen for a creation that was just ridden; if it did, the old way: back where it was built, rider beside it.
+    next?.controller.dispose()
+    retire(BACK_TO_START, [id])
+    return false
+  }
+  current.controller.dispose()
+  live.set(id, next)
+  for (const key of heldKeys) next.controller.setKey(key, true)
+  useExploreRideStore.setState({ liveIds: [...live.keys()], programStopped: false })
+  syncHidden()
+  showNotice(BACK_TO_START)
+  return true
 }
 
 /** Every live creation goes back to its authored pose (the rider, if any, is put down beside where it was built). */
@@ -265,6 +315,7 @@ function retire(reason: string | null, ids: readonly string[] = [...live.keys()]
   }
   const patch: Partial<ExploreRideState> = { liveIds: [...live.keys()] }
   if (riding && ids.includes(riding)) {
+    heldKeys.clear()
     dismount = { creationId: riding, elapsed: 0, waitForStop: false }
     patch.phase = 'dismounting'
     patch.programStopped = false
@@ -296,12 +347,13 @@ function onDocumentChange(state: BrickState, previous: BrickState) {
     const current = ride.riding ? live.get(ride.riding) : null
     current?.controller.stop()
     releaseKeys(current)
+    heldKeys.clear()
     dismount = null
     useExploreRideStore.setState({ phase: 'walking', riding: null, programStopped: false })
   }
   const bricksChanged = state.bricks !== previous.bricks
   if (!bricksChanged && state.documentMetadata === previous.documentMetadata) return
-  if (live.size && (bricksChanged || simBehaviorKey(state) !== simBehaviorKey(previous))) retire('The build changed, so every creation went back to where it was built.')
+  if (live.size && (bricksChanged || simBehaviorKey(state) !== simBehaviorKey(previous))) retire(BUILD_CHANGED)
   refreshCandidates()
 }
 
@@ -327,6 +379,7 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
     lastSeat = null
     lastAvatar = null
     avatarHandle = null
+    heldKeys.clear()
     unsubscribe?.()
     unsubscribe = null
     if (noticeTimer) clearTimeout(noticeTimer)
@@ -354,18 +407,13 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
       ride = built
       live.set(id, ride)
     }
-    const brickState = useBrickStore.getState()
-    const choice = chooseRideProgram(computeModel(brickState).section, ride.creation, worldBrickIds(brickState))
-    if (!choice) return false
-    releaseKeys(ride)
-    ride.controller.run(createProgramRuntime(choice.ir, { fixedStep: ride.controller.mechanics.fixedStep }))
-    ride.program = choice
-    ride.frozen = false
-    ride.settled = 0
+    if (!startProgram(ride)) return false
+    heldKeys.clear()
     dismount = null
     placement = null
     set({ riding: id, phase: 'riding', nearestId: null, liveIds: [...live.keys()], programStopped: false, notice: null })
     syncHidden()
+    const brickState = useBrickStore.getState()
     if (brickState.touchPitch < RIDE_CAMERA_PITCH) useBrickStore.setState({ touchPitch: RIDE_CAMERA_PITCH })
     if (brickState.touchCameraDistance < RIDE_CAMERA_DISTANCE) brickState.setTouchCameraDistance(RIDE_CAMERA_DISTANCE)
     return true
@@ -377,8 +425,10 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
     const ride = live.get(state.riding)
     ride?.controller.stop()
     releaseKeys(ride)
+    heldKeys.clear()
     dismount = { creationId: state.riding, elapsed: 0, waitForStop: true }
-    set({ phase: 'dismounting' })
+    // "Back to the start!" was about the ride; it does not follow the rider onto the ground.
+    set({ phase: 'dismounting', ...(state.notice?.text === BACK_TO_START ? { notice: null } : {}) })
   },
 
   pressRideKey: () => {
@@ -392,20 +442,28 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
   },
 
   setRideKey: (key, down) => {
-    const riding = get().riding
-    if (riding && get().phase === 'riding') live.get(riding)?.controller.setKey(key, down)
-    else if (!down) for (const ride of live.values()) ride.controller.setKey(key, false)
+    const riding = get().phase === 'riding' ? get().riding : null
+    if (riding) {
+      if (down) heldKeys.add(key)
+      else heldKeys.delete(key)
+      live.get(riding)?.controller.setKey(key, down)
+    } else if (!down) {
+      heldKeys.delete(key)
+      for (const ride of live.values()) ride.controller.setKey(key, false)
+    }
   },
 
   releaseRideKeys: () => {
+    heldKeys.clear()
     for (const ride of live.values()) releaseKeys(ride)
   },
 }))
 
 /**
  * One frame of every live creation (the scene calls this before the character moves):
- * advance the controllers with frame time, feed the touch stick to the ridden one, bring
- * back a ride that left the plate, let parked ones settle, and finish a hop-off.
+ * advance the controllers with frame time, feed the touch stick to the ridden one, bring a
+ * ride that got past the curb, fell or tipped over back to the start (rider on board), let
+ * parked ones settle, and finish a hop-off.
  */
 export function advanceRides(delta: number, environment: RideEnvironment) {
   const state = useExploreRideStore.getState()
@@ -422,16 +480,19 @@ export function advanceRides(delta: number, environment: RideEnvironment) {
   if (riding) {
     const stopped = riding.controller.phase === 'stopped'
     if (stopped !== state.programStopped) useExploreRideStore.setState({ programStopped: stopped })
-    const seat = seatOf(riding)
-    const half = plateHalf() + 2 * STUD
-    if (Math.abs(seat.point.x) > half || Math.abs(seat.point.z) > half || seat.point.y < -3) {
-      retire(`${riding.name} left the plate, so it went back to where you built it.`, [riding.creationId])
-    }
+    const pose = riding.controller.poses().get(riding.seatBodyId)
+    riding.tipped = pose && isTipped(pose.rotation) ? riding.tipped + delta : 0
+    if (rideTrouble(seatOf(riding).point, riding.plateSize, riding.tipped)) bringBack(riding)
   }
   if (dismount) finishDismount(delta, environment)
 }
 
-const plateHalf = () => (getBuildPlateSize(useBrickStore.getState().documentMetadata) * STUD) / 2
+/** The ridden creation back to the start now, as if it had got past the curb (the QA harness's dev hook and tests). */
+export function bringBackRide(): boolean {
+  const state = useExploreRideStore.getState()
+  const ride = state.phase === 'riding' && state.riding ? live.get(state.riding) : null
+  return ride ? bringBack(ride) : false
+}
 
 function finishDismount(delta: number, environment: RideEnvironment) {
   const current = dismount
