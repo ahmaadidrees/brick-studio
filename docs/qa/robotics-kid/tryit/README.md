@@ -119,6 +119,15 @@ Expectations changed on purpose (the wording above): `robotics-cp2-code` R2 (the
 F4.run.chip (a stuck arm's chip reads *closed*); `robotics-cp3-ipad-code` run:readings-update (the sensor chip in
 steps). The iPad harness was not run: the iOS Simulator is off limits to this lane.
 
+## Merging
+
+A trial merge with `claude/robotics-kid-int` at `51a5b70` (lanes R and P merged) on a throwaway branch in this
+worktree was conflict-free; on it the robotics unit tests passed (50 files, 648 tests) and so did
+`robotics-kid-tryit` (54/54; one earlier run lost two resource loads to the dev server as it re-optimized after the
+switch, then 54/54), `robotics-cp2-code` (51/51), `robotics-cp2-failures` (70/70) and `robotics-kid-drive` (71/71).
+The throwaway branch was deleted. To merge cleanly beside lane P, the ready row's tick has its own icon type and
+import line, and its tests their own file (`guide/nextStepsTried.test.ts`).
+
 ## Unit tests
 
 `run/walkUp.test.ts` (sensors facing −Z, −X, +Z, +X; both kits turned 0–3 quarter turns; seen while walking, read
@@ -127,7 +136,8 @@ program's sensor of two; no sensor), `drive/tryOutcome.test.ts` (every verdict a
 staleness, both kits' programs reacting to the walk), `state/stageStore.test.ts` (the watch, the kept verdict, the
 runner), `code/CodeView.test.tsx` (Someone walks up runs the newest code; an edit while running; code that cannot
 run; the keys pad), `drive/DriveView.test.tsx` (the lines, the fallback, Open Code, the ready row, the touch hint),
-`guide/nextSteps.test.ts`, `code/stageReadings.test.ts`, `sim/mechanics.test.ts`, `wiring/route.test.ts`.
+`guide/nextStepsTried.test.ts`, `code/stageReadings.test.ts`, `sim/mechanics.test.ts`, `wiring/route.test.ts`,
+`run/controller.test.ts`, `program/compile.test.ts`, `drive/playProgram.test.ts`.
 
 ## Not done
 
@@ -137,5 +147,6 @@ run; the keys pad), `drive/DriveView.test.tsx` (the lines, the fallback, Open Co
 - **Block dropdowns** still read *Front sensor · B*: `program/devices.ts` labels are `name · port` by CP2-PLAN §5 and
   the wiring harness (W2) checks that a block's label follows its cable. Dropping the port is a one-line change in
   `deviceLabel` plus the inspector's block preview, with tests in lanes P, U and W.
-- **More → Test the motors** keeps *Swing to 60°*: More is for grown-ups, and the cp1 harnesses click those names.
+- **More → Test the motors** still reads *Swing to 60°* on this branch; lane P words it *Swing open* on the
+  integration branch, and this lane's harness clicks either.
 - The verdict is for "Someone walks up" only; the other stage inputs start the program but have nothing to judge.
