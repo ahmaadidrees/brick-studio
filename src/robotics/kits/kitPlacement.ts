@@ -99,9 +99,11 @@ function entriesSincePlacement(placedIds: readonly string[]): number {
 function finishPlacement(kit: Kit, placedIds: string[]) {
   const brickStore = useBrickStore.getState()
   const placement = placeKitInSection(computeModel(brickStore), kit, placedIds, creationId())
-  // The whole kit stays selected, its base plate last: the panel follows the selected brick, so it
-  // shows the robot rather than one of its parts, and Rotate, Color or Delete act on all of it.
-  brickStore.selectBricks([...placedIds.slice(1), placedIds[0]])
+  // Nothing stays picked (lane P, Ava): a picked kit made the strip's Color say "Color all 9 bricks"
+  // and paint the tyres, and swallowed the next click on one of its parts. The panel shows the new
+  // robot without it (the newest robot touched), one Undo takes the whole kit away, and a box drawn
+  // around it picks all of it again for Rotate or Delete.
+  brickStore.selectBricks([])
   const label = !placement.joined.length ? `Add ${placement.name}` : placement.creationId ? `Add a ${kit.name} to ${placement.name}` : `Add a ${kit.name}`
   useBrickStore.getState().setRoboticsSection(writeRoboticsSection(placement.section), label)
   const steps = entriesSincePlacement(placedIds)

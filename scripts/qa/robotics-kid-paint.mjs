@@ -8,6 +8,8 @@
  * click or a tap on what the page shows. After each step the harness reads back the document
  * (brick colours, the history) and what the page shows.
  *
+ *   K (1366×768)  a kit just placed leaves nothing picked: the first click on a wheel picks just the
+ *                 wheel, and the strip's Color is for that one brick (Ava's "Color all 9 bricks").
  *   A (1366×768)  a Buggy kit; pick a colour in the Paint row, click two bricks (2 clicks + 1 per
  *                 brick with Done); "Paint all of Buggy"; one Undo takes it back; a picked brick
  *                 and a drawer swatch paint it; a motor's card (no port letters or code line until
@@ -224,7 +226,16 @@ check('A.buggy', buggy.name === 'Buggy' && ids.hub && ids.plate && ids.leftMotor
 check('A.paint-row', (await page.getByTestId('robotics-paint').getByRole('button', { name: /^Paint / }).count()) === 12, 'the robot panel has a Paint row of twelve colours')
 await desk.clearToast()
 await desk.shot('01-buggy-paint-row')
-// The kit arrives picked (so Rotate and Delete act on all of it): Escape puts it down first.
+
+// K. Nothing stays picked after a kit lands; the first click on a wheel picks just that wheel.
+check('K.nothing-picked', (await desk.selected()).length === 0 && (await page.getByTestId('command-strip').textContent()).includes('Pick a brick from the drawer'), 'the kit just placed leaves nothing picked; the strip says "Pick a brick from the drawer"')
+await hitBrick(desk, ids.wheels[0], 'a wheel')
+check('K.wheel-picked', (await desk.selected()).join() === ids.wheels[0] && (await page.getByTestId('command-strip').textContent()).includes('Wheel'), 'the first click on a wheel picks just the wheel')
+await page.getByRole('button', { name: 'Recolor brick' }).click()
+await desk.sleep(300)
+check('K.color-one-brick', (await page.getByRole('dialog', { name: 'Brick color' }).count()) === 1 && !(await page.locator('.command-strip-popover').textContent()).includes('Color all'), 'the strip\'s Color is for that one wheel ("Brick color", not "Color all 9 bricks")')
+await desk.shot('00-kit-placed-wheel-picked')
+await page.keyboard.press('Escape')
 await page.keyboard.press('Escape')
 await desk.sleep(200)
 const start = await desk.colors([ids.plate, ids.hub, ids.leftMotor, ids.rightMotor, ids.sensor, ...ids.wheels, ...ids.axles])
@@ -494,15 +505,12 @@ const framedTablet = await robotInView(tablet, tabletBuggy.brickIds)
 const tabletPanel = await box(tablet.panel)
 check('D.framed-beside-panel', framedTablet.outside === 0 && framedTablet.free.right <= tabletPanel.left + 1, `the Buggy is framed in the free area beside the panel (${framedTablet.points - framedTablet.outside}/${framedTablet.points} bricks inside, the free area ends at ${Math.round(framedTablet.free.right)} px, the panel starts at ${Math.round(tabletPanel.left)} px)`)
 await tablet.shot('01-buggy-by-touch')
-// The kit arrives picked: a colour paints all of it (its tyres, axles and eyes keep theirs), then a tap paints one brick.
-await tablet.page.getByTestId('robotics-paint').getByRole('button', { name: 'Paint green' }).tap()
-await tablet.sleep(400)
-const tabletColors = await tablet.colors([tabletBuggy.hubId, ...tabletBuggy.wheels])
-check('D.picked-kit-painted', tabletColors[tabletBuggy.hubId] === GREEN && tabletBuggy.wheels.every((id) => tabletColors[id] !== GREEN), 'with the new kit picked, a tap on green paints it green; its wheels stay as they were')
+// Nothing is picked after the kit lands: a colour, then a tap on a brick paints it.
+check('D.nothing-picked', (await tablet.selected()).length === 0, 'the kit placed by touch leaves nothing picked')
 await tablet.page.getByTestId('robotics-paint').getByRole('button', { name: 'Paint orange' }).tap()
 await tablet.sleep(300)
 await hitBrick(tablet, tabletBuggy.hubId, 'the hub (tap)')
-check('D.tap-paints', (await tablet.colors([tabletBuggy.hubId]))[tabletBuggy.hubId] === ORANGE && (await tablet.selected()).length === 0, 'then orange, and a tap on the hub paints it orange (nothing picked)')
+check('D.tap-paints', (await tablet.colors([tabletBuggy.hubId]))[tabletBuggy.hubId] === ORANGE && (await tablet.selected()).length === 0, 'orange, then a tap on the hub paints it orange (nothing picked)')
 await tablet.shot('02-painting-by-touch')
 await tablet.page.getByTestId('robotics-paint-bar').getByRole('button', { name: 'Done painting' }).tap()
 await tablet.sleep(300)

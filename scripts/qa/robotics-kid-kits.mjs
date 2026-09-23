@@ -171,15 +171,37 @@ check('A.ready-to-drive', buggy.readiness.kind === 'drive' && buggy.readiness.re
 check('A.no-card', (await desk.robo((state) => state.card)) === null && (await page.getByTestId('robotics-creation-card').count()) === 0, 'no creation card interrupted')
 const history = await desk.brick((state) => state.undoStack.map((entry) => entry.label))
 check('A.one-history-entry', history.length === undoBefore + 1 && history.at(-1) === 'Add Buggy', `one new history entry: ${history.at(-1)}`)
-const focus = await desk.brick((state, ids) => ({ selected: [...state.selectedIds].sort(), focus: state.selectedId, plate: state.bricks[0].id, toast: state.toast }), buggy.brickIds)
-check('A.focused', JSON.stringify(focus.selected) === JSON.stringify([...buggy.brickIds].sort()) && focus.focus === focus.plate, 'the whole kit is selected, its plate the focus, so the panel shows the robot')
+const focus = await desk.brick((state) => ({ selected: [...state.selectedIds], toast: state.toast }))
+// Lane P: nothing stays picked after a kit lands (a picked kit painted its tyres from the strip's Color and
+// swallowed the next click on one of its parts); the panel shows the new robot all the same (A.panel-shows-buggy).
+check('A.focused', focus.selected.length === 0, 'nothing stays picked, so the next click picks one part; the panel shows the new robot')
 const frame = await desk.robo((state) => ({ brickIds: state.frameRequest?.brickIds ?? [], points: state.frameRequest?.points?.length ?? 0 }))
 check('A.framed', JSON.stringify(frame.brickIds) === JSON.stringify(buggy.brickIds) && frame.points === 4, 'the camera framed the new robot with ground around it')
 const panelText = await page.getByTestId('robotics-panel').evaluate((element) => `${element.innerText} ${[...element.querySelectorAll('input')].map((input) => input.value).join(' ')}`).catch(() => '')
 check('A.panel-shows-buggy', panelText.includes('Buggy'), 'the robot panel shows Buggy')
 check('A.toast', focus.toast === 'Buggy is ready to drive!', `status line: ${focus.toast}`)
 await desk.shot('K4-buggy-placed-ready')
-// The kit is still selected, so the command strip's Rotate turns the whole robot; it must still drive.
+// A box drawn around the kit (a drag from empty ground) picks all of it again, so the command strip's Rotate
+// turns the whole robot; it must still drive.
+const kitBox = await page.evaluate((ids) => {
+  const hook = window.__robotics
+  const { bricks, partMap, plateSize } = hook.roboticsStore.getState().model.input
+  const points = []
+  for (const brick of bricks.filter((b) => ids.includes(b.id))) {
+    const part = partMap[brick.partId]
+    const turned = brick.rotation % 2 === 1
+    const w = turned ? part.depth : part.width
+    const d = turned ? part.width : part.depth
+    for (const [dx, dz] of [[0, 0], [w, 0], [0, d], [w, d]]) for (const y of [0, part.height]) points.push(hook.project({ x: (brick.x + dx - plateSize / 2) * 0.62, y: (brick.y + y) * 0.18, z: (brick.z + dz - plateSize / 2) * 0.62 }))
+  }
+  return { left: Math.min(...points.map((p) => p.x)), right: Math.max(...points.map((p) => p.x)), top: Math.min(...points.map((p) => p.y)), bottom: Math.max(...points.map((p) => p.y)) }
+}, buggy.brickIds)
+await page.mouse.move(kitBox.left - 30, kitBox.top - 30)
+await page.mouse.down()
+await page.mouse.move(kitBox.right + 30, kitBox.bottom + 30, { steps: 12 })
+await page.mouse.up()
+await desk.sleep(300)
+check('A.box-picks-kit', (await desk.brick((state) => state.selectedIds.length)) === 9, `a box drawn around it picks all ${await desk.brick((state) => state.selectedIds.length)} of the kit's bricks`)
 await page.getByRole('button', { name: 'Rotate 9 bricks' }).click()
 await desk.sleep(500)
 robots = await robotsOf(page)
