@@ -75,8 +75,9 @@ function CreationCard({ compact }: { compact: boolean }) {
   if (!creation) return null
   const placed = bricks.find((brick) => brick.id === card.placedBrickId)
   const placedRole = placed ? roboticsSpec(placed.partId)?.role : undefined
-  const title = card.creationId ? `${roleTitle(placedRole)} added to ${creation.name}` : `${roleTitle(placedRole)} added`
-  const subtitle = creation.hinges.length ? 'This creation has a part that swings.' : creation.kind === 'signal' ? 'This creation can sense and signal.' : 'This creation can be coded.'
+  const joining = card.joining
+  const title = joining ? `${joinNames(joining.names)} are joined` : card.creationId ? `${roleTitle(placedRole)} added to ${creation.name}` : `${roleTitle(placedRole)} added`
+  const subtitle = joining ? 'Bricks joined by studs move together, so this is one creation now. Its programs come too.' : creation.hinges.length ? 'This creation has a part that swings.' : creation.kind === 'signal' ? 'This creation can sense and signal.' : 'This creation can be coded.'
   const baseBodies = creation.bodies.filter((body) => !creation.armBodyIds.includes(body.id))
   const baseCount = baseBodies.reduce((total, body) => total + body.brickIds.filter((id) => !creation.hinges.some((hinge) => hinge.armBrickIds.includes(id))).length, 0)
   const armCount = creation.hinges.reduce((total, hinge) => total + hinge.armBrickIds.length, 0)
@@ -112,6 +113,10 @@ function CreationCard({ compact }: { compact: boolean }) {
       </div>
     </aside>
   )
+}
+
+function joinNames(names: string[]) {
+  return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
 function roleTitle(role: string | undefined) {

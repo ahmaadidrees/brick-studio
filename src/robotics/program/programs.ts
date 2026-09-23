@@ -144,7 +144,8 @@ export function deleteProgramsOf(section: RoboticsSection, creationId: string): 
  * restored one except for programs:
  *
  * - every program the current document has is kept as it is now, with each creation's
- *   current `activeProgramId`;
+ *   current `activeProgramId`, except its owner: a program the restored section also has
+ *   belongs to the creation the restored section says (joining creations is recorded);
  * - a creation the restore brings back that the current document does not have (Undo
  *   of a deletion) gets its programs back from the restored section;
  * - a program whose creation the restore removes (Undo of naming it) is kept in the
@@ -162,8 +163,14 @@ export function mergeRoboticsHistory(restored: RoboticsSectionEnvelope | undefin
   const currentSection = readRoboticsSection(current)
   const currentCreations = new Map(currentSection.creations.map((creation) => [creation.id, creation]))
   const kept = new Set(currentPrograms.map((program) => program.id))
+  // Content is the student's code and stays as it is now; which creation owns a program is
+  // structure (only a recorded edit such as joining two creations changes it), so it follows history.
+  const restoredOwner = new Map(restoredPrograms.map((program) => [program.id, program.creationId]))
   const programs = [
-    ...currentPrograms,
+    ...currentPrograms.map((program) => {
+      const owner = restoredOwner.get(program.id)
+      return owner && owner !== program.creationId ? { ...program, creationId: owner } : program
+    }),
     ...restoredPrograms.filter((program) => !currentCreations.has(program.creationId) && !kept.has(program.id)),
   ]
   const creations = restoredSection.creations.map((creation) => {

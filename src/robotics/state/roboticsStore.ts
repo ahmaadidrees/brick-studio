@@ -32,6 +32,12 @@ export type CardState = {
   creationId: string | null
   suggestedName: string
   placedBrickId: string
+  /**
+   * A brick attached two creations (contract §4: "attaching them with a brick reopens the
+   * card for the union"). `creationId` is the one that keeps its id; these join it on
+   * either button. Their names, for the card's title.
+   */
+  joining?: { creationIds: string[]; names: string[] }
 }
 
 export type WiringNote = {
@@ -70,6 +76,8 @@ export type RoboticsState = {
   refreshModel: () => void
   handlePlacement: (brickId: string) => void
   openCardFor: (creationId: string) => void
+  /** A placement attached two or more creations: the card for their union (the first keeps its id). */
+  openJoinCard: (creations: DerivedCreation[], component: string[], placedBrickId: string) => void
   closeCard: () => void
   confirmCard: (name: string, thenCode: boolean) => void
   renameCreation: (creationId: string, name: string) => void
@@ -150,10 +158,17 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
   handlePlacement: (brickId) => {
     const brickState = useBrickStore.getState()
     const brick = brickState.bricks.find((candidate) => candidate.id === brickId)
-    if (!brick || !isDevicePart(brick.partId)) return
+    if (!brick) return
     let model = computeModel(brickState)
     const component = creationComponent(model.input, brick.id)
-    const existing = model.creations.find((creation) => creation.brickIds.some((id) => component.includes(id))) ?? null
+    // Every saved creation this brick's component now reaches. Two or more: the brick joined them.
+    const reached = model.creations.filter((creation) => creation.brickIds.some((id) => component.includes(id)))
+    const joining = reached.length > 1
+    if (!isDevicePart(brick.partId)) {
+      if (joining) get().openJoinCard(reached, component, brick.id)
+      return
+    }
+    const existing = joining ? null : reached[0] ?? null
     const spec = roboticsSpec(brick.partId)!
 
     let section = model.section
@@ -194,6 +209,11 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       set({ wiringNote: { text: refusal, undoable: false, nonce: Date.now(), entry: null, added: [] } })
     }
 
+    if (joining) {
+      set({ model })
+      get().openJoinCard(reached, component, brick.id)
+      return
+    }
     if (existing) {
       set({ model })
       return
@@ -201,6 +221,12 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const candidate = deriveCreations({ ...model.input, section: { ...model.section, creations: [{ id: 'candidate', name: '', anchorBrickIds: component }] } })[0]
     const suggestedName = defaultCreationName(candidate.kind, model.section.creations.map((creation) => creation.name))
     set({ model, card: { anchorBrickIds: component, creationId: null, suggestedName, placedBrickId: brick.id } })
+    get().requestFrame(component)
+  },
+
+  openJoinCard: (creations, component, placedBrickId) => {
+    const [keeper, ...others] = creations
+    set({ card: { anchorBrickIds: component, creationId: keeper.id, suggestedName: keeper.name, placedBrickId, joining: { creationIds: others.map((creation) => creation.id), names: creations.map((creation) => creation.name) } } })
     get().requestFrame(component)
   },
 
@@ -218,7 +244,23 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const trimmed = name.trim() || card.suggestedName
     let section = model.section
     let id = card.creationId
-    if (id) {
+    if (id && card.joining) {
+      // One creation from here on: the keeper takes every anchor and every program; the others' records go.
+      const keeperId = id
+      const joined = new Set(card.joining.creationIds)
+      const records = section.creations.filter((creation) => creation.id === keeperId || joined.has(creation.id))
+      const anchors = [...new Set([...records.flatMap((creation) => creation.anchorBrickIds), ...anchorableBrickIds(model.input, card.anchorBrickIds)])]
+      const keeperRecord = records.find((creation) => creation.id === keeperId)
+      const activeProgramId = keeperRecord?.activeProgramId ?? records.find((creation) => creation.activeProgramId)?.activeProgramId
+      section = {
+        ...section,
+        creations: section.creations
+          .filter((creation) => !joined.has(creation.id))
+          .map((creation) => (creation.id === keeperId ? { ...creation, name: trimmed, anchorBrickIds: anchors, ...(activeProgramId ? { activeProgramId } : {}) } : creation)),
+        programs: section.programs.map((program) => (joined.has(program.creationId) ? { ...program, creationId: keeperId } : program)),
+      }
+      writeSection(section, `Join ${card.joining.names.join(' and ')}`)
+    } else if (id) {
       section = { ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, name: trimmed, anchorBrickIds: [...new Set([...creation.anchorBrickIds, ...anchorableBrickIds(model.input, card.anchorBrickIds)])] } : creation)) }
       writeSection(section, 'Rename creation')
     } else {
