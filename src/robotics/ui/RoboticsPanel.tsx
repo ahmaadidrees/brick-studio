@@ -5,6 +5,7 @@ import { BRICK_PART_MAP, STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
+import { RideInExploreButton } from '../explore/RideInExploreButton'
 import { readiness } from '../drive/readiness'
 import { useLastTryRow } from '../drive/tryOutcome'
 import type { TriedIcon } from '../guide/nextSteps'
@@ -197,6 +198,7 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
       {!collapsed && (
         <>
           {creation && <PlayButtons creation={creation} live={live} reasonId={reasonId} />}
+          {creation && <RideInExploreButton creation={creation} live={live} />}
           {creation && live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
           {/* A part the student picked: only the step that matters now stays above its panel. */}
           {creation && <NextSteps creation={creation} live={live} focus={inspector !== null} reasonId={reasonId} />}

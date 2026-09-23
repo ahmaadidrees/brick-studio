@@ -16,6 +16,7 @@ import './explore.css'
  */
 export default function ExploreRidePrompt({ liveRoom = false }: { liveRoom?: boolean }) {
   useEffect(() => { useExploreRideStore.getState().setLiveRoom(liveRoom) }, [liveRoom])
+  useRidingMark()
   const touch = useCoarsePointer()
   const keys = useBrickStore((state) => state.exploreKeyboardMode)
   const prompt = useExploreRideStore((state) => JSON.stringify(ridePrompt(promptInput(state, { touch, keys }))))
@@ -43,6 +44,21 @@ export default function ExploreRidePrompt({ liveRoom = false }: { liveRoom?: boo
       )}
     </div>
   )
+}
+
+/**
+ * While someone rides, `body[data-explore-riding]` is set: explore.css then hides the studio's
+ * walking key-help strip (the ride card says how to drive; Shift to run and Space to jump do not
+ * apply) and lowers the card into its place, so neither covers the car's wheels. Only this lazy
+ * robotics chunk sets it, so without the flag nothing changes.
+ */
+function useRidingMark() {
+  const riding = useExploreRideStore((state) => state.active && state.riding !== null && state.phase !== 'walking')
+  useEffect(() => {
+    if (!riding) return
+    document.body.dataset.exploreRiding = 'true'
+    return () => { delete document.body.dataset.exploreRiding }
+  }, [riding])
 }
 
 /** A touch screen (the same test as the card's touch layout in explore.css): the stick drives, there is no E key. */

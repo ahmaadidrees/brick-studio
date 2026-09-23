@@ -12,9 +12,10 @@ import type { RapierModule } from '../sim/colliders'
 import { computeModel, simBehaviorKey } from '../state/roboticsStore'
 import type { HopOffRange } from './hopOff'
 import { plateCurb } from './plateCurb'
+import { clearRideRequest, takeRideRequest } from './rideRequest'
 import type { RideAvatarBody, RideAvatarFrame } from './rideBridge'
 import {
-  BACK_TO_START, IDENTITY_POSE, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
+  BACK_TO_START, IDENTITY_POSE, RIDER_STANDING_Y, RIDE_KEEP_STUDS, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
   type Footprint, type Pose, type RideCandidate, type RideProgramChoice, type SeatMount, type SeatWorld,
 } from './rideModel'
 
@@ -221,8 +222,10 @@ function updateNearest(avatar: Vec3) {
   if (state.phase !== 'walking') return
   let best: { id: string; reach: number } | null = null
   for (const candidate of state.candidates) {
+    // The robot whose Ride card is up keeps it a little further out, so it stays until she walks away.
+    const keep = candidate.creationId === state.nearestId ? RIDE_KEEP_STUDS : 0
     for (const seat of seatsNow(candidate.creationId)) {
-      const reach = rideReach(avatar, seat.world, seat.mount, seat.footprint)
+      const reach = rideReach(avatar, seat.world, seat.mount, seat.footprint, keep)
       if (reach === null) continue
       if (!best || reach < best.reach) best = { id: candidate.creationId, reach }
     }
@@ -380,6 +383,7 @@ export const useExploreRideStore = create<ExploreRideState>((set, get) => ({
     lastAvatar = null
     avatarHandle = null
     heldKeys.clear()
+    clearRideRequest()
     unsubscribe?.()
     unsubscribe = null
     if (noticeTimer) clearTimeout(noticeTimer)
@@ -535,14 +539,43 @@ export function rideAvatarFrame(avatar: RideAvatarBody): RideAvatarFrame | null 
   }
   if (state.phase === 'walking') {
     updateNearest(lastAvatar)
-    return null
+    if (!rideRequested()) return null
   }
-  const ride = state.riding ? live.get(state.riding) : null
+  const current = useExploreRideStore.getState()
+  const ride = current.riding ? live.get(current.riding) : null
   if (ride) {
     const seat = seatOf(ride)
     lastSeat = { mode: 'seat', position: riderPosition(seat), facingYaw: seat.facingYaw }
   }
   return lastSeat
+}
+
+/**
+ * A ride asked for from Build (the robot panel's "Ride it in Explore", `rideRequest.ts`): on the
+ * character's first frame in Explore she goes straight onto the seat, the camera behind her.
+ */
+function rideRequested(): boolean {
+  const creationId = takeRideRequest()
+  if (!creationId || !useExploreRideStore.getState().ride(creationId)) return false
+  const ride = live.get(creationId)
+  if (ride) useBrickStore.setState({ touchYaw: seatOf(ride).facingYaw })
+  return true
+}
+
+/** Above the rider's capsule centre, where the character's camera looks when she walks. */
+const HEAD_ABOVE_CENTRE = 0.52
+
+/**
+ * What the camera frames while someone rides (`rideBridge.ts`): the middle of the ridden robot,
+ * its footprint's centre halfway up from its base to the rider's head. Null while walking.
+ */
+export function rideCameraTarget(): Vec3 | null {
+  const state = useExploreRideStore.getState()
+  const ride = state.active && state.phase !== 'walking' && state.riding ? live.get(state.riding) : null
+  if (!ride) return null
+  const footprint = footprintOf(ride)
+  const head = seatOf(ride).point.y + RIDER_STANDING_Y + HEAD_ABOVE_CENTRE
+  return { x: footprint.center.x, y: (footprint.center.y + head) / 2, z: footprint.center.z }
 }
 
 /** For tests: the store and the module state back to nothing. */

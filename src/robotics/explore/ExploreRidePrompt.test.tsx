@@ -80,6 +80,21 @@ describe('the ride card', () => {
     expect(screen.queryByRole('button')).toBeNull()
   })
 
+  it('while someone rides the page is marked, so the walking key help steps aside (explore.css); walking it is not', () => {
+    useExploreRideStore.setState({ active: true, candidates: [candidate], nearestId: 'rover' })
+    render(<ExploreRidePrompt />)
+    expect(document.body.dataset.exploreRiding).toBeUndefined()
+    act(() => useExploreRideStore.setState({ riding: 'rover', phase: 'riding', nearestId: null }))
+    expect(document.body.dataset.exploreRiding).toBe('true')
+    act(() => useExploreRideStore.setState({ phase: 'dismounting' }))
+    expect(document.body.dataset.exploreRiding).toBe('true')
+    act(() => useExploreRideStore.setState({ riding: null, phase: 'walking' }))
+    expect(document.body.dataset.exploreRiding).toBeUndefined()
+    act(() => useExploreRideStore.setState({ riding: 'rover', phase: 'riding' }))
+    cleanup()
+    expect(document.body.dataset.exploreRiding).toBeUndefined()
+  })
+
   it('on a touch screen the stick drives', () => {
     touchScreen(true)
     useExploreRideStore.setState({ active: true, candidates: [candidate], riding: 'rover', phase: 'riding' })

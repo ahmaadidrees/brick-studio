@@ -107,6 +107,28 @@ function createSupportedWorld() {
   return world
 }
 
+describe('Explore camera boom and disabled colliders', () => {
+  it('a disabled collider (something made not solid) does not stop the camera; Rapier’s cast alone would', () => {
+    const world = new RAPIER.World({ x: 0, y: 0, z: 0 })
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased())
+    const wall = world.createCollider(RAPIER.ColliderDesc.cuboid(1, 2, 0.1).setTranslation(0, 1, -2), body)
+    world.step()
+    wall.setEnabled(false)
+    world.step()
+    const probe = new RAPIER.Ball(CAMERA_PROBE_RADIUS)
+    const rotation = { x: 0, y: 0, z: 0, w: 1 }
+    const back = { x: 0, y: 0, z: -1 }
+    // The plain cast still reports it…
+    expect(world.castShape({ x: 0, y: 1, z: 0 }, rotation, back, probe, CAMERA_SURFACE_PADDING, 6, true)?.collider.handle).toBe(wall.handle)
+    // …the camera's probe does not, and finds it again once it is solid.
+    expect(findCameraObstruction(world, { x: 0, y: 1, z: 0 }, rotation, back, probe, 6)).toBeNull()
+    wall.setEnabled(true)
+    world.step()
+    expect(findCameraObstruction(world, { x: 0, y: 1, z: 0 }, rotation, back, probe, 6)?.collider.handle).toBe(wall.handle)
+    world.free()
+  })
+})
+
 describe('safe Explore spawning', () => {
   it('prefers a revalidated prior Explore position', () => {
     const world = createSupportedWorld()

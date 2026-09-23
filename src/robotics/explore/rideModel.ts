@@ -23,8 +23,12 @@ export const SEAT_PAN_HEIGHT = 2 * PLATE_HEIGHT
 const SEAT_FACING_LOCAL: Vec3 = { x: 0, y: 0, z: -1 }
 /** Walking this close (studs, on the ground, to the seat's edge) shows the ride prompt… */
 export const RIDE_REACH_STUDS = 5
-/** …and so does standing this close to the creation itself (a wide rover's seat can be far from its sides). */
-export const RIDE_SIDE_REACH_STUDS = 2
+/** …and so does standing this close to the robot itself, however high its seat (a wide rover's seat can be far from its sides; a seat on a tower is far above them). */
+export const RIDE_SIDE_REACH_STUDS = 3
+/** Once the Ride card is up it stays until the character is this much further away (studs): it does not blink as she steps about or jumps. */
+export const RIDE_KEEP_STUDS = 2
+/** Level with the robot: from this far below its base to this far above its top (world units). Not on a roof above it, not down in a pit. */
+export const RIDE_LEVEL_MARGIN = 3
 /** The character's capsule centre above the surface it stands on (the studio's `EXPLORE_STANDING_Y`). */
 export const RIDER_STANDING_Y = EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_FLOOR_GAP
 
@@ -269,15 +273,23 @@ export function footprintDistance(point: Vec3, footprint: Footprint): number {
 }
 
 /**
- * How near the character is to riding: within `RIDE_REACH_STUDS` of a seat's edge, or
- * within `RIDE_SIDE_REACH_STUDS` of the creation, level with the seat. The smaller of the
- * two distances (studs), or null when neither holds.
+ * How near the character is to riding: within `RIDE_REACH_STUDS` of a seat's edge, or within
+ * `RIDE_SIDE_REACH_STUDS` of the robot, measured along the ground; `keep` studs more for the
+ * robot whose Ride card is already up. Level with the robot, not with its seat: a seat on top of
+ * a tall tower is ridden from the ground beside it (a novice tester could only reach one mid-jump).
+ * The smaller of the two distances (studs), or null when neither holds. Without a footprint the
+ * seat's own height decides (`seatReach`).
  */
-export function rideReach(avatar: Vec3, seat: SeatWorld, mount: Pick<SeatMount, 'radius' | 'height'>, footprint: Footprint | null): number | null {
-  const toSeat = seatReach(avatar, seat, mount)
-  if (toSeat === null) return null
-  const toSide = footprint ? footprintDistance(avatar, footprint) : Infinity
-  if (toSeat > RIDE_REACH_STUDS && toSide > RIDE_SIDE_REACH_STUDS) return null
+export function rideReach(avatar: Vec3, seat: SeatWorld, mount: Pick<SeatMount, 'radius' | 'height'>, footprint: Footprint | null, keep = 0): number | null {
+  if (!footprint) {
+    const toSeat = seatReach(avatar, seat, mount)
+    return toSeat !== null && toSeat <= RIDE_REACH_STUDS + keep ? toSeat : null
+  }
+  const top = Math.max(footprint.top, seat.point.y - SEAT_PAN_HEIGHT + mount.height)
+  if (avatar.y < footprint.center.y - RIDE_LEVEL_MARGIN || avatar.y > top + RIDE_LEVEL_MARGIN) return null
+  const toSeat = Math.max(0, Math.hypot(avatar.x - seat.point.x, avatar.z - seat.point.z) - mount.radius) / STUD
+  const toSide = footprintDistance(avatar, footprint)
+  if (toSeat > RIDE_REACH_STUDS + keep && toSide > RIDE_SIDE_REACH_STUDS + keep) return null
   return Math.min(toSeat, toSide)
 }
 

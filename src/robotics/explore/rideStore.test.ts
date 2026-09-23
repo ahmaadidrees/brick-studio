@@ -13,10 +13,11 @@ import { useHiddenBrickIds } from '../scene/hiddenBricks'
 import type { RapierModule } from '../sim/colliders'
 import { computeModel } from '../state/roboticsStore'
 import { CURB_PROP_IDS, plateHalfWidth } from './plateCurb'
-import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection } from './rideFixtures'
+import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection, towerRoverBricks } from './rideFixtures'
 import { BACK_TO_START, RIDER_STANDING_Y, rideLimit, yawOf } from './rideModel'
+import { RIDE_REQUEST_SECONDS, requestRide } from './rideRequest'
 import {
-  BUILD_CHANGED, DISMOUNT_MIN_SECONDS, advanceRides, bringBackRide, liveRide, rideAvatarFrame, resetExploreRideForTests, seatOf, useExploreRideStore, type RideEnvironment,
+  BUILD_CHANGED, DISMOUNT_MIN_SECONDS, advanceRides, bringBackRide, liveRide, rideAvatarFrame, rideCameraTarget, resetExploreRideForTests, seatOf, useExploreRideStore, type RideEnvironment,
 } from './rideStore'
 
 /**
@@ -157,6 +158,86 @@ describe('the ride state machine', () => {
     hidden.unmount()
   })
 
+  it('a seat on a tall tower: beside the robot on the ground the Ride card comes up and stays until she walks away; riding puts her on the seat up there', () => {
+    load(seatedRoverSection(), towerRoverBricks())
+    ride().enter(RAPIER as unknown as RapierModule)
+    // One stud outside the right wheel, on the ground, about four units below the seat.
+    const beside = (studs: number) => body((37 + studs - 32) * STUD, RIDER_STANDING_Y, (29 - 32) * STUD)
+    expect(rideAvatarFrame(beside(1))).toBeNull()
+    expect(ride().nearestId).toBe(RIDE_CREATION_ID)
+    // Stepping about and out to four studs keeps it; five and a half studs out, it goes.
+    rideAvatarFrame(beside(4))
+    expect(ride().nearestId).toBe(RIDE_CREATION_ID)
+    rideAvatarFrame(beside(5.5))
+    expect(ride().nearestId).toBeNull()
+    rideAvatarFrame(beside(4))
+    expect(ride().nearestId).toBeNull()
+    rideAvatarFrame(beside(2))
+    expect(ride().nearestId).toBe(RIDE_CREATION_ID)
+    expect(ride().pressRideKey()).toBe(true)
+    const live = liveRide(RIDE_CREATION_ID)!
+    const seated = rideAvatarFrame(beside(2))!
+    expect(seated.mode).toBe('seat')
+    expect(seated.position.y).toBeCloseTo(seatOf(live).point.y + RIDER_STANDING_Y, 6)
+    expect(seated.position.y).toBeGreaterThan(4)
+  })
+
+  it('while riding, the camera frames the robot: its middle, halfway from its base to the rider’s head; walking, her head', () => {
+    load(seatedRoverSection(), towerRoverBricks())
+    ride().enter(RAPIER as unknown as RapierModule)
+    expect(rideCameraTarget()).toBeNull()
+    rideAvatarFrame(body((37 + 1 - 32) * STUD, RIDER_STANDING_Y, (29 - 32) * STUD))
+    expect(ride().ride()).toBe(true)
+    const live = liveRide(RIDE_CREATION_ID)!
+    const target = rideCameraTarget()!
+    const head = seatOf(live).point.y + RIDER_STANDING_Y + 0.52
+    expect(target.y).toBeGreaterThan(1.5)
+    expect(target.y).toBeLessThan(head - 1.5)
+    ride().setRideKey('up', true)
+    frames(1)
+    // It follows the robot as it drives.
+    const moved = rideCameraTarget()!
+    expect(target.z - moved.z).toBeGreaterThan(2)
+    ride().setRideKey('up', false)
+    ride().hopOff()
+    frames(1.5)
+    expect(rideCameraTarget()).toBeNull()
+  })
+
+  it('Ride it in Explore: a ride asked for from Build seats her on the first frame in Explore, the camera behind her', () => {
+    load()
+    useBrickStore.setState({ touchYaw: 0.3 })
+    requestRide(RIDE_CREATION_ID)
+    ride().enter(RAPIER as unknown as RapierModule)
+    // Wherever she spawned, far from the robot.
+    const far = body(12, RIDER_STANDING_Y, 12)
+    const seated = rideAvatarFrame(far)!
+    expect(ride()).toMatchObject({ phase: 'riding', riding: RIDE_CREATION_ID })
+    const live = liveRide(RIDE_CREATION_ID)!
+    expect(seated.mode).toBe('seat')
+    expect(seated.position.y).toBeCloseTo(seatOf(live).point.y + RIDER_STANDING_Y, 6)
+    expect(useBrickStore.getState().touchYaw).toBeCloseTo(seatOf(live).facingYaw, 6)
+    // Taken once: hopping off and walking does not ride again by itself.
+    ride().hopOff()
+    frames(1.5)
+    expect(rideAvatarFrame(far)?.mode).toBe('place')
+    expect(rideAvatarFrame(far)).toBeNull()
+    expect(ride().phase).toBe('walking')
+  })
+
+  it('a request that is never taken goes stale, and leaving Explore drops it', () => {
+    load()
+    requestRide(RIDE_CREATION_ID, Date.now() - (RIDE_REQUEST_SECONDS + 1) * 1000)
+    ride().enter(RAPIER as unknown as RapierModule)
+    expect(rideAvatarFrame(body(12, RIDER_STANDING_Y, 12))).toBeNull()
+    expect(ride().phase).toBe('walking')
+    requestRide(RIDE_CREATION_ID)
+    ride().leave()
+    ride().enter(RAPIER as unknown as RapierModule)
+    expect(rideAvatarFrame(body(12, RIDER_STANDING_Y, 12))).toBeNull()
+    expect(ride().phase).toBe('walking')
+  })
+
   it('rides again from where it was parked, with a fresh program run', () => {
     load()
     walkUpAndRide()
@@ -247,6 +328,35 @@ describe('the ride state machine', () => {
     const against = seatOf(live).point.z
     frames(1)
     expect(seatOf(live).point.z - against).toBeGreaterThan(2)
+  })
+
+  it('at the curb it can back away, turn on the spot and drive off: the kit Buggy and the tester’s tall one', () => {
+    for (const bricks of [seatedRoverBricks(), towerRoverBricks()]) {
+      resetExploreRideForTests()
+      load(seatedRoverSection(), bricks)
+      walkUpAndRide()
+      const live = liveRide(RIDE_CREATION_ID)!
+      const hold = (key: 'up' | 'down' | 'left' | 'right', seconds: number) => { ride().setRideKey(key, true); frames(seconds); ride().setRideKey(key, false); frames(0.3) }
+      hold('up', 6)
+      const against = seatOf(live)
+      expect(against.point.z).toBeLessThan(-plateHalfWidth(64) + 8 * STUD)
+      // Turn on the spot with the nose on the curb.
+      hold('left', 1.5)
+      const turned = seatOf(live)
+      const turnedBy = Math.abs(Math.atan2(Math.sin(turned.facingYaw - against.facingYaw), Math.cos(turned.facingYaw - against.facingYaw)))
+      expect(turnedBy).toBeGreaterThan(Math.PI / 4)
+      // Then drive off along the new heading.
+      hold('up', 1.5)
+      const off = seatOf(live)
+      expect(Math.hypot(off.point.x - turned.point.x, off.point.z - turned.point.z)).toBeGreaterThan(3)
+      // And back up again.
+      hold('down', 1.2)
+      // (Measured: the kit Buggy turns 100° with its nose on the curb, drives off 8.1 units and backs 2.8; the tall one 87°, 8.0 and 1.8.)
+      expect(Math.hypot(seatOf(live).point.x - off.point.x, seatOf(live).point.z - off.point.z)).toBeGreaterThan(1.2)
+      // Still riding the whole time, upright, never sent back.
+      expect(ride()).toMatchObject({ phase: 'riding', riding: RIDE_CREATION_ID, notice: null })
+      expect(liveRide(RIDE_CREATION_ID)).toBe(live)
+    }
   })
 
   it('a ride that still gets past the curb goes back to the start with its rider on board, and the keys still drive', () => {

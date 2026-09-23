@@ -128,7 +128,7 @@ import { brickTapsTaken, takeBrickTap } from '../robotics/scene/brickTap'
 import { framePoseInFreeArea } from '../robotics/scene/framing'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 import { studioEditingSuspended } from '../robotics/code/studioKeys'
-import { exploreRideFrame } from '../robotics/explore/rideBridge'
+import { exploreCameraBoom, exploreCameraTarget, exploreRideFrame } from '../robotics/explore/rideBridge'
 import { isFarSpot, keepsStudioPlacement, publishBuildView, setFarHover, settledPosition, stationaryBricks, surfaceHeight } from '../robotics/basics/sceneSupport'
 import { reportRefusal } from '../robotics/basics/basicsState'
 import { REFUSAL_TEXT, settlePieces } from '../robotics/basics/support'
@@ -1858,9 +1858,15 @@ function ExplorerAvatar({
       onPose(pose)
     }
     const target = cameraTarget.current.set(position.x, position.y + 0.52, position.z)
+    // Robot Workshop spike (null without the flag): riding, frame the robot; head wedged among parts, look from just above them.
+    const moved = exploreCameraTarget(target)
+    if (moved) target.set(moved.x, moved.y, moved.z)
     const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
     const direction = cameraDirection.current.copy(boom).normalize()
+    // Robot Workshop spike (null without the flag): a boom a big build would cut short rises over it instead.
+    const risen = exploreCameraBoom(target, direction, desiredDistance, Math.min(delta, 0.05))
+    if (risen) direction.set(risen.x, risen.y, risen.z)
     const obstruction = findCameraObstruction(
       world,
       target,

@@ -11,9 +11,9 @@ import { createProgram } from '../program/programs'
 import { starterFor } from '../program/starters'
 import { isControllerTrigger } from '../program/types'
 import { CURB, CURB_PROP_IDS, isCurbProp, plateCurb, plateHalfWidth } from './plateCurb'
-import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection } from './rideFixtures'
+import { RIDE_CREATION_ID, SEAT_ID, TOWER_BRICK_IDS, seatedRoverBricks, seatedRoverSection, towerRoverBricks } from './rideFixtures'
 import {
-  BACK_TO_START, FALLEN_Y, HOP_OFF_RINGS_STUDS, PAST_CURB_STUDS, RIDE_REACH_STUDS, RIDE_SIDE_REACH_STUDS, RIDE_WORDS, RIDER_STANDING_Y, SEAT_PAN_HEIGHT, TIPPED_SECONDS, chooseRideProgram, footprintDistance, footprintInWorld,
+  BACK_TO_START, FALLEN_Y, HOP_OFF_RINGS_STUDS, PAST_CURB_STUDS, RIDE_KEEP_STUDS, RIDE_LEVEL_MARGIN, RIDE_REACH_STUDS, RIDE_SIDE_REACH_STUDS, RIDE_WORDS, RIDER_STANDING_Y, SEAT_PAN_HEIGHT, TIPPED_SECONDS, chooseRideProgram, footprintDistance, footprintInWorld,
   hopOffPoints, isTipped, localFootprint, rideCandidates, rideLimit, rideReach, rideProgramKey, ridePrompt, riderPosition, rideStatus, rideTrouble, seatInWorld, seatMountAtBuild, seatReach, yawOf, type RidePromptInput,
 } from './rideModel'
 
@@ -174,6 +174,42 @@ describe('near enough to ride', () => {
     expect(rideReach(away, seat, mount, footprint)).toBeNull()
     // Inside the footprint the distance is 0.
     expect(footprintDistance({ x: seat.point.x, y: 0, z: seat.point.z }, footprint)).toBe(0)
+  })
+})
+
+describe('near enough to ride a seat on a tall tower', () => {
+  const { input, creations } = derive(towerRoverBricks())
+  const creation = creations[0]
+  const seatBrick = input.bricks.find((brick) => brick.id === SEAT_ID)!
+  const mount = seatMountAtBuild(seatBrick, input.partMap[seatBrick.partId], input.plateSize)
+  const identity = { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } }
+  const seat = seatInWorld(mount, identity)
+  const footprint = footprintInWorld(localFootprint(input.bricks, creation.brickIds, input.partMap, input.plateSize)!, identity)
+  const onGround = (x: number, z: number, y = RIDER_STANDING_Y) => ({ x, y, z })
+  /** The robot's right side is its right wheel's outer face (x = 37 studs). */
+  const beside = (studs: number, y?: number) => onGround((37 + studs - 32) * STUD, seat.point.z, y)
+
+  it('the tower is part of the robot and lifts the seat about four units off the ground', () => {
+    expect(creation.brickIds).toEqual(expect.arrayContaining([...TOWER_BRICK_IDS, SEAT_ID]))
+    expect(seat.point.y).toBeGreaterThan(4)
+    // The seat's own height check fails from the ground: the reason the Ride card only showed mid-jump.
+    expect(seatReach(beside(1), seat, mount)).toBeNull()
+  })
+
+  it('standing on the ground beside it, or jumping there, is near: height does not matter', () => {
+    expect(rideReach(beside(1), seat, mount, footprint)).toBeCloseTo(1, 6)
+    expect(rideReach(beside(2.9), seat, mount, footprint)).toBeCloseTo(2.9, 6)
+    expect(rideReach(beside(1, RIDER_STANDING_Y + 1.6), seat, mount, footprint)).toBeCloseTo(1, 6)
+    // On the robot itself, too.
+    expect(rideReach(onGround(seat.point.x, seat.point.z - 2 * STUD, 1.4), seat, mount, footprint)).toBe(0)
+  })
+
+  it('once shown it stays until she walks away (a few studs more), and a roof high above it is not near', () => {
+    expect(rideReach(beside(4), seat, mount, footprint)).toBeNull()
+    expect(rideReach(beside(4), seat, mount, footprint, RIDE_KEEP_STUDS)).toBeCloseTo(4, 6)
+    expect(rideReach(beside(RIDE_SIDE_REACH_STUDS + RIDE_KEEP_STUDS + 0.5), seat, mount, footprint, RIDE_KEEP_STUDS)).toBeNull()
+    expect(rideReach(beside(1, footprint.top + RIDE_LEVEL_MARGIN + 1), seat, mount, footprint)).toBeNull()
+    expect(rideReach(beside(1, footprint.center.y - RIDE_LEVEL_MARGIN - 1), seat, mount, footprint)).toBeNull()
   })
 })
 
