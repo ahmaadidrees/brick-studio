@@ -4,6 +4,8 @@ import { useBrickStore } from '../../brick/store'
 import { snapDraftToConnector } from '../model/snap'
 import { registerDraftSnapper, snapDraft } from '../scene/draftSnap'
 import { disconnect } from '../model/control'
+import { createProgram, setActiveProgram } from '../program/programs'
+import { defaultStarterFor } from '../program/starters'
 import { readRoboticsSection, writeRoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
 import { ROBOTICS_PART_COLORS, ROBOTICS_PART_IDS } from '../parts/catalog'
@@ -320,5 +322,89 @@ describe('a motor on a hub (the Codex QA case)', () => {
     expect(useBrickStore.getState().placeDraft()).toBe(false)
     expect(useBrickStore.getState().toast).toBe("The axle fits Left motor's socket, but there it would overlap Hub. Turn or move the motor so its socket faces open space.")
     useBrickStore.getState().cancelInteraction()
+  })
+})
+
+describe('the union card (contract §4)', () => {
+  /** Two named creations on two plates side by side, each with a hub; Crane has a program. */
+  function twoCreations() {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Buggy', false)
+    place('plate_6x8', 34, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 35, 1, 27)
+    robotics().confirmCard('Crane', false)
+    const crane = robotics().model.creations.find((creation) => creation.name === 'Crane')!
+    const created = createProgram(section(), crane, defaultStarterFor(crane), { id: 'crane-program' })
+    expect(created.ok).toBe(true)
+    useBrickStore.getState().setRoboticsSection(writeRoboticsSection(created.section), 'Add program', { history: false })
+    useBrickStore.getState().setRoboticsSection(writeRoboticsSection(setActiveProgram(section(), crane.id, 'crane-program')), 'Active program', { history: false })
+    return { buggyId: section().creations[0].id, craneId: crane.id }
+  }
+
+  it('a brick studded onto both opens the card for the union; confirming makes one creation that keeps both programs', () => {
+    const { buggyId, craneId } = twoCreations()
+    expect(robotics().model.creations).toHaveLength(2)
+    place('brick_2x4', 33, 1, 27)
+    const card = robotics().card!
+    expect(card.creationId).toBe(buggyId)
+    expect(card.joining).toEqual({ creationIds: [craneId], names: ['Buggy', 'Crane'] })
+    expect(card.suggestedName).toBe('Buggy')
+    robotics().confirmCard('Big rig', false)
+    expect(section().creations).toHaveLength(1)
+    expect(section().creations[0]).toMatchObject({ id: buggyId, name: 'Big rig', activeProgramId: 'crane-program' })
+    expect(section().programs.map((program) => program.creationId)).toEqual([buggyId])
+    expect(robotics().model.creations[0].hubs).toHaveLength(2)
+    expect(topLabel()).toBe('Join Buggy and Crane')
+    // One undo brings both creations back, with the program on Crane again.
+    useBrickStore.getState().undo()
+    expect(section().creations.map((creation) => creation.name)).toEqual(['Buggy', 'Crane'])
+    expect(section().programs[0].creationId).toBe(craneId)
+    // Redo joins them again and the program follows.
+    useBrickStore.getState().redo()
+    expect(section().creations).toHaveLength(1)
+    expect(section().programs[0].creationId).toBe(buggyId)
+  })
+
+  it('Not now joins them too, under the first creation\'s name', () => {
+    twoCreations()
+    place('brick_2x4', 33, 1, 27)
+    robotics().confirmCard('', false)
+    expect(section().creations.map((creation) => creation.name)).toEqual(['Buggy'])
+  })
+
+  it('two creations that only touch stay two, and no card opens', () => {
+    twoCreations()
+    // A brick on Buggy's plate right against Crane's plate edge: touching, not studded to it.
+    place('brick_1x1', 33, 1, 26)
+    expect(robotics().card).toBeNull()
+    expect(section().creations).toHaveLength(2)
+  })
+})
+
+describe('a nudge on a creation that can drive', () => {
+  it('frames the creation with room ahead and behind, so it never rolls under a panel', async () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Rover', false)
+    place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
+    place(ROBOTICS_PART_IDS.motor, 31, 1, 31, 0)
+    place(ROBOTICS_PART_IDS.axleShort, 26, 0, 32)
+    place(ROBOTICS_PART_IDS.axleShort, 34, 0, 32)
+    place(ROBOTICS_PART_IDS.wheel, 25, 0, 31)
+    place(ROBOTICS_PART_IDS.wheel, 36, 0, 31)
+    const rover = robotics().model.creations[0]
+    expect(rover.drivePair).not.toBeNull()
+    const before = robotics().frameRequest?.nonce ?? 0
+    await robotics().startSim(rover.id)
+    const request = robotics().frameRequest!
+    expect(request.nonce).toBeGreaterThan(before)
+    expect(request.brickIds).toEqual(rover.brickIds)
+    expect(request.points).toHaveLength(2)
+    // Ahead and behind along the drive pair's forward (-Z here), nine studs each way.
+    const [ahead, behind] = request.points!
+    expect(ahead.z).toBeLessThan(behind.z)
+    expect(behind.z - ahead.z).toBeCloseTo(18 * 0.62, 5)
+    robotics().resetSim()
   })
 })

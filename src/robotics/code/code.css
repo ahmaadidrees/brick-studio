@@ -61,7 +61,7 @@
   border-radius: 999px;
   background: var(--robo-soft);
   color: var(--robo-ink);
-  font: 800 14px/1 inherit;
+  font-weight: 800; font-size: 14px; line-height: 1;
   font-family: inherit;
   cursor: pointer;
 }
@@ -103,7 +103,7 @@
   border-radius: 999px;
   background: transparent;
   color: var(--robo-ink);
-  font: 800 13px/1 inherit;
+  font-weight: 800; font-size: 13px; line-height: 1;
   font-family: inherit;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -119,7 +119,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, .18);
   color: #fff;
-  font: 900 14px/1 inherit;
+  font-weight: 900; font-size: 14px; line-height: 1;
   font-family: inherit;
   cursor: pointer;
 }
@@ -132,7 +132,7 @@
   border: 2px solid var(--robo-blue);
   border-radius: 999px;
   color: var(--robo-ink);
-  font: 800 13px/1 inherit;
+  font-weight: 800; font-size: 13px; line-height: 1;
   font-family: inherit;
   user-select: text;
 }
@@ -144,7 +144,7 @@
   border-radius: 999px;
   background: #fff;
   color: var(--robo-ink);
-  font: 900 18px/1 inherit;
+  font-weight: 900; font-size: 18px; line-height: 1;
   font-family: inherit;
   cursor: pointer;
 }
@@ -175,7 +175,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--robo-ink);
-  font: 800 13px/1.25 inherit;
+  font-weight: 800; font-size: 13px; line-height: 1.25;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
@@ -215,7 +215,7 @@
   border-radius: 999px;
   background: var(--robo-soft);
   color: var(--robo-ink);
-  font: 800 13px/1 inherit;
+  font-weight: 800; font-size: 13px; line-height: 1;
   font-family: inherit;
   white-space: nowrap;
   cursor: pointer;
@@ -273,7 +273,7 @@
   border-radius: 10px;
   background: #fff;
   color: var(--robo-blue);
-  font: 800 10.5px/1.15 inherit;
+  font-weight: 800; font-size: 10.5px; line-height: 1.15;
   font-family: inherit;
   cursor: pointer;
 }
@@ -322,7 +322,7 @@
 .robo-code-blockly .blocklyToolboxCategory:not(.blocklyToolboxSelected):hover { background: #faf6ee; }
 .robo-code-blockly .blocklyToolboxSelected { background: var(--robo-soft) !important; }
 .robo-rail-dot { display: block; width: 16px; height: 16px; border-radius: 999px; background: var(--robo-category, #9aa7b3); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12); }
-.robo-code-blockly .blocklyToolboxCategoryLabel { padding: 0; color: var(--robo-ink); font: 800 11px/1.1 inherit; font-family: inherit; cursor: pointer; }
+.robo-code-blockly .blocklyToolboxCategoryLabel { padding: 0; color: var(--robo-ink); font-weight: 800; font-size: 11px; line-height: 1.1; font-family: inherit; cursor: pointer; }
 .robo-code-blockly .blocklyToolboxSelected .blocklyToolboxCategoryLabel { color: var(--robo-ink); }
 .robo-code-blockly .blocklyFlyoutBackground { fill: #fbf8f2; fill-opacity: 1; }
 .robo-code-blockly .blocklyFlyout { filter: drop-shadow(1px 0 0 #e3dccd); }
@@ -380,7 +380,7 @@
   padding: 0 14px 0 11px;
   border: 0;
   border-radius: 999px;
-  font: 900 14px/1 inherit;
+  font-weight: 900; font-size: 14px; line-height: 1;
   font-family: inherit;
   cursor: pointer;
 }
@@ -399,7 +399,7 @@
 .robo-status.stopped .robo-status-dot { background: var(--robo-red); }
 
 .robo-seg { display: inline-flex; flex: 0 0 auto; padding: 3px; border-radius: 999px; background: var(--robo-soft); }
-.robo-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--robo-ink); font: 800 12.5px/1 inherit; font-family: inherit; white-space: nowrap; cursor: pointer; }
+.robo-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--robo-ink); font-weight: 800; font-size: 12.5px; line-height: 1; font-family: inherit; white-space: nowrap; cursor: pointer; }
 .robo-seg button.on { color: #fff; background: var(--robo-blue); }
 
 .robo-code-lines { display: flex; flex-direction: column; gap: 4px; padding: 0 12px; }
@@ -450,7 +450,7 @@
 .robo-joystick[aria-disabled='true'] { opacity: .5; cursor: default; }
 .robo-joystick-knob { display: block; border-radius: 999px; background: var(--robo-blue); box-shadow: 0 4px 10px rgba(38, 60, 81, .35); pointer-events: none; }
 .robo-keypad { display: grid; grid-template-columns: repeat(3, 38px); grid-template-areas: '. up .' 'left down right' 'space space space'; gap: 4px; }
-.robo-key { height: 36px; border: 0; border-radius: 8px; background: #fff; color: var(--robo-ink); box-shadow: 0 1px 4px rgba(38, 60, 81, .2); font: 900 15px/1 inherit; font-family: inherit; touch-action: none; cursor: pointer; }
+.robo-key { height: 36px; border: 0; border-radius: 8px; background: #fff; color: var(--robo-ink); box-shadow: 0 1px 4px rgba(38, 60, 81, .2); font-weight: 900; font-size: 15px; line-height: 1; font-family: inherit; touch-action: none; cursor: pointer; }
 .robo-key.held { color: #fff; background: var(--robo-blue); }
 .robo-key-up { grid-area: up; }
 .robo-key-left { grid-area: left; }
@@ -486,6 +486,20 @@
   .robo-run, .robo-stop { height: 38px; padding: 0 12px 0 9px; font-size: 13px; }
   .robo-read { min-width: 0; padding: 6px 9px; }
   .robo-read strong { font-size: 14px; }
+}
+
+/* Fingers (iPad): every control is at least 44 px and no text is under 13 px. */
+@media (any-pointer: coarse) {
+  .robo-back, .robo-run, .robo-stop, .robo-button, .robo-tab, .robo-tab-rename, .robo-seg button, .robo-menu > button, .robo-problem-link, .robo-key, .robo-all-blocks { min-height: 44px; }
+  .robo-tab-add, .robo-tab-more, .robo-icon-button, .robo-zoom button { width: 44px; height: 44px; }
+  .robo-tab { max-width: 220px; font-size: 14px; }
+  .robo-seg button, .robo-button, .robo-back, .robo-menu > button, .robo-code-goal, .robo-problems, .robo-line, .robo-status { font-size: 14px; }
+  .robo-menu > button span, .robo-read small, .robo-read span, .robo-pill, .robo-menu-title, .robo-all-blocks { font-size: 13px; }
+  .robo-code-blockly .blocklyToolboxCategory { min-height: 58px; }
+  .robo-code-blockly .blocklyToolboxCategoryLabel { font-size: 13px; }
+  .robo-keypad { grid-template-columns: repeat(3, 48px); }
+  .robo-key { height: 44px; }
+  .robo-code-head .wiring-mode .robotics-chip { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

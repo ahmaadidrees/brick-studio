@@ -47,7 +47,7 @@ export function programRecord(id: string, workspace: unknown, extra: Partial<Rob
  */
 export function stubBlocklyLayout() {
   const context = { font: '', measureText: (text: string) => ({ width: text.length * 7 }) }
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context as unknown as CanvasRenderingContext2D)
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() => context) as unknown as HTMLCanvasElement['getContext'])
   const proto = SVGElement.prototype as unknown as { getBBox?: () => DOMRect }
   if (!proto.getBBox) proto.getBBox = () => ({ x: 0, y: 0, width: 40, height: 20 }) as DOMRect
 }

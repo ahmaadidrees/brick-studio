@@ -74,7 +74,7 @@ describe('opening a creation for the first time', () => {
     expect(workspace.getToolbox()!.getFlyout()!.isVisible()).toBe(false)
     expect(document.querySelectorAll('.blocklyToolboxCategory')).toHaveLength(9)
     // The first-run palette leaves the controller blocks out.
-    const input = workspace.getToolbox()!.getToolboxItemById('input') as Blockly.ToolboxCategory
+    const input = (workspace.getToolbox() as Blockly.Toolbox).getToolboxItemById('input') as Blockly.ToolboxCategory
     expect(input.getContents()).toEqual([])
     expect(screen.getByTestId('robo-goal')).toHaveTextContent(STARTER_GOALS['stop-before-wall'])
     expect(screen.getByRole('button', { name: 'More blocks' })).toBeInTheDocument()
@@ -96,7 +96,7 @@ describe('opening a creation for the first time', () => {
     await openCode()
     const workspace = mainWorkspace()
     expect(workspace.getToolbox()!.getSelectedItem()).not.toBeNull()
-    const input = workspace.getToolbox()!.getToolboxItemById('input') as Blockly.ToolboxCategory
+    const input = (workspace.getToolbox() as Blockly.Toolbox).getToolboxItemById('input') as Blockly.ToolboxCategory
     expect((input.getContents() as unknown[]).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'More blocks' })).toBeNull()
   })
@@ -127,7 +127,7 @@ describe('program tabs', () => {
     expect(screen.getAllByRole('tab').map((tab) => [tab.textContent, tab.getAttribute('aria-selected')])).toEqual([['Stop before the wall', 'false'], ['Joystick drive', 'true']])
     // A controller starter shows its joystick; its first-run palette includes the controller blocks.
     expect(screen.getByTestId('robo-joystick')).toBeInTheDocument()
-    const input = mainWorkspace().getToolbox()!.getToolboxItemById('input') as Blockly.ToolboxCategory
+    const input = (mainWorkspace().getToolbox() as Blockly.Toolbox).getToolboxItemById('input') as Blockly.ToolboxCategory
     expect((input.getContents() as { type: string }[]).map((item) => item.type)).toContain('robo_when_joystick_moves')
 
     fireEvent.click(screen.getByRole('tab', { name: 'Stop before the wall' }))

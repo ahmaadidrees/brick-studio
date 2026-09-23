@@ -19,6 +19,7 @@ import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/ro
 import Cables from '../wiring/Cables'
 import type { HingeReport } from '../sim/mechanics'
 import { registerDraftSnapper } from './draftSnap'
+import { registerCanvasInsets } from './cameraInsets'
 import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
 import StageLayer from './StageLayer'
@@ -281,6 +282,16 @@ function CreationFraming() {
   return null
 }
 
+/** While the layer is mounted the studio's camera presets frame into the canvas area the panels leave free. */
+function PresetInsets() {
+  const { gl } = useThree()
+  useEffect(() => {
+    registerCanvasInsets(() => measureCanvasInsets(gl.domElement))
+    return () => registerCanvasInsets(null)
+  }, [gl])
+  return null
+}
+
 /** Dev only: lets the QA harness aim a real pointer at a connector by projecting world points to the page. */
 function DevProjector() {
   const { camera, gl } = useThree()
@@ -330,6 +341,7 @@ export default function RoboticsBuildLayer() {
     <>
       <ConnectorSnapping />
       <CreationFraming />
+      <PresetInsets />
       <DevProjector />
       {highlights.filter((entry) => !hidden?.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
       <HubPortLabels bricks={visible} plateSize={plateSize} />

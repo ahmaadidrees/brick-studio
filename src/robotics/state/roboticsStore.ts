@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getBuildPlateSize } from '../../brick/buildPlate'
-import { createPartMap } from '../../brick/parts'
+import { STUD, createPartMap } from '../../brick/parts'
 import { registerRoboticsHistoryMerge, useBrickStore, type BrickHistoryEntry, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { connect, planAssistedConnection } from '../model/control'
@@ -9,10 +9,11 @@ import { readRoboticsSection, writeRoboticsSection, type RoboticsConnection, typ
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { mergeRoboticsHistory } from '../program/programs'
 import { overlappingBricks } from '../model/blocked'
+import { brickOriginFor } from '../model/grid'
+import type { Vec3 } from '../model/vec'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { ContactReport, HingeReport, Mechanics } from '../sim/mechanics'
-import type { Vec3 } from '../model/vec'
 import { useCodeView } from '../code/codeViewState'
 
 /**
@@ -34,6 +35,12 @@ export type CardState = {
   creationId: string | null
   suggestedName: string
   placedBrickId: string
+  /**
+   * A brick attached two creations (contract §4: "attaching them with a brick reopens the
+   * card for the union"). `creationId` is the one that keeps its id; these join it on
+   * either button. Their names, for the card's title.
+   */
+  joining?: { creationIds: string[]; names: string[] }
 }
 
 export type WiringNote = {
@@ -57,7 +64,7 @@ export type SimState = {
 }
 
 /** Asks the scene to frame these bricks inside the free canvas area (the layer measures the panels). */
-export type FrameRequest = { brickIds: string[]; nonce: number; /** World points to keep in view too (a stage's wall or visitor). */ points?: Vec3[] }
+export type FrameRequest = { brickIds: string[]; nonce: number; /** Extra world points to keep in view (where a creation is about to drive). */ points?: Vec3[] }
 
 export type RoboticsState = {
   model: RoboticsModel
@@ -72,6 +79,8 @@ export type RoboticsState = {
   refreshModel: () => void
   handlePlacement: (brickId: string) => void
   openCardFor: (creationId: string) => void
+  /** A placement attached two or more creations: the card for their union (the first keeps its id). */
+  openJoinCard: (creations: DerivedCreation[], component: string[], placedBrickId: string) => void
   closeCard: () => void
   confirmCard: (name: string, thenCode: boolean) => void
   renameCreation: (creationId: string, name: string) => void
@@ -91,6 +100,20 @@ export type RoboticsState = {
 }
 
 const WIRING_LABEL_PREFIX = 'Connect '
+
+/** Studs a nudge is framed for, ahead of and behind a creation that can drive (a 40 % nudge rolls about 8 in 2.6 s). */
+const NUDGE_TRAVEL_STUDS = 9
+
+function travelPoints(input: DeriveInput, creation: DerivedCreation): Vec3[] {
+  const forward = creation.drivePair?.forward
+  if (!forward) return []
+  const bricks = input.bricks.filter((brick) => creation.brickIds.includes(brick.id))
+  if (!bricks.length) return []
+  const origins = bricks.map((brick) => brickOriginFor(brick, input.partMap[brick.partId], input.plateSize))
+  const center = { x: origins.reduce((sum, point) => sum + point.x, 0) / origins.length, y: 0, z: origins.reduce((sum, point) => sum + point.z, 0) / origins.length }
+  const reach = NUDGE_TRAVEL_STUDS * STUD
+  return [1, -1].map((sign) => ({ x: center.x + forward.x * reach * sign, y: 0, z: center.z + forward.z * reach * sign }))
+}
 
 export function computeModel(state: Pick<BrickState, 'bricks' | 'documentMetadata'>): RoboticsModel {
   const section = readRoboticsSection(state.documentMetadata.robotics)
@@ -152,10 +175,17 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
   handlePlacement: (brickId) => {
     const brickState = useBrickStore.getState()
     const brick = brickState.bricks.find((candidate) => candidate.id === brickId)
-    if (!brick || !isDevicePart(brick.partId)) return
+    if (!brick) return
     let model = computeModel(brickState)
     const component = creationComponent(model.input, brick.id)
-    const existing = model.creations.find((creation) => creation.brickIds.some((id) => component.includes(id))) ?? null
+    // Every saved creation this brick's component now reaches. Two or more: the brick joined them.
+    const reached = model.creations.filter((creation) => creation.brickIds.some((id) => component.includes(id)))
+    const joining = reached.length > 1
+    if (!isDevicePart(brick.partId)) {
+      if (joining) get().openJoinCard(reached, component, brick.id)
+      return
+    }
+    const existing = joining ? null : reached[0] ?? null
     const spec = roboticsSpec(brick.partId)!
 
     let section = model.section
@@ -196,6 +226,11 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       set({ wiringNote: { text: refusal, undoable: false, nonce: Date.now(), entry: null, added: [] } })
     }
 
+    if (joining) {
+      set({ model })
+      get().openJoinCard(reached, component, brick.id)
+      return
+    }
     if (existing) {
       set({ model })
       return
@@ -203,6 +238,12 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const candidate = deriveCreations({ ...model.input, section: { ...model.section, creations: [{ id: 'candidate', name: '', anchorBrickIds: component }] } })[0]
     const suggestedName = defaultCreationName(candidate.kind, model.section.creations.map((creation) => creation.name))
     set({ model, card: { anchorBrickIds: component, creationId: null, suggestedName, placedBrickId: brick.id } })
+    get().requestFrame(component)
+  },
+
+  openJoinCard: (creations, component, placedBrickId) => {
+    const [keeper, ...others] = creations
+    set({ card: { anchorBrickIds: component, creationId: keeper.id, suggestedName: keeper.name, placedBrickId, joining: { creationIds: others.map((creation) => creation.id), names: creations.map((creation) => creation.name) } } })
     get().requestFrame(component)
   },
 
@@ -220,7 +261,23 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const trimmed = name.trim() || card.suggestedName
     let section = model.section
     let id = card.creationId
-    if (id) {
+    if (id && card.joining) {
+      // One creation from here on: the keeper takes every anchor and every program; the others' records go.
+      const keeperId = id
+      const joined = new Set(card.joining.creationIds)
+      const records = section.creations.filter((creation) => creation.id === keeperId || joined.has(creation.id))
+      const anchors = [...new Set([...records.flatMap((creation) => creation.anchorBrickIds), ...anchorableBrickIds(model.input, card.anchorBrickIds)])]
+      const keeperRecord = records.find((creation) => creation.id === keeperId)
+      const activeProgramId = keeperRecord?.activeProgramId ?? records.find((creation) => creation.activeProgramId)?.activeProgramId
+      section = {
+        ...section,
+        creations: section.creations
+          .filter((creation) => !joined.has(creation.id))
+          .map((creation) => (creation.id === keeperId ? { ...creation, name: trimmed, anchorBrickIds: anchors, ...(activeProgramId ? { activeProgramId } : {}) } : creation)),
+        programs: section.programs.map((program) => (joined.has(program.creationId) ? { ...program, creationId: keeperId } : program)),
+      }
+      writeSection(section, `Join ${card.joining.names.join(' and ')}`)
+    } else if (id) {
       section = { ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, name: trimmed, anchorBrickIds: [...new Set([...creation.anchorBrickIds, ...anchorableBrickIds(model.input, card.anchorBrickIds)])] } : creation)) }
       writeSection(section, 'Rename creation')
     } else {
@@ -246,7 +303,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     writeSection({ ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, testSpace: space } : creation)) }, `Run ${space === 'testPlate' ? 'on the test plate' : 'in my world'}`)
   },
 
-  requestFrame: (brickIds, points) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1, ...(points?.length ? { points: [...points] } : {}) } })),
+  requestFrame: (brickIds, points) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1, ...(points?.length ? { points: points.map((point) => ({ ...point })) } : {}) } })),
 
   dismissWiringNote: () => set({ wiringNote: null }),
 
@@ -296,6 +353,8 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       const mechanics = createMechanics({ rapier, bricks: brickState.bricks, partMap: model.input.partMap, plateSize: model.input.plateSize, creation })
       setHiddenBrickIds(mechanics.simulatedBrickIds)
       set({ sim: { creationId: id, mechanics, hiddenBrickIds: mechanics.simulatedBrickIds, bricks: brickState.bricks, behaviorKey: simBehaviorKey(brickState) }, model, contacts: [], hingeReports: {}, motorAngles: {} })
+      // A creation that can drive gets framed with room ahead and behind, so it never rolls under a panel.
+      if (creation.drivePair) get().requestFrame(creation.brickIds, travelPoints(model.input, creation))
     } finally {
       // A cancelled or superseded start no longer owns the loading flag.
       if (!cancelled()) set({ simLoading: false })

@@ -3,7 +3,7 @@ import { getBuildBounds } from '../../brick/bounds'
 import { createBuildFramePose } from '../../brick/buildCamera'
 import { roverBricks } from '../model/fixtures'
 import { installRoboticsParts } from '../parts/install'
-import { framePoseInFreeArea, freeArea, measureCanvasInsets, NO_INSETS } from './framing'
+import { boundsWithPoints, framePoseInFreeArea, freeArea, measureCanvasInsets, NO_INSETS } from './framing'
 
 // The rover fixture uses robotics parts; the studio's part map must know them before bounds are read.
 installRoboticsParts(true)
@@ -84,5 +84,27 @@ describe('measureCanvasInsets', () => {
   it('ignores hidden panels', () => {
     const canvas = { getBoundingClientRect: () => rect(0, 56, 1366, 712) } as unknown as HTMLElement
     expect(measureCanvasInsets(canvas, root([element('robotics-panel', rect(0, 0, 0, 0))]))).toEqual(NO_INSETS)
+  })
+})
+
+describe('presets and travel', () => {
+  const bounds = getBuildBounds(roverBricks(), 64)
+  const insets = { left: 280, right: 450, top: 0, bottom: 70 }
+
+  it('every studio preset lands the build at the centre of the free area', () => {
+    const free = freeArea(viewport, insets)
+    for (const preset of ['home', 'front', 'right', 'perspective'] as const) {
+      const pose = framePoseInFreeArea(bounds, FOV, viewport, insets, preset)
+      const onScreen = project({ x: bounds.center[0], y: bounds.center[1], z: bounds.center[2] }, pose.position, pose.target)
+      expect(onScreen.x).toBeCloseTo((free.left + free.right) / 2, 0)
+      expect(onScreen.y).toBeCloseTo((free.top + free.bottom) / 2, 0)
+    }
+  })
+
+  it('boundsWithPoints grows the box to hold where a creation will drive, and leaves it alone with no points', () => {
+    expect(boundsWithPoints(bounds, [])).toBe(bounds)
+    const grown = boundsWithPoints(bounds, [{ x: bounds.center[0], y: 0, z: bounds.min[2] - 5 }])
+    expect(grown.min[2]).toBeLessThan(bounds.min[2] - 5)
+    expect(grown.max).toEqual(bounds.max)
   })
 })

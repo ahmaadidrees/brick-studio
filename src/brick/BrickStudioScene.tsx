@@ -122,7 +122,9 @@ import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
 import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { currentCanvasInsets } from '../robotics/scene/cameraInsets'
 import { clearDraftSnap, snapDraft } from '../robotics/scene/draftSnap'
+import { framePoseInFreeArea } from '../robotics/scene/framing'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
@@ -698,15 +700,14 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     const selected = bricks.find((brick) => brick.id === selectedId)
     const frameBounds = getBuildBounds(bricks, plateSize)
     const selectedPosition = selected ? brickWorldPosition(selected, plateSize) : null
-    const pose = createBuildFramePose(
-      frameBounds,
-      request.preset,
-      perspectiveCamera.fov,
-      perspectiveCamera.aspect,
-      selectedPosition
-        ? { x: selectedPosition[0], y: selectedPosition[1] + 0.5, z: selectedPosition[2] }
-        : null,
-    )
+    const selectedTarget = selectedPosition
+      ? { x: selectedPosition[0], y: selectedPosition[1] + 0.5, z: selectedPosition[2] }
+      : null
+    // Robot Workshop spike: with its panels over the canvas, frame into the part a student can see.
+    const insets = currentCanvasInsets()
+    const pose = insets
+      ? framePoseInFreeArea(frameBounds, perspectiveCamera.fov, { width: viewportSize.width, height: viewportSize.height }, insets, request.preset, selectedTarget)
+      : createBuildFramePose(frameBounds, request.preset, perspectiveCamera.fov, perspectiveCamera.aspect, selectedTarget)
     camera.position.set(pose.position.x, pose.position.y, pose.position.z)
     controls.current?.target.set(pose.target.x, pose.target.y, pose.target.z)
     controls.current?.update()

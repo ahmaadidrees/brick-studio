@@ -83,8 +83,9 @@ function CreationCard({ compact, live }: { compact: boolean; live: boolean }) {
   if (!creation) return null
   const placed = bricks.find((brick) => brick.id === card.placedBrickId)
   const placedRole = placed ? roboticsSpec(placed.partId)?.role : undefined
-  const title = card.creationId ? `${roleTitle(placedRole)} added to ${creation.name}` : `${roleTitle(placedRole)} added`
-  const subtitle = creation.hinges.length ? 'This creation has a part that swings.' : creation.kind === 'signal' ? 'This creation can sense and signal.' : 'This creation can be coded.'
+  const joining = card.joining
+  const title = joining ? `${joinNames(joining.names)} are joined` : card.creationId ? `${roleTitle(placedRole)} added to ${creation.name}` : `${roleTitle(placedRole)} added`
+  const subtitle = joining ? 'Bricks joined by studs move together, so this is one creation now. Its programs come too.' : creation.hinges.length ? 'This creation has a part that swings.' : creation.kind === 'signal' ? 'This creation can sense and signal.' : 'This creation can be coded.'
   const baseBodies = creation.bodies.filter((body) => !creation.armBodyIds.includes(body.id))
   const baseCount = baseBodies.reduce((total, body) => total + body.brickIds.filter((id) => !creation.hinges.some((hinge) => hinge.armBrickIds.includes(id))).length, 0)
   const armCount = creation.hinges.reduce((total, hinge) => total + hinge.armBrickIds.length, 0)
@@ -121,6 +122,10 @@ function CreationCard({ compact, live }: { compact: boolean; live: boolean }) {
       {live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
     </aside>
   )
+}
+
+function joinNames(names: string[]) {
+  return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
 function roleTitle(role: string | undefined) {
@@ -257,9 +262,9 @@ function describeHinge(hinge: DerivedHinge) {
 
 function PartRows({ creation, selectedId = null, compact = false }: { creation: DerivedCreation; selectedId?: string | null; compact?: boolean }) {
   const hingeReports = useRoboticsStore((state) => state.hingeReports)
-  const rows: { id: string; text: string; tone?: 'warn' | 'bad' }[] = []
+  const rows: { id: string; text: string; tone?: 'warn' | 'bad'; ports?: { port: string; device: string | null }[] }[] = []
   const devices = [...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons]
-  for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · ports ${['A', 'B', 'C', 'D'].map((port) => `${port}${devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port) ? '●' : '○'}`).join(' ')}` })
+  for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · ports`, ports: (['A', 'B', 'C', 'D'] as const).map((port) => ({ port, device: devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port)?.name ?? null })) })
   for (const motor of creation.motors) rows.push({ id: motor.brickId, text: `${motor.name} · ${describeMotor(motor)}`, tone: motor.plugged ? undefined : 'warn' })
   for (const hinge of creation.hinges) {
     const report = hingeReports[hinge.brickId]
@@ -271,7 +276,16 @@ function PartRows({ creation, selectedId = null, compact = false }: { creation: 
   if (!rows.length) return null
   return (
     <ul className={`robotics-parts${compact ? ' compact' : ''}`} aria-label="Parts found">
-      {rows.map((row) => <li key={row.id} className={`${row.tone ?? ''}${row.id === selectedId ? ' selected' : ''}`} data-brick-id={row.id}>{row.text}</li>)}
+      {rows.map((row) => (
+        <li key={row.id} className={`${row.tone ?? ''}${row.id === selectedId ? ' selected' : ''}`} data-brick-id={row.id}>
+          {row.text}
+          {row.ports && (
+            <span className="robotics-port-chips">
+              {row.ports.map(({ port, device }) => <span key={port} className={`robotics-port-chip${device ? ' used' : ''}`} title={device ? `Port ${port}: ${device}` : `Port ${port}: free`} aria-label={device ? `Port ${port}, ${device}` : `Port ${port}, free`}>{port}</span>)}
+            </span>
+          )}
+        </li>
+      ))}
     </ul>
   )
 }
