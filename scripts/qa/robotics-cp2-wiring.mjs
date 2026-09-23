@@ -11,7 +11,9 @@
  * world→screen answer), and every wiring edit is a click on the device inspector's
  * chips and buttons, the hub's port list, the Wiring toggle or the name field. After
  * each step the harness reads back the document's robotics section, what the scene
- * draws (`window.__robotics.cables`, dev only) and what the inspector says.
+ * draws (`window.__robotics.cables`, dev only) and what the inspector says. Kid-UX pass
+ * (docs/robotics/KID-UX.md §G): the Wiring toggle, the run space and the motor tests sit in the
+ * robot panel's folded More, the part rows in its folded Parts; both are opened with a click.
  *
  *   PATH=/opt/homebrew/opt/node@22/bin:$PATH node scripts/qa/robotics-cp2-wiring.mjs
  *
@@ -70,6 +72,11 @@ const readingText = () => inspector.getByTestId('wiring-reading').textContent()
 const blockText = () => inspector.getByTestId('wiring-block').textContent()
 const chip = (port) => inspector.locator(`button.wiring-port[data-port="${port}"]`)
 const chipStates = () => inspector.locator('button.wiring-port').evaluateAll((buttons) => buttons.map((button) => `${button.dataset.port}:${button.dataset.state}`).join(' '))
+/** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
+const openFold = async (name) => {
+  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
+}
 const steps = []
 const readBack = async (step) => {
   const s = await section()
@@ -131,9 +138,13 @@ ids.plate = await place({ partId: 'plate_6x8', x: 28, y: 0, z: 26 })
 ids.hub = await place({ partId: 'robo_hub', x: 29, y: 1, z: 27 })
 await sleep(200)
 const card = page.getByTestId('robotics-creation-card')
-check('W0.card-has-wiring-toggle', await card.getByRole('group', { name: 'Wiring' }).count() === 1 && await card.getByRole('button', { name: 'assisted' }).getAttribute('aria-pressed') === 'true', 'the creation card shows "Wiring: assisted / manual", assisted pressed')
-await shot('W0-card-wiring-toggle')
-await card.getByRole('button', { name: 'Not now' }).click()
+await card.getByRole('button', { name: 'Keep building' }).click()
+await sleep(200)
+// Kid-UX: the short card has no wiring toggle; "Wiring: assisted / manual" lives in the panel's More.
+await openFold('More')
+await openFold('Parts')
+check('W0.more-has-wiring-toggle', await panel.getByRole('group', { name: 'Wiring' }).count() === 1 && await panel.getByRole('button', { name: 'assisted' }).getAttribute('aria-pressed') === 'true', 'the robot panel’s More shows "Wiring: assisted / manual", assisted pressed')
+await shot('W0-more-wiring-toggle')
 ids.leftMotor = await place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2 })
 check('W0.left-motor-A', (await wiringNote()) === 'Left motor connected to port A', `assisted: ${await wiringNote()}`)
 ids.rightMotor = await place({ partId: 'robo_motor', x: 31, y: 1, z: 31, rotation: 0 })
@@ -246,7 +257,7 @@ await shot('W8-live-reading')
 await inspector.getByRole('button', { name: 'Move to port C' }).click()
 await sleep(300)
 s = await readBack('W7 moved to C during a run')
-check('W7.edit-retires-run', (await robo((state) => state.sim)) === null && portOf(s, ids.leftMotor) === 'C' && (await page.getByTestId('robotics-sim-status').textContent()) === 'Built pose', 'the wiring edit retired the running nudge; the studio shows the built pose')
+check('W7.edit-retires-run', (await robo((state) => state.sim)) === null && portOf(s, ids.leftMotor) === 'C' && (await page.getByTestId('robotics-sim-status').textContent()) === 'Stopped', 'the wiring edit retired the running nudge; the studio shows the built pose (the motor tests say "Stopped")')
 check('W7.reading-back-to-rest', (await readingText()) === 'Stopped', `Right now after the run: ${await readingText()}`)
 
 /* ---------------------------------------------------------------- W8. manual wiring */

@@ -19,6 +19,9 @@
  *
  * Part 1 takes the screenshot set at 1366×768 and 1024×768; part 2 runs the journeys at 1366×768.
  * Writes PNGs, results.json and nothing else under docs/qa/robotics-cp2/code/.
+ *
+ * Kid-UX pass (docs/robotics/KID-UX.md §G): the card is named in its "Robot name" field and closed
+ * with Keep building; Code is always the robot panel's button (the card no longer has one).
  */
 import assert from 'node:assert/strict'
 import { writeFile } from 'node:fs/promises'
@@ -127,7 +130,7 @@ async function openStudio(width, height) {
   return s
 }
 
-/** The rover from loose parts; the card is named and closed with "Not now". */
+/** The rover from loose parts; the card is named and closed with "Keep building". */
 async function buildRover(s, { name = 'Mars buggy' } = {}) {
   await s.stage((state) => state.closeStage())
   await s.brick((state) => state.newBuild())
@@ -136,8 +139,8 @@ async function buildRover(s, { name = 'Mars buggy' } = {}) {
   ids.plate = await s.place({ partId: 'plate_6x8', x: 28, y: 0, z: 26, color: '#3e83d7' })
   ids.hub = await s.place({ partId: 'robo_hub', x: 29, y: 1, z: 27, color: '#f5eee0' })
   const card = s.page.getByTestId('robotics-creation-card')
-  await card.getByLabel('Creation name').fill(name)
-  await card.getByRole('button', { name: 'Not now' }).click()
+  await card.getByLabel('Robot name').fill(name)
+  await card.getByRole('button', { name: 'Keep building' }).click()
   ids.leftMotor = await s.place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2, color: GREY })
   ids.rightMotor = await s.place({ partId: 'robo_motor', x: 31, y: 1, z: 31, rotation: 0, color: GREY })
   ids.leftAxle = await s.place({ partId: 'robo_axle_short', x: 26, y: 0, z: 32, color: GREY })
@@ -440,8 +443,8 @@ gate.rightTop = await s.place({ partId: 'brick_1x1', x: 25, y: 10, z: 20, color:
 gate.lintel = await s.place({ partId: 'brick_1x6', x: 20, y: 13, z: 20, rotation: 1, color: GREY })
 gate.sill = await s.place({ partId: 'plate_2x4', x: 21, y: 1, z: 21, rotation: 1, color: GREY })
 gate.hinge = await s.place({ partId: 'robo_hinge_motor', x: 21, y: 2, z: 21, color: '#e7473c' })
-await page.getByTestId('robotics-creation-card').getByLabel('Creation name').fill('Castle gate')
-await page.getByTestId('robotics-creation-card').getByRole('button', { name: 'Not now' }).click()
+await page.getByTestId('robotics-creation-card').getByLabel('Robot name').fill('Castle gate')
+await page.getByTestId('robotics-creation-card').getByRole('button', { name: 'Keep building' }).click()
 gate.door = await s.place({ partId: 'brick_1x4', x: 21, y: 8, z: 21, rotation: 1, color: '#f4ca3a' })
 gate.hub = await s.place({ partId: 'robo_hub', x: 20, y: 1, z: 24, color: '#f5eee0' })
 gate.sensor = await s.place({ partId: 'robo_distance_sensor', x: 21, y: 7, z: 27, color: '#f4ca3a' })
@@ -494,7 +497,7 @@ check('G.stage-never-edits', (await snapshotConstruction(s)) === beforePoke && (
 await s.back()
 check('G.construction-unchanged', (await snapshotConstruction(s)) === builtGate, 'the gate is exactly as built')
 
-console.log('\nS. Signal post: the card’s "Code this creation"')
+console.log('\nS. Signal post: named on the card, Code from the panel')
 await s.brick((state) => state.newBuild())
 await sleep(150)
 const post = {}
@@ -503,12 +506,14 @@ post.sensor = await s.place({ partId: 'robo_distance_sensor', x: 41, y: 6, z: 40
 post.light = await s.place({ partId: 'robo_light', x: 43, y: 6, z: 43, color: '#e7473c' })
 await s.robo((state) => state.dismissWiringNote())
 const postCard = page.getByTestId('robotics-creation-card')
-await postCard.getByLabel('Creation name').fill('Signal post')
-await postCard.getByRole('button', { name: 'Code this creation' }).click()
+await postCard.getByLabel('Robot name').fill('Signal post')
+await postCard.getByRole('button', { name: 'Keep building' }).click()
+await sleep(200)
+await page.getByTestId('robotics-code-button').click()
 await page.waitForSelector('.robo-code-blockly .blocklySvg', { timeout: 30_000 })
 await s.waitStage()
 section = await s.section()
-check('S.card-opens-code', section.creations[0].name === 'Signal post' && section.programs[0].name === 'Signal post' && (await s.stage((state) => state.stage.space)) === 'myWorld', '"Code this creation" named it and opened Code on "Signal post" in My world')
+check('S.card-opens-code', section.creations[0].name === 'Signal post' && section.programs[0].name === 'Signal post' && (await s.stage((state) => state.stage.space)) === 'myWorld', 'the card named it (Keep building) and the panel’s Code opened "Signal post" in My world')
 await page.getByTestId('robo-run').click()
 await sleep(300)
 await page.getByTestId('robo-visitor').click()

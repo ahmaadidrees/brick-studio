@@ -55,7 +55,7 @@ beforeEach(() => {
 })
 
 describe('placing devices', () => {
-  it('the first device on non-creation bricks opens the card and frames the component; Not now keeps the creation', () => {
+  it('the first device on non-creation bricks opens the card and frames the component; Keep building keeps the robot', () => {
     place('plate_6x8', 28, 0, 26)
     expect(robotics().card).toBeNull()
     expect(robotics().frameRequest).toBeNull()
@@ -63,12 +63,12 @@ describe('placing devices', () => {
     const card = robotics().card
     expect(card?.creationId).toBeNull()
     expect(card?.anchorBrickIds).toHaveLength(2)
-    expect(card?.suggestedName).toBe('Creation')
+    expect(card?.suggestedName).toBe('Robot')
     expect(robotics().frameRequest?.brickIds).toEqual(card?.anchorBrickIds)
     robotics().confirmCard('', false)
     expect(robotics().card).toBeNull()
     expect(section().creations).toHaveLength(1)
-    expect(section().creations[0].name).toBe('Creation')
+    expect(section().creations[0].name).toBe('Robot')
     expect(robotics().model.creations[0].brickIds).toHaveLength(2)
   })
 
@@ -361,7 +361,7 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
     expect(robotics().card?.creationId).toBeNull()
     place(ROBOTICS_PART_IDS.motor, 35, 0, 30)
-    expect(robotics().wiringNote?.text).toBe("Right motor isn't on Creation yet. Put it on Creation's plate.")
+    expect(robotics().wiringNote?.text).toBe("Right motor isn't on Robot yet. Put it on Robot's plate.")
     expect(robotics().card?.anchorBrickIds).toHaveLength(2)
   })
 

@@ -1,8 +1,14 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { CarFront, Check, ChevronDown, CodeXml, Play, Plug, RotateCw, Wrench } from 'lucide-react'
+import { lazy, Suspense, useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { PartThumbnail } from '../../brick/PartThumbnail'
+import { BRICK_PART_MAP } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
-import { deriveCandidate, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
+import { readiness } from '../drive/readiness'
+import { runStepAction } from '../guide/actions'
+import { nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
+import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { useStageStore } from '../state/stageStore'
@@ -16,16 +22,17 @@ const CodeView = lazy(() => import('../code/CodeView'))
 const DriveView = lazy(() => import('../drive/DriveView'))
 
 /**
- * The Robot Workshop's build-mode panels (checkpoint 1): the assisted-wiring line,
- * the creation card (contract §4, mock board 1b) and the creation panel with the
- * dev-only mechanics Nudge. Everything shown is derived from the bricks and the
- * document's robotics section; the panels report structure and never edit it, apart
- * from names, cables and the run space, which are the student's own words.
+ * The Robot Workshop's build-mode panels (kid-UX pass, docs/robotics/KID-UX.md §G): the
+ * assisted-wiring line, the short "You started a robot!" card, and the robot's panel —
+ * its name, a big Drive / Try it and Code, the next steps, then Parts and More (run
+ * space, wiring mode, motor tests) folded away. Everything shown is derived from the
+ * bricks and the document's robotics section; the panels report structure and never
+ * edit it, apart from names, cables and the run space, which are the student's own words.
  */
 export function RoboticsPanel({ compact = false, live = false }: { compact?: boolean; live?: boolean }) {
   useEffect(() => {
     installRoboticsWatcher()
-    // Dev-only hook for the QA harnesses (scripts/qa/robotics-spike-cp1*.mjs): the stores, plus what
+    // Dev-only hook for the QA harnesses (scripts/qa/robotics-*.mjs): the stores, plus what
     // the scene layer adds (a world→screen projector, so a harness can aim a real pointer at a socket).
     if (import.meta.env.DEV) {
       const host = window as unknown as { __robotics?: Record<string, unknown> }
@@ -42,7 +49,7 @@ export function RoboticsPanel({ compact = false, live = false }: { compact?: boo
   return (
     <>
       <WiringLine />
-      {card ? <CreationCard compact={compact} live={live} /> : <CreationPanel compact={compact} live={live} />}
+      {card ? <CreationCard compact={compact} /> : <CreationPanel compact={compact} live={live} />}
     </>
   )
 }
@@ -77,54 +84,46 @@ function useCardCreation(): DerivedCreation | null {
   }, [card, model])
 }
 
-function CreationCard({ compact, live }: { compact: boolean; live: boolean }) {
+/**
+ * The card a first robotics part opens (contract §4): a title, the robot's name with a good
+ * default, and one button to keep building. What joined means sits behind the "?". Later
+ * parts never reopen it; joining two robots does (they become one).
+ */
+function CreationCard({ compact }: { compact: boolean }) {
   const card = useRoboticsStore((state) => state.card)!
   const creation = useCardCreation()
-  const close = useRoboticsStore((state) => state.closeCard)
   const confirm = useRoboticsStore((state) => state.confirmCard)
-  const bricks = useBrickStore((state) => state.bricks)
   const [name, setName] = useState(card.suggestedName)
+  const [why, setWhy] = useState(false)
+  const whyId = useId()
   useEffect(() => { setName(card.suggestedName) }, [card.suggestedName, card.placedBrickId])
   if (!creation) return null
-  const placed = bricks.find((brick) => brick.id === card.placedBrickId)
-  const placedRole = placed ? roboticsSpec(placed.partId)?.role : undefined
   const joining = card.joining
-  const title = joining ? `${joinNames(joining.names)} are joined` : card.creationId ? `${roleTitle(placedRole)} added to ${creation.name}` : `${roleTitle(placedRole)} added`
-  const subtitle = joining ? 'Bricks joined by studs move together, so this is one creation now. Its programs come too.' : creation.hinges.length ? 'This creation has a part that swings.' : creation.kind === 'signal' ? 'This creation can sense and signal.' : 'This creation can be coded.'
-  const baseBodies = creation.bodies.filter((body) => !creation.armBodyIds.includes(body.id))
-  const baseCount = baseBodies.reduce((total, body) => total + body.brickIds.filter((id) => !creation.hinges.some((hinge) => hinge.armBrickIds.includes(id))).length, 0)
-  const armCount = creation.hinges.reduce((total, hinge) => total + hinge.armBrickIds.length, 0)
+  const title = joining ? `${joinNames(joining.names)} are one robot now!` : card.creationId ? 'Name your robot' : 'You started a robot!'
+  const swings = creation.hinges.some((hinge) => !hinge.locked && hinge.armBrickIds.length > 0)
+  const stuck = creation.hinges.some((hinge) => hinge.locked)
+  const submit = (event: FormEvent) => { event.preventDefault(); confirm(name, false) }
   return (
-    <aside className={`robotics-card${compact ? ' compact' : ''}`} aria-label={card.creationId ? 'Creation' : 'New creation'} data-testid="robotics-creation-card">
-      <header className="robotics-card-head">
-        <strong>{title}</strong>
-        <span>{subtitle}</span>
-      </header>
-      <label className="robotics-field">
-        Name it
-        <input type="text" value={name} onChange={(event) => setName(event.target.value)} aria-label="Creation name" />
-      </label>
-      <div className="robotics-structure">
-        <div className="robotics-structure-row"><strong>{creation.lines.attached}</strong><span className="robotics-pill blue">highlighted in blue</span></div>
-        {creation.hinges.length > 0 && !creation.hinges.every((hinge) => hinge.locked) && (
-          <div className="robotics-structure-row"><span><strong>{armCount} {armCount === 1 ? 'brick swings' : 'bricks swing'}</strong> on the hinge · {baseCount} {baseCount === 1 ? 'stays' : 'stay'} put</span><span className="robotics-pill coral">highlighted in coral</span></div>
+    <aside className={`robotics-card${compact ? ' compact' : ''}`} aria-label={joining ? 'Robots joined' : 'New robot'} data-testid="robotics-creation-card">
+      <form className="robotics-card-form" onSubmit={submit}>
+        <header className="robotics-card-head">
+          <strong>{title}</strong>
+          <button type="button" className="robotics-help-button" aria-expanded={why} aria-controls={whyId} aria-label={why ? 'Hide what this means' : 'What does this mean?'} onClick={() => setWhy(!why)} data-testid="robotics-card-why">?</button>
+        </header>
+        {why && (
+          <div className="robotics-card-why" id={whyId}>
+            <p>{joining ? 'Bricks joined by studs move together, so these are one robot now. Their code comes too.' : 'Bricks joined by studs move together. The blue bricks are your robot.'}</p>
+            {swings && <p>The coral bricks swing on the hinge motor.</p>}
+            {stuck && <p>The red bricks hold the arm, so it can’t swing.</p>}
+            <p>To add a brick to it, attach it to the robot.</p>
+          </div>
         )}
-        {creation.hinges.some((hinge) => hinge.locked) && (
-          <div className="robotics-structure-row"><span><strong>The arm is built into the frame</strong></span><span className="robotics-pill red">contact highlighted</span></div>
-        )}
-        <p>Bricks joined by studs move together. To include a brick, attach it. This card reports what is joined; it doesn't change it.</p>
-      </div>
-      <ul className="robotics-lines">
-        <li><span className="robotics-check">✓</span>{creation.lines.parts}</li>
-        <li><span className="robotics-dot">·</span>{creation.lines.ready}</li>
-      </ul>
-      <PartRows creation={creation} compact />
-      <WiringModeToggle />
-      <div className="robotics-card-actions">
-        <button type="button" className="studio-button" onClick={() => { confirm(name, false); close() }}>Not now</button>
-        <button type="button" className="studio-button studio-button-primary" onClick={() => confirm(name, true)} disabled={live}>Code this creation</button>
-      </div>
-      {live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
+        <label className="robotics-field">
+          Robot name
+          <input type="text" aria-label="Robot name" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} autoComplete="off" />
+        </label>
+        <button type="submit" className="robotics-big-button primary robotics-card-go">Keep building</button>
+      </form>
     </aside>
   )
 }
@@ -138,11 +137,12 @@ function roleTitle(role: string | undefined) {
     case 'hub': return 'Hub'
     case 'motor': return 'Motor'
     case 'hinge-motor': return 'Hinge motor'
-    case 'distance-sensor': return 'Distance sensor'
+    case 'distance-sensor': return 'Sensor'
     case 'light': return 'Light'
     case 'button': return 'Button'
     case 'wheel': return 'Wheel'
     case 'axle': return 'Axle'
+    case 'seat': return 'Seat'
     default: return 'Part'
   }
 }
@@ -165,50 +165,44 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
   const creation = useFocusedCreation()
   const selectedId = useBrickStore((state) => state.selectedId)
   const bricks = useBrickStore((state) => state.bricks)
-  const rename = useRoboticsStore((state) => state.renameCreation)
-  const setTestSpace = useRoboticsStore((state) => state.setTestSpace)
   const [collapsed, setCollapsed] = useState(false)
-  const [draftName, setDraftName] = useState<string | null>(null)
+  const [partsOpen, setPartsOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const reasonId = useId()
   const selected = selectedId ? bricks.find((brick) => brick.id === selectedId) ?? null : null
   const selectedSpec = selected ? roboticsSpec(selected.partId) : null
   if (!creation && !selectedSpec) return null
+  const inspector = selected && selectedSpec
+    ? (isDeviceRole(selectedSpec.role) ? <DeviceInspector brickId={selected.id} creation={creation} /> : <SelectedPart creation={creation} brickId={selected.id} role={selectedSpec.role} />)
+    : null
   return (
-    <aside className={`robotics-panel${compact ? ' compact' : ''}${collapsed ? ' collapsed' : ''}`} aria-label="Robotics" data-testid="robotics-panel">
+    <aside className={`robotics-panel${compact ? ' compact' : ''}${collapsed ? ' collapsed' : ''}`} aria-label="Robot" data-testid="robotics-panel">
       <header className="robotics-panel-head">
-        {creation ? (
-          <input
-            type="text"
-            aria-label="Creation name"
-            className="robotics-name"
-            value={draftName ?? creation.name}
-            onChange={(event) => setDraftName(event.target.value)}
-            onBlur={() => { if (draftName !== null && draftName.trim() && draftName !== creation.name) rename(creation.id, draftName); setDraftName(null) }}
-            onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur() }}
-          />
-        ) : <strong>Robotics</strong>}
-        {creation && <button type="button" className="studio-button studio-button-primary robotics-code-button" onClick={() => useCodeView.getState().openCode(creation.id)} disabled={live} data-testid="robotics-code-button">Code</button>}
+        {creation ? <RobotName key={creation.id} creation={creation} /> : <strong className="robotics-panel-title">Robot part</strong>}
         <button type="button" className="robotics-link-button" aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>{collapsed ? 'Show' : 'Hide'}</button>
       </header>
-      {creation && live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
       {!collapsed && (
         <>
-          {selected && selectedSpec && (isDeviceRole(selectedSpec.role) ? <DeviceInspector brickId={selected.id} creation={creation} /> : <SelectedPart creation={creation} brickId={selected.id} role={selectedSpec.role} />)}
+          {creation && <PlayButtons creation={creation} live={live} reasonId={reasonId} />}
+          {creation && live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
+          {/* A part the student picked: only the step that matters now stays above its panel. */}
+          {creation && <NextSteps creation={creation} live={live} focus={inspector !== null} reasonId={reasonId} />}
+          {inspector}
           {creation && (
-            <>
+            <Fold title="Parts" note={creation.lines.attached} open={partsOpen} onToggle={() => setPartsOpen(!partsOpen)} testId="robotics-parts-fold">
               <ul className="robotics-lines">
-                <li><span className="robotics-check">✓</span>{creation.lines.attached} · {creation.lines.parts}</li>
-                <li><span className="robotics-dot">·</span>{creation.lines.ready}</li>
-                {creation.drivePair && <li><span className="robotics-dot">·</span>Drive: {motorName(creation, creation.drivePair.leftId)} + {motorName(creation, creation.drivePair.rightId)}{creation.drivePair.reversedIds.length ? ` · ${creation.drivePair.reversedIds.map((id) => motorName(creation, id)).join(', ')} reversed` : ''}</li>}
+                <li>{creation.lines.attached} · {creation.lines.parts}</li>
+                <DriveSidesLines creation={creation} />
               </ul>
               <PartRows creation={creation} selectedId={selectedId} />
-              <div className="robotics-space" role="group" aria-label="Where it runs">
-                <span>Runs</span>
-                <button type="button" className={`robotics-chip${creation.testSpace === 'testPlate' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'testPlate'} onClick={() => setTestSpace(creation.id, 'testPlate')}>on the test plate</button>
-                <button type="button" className={`robotics-chip${creation.testSpace === 'myWorld' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'myWorld'} onClick={() => setTestSpace(creation.id, 'myWorld')}>in my world</button>
-              </div>
+            </Fold>
+          )}
+          {creation && (
+            <Fold title="More" open={moreOpen} onToggle={() => setMoreOpen(!moreOpen)} testId="robotics-more-fold">
+              <RunSpace creation={creation} />
               <WiringModeToggle />
               <NudgeControls creation={creation} />
-            </>
+            </Fold>
           )}
         </>
       )}
@@ -216,73 +210,238 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
   )
 }
 
+/** The robot's name, the student's own: edited in place, saved on Enter or when the field is left. */
+function RobotName({ creation }: { creation: DerivedCreation }) {
+  const rename = useRoboticsStore((state) => state.renameCreation)
+  const [draft, setDraft] = useState<string | null>(null)
+  return (
+    <input
+      type="text"
+      aria-label="Robot name"
+      className="robotics-name"
+      maxLength={40}
+      autoComplete="off"
+      value={draft ?? creation.name}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => { if (draft !== null && draft.trim() && draft !== creation.name) rename(creation.id, draft); setDraft(null) }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') (event.target as HTMLInputElement).blur()
+        if (event.key === 'Escape') { setDraft(null); (event.target as HTMLInputElement).blur() }
+      }}
+    />
+  )
+}
+
+/** Drive (a rover) or Try it (a gate, a signal light), on only when the robot is ready; Code beside it. */
+function PlayButtons({ creation, live, reasonId }: { creation: DerivedCreation; live: boolean; reasonId: string }) {
+  const status = readiness(creation)
+  const playable = status.ready && !live
+  return (
+    <div className="robotics-play">
+      {status.kind && (
+        <button
+          type="button"
+          className={`robotics-big-button robotics-play-button${status.ready ? ' ready' : ''}`}
+          disabled={!playable}
+          aria-describedby={!status.ready ? reasonId : undefined}
+          title={!status.ready ? status.reason ?? undefined : undefined}
+          onClick={() => useDriveView.getState().openDrive(creation.id)}
+          data-testid="robotics-play-button"
+        >
+          {status.kind === 'drive' ? <CarFront size={22} aria-hidden="true" /> : <Play size={20} aria-hidden="true" />}
+          {status.kind === 'drive' ? 'Drive' : 'Try it'}
+        </button>
+      )}
+      <button type="button" className="robotics-big-button robotics-code-button" onClick={() => useCodeView.getState().openCode(creation.id)} disabled={live} data-testid="robotics-code-button">
+        <CodeXml size={20} aria-hidden="true" />
+        Code
+      </button>
+    </div>
+  )
+}
+
+/**
+ * The robot's next steps as big rows: done ones checked, the one to do now highlighted,
+ * the ones after it still tappable (a student may build in any order). Once the robot is
+ * ready only "Ready to drive!" (or "Ready to try!") stays, and ideas follow. With a part
+ * picked, only the step to do now stays above that part's panel.
+ */
+function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreation; live: boolean; focus: boolean; reasonId: string }) {
+  const model = useRoboticsStore((state) => state.model)
+  const rows = useMemo(() => nextSteps(creation, model), [creation, model])
+  const path = rows.filter((row) => row.group === 'step')
+  const choices = rows.filter((row) => row.group === 'choice')
+  const ideas = rows.filter((row) => row.group === 'idea')
+  const ready = path.some((row) => row.id === 'ready' && row.state === 'current')
+  // Once it is ready the checked steps have done their job: "Ready to drive!" and the ideas take their place.
+  const shown = focus || ready ? path.filter((row) => row.state === 'current') : path
+  const headingId = useId()
+  return (
+    <section className="robotics-steps" aria-labelledby={headingId} data-testid="robotics-next-steps">
+      <h3 className="robotics-section-title" id={headingId}>{shown.length === 1 && shown[0].state !== 'done' ? 'Next step' : 'Next steps'}</h3>
+      {shown.length > 0 && (
+        <ol className="robotics-step-list">
+          {shown.map((row) => <StepRow key={row.id} row={row} live={live} textId={row.state === 'current' && row.id !== 'ready' ? reasonId : undefined} />)}
+        </ol>
+      )}
+      {choices.length > 0 && (
+        <>
+          <h4 className="robotics-subtitle">What should it do?</h4>
+          <ul className="robotics-step-list">{choices.map((row) => <StepRow key={row.id} row={row} live={live} />)}</ul>
+        </>
+      )}
+      {ready && !focus && ideas.length > 0 && (
+        <>
+          <h4 className="robotics-subtitle">Make it yours</h4>
+          <ul className="robotics-step-list" data-testid="robotics-ideas">{ideas.map((row) => <StepRow key={row.id} row={row} live={live} />)}</ul>
+        </>
+      )}
+    </section>
+  )
+}
+
+function StepRow({ row, live, textId }: { row: NextStep; live: boolean; textId?: string }) {
+  const body = (
+    <>
+      <StepIconView icon={row.icon} />
+      <span className="robotics-step-text" id={textId}>
+        {row.text}
+        {row.hint && <small>{row.hint}</small>}
+      </span>
+    </>
+  )
+  if (row.state === 'done') {
+    return (
+      <li className="robotics-step done" data-step={row.id} data-state="done">
+        <span className="robotics-step-check" aria-hidden="true"><Check size={16} strokeWidth={3} /></span>
+        <span className="robotics-step-text">{row.text}</span>
+        <span className="visually-hidden"> (done)</span>
+      </li>
+    )
+  }
+  if (!row.action) return <li className={`robotics-step waiting ${row.state}`} data-step={row.id} data-state={row.state}>{body}</li>
+  const action = row.action
+  return (
+    <li className={`robotics-step ${row.state}`} data-step={row.id} data-state={row.state}>
+      <button
+        type="button"
+        className={`robotics-step-button ${row.state}`}
+        aria-current={row.state === 'current' ? 'step' : undefined}
+        disabled={live && action.kind === 'play'}
+        onClick={() => runStepAction(action)}
+      >
+        {body}
+      </button>
+    </li>
+  )
+}
+
+function StepIconView({ icon }: { icon: StepIcon }) {
+  if ('part' in icon) {
+    const part = BRICK_PART_MAP[icon.part]
+    if (part) return <span className="robotics-step-icon" aria-hidden="true"><PartThumbnail part={part} /></span>
+  }
+  const symbol = 'symbol' in icon ? icon.symbol : 'fix'
+  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : Wrench
+  return <span className={`robotics-step-icon symbol ${symbol}`} aria-hidden="true"><Icon size={22} /></span>
+}
+
+/** A folded section (Parts, More): one big toggle, shut by default. */
+function Fold({ title, note, open, onToggle, testId, children }: { title: string; note?: string; open: boolean; onToggle: () => void; testId: string; children: ReactNode }) {
+  const bodyId = useId()
+  return (
+    <section className={`robotics-fold${open ? ' open' : ''}`} data-testid={testId}>
+      <button type="button" className="robotics-fold-toggle" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
+        <span>{title}</span>
+        {note && <small>{note}</small>}
+        <ChevronDown size={18} aria-hidden="true" />
+      </button>
+      {open && <div className="robotics-fold-body" id={bodyId}>{children}</div>}
+    </section>
+  )
+}
+
+function RunSpace({ creation }: { creation: DerivedCreation }) {
+  const setTestSpace = useRoboticsStore((state) => state.setTestSpace)
+  return (
+    <div className="robotics-space" role="group" aria-label="Where it runs">
+      <span>Runs on</span>
+      <button type="button" className={`robotics-chip${creation.testSpace === 'testPlate' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'testPlate'} onClick={() => setTestSpace(creation.id, 'testPlate')}>Test plate</button>
+      <button type="button" className={`robotics-chip${creation.testSpace === 'myWorld' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'myWorld'} onClick={() => setTestSpace(creation.id, 'myWorld')}>My world</button>
+    </div>
+  )
+}
+
 function motorName(creation: DerivedCreation, id: string) {
   return creation.motors.find((motor) => motor.brickId === id)?.name ?? 'motor'
 }
 
+/**
+ * Which motors drive on each side (every motor with a wheel on the drive axis: a four-wheel car's
+ * four), and which of them face the other way: the same power turns their wheels backward, which
+ * Drive and the drive block take care of.
+ */
+function DriveSidesLines({ creation }: { creation: DerivedCreation }) {
+  const sides = driveSidesOf(creation)
+  if (!sides) return null
+  const names = (ids: readonly string[]) => joinNames(ids.map((id) => motorName(creation, id)))
+  return (
+    <>
+      <li data-testid="robotics-drive-sides">Left side: {names(sides.left)} · Right side: {names(sides.right)}</li>
+      {sides.reversedIds.length > 0 && <li>{names(sides.reversedIds)} {sides.reversedIds.length === 1 ? 'faces' : 'face'} the other way</li>}
+    </>
+  )
+}
+
+/** A picked axle, wheel or seat (devices get the wiring inspector instead). */
 function SelectedPart({ creation, brickId, role }: { creation: DerivedCreation | null; brickId: string; role: string }) {
   const model = useRoboticsStore((state) => state.model)
   let text: string
   if (role === 'wheel') {
     const wheel = creation?.wheels.find((candidate) => candidate.brickId === brickId) ?? null
-    text = wheel ? (wheel.onAxle ? `On an axle${wheel.motorId ? ` in ${motorName(creation!, wheel.motorId)}` : ' with no motor'}` : wheel.note ?? 'Not on an axle') : 'Not on an axle · a decorative brick until an axle end reaches its hole'
+    text = wheel ? (wheel.onAxle ? `On an axle${wheel.motorId ? ` in ${motorName(creation!, wheel.motorId)}` : ' with no motor'}` : wheel.note ?? 'Not on an axle') : 'Not on an axle. Put it on the end of an axle.'
   } else if (role === 'axle') {
     const axle = model.creations.flatMap((candidate) => candidate.axles).find((candidate) => candidate.brickId === brickId)
-    text = axle ? `${axle.motorId ? `In ${motorName(creation!, axle.motorId)}` : 'Not in a motor socket'} · ${axle.wheelIds.length ? `${axle.wheelIds.length} wheel${axle.wheelIds.length === 1 ? '' : 's'} on it` : 'no wheel on it'}` : 'Loose · not in a socket'
-  } else if (role === 'motor') {
-    const motor = creation?.motors.find((candidate) => candidate.brickId === brickId)
-    text = motor ? describeMotor(motor) : 'Not part of a creation yet'
-  } else if (role === 'hinge-motor') {
-    const hinge = creation?.hinges.find((candidate) => candidate.brickId === brickId)
-    text = hinge ? describeHinge(hinge) : 'Not part of a creation yet'
-  } else if (role === 'distance-sensor') {
-    const sensor = creation?.sensors.find((candidate) => candidate.brickId === brickId)
-    text = sensor ? `Faces ${sensor.facing} · ${sensor.plugged ? `port ${sensor.port!.port}` : 'Not plugged in'}` : 'Not part of a creation yet'
-  } else if (role === 'hub') {
-    const section = model.section
-    const used = section.connections.filter((connection) => connection.hubId === brickId)
-    text = used.length ? `Ports: ${used.map((connection) => `${connection.port} ${deviceLabel(creation, connection.deviceId)}`).join(', ')}` : 'No cables yet'
+    text = axle ? `${axle.motorId ? `In ${motorName(creation!, axle.motorId)}` : 'Not in a motor'} · ${axle.wheelIds.length ? `${axle.wheelIds.length} wheel${axle.wheelIds.length === 1 ? '' : 's'} on it` : 'no wheel on it'}` : 'Not in a motor. Put it in a motor’s axle hole.'
+  } else if (role === 'seat') {
+    text = creation?.seats.includes(brickId) ? `On ${creation.name}. In Explore, walk up and press E to ride.` : 'Put it on a robot to ride it in Explore.'
   } else {
-    const device = creation ? [...creation.lights, ...creation.buttons].find((candidate) => candidate.brickId === brickId) : null
-    text = device ? (device.plugged ? `Plugged into port ${device.port!.port}` : 'Not plugged in') : role === 'seat' ? 'A seat · in Explore, walk up to it and press E to ride' : 'Not part of a creation yet'
+    text = creation ? `Part of ${creation.name}` : 'Not part of a robot yet'
   }
   return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>{roleTitle(role) === 'Part' ? role : roleTitle(role)}</strong> · {text}</p>
 }
 
-function deviceLabel(creation: DerivedCreation | null, deviceId: string) {
-  if (!creation) return deviceId
-  const all = [...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons]
-  return all.find((device) => device.brickId === deviceId)?.name ?? 'missing part'
-}
-
 function describeMotor(motor: DerivedMotor) {
-  const chain = motor.axleId ? (motor.wheelIds.length ? `axle and wheel on it` : 'axle in it, no wheel') : 'nothing in its socket'
-  const plugged = motor.plugged ? `port ${motor.port!.port}` : 'Not plugged in'
-  const drives = motor.drives ? ` · runs ${motor.drives}${motor.drives === 'backward' ? ' (reversed)' : ''}` : ''
+  const chain = motor.axleId ? (motor.wheelIds.length ? 'axle and wheel on it' : 'axle in it, no wheel') : 'no axle yet'
+  const plugged = motor.plugged ? 'plugged in' : 'Not plugged in'
+  // A mirror-mounted motor turns its wheel the other way for the same power: Drive and the drive block handle it.
+  const drives = motor.drives === 'backward' ? ' · faces the other way' : motor.drives === 'sideways' ? ' · pushes sideways' : ''
   return `${chain} · ${plugged}${drives}`
 }
 
 function describeHinge(hinge: DerivedHinge) {
-  if (hinge.locked) return `arm built into the frame, so it can't swing · ${hinge.plugged ? `port ${hinge.port!.port}` : 'Not plugged in'}`
-  return `fixed side on the frame, moving side carries ${hinge.armBrickIds.length} ${hinge.armBrickIds.length === 1 ? 'brick' : 'bricks'} · zero is as built · ${hinge.plugged ? `port ${hinge.port!.port}` : 'Not plugged in'}`
+  const plugged = hinge.plugged ? 'plugged in' : 'Not plugged in'
+  if (hinge.locked) return `arm stuck to the frame, so it can't swing · ${plugged}`
+  if (!hinge.armBrickIds.length) return `no arm on it yet · ${plugged}`
+  return `swings ${hinge.armBrickIds.length} ${hinge.armBrickIds.length === 1 ? 'brick' : 'bricks'} · ${plugged}`
 }
 
-function PartRows({ creation, selectedId = null, compact = false }: { creation: DerivedCreation; selectedId?: string | null; compact?: boolean }) {
+function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; selectedId?: string | null }) {
   const hingeReports = useRoboticsStore((state) => state.hingeReports)
   const rows: { id: string; text: string; tone?: 'warn' | 'bad'; ports?: { port: string; device: string | null }[] }[] = []
   const devices = [...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons]
-  for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · ports`, ports: (['A', 'B', 'C', 'D'] as const).map((port) => ({ port, device: devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port)?.name ?? null })) })
+  for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · plugs`, ports: (['A', 'B', 'C', 'D'] as const).map((port) => ({ port, device: devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port)?.name ?? null })) })
   for (const motor of creation.motors) rows.push({ id: motor.brickId, text: `${motor.name} · ${describeMotor(motor)}`, tone: motor.plugged ? undefined : 'warn' })
   for (const hinge of creation.hinges) {
     const report = hingeReports[hinge.brickId]
     rows.push({ id: hinge.brickId, text: `${hinge.name} · ${describeHinge(hinge)}${report ? ` · at ${Math.round(report.angle)}°${report.blocked ? ' · blocked' : ''}` : ''}`, tone: hinge.locked ? 'bad' : hinge.plugged ? undefined : 'warn' })
   }
   for (const wheel of creation.wheels) rows.push({ id: wheel.brickId, text: `Wheel · ${wheel.onAxle ? `on an axle${wheel.motorId ? ` in ${motorName(creation, wheel.motorId)}` : ''}` : wheel.note ?? 'Not on an axle'}`, tone: wheel.onAxle ? undefined : 'bad' })
-  for (const sensor of creation.sensors) rows.push({ id: sensor.brickId, text: `${sensor.name} · faces ${sensor.facing} · ${sensor.plugged ? `port ${sensor.port!.port}` : 'Not plugged in'}`, tone: sensor.plugged ? undefined : 'warn' })
-  for (const device of [...creation.lights, ...creation.buttons]) rows.push({ id: device.brickId, text: `${device.name} · ${device.plugged ? `port ${device.port!.port}` : 'Not plugged in'}`, tone: device.plugged ? undefined : 'warn' })
+  for (const sensor of creation.sensors) rows.push({ id: sensor.brickId, text: `${sensor.name} · faces ${sensor.facing} · ${sensor.plugged ? 'plugged in' : 'Not plugged in'}`, tone: sensor.plugged ? undefined : 'warn' })
+  for (const device of [...creation.lights, ...creation.buttons]) rows.push({ id: device.brickId, text: `${device.name} · ${device.plugged ? 'plugged in' : 'Not plugged in'}`, tone: device.plugged ? undefined : 'warn' })
   if (!rows.length) return null
   return (
-    <ul className={`robotics-parts${compact ? ' compact' : ''}`} aria-label="Parts found">
+    <ul className="robotics-parts" aria-label="Parts found">
       {rows.map((row) => (
         <li key={row.id} className={`${row.tone ?? ''}${row.id === selectedId ? ' selected' : ''}`} data-brick-id={row.id}>
           {row.text}
@@ -297,6 +456,7 @@ function PartRows({ creation, selectedId = null, compact = false }: { creation: 
   )
 }
 
+/** Motor tests without code (the checkpoint-1 mechanics check), kept in More for grown-ups and curious builders. */
 function NudgeControls({ creation }: { creation: DerivedCreation }) {
   const sim = useRoboticsStore((state) => state.sim)
   const simLoading = useRoboticsStore((state) => state.simLoading)
@@ -313,8 +473,8 @@ function NudgeControls({ creation }: { creation: DerivedCreation }) {
   const nudgeable = creation.motors.length > 0 || creation.hinges.length > 0
   if (!nudgeable) return null
   return (
-    <section className="robotics-nudge" aria-label="Nudge (mechanics only)">
-      <header><strong>Nudge</strong><span>mechanics only · no code yet</span></header>
+    <section className="robotics-nudge" aria-label="Test the motors">
+      <header><strong>Test the motors</strong><span>no code needed</span></header>
       {creation.drivePair && (
         <div className="robotics-nudge-row">
           <button type="button" className="studio-button" onClick={async () => { await ensure(); driveForward(creation.id, 0.4) }}>Drive forward 40%</button>
@@ -340,10 +500,10 @@ function NudgeControls({ creation }: { creation: DerivedCreation }) {
       <div className="robotics-nudge-row">
         <button type="button" className="studio-button" onClick={stopAll} disabled={!running}>Stop all</button>
         <button type="button" className="studio-button" onClick={resetSim} disabled={!running} data-testid="robotics-reset">Reset</button>
-        <span className="robotics-nudge-status" data-testid="robotics-sim-status">{simLoading ? 'Starting…' : running ? 'Running · construction untouched' : 'Built pose'}</span>
+        <span className="robotics-nudge-status" data-testid="robotics-sim-status">{simLoading ? 'Starting…' : running ? 'Running' : 'Stopped'}</span>
       </div>
       {running && contacts.length > 0 && (
-        <p className="robotics-contact" data-testid="robotics-contact">Arm touching {contacts.map((contact) => (contact.otherBrickId ? 'a brick' : 'the plate')).slice(0, 1)} · highlighted</p>
+        <p className="robotics-contact" data-testid="robotics-contact">The arm is touching {contacts.map((contact) => (contact.otherBrickId ? 'a brick' : 'the plate')).slice(0, 1)}.</p>
       )}
     </section>
   )

@@ -1,0 +1,203 @@
+{
+  "origin": "http://127.0.0.1:5253",
+  "viewports": [
+    "1366x768",
+    "1024x768"
+  ],
+  "input": "real mouse and clicks via Playwright; positions from the studio's own world→screen projection",
+  "at": "2026-09-23T16:44:29.912Z",
+  "clicksToFirstPlacedBuggy": 3,
+  "tapsToFirstPlacedBuggyByTouch": 5,
+  "results": [
+    {
+      "id": "A.robots-choice-visible",
+      "ok": true,
+      "detail": "the drawer shows a Robots choice without opening the category list"
+    },
+    {
+      "id": "A.four-kit-cards",
+      "ok": true,
+      "detail": "kit cards: Buggy / Drive it around | Gate / Swing it open | Signal light / Light it up | Robot base / Build your own"
+    },
+    {
+      "id": "A.kit-card-targets",
+      "ok": true,
+      "detail": "card sizes [[116,124],[116,124],[116,124],[116,124]] (44 px or more)"
+    },
+    {
+      "id": "A.kit-pictures-rendered",
+      "ok": true,
+      "detail": "each card shows its kit rendered with the studio's own bricks ([[264,176],[264,176],[264,176],[264,176]])"
+    },
+    {
+      "id": "A.category-says-robots",
+      "ok": true,
+      "detail": "the category list switched to Robots too"
+    },
+    {
+      "id": "A.kit-armed",
+      "ok": true,
+      "detail": "the whole Buggy is armed as one ghost of 9 bricks"
+    },
+    {
+      "id": "A.strip-names-kit",
+      "ok": true,
+      "detail": "the command strip says Placing Buggy with a Place button"
+    },
+    {
+      "id": "A.ghost-follows",
+      "ok": true,
+      "detail": "the ghost followed the mouse to the plate centre (base at 29,0,28, valid)"
+    },
+    {
+      "id": "A.placed-in-three-clicks",
+      "ok": true,
+      "detail": "a placed Buggy 3 clicks after opening the drawer's Robots choice (target: 3 or fewer)"
+    },
+    {
+      "id": "A.named",
+      "ok": true,
+      "detail": "one robot named Buggy (rover, 9 bricks)"
+    },
+    {
+      "id": "A.wired",
+      "ok": true,
+      "detail": "plugged in: Left motor A, Right motor B, Front sensor C"
+    },
+    {
+      "id": "A.ready-to-drive",
+      "ok": true,
+      "detail": "readiness(): {\"kind\":\"drive\",\"ready\":true,\"reason\":null}"
+    },
+    {
+      "id": "A.no-card",
+      "ok": true,
+      "detail": "no creation card interrupted"
+    },
+    {
+      "id": "A.one-history-entry",
+      "ok": true,
+      "detail": "one new history entry: Add Buggy"
+    },
+    {
+      "id": "A.focused",
+      "ok": true,
+      "detail": "the whole kit is selected, its plate the focus, so the panel shows the robot"
+    },
+    {
+      "id": "A.framed",
+      "ok": true,
+      "detail": "the camera framed the new robot with ground around it"
+    },
+    {
+      "id": "A.panel-shows-buggy",
+      "ok": true,
+      "detail": "the robot panel shows Buggy"
+    },
+    {
+      "id": "A.toast",
+      "ok": true,
+      "detail": "status line: Buggy is ready to drive!"
+    },
+    {
+      "id": "A.rotate-keeps-robot",
+      "ok": true,
+      "detail": "after Rotate: 9 bricks, wheels on both motors, readiness {\"kind\":\"drive\",\"ready\":true,\"reason\":null}"
+    },
+    {
+      "id": "B.blocked-over-first",
+      "ok": true,
+      "detail": "over the first Buggy the ghost stays on the ground and shows blocked (valid false, lowest brick at 0)"
+    },
+    {
+      "id": "B.blocked-places-nothing",
+      "ok": true,
+      "detail": "a click on a blocked spot places nothing and keeps the kit in hand"
+    },
+    {
+      "id": "B.valid-on-free-ground",
+      "ok": true,
+      "detail": "on free ground the ghost shows valid (base at 29,41)"
+    },
+    {
+      "id": "B.buggy-2",
+      "ok": true,
+      "detail": "robots: Buggy (ready), Buggy 2 (ready)"
+    },
+    {
+      "id": "C.gate-ghost",
+      "ok": true,
+      "detail": "the Gate ghost is valid on free ground (base at 14,28)"
+    },
+    {
+      "id": "C.gate",
+      "ok": true,
+      "detail": "Gate: hinge free to swing on port A, sensor on B, readiness {\"kind\":\"try\",\"ready\":true,\"reason\":null}"
+    },
+    {
+      "id": "C.signal-light",
+      "ok": true,
+      "detail": "Signal light: sensor on A, light on B, readiness {\"kind\":\"try\",\"ready\":true,\"reason\":null}"
+    },
+    {
+      "id": "D.undo-once-removes-kit",
+      "ok": true,
+      "detail": "after one Undo: 0 of its bricks, 0 of its cables, robots Buggy, Buggy 2, Gate (Undid: Add Signal light.)"
+    },
+    {
+      "id": "D.document-as-before",
+      "ok": true,
+      "detail": "the document is exactly what it was before the Signal light was placed"
+    },
+    {
+      "id": "E.robot-base",
+      "ok": true,
+      "detail": "Robot base: a robot named My robot with 1 hub on its plate"
+    },
+    {
+      "id": "F.robots-choice-visible",
+      "ok": true,
+      "detail": "the Robots choice is in view at 1024×768"
+    },
+    {
+      "id": "F.buggy-at-1024",
+      "ok": true,
+      "detail": "Buggy ready to drive after 3 clicks"
+    },
+    {
+      "id": "G.coarse-pointer",
+      "ok": true,
+      "detail": "the page sees a touch screen"
+    },
+    {
+      "id": "G.sheet-kit-targets",
+      "ok": true,
+      "detail": "four kit cards in the sheet, [[106,158],[106,158],[106,158],[106,158]] px"
+    },
+    {
+      "id": "G.sheet-closes-kit-armed",
+      "ok": true,
+      "detail": "the sheet closed and the Buggy ghost is out on the plate"
+    },
+    {
+      "id": "G.tap-hint",
+      "ok": true,
+      "detail": "the status line says to tap, then press Place"
+    },
+    {
+      "id": "G.tap-positions",
+      "ok": true,
+      "detail": "one tap moved the whole ghost there (base at 37,0,42, valid)"
+    },
+    {
+      "id": "G.placed-by-touch",
+      "ok": true,
+      "detail": "Buggy placed by touch and ready to drive after 5 taps (4 without moving it from where it first appears)"
+    },
+    {
+      "id": "Z.no-page-errors",
+      "ok": true,
+      "detail": "no page errors"
+    }
+  ]
+}

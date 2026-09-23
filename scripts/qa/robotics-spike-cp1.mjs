@@ -7,7 +7,9 @@
  * (choosePart → rotate → setDraftPosition → placeDraft), so every placement runs the
  * real layout rules and raises the same `placeFeedback` a click would. The cards,
  * lines and Nudge are read back through the dev-only `window.__robotics` hook and
- * exercised through their real buttons.
+ * exercised through their real buttons. Kid-UX pass (docs/robotics/KID-UX.md §G): the card
+ * is "You started a robot!" + Keep building (Code is the panel's), the motor tests ("Nudge")
+ * sit in the panel's folded More, the part rows and the drive line in its folded Parts.
  *
  *   PATH=/opt/homebrew/opt/node@22/bin:$PATH node scripts/qa/robotics-spike-cp1.mjs
  *
@@ -85,6 +87,11 @@ const panel = page.getByTestId('robotics-panel')
 const card = page.getByTestId('robotics-creation-card')
 const clickNudge = async (name) => { await page.getByRole('button', { name, exact: true }).first().click() }
 const resetNudge = async () => { await page.getByTestId('robotics-reset').click(); await sleep(150) }
+/** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
+const openFold = async (name) => {
+  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
+}
 const newBuild = async () => { await robo((state) => state.resetSim()); await brick((state) => state.newBuild()); await sleep(150) }
 /** Frames the creation the way the card does: inside the canvas area the drawer and panels leave free. */
 const frame = async (brickIds) => {
@@ -102,15 +109,17 @@ ids.hub = await place({ partId: 'robo_hub', x: 29, y: 1, z: 27, color: '#f5eee0'
 await sleep(200)
 check('A.card-opens-on-first-device', (await cardState())?.creationId === null, 'placing the hub on non-creation bricks opens the creation card')
 await shot('A1-hub-card')
-check('A.hub-card-copy', await card.getByText('Hub added').count() === 1 && await card.getByText('2 bricks attached').count() === 1, 'card: "Hub added", "2 bricks attached"')
-await card.getByRole('button', { name: 'Code this creation' }).click()
+check('A.hub-card-copy', await card.getByText('You started a robot!').count() === 1 && (await card.getByLabel('Robot name').inputValue()) === 'Robot' && (await cardState())?.anchors === 2, 'card: "You started a robot!", named "Robot", over the 2 bricks attached')
+await card.getByRole('button', { name: 'Keep building' }).click()
+await sleep(300)
+await panel.getByTestId('robotics-code-button').click()
 await sleep(600)
-// Checkpoint 2: Code this creation opens the Code view (it was a toast stub in checkpoint 1). Back to build to keep building.
-check('A.code-opens', (await page.evaluate(() => window.__robotics.codeView.getState().creationId)) !== null && await page.getByRole('button', { name: 'Back to build' }).count() === 1, 'Code this creation opens the Code view')
+// Kid-UX: the card keeps building; Code is the panel's button, and it opens the Code view. Back to build to keep building.
+check('A.code-opens', (await page.evaluate(() => window.__robotics.codeView.getState().creationId)) !== null && await page.getByRole('button', { name: 'Back to build' }).count() === 1, 'Keep building, then the panel’s Code, opens the Code view')
 await page.getByRole('button', { name: 'Back to build' }).click()
 await sleep(400)
 let list = await creations()
-check('A.creation-saved-on-code', list.length === 1 && list[0].name === 'Creation', `Code this creation keeps the creation with its default name (${list[0]?.name})`)
+check('A.creation-saved-on-code', list.length === 1 && list[0].name === 'Robot', `Keep building keeps the robot with its default name (${list[0]?.name})`)
 
 ids.leftMotor = await place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2, color: GREY })
 check('A.wiring-left-motor', (await wiringNote()) === 'Left motor connected to port A', `assisted wiring line: ${await wiringNote()}`)
@@ -134,14 +143,15 @@ check('A.card-stays-closed-for-existing', (await cardState()) === null, 'a devic
 const anchors = await robo((state) => state.model.section.creations[0].anchorBrickIds)
 check('A.anchors-refreshed', [ids.plate, ids.hub, ids.leftMotor, ids.rightMotor, ids.sensor].every((id) => anchors.includes(id)) && !anchors.includes(ids.leftAxle) && !anchors.includes(ids.leftWheel), `the wiring writes refreshed the creation's anchors to every stud-attached brick (${anchors.length}; axles and wheels join by mechanism links, never as anchors)`)
 await frame(Object.values(ids))
-await panel.getByLabel('Creation name').fill('Mars buggy')
-await panel.getByLabel('Creation name').press('Enter')
+await panel.getByLabel('Robot name').fill('Mars buggy')
+await panel.getByLabel('Robot name').press('Enter')
 await sleep(200)
 await shot('A3-rover-panel')
 check('A.named', (await creations())[0].name === 'Mars buggy', 'the creation was renamed from the panel')
 
-// Nudge both motors as a drive pair → it rolls.
+// Nudge both motors as a drive pair → it rolls (the motor tests are in the panel's More).
 const before = await snapshot()
+await openFold('More')
 await page.getByRole('button', { name: 'Drive forward 40%' }).click()
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(2600)
@@ -152,7 +162,7 @@ check('A.bodies-hidden-while-running', sim.hidden === 9, `${sim.hidden} bricks d
 await shot('A4-rover-rolls')
 await resetNudge()
 check('A.reset-document-unchanged', (await snapshot()) === before, 'document identical after Nudge + Reset')
-check('A.reset-shows-built-pose', (await simState()) === null && await page.getByTestId('robotics-sim-status').textContent() === 'Built pose', 'Reset returns to the built pose')
+check('A.reset-shows-built-pose', (await simState()) === null && await page.getByTestId('robotics-sim-status').textContent() === 'Stopped', 'Reset returns to the built pose (the motor tests say "Stopped")')
 
 // Wheel left off its axle.
 await brick((state, id) => { state.selectBrick(id); state.nudge(-1, 0, 0) }, ids.leftWheel)
@@ -182,7 +192,8 @@ await sleep(2600)
 sim = await simState()
 chassis = sim.poses[await bodyOf(ids.plate)]
 check('A.same-sign-turns', Math.abs(yawOf(chassis)) > 25 && Math.hypot(chassis.position.x, chassis.position.z) < 1, `both at +40%: yaw ${yawOf(chassis).toFixed(1)}°, drift ${Math.hypot(chassis.position.x, chassis.position.z).toFixed(2)}`)
-check('A.reversed-shown', (await panel.textContent()).includes('Right motor reversed'), 'panel: drive pair shows Right motor reversed')
+await openFold('Parts')
+check('A.reversed-shown', (await panel.textContent()).includes('Right motor faces the other way'), 'panel (Parts): the drive line says Right motor faces the other way')
 await shot('A6-same-sign-turns')
 await resetNudge()
 check('A.reset-again-unchanged', (await snapshot()) === before, 'document identical after every nudge')
@@ -216,8 +227,8 @@ gate.lintel = await place({ partId: 'brick_1x6', x: 20, y: 13, z: 20, rotation: 
 gate.sill = await place({ partId: 'plate_2x4', x: 21, y: 1, z: 21, rotation: 1, color: GREY })
 gate.hinge = await place({ partId: 'robo_hinge_motor', x: 21, y: 2, z: 21, color: '#e7473c' })
 await sleep(200)
-check('B.card-on-hinge', (await cardState())?.creationId === null && await card.getByText('Hinge motor added').count() === 1, 'placing the hinge motor opens the card')
-await card.getByRole('button', { name: 'Not now' }).click()
+check('B.card-on-hinge', (await cardState())?.creationId === null && await card.getByText('You started a robot!').count() === 1 && (await card.getByLabel('Robot name').inputValue()) === 'Gate', 'placing the hinge motor opens the card, named "Gate"')
+await card.getByRole('button', { name: 'Keep building' }).click()
 gate.door = await place({ partId: 'brick_1x4', x: 21, y: 8, z: 21, rotation: 1, color: '#f4ca3a' })
 gate.hub = await place({ partId: 'robo_hub', x: 20, y: 1, z: 24, color: '#f5eee0' })
 check('B.hub-powers-waiting-hinge', (await wiringNote()) === 'Arm motor connected to port A', `hub arrival wires the hinge: ${await wiringNote()}`)
@@ -229,12 +240,14 @@ check('B.zero-line', g.lines.ready === 'Fixed side on the frame, moving side on 
 check('B.my-world', g.testSpace === 'myWorld', 'a gate runs in my world by default (frame anchored to the plate)')
 check('B.card-stays-closed-for-existing', (await cardState()) === null, 'the door, hub and sensor joined the gate without reopening the card')
 await frame(Object.values(gate))
-await panel.getByLabel('Creation name').fill('Castle gate')
-await panel.getByLabel('Creation name').press('Enter')
+await panel.getByLabel('Robot name').fill('Castle gate')
+await panel.getByLabel('Robot name').press('Enter')
 await sleep(200)
 await shot('B1-gate-panel')
 check('B.named', (await creations())[0].name === 'Castle gate', 'the gate was renamed from the panel')
 const gateBefore = await snapshot()
+await openFold('More')
+await openFold('Parts')
 await clickNudge('Swing to 60°')
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(2600)
@@ -274,7 +287,7 @@ await robo((state) => state.resetSim())
 console.log('\nC. Signal post')
 await newBuild()
 await place({ partId: 'robo_hub', x: 40, y: 0, z: 40, color: '#f5eee0' })
-await card.getByRole('button', { name: 'Not now' }).click()
+await card.getByRole('button', { name: 'Keep building' }).click()
 await place({ partId: 'robo_distance_sensor', x: 41, y: 6, z: 40, color: '#f4ca3a' })
 check('C.no-card-for-second-device', (await cardState()) === null, 'the sensor joined the post without a card')
 await place({ partId: 'robo_light', x: 43, y: 6, z: 43, color: '#e7473c' })

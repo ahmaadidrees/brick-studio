@@ -18,5 +18,5 @@ export const useCodeView = create<CodeViewState>((set) => ({
   closeCode: () => set({ creationId: null }),
 }))
 
-/** The line the Code button and the card show in a live room (contract §8: shared rooms are deferred). */
-export const LIVE_ROOM_CODE_LINE = 'Code and Run are off in a shared world for now. Building with robotics parts still works and syncs.'
+/** The line the robot panel shows in a live room, under its Drive and Code buttons (contract §8: shared rooms are deferred). */
+export const LIVE_ROOM_CODE_LINE = 'Drive and Code are off in a shared world for now. Building still works.'

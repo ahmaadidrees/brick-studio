@@ -40,6 +40,8 @@ export type DerivedDevice = {
 
 export type DerivedMotor = DerivedDevice & {
   socketNormal: Vec3
+  /** Where an axle end goes in (world units): with the normal it tells a motor facing out from one facing in. */
+  socketPoint: Vec3
   axleId: string | null
   wheelIds: string[]
   /** Which way the body goes when this motor runs at positive power, relative to the creation's forward. */
@@ -101,6 +103,8 @@ export type DerivedCreation = {
   drivePair: DrivePair | null
   /** Null exactly when `drivePair` is: its first left and first right motors are the pair. */
   driveSides: DriveSides | null
+  /** True when one of its bricks is a plate lying on the ground: motors standing on it reach the ground with their wheels. */
+  onPlate: boolean
   /** Which way it would drive: the drive pair's forward, or, with a wheel missing, the forward its motors' axles give. */
   driveForward: Vec3 | null
   lines: { attached: string; parts: string; ready: string }
@@ -291,7 +295,7 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
       case 'seat': seats.push(brick.id); break
       case 'motor': {
         const link = mechanisms.motorById.get(brick.id)!
-        motors.push({ ...device(brick, 'motor'), socketNormal: link.socket.normal, axleId: link.axleId, wheelIds: wheelsOnMotor(mechanisms, brick.id).map((wheel) => wheel.wheelId), drives: null })
+        motors.push({ ...device(brick, 'motor'), socketNormal: link.socket.normal, socketPoint: link.socket.point, axleId: link.axleId, wheelIds: wheelsOnMotor(mechanisms, brick.id).map((wheel) => wheel.wheelId), drives: null })
         break
       }
       case 'distance-sensor': {
@@ -439,6 +443,8 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
   }
 
   const kind: CreationKind = provisionalKind
+  // A plate-high brick on the ground: a motor standing on it holds its axle at a wheel's hole height.
+  const onPlate = brickIds.some((id) => { const brick = bricksById.get(id)!; return brick.y === 0 && input.partMap[brick.partId]?.height === 1 && !roboticsSpec(brick.partId) })
   const partCounts: [number, string][] = [
     [hubs.length, 'hub'], [motors.length, 'motor'], [hinges.length, 'hinge motor'], [wheels.length, 'wheel'], [axles.length, 'axle'],
     [sensors.length, 'distance sensor'], [lights.length, 'light'], [buttons.length, 'button'], [seats.length, 'seat'],
@@ -472,6 +478,7 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
     hubs, motors, hinges, sensors, lights, buttons, seats, axles, wheels,
     drivePair,
     driveSides,
+    onPlate,
     driveForward,
     lines: { attached, parts, ready },
   }
@@ -505,7 +512,7 @@ export function creationOfBrick(creations: readonly DerivedCreation[], brickId: 
 
 /** A readable name for a creation kind, for default names. */
 export function defaultCreationName(kind: CreationKind, existing: readonly string[]): string {
-  const base = kind === 'rover' ? 'Buggy' : kind === 'gate' ? 'Gate' : kind === 'signal' ? 'Signal post' : 'Creation'
+  const base = kind === 'rover' ? 'Buggy' : kind === 'gate' ? 'Gate' : kind === 'signal' ? 'Signal light' : 'Robot'
   if (!existing.includes(base)) return base
   let counter = 2
   while (existing.includes(`${base} ${counter}`)) counter += 1

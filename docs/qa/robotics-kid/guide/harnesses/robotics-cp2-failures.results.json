@@ -1,0 +1,788 @@
+{
+  "origin": "http://127.0.0.1:5253",
+  "viewport": "1366x768",
+  "at": "2026-09-23T16:43:14.835Z",
+  "only": "all",
+  "shots": [
+    "F1a-build-wheel-not-on-axle.png",
+    "F1b-code-drive-block-no-pair.png",
+    "F1c-code-motor-turns-rover-still.png",
+    "F1c-closeup-output-1.png",
+    "F1c-closeup-output-2.png",
+    "F1c-code-left-side-view.png",
+    "F1d-my-world-axle-turns-wheel-still.png",
+    "F2a-build-drive-pair-right-reversed.png",
+    "F2b-code-raw-blocks-rover-turns.png",
+    "F2c-changed-while-running.png",
+    "F2d-repaired-right-at-minus-40.png",
+    "F5a-build-left-motor-unplugged.png",
+    "F5b-code-block-not-plugged-in.png",
+    "F5c-run-left-does-nothing-right-runs.png",
+    "F3a-build-sensor-faces-sideways.png",
+    "F3b-code-beam-sideways-driving.png",
+    "F3c-code-at-the-wall-nothing-seen.png",
+    "F3d-repaired-stops-before-wall.png",
+    "F4a-build-arm-built-into-frame.png",
+    "F4b-code-contact-highlighted-arm-stuck.png",
+    "F2e-build-same-way-no-reversed.png",
+    "F2f-code-same-way-raw-blocks-straight.png"
+  ],
+  "measured": {
+    "F1": {
+      "spaceBefore": "testPlate",
+      "spaceAfter": "testPlate",
+      "testPlate": {
+        "wheelOnStage": false,
+        "leftMotorDegrees": 547.5,
+        "leftMotorSpeedPercent": 39.9,
+        "chassisMovedStuds": 0,
+        "chassisYawDegrees": -0.03,
+        "leftChip": {
+          "value": "40 %",
+          "detail": "speed 40 % · 589°",
+          "tone": "live"
+        }
+      },
+      "outputCloseups": {
+        "socketOnScreen": [
+          1090,
+          506
+        ],
+        "inFront": true,
+        "degreesAtShots": [
+          1593.6,
+          1651.5
+        ]
+      },
+      "myWorld": {
+        "leftMotorDegrees": 383.1,
+        "wheelDrawnByStudioAtBuiltPose": true
+      }
+    },
+    "F2": {
+      "rawBlocks": {
+        "yawDegreesAfter3s": -86.2,
+        "pivotFromWheelsMidpointStuds": 0.18,
+        "pivot": {
+          "x": -0.527,
+          "z": 0.253
+        },
+        "meanForwardSpeedStudsPerSecond": 0.08,
+        "left": {
+          "powerPercent": 40,
+          "speedPercent": 27.9,
+          "forwardPercent": 27.9
+        },
+        "right": {
+          "powerPercent": 40,
+          "speedPercent": 27.6,
+          "forwardPercent": -27.6
+        },
+        "chips": {
+          "Motors": {
+            "value": "Left 40 · Right −40 %",
+            "detail": "speed 27 · −26 % · Right motor faces the other way",
+            "tone": "bad"
+          },
+          "Speed": {
+            "value": "0.1 st/s",
+            "detail": null,
+            "tone": "live"
+          }
+        }
+      },
+      "repaired": {
+        "yawDegrees": -0.06,
+        "forwardStuds": 4.1,
+        "chip": {
+          "value": "Left 40 · Right 40 %",
+          "detail": "speed 35 · 33 %",
+          "tone": "live"
+        }
+      },
+      "driveHelper": {
+        "yawDegrees": -0.04,
+        "forwardStuds": 4.1,
+        "left": 40,
+        "right": -40,
+        "chip": {
+          "value": "Left 40 · Right 40 %",
+          "detail": "speed 35 · 33 %",
+          "tone": "live"
+        }
+      }
+    },
+    "F5": {
+      "raw": {
+        "left": {
+          "powerPercent": 0,
+          "speedPercent": 5.8,
+          "positionDegrees": 54.6,
+          "plugged": false,
+          "forwardPercent": 5.8
+        },
+        "right": {
+          "powerPercent": -40,
+          "speedPercent": -26.2,
+          "positionDegrees": -292,
+          "plugged": true,
+          "forwardPercent": 26.2
+        },
+        "chassisYawDegrees": 28,
+        "chassisMovedStuds": 4.42,
+        "chips": {
+          "Front sensor": {
+            "value": "10.1 studs",
+            "detail": null,
+            "tone": "live"
+          },
+          "Motors": {
+            "value": "Left motor not plugged in",
+            "detail": "Right motor speed 26 %",
+            "tone": "warn"
+          },
+          "Speed": {
+            "value": "1.5 st/s",
+            "detail": null,
+            "tone": "live"
+          }
+        }
+      }
+    },
+    "F3": {
+      "everHit": false,
+      "sensorChipValues": [
+        "nothing seen"
+      ],
+      "beam": {
+        "dx": -24.8,
+        "dz": -0.04,
+        "lengthStuds": 40
+      },
+      "beamOnScreen": {
+        "from": [
+          1178,
+          474
+        ],
+        "to": [
+          879,
+          360
+        ]
+      },
+      "droveStuds": 12.03,
+      "wallGapAtStartStuds": 12,
+      "motorsAtEnd": {
+        "left": 40,
+        "right": -40
+      },
+      "speedAtEnd": 0,
+      "activeBlocks": [
+        "robo_wait_until"
+      ],
+      "repair": {
+        "rotation": 0,
+        "x": 33,
+        "z": 26,
+        "row": "Front sensor · faces forward · plugged in"
+      },
+      "repairedStopStuds": 2.48
+    },
+    "F4": {
+      "maxArmDegrees": 0,
+      "doorYaw": 0,
+      "armChip": {
+        "value": "0°",
+        "detail": "built into the frame · can’t swing",
+        "tone": "bad"
+      },
+      "contacts": [
+        "door",
+        "bridge2"
+      ],
+      "blockWarning": "Arm motor's arm is built into the frame, so it can't swing",
+      "problems": [
+        "Heads upArm motor's arm is built into the frame, so it can't swing"
+      ],
+      "diagnostics": [
+        {
+          "code": "device.locked",
+          "severity": "warning",
+          "message": "Arm motor's arm is built into the frame, so it can't swing",
+          "blockId": "smart-gate:open"
+        },
+        {
+          "code": "device.locked",
+          "severity": "warning",
+          "message": "Arm motor's arm is built into the frame, so it can't swing",
+          "blockId": "smart-gate:close"
+        }
+      ],
+      "repairedMaxDegrees": 90
+    },
+    "F2d": {
+      "program": [
+        "run Left motor · A at 40 %",
+        "run Right motor · B at 40 %"
+      ],
+      "yawDegrees": -1,
+      "forwardStuds": 4.55,
+      "left": {
+        "powerPercent": 40,
+        "speedPercent": 34.8,
+        "positionDegrees": 227.1,
+        "plugged": true,
+        "forwardPercent": 34.8
+      },
+      "right": {
+        "powerPercent": 40,
+        "speedPercent": 33.7,
+        "positionDegrees": 209.4,
+        "plugged": true,
+        "forwardPercent": 33.7
+      },
+      "chip": {
+        "value": "Left 40 · Right 40 %",
+        "detail": "speed 35 · 34 %",
+        "tone": "live"
+      }
+    }
+  },
+  "seen": {
+    "F1": {
+      "intact": {
+        "space": "testPlate",
+        "program": "Stop before the wall"
+      },
+      "build": {
+        "lines": [
+          "8 bricks attached · 1 hub, 2 motors, 2 wheels, 2 axles, 1 distance sensor"
+        ],
+        "wheelRow": "Wheel · Not on an axle · the nearest axle end is 1 stud away",
+        "leftMotorRow": "Left motor · axle in it, no wheel · plugged in",
+        "selectedLine": "Wheel · Not on an axle · the nearest axle end is 1 stud away",
+        "nextStep": "Put a wheel on Left motor’s axle."
+      },
+      "code": {
+        "intact": {
+          "space": "testPlate",
+          "program": "Stop before the wall"
+        },
+        "reopened": {
+          "space": "testPlate",
+          "program": "Stop before the wall"
+        },
+        "driveBlock": {
+          "warning": "Choose two drive motors first · Left motor has no wheel on its axle",
+          "outline": "robo-diag-error"
+        },
+        "problems": [
+          "Can’t runChoose two drive motors first · Left motor has no wheel on its axle"
+        ],
+        "runBlocked": "Can’t run yet: Choose two drive motors first · Left motor has no wheel on its axle"
+      }
+    },
+    "F2": {
+      "build": {
+        "driveLine": "Left side: Left motor · Right side: Right motor",
+        "lines": [
+          "9 bricks attached · 1 hub, 2 motors, 2 wheels, 2 axles, 1 distance sensor",
+          "Left side: Left motor · Right side: Right motor",
+          "Right motor faces the other way"
+        ],
+        "leftRow": "Left motor · axle and wheel on it · plugged in",
+        "rightRow": "Right motor · axle and wheel on it · plugged in · faces the other way",
+        "rightInspector": {
+          "name": "Right motor",
+          "sub": "Motor · wheel on its axle · runs backward (reversed)",
+          "state": "Port B",
+          "reading": "Stopped",
+          "block": "run Right motor · B ▾ at 40 %",
+          "hint": "The cable and port B are lit on the hub. The name follows the device, not the port."
+        }
+      },
+      "code": {
+        "program": [
+          "run Left motor · A at 40 %",
+          "run Right motor · B at 40 %"
+        ],
+        "motorOptions": [
+          "Left motor · A",
+          "Right motor · B"
+        ]
+      }
+    },
+    "F5": {
+      "build": {
+        "inspector": {
+          "name": "Left motor",
+          "sub": "Motor · wheel on its axle · runs forward",
+          "state": "Unplugged",
+          "reading": "No power",
+          "block": "run Left motor ▾ at 40 %Not plugged in",
+          "hint": "Nothing turns until a cable reaches a port."
+        },
+        "leftRow": "Left motor · axle and wheel on it · Not plugged in",
+        "toast": "Left motor is unplugged. Blocks that use it show “Not plugged in”.",
+        "drawn": {
+          "cables": [
+            "brick-1790181689106-2m7xqz→B",
+            "brick-1790181689601-ueij0j→C"
+          ],
+          "stubs": [
+            "brick-1790181689007-c7ohs1"
+          ]
+        }
+      },
+      "code": {
+        "tabs": [
+          "Stop before the wall",
+          "My program"
+        ],
+        "raw": {
+          "left": {
+            "labels": [
+              "Left motor · not plugged in"
+            ],
+            "warning": "Left motor is not plugged in",
+            "outline": "robo-diag-warning"
+          },
+          "right": {
+            "labels": [
+              "Right motor · B"
+            ],
+            "warning": null
+          }
+        },
+        "problems": [
+          "Heads upLeft motor is not plugged in"
+        ],
+        "driveBlock": {
+          "warning": "Left motor is not plugged in",
+          "outline": "robo-diag-warning"
+        }
+      }
+    },
+    "F3": {
+      "build": {
+        "sensorRow": "Left sensor · faces left · plugged in",
+        "hubPort": "Port C: Left sensor. Select Left sensor",
+        "inspector": {
+          "name": "Left sensor",
+          "sub": "Distance sensor · faces left",
+          "state": "Port C",
+          "reading": "Waiting · it reads when the creation runs",
+          "block": "Left sensor · C ▾ distance (studs)",
+          "hint": "The cable and port C are lit on the hub. The name follows the device, not the port."
+        }
+      },
+      "code": {
+        "opened": {
+          "space": "testPlate",
+          "program": "Stop before the wall"
+        },
+        "sensorBlock": [
+          "Left sensor · C"
+        ]
+      }
+    },
+    "F4": {
+      "build": {
+        "lines": [
+          "13 bricks attached · 1 hub, 1 hinge motor, 1 distance sensor"
+        ],
+        "hingeRow": "Arm motor · arm stuck to the frame, so it can't swing · plugged in",
+        "nextStep": "The arm is stuck to the frame. Take off the brick that joins them.",
+        "inspector": {
+          "name": "Arm motor",
+          "sub": "Hinge motor · arm built into the frame",
+          "state": "Port A",
+          "reading": "Stopped",
+          "block": "turn Arm motor · A ▾ to 90 °",
+          "hint": "The cable and port A are lit on the hub. The name follows the device, not the port."
+        }
+      },
+      "code": {
+        "opened": {
+          "space": "myWorld",
+          "program": "Smart gate"
+        },
+        "armChipBefore": {
+          "value": "0°",
+          "detail": "built into the frame · can’t swing",
+          "tone": "bad"
+        }
+      }
+    },
+    "F2d": {
+      "build": {
+        "rightRowBefore": "Left motor · axle and wheel on it · plugged in",
+        "inspectorBefore": {
+          "name": "Left motor",
+          "sub": "Motor · wheel on its axle · runs forward",
+          "state": "Port B",
+          "reading": "Stopped",
+          "block": "run Left motor · B ▾ at 40 %",
+          "hint": "The cable and port B are lit on the hub. The name follows the device, not the port."
+        },
+        "driveLine": "Left side: Left motor · Right side: Right motor",
+        "rows": {
+          "left": "Left motor · axle and wheel on it · plugged in",
+          "right": "Right motor · axle and wheel on it · plugged in"
+        },
+        "nextStep": "Ready to drive!"
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "F1.build.selected-line",
+      "ok": true,
+      "detail": "with the wheel still selected, the selected-part line reads \"Wheel · Not on an axle · the nearest axle end is 1 stud away\""
+    },
+    {
+      "id": "F1.build.wheel-row",
+      "ok": true,
+      "detail": "the panel's row for the wheel (red): \"Wheel · Not on an axle · the nearest axle end is 1 stud away\""
+    },
+    {
+      "id": "F1.build.motor-row",
+      "ok": true,
+      "detail": "the left motor's row: \"Left motor · axle in it, no wheel · plugged in\""
+    },
+    {
+      "id": "F1.build.ready-line",
+      "ok": true,
+      "detail": "the robot's next step: \"Put a wheel on Left motor’s axle.\""
+    },
+    {
+      "id": "F1.build.no-drive-pair",
+      "ok": true,
+      "detail": "the drive sides line is gone: [\"8 bricks attached · 1 hub, 2 motors, 2 wheels, 2 axles, 1 distance sensor\"]"
+    },
+    {
+      "id": "F1.reload",
+      "ok": true,
+      "detail": "after a save and cold reload the wheel is still off: \"Wheel · Not on an axle · the nearest axle end is 1 stud away\""
+    },
+    {
+      "id": "F1.code.space-default",
+      "ok": true,
+      "detail": "the intact rover opened on the testPlate; with the wheel off it reopens on testPlate (no drive pair, so it is no longer a rover)"
+    },
+    {
+      "id": "F1.code.drive-block",
+      "ok": true,
+      "detail": "\"drive forward\" is marked: \"Choose two drive motors first · Left motor has no wheel on its axle\""
+    },
+    {
+      "id": "F1.code.drive-block-names-cause",
+      "ok": true,
+      "detail": "the drive block's message names the cause (the wheel): \"Choose two drive motors first · Left motor has no wheel on its axle\""
+    },
+    {
+      "id": "F1.code.run-blocked",
+      "ok": true,
+      "detail": "Run: \"Can’t run yet: Choose two drive motors first · Left motor has no wheel on its axle\""
+    },
+    {
+      "id": "F1.code.block",
+      "ok": true,
+      "detail": "dragged under \"when run\": \"run Left motor · A at 40 %\""
+    },
+    {
+      "id": "F1.run.motor-turns",
+      "ok": true,
+      "detail": "the left motor's output turned 547.5° at 39.9 % speed"
+    },
+    {
+      "id": "F1.run.chip",
+      "ok": true,
+      "detail": "the stage's chip: Left motor 40 % (speed 40 % · 589°)"
+    },
+    {
+      "id": "F1.run.rover-still",
+      "ok": true,
+      "detail": "the rover stayed where it was: moved 0.000 studs, turned -0.03°"
+    },
+    {
+      "id": "F1.run.output-closeups",
+      "ok": true,
+      "detail": "two close-ups of the left motor's output (socket at 1090, 506 on screen), taken at 1594° and 1652°"
+    },
+    {
+      "id": "F1.world.wheel-stays",
+      "ok": true,
+      "detail": "in My world the loose wheel stays where it was built (the studio's own copy, not simulated) while the axle beside it turns 383.1°"
+    },
+    {
+      "id": "F1.repair",
+      "ok": true,
+      "detail": "nudged back on: \"Wheel · on an axle in Left motor\"; Left side: Left motor · Right side: Right motor"
+    },
+    {
+      "id": "F2.build.drive-line",
+      "ok": true,
+      "detail": "the panel's drive lines: \"Left side: Left motor · Right side: Right motor\" / \"Right motor faces the other way\""
+    },
+    {
+      "id": "F2.build.motor-rows",
+      "ok": true,
+      "detail": "rows: \"Left motor · axle and wheel on it · plugged in\" / \"Right motor · axle and wheel on it · plugged in · faces the other way\""
+    },
+    {
+      "id": "F2.build.inspector",
+      "ok": true,
+      "detail": "clicking the right motor, the inspector says \"Motor · wheel on its axle · runs backward (reversed)\""
+    },
+    {
+      "id": "F2.code.program",
+      "ok": true,
+      "detail": "the student's program: when run → run Left motor · A at 40 % → run Right motor · B at 40 % (dropdown offered Left motor · A, Right motor · B)"
+    },
+    {
+      "id": "F2.code.no-warnings",
+      "ok": true,
+      "detail": "no block has a warning: the program is valid, only the build is wrong"
+    },
+    {
+      "id": "F2.run.turns",
+      "ok": true,
+      "detail": "it spun 86° on the spot instead of driving straight: it turned about a point 0.18 studs from midway between its wheels, forward speed averaged 0.08 st/s (chip \"Speed 0.1 st/s\")"
+    },
+    {
+      "id": "F2.run.opposite-speeds",
+      "ok": true,
+      "detail": "forward speeds as the creation feels them: left 27.9 %, right -27.6 % (both commanded +40)"
+    },
+    {
+      "id": "F2.run.chip",
+      "ok": true,
+      "detail": "the stage's Motors chip: Left 40 · Right −40 % (speed 27 · −26 % · Right motor faces the other way), tone bad"
+    },
+    {
+      "id": "F2.edit-while-running",
+      "ok": true,
+      "detail": "typed −40 while it spun: saved (revision 6), the stage says \"Changed · press Run to use it\" and the run keeps spinning (-110° → -126°)"
+    },
+    {
+      "id": "F2.repair",
+      "ok": true,
+      "detail": "Reset, Run: with \"run Right motor at −40 %\" it drives straight: yaw -0.1°, 4.1 studs in 1.3 s, chip Left 40 · Right 40 %"
+    },
+    {
+      "id": "F2.helper-goes-straight",
+      "ok": true,
+      "detail": "\"drive forward at 40 %\" sends 40 and -40 (the pair knows the right motor is reversed): straight, yaw -0.0°, chip Left 40 · Right 40 %"
+    },
+    {
+      "id": "F5.build.document",
+      "ok": true,
+      "detail": "the left motor has no cable in the document (B, C still used)"
+    },
+    {
+      "id": "F5.build.inspector",
+      "ok": true,
+      "detail": "inspector: Unplugged · No power · block \"run Left motor ▾ at 40 %Not plugged in\" · \"Nothing turns until a cable reaches a port.\""
+    },
+    {
+      "id": "F5.build.loose-end",
+      "ok": true,
+      "detail": "the scene draws a loose cable end with a red plug on the left motor and no cable to the hub"
+    },
+    {
+      "id": "F5.build.row",
+      "ok": true,
+      "detail": "the panel's row: \"Left motor · axle and wheel on it · Not plugged in\""
+    },
+    {
+      "id": "F5.build.toast",
+      "ok": true,
+      "detail": "the studio says: \"Left motor is unplugged. Blocks that use it show “Not plugged in”.\""
+    },
+    {
+      "id": "F5.reload",
+      "ok": true,
+      "detail": "after a save and cold reload the left motor is still unplugged (B, C used)"
+    },
+    {
+      "id": "F5.code.raw-block",
+      "ok": true,
+      "detail": "\"run Left motor · not plugged in …\": warning \"Left motor is not plugged in\", amber outline"
+    },
+    {
+      "id": "F5.code.other-block-clean",
+      "ok": true,
+      "detail": "\"run Right motor · B …\" has no warning"
+    },
+    {
+      "id": "F5.code.problems",
+      "ok": true,
+      "detail": "problems: Heads upLeft motor is not plugged in"
+    },
+    {
+      "id": "F5.code.chip",
+      "ok": true,
+      "detail": "the stage's Motors chip before Run: Left motor not plugged in"
+    },
+    {
+      "id": "F5.run.left-does-nothing",
+      "ok": true,
+      "detail": "the left motor ignores \"run … at 40 %\": power 0 %, and it only coasts at 5.8 % as the rover drags its wheel round"
+    },
+    {
+      "id": "F5.run.right-runs",
+      "ok": true,
+      "detail": "the right motor still runs: power -40 %, speed -26.2 %"
+    },
+    {
+      "id": "F5.run.creation-moves-one-side",
+      "ok": true,
+      "detail": "driven by one side only, the rover swung 28° about its dead wheel"
+    },
+    {
+      "id": "F5.run.chip-shows-other",
+      "ok": true,
+      "detail": "while it runs the Motors chip: Left motor not plugged in (Right motor speed 26 %)"
+    },
+    {
+      "id": "F5.code.helper-block",
+      "ok": true,
+      "detail": "\"drive forward at 40 %\" also says: \"Left motor is not plugged in\""
+    },
+    {
+      "id": "F5.repair",
+      "ok": true,
+      "detail": "\"Plug into port A\": Port A, no loose ends"
+    },
+    {
+      "id": "F3.build.row",
+      "ok": true,
+      "detail": "the panel's row says which way it faces: \"Left sensor · faces left · plugged in\""
+    },
+    {
+      "id": "F3.build.inspector",
+      "ok": true,
+      "detail": "from the hub's list (Port C: Left sensor. Select Left sensor), the inspector says \"Distance sensor · faces left\""
+    },
+    {
+      "id": "F3.reload",
+      "ok": true,
+      "detail": "after a save and cold reload: \"Left sensor · faces left · plugged in\""
+    },
+    {
+      "id": "F3.code.starter",
+      "ok": true,
+      "detail": "Code opens \"Stop before the wall\" on the testPlate; the sensor block reads \"Left sensor · C\""
+    },
+    {
+      "id": "F3.run.never-sees",
+      "ok": true,
+      "detail": "in 6 s the sensor never saw anything: its chip only ever read \"nothing seen\""
+    },
+    {
+      "id": "F3.run.beam-sideways",
+      "ok": true,
+      "detail": "the beam the stage draws runs sideways: 40 studs across, -0.07 studs forward, on screen from (1178, 474) to (879, 360)"
+    },
+    {
+      "id": "F3.run.never-stops",
+      "ok": true,
+      "detail": "it never braked: it drove 12.0 studs to a wall that was 12.0 studs ahead and sits against it, still commanding 40 % (speed 0 st/s)"
+    },
+    {
+      "id": "F3.run.waiting",
+      "ok": true,
+      "detail": "at the wall the glowing block is still \"wait until Left sensor · C sees something closer than 3 studs\" (robo_wait_until)"
+    },
+    {
+      "id": "F3.repair.faces-forward",
+      "ok": true,
+      "detail": "turned with R: rotation 0 at 33,26; the row reads \"Front sensor · faces forward · plugged in\""
+    },
+    {
+      "id": "F3.repair.stops",
+      "ok": true,
+      "detail": "the same program, now reading \"Front sensor · C\", stops 2.48 studs before the wall"
+    },
+    {
+      "id": "F4.build.ready-line",
+      "ok": true,
+      "detail": "the robot's next step: \"The arm is stuck to the frame. Take off the brick that joins them.\""
+    },
+    {
+      "id": "F4.build.hinge-row",
+      "ok": true,
+      "detail": "the hinge motor's row (red): \"Arm motor · arm stuck to the frame, so it can't swing · plugged in\""
+    },
+    {
+      "id": "F4.build.inspector",
+      "ok": true,
+      "detail": "the arm motor's inspector: \"Hinge motor · arm built into the frame\""
+    },
+    {
+      "id": "F4.reload",
+      "ok": true,
+      "detail": "after a save and cold reload the next step still says: \"The arm is stuck to the frame. Take off the brick that joins them.\""
+    },
+    {
+      "id": "F4.code.opens",
+      "ok": true,
+      "detail": "Code opens \"Smart gate\" in myWorld"
+    },
+    {
+      "id": "F4.code.chip-before-run",
+      "ok": true,
+      "detail": "before Run the arm chip already says: 0° (built into the frame · can’t swing)"
+    },
+    {
+      "id": "F4.run.arm-stuck",
+      "ok": true,
+      "detail": "the visitor walked into the beam, \"turn Arm motor to 90°\" ran, and the arm stayed at 0.00° (door yaw 0.00°)"
+    },
+    {
+      "id": "F4.run.chip",
+      "ok": true,
+      "detail": "the arm chip: 0° (built into the frame · can’t swing), red"
+    },
+    {
+      "id": "F4.run.contact",
+      "ok": true,
+      "detail": "the stage highlights the contact: door ↔ bridge2"
+    },
+    {
+      "id": "F4.run.block-says",
+      "ok": true,
+      "detail": "the \"turn … to 90°\" block's warning: \"Arm motor's arm is built into the frame, so it can't swing\" (outline robo-diag-warning); problems: Heads upArm motor's arm is built into the frame, so it can't swing"
+    },
+    {
+      "id": "F4.repair.line",
+      "ok": true,
+      "detail": "with the two bricks deleted: next step \"Ready to try!\"; row \"Arm motor · swings 1 brick · plugged in\""
+    },
+    {
+      "id": "F4.repair.swings",
+      "ok": true,
+      "detail": "the door now swings to 90.0°"
+    },
+    {
+      "id": "F2d.build.same-name",
+      "ok": true,
+      "detail": "named from the way its socket faces, the outboard motor is also \"Left motor\" until renamed: \"Left motor · axle and wheel on it · plugged in\""
+    },
+    {
+      "id": "F2d.build.no-reversed",
+      "ok": true,
+      "detail": "renamed and plugged in: \"Left side: Left motor · Right side: Right motor\"; rows \"Left motor · axle and wheel on it · plugged in\" / \"Right motor · axle and wheel on it · plugged in\"; next step \"Ready to drive!\""
+    },
+    {
+      "id": "F2d.run.straight",
+      "ok": true,
+      "detail": "run Left motor · A at 40 % → run Right motor · B at 40 %: it drives straight, 4.55 studs in 1.5 s, yaw -1.0°, chip Left 40 · Right 40 % (speed 35 · 34 %)"
+    },
+    {
+      "id": "console-clean",
+      "ok": true,
+      "detail": "no console errors"
+    }
+  ]
+}

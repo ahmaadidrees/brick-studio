@@ -1,0 +1,725 @@
+{
+  "harness": "scripts/qa/robotics-kid-guide.mjs",
+  "origin": "http://127.0.0.1:5253",
+  "viewports": [
+    "1366x768 (journey and screens)",
+    "1024x768 (screens)"
+  ],
+  "at": "2026-09-23T16:51:19.658Z",
+  "passed": 116,
+  "failed": 0,
+  "journey": [
+    {
+      "step": "Put a motor on the other side.",
+      "armed": {
+        "partId": "robo_motor",
+        "x": 29,
+        "y": 7,
+        "z": 28,
+        "rotation": 2
+      },
+      "placed": {
+        "id": "brick-1790182241852-mi22nh",
+        "partId": "robo_motor",
+        "x": 28,
+        "y": 1,
+        "z": 31,
+        "rotation": 2
+      },
+      "view": "top"
+    },
+    {
+      "step": "Put an axle in Right motor.",
+      "armed": {
+        "partId": "robo_axle_short",
+        "x": 30,
+        "y": 7,
+        "z": 29,
+        "rotation": 0
+      },
+      "placed": {
+        "id": "brick-1790182243652-qcigve",
+        "partId": "robo_axle_short",
+        "x": 34,
+        "y": 0,
+        "z": 32,
+        "rotation": 0
+      },
+      "view": "3d"
+    },
+    {
+      "step": "Put an axle in Left motor.",
+      "armed": {
+        "partId": "robo_axle_short",
+        "x": 30,
+        "y": 7,
+        "z": 29,
+        "rotation": 0
+      },
+      "placed": {
+        "id": "brick-1790182244767-l5wcmt",
+        "partId": "robo_axle_short",
+        "x": 26,
+        "y": 0,
+        "z": 32,
+        "rotation": 0
+      },
+      "view": "3d"
+    },
+    {
+      "step": "Put a wheel on Right motor’s axle.",
+      "armed": {
+        "partId": "robo_wheel",
+        "x": 30,
+        "y": 7,
+        "z": 28,
+        "rotation": 0
+      },
+      "placed": {
+        "id": "brick-1790182245885-p2hixi",
+        "partId": "robo_wheel",
+        "x": 36,
+        "y": 0,
+        "z": 31,
+        "rotation": 0
+      },
+      "view": "3d"
+    },
+    {
+      "step": "Put a wheel on Left motor’s axle.",
+      "armed": {
+        "partId": "robo_wheel",
+        "x": 30,
+        "y": 7,
+        "z": 28,
+        "rotation": 0
+      },
+      "placed": {
+        "id": "brick-1790182247001-7lb29i",
+        "partId": "robo_wheel",
+        "x": 25,
+        "y": 0,
+        "z": 31,
+        "rotation": 0
+      },
+      "view": "3d"
+    }
+  ],
+  "shots": [
+    "1366-01-card.png",
+    "1366-02-card-why.png",
+    "1366-03-hub-only-choices.png",
+    "1366-04-one-motor.png",
+    "1366-05-two-motors-axle-next.png",
+    "1366-06-one-axle.png",
+    "1366-07-axles-wheel-next.png",
+    "1366-08-one-wheel.png",
+    "1366-09-ready-to-drive.png",
+    "1366-10-more-open.png",
+    "1366-11-parts-open.png",
+    "1366-12-part-picked.png",
+    "1366-13-plug-step.png",
+    "1366-14-made-it-mine.png",
+    "1366-16-gate-not-ready.png",
+    "1366-17-gate-stuck.png",
+    "1366-18-gate-ready.png",
+    "1366-19-signal-not-ready.png",
+    "1366-20-signal-ready.png",
+    "1024-01-card.png",
+    "1024-03-hub-only-choices.png",
+    "1024-05-not-ready.png",
+    "1024-09-ready-to-drive.png",
+    "1024-10-more-open.png",
+    "1024-14-made-it-mine.png",
+    "1024-15-gate-card.png",
+    "1024-16-gate-not-ready.png",
+    "1024-17-gate-stuck.png",
+    "1024-18-gate-ready.png",
+    "1024-19-signal-not-ready.png",
+    "1024-20-signal-ready.png",
+    "1024-02-card-why.png",
+    "1024-04-one-motor.png"
+  ],
+  "results": [
+    {
+      "id": "ghost:plate (drawer)",
+      "ok": true,
+      "detail": "plate (drawer): the ghost shows plate_6x8 at 28,0,26 r0 under the mouse at (839, 356)"
+    },
+    {
+      "id": "placed:plate (drawer)",
+      "ok": true,
+      "detail": "plate (drawer): a click placed plate_6x8 at 28,0,26 r0"
+    },
+    {
+      "id": "ghost:hub (drawer)",
+      "ok": true,
+      "detail": "hub (drawer): the ghost shows robo_hub at 29,1,27 r0 under the mouse at (859, 337)"
+    },
+    {
+      "id": "placed:hub (drawer)",
+      "ok": true,
+      "detail": "hub (drawer): a click placed robo_hub at 29,1,27 r0"
+    },
+    {
+      "id": "card.opens",
+      "ok": true,
+      "detail": "the first robotics part opens \"You started a robot!\""
+    },
+    {
+      "id": "card.name",
+      "ok": true,
+      "detail": "the name field is filled in: \"Robot\""
+    },
+    {
+      "id": "card.one-button",
+      "ok": true,
+      "detail": "the card's buttons: ? | Keep building"
+    },
+    {
+      "id": "card.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 44 characters"
+    },
+    {
+      "id": "card.targets",
+      "ok": true,
+      "detail": "3 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "card.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "card.why",
+      "ok": true,
+      "detail": "the \"?\" shows what joined means"
+    },
+    {
+      "id": "card.named",
+      "ok": true,
+      "detail": "Keep building saved the robot as \"Buggy\" and closed the card"
+    },
+    {
+      "id": "hub-only.choices",
+      "ok": true,
+      "detail": "a hub alone offers \"Make it move\" and \"Make it see and light up\"; no Drive yet"
+    },
+    {
+      "id": "hub-only.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 180 characters"
+    },
+    {
+      "id": "hub-only.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "hub-only.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "armed:make-it-move",
+      "ok": true,
+      "detail": "\"Make it move\" armed robo_motor r0"
+    },
+    {
+      "id": "ghost:first motor (from Make it move)",
+      "ok": true,
+      "detail": "first motor (from Make it move): the ghost shows robo_motor at 31,1,31 r0 under the mouse at (578, 474)"
+    },
+    {
+      "id": "placed:first motor (from Make it move)",
+      "ok": true,
+      "detail": "first motor (from Make it move): a click placed robo_motor at 31,1,31 r0"
+    },
+    {
+      "id": "after-motor-1.steps",
+      "ok": true,
+      "detail": "steps: plate:done hub:done motors:current axles:todo wheels:todo plug:todo ready:todo · now \"Put a motor on the other side.\""
+    },
+    {
+      "id": "after-motor-1.drive-off",
+      "ok": true,
+      "detail": "Drive is shown, off, and described by the highlighted step"
+    },
+    {
+      "id": "not-ready.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 234 characters"
+    },
+    {
+      "id": "not-ready.targets",
+      "ok": true,
+      "detail": "9 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "not-ready.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "step:second motor (armed facing the other way, from the top view)",
+      "ok": true,
+      "detail": "the highlighted next step reads \"Put a motor on the other side.\""
+    },
+    {
+      "id": "armed:second motor (armed facing the other way, from the top view)",
+      "ok": true,
+      "detail": "clicking it armed robo_motor turned 2 (robo_motor r2 wanted)"
+    },
+    {
+      "id": "ghost:second motor (armed facing the other way, from the top view)",
+      "ok": true,
+      "detail": "second motor (armed facing the other way, from the top view): the ghost shows robo_motor at 28,1,31 r2 under the mouse at (545, 480)"
+    },
+    {
+      "id": "placed:second motor (armed facing the other way, from the top view)",
+      "ok": true,
+      "detail": "second motor (armed facing the other way, from the top view): a click placed robo_motor at 28,1,31 r2"
+    },
+    {
+      "id": "after-motor-2.steps",
+      "ok": true,
+      "detail": "steps: plate:done hub:done motors:done axles:current wheels:todo plug:done ready:todo"
+    },
+    {
+      "id": "step:axle into the right motor",
+      "ok": true,
+      "detail": "the highlighted next step reads \"Put an axle in Right motor.\""
+    },
+    {
+      "id": "armed:axle into the right motor",
+      "ok": true,
+      "detail": "clicking it armed robo_axle_short turned 0 (robo_axle_short r0 wanted)"
+    },
+    {
+      "id": "ghost:axle into the right motor",
+      "ok": true,
+      "detail": "axle into the right motor: the ghost shows robo_axle_short at 34,0,32 r0 under the mouse at (577, 412)"
+    },
+    {
+      "id": "placed:axle into the right motor",
+      "ok": true,
+      "detail": "axle into the right motor: a click placed robo_axle_short at 34,0,32 r0"
+    },
+    {
+      "id": "step:axle into the left motor",
+      "ok": true,
+      "detail": "the highlighted next step reads \"Put an axle in Left motor.\""
+    },
+    {
+      "id": "armed:axle into the left motor",
+      "ok": true,
+      "detail": "clicking it armed robo_axle_short turned 0 (robo_axle_short r0 wanted)"
+    },
+    {
+      "id": "ghost:axle into the left motor",
+      "ok": true,
+      "detail": "axle into the left motor: the ghost shows robo_axle_short at 26,0,32 r0 under the mouse at (489, 371)"
+    },
+    {
+      "id": "placed:axle into the left motor",
+      "ok": true,
+      "detail": "axle into the left motor: a click placed robo_axle_short at 26,0,32 r0"
+    },
+    {
+      "id": "after-axles.steps",
+      "ok": true,
+      "detail": "steps: plate:done hub:done motors:done axles:done wheels:current plug:done ready:todo"
+    },
+    {
+      "id": "step:wheel onto the right axle",
+      "ok": true,
+      "detail": "the highlighted next step reads \"Put a wheel on Right motor’s axle.\""
+    },
+    {
+      "id": "armed:wheel onto the right axle",
+      "ok": true,
+      "detail": "clicking it armed robo_wheel turned 0 (robo_wheel r0 wanted)"
+    },
+    {
+      "id": "ghost:wheel onto the right axle",
+      "ok": true,
+      "detail": "wheel onto the right axle: the ghost shows robo_wheel at 36,0,31 r0 under the mouse at (661, 484)"
+    },
+    {
+      "id": "placed:wheel onto the right axle",
+      "ok": true,
+      "detail": "wheel onto the right axle: a click placed robo_wheel at 36,0,31 r0"
+    },
+    {
+      "id": "step:wheel onto the left axle",
+      "ok": true,
+      "detail": "the highlighted next step reads \"Put a wheel on Left motor’s axle.\""
+    },
+    {
+      "id": "armed:wheel onto the left axle",
+      "ok": true,
+      "detail": "clicking it armed robo_wheel turned 0 (robo_wheel r0 wanted)"
+    },
+    {
+      "id": "ghost:wheel onto the left axle",
+      "ok": true,
+      "detail": "wheel onto the left axle: the ghost shows robo_wheel at 25,0,31 r0 under the mouse at (429, 371)"
+    },
+    {
+      "id": "placed:wheel onto the left axle",
+      "ok": true,
+      "detail": "wheel onto the left axle: a click placed robo_wheel at 25,0,31 r0"
+    },
+    {
+      "id": "ready.step",
+      "ok": true,
+      "detail": "the highlighted step: \"Ready to drive!\""
+    },
+    {
+      "id": "ready.drive-on",
+      "ok": true,
+      "detail": "the big button reads \"Drive\" and is on"
+    },
+    {
+      "id": "ready.ideas",
+      "ok": true,
+      "detail": "ideas: idea-sensor:todo idea-light:todo idea-seat:todo idea-stack:todo"
+    },
+    {
+      "id": "ready.model",
+      "ok": true,
+      "detail": "the model agrees: {\"name\":\"Buggy\",\"bricks\":8,\"drivePair\":true,\"plugged\":[true,true],\"wheels\":[true,true]}"
+    },
+    {
+      "id": "ready.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 213 characters"
+    },
+    {
+      "id": "ready.targets",
+      "ok": true,
+      "detail": "11 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "ready.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "ready.drive-opens",
+      "ok": true,
+      "detail": "Drive opens the Drive view for Buggy (useDriveView.openDrive)"
+    },
+    {
+      "id": "journey.clicks",
+      "ok": true,
+      "detail": "drawer 4 (category and part, twice), card 1 (Keep building), next-steps rows 6, placements 8: every part after the hub came from a next-steps row"
+    },
+    {
+      "id": "more.contents",
+      "ok": true,
+      "detail": "More holds where it runs, the wiring mode and the motor tests"
+    },
+    {
+      "id": "parts.rows",
+      "ok": true,
+      "detail": "Parts lists 5 rows: the hub, each motor with its axle and wheel, each wheel"
+    },
+    {
+      "id": "plug.selected",
+      "ok": true,
+      "detail": "clicking the left motor shows its panel under the one step that matters now"
+    },
+    {
+      "id": "plug.focus",
+      "ok": true,
+      "detail": "with a part picked the next steps show one row: \"Ready to drive!\""
+    },
+    {
+      "id": "plug.step",
+      "ok": true,
+      "detail": "unplugged: Drive is off and the step says \"Plug Left motor into the hub.\""
+    },
+    {
+      "id": "plug.plugged",
+      "ok": true,
+      "detail": "one tap plugged it into port B; ready to drive again"
+    },
+    {
+      "id": "1366.card.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 44 characters"
+    },
+    {
+      "id": "1366.card.targets",
+      "ok": true,
+      "detail": "3 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1366.card.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1366.hub-only.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 180 characters"
+    },
+    {
+      "id": "1366.hub-only.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1366.hub-only.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1366.not-ready.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 229 characters"
+    },
+    {
+      "id": "1366.not-ready.targets",
+      "ok": true,
+      "detail": "8 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1366.not-ready.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1366.ready",
+      "ok": true,
+      "detail": "1366: \"Ready to drive!\", Drive on"
+    },
+    {
+      "id": "1366.ready.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 213 characters"
+    },
+    {
+      "id": "1366.ready.targets",
+      "ok": true,
+      "detail": "11 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1366.ready.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1366.ideas-ticked",
+      "ok": true,
+      "detail": "1366: after a sensor, a light, a seat and a brick on top the ideas read done, done, done, done; Drive still on"
+    },
+    {
+      "id": "1366.gate-name",
+      "ok": true,
+      "detail": "1366: a hinge motor starts a robot named \"Gate\""
+    },
+    {
+      "id": "1366.gate-not-ready",
+      "ok": true,
+      "detail": "1366: Try it is off; \"Add a sensor so it can see.\""
+    },
+    {
+      "id": "1366.gate.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 184 characters"
+    },
+    {
+      "id": "1366.gate.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1366.gate.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1366.gate-stuck",
+      "ok": true,
+      "detail": "1366: \"The arm is stuck to the frame. Take off the brick that joins them.\""
+    },
+    {
+      "id": "1366.gate-stuck-selects",
+      "ok": true,
+      "detail": "1366: the fix row picked the brick that holds the arm"
+    },
+    {
+      "id": "1366.gate-ready",
+      "ok": true,
+      "detail": "1366: with the bricks taken off, \"Ready to try!\" and Try it is on"
+    },
+    {
+      "id": "1366.signal-not-ready",
+      "ok": true,
+      "detail": "1366: \"Add a light so it can show what it sees.\""
+    },
+    {
+      "id": "1366.signal-ready",
+      "ok": true,
+      "detail": "1366: \"Ready to try!\", Try it on"
+    },
+    {
+      "id": "1366.signal.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 62 characters"
+    },
+    {
+      "id": "1366.signal.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1366.signal.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1024.card.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 44 characters"
+    },
+    {
+      "id": "1024.card.targets",
+      "ok": true,
+      "detail": "3 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1024.card.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1024.hub-only.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 180 characters"
+    },
+    {
+      "id": "1024.hub-only.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1024.hub-only.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1024.not-ready.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 229 characters"
+    },
+    {
+      "id": "1024.not-ready.targets",
+      "ok": true,
+      "detail": "8 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1024.not-ready.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1024.ready",
+      "ok": true,
+      "detail": "1024: \"Ready to drive!\", Drive on"
+    },
+    {
+      "id": "1024.ready.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 213 characters"
+    },
+    {
+      "id": "1024.ready.targets",
+      "ok": true,
+      "detail": "11 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1024.ready.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1024.ideas-ticked",
+      "ok": true,
+      "detail": "1024: after a sensor, a light, a seat and a brick on top the ideas read done, done, done, done; Drive still on"
+    },
+    {
+      "id": "1024.gate-name",
+      "ok": true,
+      "detail": "1024: a hinge motor starts a robot named \"Gate\""
+    },
+    {
+      "id": "1024.gate-not-ready",
+      "ok": true,
+      "detail": "1024: Try it is off; \"Add a sensor so it can see.\""
+    },
+    {
+      "id": "1024.gate.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 184 characters"
+    },
+    {
+      "id": "1024.gate.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1024.gate.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "1024.gate-stuck",
+      "ok": true,
+      "detail": "1024: \"The arm is stuck to the frame. Take off the brick that joins them.\""
+    },
+    {
+      "id": "1024.gate-stuck-selects",
+      "ok": true,
+      "detail": "1024: the fix row picked the brick that holds the arm"
+    },
+    {
+      "id": "1024.gate-ready",
+      "ok": true,
+      "detail": "1024: with the bricks taken off, \"Ready to try!\" and Try it is on"
+    },
+    {
+      "id": "1024.signal-not-ready",
+      "ok": true,
+      "detail": "1024: \"Add a light so it can show what it sees.\""
+    },
+    {
+      "id": "1024.signal-ready",
+      "ok": true,
+      "detail": "1024: \"Ready to try!\", Try it on"
+    },
+    {
+      "id": "1024.signal.words",
+      "ok": true,
+      "detail": "no developer words and no port letters in 62 characters"
+    },
+    {
+      "id": "1024.signal.targets",
+      "ok": true,
+      "detail": "7 targets, every one at least 44 × 44 px"
+    },
+    {
+      "id": "1024.signal.text",
+      "ok": true,
+      "detail": "all text 14 px or larger"
+    },
+    {
+      "id": "console.clean",
+      "ok": true,
+      "detail": "no console errors or page errors"
+    }
+  ]
+}
