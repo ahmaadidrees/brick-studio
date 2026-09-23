@@ -160,10 +160,12 @@ function BrushState({ coarsePointer }: { coarsePointer: boolean }) {
   const part = BRICK_PART_MAP[draft.partId]
   if (!part) return null
   const groupSize = movingSelection?.originals.length ?? 0
-  const moving = Boolean(movingId || movingSelection)
-  const eyebrow = movingSelection?.duplicate ? 'Duplicating' : movingId ? 'Moving' : 'Placing'
-  const name = groupSize > 1 ? `${groupSize} bricks` : part.name
-  const hint = moving
+  // A named new group (a robot kit) is placed like a brick, not moved or duplicated, and stands on the ground.
+  const groupName = movingSelection?.name
+  const moving = Boolean(movingId || (movingSelection && !groupName))
+  const eyebrow = groupName ? 'Placing' : movingSelection?.duplicate ? 'Duplicating' : movingId ? 'Moving' : 'Placing'
+  const name = groupName ?? (groupSize > 1 ? `${groupSize} bricks` : part.name)
+  const hint = groupName ? `Click the plate to place your ${groupName} · Esc puts it away` : moving
     ? 'Click to drop · Esc cancels the move'
     : brickCount === 0 ? 'Click the plate to place your first brick · Esc puts the brick down' : 'Click to place · Esc puts the brick down'
   return (
@@ -175,10 +177,10 @@ function BrushState({ coarsePointer }: { coarsePointer: boolean }) {
       {!coarsePointer && <span className="command-strip-hint">{hint}</span>}
       <div className="command-strip-actions">
         <button className="command-strip-button" type="button" aria-label="Rotate" title="Rotate (R)" disabled={groupSize > 1} onClick={rotate}><RotateCw size={18} aria-hidden="true" /><span>Rotate</span></button>
-        <button className="command-strip-button command-strip-icon" type="button" aria-label="Raise brick one plate" title="Raise one plate (Page Up)" onClick={() => nudge(0, 1, 0)}><ChevronUp size={18} aria-hidden="true" /></button>
-        <button className="command-strip-button command-strip-icon" type="button" aria-label="Lower brick one plate" title="Lower one plate (Page Down)" onClick={() => nudge(0, -1, 0)}><ChevronDown size={18} aria-hidden="true" /></button>
+        <button className="command-strip-button command-strip-icon" type="button" aria-label="Raise brick one plate" title="Raise one plate (Page Up)" disabled={Boolean(groupName)} onClick={() => nudge(0, 1, 0)}><ChevronUp size={18} aria-hidden="true" /></button>
+        <button className="command-strip-button command-strip-icon" type="button" aria-label="Lower brick one plate" title="Lower one plate (Page Down)" disabled={Boolean(groupName)} onClick={() => nudge(0, -1, 0)}><ChevronDown size={18} aria-hidden="true" /></button>
         <button className="command-strip-button" type="button" aria-label="Cancel" title="Put the brick down (Esc)" onClick={cancelInteraction}><X size={18} aria-hidden="true" /><span>Cancel</span></button>
-        <button className="command-strip-button command-strip-primary" type="button" aria-label={movingSelection?.duplicate ? 'Place duplicate' : moving ? 'Place moved brick' : 'Place positioned brick'} title="Place (Enter)" onClick={() => placeDraft()}><Check size={18} aria-hidden="true" /><span>{moving ? 'Place move' : 'Place'}</span></button>
+        <button className="command-strip-button command-strip-primary" type="button" aria-label={groupName ? `Place ${groupName}` : movingSelection?.duplicate ? 'Place duplicate' : moving ? 'Place moved brick' : 'Place positioned brick'} title="Place (Enter)" onClick={() => placeDraft()}><Check size={18} aria-hidden="true" /><span>{moving ? 'Place move' : 'Place'}</span></button>
       </div>
     </div>
   )
