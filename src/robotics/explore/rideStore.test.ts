@@ -330,6 +330,35 @@ describe('the ride state machine', () => {
     expect(seatOf(live).point.z - against).toBeGreaterThan(2)
   })
 
+  it('at the curb it can back away, turn on the spot and drive off: the kit Buggy and the tester’s tall one', () => {
+    for (const bricks of [seatedRoverBricks(), towerRoverBricks()]) {
+      resetExploreRideForTests()
+      load(seatedRoverSection(), bricks)
+      walkUpAndRide()
+      const live = liveRide(RIDE_CREATION_ID)!
+      const hold = (key: 'up' | 'down' | 'left' | 'right', seconds: number) => { ride().setRideKey(key, true); frames(seconds); ride().setRideKey(key, false); frames(0.3) }
+      hold('up', 6)
+      const against = seatOf(live)
+      expect(against.point.z).toBeLessThan(-plateHalfWidth(64) + 8 * STUD)
+      // Turn on the spot with the nose on the curb.
+      hold('left', 1.5)
+      const turned = seatOf(live)
+      const turnedBy = Math.abs(Math.atan2(Math.sin(turned.facingYaw - against.facingYaw), Math.cos(turned.facingYaw - against.facingYaw)))
+      expect(turnedBy).toBeGreaterThan(Math.PI / 4)
+      // Then drive off along the new heading.
+      hold('up', 1.5)
+      const off = seatOf(live)
+      expect(Math.hypot(off.point.x - turned.point.x, off.point.z - turned.point.z)).toBeGreaterThan(3)
+      // And back up again.
+      hold('down', 1.2)
+      // (Measured: the kit Buggy turns 100° with its nose on the curb, drives off 8.1 units and backs 2.8; the tall one 87°, 8.0 and 1.8.)
+      expect(Math.hypot(seatOf(live).point.x - off.point.x, seatOf(live).point.z - off.point.z)).toBeGreaterThan(1.2)
+      // Still riding the whole time, upright, never sent back.
+      expect(ride()).toMatchObject({ phase: 'riding', riding: RIDE_CREATION_ID, notice: null })
+      expect(liveRide(RIDE_CREATION_ID)).toBe(live)
+    }
+  })
+
   it('a ride that still gets past the curb goes back to the start with its rider on board, and the keys still drive', () => {
     load()
     const before = documentText()
