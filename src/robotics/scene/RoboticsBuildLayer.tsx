@@ -19,6 +19,8 @@ import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/ro
 import type { HingeReport } from '../sim/mechanics'
 import { registerDraftSnapper } from './draftSnap'
 import { framePoseInFreeArea, measureCanvasInsets } from './framing'
+import { useHiddenBrickIds } from './hiddenBricks'
+import StageLayer from './StageLayer'
 
 /**
  * What the robotics prototype adds to the build scene: body highlights for the
@@ -319,17 +321,20 @@ export default function RoboticsBuildLayer() {
   const lockedRed = useMemo(() => new Set((cardCreation ?? focused)?.hinges.flatMap((hinge) => hinge.bridging.flatMap((joint) => [joint.lowerBrickId, joint.upperBrickId].filter((id): id is string => Boolean(id)))) ?? []), [cardCreation, focused])
   const highlights = useMemo(() => highlightsFor(model, cardCreation, lockedRed, new Set()), [model, cardCreation, lockedRed])
   const simCreation = sim ? model.creations.find((creation) => creation.id === sim.creationId) ?? null : null
-  const visible = sim ? model.input.bricks.filter((brick) => !sim.hiddenBrickIds.has(brick.id)) : model.input.bricks
+  // Whatever a nudge or the stage draws itself, the build overlays leave alone.
+  const hidden = useHiddenBrickIds()
+  const visible = hidden ? model.input.bricks.filter((brick) => !hidden.has(brick.id)) : model.input.bricks
 
   return (
     <>
       <ConnectorSnapping />
       <CreationFraming />
       <DevProjector />
-      {highlights.filter((entry) => !sim || !sim.hiddenBrickIds.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
+      {highlights.filter((entry) => !hidden?.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
       <HubPortLabels bricks={visible} plateSize={plateSize} />
       <StaticMotorOutputs bricks={visible} plateSize={plateSize} />
       {sim && simCreation && <SimBodies sim={sim} model={model} creation={simCreation} />}
+      <StageLayer />
     </>
   )
 }

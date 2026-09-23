@@ -89,7 +89,7 @@ export type RoboticsState = {
 
 const WIRING_LABEL_PREFIX = 'Connect '
 
-function computeModel(state: Pick<BrickState, 'bricks' | 'documentMetadata'>): RoboticsModel {
+export function computeModel(state: Pick<BrickState, 'bricks' | 'documentMetadata'>): RoboticsModel {
   const section = readRoboticsSection(state.documentMetadata.robotics)
   const input: DeriveInput = { bricks: state.bricks, partMap: createPartMap(state.documentMetadata.customParts ?? []), plateSize: getBuildPlateSize(state.documentMetadata), section }
   return { input, section, creations: deriveCreations(input) }

@@ -3,6 +3,7 @@ import { useBrickStore } from '../../brick/store'
 import { deriveCandidate, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
 import { roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
+import { useStageStore } from '../state/stageStore'
 import './robotics.css'
 
 /**
@@ -19,7 +20,7 @@ export function RoboticsPanel({ compact = false }: { compact?: boolean }) {
     // the scene layer adds (a world→screen projector, so a harness can aim a real pointer at a socket).
     if (import.meta.env.DEV) {
       const host = window as unknown as { __robotics?: Record<string, unknown> }
-      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore })
+      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore, stageStore: useStageStore })
     }
   }, [])
   const card = useRoboticsStore((state) => state.card)

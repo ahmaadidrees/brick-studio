@@ -1,4 +1,4 @@
-import type { BodyPose, ContactReport } from '../sim/mechanics'
+import type { BodyPose, ContactReport, VisitorPhase } from '../sim/mechanics'
 import type { Vec3 } from '../model/vec'
 import type { BlockDiagnostic, DeviceId, JoystickAxis, LightColor, ProgramKey } from '../program/types'
 
@@ -43,6 +43,15 @@ export type MotorReading = {
   positionDegrees: number
   /** False when the device has no cable: it ignores commands. */
   plugged: boolean
+  /**
+   * Motor turning a wheel of the drive pair: the measured speed as the creation feels it,
+   * percent, positive = pushing the creation forward. Two motors at +40 % whose readings
+   * here are +40 and -40 are fighting (one is mounted reversed). Null when the motor turns
+   * no drive wheel. Informational: blocks read `speedPercent`. (Additive, run lane.)
+   */
+  forwardPercent?: number | null
+  /** Hinge motor: why the arm is not following its command (`locked`: built into the frame; `blocked`: pushing against something). (Additive, run lane.) */
+  stuck?: 'locked' | 'blocked' | null
 }
 
 export type TickSnapshot = {
@@ -92,7 +101,7 @@ export type RunSpace = 'testPlate' | 'myWorld'
  */
 export type TestProp =
   | { id: string; kind: 'wall'; center: Vec3; size: Vec3 }
-  | { id: string; kind: 'visitor'; path: Vec3[]; size: Vec3; secondsPerLeg: number }
+  | { id: string; kind: 'visitor'; path: Vec3[]; size: Vec3; secondsPerLeg: number; /** Which way the figure looks while it waits (world, horizontal). Additive, run lane. */ facing?: Vec3 }
 
 export type SensorBeam = { deviceId: DeviceId; from: Vec3; to: Vec3; hit: boolean }
 
@@ -116,6 +125,10 @@ export type RunObservation = {
   /** Chassis speed, studs per second (rover readout). */
   speedStudsPerSecond: number
   variables: Record<string, number | boolean>
+  /** The runtime said every script has finished (motors keep their last command). (Additive, run lane.) */
+  idle?: boolean
+  /** Where the visitor prop is in its walk, when there is one. (Additive, run lane.) */
+  visitorPhase?: VisitorPhase | null
 }
 
 /** Implemented by the run lane (`run/controller.ts`). One per stage; Reset = dispose and create another. */
@@ -125,6 +138,8 @@ export interface RunController {
   readonly props: readonly TestProp[]
   /** Bricks the stage draws itself while this controller exists (the studio hides its copies). */
   readonly simulatedBrickIds: ReadonlySet<string>
+  /** Bricks the studio hides while this stage is shown: the creation's in My world, every brick on the test plate. (Additive, run lane.) */
+  readonly hiddenBrickIds: ReadonlySet<string>
   /** Start a program from the current pose (tick 0, fresh runtime). Null runs no program (a bare stage). */
   run(runtime: ProgramRuntime | null): void
   /** Stop the program and brake every actuator; the pose stays. */
