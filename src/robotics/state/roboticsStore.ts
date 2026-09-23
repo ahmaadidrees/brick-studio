@@ -144,9 +144,10 @@ export type RoboticsState = {
   /** Drops the line once what it is about is fixed some other way (the wheel spins, the part is on, the motor faces out). */
   settleWiringNote: () => void
   /**
-   * A motor ghost resting on a robot's hub or another of its parts (armed where the camera looks, or
-   * re-armed on top of the motor just placed) goes to a side of that robot's plate, as the pointer
-   * would take it: a drive motor is never offered on top of the hub (kid-UX lane W).
+   * On a touch screen (no pointer to follow), a motor ghost resting on a robot's hub or another of its
+   * parts (armed where the camera looks, or re-armed on top of the motor just placed) goes to a side of
+   * that robot's plate, as a tap there would take it: a drive motor is never offered on top of the hub
+   * (kid-UX lane W, Sam on the iPad). With a mouse the ghost follows the pointer, which does the same.
    */
   settleMotorGhost: () => void
 }
@@ -515,6 +516,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const brickState = useBrickStore.getState()
     const draft = brickState.draft
     if (!draft || brickState.mode !== 'build' || roboticsSpec(draft.partId)?.role !== 'motor' || (brickState.movingSelection?.originals.length ?? 0) > 1) return
+    if (!noHover()) return
     const { partMap, plateSize } = get().model.input
     const part = partMap[draft.partId]
     if (!part) return
@@ -556,6 +558,9 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
 
 let watcherInstalled = false
 let ghostCheckQueued = false
+
+/** A touch screen: nothing hovers, so a ghost stays where it was put until a tap moves it. */
+const noHover = () => typeof window !== 'undefined' && Boolean(window.matchMedia?.('(hover: none)').matches)
 
 /**
  * Keeps the derived model in step with the document and reacts to placements.
