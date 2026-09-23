@@ -5,34 +5,46 @@ import { ROBOTICS_PART_IDS, isDevicePart, roboticsSpec } from '../parts/catalog'
 import { deriveStudJoints } from './assembly'
 import type { PartMap } from './grid'
 import { deriveMechanisms, type Mechanisms } from './mechanism'
-import { add, distance, scale, type Vec3 } from './vec'
+import {
+  EDGE_OUTWARD, EDGE_ROTATION, PLATE_EDGES, connectorPose, edgeFacing, edgeSlots, isPlatePart, mirroredMotorPose, plateRect, preferredEdges, rawPose, validPose,
+  type EdgeSlots, type PlateEdge, type Rect, type SnapPose,
+} from './plateEdges'
+import { socketCoveredBy, socketOf, socketRoomOf } from './socketRoom'
+import { distance, type Vec3 } from './vec'
+
+// The geometry this module has always offered, now shared from `plateEdges.ts`.
+export { EDGE_OUTWARD, EDGE_ROTATION, PLATE_EDGES, connectorPose, edgeSlots, isPlatePart, plateRect, preferredEdges }
+export type { EdgeSlots, PlateEdge, Rect, SnapPose }
 
 /**
  * Magnetic connections for the armed ghost (docs/robotics/KID-UX.md §S; contract §3:
  * "a wheel snaps onto a free axle end", "a motor's output face accepts one axle").
  *
- * - An **axle** snaps into a free motor socket or through a loose wheel's hole; a
- *   **wheel** snaps onto a free axle end. The ghost snaps when the pointer is over the
- *   part it connects to, or anywhere near where the snapped part would sit (about 1.5
- *   studs), over another brick or over the bare baseplate. When two places compete, the
- *   one nearer the pointer wins. Every pose comes from the same connector geometry the
- *   mechanism reader (`mechanism.ts`) checks, so a snapped part is connected by
- *   construction.
- * - A **motor** hovered over a plate near one of its edges turns so its socket faces out
- *   over that edge and sits flush with it, sliding along the edge to the nearest spot with
- *   room; at a corner the student's own turn (R) picks between the two edges, and away from
- *   edges it stands as turned. Over bare ground near a robot's plate it goes onto that
- *   plate's edge instead, where there is room.
+ * - An **axle** snaps into a free motor socket; a **wheel** snaps onto a free axle end.
+ *   The ghost snaps when the pointer is over the part it connects to, or anywhere near
+ *   where the snapped part would sit (about 1.5 studs), over another brick or over the
+ *   bare baseplate. When two places compete, the one nearer the pointer wins. Every pose
+ *   comes from the same connector geometry the mechanism reader (`mechanism.ts`) checks,
+ *   so a snapped part is connected by construction. An axle never snaps through a loose
+ *   wheel's hole (kid-UX lane W): a wheel on an axle with no motor cannot spin, so that
+ *   place would look connected and not be; a loose wheel gets its own one-tap fix
+ *   (`fixPlans.ts`) that builds the whole chain.
+ * - A **motor** hovered anywhere over a plate goes to the nearer of its long sides (a car's
+ *   motors go on its sides), turned so its socket faces out over that edge, flush with it,
+ *   sliding along to the nearest spot where it fits and an axle fits in its socket; the
+ *   other long side when the near one is full (kid-UX lane W: a green spot always places the
+ *   motor facing out). Over a part of a robot (its hub, a sensor, another motor) it goes the
+ *   same way onto that robot's plate: never on top of the hub, where its wheel could not
+ *   reach the ground. Over bare ground near a robot's plate it goes onto that plate's side.
+ *   A plate with one motor on it pulls a motor near the spot across from it exactly there
+ *   ("the other side"). With no room on either side the ghost shows where it would go, red.
  *
  * Anything else answers null and placement is the studio's own. Nothing here edits the
  * document; the scene draws the same targets (`createSnapContext`) as glowing markers.
  */
-export type SnapPose = { x: number; y: number; z: number; rotation: 0 | 1 | 2 | 3 }
 
 /** How near the pointer must be to where the snapped part would sit. */
 export const SNAP_REACH_STUDS = 1.5
-/** A motor over a plate this near one of its edges turns to face out over it. */
-export const EDGE_REACH_STUDS = 2
 /** A motor over bare ground this near a robot's plate goes onto the plate instead. */
 export const PLATE_REACH_STUDS = 3
 
@@ -55,14 +67,6 @@ export type SnapTarget = {
   blocked: boolean
 }
 
-export type PlateEdge = 'left' | 'right' | 'far' | 'near'
-export const PLATE_EDGES: readonly PlateEdge[] = ['left', 'right', 'far', 'near']
-/** Quarter turns that face a motor's socket out over each edge (rotation 0 faces +X, the right). */
-export const EDGE_ROTATION: Readonly<Record<PlateEdge, 0 | 1 | 2 | 3>> = { right: 0, far: 1, left: 2, near: 3 }
-export const EDGE_OUTWARD: Readonly<Record<PlateEdge, Vec3>> = {
-  right: { x: 1, y: 0, z: 0 }, far: { x: 0, y: 0, z: -1 }, left: { x: -1, y: 0, z: 0 }, near: { x: 0, y: 0, z: 1 },
-}
-
 /** A free stretch of a robot plate's edge where a motor fits, for the glowing marker. */
 export type EdgeRun = {
   key: string
@@ -75,7 +79,7 @@ export type EdgeRun = {
   poses: SnapPose[]
 }
 
-export type SnapHintKind = 'needs-axle' | 'motor-on-ground'
+export type SnapHintKind = 'needs-axle' | 'motor-on-ground' | 'motor-too-high'
 /** No snap, but the pointer is at a connector that cannot take the part yet; the scene says why. */
 export type SnapHint = { kind: SnapHintKind; brickId: string; point: Vec3 }
 
@@ -93,6 +97,10 @@ export type SnapContext = {
   mechanisms(): Mechanisms
   /** Plates standing on the ground that carry a robot: a device is studded onto them, directly or through other bricks. */
   robotPlateIds(): ReadonlySet<string>
+  /** The robot plate a brick is studded to, directly or through other bricks (its hub, a sensor, a motor on it). */
+  robotPlateOf(brickId: string): string | null
+  /** For a plate with one motor on it (at a side, facing out), where the second goes: across from it, when it fits there. */
+  otherSideOf(plateId: string, motorPartId: string): SnapPose | null
   /** Sockets, holes and axle ends the part can connect to, with where it would sit. */
   connectorTargets(partId: string): readonly SnapTarget[]
   /** Free stretches of robot plates' long sides where the motor fits, facing out. */
@@ -113,19 +121,25 @@ export type SnapInput = {
   context?: SnapContext
 }
 
-const isPlatePart = (part: BrickPart | undefined): part is BrickPart => part?.kind === 'plate'
-
 export function createSnapContext(bricks: readonly BrickInstance[], partMap: PartMap, plateSize: number): SnapContext {
   let mechanisms: Mechanisms | null = null
-  let robotPlates: Set<string> | null = null
+  let robots: RobotPlates | null = null
   const targets = new Map<string, SnapTarget[]>()
   const runs = new Map<string, EdgeRun[]>()
+  const otherSides = new Map<string, SnapPose | null>()
+  const plates = () => (robots ??= findRobotPlates(bricks, partMap))
   const context: SnapContext = {
     bricks,
     partMap,
     plateSize,
     mechanisms: () => (mechanisms ??= deriveMechanisms(bricks, partMap, plateSize)),
-    robotPlateIds: () => (robotPlates ??= findRobotPlates(bricks, partMap)),
+    robotPlateIds: () => plates().ids,
+    robotPlateOf: (brickId) => plates().of(brickId),
+    otherSideOf: (plateId, motorPartId) => {
+      const key = `${plateId}:${motorPartId}`
+      if (!otherSides.has(key)) otherSides.set(key, otherSideFor(context, plateId, motorPartId))
+      return otherSides.get(key) ?? null
+    },
     connectorTargets: (partId) => {
       let list = targets.get(partId)
       if (!list) targets.set(partId, (list = connectorTargetsFor(context, partId)))
@@ -173,19 +187,12 @@ function connectorTargetsFor(context: SnapContext, partId: string): SnapTarget[]
   const targets: SnapTarget[] = []
   const push = (target: Omit<SnapTarget, 'blocked'>) => targets.push({ ...target, blocked: !fits(context, partId, target.pose) })
   if (spec.axle) {
+    // Free motor sockets only: an axle through a loose wheel's hole turns nothing (see the note above);
+    // and only where the axle lies on the ground, so its wheel touches the ground (not a motor on the hub).
     for (const motor of mechanisms.motors) {
       if (motor.axleId) continue
       const pose = validPose(rawPose(part, spec.axle.center, motor.socket.point, motor.socket.normal, spec.axle.halfLength, plateSize), part, plateSize)
-      if (pose) push({ key: `socket:${motor.motorId}`, kind: 'socket', brickId: motor.motorId, ownerIds: [motor.motorId], point: motor.socket.point, outward: motor.socket.normal, pose })
-    }
-    for (const wheel of mechanisms.wheels) {
-      if (wheel.axleId) continue
-      for (const sign of [1, -1] as const) {
-        const outward = scale(wheel.axis, sign)
-        const face = add(wheel.center, scale(outward, wheel.halfThickness))
-        const pose = validPose(rawPose(part, spec.axle.center, face, outward, spec.axle.halfLength, plateSize), part, plateSize)
-        if (pose) push({ key: `hole:${wheel.wheelId}:${sign > 0 ? 'a' : 'b'}`, kind: 'wheel-hole', brickId: wheel.wheelId, ownerIds: [wheel.wheelId], point: face, outward, pose })
-      }
+      if (pose && pose.y === 0) push({ key: `socket:${motor.motorId}`, kind: 'socket', brickId: motor.motorId, ownerIds: [motor.motorId], point: motor.socket.point, outward: motor.socket.normal, pose })
     }
   } else if (spec.wheel) {
     for (const axle of mechanisms.axles) {
@@ -216,8 +223,10 @@ function nearestTarget(targets: readonly SnapTarget[], hitBrick: BrickInstance |
 
 /**
  * A connector the part cannot take yet: a wheel at a motor with nothing in its socket
- * ("put an axle in first"), or an axle at a motor standing on the ground, whose socket is
- * one plate lower than an axle on the ground can reach ("put the motor on a plate first").
+ * ("put an axle in first"), an axle at a motor standing on the ground, whose socket is
+ * one plate lower than an axle on the ground can reach ("put the motor on a plate first"),
+ * or an axle at a motor standing higher than a plate on the ground (on the hub), whose wheel
+ * could never touch the ground (kid-UX lane W).
  */
 function hintFor(context: SnapContext, armed: 'axle' | 'wheel', hitBrick: BrickInstance | null, hitPoint: Vec3): SnapHint | null {
   const axlePart = context.partMap[ROBOTICS_PART_IDS.axleShort]
@@ -229,12 +238,13 @@ function hintFor(context: SnapContext, armed: 'axle' | 'wheel', hitBrick: BrickI
     const raw = rawPose(axlePart, axleSpec.axle.center, motor.socket.point, motor.socket.normal, axleSpec.axle.halfLength, context.plateSize)
     if (!raw) continue
     const low = raw.y < 0
-    if (armed === 'axle' && !low) continue // a socket an axle can reach is a target, not a hint
+    const high = raw.y > 0
+    if (armed === 'axle' && !low && !high) continue // a socket an axle can reach is a target, not a hint
     const reach = hitBrick?.id === motor.motorId ? 0 : distanceToBox(hitPoint, poseBox({ ...raw, y: Math.max(0, raw.y) }, axlePart, context.plateSize))
     if (reach > SNAP_REACH_STUDS * STUD) continue
     const tie = distance(hitPoint, motor.socket.point)
     if (!best || reach < best.reach - 1e-9 || (Math.abs(reach - best.reach) <= 1e-9 && tie < best.tie)) {
-      best = { hint: { kind: low ? 'motor-on-ground' : 'needs-axle', brickId: motor.motorId, point: motor.socket.point }, reach, tie }
+      best = { hint: { kind: armed === 'axle' && high ? 'motor-too-high' : low ? 'motor-on-ground' : 'needs-axle', brickId: motor.motorId, point: motor.socket.point }, reach, tie }
     }
   }
   return best?.hint ?? null
@@ -242,75 +252,31 @@ function hintFor(context: SnapContext, armed: 'axle' | 'wheel', hitBrick: BrickI
 
 /* ------------------------------------------------------------------ motors on plate edges */
 
-type Rect = { x0: number; x1: number; z0: number; z1: number }
-
-function plateRect(plate: BrickInstance, part: BrickPart): Rect {
-  const size = rotatedSize(part, plate.rotation)
-  return { x0: plate.x, x1: plate.x + size.width, z0: plate.z, z1: plate.z + size.depth }
-}
-
-/** Long sides first: a car's motors go on its long sides (on a square plate, left and right). */
-function preferredEdges(rect: Rect): readonly PlateEdge[] {
-  return rect.x1 - rect.x0 > rect.z1 - rect.z0 ? ['far', 'near'] : ['left', 'right']
-}
-
-/** Studs from a point (plate grid units) to an edge segment of the rectangle. */
-function edgeDistance(rect: Rect, px: number, pz: number, edge: PlateEdge): number {
-  const alongX = Math.max(0, rect.x0 - px, px - rect.x1)
-  const alongZ = Math.max(0, rect.z0 - pz, pz - rect.z1)
-  switch (edge) {
-    case 'left': return Math.hypot(px - rect.x0, alongZ)
-    case 'right': return Math.hypot(rect.x1 - px, alongZ)
-    case 'far': return Math.hypot(pz - rect.z0, alongX)
-    case 'near': return Math.hypot(rect.z1 - pz, alongX)
-  }
+/** The long side of the plate nearer the pointer first (at the middle, the one the motor already faces). */
+function longSidesByDistance(rect: Rect, px: number, pz: number, rotation: number | null): PlateEdge[] {
+  const [low, high] = preferredEdges(rect)
+  const alongX = low === 'left'
+  const [middle, at] = alongX ? [(rect.x0 + rect.x1) / 2, px] : [(rect.z0 + rect.z1) / 2, pz]
+  if (Math.abs(at - middle) < 1e-6) return EDGE_ROTATION[high] === rotation ? [high, low] : [low, high]
+  return at < middle ? [low, high] : [high, low]
 }
 
 /**
- * Edges within reach, nearest first. At a corner, where two edges are about as near, the
- * student's own turn decides (the edge the motor already faces, within three quarters of a
- * stud), and after that the long sides (within a quarter stud).
+ * A motor at `pose` fits there, and its socket is where an axle on the ground turns a wheel on the
+ * ground (the motor stands on a plate lying on the ground) with room for that axle (loose wheels and
+ * axles in the way don't count: they move).
  */
-function edgesByDistance(rect: Rect, px: number, pz: number, reach: number, rotation: number | null): PlateEdge[] {
-  const preferred = preferredEdges(rect)
-  return PLATE_EDGES
-    .map((edge) => ({ edge, d: edgeDistance(rect, px, pz, edge) }))
-    .filter((entry) => entry.d <= reach)
-    .map((entry) => ({ ...entry, score: entry.d - (EDGE_ROTATION[entry.edge] === rotation ? 0.75 : 0) - (preferred.includes(entry.edge) ? 0.25 : 0) }))
-    .sort((a, b) => a.score - b.score || a.d - b.d)
-    .map((entry) => entry.edge)
+function openFor(context: SnapContext, motorPartId: string, pose: SnapPose): boolean {
+  return fits(context, motorPartId, pose) && socketRoomOf({ id: 'snap:motor', partId: motorPartId, ...pose }, context.bricks, context.partMap, context.plateSize) === 'open'
 }
 
-type EdgeSlots = { rotation: 0 | 1 | 2 | 3; y: number; lo: number; hi: number; pose: (slot: number) => SnapPose; slotOf: (px: number, pz: number) => number }
-
-/** Where a motor can sit flush along an edge: one grid slot per stud along it. */
-function edgeSlots(plate: BrickInstance, platePart: BrickPart, motorPart: BrickPart, edge: PlateEdge): EdgeSlots {
-  const rect = plateRect(plate, platePart)
-  const rotation = EDGE_ROTATION[edge]
-  const size = rotatedSize(motorPart, rotation)
-  const y = plate.y + platePart.height
-  const alongZ = edge === 'left' || edge === 'right'
-  const x = edge === 'left' ? rect.x0 : rect.x1 - size.width
-  const z = edge === 'far' ? rect.z0 : rect.z1 - size.depth
-  // A plate narrower than the motor: it overhangs both ends, still studded onto the plate.
-  const [lo, hi] = alongZ ? [rect.z0, rect.z1 - size.depth].sort((a, b) => a - b) : [rect.x0, rect.x1 - size.width].sort((a, b) => a - b)
-  return {
-    rotation,
-    y,
-    lo,
-    hi,
-    pose: (slot) => (alongZ ? { x, y, z: slot, rotation } : { x: slot, y, z, rotation }),
-    slotOf: (px, pz) => Math.min(hi, Math.max(lo, Math.round(alongZ ? pz - size.depth / 2 : px - size.width / 2))),
-  }
-}
-
-/** The free slot nearest to `from` along the edge, or null when the whole edge is taken. */
+/** The open slot nearest to `from` along the edge, or null when there is none. */
 function nearestFreeSlot(context: SnapContext, motorId: string, slots: EdgeSlots, from: number): SnapPose | null {
   for (let step = 0; step <= slots.hi - slots.lo; step += 1) {
     for (const slot of step === 0 ? [from] : [from - step, from + step]) {
       if (slot < slots.lo || slot > slots.hi) continue
       const pose = slots.pose(slot)
-      if (fits(context, motorId, pose)) return pose
+      if (openFor(context, motorId, pose)) return pose
     }
   }
   return null
@@ -326,28 +292,79 @@ function edgeTarget(context: SnapContext, motorPart: BrickPart, plate: BrickInst
   return { key: `${plate.id}:${edge}`, kind: 'plate-edge', brickId: plate.id, ownerIds: [plate.id], point, outward, pose, blocked }
 }
 
+/** Motors standing on a plate (bottom on its top, footprints overlapping). */
+function motorsOnPlate(context: SnapContext, plate: BrickInstance): BrickInstance[] {
+  const platePart = context.partMap[plate.partId]!
+  const rect = plateRect(plate, platePart)
+  return context.bricks.filter((brick) => {
+    const part = context.partMap[brick.partId]
+    if (!part || roboticsSpec(brick.partId)?.role !== 'motor' || brick.y !== plate.y + platePart.height) return false
+    const own = plateRect(brick, part)
+    return own.x0 < rect.x1 && rect.x0 < own.x1 && own.z0 < rect.z1 && rect.z0 < own.z1
+  })
+}
+
+/** Across from a plate's one motor (at a side, facing out), when the second fits there with room for its axle. */
+function otherSideFor(context: SnapContext, plateId: string, motorPartId: string): SnapPose | null {
+  const plate = context.bricks.find((brick) => brick.id === plateId)
+  const platePart = plate ? context.partMap[plate.partId] : undefined
+  const motorPart = context.partMap[motorPartId]
+  if (!plate || !isPlatePart(platePart) || !motorPart) return null
+  const motors = motorsOnPlate(context, plate)
+  if (motors.length !== 1) return null
+  const socket = socketOf(motors[0], context.partMap, context.plateSize)
+  const covered = socketCoveredBy(motors[0], context.bricks, context.partMap, context.plateSize)
+  // Only a motor at a side facing out has an "other side".
+  if (!socket || Math.abs(socket.normal.y) > 0.5 || covered === null || covered.length > 0) return null
+  const pose = mirroredMotorPose(motors[0], motorPart, plateRect(plate, platePart), edgeFacing(socket.normal))
+  return openFor(context, motorPartId, pose) ? pose : null
+}
+
+/** The pointer is on or near the footprint `pose` would fill (within a stud and a half). */
+function nearPose(pose: SnapPose, part: BrickPart, px: number, pz: number): boolean {
+  const size = rotatedSize(part, pose.rotation)
+  return Math.hypot(Math.max(0, pose.x - px, px - (pose.x + size.width)), Math.max(0, pose.z - pz, pz - (pose.z + size.depth))) <= SNAP_REACH_STUDS
+}
+
+/** Onto a plate's side, for this pointer: the other side of a lone motor, else the nearer long side with room, else the other. */
+function motorOnPlate(context: SnapContext, motorPart: BrickPart, plate: BrickInstance, px: number, pz: number, rotation: number | null, showBlocked: boolean): SnapFound | null {
+  const platePart = context.partMap[plate.partId]!
+  const rect = plateRect(plate, platePart)
+  const across = context.otherSideOf(plate.id, motorPart.id)
+  if (across && nearPose(across, motorPart, px, pz)) return { pose: across, target: edgeTarget(context, motorPart, plate, edgeOfRotation(across.rotation), across, false) }
+  const edges = longSidesByDistance(rect, Math.min(rect.x1, Math.max(rect.x0, px)), Math.min(rect.z1, Math.max(rect.z0, pz)), rotation)
+  for (const edge of edges) {
+    const slots = edgeSlots(plate, platePart, motorPart, edge)
+    const pose = nearestFreeSlot(context, motorPart.id, slots, slots.slotOf(px, pz))
+    if (pose) return { pose, target: edgeTarget(context, motorPart, plate, edge, pose, false) }
+  }
+  if (!showBlocked) return null
+  // No room on either side: show where it would go (red) so the refusal can say what is in the way.
+  const slots = edgeSlots(plate, platePart, motorPart, edges[0])
+  const pose = slots.pose(slots.slotOf(px, pz))
+  return { pose, target: edgeTarget(context, motorPart, plate, edges[0], pose, true) }
+}
+
+const edgeOfRotation = (rotation: number): PlateEdge => PLATE_EDGES.find((edge) => EDGE_ROTATION[edge] === rotation) ?? 'right'
+
 function findMotorSnap(context: SnapContext, motorPart: BrickPart, hitBrick: BrickInstance | null, hitPoint: Vec3, rotation: number | null): SnapFound | null {
   const px = hitPoint.x / STUD + context.plateSize / 2
   const pz = hitPoint.z / STUD + context.plateSize / 2
   const hitPart = hitBrick ? context.partMap[hitBrick.partId] : undefined
+  // Over a plate: onto one of its long sides, facing out (a robot's plate stacked on its chassis: onto the chassis).
   if (hitBrick && isPlatePart(hitPart)) {
-    // Over a plate: near an edge the motor faces out over it, sliding along to the nearest spot with room.
-    const rect = plateRect(hitBrick, hitPart)
-    const edges = edgesByDistance(rect, Math.min(rect.x1, Math.max(rect.x0, px)), Math.min(rect.z1, Math.max(rect.z0, pz)), EDGE_REACH_STUDS, rotation)
-    for (const edge of edges) {
-      const slots = edgeSlots(hitBrick, hitPart, motorPart, edge)
-      const pose = nearestFreeSlot(context, motorPart.id, slots, slots.slotOf(px, pz))
-      if (pose) return { pose, target: edgeTarget(context, motorPart, hitBrick, edge, pose, false) }
-    }
-    if (!edges.length) return null
-    // Every spot along the nearest edge is taken: show where it would go (red) so the refusal can say what is in the way.
-    const slots = edgeSlots(hitBrick, hitPart, motorPart, edges[0])
-    const pose = slots.pose(slots.slotOf(px, pz))
-    return { pose, target: edgeTarget(context, motorPart, hitBrick, edges[0], pose, true) }
+    const chassisId = hitBrick.y > 0 ? context.robotPlateOf(hitBrick.id) : null
+    const plate = (chassisId ? context.bricks.find((brick) => brick.id === chassisId) : null) ?? hitBrick
+    return motorOnPlate(context, motorPart, plate, px, pz, rotation, true)
+  }
+  const role = hitBrick ? roboticsSpec(hitBrick.partId)?.role : undefined
+  if (hitBrick && role !== 'axle' && role !== 'wheel') {
+    // Over a robot's hub, sensor or motor: onto that robot's plate, never on top of it. Anything else is the studio's.
+    const plateId = context.robotPlateOf(hitBrick.id)
+    const plate = plateId ? context.bricks.find((brick) => brick.id === plateId) : undefined
+    return plate ? motorOnPlate(context, motorPart, plate, px, pz, rotation, true) : null
   }
   // Over bare ground (or a loose axle or wheel, which cannot carry it): onto the nearest robot plate within reach.
-  const role = hitBrick ? roboticsSpec(hitBrick.partId)?.role : undefined
-  if (hitBrick && role !== 'axle' && role !== 'wheel') return null
   const plates = [...context.robotPlateIds()]
     .map((id) => context.bricks.find((brick) => brick.id === id)!)
     .map((plate) => {
@@ -356,31 +373,11 @@ function findMotorSnap(context: SnapContext, motorPart: BrickPart, hitBrick: Bri
     })
     .filter((entry) => entry.d <= PLATE_REACH_STUDS)
     .sort((a, b) => a.d - b.d)
-  for (const { plate, rect } of plates) {
-    for (const edge of edgesByDistance(rect, px, pz, PLATE_REACH_STUDS, rotation)) {
-      const slots = edgeSlots(plate, context.partMap[plate.partId]!, motorPart, edge)
-      const pose = nearestFreeSlot(context, motorPart.id, slots, slots.slotOf(px, pz))
-      if (pose) return { pose, target: edgeTarget(context, motorPart, plate, edge, pose, false) }
-    }
+  for (const { plate } of plates) {
+    const found = motorOnPlate(context, motorPart, plate, px, pz, rotation, false)
+    if (found) return found
   }
   return null
-}
-
-/** Every spot along any edge of this plate where a motor fits, facing out (for "is there room on the plate?"). */
-export function freeMotorSpots(context: SnapContext, plateId: string, motorPartId: string = ROBOTICS_PART_IDS.motor): SnapPose[] {
-  const plate = context.bricks.find((brick) => brick.id === plateId)
-  const platePart = plate ? context.partMap[plate.partId] : undefined
-  const motorPart = context.partMap[motorPartId]
-  if (!plate || !isPlatePart(platePart) || !motorPart) return []
-  const spots: SnapPose[] = []
-  for (const edge of PLATE_EDGES) {
-    const slots = edgeSlots(plate, platePart, motorPart, edge)
-    for (let slot = slots.lo; slot <= slots.hi; slot += 1) {
-      const pose = slots.pose(slot)
-      if (fits(context, motorPartId, pose)) spots.push(pose)
-    }
-  }
-  return spots
 }
 
 function motorEdgeRunsFor(context: SnapContext, partId: string): EdgeRun[] {
@@ -401,7 +398,7 @@ function motorEdgeRunsFor(context: SnapContext, partId: string): EdgeRun[] {
       }
       for (let slot = slots.lo; slot <= slots.hi; slot += 1) {
         const pose = slots.pose(slot)
-        if (fits(context, partId, pose)) current.push(pose)
+        if (openFor(context, partId, pose)) current.push(pose)
         else flush()
       }
       flush()
@@ -424,8 +421,10 @@ function runFor(context: SnapContext, plate: BrickInstance, platePart: BrickPart
   return { key: `${plate.id}:${edge}`, plateId: plate.id, edge, from, to, outward: EDGE_OUTWARD[edge], poses }
 }
 
+type RobotPlates = { ids: Set<string>; of: (brickId: string) => string | null }
+
 /** Plates on the ground whose studded-together bricks include a device: the robots' chassis plates. */
-function findRobotPlates(bricks: readonly BrickInstance[], partMap: PartMap): Set<string> {
+function findRobotPlates(bricks: readonly BrickInstance[], partMap: PartMap): RobotPlates {
   const parent = new Map<string, string>()
   const find = (id: string): string => {
     let root = id
@@ -440,7 +439,10 @@ function findRobotPlates(bricks: readonly BrickInstance[], partMap: PartMap): Se
     if (a !== b) parent.set(a, b)
   }
   const robots = new Set(bricks.filter((brick) => isDevicePart(brick.partId)).map((brick) => find(brick.id)))
-  return new Set(bricks.filter((brick) => brick.y === 0 && isPlatePart(partMap[brick.partId]) && robots.has(find(brick.id))).map((brick) => brick.id))
+  const plates = bricks.filter((brick) => brick.y === 0 && isPlatePart(partMap[brick.partId]) && robots.has(find(brick.id)))
+  const byRoot = new Map<string, string>()
+  for (const plate of plates) if (!byRoot.has(find(plate.id))) byRoot.set(find(plate.id), plate.id)
+  return { ids: new Set(plates.map((plate) => plate.id)), of: (brickId) => byRoot.get(find(brickId)) ?? null }
 }
 
 /* ------------------------------------------------------------------ geometry */
@@ -466,30 +468,3 @@ function distanceToBox(point: Vec3, box: { min: Vec3; max: Vec3 }): number {
   )
 }
 
-const onGrid = (value: number) => Math.abs(value - Math.round(value)) < 1e-6
-
-/**
- * Grid pose whose connector (running along the part's local X through `localCenter`)
- * touches `point` with the body extending `reach` along `outward`. Both connectors are
- * centred on their footprint, so a quarter turn only swaps the axis; a vertical connector
- * has no stud-grid pose and answers null. The pose may lie below the ground or off the
- * plate (`validPose` says whether it can be placed).
- */
-function rawPose(part: BrickPart, localCenter: Vec3, point: Vec3, outward: Vec3, reach: number, plateSize: number): SnapPose | null {
-  const rotation: 0 | 1 | null = Math.abs(outward.x) > 0.5 ? 0 : Math.abs(outward.z) > 0.5 ? 1 : null
-  if (rotation === null) return null
-  const center = add(point, scale(outward, reach))
-  const size = rotatedSize(part, rotation)
-  const x = center.x / STUD + plateSize / 2 - size.width / 2
-  const z = center.z / STUD + plateSize / 2 - size.depth / 2
-  const y = (center.y - localCenter.y) / PLATE_HEIGHT
-  if (!onGrid(x) || !onGrid(y) || !onGrid(z)) return null
-  return { x: Math.round(x), y: Math.round(y), z: Math.round(z), rotation }
-}
-
-function validPose(pose: SnapPose | null, part: BrickPart, plateSize: number): SnapPose | null {
-  if (!pose) return null
-  const size = rotatedSize(part, pose.rotation)
-  if (pose.y < 0 || pose.x < 0 || pose.z < 0 || pose.x + size.width > plateSize || pose.z + size.depth > plateSize) return null
-  return pose
-}

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { createPartMap } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
-import { snapDraftToConnector } from '../model/snap'
+import { findSnap, snapDraftToConnector } from '../model/snap'
 import { registerDraftSnapper, snapDraft } from '../scene/draftSnap'
 import { disconnect } from '../model/control'
 import { createProgram, setActiveProgram } from '../program/programs'
@@ -100,10 +100,10 @@ describe('placing devices', () => {
     expect(useBrickStore.getState().undoStack.map((entry) => entry.label).slice(-2)).toEqual(['Place brick', 'Connect Left motor connected to port A'])
   })
 
-  it('a device placed with no hub is placed unpowered and told so', () => {
+  it('a device placed with no hub is told, in kid words, that it needs one', () => {
     place('plate_6x8', 28, 0, 26)
     place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
-    expect(robotics().wiringNote).toMatchObject({ text: 'Left motor placed unpowered · add a hub to plug it in', undoable: false })
+    expect(robotics().wiringNote).toMatchObject({ text: 'Left motor needs a hub. Add a hub to plug it in.', undoable: false })
     expect(section().connections).toEqual([])
   })
 
@@ -126,7 +126,7 @@ describe('placing devices', () => {
     place(ROBOTICS_PART_IDS.light, 28, 1, 28)
     place(ROBOTICS_PART_IDS.light, 28, 1, 29)
     place(ROBOTICS_PART_IDS.light, 28, 1, 30)
-    expect(robotics().wiringNote?.text).toBe('Ports A–D are full. Unplug something to plug in Light')
+    expect(robotics().wiringNote?.text).toBe('The hub is full. Unplug something to plug in Light.')
     expect(section().connections).toHaveLength(4)
   })
 
@@ -301,26 +301,30 @@ describe('a motor on a hub (the Codex QA case)', () => {
   beforeAll(() => registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => snapDraftToConnector({ draft, hitBrick, hitPoint, bricks, partMap: createPartMap([]), plateSize })))
   afterAll(() => registerDraftSnapper(null))
 
-  it('with the socket facing open space, the snapped axle places and reads as in the socket', () => {
+  it('a motor on top of the hub takes no axle: its wheel could never touch the ground, and the hint says so (kid-UX lane W, Sam)', () => {
     const motor = motorOnHub(0)
-    const pose = snapAxleTo(motor)!
-    expect(pose).not.toBeNull()
-    for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
-    useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
-    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(snapAxleTo(motor)).toBeNull()
+    const draft = useBrickStore.getState().draft!
+    const bricks = useBrickStore.getState().bricks
+    const outcome = findSnap({ draft, hitBrick: bricks.find((brick) => brick.id === motor)!, hitPoint: { x: 0, y: 0, z: 0 }, bricks, partMap: createPartMap([]), plateSize: 64 })
+    expect(outcome).toMatchObject({ found: null, hint: { kind: 'motor-too-high', brickId: motor } })
     useBrickStore.getState().cancelInteraction()
-    const axle = useBrickStore.getState().bricks.at(-1)!.id
-    expect(robotics().model.creations[0].motors[0].axleId).toBe(axle)
+    // The step says to move it down to a side of the plate (here there is no plate: it asks for one).
+    expect(robotics().model.creations[0].motors[0].socketRoom).toBe('high')
   })
 
-  it('with the socket facing over the hub, the refusal names the hub instead of the generic line', () => {
-    const motor = motorOnHub(2)
+  it('with the socket facing into the hub, the snapped axle is refused and the refusal names the hub', () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Post', false)
+    // A motor at the back of the plate, turned to face the far side: its socket looks straight into the hub.
+    const motor = place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 1)
     const pose = snapAxleTo(motor)!
-    expect(pose).not.toBeNull()
+    expect(pose).toMatchObject({ y: 0, rotation: 1 })
     for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
     useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
     expect(useBrickStore.getState().placeDraft()).toBe(false)
-    expect(useBrickStore.getState().toast).toBe("The axle fits Left motor's socket, but there it would overlap Hub. Turn or move the motor so its socket faces open space.")
+    expect(useBrickStore.getState().toast).toBe("The axle can't go there. 6 × 8 Plate and Hub are in the way. Turn or move the motor so its socket faces open space.")
     useBrickStore.getState().cancelInteraction()
   })
 })
@@ -334,7 +338,8 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
     robotics().confirmCard('Buggy', false)
     const motor = place(ROBOTICS_PART_IDS.motor, 35, 0, 30)
-    expect(robotics().wiringNote).toMatchObject({ text: "Right motor isn't on Buggy yet. Put it on Buggy's plate.", undoable: false, brickId: motor })
+    // Kid-UX lane W: "This motor isn't on Buggy yet." with the one tap that puts it on.
+    expect(robotics().wiringNote).toMatchObject({ text: "This motor isn't on Buggy yet.", undoable: false, brickId: motor, action: { kind: 'put-on', brickId: motor, creationId: section().creations[0].id, label: 'Put it on Buggy' } })
     expect(robotics().card).toBeNull()
     expect(section().creations).toHaveLength(1)
     expect(section().connections).toEqual([])
@@ -361,7 +366,7 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
     expect(robotics().card?.creationId).toBeNull()
     place(ROBOTICS_PART_IDS.motor, 35, 0, 30)
-    expect(robotics().wiringNote?.text).toBe("Right motor isn't on Robot yet. Put it on Robot's plate.")
+    expect(robotics().wiringNote).toMatchObject({ text: "This motor isn't on Robot yet.", action: { kind: 'put-on', creationId: 'candidate', label: 'Put it on Robot' } })
     expect(robotics().card?.anchorBrickIds).toHaveLength(2)
   })
 
@@ -371,11 +376,12 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     expect(robotics().card?.anchorBrickIds).toEqual([motor])
   })
 
-  it('a motor snapped onto a full plate edge is refused with what is in the way', () => {
+  it('a motor snapped onto a plate with both sides full is refused with what is in the way', () => {
     place('plate_6x8', 28, 0, 26)
     place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
     robotics().confirmCard('Buggy', false)
     place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
+    place(ROBOTICS_PART_IDS.motor, 31, 1, 31, 0)
     const state = useBrickStore.getState()
     state.choosePart(ROBOTICS_PART_IDS.motor)
     const plate = state.bricks.find((brick) => brick.partId === 'plate_6x8')!
@@ -384,7 +390,7 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
     useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
     expect(useBrickStore.getState().placeDraft()).toBe(false)
-    expect(useBrickStore.getState().toast).toBe('No room for the motor there. Hub is in the way.')
+    expect(useBrickStore.getState().toast).toBe('No room on the plate. Hub is in the way.')
     useBrickStore.getState().cancelInteraction()
   })
 })

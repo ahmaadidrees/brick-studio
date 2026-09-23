@@ -6,6 +6,7 @@ import { installRoboticsParts } from '../parts/install'
 import { deriveStudJoints } from './assembly'
 import { ROVER_IDS, roverBricks } from './fixtures'
 import { deriveMechanisms } from './mechanism'
+import { previewProblem } from './fixPlans'
 import { EDGE_OUTWARD, createSnapContext, findSnap, type PlateEdge, type SnapPose } from './snap'
 import type { Vec3 } from './vec'
 
@@ -59,16 +60,25 @@ describe('proximity snap: an axle', () => {
     expect(result.hint).toBeNull()
   })
 
-  it('when a socket and a loose wheel compete, the one nearer the pointer wins', () => {
-    // A loose wheel two studs out: an axle can go into the socket (x 26–28) or through the wheel (x 23–25).
+  it('a loose wheel nearby never pulls the axle away from the socket (kid-UX lane W)', () => {
+    // A loose wheel two studs out: an axle through it (x 23–25) would turn nothing, so only the socket (x 26–28) is a target.
     const bricks = [...noLeftAxle(), brick('loose', ROBOTICS_PART_IDS.wheel, 22, 0, 31)]
     const nearSocket = find(bricks, ROBOTICS_PART_IDS.axleShort, world(25.8, 0, 32.5))
     expect(nearSocket.found?.target.kind).toBe('socket')
     expect(pose(nearSocket)).toEqual(inLeftSocket)
     const nearWheel = find(bricks, ROBOTICS_PART_IDS.axleShort, world(25.2, 0, 32.5))
-    expect(nearWheel.found?.target.kind).toBe('wheel-hole')
-    expect(pose(nearWheel)).toEqual({ x: 23, y: 0, z: 32, rotation: 0 })
-    expect(deriveMechanisms(placed(bricks, ROBOTICS_PART_IDS.axleShort, pose(nearWheel)!), partMap, plateSize).wheelById.get('loose')?.axleId).toBe('new')
+    expect(nearWheel.found?.target.kind).toBe('socket')
+    expect(pose(nearWheel)).toEqual(inLeftSocket)
+    // Aimed right at the wheel, beyond the socket's reach: nothing to snap to.
+    expect(find(bricks, ROBOTICS_PART_IDS.axleShort, world(21.5, 0, 32.5)).found).toBeNull()
+  })
+
+  it('at a motor standing on the hub there is nothing to snap to either: its wheel could never touch the ground (kid-UX lane W)', () => {
+    const bricks = [...plateAndHub(), brick('up', ROBOTICS_PART_IDS.motor, 29, 7, 27, 0)]
+    const result = find(bricks, ROBOTICS_PART_IDS.axleShort, world(33.5, 8, 28.5), 'up')
+    expect(result.found).toBeNull()
+    expect(result.hint).toMatchObject({ kind: 'motor-too-high', brickId: 'up' })
+    expect(createSnapContext(bricks, partMap, plateSize).connectorTargets(ROBOTICS_PART_IDS.axleShort)).toEqual([])
   })
 
   it('at a motor standing on the ground there is nothing to snap to, and the hint says why', () => {
@@ -120,53 +130,60 @@ describe('motors orient themselves on a plate edge', () => {
     expect(socket.point.y).toBeCloseTo((plate.y + part.height + 3) * PLATE_HEIGHT)
   }
 
-  it('turns to face out over each of the four edges of a plate, flush with it', () => {
+  it('anywhere over a plate it goes to the nearer long side, turned to face out, flush with it (kid-UX lane W)', () => {
     const bricks = [brick('plate', 'plate_6x8', 28, 0, 26)]
     const cases: [PlateEdge, Vec3, SnapPose][] = [
       ['left', world(28.8, 1, 30), { x: 28, y: 1, z: 29, rotation: 2 }],
       ['right', world(33.2, 1, 30), { x: 31, y: 1, z: 29, rotation: 0 }],
-      ['far', world(31, 1, 26.8), { x: 30, y: 1, z: 26, rotation: 1 }],
-      ['near', world(31, 1, 33.2), { x: 30, y: 1, z: 31, rotation: 3 }],
+      // Near the far or near edge (the front or back of a car), still onto the long side nearer the pointer.
+      ['left', world(30.5, 1, 26.8), { x: 28, y: 1, z: 26, rotation: 2 }],
+      ['right', world(31.5, 1, 33.2), { x: 31, y: 1, z: 31, rotation: 0 }],
+      // In the middle of the plate: to a side, never the middle.
+      ['left', world(30.6, 1, 30), { x: 28, y: 1, z: 29, rotation: 2 }],
     ]
     for (const [edge, at, expected] of cases) {
       const result = find(bricks, ROBOTICS_PART_IDS.motor, at, 'plate')
-      expect(result.found?.pose, edge).toEqual(expected)
+      expect(result.found?.pose, `${edge} ${JSON.stringify(at)}`).toEqual(expected)
       expect(result.found?.target).toMatchObject({ kind: 'plate-edge', key: `plate:${edge}`, brickId: 'plate', blocked: false })
       expectMounted(bricks, 'plate', expected, edge)
     }
   })
 
-  it('works the same for a plate stacked on a plate, sitting on the upper one', () => {
+  it('a plate turned a quarter runs along X: its long sides are the far and near edges', () => {
+    const bricks = [brick('plate', 'plate_6x8', 28, 0, 26, 1)]
+    expect(pose(find(bricks, ROBOTICS_PART_IDS.motor, world(29.5, 1, 30.5), 'plate'))).toEqual({ x: 28, y: 1, z: 29, rotation: 3 })
+    expect(pose(find(bricks, ROBOTICS_PART_IDS.motor, world(33, 1, 26.6), 'plate'))).toEqual({ x: 32, y: 1, z: 26, rotation: 1 })
+    expectMounted(bricks, 'plate', { x: 32, y: 1, z: 26, rotation: 1 }, 'far')
+  })
+
+  it('never on a plate lifted off the ground: its wheel could not reach the ground', () => {
+    // A 4 × 6 plate on a 6 × 8 plate with nothing robotic on them: no spot where a wheel would reach the ground.
     const bricks = [brick('base', 'plate_6x8', 28, 0, 26), brick('upper', 'plate_4x6', 29, 1, 27)]
-    const cases: [PlateEdge, Vec3, SnapPose][] = [
-      ['left', world(29.6, 2, 30), { x: 29, y: 2, z: 29, rotation: 2 }],
-      ['right', world(32.4, 2, 30), { x: 30, y: 2, z: 29, rotation: 0 }],
-      ['far', world(31, 2, 27.6), { x: 30, y: 2, z: 27, rotation: 1 }],
-      ['near', world(31, 2, 32.4), { x: 30, y: 2, z: 30, rotation: 3 }],
-    ]
-    for (const [edge, at, expected] of cases) {
-      expect(pose(find(bricks, ROBOTICS_PART_IDS.motor, at, 'upper')), edge).toEqual(expected)
-      expectMounted(bricks, 'upper', expected, edge)
-    }
+    const result = find(bricks, ROBOTICS_PART_IDS.motor, world(29.6, 2, 30), 'upper')
+    expect(result.found?.target.blocked).toBe(true)
+    // The red ghost says why.
+    expect(previewProblem({ bricks, partMap, plateSize }, { partId: ROBOTICS_PART_IDS.motor, ...result.found!.pose }, null, 'plate-edge')?.text).toBe('Motors go on a plate on the ground.')
   })
 
-  it('away from the edges the student\'s own rotation stands (no snap)', () => {
-    expect(find([brick('plate', 'plate_6x8', 28, 0, 26)], ROBOTICS_PART_IDS.motor, world(31, 1, 30), 'plate').found).toBeNull()
+  it('never on top of the hub: over the hub it goes to a side of the robot\'s plate (Sam, kid-UX lane W)', () => {
+    const bricks = plateAndHub()
+    // The hub stands on the plate's far half; a motor over it goes to the free end of the nearer side.
+    expect(find(bricks, ROBOTICS_PART_IDS.motor, world(30, 7, 29), 'hub').found?.pose).toEqual({ x: 28, y: 1, z: 31, rotation: 2 })
+    expect(find(bricks, ROBOTICS_PART_IDS.motor, world(32.5, 7, 29), 'hub').found?.pose).toEqual({ x: 31, y: 1, z: 31, rotation: 0 })
   })
 
-  it('at a corner, a near tie goes to the long side, where a car\'s wheels go', () => {
-    expect(pose(find([brick('plate', 'plate_6x8', 28, 0, 26)], ROBOTICS_PART_IDS.motor, world(29.5, 1, 32.5), 'plate'))).toEqual({ x: 28, y: 1, z: 31, rotation: 2 })
-    // The same plate turned a quarter runs along X: its long sides are the far and near edges.
-    expect(pose(find([brick('plate', 'plate_6x8', 28, 0, 26, 1)], ROBOTICS_PART_IDS.motor, world(29.5, 1, 30.5), 'plate'))).toEqual({ x: 28, y: 1, z: 29, rotation: 3 })
+  it('a plate with one motor pulls the next one exactly across from it (the other side)', () => {
+    const bricks = [...plateAndHub(), brick('left', ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)]
+    // Aimed a stud short of the spot across from the left motor, on its far corner: exactly there, facing out.
+    const result = find(bricks, ROBOTICS_PART_IDS.motor, world(34.4, 1, 34.6), 'plate')
+    expect(result.found?.pose).toEqual({ x: 31, y: 1, z: 31, rotation: 0 })
+    expect(result.found?.target.blocked).toBe(false)
   })
 
-  it('at a corner the student\'s own turn picks the edge; one clearly nearer edge still wins', () => {
+  it('at a corner it is always the long side, whatever the student\'s turn', () => {
     const plate = [brick('plate', 'plate_6x8', 28, 0, 26)]
-    // Turned to face the near side (R three times), a motor at the near-left corner goes on the near edge...
-    expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(29.4, 1, 32.6), 'plate', 3))).toEqual({ x: 28, y: 1, z: 31, rotation: 3 })
-    // ...turned to face left (R twice), on the left edge, even with the pointer a little nearer the near edge.
+    expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(29.4, 1, 32.6), 'plate', 3))).toEqual({ x: 28, y: 1, z: 31, rotation: 2 })
     expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(29.8, 1, 32.6), 'plate', 2))).toEqual({ x: 28, y: 1, z: 31, rotation: 2 })
-    // Away from the corner the nearer edge wins whatever the turn.
     expect(pose(find(plate, ROBOTICS_PART_IDS.motor, world(28.6, 1, 30), 'plate', 3))).toEqual({ x: 28, y: 1, z: 29, rotation: 2 })
   })
 
@@ -177,9 +194,11 @@ describe('motors orient themselves on a plate edge', () => {
     expect(result.found?.target.blocked).toBe(false)
   })
 
-  it('with every spot along the edge taken it still shows where (blocked), so the refusal can say what is in the way', () => {
+  it('with the near side full it goes to the other side; with both full it shows where (blocked), so the refusal can say what is in the way', () => {
     const bricks = [...plateAndHub(), brick('left', ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)]
-    const result = find(bricks, ROBOTICS_PART_IDS.motor, world(28.5, 1, 29), 'plate')
+    expect(find(bricks, ROBOTICS_PART_IDS.motor, world(28.5, 1, 29), 'plate').found).toMatchObject({ pose: { x: 31, y: 1, z: 31, rotation: 0 }, target: { blocked: false } })
+    const full = [...bricks, brick('right', ROBOTICS_PART_IDS.motor, 31, 1, 31, 0)]
+    const result = find(full, ROBOTICS_PART_IDS.motor, world(28.5, 1, 29), 'plate')
     expect(result.found?.pose).toEqual({ x: 28, y: 1, z: 28, rotation: 2 })
     expect(result.found?.target.blocked).toBe(true)
   })
@@ -223,10 +242,10 @@ describe('what glows', () => {
     expect(createSnapContext([brick('plate', 'plate_6x8', 28, 0, 26)], partMap, plateSize).motorEdgeRuns(ROBOTICS_PART_IDS.motor)).toEqual([])
   })
 
-  it('for an axle: free sockets and loose wheels; for a wheel: free axle ends', () => {
+  it('for an axle: free motor sockets only, never a loose wheel; for a wheel: free axle ends', () => {
     const bare = roverBricks().filter((candidate) => ![ROVER_IDS.leftAxle, ROVER_IDS.rightAxle, ROVER_IDS.leftWheel, ROVER_IDS.rightWheel].includes(candidate.id as never))
     const context = createSnapContext([...bare, brick('loose', ROBOTICS_PART_IDS.wheel, 20, 0, 40)], partMap, plateSize)
-    expect(context.connectorTargets(ROBOTICS_PART_IDS.axleShort).map((target) => target.key).sort()).toEqual(['hole:loose:a', 'hole:loose:b', `socket:${ROVER_IDS.leftMotor}`, `socket:${ROVER_IDS.rightMotor}`])
+    expect(context.connectorTargets(ROBOTICS_PART_IDS.axleShort).map((target) => target.key).sort()).toEqual([`socket:${ROVER_IDS.leftMotor}`, `socket:${ROVER_IDS.rightMotor}`])
     const axles = createSnapContext(roverBricks().filter((candidate) => candidate.id !== ROVER_IDS.leftWheel), partMap, plateSize)
     expect(axles.connectorTargets(ROBOTICS_PART_IDS.wheel).map((target) => target.key)).toEqual([`end:${ROVER_IDS.leftAxle}:0`])
   })

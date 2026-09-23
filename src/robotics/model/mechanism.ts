@@ -135,9 +135,13 @@ export function deriveMechanisms(bricks: readonly BrickInstance[], partMap: Part
     }
   }
 
-  // Wheel holes: the axle end must sit on one of the wheel's two faces, parallel to the hole.
-  for (const wheel of wheels) {
-    const faces = [add(wheel.center, scale(wheel.axis, wheel.halfThickness)), sub(wheel.center, scale(wheel.axis, wheel.halfThickness))]
+  // Wheel holes: the axle end must sit on one of the wheel's two faces, parallel to the hole. Every wheel
+  // that touches a free end goes on first; only then does a loose wheel look for the nearest end still
+  // free, so a wheel placed before another wheel took that end never names it (the order bricks were
+  // placed in changes nothing).
+  const facesOf = (wheel: WheelLink) => [add(wheel.center, scale(wheel.axis, wheel.halfThickness)), sub(wheel.center, scale(wheel.axis, wheel.halfThickness))]
+  const nearestFreeEnd = (wheel: WheelLink): { axle: AxleLink; end: AxleEnd; gap: number } | null => {
+    const faces = facesOf(wheel)
     let best: { axle: AxleLink; end: AxleEnd; gap: number } | null = null
     for (const axle of axles) {
       if (!parallel(axle.axis, wheel.axis)) continue
@@ -147,15 +151,24 @@ export function deriveMechanisms(bricks: readonly BrickInstance[], partMap: Part
         if (!best || gap < best.gap) best = { axle, end, gap }
       }
     }
+    return best
+  }
+  for (const wheel of wheels) {
+    const best = nearestFreeEnd(wheel)
     if (!best) continue
+    const faces = facesOf(wheel)
     if (samePoint(faces[0], best.end.point) || samePoint(faces[1], best.end.point)) {
       wheel.axleId = best.axle.axleId
       wheel.axleEnd = best.end.index
       best.end.wheelId = wheel.wheelId
-    } else {
-      const face = faces.reduce((closest, candidate) => (distance(candidate, best.end.point) < distance(closest, best.end.point) ? candidate : closest))
-      wheel.nearest = { axleId: best.axle.axleId, end: best.end.index, gap: sub(best.end.point, face) }
     }
+  }
+  for (const wheel of wheels) {
+    if (wheel.axleId) continue
+    const best = nearestFreeEnd(wheel)
+    if (!best) continue
+    const face = facesOf(wheel).reduce((closest, candidate) => (distance(candidate, best.end.point) < distance(closest, best.end.point) ? candidate : closest))
+    wheel.nearest = { axleId: best.axle.axleId, end: best.end.index, gap: sub(best.end.point, face) }
   }
 
   return {

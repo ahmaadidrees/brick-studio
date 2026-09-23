@@ -1,0 +1,73 @@
+/* Kid basics (behind VITE_ROBOTICS_PROTOTYPE): the ghost's one-line caption (drawn by drei's Html in
+   the canvas, never taking a pointer) and the far-away placement notice. Text 15 px on desktop,
+   16 px on touch; buttons 44 px or more (docs/robotics/KID-UX.md). */
+.kid-basics-caption {
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 12px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: #1f2a33;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(31, 42, 51, 0.18);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+.kid-basics-caption.is-blocked { color: #a4161a; border-color: #e5383b; }
+.kid-basics-caption.is-far { color: #7a3d00; border-color: #f0a020; }
+.kid-basics-caption.is-air { color: #7a3d00; border-color: #f0a020; }
+.kid-basics-caption.is-rest { color: #1d4f91; border-color: #8fb4e6; }
+
+.kid-basics-notice {
+  position: absolute;
+  z-index: var(--z-toast, 50);
+  top: calc(var(--brick-panel-top, 96px) + 112px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  padding: 8px 8px 8px 16px;
+  border: 2px solid #f0a020;
+  border-radius: 16px;
+  color: #1f2a33;
+  background: #fffaf0;
+  box-shadow: 0 10px 26px rgba(38, 60, 81, 0.2);
+  font-size: 15px;
+  font-weight: 800;
+}
+.kid-basics-notice > span { flex: 1 1 auto; min-width: 0; }
+.kid-basics-notice button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 1px solid rgba(38, 60, 81, 0.18);
+  border-radius: 12px;
+  color: #1f2a33;
+  background: #ffffff;
+  font: inherit;
+  cursor: pointer;
+}
+.kid-basics-notice button:hover { border-color: rgba(88, 136, 218, 0.5); background: rgba(88, 136, 218, 0.08); }
+.kid-basics-notice button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+
+@media (pointer: coarse) {
+  .kid-basics-caption, .kid-basics-notice { font-size: 16px; }
+}
+
+/* With the robot panel (or the new-robot card) open, the command strip's Adjust controls, which grow upward,
+   opened under the panel (at 1366 × 768 a tester's Raise, Lower and Resize were hidden behind it). While Adjust
+   is open the strip comes to the front. It does not move or change size, so nothing under the pointer shifts
+   and the camera's framing of the free canvas area is exactly the studio's. */
+.build-shell:has(> .robotics-panel:not(.collapsed), > .robotics-card) .command-strip:has(.command-strip-details) { z-index: 16; }

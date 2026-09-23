@@ -327,8 +327,8 @@ async function buildCar(width, full) {
   await s.page.keyboard.press('Escape')
   await s.sleep(300)
   const line = await s.wiringLine()
-  // Buggy's plate has no spot left for a motor, so the line says what still works.
-  check('A:not-attached-line', line?.includes("Right motor isn't on Buggy yet. Stack it on Buggy."), `wiring line: ${line}`)
+  // Buggy's plate has no spot left for a motor, so the line says so and what would help (kid-UX lane W wording).
+  check('A:not-attached-line', line?.includes("This motor isn't on Buggy yet. There's no room for it on Buggy. Try a bigger plate."), `wiring line: ${line}`)
   view = await s.connections()
   check('A:bare-ground-label', view.labels.some((label) => label.brickId === result.placed.id && label.text === BARE_GROUND), `next to the motor: ${JSON.stringify(view.labels.map((label) => label.text))}`)
   check('A:no-second-robot', (await s.robo((state) => state.card)) === null && (await s.robo((state) => state.model.creations.length)) === 1, 'no second robot and no card for it')
@@ -372,7 +372,7 @@ async function ownersFirstTry(s) {
   await s.sleep(300)
   check('B:no-second-robot', (await s.robo((state) => state.card)) === null && (await s.robo((state) => state.model.creations.length)) === 1, 'the motor did not start a second robot asking for a hub')
   const line = await s.wiringLine()
-  check('B:not-attached-line', line?.includes("Right motor isn't on Robo yet. Put them both on a plate."), `wiring line: ${line}`)
+  check('B:not-attached-line', line?.includes("This motor isn't on Robo yet. Put them both on a plate."), `wiring line: ${line}`)
   let view = await s.connections()
   check('B:bare-ground-label', view.labels.some((label) => label.brickId === motor.id && label.text === BARE_GROUND), `next to the motor: ${JSON.stringify(view.labels.map((label) => label.text))}`)
   await s.shot('S10-owner-motor-beside-hub')
@@ -429,7 +429,8 @@ async function dragFix(s) {
   await s.page.keyboard.press('Escape')
   await s.sleep(300)
   let line = await s.wiringLine()
-  check('D:not-attached-line', line?.includes("Right motor isn't on Buggy yet. Put it on Buggy's plate."), `wiring line: ${line}`)
+  // Kid-UX lane W: "This motor isn't on Buggy yet." with a one-tap "Put it on Buggy" (the student here drags it instead).
+  check('D:not-attached-line', line?.includes("This motor isn't on Buggy yet.") && (await s.page.getByTestId('robotics-line-action').textContent()) === 'Put it on Buggy', `wiring line: ${line}`)
   const top = await s.screenOf(world(38.5, 6, 31.5))
   await s.page.mouse.click(top.x, top.y)
   await s.sleep(250)

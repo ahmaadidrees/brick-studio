@@ -6,6 +6,10 @@ import { useBrickStore } from '../../brick/store'
 import { freePorts, hubPorts, livePort, type PortState } from '../model/control'
 import { deviceName, driveSidesOf, type DerivedCreation, type FacingWord } from '../model/creations'
 import { isDeviceRole, roboticsSpec, type HubPort, type RoboticsDeviceKind } from '../parts/catalog'
+import { moveMotorToSide, putOnRobot } from '../guide/fixes'
+import { sideStepText } from '../drive/readiness'
+import { MOTORS_GO_ON_THE_SIDES, MOVE_TO_SIDE, TURN_IT, planPutOnRobot } from '../model/fixPlans'
+import { nearestRobot, partWord } from '../model/placementAdvice'
 import { useRoboticsStore } from '../state/roboticsStore'
 import { Fold } from '../ui/Fold'
 import { DEVICE_NAME_LIMIT, hubForDevice, lastKnownDeviceName, moveDeviceToPort, plugDeviceIn, renameDevice, swapDevicePorts, unplugDevice } from './actions'
@@ -247,12 +251,32 @@ const UNPLUGGED_HINTS: Record<Exclude<RoboticsDeviceKind, 'hub'>, string> = {
   button: 'Presses go unheard until a cable reaches a port.',
 }
 
+/**
+ * A device lying beside a robot but not on it (kid-UX lane W): the robot it belongs with and the
+ * one tap that puts it on, or why it can't go on. Null when it is on a robot, or near none.
+ */
+function useBesideRobot(brickId: string, onRobot: boolean) {
+  const model = useRoboticsStore((state) => state.model)
+  return useMemo(() => {
+    if (onRobot) return null
+    const brick = model.input.bricks.find((candidate) => candidate.id === brickId)
+    const robot = brick ? nearestRobot(model.input, model.creations, brick) : null
+    return brick && robot ? { robot, fix: planPutOnRobot(model.input, robot, brickId) } : null
+  }, [model, brickId, onRobot])
+}
+
 function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Exclude<RoboticsDeviceKind, 'hub'>; creation: DerivedCreation | null }) {
   const { model, byId, context } = useWiringContext()
   const brick = byId.get(brickId)!
   const name = deviceName(model.input, brick)
   const cable = livePort(model.section, brickId, byId)
   const plugged = cable !== null
+  const onRobot = Boolean(creation?.brickIds.includes(brickId))
+  const beside = useBesideRobot(brickId, onRobot)
+  const motor = role === 'motor' ? creation?.motors.find((candidate) => candidate.brickId === brickId) ?? null : null
+  // A motor that can't turn a wheel where it stands: why, and the one tap that puts it right (kid-UX lane W).
+  const stuck = motor && !motor.axleId && (['covered', 'facing-in', 'high'].includes(motor.socketRoom ?? 'open') || motor.crossways) ? motor : null
+  const covered = stuck !== null
   const hubId = useMemo(() => hubForDevice(brickId, context), [brickId, context])
   const ports = usePorts(hubId)
   const free = hubId ? freePorts(model.section, hubId, byId) : []
@@ -265,14 +289,19 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
   let stateLabel: string
   let stateTone: 'green' | 'red'
   let hint: string
-  if (plugged) {
+  if (beside) {
+    // Not on the robot beside it: never "add a hub" to a robot that has one; say where it goes.
+    stateLabel = `Not on ${beside.robot.name}`
+    stateTone = 'red'
+    hint = `This ${partWord(role)} isn't on ${beside.robot.name} yet.${beside.fix.ok ? '' : ` ${beside.fix.text}`}`
+  } else if (plugged) {
     stateLabel = `Port ${cable.port}`
     stateTone = 'green'
     hint = `The cable and port ${cable.port} are lit on the hub. The name follows the device, not the port.`
   } else if (!hubId) {
     stateLabel = 'No hub'
     stateTone = 'red'
-    hint = `Add a hub to ${creation?.name ?? 'this creation'} to plug it in.`
+    hint = onRobot && creation ? `Add a hub to ${creation.name} to plug it in.` : 'Add a hub to plug it in.'
   } else if (!free.length) {
     stateLabel = 'No free port'
     stateTone = 'red'
@@ -284,6 +313,7 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
   }
   const stale = ports.filter((port) => port.staleName)
   const [more, setMore] = useState(false)
+  const actionable = Boolean(beside) || covered || !plugged
 
   return (
     <section className="wiring-inspector wiring-card" aria-label={`${name} wiring`} data-testid="robotics-device-inspector" data-device-id={brickId}>
@@ -296,6 +326,15 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
           </span>
         </div>
       </div>
+      {/* What the child must act on, with its one tap (kid-UX lane W): kept out of More (lane P). */}
+      {actionable && <p className="wiring-hint" data-testid="wiring-hint">{hint}</p>}
+      {stuck && <p className="wiring-hint" data-testid="wiring-side-hint">{stuck.socketRoom === 'covered' || stuck.socketRoom === 'high' ? MOTORS_GO_ON_THE_SIDES : sideStepText(stuck)}</p>}
+      {(beside?.fix.ok || covered) && (
+        <div className="wiring-actions">
+          {beside?.fix.ok && <button type="button" className="wiring-button primary" onClick={() => putOnRobot(brickId, beside.robot.id)} data-testid="wiring-put-on">{beside.fix.label}</button>}
+          {stuck && <button type="button" className="wiring-button primary" onClick={() => moveMotorToSide(brickId)} data-testid="wiring-to-side">{stuck.socketRoom === 'covered' || stuck.socketRoom === 'high' ? MOVE_TO_SIDE : TURN_IT}</button>}
+        </div>
+      )}
       {!plugged && free[0] && <button type="button" className="wiring-button primary wiring-plug-in" onClick={() => plugDeviceIn(brickId, free[0])} data-testid="wiring-plug-in">Plug it in</button>}
       <PartButtons brickId={brickId} name={name} />
       <Fold title="More" label={`More about ${name}`} open={more} onToggle={() => setMore(!more)} testId="robotics-part-more">
@@ -347,7 +386,7 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
             <span>Right now</span>
             <strong data-testid="wiring-reading">{reading}</strong>
           </div>
-          <p className="wiring-hint">{hint}</p>
+          {!actionable && <p className="wiring-hint" data-testid="wiring-hint">{hint}</p>}
         </div>
         <BlockPreview role={role} name={name} port={cable?.port ?? null} />
         <div className="wiring-actions">

@@ -1,13 +1,9 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
-import { STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
-import type { BrickInstance } from '../../brick/types'
 import { useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import type { DerivedCreation } from '../model/creations'
-import type { Vec3 } from '../model/vec'
-import { roboticsSpec } from '../parts/catalog'
 import { useRoboticsStore } from '../state/roboticsStore'
 
 /**
@@ -51,44 +47,17 @@ export function useFocusedCreation(): DerivedCreation | null {
   return useMemo(() => pickFocusedCreation(creations, selectedId, focusedId), [creations, selectedId, focusedId])
 }
 
-/** Studs of ground kept in view around a robot framed on the way back to Build (as a placed kit is). */
-const ROOM_AROUND_STUDS = 3
-
-/** The ground corners `studs` out around these bricks' footprint, in world units (for a frame request). */
-export function groundAround(bricks: readonly BrickInstance[], partMap: Readonly<Record<string, { width: number; depth: number } | undefined>>, plateSize: number, studs = ROOM_AROUND_STUDS): Vec3[] {
-  if (!bricks.length) return []
-  let minX = Infinity
-  let minZ = Infinity
-  let maxX = -Infinity
-  let maxZ = -Infinity
-  for (const brick of bricks) {
-    const part = roboticsSpec(brick.partId)?.part ?? partMap[brick.partId]
-    if (!part) continue
-    const turned = brick.rotation % 2 === 1
-    minX = Math.min(minX, brick.x)
-    minZ = Math.min(minZ, brick.z)
-    maxX = Math.max(maxX, brick.x + (turned ? part.depth : part.width))
-    maxZ = Math.max(maxZ, brick.z + (turned ? part.width : part.depth))
-  }
-  if (!Number.isFinite(minX)) return []
-  const xs = [minX - studs, maxX + studs]
-  const zs = [minZ - studs, maxZ + studs]
-  return xs.flatMap((x) => zs.map((z) => ({ x: (x - plateSize / 2) * STUD, y: 0, z: (z - plateSize / 2) * STUD })))
-}
-
 /**
- * Back to build from Drive, Try it or Code: the robot that was open is the panel's, framed with
- * a little ground around it in the part of the canvas the drawer and the panel leave free (the
- * scene measures them once they are back, a frame later), as Frame does for the whole build.
+ * Back to build from Drive, Try it or Code: the robot that was open is the panel's, framed snug in
+ * the part of the canvas the drawer and the panel leave free (the scene measures them once they are
+ * back, a frame later), as Frame does for the whole build.
  */
 export function frameOnReturn(creationId: string) {
   useRobotFocus.getState().focus(creationId)
   const robotics = useRoboticsStore.getState()
   const robot = robotics.model.creations.find((creation) => creation.id === creationId)
   if (!robot) return
-  const ids = new Set(robot.brickIds)
-  const bricks = robotics.model.input.bricks.filter((brick) => ids.has(brick.id))
-  robotics.requestFrame(robot.brickIds, groundAround(bricks, robotics.model.input.partMap, robotics.model.input.plateSize))
+  robotics.requestFrame(robot.brickIds, undefined, { snug: true })
 }
 
 /**

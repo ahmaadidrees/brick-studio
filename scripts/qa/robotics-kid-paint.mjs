@@ -8,11 +8,16 @@
  * click or a tap on what the page shows. After each step the harness reads back the document
  * (brick colours, the history) and what the page shows.
  *
+ *   K (1366×768)  a kit just placed leaves nothing picked: the first click on a wheel picks just the
+ *                 wheel, and the strip's Color is for that one brick (Ava's "Color all 9 bricks").
  *   A (1366×768)  a Buggy kit; pick a colour in the Paint row, click two bricks (2 clicks + 1 per
  *                 brick with Done); "Paint all of Buggy"; one Undo takes it back; a picked brick
  *                 and a drawer swatch paint it; a motor's card (no port letters or code line until
  *                 More; big Turn and Remove); an idea's part placed once (the strip goes back to
  *                 "Pick a brick", the part flashes); the drawer remembers Robots across a reload.
+ *   S (1366×768)  the seat idea (Ava's first seat landed loose): its ghost comes on the robot's top and
+ *                 Place puts it on (the idea ticks); placed on bare ground instead, it goes back into the
+ *                 hand, on top again, and a line says so.
  *   B (1366×768)  a Gate and a Signal light: a motor test on the Gate, then a click on the Signal
  *                 light's hub: the title, the steps and Code are the Signal light's and the test
  *                 stops; back from Try it the panel is the Gate's and the Gate is framed clear of
@@ -202,6 +207,24 @@ async function robotInView(t, ids) {
   const outside = points.filter((p) => !p.inFront || p.x < free.left || p.x > free.right || p.y < free.top || p.y > free.bottom)
   return { free, points: points.length, outside: outside.length }
 }
+/** The robot's drawn box on screen (every corner of every brick) and the free area it sits in. */
+const drawnBox = (t, ids) => t.page.evaluate((list) => {
+  const hook = window.__robotics
+  const { bricks, partMap, plateSize } = hook.roboticsStore.getState().model.input
+  const points = []
+  for (const brick of bricks.filter((b) => list.includes(b.id))) {
+    const part = partMap[brick.partId]
+    const turned = brick.rotation % 2 === 1
+    const w = turned ? part.depth : part.width
+    const d = turned ? part.width : part.depth
+    for (const [dx, dz] of [[0, 0], [w, 0], [0, d], [w, d]]) for (const y of [0, part.height]) points.push(hook.project({ x: (brick.x + dx - plateSize / 2) * 0.62, y: (brick.y + y) * 0.18, z: (brick.z + dz - plateSize / 2) * 0.62 }))
+  }
+  const rect = hook.canvasRect()
+  const insets = hook.insets()
+  const free = { left: rect.left + insets.left, right: rect.left + rect.width - insets.right, top: rect.top + insets.top, bottom: rect.top + rect.height - insets.bottom }
+  const box = { left: Math.min(...points.map((p) => p.x)), right: Math.max(...points.map((p) => p.x)), top: Math.min(...points.map((p) => p.y)), bottom: Math.max(...points.map((p) => p.y)) }
+  return { box, free, width: box.right - box.left, inside: box.left >= free.left && box.right <= free.right && box.top >= free.top && box.bottom <= free.bottom }
+}, ids)
 
 /* ================================================================ A. paint at 1366×768 */
 console.log('\nA. Paint a Buggy (1366×768)')
@@ -221,7 +244,16 @@ check('A.buggy', buggy.name === 'Buggy' && ids.hub && ids.plate && ids.leftMotor
 check('A.paint-row', (await page.getByTestId('robotics-paint').getByRole('button', { name: /^Paint / }).count()) === 12, 'the robot panel has a Paint row of twelve colours')
 await desk.clearToast()
 await desk.shot('01-buggy-paint-row')
-// The kit arrives picked (so Rotate and Delete act on all of it): Escape puts it down first.
+
+// K. Nothing stays picked after a kit lands; the first click on a wheel picks just that wheel.
+check('K.nothing-picked', (await desk.selected()).length === 0 && (await page.getByTestId('command-strip').textContent()).includes('Pick a brick from the drawer'), 'the kit just placed leaves nothing picked; the strip says "Pick a brick from the drawer"')
+await hitBrick(desk, ids.wheels[0], 'a wheel')
+check('K.wheel-picked', (await desk.selected()).join() === ids.wheels[0] && (await page.getByTestId('command-strip').textContent()).includes('Wheel'), 'the first click on a wheel picks just the wheel')
+await page.getByRole('button', { name: 'Recolor brick' }).click()
+await desk.sleep(300)
+check('K.color-one-brick', (await page.getByRole('dialog', { name: 'Brick color' }).count()) === 1 && !(await page.locator('.command-strip-popover').textContent()).includes('Color all'), 'the strip\'s Color is for that one wheel ("Brick color", not "Color all 9 bricks")')
+await desk.shot('00-kit-placed-wheel-picked')
+await page.keyboard.press('Escape')
 await page.keyboard.press('Escape')
 await desk.sleep(200)
 const start = await desk.colors([ids.plate, ids.hub, ids.leftMotor, ids.rightMotor, ids.sensor, ...ids.wheels, ...ids.axles])
@@ -316,6 +348,16 @@ check('A6.flash', flash?.brickId === placedLight.id, 'the new light flashes')
 await desk.shot('09-idea-placed-once')
 await desk.sleep(1300)
 
+// A6b. An idea with a count says how far along it is: two bricks on top, "2 of 5", not ticked.
+await page.getByTestId('robotics-ideas').getByRole('button', { name: /^Stack 5 bricks on top/ }).click()
+await desk.sleep(200)
+for (let brick = 0; brick < 2; brick += 1) { await page.getByRole('button', { name: 'Place positioned brick' }).click(); await desk.sleep(300) }
+await page.keyboard.press('Escape')
+await desk.sleep(300)
+const stackRow = page.getByTestId('robotics-ideas').locator('[data-step="idea-stack"]')
+check('A6.counts', (await stackRow.textContent()).includes('Stack 5 bricks on top · 2 of 5') && (await stackRow.getAttribute('data-state')) === 'todo', `after two bricks the idea reads "${(await stackRow.textContent()).trim()}" and is not ticked`)
+await desk.shot('09b-stack-idea-2-of-5')
+
 // A7. The drawer remembers Robots across a reload.
 await page.waitForTimeout(1200)
 check('A7.robots-before', (await page.getByLabel('Brick category').inputValue()) === 'robotics', 'the drawer shows Robots')
@@ -323,6 +365,48 @@ await page.reload()
 await page.waitForFunction(() => Boolean(window.__robotics?.project), null, { timeout: 30_000 })
 await desk.sleep(800)
 check('A7.robots-after-reload', (await page.getByLabel('Brick category').inputValue()) === 'robotics' && await page.getByRole('button', { name: /^Robots/ }).getAttribute('aria-pressed') === 'true', 'after a reload the drawer still shows Robots')
+
+/* ================================================================ S. the seat goes on the robot */
+console.log('\nS. The seat idea (1366×768)')
+await desk.brick((state) => state.newBuild())
+await desk.sleep(300)
+const seatBuggy = await placeKit(desk, 'buggy', world(32, 0, 32))
+await desk.clearToast()
+await page.keyboard.press('Escape')
+await desk.sleep(200)
+const seatsOf = async () => (await desk.robo((state, id) => state.model.creations.find((c) => c.id === id)?.seats ?? [], seatBuggy.id))
+const attachedCount = async () => (await desk.robo((state, id) => state.model.creations.find((c) => c.id === id)?.brickIds.length ?? 0, seatBuggy.id))
+const hubTopY = await desk.brick((state, id) => { const hub = state.bricks.find((b) => b.id === id); return hub.y + 6 }, seatBuggy.hubId)
+const { buggyLeft, buggyMiddleZ } = await desk.brick((state, ids) => { const mine = state.bricks.filter((b) => ids.includes(b.id)); return { buggyLeft: Math.min(...mine.map((b) => b.x)), buggyMiddleZ: Math.round(mine.reduce((sum, b) => sum + b.z, 0) / mine.length) } }, seatBuggy.brickIds)
+const beforeSeat = await attachedCount()
+await page.getByTestId('robotics-ideas').getByRole('button', { name: /Add a seat/ }).click()
+await desk.sleep(250)
+let seatGhost = await desk.brick((state) => state.draft && { partId: state.draft.partId, x: state.draft.x, y: state.draft.y, z: state.draft.z })
+check('S.ghost-on-top', seatGhost?.partId === 'robo_seat' && seatGhost.y === hubTopY, `the seat idea's ghost stands on the robot's top (y ${seatGhost?.y}, the hub's top is ${hubTopY})`)
+await desk.shot('16-seat-ghost-on-top')
+// Ava's way: straight to Place.
+await page.getByRole('button', { name: 'Place positioned brick' }).click()
+await desk.sleep(400)
+check('S.place-puts-it-on', (await seatsOf()).length === 1 && (await attachedCount()) === beforeSeat + 1 && (await page.getByTestId('robotics-ideas').locator('[data-step="idea-seat"]').getAttribute('data-state')) === 'done' && (await desk.brick((state) => state.draft)) === null, `Place put the seat on the Buggy: ${await attachedCount()} bricks attached (was ${beforeSeat}), the seat idea ticked, nothing left in hand`)
+await desk.shot('17-seat-on-the-robot')
+// Undo, then the seat moved to bare ground and placed there: it goes back into the hand, on top.
+await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
+await desk.sleep(300)
+await page.getByTestId('robotics-ideas').getByRole('button', { name: /Add a seat/ }).click()
+await desk.sleep(200)
+// Bare ground beside the car, in view (the mouse wheel zooms out first when it is not).
+const bare = await aimAt(desk, world(buggyLeft - 5, 0, buggyMiddleZ), 'bare ground beside the Buggy')
+seatGhost = await desk.brick((state) => state.draft && { x: state.draft.x, y: state.draft.y, z: state.draft.z })
+const bricksBeforeLoose = await desk.brick((state) => state.bricks.length)
+await page.mouse.click(bare.x, bare.y)
+await desk.sleep(400)
+const afterLoose = await desk.brick((state) => ({ bricks: state.bricks.length, draft: state.draft && { partId: state.draft.partId, y: state.draft.y }, toast: state.toast }))
+check('S.loose-taken-back', seatGhost.y === 0 && afterLoose.bricks === bricksBeforeLoose && (await seatsOf()).length === 0 && afterLoose.draft?.partId === 'robo_seat' && afterLoose.draft.y === hubTopY, `a click on bare ground (the ghost at y ${seatGhost.y}) placed nothing loose: the seat is back in hand on the robot's top (y ${afterLoose.draft?.y})`)
+check('S.says-so', afterLoose.toast === 'The seat goes on Buggy. It is back on top: press Place.', `the line says "${afterLoose.toast}"`)
+await desk.shot('18-seat-back-on-top')
+await page.getByRole('button', { name: 'Place positioned brick' }).click()
+await desk.sleep(400)
+check('S.then-on', (await seatsOf()).length === 1 && (await desk.brick((state) => state.draft)) === null, 'Place then puts it on the Buggy')
 
 /* ================================================================ B. the panel follows the robot you touch */
 console.log('\nB. A Gate and a Signal light (1366×768)')
@@ -358,7 +442,10 @@ await page.getByTestId('robo-back').click()
 await desk.sleep(900)
 check('B.back-from-code', (await desk.title()) === 'Signal light', `back from Code: the panel is "${await desk.title()}"`)
 
-// Back from Try it: the Gate stays the panel's, framed clear of the drawer and the panel.
+// Back from Try it: the Gate stays the panel's, framed clear of the drawer and the panel. Back from Code the
+// Signal light is framed close, so the Gate is out of view: Frame shows the whole build first, as a student does.
+await page.getByRole('button', { name: 'Frame build' }).click()
+await desk.sleep(700)
 await hitBrick(desk, gate.hubId, 'the Gate’s hub')
 await page.keyboard.press('Escape')
 await desk.sleep(200)
@@ -404,6 +491,10 @@ await desk.context.close()
 console.log('\nC. 1024×768')
 const small = await openStudio(1024, 768)
 const smallBuggy = await placeKit(small, 'buggy', world(32, 0, 32))
+await small.sleep(500)
+// Framed big in the gap between the drawer and the panel (Ava: it was drawn about 150 px wide in ~360).
+const framedSmall = await drawnBox(small, smallBuggy.brickIds)
+check('C.framed-big', framedSmall.inside && framedSmall.width >= 0.5 * (framedSmall.free.right - framedSmall.free.left), `the Buggy is drawn ${Math.round(framedSmall.width)} px wide in the ${Math.round(framedSmall.free.right - framedSmall.free.left)} px gap between the drawer and the panel, all of it inside`)
 await small.clearToast()
 await small.page.keyboard.press('Escape')
 await small.sleep(300)
@@ -448,15 +539,12 @@ const framedTablet = await robotInView(tablet, tabletBuggy.brickIds)
 const tabletPanel = await box(tablet.panel)
 check('D.framed-beside-panel', framedTablet.outside === 0 && framedTablet.free.right <= tabletPanel.left + 1, `the Buggy is framed in the free area beside the panel (${framedTablet.points - framedTablet.outside}/${framedTablet.points} bricks inside, the free area ends at ${Math.round(framedTablet.free.right)} px, the panel starts at ${Math.round(tabletPanel.left)} px)`)
 await tablet.shot('01-buggy-by-touch')
-// The kit arrives picked: a colour paints all of it (its tyres, axles and eyes keep theirs), then a tap paints one brick.
-await tablet.page.getByTestId('robotics-paint').getByRole('button', { name: 'Paint green' }).tap()
-await tablet.sleep(400)
-const tabletColors = await tablet.colors([tabletBuggy.hubId, ...tabletBuggy.wheels])
-check('D.picked-kit-painted', tabletColors[tabletBuggy.hubId] === GREEN && tabletBuggy.wheels.every((id) => tabletColors[id] !== GREEN), 'with the new kit picked, a tap on green paints it green; its wheels stay as they were')
+// Nothing is picked after the kit lands: a colour, then a tap on a brick paints it.
+check('D.nothing-picked', (await tablet.selected()).length === 0, 'the kit placed by touch leaves nothing picked')
 await tablet.page.getByTestId('robotics-paint').getByRole('button', { name: 'Paint orange' }).tap()
 await tablet.sleep(300)
 await hitBrick(tablet, tabletBuggy.hubId, 'the hub (tap)')
-check('D.tap-paints', (await tablet.colors([tabletBuggy.hubId]))[tabletBuggy.hubId] === ORANGE && (await tablet.selected()).length === 0, 'then orange, and a tap on the hub paints it orange (nothing picked)')
+check('D.tap-paints', (await tablet.colors([tabletBuggy.hubId]))[tabletBuggy.hubId] === ORANGE && (await tablet.selected()).length === 0, 'orange, then a tap on the hub paints it orange (nothing picked)')
 await tablet.shot('02-painting-by-touch')
 await tablet.page.getByTestId('robotics-paint-bar').getByRole('button', { name: 'Done painting' }).tap()
 await tablet.sleep(300)

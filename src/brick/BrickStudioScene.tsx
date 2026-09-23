@@ -129,10 +129,16 @@ import { framePoseInFreeArea } from '../robotics/scene/framing'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 import { studioEditingSuspended } from '../robotics/code/studioKeys'
 import { exploreRideFrame } from '../robotics/explore/rideBridge'
+import { isFarSpot, keepsStudioPlacement, publishBuildView, setFarHover, settledPosition, stationaryBricks, surfaceHeight } from '../robotics/basics/sceneSupport'
+import { reportRefusal } from '../robotics/basics/basicsState'
+import { REFUSAL_TEXT, settlePieces } from '../robotics/basics/support'
+import { installWheelZoom } from '../robotics/basics/wheelZoom'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
 // mechanics nudge. The chunk is never requested without the flag.
 const RoboticsBuildLayer = lazy(() => import('../robotics/scene/RoboticsBuildLayer'))
+// Robot Workshop kid basics (the same flag): what is in the way, where a part sits, a flash on each new part.
+const BasicsLayer = lazy(() => import('../robotics/basics/BasicsLayer'))
 // Robot Workshop spike: riding creations in Explore (the same flag).
 const ExploreRides = lazy(() => import('../robotics/explore/ExploreRides'))
 
@@ -193,6 +199,13 @@ function turnDraftTo(rotation: number) {
 /** Target the actual raycast surface; layout validation provides the blocked preview. */
 function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBrickId?: string | null) {
   const state = useBrickStore.getState()
+  // Robot Workshop kid basics (prototype only): a spot far behind the build (a ray that skimmed past
+  // it near the view's edge) does not move the ghost; the caption at the ghost says to zoom in.
+  if (isRoboticsPrototypeEnabled()) {
+    const far = isFarSpot(state, point)
+    setFarHover(far)
+    if (far) return { x: draft.x, y: draft.y, z: draft.z }
+  }
   const hitBrick = hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined
   const plateSize = getBuildPlateSize(state.documentMetadata)
   // Robot Workshop: a ghost near a place it connects to (an axle near a free socket, a wheel
@@ -216,7 +229,24 @@ function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBri
     }
     snapBorrowedRotation = null
   }
-  return draftFromSurfacePoint(point, current, state.movingSelection?.originals, hitBrick, plateSize)
+  const onSurface = draftFromSurfacePoint(point, current, state.movingSelection?.originals, hitBrick, plateSize)
+  // Robot Workshop kid basics (prototype only): the part settles on what is under it, so a ghost
+  // aimed at the side of a brick drops to what is below instead of hanging in the air beside it.
+  return isRoboticsPrototypeEnabled() ? settledPosition(state, current, onSurface) : onSurface
+}
+
+/**
+ * Robot Workshop kid basics (prototype only): a click whose own spot is far behind the build places
+ * nothing and says to zoom in, instead of dropping the part where nobody can see it. False (the
+ * studio's click) without the prototype.
+ */
+function refuseFarClick(point: THREE.Vector3): boolean {
+  if (!isRoboticsPrototypeEnabled()) return false
+  const state = useBrickStore.getState()
+  if (!state.draft || !isFarSpot(state, point)) return false
+  useBrickStore.setState({ toast: REFUSAL_TEXT.tooFar })
+  reportRefusal(REFUSAL_TEXT.tooFar, [])
+  return true
 }
 
 /**
@@ -333,7 +363,7 @@ function Baseplate({
           const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
           if (isConfirmationPlacementPointer(pointerType)) return
           if (isDragTrailingClick(event.delta, mouseTravel)) return
-          if (draft && !explore) placeDraft()
+          if (draft && !explore) { if (!refuseFarClick(event.point)) placeDraft() }
           else if (!explore) selectBrick(null)
         }}
       >
@@ -391,6 +421,10 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
   const moveDraft = (event: ThreeEvent<PointerEvent>) => {
     if (!draft || explore || isConfirmationPlacementPointer(event.pointerType)) return
     if (cameraActive?.current) return
+    // A brick being moved is never its own target: its faded original would otherwise stack the ghost
+    // on top of itself, and the move then leaves it floating one brick up. Unstopped, the event goes
+    // on to whatever is behind it (the touch drag already skips the moving brick the same way).
+    if (isMoving) return
     event.stopPropagation()
     const next = supportedDraftFromPoint(event.point, draft, brick.id)
     setDraftPosition(next.x, next.y, next.z)
@@ -398,6 +432,8 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
 
   const positionTouchDraft = (event: ThreeEvent<PointerEvent>) => {
     if (explore || !buildGesture || !isConfirmationPlacementPointer(event.pointerType)) return
+    // As above: a tap on the moving brick's own original positions against what is behind it.
+    if (isMoving) return
     const completion = takeBuildPointerCompletion(buildGesture, event.pointerId)
     if (completion?.intent !== 'position') return
     event.stopPropagation()
@@ -424,7 +460,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
           const pointerType = (event.nativeEvent as PointerEvent).pointerType ?? ''
           if (isConfirmationPlacementPointer(pointerType)) return
           if (isDragTrailingClick(event.delta, mouseTravel)) return
-          if (draft && !explore) placeDraft()
+          if (draft && !explore) { if (!refuseFarClick(event.point)) placeDraft() }
           else if (!explore && !takeBrickTap(brick.id)) {
             const nativeEvent = event.nativeEvent as MouseEvent
             selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || useBrickStore.getState().selectionMode)
@@ -550,7 +586,7 @@ function InstancedBrickGroup({
         if (isConfirmationPlacementPointer(pointerType)) return
         if (isDragTrailingClick(event.delta, mouseTravel)) return
         const state = useBrickStore.getState()
-        if (state.draft) state.placeDraft()
+        if (state.draft) { if (!refuseFarClick(event.point)) state.placeDraft() }
         else if (!takeBrickTap(brick.id)) {
           const nativeEvent = event.nativeEvent as MouseEvent
           state.selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || state.selectionMode)
@@ -727,6 +763,17 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     clampCameraNavigation()
     controls.current?.update()
   }, [clampCameraNavigation])
+
+  // Robot Workshop kid basics (prototype only): the wheel zooms by how far it turned (four notches
+  // double the distance; src/robotics/basics/wheelZoom.ts), and the far-drop guard knows the view.
+  useEffect(() => {
+    if (!isRoboticsPrototypeEnabled()) return
+    const uninstall = installWheelZoom(gl.domElement, () => controls.current)
+    return () => { uninstall(); publishBuildView(null) }
+  }, [gl])
+  useFrame(() => {
+    if (isRoboticsPrototypeEnabled() && controls.current) publishBuildView(camera, controls.current.target)
+  })
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -1020,7 +1067,8 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
   const { camera, gl, scene } = useThree()
   const activePointer = useRef<{ id: number; pointerType: string } | null>(null)
   const grabbedBrick = useRef(false)
-  const selectedDrag = useRef<{ brickId: string; x: number; y: number; origin: THREE.Vector3; plane: THREE.Plane; anchor: BrickDraft; started: boolean } | null>(null)
+  // `grab` (Robot Workshop kid basics only): where on the plate grid, relative to the anchor's corner, the drag took hold.
+  const selectedDrag = useRef<{ brickId: string; x: number; y: number; origin: THREE.Vector3; plane: THREE.Plane; anchor: BrickDraft; started: boolean; grab?: { x: number; z: number } } | null>(null)
   const suppressClick = useRef(false)
   const ghostTravel = useRef(createPointerTravel())
   const longPress = useRef(createLongPressState())
@@ -1086,6 +1134,35 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
         return
       }
     }
+    /**
+     * Robot Workshop kid basics (prototype only): where a dragged selection lands for the pointer ray
+     * the raycaster holds. The first brick or baseplate under the pointer that is not being moved is
+     * the surface; the part keeps the spot it was grabbed by (measured on the grid, so where it was
+     * grabbed never changes whether it fits), its lowest piece goes onto that surface and the whole
+     * selection settles onto what is under it. A lone axle or wheel keeps its height (what it connects
+     * to holds it). Null (keep the ghost) over nothing, or over a spot far behind the build.
+     */
+    const kidDragLanding = (anchor: BrickDraft, grab: { x: number; z: number }, state: ReturnType<typeof useBrickStore.getState>, plateSize: number) => {
+      if (!state.draft) return null
+      const moving = new Set(state.movingSelection && !state.movingSelection.duplicate ? state.movingSelection.originals.map((brick) => brick.id) : state.movingId ? [state.movingId] : [])
+      for (const hit of raycaster.current.intersectObjects(scene.children, true)) {
+        const instancedBrickId = brickIdForInstance(Array.isArray(hit.object.userData.brickIds) ? hit.object.userData.brickIds : [], hit.instanceId)
+        const hitBrickId: string | undefined = instancedBrickId ?? (typeof hit.object.userData.brickId === 'string' ? hit.object.userData.brickId : undefined)
+        if (hitBrickId ? moving.has(hitBrickId) : hit.object.userData.isBaseplate !== true) continue
+        const far = isFarSpot(state, hit.point)
+        setFarHover(far)
+        if (far) return null
+        const x = Math.round(hit.point.x / STUD + plateSize / 2 - grab.x)
+        const z = Math.round(hit.point.z / STUD + plateSize / 2 - grab.z)
+        const draft = { ...state.draft, rotation: anchor.rotation }
+        if (keepsStudioPlacement(state, draft)) return { x, y: anchor.y, z }
+        const hitBrick = hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined
+        const lowest = Math.min(0, ...(state.movingSelection?.originals ?? []).map((brick) => brick.y - anchor.y))
+        const pieces = selectionDrafts({ draft: { ...draft, x, y: surfaceHeight(hit.point, hitBrick) - lowest, z }, movingSelection: state.movingSelection })
+        return { x, y: settlePieces(pieces, stationaryBricks(state))[0].y, z }
+      }
+      return null
+    }
     const grab = (pointerId: number, pointerType: string) => {
       const hold = takeLongPressGrab(longPress.current, pointerId, performance.now())
       if (!hold) return
@@ -1146,7 +1223,9 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
           const origin = raycaster.current.ray.intersectPlane(plane, new THREE.Vector3())
           if (origin) {
             consume(event)
-            selectedDrag.current = { brickId: brick.id, x: event.clientX, y: event.clientY, origin, plane, anchor: { ...anchor }, started: false }
+            const plateSize = getBuildPlateSize(state.documentMetadata)
+            const grab = isRoboticsPrototypeEnabled() ? { x: origin.x / STUD + plateSize / 2 - anchor.x, z: origin.z / STUD + plateSize / 2 - anchor.z } : undefined
+            selectedDrag.current = { brickId: brick.id, x: event.clientX, y: event.clientY, origin, plane, anchor: { ...anchor }, started: false, grab }
             activePointer.current = { id: event.pointerId, pointerType: event.pointerType }
             canvas.setPointerCapture?.(event.pointerId)
             return
@@ -1205,18 +1284,29 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
           const rect = canvas.getBoundingClientRect()
           pointer.current.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
           raycaster.current.setFromCamera(pointer.current, camera)
-          const point = raycaster.current.ray.intersectPlane(direct.plane, new THREE.Vector3())
-          if (!point) return
-          const x = direct.anchor.x + Math.round((point.x - direct.origin.x) / STUD)
-          const z = direct.anchor.z + Math.round((point.z - direct.origin.z) / STUD)
+          const plateSize = getBuildPlateSize(state.documentMetadata)
+          // Robot Workshop kid basics (prototype only): the part lands on the surface under the pointer
+          // and settles there (never left in the air, never sunk into what it crosses), held where it was
+          // grabbed; a spot far behind the build keeps the ghost where it was.
+          const landing = direct.grab ? kidDragLanding(direct.anchor, direct.grab, state, plateSize) : null
+          if (direct.grab && !landing) return
+          let x: number
+          let y = direct.anchor.y
+          let z: number
+          if (landing) ({ x, y, z } = landing)
+          else {
+            const point = raycaster.current.ray.intersectPlane(direct.plane, new THREE.Vector3())
+            if (!point) return
+            x = direct.anchor.x + Math.round((point.x - direct.origin.x) / STUD)
+            z = direct.anchor.z + Math.round((point.z - direct.origin.z) / STUD)
+          }
           // Robot Workshop: one dragged part snaps as an armed one does (a wheel dragged near its axle end goes on),
           // measured from where the dragged part is; a group drag never snaps.
-          const plateSize = getBuildPlateSize(state.documentMetadata)
-          const [atX, atY, atZ] = brickWorldPosition({ ...direct.anchor, x, z }, plateSize)
+          const [atX, atY, atZ] = brickWorldPosition({ ...direct.anchor, x, y, z }, plateSize)
           const snapped = state.movingSelection?.originals.length === 1 ? snapDraft(state.draft, null, { x: atX, y: atY, z: atZ }, state.bricks.filter((brick) => brick.id !== state.movingId), plateSize) : null
           if ((snapped?.rotation ?? direct.anchor.rotation) !== state.draft.rotation) turnDraftTo(snapped?.rotation ?? direct.anchor.rotation)
           if (snapped) state.setDraftPosition(snapped.x, snapped.y, snapped.z)
-          else state.setDraftPosition(x, direct.anchor.y, z)
+          else state.setDraftPosition(x, y, z)
           return
         }
         if (!grabbedBrick.current) updatePointerTravel(ghostTravel.current, event.clientX, event.clientY)
@@ -1439,6 +1529,7 @@ function BuildScene({
       <BuildTouchInput gesture={gesture.current} />
       <MouseTravelTracker travel={mouseTravel} />
       {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><RoboticsBuildLayer /></Suspense>}
+      {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><BasicsLayer /></Suspense>}
       {showStudioGround && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.19, 0]} receiveShadow>
           <planeGeometry args={[100, 100]} />
           <meshStandardMaterial color="#f5f2ec" roughness={1} />

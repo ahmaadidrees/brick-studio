@@ -144,9 +144,10 @@ describe('names for a four-wheel car’s motors', () => {
   })
 
   it('the rover, the outboard motor facing in and a motor facing back keep their names; a student’s name wins', () => {
+    // Kid-UX lane W: a motor on a plate is named by the side it stands on, so turning it never renames it.
     expect(names(wiredRover().creation)).toEqual({ [ROVER_IDS.leftMotor]: 'Left motor', [ROVER_IDS.rightMotor]: 'Right motor' })
     expect(names(derive(outboardBricks(), 'hub'))).toEqual({ 'left-motor': 'Left motor', 'right-motor': 'Left motor' })
-    expect(names(wiredFourWheel({ backRightFacingBack: true }).creation)[ids.backRightMotor]).toBe('Back motor')
+    expect(names(wiredFourWheel({ backRightFacingBack: true }).creation)[ids.backRightMotor]).toBe('Back right motor')
     const renamed = deriveCreations(fixtureInput(fourWheelBricks(), { ...emptyRoboticsSection(), creations: [{ id: 'c1', name: 'Car', anchorBrickIds: [ids.hub] }], devices: { [ids.backLeftMotor]: { name: 'Pusher' } } }))[0]
     expect(names(renamed)).toMatchObject({ [ids.frontLeftMotor]: 'Front left motor', [ids.backLeftMotor]: 'Pusher' })
   })
@@ -166,20 +167,20 @@ describe('readiness of a four-wheel car', () => {
 
   it('a motor facing the wrong way says which way it faces and how to fix it', () => {
     const { creation } = wiredFourWheel({ backRightFacingBack: true })
-    expect(readiness(creation)).toEqual({ kind: 'drive', ready: false, reason: 'Back motor faces backward. Turn it to face out to the side.' })
+    expect(readiness(creation)).toEqual({ kind: 'drive', ready: false, reason: 'Back right motor faces backward. Turn it to face the side.' })
     // A motor that faced up or down would say so too.
     const up = { ...creation, motors: creation.motors.map((motor) => (motor.brickId === ids.backRightMotor ? { ...motor, socketNormal: { x: 0, y: 1, z: 0 } } : motor)) }
-    expect(readiness(up).reason).toBe('Back motor faces up. Turn it to face out to the side.')
+    expect(readiness(up).reason).toBe('Back right motor faces up. Turn it to face the side.')
   })
 
   it('a motor without its wheel comes first', () => {
     expect(readiness(wiredFourWheel({ backLeftWheelOff: true }).creation).reason).toBe('Put a wheel on Back left motor’s axle.')
   })
 
-  it('wheels all on one side ask for motors on opposite sides', () => {
+  it('wheels all on one side ask for a motor on the other side', () => {
     const left = new Set<string>([ids.frontPlate, ids.backPlate, ids.hub, ids.frontLeftMotor, ids.backLeftMotor, ids.frontLeftAxle, ids.backLeftAxle, ids.frontLeftWheel, ids.backLeftWheel])
     const { creation } = wiredCreation(fourWheelBricks().filter((candidate) => left.has(candidate.id)), ids.hub, ids.hub, [[ids.frontLeftMotor, 'A'], [ids.backLeftMotor, 'B']])
-    expect(readiness(creation).reason).toBe('Put the motors on opposite sides, facing out.')
+    expect(readiness(creation).reason).toBe('Put a motor on the other side.')
   })
 
   it('a full hub: unplug a part that does not drive to make room, or add a hub', () => {

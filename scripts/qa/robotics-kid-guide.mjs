@@ -201,7 +201,8 @@ await s.shot('1366-03-hub-only-choices')
 await s.steps.getByRole('button', { name: /^Make it move/ }).click()
 await sleep(150)
 let armed = await s.draft()
-check('armed:make-it-move', armed?.partId === 'robo_motor' && armed.rotation === 0, `"Make it move" armed ${armed?.partId} r${armed?.rotation}`)
+// Kid-UX lane W: the motor starts where it goes (the back of the plate's left side, facing out), never on top of the hub.
+check('armed:make-it-move', armed?.partId === 'robo_motor' && armed.x === 28 && armed.y === 1 && armed.z === 31 && armed.rotation === 2, `"Make it move" armed ${armed?.partId} at ${armed?.x},${armed?.y},${armed?.z} r${armed?.rotation}`)
 await placeAt(world(32.5, 1, 32.5), { partId: 'robo_motor', x: 31, y: 1, z: 31, rotation: 0 }, 'first motor (from Make it move)')
 await sleep(300)
 check('after-motor-1.steps', (await statesOf()) === 'plate:done hub:done motors:current axles:todo wheels:todo plug:todo ready:todo' && (await s.currentText()) === 'Put a motor on the other side.', `steps: ${await statesOf()} · now "${await s.currentText()}"`)
@@ -337,12 +338,13 @@ async function screens(t) {
   await place(t, { partId: 'robo_distance_sensor', x: 30, y: 1, z: 26 })
   await place(t, { partId: 'robo_light', x: 29, y: 7, z: 27 })
   await place(t, { partId: 'robo_seat', x: 30, y: 7, z: 29 })
-  await place(t, { partId: 'brick_2x2', x: 31, y: 7, z: 27 })
+  // Lane P: the stack idea counts to five bricks ("Stack 5 bricks on top · 2 of 5" on the way).
+  for (const y of [7, 10, 13, 16, 19]) await place(t, { partId: 'brick_2x2', x: 31, y, z: 27 })
   await t.robo((state) => state.dismissWiringNote())
   await frameAll(t)
   // Lane P: the four done give way to "You did all 4 ideas!" and more ideas, so the list never ends empty-handed.
   const ticked = await t.page.getByTestId('robotics-ideas').locator('li').evaluateAll((items) => items.map((item) => `${item.dataset.step}:${item.dataset.state}`))
-  check(`${tag}.ideas-ticked`, ticked[0] === 'ideas-done:done' && ticked.slice(1).map((entry) => entry.split(':')[0]).join() === 'idea-paint,idea-name,idea-taller,idea-code' && await t.play.isEnabled(), `${tag}: after a sensor, a light, a seat and a brick on top the ideas read ${ticked.join(', ')}; Drive still on`)
+  check(`${tag}.ideas-ticked`, ticked[0] === 'ideas-done:done' && ticked.slice(1).map((entry) => entry.split(':')[0]).join() === 'idea-paint,idea-name,idea-taller,idea-code' && await t.play.isEnabled(), `${tag}: after a sensor, a light, a seat and five bricks on top the ideas read ${ticked.join(', ')}; Drive still on`)
   await t.shot(`${tag}-14-made-it-mine`)
 
   // A gate: not ready (no sensor), then stuck to its frame, then ready.

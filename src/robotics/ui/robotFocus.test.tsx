@@ -114,7 +114,7 @@ describe('the panel follows the robot you touch', () => {
     expect(title()).toBe('Signal light')
   })
 
-  it('back from Drive / Try it or Code: that robot, framed with a little ground around it', async () => {
+  it('back from Drive / Try it or Code: that robot, framed snug in the free canvas', async () => {
     render(<RoboticsPanel />)
     gateAndSignalLight()
     act(() => useDriveView.getState().openDrive(robot('Gate').id))
@@ -124,7 +124,7 @@ describe('the panel follows the robot you touch', () => {
     expect(title()).toBe('Gate')
     const request = useRoboticsStore.getState().frameRequest!
     expect(request.brickIds).toEqual(robot('Gate').brickIds)
-    expect(request.points).toHaveLength(4)
+    expect(request.snug).toBe(true)
     act(() => useBrickStore.getState().selectBrick(null))
     act(() => useCodeView.getState().openCode(robot('Signal light').id))
     act(() => useRoboticsStore.setState({ frameRequest: null }))
