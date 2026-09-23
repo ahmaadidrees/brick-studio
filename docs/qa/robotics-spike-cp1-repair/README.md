@@ -54,11 +54,27 @@ coordinates, no fixture. The ghost's pose is read back before every click.
 the panel rename, **49/49** (rover, wheel off, same-sign turn, save/reload, gate, locked gate, signal post, legacy
 document, drawer category).
 
-Tests: `npx vitest run` (full frontend suite: 131 files, 1407 tests, all passing; 1365 before this pass), `tsc --noEmit -p tsconfig.json`,
+Tests: `npx vitest run` (full frontend suite: 131 files, 1409 tests after the review fixes, all passing; 1365 before this pass), `tsc --noEmit -p tsconfig.json`,
 `tsc -p packages/brick-core/tsconfig.json`, `vite build --mode robotics`. New unit coverage: the clock at 30–240 fps and
 the backlog cap (`mechanics.test.ts`), precise wiring Undo, cancelled and superseded starts, cable-edit vs rename
 retirement, the behaviour key, a run never writing (`roboticsStore.test.ts`), connector snapping against the rover
 fixture (`model/snap.test.ts`), framing maths and inset measurement (`scene/framing.test.ts`).
+
+## Lead review (2026-09-23)
+
+A second read of the repair found three problems, fixed in the follow-up commit:
+
+- **Two clock policies.** The scene still clamped each frame to 0.05 s before handing it to the accumulator, so below
+  20 fps the simulation ran slow. The scene now passes real frame time; the mechanics backlog cap is the only policy.
+- **A snap kept the student's rotation.** After an axle turned to fit a socket it stayed turned when the pointer left.
+  The snap now borrows the rotation and gives it back.
+- **Codex's case, a motor standing on a hub.** An axle's grid box is 8 plates tall, so with the socket facing over
+  the hub the box meets the hub even though the rod clears it. That refusal now names the part in the way: *"The axle
+  fits Left motor's socket, but there it would overlap Hub. Turn or move the motor so its socket faces open space."*
+  With the socket facing open space the snapped axle places and reads as in the socket. Both are unit tests.
+
+Contract gap noted for checkpoint 2: a device that bridges two creations no longer reopens the card for their union
+(contract §4); neither version implemented the union.
 
 ## Not done, and what the run surfaced
 

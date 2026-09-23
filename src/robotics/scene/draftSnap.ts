@@ -13,10 +13,25 @@ export type DraftSnapper = (draft: BrickDraft, hitBrick: BrickInstance, hitPoint
 
 let snapper: DraftSnapper | null = null
 
+/** The last connector the ghost snapped to, so a blocked placement there can be explained by name. */
+export type LastSnap = { partId: string; pose: SnapPose; hitBrickId: string }
+let lastSnap: LastSnap | null = null
+
 export function registerDraftSnapper(next: DraftSnapper | null) {
   snapper = next
+  if (!next) lastSnap = null
 }
 
 export function snapDraft(draft: BrickDraft, hitBrick: BrickInstance, hitPoint: SnapPoint, bricks: readonly BrickInstance[], plateSize: number): SnapPose | null {
-  return snapper ? snapper(draft, hitBrick, hitPoint, bricks, plateSize) : null
+  const pose = snapper ? snapper(draft, hitBrick, hitPoint, bricks, plateSize) : null
+  lastSnap = pose ? { partId: draft.partId, pose, hitBrickId: hitBrick.id } : null
+  return pose
+}
+
+export function lastDraftSnap(): LastSnap | null {
+  return lastSnap
+}
+
+export function clearDraftSnap() {
+  lastSnap = null
 }

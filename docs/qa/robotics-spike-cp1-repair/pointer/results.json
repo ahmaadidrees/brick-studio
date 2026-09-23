@@ -2,7 +2,7 @@
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
   "input": "real mouse and keyboard via Playwright CDP; positions from the studio's own world→screen projection",
-  "at": "2026-09-22T17:20:15.827Z",
+  "at": "2026-09-23T07:07:40.946Z",
   "results": [
     {
       "id": "ghost:6 × 8 Plate at 28,0,26",
@@ -147,7 +147,7 @@
     {
       "id": "A.wheels-on-motors",
       "ok": true,
-      "detail": "wheels: [{\"id\":\"brick-1790097587638-tnz3fl\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790097588320-fdp25o\",\"onAxle\":true,\"note\":null}]"
+      "detail": "wheels: [{\"id\":\"brick-1790147233053-ehcysa\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790147233739-n5y0t5\",\"onAxle\":true,\"note\":null}]"
     },
     {
       "id": "A.ready-line",
@@ -167,12 +167,12 @@
     {
       "id": "A.rolls",
       "ok": true,
-      "detail": "after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°"
+      "detail": "after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°"
     },
     {
       "id": "A.clock",
       "ok": true,
-      "detail": "simulated 2.61 s in about 2.6 s of wall time"
+      "detail": "simulated 2.62 s in about 2.6 s of wall time"
     },
     {
       "id": "A.reset-document-unchanged",
@@ -222,7 +222,7 @@
     {
       "id": "A.wheel-off-motor-spins",
       "ok": true,
-      "detail": "left motor output turned 290°, wheel stayed, body moved 0.00"
+      "detail": "left motor output turned 289°, wheel stayed, body moved 0.00"
     },
     {
       "id": "A.wheel-back-on",

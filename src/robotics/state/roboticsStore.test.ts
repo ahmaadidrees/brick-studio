@@ -1,5 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { createPartMap } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
+import { snapDraftToConnector } from '../model/snap'
+import { registerDraftSnapper, snapDraft } from '../scene/draftSnap'
 import { disconnect } from '../model/control'
 import { readRoboticsSection, writeRoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
@@ -278,5 +281,44 @@ describe('the simulation and the document', () => {
     robotics().resetSim()
     expect(JSON.stringify(useBrickStore.getState().getDocumentSnapshot())).toBe(before)
     expect(useBrickStore.getState().undoStack).toHaveLength(depth)
+  })
+})
+
+describe('a motor on a hub (the Codex QA case)', () => {
+  function motorOnHub(rotation: number) {
+    place(ROBOTICS_PART_IDS.hub, 28, 0, 29)
+    robotics().confirmCard('Post', false)
+    return place(ROBOTICS_PART_IDS.motor, 29, 6, 30, rotation)
+  }
+  const snapAxleTo = (motorId: string) => {
+    const state = useBrickStore.getState()
+    state.choosePart(ROBOTICS_PART_IDS.axleShort)
+    const motor = state.bricks.find((brick) => brick.id === motorId)!
+    return snapDraft(useBrickStore.getState().draft!, motor, { x: 0, y: 0, z: 0 }, useBrickStore.getState().bricks, 64)
+  }
+  beforeAll(() => registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => snapDraftToConnector({ draft, hitBrick, hitPoint, bricks, partMap: createPartMap([]), plateSize })))
+  afterAll(() => registerDraftSnapper(null))
+
+  it('with the socket facing open space, the snapped axle places and reads as in the socket', () => {
+    const motor = motorOnHub(0)
+    const pose = snapAxleTo(motor)!
+    expect(pose).not.toBeNull()
+    for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
+    useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    useBrickStore.getState().cancelInteraction()
+    const axle = useBrickStore.getState().bricks.at(-1)!.id
+    expect(robotics().model.creations[0].motors[0].axleId).toBe(axle)
+  })
+
+  it('with the socket facing over the hub, the refusal names the hub instead of the generic line', () => {
+    const motor = motorOnHub(2)
+    const pose = snapAxleTo(motor)!
+    expect(pose).not.toBeNull()
+    for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
+    useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().toast).toBe("The axle fits Left motor's socket, but there it would overlap Hub. Turn or move the motor so its socket faces open space.")
+    useBrickStore.getState().cancelInteraction()
   })
 })

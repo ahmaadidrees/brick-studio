@@ -30,13 +30,13 @@ PASS placed:Distance sensor (from the top view) — Distance sensor (from the to
 PASS A.wiring-sensor — assisted wiring line: Front sensor connected to port C
 PASS A.still-no-card — seven more parts and the card never reopened
 PASS A.one-creation — one creation over 9 bricks and 3 bodies
-PASS A.wheels-on-motors — wheels: [{"id":"brick-1790097587638-tnz3fl","onAxle":true,"note":null},{"id":"brick-1790097588320-fdp25o","onAxle":true,"note":null}]
+PASS A.wheels-on-motors — wheels: [{"id":"brick-1790147233053-ehcysa","onAxle":true,"note":null},{"id":"brick-1790147233739-n5y0t5","onAxle":true,"note":null}]
 PASS A.ready-line — ready line: Axles and wheels on both motors, so it can roll
 PASS A.part-colours — the parts arrived in their own colours
 PASS A.rover-framed — the whole rover framed inside the free area (72 corners)
   shot P3-rover-built.png
-PASS A.rolls — after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°
-PASS A.clock — simulated 2.61 s in about 2.6 s of wall time
+PASS A.rolls — after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°
+PASS A.clock — simulated 2.62 s in about 2.6 s of wall time
   shot P4-rover-rolls.png
 PASS A.reset-document-unchanged — document identical after Nudge + Reset
 PASS ghost:1 × 1 brick placed while the rover ran — 1 × 1 brick placed while the rover ran: ghost at 36,0,28 r0 after aiming at (741, 453)
@@ -48,7 +48,7 @@ PASS A.edit-undone — Undo removed only that brick: the document is the pre-run
 PASS A.wheel-selected — clicking the wheel selects it
 PASS A.wheel-off-note — wheel card: Not on an axle · the nearest axle end is 1 stud away
 PASS A.wheel-off-selected-part — selected wheel says Not on an axle
-PASS A.wheel-off-motor-spins — left motor output turned 290°, wheel stayed, body moved 0.00
+PASS A.wheel-off-motor-spins — left motor output turned 289°, wheel stayed, body moved 0.00
   shot P6-wheel-off-axle.png
 PASS A.wheel-back-on — nudged back, the wheel is on its axle again
 PASS A.document-as-built — the construction is exactly what was built

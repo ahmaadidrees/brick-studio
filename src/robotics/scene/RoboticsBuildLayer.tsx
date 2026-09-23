@@ -199,7 +199,8 @@ function SimBodies({ sim, model, creation }: { sim: SimState; model: RoboticsMod
   }), [creation.motors, byId, plateSize, sim])
 
   useFrame((_, delta) => {
-    sim.mechanics.step(Math.min(delta, 0.05))
+    // The mechanics clock owns the backlog policy (fixed steps, stalls dropped past 0.1 s); pass real frame time.
+    sim.mechanics.step(delta)
     const poses = sim.mechanics.poses()
     for (const [id, group] of groups.current) {
       const pose = poses.get(id)

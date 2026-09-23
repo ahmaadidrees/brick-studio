@@ -7,6 +7,8 @@ import { connect, planAssistedConnection } from '../model/control'
 import { anchorableBrickIds, creationComponent, defaultCreationName, deriveCreations, deviceName, type DeriveInput, type DerivedCreation } from '../model/creations'
 import { readRoboticsSection, writeRoboticsSection, type RoboticsConnection, type RoboticsSection, type TestSpace } from '../model/section'
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
+import { overlappingBricks } from '../model/blocked'
+import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { ContactReport, HingeReport, Mechanics } from '../sim/mechanics'
 
@@ -81,6 +83,8 @@ export type RoboticsState = {
   stopAll: () => void
   resetSim: () => void
   publishSimReports: (contacts: ContactReport[], hingeReports: Record<string, HingeReport>, motorAngles: Record<string, number>) => void
+  /** A placement was refused: when the ghost was snapped to a connector, name what is in the way. */
+  explainBlockedPlacement: () => void
 }
 
 const WIRING_LABEL_PREFIX = 'Connect '
@@ -324,6 +328,24 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     if (sim || simLoading) set({ sim: null, simLoading: false, contacts: [], hingeReports: {}, motorAngles: {} })
   },
   publishSimReports: (contacts, hingeReports, motorAngles) => set({ contacts, hingeReports, motorAngles }),
+
+  explainBlockedPlacement: () => {
+    const brickState = useBrickStore.getState()
+    const draft = brickState.draft
+    const snap = lastDraftSnap()
+    if (!draft || !snap || snap.partId !== draft.partId || snap.pose.x !== draft.x || snap.pose.y !== draft.y || snap.pose.z !== draft.z || snap.pose.rotation !== draft.rotation) return
+    const { input } = computeModel(brickState)
+    const others = brickState.movingId ? brickState.bricks.filter((brick) => brick.id !== brickState.movingId) : brickState.bricks
+    const target = others.find((brick) => brick.id === snap.hitBrickId)
+    const blockers = overlappingBricks(draft, others, input.partMap)
+    if (!target || !blockers.length) return
+    const nameOf = (brick: BrickInstance) => (isDevicePart(brick.partId) ? deviceName(input, brick) : input.partMap[brick.partId]?.name ?? 'a brick')
+    const spec = roboticsSpec(draft.partId)
+    const fits = spec?.axle ? (roboticsSpec(target.partId)?.socket ? `fits ${nameOf(target)}'s socket` : `fits through the ${nameOf(target)}`) : `fits the axle end`
+    const what = spec?.axle ? 'The axle' : 'The wheel'
+    const fix = roboticsSpec(target.partId)?.socket ? ' Turn or move the motor so its socket faces open space.' : ' Move it so the end has open space.'
+    useBrickStore.setState({ toast: `${what} ${fits}, but there it would overlap ${blockers.slice(0, 2).map(nameOf).join(' and ')}.${fix}` })
+  },
 }))
 
 let watcherInstalled = false
@@ -352,6 +374,7 @@ export function installRoboticsWatcher() {
       if (robotics.card && !robotics.card.creationId && !robotics.card.anchorBrickIds.every((id) => state.bricks.some((brick) => brick.id === id))) robotics.closeCard()
     }
     if (state.placeFeedback && state.placeFeedback !== previous.placeFeedback) robotics.handlePlacement(state.placeFeedback.id)
+    if (state.blockedNonce !== previous.blockedNonce) robotics.explainBlockedPlacement()
     if (state.mode !== previous.mode && state.mode !== 'build') robotics.resetSim()
   })
 }

@@ -122,7 +122,7 @@ import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
 import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
-import { snapDraft } from '../robotics/scene/draftSnap'
+import { clearDraftSnap, snapDraft } from '../robotics/scene/draftSnap'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
@@ -171,6 +171,18 @@ const EXPLORE_SPAWN_RETRY_FRAMES = 12
 const EXPLORE_SPAWN_MAX_ATTEMPTS = 3
 const EXPLORE_SAFE_POSITION_SAMPLE_FRAMES = 20
 
+/**
+ * The rotation the student chose before a connector snap turned the ghost, so leaving the
+ * connector gives it back (the snap borrows the rotation; it does not change the student's choice).
+ */
+let snapBorrowedRotation: { partId: string; rotation: number } | null = null
+
+/** `rotate` turns the armed ghost in place without touching history; the caller positions it. */
+function turnDraftTo(rotation: number) {
+  const state = useBrickStore.getState()
+  for (let turn = 0; turn < 4 && useBrickStore.getState().draft?.rotation !== rotation; turn += 1) state.rotate()
+}
+
 /** Target the actual raycast surface; layout validation provides the blocked preview. */
 function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBrickId?: string | null) {
   const state = useBrickStore.getState()
@@ -183,12 +195,20 @@ function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBri
     const others = state.movingId ? state.bricks.filter((brick) => brick.id !== state.movingId) : state.bricks
     const snapped = snapDraft(draft, hitBrick, point, others, plateSize)
     if (snapped) {
-      // `rotate` turns the armed ghost in place without touching history; the caller positions it.
-      for (let turn = 0; turn < 4 && useBrickStore.getState().draft?.rotation !== snapped.rotation; turn += 1) state.rotate()
+      if (snapped.rotation !== draft.rotation && snapBorrowedRotation?.partId !== draft.partId) snapBorrowedRotation = { partId: draft.partId, rotation: draft.rotation }
+      turnDraftTo(snapped.rotation)
       return snapped
     }
+  } else clearDraftSnap()
+  let current = draft
+  if (snapBorrowedRotation) {
+    if (snapBorrowedRotation.partId === draft.partId && draft.rotation !== snapBorrowedRotation.rotation) {
+      turnDraftTo(snapBorrowedRotation.rotation)
+      current = useBrickStore.getState().draft ?? draft
+    }
+    snapBorrowedRotation = null
   }
-  return draftFromSurfacePoint(point, draft, state.movingSelection?.originals, hitBrick, plateSize)
+  return draftFromSurfacePoint(point, current, state.movingSelection?.originals, hitBrick, plateSize)
 }
 
 /**
