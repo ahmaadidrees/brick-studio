@@ -52,17 +52,34 @@ export function framePoseInFreeArea(bounds: BuildBounds, verticalFovDegrees: num
   return { target: add(pose.target, shift), position: add(pose.position, shift), distance: pose.distance }
 }
 
+/** Bounds grown to take in extra world points (a stage's wall or visitor), keeping the build padding. */
+export function boundsWithPoints(bounds: BuildBounds, points: readonly { x: number; y: number; z: number }[]): BuildBounds {
+  if (!points.length) return bounds
+  const min: [number, number, number] = [...bounds.min]
+  const max: [number, number, number] = [...bounds.max]
+  for (const point of points) {
+    const values = [point.x, point.y, point.z]
+    for (let axis = 0; axis < 3; axis += 1) {
+      min[axis] = Math.min(min[axis], values[axis])
+      max[axis] = Math.max(max[axis], values[axis])
+    }
+  }
+  const size: [number, number, number] = [max[0] - min[0], max[1] - min[1], max[2] - min[2]]
+  return { min, max, size, center: [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2], empty: false }
+}
+
 /**
- * What covers the canvas right now, as insets in canvas pixels: the brick drawer
- * (left), the creation card or robotics panel (right) and the command strip
- * (bottom). Elements that are hidden or off the canvas count for nothing.
+ * What covers the canvas right now, as insets in canvas pixels: the brick drawer or the
+ * Code view's editor (left), the creation card or robotics panel (right), the command
+ * strip or the Code view's goal line (bottom) and the Code view's stage bar (top).
+ * Elements that are hidden or off the canvas count for nothing.
  */
 export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = document): CanvasInsets {
   const frame = canvas.getBoundingClientRect()
   const insets: CanvasInsets = { ...NO_INSETS }
   if (frame.width <= 0 || frame.height <= 0) return insets
   const overlaps = (rect: DOMRect) => rect.width > 0 && rect.height > 0 && rect.right > frame.left && rect.left < frame.right && rect.bottom > frame.top && rect.top < frame.bottom
-  for (const element of root.querySelectorAll<HTMLElement>('.part-library')) {
+  for (const element of root.querySelectorAll<HTMLElement>('.part-library, .robo-code-editor')) {
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.left < frame.left + frame.width / 2) insets.left = Math.max(insets.left, rect.right - frame.left)
   }
@@ -70,9 +87,14 @@ export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = docu
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.right > frame.left + frame.width / 2) insets.right = Math.max(insets.right, frame.right - rect.left)
   }
-  for (const element of root.querySelectorAll<HTMLElement>('.command-strip')) {
+  for (const element of root.querySelectorAll<HTMLElement>('.command-strip, .robo-code-goal')) {
     const rect = element.getBoundingClientRect()
     if (overlaps(rect) && rect.top > frame.top + frame.height / 2) insets.bottom = Math.max(insets.bottom, frame.bottom - rect.top)
+  }
+  // The Code view's stage bar and readings sit over the top of the stage.
+  for (const element of root.querySelectorAll<HTMLElement>('.robo-code-stagebar, .robo-code-readings')) {
+    const rect = element.getBoundingClientRect()
+    if (overlaps(rect) && rect.bottom < frame.top + frame.height / 2) insets.top = Math.max(insets.top, rect.bottom - frame.top)
   }
   return insets
 }

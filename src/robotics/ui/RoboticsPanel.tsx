@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { useBrickStore } from '../../brick/store'
+import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { deriveCandidate, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
@@ -8,6 +9,9 @@ import { DeviceInspector } from '../wiring/DeviceInspector'
 import { WiringModeToggle } from '../wiring/WiringModeToggle'
 import './robotics.css'
 
+/** The Code view (Blockly and all) loads only when a creation is opened in it. */
+const CodeView = lazy(() => import('../code/CodeView'))
+
 /**
  * The Robot Workshop's build-mode panels (checkpoint 1): the assisted-wiring line,
  * the creation card (contract §4, mock board 1b) and the creation panel with the
@@ -15,21 +19,25 @@ import './robotics.css'
  * document's robotics section; the panels report structure and never edit it, apart
  * from names, cables and the run space, which are the student's own words.
  */
-export function RoboticsPanel({ compact = false }: { compact?: boolean }) {
+export function RoboticsPanel({ compact = false, live = false }: { compact?: boolean; live?: boolean }) {
   useEffect(() => {
     installRoboticsWatcher()
     // Dev-only hook for the QA harnesses (scripts/qa/robotics-spike-cp1*.mjs): the stores, plus what
     // the scene layer adds (a world→screen projector, so a harness can aim a real pointer at a socket).
     if (import.meta.env.DEV) {
       const host = window as unknown as { __robotics?: Record<string, unknown> }
-      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore, stageStore: useStageStore })
+      host.__robotics = Object.assign(host.__robotics ?? {}, { brickStore: useBrickStore, roboticsStore: useRoboticsStore, stageStore: useStageStore, codeView: useCodeView })
     }
   }, [])
   const card = useRoboticsStore((state) => state.card)
+  const coding = useCodeView((state) => state.creationId !== null)
+  // Contract §8: no Code or Run in a live room.
+  useEffect(() => { if (live && coding) useCodeView.getState().closeCode() }, [live, coding])
+  if (coding && !live) return <Suspense fallback={null}><CodeView /></Suspense>
   return (
     <>
       <WiringLine />
-      {card ? <CreationCard compact={compact} /> : <CreationPanel compact={compact} />}
+      {card ? <CreationCard compact={compact} live={live} /> : <CreationPanel compact={compact} live={live} />}
     </>
   )
 }
@@ -64,7 +72,7 @@ function useCardCreation(): DerivedCreation | null {
   }, [card, model])
 }
 
-function CreationCard({ compact }: { compact: boolean }) {
+function CreationCard({ compact, live }: { compact: boolean; live: boolean }) {
   const card = useRoboticsStore((state) => state.card)!
   const creation = useCardCreation()
   const close = useRoboticsStore((state) => state.closeCard)
@@ -108,8 +116,9 @@ function CreationCard({ compact }: { compact: boolean }) {
       <WiringModeToggle />
       <div className="robotics-card-actions">
         <button type="button" className="studio-button" onClick={() => { confirm(name, false); close() }}>Not now</button>
-        <button type="button" className="studio-button studio-button-primary" onClick={() => confirm(name, true)}>Code this creation</button>
+        <button type="button" className="studio-button studio-button-primary" onClick={() => confirm(name, true)} disabled={live}>Code this creation</button>
       </div>
+      {live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
     </aside>
   )
 }
@@ -140,7 +149,7 @@ function useFocusedCreation(): DerivedCreation | null {
   }, [creations, selectedId, simCreationId])
 }
 
-function CreationPanel({ compact }: { compact: boolean }) {
+function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
   const creation = useFocusedCreation()
   const selectedId = useBrickStore((state) => state.selectedId)
   const bricks = useBrickStore((state) => state.bricks)
@@ -165,8 +174,10 @@ function CreationPanel({ compact }: { compact: boolean }) {
             onKeyDown={(event) => { if (event.key === 'Enter') (event.target as HTMLInputElement).blur() }}
           />
         ) : <strong>Robotics</strong>}
+        {creation && <button type="button" className="studio-button studio-button-primary robotics-code-button" onClick={() => useCodeView.getState().openCode(creation.id)} disabled={live} data-testid="robotics-code-button">Code</button>}
         <button type="button" className="robotics-link-button" aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>{collapsed ? 'Show' : 'Hide'}</button>
       </header>
+      {creation && live && <p className="robotics-live-line" data-testid="robotics-live-code-line">{LIVE_ROOM_CODE_LINE}</p>}
       {!collapsed && (
         <>
           {selected && selectedSpec && (isDeviceRole(selectedSpec.role) ? <DeviceInspector brickId={selected.id} creation={creation} /> : <SelectedPart creation={creation} brickId={selected.id} role={selectedSpec.role} />)}

@@ -5,6 +5,7 @@ import type { BrickInstance } from '../../brick/types'
 import { livePort } from '../model/control'
 import type { Vec3 } from '../model/vec'
 import { isDevicePart, roboticsSpec, type HubPort } from '../parts/catalog'
+import { useHiddenBrickIds } from '../scene/hiddenBricks'
 import { useRoboticsStore, type RoboticsModel } from '../state/roboticsStore'
 import { brickObstacles, deviceCableEnd, hubPortEnd, looseCable, routeCable, routeLift, type CableEnd } from './route'
 
@@ -129,7 +130,8 @@ function LitPort({ socket, port }: { socket: CableEnd; port: HubPort }) {
 
 export default function Cables() {
   const model = useRoboticsStore((state) => state.model)
-  const hidden = useRoboticsStore((state) => state.sim?.hiddenBrickIds ?? null)
+  // Whatever a nudge or the stage draws itself (the studio hides its copies), its cables are left out too.
+  const hidden = useHiddenBrickIds()
   const selectedId = useBrickStore((state) => state.selectedId)
   const scene = useMemo(() => cableScene(model, selectedId, hidden ?? new Set()), [model, selectedId, hidden])
 

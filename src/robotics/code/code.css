@@ -1,0 +1,493 @@
+/* The Robot Workshop Code view (behind VITE_ROBOTICS_PROTOTYPE, loaded with the lazy Code
+   chunk). The mock's Code board: an editor over the canvas's left part (header, program tabs,
+   category rail, palette, scripts) and the stage's controls over the canvas's right part,
+   where the 3D canvas is the stage. */
+
+/* While the Code view is open the build tools step aside: no drawer, no history or camera
+   cluster, no command strip, no brick sheet. The creation panel is replaced by the view. */
+.build-shell:has(> .robo-code-editor) > :is(.part-library, .brick-drawer-toggle, .brick-creative-dock, .brick-history-cluster, .brick-camera-cluster, .command-strip, .brick-sheet, .brick-sheet-backdrop) {
+  display: none !important;
+}
+
+.robo-code-editor,
+.robo-code-stage {
+  --robo-ink: #263c51;
+  --robo-muted: #5b6b7a;
+  --robo-line: #e3dccd;
+  --robo-cream: #f8f4eb;
+  --robo-soft: #f3eee3;
+  --robo-blue: #3565bf;
+  --robo-green: #1f6b3e;
+  --robo-red: #c9342e;
+  --robo-editor-width: clamp(520px, 60vw, 900px);
+  color: var(--robo-ink);
+  font-family: var(--font-body, 'Nunito'), ui-rounded, system-ui, sans-serif;
+}
+
+/* ------------------------------------------------------------------ editor */
+
+.robo-code-editor {
+  position: absolute;
+  z-index: 16;
+  top: var(--brick-header-block);
+  left: 0;
+  bottom: 0;
+  width: var(--robo-editor-width);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: #fff;
+  border-right: 1px solid var(--robo-line);
+  box-shadow: 6px 0 22px rgba(38, 60, 81, .08);
+}
+
+.robo-code-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--robo-line);
+}
+.robo-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--robo-soft);
+  color: var(--robo-ink);
+  font: 800 14px/1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.robo-back:hover { background: #ebe4d4; }
+.robo-code-name { min-width: 0; overflow: hidden; font-size: 16px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.robo-spacer { flex: 1 1 auto; }
+.robo-code-head .wiring-mode { flex: 0 0 auto; font-size: 11.5px; }
+
+.robo-tabs-row {
+  position: relative;
+  z-index: 3;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--robo-line);
+  background: #fff;
+}
+.robo-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 999px;
+  background: var(--robo-soft);
+}
+.robo-tab-wrap { position: relative; display: inline-flex; align-items: center; flex: 0 0 auto; border-radius: 999px; }
+.robo-tab-wrap.on { background: var(--robo-blue); }
+.robo-tab {
+  height: 30px;
+  max-width: 190px;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--robo-ink);
+  font: 800 13px/1 inherit;
+  font-family: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.robo-tab.on { padding-right: 4px; color: #fff; cursor: text; }
+.robo-tab:not(.on):hover { background: #e9e2d2; }
+.robo-tab-more {
+  width: 26px;
+  height: 26px;
+  margin-right: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .18);
+  color: #fff;
+  font: 900 14px/1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.robo-tab-more:hover { background: rgba(255, 255, 255, .32); }
+.robo-tab-rename {
+  width: 170px;
+  height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 2px solid var(--robo-blue);
+  border-radius: 999px;
+  color: var(--robo-ink);
+  font: 800 13px/1 inherit;
+  font-family: inherit;
+  user-select: text;
+}
+.robo-add { position: relative; flex: 0 0 auto; }
+.robo-tab-add {
+  width: 34px;
+  height: 34px;
+  border: 1px dashed #cfc5b3;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--robo-ink);
+  font: 900 18px/1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.robo-tab-add:hover:not(:disabled) { border-style: solid; background: var(--robo-soft); }
+.robo-tab-add:disabled { opacity: .45; cursor: default; }
+
+.robo-menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 6px;
+  border: 1px solid var(--robo-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(38, 60, 81, .18);
+}
+.robo-menu > button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--robo-ink);
+  font: 800 13px/1.25 inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.robo-menu > button:hover:not(:disabled), .robo-menu > button:focus-visible { background: var(--robo-soft); outline: none; }
+.robo-menu > button:disabled { opacity: .45; cursor: default; }
+.robo-menu > button.danger { color: var(--robo-red); }
+.robo-menu > button span { color: var(--robo-muted); font-size: 11.5px; font-weight: 700; }
+.robo-menu-title { margin: 2px 10px 4px; color: var(--robo-muted); font-size: 10.5px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.robo-starters { width: 290px; }
+
+.robo-confirm {
+  position: absolute;
+  z-index: 31;
+  top: calc(100% + 6px);
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(320px, calc(100% - 24px));
+  padding: 12px;
+  border: 1px solid var(--robo-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(38, 60, 81, .2);
+}
+.robo-confirm p { margin: 0; font-size: 13px; font-weight: 800; }
+.robo-confirm div { display: flex; justify-content: flex-end; gap: 8px; }
+
+.robo-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--robo-soft);
+  color: var(--robo-ink);
+  font: 800 13px/1 inherit;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.robo-button:hover:not(:disabled) { background: #ebe4d4; }
+.robo-button:disabled { opacity: .5; cursor: default; }
+.robo-button.danger { background: #fde7e2; color: var(--robo-red); }
+
+.robo-problems {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 6px 12px;
+  list-style: none;
+  border-bottom: 1px solid var(--robo-line);
+  background: #fffaf0;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.robo-problems li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.robo-problems li.more { color: var(--robo-muted); padding-left: 2px; }
+.robo-problem-link { min-width: 0; overflow: hidden; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; text-decoration: underline dotted; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.robo-pill { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 900; letter-spacing: .02em; }
+.robo-pill.error { color: #fff; background: var(--robo-red); }
+.robo-pill.warning { color: #7a4d00; background: #ffe2a3; }
+.robo-pill.info { color: var(--robo-muted); background: var(--robo-soft); }
+
+.robo-code-body { position: relative; flex: 1 1 auto; min-height: 0; }
+.robo-code-blockly-host { position: absolute; inset: 0; }
+.robo-code-blockly { position: absolute; inset: 0; }
+.robo-code-notice {
+  position: absolute;
+  z-index: 5;
+  left: 84px;
+  right: 12px;
+  bottom: 12px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fff4d6;
+  color: #7a4d00;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+.robo-all-blocks {
+  position: absolute;
+  z-index: 80;
+  left: 6px;
+  bottom: 12px;
+  width: 60px;
+  padding: 6px 2px;
+  border: 1px dashed #cfc5b3;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--robo-blue);
+  font: 800 10.5px/1.15 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.robo-zoom {
+  position: absolute;
+  z-index: 4;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--robo-line);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(38, 60, 81, .1);
+}
+.robo-zoom button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 999px; background: transparent; color: var(--robo-ink); cursor: pointer; }
+.robo-zoom button:hover { background: var(--robo-soft); }
+
+/* Blockly: the rail (category toolbox), the palette (flyout) and the scripts. */
+.robo-code-blockly .injectionDiv { font-family: var(--font-body, 'Nunito'), ui-rounded, system-ui, sans-serif; }
+.robo-code-blockly .blocklyToolbox {
+  width: 72px;
+  padding: 8px 4px;
+  box-sizing: border-box;
+  border-right: 1px solid var(--robo-line);
+  background: #fff;
+}
+.robo-code-blockly .blocklyToolboxCategoryContainer { margin: 0 0 2px; }
+.robo-code-blockly .blocklyToolboxCategory {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: auto;
+  min-height: 50px;
+  margin: 0;
+  padding: 6px 0 !important;
+  border: 0 !important;
+  border-radius: 10px;
+  line-height: 1.1;
+  cursor: pointer;
+}
+.robo-code-blockly .blocklyTreeRowContentContainer { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.robo-code-blockly .blocklyToolboxCategory:not(.blocklyToolboxSelected):hover { background: #faf6ee; }
+.robo-code-blockly .blocklyToolboxSelected { background: var(--robo-soft) !important; }
+.robo-rail-dot { display: block; width: 16px; height: 16px; border-radius: 999px; background: var(--robo-category, #9aa7b3); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .12); }
+.robo-code-blockly .blocklyToolboxCategoryLabel { padding: 0; color: var(--robo-ink); font: 800 11px/1.1 inherit; font-family: inherit; cursor: pointer; }
+.robo-code-blockly .blocklyToolboxSelected .blocklyToolboxCategoryLabel { color: var(--robo-ink); }
+.robo-code-blockly .blocklyFlyoutBackground { fill: #fbf8f2; fill-opacity: 1; }
+.robo-code-blockly .blocklyFlyout { filter: drop-shadow(1px 0 0 #e3dccd); }
+.robo-code-blockly .blocklyScrollbarHandle { fill: #cfc5b3; }
+.robo-code-blockly .blocklyMainBackground { stroke: none; }
+
+/* Diagnostics on blocks: red for "can't run", amber for heads-up, grey for a note. */
+.robo-code-blockly .robo-diag-error > .blocklyPath { stroke: #d8362a !important; stroke-width: 3px !important; stroke-dasharray: 7 4; }
+.robo-code-blockly .robo-diag-warning > .blocklyPath { stroke: #e39b12 !important; stroke-width: 3px !important; }
+.robo-code-blockly .robo-diag-info > .blocklyPath { stroke: #8a97a4 !important; stroke-width: 2px !important; stroke-dasharray: 3 3; }
+/* The block a run is executing glows. */
+.robo-code-blockly .blocklyHighlighted > .blocklyPath { stroke: #f4ca3a !important; stroke-width: 4px !important; filter: drop-shadow(0 0 5px rgba(244, 202, 58, .9)); }
+.robo-code-blockly .blocklySelected > .blocklyPath { stroke: #263c51; stroke-width: 2.5px; }
+
+/* Blockly's media folder is never fetched: its cursors and the menu checkmark are replaced here. */
+.robo-code-blockly .blocklyDragging.blocklyDraggingDelete,
+.robo-code-blockly .blocklyDragging.blocklyDraggingDelete .blocklyField,
+.robo-code-blockly .blocklyToolboxDelete,
+.robo-code-blockly .blocklyToolboxDelete .blocklyToolboxCategoryLabel { cursor: not-allowed !important; }
+.robo-code-blockly .blocklyToolboxGrab { cursor: grabbing !important; }
+.blocklyDropDownDiv .blocklyMenuItemSelected .blocklyMenuItemCheckbox,
+.blocklyWidgetDiv .blocklyMenuItemSelected .blocklyMenuItemCheckbox { background: none !important; }
+.blocklyDropDownDiv .blocklyMenuItemSelected .blocklyMenuItemCheckbox::before,
+.blocklyWidgetDiv .blocklyMenuItemSelected .blocklyMenuItemCheckbox::before { content: '✓'; font-weight: 900; }
+.blocklyDropDownDiv .blocklyMenuItem, .blocklyWidgetDiv .blocklyMenuItem { font-family: var(--font-body, 'Nunito'), ui-rounded, system-ui, sans-serif; font-weight: 800; }
+
+/* ------------------------------------------------------------------ stage */
+
+.build-shell > .robo-code-stage {
+  position: absolute;
+  z-index: 15;
+  top: var(--brick-header-block);
+  right: 0;
+  bottom: 0;
+  left: var(--robo-editor-width);
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+.robo-code-stage > * { pointer-events: auto; }
+.robo-code-stagebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--robo-line);
+  background: rgba(255, 255, 255, .96);
+}
+.robo-run, .robo-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 14px 0 11px;
+  border: 0;
+  border-radius: 999px;
+  font: 900 14px/1 inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+.robo-run { color: var(--robo-green); background: #e4f4ea; }
+.robo-run svg { fill: #3fa36b; }
+.robo-run:hover:not(:disabled) { background: #d2eddc; }
+.robo-stop { color: var(--robo-red); background: #fde7e2; }
+.robo-stop svg { fill: var(--robo-red); }
+.robo-stop:hover:not(:disabled) { background: #fbd6cd; }
+.robo-run:disabled, .robo-stop:disabled { opacity: .5; cursor: default; }
+.robo-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; font-weight: 800; color: var(--robo-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.robo-status-dot { width: 8px; height: 8px; border-radius: 999px; background: #b7c0c9; }
+.robo-status.running { color: var(--robo-green); }
+.robo-status.running .robo-status-dot { background: #3fa36b; box-shadow: 0 0 0 3px rgba(63, 163, 107, .2); }
+.robo-status.stopped { color: var(--robo-red); }
+.robo-status.stopped .robo-status-dot { background: var(--robo-red); }
+
+.robo-seg { display: inline-flex; flex: 0 0 auto; padding: 3px; border-radius: 999px; background: var(--robo-soft); }
+.robo-seg button { height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--robo-ink); font: 800 12.5px/1 inherit; font-family: inherit; white-space: nowrap; cursor: pointer; }
+.robo-seg button.on { color: #fff; background: var(--robo-blue); }
+
+.robo-code-lines { display: flex; flex-direction: column; gap: 4px; padding: 0 12px; }
+.robo-code-lines:empty { display: none; }
+.robo-code-lines .robo-line:first-child { margin-top: 8px; }
+.robo-line { margin: 0; padding: 7px 11px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(38, 60, 81, .12); font-size: 12.5px; font-weight: 700; }
+.robo-line.bad { color: #8a1f15; background: #ffe6e1; }
+.robo-line.changed { color: #6b4a00; background: #fff1c2; }
+
+.robo-code-readings { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 10px 12px; pointer-events: none; }
+.robo-code-readings:empty { display: none; }
+.robo-read { display: flex; flex-direction: column; gap: 2px; min-width: 76px; padding: 7px 11px; border-radius: 10px; background: rgba(255, 255, 255, .95); box-shadow: 0 1px 3px rgba(38, 60, 81, .12); pointer-events: auto; }
+.robo-read small { color: var(--robo-muted); font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.robo-read strong { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.robo-read span { color: var(--robo-muted); font-size: 11px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.robo-read.idle strong { color: #8a97a4; }
+.robo-read.warn { background: #fff4d6; }
+.robo-read.bad { background: #ffe1dc; }
+.robo-read.bad strong, .robo-read.bad span { color: #a12c1d; }
+.robo-swatch { width: 12px; height: 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .2); }
+
+.robo-code-stagefoot {
+  margin-top: auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  pointer-events: none;
+}
+.robo-code-stagefoot > * { pointer-events: auto; }
+.robo-code-stage-actions { display: flex; align-items: center; gap: 8px; }
+.robo-icon-button { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--robo-line); border-radius: 999px; background: #fff; color: var(--robo-ink); box-shadow: 0 1px 3px rgba(38, 60, 81, .12); cursor: pointer; }
+.robo-visitor { background: #fff; box-shadow: 0 1px 4px rgba(38, 60, 81, .18); }
+
+.robo-stage-input { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.robo-joystick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(38, 60, 81, .12);
+  box-shadow: inset 0 2px 8px rgba(38, 60, 81, .2);
+  touch-action: none;
+  cursor: grab;
+}
+.robo-joystick.active { cursor: grabbing; background: rgba(53, 101, 191, .16); }
+.robo-joystick[aria-disabled='true'] { opacity: .5; cursor: default; }
+.robo-joystick-knob { display: block; border-radius: 999px; background: var(--robo-blue); box-shadow: 0 4px 10px rgba(38, 60, 81, .35); pointer-events: none; }
+.robo-keypad { display: grid; grid-template-columns: repeat(3, 38px); grid-template-areas: '. up .' 'left down right' 'space space space'; gap: 4px; }
+.robo-key { height: 36px; border: 0; border-radius: 8px; background: #fff; color: var(--robo-ink); box-shadow: 0 1px 4px rgba(38, 60, 81, .2); font: 900 15px/1 inherit; font-family: inherit; touch-action: none; cursor: pointer; }
+.robo-key.held { color: #fff; background: var(--robo-blue); }
+.robo-key-up { grid-area: up; }
+.robo-key-left { grid-area: left; }
+.robo-key-down { grid-area: down; }
+.robo-key-right { grid-area: right; }
+.robo-key-space { grid-area: space; font-size: 12px; }
+
+.robo-code-goal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--robo-line);
+  background: rgba(255, 255, 255, .97);
+  font-size: 13px;
+  font-weight: 700;
+}
+.robo-code-goal.first-run { background: #fffbea; }
+.robo-goal-icon { flex: 0 0 auto; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #fff1c2; color: #b8860b; }
+
+.robo-code-editor button:focus-visible,
+.robo-code-stage button:focus-visible,
+.robo-code-stage [role='slider']:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
+
+/* 1024×768 and narrower: tighter chrome, same parts. */
+@media (max-width: 1100px) {
+  .robo-code-editor, .robo-code-stage { --robo-editor-width: clamp(480px, 58vw, 900px); }
+  .robo-code-head { gap: 8px; padding: 6px 10px; }
+  .robo-code-head .wiring-mode > span { display: none; }
+  .robo-back { padding: 0 11px 0 9px; font-size: 13px; }
+  .robo-tab { max-width: 150px; padding: 0 10px; font-size: 12.5px; }
+  .robo-code-stagebar { gap: 6px; padding: 7px 10px; }
+  .robo-run, .robo-stop { height: 38px; padding: 0 12px 0 9px; font-size: 13px; }
+  .robo-read { min-width: 0; padding: 6px 9px; }
+  .robo-read strong { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .robo-code-blockly .blocklyHighlighted > .blocklyPath { filter: none; }
+}

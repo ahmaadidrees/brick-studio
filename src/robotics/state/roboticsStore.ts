@@ -12,6 +12,8 @@ import { overlappingBricks } from '../model/blocked'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { ContactReport, HingeReport, Mechanics } from '../sim/mechanics'
+import type { Vec3 } from '../model/vec'
+import { useCodeView } from '../code/codeViewState'
 
 /**
  * Robotics UI state beside the brick store. The document (bricks + the robotics
@@ -55,7 +57,7 @@ export type SimState = {
 }
 
 /** Asks the scene to frame these bricks inside the free canvas area (the layer measures the panels). */
-export type FrameRequest = { brickIds: string[]; nonce: number }
+export type FrameRequest = { brickIds: string[]; nonce: number; /** World points to keep in view too (a stage's wall or visitor). */ points?: Vec3[] }
 
 export type RoboticsState = {
   model: RoboticsModel
@@ -74,7 +76,7 @@ export type RoboticsState = {
   confirmCard: (name: string, thenCode: boolean) => void
   renameCreation: (creationId: string, name: string) => void
   setTestSpace: (creationId: string, space: TestSpace) => void
-  requestFrame: (brickIds: string[]) => void
+  requestFrame: (brickIds: string[], points?: Vec3[]) => void
   dismissWiringNote: () => void
   undoWiring: () => void
   startSim: (creationId: string) => Promise<void>
@@ -227,7 +229,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       writeSection(section, `Name creation ${trimmed}`)
     }
     set({ card: null, model: computeModel(useBrickStore.getState()) })
-    if (thenCode) useBrickStore.setState({ toast: `${trimmed} is ready to code. The Code view arrives in checkpoint 2.` })
+    if (thenCode) useCodeView.getState().openCode(id)
   },
 
   renameCreation: (id, name) => {
@@ -244,7 +246,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     writeSection({ ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, testSpace: space } : creation)) }, `Run ${space === 'testPlate' ? 'on the test plate' : 'in my world'}`)
   },
 
-  requestFrame: (brickIds) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1 } })),
+  requestFrame: (brickIds, points) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1, ...(points?.length ? { points: [...points] } : {}) } })),
 
   dismissWiringNote: () => set({ wiringNote: null }),
 

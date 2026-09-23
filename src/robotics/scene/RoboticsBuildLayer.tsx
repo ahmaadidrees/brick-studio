@@ -19,7 +19,7 @@ import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/ro
 import Cables from '../wiring/Cables'
 import type { HingeReport } from '../sim/mechanics'
 import { registerDraftSnapper } from './draftSnap'
-import { framePoseInFreeArea, measureCanvasInsets } from './framing'
+import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
 import StageLayer from './StageLayer'
 
@@ -267,7 +267,7 @@ function CreationFraming() {
       const plateSize = getBuildPlateSize(state.documentMetadata)
       const canvas = gl.domElement
       const viewport = { width: canvas.clientWidth || 1, height: canvas.clientHeight || 1 }
-      const pose = framePoseInFreeArea(getBuildBounds(bricks, plateSize), camera.fov, viewport, measureCanvasInsets(canvas))
+      const pose = framePoseInFreeArea(boundsWithPoints(getBuildBounds(bricks, plateSize), request.points ?? []), camera.fov, viewport, measureCanvasInsets(canvas))
       camera.position.set(pose.position.x, pose.position.y, pose.position.z)
       const orbit = controls as OrbitControlsImpl | null
       if (orbit?.target) {
