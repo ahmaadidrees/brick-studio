@@ -15,7 +15,7 @@ import { plateCurb } from './plateCurb'
 import { clearRideRequest, takeRideRequest } from './rideRequest'
 import type { RideAvatarBody, RideAvatarFrame } from './rideBridge'
 import {
-  BACK_TO_START, IDENTITY_POSE, RIDE_KEEP_STUDS, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
+  BACK_TO_START, IDENTITY_POSE, RIDER_STANDING_Y, RIDE_KEEP_STUDS, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
   type Footprint, type Pose, type RideCandidate, type RideProgramChoice, type SeatMount, type SeatWorld,
 } from './rideModel'
 
@@ -560,6 +560,22 @@ function rideRequested(): boolean {
   const ride = live.get(creationId)
   if (ride) useBrickStore.setState({ touchYaw: seatOf(ride).facingYaw })
   return true
+}
+
+/** Above the rider's capsule centre, where the character's camera looks when she walks. */
+const HEAD_ABOVE_CENTRE = 0.52
+
+/**
+ * What the camera frames while someone rides (`rideBridge.ts`): the middle of the ridden robot,
+ * its footprint's centre halfway up from its base to the rider's head. Null while walking.
+ */
+export function rideCameraTarget(): Vec3 | null {
+  const state = useExploreRideStore.getState()
+  const ride = state.active && state.phase !== 'walking' && state.riding ? live.get(state.riding) : null
+  if (!ride) return null
+  const footprint = footprintOf(ride)
+  const head = seatOf(ride).point.y + RIDER_STANDING_Y + HEAD_ABOVE_CENTRE
+  return { x: footprint.center.x, y: (footprint.center.y + head) / 2, z: footprint.center.z }
 }
 
 /** For tests: the store and the module state back to nothing. */

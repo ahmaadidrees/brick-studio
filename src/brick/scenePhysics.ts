@@ -45,9 +45,11 @@ export function resolveCameraBoomDistance(
 }
 
 /**
- * Casts the camera boom while ignoring only colliders already overlapping the
- * camera target. Rapier otherwise reports a time-of-impact of zero forever,
- * which pins the camera against the avatar until the avatar moves clear.
+ * Casts the camera boom while ignoring colliders already overlapping the
+ * camera target (Rapier otherwise reports a time-of-impact of zero forever,
+ * which pins the camera against the avatar until the avatar moves clear) and
+ * disabled colliders, which Rapier's shape cast still reports (a ridden robot
+ * is made not solid that way while its rider sits inside it).
  */
 export function findCameraObstruction(
   world: CameraQuery,
@@ -85,9 +87,7 @@ export function findCameraObstruction(
     undefined,
     undefined,
     excludeBody,
-    initialOverlaps.size
-      ? (collider) => !initialOverlaps.has(collider.handle)
-      : undefined,
+    (collider) => collider.isEnabled() && !initialOverlaps.has(collider.handle),
   )
 }
 

@@ -21,10 +21,10 @@ import { createCameraLift } from './cameraLift'
 import { findHopOffPlacement, hopOffShapes } from './hopOff'
 import { createMirrorRegistry, type MirrorWorld } from './mirrors'
 import { isCurbProp } from './plateCurb'
-import { setExploreCameraHandler, setExploreRideHandler } from './rideBridge'
+import { setExploreCameraHandler, setExploreCameraTargetHandler, setExploreRideHandler } from './rideBridge'
 import { installRideKeys } from './rideKeys'
 import { yawOf } from './rideModel'
-import { advanceRides, bringBackRide, footprintOf, lastAvatarPosition, liveRide, liveRides, rideAvatarFrame, riderBodyHandle, seatOf, useExploreRideStore, type LiveRide } from './rideStore'
+import { advanceRides, bringBackRide, footprintOf, lastAvatarPosition, liveRide, liveRides, rideAvatarFrame, rideCameraTarget, riderBodyHandle, seatOf, useExploreRideStore, type LiveRide } from './rideStore'
 
 /**
  * Riding in Explore, the scene half (checkpoint 4). Mounted inside `ExploreScene`'s
@@ -72,9 +72,12 @@ export default function ExploreRides() {
     const cameraWorld = world as unknown as RAPIER.World
     const avatarBody = () => { const handle = riderBodyHandle(); return handle === null ? undefined : cameraWorld.getRigidBody(handle) ?? undefined }
     setExploreCameraHandler(createCameraLift(cameraWorld, new (rapier as unknown as RapierModule).Ball(CAMERA_PROBE_RADIUS), avatarBody))
+    // While riding, the camera frames the robot rather than only the rider's head.
+    setExploreCameraTargetHandler(rideCameraTarget)
     const removeKeys = installRideKeys()
     return () => {
       removeKeys()
+      setExploreCameraTargetHandler(null)
       setExploreCameraHandler(null)
       setExploreRideHandler(null)
       useExploreRideStore.getState().leave()

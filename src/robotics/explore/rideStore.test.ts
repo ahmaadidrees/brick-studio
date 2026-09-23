@@ -17,7 +17,7 @@ import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection, tower
 import { BACK_TO_START, RIDER_STANDING_Y, rideLimit, yawOf } from './rideModel'
 import { RIDE_REQUEST_SECONDS, requestRide } from './rideRequest'
 import {
-  BUILD_CHANGED, DISMOUNT_MIN_SECONDS, advanceRides, bringBackRide, liveRide, rideAvatarFrame, resetExploreRideForTests, seatOf, useExploreRideStore, type RideEnvironment,
+  BUILD_CHANGED, DISMOUNT_MIN_SECONDS, advanceRides, bringBackRide, liveRide, rideAvatarFrame, rideCameraTarget, resetExploreRideForTests, seatOf, useExploreRideStore, type RideEnvironment,
 } from './rideStore'
 
 /**
@@ -180,6 +180,28 @@ describe('the ride state machine', () => {
     expect(seated.mode).toBe('seat')
     expect(seated.position.y).toBeCloseTo(seatOf(live).point.y + RIDER_STANDING_Y, 6)
     expect(seated.position.y).toBeGreaterThan(4)
+  })
+
+  it('while riding, the camera frames the robot: its middle, halfway from its base to the rider’s head; walking, her head', () => {
+    load(seatedRoverSection(), towerRoverBricks())
+    ride().enter(RAPIER as unknown as RapierModule)
+    expect(rideCameraTarget()).toBeNull()
+    rideAvatarFrame(body((37 + 1 - 32) * STUD, RIDER_STANDING_Y, (29 - 32) * STUD))
+    expect(ride().ride()).toBe(true)
+    const live = liveRide(RIDE_CREATION_ID)!
+    const target = rideCameraTarget()!
+    const head = seatOf(live).point.y + RIDER_STANDING_Y + 0.52
+    expect(target.y).toBeGreaterThan(1.5)
+    expect(target.y).toBeLessThan(head - 1.5)
+    ride().setRideKey('up', true)
+    frames(1)
+    // It follows the robot as it drives.
+    const moved = rideCameraTarget()!
+    expect(target.z - moved.z).toBeGreaterThan(2)
+    ride().setRideKey('up', false)
+    ride().hopOff()
+    frames(1.5)
+    expect(rideCameraTarget()).toBeNull()
   })
 
   it('Ride it in Explore: a ride asked for from Build seats her on the first frame in Explore, the camera behind her', () => {

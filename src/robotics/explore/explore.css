@@ -36,6 +36,11 @@
 @media (prefers-reduced-motion: no-preference) {
   .explore-ride-prompt { transition: opacity .16s ease, visibility .16s ease; }
 }
+/* Riding: the walking key help goes (the card says how to drive) and the card drops into its place,
+   off the car's wheels (a novice tester's car was half hidden behind both). */
+body[data-explore-riding='true'] .desktop-explore-hint,
+body[data-explore-riding='true'] .touch-explore-hint { display: none !important; }
+body[data-explore-riding='true'] .explore-ride-prompt { bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px)); }
 @media (pointer: coarse), (max-width: 900px) {
   /* Touch layouts: above the stick, Jump and the touch hint (which sits at 152px). */
   .explore-ride-prompt { bottom: max(188px, calc(env(safe-area-inset-bottom) + 182px)); max-width: min(420px, calc(100vw - 40px)); }
@@ -44,6 +49,11 @@
   .explore-ride-prompt-detail, .explore-ride-prompt-code { font-size: 15px; }
   .explore-ride-prompt-button { min-height: 44px; min-width: 88px; }
   .explore-ride-prompt[data-state='ride'] .explore-ride-prompt-button { min-height: 56px; min-width: 120px; }
+  /* Riding on a touch screen: between the stick and the Jump button when they leave room, else just above them. */
+  body[data-explore-riding='true'] .explore-ride-prompt { bottom: max(152px, calc(env(safe-area-inset-bottom) + 146px)); }
+}
+@media (pointer: coarse) and (min-width: 700px) {
+  body[data-explore-riding='true'] .explore-ride-prompt { bottom: max(18px, calc(env(safe-area-inset-bottom) + 12px)); max-width: min(420px, calc(100vw - 340px)); }
 }
 
 /* The robot panel's "Ride it in Explore" (build mode), under Drive and Code. */
