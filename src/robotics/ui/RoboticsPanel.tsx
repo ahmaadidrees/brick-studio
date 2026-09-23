@@ -237,7 +237,7 @@ function SelectedPart({ creation, brickId, role }: { creation: DerivedCreation |
     text = used.length ? `Ports: ${used.map((connection) => `${connection.port} ${deviceLabel(creation, connection.deviceId)}`).join(', ')}` : 'No cables yet'
   } else {
     const device = creation ? [...creation.lights, ...creation.buttons].find((candidate) => candidate.brickId === brickId) : null
-    text = device ? (device.plugged ? `Plugged into port ${device.port!.port}` : 'Not plugged in') : role === 'seat' ? 'A seat · a creation with a seat can be ridden in Explore (later)' : 'Not part of a creation yet'
+    text = device ? (device.plugged ? `Plugged into port ${device.port!.port}` : 'Not plugged in') : role === 'seat' ? 'A seat · in Explore, walk up to it and press E to ride' : 'Not part of a creation yet'
   }
   return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>{roleTitle(role) === 'Part' ? role : roleTitle(role)}</strong> · {text}</p>
 }

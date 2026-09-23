@@ -1,0 +1,399 @@
+{
+  "origin": "http://127.0.0.1:5246",
+  "viewport": "1366x768",
+  "at": "2026-09-23T08:25:58.328Z",
+  "results": [
+    {
+      "id": "A.rover-with-seat",
+      "ok": true,
+      "detail": "“Mars buggy”, a rover of 10 bricks with seat brick-1790151940100-bgqkaj, drive pair true, motors plugged [true,true] (assisted wiring)"
+    },
+    {
+      "id": "B.explore-ready",
+      "ok": true,
+      "detail": "Explore open, the character spawned at {\"x\":0,\"y\":0.385,\"z\":5}; candidate [{\"name\":\"Mars buggy\",\"status\":\"rideable\",\"program\":{\"source\":\"starter\",\"name\":\"Joystick drive\"}}]"
+    },
+    {
+      "id": "B.walked-up-with-keys",
+      "ok": true,
+      "detail": "walked 4.8 studs with W held; the seat is near (nearestId creation-mudu8so2-imyxj)"
+    },
+    {
+      "id": "B.prompt",
+      "ok": true,
+      "detail": "prompt: “Mars buggyDrives with a new Joystick drive program (not saved)Press E to ride Mars buggyRide”"
+    },
+    {
+      "id": "C.riding",
+      "ok": true,
+      "detail": "riding creation-mudu8so2-imyxj; the controller runs “Joystick drive” (starter, compiled on the fly, not saved)"
+    },
+    {
+      "id": "C.seated",
+      "ok": true,
+      "detail": "the character sits on the seat: 0.000 units from the seat centre on the ground, 0.390 above the pan"
+    },
+    {
+      "id": "C.mirrored",
+      "ok": true,
+      "detail": "3/3 controller bodies mirrored as kinematic bodies in the Explore world; the studio hides the creation's 10 bricks (of 14); chassis {\"x\":0,\"y\":0.035,\"z\":0.007} ↔ mirror {\"x\":0,\"y\":0.035,\"z\":0.007}"
+    },
+    {
+      "id": "C.prompt",
+      "ok": true,
+      "detail": "prompt: “Riding Mars buggyA new Joystick drive program (not saved) reads WASD / arrowsPress E to hop offHop off”"
+    },
+    {
+      "id": "C.still-without-keys",
+      "ok": true,
+      "detail": "with no key held the rover moved 0.000 studs in 0.7 s"
+    },
+    {
+      "id": "C.drove-forward",
+      "ok": true,
+      "detail": "W held 1.1 s: the rover drove 10.6 studs (10.6 along its forward, -Z), heading change 0.0°"
+    },
+    {
+      "id": "C.rider-carried",
+      "ok": true,
+      "detail": "while driving, the character stayed on the seat (0.092 units from it: one physics step at speed)"
+    },
+    {
+      "id": "C.turned",
+      "ok": true,
+      "detail": "← held 1.0 s: the rover turned 74° (positive = left) and its chassis moved 1.73 studs"
+    },
+    {
+      "id": "D.hopped-off",
+      "ok": true,
+      "detail": "hopped off: walking again, the rover parked and braked (stopped), still live where it stopped"
+    },
+    {
+      "id": "D.beside-on-ground",
+      "ok": true,
+      "detail": "the character stands 0.75 studs from the rover's footprint, on the plate (capsule centre y 0.385), overlapping none of its colliders"
+    },
+    {
+      "id": "D.can-ride-again",
+      "ok": true,
+      "detail": "beside it the prompt offers the ride again: “Mars buggyDrives with a new Joystick drive program (not saved)Press E to ride Mars buggyRide”"
+    },
+    {
+      "id": "D.ride-button",
+      "ok": true,
+      "detail": "the Ride button starts a ride; W then drove 3.6 studs (focus on DIV, not the button)"
+    },
+    {
+      "id": "D.hop-off-button",
+      "ok": true,
+      "detail": "the Hop off button puts the character down 0.75 studs from the rover"
+    },
+    {
+      "id": "D.solid",
+      "ok": true,
+      "detail": "W held 2.2 s toward the rover: the character closed from 4.18 to 1.74 units of its centre and stopped (moved 0.000 over the last 0.4 s), never overlapping its colliders; the rover did not move (0.0000)"
+    },
+    {
+      "id": "E.document-unchanged",
+      "ok": true,
+      "detail": "document snapshot identical after the ride (2222 characters, sorted keys)"
+    },
+    {
+      "id": "E.history-unchanged",
+      "ok": true,
+      "detail": "undo 18 → 18, redo 0 → 0"
+    },
+    {
+      "id": "E.ride-layer-gone",
+      "ok": true,
+      "detail": "the ride layer and prompt unmounted with Explore"
+    },
+    {
+      "id": "E.explore-again-authored",
+      "ok": true,
+      "detail": "Explore again: nothing live ([]); every creation is its static, authored self"
+    },
+    {
+      "id": "E.document-still-unchanged",
+      "ok": true,
+      "detail": "still identical after a second visit"
+    },
+    {
+      "id": "console-clean",
+      "ok": true,
+      "detail": "no console errors"
+    }
+  ],
+  "measurements": {
+    "walk": {
+      "from": {
+        "x": 0,
+        "y": 0.385,
+        "z": 5
+      },
+      "to": {
+        "x": 0,
+        "y": 0.384,
+        "z": 2.052
+      },
+      "studs": 4.75,
+      "method": "keyboard (W held until the prompt appeared)"
+    },
+    "drive": {
+      "from": {
+        "x": 0,
+        "y": 0.035,
+        "z": 0.007
+      },
+      "to": {
+        "x": 0.004,
+        "y": 0.037,
+        "z": -6.594
+      },
+      "studs": 10.65,
+      "forwardStuds": 10.65,
+      "speedWhileHeld": 5.536,
+      "riderToSeatWhileDriving": 0.092
+    },
+    "turn": {
+      "fromYawDeg": -180,
+      "toYawDeg": -106.1,
+      "turnedDeg": 73.9,
+      "chassisMovedStuds": 1.73
+    },
+    "hopOff": {
+      "avatar": {
+        "x": -3.352,
+        "y": 0.385,
+        "z": -3.001
+      },
+      "parkedChassis": {
+        "x": -0.826,
+        "y": 0.035,
+        "z": -7.27
+      },
+      "studsFromFootprint": 0.75,
+      "groundY": 0.385
+    },
+    "buttons": {
+      "droveStuds": 3.63,
+      "focusAfterRide": "DIV",
+      "hopOffAvatar": {
+        "x": -5.541,
+        "y": 0.385,
+        "z": -3.642
+      }
+    },
+    "walkInto": {
+      "aimYaw": 2.861,
+      "startDistanceToCentre": 4.183,
+      "closestDistanceToCentre": 1.737,
+      "stalledOverLast": 0,
+      "maxAvatarOverlaps": 0,
+      "roverMoved": 0,
+      "trail": [
+        {
+          "t": 2,
+          "x": -5.541,
+          "y": 0.385,
+          "z": -3.642,
+          "footprint": 0.748
+        },
+        {
+          "t": 86,
+          "x": -5.527,
+          "y": 0.379,
+          "z": -3.692,
+          "footprint": 0.664
+        },
+        {
+          "t": 169,
+          "x": -5.461,
+          "y": 0.38,
+          "z": -3.921,
+          "footprint": 0.28
+        },
+        {
+          "t": 252,
+          "x": -5.39,
+          "y": 0.38,
+          "z": -4.169,
+          "footprint": 0
+        },
+        {
+          "t": 336,
+          "x": -5.313,
+          "y": 0.38,
+          "z": -4.437,
+          "footprint": 0
+        },
+        {
+          "t": 420,
+          "x": -5.234,
+          "y": 0.381,
+          "z": -4.712,
+          "footprint": 0
+        },
+        {
+          "t": 505,
+          "x": -5.154,
+          "y": 0.381,
+          "z": -4.99,
+          "footprint": 0
+        },
+        {
+          "t": 589,
+          "x": -5.073,
+          "y": 0.382,
+          "z": -5.27,
+          "footprint": 0
+        },
+        {
+          "t": 672,
+          "x": -4.992,
+          "y": 0.382,
+          "z": -5.55,
+          "footprint": 0
+        },
+        {
+          "t": 757,
+          "x": -4.954,
+          "y": 0.402,
+          "z": -5.685,
+          "footprint": 0
+        },
+        {
+          "t": 841,
+          "x": -4.899,
+          "y": 0.572,
+          "z": -5.88,
+          "footprint": 0
+        },
+        {
+          "t": 923,
+          "x": -4.898,
+          "y": 0.572,
+          "z": -5.881,
+          "footprint": 0
+        },
+        {
+          "t": 1007,
+          "x": -4.898,
+          "y": 0.572,
+          "z": -5.881,
+          "footprint": 0
+        },
+        {
+          "t": 1091,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1176,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1260,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1344,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1429,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1513,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1598,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1683,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1768,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1852,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 1936,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 2020,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 2102,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        },
+        {
+          "t": 2185,
+          "x": -4.866,
+          "y": 0.573,
+          "z": -5.993,
+          "footprint": 0
+        }
+      ]
+    }
+  },
+  "screenshots": [
+    "A1-build-rover-with-seat.png",
+    "B1-explore-start.png",
+    "B2-prompt-press-e-to-ride.png",
+    "C1-riding-seated.png",
+    "C2-driving-forward.png",
+    "C3-turned-left.png",
+    "D1-hopped-off-beside.png",
+    "D2-walked-into-rover-blocked.png",
+    "E1-build-after-explore-authored-pose.png",
+    "E2-explore-again-authored-pose.png"
+  ]
+}
