@@ -26,6 +26,10 @@ Without an account (nothing is sent anywhere unless you choose to):
   that carries the whole build, which anyone can open and remix into their own draft. Rooms expire
   about two hours after the last activity, so export to keep the build.
 
+- **2D levels** (`/2d`): build a side-scrolling level from blocks, springs and enemies, run and jump through it,
+  play three ready-made courses, or open a room for up to 16 players who build and play in one level. The 3D / 2D
+  switch at the top of either builder goes straight to the other. See [docs/PLATFORMER.md](docs/PLATFORMER.md).
+
 With a class account:
 
 - **My Worlds**: save builds to the account and reopen them on any device, with checkpoints.
@@ -42,6 +46,7 @@ With a class account:
 | `/live/:roomId` | A live Build together room (owner view, or guest view via the invite link) |
 | `/world#…` | Read-only reader for a shared build; the snapshot is compressed into the URL fragment; Remix copies it into your local draft |
 | `/auth/teacher-callback` | Return leg of the teacher Google sign-in (PKCE) |
+| `/2d/*` | 2D levels: home, builder, courses, guest rooms and class rooms ([docs/PLATFORMER.md](docs/PLATFORMER.md)) |
 
 ## Quick start
 
@@ -88,19 +93,21 @@ Browser — Vite SPA (React 19, three.js / react-three-fiber, Rapier physics), h
    │  /classroom/*  JSON API with bearer tokens        │  /worlds/*  WebSocket rooms
    ▼                                                    ▼
 Cloudflare Worker (multiplayer/worker) — Durable Objects: WorldRoom (one per live room,
-   │  hibernating, authoritative document), WorldCreationLimiter
+   │  hibernating, authoritative document), PlatformerRoom (one per live 2D room), WorldCreationLimiter
    ▼  service-role queries
 Supabase Postgres + Auth — brick_* tables with RLS, checkpoints (supabase/migrations)
 ```
 
 `packages/brick-core` holds the document format, part catalog, layout validator and live-room
-protocol shared by the browser and the Worker. `vercel.json` serves `public/` assets and rewrites
+protocol shared by the browser and the Worker; `packages/platformer-core` does the same for 2D levels (simulation,
+level format, room protocol). `vercel.json` serves `public/` assets and rewrites
 everything else to `index.html`.
 
 Deeper docs:
 
 - [docs/classroom/API.md](docs/classroom/API.md) — classroom API, auth model, limits
 - [docs/LIVE_WORLD_PROTOCOL.md](docs/LIVE_WORLD_PROTOCOL.md) — live-room wire contract
+- [docs/PLATFORMER.md](docs/PLATFORMER.md) — 2D levels: routes, saving, rooms, running locally, deploying
 - [docs/classroom/TEACHER-PILOT.md](docs/classroom/TEACHER-PILOT.md) — running the first class
 - [docs/PERF-BASELINE.md](docs/PERF-BASELINE.md) and [docs/CHROMEBOOK-CHECKLIST.md](docs/CHROMEBOOK-CHECKLIST.md) — device measurements
 - [scripts/README.md](scripts/README.md) — fixtures, brand assets, load harness
