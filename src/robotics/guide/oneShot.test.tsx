@@ -96,7 +96,9 @@ describe('the ideas, from the panel', () => {
     for (const [partId, x, y, z, rotation] of [
       [ROBOTICS_PART_IDS.motor, 31, 1, 31, 0], [ROBOTICS_PART_IDS.motor, 28, 1, 31, 2], [ROBOTICS_PART_IDS.axleShort, 34, 0, 32, 0], [ROBOTICS_PART_IDS.axleShort, 26, 0, 32, 0],
       [ROBOTICS_PART_IDS.wheel, 36, 0, 31, 0], [ROBOTICS_PART_IDS.wheel, 25, 0, 31, 0], [ROBOTICS_PART_IDS.distanceSensor, 30, 1, 26, 0],
-      [ROBOTICS_PART_IDS.light, 29, 7, 27, 0], [ROBOTICS_PART_IDS.seat, 30, 7, 29, 0], ['brick_2x2', 31, 7, 27, 0],
+      [ROBOTICS_PART_IDS.light, 29, 7, 27, 0], [ROBOTICS_PART_IDS.seat, 30, 7, 29, 0],
+      // Five bricks stacked on the hub (the stack idea counts to five).
+      ['brick_2x2', 31, 7, 27, 0], ['brick_2x2', 31, 10, 27, 0], ['brick_2x2', 31, 13, 27, 0], ['brick_2x2', 31, 16, 27, 0], ['brick_2x2', 31, 19, 27, 0],
     ] as const) place(partId, x, y, z, rotation)
   }
 
@@ -114,6 +116,38 @@ describe('the ideas, from the panel', () => {
     placeArmed(29, 7, 27)
     expect(useBrickStore.getState().draft).toBeNull()
     expect(screen.getByTestId('robotics-ideas').querySelector('[data-step="idea-light"]')).toHaveAttribute('data-state', 'done')
+  })
+
+  it('the seat idea: armed on the robot’s top; placed on bare ground it goes back into the hand, on top again; Place puts it on', () => {
+    render(<RoboticsPanel />)
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    fireEvent.click(screen.getByRole('button', { name: 'Keep building' }))
+    for (const [partId, x, y, z, rotation] of [
+      [ROBOTICS_PART_IDS.motor, 31, 1, 31, 0], [ROBOTICS_PART_IDS.motor, 28, 1, 31, 2], [ROBOTICS_PART_IDS.axleShort, 34, 0, 32, 0], [ROBOTICS_PART_IDS.axleShort, 26, 0, 32, 0],
+      [ROBOTICS_PART_IDS.wheel, 36, 0, 31, 0], [ROBOTICS_PART_IDS.wheel, 25, 0, 31, 0],
+    ] as const) place(partId, x, y, z, rotation)
+    act(() => useBrickStore.setState({ undoStack: [], redoStack: [], toast: null }))
+    fireEvent.click(within(screen.getByTestId('robotics-ideas')).getByRole('button', { name: /Add a seat/ }))
+    const armed = useBrickStore.getState().draft!
+    expect(armed.partId).toBe(ROBOTICS_PART_IDS.seat)
+    // On the hub's top (six plates up on a one-plate plate), not wherever the camera happened to look.
+    expect(armed.y).toBe(7)
+    const bricksBefore = useBrickStore.getState().bricks.length
+    // Moved to bare ground in front of the car and placed there: it cannot join the robot.
+    placeArmed(20, 0, 20)
+    const state = useBrickStore.getState()
+    expect(state.bricks).toHaveLength(bricksBefore)
+    expect(state.bricks.some((brick) => brick.partId === ROBOTICS_PART_IDS.seat)).toBe(false)
+    expect(state.undoStack).toHaveLength(0)
+    expect(state.draft).toMatchObject({ partId: ROBOTICS_PART_IDS.seat, x: armed.x, y: armed.y, z: armed.z })
+    expect(state.toast).toBe('The seat goes on Robot. It is back on top: press Place.')
+    expect(oneShotPartId()).toBe(ROBOTICS_PART_IDS.seat)
+    // Place (as the strip's Place button does): on the robot, ticked, and nothing left in hand.
+    act(() => { expect(useBrickStore.getState().placeDraft()).toBe(true) })
+    expect(useBrickStore.getState().draft).toBeNull()
+    expect(useRoboticsStore.getState().model.creations[0].seats).toHaveLength(1)
+    expect(screen.getByTestId('robotics-ideas').querySelector('[data-step="idea-seat"]')).toHaveAttribute('data-state', 'done')
   })
 
   it('all four done: "More ideas", a line saying so, and rows that paint, rename and open Code', () => {

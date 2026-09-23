@@ -4,7 +4,7 @@ import { plugDeviceIn } from '../wiring/actions'
 import { moveMotorToSide } from './fixes'
 import { runIdeaAction } from './ideaActions'
 import type { StepAction } from './nextSteps'
-import { armOnce } from './oneShot'
+import { armOnce, putOnRobot } from './oneShot'
 
 /**
  * Does what a next-steps row says, through the studio's own actions: arming a part is
@@ -20,8 +20,10 @@ export function runStepAction(action: StepAction): void {
       // Turned until it faces the way the row asks (a fresh part arms unturned; the robotics layer may have moved its ghost).
       for (let turn = 0; turn < 4 && useBrickStore.getState().draft?.rotation !== action.rotation; turn += 1) useBrickStore.getState().rotate()
       if (action.at) useBrickStore.getState().setDraftPosition(action.at.x, action.at.y, action.at.z)
-      // Placed once, then the brush is put down (lane P, guide/oneShot.ts); a row that asks for several keeps it.
-      if (!action.repeat) armOnce(action.partId)
+      // An idea's part comes on its robot's top (lane P); placed once, then the brush is put down
+      // (guide/oneShot.ts); a row that asks for several keeps it.
+      if (action.onRobot) putOnRobot(action.onRobot)
+      if (!action.repeat) armOnce(action.partId, action.onRobot ?? null)
       return
     }
     case 'plug':

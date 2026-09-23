@@ -338,12 +338,13 @@ async function screens(t) {
   await place(t, { partId: 'robo_distance_sensor', x: 30, y: 1, z: 26 })
   await place(t, { partId: 'robo_light', x: 29, y: 7, z: 27 })
   await place(t, { partId: 'robo_seat', x: 30, y: 7, z: 29 })
-  await place(t, { partId: 'brick_2x2', x: 31, y: 7, z: 27 })
+  // Lane P: the stack idea counts to five bricks ("Stack 5 bricks on top · 2 of 5" on the way).
+  for (const y of [7, 10, 13, 16, 19]) await place(t, { partId: 'brick_2x2', x: 31, y, z: 27 })
   await t.robo((state) => state.dismissWiringNote())
   await frameAll(t)
   // Lane P: the four done give way to "You did all 4 ideas!" and more ideas, so the list never ends empty-handed.
   const ticked = await t.page.getByTestId('robotics-ideas').locator('li').evaluateAll((items) => items.map((item) => `${item.dataset.step}:${item.dataset.state}`))
-  check(`${tag}.ideas-ticked`, ticked[0] === 'ideas-done:done' && ticked.slice(1).map((entry) => entry.split(':')[0]).join() === 'idea-paint,idea-name,idea-taller,idea-code' && await t.play.isEnabled(), `${tag}: after a sensor, a light, a seat and a brick on top the ideas read ${ticked.join(', ')}; Drive still on`)
+  check(`${tag}.ideas-ticked`, ticked[0] === 'ideas-done:done' && ticked.slice(1).map((entry) => entry.split(':')[0]).join() === 'idea-paint,idea-name,idea-taller,idea-code' && await t.play.isEnabled(), `${tag}: after a sensor, a light, a seat and five bricks on top the ideas read ${ticked.join(', ')}; Drive still on`)
   await t.shot(`${tag}-14-made-it-mine`)
 
   // A gate: not ready (no sensor), then stuck to its frame, then ready.

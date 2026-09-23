@@ -126,15 +126,14 @@ describe('placing a kit', () => {
     expect(readiness(robot)).toEqual({ kind: 'drive', ready: true, reason: null })
     expect(useRoboticsStore.getState().card).toBeNull()
     expect(useRoboticsStore.getState().wiringNote).toBeNull()
-    // Framed with ground around it: three studs out from the kit's footprint on every side.
+    // Framed snug in the canvas the panels leave free (lane P: the scene fits its bricks to most of it).
     const frame = useRoboticsStore.getState().frameRequest
     expect(frame?.brickIds).toEqual(robot.brickIds)
-    expect(frame?.points).toHaveLength(4)
-    expect(Math.min(...frame!.points!.map((point) => point.x))).toBeCloseTo((26 - 3 - 32) * 0.62)
-    expect(Math.max(...frame!.points!.map((point) => point.z))).toBeCloseTo((36 + 3 - 32) * 0.62)
-    // The whole kit is selected, its plate last, so the panel shows the robot.
-    expect(new Set(brickState().selectedIds)).toEqual(new Set(ids))
-    expect(brickState().selectedId).toBe(ids[0])
+    expect(frame?.snug).toBe(true)
+    expect(frame?.points).toBeUndefined()
+    // Nothing stays picked (lane P): the next click picks one part; the panel shows the new robot anyway.
+    expect(brickState().selectedIds).toEqual([])
+    expect(brickState().selectedId).toBeNull()
     expect(brickState().draft).toBeNull()
     expect(useKitStore.getState().armed).toBeNull()
     expect(brickState().toast).toBe('Buggy is ready to drive!')
@@ -205,8 +204,10 @@ describe('placing a kit', () => {
     expect(readiness(robots()[0]).ready).toBe(true)
   })
 
-  it('the placed kit stays selected, so Rotate turns the whole robot and it still drives', () => {
+  it('nothing stays picked; picked all again (a box around it), Rotate turns the whole robot and it still drives', () => {
     placeKit('buggy', 29, 28)
+    expect(brickState().selectedIds).toEqual([])
+    brickState().selectBricks(robots()[0].brickIds)
     brickState().rotate()
     expect(brickState().undoStack.at(-1)?.label).toBe('Rotate 9 bricks')
     const [robot] = robots()

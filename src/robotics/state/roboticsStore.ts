@@ -104,7 +104,14 @@ export type SimState = {
 }
 
 /** Asks the scene to frame these bricks inside the free canvas area (the layer measures the panels). */
-export type FrameRequest = { brickIds: string[]; nonce: number; /** Extra world points to keep in view (where a creation is about to drive). */ points?: Vec3[] }
+export type FrameRequest = {
+  brickIds: string[]
+  nonce: number
+  /** Extra world points to keep in view (where a creation is about to drive). */
+  points?: Vec3[]
+  /** Frame the bricks alone, filling most of the free area (a kit just placed, back to build; lane P). */
+  snug?: boolean
+}
 
 export type RoboticsState = {
   model: RoboticsModel
@@ -125,7 +132,7 @@ export type RoboticsState = {
   confirmCard: (name: string, thenCode: boolean) => void
   renameCreation: (creationId: string, name: string) => void
   setTestSpace: (creationId: string, space: TestSpace) => void
-  requestFrame: (brickIds: string[], points?: Vec3[]) => void
+  requestFrame: (brickIds: string[], points?: Vec3[], options?: { snug?: boolean }) => void
   dismissWiringNote: () => void
   undoWiring: () => void
   startSim: (creationId: string) => Promise<void>
@@ -385,7 +392,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     writeSection({ ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, testSpace: space } : creation)) }, `Run ${space === 'testPlate' ? 'on the test plate' : 'in my world'}`)
   },
 
-  requestFrame: (brickIds, points) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1, ...(points?.length ? { points: points.map((point) => ({ ...point })) } : {}) } })),
+  requestFrame: (brickIds, points, options) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1, ...(points?.length ? { points: points.map((point) => ({ ...point })) } : {}), ...(options?.snug ? { snug: true } : {}) } })),
 
   dismissWiringNote: () => set({ wiringNote: null }),
 
