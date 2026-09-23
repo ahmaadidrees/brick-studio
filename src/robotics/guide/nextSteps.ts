@@ -36,7 +36,7 @@ export type StepAction =
   /** Select a brick that needs turning or taking off. */
   | { kind: 'select'; brickId: string }
 
-export type StepIcon = { part: string } | { symbol: 'plug' | 'drive' | 'try' | 'turn' | 'fix' | 'worked' }
+export type StepIcon = { part: string } | { symbol: 'plug' | 'drive' | 'try' | 'turn' | 'fix' }
 
 export type NextStep = {
   id: string
@@ -47,8 +47,11 @@ export type NextStep = {
   state: StepState
   /** Null when there is nothing to do about it yet (the play row before the robot is ready). */
   action: StepAction | null
-  icon: StepIcon
+  icon: StepIcon | TriedIcon
 }
+
+/** The ready row's tick after a try that worked (kid lane Y). */
+export type TriedIcon = { symbol: 'worked' }
 
 type Rotation = 0 | 1 | 2 | 3
 const ROTATIONS: readonly Rotation[] = [0, 1, 2, 3]

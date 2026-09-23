@@ -8,7 +8,7 @@ import { useDriveView } from '../drive/driveViewState'
 import { readiness } from '../drive/readiness'
 import { useLastTryRow } from '../drive/tryOutcome'
 import { runStepAction } from '../guide/actions'
-import { nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
+import { nextSteps, type NextStep, type StepIcon, type TriedIcon } from '../guide/nextSteps'
 import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
@@ -339,13 +339,14 @@ function StepRow({ row, live, textId }: { row: NextStep; live: boolean; textId?:
   )
 }
 
-function StepIconView({ icon }: { icon: StepIcon }) {
+function StepIconView({ icon }: { icon: StepIcon | TriedIcon }) {
+  if ('symbol' in icon && icon.symbol === 'worked') return <span className="robotics-step-icon symbol worked" aria-hidden="true"><Check size={22} /></span>
   if ('part' in icon) {
     const part = BRICK_PART_MAP[icon.part]
     if (part) return <span className="robotics-step-icon" aria-hidden="true"><PartThumbnail part={part} /></span>
   }
   const symbol = 'symbol' in icon ? icon.symbol : 'fix'
-  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : symbol === 'worked' ? Check : Wrench
+  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : Wrench
   return <span className={`robotics-step-icon symbol ${symbol}`} aria-hidden="true"><Icon size={22} /></span>
 }
 
