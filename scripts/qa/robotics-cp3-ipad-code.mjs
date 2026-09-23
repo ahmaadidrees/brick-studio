@@ -405,12 +405,12 @@ try {
   ids.plate = await place({ partId: 'plate_6x8', x: 28, y: 0, z: 26, color: '#3e83d7' })
   ids.hub = await place({ partId: 'robo_hub', x: 29, y: 1, z: 27, color: '#f5eee0' })
   await sleep(400)
-  const nameField = '[data-testid="robotics-creation-card"] input[aria-label="Creation name"]'
-  const focusedName = await tapElement({ css: nameField }, 'Creation name field (card)')
+  const nameField = '[data-testid="robotics-creation-card"] input[aria-label="Robot name"]'
+  const focusedName = await tapElement({ css: nameField }, 'Robot name field (card)')
   await sleep(500)
   const typedName = await qa((css, text) => { const input = document.querySelector(css); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, text); input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text })); input.blur(); return input.value }, nameField, 'Mars buggy')
   await sleep(250)
-  const notNow = await tapElement({ text: 'Not now', within: '[data-testid="robotics-creation-card"]' }, 'Not now (card)')
+  const notNow = await tapElement({ text: 'Keep building', within: '[data-testid="robotics-creation-card"]' }, 'Keep building (card)')
   await sleep(400)
   ids.leftMotor = await place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2, color: GREY })
   ids.rightMotor = await place({ partId: 'robo_motor', x: 31, y: 1, z: 31, color: GREY })
@@ -422,13 +422,13 @@ try {
   await robo((state, list) => { state.dismissWiringNote(); state.requestFrame(list); return true }, Object.values(ids))
   await sleep(900)
   const rover = (await robo((state) => state.model.creations.map((c) => ({ name: c.name, bricks: c.brickIds.length, ready: c.lines?.ready ?? null, sensors: c.sensors.map((s) => s.port?.port ?? null) }))))[0]
-  record('build:rover-named', focusedName.ok && notNow.ok && typedName === 'Mars buggy' && rover?.name === 'Mars buggy' && rover.bricks === 9, `one creation "${rover?.name}" over ${rover?.bricks} bricks (${rover?.ready}); the name field was focused by a tap and filled by a script input event, "Not now" tapped`)
+  record('build:rover-named', focusedName.ok && notNow.ok && typedName === 'Mars buggy' && rover?.name === 'Mars buggy' && rover.bricks === 9, `one creation "${rover?.name}" over ${rover?.bricks} bricks (${rover?.ready}); the name field was focused by a tap and filled by a script input event, "Keep building" tapped`)
   const builtConstruction = await construction()
   const builtSpace = await robo((state) => state.model.creations[0].testSpace ?? null)
   await stage('build-panel')
-  // A long press on studio text (the creation panel's first line) must not select it: iPadOS would raise its
+  // A long press on studio text (the panel's "Next step" heading) must not select it: iPadOS would raise its
   // Copy / Look Up / Translate callout over the panel. Text fields stay selectable.
-  const panelLine = await target({ css: '[data-testid="robotics-panel"] .robotics-lines li' })
+  const panelLine = await target({ css: '[data-testid="robotics-panel"] [data-testid="robotics-next-steps"]' })
   if (panelLine.found && panelLine.hit) {
     await qa(() => { document.getSelection()?.removeAllRanges(); return true })
     await sim.gesture([

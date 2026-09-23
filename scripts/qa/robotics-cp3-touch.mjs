@@ -513,13 +513,13 @@ try {
   await stage('hub-card')
   let named = false
   if (card) {
-    const field = await tapElement({ css: '[data-testid="robotics-creation-card"] input[aria-label="Creation name"]' }, 'Creation name field (card)')
+    const field = await tapElement({ css: '[data-testid="robotics-creation-card"] input[aria-label="Robot name"]' }, 'Robot name field (card)')
     if (field.ok) {
       await sleep(900)
       const focus = await qa(() => ({ focused: document.activeElement?.getAttribute('aria-label'), visual: window.visualViewport ? { height: Math.round(visualViewport.height), offsetTop: Math.round(visualViewport.offsetTop) } : null, scale: window.visualViewport?.scale ?? null, innerHeight }))
-      record('card:name-focus-by-tap', focus.focused === 'Creation name', `a tap focused the name field (${focus.focused}); visual viewport ${JSON.stringify(focus.visual)} of ${focus.innerHeight} (scale ${focus.scale})`)
+      record('card:name-focus-by-tap', focus.focused === 'Robot name', `a tap focused the name field (${focus.focused}); visual viewport ${JSON.stringify(focus.visual)} of ${focus.innerHeight} (scale ${focus.scale})`)
       await stage('card-name-focused', { focus })
-      const fieldCss = '[data-testid="robotics-creation-card"] input[aria-label="Creation name"]'
+      const fieldCss = '[data-testid="robotics-creation-card"] input[aria-label="Robot name"]'
       const fieldFont = await qa((css) => getComputedStyle(document.querySelector(css)).fontSize, fieldCss)
       if (parseFloat(fieldFont) < 16) note('major', 'card-name-font', `the card's name field renders at ${fieldFont} (robotics.css declares 15px, but \`font: 900 15px/1.2 inherit\` is an invalid shorthand and is dropped); under 16 px also makes iPhone Safari zoom the page on focus`)
       // Typing: WebDriver Element Send Keys first (keyboard input as WebKit's automation sends it).
@@ -539,11 +539,11 @@ try {
       await qa(() => { document.activeElement?.blur?.(); return true })
       await sleep(500)
     }
-    const notNow = await tapElement({ text: 'Not now', within: '[data-testid="robotics-creation-card"]' }, 'Not now (card)')
+    const notNow = await tapElement({ text: 'Keep building', within: '[data-testid="robotics-creation-card"]' }, 'Keep building (card)')
     await sleep(400)
     const list = await creations()
     named = list[0]?.name === 'Touch buggy'
-    record('card:named', notNow.ok && named && (await cardState()) === null, `after "Not now" the card is ${(await cardState()) ? 'still open' : 'closed'} and the creation is named "${list[0]?.name}"`)
+    record('card:named', notNow.ok && named && (await cardState()) === null, `after "Keep building" the card is ${(await cardState()) ? 'still open' : 'closed'} and the robot is named "${list[0]?.name}"`)
   }
 
   /* 3. Two motors, the second turned twice with Rotate. */
@@ -628,34 +628,36 @@ try {
   record('fonts:robotics-shorthand', true, `computed fonts (robotics.css declares name 900 15px, chip 800 11.5px, link 900 12px via \`font: … inherit\`): ${JSON.stringify(fonts)}`)
   await stage('rover-built', { fonts })
 
-  /* 7. Drive forward 40% and Reset from the creation panel. */
-  console.log('\n7. Drive forward and Reset from the panel')
+  /* 7. Drive it: the panel's big Drive button, the on-screen joystick by one finger, Reset, Back to build. */
+  console.log('\n7. Drive with the joystick, then Reset and Back to build')
   const before = await snapshot()
-  const drive = await tapElement({ text: 'Drive forward 40%', within: '[data-testid="robotics-panel"]' }, 'Drive forward 40% (panel)')
+  const drive = await tapElement({ css: '[data-testid="robotics-play-button"]' }, 'Drive (panel)')
   if (drive.ok) {
-    try { await sim.waitFor(() => window.__robotics.roboticsStore.getState().sim !== null, { timeout: 20_000 }) } catch { /* recorded below */ }
-    await sleep(2600)
-    const state = await simState()
-    const chassis = state && ids.plate ? state.poses[await bodyOf(ids.plate)] : null
-    record('drive:rolls', Boolean(chassis && chassis.position.z < -1 && Math.abs(chassis.position.x) < 0.6 && Math.abs(yawOf(chassis)) < 15), chassis ? `after 2.6 s: ${(-chassis.position.z).toFixed(2)} forward, ${chassis.position.x.toFixed(2)} sideways, yaw ${yawOf(chassis).toFixed(1)}°, simulated ${state.elapsed.toFixed(2)} s` : 'no run started')
-    if (chassis) {
-      // Where the rover is on screen after 2.6 s, and whether a finger (or an eye) can reach it there.
-      // A body pose moves the body from its built place (identity = as built), so the chassis centre is the plate's
-      // built centre moved by the pose (its yaw is near zero here).
-      const built = spot(31, 0.5, 30)
-      const onScreen = await screenOf({ x: built.x + chassis.position.x, y: built.y + chassis.position.y, z: built.z + chassis.position.z })
-      const under = await qa((x, y) => window.__qa.canvasAt(x, y), onScreen.x, onScreen.y)
-      const visibleRover = onScreen.inFront && under.onCanvas
-      record('drive:rover-visible', visibleRover, `the driving rover's chassis is at (${Math.round(onScreen.x)}, ${Math.round(onScreen.y)}) on screen: ${visibleRover ? 'on open canvas' : `under ${under.by}`}`)
-      if (!visibleRover) note('major', 'rover-drives-under-panel', `Driving forward, the rover leaves the framed area and ends under ${under.by} after 2.6 s (the camera does not follow and the panel sits where "forward" points at this camera).`)
+    try { await sim.waitFor(() => Boolean(window.__robotics.stageStore.getState().stage), { timeout: 20_000 }) } catch { /* recorded below */ }
+    await sleep(1200)
+    await stage('drive-view')
+    const stick = await qa(() => { const el = document.querySelector('[data-testid="robo-joystick"]'); if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, size: Math.round(r.width) } })
+    const chassisAt = () => qa((plate) => { const stage = window.__robotics.stageStore.getState().stage; if (!stage) return null; const body = stage.controller.bodyOfBrick(plate); const pose = body ? stage.controller.poses().get(body) : null; return pose ? { x: pose.position.x, z: pose.position.z } : null }, ids.plate)
+    const start = await chassisAt()
+    record('drive:view-open', Boolean(stick && start), stick ? `the Drive view opened; the joystick is ${stick.size} px wide at (${Math.round(stick.x)}, ${Math.round(stick.y)})` : 'no joystick found')
+    if (stick && start) {
+      // One finger pushes the knob up 60 px and holds it there for about 1.5 s, then lifts.
+      const up = { x: stick.x, y: stick.y - Math.min(60, stick.size / 2 - 8) }
+      await sim.drag([{ x: stick.x, y: stick.y }, up, up, up], { stepMs: 500 })
+      await sleep(300)
+      const end = await chassisAt()
+      const moved = end ? Math.hypot(end.x - start.x, end.z - start.z) / STUD : 0
+      record('drive:joystick-drives', moved > 2, `one finger on the joystick drove the robot ${moved.toFixed(1)} studs`)
+      await stage('driven-by-touch', { moved })
+      const reset = await tapElement({ css: '[data-testid="robo-drive-reset"]' }, 'Reset (Drive view)')
+      await sleep(600)
+      const back = await chassisAt()
+      record('drive:reset', reset.ok && Boolean(back) && Math.hypot(back.x - start.x, back.z - start.z) < 0.05, `after Reset the robot is ${back ? (Math.hypot(back.x - start.x, back.z - start.z) / STUD).toFixed(2) : '?'} studs from where it was built`)
     }
-    await stage('driving')
-    const reset = await tapElement({ css: '[data-testid="robotics-reset"]' }, 'Reset (panel)')
-    await sleep(400)
-    const status = await qa(() => document.querySelector('[data-testid="robotics-sim-status"]')?.textContent)
-    record('reset:built-pose', reset.ok && (await simState()) === null && status === 'Built pose' && (await snapshot()) === before, `after Reset: status "${status}", run ${(await simState()) ? 'still live' : 'gone'}, document ${(await snapshot()) === before ? 'unchanged' : 'CHANGED'}`)
-    await stage('reset')
-
+    const leave = await tapElement({ css: '[data-testid="robo-drive-back"]' }, 'Back to build (Drive view)')
+    await sleep(600)
+    record('drive:back-unchanged', leave.ok && (await qa(() => window.__robotics.driveView.getState().creationId)) === null && (await snapshot()) === before, `Back to build: the view is ${(await qa(() => window.__robotics.driveView.getState().creationId)) === null ? 'closed' : 'still open'}, document ${(await snapshot()) === before ? 'unchanged' : 'CHANGED'}`)
+    await stage('back-to-build')
   }
 
   const failed = results.filter((r) => !r.ok)
