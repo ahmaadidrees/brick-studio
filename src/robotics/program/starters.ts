@@ -1,4 +1,5 @@
 import type { DerivedCreation, DerivedDevice } from '../model/creations'
+import { SEES_SOMETHING_STUDS } from './types'
 import type { WorkspaceJson } from './workspaceJson'
 
 /**
@@ -44,7 +45,7 @@ export const STARTER_GOALS: Readonly<Record<StarterId, string>> = Object.freeze(
   'stop-before-wall': 'Try it: change 3 to 6. Does it stop earlier or later?',
   'joystick-drive': 'Try it: drive with the joystick or the arrow keys. Can you stop right in front of the wall?',
   'smart-gate': 'Try it: change 90 to 45. How far does the door open now?',
-  'signal-post': 'Try it: change red to green, or keep the light on for 5 seconds.',
+  'signal-post': 'Try it: change red to green. Then press “Someone walks up”.',
   blank: 'Try it: snap a block under “when run”, then press Run.',
 })
 
@@ -91,23 +92,56 @@ function joystickDrive(): Starter {
   ))
 }
 
+/**
+ * `if <sensor> sees something closer than 5 studs` — the same "sees something" as the event hat,
+ * so a visitor the stage walks up to (3 studs away) is seen, and anything under 5 counts.
+ */
+const seesSomething = (id: (role: string) => string, sensor: DerivedDevice) =>
+  block('robo_sensor_sees', id('sees'), { fields: { SENSOR: sensor.brickId }, inputs: { STUDS: number(SEES_SOMETHING_STUDS, id('studs')) } })
+
+/**
+ * Smart gate (kid lane Y): the gate stays open while someone is there and closes once they
+ * have gone. Read aloud: "when run, forever: if the sensor sees something, turn the arm to
+ * 90°, else turn it to 0°". The arm only turns when the command changes (commands latch).
+ */
 function smartGate(sensor: DerivedDevice, arm: DerivedDevice): Starter {
   const id = (role: string) => `smart-gate:${role}`
   return starter('smart-gate', false, chain(
-    block('robo_when_sensor_sees', id('when-sees'), { fields: { SENSOR: sensor.brickId } }),
-    block('robo_turn_motor_to', id('open'), { fields: { MOTOR: arm.brickId }, inputs: { DEGREES: number(90, id('open-degrees')) } }),
-    block('robo_wait', id('wait'), { inputs: { SECONDS: number(2, id('wait-seconds')) } }),
-    block('robo_turn_motor_to', id('close'), { fields: { MOTOR: arm.brickId }, inputs: { DEGREES: number(0, id('close-degrees')) } }),
+    block('robo_when_run', id('when-run')),
+    block('robo_forever', id('forever'), {
+      inputs: {
+        DO: {
+          block: block('robo_if_else', id('if'), {
+            inputs: {
+              CONDITION: { block: seesSomething(id, sensor) },
+              DO: { block: block('robo_turn_motor_to', id('open'), { fields: { MOTOR: arm.brickId }, inputs: { DEGREES: number(90, id('open-degrees')) } }) },
+              ELSE: { block: block('robo_turn_motor_to', id('close'), { fields: { MOTOR: arm.brickId }, inputs: { DEGREES: number(0, id('close-degrees')) } }) },
+            },
+          }),
+        },
+      },
+    }),
   ))
 }
 
+/** Signal post (kid lane Y): the light is red while someone is there and off once they have gone. */
 function signalPost(sensor: DerivedDevice, light: DerivedDevice): Starter {
   const id = (role: string) => `signal-post:${role}`
   return starter('signal-post', false, chain(
-    block('robo_when_sensor_sees', id('when-sees'), { fields: { SENSOR: sensor.brickId } }),
-    block('robo_set_light', id('red'), { fields: { LIGHT: light.brickId, COLOR: 'red' } }),
-    block('robo_wait', id('wait'), { inputs: { SECONDS: number(2, id('wait-seconds')) } }),
-    block('robo_light_off', id('off'), { fields: { LIGHT: light.brickId } }),
+    block('robo_when_run', id('when-run')),
+    block('robo_forever', id('forever'), {
+      inputs: {
+        DO: {
+          block: block('robo_if_else', id('if'), {
+            inputs: {
+              CONDITION: { block: seesSomething(id, sensor) },
+              DO: { block: block('robo_set_light', id('red'), { fields: { LIGHT: light.brickId, COLOR: 'red' } }) },
+              ELSE: { block: block('robo_light_off', id('off'), { fields: { LIGHT: light.brickId } }) },
+            },
+          }),
+        },
+      },
+    }),
   ))
 }
 

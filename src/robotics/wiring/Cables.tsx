@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { useBrickStore } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
@@ -6,7 +7,9 @@ import { livePort } from '../model/control'
 import type { Vec3 } from '../model/vec'
 import { isDevicePart, roboticsSpec, type HubPort } from '../parts/catalog'
 import { useHiddenBrickIds } from '../scene/hiddenBricks'
+import type { BodyPose } from '../sim/mechanics'
 import { useRoboticsStore, type RoboticsModel } from '../state/roboticsStore'
+import { useStageStore } from '../state/stageStore'
 import { brickObstacles, deviceCableEnd, hubPortEnd, looseCable, routeCable, routeLift, type CableEnd } from './route'
 
 /**
@@ -16,7 +19,9 @@ import { brickObstacles, deviceCableEnd, hubPortEnd, looseCable, routeCable, rou
  * marked: a ring where it leaves the device and an enlarged, tinted label on its port.
  * An unplugged device shows a short loose cable ending in a red plug. A stale cable
  * (its device was deleted) is kept in the document for Undo but not drawn. While a
- * nudge runs, the simulated bricks move, so their cables are left out until Reset.
+ * nudge ("Test the motors") or a stage runs, the simulated bricks move: a cable whose device
+ * and hub ride on the same body moves with that body (kid lane Y: the gate's cables stay put
+ * while its arm swings); one between two bodies that move apart is left out until Reset.
  * Nothing here writes to the document, and nothing here takes a pointer event.
  */
 const CABLE = '#263c51'
@@ -27,20 +32,39 @@ const CABLE_LIT_RADIUS = 0.068
 
 type DrawnCable = { deviceId: string; hubId: string; port: HubPort; points: Vec3[]; lit: boolean; device: CableEnd; socket: CableEnd }
 type DrawnStub = { deviceId: string; points: Vec3[]; lit: boolean }
-export type CableScene = { cables: DrawnCable[]; stubs: DrawnStub[] }
+/** Cables of simulated bricks, drawn at the built pose inside a group that follows their body. */
+export type RidingCables = Map<string, DrawnCable[]>
+export type CableScene = { cables: DrawnCable[]; stubs: DrawnStub[]; riding: RidingCables }
+
+/** A running simulation's bodies, as the cables need them (a nudge's mechanics, or the stage's controller). */
+export type CableBodies = { simulated: ReadonlySet<string>; bodyOfBrick: (brickId: string) => string | null; poses: () => Map<string, BodyPose> }
 
 const noRaycast = () => null
 
 /** Every cable and loose end the scene draws for this document, pure so it can be read back. */
-export function cableScene(model: RoboticsModel, selectedId: string | null, hidden: ReadonlySet<string>): CableScene {
+export function cableScene(model: RoboticsModel, selectedId: string | null, hidden: ReadonlySet<string>, bodies: CableBodies | null = null): CableScene {
   const { bricks, partMap, plateSize, section } = model.input
   const byId = new Map(bricks.map((brick) => [brick.id, brick]))
   const obstacles = brickObstacles(bricks, partMap, plateSize)
   const cables: DrawnCable[] = []
   const stubs: DrawnStub[] = []
+  const riding: RidingCables = new Map()
   const devices = bricks.filter((brick) => isDevicePart(brick.partId) && roboticsSpec(brick.partId)?.role !== 'hub')
   for (const device of devices) {
-    if (hidden.has(device.id)) continue
+    if (hidden.has(device.id)) {
+      // Simulated: drawn with its body when the device and its hub ride on the same one.
+      const cable = bodies?.simulated.has(device.id) ? livePort(section, device.id, byId) : null
+      const hub = cable ? byId.get(cable.hubId) : undefined
+      const body = hub && bodies!.simulated.has(hub.id) ? bodies!.bodyOfBrick(device.id) : null
+      if (!cable || !hub || !body || bodies!.bodyOfBrick(hub.id) !== body) continue
+      const end = deviceCableEnd(device, partMap, plateSize)
+      const socket = hubPortEnd(hub, cable.port, partMap, plateSize)
+      if (!end || !socket) continue
+      const list = riding.get(body) ?? []
+      list.push({ deviceId: device.id, hubId: cable.hubId, port: cable.port, points: routeCable(end, socket, obstacles), lit: device.id === selectedId, device: end, socket })
+      riding.set(body, list)
+      continue
+    }
     const end = deviceCableEnd(device, partMap, plateSize)
     if (!end) continue
     const lit = device.id === selectedId
@@ -50,7 +74,7 @@ export function cableScene(model: RoboticsModel, selectedId: string | null, hidd
     if (cable && socket) cables.push({ deviceId: device.id, hubId: cable.hubId, port: cable.port, points: routeCable(end, socket, obstacles), lit, device: end, socket })
     else if (!cable) stubs.push({ deviceId: device.id, points: looseCable(end), lit })
   }
-  return { cables, stubs }
+  return { cables, stubs, riding }
 }
 
 function Tube({ points, radius, color, lit }: { points: Vec3[]; radius: number; color: string; lit: boolean }) {
@@ -128,12 +152,48 @@ function LitPort({ socket, port }: { socket: CableEnd; port: HubPort }) {
   )
 }
 
+/** The simulation whose bricks the studio hides: the stage's while one is open, else a running nudge's. */
+function useCableBodies(): CableBodies | null {
+  const sim = useRoboticsStore((state) => state.sim)
+  const stage = useStageStore((state) => state.stage)
+  return useMemo(() => {
+    if (stage) return { simulated: stage.controller.simulatedBrickIds, bodyOfBrick: (id: string) => stage.controller.bodyOfBrick(id), poses: () => stage.controller.poses() }
+    if (sim) return { simulated: sim.mechanics.simulatedBrickIds, bodyOfBrick: (id: string) => sim.mechanics.bodyOfBrick(id), poses: () => sim.mechanics.poses() }
+    return null
+  }, [sim, stage])
+}
+
+/** Cables that ride on a moving body: drawn at the built pose inside a group that takes the body's pose every frame. */
+function RidingCableGroups({ riding, bodies }: { riding: RidingCables; bodies: CableBodies | null }) {
+  const groups = useRef(new Map<string, THREE.Group>())
+  useFrame(() => {
+    if (!bodies || !groups.current.size) return
+    const poses = bodies.poses()
+    for (const [bodyId, group] of groups.current) {
+      const pose = poses.get(bodyId)
+      if (!pose) continue
+      group.position.set(pose.position.x, pose.position.y, pose.position.z)
+      group.quaternion.set(pose.rotation.x, pose.rotation.y, pose.rotation.z, pose.rotation.w)
+    }
+  })
+  return (
+    <>
+      {[...riding].map(([bodyId, list]) => (
+        <group key={bodyId} ref={(group) => { if (group) groups.current.set(bodyId, group); else groups.current.delete(bodyId) }}>
+          {list.map((cable) => <Tube key={`${cable.deviceId}:${cable.hubId}:${cable.port}`} points={cable.points} radius={cable.lit ? CABLE_LIT_RADIUS : CABLE_RADIUS} color={cable.lit ? CABLE_LIT : CABLE} lit={cable.lit} />)}
+        </group>
+      ))}
+    </>
+  )
+}
+
 export default function Cables() {
   const model = useRoboticsStore((state) => state.model)
-  // Whatever a nudge or the stage draws itself (the studio hides its copies), its cables are left out too.
+  // Whatever a nudge or the stage draws itself (the studio hides its copies): its cables ride with its bodies.
   const hidden = useHiddenBrickIds()
+  const bodies = useCableBodies()
   const selectedId = useBrickStore((state) => state.selectedId)
-  const scene = useMemo(() => cableScene(model, selectedId, hidden ?? new Set()), [model, selectedId, hidden])
+  const scene = useMemo(() => cableScene(model, selectedId, hidden ?? new Set(), hidden ? bodies : null), [model, selectedId, hidden, bodies])
 
   useEffect(() => {
     if (!import.meta.env.DEV) return
@@ -143,12 +203,15 @@ export default function Cables() {
     hook.cables = () => ({
       cables: scene.cables.map((cable) => ({ deviceId: cable.deviceId, hubId: cable.hubId, port: cable.port, lit: cable.lit, lift: routeLift(cable.points), from: cable.device.point, to: cable.socket.point })),
       stubs: scene.stubs.map((stub) => ({ deviceId: stub.deviceId, lit: stub.lit, tip: stub.points[stub.points.length - 1] })),
+      // Kid lane Y: cables drawn with a simulated body (a nudge, a stage), by body.
+      riding: [...scene.riding].flatMap(([bodyId, list]) => list.map((cable) => ({ deviceId: cable.deviceId, hubId: cable.hubId, port: cable.port, bodyId }))),
     })
     return () => { delete hook.cables }
   }, [scene])
 
   return (
     <group name="robotics-cables">
+      <RidingCableGroups riding={scene.riding} bodies={bodies} />
       {scene.cables.map((cable) => (
         <group key={`${cable.deviceId}:${cable.hubId}:${cable.port}`}>
           <Tube points={cable.points} radius={cable.lit ? CABLE_LIT_RADIUS : CABLE_RADIUS} color={cable.lit ? CABLE_LIT : CABLE} lit={cable.lit} />

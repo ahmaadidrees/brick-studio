@@ -55,7 +55,9 @@ describe('Try it: the program a gate or a signal light runs', () => {
     const before = JSON.stringify(gate.section)
     const choice = choosePlayProgram('try', gate.section, gate.creation)!
     expect(choice).toMatchObject({ kind: 'try', source: 'starter', name: 'Smart gate', programId: null })
-    expect(choice.ir.scripts[0].trigger.kind).toBe('sensorSees')
+    // It runs from the start and watches the sensor the whole time.
+    expect(choice.ir.scripts[0].trigger.kind).toBe('run')
+    expect(readsSensor(choice.ir)).toBe(true)
     expect(JSON.stringify(gate.section)).toBe(before)
   })
 

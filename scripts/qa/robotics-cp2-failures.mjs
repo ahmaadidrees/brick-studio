@@ -535,7 +535,7 @@ async function failureReversed() {
   await sleep(600)
   const yawLater = yawOf((await poseOf(ids.hub)).rotation)
   const saved = (await section()).programs.find((program) => program.name === 'My program')
-  check('F2.edit-while-running', changedLine === 'Changed · press Run to use it' && stillSpinning.phase === 'running' && Math.abs(yawLater - yawWhileChanged) > 5 && JSON.stringify(saved.workspace).includes('"NUM":-40'), `typed −40 while it spun: saved (revision ${saved.revision}), the stage says "${changedLine}" and the run keeps spinning (${yawWhileChanged.toFixed(0)}° → ${yawLater.toFixed(0)}°)`)
+  check('F2.edit-while-running', changedLine === 'Your code changed. Press Run to try it.' && stillSpinning.phase === 'running' && Math.abs(yawLater - yawWhileChanged) > 5 && JSON.stringify(saved.workspace).includes('"NUM":-40'), `typed −40 while it spun: saved (revision ${saved.revision}), the stage says "${changedLine}" and the run keeps spinning (${yawWhileChanged.toFixed(0)}° → ${yawLater.toFixed(0)}°)`)
   await shot('F2c-changed-while-running')
   await resetStage()
   const fixStart = await poseOf(ids.hub)
@@ -794,7 +794,8 @@ async function failureArmInFrame() {
   const contactNames = contactBricks.map((id) => Object.entries(ids).find(([, value]) => value === id)?.[0] ?? id)
   measured.F4 = { maxArmDegrees: maxAngle, doorYaw: Number(yawOf(doorPose.rotation).toFixed(3)), armChip, contacts: contactNames, blockWarning: openBlock?.warning, problems: listed, diagnostics: last.diagnostics }
   check('F4.run.arm-stuck', maxAngle < 0.5 && Math.abs(yawOf(doorPose.rotation)) < 0.1, `the visitor walked into the beam, "turn Arm motor to 90°" ran, and the arm stayed at ${maxAngle.toFixed(2)}° (door yaw ${yawOf(doorPose.rotation).toFixed(2)}°)`)
-  check('F4.run.chip', armChip?.value === '0°' && armChip.detail === 'built into the frame · can’t swing' && armChip.tone === 'bad', `the arm chip: ${armChip?.value} (${armChip?.detail}), red`)
+  // Kid lane Y: the arm chip says open or closed (the angle goes under it when it has turned).
+  check('F4.run.chip', armChip?.value === 'closed' && armChip.detail === 'built into the frame · can’t swing' && armChip.tone === 'bad', `the arm chip: ${armChip?.value} (${armChip?.detail}), red`)
   check('F4.run.contact', contactNames.includes('door') && contactNames.some((name) => name.startsWith('bridge')), `the stage highlights the contact: ${contactNames.join(' ↔ ')}`)
   check('F4.run.block-says', openBlock?.warning === "Arm motor's arm is built into the frame, so it can't swing" && openBlock.outline === 'robo-diag-warning' && listed.some((line) => line.includes('built into the frame')), `the "turn … to 90°" block's warning: "${openBlock?.warning}" (outline ${openBlock?.outline}); problems: ${listed.join(' | ')}`)
   if (!shotTaken) await shot('F4b-code-contact-highlighted-arm-stuck')

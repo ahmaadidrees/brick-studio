@@ -69,7 +69,8 @@ export const ROBOTICS_PART_COLORS = {
   axle: '#a9b7bd',
   wheel: '#1f2a33',
   distanceSensor: '#f4ca3a',
-  light: '#e7473c',
+  // A light looks off until a program turns it on (kid lane Y): a pale grey lamp; on the stage it lights in its colour.
+  light: '#c6ced4',
   button: '#ef8d32',
   hingeMotor: '#2eaa9d',
   seat: '#3e83d7',

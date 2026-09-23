@@ -6,6 +6,7 @@ import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { readiness } from '../drive/readiness'
+import { useLastTryRow } from '../drive/tryOutcome'
 import { runStepAction } from '../guide/actions'
 import { nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
 import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
@@ -268,7 +269,9 @@ function PlayButtons({ creation, live, reasonId }: { creation: DerivedCreation; 
  */
 function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreation; live: boolean; focus: boolean; reasonId: string }) {
   const model = useRoboticsStore((state) => state.model)
-  const rows = useMemo(() => nextSteps(creation, model), [creation, model])
+  // Kid lane Y: after a try, the ready row says what happened ("It worked! Try it again").
+  const tried = useLastTryRow(creation.id)
+  const rows = useMemo(() => nextSteps(creation, model, { tried }), [creation, model, tried])
   const path = rows.filter((row) => row.group === 'step')
   const choices = rows.filter((row) => row.group === 'choice')
   const ideas = rows.filter((row) => row.group === 'idea')
@@ -342,7 +345,7 @@ function StepIconView({ icon }: { icon: StepIcon }) {
     if (part) return <span className="robotics-step-icon" aria-hidden="true"><PartThumbnail part={part} /></span>
   }
   const symbol = 'symbol' in icon ? icon.symbol : 'fix'
-  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : Wrench
+  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : symbol === 'worked' ? Check : Wrench
   return <span className={`robotics-step-icon symbol ${symbol}`} aria-hidden="true"><Icon size={22} /></span>
 }
 

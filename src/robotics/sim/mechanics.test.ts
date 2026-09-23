@@ -351,6 +351,34 @@ describe('checkpoint 2 additions', () => {
     mechanics.dispose()
   })
 
+  it('a visitor with its own leg times and pause: quick then slow, waits as long as it says, and walks back the same way', () => {
+    const creation = roverCreation()
+    const path = [{ x: 6, y: 1.1, z: -5 }, { x: 0, y: 1.1, z: -5 }, { x: -0.62, y: 1.1, z: -5 }]
+    const visitor = { id: 'visitor', kind: 'visitor' as const, path, size: { x: 1.1, y: 2.2, z: 0.5 }, secondsPerLeg: 1, legSeconds: [0.5, 1], pauseSeconds: 0.5 }
+    const mechanics = createMechanics({ rapier: RAPIER, bricks: roverBricks(), partMap, plateSize: 64, creation, scenery: 'none', props: [visitor] })
+    // Whole fixed steps, so the phases land exactly.
+    const seconds = (count: number) => { for (let step = 0; step < Math.round(count / FIXED_STEP); step += 1) mechanics.stepOnce() }
+    const x = () => mechanics.propPoses().get('visitor')!.position.x
+    mechanics.triggerVisitor()
+    seconds(0.5)
+    // The quick leg (6 units in half a second) is done; the slow one (0.62 in a second) begins.
+    expect(x()).toBeCloseTo(0, 3)
+    seconds(0.5)
+    expect(x()).toBeCloseTo(-0.31, 3)
+    expect(mechanics.visitorPhase()).toBe('arriving')
+    seconds(0.5)
+    expect(mechanics.visitorPhase()).toBe('here')
+    seconds(0.5)
+    expect(mechanics.visitorPhase()).toBe('leaving')
+    // Back out slowly first: half a second later it is halfway out of the slow leg.
+    seconds(0.5)
+    expect(x()).toBeCloseTo(-0.31, 3)
+    seconds(1)
+    expect(mechanics.visitorPhase()).toBe('away')
+    expect(x()).toBeCloseTo(6, 3)
+    mechanics.dispose()
+  })
+
   it('a hinge in power mode turns toward its range end at a fraction of top speed; 0 holds it', () => {
     const { mechanics } = build(gateBricks(), GATE_IDS.hinge, GATE_WIRING)
     expect(mechanics.setHingePower(GATE_IDS.hinge, 0.5)).toBe(true)

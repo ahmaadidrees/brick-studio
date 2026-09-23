@@ -36,7 +36,7 @@ export type StepAction =
   /** Select a brick that needs turning or taking off. */
   | { kind: 'select'; brickId: string }
 
-export type StepIcon = { part: string } | { symbol: 'plug' | 'drive' | 'try' | 'turn' | 'fix' }
+export type StepIcon = { part: string } | { symbol: 'plug' | 'drive' | 'try' | 'turn' | 'fix' | 'worked' }
 
 export type NextStep = {
   id: string
@@ -81,7 +81,14 @@ const reversed = (vector: Vec3): Vec3 => ({ x: -vector.x, y: -vector.y, z: -vect
 export const READY_TO_DRIVE = 'Ready to drive!'
 export const READY_TO_TRY = 'Ready to try!'
 
-export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 'input'>): NextStep[] {
+/**
+ * `tried`: what the robot's last walk-up said (kid lane Y, `drive/tryOutcome.ts`), while it is still
+ * about this build and this code. The ready row of a gate or a signal light then says that instead
+ * of "Ready to try!" ("It worked! Try it again" with a tick), and still opens Try it.
+ */
+export type NextStepOptions = { tried?: { worked: boolean; text: string } | null }
+
+export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 'input'>, options: NextStepOptions = {}): NextStep[] {
   const plan = readinessPlan(creation)
   const bricks = new Map(model.input.bricks.map((brick) => [brick.id, brick]))
   const open = plan.steps.findIndex((step) => !step.done)
@@ -92,13 +99,14 @@ export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 
   })
   if (!plan.kind) return [...rows, ...choices(creation, open === -1)]
   const ready = open === -1
+  const tried = ready && plan.kind === 'try' ? options.tried ?? null : null
   rows.push({
     id: 'ready',
     group: 'step',
-    text: plan.kind === 'drive' ? READY_TO_DRIVE : READY_TO_TRY,
+    text: tried ? tried.text : plan.kind === 'drive' ? READY_TO_DRIVE : READY_TO_TRY,
     state: ready ? 'current' : 'todo',
     action: ready ? { kind: 'play', creationId: creation.id } : null,
-    icon: { symbol: plan.kind === 'drive' ? 'drive' : 'try' },
+    icon: { symbol: tried?.worked ? 'worked' : plan.kind === 'drive' ? 'drive' : 'try' },
   })
   if (plan.path === 'rover') rows.push(...roverIdeas(creation, model))
   return rows

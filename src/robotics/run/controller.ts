@@ -1,15 +1,15 @@
 import { PLATE_HEIGHT, STUD, rotatedSize } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { deriveCreations, type DeriveInput, type DerivedCreation } from '../model/creations'
-import { brickFrame, toWorldPoint, type PartMap } from '../model/grid'
+import { brickFrame, type PartMap } from '../model/grid'
 import { cross, dot, normalize, radiansToDegrees, rotateByQuat, type Vec3 } from '../model/vec'
-import { roboticsSpec } from '../parts/catalog'
 import { SENSOR_MAX_RANGE_STUDS, type BlockDiagnostic, type DeviceId, type ProgramKey } from '../program/types'
 import type { RapierModule } from '../sim/colliders'
 import { createMechanics, type ContactReport, type Mechanics } from '../sim/mechanics'
 import { createArbiter, type ArbitratedCommand, type ArbiterDevice } from './arbiter'
 import { createInputSampler } from './input'
 import type { MotorReading, ProgramRuntime, RunController, RunObservation, RunPhase, RunSpace, SensorBeam, SensorReading, TestProp, TickSnapshot } from './types'
+import { planWalkUp } from './walkUp'
 
 /**
  * The run controller (CP2-PLAN §4, contract §8): one mechanics world, one program at a
@@ -38,6 +38,8 @@ export type RunControllerInput = {
   /** Test props; `defaultProps` when absent. */
   props?: readonly TestProp[]
   fixedStep?: number
+  /** The sensor the program reads: the visitor of `defaultProps` walks up to it (kid lane Y, additive). */
+  walkSensorId?: DeviceId | null
 }
 
 /** The controller plus what the stage scene draws from. */
@@ -53,10 +55,6 @@ const WALL_DISTANCE_STUDS = 12
 const WALL_THICKNESS_STUDS = 1
 const WALL_MIN_WIDTH_STUDS = 16
 const WALL_HEIGHT = 12 * PLATE_HEIGHT
-const VISITOR_STOP_STUDS = 3
-const VISITOR_APPROACH_STUDS = 10
-const VISITOR_SECONDS_PER_LEG = 2.5
-const VISITOR_SIZE = { width: 1.1, height: 2.2, depth: 0.5 }
 const HINGE_TOP_SPEED_DEG_PER_SEC = 90
 
 const round = (value: number, places: number) => {
@@ -100,10 +98,12 @@ function extentAlong(creation: DerivedCreation, geometry: Geometry, axis: Vec3):
  * pair meets a wall 12 studs ahead of its front along the pair's forward, on the test plate
  * only (in My world the world is the scenery); the wall is wider than the creation and
  * taller than its sensors. A creation with a sensor and no drive pair gets a visitor that
- * walks in from the side to 3 studs in front of its first sensor and back, in either space.
+ * walks into the beam of its sensor (the one the program reads, `walkSensorId`, else the first
+ * plugged in) and stops 3 studs in front of it, then walks back, in either space; the walk is
+ * planned around the robot and the student's bricks (`walkUp.ts`, kid lane Y).
  * Props are in world units: a wall's centre and full size, a visitor's box centre per path point.
  */
-export function defaultProps(creation: DerivedCreation, space: RunSpace, geometry: Geometry): TestProp[] {
+export function defaultProps(creation: DerivedCreation, space: RunSpace, geometry: Geometry, walkSensorId?: DeviceId | null): TestProp[] {
   const driveForward = creation.drivePair?.forward ?? creation.driveForward
   if (driveForward) {
     if (space !== 'testPlate') return []
@@ -120,23 +120,8 @@ export function defaultProps(creation: DerivedCreation, space: RunSpace, geometr
     const size = Math.abs(forward.x) > 0.5 ? { x: thickness, y: WALL_HEIGHT, z: width } : { x: width, y: WALL_HEIGHT, z: thickness }
     return [{ id: 'wall', kind: 'wall', center, size }]
   }
-  const sensor = creation.sensors[0]
-  if (!sensor) return []
-  const brick = geometry.bricks.find((candidate) => candidate.id === sensor.brickId)
-  const part = brick ? geometry.partMap[brick.partId] : undefined
-  const spec = brick ? roboticsSpec(brick.partId) : null
-  if (!brick || !part || !spec?.sensor) return []
-  const point = toWorldPoint(brickFrame(brick, part, geometry.plateSize), spec.sensor.point)
-  const normal = normalize(sensor.normal)
-  const flat = normalize({ x: normal.x, y: 0, z: normal.z })
-  const sideways = Math.hypot(flat.x, flat.z) > 0.5 ? cross(flat, UP) : { x: 1, y: 0, z: 0 }
-  const height = Math.max(VISITOR_SIZE.height, point.y + 0.7)
-  const reach = VISITOR_STOP_STUDS * STUD + VISITOR_SIZE.depth / 2
-  const arrival = { x: point.x + normal.x * reach, y: height / 2, z: point.z + normal.z * reach }
-  const start = { x: arrival.x + sideways.x * VISITOR_APPROACH_STUDS * STUD, y: height / 2, z: arrival.z + sideways.z * VISITOR_APPROACH_STUDS * STUD }
-  const size = Math.abs(sideways.x) > 0.5 ? { x: VISITOR_SIZE.width, y: height, z: VISITOR_SIZE.depth } : { x: VISITOR_SIZE.depth, y: height, z: VISITOR_SIZE.width }
-  const facing = Math.hypot(flat.x, flat.z) > 0.5 ? { x: -flat.x, y: 0, z: -flat.z } : { x: 0, y: 0, z: 1 }
-  return [{ id: 'visitor', kind: 'visitor', path: [start, arrival], size, secondsPerLeg: VISITOR_SECONDS_PER_LEG, facing }]
+  const visitor = planWalkUp(creation, space, geometry, walkSensorId)
+  return visitor ? [visitor] : []
 }
 
 type ReadBack = { sensors: Record<DeviceId, SensorReading>; motors: Record<DeviceId, MotorReading>; beams: SensorBeam[]; speedStudsPerSecond: number }
@@ -146,7 +131,7 @@ const diagnosticKey = (diagnostic: BlockDiagnostic) => [diagnostic.code, diagnos
 export function createRunController(input: RunControllerInput): StageRunController {
   const { rapier, bricks, partMap, plateSize, creation, space } = input
   const geometry: Geometry = { bricks, partMap, plateSize }
-  const props: readonly TestProp[] = input.props ?? defaultProps(creation, space, geometry)
+  const props: readonly TestProp[] = input.props ?? defaultProps(creation, space, geometry, input.walkSensorId)
   const mechanics = createMechanics({ rapier, bricks, partMap, plateSize, creation, scenery: space === 'testPlate' ? 'none' : 'world', props, fixedStep: input.fixedStep })
   const dt = mechanics.fixedStep
   const hiddenBrickIds: ReadonlySet<string> = space === 'testPlate' ? new Set(bricks.map((brick) => brick.id)) : mechanics.simulatedBrickIds

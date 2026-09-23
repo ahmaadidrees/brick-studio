@@ -11,7 +11,7 @@ import { installRoboticsParts } from '../parts/install'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { resetStageStoreForTests, useStageStore } from '../state/stageStore'
 import { RoboticsPanel } from '../ui/RoboticsPanel'
-import DriveView, { keyAxes, tryResults } from './DriveView'
+import DriveView, { driveHint, keyAxes, tryResults } from './DriveView'
 import { useDriveView } from './driveViewState'
 
 /**
@@ -236,6 +236,14 @@ describe('Try it', () => {
     }
     expect(opened).toBe(true)
     expect(screen.getByTestId('robo-drive-results')).toHaveTextContent('Front sensorsees something')
+    // Kid lane Y: it says so, and keeps saying so after the visitor has gone and the gate has closed.
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('It worked! The gate opened.')
+    expect(screen.getByTestId('robo-try-result')).toHaveAttribute('data-verdict', 'worked')
+    for (let second = 0; second < 8; second += 0.5) advance(0.5)
+    expect(useStageStore.getState().stageObservation?.visitorPhase).toBe('away')
+    expect(screen.getByTestId('robo-drive-results')).toHaveTextContent('Arm motorclosed')
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('It worked! The gate opened.')
+    expect(screen.getByRole('button', { name: 'Someone walks up' })).toBeEnabled()
     expect(storedPrograms('gate')).toEqual([])
     expect(documentJson()).toBe(before)
   })
@@ -253,7 +261,89 @@ describe('Try it', () => {
     }
     expect(red).toBe(true)
     expect(useStageStore.getState().stageObservation?.lights[SIGNAL_IDS.light]).toBe('red')
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('It worked! The light came on.')
+    // The light stays on while they stand there, and goes off once they have gone.
+    advance(2)
+    expect(useStageStore.getState().stageObservation?.visitorPhase).toBe('here')
+    expect(useStageStore.getState().stageObservation?.lights[SIGNAL_IDS.light]).toBe('red')
+    for (let second = 0; second < 6; second += 0.5) advance(0.5)
+    expect(useStageStore.getState().stageObservation?.visitorPhase).toBe('away')
+    expect(screen.getByTestId('robo-drive-results')).toHaveTextContent('Lightoff')
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('It worked! The light came on.')
     expect(storedPrograms('signal')).toEqual([])
+  })
+
+  it('a sensor whose beam runs into the robot itself: the visitor comes to the front, and it says the sensor did not see them', async () => {
+    // A column of the gate's own bricks right in front of its sensor, where the visitor would stand.
+    const column = [1, 4, 7].map((y, index) => ({ id: `column-${index}`, partId: 'brick_1x4', x: 20, y, z: 23, rotation: 1 as const, color: '#888888' }))
+    loadWorld([...gateBricks(), ...column], GATE_SECTION)
+    await openDrive('gate')
+    await running('myWorld')
+    const visitor = stage().controller.props[0]
+    expect(visitor.kind === 'visitor' && visitor.walk).toMatchObject({ problem: 'no-room', approach: 'front' })
+    fireEvent.click(screen.getByRole('button', { name: 'Someone walks up' }))
+    for (let second = 0; second < 7; second += 0.5) advance(0.5)
+    expect(screen.getByTestId('robo-try-result')).toHaveAttribute('data-verdict', 'not-seen')
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('The sensor didn’t see them. It looks this way')
+    expect(screen.getByTestId('robo-try-result').querySelector('.robo-beam-arrow')).not.toBeNull()
+  })
+
+  it('a program that sees them but does nothing: it says so and offers Code, which opens on that robot', async () => {
+    // "when Front sensor sees something → wait 1 s": it reads the sensor (so Try it runs it) and moves nothing.
+    const workspace = { blocks: { languageVersion: 0, blocks: [{ type: 'robo_when_sensor_sees', id: 'hat', x: 40, y: 40, fields: { SENSOR: GATE_IDS.sensor }, next: { block: { type: 'robo_wait', id: 'wait', inputs: { SECONDS: { shadow: { type: 'robo_number', id: 'n', fields: { NUM: 1 } } } } } } }] } }
+    loadWorld(gateBricks(), { ...GATE_SECTION, creations: [{ ...GATE_SECTION.creations[0], activeProgramId: 'idle' }], programs: [{ id: 'idle', creationId: 'gate', name: 'Just looking', workspace, deviceNames: {}, revision: 1 }] })
+    await openDrive('gate')
+    await running('myWorld')
+    fireEvent.click(screen.getByRole('button', { name: 'Someone walks up' }))
+    for (let second = 0; second < 7; second += 0.5) advance(0.5)
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('The sensor saw them, but the code didn’t open the gate.')
+    fireEvent.click(screen.getByTestId('robo-try-open-code'))
+    expect(useDriveView.getState().creationId).toBeNull()
+    expect(useCodeView.getState().creationId).toBe('gate')
+  })
+
+  it('back in Build, the ready row says what the last try did, until the robot changes', async () => {
+    loadWorld(gateBricks(), GATE_SECTION)
+    act(() => useBrickStore.getState().selectBrick(GATE_IDS.hub))
+    render(<RoboticsPanel />)
+    const readyRow = () => screen.getByTestId('robotics-next-steps').querySelector('[data-step="ready"]')!
+    expect(readyRow()).toHaveTextContent('Ready to try!')
+    fireEvent.click(screen.getByTestId('robotics-play-button'))
+    await screen.findByTestId('robo-drive')
+    await running('myWorld')
+    fireEvent.click(screen.getByRole('button', { name: 'Someone walks up' }))
+    for (let second = 0; second < 5; second += 0.5) advance(0.5)
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('It worked!')
+    fireEvent.click(screen.getByTestId('robo-drive-back'))
+    await screen.findByTestId('robotics-panel')
+    expect(readyRow()).toHaveTextContent('It worked! Try it again')
+    expect(readyRow().querySelector('.robotics-step-icon.worked')).not.toBeNull()
+    // The row still opens Try it.
+    expect(readyRow().querySelector('button')).toBeEnabled()
+    // Changing the robot (one more brick on its plate) makes it a new robot to try.
+    act(() => {
+      const brick = useBrickStore.getState()
+      brick.choosePart('brick_1x1')
+      brick.setDraftPosition(25, 1, 26)
+      expect(useBrickStore.getState().placeDraft()).toBe(true)
+      useBrickStore.getState().cancelInteraction()
+    })
+    expect(readyRow()).toHaveTextContent('Ready to try!')
+  })
+})
+
+describe('on a touch screen', () => {
+  it('says to drag the blue ball: no arrow keys to name on an iPad', async () => {
+    // jsdom has no matchMedia: a touch screen answers "(pointer: coarse)" as an iPad does.
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: (query: string) => ({ matches: query === '(pointer: coarse)', media: query, addEventListener: () => {}, removeEventListener: () => {} }) })
+    try {
+      loadWorld()
+      await openDrive()
+      expect(screen.getByTestId('robo-drive-hint')).toHaveTextContent('Drag the blue ball to drive')
+    } finally {
+      delete (window as { matchMedia?: unknown }).matchMedia
+    }
+    expect(driveHint(false)).toBe('Drag the joystick or use the arrow keys')
   })
 })
 

@@ -26,10 +26,22 @@ describe('readings chips', () => {
       speedStudsPerSecond: 2.4,
     }))
     expect(chips.map((chip) => [chip.label, chip.value, chip.detail ?? '', chip.tone])).toEqual([
-      ['Front sensor', '2.6 studs', '', 'live'],
+      ['Front sensor', '2.6 steps away', 'sees something', 'live'],
       ['Motors', 'Left 40 · Right 40 %', 'speed 38 · 37 %', 'live'],
       ['Speed', '2.4 st/s', '', 'live'],
     ])
+  })
+
+  it('says how far the sensor sees in steps, and "sees something" only inside 5 (kid words)', () => {
+    const { creation } = wiredRover()
+    const sensorChip = (distanceStuds: number, hit = true) => readingChips(creation, observation({ sensors: { [ROVER_IDS.sensor]: { distanceStuds, hit } } }))[0]
+    expect(sensorChip(3)).toMatchObject({ value: '3 steps away', detail: 'sees something' })
+    expect(sensorChip(1)).toMatchObject({ value: '1 step away', detail: 'sees something' })
+    expect(sensorChip(12)).toMatchObject({ value: '12 steps away' })
+    expect(sensorChip(12).detail).toBeUndefined()
+    expect(sensorChip(40, false).value).toBe('nothing seen')
+    // No unit a third grader would not know in the value line.
+    for (const chip of [sensorChip(2.43), sensorChip(12)]) expect(chip.value).not.toMatch(/studs|°/)
   })
 
   it('shows two motors fighting (raw blocks on a reversed pair) and "nothing seen"', () => {
@@ -53,10 +65,17 @@ describe('readings chips', () => {
     expect(running[1]).toMatchObject({ value: 'Left motor not plugged in', detail: 'Right motor speed −26 %', tone: 'warn' })
   })
 
-  it('reads a gate’s arm in degrees, and says when it is stuck', () => {
+  it('reads a gate’s arm as open or closed, with how far it turned under it, and says when it is stuck', () => {
     const { creation } = wiredGate()
-    expect(readingChips(creation, observation({ motors: { [GATE_IDS.hinge]: motor({ positionDegrees: 89.6 }) } })).find((chip) => chip.id === GATE_IDS.hinge)).toMatchObject({ value: '90°', tone: 'live' })
-    expect(readingChips(creation, observation({ motors: { [GATE_IDS.hinge]: motor({ positionDegrees: 3, stuck: 'blocked' }) } })).find((chip) => chip.id === GATE_IDS.hinge)).toMatchObject({ value: '3°', detail: 'blocked · pushing on something', tone: 'bad' })
+    const armChip = (reading: Partial<MotorReading>) => readingChips(creation, observation({ motors: { [GATE_IDS.hinge]: motor(reading) } })).find((chip) => chip.id === GATE_IDS.hinge)
+    expect(armChip({ positionDegrees: 89.6 })).toMatchObject({ value: 'open', detail: 'turned to 90', tone: 'live' })
+    expect(armChip({ positionDegrees: 45 })).toMatchObject({ value: 'open', detail: 'turned to 45' })
+    expect(armChip({ positionDegrees: 0 })).toMatchObject({ value: 'closed', tone: 'live' })
+    expect(armChip({ positionDegrees: 0 })!.detail).toBeUndefined()
+    expect(armChip({ positionDegrees: 3, stuck: 'blocked' })).toMatchObject({ value: 'closed', detail: 'blocked · pushing on something', tone: 'bad' })
+    expect(armChip({ positionDegrees: 0, stuck: 'locked' })).toMatchObject({ value: 'closed', detail: 'built into the frame · can’t swing', tone: 'bad' })
+    // The sensor chip names the part without its port letter.
+    expect(readingChips(creation, null).map((chip) => chip.label)).toEqual(['Front sensor', 'Arm motor'])
   })
 
   it('shows a light’s colour with a swatch', () => {

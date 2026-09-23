@@ -5,8 +5,9 @@ import { disconnect } from '../model/control'
 import { emptyRoboticsSection, readRoboticsSection, writeRoboticsSection, type RoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
 import type { ProgramRuntime, TickSnapshot } from '../run/types'
+import { useLastTry } from '../drive/tryOutcome'
 import { installRoboticsWatcher, useRoboticsStore } from './roboticsStore'
-import { resetStageStoreForTests, useStageStore } from './stageStore'
+import { ensureStageRunning, resetStageStoreForTests, setStageRunner, useStageStore } from './stageStore'
 
 /**
  * The stage slice through the real brick store: the document is loaded with
@@ -175,6 +176,79 @@ describe('the stage slice', () => {
     await stageState().openStage('rover')
     expect(useRoboticsStore.getState().sim).toBeNull()
     expect(stageState().stage).not.toBeNull()
+  })
+})
+
+/** Steps the open stage (1/60 s frames) and publishes what it observes about ten times a second, as the scene does. */
+function advance(seconds: number) {
+  const stage = stageState().stage!
+  for (let frame = 1; frame <= Math.round(seconds * 60); frame += 1) {
+    stage.controller.advance(1 / 60)
+    if (frame % 6 === 0) stageState().publishStageObservation(stage.controller.observe())
+  }
+}
+
+/** Opens the gate's arm to 90° while its sensor sees something, else closes it (the Smart gate starter, by hand). */
+const smartGate: ProgramRuntime = {
+  tick(snapshot) {
+    const source = { scriptId: 's', blockId: 'b', controller: false }
+    const reading = snapshot.sensors[GATE_IDS.sensor]
+    return { intents: [{ kind: 'motorTarget', deviceId: GATE_IDS.hinge, degrees: reading.hit && reading.distanceStuds < 5 ? 90 : 0, source }], activeBlockIds: [], diagnostics: [], variables: {}, idle: false }
+  },
+  stop() {},
+}
+
+describe('the walk-up test (kid lane Y)', () => {
+  it('"Someone walks up" is watched until it has a verdict, which is kept for the robot; a new run clears the stage’s', async () => {
+    load(gateBricks(), GATE_SECTION)
+    useLastTry.setState({ byCreation: {} })
+    await stageState().openStage('gate')
+    stageState().runOnStage(smartGate)
+    stageState().triggerVisitor()
+    expect(stageState().walk).toMatchObject({ creationId: 'gate', sensorId: GATE_IDS.sensor, target: 'gate', verdict: null })
+    advance(4)
+    expect(stageState().walk?.verdict).toBe('worked')
+    expect(useLastTry.getState().byCreation.gate).toMatchObject({ verdict: 'worked', target: 'gate', bricks: useBrickStore.getState().bricks })
+    stageState().runOnStage(smartGate)
+    expect(stageState().walk).toBeNull()
+    expect(useLastTry.getState().byCreation.gate?.verdict).toBe('worked')
+    stageState().resetStage()
+    expect(stageState().walk).toBeNull()
+  })
+
+  it('a registered runner (the Code view) starts the newest code before the walk, and a stage button press; when it cannot, nobody walks', async () => {
+    load(gateBricks(), GATE_SECTION)
+    await stageState().openStage('gate')
+    let canRun = false
+    let asked = 0
+    setStageRunner({ creationId: 'gate', ensureRunning: () => { asked += 1; if (canRun) stageState().runOnStage(smartGate); return canRun } })
+    stageState().triggerVisitor()
+    expect(asked).toBe(1)
+    expect(stageState().stageObservation?.visitorPhase).toBe('away')
+    expect(stageState().walk).toBeNull()
+    canRun = true
+    stageState().triggerVisitor()
+    expect(asked).toBe(2)
+    expect(stageState().stageObservation?.phase).toBe('running')
+    expect(stageState().stageObservation?.visitorPhase).toBe('arriving')
+    // A button pressed on the stage asks too (and a release does not).
+    stageState().setStageButton('no-button', true)
+    stageState().setStageButton('no-button', false)
+    expect(asked).toBe(3)
+    // A runner for another robot is not this stage's.
+    setStageRunner({ creationId: 'someone-else', ensureRunning: () => { asked += 1; return false } })
+    expect(ensureStageRunning()).toBe(true)
+    expect(asked).toBe(3)
+    setStageRunner(null)
+  })
+
+  it('the visitor walks up to the sensor the active program reads', async () => {
+    const second = { id: 'second-sensor', partId: 'robo_distance_sensor', x: 21, y: 7, z: 24, rotation: 2 as const, color: '#f4ca3a' }
+    const workspace = { blocks: { languageVersion: 0, blocks: [{ type: 'robo_when_sensor_sees', id: 'hat', x: 0, y: 0, fields: { SENSOR: 'second-sensor' } }] } }
+    load([...gateBricks(), second], { ...GATE_SECTION, connections: [...GATE_SECTION.connections, { deviceId: 'second-sensor', hubId: GATE_IDS.hub, port: 'C' }], creations: [{ ...GATE_SECTION.creations[0], activeProgramId: 'p' }], programs: [{ id: 'p', creationId: 'gate', name: 'Back door', workspace, deviceNames: {}, revision: 1 }] })
+    await stageState().openStage('gate')
+    const visitor = stageState().stage!.controller.props.find((prop) => prop.kind === 'visitor')
+    expect(visitor?.kind === 'visitor' && visitor.sensorId).toBe('second-sensor')
   })
 })
 

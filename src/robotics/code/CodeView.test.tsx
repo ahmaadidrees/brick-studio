@@ -3,7 +3,7 @@ import * as Blockly from 'blockly/core'
 import { StrictMode } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useBrickStore } from '../../brick/store'
-import { ROVER_IDS, roverBricks } from '../model/fixtures'
+import { GATE_IDS, ROVER_IDS, gateBricks, roverBricks } from '../model/fixtures'
 import { installRoboticsParts } from '../parts/install'
 import { STARTER_GOALS } from '../program/starters'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
@@ -12,7 +12,7 @@ import { RoboticsPanel } from '../ui/RoboticsPanel'
 import { SAVE_DEBOUNCE_MS } from './BlocklyWorkspace'
 import CodeView from './CodeView'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from './codeViewState'
-import { ROVER_SECTION, loadWorld, programRecord, storedPrograms, storedSection, stubBlocklyLayout } from './codeTestFixtures'
+import { GATE_SECTION, ROVER_SECTION, loadWorld, programRecord, storedPrograms, storedSection, stubBlocklyLayout } from './codeTestFixtures'
 import { studioShortcutsSuspended } from './studioKeys'
 
 /**
@@ -204,7 +204,7 @@ describe('Run', () => {
     await settle()
     expect(storedPrograms()[0].revision).toBe(1)
     expect(useStageStore.getState().stageObservation?.phase).toBe('running')
-    expect(screen.getByTestId('robo-changed')).toHaveTextContent('Changed · press Run to use it')
+    expect(screen.getByTestId('robo-changed')).toHaveTextContent('Your code changed. Press Run to try it.')
 
     fireEvent.click(screen.getByTestId('robo-run'))
     expect(screen.queryByTestId('robo-changed')).toBeNull()
@@ -223,6 +223,99 @@ describe('Run', () => {
     fireEvent.click(screen.getByTestId('robo-run'))
     expect(screen.queryByTestId('robo-run-blocked')).toBeNull()
     expect(useStageStore.getState().stageObservation?.phase).toBe('running')
+  })
+})
+
+/** Steps the stage like the scene does (1/60 s frames) and publishes what it observes. */
+function advance(seconds: number) {
+  const stage = useStageStore.getState().stage!
+  for (let frame = 0; frame < Math.round(seconds * 60); frame += 1) {
+    stage.controller.advance(1 / 60)
+    if (frame % 6 === 5) act(() => useStageStore.getState().publishStageObservation(stage.controller.observe()))
+  }
+  act(() => useStageStore.getState().publishStageObservation(stage.controller.observe()))
+}
+const armAngle = () => useStageStore.getState().stageObservation?.motors[GATE_IDS.hinge]?.positionDegrees ?? 0
+
+describe('a stage input tests the newest code (kid lane Y)', () => {
+  it('"Someone walks up" with nothing running runs the program first, then walks, and says it worked', async () => {
+    loadWorld(gateBricks(), GATE_SECTION)
+    await openCode('gate')
+    expect(screen.getByTestId('robo-status')).toHaveTextContent('Ready')
+    // The student changes 90 to 45 and, without pressing Run, sends someone.
+    act(() => { mainWorkspace().getBlockById('smart-gate:open-degrees')!.setFieldValue(45, 'NUM') })
+    await settle()
+    expect(storedPrograms('gate')[0].revision).toBe(1)
+    fireEvent.click(screen.getByTestId('robo-visitor'))
+    expect(useStageStore.getState().stageObservation?.phase).toBe('running')
+    expect(useStageStore.getState().stageObservation?.visitorPhase).toBe('arriving')
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('Here they come. Watch the sensor.')
+    let opened = 0
+    for (let second = 0; second < 5; second += 0.5) { advance(0.5); opened = Math.max(opened, armAngle()) }
+    // The newest code ran: the arm went to 45, not 90.
+    expect(opened).toBeGreaterThan(40)
+    expect(opened).toBeLessThan(50)
+    expect(screen.getByTestId('robo-try-result')).toHaveTextContent('It worked! The gate opened.')
+    expect(screen.getByTestId('robo-try-result')).toHaveAttribute('data-verdict', 'worked')
+    expect(screen.queryByTestId('robo-changed')).toBeNull()
+  })
+
+  it('an edit while it runs keeps the run (it says so); "Someone walks up" then runs the newest code', async () => {
+    loadWorld(gateBricks(), GATE_SECTION)
+    await openCode('gate')
+    fireEvent.click(screen.getByTestId('robo-run'))
+    act(() => { mainWorkspace().getBlockById('smart-gate:open-degrees')!.setFieldValue(30, 'NUM') })
+    await settle()
+    expect(useStageStore.getState().stageObservation?.phase).toBe('running')
+    expect(screen.getByTestId('robo-changed')).toHaveTextContent('Your code changed. Press Run to try it.')
+    const runOnStage = vi.spyOn(useStageStore.getState(), 'runOnStage')
+    runOnStage.mockClear()
+    fireEvent.click(screen.getByTestId('robo-visitor'))
+    expect(runOnStage).toHaveBeenCalledTimes(1)
+    expect(screen.queryByTestId('robo-changed')).toBeNull()
+    let opened = 0
+    for (let second = 0; second < 5; second += 0.5) { advance(0.5); opened = Math.max(opened, armAngle()) }
+    expect(opened).toBeGreaterThan(25)
+    expect(opened).toBeLessThan(35)
+  })
+
+  it('when the newest code is already running, "Someone walks up" only walks', async () => {
+    loadWorld(gateBricks(), GATE_SECTION)
+    await openCode('gate')
+    fireEvent.click(screen.getByTestId('robo-run'))
+    // (A spy copied onto the store's next state by an earlier test keeps its count: start from zero.)
+    const runOnStage = vi.spyOn(useStageStore.getState(), 'runOnStage')
+    runOnStage.mockClear()
+    fireEvent.click(screen.getByTestId('robo-visitor'))
+    expect(runOnStage).not.toHaveBeenCalled()
+    expect(useStageStore.getState().stageObservation?.visitorPhase).toBe('arriving')
+  })
+
+  it('code that cannot run: "Someone walks up" says why and nobody walks', async () => {
+    const sees = { type: 'robo_sensor_sees', id: 'sees', fields: { SENSOR: 'gone-sensor' }, inputs: { STUDS: { shadow: { type: 'robo_number', id: 'studs', fields: { NUM: 5 } } } } }
+    const workspace = { blocks: { languageVersion: 0, blocks: [{ type: 'robo_when_run', id: 'hat', x: 40, y: 40, next: { block: { type: 'robo_wait_until', id: 'wait', inputs: { CONDITION: { block: sees } } } } }] } }
+    loadWorld(gateBricks(), { ...GATE_SECTION, programs: [programRecord('p1', workspace, { creationId: 'gate', deviceNames: { 'gone-sensor': 'Old sensor' } })] })
+    await openCode('gate')
+    fireEvent.click(screen.getByTestId('robo-visitor'))
+    expect(screen.getByTestId('robo-run-blocked')).toHaveTextContent('Can’t run yet: Old sensor is missing')
+    expect(useStageStore.getState().stageObservation?.phase).toBe('ready')
+    expect(useStageStore.getState().stageObservation?.visitorPhase).toBe('away')
+  })
+
+  it('the keys pad starts a stopped joystick program too', async () => {
+    loadWorld()
+    await openCode()
+    fireEvent.click(screen.getByRole('button', { name: 'New program' }))
+    fireEvent.click(within(screen.getByTestId('robo-starters-menu')).getByText('Joystick drive'))
+    await waitFor(() => expect(screen.getByTestId('robo-stage-input')).toBeInTheDocument())
+    expect(useStageStore.getState().stageObservation?.phase).toBe('ready')
+    fireEvent.click(screen.getByRole('button', { name: 'Keys' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Up arrow' }))
+    expect(useStageStore.getState().stageObservation?.phase).toBe('running')
+    // The key reached the program: the next tick samples it held.
+    advance(0.1)
+    expect(useStageStore.getState().stage!.controller.snapshot.input.held.up).toBe(true)
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Up arrow' }))
   })
 })
 

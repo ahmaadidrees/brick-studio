@@ -38,6 +38,7 @@ export const KIT_PICTURE_STYLES: Record<KitId, KitPictureStyle> = {
 const pictures = new Map<KitId, string | null>()
 
 const INK = '#263c51'
+const LIT_LIGHT = '#ff3b30'
 
 export function cachedKitPicture(kitId: KitId): string | null | undefined {
   return pictures.get(kitId)
@@ -70,7 +71,9 @@ function kitScene(kitId: KitId, style: KitPictureStyle): { group: THREE.Group; d
     const part = partOf(brick)
     if (!part) continue
     const glowing = style.glowing?.includes(brick.id) ?? false
-    const material = new THREE.MeshStandardMaterial({ color: brick.color, roughness: 0.55, metalness: 0.02, ...(glowing ? { emissive: new THREE.Color(brick.color), emissiveIntensity: 1 } : {}) })
+    // A light drawn lit up shines red (the Signal light's starter colour), whatever it looks like switched off.
+    const color = glowing && roboticsSpec(brick.partId)?.role === 'light' ? LIT_LIGHT : brick.color
+    const material = new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.02, ...(glowing ? { emissive: new THREE.Color(color), emissiveIntensity: 1 } : {}) })
     disposables.push(material)
     const mesh = new THREE.Mesh(createBrickGeometry(part), material)
     mesh.position.copy(brickOrigin(brick))
@@ -97,7 +100,7 @@ function kitScene(kitId: KitId, style: KitPictureStyle): { group: THREE.Group; d
       const center = brickOrigin(brick).add(new THREE.Vector3(0, part.height * PLATE_HEIGHT * 0.62, 0))
       for (const [radius, opacity] of [[0.5, 0.34], [0.8, 0.16]] as const) {
         const geometry = new THREE.SphereGeometry(radius, 24, 16)
-        const halo = new THREE.MeshBasicMaterial({ color: brick.color, transparent: true, opacity, depthWrite: false })
+        const halo = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false })
         disposables.push(geometry, halo)
         const shell = new THREE.Mesh(geometry, halo)
         shell.position.copy(center)
