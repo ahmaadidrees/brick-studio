@@ -65,6 +65,8 @@ import { ROBOTICS_PARTS, isRoboticsPart } from '../robotics/parts/catalog'
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): the chunk is never requested without the flag.
 const RoboticsPanel = lazy(() => import('../robotics/ui/RoboticsPanel').then((module) => ({ default: module.RoboticsPanel })))
 const ExploreRidePrompt = lazy(() => import('../robotics/explore/ExploreRidePrompt'))
+const RobotsChoice = lazy(() => import('../robotics/kits/KitShelf').then((module) => ({ default: module.RobotsChoice })))
+const KitShelf = lazy(() => import('../robotics/kits/KitShelf').then((module) => ({ default: module.KitShelf })))
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { BUILD_PATH, parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
@@ -453,7 +455,7 @@ const PART_CATEGORIES: { id: PartCategory; label: string }[] = [
   { id: 'plates', label: 'Plates' },
   { id: 'slopes', label: 'Slopes' },
   { id: 'shapes', label: 'Shapes' },
-  { id: 'robotics', label: 'Robotics' },
+  { id: 'robotics', label: 'Robots' },
   { id: 'custom', label: 'My bricks' },
 ]
 
@@ -510,6 +512,7 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
       </div>
       {denseCatalog && <select className="part-category-select" aria-label="Brick category" value={category} onChange={event => setCategory(event.target.value as PartCategory)}>{categories.map(entry => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select>}
       </div>
+      {robotics && <Suspense fallback={null}><RobotsChoice active={category === 'robotics'} onToggle={() => { setQuery(''); setCategory(category === 'robotics' ? 'all' : 'robotics') }} /></Suspense>}
       <button
         className="create-part-entry"
         type="button"
@@ -534,6 +537,7 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
         ))}
       </div>}
       <div className="part-grid" aria-label="Brick shapes">
+        {robotics && category === 'robotics' && !trimmedQuery && <Suspense fallback={null}><KitShelf onChoose={onChoose} /></Suspense>}
         {visibleParts.map((part) => (
           <button
             key={part.id}

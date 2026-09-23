@@ -74,7 +74,8 @@ export type BrickState = {
   activeColor: string
   draft: BrickDraft | null
   movingId: string | null
-  movingSelection: { originals: BrickInstance[]; duplicate: boolean; color?: string } | null
+  /** A group being positioned; `name` is what the command strip calls a new group while it is placed ("Buggy"). */
+  movingSelection: { originals: BrickInstance[]; duplicate: boolean; color?: string; name?: string } | null
   clipboard: BrickClipboard | null
   undoStack: BrickHistoryEntry[]
   redoStack: BrickHistoryEntry[]
@@ -136,6 +137,13 @@ export type BrickState = {
   restoreDocument: (document: BrickStudioDocument) => BrickDocumentCommandResult
   undo: () => void
   redo: () => void
+  /**
+   * Folds the newest `count` undo entries into one document-level entry named `label`, so an edit
+   * recorded in steps (bricks, then the robotics section) is a single Undo. Like New Build and
+   * Import, the entry swaps the whole document. False, with nothing changed, when there are fewer
+   * than `count` entries.
+   */
+  mergeHistory: (count: number, label: string) => boolean
   setBudgetProfile: (profile: BrickBudgetProfile) => void
   requestView: (preset: ViewPreset) => void
   setTouchMove: (x: number, z: number, magnitude?: number, running?: boolean) => void
@@ -1146,6 +1154,27 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
       draft: brushArmed ? state.draft : null,
       toast: `Redid: ${next.label}.`,
     })
+  },
+  mergeHistory: (count, label) => {
+    const state = get()
+    if (!Number.isInteger(count) || count < 1 || state.undoStack.length < count) return false
+    const merged = state.undoStack.slice(-count)
+    const documentAfter = state.getDocumentSnapshot()
+    // Walk back to the document before the oldest entry: a document-level entry recorded it; a
+    // brick-level one changed only bricks, so everything else is as it is now.
+    let documentBefore = documentAfter
+    for (const entry of [...merged].reverse()) documentBefore = entry.documentBefore ?? { ...documentBefore, bricks: applyHistoryEntry(documentBefore.bricks, entry, 'undo') }
+    const existedBefore = new Set(documentBefore.bricks.map((brick) => brick.id))
+    const entry: BrickHistoryEntry = {
+      // The deltas keep Redo's brick-budget check honest; undo and redo swap the documents.
+      ...replacementHistoryEntry(documentBefore.bricks, documentAfter.bricks, label),
+      selectionBefore: merged[0].selectionBefore.filter((id) => existedBefore.has(id)),
+      selectionAfter: [...merged[merged.length - 1].selectionAfter],
+      documentBefore,
+      documentAfter,
+    }
+    set({ undoStack: [...state.undoStack.slice(0, -count), entry] })
+    return true
   },
   setBudgetProfile: (budgetProfile) => set({ budgetProfile, brickBudget: BRICK_BUDGETS[budgetProfile] }),
   requestView: (preset) => set((state) => ({ viewRequest: { preset, nonce: state.viewRequest.nonce + 1 } })),
