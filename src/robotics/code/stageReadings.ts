@@ -55,7 +55,11 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
     const names = `${left?.name ?? 'Left motor'} · ${right?.name ?? 'Right motor'}`
     if ((left && !left.plugged) || (right && !right.plugged)) {
       const missing = [left, right].filter((motor) => motor && !motor.plugged).map((motor) => motor!.name)
-      chips.push({ id: 'drive', label: 'Motors', value: `${missing.join(' and ')} not plugged in`, tone: 'warn', detail: names })
+      // While it runs, the one still plugged in shows that it turns (as the creation feels it).
+      const other = [left, right].find((motor) => motor?.plugged)
+      const turning = other ? observation?.motors[other.brickId] : undefined
+      const otherSpeed = turning ? turning.forwardPercent ?? (pair.reversedIds.includes(other!.brickId) ? -turning.speedPercent : turning.speedPercent) : null
+      chips.push({ id: 'drive', label: 'Motors', value: `${missing.join(' and ')} not plugged in`, tone: 'warn', detail: otherSpeed === null ? names : `${other!.name} speed ${signed(otherSpeed)} %` })
     } else if (a && b) {
       // The pair reads as the creation feels it: a motor mounted reversed is flipped, so "drive
       // forward at 40 %" reads 40 · 40 and two raw "run … at 50 %" blocks on a reversed pair read

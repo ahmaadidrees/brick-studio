@@ -136,6 +136,8 @@ function roleTitle(role: string | undefined) {
     case 'distance-sensor': return 'Distance sensor'
     case 'light': return 'Light'
     case 'button': return 'Button'
+    case 'wheel': return 'Wheel'
+    case 'axle': return 'Axle'
     default: return 'Part'
   }
 }
