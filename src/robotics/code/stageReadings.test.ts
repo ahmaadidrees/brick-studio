@@ -68,7 +68,10 @@ describe('status, input and framing', () => {
     expect(stageStatus(null, true).text).toBe('Getting ready…')
     expect(stageStatus(observation({ phase: 'ready' }), false).text).toBe('Ready')
     expect(stageStatus(observation(), false).text).toBe('Running · 2.1 s')
-    expect(stageStatus(observation({ idle: true }), false)).toMatchObject({ text: 'Running · 2.1 s', detail: 'Every script has finished. Motors keep their last command until Stop.' })
+    expect(stageStatus(observation({ idle: true }), false)).toMatchObject({ text: 'Done · 2.1 s', detail: 'Every script has finished.' })
+    const driving = observation({ idle: true })
+    driving.motors = { m: { powerPercent: 40, speedPercent: 38, positionDegrees: 90, plugged: true } }
+    expect(stageStatus(driving, false)).toMatchObject({ text: 'Done · motors still on', detail: 'Every script has finished. Motors keep their last command until Stop.' })
     expect(stageStatus(observation({ phase: 'stopped' }), false).text).toBe('Stopped')
   })
 

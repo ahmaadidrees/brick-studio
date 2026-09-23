@@ -106,16 +106,24 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
 
 export type StageStatus = { text: string; tone: 'idle' | 'running' | 'stopped' | 'loading'; /** A longer line for the tooltip. */ detail?: string }
 
-/** "Running · 2.1 s", "Stopped", "Ready". */
+/**
+ * "Running · 2.1 s", "Stopped", "Ready". When every script has finished the program is
+ * done but the stage still runs (motors keep their last command), so it says which:
+ * "Done · motors still on" or "Done · 4.2 s".
+ */
 export function stageStatus(observation: RunObservation | null, loading: boolean): StageStatus {
   if (loading && !observation) return { text: 'Getting ready…', tone: 'loading' }
   if (!observation || observation.phase === 'ready') return { text: 'Ready', tone: 'idle' }
   if (observation.phase === 'stopped') return { text: 'Stopped', tone: 'stopped' }
-  return {
-    text: `Running · ${observation.timeSeconds.toFixed(1)} s`,
-    tone: 'running',
-    ...(observation.idle ? { detail: 'Every script has finished. Motors keep their last command until Stop.' } : {}),
+  if (observation.idle) {
+    const motorsOn = Object.values(observation.motors).some((motor) => motor.plugged && Math.abs(motor.powerPercent) > 0.5)
+    return {
+      text: motorsOn ? 'Done · motors still on' : `Done · ${observation.timeSeconds.toFixed(1)} s`,
+      tone: 'running',
+      detail: motorsOn ? 'Every script has finished. Motors keep their last command until Stop.' : 'Every script has finished.',
+    }
   }
+  return { text: `Running · ${observation.timeSeconds.toFixed(1)} s`, tone: 'running' }
 }
 
 const INPUT_BLOCKS = new Set(['robo_when_joystick_moves', 'robo_when_controls_update', 'robo_joystick', 'robo_key_held', 'robo_when_key_pressed', 'robo_drive_joystick'])
