@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from
 import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE } from '../code/codeViewState'
 import { suspendStudioShortcuts } from '../code/studioKeys'
+import { plateCurb } from '../explore/plateCurb'
 import { rideProgramKey } from '../explore/rideModel'
 import type { DerivedCreation } from '../model/creations'
 import { readRoboticsSection } from '../model/section'
@@ -28,7 +29,8 @@ import './drive.css'
  *   drive program made on the fly and never saved, from the moment the stage opens. A big
  *   joystick (bottom right), the arrow keys or WASD drive it; a small readout shows its speed.
  *   The test plate has a fenced course with posts; in My world the robot rolls free among the
- *   student's own bricks.
+ *   student's own bricks, inside a curb at the plate's edge: the one a ride in Explore drives
+ *   against (`explore/plateCurb.ts`), so a robot never floats past the plate on ground nobody sees.
  * - **Try it** (a gate or a signal light): its own program that reacts to its sensor, or its
  *   starter made on the fly, runs in My world; a big "Someone walks up" button sends the
  *   visitor, and the door swings or the light lights where the student can see it.
@@ -145,10 +147,12 @@ const editable = (target: EventTarget | null) => target instanceof Element && Bo
 
 /* ------------------------------------------------------------------ the stage */
 
-/** Drive: the course on the test plate, free bodies in My world. Try it: the stage as the Code view has it. */
+/** Drive: the course on the test plate; free bodies inside the plate's curb in My world. Try it: the stage as the Code view has it. */
 export function stageOptionsFor(kind: PlayKind, space: RunSpace): StageOptions | undefined {
   if (kind !== 'drive') return undefined
-  return space === 'testPlate' ? { props: (creation, _space, geometry) => driveCourse(creation, geometry), freeBodies: true } : { props: () => [], freeBodies: true }
+  return space === 'testPlate'
+    ? { props: (creation, _space, geometry) => driveCourse(creation, geometry), freeBodies: true }
+    : { props: (_creation, _space, geometry) => plateCurb(geometry.plateSize), freeBodies: true }
 }
 
 function PlayStage({ creation, kind }: { creation: DerivedCreation; kind: PlayKind }) {

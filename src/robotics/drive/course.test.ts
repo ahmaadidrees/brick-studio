@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { loadWorld } from '../code/codeTestFixtures'
+import { CURB_PROP_IDS } from '../explore/plateCurb'
 import { ROVER_IDS, fixtureInput, roverBricks } from '../model/fixtures'
 import { installRoboticsParts } from '../parts/install'
 import { wiredFourWheel, wiredRover } from '../program/testFixtures'
@@ -132,7 +133,8 @@ describe('the stage with the Drive view’s options', () => {
     await useStageStore.getState().openStage('rover', 'myWorld', stageOptionsFor('drive', 'myWorld'))
     const stage = useStageStore.getState().stage!
     expect(stage.space).toBe('myWorld')
-    expect(stage.controller.props).toEqual([])
+    // No course; the curb at the plate's edge, the same walls a ride in Explore drives against.
+    expect(stage.controller.props.map((prop) => prop.id)).toEqual([...CURB_PROP_IDS])
     expect(stage.creation.bodies.every((body) => !body.anchored)).toBe(true)
     // The student's own bricks stay the studio's to draw: only the robot's are the stage's.
     expect(stage.controller.hiddenBrickIds.has('scenery')).toBe(false)
