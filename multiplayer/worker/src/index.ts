@@ -1,13 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
 import { WorldRoom, type WorldRoomEnv } from "./worldRoom";
 import { WorldCreationLimiter } from "./worldCreationLimiter";
+import { PlatformerRoom, type PlatformerRoomEnv } from "./platformerRoom";
 import { handleReleaseRequest } from "./classroomRoutes";
-export interface Env extends WorldRoomEnv {
+export interface Env extends WorldRoomEnv, PlatformerRoomEnv {
   RACE_ROOMS: DurableObjectNamespace<RaceRoom>;
   WORLD_CREATION_LIMITER: DurableObjectNamespace<WorldCreationLimiter>;
   CLASSROOM_TICKET_SECRET?: string;
 }
-export { WorldCreationLimiter, WorldRoom };
+export { PlatformerRoom, WorldCreationLimiter, WorldRoom };
 export default { fetch: handleReleaseRequest };
 
 // Retain the historical Durable Object class for existing migration/storage identity.

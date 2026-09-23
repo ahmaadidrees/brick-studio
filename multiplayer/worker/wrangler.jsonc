@@ -7,13 +7,15 @@
     "bindings": [
       { "name": "RACE_ROOMS", "class_name": "RaceRoom" },
       { "name": "WORLD_ROOMS", "class_name": "WorldRoom" },
-      { "name": "WORLD_CREATION_LIMITER", "class_name": "WorldCreationLimiter" }
+      { "name": "WORLD_CREATION_LIMITER", "class_name": "WorldCreationLimiter" },
+      { "name": "PLATFORMER_ROOMS", "class_name": "PlatformerRoom" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["RaceRoom"] },
     { "tag": "v2", "new_sqlite_classes": ["WorldRoom"] },
-    { "tag": "v3", "new_sqlite_classes": ["WorldCreationLimiter"] }
+    { "tag": "v3", "new_sqlite_classes": ["WorldCreationLimiter"] },
+    { "tag": "v4", "new_sqlite_classes": ["PlatformerRoom"] }
   ],
   "observability": { "enabled": true },
   "env": {
@@ -23,7 +25,8 @@
         "bindings": [
           { "name": "RACE_ROOMS", "class_name": "RaceRoom" },
           { "name": "WORLD_ROOMS", "class_name": "WorldRoom" },
-          { "name": "WORLD_CREATION_LIMITER", "class_name": "WorldCreationLimiter" }
+          { "name": "WORLD_CREATION_LIMITER", "class_name": "WorldCreationLimiter" },
+          { "name": "PLATFORMER_ROOMS", "class_name": "PlatformerRoom" }
         ]
       },
       "observability": { "enabled": true }

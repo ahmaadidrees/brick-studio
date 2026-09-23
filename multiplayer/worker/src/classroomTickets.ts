@@ -1,4 +1,6 @@
 import { ClassroomHttpError } from "./classroom";
+/** Which kind of live room a ticket opens: 3D worlds, or 2D levels. A ticket never opens the other kind. */
+export type LiveTicketAudience = "brick-live-v1" | "brick-2d-v1";
 export interface LiveTicketIdentity {
   userId: string;
   sessionId: string;
@@ -45,13 +47,14 @@ export async function issueLiveTicket(
   identity: LiveTicketIdentity,
   secret?: string,
   now = Date.now(),
+  audience: LiveTicketAudience = "brick-live-v1",
 ) {
   const payload = encode(
     new TextEncoder().encode(
       JSON.stringify({
         ...identity,
         exp: Math.floor(now / 1000) + 60,
-        aud: "brick-live-v1",
+        aud: audience,
       }),
     ),
   );
@@ -70,6 +73,7 @@ export async function verifyLiveTicket(
   ticket: string,
   secret?: string,
   now = Date.now(),
+  audience: LiveTicketAudience = "brick-live-v1",
 ): Promise<LiveTicketIdentity> {
   const signingKey = await key(secret);
   try {
@@ -91,7 +95,7 @@ export async function verifyLiveTicket(
     const value = JSON.parse(new TextDecoder().decode(decode(payload)));
     const seconds = Math.floor(now / 1000);
     if (
-      value.aud !== "brick-live-v1" ||
+      value.aud !== audience ||
       !Number.isInteger(value.exp) ||
       value.exp <= seconds ||
       value.exp > seconds + 60 ||

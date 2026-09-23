@@ -1,0 +1,14 @@
+{
+  "name": "@brick-studio/platformer-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "The 2D mode's shared core: level format, deterministic world simulation, player physics, live-room protocol and room logic. No DOM; runs in the browser and in the Worker.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./document": "./src/document.ts",
+    "./engine/*": "./src/engine/*.ts",
+    "./net/*": "./src/net/*.ts",
+    "./levels/*": "./src/levels/*.ts"
+  }
+}

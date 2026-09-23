@@ -217,7 +217,7 @@ export async function ownerTokenVerifier(token: string): Promise<string> {
 
 export const reconnectTokenVerifier = ownerTokenVerifier;
 
-function safeVerifierEqual(first: string, second: string): boolean {
+export function safeVerifierEqual(first: string, second: string): boolean {
   if (first.length !== second.length) return false;
   let difference = 0;
   for (let index = 0; index < first.length; index += 1) {

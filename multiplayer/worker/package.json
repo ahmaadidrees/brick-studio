@@ -19,6 +19,7 @@
     "wrangler": "^4.126.0"
   },
   "dependencies": {
-    "@brick-studio/core": "0.1.0"
+    "@brick-studio/core": "0.1.0",
+    "@brick-studio/platformer-core": "0.1.0"
   }
 }

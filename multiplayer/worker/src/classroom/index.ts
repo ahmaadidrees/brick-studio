@@ -1,4 +1,5 @@
 import { studentPasswordError, validateBrickStudioDocument, type BrickStudioDocument } from '@brick-studio/core';
+import { PLATFORMER_FORMAT, isPlatformerDocument, validatePlatformerDocument, type PlatformerDocument } from '@brick-studio/platformer-core/document';
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 
@@ -442,7 +443,15 @@ async function publicClass(service: ClassroomService, input: Row): Promise<{ ali
   return { alias, cls };
 }
 /** Columns the API exposes without the document; the sharing columns come from migration 202609190001. */
-const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at';
+const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at,doc_format:document->>format';
+/**
+ * Worlds hold either a 3D brick build or a 2D level; the document's own `format` field says which (brick documents
+ * have none). Metadata-only reads select it as `doc_format`; full rows carry the document itself.
+ */
+export type WorldFormat = 'brick' | '2d';
+export function worldFormat(row: Row): WorldFormat {
+  return row.doc_format === PLATFORMER_FORMAT || isPlatformerDocument(row.document) ? '2d' : 'brick';
+}
 /** Most live rooms one GET /classes will ask for presence, across all of the teacher's classes. */
 export const PRESENCE_ROOM_LIMIT = 150;
 /** Presence fan-outs allowed per teacher: beyond it `buildingNow` is null until the window passes. */
@@ -461,7 +470,7 @@ type WorldViewContext = { full?: boolean; canEdit?: boolean; ownerName?: string;
 function worldView(row: Row, context: WorldViewContext = {}) {
   const visibility = row.kind === 'personal' ? (isSharedVisibility(row.class_visibility) ? row.class_visibility : 'private') : 'class';
   return {
-    id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, revision: row.revision, updatedAt: row.updated_at,
+    id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, format: worldFormat(row), revision: row.revision, updatedAt: row.updated_at,
     visibility, canEdit: context.canEdit ?? true, classCanEdit: row.kind === 'personal' ? row.class_can_edit === true : true, ownerName: context.ownerName ?? 'Teacher', ownerClassId: context.ownerClassId ?? row.class_id ?? null,
     sharedAt: row.kind === 'personal' && visibility !== 'private' ? row.class_shared_at ?? null : null,
     ...(context.members ? { members: context.members } : {}),
@@ -478,7 +487,20 @@ function newCode() { const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return
 async function body(request: Request): Promise<Row> {
   return readClassroomBody(request);
 }
-function document(value: unknown) {
+/**
+ * Validates a document of either kind and returns its canonical form. `expected` pins the kind a world already has:
+ * a save never turns a 3D world into a 2D level or the other way round.
+ */
+function document(value: unknown, expected?: WorldFormat): BrickStudioDocument | PlatformerDocument | null {
+  const format: WorldFormat = isPlatformerDocument(value) ? '2d' : 'brick';
+  if (expected && format !== expected) {
+    fail(400, 'wrong_world_kind', expected === '2d' ? 'This world is a 2D level. Open it in the 2D builder.' : 'This world is a 3D build. Open it in the 3D builder.');
+  }
+  if (format === '2d') {
+    const level = validatePlatformerDocument(value);
+    if (!level.ok) fail(400, 'invalid_document', 'This level is incomplete or invalid. Your existing saved level has not been replaced.');
+    return level.ok ? level.document : null;
+  }
   const result = validateBrickStudioDocument(value);
   if (!result.ok) fail(400, 'invalid_document', 'This world is incomplete or invalid. Your existing saved world has not been replaced.');
   return result.ok ? result.document : null;
@@ -808,8 +830,8 @@ async function route(request: Request, service: ClassroomService, path: string[]
         if (!uuid(input.checkpointId)) fail(400, 'invalid_input', 'Choose a valid checkpoint.');
         const cp = (await service.rows('checkpoints', `id=eq.${input.checkpointId}&world_id=eq.${world.id}&limit=1`))[0];
         if (!cp) fail(404, 'not_found', 'Checkpoint not found.');
-        doc = document(cp.document); title = cp.title;
-      } else doc = document(input.document);
+        doc = document(cp.document, worldFormat(world)); title = cp.title;
+      } else doc = document(input.document, worldFormat(world));
       const saved = await service.rpc('commit_world', { p_world_id: world.id, p_expected_revision: expectedRevision(input.expectedRevision), p_document: doc, p_title: title, p_reason: restoring ? 'restore' : 'save', p_actor_id: caller.id, p_session_id: caller.sessionId, p_auth_version: caller.authVersion });
       if (saved.error === 'conflict') throw new ClassroomHttpError(409, 'revision_conflict', 'Someone saved a newer version. Refresh before saving again.', { currentRevision: saved.currentRevision });
       if (saved.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
@@ -897,9 +919,20 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
   if (!row) fail(404, 'not_found', 'World not found.');
   return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }
-export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity): Promise<ClassroomWorldSnapshot> {
+/** A stored 2D level as the PlatformerRoom consumes it. Refuses 3D worlds. */
+export type ClassroomLevelSnapshot = { id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document: PlatformerDocument };
+export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Promise<ClassroomLevelSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
-  const saved = await new ClassroomService(env).rpc('commit_world', { p_world_id: worldId, p_expected_revision: expectedRevision(revision), p_document: document(value), p_title: null, p_reason: 'live_edit', p_actor_id: identity.userId, p_session_id: identity.sessionId, p_auth_version: identity.authVersion });
+  const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&limit=1`))[0];
+  if (!row) fail(404, 'not_found', 'World not found.');
+  if (worldFormat(row) !== '2d') fail(409, 'wrong_world_kind', 'This world is a 3D build. Open it in the 3D builder.');
+  const level = validatePlatformerDocument(row.document);
+  if (!level.ok) fail(409, 'invalid_document', 'This level could not be opened.');
+  return { ...(worldView(row) as Omit<ClassroomLevelSnapshot, 'document'>), document: level.ok ? level.document : (null as never) };
+}
+export async function commitClassroomWorld(env: ClassroomEnv, worldId: string, value: unknown, revision: number, identity: ClassroomSessionIdentity, format: WorldFormat = 'brick'): Promise<ClassroomWorldSnapshot> {
+  if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
+  const saved = await new ClassroomService(env).rpc('commit_world', { p_world_id: worldId, p_expected_revision: expectedRevision(revision), p_document: document(value, format), p_title: null, p_reason: 'live_edit', p_actor_id: identity.userId, p_session_id: identity.sessionId, p_auth_version: identity.authVersion });
   if (saved.error === 'conflict') throw new ClassroomHttpError(409, 'revision_conflict', 'A newer world revision exists.', { currentRevision: saved.currentRevision });
   if (saved.error === 'access_revoked') fail(403, 'access_revoked', 'Classroom access changed.');
   if (saved.error === 'rate_limited') fail(429, 'rate_limited', 'Too many saves. Please wait briefly.');

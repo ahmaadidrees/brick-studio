@@ -1,4 +1,6 @@
 import { LIVE_MAX_DOCUMENT_BYTES } from "@brick-studio/core";
+import { isPlatformerDocument } from "@brick-studio/platformer-core/document";
+import { levelFromJson, levelToJson } from "@brick-studio/platformer-core/engine/level";
 import { isApplicationOrigin } from "./applicationOrigin";
 import { worldCreationLimiterKey } from "./worldCreationLimiter";
 import { readClassroomBody, ClassroomBodyError } from "./classroom/readBody";
@@ -8,6 +10,7 @@ import {
   revalidateClassroomWorldAccess,
   handleClassroomRequest,
   listClassroomWorldIds,
+  loadClassroomLevel,
   loadClassroomWorld,
   ClassroomHttpError,
   ClassroomService,
@@ -20,6 +23,10 @@ import {
   verifyLiveTicket,
 } from "./classroomTickets";
 import { newOwnerToken, newWorldId, ownerTokenVerifier, validateCreateWorldRequest } from "./worldRoom";
+import type { PlatformerConnectGrant, PlatformerInit } from "./platformerRoom";
+
+/** 2D guest rooms: one level, a few hundred KB at most. */
+const PLATFORMER_MAX_BODY_BYTES = 400 * 1024;
 const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), {
     status,
@@ -55,11 +62,15 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
   const ids = event.worldId
     ? [event.worldId]
     : await listClassroomWorldIds(env, event);
+  // A world id names a 3D room or a 2D room, never both; the other answers 404 and is skipped.
+  const stubsFor = (roomId: string): Array<{ fetch: (input: string, init?: RequestInit) => Promise<Response> }> => {
+    const stubs: Array<{ fetch: (input: string, init?: RequestInit) => Promise<Response> }> = [env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(roomId))];
+    // Partial environments (older tests, tools) may not bind the 2D rooms; production always does.
+    if (env.PLATFORMER_ROOMS) stubs.push(env.PLATFORMER_ROOMS.get(env.PLATFORMER_ROOMS.idFromName(roomId)));
+    return stubs;
+  };
   await Promise.all(
-    ids.map(async (id) => {
-      const stub = env.WORLD_ROOMS.get(
-        env.WORLD_ROOMS.idFromName(id.replaceAll("-", "")),
-      );
+    ids.flatMap((id) => stubsFor(id.replaceAll("-", "")).map(async (stub) => {
       const r = await stub.fetch(
         "https://world.internal/internal/classroom-invalidate",
         {
@@ -74,7 +85,7 @@ async function invalidate(env: Env, event: ClassroomAccessChange) {
           "live_invalidation_failed",
           "Access changed, but live sessions could not be updated. Try again.",
         );
-    }),
+    })),
   );
 }
 /**
@@ -122,6 +133,8 @@ async function liveParticipantsByWorld(env: Env, worldIds: string[]): Promise<Ma
 async function ensureRoom(env: Env, worldId: string) {
   const world = await loadClassroomWorld(env, worldId),
     roomId = worldId.replaceAll("-", "");
+  if (isPlatformerDocument(world.document))
+    throw new ClassroomHttpError(409, "wrong_world_kind", "This world is a 2D level. Open it in the 2D builder.");
   const stub = env.WORLD_ROOMS.get(env.WORLD_ROOMS.idFromName(roomId));
   const r = await stub.fetch("https://world.internal/init", {
     method: "POST",
@@ -144,6 +157,98 @@ async function ensureRoom(env: Env, worldId: string) {
     );
   return stub;
 }
+/** The live 2D room of an account level: created from the stored level on first open (docs/PLATFORMER.md). */
+async function ensurePlatformerRoom(env: Env, worldId: string) {
+  const world = await loadClassroomLevel(env, worldId),
+    roomId = worldId.replaceAll("-", "");
+  const stub = env.PLATFORMER_ROOMS.get(env.PLATFORMER_ROOMS.idFromName(roomId));
+  const init: PlatformerInit = { kind: "classroom", roomId, classroomWorldId: worldId, title: world.title, level: world.document.level, dbRevision: world.revision };
+  const r = await stub.fetch("https://platformer.internal/init", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-platformer-init": "1" },
+    body: JSON.stringify(init),
+  });
+  if (!r.ok && r.status !== 409)
+    throw new ClassroomHttpError(503, "live_unavailable", "This level could not be opened. Try again.");
+  return stub;
+}
+/** Forward a WebSocket upgrade to a 2D room with the router's own grant; nothing else from the request passes. */
+function platformerConnect(stub: DurableObjectStub, request: Request, grant: PlatformerConnectGrant) {
+  const headers = new Headers({ "x-platformer-access": JSON.stringify(grant) });
+  headers.set("Upgrade", request.headers.get("Upgrade") ?? "");
+  return stub.fetch(new Request("https://platformer.internal/connect", { headers }));
+}
+async function consumeCreation(env: Env, key: string): Promise<Response | null> {
+  const limiter = env.WORLD_CREATION_LIMITER.get(env.WORLD_CREATION_LIMITER.idFromName(key));
+  const limitResponse = await limiter.fetch("https://limiter.internal/consume", { method: "POST" });
+  if (limitResponse.status === 429) {
+    const limit = await limitResponse.json<{ retryAfterSeconds: number }>();
+    const response = json({ error: "creation_rate_limited", retryAfterSeconds: limit.retryAfterSeconds }, 429);
+    response.headers.set("retry-after", String(limit.retryAfterSeconds));
+    response.headers.set("access-control-expose-headers", "retry-after");
+    return response;
+  }
+  if (!limitResponse.ok) return json({ error: "creation_limiter_unavailable" }, 503);
+  return null;
+}
+async function handlePlatformerRequest(request: Request, env: Env, url: URL): Promise<Response | null> {
+  // A guest room: POST /platformer/rooms with { level } → { roomId, ownerToken }.
+  if (url.pathname === "/platformer/rooms") {
+    if (request.method !== "POST") return json({ code: "method_not_allowed" }, 405);
+    // Its own window, so 2D rooms never use up the 3D quota for a school that shares one address.
+    const limited = await consumeCreation(env, worldCreationLimiterKey(request.headers.get("cf-connecting-ip")).replace("world-create:", "platformer-create:"));
+    if (limited) return limited;
+    const input = await readClassroomBody(request, PLATFORMER_MAX_BODY_BYTES);
+    let level: unknown;
+    try { level = levelToJson(levelFromJson(input.level)); } catch { return json({ error: "invalid_level", message: "That level could not be read." }, 400); }
+    const roomId = newWorldId(), ownerToken = newOwnerToken();
+    const stub = env.PLATFORMER_ROOMS.get(env.PLATFORMER_ROOMS.idFromName(roomId));
+    const init: PlatformerInit = { kind: "guest", roomId, level, ownerTokenVerifier: await ownerTokenVerifier(ownerToken) };
+    const created = await stub.fetch("https://platformer.internal/init", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-platformer-init": "1" },
+      body: JSON.stringify(init),
+    });
+    if (!created.ok) return json({ error: "room_creation_failed" }, 503);
+    return json({ roomId, ownerToken }, 201);
+  }
+  const guest = url.pathname.match(/^\/platformer\/rooms\/([a-f0-9]{32})(\/connect)?$/);
+  if (guest) {
+    if (request.method !== "GET") return json({ code: "method_not_allowed" }, 405);
+    const stub = env.PLATFORMER_ROOMS.get(env.PLATFORMER_ROOMS.idFromName(guest[1]));
+    const kind = await (await stub.fetch("https://platformer.internal/internal/room-kind")).json<{ kind: string }>();
+    // Class rooms are never opened by a guest link, whatever the id.
+    if (kind.kind !== "guest") return json({ error: "room_not_found" }, 404);
+    if (!guest[2]) return stub.fetch("https://platformer.internal/info");
+    const ownerToken = url.searchParams.get("ownerToken") ?? undefined;
+    return platformerConnect(stub, request, { kind: "guest", ownerToken });
+  }
+  // A class level's room: a signed-in ticket for this level, then the socket.
+  const ticketRoute = url.pathname.match(/^\/classroom\/worlds\/([^/]+)\/platformer-ticket$/);
+  if (ticketRoute) {
+    if (request.method !== "POST") return json({ code: "method_not_allowed" }, 405);
+    const id = canonicalWorldId(ticketRoute[1]);
+    if (!id) throw new ClassroomHttpError(404, "not_found", "World not found.");
+    const access = await authorizeClassroomWorld(request, env, id);
+    await ensurePlatformerRoom(env, id);
+    const ticket = await issueLiveTicket(access, env.CLASSROOM_TICKET_SECRET, Date.now(), "brick-2d-v1");
+    return json({ ticket, expiresIn: 60 });
+  }
+  const classRoute = url.pathname.match(/^\/platformer\/worlds\/([a-fA-F0-9-]+)\/connect$/);
+  if (classRoute) {
+    if (request.method !== "GET") return json({ code: "method_not_allowed" }, 405);
+    const id = canonicalWorldId(classRoute[1]);
+    if (!id) throw new ClassroomHttpError(404, "not_found", "World not found.");
+    const ticket = url.searchParams.get("ticket");
+    if (!ticket) throw new ClassroomHttpError(401, "sign_in_required", "Sign in to open this class level.");
+    const identity = await verifyLiveTicket(ticket, env.CLASSROOM_TICKET_SECRET, Date.now(), "brick-2d-v1");
+    if (identity.worldId !== id) throw new ClassroomHttpError(403, "wrong_world", "This ticket belongs to another level.");
+    const access = await revalidateClassroomWorldAccess(env, identity, id);
+    const stub = await ensurePlatformerRoom(env, id);
+    return platformerConnect(stub, request, { kind: "classroom", access });
+  }
+  return null;
+}
 export async function handleReleaseRequest(
   external: Request,
   env: Env,
@@ -154,7 +259,7 @@ export async function handleReleaseRequest(
     if (external.method === "OPTIONS")
       return outgoing(new Response(null, { status: 204 }), origin);
     const headers = new Headers(external.headers);
-    for (const name of ["x-classroom-access", "x-world-init", "x-room-init", "x-guest-world-access"])
+    for (const name of ["x-classroom-access", "x-world-init", "x-room-init", "x-guest-world-access", "x-platformer-access", "x-platformer-init"])
       headers.delete(name);
     const request = new Request(external, { headers }),
       url = new URL(request.url);
@@ -172,6 +277,10 @@ export async function handleReleaseRequest(
         ),
         origin,
       );
+    if (url.pathname.startsWith("/platformer/") || url.pathname.endsWith("/platformer-ticket")) {
+      const handled = await handlePlatformerRequest(request, env, url);
+      if (handled) return outgoing(handled, origin);
+    }
     if (url.pathname === "/worlds") {
       if (request.method !== "POST")
         return outgoing(json({ code: "method_not_allowed" }, 405), origin);
