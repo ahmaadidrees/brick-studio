@@ -1,0 +1,716 @@
+{
+  "origin": "http://127.0.0.1:5252",
+  "input": "real mouse and keyboard via Playwright CDP; aim points from the studio's own world→screen projection, deliberately off the exact spot",
+  "at": "2026-09-23T16:24:55.383Z",
+  "builds": {
+    "A": {
+      "viewport": "1366x768",
+      "placements": 8,
+      "lookedConnectedButWasNot": 0,
+      "placementsLog": [
+        {
+          "partId": "robo_motor",
+          "at": [
+            28,
+            1,
+            31,
+            2
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_motor",
+          "at": [
+            31,
+            1,
+            31,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_axle_short",
+          "at": [
+            26,
+            0,
+            32,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_axle_short",
+          "at": [
+            34,
+            0,
+            32,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_wheel",
+          "at": [
+            25,
+            0,
+            31,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_wheel",
+          "at": [
+            36,
+            0,
+            31,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        }
+      ]
+    },
+    "B": {
+      "viewport": "1366x768",
+      "placements": 3,
+      "lookedConnectedButWasNot": 0,
+      "placementsLog": [
+        {
+          "partId": "robo_axle_short",
+          "at": [
+            28,
+            0,
+            29,
+            0
+          ],
+          "snappedGhost": false,
+          "connected": false,
+          "gapMarker": true,
+          "misleading": false
+        }
+      ]
+    },
+    "D": {
+      "viewport": "1366x768",
+      "placements": 4,
+      "fixDrags": 1,
+      "lookedConnectedButWasNot": 0,
+      "placementsLog": [
+        {
+          "partId": "robo_motor",
+          "at": [
+            28,
+            1,
+            31,
+            2
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_motor",
+          "at": [
+            37,
+            0,
+            30,
+            0
+          ],
+          "snappedGhost": false,
+          "connected": false,
+          "gapMarker": false,
+          "misleading": false
+        }
+      ]
+    },
+    "C": {
+      "viewport": "1024x768",
+      "placements": 8,
+      "lookedConnectedButWasNot": 0,
+      "placementsLog": [
+        {
+          "note": "to see the whole car: hid the robot panel, 20 mouse-wheel notches out"
+        },
+        {
+          "partId": "robo_motor",
+          "at": [
+            28,
+            1,
+            31,
+            2
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_motor",
+          "at": [
+            31,
+            1,
+            31,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_axle_short",
+          "at": [
+            26,
+            0,
+            32,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_axle_short",
+          "at": [
+            34,
+            0,
+            32,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_wheel",
+          "at": [
+            25,
+            0,
+            31,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        },
+        {
+          "partId": "robo_wheel",
+          "at": [
+            36,
+            0,
+            31,
+            0
+          ],
+          "snappedGhost": true,
+          "connected": true,
+          "gapMarker": false,
+          "misleading": false
+        }
+      ]
+    }
+  },
+  "results": [
+    {
+      "id": "A:ghost:plate",
+      "ok": true,
+      "detail": "plate: aimed near, the ghost shows 28,0,26 r0 (not snapped)"
+    },
+    {
+      "id": "A:placed:plate",
+      "ok": true,
+      "detail": "plate: one click placed it at 28,0,26 r0"
+    },
+    {
+      "id": "A:ghost:hub",
+      "ok": true,
+      "detail": "hub: aimed near, the ghost shows 29,1,27 r0 (not snapped)"
+    },
+    {
+      "id": "A:placed:hub",
+      "ok": true,
+      "detail": "hub: one click placed it at 29,1,27 r0"
+    },
+    {
+      "id": "A:named",
+      "ok": true,
+      "detail": "the robot is called Buggy (named through the card's Not now)"
+    },
+    {
+      "id": "A:motor-targets",
+      "ok": true,
+      "detail": "motor armed, the mouse on open ground: 2 glowing edge stretches (left, right)"
+    },
+    {
+      "id": "A:ghost:motor beside the left side (on the ground, 1.6 studs off, level with the hub)",
+      "ok": true,
+      "detail": "motor beside the left side (on the ground, 1.6 studs off, level with the hub): aimed near, the ghost shows 28,1,31 r2 with the green snapped outline (brick-1790180646732-ua4ei2:left)"
+    },
+    {
+      "id": "A:placed:motor beside the left side (on the ground, 1.6 studs off, level with the hub)",
+      "ok": true,
+      "detail": "motor beside the left side (on the ground, 1.6 studs off, level with the hub): one click placed it at 28,1,31 r2"
+    },
+    {
+      "id": "A:left-motor-on",
+      "ok": true,
+      "detail": "the left motor is on Buggy"
+    },
+    {
+      "id": "A:left-motor-wired",
+      "ok": true,
+      "detail": "wiring line: Left motor connected to port AUndo×"
+    },
+    {
+      "id": "A:ghost:motor over the plate near the right edge, beside the hub",
+      "ok": true,
+      "detail": "motor over the plate near the right edge, beside the hub: aimed near, the ghost shows 31,1,31 r0 with the green snapped outline (brick-1790180646732-ua4ei2:right)"
+    },
+    {
+      "id": "A:placed:motor over the plate near the right edge, beside the hub",
+      "ok": true,
+      "detail": "motor over the plate near the right edge, beside the hub: one click placed it at 31,1,31 r0"
+    },
+    {
+      "id": "A:right-motor-on",
+      "ok": true,
+      "detail": "the right motor is on Buggy"
+    },
+    {
+      "id": "A:axle-targets",
+      "ok": true,
+      "detail": "axle armed: 2 glowing sockets"
+    },
+    {
+      "id": "A:ghost:axle aimed at the ground a stud past the left socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the left socket: aimed near, the ghost shows 26,0,32 r0 with the green snapped outline (socket:brick-1790180650677-rvfhxe)"
+    },
+    {
+      "id": "A:placed:axle aimed at the ground a stud past the left socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the left socket: one click placed it at 26,0,32 r0"
+    },
+    {
+      "id": "A:left-axle-in",
+      "ok": true,
+      "detail": "the left axle is in the left motor"
+    },
+    {
+      "id": "A:ghost:axle aimed at the ground a stud past the right socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the right socket: aimed near, the ghost shows 34,0,32 r0 with the green snapped outline (socket:brick-1790180651451-lovjl1)"
+    },
+    {
+      "id": "A:placed:axle aimed at the ground a stud past the right socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the right socket: one click placed it at 34,0,32 r0"
+    },
+    {
+      "id": "A:right-axle-in",
+      "ok": true,
+      "detail": "the right axle is in the right motor"
+    },
+    {
+      "id": "A:wheel-targets",
+      "ok": true,
+      "detail": "wheel armed: 2 glowing axle ends"
+    },
+    {
+      "id": "A:ghost:wheel aimed near the left axle end",
+      "ok": true,
+      "detail": "wheel aimed near the left axle end: aimed near, the ghost shows 25,0,31 r0 with the green snapped outline (end:brick-1790180653594-84v7yy:0)"
+    },
+    {
+      "id": "A:placed:wheel aimed near the left axle end",
+      "ok": true,
+      "detail": "wheel aimed near the left axle end: one click placed it at 25,0,31 r0"
+    },
+    {
+      "id": "A:left-wheel-on",
+      "ok": true,
+      "detail": "the left wheel is on its axle"
+    },
+    {
+      "id": "A:ghost:wheel aimed near the right axle end",
+      "ok": true,
+      "detail": "wheel aimed near the right axle end: aimed near, the ghost shows 36,0,31 r0 with the green snapped outline (end:brick-1790180654365-1jhd5r:1)"
+    },
+    {
+      "id": "A:placed:wheel aimed near the right axle end",
+      "ok": true,
+      "detail": "wheel aimed near the right axle end: one click placed it at 36,0,31 r0"
+    },
+    {
+      "id": "A:right-wheel-on",
+      "ok": true,
+      "detail": "the right wheel is on its axle"
+    },
+    {
+      "id": "A:can-drive",
+      "ok": true,
+      "detail": "readiness(): {\"kind\":\"drive\",\"ready\":true,\"reason\":null}"
+    },
+    {
+      "id": "A:no-gaps",
+      "ok": true,
+      "detail": "no red gap markers on the finished car (0)"
+    },
+    {
+      "id": "A:counts",
+      "ok": true,
+      "detail": "8 placements, 0 that looked connected but were not"
+    },
+    {
+      "id": "A:ghost:motor dropped on the ground behind Buggy",
+      "ok": true,
+      "detail": "motor dropped on the ground behind Buggy: aimed near, the ghost shows 30,0,37 r0 (not snapped)"
+    },
+    {
+      "id": "A:placed:motor dropped on the ground behind Buggy",
+      "ok": true,
+      "detail": "motor dropped on the ground behind Buggy: one click placed it at 30,0,37 r0"
+    },
+    {
+      "id": "A:not-attached-line",
+      "ok": true,
+      "detail": "wiring line: Right motor isn't on Buggy yet. Stack it on Buggy.×"
+    },
+    {
+      "id": "A:bare-ground-label",
+      "ok": true,
+      "detail": "next to the motor: [\"Put motors on a plate so wheels reach the ground\"]"
+    },
+    {
+      "id": "A:no-second-robot",
+      "ok": true,
+      "detail": "no second robot and no card for it"
+    },
+    {
+      "id": "A:stray-undone",
+      "ok": true,
+      "detail": "Undo took the stray motor away"
+    },
+    {
+      "id": "A:wheel-selected",
+      "ok": true,
+      "detail": "clicking the wheel selects it"
+    },
+    {
+      "id": "A:gap-marker",
+      "ok": true,
+      "detail": "gap markers: [\"Put the wheel on the axle\"]"
+    },
+    {
+      "id": "A:ghost:the wheel dragged back near its axle end",
+      "ok": true,
+      "detail": "the wheel dragged back near its axle end: mid-drag the ghost shows 25,0,31 r0 with the green snapped outline"
+    },
+    {
+      "id": "A:moved:the wheel dragged back near its axle end",
+      "ok": true,
+      "detail": "the wheel dragged back near its axle end: letting go put it at 25,0,31"
+    },
+    {
+      "id": "A:gap-fixed",
+      "ok": true,
+      "detail": "moved back with a snap: no gap marker, still ready to drive"
+    },
+    {
+      "id": "B:ghost:hub on the bare ground",
+      "ok": true,
+      "detail": "hub on the bare ground: aimed near, the ghost shows 20,0,28 r0 (not snapped)"
+    },
+    {
+      "id": "B:placed:hub on the bare ground",
+      "ok": true,
+      "detail": "hub on the bare ground: one click placed it at 20,0,28 r0"
+    },
+    {
+      "id": "B:ghost:motor on the ground beside the hub",
+      "ok": true,
+      "detail": "motor on the ground beside the hub: aimed near, the ghost shows 25,0,28 r0 (not snapped)"
+    },
+    {
+      "id": "B:placed:motor on the ground beside the hub",
+      "ok": true,
+      "detail": "motor on the ground beside the hub: one click placed it at 25,0,28 r0"
+    },
+    {
+      "id": "B:no-second-robot",
+      "ok": true,
+      "detail": "the motor did not start a second robot asking for a hub"
+    },
+    {
+      "id": "B:not-attached-line",
+      "ok": true,
+      "detail": "wiring line: Right motor isn't on Robo yet. Put them both on a plate.×"
+    },
+    {
+      "id": "B:bare-ground-label",
+      "ok": true,
+      "detail": "next to the motor: [\"Put motors on a plate so wheels reach the ground\"]"
+    },
+    {
+      "id": "B:no-false-snap",
+      "ok": true,
+      "detail": "aimed in front of the socket: no snap, hint \"Put the motor on a plate first\""
+    },
+    {
+      "id": "B:gap-marker",
+      "ok": true,
+      "detail": "the axle that points into the ring but is not in it gets a red gap marker ([\"Put the motor on a plate\"])"
+    },
+    {
+      "id": "B:counts",
+      "ok": true,
+      "detail": "0 placements looked connected but were not (the axle beside the grounded motor is marked red)"
+    },
+    {
+      "id": "D:ghost:plate",
+      "ok": true,
+      "detail": "plate: aimed near, the ghost shows 28,0,26 r0 (not snapped)"
+    },
+    {
+      "id": "D:placed:plate",
+      "ok": true,
+      "detail": "plate: one click placed it at 28,0,26 r0"
+    },
+    {
+      "id": "D:ghost:hub",
+      "ok": true,
+      "detail": "hub: aimed near, the ghost shows 29,1,27 r0 (not snapped)"
+    },
+    {
+      "id": "D:placed:hub",
+      "ok": true,
+      "detail": "hub: one click placed it at 29,1,27 r0"
+    },
+    {
+      "id": "D:ghost:left motor beside the left side",
+      "ok": true,
+      "detail": "left motor beside the left side: aimed near, the ghost shows 28,1,31 r2 with the green snapped outline (brick-1790180670213-zavs5u:left)"
+    },
+    {
+      "id": "D:placed:left motor beside the left side",
+      "ok": true,
+      "detail": "left motor beside the left side: one click placed it at 28,1,31 r2"
+    },
+    {
+      "id": "D:ghost:second motor dropped on the ground, too far out to be pulled on",
+      "ok": true,
+      "detail": "second motor dropped on the ground, too far out to be pulled on: aimed near, the ghost shows 37,0,30 r0 (not snapped)"
+    },
+    {
+      "id": "D:placed:second motor dropped on the ground, too far out to be pulled on",
+      "ok": true,
+      "detail": "second motor dropped on the ground, too far out to be pulled on: one click placed it at 37,0,30 r0"
+    },
+    {
+      "id": "D:not-attached-line",
+      "ok": true,
+      "detail": "wiring line: Right motor isn't on Buggy yet. Put it on Buggy's plate.×"
+    },
+    {
+      "id": "D:motor-selected",
+      "ok": true,
+      "detail": "clicking the motor selects it"
+    },
+    {
+      "id": "D:ghost:the motor dragged toward the plate",
+      "ok": true,
+      "detail": "the motor dragged toward the plate: mid-drag the ghost shows 31,1,31 r0 with the green snapped outline"
+    },
+    {
+      "id": "D:moved:the motor dragged toward the plate",
+      "ok": true,
+      "detail": "the motor dragged toward the plate: letting go put it at 31,1,31"
+    },
+    {
+      "id": "D:plugged-in",
+      "ok": true,
+      "detail": "wiring line: Right motor connected to port BUndo×"
+    },
+    {
+      "id": "D:no-ground-label",
+      "ok": true,
+      "detail": "the motor is on the plate: its \"on the ground\" line is gone"
+    },
+    {
+      "id": "D:on-buggy",
+      "ok": true,
+      "detail": "the motor is part of Buggy"
+    },
+    {
+      "id": "C:ghost:plate",
+      "ok": true,
+      "detail": "plate: aimed near, the ghost shows 28,0,26 r0 (not snapped)"
+    },
+    {
+      "id": "C:placed:plate",
+      "ok": true,
+      "detail": "plate: one click placed it at 28,0,26 r0"
+    },
+    {
+      "id": "C:ghost:hub",
+      "ok": true,
+      "detail": "hub: aimed near, the ghost shows 29,1,27 r0 (not snapped)"
+    },
+    {
+      "id": "C:placed:hub",
+      "ok": true,
+      "detail": "hub: one click placed it at 29,1,27 r0"
+    },
+    {
+      "id": "C:named",
+      "ok": true,
+      "detail": "the robot is called Buggy (named through the card's Not now)"
+    },
+    {
+      "id": "C:motor-targets",
+      "ok": true,
+      "detail": "motor armed, the mouse on open ground: 2 glowing edge stretches (left, right)"
+    },
+    {
+      "id": "C:ghost:motor beside the left side (on the ground, 1.6 studs off, level with the hub)",
+      "ok": true,
+      "detail": "motor beside the left side (on the ground, 1.6 studs off, level with the hub): aimed near, the ghost shows 28,1,31 r2 with the green snapped outline (brick-1790180678977-hry429:left)"
+    },
+    {
+      "id": "C:placed:motor beside the left side (on the ground, 1.6 studs off, level with the hub)",
+      "ok": true,
+      "detail": "motor beside the left side (on the ground, 1.6 studs off, level with the hub): one click placed it at 28,1,31 r2"
+    },
+    {
+      "id": "C:left-motor-on",
+      "ok": true,
+      "detail": "the left motor is on Buggy"
+    },
+    {
+      "id": "C:left-motor-wired",
+      "ok": true,
+      "detail": "wiring line: Left motor connected to port AUndo×"
+    },
+    {
+      "id": "C:ghost:motor over the plate near the right edge, beside the hub",
+      "ok": true,
+      "detail": "motor over the plate near the right edge, beside the hub: aimed near, the ghost shows 31,1,31 r0 with the green snapped outline (brick-1790180678977-hry429:right)"
+    },
+    {
+      "id": "C:placed:motor over the plate near the right edge, beside the hub",
+      "ok": true,
+      "detail": "motor over the plate near the right edge, beside the hub: one click placed it at 31,1,31 r0"
+    },
+    {
+      "id": "C:right-motor-on",
+      "ok": true,
+      "detail": "the right motor is on Buggy"
+    },
+    {
+      "id": "C:axle-targets",
+      "ok": true,
+      "detail": "axle armed: 2 glowing sockets"
+    },
+    {
+      "id": "C:ghost:axle aimed at the ground a stud past the left socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the left socket: aimed near, the ghost shows 26,0,32 r0 with the green snapped outline (socket:brick-1790180688066-os4edl)"
+    },
+    {
+      "id": "C:placed:axle aimed at the ground a stud past the left socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the left socket: one click placed it at 26,0,32 r0"
+    },
+    {
+      "id": "C:left-axle-in",
+      "ok": true,
+      "detail": "the left axle is in the left motor"
+    },
+    {
+      "id": "C:ghost:axle aimed at the ground a stud past the right socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the right socket: aimed near, the ghost shows 34,0,32 r0 with the green snapped outline (socket:brick-1790180688831-8cjg7m)"
+    },
+    {
+      "id": "C:placed:axle aimed at the ground a stud past the right socket",
+      "ok": true,
+      "detail": "axle aimed at the ground a stud past the right socket: one click placed it at 34,0,32 r0"
+    },
+    {
+      "id": "C:right-axle-in",
+      "ok": true,
+      "detail": "the right axle is in the right motor"
+    },
+    {
+      "id": "C:wheel-targets",
+      "ok": true,
+      "detail": "wheel armed: 2 glowing axle ends"
+    },
+    {
+      "id": "C:ghost:wheel aimed near the left axle end",
+      "ok": true,
+      "detail": "wheel aimed near the left axle end: aimed near, the ghost shows 25,0,31 r0 with the green snapped outline (end:brick-1790180690700-q1qw8n:0)"
+    },
+    {
+      "id": "C:placed:wheel aimed near the left axle end",
+      "ok": true,
+      "detail": "wheel aimed near the left axle end: one click placed it at 25,0,31 r0"
+    },
+    {
+      "id": "C:left-wheel-on",
+      "ok": true,
+      "detail": "the left wheel is on its axle"
+    },
+    {
+      "id": "C:ghost:wheel aimed near the right axle end",
+      "ok": true,
+      "detail": "wheel aimed near the right axle end: aimed near, the ghost shows 36,0,31 r0 with the green snapped outline (end:brick-1790180691474-jasibu:1)"
+    },
+    {
+      "id": "C:placed:wheel aimed near the right axle end",
+      "ok": true,
+      "detail": "wheel aimed near the right axle end: one click placed it at 36,0,31 r0"
+    },
+    {
+      "id": "C:right-wheel-on",
+      "ok": true,
+      "detail": "the right wheel is on its axle"
+    },
+    {
+      "id": "C:can-drive",
+      "ok": true,
+      "detail": "readiness(): {\"kind\":\"drive\",\"ready\":true,\"reason\":null}"
+    },
+    {
+      "id": "C:no-gaps",
+      "ok": true,
+      "detail": "no red gap markers on the finished car (0)"
+    },
+    {
+      "id": "C:counts",
+      "ok": true,
+      "detail": "8 placements, 0 that looked connected but were not"
+    }
+  ]
+}

@@ -103,11 +103,16 @@ describe('a wheel', () => {
 })
 
 describe('anything else', () => {
-  it('a stock brick, a hub or a motor never snaps', () => {
+  it('a stock brick or a hub never snaps; an axle over a robot with every socket full has nowhere to go', () => {
     const bricks = roverBricks()
     expect(snap(bricks, 'brick_2x4', ROVER_IDS.leftMotor)).toBeNull()
-    expect(snap(bricks, ROBOTICS_PART_IDS.motor, ROVER_IDS.leftAxle)).toBeNull()
+    expect(snap(bricks, ROBOTICS_PART_IDS.hub, ROVER_IDS.plate, { x: -1.2, y: 0.18, z: -0.6 })).toBeNull()
     expect(snap(bricks, ROBOTICS_PART_IDS.axleShort, ROVER_IDS.hub)).toBeNull()
     expect(snap(bricks, ROBOTICS_PART_IDS.axleShort, ROVER_IDS.plate)).toBeNull()
+  })
+
+  it('a motor over a full robot has no room on its plate, so it does not snap from the ground either', () => {
+    // Over the left axle (a part that cannot carry it), next to the finished rover: every edge spot is taken.
+    expect(snap(roverBricks(), ROBOTICS_PART_IDS.motor, ROVER_IDS.leftAxle)).toBeNull()
   })
 })
