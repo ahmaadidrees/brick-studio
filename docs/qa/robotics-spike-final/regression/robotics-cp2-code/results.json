@@ -1,27 +1,27 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768 (journeys), 1366x768 and 1024x768 (screens)",
-  "at": "2026-09-23T12:27:09.858Z",
+  "at": "2026-09-23T12:32:48.025Z",
   "measured": {
     "roverFirstRun": {
       "stoppedAtStuds": 2.45,
       "minimumStuds": 2.45,
       "trace": [
         "0.00s:12.00",
-        "0.16s:11.86",
-        "0.39s:11.32",
+        "0.14s:11.88",
+        "0.49s:11.03",
         "0.72s:10.31",
         "0.94s:9.60",
         "1.27s:8.50",
-        "1.51s:7.72",
-        "1.82s:6.67",
-        "2.06s:5.89",
-        "2.27s:5.17",
-        "2.51s:4.39",
-        "2.74s:3.61",
-        "3.08s:2.64",
-        "3.29s:2.46",
-        "3.51s:2.45"
+        "1.49s:7.78",
+        "1.81s:6.72",
+        "2.02s:6.00",
+        "2.24s:5.28",
+        "2.56s:4.22",
+        "2.77s:3.50",
+        "3.09s:2.61",
+        "3.33s:2.46",
+        "3.56s:2.45"
       ]
     },
     "stopsEarlier": {
@@ -31,7 +31,7 @@
     "joystick": {
       "up": 3.39,
       "sensorBefore": 12,
-      "sensorPushed": 9.3,
+      "sensorPushed": 9.4,
       "releasedSpeed": 0
     },
     "gate": {
@@ -113,7 +113,7 @@
     {
       "id": "R2.drives",
       "ok": true,
-      "detail": "top speed 3.34 studs/s"
+      "detail": "top speed 3.33 studs/s"
     },
     {
       "id": "R2.stops-before-wall",
@@ -163,7 +163,7 @@
     {
       "id": "R4b.dragged-in",
       "ok": true,
-      "detail": "dragged \"stop Left motor · A\" out of the palette: Left motor · A (value brick-1790166369063-g4uaw9)"
+      "detail": "dragged \"stop Left motor · A\" out of the palette: Left motor · A (value brick-1790166707133-2zew0e)"
     },
     {
       "id": "R4b.snapped",
@@ -213,7 +213,7 @@
     {
       "id": "R7.joystick-drives",
       "ok": true,
-      "detail": "mouse-dragging the stick up: 3.39 studs/s forward, wall 12.0 → 9.3 studs; chip \"Motors 41 · 41 % (speed 34 · 36 %)\""
+      "detail": "mouse-dragging the stick up: 3.39 studs/s forward, wall 12.0 → 9.4 studs; chip \"Motors 41 · 41 % (speed 35 · 34 %)\""
     },
     {
       "id": "R7.joystick-release",
@@ -223,7 +223,7 @@
     {
       "id": "R7.arrow-up",
       "ok": true,
-      "detail": "ArrowUp held: 7.11 studs/s, wall 12.0 → 10.3 studs"
+      "detail": "ArrowUp held: 6.71 studs/s, wall 12.0 → 10.6 studs"
     },
     {
       "id": "R7.arrow-left",

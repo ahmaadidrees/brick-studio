@@ -712,6 +712,8 @@ function BuildCamera({ gestureActive }: { gestureActive: CameraGestureFlag }) {
     const pose = insets
       ? framePoseInFreeArea(frameBounds, perspectiveCamera.fov, { width: viewportSize.width, height: viewportSize.height }, insets, request.preset, selectedTarget, false)
       : createBuildFramePose(frameBounds, request.preset, perspectiveCamera.fov, perspectiveCamera.aspect, selectedTarget)
+    // Framing into the free area can need more room than the build's own cap (Robot Workshop spike).
+    if (insets && controls.current) controls.current.maxDistance = Math.max(controls.current.maxDistance, pose.distance * 1.2)
     camera.position.set(pose.position.x, pose.position.y, pose.position.z)
     controls.current?.target.set(pose.target.x, pose.target.y, pose.target.z)
     controls.current?.update()

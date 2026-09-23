@@ -272,6 +272,9 @@ function CreationFraming() {
       camera.position.set(pose.position.x, pose.position.y, pose.position.z)
       const orbit = controls as OrbitControlsImpl | null
       if (orbit?.target) {
+        // The studio caps orbit distance for the whole build; framing into a small free area
+        // (a portrait tablet beside the Code view) needs to stand further back than that.
+        orbit.maxDistance = Math.max(orbit.maxDistance, pose.distance * 1.2)
         orbit.target.set(pose.target.x, pose.target.y, pose.target.z)
         orbit.update()
       } else camera.lookAt(pose.target.x, pose.target.y, pose.target.z)

@@ -104,3 +104,6 @@
   .robotics-lines, .robotics-parts, .robotics-selected { font-size: 13px; }
   .robotics-card-head span, .robotics-structure p { font-size: 13px; }
 }
+
+/* In the Code view a studio message sits at the bottom of the stage, never over the stage bar or the editor. */
+.brick-studio:has(.robo-code-editor) .brick-toast { left: auto; right: 16px; top: auto; bottom: 72px; transform: none; max-width: min(420px, 36%); }

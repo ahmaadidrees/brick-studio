@@ -79,6 +79,8 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
     const release = suspendStudioShortcuts()
     // No half-finished move, no armed brush (a click on the stage must never place a brick), no selection.
     useBrickStore.getState().cancelInteraction()
+    // A studio message left over from Build (or the cancel's own hint) would sit over the stage bar.
+    useBrickStore.getState().clearToast()
     useBrickStore.getState().selectBrick(null)
     if (!ensureProgramFor(creation)) setError('This creation’s programs could not be opened.')
     void useStageStore.getState().openStage(creation.id)
