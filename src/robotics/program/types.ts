@@ -114,6 +114,8 @@ export type DiagnosticCode =
   | 'device.unplugged'
   /** A block names a device that is not part of this creation. */
   | 'device.not-in-creation'
+  /** A hinge motor whose arm is built into the frame was told to move (run lane, additive): it cannot swing. */
+  | 'device.locked'
   /** A helper (drive / turn / joystick drive) with no drive pair: "Choose two drive motors first". */
   | 'drive.no-pair'
   /** Blocks not under a hat are ignored. */
@@ -129,6 +131,8 @@ export type DiagnosticCode =
   | 'runtime.budget-exceeded'
   | 'runtime.non-finite'
   | 'runtime.two-scripts-one-motor'
+  /** The runtime threw; the controller stopped the run (run lane, additive). */
+  | 'runtime.error'
 
 export type BlockDiagnostic = {
   code: DiagnosticCode

@@ -251,3 +251,118 @@ describe('the clock', () => {
     expect(mechanics.setHingeTarget(GATE_IDS.hinge, 10)).toBe(false)
   })
 })
+
+describe('checkpoint 2 additions', () => {
+  const roverCreation = (bricks = roverBricks()) => build(bricks, ROVER_IDS.hub, ROVER_WIRING).creation
+
+  it('step hooks run once before and once after every fixed step, and stepOnce takes exactly one', () => {
+    const { mechanics } = build(roverBricks(), ROVER_IDS.hub, ROVER_WIRING)
+    const calls: string[] = []
+    mechanics.setStepHooks({ before: () => calls.push(`b${mechanics.steps}`), after: () => calls.push(`a${mechanics.steps}`) })
+    mechanics.step(2 / 120 + 1e-9)
+    expect(calls).toEqual(['b0', 'a1', 'b1', 'a2'])
+    mechanics.stepOnce()
+    expect(mechanics.steps).toBe(3)
+    mechanics.setStepHooks(null)
+    mechanics.stepOnce()
+    expect(calls).toHaveLength(6)
+    mechanics.dispose()
+  })
+
+  it('power mode and target mode share the joint; speed is measured, signed, as a fraction of full speed', () => {
+    const { mechanics } = build(roverBricks(), ROVER_IDS.hub, ROVER_WIRING)
+    mechanics.setMotorPower(ROVER_IDS.leftMotor, 0.4)
+    mechanics.setMotorPower(ROVER_IDS.rightMotor, -0.4)
+    run(mechanics, 1)
+    expect(mechanics.motorMode(ROVER_IDS.leftMotor)).toBe('power')
+    // A little under the command: the wheels carry the rover and its dragging nose.
+    expect(mechanics.motorSpeed(ROVER_IDS.leftMotor)).toBeGreaterThan(0.3)
+    expect(mechanics.motorSpeed(ROVER_IDS.leftMotor)).toBeLessThan(0.42)
+    expect(mechanics.motorSpeed(ROVER_IDS.rightMotor)).toBeLessThan(-0.3)
+    const start = mechanics.motorOutputAngle(ROVER_IDS.leftMotor)
+    expect(mechanics.setMotorTarget(ROVER_IDS.leftMotor, (start * 180) / Math.PI + 90)).toBe(true)
+    expect(mechanics.motorMode(ROVER_IDS.leftMotor)).toBe('target')
+    expect(mechanics.motorPower(ROVER_IDS.leftMotor)).toBe(0)
+    mechanics.setMotorPower(ROVER_IDS.rightMotor, 0)
+    run(mechanics, 1.5)
+    expect(((mechanics.motorOutputAngle(ROVER_IDS.leftMotor) - start) * 180) / Math.PI).toBeCloseTo(90, -1)
+    expect(Math.abs(mechanics.motorSpeed(ROVER_IDS.leftMotor))).toBeLessThan(0.05)
+    mechanics.dispose()
+  })
+
+  it("scenery 'none' leaves every other brick out; 'world' keeps it as static scenery the sensor sees", () => {
+    const bricks = [...roverBricks(), { id: 'block', partId: 'brick_2x4', x: 30, y: 0, z: 18, rotation: 0 as const, color: '#888888' }]
+    const creation = roverCreation(bricks)
+    const world = createMechanics({ rapier: RAPIER, bricks, partMap, plateSize: 64, creation })
+    const bare = createMechanics({ rapier: RAPIER, bricks, partMap, plateSize: 64, creation, scenery: 'none' })
+    // Rapier builds its scene queries in a step: rays see the world as of the last step.
+    world.stepOnce()
+    bare.stepOnce()
+    const inWorld = world.sensorRay(ROVER_IDS.sensor, 40 * 0.62)!
+    const onPlate = bare.sensorRay(ROVER_IDS.sensor, 40 * 0.62)!
+    // The block's near face is at z = (22 - 32) studs; the sensor face at (26 - 32) studs: 4 studs.
+    expect(inWorld.distance! / 0.62).toBeCloseTo(4, 1)
+    expect(onPlate.distance).toBeNull()
+    expect(onPlate.end.z).toBeCloseTo(onPlate.origin.z - 40 * 0.62, 5)
+    world.dispose()
+    bare.dispose()
+  })
+
+  it('the sensor ray ignores the creation itself and follows the body it rides on', () => {
+    const { mechanics } = build(roverBricks(), ROVER_IDS.hub, ROVER_WIRING)
+    const before = mechanics.sensorRay(ROVER_IDS.sensor, 10)!
+    expect(before.distance).toBeNull()
+    expect(before.direction).toEqual({ x: 0, y: 0, z: -1 })
+    mechanics.setMotorPower(ROVER_IDS.leftMotor, 0.4)
+    mechanics.setMotorPower(ROVER_IDS.rightMotor, 0.4)
+    run(mechanics, 1.5)
+    const after = mechanics.sensorRay(ROVER_IDS.sensor, 10)!
+    expect(Math.abs(after.direction.x)).toBeGreaterThan(0.3)
+    mechanics.dispose()
+  })
+
+  it('a wall prop stops a rover; a visitor walks up, waits, walks back and pushes nothing', () => {
+    const creation = roverCreation()
+    const wall = { id: 'wall', kind: 'wall' as const, center: { x: 0, y: 1, z: -6 }, size: { x: 10, y: 2, z: 0.62 } }
+    // The sensor looks along -Z from (-0.62, ~0.49, -3.72).
+    const visitor = { id: 'visitor', kind: 'visitor' as const, path: [{ x: 6, y: 1.1, z: -5 }, { x: -0.62, y: 1.1, z: -5 }], size: { x: 1.1, y: 2.2, z: 0.5 }, secondsPerLeg: 1 }
+    const mechanics = createMechanics({ rapier: RAPIER, bricks: roverBricks(), partMap, plateSize: 64, creation, scenery: 'none', props: [wall, visitor] })
+    expect(mechanics.visitorPhase()).toBe('away')
+    expect(mechanics.triggerVisitor()).toBe(true)
+    run(mechanics, 1.2)
+    expect(mechanics.visitorPhase()).toBe('here')
+    expect(mechanics.propPoses().get('visitor')!.position.x).toBeCloseTo(-0.62, 3)
+    expect(mechanics.sensorRay(ROVER_IDS.sensor, 20)!.distance).toBeCloseTo(5 - 0.25 - 3.72, 2)
+    // Nothing was pushed: the rover has not moved.
+    expect(Math.abs(chassisPose(mechanics).position.z)).toBeLessThan(0.01)
+    run(mechanics, 2)
+    expect(mechanics.visitorPhase()).toBe('leaving')
+    run(mechanics, 1.2)
+    expect(mechanics.visitorPhase()).toBe('away')
+    // Drive into the wall: the chassis stops at it.
+    mechanics.setMotorPower(ROVER_IDS.leftMotor, 0.4)
+    mechanics.setMotorPower(ROVER_IDS.rightMotor, -0.4)
+    run(mechanics, 4)
+    // The plate's front edge (z = -3.72 as built) ends at the wall's near face (z = -5.69), not through it.
+    const front = chassisPose(mechanics).position.z - 3.72
+    expect(front).toBeGreaterThan(-5.69 - 0.05)
+    expect(front).toBeLessThan(-5.69 + 0.3)
+    expect(mechanics.propPoses().get('wall')!.position).toEqual({ x: 0, y: 1, z: -6 })
+    mechanics.dispose()
+  })
+
+  it('a hinge in power mode turns toward its range end at a fraction of top speed; 0 holds it', () => {
+    const { mechanics } = build(gateBricks(), GATE_IDS.hinge, GATE_WIRING)
+    expect(mechanics.setHingePower(GATE_IDS.hinge, 0.5)).toBe(true)
+    run(mechanics, 1)
+    const moving = mechanics.hingeReport(GATE_IDS.hinge)!.angle
+    expect(moving).toBeGreaterThan(35)
+    expect(moving).toBeLessThan(50)
+    expect(mechanics.hingeSpeed(GATE_IDS.hinge)).toBeCloseTo(45, -1)
+    mechanics.setHingePower(GATE_IDS.hinge, 0)
+    run(mechanics, 1)
+    expect(mechanics.hingeReport(GATE_IDS.hinge)!.angle).toBeCloseTo(moving, -1)
+    expect(Math.abs(mechanics.hingeSpeed(GATE_IDS.hinge))).toBeLessThan(2)
+    mechanics.dispose()
+  })
+})
