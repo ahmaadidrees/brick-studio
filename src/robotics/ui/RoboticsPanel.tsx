@@ -251,9 +251,9 @@ function describeHinge(hinge: DerivedHinge) {
 
 function PartRows({ creation, selectedId = null, compact = false }: { creation: DerivedCreation; selectedId?: string | null; compact?: boolean }) {
   const hingeReports = useRoboticsStore((state) => state.hingeReports)
-  const rows: { id: string; text: string; tone?: 'warn' | 'bad' }[] = []
+  const rows: { id: string; text: string; tone?: 'warn' | 'bad'; ports?: { port: string; device: string | null }[] }[] = []
   const devices = [...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons]
-  for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · ports ${['A', 'B', 'C', 'D'].map((port) => `${port}${devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port) ? '●' : '○'}`).join(' ')}` })
+  for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · ports`, ports: (['A', 'B', 'C', 'D'] as const).map((port) => ({ port, device: devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port)?.name ?? null })) })
   for (const motor of creation.motors) rows.push({ id: motor.brickId, text: `${motor.name} · ${describeMotor(motor)}`, tone: motor.plugged ? undefined : 'warn' })
   for (const hinge of creation.hinges) {
     const report = hingeReports[hinge.brickId]
@@ -265,7 +265,16 @@ function PartRows({ creation, selectedId = null, compact = false }: { creation: 
   if (!rows.length) return null
   return (
     <ul className={`robotics-parts${compact ? ' compact' : ''}`} aria-label="Parts found">
-      {rows.map((row) => <li key={row.id} className={`${row.tone ?? ''}${row.id === selectedId ? ' selected' : ''}`} data-brick-id={row.id}>{row.text}</li>)}
+      {rows.map((row) => (
+        <li key={row.id} className={`${row.tone ?? ''}${row.id === selectedId ? ' selected' : ''}`} data-brick-id={row.id}>
+          {row.text}
+          {row.ports && (
+            <span className="robotics-port-chips">
+              {row.ports.map(({ port, device }) => <span key={port} className={`robotics-port-chip${device ? ' used' : ''}`} title={device ? `Port ${port}: ${device}` : `Port ${port}: free`} aria-label={device ? `Port ${port}, ${device}` : `Port ${port}, free`}>{port}</span>)}
+            </span>
+          )}
+        </li>
+      ))}
     </ul>
   )
 }

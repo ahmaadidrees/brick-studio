@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { getBuildPlateSize } from '../../brick/buildPlate'
-import { createPartMap } from '../../brick/parts'
+import { STUD, createPartMap } from '../../brick/parts'
 import { registerRoboticsHistoryMerge, useBrickStore, type BrickHistoryEntry, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { connect, planAssistedConnection } from '../model/control'
@@ -9,6 +9,8 @@ import { readRoboticsSection, writeRoboticsSection, type RoboticsConnection, typ
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { mergeRoboticsHistory } from '../program/programs'
 import { overlappingBricks } from '../model/blocked'
+import { brickOriginFor } from '../model/grid'
+import type { Vec3 } from '../model/vec'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { ContactReport, HingeReport, Mechanics } from '../sim/mechanics'
@@ -61,7 +63,7 @@ export type SimState = {
 }
 
 /** Asks the scene to frame these bricks inside the free canvas area (the layer measures the panels). */
-export type FrameRequest = { brickIds: string[]; nonce: number }
+export type FrameRequest = { brickIds: string[]; nonce: number; /** Extra world points to keep in view (where a creation is about to drive). */ points?: Vec3[] }
 
 export type RoboticsState = {
   model: RoboticsModel
@@ -82,7 +84,7 @@ export type RoboticsState = {
   confirmCard: (name: string, thenCode: boolean) => void
   renameCreation: (creationId: string, name: string) => void
   setTestSpace: (creationId: string, space: TestSpace) => void
-  requestFrame: (brickIds: string[]) => void
+  requestFrame: (brickIds: string[], points?: Vec3[]) => void
   dismissWiringNote: () => void
   undoWiring: () => void
   startSim: (creationId: string) => Promise<void>
@@ -97,6 +99,20 @@ export type RoboticsState = {
 }
 
 const WIRING_LABEL_PREFIX = 'Connect '
+
+/** Studs a nudge is framed for, ahead of and behind a creation that can drive (a 40 % nudge rolls about 8 in 2.6 s). */
+const NUDGE_TRAVEL_STUDS = 9
+
+function travelPoints(input: DeriveInput, creation: DerivedCreation): Vec3[] {
+  const forward = creation.drivePair?.forward
+  if (!forward) return []
+  const bricks = input.bricks.filter((brick) => creation.brickIds.includes(brick.id))
+  if (!bricks.length) return []
+  const origins = bricks.map((brick) => brickOriginFor(brick, input.partMap[brick.partId], input.plateSize))
+  const center = { x: origins.reduce((sum, point) => sum + point.x, 0) / origins.length, y: 0, z: origins.reduce((sum, point) => sum + point.z, 0) / origins.length }
+  const reach = NUDGE_TRAVEL_STUDS * STUD
+  return [1, -1].map((sign) => ({ x: center.x + forward.x * reach * sign, y: 0, z: center.z + forward.z * reach * sign }))
+}
 
 export function computeModel(state: Pick<BrickState, 'bricks' | 'documentMetadata'>): RoboticsModel {
   const section = readRoboticsSection(state.documentMetadata.robotics)
@@ -286,7 +302,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     writeSection({ ...section, creations: section.creations.map((creation) => (creation.id === id ? { ...creation, testSpace: space } : creation)) }, `Run ${space === 'testPlate' ? 'on the test plate' : 'in my world'}`)
   },
 
-  requestFrame: (brickIds) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1 } })),
+  requestFrame: (brickIds, points) => set((state) => ({ frameRequest: { brickIds: [...brickIds], nonce: (state.frameRequest?.nonce ?? 0) + 1, ...(points?.length ? { points: points.map((point) => ({ ...point })) } : {}) } })),
 
   dismissWiringNote: () => set({ wiringNote: null }),
 
@@ -336,6 +352,8 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       const mechanics = createMechanics({ rapier, bricks: brickState.bricks, partMap: model.input.partMap, plateSize: model.input.plateSize, creation })
       setHiddenBrickIds(mechanics.simulatedBrickIds)
       set({ sim: { creationId: id, mechanics, hiddenBrickIds: mechanics.simulatedBrickIds, bricks: brickState.bricks, behaviorKey: simBehaviorKey(brickState) }, model, contacts: [], hingeReports: {}, motorAngles: {} })
+      // A creation that can drive gets framed with room ahead and behind, so it never rolls under a panel.
+      if (creation.drivePair) get().requestFrame(creation.brickIds, travelPoints(model.input, creation))
     } finally {
       // A cancelled or superseded start no longer owns the loading flag.
       if (!cancelled()) set({ simLoading: false })

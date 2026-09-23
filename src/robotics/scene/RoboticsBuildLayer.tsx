@@ -19,7 +19,8 @@ import { useRoboticsStore, type RoboticsModel, type SimState } from '../state/ro
 import Cables from '../wiring/Cables'
 import type { HingeReport } from '../sim/mechanics'
 import { registerDraftSnapper } from './draftSnap'
-import { framePoseInFreeArea, measureCanvasInsets } from './framing'
+import { registerCanvasInsets } from './cameraInsets'
+import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
 import StageLayer from './StageLayer'
 
@@ -267,7 +268,7 @@ function CreationFraming() {
       const plateSize = getBuildPlateSize(state.documentMetadata)
       const canvas = gl.domElement
       const viewport = { width: canvas.clientWidth || 1, height: canvas.clientHeight || 1 }
-      const pose = framePoseInFreeArea(getBuildBounds(bricks, plateSize), camera.fov, viewport, measureCanvasInsets(canvas))
+      const pose = framePoseInFreeArea(boundsWithPoints(getBuildBounds(bricks, plateSize), request.points ?? []), camera.fov, viewport, measureCanvasInsets(canvas))
       camera.position.set(pose.position.x, pose.position.y, pose.position.z)
       const orbit = controls as OrbitControlsImpl | null
       if (orbit?.target) {
@@ -278,6 +279,16 @@ function CreationFraming() {
     })
     return () => cancelAnimationFrame(handle)
   }, [request, camera, controls, gl])
+  return null
+}
+
+/** While the layer is mounted the studio's camera presets frame into the canvas area the panels leave free. */
+function PresetInsets() {
+  const { gl } = useThree()
+  useEffect(() => {
+    registerCanvasInsets(() => measureCanvasInsets(gl.domElement))
+    return () => registerCanvasInsets(null)
+  }, [gl])
   return null
 }
 
@@ -330,6 +341,7 @@ export default function RoboticsBuildLayer() {
     <>
       <ConnectorSnapping />
       <CreationFraming />
+      <PresetInsets />
       <DevProjector />
       {highlights.filter((entry) => !hidden?.has(entry.brick.id)).map((entry) => <BrickShell key={entry.brick.id} brick={entry.brick} color={entry.color} plateSize={plateSize} />)}
       <HubPortLabels bricks={visible} plateSize={plateSize} />

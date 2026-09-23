@@ -1,5 +1,6 @@
 import type { BuildBounds } from '../../brick/bounds'
-import { createBuildFramePose, type BuildFramePose } from '../../brick/buildCamera'
+import { createBuildFramePose, type BuildCameraPoint, type BuildFramePose } from '../../brick/buildCamera'
+import type { ViewPreset } from '../../brick/types'
 
 /**
  * Framing a creation inside the free canvas area. Panels sit over the canvas (the
@@ -35,17 +36,26 @@ export function freeArea(viewport: { width: number; height: number }, insets: Ca
   return { left, right, top, bottom, width: right - left, height: bottom - top }
 }
 
-export function framePoseInFreeArea(bounds: BuildBounds, verticalFovDegrees: number, viewport: { width: number; height: number }, insets: CanvasInsets = NO_INSETS): BuildFramePose {
+export function framePoseInFreeArea(
+  bounds: BuildBounds,
+  verticalFovDegrees: number,
+  viewport: { width: number; height: number },
+  insets: CanvasInsets = NO_INSETS,
+  preset: ViewPreset = 'home',
+  selectedTarget: BuildCameraPoint | null = null,
+): BuildFramePose {
   const free = freeArea(viewport, insets)
   const halfFov = (verticalFovDegrees * Math.PI) / 360
   // Only `free.height` of the viewport's rows are usable: the same as a narrower vertical field of view.
   const effectiveFov = (2 * Math.atan(Math.tan(halfFov) * (free.height / viewport.height)) * 180) / Math.PI
-  const pose = createBuildFramePose(bounds, 'home', effectiveFov, free.width / free.height)
+  const pose = createBuildFramePose(bounds, preset, effectiveFov, free.width / free.height, selectedTarget)
   // Slide the camera so the creation's centre appears at the free area's centre.
   const offsetX = (free.left + free.right) / 2 - viewport.width / 2
   const offsetY = (free.top + free.bottom) / 2 - viewport.height / 2
-  const worldPerPixel = (2 * pose.distance * Math.tan(halfFov)) / viewport.height
-  const direction = norm(sub(pose.target, pose.position))
+  // Presets lift the camera above the target (front, right), so measure the real distance to it.
+  const toTarget = sub(pose.target, pose.position)
+  const worldPerPixel = (2 * Math.hypot(toTarget.x, toTarget.y, toTarget.z) * Math.tan(halfFov)) / viewport.height
+  const direction = norm(toTarget)
   const right = norm(cross(direction, UP))
   const up = cross(right, direction)
   const shift = add(mul(right, -offsetX * worldPerPixel), mul(up, offsetY * worldPerPixel))
@@ -75,4 +85,19 @@ export function measureCanvasInsets(canvas: HTMLElement, root: ParentNode = docu
     if (overlaps(rect) && rect.top > frame.top + frame.height / 2) insets.bottom = Math.max(insets.bottom, frame.bottom - rect.top)
   }
   return insets
+}
+
+/** `bounds` grown to hold extra world points (where a creation is about to drive), padded like build bounds. */
+export function boundsWithPoints(bounds: BuildBounds, points: readonly Vec[], padding = 0.62 * 2): BuildBounds {
+  if (!points.length) return bounds
+  const min: [number, number, number] = [...bounds.min]
+  const max: [number, number, number] = [...bounds.max]
+  for (const point of points) {
+    const values = [point.x, point.y, point.z]
+    for (let axis = 0; axis < 3; axis += 1) {
+      min[axis] = Math.min(min[axis], values[axis] - (axis === 1 ? 0 : padding))
+      max[axis] = Math.max(max[axis], values[axis] + (axis === 1 ? 0 : padding))
+    }
+  }
+  return { min, max, center: [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2], size: [max[0] - min[0], max[1] - min[1], max[2] - min[2]], empty: false }
 }

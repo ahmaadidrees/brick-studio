@@ -381,3 +381,30 @@ describe('the union card (contract §4)', () => {
     expect(section().creations).toHaveLength(2)
   })
 })
+
+describe('a nudge on a creation that can drive', () => {
+  it('frames the creation with room ahead and behind, so it never rolls under a panel', async () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Rover', false)
+    place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
+    place(ROBOTICS_PART_IDS.motor, 31, 1, 31, 0)
+    place(ROBOTICS_PART_IDS.axleShort, 26, 0, 32)
+    place(ROBOTICS_PART_IDS.axleShort, 34, 0, 32)
+    place(ROBOTICS_PART_IDS.wheel, 25, 0, 31)
+    place(ROBOTICS_PART_IDS.wheel, 36, 0, 31)
+    const rover = robotics().model.creations[0]
+    expect(rover.drivePair).not.toBeNull()
+    const before = robotics().frameRequest?.nonce ?? 0
+    await robotics().startSim(rover.id)
+    const request = robotics().frameRequest!
+    expect(request.nonce).toBeGreaterThan(before)
+    expect(request.brickIds).toEqual(rover.brickIds)
+    expect(request.points).toHaveLength(2)
+    // Ahead and behind along the drive pair's forward (-Z here), nine studs each way.
+    const [ahead, behind] = request.points!
+    expect(ahead.z).toBeLessThan(behind.z)
+    expect(behind.z - ahead.z).toBeCloseTo(18 * 0.62, 5)
+    robotics().resetSim()
+  })
+})
