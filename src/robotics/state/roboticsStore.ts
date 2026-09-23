@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { getBuildPlateSize } from '../../brick/buildPlate'
-import { STUD, createPartMap } from '../../brick/parts'
+import { PLATE_HEIGHT, STUD, createPartMap, rotatedSize } from '../../brick/parts'
 import { registerRoboticsHistoryMerge, useBrickStore, type BrickHistoryEntry, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { connect, planAssistedConnection } from '../model/control'
-import { anchorableBrickIds, creationComponent, defaultCreationName, deriveCreations, deviceName, type DeriveInput, type DerivedCreation } from '../model/creations'
+import { anchorableBrickIds, creationComponent, defaultCreationName, deriveCreations, deviceName, facesShortEnd, type DeriveInput, type DerivedCreation } from '../model/creations'
 import { readRoboticsSection, writeRoboticsSection, type RoboticsConnection, type RoboticsSection, type TestSpace } from '../model/section'
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { mergeRoboticsHistory } from '../program/programs'
@@ -16,9 +16,11 @@ import { deriveMechanisms } from '../model/mechanism'
 import { NEAR_MISS_REACH_STUDS } from '../model/nearMiss'
 import { placementAdvice } from '../model/placementAdvice'
 import type { SnapPose } from '../model/snap'
-import { socketCoveredBy } from '../model/socketRoom'
+import { socketOf, socketRoomOf } from '../model/socketRoom'
+import { sideStepText } from '../drive/readiness'
 import type { Vec3 } from '../model/vec'
-import { lastDraftSnap } from '../scene/draftSnap'
+import { lastDraftSnap, snapDraft } from '../scene/draftSnap'
+import { sharedSnapContext } from '../scene/snapContext'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { ContactReport, HingeReport, Mechanics } from '../sim/mechanics'
 import { useCodeView } from '../code/codeViewState'
@@ -141,6 +143,12 @@ export type RoboticsState = {
   adviseMotorSide: (motorId: string, robotBrickIds?: readonly string[]) => void
   /** Drops the line once what it is about is fixed some other way (the wheel spins, the part is on, the motor faces out). */
   settleWiringNote: () => void
+  /**
+   * A motor ghost resting on a robot's hub or another of its parts (armed where the camera looks, or
+   * re-armed on top of the motor just placed) goes to a side of that robot's plate, as the pointer
+   * would take it: a drive motor is never offered on top of the hub (kid-UX lane W).
+   */
+  settleMotorGhost: () => void
 }
 
 const WIRING_LABEL_PREFIX = 'Connect '
@@ -491,12 +499,41 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
   adviseMotorSide: (motorId, robotBrickIds) => {
     const { input } = computeModel(useBrickStore.getState())
     const motor = input.bricks.find((brick) => brick.id === motorId)
-    if (!motor) return
-    const covered = socketCoveredBy(motor, input.bricks, input.partMap, input.plateSize)
-    if (!covered?.length) return
+    const socket = motor ? socketOf(motor, input.partMap, input.plateSize) : null
+    if (!motor || !socket) return
+    // In the middle of the plate or on the hub it moves; turned around, or facing the front or the back, it turns.
+    const room = socketRoomOf(motor, input.bricks, input.partMap, input.plateSize)
+    const crossways = room === 'open' && facesShortEnd(motor, socket.normal, input)
+    if (room !== 'covered' && room !== 'high' && room !== 'facing-in' && !crossways) return
+    const text = room === 'covered' || room === 'high' ? MOTORS_GO_ON_THE_SIDES : sideStepText({ name: deviceName(input, motor), socketRoom: room, crossways })
     const fix = planMotorToSide(input, motorId, robotBrickIds ? { brickIds: [...robotBrickIds] } : null)
-    if (fix.ok) set({ wiringNote: { text: MOTORS_GO_ON_THE_SIDES, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: motorId, action: { kind: 'motor-to-side', brickId: motorId, label: fix.label } } })
-    else if (fix.reason !== 'nothing') set({ wiringNote: { text: `${MOTORS_GO_ON_THE_SIDES} ${fix.text}`, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: motorId, blockers: fix.blockers } })
+    if (fix.ok) set({ wiringNote: { text, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: motorId, action: { kind: 'motor-to-side', brickId: motorId, label: fix.label } } })
+    else if (fix.reason !== 'nothing') set({ wiringNote: { text: `${text} ${fix.text}`, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: motorId, blockers: fix.blockers } })
+  },
+
+  settleMotorGhost: () => {
+    const brickState = useBrickStore.getState()
+    const draft = brickState.draft
+    if (!draft || brickState.mode !== 'build' || roboticsSpec(draft.partId)?.role !== 'motor' || (brickState.movingSelection?.originals.length ?? 0) > 1) return
+    const { partMap, plateSize } = get().model.input
+    const part = partMap[draft.partId]
+    if (!part) return
+    const others = brickState.movingId ? brickState.bricks.filter((brick) => brick.id !== brickState.movingId) : brickState.bricks
+    const size = rotatedSize(part, draft.rotation)
+    const own = { x0: draft.x, x1: draft.x + size.width, z0: draft.z, z1: draft.z + size.depth }
+    // The part it rests on: not a plate (a plate is a motor's place), but a robot's hub, motor or brick.
+    const under = others.find((brick) => {
+      const brickPart = partMap[brick.partId]
+      if (!brickPart || brickPart.kind === 'plate' || brick.y + brickPart.height !== draft.y) return false
+      const rect = { x0: brick.x, x1: brick.x + rotatedSize(brickPart, brick.rotation).width, z0: brick.z, z1: brick.z + rotatedSize(brickPart, brick.rotation).depth }
+      return own.x0 < rect.x1 && rect.x0 < own.x1 && own.z0 < rect.z1 && rect.z0 < own.z1
+    })
+    if (!under || !sharedSnapContext(others, partMap, plateSize).robotPlateOf(under.id)) return
+    const at = { x: (draft.x + size.width / 2 - plateSize / 2) * STUD, y: draft.y * PLATE_HEIGHT, z: (draft.z + size.depth / 2 - plateSize / 2) * STUD }
+    const snapped = snapDraft(draft, under, at, others, plateSize)
+    if (!snapped) return
+    for (let turn = 0; turn < 4 && useBrickStore.getState().draft?.rotation !== snapped.rotation; turn += 1) useBrickStore.getState().rotate()
+    useBrickStore.getState().setDraftPosition(snapped.x, snapped.y, snapped.z)
   },
 
   settleWiringNote: () => {
@@ -509,12 +546,16 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     let settled = false
     if (action.kind === 'fix-wheel') settled = wheelSpins(deriveMechanisms(input.bricks, input.partMap, input.plateSize)).some((wheel) => wheel.wheelId === brick.id && wheel.spins)
     else if (action.kind === 'put-on') settled = creations.some((creation) => creation.brickIds.includes(brick.id))
-    else if (action.kind === 'motor-to-side') settled = (socketCoveredBy(brick, input.bricks, input.partMap, input.plateSize)?.length ?? 0) === 0
+    else if (action.kind === 'motor-to-side') {
+      const socket = socketOf(brick, input.partMap, input.plateSize)
+      settled = socketRoomOf(brick, input.bricks, input.partMap, input.plateSize) === 'open' && Boolean(socket) && !facesShortEnd(brick, socket!.normal, input)
+    }
     if (settled) set({ wiringNote: null })
   },
 }))
 
 let watcherInstalled = false
+let ghostCheckQueued = false
 
 /**
  * Keeps the derived model in step with the document and reacts to placements.
@@ -545,6 +586,14 @@ export function installRoboticsWatcher() {
       if (robotics.card && !robotics.card.creationId && !robotics.card.anchorBrickIds.every((id) => state.bricks.some((brick) => brick.id === id))) robotics.closeCard()
     }
     if (state.placeFeedback && state.placeFeedback !== previous.placeFeedback) robotics.handlePlacement(state.placeFeedback.id)
+    // Checked once the studio's own action is done (a part armed and turned and moved in one go is judged where it ends up).
+    if (state.draft && state.draft !== previous.draft && !ghostCheckQueued) {
+      ghostCheckQueued = true
+      queueMicrotask(() => {
+        ghostCheckQueued = false
+        useRoboticsStore.getState().settleMotorGhost()
+      })
+    }
     if (state.blockedNonce !== previous.blockedNonce) robotics.explainBlockedPlacement()
     if (state.mode !== previous.mode && state.mode !== 'build') robotics.resetSim()
   })

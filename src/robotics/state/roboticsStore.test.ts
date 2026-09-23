@@ -372,11 +372,12 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     expect(robotics().card?.anchorBrickIds).toEqual([motor])
   })
 
-  it('a motor snapped onto a full plate edge is refused with what is in the way', () => {
+  it('a motor snapped onto a plate with both sides full is refused with what is in the way', () => {
     place('plate_6x8', 28, 0, 26)
     place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
     robotics().confirmCard('Buggy', false)
     place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
+    place(ROBOTICS_PART_IDS.motor, 31, 1, 31, 0)
     const state = useBrickStore.getState()
     state.choosePart(ROBOTICS_PART_IDS.motor)
     const plate = state.bricks.find((brick) => brick.partId === 'plate_6x8')!

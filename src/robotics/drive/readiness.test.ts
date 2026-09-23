@@ -39,10 +39,10 @@ describe('readiness', () => {
     const motorAlone = [{ id: 'm', partId: 'robo_motor', x: 30, y: 0, z: 30, rotation: 0 as const, color: '#52636c' }]
     expect(readiness(creationOf(motorAlone, 'm', []))).toEqual({ kind: 'drive', ready: false, reason: 'Put a plate down. Then move the motor onto it.' })
   })
-  it('motors facing into the robot are turned before any axle goes in', () => {
+  it('motors facing into the robot are turned around (one tap) before any axle goes in', () => {
     const facingIn = roverBricks().filter((brick) => ![ROVER_IDS.leftAxle, ROVER_IDS.rightAxle, ROVER_IDS.leftWheel, ROVER_IDS.rightWheel].includes(brick.id as never))
       .map((brick) => (brick.id === ROVER_IDS.leftMotor ? { ...brick, rotation: 0 as const } : brick.id === ROVER_IDS.rightMotor ? { ...brick, rotation: 2 as const } : brick))
-    expect(readiness(creationOf(facingIn, ROVER_IDS.hub, ROVER_WIRES)).reason).toBe('Turn the left motor to face out.')
+    expect(readiness(creationOf(facingIn, ROVER_IDS.hub, ROVER_WIRES)).reason).toBe('Turn Left motor around.')
   })
   it('a gate needs an arm and a sensor before it can be tried', () => {
     const wires: RoboticsConnection[] = [{ deviceId: GATE_IDS.hinge, hubId: GATE_IDS.hub, port: 'A' }]

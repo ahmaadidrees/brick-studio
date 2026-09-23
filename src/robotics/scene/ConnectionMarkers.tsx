@@ -10,7 +10,7 @@ import type { BrickDraft, BrickInstance, BrickPart } from '../../brick/types'
 import { useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { brickOriginFor, type PartMap } from '../model/grid'
-import { otherSideSpot, previewProblem, type OtherSideSpot, type PreviewProblem } from '../model/fixPlans'
+import { otherSideSpot, planMotorToSide, previewProblem, type OtherSideSpot, type PreviewProblem } from '../model/fixPlans'
 import { looseWheelsByRobot, wheelSpins } from '../model/looseWheels'
 import { deriveMechanisms, type WheelLink } from '../model/mechanism'
 import { GAP_TEXT, gapMarkers, type GapMarker } from '../model/nearMiss'
@@ -70,6 +70,8 @@ const chevron = (() => {
   return geometry
 })()
 const Z_AXIS = new THREE.Vector3(0, 0, 1)
+/** The way a motor turned `rotation` quarter turns faces (rotation 0 faces +X). */
+const EDGE_OUTWARD_BY_ROTATION: Readonly<Record<number, Vec3>> = { 0: { x: 1, y: 0, z: 0 }, 1: { x: 0, y: 0, z: -1 }, 2: { x: -1, y: 0, z: 0 }, 3: { x: 0, y: 0, z: 1 } }
 
 function facing(direction: Vec3): THREE.Quaternion {
   return new THREE.Quaternion().setFromUnitVectors(Z_AXIS, new THREE.Vector3(direction.x, direction.y, direction.z).normalize())
@@ -329,6 +331,35 @@ function PartGhost({ part, pose, plateSize, color, opacity = 0.3 }: { part: Bric
   )
 }
 
+const ARROW_LEVELS: Level[] = [{ base: 0.7, swing: 0.3, lit: 1 }]
+
+/**
+ * A motor that can't turn a wheel where it stands (turned around, facing the front or the back, in the
+ * middle of the plate, on top of the hub): a green arrow on it pointing where its one-tap fix puts it,
+ * and, when the fix moves it, a green motor where it goes (kid-UX lane W, Sam: "show an arrow on it").
+ */
+function MotorFixArrow({ from, to, part, pose, plateSize }: { from: Vec3; to: Vec3; part: BrickPart | undefined; pose: SnapPose | null; plateSize: number }) {
+  const materials = useRef<(THREE.Material | null)[]>([])
+  const group = useRef<THREE.Group>(null)
+  const direction = sub(to, from)
+  const length = Math.max(0.6, Math.hypot(direction.x, direction.z))
+  const yaw = Math.atan2(-direction.z, direction.x)
+  useMarkerFrame(materials, ARROW_LEVELS, false, from, 0.5, 18, (factor) => group.current?.scale.setScalar(Math.min(factor, 1.8)))
+  return (
+    <>
+      <group ref={group} position={[from.x, from.y, from.z]} rotation={[0, yaw, 0]}>
+        <mesh geometry={unitBox} position={[length / 2 - 0.12, 0, 0]} scale={[Math.max(0.1, length - 0.3), 0.05, 0.14]} raycast={noRaycast} renderOrder={7}>
+          <meshBasicMaterial ref={(material) => { materials.current[0] = material }} color={TARGET_LIT} transparent opacity={0.9} depthTest={false} depthWrite={false} toneMapped={false} />
+        </mesh>
+        <mesh geometry={chevron} position={[length - 0.1, 0, 0]} scale={2.4} raycast={noRaycast} renderOrder={7}>
+          <meshBasicMaterial color={TARGET_LIT} transparent opacity={0.95} depthTest={false} depthWrite={false} side={THREE.DoubleSide} toneMapped={false} />
+        </mesh>
+      </group>
+      {pose && <PartGhost part={part} pose={pose} plateSize={plateSize} color={TARGET} opacity={0.22} />}
+    </>
+  )
+}
+
 /** Where the second motor goes: a motor-shaped target across from the first, breathing green; red when there is no room. */
 function OtherSideTarget({ spot, part, plateSize, lit }: { spot: OtherSideSpot; part: BrickPart | undefined; plateSize: number; lit: boolean }) {
   const color = spot.free ? (lit ? TARGET_LIT : TARGET) : GAP
@@ -355,8 +386,10 @@ type Summary = {
   preview: PreviewProblem | null
   /** Every brick outlined as in the way (red ghost, other side, a fix that could not be done). */
   outlined: string[]
+  /** Motors that can't turn a wheel where they stand, with where their one-tap fix puts them (an arrow shows it). */
+  motorFixes: { motorId: string; pose: SnapPose | null }[]
 }
-let summary: Summary = { armed: null, targets: [], runs: [], dimSockets: [], snappedKey: null, ghostSnapped: false, hint: null, gaps: [], labels: [], cantSpin: [], otherSide: [], preview: null, outlined: [] }
+let summary: Summary = { armed: null, targets: [], runs: [], dimSockets: [], snappedKey: null, ghostSnapped: false, hint: null, gaps: [], labels: [], cantSpin: [], otherSide: [], preview: null, outlined: [], motorFixes: [] }
 
 const topOf = (brick: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>, partMap: PartMap, plateSize: number, lift: number): Vec3 | null => {
   const part = partMap[brick.partId]
@@ -449,6 +482,28 @@ export default function ConnectionMarkers() {
     }
     return list
   }, [active, visible, grounded, note, hint, gaps, partMap, plateSize, draft, preview, otherSides])
+  // A motor that can't turn a wheel where it stands: an arrow to where its one-tap fix puts it (not while a part is armed).
+  const motorFixes = useMemo(() => {
+    if (!active || draft) return []
+    const list: { motorId: string; from: Vec3; to: Vec3; pose: SnapPose | null }[] = []
+    for (const creation of model.creations) {
+      for (const motor of creation.motors) {
+        if (motor.axleId || !(motor.crossways || motor.socketRoom === 'facing-in' || motor.socketRoom === 'covered' || motor.socketRoom === 'high')) continue
+        const brick = byId.get(motor.brickId)
+        const plan = brick ? planMotorToSide(model.input, motor.brickId, creation) : null
+        const step = plan?.ok ? plan.steps[0] : null
+        if (!brick || !step || step.op !== 'move') continue
+        const top = topOf(brick, partMap, plateSize, 0.06)
+        const target = topOf({ partId: brick.partId, ...step.pose }, partMap, plateSize, 0.06)
+        if (!top || !target) continue
+        const moves = Math.hypot(target.x - top.x, target.z - top.z) > 0.3
+        // Turning in place: the arrow points the way it will face.
+        const facingTo = add(top, scale(EDGE_OUTWARD_BY_ROTATION[step.pose.rotation], 1.1))
+        list.push({ motorId: motor.brickId, from: top, to: moves ? { ...target, y: top.y } : facingTo, pose: moves ? step.pose : null })
+      }
+    }
+    return list
+  }, [active, draft, model, byId, partMap, plateSize])
   // What is in the way: of the red ghost, of the other side, of a fix that could not be done.
   const outlined = useMemo(() => {
     if (!active) return []
@@ -471,6 +526,7 @@ export default function ConnectionMarkers() {
       otherSide: otherSides.map((spot) => ({ motorId: spot.motorId, pose: spot.pose, free: spot.free, mirrored: spot.mirrored, blockers: spot.blockers })),
       preview,
       outlined: outlined.map((brick) => brick.id),
+      motorFixes: motorFixes.map((fix) => ({ motorId: fix.motorId, pose: fix.pose })),
     }
   })
 
@@ -499,6 +555,7 @@ export default function ConnectionMarkers() {
           <WheelBadge at={{ x: wheel.link.center.x, y: wheel.link.center.y + wheel.link.radius + 0.22, z: wheel.link.center.z }} number={wheel.number} />
         </group>
       ))}
+      {motorFixes.map((fix) => <MotorFixArrow key={`fix:${fix.motorId}`} from={fix.from} to={fix.to} part={motorPart} pose={fix.pose} plateSize={plateSize} />)}
       {outlined.map((brick) => <BrickOutline key={`way:${brick.id}`} brick={brick} part={partMap[brick.partId]} plateSize={plateSize} color={WAY} />)}
       {noteGhost && <PartGhost part={partMap[noteGhost.partId]} pose={noteGhost.pose} plateSize={plateSize} color={GAP} opacity={0.25} />}
       {labels.map((label) => <Label key={`${label.tone}:${label.brickId}`} at={label.at} text={label.text} tone={label.tone} emphasis={label.emphasis} />)}

@@ -15,7 +15,8 @@ export function runStepAction(action: StepAction): void {
   switch (action.kind) {
     case 'arm': {
       useBrickStore.getState().choosePart(action.partId)
-      for (let turn = 0; turn < action.rotation; turn += 1) useBrickStore.getState().rotate()
+      // Turned until it faces the way the row asks (a fresh part arms unturned; the robotics layer may have moved its ghost).
+      for (let turn = 0; turn < 4 && useBrickStore.getState().draft?.rotation !== action.rotation; turn += 1) useBrickStore.getState().rotate()
       if (action.at) useBrickStore.getState().setDraftPosition(action.at.x, action.at.y, action.at.z)
       return
     }

@@ -139,29 +139,46 @@ function motorsStep(creation: DerivedCreation): ReadinessStep {
   const motors = creation.motors
   const step = (done: boolean, now: string, brickId: string | null = null, fix?: ReadinessStep['fix']): ReadinessStep => ({ id: 'motors', text: 'Put a motor on each side.', done, now, brickId, ...(fix ? { fix } : {}) })
   if (motors.length === 0) return step(false, 'Put a motor on each side.')
-  // A motor in the middle of the plate (or facing into it) can't take an axle: it goes to the side first.
-  if (motors.length === 1) return motors[0].socketCovered ? sideStep(motors[0]) : step(false, 'Put a motor on the other side.', motors[0].brickId)
-  // Said by where the motor is, not by its name: a motor's default name follows the way it faces.
+  // A motor that can't turn a wheel where it stands (in the middle of the plate, turned around, on
+  // top of the hub, or at the front or back facing out): one tap puts it right (kid-UX lane W).
+  const stuck = motors.find((motor) => !motor.axleId && STUCK.has(motor.socketRoom ?? 'open')) ?? motors.find((motor) => !motor.axleId && motor.crossways)
+  if (stuck) return sideStep(stuck)
+  if (motors.length === 1) return step(false, 'Put a motor on the other side.', motors[0].brickId)
+  // Said by where the motor is, not by its name.
   const facingIn = motorFacingIn(motors)
   if (facingIn) return step(false, `Turn the ${sideOf(facingIn, motors)} motor to face out.`, facingIn.brickId, 'select')
-  const covered = motors.find((motor) => motor.socketCovered)
-  if (covered) return sideStep(covered)
-  if (!creation.drivePair && candidatePairs(motors).length === 0) return step(false, 'Put the motors on opposite sides, facing out.', motors[motors.length - 1].brickId, 'select')
+  // All on one side, facing the same way: the other side still needs one. Otherwise, one on each side.
+  const oneWay = motors.every((motor) => dot(motor.socketNormal, motors[0].socketNormal) > 0.999)
+  const eachSide = () => (oneWay ? step(false, 'Put a motor on the other side.', motors[0].brickId) : step(false, 'Put one motor on each side of the plate.', motors[motors.length - 1].brickId, 'select'))
+  if (!creation.drivePair && candidatePairs(motors).length === 0) return eachSide()
   const complete = motors.every((motor) => motor.axleId && motor.wheelIds.length > 0)
   if (complete) {
     const sides = driveSidesOf(creation)
-    if (!sides) return step(false, 'Put the motors on opposite sides, facing out.', motors[motors.length - 1].brickId, 'select')
+    if (!sides) return eachSide()
     // A wheel that does not roll forward drags the robot sideways (it is braked, even plugged in).
     const onSides = new Set([...sides.left, ...sides.right])
     const astray = motors.find((motor) => !onSides.has(motor.brickId))
-    if (astray) return step(false, `${astray.name} faces ${facingWord(astray.socketNormal, sides.forward)}. Turn it to face out to the side.`, astray.brickId, 'select')
+    if (astray) return step(false, `${astray.name} faces ${facingWord(astray.socketNormal, sides.forward)}. Turn it to face the side.`, astray.brickId, 'select')
   }
   return step(true, 'Put a motor on each side.')
 }
 
-/** "Move Left motor to the side of the plate." — its socket is over the plate, so no axle fits. */
+/** Where a motor stands that no axle and wheel can work from (`socketRoom.ts`). */
+const STUCK: ReadonlySet<string> = new Set(['covered', 'facing-in', 'high'])
+
+/**
+ * The one thing to do about a motor that can't turn a wheel where it stands, in a third grader's
+ * words, done with one tap (`fix: 'side'`): in the middle of the plate or on top of the hub it
+ * moves to the side; turned around at an edge, or facing the front or the back, it turns.
+ */
+export function sideStepText(motor: Pick<DerivedMotor, 'name' | 'socketRoom' | 'crossways'>): string {
+  if (motor.socketRoom === 'facing-in') return `Turn ${motor.name} around.`
+  if (motor.socketRoom === 'covered' || motor.socketRoom === 'high') return `Move ${motor.name} to the side of the plate.`
+  return `Turn ${motor.name} to face the side.`
+}
+
 function sideStep(motor: DerivedMotor): ReadinessStep {
-  return { id: 'motors', text: 'Put a motor on each side.', done: false, now: `Move ${motor.name} to the side of the plate.`, brickId: motor.brickId, fix: 'side' }
+  return { id: 'motors', text: 'Put a motor on each side.', done: false, now: sideStepText(motor), brickId: motor.brickId, fix: 'side' }
 }
 
 /**

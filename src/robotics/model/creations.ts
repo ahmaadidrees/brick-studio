@@ -1,12 +1,12 @@
-import { STUD } from '../../brick/parts'
-import type { BrickInstance } from '../../brick/types'
+import { STUD, rotatedSize } from '../../brick/parts'
+import type { BrickInstance, BrickPart } from '../../brick/types'
 import { ROLE_LABELS, roboticsSpec, type HubPort, type RoboticsPartRole } from '../parts/catalog'
 import { WORLD_NODE, brickIdOfNode, deriveStudJoints, type StudJoint } from './assembly'
 import { deriveBodies, type RigidBody } from './bodies'
 import { connectionOf } from './control'
 import { brickFrame, toWorldDirection, toWorldPoint, type PartMap } from './grid'
 import { deriveMechanisms, wheelsOnMotor, type Mechanisms } from './mechanism'
-import { socketCoveredBy } from './socketRoom'
+import { socketRoomOf, type SocketRoom } from './socketRoom'
 import type { RoboticsCreation, RoboticsSection, TestSpace } from './section'
 import { cross, dot, sameDirection, type Vec3 } from './vec'
 
@@ -48,10 +48,14 @@ export type DerivedMotor = DerivedDevice & {
   /** Which way the body goes when this motor runs at positive power, relative to the creation's forward. */
   drives: 'forward' | 'backward' | 'sideways' | null
   /**
-   * Nothing in its socket, and no axle could go in: the socket is over the plate or against another
-   * part (a motor in the middle of the plate, or facing in). Motors go on the sides (kid-UX lane W).
+   * Where an axle in it could go (`socketRoom.ts`; kid-UX lane W): `open` at the side of its plate
+   * facing out; `covered` in the middle of the plate; `facing-in` turned around at an edge; `high`
+   * standing on the hub or another part, where its wheel can't reach the ground; `low` on the bare
+   * ground. A motor with its axle in is `open`.
    */
-  socketCovered?: boolean
+  socketRoom?: SocketRoom
+  /** It stands at a short end of its plate facing out over it (the front or the back of a car): its wheel would roll sideways. */
+  crossways?: boolean
 }
 
 export type DerivedWheel = {
@@ -226,9 +230,94 @@ function placeAmongTwins(brick: BrickInstance, socket: { point: Vec3; normal: Ve
   return 'Middle'
 }
 
+type Footprint = { x0: number; x1: number; z0: number; z1: number }
+
+function footprintOf(brick: BrickInstance, part: BrickPart): Footprint {
+  const size = rotatedSize(part, brick.rotation)
+  return { x0: brick.x, x1: brick.x + size.width, z0: brick.z, z1: brick.z + size.depth }
+}
+
+/** The plate a brick stands on (its bottom on the plate's top, footprints overlapping). */
+function plateUnder(brick: BrickInstance, input: Pick<DeriveInput, 'bricks' | 'partMap'>): { plate: BrickInstance; rect: Footprint } | null {
+  const part = input.partMap[brick.partId]
+  if (!part) return null
+  const own = footprintOf(brick, part)
+  for (const candidate of input.bricks) {
+    const plate = input.partMap[candidate.partId]
+    if (!plate || plate.kind !== 'plate' || candidate.id === brick.id || brick.y !== candidate.y + plate.height) continue
+    const rect = footprintOf(candidate, plate)
+    if (own.x0 < rect.x1 && rect.x0 < own.x1 && own.z0 < rect.z1 && rect.z0 < own.z1) return { plate: candidate, rect }
+  }
+  return null
+}
+
+/** A plate's sides are its long ones (left and right, or the far and near sides of a plate turned the other way). */
+const sidesAcrossX = (rect: Footprint) => rect.z1 - rect.z0 >= rect.x1 - rect.x0
+
+type MotorSide = { word: 'Left' | 'Right' | 'Front' | 'Back' | 'Middle'; acrossX: boolean; line: number; along: number }
+
+/**
+ * Which side of its plate a motor stands on: touching the left or right edge (the far or near one on a
+ * plate turned the other way), else the front or back end it touches, else the middle.
+ */
+function motorSide(brick: BrickInstance, input: Pick<DeriveInput, 'bricks' | 'partMap'>): MotorSide | null {
+  const part = input.partMap[brick.partId]
+  const under = part ? plateUnder(brick, input) : null
+  if (!part || !under) return null
+  const own = footprintOf(brick, part)
+  const acrossX = sidesAcrossX(under.rect)
+  const [lo, hi, edge0, edge1] = acrossX ? [own.x0, own.x1, under.rect.x0, under.rect.x1] : [own.z0, own.z1, under.rect.z0, under.rect.z1]
+  const low = lo <= edge0
+  const high = hi >= edge1
+  // Wider than its plate: no side to name it by.
+  if (low && high) return null
+  // Not at a side: at the front or the back end of the plate (a motor turned the wrong way), else in the middle.
+  const [endLo, endHi, end0, end1] = acrossX ? [own.z0, own.z1, under.rect.z0, under.rect.z1] : [own.x0, own.x1, under.rect.x0, under.rect.x1]
+  const end = endLo <= end0 && endHi < end1 ? (acrossX ? 'Front' : 'Left') : endHi >= end1 && endLo > end0 ? (acrossX ? 'Back' : 'Right') : 'Middle'
+  const word = low ? (acrossX ? 'Left' : 'Front') : high ? (acrossX ? 'Right' : 'Back') : end
+  return { word, acrossX, line: acrossX ? (own.x0 + own.x1) / 2 : (own.z0 + own.z1) / 2, along: acrossX ? (own.z0 + own.z1) / 2 : (own.x0 + own.x1) / 2 }
+}
+
+/**
+ * A motor standing on a plate is named by the side of the plate it stands on, not by the way it
+ * faces (kid-UX lane W): turning a motor never renames it, a motor in the middle of the plate is
+ * "Middle motor" until it has a side, and one moved to the other side is named for where it is now.
+ * Two or more on one side, on one line, are told apart by where they stand along it (a four-wheel
+ * car's "Front left motor" and "Back left motor").
+ */
+function motorNameOnPlate(brick: BrickInstance, input: Pick<DeriveInput, 'bricks' | 'partMap'>): string | null {
+  const own = motorSide(brick, input)
+  if (!own) return null
+  let before = 0
+  let after = 0
+  for (const other of input.bricks) {
+    if (other.id === brick.id || roboticsSpec(other.partId)?.role !== 'motor') continue
+    const side = motorSide(other, input)
+    if (!side || side.word !== own.word || side.acrossX !== own.acrossX || Math.abs(side.line - own.line) > 1e-6) continue
+    const gap = side.along - own.along
+    if (Math.abs(gap) < 1e-6 || Math.abs(gap) > TWIN_REACH_STUDS) continue
+    if (gap < 0) before += 1
+    else after += 1
+  }
+  if (!before && !after) return `${own.word} motor`
+  const place = !before ? (own.acrossX ? 'Front' : 'Left') : !after ? (own.acrossX ? 'Back' : 'Right') : 'Middle'
+  return `${place} ${own.word.toLowerCase()} motor`
+}
+
+/** A motor at a short end of its plate facing out over it: the front or the back of a car, where its wheel would roll sideways. */
+export function facesShortEnd(brick: BrickInstance, normal: Vec3, input: Pick<DeriveInput, 'bricks' | 'partMap'>): boolean {
+  const under = plateUnder(brick, input)
+  if (!under || Math.abs(normal.y) > 0.5) return false
+  const rect = under.rect
+  // A square plate has no short end.
+  if (rect.x1 - rect.x0 === rect.z1 - rect.z0) return false
+  return sidesAcrossX(rect) ? Math.abs(normal.z) > 0.5 : Math.abs(normal.x) > 0.5
+}
+
 /**
  * Default names read off the build; the section's `devices` override them. Given the world's
- * bricks, a motor with twins is told apart by where it stands ("Front left motor").
+ * bricks, a motor on a plate is named by the side it stands on (`motorNameOnPlate`); otherwise by
+ * the way it faces, a motor with twins told apart by where it stands ("Front left motor").
  */
 export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput, 'partMap' | 'plateSize'> & { bricks?: readonly BrickInstance[] }): string {
   const spec = roboticsSpec(brick.partId)
@@ -241,6 +330,9 @@ export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput,
   }
   switch (spec.role) {
     case 'motor': {
+      // On a plate: named by the side of the plate it stands on, so turning it never renames it (kid-UX lane W).
+      const onPlate = input.bricks ? motorNameOnPlate(brick, { ...input, bricks: input.bricks }) : null
+      if (onPlate) return onPlate
       const socket = { point: toWorldPoint(frame, spec.socket!.point), normal: toWorldDirection(frame, spec.socket!.normal) }
       const word = side(socket.normal) || 'Drive'
       const place = input.bricks ? placeAmongTwins(brick, socket, { ...input, bricks: input.bricks }) : ''
@@ -301,8 +393,8 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
       case 'seat': seats.push(brick.id); break
       case 'motor': {
         const link = mechanisms.motorById.get(brick.id)!
-        const socketCovered = !link.axleId && (socketCoveredBy(brick, input.bricks, input.partMap, input.plateSize)?.length ?? 0) > 0
-        motors.push({ ...device(brick, 'motor'), socketNormal: link.socket.normal, socketPoint: link.socket.point, axleId: link.axleId, wheelIds: wheelsOnMotor(mechanisms, brick.id).map((wheel) => wheel.wheelId), drives: null, socketCovered })
+        const socketRoom = link.axleId ? 'open' : socketRoomOf(brick, input.bricks, input.partMap, input.plateSize)
+        motors.push({ ...device(brick, 'motor'), socketNormal: link.socket.normal, socketPoint: link.socket.point, axleId: link.axleId, wheelIds: wheelsOnMotor(mechanisms, brick.id).map((wheel) => wheel.wheelId), drives: null, socketRoom, crossways: facesShortEnd(brick, link.socket.normal, input) })
         break
       }
       case 'distance-sensor': {

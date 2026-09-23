@@ -95,8 +95,8 @@ export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 
     const state: StepState = step.done ? 'done' : index === open ? 'current' : 'todo'
     const icon = state === 'current' && step.fix === 'add-hub' ? { part: ROBOTICS_PART_IDS.hub } : state === 'current' && step.fix === 'select' && step.id === 'motors' ? { symbol: 'turn' as const } : state === 'current' && step.fix === 'side' ? { symbol: 'fix' as const } : stepIcon(step)
     const row: NextStep = { id: step.id, group: 'step', text: state === 'current' ? step.now : step.text, state, action: state === 'done' ? null : stepAction(step, state, creation, bricks), icon }
-    // "The other side" is shown, not told: the second motor comes armed at the mirror of the first; with no room there, the row says so.
-    if (state === 'current' && step.id === 'motors' && !step.fix && creation.motors.length === 1) {
+    // "The other side" is shown, not told: the next motor comes armed across from the first; with no room there, the row says so.
+    if (state === 'current' && step.id === 'motors' && !step.fix && creation.motors.length > 0) {
       const other = otherSideSpot(model.input, creation)
       if (other?.free && row.action?.kind === 'arm') row.action = { ...row.action, rotation: other.pose.rotation, at: other.pose }
       else if (other && !other.free) row.hint = OTHER_SIDE_NO_ROOM

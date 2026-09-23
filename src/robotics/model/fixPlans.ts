@@ -6,8 +6,8 @@ import { deriveStudJoints, studsTopOf } from './assembly'
 import { overlappingBricks } from './blocked'
 import { deviceName, type DeriveInput, type DerivedCreation } from './creations'
 import { deriveMechanisms, type Mechanisms } from './mechanism'
-import { EDGE_ROTATION, PLATE_EDGES, connectorPose, edgeSlots, isPlatePart, plateRect, preferredEdges, type PlateEdge, type Rect, type SnapPose } from './snap'
-import { axlePoseAt, socketCoveredBy, socketOf, type SocketFrame } from './socketRoom'
+import { OPPOSITE_EDGE, PLATE_EDGES, connectorPose, edgeFacing, edgeSlots, isPlatePart, mirroredMotorPose, plateRect, preferredEdges, type PlateEdge, type Rect, type SnapPose } from './plateEdges'
+import { axlePoseAt, socketCoveredBy, socketOf, socketRoomOf, type SocketFrame } from './socketRoom'
 import { add, scale } from './vec'
 
 /**
@@ -73,6 +73,7 @@ export const MOTORS_GO_ON_A_PLATE = 'Motors go on a plate. Put a plate down firs
 export const MOTORS_GO_ON_THE_SIDES = 'Motors go on the sides so the wheels touch the ground.'
 export const ADD_A_MOTOR = 'Add a motor for it'
 export const MOVE_TO_SIDE = 'Move it to the side'
+export const TURN_IT = 'Turn it'
 
 /** A new motor counts as this many studs of travel, a new axle as one: a waiting motor is used first. */
 const NEW_MOTOR_COST = 5
@@ -177,20 +178,13 @@ function motorsOn(layout: Layout, plate: BrickInstance, ignore: ReadonlySet<stri
 
 type Axis = 'x' | 'z'
 const EDGES_ON: Readonly<Record<Axis, readonly PlateEdge[]>> = { x: ['left', 'right'], z: ['far', 'near'] }
-const OPPOSITE: Readonly<Record<PlateEdge, PlateEdge>> = { left: 'right', right: 'left', far: 'near', near: 'far' }
 const axisOfEdge = (edge: PlateEdge): Axis => (edge === 'left' || edge === 'right' ? 'x' : 'z')
 
-/** The way a plate's wheels turn on: along its motors' sockets, else across its long sides (a car's motors go on its long sides). */
-function driveAxis(layout: Layout, plate: BrickInstance, ignore: ReadonlySet<string>): Axis {
-  let alongX = 0
-  let alongZ = 0
-  for (const motor of motorsOn(layout, plate, ignore)) {
-    const socket = socketOf(motor, layout.input.partMap, layout.input.plateSize)
-    if (!socket || Math.abs(socket.normal.y) > 0.5) continue
-    if (Math.abs(socket.normal.x) > 0.5) alongX += 1
-    else alongZ += 1
-  }
-  if (alongX !== alongZ) return alongX > alongZ ? 'x' : 'z'
+/**
+ * The axis a plate's motors face along: across its long sides, always (a car's motors go on its
+ * sides). A motor facing the front or the back of the plate is "crossways" and gets turned instead.
+ */
+function driveAxis(layout: Layout, plate: BrickInstance, _ignore?: ReadonlySet<string>): Axis {
   return axisOfEdge(preferredEdges(plateRect(plate, layout.input.partMap[plate.partId]!))[0])
 }
 
@@ -202,12 +196,6 @@ function edgesToward(rect: Rect, axis: Axis, point: Point): PlateEdge[] {
   if (at < middle - 0.25) return [low]
   if (at > middle + 0.25) return [high]
   return [low, high]
-}
-
-/** The edge a motor's socket faces out over. */
-function edgeOfNormal(normal: { x: number; z: number }): PlateEdge {
-  if (Math.abs(normal.x) > 0.5) return normal.x > 0 ? 'right' : 'left'
-  return normal.z > 0 ? 'near' : 'far'
 }
 
 /** A part `from` is on this motor's side: not behind the middle of the motor its socket faces away from. */
@@ -342,55 +330,60 @@ export function wheelProblemText(mechanisms: Mechanisms, wheelId: string, nearMi
 /* ------------------------------------------------------------------ the other side */
 
 export type OtherSideSpot = {
-  /** The robot's one motor. */
+  /** The motor the spot is across from. */
   motorId: string
   plateId: string
-  /** Where the second motor goes: the first mirrored across the plate, or the nearest spot with room on that side. */
+  /** Where the next motor goes: across from it on the plate, or the nearest spot with room on that side. */
   pose: SnapPose
   free: boolean
-  /** True when `pose` is exactly the mirror of the first motor. */
+  /** True when `pose` is exactly across from the motor. */
   mirrored: boolean
   /** What is in the way when it is not free. */
   blockers: string[]
 }
 
 /**
- * Where the second motor of a robot with one motor goes (the step "Put a motor on the other side"):
- * the first motor mirrored across the plate it stands on, turned to face out over the opposite
- * edge; if that spot is taken, the nearest spot along that edge with room for the motor and its
- * axle; if none, the mirror spot with what is in the way. Null when the robot does not have
- * exactly one motor, or its motor is not on the edge of a plate facing out.
+ * Where a robot's next motor goes when all its motors are on one side of their plate, facing out
+ * (the step "Put a motor on the other side"): the first of them mirrored across the plate it stands
+ * on, turned to face out over the opposite edge; if that spot is taken, the nearest spot along that
+ * edge with room for the motor and its axle; if none, the mirror spot with what is in the way.
+ * Null when the robot has no motor, motors on both sides already, or a motor not at a side facing out.
  */
 export function otherSideSpot(input: Pick<DeriveInput, 'bricks' | 'partMap' | 'plateSize'>, robot: Pick<DerivedCreation, 'brickIds'>, ignore: ReadonlySet<string> = new Set()): OtherSideSpot | null {
   const layout = layoutOf(input)
   const motors = robot.brickIds.filter((id) => !ignore.has(id)).map((id) => layout.byId.get(id)).filter((brick): brick is BrickInstance => roleOf(brick) === 'motor')
-  if (motors.length !== 1) return null
-  const [motor] = motors
-  const plate = plateUnder(layout, motor)
-  const socket = socketOf(motor, input.partMap, input.plateSize)
   const motorPart = input.partMap[MOTOR]
-  if (!plate || !socket || !motorPart || Math.abs(socket.normal.y) > 0.5) return null
-  const covered = socketCoveredBy(motor, layout.others(ignore), input.partMap, input.plateSize)
-  if (covered === null || covered.length > 0) return null
+  if (!motors.length || !motorPart) return null
+  const frames = motors.map((motor) => ({ motor, plate: plateUnder(layout, motor), socket: socketOf(motor, input.partMap, input.plateSize) }))
+  const [first] = frames
+  if (!first.plate || !first.socket || Math.abs(first.socket.normal.y) > 0.5) return null
+  const facing = edgeFacing(first.socket.normal)
+  // Every motor on the same side, facing the same way, each with room for its axle.
+  for (const { motor, socket } of frames) {
+    if (!socket || edgeFacing(socket.normal) !== facing || Math.abs(socket.normal.y) > 0.5) return null
+    const covered = socketCoveredBy(motor, layout.others(ignore), input.partMap, input.plateSize)
+    if (covered === null || covered.length > 0) return null
+  }
+  const plate = first.plate
   const platePart = input.partMap[plate.partId]!
   const rect = plateRect(plate, platePart)
-  const size = rotatedSize(motorPart, motor.rotation)
-  const opposite = OPPOSITE[edgeOfNormal(socket.normal)]
-  const alongX = axisOfEdge(opposite) === 'x'
-  const mirror: SnapPose = alongX
-    ? { x: rect.x0 + rect.x1 - (motor.x + size.width), y: motor.y, z: motor.z, rotation: EDGE_ROTATION[opposite] }
-    : { x: motor.x, y: motor.y, z: rect.z0 + rect.z1 - (motor.z + size.depth), rotation: EDGE_ROTATION[opposite] }
+  const opposite = OPPOSITE_EDGE[facing]
   const open = (pose: SnapPose) => layout.fits(MOTOR, pose, ignore) && socketOpenAt(layout, pose, ignore)
-  const base = { motorId: motor.id, plateId: plate.id }
-  if (open(mirror)) return { ...base, pose: mirror, free: true, mirrored: true, blockers: [] }
+  const base = { plateId: plate.id }
+  for (const { motor } of frames) {
+    const mirror = mirroredMotorPose(motor, motorPart, rect, facing)
+    if (open(mirror)) return { ...base, motorId: motor.id, pose: mirror, free: true, mirrored: true, blockers: [] }
+  }
+  const mirror = mirroredMotorPose(first.motor, motorPart, rect, facing)
   const slots = edgeSlots(plate, platePart, motorPart, opposite)
+  const alongX = opposite === 'left' || opposite === 'right'
   for (const slot of nearestFirst(slots.lo, slots.hi, alongX ? mirror.z : mirror.x)) {
     const pose = slots.pose(slot)
-    if (open(pose)) return { ...base, pose, free: true, mirrored: false, blockers: [] }
+    if (open(pose)) return { ...base, motorId: first.motor.id, pose, free: true, mirrored: false, blockers: [] }
   }
   const inTheWay = layout.blockers(MOTOR, mirror, ignore)
   const socketWay = inTheWay.length ? [] : socketCoveredBy({ id: 'fix:motor', partId: MOTOR, ...mirror }, layout.others(ignore), input.partMap, input.plateSize) ?? []
-  return { ...base, pose: mirror, free: false, mirrored: true, blockers: inTheWay.length ? inTheWay : socketWay }
+  return { ...base, motorId: first.motor.id, pose: mirror, free: false, mirrored: true, blockers: inTheWay.length ? inTheWay : socketWay }
 }
 
 /* ------------------------------------------------------------------ a part beside a robot */
@@ -478,25 +471,43 @@ export function planPutOnRobot(input: DeriveInput, robot: Pick<DerivedCreation, 
 
 /* ------------------------------------------------------------------ a motor away from the sides */
 
-/** Moves a motor whose socket is over the plate (or against a part) to an edge of its plate, facing out. */
+/**
+ * Puts right a motor that can't turn a wheel where it stands (`socketRoom.ts`): in the middle of the
+ * plate or on top of the hub it moves to the side ("Move it to the side"); turned around at an edge,
+ * or facing the front or the back, it turns ("Turn it"). It goes to the nearest spot on one of its
+ * plate's long sides where an axle fits, across from the robot's other motors when they are all on
+ * one side. Nothing studded on top of it is left in the air: such a motor says to take that off first.
+ */
 export function planMotorToSide(input: DeriveInput, motorId: string, robot?: Pick<DerivedCreation, 'brickIds'> | null): FixOutcome {
   const layout = layoutOf(input)
   const motor = layout.byId.get(motorId)
   const motorPart = input.partMap[MOTOR]
   if (!motor || roleOf(motor) !== 'motor' || !motorPart) return refusal(motorId, 'nothing')
   const name = deviceName(input, motor)
-  const plate = plateUnder(layout, motor)
-  if (!plate) return refusal(motorId, 'no-plate', MOTORS_GO_ON_A_PLATE)
+  // The plate it stands on, or (on top of the hub) the robot's own plate.
+  const robotPlates = (robot?.brickIds ?? []).map((id) => layout.byId.get(id)).filter((brick): brick is BrickInstance => Boolean(brick) && isGroundPlate(layout, brick!))
+  const under = plateUnder(layout, motor)
+  const plates = under ? [under] : robotPlates
+  if (!plates.length) return refusal(motorId, 'no-plate', MOTORS_GO_ON_A_PLATE)
   const onTop = studdedOnTop(layout, motor)
   if (onTop.length) return refusal(motorId, 'stacked', `Something is on top of ${name}. Take it off first.`, { blockers: onTop })
   const ignore = new Set([motorId])
-  const plan = (pose: SnapPose): FixPlan => ({ ok: true, brickId: motorId, label: MOVE_TO_SIDE, undoLabel: `Move ${name} to the side`, done: `${name} is on the side now. It can take an axle.`, steps: [{ op: 'move', brickId: motorId, pose }] })
-  // A lone other motor on the robot: this one goes across from it.
+  // Turned around at an edge, or facing the front or the back: it turns. In the middle or on top of the hub: it moves.
+  const socket = socketOf(motor, input.partMap, input.plateSize)
+  const room = socketRoomOf(motor, input.bricks, input.partMap, input.plateSize)
+  const turning = Boolean(under && socket && (room === 'facing-in' || (room === 'open' && !onDriveAxis(under, socket.normal, layout))))
+  const plan = (pose: SnapPose): FixPlan => ({
+    ok: true, brickId: motorId, label: turning ? TURN_IT : MOVE_TO_SIDE, undoLabel: turning ? `Turn ${name}` : `Move ${name} to the side`,
+    done: turning ? 'The motor faces the side now.' : 'The motor is on the side now.', steps: [{ op: 'move', brickId: motorId, pose }],
+  })
+  // The robot's other motors all on one side: this one goes across from them.
   const other = robot ? otherSideSpot(input, robot, ignore) : null
-  if (other?.free) return plan(other.pose)
-  const [spot] = openMotorSpots(layout, [plate], centerOf(motor, motorPart), ignore)
+  if (other?.free && plates.some((plate) => plate.id === other.plateId)) return plan(other.pose)
+  const [spot] = openMotorSpots(layout, plates, centerOf(motor, motorPart), ignore)
   return spot ? plan(spot) : refusal(motorId, 'no-room', 'No room on the sides of the plate. Try a bigger plate.')
 }
+
+const onDriveAxis = (plate: BrickInstance, normal: { x: number; z: number }, layout: Layout) => (driveAxis(layout, plate) === 'x' ? Math.abs(normal.x) > 0.5 : Math.abs(normal.z) > 0.5)
 
 /* ------------------------------------------------------------------ doing it in order */
 

@@ -4,7 +4,8 @@ import { freePorts, hubPorts, livePort, type PortState } from '../model/control'
 import { deviceName, type DerivedCreation } from '../model/creations'
 import { isDeviceRole, roboticsSpec, type HubPort, type RoboticsDeviceKind } from '../parts/catalog'
 import { moveMotorToSide, putOnRobot } from '../guide/fixes'
-import { MOTORS_GO_ON_THE_SIDES, MOVE_TO_SIDE, planPutOnRobot } from '../model/fixPlans'
+import { sideStepText } from '../drive/readiness'
+import { MOTORS_GO_ON_THE_SIDES, MOVE_TO_SIDE, TURN_IT, planPutOnRobot } from '../model/fixPlans'
 import { nearestRobot, partWord } from '../model/placementAdvice'
 import { useRoboticsStore } from '../state/roboticsStore'
 import { DEVICE_NAME_LIMIT, hubForDevice, lastKnownDeviceName, moveDeviceToPort, plugDeviceIn, renameDevice, swapDevicePorts, unplugDevice } from './actions'
@@ -163,7 +164,10 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
   const plugged = cable !== null
   const onRobot = Boolean(creation?.brickIds.includes(brickId))
   const beside = useBesideRobot(brickId, onRobot)
-  const covered = role === 'motor' && Boolean(creation?.motors.find((motor) => motor.brickId === brickId)?.socketCovered)
+  const motor = role === 'motor' ? creation?.motors.find((candidate) => candidate.brickId === brickId) ?? null : null
+  // A motor that can't turn a wheel where it stands: why, and the one tap that puts it right (kid-UX lane W).
+  const stuck = motor && !motor.axleId && (['covered', 'facing-in', 'high'].includes(motor.socketRoom ?? 'open') || motor.crossways) ? motor : null
+  const covered = stuck !== null
   const hubId = useMemo(() => hubForDevice(brickId, context), [brickId, context])
   const ports = usePorts(hubId)
   const free = hubId ? freePorts(model.section, hubId, byId) : []
@@ -257,12 +261,12 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
           <strong data-testid="wiring-reading">{reading}</strong>
         </div>
         <p className="wiring-hint" data-testid="wiring-hint">{hint}</p>
-        {covered && <p className="wiring-hint" data-testid="wiring-side-hint">{MOTORS_GO_ON_THE_SIDES}</p>}
+        {stuck && <p className="wiring-hint" data-testid="wiring-side-hint">{stuck.socketRoom === 'covered' || stuck.socketRoom === 'high' ? MOTORS_GO_ON_THE_SIDES : sideStepText(stuck)}</p>}
       </div>
       {(beside?.fix.ok || covered) && (
         <div className="wiring-actions">
           {beside?.fix.ok && <button type="button" className="wiring-button primary" onClick={() => putOnRobot(brickId, beside.robot.id)} data-testid="wiring-put-on">{beside.fix.label}</button>}
-          {covered && <button type="button" className="wiring-button primary" onClick={() => moveMotorToSide(brickId)} data-testid="wiring-to-side">{MOVE_TO_SIDE}</button>}
+          {stuck && <button type="button" className="wiring-button primary" onClick={() => moveMotorToSide(brickId)} data-testid="wiring-to-side">{stuck.socketRoom === 'covered' || stuck.socketRoom === 'high' ? MOVE_TO_SIDE : TURN_IT}</button>}
         </div>
       )}
       <BlockPreview role={role} name={name} port={cable?.port ?? null} />
