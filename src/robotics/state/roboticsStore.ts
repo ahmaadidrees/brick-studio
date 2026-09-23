@@ -10,6 +10,7 @@ import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { mergeRoboticsHistory } from '../program/programs'
 import { overlappingBricks } from '../model/blocked'
 import { brickOriginFor } from '../model/grid'
+import { placementAdvice } from '../model/placementAdvice'
 import type { Vec3 } from '../model/vec'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
@@ -51,6 +52,8 @@ export type WiringNote = {
   entry: BrickHistoryEntry | null
   /** The cables that entry added, exactly as written, so Undo can remove them and nothing else. */
   added: RoboticsConnection[]
+  /** The part the line is about when it is advice (not attached, bare ground), so the scene says it next to the part too. */
+  brickId?: string
 }
 
 export type SimState = {
@@ -187,6 +190,15 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     }
     const existing = joining ? null : reached[0] ?? null
     const spec = roboticsSpec(brick.partId)!
+    // A device beside a robot but not on it says so and starts no second robot; a motor on the
+    // bare ground says why it cannot take a wheel (docs/robotics/KID-UX.md §S).
+    const pending = get().card
+    const robots = pending && !pending.creationId ? [...model.creations, { id: 'candidate', name: pending.suggestedName, brickIds: pending.anchorBrickIds }] : model.creations
+    const advice = existing || joining ? null : placementAdvice(model.input, robots, brick.id, component)
+    if (advice?.kind === 'not-attached') {
+      set({ wiringNote: { text: advice.text, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: brick.id } })
+      return
+    }
 
     let section = model.section
     const lines: string[] = []
@@ -223,7 +235,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       model = computeModel(useBrickStore.getState())
       set({ wiringNote: { text: lines.join(' · '), undoable: true, nonce: Date.now(), entry: useBrickStore.getState().undoStack.at(-1) ?? null, added } })
     } else if (refusal) {
-      set({ wiringNote: { text: refusal, undoable: false, nonce: Date.now(), entry: null, added: [] } })
+      set({ wiringNote: { text: advice?.text ?? refusal, undoable: false, nonce: Date.now(), entry: null, added: [], ...(advice ? { brickId: brick.id } : {}) } })
     }
 
     if (joining) {
@@ -398,11 +410,16 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     if (!draft || !snap || snap.partId !== draft.partId || snap.pose.x !== draft.x || snap.pose.y !== draft.y || snap.pose.z !== draft.z || snap.pose.rotation !== draft.rotation) return
     const { input } = computeModel(brickState)
     const others = brickState.movingId ? brickState.bricks.filter((brick) => brick.id !== brickState.movingId) : brickState.bricks
-    const target = others.find((brick) => brick.id === snap.hitBrickId)
+    const target = others.find((brick) => brick.id === snap.targetBrickId)
     const blockers = overlappingBricks(draft, others, input.partMap)
     if (!target || !blockers.length) return
     const nameOf = (brick: BrickInstance) => (isDevicePart(brick.partId) ? deviceName(input, brick) : input.partMap[brick.partId]?.name ?? 'a brick')
     const spec = roboticsSpec(draft.partId)
+    if (spec?.socket) {
+      // A motor snapped onto a plate edge with no room left along it.
+      useBrickStore.setState({ toast: `No room for the motor there. ${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.` })
+      return
+    }
     const fits = spec?.axle ? (roboticsSpec(target.partId)?.socket ? `fits ${nameOf(target)}'s socket` : `fits through the ${nameOf(target)}`) : `fits the axle end`
     const what = spec?.axle ? 'The axle' : 'The wheel'
     const fix = roboticsSpec(target.partId)?.socket ? ' Turn or move the motor so its socket faces open space.' : ' Move it so the end has open space.'

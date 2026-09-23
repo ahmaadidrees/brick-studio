@@ -1,0 +1,29 @@
+/* Labels the magnetic-connection markers put next to parts (behind VITE_ROBOTICS_PROTOTYPE).
+   Drawn by drei's Html inside the canvas container, under the studio's panels, never taking
+   a pointer. 14 px on desktop, 15 px on touch (docs/robotics/KID-UX.md principles). */
+.robotics-connect-label {
+  box-sizing: border-box;
+  width: max-content;
+  max-width: 250px;
+  padding: 6px 11px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: #1f2a33;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 14px rgba(31, 42, 51, 0.18);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+.robotics-connect-label.is-hint { color: #0b6b3a; border-color: #12b76a; }
+.robotics-connect-label.is-gap { color: #a4161a; border-color: #e5383b; }
+.robotics-connect-label.is-advice { color: #7a3d00; border-color: #f0a020; }
+
+@media (pointer: coarse) {
+  .robotics-connect-label { font-size: 15px; }
+}

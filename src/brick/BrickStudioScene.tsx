@@ -194,12 +194,13 @@ function supportedDraftFromPoint(point: THREE.Vector3, draft: BrickDraft, hitBri
   const state = useBrickStore.getState()
   const hitBrick = hitBrickId ? state.bricks.find((brick) => brick.id === hitBrickId) : undefined
   const plateSize = getBuildPlateSize(state.documentMetadata)
-  // Robot Workshop spike: a ghost hovering a part it connects to (an axle over a motor's
-  // socket, a wheel over an axle end) snaps onto the connector. Answers null unless the
-  // robotics layer is mounted and registered a snapper; a group move never snaps.
-  if (hitBrick && !state.movingSelection) {
+  // Robot Workshop: a ghost near a place it connects to (an axle near a free socket, a wheel
+  // near an axle end, a motor near a robot plate's edge) snaps there, whether the pointer is
+  // over that part, another brick or the bare baseplate. Answers null unless the robotics
+  // layer is mounted and registered a snapper; a group move never snaps.
+  if (!state.movingSelection || state.movingSelection.originals.length === 1) {
     const others = state.movingId ? state.bricks.filter((brick) => brick.id !== state.movingId) : state.bricks
-    const snapped = snapDraft(draft, hitBrick, point, others, plateSize)
+    const snapped = snapDraft(draft, hitBrick ?? null, point, others, plateSize)
     if (snapped) {
       if (snapped.rotation !== draft.rotation && snapBorrowedRotation?.partId !== draft.partId) snapBorrowedRotation = { partId: draft.partId, rotation: draft.rotation }
       turnDraftTo(snapped.rotation)

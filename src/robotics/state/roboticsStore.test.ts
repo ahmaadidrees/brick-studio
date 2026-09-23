@@ -325,6 +325,60 @@ describe('a motor on a hub (the Codex QA case)', () => {
   })
 })
 
+describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID-UX.md §S)', () => {
+  beforeAll(() => registerDraftSnapper((draft, hitBrick, hitPoint, bricks, plateSize) => snapDraftToConnector({ draft, hitBrick, hitPoint, bricks, partMap: createPartMap([]), plateSize })))
+  afterAll(() => registerDraftSnapper(null))
+
+  it('a motor on the ground beside Buggy says which robot it is not on and how to attach it, and starts no second robot', () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Buggy', false)
+    const motor = place(ROBOTICS_PART_IDS.motor, 35, 0, 30)
+    expect(robotics().wiringNote).toMatchObject({ text: "Right motor isn't on Buggy yet. Put it on Buggy's plate.", undoable: false, brickId: motor })
+    expect(robotics().card).toBeNull()
+    expect(section().creations).toHaveLength(1)
+    expect(section().connections).toEqual([])
+    // Moved onto the plate it joins Buggy and is plugged in, as any device does.
+    useBrickStore.getState().selectBrick(motor)
+    useBrickStore.getState().startMove()
+    useBrickStore.getState().setDraftPosition(31, 1, 31)
+    expect(useBrickStore.getState().placeDraft()).toBe(true)
+    expect(robotics().wiringNote?.text).toBe('Right motor connected to port A')
+  })
+
+  it('beside a robot whose card is still open, it names the robot the card is about', () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    expect(robotics().card?.creationId).toBeNull()
+    place(ROBOTICS_PART_IDS.motor, 35, 0, 30)
+    expect(robotics().wiringNote?.text).toBe("Right motor isn't on Creation yet. Put it on Creation's plate.")
+    expect(robotics().card?.anchorBrickIds).toHaveLength(2)
+  })
+
+  it('a motor on the bare ground with no robot near says why wheels cannot reach, where the student looks', () => {
+    const motor = place(ROBOTICS_PART_IDS.motor, 10, 0, 10)
+    expect(robotics().wiringNote).toMatchObject({ text: 'Put motors on a plate so wheels reach the ground', brickId: motor })
+    expect(robotics().card?.anchorBrickIds).toEqual([motor])
+  })
+
+  it('a motor snapped onto a full plate edge is refused with what is in the way', () => {
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    robotics().confirmCard('Buggy', false)
+    place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
+    const state = useBrickStore.getState()
+    state.choosePart(ROBOTICS_PART_IDS.motor)
+    const plate = state.bricks.find((brick) => brick.partId === 'plate_6x8')!
+    const pose = snapDraft(useBrickStore.getState().draft!, plate, { x: (28.5 - 32) * 0.62, y: 0.18, z: (29 - 32) * 0.62 }, useBrickStore.getState().bricks, 64)!
+    expect(pose).toMatchObject({ x: 28, y: 1, z: 28, rotation: 2 })
+    for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
+    useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
+    expect(useBrickStore.getState().placeDraft()).toBe(false)
+    expect(useBrickStore.getState().toast).toBe('No room for the motor there. Hub is in the way.')
+    useBrickStore.getState().cancelInteraction()
+  })
+})
+
 describe('the union card (contract §4)', () => {
   /** Two named creations on two plates side by side, each with a hub; Crane has a program. */
   function twoCreations() {
