@@ -7,7 +7,7 @@ import { fixtureInput } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsSection } from '../model/section'
 import { ROBOTICS_PART_IDS, isRoboticsPart, roboticsSpec } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
-import { KITS, kitAt, kitById, kitFootprint, placeKitInSection, uniqueRobotName, type Kit } from './kits'
+import { GATE_KIT_SENSOR_NAME, KITS, kitAt, kitById, kitFootprint, placeKitInSection, uniqueRobotName, type Kit } from './kits'
 import { kitBetweenTwoRobots, kitUnderAnOverhang } from './kitTestFixtures'
 
 beforeAll(() => installRoboticsParts(true))
@@ -96,6 +96,22 @@ describe('the robot each kit makes', () => {
     expect(robot.sensors[0]).toMatchObject({ plugged: true, port: { port: 'B' } })
     expect(robot.testSpace).toBe('myWorld')
     expect(readiness(robot)).toEqual({ kind: 'try', ready: true, reason: null })
+  })
+
+  it('Gate: its sensor looks out of the gate’s front, where people come from, and is called "Door sensor" (a name the student can change)', () => {
+    const { bricks, robot, placement } = placedAlone(kitById('gate'))
+    const sensor = robot.sensors[0]
+    expect(sensor).toMatchObject({ name: GATE_KIT_SENSOR_NAME, facing: 'the near side', normal: { x: 0, y: 0, z: 1 } })
+    // Written the way a student's rename is: in the section's device names.
+    expect(placement.section.devices[sensor.brickId]).toEqual({ name: 'Door sensor' })
+    // It sits on the hub's front edge, its eyes on the kit's front face: nothing of the gate stands in front of it.
+    const sensorBrick = bricks.find((brick) => brick.id === sensor.brickId)!
+    const hub = bricks.find((brick) => brick.partId === ROBOTICS_PART_IDS.hub)!
+    const front = Math.min(...bricks.map((brick) => brick.z)) + kitFootprint(bricks).depth
+    expect(sensorBrick.z + 1).toBe(hub.z + 4)
+    expect(sensorBrick.z + 1).toBe(front)
+    // Only the Gate names a device of its own.
+    expect(KITS.filter((kit) => kit.names?.length).map((kit) => kit.id)).toEqual(['gate'])
   })
 
   it('Signal light: its sensor and its light plugged in, ready to try', () => {

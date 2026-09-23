@@ -4,7 +4,7 @@ import { BRICK_PART_MAP, STUD, createPartMap, rotatedSize } from '../../brick/pa
 import type { BrickInstance } from '../../brick/types'
 import { kitAt, kitById, placeKitInSection, type KitId } from '../kits/kits'
 import { deriveCreations } from '../model/creations'
-import { SIGNAL_IDS, signalPostBricks } from '../model/fixtures'
+import { GATE_IDS, SIGNAL_IDS, gateBricks, signalPostBricks } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsConnection, type RoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
 import { SEES_SOMETHING_STUDS } from '../program/types'
@@ -192,14 +192,25 @@ describe('the walk-up plan', () => {
     expect(planWalkUp(creation, 'testPlate', { bricks, partMap, plateSize: 64 })!.walk?.problem).toBeNull()
   })
 
-  it('a beam that runs into the robot’s own bricks leaves nowhere to stand: the visitor walks up to the robot’s front instead, and is not seen', () => {
-    // The Gate kit with a column of the robot's own bricks between its sensor and the door, where the visitor would stand.
+  it('the Gate kit’s "Door sensor" looks out of the front: the visitor stands in open ground in front of the gate, clear of every brick', () => {
     const kit = placedKit('gate')
-    const hub = kit.bricks.find((brick) => brick.partId === 'robo_hub')!
+    const creation = deriveCreations({ bricks: kit.bricks, partMap, plateSize: 64, section: kit.section })[0]
+    expect(creation.sensors.map((sensor) => [sensor.name, sensor.facing])).toEqual([['Door sensor', 'the near side']])
+    const visitor = planWalkUp(creation, 'myWorld', { bricks: kit.bricks, partMap, plateSize: 64 })!
+    expect(visitor.walk).toMatchObject({ standStuds: 3, approach: 'side', problem: null })
+    // In front of the gate (its +Z side, toward the home camera), facing it.
+    const maxZ = Math.max(...kit.bricks.map((brick) => (brick.z + rotatedSize(BRICK_PART_MAP[brick.partId], brick.rotation).depth - 32) * STUD))
+    expect(visitor.path.at(-1)!.z - WALK_UP.size.depth / 2).toBeGreaterThan(maxZ + 2.9 * STUD)
+    expect(visitor.facing).toMatchObject({ z: -1 })
+  })
+
+  it('a beam that runs into the robot’s own bricks leaves nowhere to stand: the visitor walks up to the robot’s front instead, and is not seen', () => {
+    // The spike's gate (its sensor looks at the door) with a column of its own bricks between the sensor and the door, where the visitor would stand.
+    const hub = gateBricks().find((brick) => brick.id === GATE_IDS.hub)!
     const column = [1, 4, 7].map((y, index): BrickInstance => ({ id: `column-${index}`, partId: 'brick_1x4', x: hub.x, y, z: hub.z - 1, rotation: 1, color: '#888888' }))
-    const bricks = [...kit.bricks, ...column]
-    const input = { bricks, partMap, plateSize: 64, section: kit.section }
-    const creation = deriveCreations(input)[0]
+    const bricks = [...gateBricks(), ...column]
+    const section: RoboticsSection = { ...emptyRoboticsSection(), creations: [{ id: 'gate', name: 'Gate', anchorBrickIds: [GATE_IDS.hinge] }], connections: [{ deviceId: GATE_IDS.hinge, hubId: GATE_IDS.hub, port: 'A' }, { deviceId: GATE_IDS.sensor, hubId: GATE_IDS.hub, port: 'B' }] }
+    const creation = deriveCreations({ bricks, partMap, plateSize: 64, section })[0]
     expect(column.every((brick) => creation.brickIds.includes(brick.id))).toBe(true)
     const visitor = planWalkUp(creation, 'myWorld', { bricks, partMap, plateSize: 64 })!
     expect(visitor.walk).toMatchObject({ approach: 'front', problem: 'no-room' })
@@ -208,7 +219,7 @@ describe('the walk-up plan', () => {
     expect(visitor.path.at(-1)!.z).toBeGreaterThan(maxZ + 2.5 * STUD)
     expect(visitor.facing!.z).toBe(-1)
     expect(Math.abs(visitor.facing!.x)).toBe(0)
-    const controller = stageFor(bricks, kit.section, kit.id)
+    const controller = stageFor(bricks, section, 'gate')
     const walk = walkUp(controller, creation.sensors[0].brickId)
     expect(walk.seenAt).toBeNull()
     controller.dispose()
