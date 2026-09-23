@@ -88,7 +88,7 @@ describe('the Motors chip on a four-wheel car (every motor counted)', () => {
   it('a program that runs only the first two motors: the chip names the two left still', () => {
     const { creation } = wiredFourWheel()
     const chip = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 0, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 0 }, (percent) => percent / 2) }))[0]
-    expect(chip).toMatchObject({ value: 'Left 40 · Right 40 %', detail: 'speed 10 · 10 % · Left motor and Right motor are not running', tone: 'warn' })
+    expect(chip).toMatchObject({ value: 'Left 40 · Right 40 %', detail: 'speed 10 · 10 % · Back left motor and Back right motor are not running', tone: 'warn' })
   })
 
   it('raw blocks at 50 % on all four: the sides fight and the chip says the right motors face the other way', () => {
@@ -103,14 +103,14 @@ describe('the Motors chip on a four-wheel car (every motor counted)', () => {
   it('a motor on a side running against the others is named', () => {
     const { creation } = wiredFourWheel()
     const chip = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: -40, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 40 }, () => 0) }))[0]
-    expect(chip).toMatchObject({ value: 'Left 40 · Right 40 %', detail: 'speed 0 · 0 % · Left motor runs the other way', tone: 'bad' })
+    expect(chip).toMatchObject({ value: 'Left 40 · Right 40 %', detail: 'speed 0 · 0 % · Back left motor runs the other way', tone: 'bad' })
   })
 
   it('an unplugged motor on either side; the rest show that they turn', () => {
     const { creation } = wiredFourWheel({ unplug: [ids.backRightMotor] })
-    expect(readingChips(creation, null)[0]).toMatchObject({ value: 'Right motor not plugged in', detail: '2 on the left · 2 on the right', tone: 'warn' })
+    expect(readingChips(creation, null)[0]).toMatchObject({ value: 'Back right motor not plugged in', detail: '2 on the left · 2 on the right', tone: 'warn' })
     const running = readingChips(creation, observation({ motors: car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 40, [ids.frontRightMotor]: 40, [ids.backRightMotor]: 0 }) }))[0]
-    expect(running).toMatchObject({ value: 'Right motor not plugged in', detail: 'speed 39 · 39 %', tone: 'warn' })
+    expect(running).toMatchObject({ value: 'Back right motor not plugged in', detail: 'speed 39 · 39 %', tone: 'warn' })
     const three = wiredFourWheel({ unplug: [ids.frontLeftMotor, ids.backLeftMotor, ids.backRightMotor] }).creation
     expect(readingChips(three, null)[0].value).toBe('3 motors not plugged in')
   })

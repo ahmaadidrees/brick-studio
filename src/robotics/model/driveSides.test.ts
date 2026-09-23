@@ -6,7 +6,7 @@ import { ROBOTICS_PART_IDS } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
 import { compileContextFor } from '../program/compile'
 import { wiredCreation, wiredFourWheel, wiredRover } from '../program/testFixtures'
-import { deriveCreations, driveSidesOf } from './creations'
+import { defaultDeviceName, deriveCreations, driveSidesOf } from './creations'
 import { FOUR_WHEEL_IDS, ROVER_IDS, fixtureInput, fourWheelBricks, roverBricks } from './fixtures'
 import { emptyRoboticsSection } from './section'
 
@@ -129,6 +129,29 @@ describe('drive sides', () => {
   })
 })
 
+describe('names for a four-wheel car’s motors', () => {
+  const names = (creation: ReturnType<typeof derive>) => Object.fromEntries(creation.motors.map((motor) => [motor.brickId, motor.name]))
+
+  it('two motors facing the same way on one side are told apart by where they stand', () => {
+    expect(names(wiredFourWheel().creation)).toEqual({
+      [ids.frontLeftMotor]: 'Front left motor', [ids.frontRightMotor]: 'Front right motor', [ids.backLeftMotor]: 'Back left motor', [ids.backRightMotor]: 'Back right motor',
+    })
+    // A third on the line is in the middle; without the world's bricks the name is the plain one.
+    const corner = [brick('corner-motor', ROBOTICS_PART_IDS.motor, 28, 1, 18, 2)]
+    expect(names(derive([...fourWheelBricks(), ...corner], ids.hub))).toMatchObject({ 'corner-motor': 'Front left motor', [ids.frontLeftMotor]: 'Middle left motor', [ids.backLeftMotor]: 'Back left motor' })
+    const input = fixtureInput(fourWheelBricks())
+    expect(defaultDeviceName(input.bricks.find((candidate) => candidate.id === ids.backLeftMotor)!, { partMap: input.partMap, plateSize: input.plateSize })).toBe('Left motor')
+  })
+
+  it('the rover, the outboard motor facing in and a motor facing back keep their names; a student’s name wins', () => {
+    expect(names(wiredRover().creation)).toEqual({ [ROVER_IDS.leftMotor]: 'Left motor', [ROVER_IDS.rightMotor]: 'Right motor' })
+    expect(names(derive(outboardBricks(), 'hub'))).toEqual({ 'left-motor': 'Left motor', 'right-motor': 'Left motor' })
+    expect(names(wiredFourWheel({ backRightFacingBack: true }).creation)[ids.backRightMotor]).toBe('Back motor')
+    const renamed = deriveCreations(fixtureInput(fourWheelBricks(), { ...emptyRoboticsSection(), creations: [{ id: 'c1', name: 'Car', anchorBrickIds: [ids.hub] }], devices: { [ids.backLeftMotor]: { name: 'Pusher' } } }))[0]
+    expect(names(renamed)).toMatchObject({ [ids.frontLeftMotor]: 'Front left motor', [ids.backLeftMotor]: 'Pusher' })
+  })
+})
+
 describe('readiness of a four-wheel car', () => {
   const FRONT_SENSOR = brick('4wd-sensor', ROBOTICS_PART_IDS.distanceSensor, 30, 1, 18)
 
@@ -137,8 +160,8 @@ describe('readiness of a four-wheel car', () => {
   })
 
   it('every motor with a wheel must be plugged in, not only the first two', () => {
-    expect(readiness(wiredFourWheel({ unplug: [ids.backRightMotor] }).creation)).toEqual({ kind: 'drive', ready: false, reason: 'Plug Right motor into the hub.' })
-    expect(readiness(wiredFourWheel({ unplug: [ids.backLeftMotor] }).creation).reason).toBe('Plug Left motor into the hub.')
+    expect(readiness(wiredFourWheel({ unplug: [ids.backRightMotor] }).creation)).toEqual({ kind: 'drive', ready: false, reason: 'Plug Back right motor into the hub.' })
+    expect(readiness(wiredFourWheel({ unplug: [ids.backLeftMotor] }).creation).reason).toBe('Plug Back left motor into the hub.')
   })
 
   it('a motor facing the wrong way says which way it faces and how to fix it', () => {
@@ -150,7 +173,7 @@ describe('readiness of a four-wheel car', () => {
   })
 
   it('a motor without its wheel comes first', () => {
-    expect(readiness(wiredFourWheel({ backLeftWheelOff: true }).creation).reason).toBe('Put a wheel on Left motor’s axle.')
+    expect(readiness(wiredFourWheel({ backLeftWheelOff: true }).creation).reason).toBe('Put a wheel on Back left motor’s axle.')
   })
 
   it('wheels all on one side ask for motors on opposite sides', () => {
@@ -162,7 +185,7 @@ describe('readiness of a four-wheel car', () => {
   it('a full hub: unplug a part that does not drive to make room, or add a hub', () => {
     // A Buggy with its sensor and four motors: the fourth motor finds no free port.
     const withSensor = wiredCreation([...fourWheelBricks(), FRONT_SENSOR], ids.hub, ids.hub, [[ids.frontLeftMotor, 'A'], [ids.frontRightMotor, 'B'], [FRONT_SENSOR.id, 'C'], [ids.backLeftMotor, 'D']])
-    expect(readiness(withSensor.creation).reason).toBe('The hub is full. Unplug Front sensor to plug in Right motor.')
+    expect(readiness(withSensor.creation).reason).toBe('The hub is full. Unplug Front sensor to plug in Back right motor.')
     // Five motors on four ports: nothing to unplug that does not drive.
     const fifth = [
       brick('4wd-corner-motor', ROBOTICS_PART_IDS.motor, 28, 1, 18, 2),
@@ -171,7 +194,7 @@ describe('readiness of a four-wheel car', () => {
     ]
     const five = wiredCreation([...fourWheelBricks(), ...fifth], ids.hub, ids.hub, [[ids.frontLeftMotor, 'A'], [ids.frontRightMotor, 'B'], [ids.backLeftMotor, 'C'], [ids.backRightMotor, 'D']])
     expect(five.creation.driveSides?.left).toEqual([ids.frontLeftMotor, ids.backLeftMotor, '4wd-corner-motor'])
-    expect(readiness(five.creation).reason).toBe('The hub is full. Add another hub for Left motor.')
+    expect(readiness(five.creation).reason).toBe('The hub is full. Add another hub for Front left motor.')
   })
 
   it('the rover reads as it always did', () => {

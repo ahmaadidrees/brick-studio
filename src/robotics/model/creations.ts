@@ -1,12 +1,13 @@
+import { STUD } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { ROLE_LABELS, roboticsSpec, type HubPort, type RoboticsPartRole } from '../parts/catalog'
 import { WORLD_NODE, brickIdOfNode, deriveStudJoints, type StudJoint } from './assembly'
 import { deriveBodies, type RigidBody } from './bodies'
 import { connectionOf } from './control'
-import { brickFrame, toWorldDirection, type PartMap } from './grid'
+import { brickFrame, toWorldDirection, toWorldPoint, type PartMap } from './grid'
 import { deriveMechanisms, wheelsOnMotor, type Mechanisms } from './mechanism'
 import type { RoboticsCreation, RoboticsSection, TestSpace } from './section'
-import { cross, dot, type Vec3 } from './vec'
+import { cross, dot, sameDirection, type Vec3 } from './vec'
 
 /**
  * Creations (contract §2, §4): a name over a set of bodies. Membership follows
@@ -181,8 +182,45 @@ const facingFromNormal = (normal: Vec3, forward: Vec3 | null): FacingWord => {
   return normal.x < 0 ? 'left' : 'right'
 }
 
-/** Default names read off the build; the section's `devices` override them. */
-export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput, 'partMap' | 'plateSize'>): string {
+/** Motors facing the same way on one line no further apart than this (studs) are twins: a four-wheel car's two on a side. */
+const TWIN_REACH_STUDS = 14
+
+/**
+ * Where a motor stands among its twins, the motors that face the same way with their sockets on
+ * the same line (the two on a four-wheel car's left side): Front, Middle or Back along a line from
+ * the far side to the near side, Left, Middle or Right along one across. Empty when it has none,
+ * so a rover's motors keep their names, and so do two motors facing the same way on different
+ * lines (contract F2d: the outboard motor facing in is "Left motor" too until renamed).
+ */
+function placeAmongTwins(brick: BrickInstance, socket: { point: Vec3; normal: Vec3 }, input: Pick<DeriveInput, 'bricks' | 'partMap' | 'plateSize'>): string {
+  const along: 'x' | 'z' = Math.abs(socket.normal.x) > 0.5 ? 'z' : 'x'
+  const across: 'x' | 'z' = along === 'z' ? 'x' : 'z'
+  let before = 0
+  let after = 0
+  for (const other of input.bricks) {
+    const spec = roboticsSpec(other.partId)
+    const part = input.partMap[other.partId]
+    if (other.id === brick.id || spec?.role !== 'motor' || !part) continue
+    const frame = brickFrame(other, part, input.plateSize)
+    if (!sameDirection(toWorldDirection(frame, spec.socket!.normal), socket.normal)) continue
+    const point = toWorldPoint(frame, spec.socket!.point)
+    if (Math.abs(point.y - socket.point.y) > 1e-3 || Math.abs(point[across] - socket.point[across]) > 1e-3) continue
+    const gap = point[along] - socket.point[along]
+    if (Math.abs(gap) < 1e-3 || Math.abs(gap) > TWIN_REACH_STUDS * STUD) continue
+    if (gap < 0) before += 1
+    else after += 1
+  }
+  if (!before && !after) return ''
+  if (!before) return along === 'z' ? 'Front' : 'Left'
+  if (!after) return along === 'z' ? 'Back' : 'Right'
+  return 'Middle'
+}
+
+/**
+ * Default names read off the build; the section's `devices` override them. Given the world's
+ * bricks, a motor with twins is told apart by where it stands ("Front left motor").
+ */
+export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput, 'partMap' | 'plateSize'> & { bricks?: readonly BrickInstance[] }): string {
   const spec = roboticsSpec(brick.partId)
   const part = input.partMap[brick.partId]
   if (!spec || !part) return 'Part'
@@ -192,7 +230,12 @@ export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput,
     return facing === 'the far side' ? 'Front' : facing === 'the near side' ? 'Back' : facing === 'left' ? 'Left' : facing === 'right' ? 'Right' : ''
   }
   switch (spec.role) {
-    case 'motor': return `${side(toWorldDirection(frame, spec.socket!.normal)) || 'Drive'} motor`
+    case 'motor': {
+      const socket = { point: toWorldPoint(frame, spec.socket!.point), normal: toWorldDirection(frame, spec.socket!.normal) }
+      const word = side(socket.normal) || 'Drive'
+      const place = input.bricks ? placeAmongTwins(brick, socket, { ...input, bricks: input.bricks }) : ''
+      return place ? `${place} ${word.toLowerCase()} motor` : `${word} motor`
+    }
     case 'hinge-motor': return 'Arm motor'
     case 'distance-sensor': return `${side(toWorldDirection(frame, spec.sensor!.normal)) || 'Distance'} sensor`
     case 'hub': return 'Hub'

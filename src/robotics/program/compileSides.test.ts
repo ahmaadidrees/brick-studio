@@ -82,7 +82,7 @@ describe('helpers on a four-wheel car', () => {
   it('an unplugged motor on either side warns on the helper that drives it; the program still runs', () => {
     const result = compileProgram(drive('forward'), compileContextFor(wiredFourWheel({ unplug: [BR] }).creation))
     expect(result.ok).toBe(true)
-    expect(result.diagnostics).toEqual([expect.objectContaining({ code: 'device.unplugged', severity: 'warning', message: 'Right motor is not plugged in', blockId: 'drive', deviceId: BR })])
+    expect(result.diagnostics).toEqual([expect.objectContaining({ code: 'device.unplugged', severity: 'warning', message: 'Back right motor is not plugged in', blockId: 'drive', deviceId: BR })])
     expect(describeIR(result.ir).split('\n')).toHaveLength(5)
   })
 
