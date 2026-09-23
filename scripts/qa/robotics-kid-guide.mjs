@@ -116,7 +116,8 @@ async function audit(s, label, selector = '[data-testid=robotics-panel]') {
 console.log('\nA. A rover from separate parts, using only the next steps (1366×768)')
 const s = await openStudio(1366, 768)
 const { page, sleep } = s
-await s.brick((state) => state.newBuild())
+// A fresh page is already blank (a New build there would only say so in a toast over the shots).
+if (await s.count()) await s.brick((state) => state.newBuild())
 await s.brick((state) => state.requestView('home'))
 await sleep(600)
 
@@ -292,7 +293,8 @@ const GATE = [
 async function screens(t) {
   const tag = String(t.width)
   console.log(`\nC. Screens at ${t.width}×${t.height}`)
-  await t.brick((state) => state.newBuild())
+  if (await t.count()) await t.brick((state) => state.newBuild())
+  await t.brick((state) => { state.toast = null })
   await t.sleep(200)
   await place(t, { partId: 'plate_6x8', x: 28, y: 0, z: 26 })
   await place(t, { partId: 'robo_hub', x: 29, y: 1, z: 27 })
