@@ -110,5 +110,14 @@
   .robotics-port-chip { width: 24px; height: 24px; font-size: 13px; }
 }
 
-/* In the Code view a studio message sits at the bottom of the stage, never over the stage bar or the editor. */
-.brick-studio:has(.robo-code-editor) .brick-toast { left: auto; right: 16px; top: auto; bottom: 72px; transform: none; max-width: min(420px, 36%); }
+/* In the Code view a studio message sits at the top-left of the stage under the readings: never over the stage
+   bar, the editor, the joystick (bottom right) or the frame button (bottom left). Widths mirror code.css's
+   --robo-editor-width, which is scoped to the editor and cannot be read here. */
+.brick-studio:has(.robo-code-editor) .brick-toast { left: calc(clamp(520px, 60vw, 900px) + 16px); right: auto; top: calc(var(--brick-header-block) + 212px); bottom: auto; transform: none; max-width: min(360px, calc(40vw - 32px)); }
+@media (max-width: 1100px) {
+  .brick-studio:has(.robo-code-editor) .brick-toast { left: calc(clamp(480px, 58vw, 900px) + 16px); max-width: min(360px, calc(42vw - 32px)); }
+}
+@media (orientation: portrait) and (max-width: 900px) {
+  /* Stacked: the stage is the lower half; the message goes just under its bar and readings. */
+  .brick-studio:has(.robo-code-editor) .brick-toast { left: 16px; top: calc(var(--brick-header-block) + (100vh - var(--brick-header-block)) / 2 + 150px); max-width: calc(100% - 32px); }
+}
