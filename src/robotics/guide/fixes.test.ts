@@ -93,6 +93,22 @@ describe('a wheel placed where it can\'t spin', () => {
     expect(robotics().wiringNote).toMatchObject({ text: 'No room for a motor here. Try a bigger plate.', brickId: wheel, blockers: expect.arrayContaining([left]) })
   })
 
+  it('with no plate near: "Put a plate down"; once there is one, the line offers the motor', () => {
+    const wheel = place(M.wheel, 10, 0, 10)
+    expect(robotics().wiringNote).toMatchObject({ text: "This wheel can't spin yet. It needs an axle in a motor.", action: { kind: 'arm-plate', label: 'Put a plate down' } })
+    place('plate_6x8', 11, 0, 8)
+    expect(robotics().wiringNote).toMatchObject({ brickId: wheel, action: { kind: 'fix-wheel', label: 'Add a motor for it' } })
+  })
+
+  it('a robot part refused where it overlaps says why in the same words as its red ghost', () => {
+    place('plate_6x8', 28, 0, 26)
+    brick().choosePart(M.wheel)
+    brick().setDraftPosition(30, 0, 27)
+    expect(brick().placeDraft()).toBe(false)
+    expect(brick().toast).toBe('Something is in the way.')
+    brick().cancelInteraction()
+  })
+
   it('Take it off removes it, one Undo', () => {
     place('plate_6x8', 28, 0, 26)
     const wheel = place(M.wheel, 28, 1, 26)

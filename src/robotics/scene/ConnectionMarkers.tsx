@@ -26,9 +26,9 @@ import './connectionMarkers.css'
 
 /**
  * Magnetic connections, drawn (docs/robotics/KID-UX.md §S). While an axle, a wheel or a
- * motor is armed, every place it can connect glows: free motor sockets and loose wheels'
- * holes for an axle, free axle ends for a wheel (motors with nothing in their socket are
- * shown dimmed, and say "Put an axle in first" when the pointer comes near), and the free
+ * motor is armed, every place it can connect glows: free motor sockets for an axle (never a
+ * loose wheel's hole: lane W), free axle ends for a wheel (motors with nothing in their socket
+ * are shown dimmed, and say "Put an axle in first" when the pointer comes near), and the free
  * stretches of robot plates' long sides for a motor. Each target has a ring (or, for a
  * motor, a bar with arrows pointing out over the edge) at the connector and a pad where the
  * part would sit, so it can be aimed at from any side; rings and bars never shrink below a

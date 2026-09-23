@@ -28,7 +28,7 @@ export type { EdgeSlots, PlateEdge, Rect, SnapPose }
  *   so a snapped part is connected by construction. An axle never snaps through a loose
  *   wheel's hole (kid-UX lane W): a wheel on an axle with no motor cannot spin, so that
  *   place would look connected and not be; a loose wheel gets its own one-tap fix
- *   (`wheelFix.ts`) that builds the whole chain.
+ *   (`fixPlans.ts`) that builds the whole chain.
  * - A **motor** hovered anywhere over a plate goes to the nearer of its long sides (a car's
  *   motors go on its sides), turned so its socket faces out over that edge, flush with it,
  *   sliding along to the nearest spot where it fits and an axle fits in its socket; the
@@ -374,23 +374,6 @@ function findMotorSnap(context: SnapContext, motorPart: BrickPart, hitBrick: Bri
     if (found) return found
   }
   return null
-}
-
-/** Every spot along any edge of this plate where a motor fits, facing out (for "is there room on the plate?"). */
-export function freeMotorSpots(context: SnapContext, plateId: string, motorPartId: string = ROBOTICS_PART_IDS.motor): SnapPose[] {
-  const plate = context.bricks.find((brick) => brick.id === plateId)
-  const platePart = plate ? context.partMap[plate.partId] : undefined
-  const motorPart = context.partMap[motorPartId]
-  if (!plate || !isPlatePart(platePart) || !motorPart) return []
-  const spots: SnapPose[] = []
-  for (const edge of PLATE_EDGES) {
-    const slots = edgeSlots(plate, platePart, motorPart, edge)
-    for (let slot = slots.lo; slot <= slots.hi; slot += 1) {
-      const pose = slots.pose(slot)
-      if (fits(context, motorPartId, pose)) spots.push(pose)
-    }
-  }
-  return spots
 }
 
 function motorEdgeRunsFor(context: SnapContext, partId: string): EdgeRun[] {

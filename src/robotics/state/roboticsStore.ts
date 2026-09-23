@@ -10,7 +10,7 @@ import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { mergeRoboticsHistory } from '../program/programs'
 import { overlappingBricks } from '../model/blocked'
 import { brickOriginFor } from '../model/grid'
-import { ADD_A_MOTOR, MOTORS_GO_ON_THE_SIDES, planMotorToSide, planWheelFix, wheelProblemText } from '../model/fixPlans'
+import { ADD_A_MOTOR, MOTORS_GO_ON_THE_SIDES, planMotorToSide, planWheelFix, previewProblem, wheelProblemText } from '../model/fixPlans'
 import { wheelSpins } from '../model/looseWheels'
 import { deriveMechanisms } from '../model/mechanism'
 import { NEAR_MISS_REACH_STUDS } from '../model/nearMiss'
@@ -479,9 +479,14 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const brickState = useBrickStore.getState()
     const draft = brickState.draft
     const snap = lastDraftSnap()
-    if (!draft || !snap || snap.partId !== draft.partId || snap.pose.x !== draft.x || snap.pose.y !== draft.y || snap.pose.z !== draft.z || snap.pose.rotation !== draft.rotation) return
     const { input } = computeModel(brickState)
     const others = brickState.movingId ? brickState.bricks.filter((brick) => brick.id !== brickState.movingId) : brickState.bricks
+    if (!draft || !snap || snap.partId !== draft.partId || snap.pose.x !== draft.x || snap.pose.y !== draft.y || snap.pose.z !== draft.z || snap.pose.rotation !== draft.rotation) {
+      // Not at a connector: a robot part's refusal says the same few words as the red ghost (kid-UX lane W).
+      const problem = draft && (brickState.movingSelection?.originals.length ?? 1) <= 1 ? previewProblem({ ...input, bricks: others }, draft, null) : null
+      if (problem) useBrickStore.setState({ toast: problem.text })
+      return
+    }
     const target = others.find((brick) => brick.id === snap.targetBrickId)
     const blockers = overlappingBricks(draft, others, input.partMap)
     if (!target || !blockers.length) return
@@ -552,7 +557,13 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
   settleWiringNote: () => {
     const note = get().wiringNote
     const action = note?.action
-    if (!note || !action || action.kind === 'arm-plate') return
+    if (!note || !action) return
+    if (action.kind === 'arm-plate') {
+      // A wheel that needed a plate first: once there is one, its line offers the motor instead.
+      const wheel = note.brickId ? get().model.input.bricks.find((brick) => brick.id === note.brickId) : null
+      if (wheel && roboticsSpec(wheel.partId)?.role === 'wheel') get().adviseWheel(wheel.id)
+      return
+    }
     const { input, creations } = get().model
     const brick = input.bricks.find((candidate) => candidate.id === action.brickId)
     if (!brick) { set({ wiringNote: null }); return }

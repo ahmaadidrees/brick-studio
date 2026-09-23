@@ -578,6 +578,7 @@ export const PREVIEW_TEXT = {
   noRoom: 'No room on the plate. Try a bigger plate.',
   onThePlate: "It needs to sit on the robot's plate.",
   edge: 'Too close to the edge.',
+  lowPlate: 'Motors go on a plate on the ground.',
 } as const
 
 /**
@@ -589,7 +590,10 @@ export function previewProblem(input: Pick<DeriveInput, 'bricks' | 'partMap' | '
   const part = input.partMap[draft.partId]
   if (!part || !roboticsSpec(draft.partId)) return null
   const others = ignoreId ? input.bricks.filter((brick) => brick.id !== ignoreId) : input.bricks
-  if (draftIsValid({ ...draft, color: '#000000' }, others as BrickInstance[], null, input.partMap, input.plateSize)) return null
+  const fitsThere = draftIsValid({ ...draft, color: '#000000' }, others as BrickInstance[], null, input.partMap, input.plateSize)
+  // A motor snapped to a plate lifted off the ground: it fits, but its wheel could never reach the ground.
+  if (snapKind === 'plate-edge' && roboticsSpec(draft.partId)?.role === 'motor' && socketRoomOf({ id: 'preview', ...draft }, others, input.partMap, input.plateSize) === 'high') return { text: PREVIEW_TEXT.lowPlate, blockers: [] }
+  if (fitsThere) return null
   const size = rotatedSize(part, draft.rotation)
   if (draft.x < 0 || draft.z < 0 || draft.y < 0 || draft.x + size.width > input.plateSize || draft.z + size.depth > input.plateSize) return { text: PREVIEW_TEXT.edge, blockers: [] }
   const blockers = overlappingBricks(draft, others, input.partMap)

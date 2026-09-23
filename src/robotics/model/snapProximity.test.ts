@@ -6,6 +6,7 @@ import { installRoboticsParts } from '../parts/install'
 import { deriveStudJoints } from './assembly'
 import { ROVER_IDS, roverBricks } from './fixtures'
 import { deriveMechanisms } from './mechanism'
+import { previewProblem } from './fixPlans'
 import { EDGE_OUTWARD, createSnapContext, findSnap, type PlateEdge, type SnapPose } from './snap'
 import type { Vec3 } from './vec'
 
@@ -152,6 +153,8 @@ describe('motors orient themselves on a plate edge', () => {
     const bricks = [brick('base', 'plate_6x8', 28, 0, 26), brick('upper', 'plate_4x6', 29, 1, 27)]
     const result = find(bricks, ROBOTICS_PART_IDS.motor, world(29.6, 2, 30), 'upper')
     expect(result.found?.target.blocked).toBe(true)
+    // The red ghost says why.
+    expect(previewProblem({ bricks, partMap, plateSize }, { partId: ROBOTICS_PART_IDS.motor, ...result.found!.pose }, null, 'plate-edge')?.text).toBe('Motors go on a plate on the ground.')
   })
 
   it('never on top of the hub: over the hub it goes to a side of the robot\'s plate (Sam, kid-UX lane W)', () => {
