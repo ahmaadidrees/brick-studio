@@ -238,7 +238,7 @@ await page.mouse.click(at.x, at.y)
 await desk.sleep(700)
 robots = await robotsOf(page)
 const gate = robots.find((r) => r.name === 'Gate')
-check('C.gate', gate && gate.kind === 'gate' && gate.hinges[0]?.locked === false && gate.hinges[0]?.port === 'A' && gate.sensors[0]?.port === 'B' && gate.readiness.kind === 'try' && gate.readiness.ready, `Gate: hinge ${gate?.hinges[0]?.locked ? 'locked' : 'free to swing'} on port ${gate?.hinges[0]?.port}, sensor on ${gate?.sensors[0]?.port}, readiness ${JSON.stringify(gate?.readiness)}`)
+check('C.gate', gate && gate.kind === 'gate' && gate.hinges[0]?.locked === false && gate.hinges[0]?.port === 'A' && gate.sensors[0]?.port === 'B' && gate.sensors[0]?.name === 'Door sensor' && gate.readiness.kind === 'try' && gate.readiness.ready, `Gate: hinge ${gate?.hinges[0]?.locked ? 'locked' : 'free to swing'} on port ${gate?.hinges[0]?.port}, ${gate?.sensors[0]?.name} on ${gate?.sensors[0]?.port}, readiness ${JSON.stringify(gate?.readiness)}`)
 await desk.shot('K7-gate-placed')
 const beforeSignal = { document: JSON.stringify(sortKeys(JSON.parse(await desk.brick((state) => JSON.stringify(state.getDocumentSnapshot()))))), bricks: await desk.brick((state) => state.bricks.length) }
 await page.locator('.kit-card[data-kit="signal-light"]').click()

@@ -29,8 +29,9 @@ export type KitPictureStyle = {
 
 export const KIT_PICTURE_STYLES: Record<KitId, KitPictureStyle> = {
   buggy: { view: [-0.55, -0.42, 1] },
-  // The door a little open inside the red frame, and an arrow over the frame the way it swings.
-  gate: { view: [-0.55, -0.75, 1], swing: { hingeId: 'kit:gate:gate-hinge', armIds: ['kit:gate:gate-door'], degrees: 35, arrow: 65, arrowY: 17, arrowRadius: 1.7 } },
+  // From the front, as the studio's camera first meets it: the door sensor's eyes looking out, the door a little
+  // open inside the red frame behind, and an arrow over the frame the way it swings.
+  gate: { view: [-0.55, -0.75, -1], swing: { hingeId: 'kit:gate:gate-hinge', armIds: ['kit:gate:gate-door'], degrees: 35, arrow: 65, arrowY: 17, arrowRadius: 1.7 } },
   'signal-light': { view: [0.6, -0.6, 1], glowing: ['kit:signal-light:signal-light'] },
   'robot-base': { view: [-0.72, -0.72, 1] },
 }

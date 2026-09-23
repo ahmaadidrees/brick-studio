@@ -21,6 +21,9 @@ export type KitId = 'buggy' | 'gate' | 'signal-light' | 'robot-base'
 
 export type KitCable = { deviceId: string; hubId: string; port: HubPort }
 
+/** A device the kit names itself, when the name the studio would give it reads wrong for this kit. Template id. */
+export type KitDeviceName = { deviceId: string; name: string }
+
 export type Kit = {
   id: KitId
   /** The card's name. */
@@ -33,6 +36,8 @@ export type Kit = {
   bricks: readonly BrickInstance[]
   /** Every device plugged into the kit's hub: motors first, then what senses, then what shows. */
   cables: readonly KitCable[]
+  /** Devices with a name of the kit's own (written as the student's names are, so they can rename them). */
+  names?: readonly KitDeviceName[]
 }
 
 const partOf = (partId: string): BrickPart | undefined => roboticsSpec(partId)?.part ?? BRICK_PART_MAP[partId]
@@ -86,6 +91,20 @@ const GATE_FRAME_COLORS: Readonly<Record<string, string>> = Object.fromEntries(
   [GATE_IDS.leftPost, GATE_IDS.leftPostTop, GATE_IDS.rightPost, GATE_IDS.rightPostTop, GATE_IDS.lintel].map((id) => [id, '#e7473c']),
 )
 
+/**
+ * The Gate kit: the spike's gate with its sensor turned round on the hub, so it looks out of the gate's
+ * front, the way people come (kid lane Y). Whoever walks up stands in open ground in front of the gate,
+ * in full view of the camera, the sensor sees them, and the door behind swings open for them. A sensor
+ * facing the viewer would be called "Back sensor", so the kit names it for what it does ("Door sensor").
+ */
+function gateKitFixture(): BrickInstance[] {
+  // A 2 × 1 turned a half turn keeps its studs: same cells on the hub, eyes on the other face.
+  return gateBricks().map((candidate) => (candidate.id === GATE_IDS.sensor ? { ...candidate, rotation: 2 } : candidate))
+}
+
+/** The Gate kit's sensor, as the student meets it. */
+export const GATE_KIT_SENSOR_NAME = 'Door sensor'
+
 /** The signal post stands on a 4 × 6 plate, one stud in from its front and back edges. */
 function signalLightFixture(): BrickInstance[] {
   const [hub, sensor, light] = signalPostBricks()
@@ -121,11 +140,12 @@ export const KITS: readonly Kit[] = [
     name: 'Gate',
     robotName: 'Gate',
     words: 'Swing it open',
-    bricks: template('gate', gateBricks(), GATE_FRAME_COLORS),
+    bricks: template('gate', gateKitFixture(), GATE_FRAME_COLORS),
     cables: [
       cable('gate', GATE_IDS.hinge, GATE_IDS.hub, 'A'),
       cable('gate', GATE_IDS.sensor, GATE_IDS.hub, 'B'),
     ],
+    names: [{ deviceId: kitBrickId('gate', GATE_IDS.sensor), name: GATE_KIT_SENSOR_NAME }],
   },
   {
     id: 'signal-light',
@@ -198,6 +218,8 @@ export function placeKitInSection(model: { input: DeriveInput; section: Robotics
   const placedId = (templateId: string) => placedIds[kit.bricks.findIndex((candidate) => candidate.id === templateId)]
   let section = model.section
   for (const wire of kit.cables) section = connect(section, placedId(wire.deviceId), placedId(wire.hubId), wire.port)
+  // The kit's own device names, stored the way a student's renames are.
+  if (kit.names?.length) section = { ...section, devices: { ...section.devices, ...Object.fromEntries(kit.names.map((entry) => [placedId(entry.deviceId), { name: entry.name }])) } }
   const component = creationComponent(model.input, placedIds[0])
   const joined = model.creations.filter((creation) => creation.brickIds.some((id) => component.includes(id)))
   const anchors = anchorableBrickIds(model.input, component)

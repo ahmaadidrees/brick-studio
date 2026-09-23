@@ -5,14 +5,18 @@
  * (`npx vite --mode robotics --port 5243 --strictPort --host 127.0.0.1`), at 1366×768 (one pass at 1024×768,
  * one on a touch screen). Everything is a student's input: the drawer's Robots choice, a kit card and the
  * command strip's Place button; the panel's Try it and Code buttons; "Someone walks up"; Back to build; a
- * click on a number block and typed digits; More → "Swing to 60°"; the Undo button. Two builds are made
- * with the studio's own placement actions (as the cp1/cp2 harnesses do): a gate whose sensor was turned
- * round (select it, press R twice) and a gate with a wall of its own bricks in front of its sensor.
+ * click on a number block and typed digits; More → "Swing to 60°"; the Undo button. The Gate kit's
+ * "Door sensor" looks out of the gate's front, where people come from: the visitor stands in open ground
+ * in front of it, and the run checks that, and that the whole figure is on screen, clear of the panels.
+ * Two builds are made with the studio's own placement actions (as the cp1/cp2 harnesses do): a gate whose
+ * sensor was turned round to look at the door (select it, press R twice), and the same with a wall of its
+ * own bricks between the sensor and the door.
  *
  * Measured from the stage itself (`window.__robotics.stageStore`): where the visitor is in its walk, what
  * the sensor reads, the arm's angle (the hinge reading), the light's colour, and the walk's verdict; read
- * from the page: the result line, the chips, the ready row. The light's look is measured from the pixels
- * the student sees. Each first-try check is repeated five times, each in a fresh page with a fresh world.
+ * from the page: the result line, the chips, the ready row. The light's look and the visitor's body are
+ * measured from the pixels the student sees. Each first-try check is repeated five times, each in a fresh
+ * page with a fresh world.
  *
  *   PATH=/opt/homebrew/opt/node@22/bin:$PATH UI_ORIGIN=http://127.0.0.1:5243 node scripts/qa/robotics-kid-tryit.mjs
  *
@@ -31,6 +35,8 @@ const browser = await chromium.launch(launchOptions())
 const results = []
 const measured = {}
 const consoleErrors = []
+/** Requests that failed, to name the resource when a console error is only "Failed to load resource". */
+const failedRequests = []
 const record = (id, ok, detail) => { results.push({ id, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'} ${id} — ${detail}`) }
 const check = (id, condition, detail) => { record(id, Boolean(condition), detail); assert(condition, `${id}: ${detail}`) }
 
@@ -45,6 +51,7 @@ async function openStudio({ width = 1366, height = 768, touch = false, tag = '' 
   const page = await context.newPage()
   page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(`${tag}: ${message.text()}`) })
   page.on('pageerror', (error) => consoleErrors.push(`${tag}: ${String(error)}`))
+  page.on('requestfailed', (request) => failedRequests.push(`${tag}: ${request.url()} (${request.failure()?.errorText})`))
   await context.addInitScript(({ onboardingKey }) => { window.localStorage.setItem(onboardingKey, 'dismissed') }, { onboardingKey: ONBOARDING_KEY })
   await page.goto(`${origin}/build`)
   await page.evaluate((key) => window.localStorage.removeItem(key), PROJECT_KEY)
@@ -78,7 +85,7 @@ async function openStudio({ width = 1366, height = 768, touch = false, tag = '' 
   }, ids)
   s.robot = () => s.robo((state) => {
     const c = state.model.creations.at(-1)
-    return { id: c.id, name: c.name, hinge: c.hinges[0]?.brickId ?? null, sensor: c.sensors[0]?.brickId ?? null, light: c.lights[0]?.brickId ?? null, brickIds: c.brickIds }
+    return { id: c.id, name: c.name, hinge: c.hinges[0]?.brickId ?? null, sensor: c.sensors[0]?.brickId ?? null, light: c.lights[0]?.brickId ?? null, brickIds: c.brickIds, sensorName: c.sensors[0]?.name ?? null, sensorFacing: c.sensors[0]?.facing ?? null }
   })
   return s
 }
@@ -106,13 +113,14 @@ async function openTryIt(s) {
 /**
  * Presses "Someone walks up" and follows the whole walk (sampling every 120 ms until the visitor is back
  * or `seconds` pass), taking a shot when the sensor first sees them, while they stand there and after.
+ * `standing` runs once, as they have stood there 1.2 s; what it returns is kept as `samples.standing`.
  */
-async function walkUp(s, ids, { button = 'Someone walks up', seconds = 12, shots = null } = {}) {
+async function walkUp(s, ids, { button = 'Someone walks up', seconds = 12, shots = null, standing = null } = {}) {
   const samples = []
   await s.page.getByRole('button', { name: button }).click()
   const began = Date.now()
   let shotSeen = false
-  let shotHere = false
+  let lookedHere = false
   let hereSince = null
   while (Date.now() - began < seconds * 1000) {
     const sample = await s.sample(ids)
@@ -120,14 +128,70 @@ async function walkUp(s, ids, { button = 'Someone walks up', seconds = 12, shots
     samples.push({ ...sample, wall: (Date.now() - began) / 1000 })
     if (shots && !shotSeen && sample.sees) { shotSeen = true; await s.shot(`${shots}-2-seen`) }
     if (sample.phase === 'here' && hereSince === null) hereSince = Date.now()
-    if (shots && !shotHere && hereSince !== null && Date.now() - hereSince > 1200) { shotHere = true; await s.shot(`${shots}-3-standing`) }
+    if (!lookedHere && hereSince !== null && Date.now() - hereSince > 1200) {
+      lookedHere = true
+      if (standing) samples.standing = await standing()
+      if (shots) await s.shot(`${shots}-3-standing`)
+    }
     if (samples.length > 3 && sample.phase === 'away' && samples.some((entry) => entry.phase === 'leaving')) break
     await s.sleep(120)
   }
   return samples
 }
 
+/** The average colour of the 5 × 5 pixels the student sees around a point on the page. */
+async function pixelAt(s, at) {
+  const png = await s.page.screenshot({ clip: { x: Math.round(at.x) - 2, y: Math.round(at.y) - 2, width: 5, height: 5 } })
+  return s.page.evaluate(async (b64) => {
+    const image = new Image()
+    image.src = `data:image/png;base64,${b64}`
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width
+    canvas.height = image.height
+    const context = canvas.getContext('2d')
+    context.drawImage(image, 0, 0)
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data
+    const sum = [0, 0, 0]
+    for (let index = 0; index < data.length; index += 4) for (let channel = 0; channel < 3; channel += 1) sum[channel] += data[index + channel]
+    const count = data.length / 4
+    return sum.map((value) => Math.round(value / count))
+  }, png.toString('base64'))
+}
+
+/**
+ * The visitor as the student sees them while they stand there: the figure's box (feet to the top of the
+ * head, arms out whichever way it turns) projected to the page, whether all of it is on the canvas, how
+ * many of the Try it panels (the bar, the chips, the line and the button) it runs under, where its back
+ * is against the robot's front edge (world z; the home camera looks from the front), and the colour
+ * under the middle of its body.
+ */
+async function visitorInView(s) {
+  const view = await s.page.evaluate(({ stud }) => {
+    const hook = window.__robotics
+    const controller = hook.stageStore.getState().stage.controller
+    const prop = controller.props.find((candidate) => candidate.kind === 'visitor')
+    const at = controller.propPoses().get(prop.id).position
+    const reach = Math.max(prop.size.x, prop.size.z) * 0.6
+    const corners = []
+    for (const dx of [-1, 1]) for (const dz of [-1, 1]) for (const y of [at.y - prop.size.y / 2, at.y + prop.size.y / 2 + 0.05]) corners.push(hook.project({ x: at.x + dx * reach, y, z: at.z + dz * reach }))
+    const box = { left: Math.min(...corners.map((c) => c.x)), right: Math.max(...corners.map((c) => c.x)), top: Math.min(...corners.map((c) => c.y)), bottom: Math.max(...corners.map((c) => c.y)) }
+    const canvas = hook.canvasRect()
+    const onCanvas = corners.every((c) => c.inFront) && box.left >= canvas.left && box.right <= canvas.left + canvas.width && box.top >= canvas.top && box.bottom <= canvas.top + canvas.height
+    const panels = [...document.querySelectorAll('.robo-drive-bar, [data-testid=robo-drive-results] li, .robo-drive-side > *')].map((element) => element.getBoundingClientRect()).filter((rect) => rect.width && rect.height)
+    const under = panels.filter((rect) => rect.left < box.right && rect.right > box.left && rect.top < box.bottom && rect.bottom > box.top).length
+    const model = hook.roboticsStore.getState().model
+    const ids = new Set(model.creations.at(-1).brickIds)
+    const front = Math.max(...model.input.bricks.filter((brick) => ids.has(brick.id)).map((brick) => { const part = model.input.partMap[brick.partId]; return (brick.z + (brick.rotation % 2 ? part.width : part.depth) - model.input.plateSize / 2) * stud }))
+    return { back: at.z - reach, front, box, onCanvas, under, body: hook.project({ x: at.x, y: at.y + 0.15, z: at.z }) }
+  }, { stud: STUD })
+  return { ...view, bodyColor: await pixelAt(s, view.body), clearStuds: rounded((view.back - view.front) / STUD) }
+}
+
 const rounded = (value) => (value === null || value === undefined ? value : Math.round(value * 10) / 10)
+
+/** The figure's shirt (#ef8d32), lit or in shade; not the frame's red, the grey ground or the white hub. */
+const isShirt = ([r, g, b]) => r > 150 && g > 80 && g < 200 && r - g > 30 && r - b > 90
 
 /* ================================================================ A. Gate kit, first try, five times */
 console.log(`\nA. The Gate kit: Try it, Someone walks up — the first try, ${RUNS} fresh times`)
@@ -143,18 +207,23 @@ for (let runIndex = 1; runIndex <= RUNS; runIndex += 1) {
   }
   await openTryIt(s)
   const before = await s.sample(robot)
+  const plan = await s.stage((state) => state.stage.controller.props[0].walk)
   if (first) {
+    const labels = await s.page.locator('[data-testid=robo-drive-results] li small').allTextContents()
+    check('A.door-sensor', robot.sensorName === 'Door sensor' && robot.sensorFacing === 'the near side' && labels.includes('Door sensor'), `the kit's sensor is called "${robot.sensorName}" and looks out of the gate's front (${robot.sensorFacing}, toward the camera); Try it's chips: ${JSON.stringify(labels)}`)
     check('A.before', before.arm === 0 && !before.sees && (await s.text('robo-drive-hint')) === 'Press the big button. Watch what happens.', `before: arm ${before.arm}°, sensor sees nothing, "${await s.text('robo-drive-hint')}"`)
     await s.shot('A2-gate-try-it')
   }
-  const samples = await walkUp(s, robot, { shots: first ? 'A3-gate' : null })
+  const samples = await walkUp(s, robot, { shots: first ? 'A3-gate' : null, standing: () => visitorInView(s) })
   const seen = samples.find((entry) => entry.sees)
   const stopped = samples.find((entry) => entry.phase === 'here')
   const standing = samples.filter((entry) => entry.phase === 'here')
   const maxArm = Math.max(...samples.map((entry) => entry.arm))
   const worked = samples.find((entry) => entry.verdict === 'worked')
   const last = samples.at(-1)
-  measured.gate.push({ run: runIndex, seenAtSeconds: rounded(seen?.wall), seenWhile: seen?.phase, armWhenTheyStop: rounded(stopped?.arm), maxArm: rounded(maxArm), workedAtSeconds: rounded(worked?.wall), line: last?.line, armAfter: rounded(last?.arm), visitorAfter: last?.phase })
+  const view = samples.standing
+  measured.gate.push({ run: runIndex, seenAtSeconds: rounded(seen?.wall), seenWhile: seen?.phase, armWhenTheyStop: rounded(stopped?.arm), maxArm: rounded(maxArm), workedAtSeconds: rounded(worked?.wall), line: last?.line, armAfter: rounded(last?.arm), visitorAfter: last?.phase, standing: { clearOfTheFrontStuds: view?.clearStuds, onCanvas: view?.onCanvas, underPanels: view?.under, bodyColor: view?.bodyColor, box: view && { left: Math.round(view.box.left), top: Math.round(view.box.top), right: Math.round(view.box.right), bottom: Math.round(view.box.bottom) } } })
+  check(`A.run${runIndex}.open-ground`, plan?.problem === null && plan.approach === 'side' && view && view.back > view.front && view.onCanvas && view.under === 0 && isShirt(view.bodyColor), `run ${runIndex}: they stood in open ground in front of the gate (their back ${view?.clearStuds} studs clear of its front edge), the whole figure on screen (${Math.round(view?.box.left)}–${Math.round(view?.box.right)} × ${Math.round(view?.box.top)}–${Math.round(view?.box.bottom)} px) under none of the panels, their shirt showing ${JSON.stringify(view?.bodyColor)}`)
   check(`A.run${runIndex}.first-try-opens`, seen && seen.phase === 'arriving' && maxArm > 45 && standing.length > 0 && standing.every((entry) => entry.sees), `run ${runIndex}: seen while still walking up (${seen?.wall.toFixed(1)} s), the arm opened to ${maxArm.toFixed(0)}° (hinge reading), seen the whole time they stood there`)
   check(`A.run${runIndex}.open-before-they-stop`, stopped && stopped.arm > 45, `run ${runIndex}: the gate was already ${stopped?.arm.toFixed(0)}° open when the visitor stopped`)
   check(`A.run${runIndex}.it-worked`, worked && worked.line === 'It worked! The gate opened.', `run ${runIndex}: "${worked?.line}" as soon as it opened`)
@@ -210,22 +279,7 @@ async function lightPixel(s, lightId) {
     const point = { x: (brick.x + 0.5 - 32) * size.stud, y: (brick.y + 2.2) * size.plate, z: (brick.z + 0.5 - 32) * size.stud }
     return window.__robotics.project(point)
   }, { id: lightId, size: { stud: STUD, plate: PLATE } })
-  const png = await s.page.screenshot({ clip: { x: Math.round(at.x) - 2, y: Math.round(at.y) - 2, width: 5, height: 5 } })
-  return s.page.evaluate(async (b64) => {
-    const image = new Image()
-    image.src = `data:image/png;base64,${b64}`
-    await image.decode()
-    const canvas = document.createElement('canvas')
-    canvas.width = image.width
-    canvas.height = image.height
-    const context = canvas.getContext('2d')
-    context.drawImage(image, 0, 0)
-    const data = context.getImageData(0, 0, canvas.width, canvas.height).data
-    const sum = [0, 0, 0]
-    for (let index = 0; index < data.length; index += 4) for (let channel = 0; channel < 3; channel += 1) sum[channel] += data[index + channel]
-    const count = data.length / 4
-    return sum.map((value) => Math.round(value / count))
-  }, png.toString('base64'))
+  return pixelAt(s, at)
 }
 const isRed = ([r, g, b]) => r > 170 && r - g > 70 && r - b > 70
 const isGrey = ([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b) < 40
@@ -274,29 +328,35 @@ for (let runIndex = 1; runIndex <= RUNS; runIndex += 1) {
 }
 
 /* ================================================================ D. A turned sensor, and a sensor that cannot see */
-console.log('\nD. A gate whose sensor was turned round, and one whose sensor looks into its own bricks')
-{
-  const s = await openStudio({ tag: 'turned' })
-  const robot = await placeKit(s, 'gate', 'Gate')
-  // Turn the sensor round: pick it and press R twice (it now looks out of the front, toward the camera).
+console.log('\nD. A gate whose sensor was turned round to look at the door, and one whose sensor looks into its own bricks')
+
+/** Pick the gate's sensor and press R twice: it turns round on the hub and looks back across the plate, at the door. */
+async function turnSensorToTheDoor(s, robot) {
   await s.brick((state, id) => state.selectBrick(id), robot.sensor)
   await s.page.keyboard.press('r')
   await s.sleep(150)
   await s.page.keyboard.press('r')
   await s.sleep(300)
-  const facing = await s.robo((state) => state.model.creations.at(-1).sensors[0].facing)
   await s.brick((state) => state.selectBrick(null))
+  return s.robo((state) => { const sensor = state.model.creations.at(-1).sensors[0]; return { facing: sensor.facing, name: sensor.name } })
+}
+{
+  const s = await openStudio({ tag: 'turned' })
+  const robot = await placeKit(s, 'gate', 'Gate')
+  const sensor = await turnSensorToTheDoor(s, robot)
   await openTryIt(s)
   const plan = await s.stage((state) => state.stage.controller.props[0].walk)
-  const samples = await walkUp(s, robot, { shots: 'D1-turned-sensor' })
+  const samples = await walkUp(s, robot, { shots: 'D1-turned-to-the-door' })
   const worked = samples.find((entry) => entry.verdict === 'worked')
-  check('D.turned-still-works', facing === 'the near side' && worked && Math.max(...samples.map((entry) => entry.arm)) > 45, `the sensor turned to face ${facing}: the visitor came to where it now looks (${plan.approach} of the beam, ${plan.standStuds} steps away) and "${worked?.line}"`)
+  check('D.turned-still-works', sensor.facing === 'the far side' && sensor.name === 'Door sensor' && worked && Math.max(...samples.map((entry) => entry.arm)) > 45, `the Door sensor turned round (it keeps its name, "${sensor.name}") to look at the door (${sensor.facing}): the visitor came to where it now looks, between the hub and the door (${plan.approach} of the beam, ${plan.standStuds} steps away), and "${worked?.line}"`)
   await s.context.close()
 }
 {
   const s = await openStudio({ tag: 'blocked' })
   const robot = await placeKit(s, 'gate', 'Gate')
-  // A little wall of the gate's own bricks on its plate, right in front of the sensor.
+  // The sensor turned to look at the door, then a little wall of the gate's own bricks on its plate, right in front of it.
+  const turned = await turnSensorToTheDoor(s, robot)
+  assert(turned.facing === 'the far side', 'the sensor looks at the door')
   const hub = await s.robo((state) => state.model.creations.at(-1).hubs[0].brickId)
   const spot = await s.brick((state, hubId) => { const brick = state.bricks.find((candidate) => candidate.id === hubId); return { x: brick.x, z: brick.z - 1 } }, hub)
   for (const y of [1, 4, 7]) {
@@ -313,9 +373,9 @@ console.log('\nD. A gate whose sensor was turned round, and one whose sensor loo
   const last = samples.at(-1)
   const verdict = samples.find((entry) => entry.verdict)?.verdict
   const arrow = await s.page.locator('[data-testid=robo-try-result] .robo-beam-arrow').getAttribute('data-angle').catch(() => null)
-  check('D.blocked-says-why', inRobot === 14 && plan.problem === 'no-room' && verdict === 'not-seen' && samples.every((entry) => !entry.sees) && last.line?.startsWith('The sensor didn’t see them. It looks this way') && arrow !== null, `with a wall of its own bricks in front of its sensor (${inRobot} bricks in the robot) the visitor walked up to the gate's front, was never seen, and the stage says "${last.line}" with an arrow along the beam (${arrow}° on screen)`)
+  check('D.blocked-says-why', inRobot === 14 && plan.problem === 'no-room' && verdict === 'not-seen' && samples.every((entry) => !entry.sees) && last.line?.startsWith('The sensor didn’t see them. It looks this way') && arrow !== null, `with a wall of its own bricks between its sensor and the door (${inRobot} bricks in the robot) the visitor walked up to the gate's front, was never seen, and the stage says "${last.line}" with an arrow along the beam (${arrow}° on screen)`)
   await s.shot('D3-sensor-blocked-after')
-  // Take the wall away (Undo three times) and try again: it works.
+  // Take the wall away (Undo three times; the sensor still looks at the door) and try again: it works.
   await s.page.getByTestId('robo-drive-back').click()
   await s.page.waitForSelector('[data-testid=robotics-panel]')
   const readyRow = (await s.page.locator('[data-testid=robotics-next-steps] [data-step=ready]').textContent())?.trim()
@@ -378,7 +438,7 @@ for (let runIndex = 1; runIndex <= RUNS; runIndex += 1) {
   check(`E.run${runIndex}.runs-and-reacts`, status === 'Ready' && saved && running && maxArm > 40 && maxArm < 50 && worked?.line === 'It worked! The gate opened.' && (await s.page.getByTestId('robo-changed').count()) === 0, `run ${runIndex}: typed 45 (saved), status was "${status}"; "Someone walks up" ran the new code: the arm went to ${maxArm.toFixed(0)}° and the stage says "${worked?.line}"`)
   if (first) {
     // A chip's text runs label, value and the line under it together ("Arm motoropenturned to 45").
-    check('E.kid-words', chips.some((chip) => /^Front sensor\d+(\.\d)? steps? away/.test(chip)) && chips.some((chip) => /^Arm motor(open|closed)/.test(chip)) && !chips.some((chip) => NO_UNITS.test(chip)), `Code's stage chips: ${JSON.stringify(chips)}`)
+    check('E.kid-words', chips.some((chip) => /^Door sensor\d+(\.\d)? steps? away/.test(chip)) && chips.some((chip) => /^Arm motor(open|closed)/.test(chip)) && !chips.some((chip) => NO_UNITS.test(chip)), `Code's stage chips: ${JSON.stringify(chips)}`)
     // Edit while it runs: it says so; the next "Someone walks up" runs the newest code again.
     await s.page.waitForFunction(() => window.__robotics.stageStore.getState().stageObservation?.visitorPhase === 'away', null, { timeout: 15_000 })
     const again = await s.hook((hook) => { const block = hook.codeWorkspace().getBlockById('smart-gate:open-degrees'); const rect = block.getField('NUM').getSvgRoot().getBoundingClientRect(); return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } })
@@ -445,7 +505,7 @@ console.log('\nG. 1024×768; a touch screen')
   await s.context.close()
 }
 
-check('console-clean', consoleErrors.length === 0, consoleErrors.length ? consoleErrors.slice(0, 4).join(' | ') : 'no console errors')
+check('console-clean', consoleErrors.length === 0, consoleErrors.length ? `${consoleErrors.slice(0, 4).join(' | ')}; failed requests: ${failedRequests.slice(0, 4).join(' | ') || 'none'}` : 'no console errors')
 await writeFile(path.join(out, 'results.json'), `${JSON.stringify({ origin, viewports: ['1366x768', '1024x768', '1024x768 touch'], at: new Date().toISOString(), runsPerFirstTryCheck: RUNS, measured, results }, null, 2)}\n`)
 await browser.close()
 const failed = results.filter((result) => !result.ok)

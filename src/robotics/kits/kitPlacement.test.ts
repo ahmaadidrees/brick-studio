@@ -5,6 +5,7 @@ import { readRoboticsSection, writeRoboticsSection } from '../model/section'
 import { ROBOTICS_PART_IDS } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
+import { renameDevice } from '../wiring/actions'
 import { armKit, installKitWatcher, useKitStore } from './kitPlacement'
 import { kitById, type KitId } from './kits'
 import { kitBetweenTwoRobots, kitUnderAnOverhang } from './kitTestFixtures'
@@ -163,6 +164,21 @@ describe('placing a kit', () => {
     brickState().undo()
     expect(snapshot()).toBe(one)
     expect(robots().map((robot) => robot.name)).toEqual(['Buggy'])
+  })
+
+  it('the Gate’s sensor comes called "Door sensor", stored as a student’s name is: they can rename it, and one Undo takes the name away with the kit', () => {
+    placeKit('gate', 29, 28)
+    const sensor = robots()[0].sensors[0]
+    expect(sensor.name).toBe('Door sensor')
+    expect(section().devices).toEqual({ [sensor.brickId]: { name: 'Door sensor' } })
+    expect(brickState().undoStack.map((entry) => entry.label)).toEqual(['Add Gate'])
+    expect(renameDevice(sensor.brickId, 'Gate eye')).toBe(true)
+    expect(robots()[0].sensors[0].name).toBe('Gate eye')
+    brickState().undo()
+    expect(robots()[0].sensors[0].name).toBe('Door sensor')
+    brickState().undo()
+    expect(brickState().bricks).toEqual([])
+    expect(section().devices).toEqual({})
   })
 
   it('the next Buggy is Buggy 2, a robot of its own', () => {
