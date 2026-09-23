@@ -208,11 +208,11 @@ function Wall({ prop, register }: { prop: Extract<TestProp, { kind: 'wall' }>; r
     <group ref={register} position={[prop.center.x, prop.center.y, prop.center.z]}>
       <mesh castShadow receiveShadow userData={{ stagePropId: prop.id }}>
         <boxGeometry args={[prop.size.x, prop.size.y, prop.size.z]} />
-        <meshStandardMaterial color="#ffffff" map={texture ?? undefined} roughness={0.85} />
+        <meshStandardMaterial color={prop.color ?? '#ffffff'} map={texture ?? undefined} roughness={0.85} />
       </mesh>
       <mesh position={[0, prop.size.y / 2 + 0.03, 0]} castShadow>
         <boxGeometry args={[prop.size.x + 0.04, 0.06, prop.size.z + 0.04]} />
-        <meshStandardMaterial color="#8a7c69" roughness={0.9} />
+        <meshStandardMaterial color={prop.color ?? '#8a7c69'} roughness={0.9} />
       </mesh>
     </group>
   )
