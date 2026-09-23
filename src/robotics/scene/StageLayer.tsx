@@ -2,7 +2,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import * as THREE from 'three'
 import { createBrickGeometry } from '../../brick/geometry'
-import { BRICK_PART_MAP, PLATE_HEIGHT, STUD } from '../../brick/parts'
+import { BRICK_PART_MAP } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { brickIdOfNode, isArmNode } from '../model/assembly'
 import { brickFrame, toWorldDirection, toWorldPoint } from '../model/grid'
@@ -13,6 +13,7 @@ import { PROGRAM_KEYS, type LightColor } from '../program/types'
 import { programKeyFromEvent } from '../run/input'
 import type { RunController, RunObservation, TestProp } from '../run/types'
 import { useStageStore, type StageSession } from '../state/stageStore'
+import { WALL_CAP_COLOR, brickWallTile } from './brickWall'
 import { setHiddenBrickIds } from './hiddenBricks'
 
 /**
@@ -76,36 +77,6 @@ const beamGeometry = (() => {
 })()
 const beamDotGeometry = new THREE.SphereGeometry(0.09, 12, 8)
 const Y_UP = new THREE.Vector3(0, 1, 0)
-
-let wallTexture: THREE.CanvasTexture | null = null
-/** Two courses of running-bond bricks: one tile is 2 bricks (4 studs each) wide and 2 courses (3 plates each) tall. */
-function brickWallTexture(): THREE.CanvasTexture | null {
-  if (wallTexture) return wallTexture
-  if (typeof document === 'undefined') return null
-  const canvas = document.createElement('canvas')
-  canvas.width = 256
-  canvas.height = 128
-  const context = canvas.getContext('2d')
-  if (!context) return null
-  context.fillStyle = '#9d8f7c'
-  context.fillRect(0, 0, 256, 128)
-  const brick = (x: number, y: number, width: number) => {
-    context.fillStyle = '#d8ccb8'
-    context.fillRect(x + 3, y + 3, width - 6, 58)
-    context.fillStyle = 'rgba(255,255,255,0.18)'
-    context.fillRect(x + 3, y + 3, width - 6, 8)
-  }
-  brick(0, 0, 128)
-  brick(128, 0, 128)
-  brick(-64, 64, 128)
-  brick(64, 64, 128)
-  brick(192, 64, 128)
-  wallTexture = new THREE.CanvasTexture(canvas)
-  wallTexture.colorSpace = THREE.SRGBColorSpace
-  wallTexture.wrapS = THREE.RepeatWrapping
-  wallTexture.wrapT = THREE.RepeatWrapping
-  return wallTexture
-}
 
 /* ------------------------------------------------------------------ pieces */
 
@@ -195,15 +166,7 @@ function Beam({ register }: { register: (handle: BeamHandle | null) => void }) {
 }
 
 function Wall({ prop, register }: { prop: Extract<TestProp, { kind: 'wall' }>; register: (group: THREE.Group | null) => void }) {
-  const texture = useMemo(() => {
-    const base = brickWallTexture()
-    if (!base) return null
-    const tile = base.clone()
-    const along = Math.max(prop.size.x, prop.size.z)
-    tile.repeat.set(along / (8 * STUD), prop.size.y / (6 * PLATE_HEIGHT))
-    tile.needsUpdate = true
-    return tile
-  }, [prop.size.x, prop.size.y, prop.size.z])
+  const texture = useMemo(() => brickWallTile(prop.size), [prop.size.x, prop.size.y, prop.size.z])
   return (
     <group ref={register} position={[prop.center.x, prop.center.y, prop.center.z]}>
       <mesh castShadow receiveShadow userData={{ stagePropId: prop.id }}>
@@ -212,7 +175,7 @@ function Wall({ prop, register }: { prop: Extract<TestProp, { kind: 'wall' }>; r
       </mesh>
       <mesh position={[0, prop.size.y / 2 + 0.03, 0]} castShadow>
         <boxGeometry args={[prop.size.x + 0.04, 0.06, prop.size.z + 0.04]} />
-        <meshStandardMaterial color={prop.color ?? '#8a7c69'} roughness={0.9} />
+        <meshStandardMaterial color={prop.color ?? WALL_CAP_COLOR} roughness={0.9} />
       </mesh>
     </group>
   )

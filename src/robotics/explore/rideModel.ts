@@ -9,12 +9,13 @@ import { compileContextFor, compileProgram } from '../program/compile'
 import { activeProgramOf, programsOf } from '../program/programs'
 import { STARTER_NAMES, starterFor } from '../program/starters'
 import { isControllerTrigger, type ProgramIR, type ProgramKey, type RoboticsProgram } from '../program/types'
+import { CURB, plateHalfWidth } from './plateCurb'
 
 /**
  * Riding a creation in Explore (checkpoint 4, contract §7 and §9 rover): the pure part.
  * Which creations can be ridden and why not, which program a ride runs, where the seat
- * is, which key goes to the program, where a rider hops off and what the prompt says.
- * Nothing here touches a store, a physics world or the document.
+ * is, which key goes to the program, where a rider hops off, when a ride goes back to the
+ * start and what the prompt says. Nothing here touches a store, a physics world or the document.
  */
 
 /** The seat's pan (where the rider sits) is two plates up; its back rises at the part's +Z edge, so a rider faces -Z. */
@@ -308,6 +309,43 @@ export function hopOffPoints(footprint: Footprint, seatFacing: Vec3): { x: numbe
   return points
 }
 
+/* ------------------------------------------------------------------ back to the start */
+
+/**
+ * A ride keeps its rider. The curb (`plateCurb.ts`) keeps a ridden robot on the plate, the only
+ * ground its physics world and Explore agree on; if it still ends up where there is no ground for it
+ * (over the curb, or falling), or lies tipped over and cannot drive, the store puts it back where it
+ * was built with the rider still on the seat. These are the only reasons.
+ */
+export type RideTrouble = 'past-the-curb' | 'fell' | 'tipped'
+
+/** The seat this far (studs) past the curb's outside face: the robot got over the curb. */
+export const PAST_CURB_STUDS = 1
+/** The seat below this height (world units; the plate's top is 0): the robot fell. */
+export const FALLEN_Y = -3
+/** The robot's up direction lower than this (1 upright, 0 on its side)… */
+export const TIPPED_UP = 0.35
+/** …for this long (seconds): it tipped over. */
+export const TIPPED_SECONDS = 1.5
+
+/** How far the seat may go from the plate's middle along x or z before it is past the curb (world units). */
+export const rideLimit = (plateSize: number) => plateHalfWidth(plateSize) + (CURB.thicknessStuds + PAST_CURB_STUDS) * STUD
+
+/** Whether a body turned by `rotation` lies tipped over. */
+export const isTipped = (rotation: Quat) => rotateByQuat(rotation, { x: 0, y: 1, z: 0 }).y < TIPPED_UP
+
+/** Why the ridden robot must go back to the start now, or null. `tippedSeconds`: how long it has been tipped over. */
+export function rideTrouble(seat: Vec3, plateSize: number, tippedSeconds: number): RideTrouble | null {
+  if (seat.y < FALLEN_Y) return 'fell'
+  const limit = rideLimit(plateSize)
+  if (Math.abs(seat.x) > limit || Math.abs(seat.z) > limit) return 'past-the-curb'
+  if (tippedSeconds >= TIPPED_SECONDS) return 'tipped'
+  return null
+}
+
+/** The one line a rider sees when the ride goes back to the start. */
+export const BACK_TO_START = 'Back to the start!'
+
 /* ------------------------------------------------------------------ the prompt */
 
 export type RidePromptInput = {
@@ -317,44 +355,72 @@ export type RidePromptInput = {
   dismounting: boolean
   near: RideCandidate | null
   notice: string | null
+  /** A touch screen: the stick drives, and there is no E key. */
+  touch?: boolean
+  /** The Explore keyboard setting (which keys walk, and so which keys drive). */
+  keys?: RideKeyboardMode
 }
 
 export type RidePrompt = {
   state: 'ride' | 'riding' | 'blocked' | 'notice'
   label: string
   detail: string | null
-  /** The key hint and the button beside it: "Press E to ride Mars buggy" · Ride. */
+  /** The student's own saved program that drives it, in their words; null for the one made on the fly (never named). */
+  code: string | null
+  /** The key hint and the button beside it: "Press E to ride Buggy" · Ride. */
   action: { key: 'E'; phrase: string; button: string } | null
 }
 
-const quoted = (name: string) => `“${name}”`
+/**
+ * The words (docs/robotics/KID-UX.md copy guide): short lines a third grader reads, the keys they
+ * press, and a program named only when it is their own code. The Joystick drive program made on the
+ * fly is how riding works, not something to read about.
+ */
+export const RIDE_WORDS = Object.freeze({
+  driveTouch: 'Drive with the stick.',
+  driveKeys: { standard: 'Drive with the arrow keys or WASD.', 'arrow-camera': 'Drive with the WASD keys.', 'wasd-camera': 'Drive with the arrow keys.' } as Record<RideKeyboardMode, string>,
+  stopped: 'Your code stopped. Hop off and fix it in Code.',
+  usingCode: (name: string) => `Using your code: ${name}`,
+  drivesWithCode: (name: string) => `Drives with your code: ${name}`,
+  noDriveMotors: 'Add a motor on each side to drive it.',
+  unplugged: 'Plug its motors into the hub to ride it.',
+  liveRoom: 'Riding is off in a shared world for now.',
+})
 
 /** Pure: what the ride prompt says. Null shows nothing. */
 export function ridePrompt(input: RidePromptInput): RidePrompt | null {
   if (!input.active) return null
   if (input.riding) {
     const program = input.riding.program
-    const reads = program ? (program.source === 'saved' ? `Your program ${quoted(program.name)} reads WASD / arrows` : `A new ${program.name} program (not saved) reads WASD / arrows`) : null
+    const drive = input.touch ? RIDE_WORDS.driveTouch : RIDE_WORDS.driveKeys[input.keys ?? 'standard']
     return {
       state: 'riding',
       label: input.dismounting ? `Hopping off ${input.riding.name}…` : `Riding ${input.riding.name}`,
-      detail: input.riding.stopped ? 'The program stopped. Hop off and fix it in Code.' : reads,
+      // "Back to the start!" takes the line for a few seconds; a stopped program says what to do.
+      detail: input.notice ?? (input.riding.stopped ? RIDE_WORDS.stopped : drive),
+      code: program?.source === 'saved' ? RIDE_WORDS.usingCode(program.name) : null,
       action: input.dismounting ? null : { key: 'E', phrase: 'hop off', button: 'Hop off' },
     }
   }
   const near = nearPrompt(input)
-  // A notice (a ride went back to where it was built) takes the detail line for a few seconds.
-  if (input.notice) return near ? { ...near, detail: input.notice } : { state: 'notice', label: input.notice, detail: null, action: null }
+  // A notice (the build changed and the robots went back) takes the detail line for a few seconds.
+  if (input.notice) return near ? { ...near, detail: input.notice } : { state: 'notice', label: input.notice, detail: null, code: null, action: null }
   return near
 }
 
 function nearPrompt(input: RidePromptInput): RidePrompt | null {
   const near = input.near
   if (!near) return null
-  if (input.liveRoom) return { state: 'blocked', label: near.name, detail: 'Riding isn’t available in a shared room yet.', action: null }
-  if (near.status === 'no-drive-pair') return { state: 'blocked', label: near.name, detail: 'It has a seat but no drive motors. Choose two drive motors first.', action: null }
-  if (near.status === 'unplugged') return { state: 'blocked', label: near.name, detail: 'Its drive motors aren’t plugged in. Plug them into the hub in Build to ride it.', action: null }
+  const blocked = (detail: string): RidePrompt => ({ state: 'blocked', label: near.name, detail, code: null, action: null })
+  if (input.liveRoom) return blocked(RIDE_WORDS.liveRoom)
+  if (near.status === 'no-drive-pair') return blocked(RIDE_WORDS.noDriveMotors)
+  if (near.status === 'unplugged') return blocked(RIDE_WORDS.unplugged)
   const program = near.program
-  const detail = program ? (program.source === 'saved' ? `Drives with your program ${quoted(program.name)}` : `Drives with a new ${program.name} program (not saved)`) : null
-  return { state: 'ride', label: near.name, detail, action: { key: 'E', phrase: `ride ${near.name}`, button: 'Ride' } }
+  return {
+    state: 'ride',
+    label: near.name,
+    detail: program?.source === 'saved' ? RIDE_WORDS.drivesWithCode(program.name) : null,
+    code: null,
+    action: { key: 'E', phrase: `ride ${near.name}`, button: 'Ride' },
+  }
 }

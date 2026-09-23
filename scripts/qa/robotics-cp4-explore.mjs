@@ -148,7 +148,8 @@ const walked = Math.hypot(atSeat.avatar.x - walkStart.x, atSeat.avatar.z - walkS
 const nearText = await promptText()
 measurements.walk = { from: walkStart, to: atSeat.avatar, studs: round(walked, 2), method: 'keyboard (W held until the prompt appeared)' }
 check('B.walked-up-with-keys', near && walked > 2 && atSeat.nearestId === creation.id, `walked ${walked.toFixed(1)} studs with W held; the seat is near (nearestId ${atSeat.nearestId})`)
-check('B.prompt', /Mars buggy/.test(nearText) && /Press E to ride Mars buggy/.test(nearText) && /Ride/.test(nearText) && /Joystick drive/.test(nearText), `prompt: “${nearText}”`)
+// Kid-UX pass (lane R): the card names a program only when it is the student's own code, never the one made on the fly.
+check('B.prompt', /Mars buggy/.test(nearText) && /Press E to ride Mars buggy/.test(nearText) && /Ride/.test(nearText) && !/program|not saved|Joystick drive/.test(nearText), `prompt: “${nearText}”`)
 await shot('B2-prompt-press-e-to-ride')
 
 /* ---------------------------------------------------------------- C. ride and drive */
@@ -166,7 +167,7 @@ check('C.riding', riding && seated.riding === creation.id && ride0.controllerPha
 check('C.seated', seatGap < 0.05 && seated.avatar.y > ride0.seat.y && seated.avatar.y - ride0.seat.y < 0.6, `the character sits on the seat: ${seatGap.toFixed(3)} units from the seat centre on the ground, ${(seated.avatar.y - ride0.seat.y).toFixed(3)} above the pan`)
 check('C.mirrored', ride0.mirroredBodies === ride0.bodies && ride0.hiddenBricks === creation.bricks && Math.abs(ride0.mirroredChassis.y - ride0.chassis.y) < 0.02,
   `${ride0.mirroredBodies}/${ride0.bodies} controller bodies mirrored as kinematic bodies in the Explore world; the studio hides the creation's ${ride0.hiddenBricks} bricks (of ${hiddenCount}); chassis ${JSON.stringify(ride0.chassis)} ↔ mirror ${JSON.stringify(ride0.mirroredChassis)}`)
-check('C.prompt', /Riding Mars buggy/.test(ridingText) && /Press E to hop off/.test(ridingText) && /Hop off/.test(ridingText), `prompt: “${ridingText}”`)
+check('C.prompt', /Riding Mars buggy/.test(ridingText) && /Drive with the arrow keys or WASD\./.test(ridingText) && /Press E to hop off/.test(ridingText) && /Hop off/.test(ridingText) && !/program|not saved/.test(ridingText), `prompt: “${ridingText}”`)
 await shot('C1-riding-seated')
 
 // Idle for a moment: nothing moves without a key (the program reads the keys; nothing drives by itself).
