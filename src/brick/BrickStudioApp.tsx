@@ -62,9 +62,13 @@ import { isRoboticsPrototypeEnabled } from '../robotics/flag'
 import { studioShortcutsSuspended } from '../robotics/code/studioKeys'
 import { ROBOTICS_PARTS, isRoboticsPart } from '../robotics/parts/catalog'
 import { paintSelectionWith } from '../robotics/paint/selectionPaint'
+import { answerRobotsDrawer, robotsDrawerPending, subscribeRobotsDrawer } from '../robotics/basics/drawerRequest'
+import { useBasicsStore } from '../robotics/basics/basicsState'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): the chunk is never requested without the flag.
 const RoboticsPanel = lazy(() => import('../robotics/ui/RoboticsPanel').then((module) => ({ default: module.RoboticsPanel })))
+// Robot Workshop kid basics: the far-away placement notice (the same flag).
+const BasicsOverlay = lazy(() => import('../robotics/basics/BasicsOverlay'))
 const ExploreRidePrompt = lazy(() => import('../robotics/explore/ExploreRidePrompt'))
 const RobotsChoice = lazy(() => import('../robotics/kits/KitShelf').then((module) => ({ default: module.RobotsChoice })))
 const KitShelf = lazy(() => import('../robotics/kits/KitShelf').then((module) => ({ default: module.KitShelf })))
@@ -499,9 +503,18 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
   const choosePart = useBrickStore((state) => state.choosePart)
   const [query, setQuery] = useState('')
   const robotics = isRoboticsPrototypeEnabled()
-  const [category, setCategory] = useState<PartCategory>(() => (robotics ? savedDrawerCategory() : 'all'))
-  const searchId = useId()
+  // Robot Workshop: the drawer remembers its category for this viewer (lane P), and the quick start's
+  // "Build a robot" opens this grid on Robots (lane M; also a grid that mounts after the request, like
+  // the touch sheet's). Nothing is remembered or asked without the flag.
+  const [category, setCategory] = useState<PartCategory>(() => (!robotics ? 'all' : robotsDrawerPending() ? 'robotics' : savedDrawerCategory()))
   useEffect(() => { if (robotics) saveDrawerCategory(category) }, [robotics, category])
+  useEffect(() => {
+    if (!robotics) return
+    const showRobots = () => { setQuery(''); setCategory('robotics'); answerRobotsDrawer() }
+    if (robotsDrawerPending()) showRobots()
+    return subscribeRobotsDrawer(showRobots)
+  }, [robotics])
+  const searchId = useId()
   const parts = useMemo(() => [
     ...BRICK_PARTS,
     ...(robotics ? ROBOTICS_PARTS : []),
@@ -846,6 +859,8 @@ function BuildShell({
   const openResize = useCallback(() => setResizeOpen(true), [])
 
   useEffect(() => { if (!compact) setSheetOpen(false) }, [compact])
+  // Robot Workshop kid basics: "Build a robot" in the quick start opens the drawer (or the touch sheet).
+  useEffect(() => (isRoboticsPrototypeEnabled() ? subscribeRobotsDrawer(() => { if (compact) setSheetOpen(true); else setDrawerOpen(true) }) : undefined), [compact])
 
   return (
     <div className={`build-shell${compact ? ' compact-shell' : ''}${!compact && !drawerOpen ? ' drawer-collapsed' : ''}`}>
@@ -919,6 +934,12 @@ function Toast() {
   const clear = useBrickStore((state) => state.clearToast)
   useEffect(() => { if (!toast) return; const timer = window.setTimeout(clear, 3300); return () => window.clearTimeout(timer) }, [toast, clear])
   return toast ? <div className="brick-toast" role="status" aria-label="Studio message">{toast}</div> : null
+}
+
+/** Robot Workshop kid basics: the far-away placement notice, loaded only when there is one to show. */
+function KidBasicsNotice() {
+  const notice = useBasicsStore((state) => state.farNotice)
+  return notice ? <Suspense fallback={null}><BasicsOverlay /></Suspense> : null
 }
 
 function Announcer() {
@@ -1641,6 +1662,7 @@ export default function BrickStudioApp({
         {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><ExploreRidePrompt liveRoom={Boolean(livePolicy)} /></Suspense>}
       </>}
       <Toast />
+      {mode === 'build' && isRoboticsPrototypeEnabled() && <KidBasicsNotice />}
       <Announcer />
       {!readOnly && <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />}
       <WorldAndCharacterSheet

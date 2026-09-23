@@ -1,0 +1,391 @@
+{
+  "origin": "http://127.0.0.1:5245",
+  "flagOffOrigin": "http://127.0.0.1:5246",
+  "input": "real mouse, keyboard and wheel via Playwright; aim points from the studio's own world→screen projection",
+  "at": "2026-09-23T20:51:13.399Z",
+  "measures": {
+    "quickStart": {
+      "text": "Let's build! Pick a part Click to place it Right-drag to look around Build a robot Start building",
+      "words": 18,
+      "pictures": 3,
+      "targets": [
+        {
+          "name": "Dismiss quick start",
+          "width": 44,
+          "height": 44
+        },
+        {
+          "name": "Build a robot",
+          "width": 204,
+          "height": 56
+        },
+        {
+          "name": "Start building",
+          "width": 204,
+          "height": 56
+        }
+      ],
+      "small": []
+    },
+    "arrowsOffTheEdge": [
+      {
+        "x": 33,
+        "y": 1,
+        "on": "plate_6x8"
+      },
+      {
+        "x": 34,
+        "y": 0,
+        "on": "ground"
+      }
+    ],
+    "skim": {
+      "tallest": {
+        "id": "brick-1790196630214-8lh6hy",
+        "partId": "brick_1x6",
+        "x": 30,
+        "y": 13,
+        "z": 41,
+        "rotation": 1
+      },
+      "above": {
+        "x": 548.7072310619587,
+        "y": 375.1387626505706
+      },
+      "ghostOnTop": {
+        "partId": "brick_1x2",
+        "x": 32,
+        "y": 16,
+        "z": 40
+      },
+      "pick": {
+        "point": [
+          -3.6041138050552703,
+          3.5762786898541066e-9,
+          1.6697542519026989
+        ],
+        "onBrick": false,
+        "far": true,
+        "depthRatio": 1.18078910398808
+      }
+    },
+    "zoom": {
+      "notchPixels": 100,
+      "ratiosPerNotch": [
+        1.189,
+        1.414,
+        1.682,
+        2
+      ],
+      "notchesToDouble": 4,
+      "backInRatio": 1,
+      "trackpadSwipe40x10px": 2
+    },
+    "flagOffHandle": {
+      "handle": {
+        "x": 977.3703002929688,
+        "y": 324.6834716796875,
+        "width": 44,
+        "height": 44
+      },
+      "partTop": {
+        "x": 980.9240586612142,
+        "y": 452.04824038006797,
+        "inFront": true
+      }
+    },
+    "flagOffZoomPerNotch": 1.0526
+  },
+  "results": [
+    {
+      "id": "A.one-screen",
+      "ok": true,
+      "detail": "the quick start is 18 words and 3 pictures: \"Let's build! Pick a part Click to place it Right-drag to look around Build a robot Start building\""
+    },
+    {
+      "id": "A.mouse-words",
+      "ok": true,
+      "detail": "with a mouse it says click and right-drag (the touch words are hidden)"
+    },
+    {
+      "id": "A.big-targets",
+      "ok": true,
+      "detail": "buttons [{\"name\":\"Dismiss quick start\",\"width\":44,\"height\":44},{\"name\":\"Build a robot\",\"width\":204,\"height\":56},{\"name\":\"Start building\",\"width\":204,\"height\":56}]; text under 14 px: []"
+    },
+    {
+      "id": "A.nothing-in-hand",
+      "ok": true,
+      "detail": "no brick is armed at start (the studio used to start with a 2 × 4 brick being placed)"
+    },
+    {
+      "id": "A.build-a-robot",
+      "ok": true,
+      "detail": "Build a robot closed the quick start and opened the drawer on Start with a kit"
+    },
+    {
+      "id": "A.touch-words",
+      "ok": true,
+      "detail": "on a touch screen it says tap and drag: \"Let's build! Pick a part Tap, then Place Drag to look around Build a robot Start building\""
+    },
+    {
+      "id": "A.touch-nothing-in-hand",
+      "ok": true,
+      "detail": "no brick is armed on the tablet either"
+    },
+    {
+      "id": "A.touch-build-a-robot",
+      "ok": true,
+      "detail": "Build a robot opened the (+) sheet on Start with a kit"
+    },
+    {
+      "id": "B.plate",
+      "ok": true,
+      "detail": "plate at 28,0,26"
+    },
+    {
+      "id": "B.motor-on-ground",
+      "ok": true,
+      "detail": "motor at 20,0,30 on the ground"
+    },
+    {
+      "id": "B.motor-selected",
+      "ok": true,
+      "detail": "a click on the motor selects it"
+    },
+    {
+      "id": "B.drag-in-view",
+      "ok": true,
+      "detail": "the grab point and the plate are in the free canvas area"
+    },
+    {
+      "id": "B.mid-drag-ghost",
+      "ok": true,
+      "detail": "mid-drag the ghost shows it sitting on the plate (32,1,29), caption null"
+    },
+    {
+      "id": "B.lands-on-plate",
+      "ok": true,
+      "detail": "let go, the motor is on the plate at 32,1,29, where the ghost showed (resting on plate_6x8)"
+    },
+    {
+      "id": "B.flash-on-move",
+      "ok": true,
+      "detail": "the moved motor flashes where it landed"
+    },
+    {
+      "id": "C.arrow-drops-off-edge",
+      "ok": true,
+      "detail": "Right, press by press: 33/1 on plate_6x8, 34/0 on ground"
+    },
+    {
+      "id": "C.arrow-steps-up",
+      "ok": true,
+      "detail": "Left once: back on the plate at 33,1,29"
+    },
+    {
+      "id": "C.raise-refused",
+      "ok": true,
+      "detail": "Raise: still at height 1; the line says \"Parts can't float. Put something under it.\""
+    },
+    {
+      "id": "C.lower-refused-outlined",
+      "ok": true,
+      "detail": "Lower: \"It can't go any lower.\", outlining [\"brick-1790196596321-ofn379\"]"
+    },
+    {
+      "id": "C.handle-clear-of-part",
+      "ok": true,
+      "detail": "the handle (736,352 44×44) sits above the part's top (756,436)"
+    },
+    {
+      "id": "C.handle-up-no-float",
+      "ok": true,
+      "detail": "pulled up 120 px: still at height 1 (\"Parts can't float. Put something under it.\")"
+    },
+    {
+      "id": "C.stacked",
+      "ok": true,
+      "detail": "1 × 2 on the 2 × 2 at height 4"
+    },
+    {
+      "id": "C.base-selected",
+      "ok": true,
+      "detail": "the 2 × 2 under it is selected"
+    },
+    {
+      "id": "C.left-in-air",
+      "ok": true,
+      "detail": "with its support deleted the 1 × 2 hangs at height 4"
+    },
+    {
+      "id": "C.floating-selected",
+      "ok": true,
+      "detail": "the floating 1 × 2 is selected"
+    },
+    {
+      "id": "C.handle-down-lands",
+      "ok": true,
+      "detail": "pulled down, it landed on the plate at height 1 (not beside it, not under it)"
+    },
+    {
+      "id": "C.no-self-stacking",
+      "ok": true,
+      "detail": "moving the motor (height 1) with the pointer on its own body, the ghost is at height 1, not 7 on top of itself"
+    },
+    {
+      "id": "C.self-click-not-floating",
+      "ok": true,
+      "detail": "a click there put it at 31,1,26, resting on plate_6x8"
+    },
+    {
+      "id": "D.plate",
+      "ok": true,
+      "detail": "plate at 28,0,26"
+    },
+    {
+      "id": "D.hub-on-plate",
+      "ok": true,
+      "detail": "hub at 29,1,27"
+    },
+    {
+      "id": "D.hub-selected",
+      "ok": true,
+      "detail": "a click in the middle of the hub selects it"
+    },
+    {
+      "id": "D.middle-is-the-part",
+      "ok": true,
+      "detail": "in the top view the hub's middle is the hub itself (CANVAS); the handle sits at 577,219"
+    },
+    {
+      "id": "D.hub-moved",
+      "ok": true,
+      "detail": "dragged by its middle, the hub went sideways to 22,0,26 and sits on the ground (mid-drag {\"partId\":\"robo_hub\",\"x\":22,\"y\":0,\"z\":26})"
+    },
+    {
+      "id": "D.hub-back-by-corner",
+      "ok": true,
+      "detail": "grabbed by a corner and dragged back, it is on the plate at 29,1,26"
+    },
+    {
+      "id": "H.on-the-plate",
+      "ok": true,
+      "detail": "over the plate: \"On the plate\""
+    },
+    {
+      "id": "H.on-the-ground",
+      "ok": true,
+      "detail": "over the ground: \"On the ground\""
+    },
+    {
+      "id": "H.on-the-hub",
+      "ok": true,
+      "detail": "over the hub: \"On the hub\""
+    },
+    {
+      "id": "G.in-the-way",
+      "ok": true,
+      "detail": "beside the hub the ghost is red, says \"Something is in the way.\" and outlines [\"brick-1790196614033-q5pemb\"] (ghost 29,1,28)"
+    },
+    {
+      "id": "G.click-refused",
+      "ok": true,
+      "detail": "a click there places nothing: \"Something is in the way.\""
+    },
+    {
+      "id": "G.off-the-plate",
+      "ok": true,
+      "detail": "at the plate's edge: \"That's off the plate.\""
+    },
+    {
+      "id": "E.gate-placed",
+      "ok": true,
+      "detail": "a Gate kit (11 bricks) stands in front of the robot"
+    },
+    {
+      "id": "E.skim-ghost-stays",
+      "ok": true,
+      "detail": "just above the gate's top the ray lands at z 34.7, behind the gate (far: true); the ghost stays on the gate at 32,16,40 (was 32,16,40) and says \"Too far away. Zoom in to build there.\""
+    },
+    {
+      "id": "E.skim-click-places-nothing",
+      "ok": true,
+      "detail": "a click there places nothing: \"Too far away. Zoom in to build there.\""
+    },
+    {
+      "id": "E.top-edge-places-nothing",
+      "ok": true,
+      "detail": "a click at the top of the view (ray hits nothing) places nothing"
+    },
+    {
+      "id": "E.place-on-top-flashes",
+      "ok": true,
+      "detail": "aimed on the gate's top, the 1 × 2 went on it at 33,16,41 and flashes ([\"brick-1790196634511-qbw1bj\"])"
+    },
+    {
+      "id": "E.no-far-notice",
+      "ok": true,
+      "detail": "nothing landed out of sight, so no \"far away\" notice"
+    },
+    {
+      "id": "E.far-notice",
+      "ok": true,
+      "detail": "placed with the ghost out of view (2234,935): \"Your part landed far away. Show me Undo\""
+    },
+    {
+      "id": "E.show-me",
+      "ok": true,
+      "detail": "Show me framed it: now at 599,389 in view"
+    },
+    {
+      "id": "F.notches-to-double",
+      "ok": true,
+      "detail": "from the view a new build opens with (12.2 units away), 4 wheel notches (100 px each) double the distance: 1.189 → 1.414 → 1.682 → 2"
+    },
+    {
+      "id": "F.back-in",
+      "ok": true,
+      "detail": "as many notches back in return to 1.000× the distance"
+    },
+    {
+      "id": "F.trackpad",
+      "ok": true,
+      "detail": "a trackpad swipe of 40 small events (400 px) zooms 2.00× (a fixed 5 % per event made it 7.8×)"
+    },
+    {
+      "id": "I.flag-off-quick-start",
+      "ok": true,
+      "detail": "the studio's own quick start (\"Build something you can explore\") is shown"
+    },
+    {
+      "id": "I.flag-off-armed",
+      "ok": true,
+      "detail": "the studio still starts with a 2 × 4 brick in hand"
+    },
+    {
+      "id": "I.flag-off-arrows",
+      "ok": true,
+      "detail": "arrows keep the height as before: the 1 × 2 is at 32,3 past the 2 × 2's edge (in the air, the studio's own behaviour)"
+    },
+    {
+      "id": "I.flag-off-raise",
+      "ok": true,
+      "detail": "Page Up lifts it one plate to 4, as before"
+    },
+    {
+      "id": "I.flag-off-drag",
+      "ok": true,
+      "detail": "a drag moves it sideways at the same height (37,4,30), as before"
+    },
+    {
+      "id": "I.flag-off-zoom",
+      "ok": true,
+      "detail": "one wheel notch still moves the studio's fixed 5 % (1.0526×)"
+    },
+    {
+      "id": "Z.no-page-errors",
+      "ok": true,
+      "detail": "no page errors"
+    }
+  ]
+}

@@ -1,5 +1,12 @@
 import { Check, Gamepad2, MousePointer2, Shapes, X } from 'lucide-react'
 import { useState } from 'react'
+import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { requestRobotsDrawer } from '../robotics/basics/drawerRequest'
+// Robot Workshop kid basics (VITE_ROBOTICS_PROTOTYPE=1): a picture-first quick start with "Build a
+// robot". A small component (its styles are scoped to its own classes), rendered only with the flag;
+// the studio's own guide below is unchanged. Imported directly so the first screen does not wait
+// for a separate chunk.
+import KidQuickStart from '../robotics/basics/KidQuickStart'
 
 const ONBOARDING_KEY = 'brick-studio:onboarding:v1'
 
@@ -43,6 +50,9 @@ type OnboardingGuideProps = {
 }
 
 export function OnboardingGuide({ onDismiss }: OnboardingGuideProps) {
+  // Robot Workshop kid basics: the prototype's quick start (same dismissal key, same close and
+  // "Start building" names); "Build a robot" also opens the drawer on its Robots kits.
+  if (isRoboticsPrototypeEnabled()) return <KidQuickStart onStart={onDismiss} onBuildRobot={() => { onDismiss(); requestRobotsDrawer() }} />
   return (
     <section className="onboarding-guide" role="dialog" aria-modal="false" aria-labelledby="onboarding-title">
       <button className="onboarding-close studio-icon-button" type="button" aria-label="Dismiss quick start" onClick={onDismiss}><X size={18} /></button>
