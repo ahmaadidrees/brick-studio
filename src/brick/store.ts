@@ -17,6 +17,9 @@ import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, GRID_SIZE, registerCustomPar
 import { ORBIT_DEFAULT_DISTANCE, ORBIT_DEFAULT_PITCH, ORBIT_DEFAULT_YAW, clampOrbitDistance } from './orbitCamera'
 import { clampExplorePitch } from './touchInput'
 import type { BrickBudgetProfile, BrickDraft, BrickInstance, BrickMode, ViewPreset } from './types'
+import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { kidNudge, kidRefusal } from '../robotics/basics/moves'
+import { reportRefusal } from '../robotics/basics/basicsState'
 
 export const MAX_HISTORY_ENTRIES = 100
 const NUDGE_BATCH_WINDOW_MS = 500
@@ -486,6 +489,27 @@ function suggestedDraft(
   return { partId, x, y: supportHeightForFootprint(bricks, x, z, part.width, part.depth), z, rotation: 0, color: part.defaultColor ?? color }
 }
 
+/**
+ * Robot Workshop kid basics (VITE_ROBOTICS_PROTOTYPE=1 only): what a move or a placement acts on, split
+ * into the pieces that move (the armed draft or group, else the selected bricks) and every other
+ * brick. The prototype's arrows, Raise/Lower and refusal reasons are computed from these
+ * (src/robotics/basics/moves.ts); the studio's own paths never call it.
+ */
+function kidMovePieces(state: BrickState): { pieces: BrickDraft[]; others: BrickInstance[] } {
+  if (state.draft) {
+    const moving = new Set(state.movingSelection && !state.movingSelection.duplicate ? state.movingSelection.originals.map((brick) => brick.id) : state.movingId ? [state.movingId] : [])
+    return { pieces: selectionDrafts(state), others: state.bricks.filter((brick) => !moving.has(brick.id)) }
+  }
+  const selected = new Set(effectiveSelectedIds(state))
+  return { pieces: state.bricks.filter((brick) => selected.has(brick.id)), others: state.bricks.filter((brick) => !selected.has(brick.id)) }
+}
+
+/** Kid basics: the refusal line and the bricks to outline for a refused placement or move (prototype only). */
+function kidRefusalFor(state: BrickState) {
+  const { pieces, others } = kidMovePieces(state)
+  return kidRefusal(pieces, others, getBuildPlateSize(state.documentMetadata))
+}
+
 function describeBrick(brick: BrickInstance, index: number, count: number) {
   return `${BRICK_PART_MAP[brick.partId].name}, brick ${index + 1} of ${count}, at X ${brick.x}, Y ${brick.y}, Z ${brick.z}.`
 }
@@ -518,14 +542,24 @@ function withGraphicsPauseGuard(get: () => BrickState, state: BrickState): Brick
   return { ...state, ...(guarded as Partial<BrickState>) }
 }
 
+/**
+ * The first-run brush: the studio starts with a 2 × 4 brick armed. Robot Workshop kid basics
+ * (VITE_ROBOTICS_PROTOTYPE=1): the prototype starts with nothing in hand (a tester on an iPad began
+ * with a brick already being placed); its quick start and the drawer offer the first part.
+ */
+export function initialBrush(robotics: boolean = isRoboticsPrototypeEnabled()): Pick<BrickState, 'activePartId' | 'draft' | 'toast'> {
+  return robotics
+    ? { activePartId: null, draft: null, toast: null }
+    : { activePartId: BRICK_PARTS[5].id, draft: suggestedDraft(BRICK_PARTS[5].id, BRICK_COLORS[5]), toast: 'Pick a brick, position it over the plate, then place it.' }
+}
+
 export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseGuard(get, {
   mode: 'build',
   bricks: [],
   selectedIds: [],
   selectedId: null,
-  activePartId: BRICK_PARTS[5].id,
   activeColor: BRICK_COLORS[5],
-  draft: suggestedDraft(BRICK_PARTS[5].id, BRICK_COLORS[5]),
+  ...initialBrush(),
   movingId: null, movingSelection: null,
   clipboard: null,
   documentMetadata: {},
@@ -585,7 +619,6 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   marquee: null,
   viewTarget: null,
   grabInProgress: false,
-  toast: 'Pick a brick, position it over the plate, then place it.',
   announcement: null,
   placeFeedback: null,
   blockedNonce: 0,
@@ -660,9 +693,12 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
   placeDraft: () => {
     const state = get()
     if (!state.draft || !selectionDraftIsValid(state)) {
+      // Robot Workshop kid basics (prototype only): say why in kid words and outline what is in the way.
+      const kid = isRoboticsPrototypeEnabled() && state.draft ? kidRefusalFor(state) : null
       // blockedNonce marks a discrete rejected placement (overlap/out-of-bounds
       // only, not budget) so the ghost shake never keys off continuous validity.
-      set({ toast: 'That placement overlaps another brick or falls outside the plate.', blockedNonce: state.blockedNonce + 1 })
+      set({ toast: kid?.text ?? 'That placement overlaps another brick or falls outside the plate.', blockedNonce: state.blockedNonce + 1 })
+      if (kid) reportRefusal(kid.text, kid.ids)
       return false
     }
     if (!state.movingId && state.bricks.length >= state.brickBudget) {
@@ -885,8 +921,21 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
       }
     }
   },
-  nudge: (dx, dy, dz) => {
+  nudge: (requestedDx, requestedDy, requestedDz) => {
     const state = get()
+    // Robot Workshop kid basics (prototype only): arrows slide and settle the part on what is under it
+    // and Raise/Lower hop between the heights it can sit at, so a nudge never leaves it in the air;
+    // a refused one says why and outlines what is in the way. A kit in hand keeps the studio's nudge.
+    const kid = isRoboticsPrototypeEnabled() && !state.movingSelection?.name ? (() => {
+      const { pieces, others } = kidMovePieces(state)
+      return kidNudge(pieces, others, requestedDx, requestedDy, requestedDz, getBuildPlateSize(state.documentMetadata))
+    })() : null
+    if (kid && !kid.ok) {
+      set({ toast: kid.text })
+      reportRefusal(kid.text, kid.ids)
+      return
+    }
+    const [dx, dy, dz] = kid ? kid.offset : [requestedDx, requestedDy, requestedDz]
     if (!state.draft && effectiveSelectedIds(state).length > 1) {
       const before = selectedBricks(state)
       const after = before.map((brick) => ({ ...brick, x: brick.x + dx, y: brick.y + dy, z: brick.z + dz }))
@@ -937,7 +986,8 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     const state = get()
     const originals = selectedBricks(state).map(cloneBrick)
     const brick = originals[0]
-    if (brick) set({ draft: { ...brick }, movingId: brick.id, movingSelection: { originals, duplicate: false }, activePartId: brick.partId, toast: 'Drag to a new valid location.' })
+    // Robot Workshop kid basics: plain words in the prototype.
+    if (brick) set({ draft: { ...brick }, movingId: brick.id, movingSelection: { originals, duplicate: false }, activePartId: brick.partId, toast: isRoboticsPrototypeEnabled() ? 'Drag it to a new spot.' : 'Drag to a new valid location.' })
   },
   copy: () => {
     const state = get()

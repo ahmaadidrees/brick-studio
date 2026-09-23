@@ -1,0 +1,38 @@
+/* The Robot Workshop quick start (behind VITE_ROBOTICS_PROTOTYPE). It sits where the studio's
+   quick start sits (`.onboarding-guide` places it on every layout); these rules are its insides and
+   are scoped under both classes so the studio guide's own list rules never reach them.
+   Text 15 px or more on desktop, 16 px on touch; every target at least 44 px (KID-UX.md). */
+.onboarding-guide.kid-quick-start { width: min(460px, calc(100% - 32px)); padding: 20px 20px 18px; }
+.onboarding-guide.kid-quick-start h2 { margin: 2px 52px 14px 0; font: 600 28px/1.1 var(--font-display, 'Fredoka'), sans-serif; }
+.onboarding-guide.kid-quick-start .kid-quick-start-tips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.onboarding-guide.kid-quick-start .kid-quick-start-tips li { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: 8px 6px 10px; border-radius: 14px; color: var(--studio-ink); background: var(--studio-panel-soft, #f3f5f9); text-align: center; }
+.onboarding-guide.kid-quick-start .kid-quick-start-picture { width: 100%; max-width: 96px; height: auto; aspect-ratio: 4 / 3; }
+.onboarding-guide.kid-quick-start .kid-quick-start-tips strong { color: var(--studio-ink); font-size: 15px; font-weight: 800; line-height: 1.2; }
+.onboarding-guide.kid-quick-start .kid-quick-start-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.onboarding-guide.kid-quick-start .kid-quick-start-robot {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 2px solid rgba(46, 170, 157, .6);
+  border-radius: 14px;
+  color: var(--studio-ink);
+  background: rgba(46, 170, 157, .12);
+  font-family: inherit; font-size: 17px; font-weight: 800; line-height: 1.15;
+  cursor: pointer;
+}
+.onboarding-guide.kid-quick-start .kid-quick-start-robot:hover { background: rgba(46, 170, 157, .2); }
+.onboarding-guide.kid-quick-start .kid-quick-start-robot:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.onboarding-guide.kid-quick-start .kid-quick-start-robot-icon { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; color: #ffffff; background: #2a9d8f; }
+.onboarding-guide.kid-quick-start .kid-quick-start-go { width: 100%; min-height: 56px; margin-top: 0; border-radius: 14px; font-size: 18px; font-weight: 800; }
+
+@media (pointer: coarse) {
+  .onboarding-guide.kid-quick-start { width: min(460px, calc(100% - 32px)); padding: 18px; }
+  .onboarding-guide.kid-quick-start .kid-quick-start-tips strong { font-size: 16px; }
+  .onboarding-guide.kid-quick-start .kid-quick-start-robot { font-size: 18px; }
+}
+@media (max-width: 420px) {
+  .onboarding-guide.kid-quick-start .kid-quick-start-actions { grid-template-columns: 1fr; }
+}

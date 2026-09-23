@@ -13,6 +13,7 @@ import {
 import type { StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { BRAND_NAME } from '../brand'
+import { isRoboticsPrototypeEnabled } from '../robotics/flag'
 
 export type BrickStudioDocumentPersistenceOptions = CreateBrickStudioDocumentOptions & {
   /** Receives normalized local/imported documents so app-owned metadata state can follow them. */
@@ -93,7 +94,16 @@ export function useBrickStudioDocuments(
     const visibilityChanged = () => { if (document.visibilityState === 'hidden') flush() }
     window.addEventListener('pagehide', flush)
     document.addEventListener('visibilitychange', visibilityChanged)
+    // Robot Workshop kid basics (prototype only): a crash or a killed tab fires no pagehide, so a part
+    // just put down is written at once rather than after the 400 ms quiet period (once the robotics
+    // layer has wired it, in the same task), and a robot's own changes (its name, its cables, which
+    // change no brick) are saved like brick changes instead of waiting for the next brick edit.
+    const unsubscribeKidSaves = isRoboticsPrototypeEnabled() ? useBrickStore.subscribe((state, previous) => {
+      if (state.placeFeedback && state.placeFeedback !== previous.placeFeedback) queueMicrotask(flush)
+      else if (state.documentMetadata.robotics !== previous.documentMetadata.robotics) autosave.schedule()
+    }) : null
     return () => {
+      unsubscribeKidSaves?.()
       window.removeEventListener('pagehide', flush)
       document.removeEventListener('visibilitychange', visibilityChanged)
       loadedRef.current = false
