@@ -6,8 +6,8 @@
     "1024x768",
     "820x1094 touch (iPad portrait)"
   ],
-  "at": "2026-09-23T19:35:47.465Z",
-  "passed": 50,
+  "at": "2026-09-23T21:11:35.850Z",
+  "passed": 60,
   "failed": 0,
   "counts": {
     "pickColour": 1,
@@ -19,6 +19,7 @@
   },
   "shots": [
     "1366-01-buggy-paint-row.png",
+    "1366-00-kit-placed-wheel-picked.png",
     "1366-02-painting-red.png",
     "1366-03-two-bricks-painted.png",
     "1366-04-paint-all-green.png",
@@ -27,6 +28,10 @@
     "1366-07-motor-card.png",
     "1366-08-motor-more.png",
     "1366-09-idea-placed-once.png",
+    "1366-09b-stack-idea-2-of-5.png",
+    "1366-16-seat-ghost-on-top.png",
+    "1366-17-seat-on-the-robot.png",
+    "1366-18-seat-back-on-top.png",
     "1366-10-gate-motor-test.png",
     "1366-11-signal-light-hub-picked.png",
     "1366-12-gate-try-it.png",
@@ -55,6 +60,21 @@
       "id": "A.paint-row",
       "ok": true,
       "detail": "the robot panel has a Paint row of twelve colours"
+    },
+    {
+      "id": "K.nothing-picked",
+      "ok": true,
+      "detail": "the kit just placed leaves nothing picked; the strip says \"Pick a brick from the drawer\""
+    },
+    {
+      "id": "K.wheel-picked",
+      "ok": true,
+      "detail": "the first click on a wheel picks just the wheel"
+    },
+    {
+      "id": "K.color-one-brick",
+      "ok": true,
+      "detail": "the strip's Color is for that one wheel (\"Brick color\", not \"Color all 9 bricks\")"
     },
     {
       "id": "A1.painting",
@@ -162,6 +182,11 @@
       "detail": "the new light flashes"
     },
     {
+      "id": "A6.counts",
+      "ok": true,
+      "detail": "after two bricks the idea reads \"Stack 5 bricks on top · 2 of 5\" and is not ticked"
+    },
+    {
       "id": "A7.robots-before",
       "ok": true,
       "detail": "the drawer shows Robots"
@@ -170,6 +195,31 @@
       "id": "A7.robots-after-reload",
       "ok": true,
       "detail": "after a reload the drawer still shows Robots"
+    },
+    {
+      "id": "S.ghost-on-top",
+      "ok": true,
+      "detail": "the seat idea's ghost stands on the robot's top (y 7, the hub's top is 7)"
+    },
+    {
+      "id": "S.place-puts-it-on",
+      "ok": true,
+      "detail": "Place put the seat on the Buggy: 10 bricks attached (was 9), the seat idea ticked, nothing left in hand"
+    },
+    {
+      "id": "S.loose-taken-back",
+      "ok": true,
+      "detail": "a click on bare ground (the ghost at y 0) placed nothing loose: the seat is back in hand on the robot's top (y 7)"
+    },
+    {
+      "id": "S.says-so",
+      "ok": true,
+      "detail": "the line says \"The seat goes on Buggy. It is back on top: press Place.\""
+    },
+    {
+      "id": "S.then-on",
+      "ok": true,
+      "detail": "Place then puts it on the Buggy"
     },
     {
       "id": "B.two-robots",
@@ -237,6 +287,11 @@
       "detail": "the Color popover (678–914) clears the panel (from 922)"
     },
     {
+      "id": "C.framed-big",
+      "ok": true,
+      "detail": "the Buggy is drawn 206 px wide in the 364 px gap between the drawer and the panel, all of it inside"
+    },
+    {
       "id": "C.paint-1024",
       "ok": true,
       "detail": "at 1024: a colour, then a click on the hub paints it"
@@ -257,14 +312,14 @@
       "detail": "the Buggy is framed in the free area beside the panel (9/9 bricks inside, the free area ends at 416 px, the panel starts at 416 px)"
     },
     {
-      "id": "D.picked-kit-painted",
+      "id": "D.nothing-picked",
       "ok": true,
-      "detail": "with the new kit picked, a tap on green paints it green; its wheels stay as they were"
+      "detail": "the kit placed by touch leaves nothing picked"
     },
     {
       "id": "D.tap-paints",
       "ok": true,
-      "detail": "then orange, and a tap on the hub paints it orange (nothing picked)"
+      "detail": "orange, then a tap on the hub paints it orange (nothing picked)"
     },
     {
       "id": "D.finger-targets",

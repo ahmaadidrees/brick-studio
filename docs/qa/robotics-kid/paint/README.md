@@ -11,7 +11,25 @@ a brick is the studio's own world-to-screen answer (`window.__robotics.project`,
 the brick's top that nothing stands on: the aiming a student does by eye. After each step the harness reads
 back the document (brick colours, the history) and what the page shows. `results.json` has every check.
 
-## Result: 50 of 50 checks pass
+## Follow-up after novice round 1 (Ava, 8, at 1024×768)
+
+Four fixes, one commit each, on the same branch after it was merged into `claude/robotics-kid-int`:
+
+| # | What Ava hit | Fix | Commit |
+| --- | --- | --- | --- |
+| 1 | **Major.** The seat idea's ghost sat low at the front by the sensor; Place dropped it on the ground; nothing ticked, nothing said. | An idea's light, seat and stacked bricks now come **already on the robot's highest free spot where they join it** (nearest the middle; `guide/onRobot.ts` asks the model with the part added). A seat or light from an idea that lands on no robot is **taken off the plate again** (no history left), set back on top, and a line says *The seat goes on Buggy. It is back on top: press Place.* With no room, it is put down and the line says so. Lane W's generic "not on the robot" line and fix are not duplicated. | `3be8422` |
+| 2 | **Minor.** A kit stayed picked after it was placed: the strip's Color said *Color all 9 bricks* and painted the tyres; a click on a wheel did nothing until she clicked the floor. | **Nothing stays picked** after a kit lands. The next click picks just the part. Why this rather than "the next click picks one part": that alone would still leave Color painting all nine. The panel still shows the new robot (the newest robot touched), one Undo removes the kit, the Paint row's *Paint all* paints it without its tyres, and a box drawn around the kit picks all of it for Rotate. | `76f67f3` |
+| 3 | **Minor.** "Stack bricks on top" ticked after the first brick. | It asks for five and counts: *Stack 5 bricks on top · 2 of 5*. After the first four ideas, *Build it taller · 6 of 10*. | `23082b7` |
+| 4 | **Minor.** At 1024×768 the car was drawn about 130 px wide in the 364 px gap between the drawer and the panel. | A placed kit, and the robot on the way back from Drive / Try it / Code, is **framed snug**: same viewing side, the camera closer until its own bricks fill 70 % of the free area (`snugFrameDistance`). Real Chrome, a placed Buggy: **1024×768 206 px of 364** (was 130); 1366×768 353 of 646 (was 229); iPad landscape 292 of 524; iPad portrait 237 of 416; all inside the free area. | `d57b8ea` |
+
+New checks in `robotics-kid-paint.mjs`: **K** (nothing picked after a kit; the first click on a wheel picks the
+wheel; Color is for one brick), **S** (the seat's ghost on the robot's top; Place puts it on and the idea ticks;
+placed on bare ground it goes back on top with the line; Place then puts it on), **A6.counts** (*2 of 5*),
+**C.framed-big** (1024), **D.nothing-picked** (touch). Shots: `1366-00-kit-placed-wheel-picked.png`,
+`1366-09b-stack-idea-2-of-5.png`, `1366-16-seat-ghost-on-top.png`, `1366-17-seat-on-the-robot.png`,
+`1366-18-seat-back-on-top.png`, and the 1024 and iPad shots of the bigger framing.
+
+## Result: 60 of 60 checks pass (50 before the follow-up)
 
 - **Paint the way kids expect** (1366×768). A Buggy kit, then the Paint row: **one click on red** starts
   painting (the bar at the bottom says *Painting · Red · Tap bricks to paint them · Done*; the command strip
@@ -32,9 +50,9 @@ back the document (brick colours, the history) and what the page shows. `results
   the panel and the strip (11 of 11 bricks inside the free area); **back from Drive** the same for a Buggy.
 - **The Color popover is never hidden behind the panel**: at 1366×768, 1024×768, iPad portrait 820×1094 and
   iPad landscape 1180×820 their boxes do not overlap and the popover is fully on screen.
-- **iPad portrait by touch** (Sam's layout): the Buggy is framed beside the panel; with the new kit picked
-  a tap on green paints it (wheels keep theirs); orange, then a tap on the hub paints it; every control on
-  the part's card is at least 44 px (Turn and Remove 130 × 52); the name stays read-only after a tap on it.
+- **iPad portrait by touch** (Sam's layout): the Buggy is framed beside the panel; nothing is picked after the
+  kit lands; orange, then a tap on the hub paints it; every control on the part's card is at least 44 px (Turn
+  and Remove 130 × 52); the name stays read-only after a tap on it.
 - No console errors, no page errors.
 
 ## Painting two bricks
@@ -50,6 +68,7 @@ back the document (brick colours, the history) and what the page shows. `results
 
 | State | 1366×768 | 1024×768 / iPad |
 | --- | --- | --- |
+| A kit just placed, then a click on a wheel: just the wheel, Color for one brick | `1366-00-kit-placed-wheel-picked.png` | |
 | A Buggy and its Paint row | `1366-01-buggy-paint-row.png` | `1024-01-buggy-paint-row.png` |
 | Painting: the bar and the Paint row | `1366-02-painting-red.png` | `1024-02-painting.png`, `ipad-820-02-painting-by-touch.png` |
 | Two bricks painted | `1366-03-two-bricks-painted.png` | |
@@ -59,6 +78,8 @@ back the document (brick colours, the history) and what the page shows. `results
 | A motor's card, simple first | `1366-07-motor-card.png` | `1024-03-motor-card.png`, `ipad-820-03-motor-card-by-touch.png` |
 | Its More | `1366-08-motor-more.png` | `1024-04-motor-more.png` |
 | An idea placed once, flashing | `1366-09-idea-placed-once.png` | |
+| The stack idea counting: 2 of 5 | `1366-09b-stack-idea-2-of-5.png` | |
+| The seat idea: its ghost on the robot's top; placed on; back on top after a click on bare ground | `1366-16-seat-ghost-on-top.png`, `1366-17-seat-on-the-robot.png`, `1366-18-seat-back-on-top.png` | |
 | The Gate's motor test | `1366-10-gate-motor-test.png` | |
 | Then the Signal light's hub picked | `1366-11-signal-light-hub-picked.png` | |
 | Try it on the Gate, back to build (framed) | `1366-12-gate-try-it.png`, `1366-13-back-from-try-it-framed.png` | |
@@ -106,12 +127,12 @@ back the document (brick colours, the history) and what the page shows. `results
 5. **The Color popover** slides left until it clears any panel marked `data-popover-avoid` (the robot panel
    and card mark themselves); only where it cannot (a panel across the screen) the strip rises over the
    panel. Nothing is marked without the flag, so the studio's popover never moves there.
-6. **Back to build frames the robot** with three studs of ground around it in the part of the canvas the
-   drawer, the panel and the strip leave free, as a placed kit is framed (the scene measures the panels a
-   frame after they are back).
+6. **Back to build frames the robot** in the part of the canvas the drawer, the panel and the strip leave
+   free (the scene measures the panels a frame after they are back). Since follow-up 4 it is framed snug,
+   as a placed kit is: its own bricks fill 70 % of that area.
 7. **More ideas.** Once a rover's first four are done they give way to *You did all 4 ideas!* and **More
    ideas**: *Paint it your colors.* (starts painting), *Give it a name of your own.* (the cursor in the name
-   field), *Build it taller. Stack 5 bricks on it.*, *Make it stop at a wall. Try it in Code.* (opens Code on
+   field), *Build it taller · 6 of 10* (counted, follow-up 3), *Make it stop at a wall. Try it in Code.* (opens Code on
    the Stop before the wall starter, made once). A gate and a signal light, which had no ideas, get paint,
    name and their own Code idea (*Change how far it opens*, *Pick the light's color*). These stay tappable
    once done (a tick in front), so the list never ends empty-handed. Only ideas that work today: no
@@ -125,12 +146,12 @@ back the document (brick colours, the history) and what the page shows. `results
    (same powers and angles as before, no % or °); a swinging arm's row says *open* or *shut*, not degrees.
    A part picked scrolls the panel to its top; done painting, the panel goes back to its top.
 
-## The other harnesses (run against this branch; outputs kept out of their evidence folders)
+## The other harnesses (run against this branch after the follow-up; outputs kept out of their evidence folders)
 
 | Harness | Result | Changed for this lane (intended) |
 | --- | --- | --- |
-| `robotics-kid-guide.mjs` | 116/116 | More's toggle is *Plug in by itself*, *Drive forward*; Unplug is behind the part's More; the four ideas done give way to *You did all 4 ideas!* and more ideas; the panel's folds found by test id |
-| `robotics-kid-kits.mjs` | 38/38 | none |
+| `robotics-kid-guide.mjs` | 116/116 | More's toggle is *Plug in by itself*, *Drive forward*; Unplug is behind the part's More; the four ideas done give way to *You did all 4 ideas!* and more ideas (it stacks five bricks, follow-up 3); the panel's folds found by test id |
+| `robotics-kid-kits.mjs` | 39/39 | follow-up 2: nothing is picked after a kit lands (A.focused), a new A.box-picks-kit draws a box around it before Rotate; follow-up 4: A.framed expects a snug frame |
 | `robotics-cp2-wiring.mjs` | 55/55 | opens the part's More before reading ports, the cable and the code line; *Plug in by itself: On / Off* and its toast and label; *Spin*; two new checks for the simple-first hub and motor cards |
 | `robotics-kid-drive.mjs` | 71/71 | none |
 | `robotics-spike-cp1.mjs` | 49/49 | *Drive forward*, *Spin*, *Swing open*, *Shut*; the arm's row says *open* |
@@ -139,6 +160,12 @@ back the document (brick colours, the history) and what the page shows. `results
 | `robotics-cp2-code.mjs` | 51/51 | opens the part's More before Unplug, the hub's ports and a port chip |
 
 ## Unit tests
+
+Follow-up: `src/robotics/guide/onRobot.test.ts` (the seat's spot on a Buggy's hub, on a tower's top, a light,
+membership); `oneShot.test.tsx` (the seat armed on top; placed on bare ground it comes back; Place puts it on
+and the idea ticks); `kitPlacement.test.ts` (nothing picked after placing; picked again, Rotate turns it whole;
+a snug frame request); `nextSteps.test.ts` (the counted texts); `framing.test.ts` (`brickBox`, `snugFrameDistance`
+at 1024 × 768 beside a drawer and a panel); `robotFocus.test.tsx` (back to build asks for a snug frame).
 
 `src/robotics/paint/paint.test.tsx` (what "Paint all" paints, looks-painted, colour names; a chip starts
 painting, taps paint one Undo each with nothing selected, Paint all in one Undo, a picked brick painted by a
