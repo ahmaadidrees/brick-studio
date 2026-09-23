@@ -35,8 +35,10 @@ export type StepAction =
   /**
    * Arm a part in the studio, turned the way this robot needs it. It is placed once (the brush is
    * put down after it lands, `guide/oneShot.ts`) unless `repeat` (a row that asks for several).
+   * `onRobot`: it comes already on that robot's highest free spot, and a one-shot part that lands
+   * on no robot goes back into the hand, onto the robot (`guide/onRobot.ts`).
    */
-  | { kind: 'arm'; partId: string; rotation: 0 | 1 | 2 | 3; repeat?: true }
+  | { kind: 'arm'; partId: string; rotation: 0 | 1 | 2 | 3; repeat?: true; onRobot?: string }
   /** Plug a device into its hub's first free port. */
   | { kind: 'plug'; deviceId: string }
   /** Open Drive (a rover) or Try it (a gate, a signal light). */
@@ -91,7 +93,9 @@ const STACK_PART = 'brick_2x2'
 
 const arm = (partId: string, rotation: Rotation = 0): StepAction => ({ kind: 'arm', partId, rotation })
 /** A part the row asks for several of: it stays armed after each one lands. */
-const armMany = (partId: string): StepAction => ({ kind: 'arm', partId, rotation: 0, repeat: true })
+const armMany = (partId: string, onRobot?: string): StepAction => ({ kind: 'arm', partId, rotation: 0, repeat: true, ...(onRobot ? { onRobot } : {}) })
+/** A part that goes on top of this robot (an idea's light, seat or bricks). */
+const armOn = (robotId: string, partId: string, rotation: Rotation = 0): StepAction => ({ kind: 'arm', partId, rotation, onRobot: robotId })
 const reversed = (vector: Vec3): Vec3 => ({ x: -vector.x, y: -vector.y, z: -vector.z })
 
 export const READY_TO_DRIVE = 'Ready to drive!'
@@ -213,9 +217,9 @@ function roverIdeas(creation: DerivedCreation, model: Pick<RoboticsModel, 'input
     turnSensor
       ? idea('idea-sensor', turnText, false, { kind: 'select', brickId: turnSensor.brickId }, { symbol: 'turn' })
       : idea('idea-sensor', 'Add a sensor at the front. It is the robot’s eyes.', facingFront !== null, arm(ROBOTICS_PART_IDS.distanceSensor, rotationToward(LOOKS, forward)), { part: ROBOTICS_PART_IDS.distanceSensor }),
-    idea('idea-light', 'Add a light on top.', creation.lights.length > 0, arm(ROBOTICS_PART_IDS.light), { part: ROBOTICS_PART_IDS.light }),
-    idea('idea-seat', 'Add a seat. Ride it in Explore.', creation.seats.length > 0, arm(ROBOTICS_PART_IDS.seat, rotationToward(LOOKS, forward)), { part: ROBOTICS_PART_IDS.seat }),
-    idea('idea-stack', 'Stack bricks on top. They ride along.', stacked, armMany(STACK_PART), { part: STACK_PART }),
+    idea('idea-light', 'Add a light on top.', creation.lights.length > 0, armOn(creation.id, ROBOTICS_PART_IDS.light), { part: ROBOTICS_PART_IDS.light }),
+    idea('idea-seat', 'Add a seat. Ride it in Explore.', creation.seats.length > 0, armOn(creation.id, ROBOTICS_PART_IDS.seat, rotationToward(LOOKS, forward)), { part: ROBOTICS_PART_IDS.seat }),
+    idea('idea-stack', 'Stack bricks on top. They ride along.', stacked, armMany(STACK_PART, creation.id), { part: STACK_PART }),
   ]
 }
 
@@ -262,7 +266,7 @@ function moreIdeas(path: 'rover' | 'gate' | 'signal', creation: DerivedCreation,
     evergreen('idea-name', 'Give it a name of your own.', !DEFAULT_NAME.test(creation.name.trim()), { kind: 'rename', creationId: id }, { symbol: 'name' }),
   ]
   if (path === 'rover') {
-    ideas.push(evergreen('idea-taller', 'Build it taller. Stack 5 bricks on it.', stackedBricks(creation, model) >= 5, armMany(STACK_PART), { part: STACK_PART }))
+    ideas.push(evergreen('idea-taller', 'Build it taller. Stack 5 bricks on it.', stackedBricks(creation, model) >= 5, armMany(STACK_PART, id), { part: STACK_PART }))
     if (creation.sensors.length > 0) ideas.push(evergreen('idea-code', 'Make it stop at a wall. Try it in Code.', hasProgram('stop-before-wall'), { kind: 'code', creationId: id, starter: 'stop-before-wall' }, { symbol: 'code' }))
   } else if (path === 'gate') {
     ideas.push(evergreen('idea-code', 'Change how far it opens. Try it in Code.', hasProgram('smart-gate'), { kind: 'code', creationId: id, starter: 'smart-gate' }, { symbol: 'code' }))

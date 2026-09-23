@@ -3,7 +3,7 @@ import { useDriveView } from '../drive/driveViewState'
 import { plugDeviceIn } from '../wiring/actions'
 import { runIdeaAction } from './ideaActions'
 import type { StepAction } from './nextSteps'
-import { armOnce } from './oneShot'
+import { armOnce, putOnRobot } from './oneShot'
 
 /**
  * Does what a next-steps row says, through the studio's own actions: arming a part is
@@ -16,8 +16,10 @@ export function runStepAction(action: StepAction): void {
     case 'arm': {
       useBrickStore.getState().choosePart(action.partId)
       for (let turn = 0; turn < action.rotation; turn += 1) useBrickStore.getState().rotate()
-      // Placed once, then the brush is put down (lane P, guide/oneShot.ts); a row that asks for several keeps it.
-      if (!action.repeat) armOnce(action.partId)
+      // An idea's part comes on its robot's top (lane P); placed once, then the brush is put down
+      // (guide/oneShot.ts); a row that asks for several keeps it.
+      if (action.onRobot) putOnRobot(action.onRobot)
+      if (!action.repeat) armOnce(action.partId, action.onRobot ?? null)
       return
     }
     case 'plug':

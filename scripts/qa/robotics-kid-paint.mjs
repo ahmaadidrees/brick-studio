@@ -13,6 +13,9 @@
  *                 and a drawer swatch paint it; a motor's card (no port letters or code line until
  *                 More; big Turn and Remove); an idea's part placed once (the strip goes back to
  *                 "Pick a brick", the part flashes); the drawer remembers Robots across a reload.
+ *   S (1366×768)  the seat idea (Ava's first seat landed loose): its ghost comes on the robot's top and
+ *                 Place puts it on (the idea ticks); placed on bare ground instead, it goes back into the
+ *                 hand, on top again, and a line says so.
  *   B (1366×768)  a Gate and a Signal light: a motor test on the Gate, then a click on the Signal
  *                 light's hub: the title, the steps and Code are the Signal light's and the test
  *                 stops; back from Try it the panel is the Gate's and the Gate is framed clear of
@@ -323,6 +326,49 @@ await page.reload()
 await page.waitForFunction(() => Boolean(window.__robotics?.project), null, { timeout: 30_000 })
 await desk.sleep(800)
 check('A7.robots-after-reload', (await page.getByLabel('Brick category').inputValue()) === 'robotics' && await page.getByRole('button', { name: /^Robots/ }).getAttribute('aria-pressed') === 'true', 'after a reload the drawer still shows Robots')
+
+/* ================================================================ S. the seat goes on the robot */
+console.log('\nS. The seat idea (1366×768)')
+await desk.brick((state) => state.newBuild())
+await desk.sleep(300)
+const seatBuggy = await placeKit(desk, 'buggy', world(32, 0, 32))
+await desk.clearToast()
+await page.keyboard.press('Escape')
+await desk.sleep(200)
+const seatsOf = async () => (await desk.robo((state, id) => state.model.creations.find((c) => c.id === id)?.seats ?? [], seatBuggy.id))
+const attachedCount = async () => (await desk.robo((state, id) => state.model.creations.find((c) => c.id === id)?.brickIds.length ?? 0, seatBuggy.id))
+const hubTopY = await desk.brick((state, id) => { const hub = state.bricks.find((b) => b.id === id); return hub.y + 6 }, seatBuggy.hubId)
+const beforeSeat = await attachedCount()
+await page.getByTestId('robotics-ideas').getByRole('button', { name: /Add a seat/ }).click()
+await desk.sleep(250)
+let seatGhost = await desk.brick((state) => state.draft && { partId: state.draft.partId, x: state.draft.x, y: state.draft.y, z: state.draft.z })
+check('S.ghost-on-top', seatGhost?.partId === 'robo_seat' && seatGhost.y === hubTopY, `the seat idea's ghost stands on the robot's top (y ${seatGhost?.y}, the hub's top is ${hubTopY})`)
+await desk.shot('16-seat-ghost-on-top')
+// Ava's way: straight to Place.
+await page.getByRole('button', { name: 'Place positioned brick' }).click()
+await desk.sleep(400)
+check('S.place-puts-it-on', (await seatsOf()).length === 1 && (await attachedCount()) === beforeSeat + 1 && (await page.getByTestId('robotics-ideas').locator('[data-step="idea-seat"]').getAttribute('data-state')) === 'done' && (await desk.brick((state) => state.draft)) === null, `Place put the seat on the Buggy: ${await attachedCount()} bricks attached (was ${beforeSeat}), the seat idea ticked, nothing left in hand`)
+await desk.shot('17-seat-on-the-robot')
+// Undo, then the seat moved to bare ground and placed there: it goes back into the hand, on top.
+await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
+await desk.sleep(300)
+await page.getByTestId('robotics-ideas').getByRole('button', { name: /Add a seat/ }).click()
+await desk.sleep(200)
+const bare = await desk.screenOf(world(38, 0, 44))
+await page.mouse.move(bare.x - 30, bare.y - 30, { steps: 4 })
+await page.mouse.move(bare.x, bare.y, { steps: 8 })
+await desk.sleep(250)
+seatGhost = await desk.brick((state) => state.draft && { x: state.draft.x, y: state.draft.y, z: state.draft.z })
+const bricksBeforeLoose = await desk.brick((state) => state.bricks.length)
+await page.mouse.click(bare.x, bare.y)
+await desk.sleep(400)
+const afterLoose = await desk.brick((state) => ({ bricks: state.bricks.length, draft: state.draft && { partId: state.draft.partId, y: state.draft.y }, toast: state.toast }))
+check('S.loose-taken-back', seatGhost.y === 0 && afterLoose.bricks === bricksBeforeLoose && (await seatsOf()).length === 0 && afterLoose.draft?.partId === 'robo_seat' && afterLoose.draft.y === hubTopY, `a click on bare ground (the ghost at y ${seatGhost.y}) placed nothing loose: the seat is back in hand on the robot's top (y ${afterLoose.draft?.y})`)
+check('S.says-so', afterLoose.toast === 'The seat goes on Buggy. It is back on top: press Place.', `the line says "${afterLoose.toast}"`)
+await desk.shot('18-seat-back-on-top')
+await page.getByRole('button', { name: 'Place positioned brick' }).click()
+await desk.sleep(400)
+check('S.then-on', (await seatsOf()).length === 1 && (await desk.brick((state) => state.draft)) === null, 'Place then puts it on the Buggy')
 
 /* ================================================================ B. the panel follows the robot you touch */
 console.log('\nB. A Gate and a Signal light (1366×768)')

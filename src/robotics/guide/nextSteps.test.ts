@@ -152,9 +152,11 @@ describe('the rover path', () => {
     const ideas = rows.filter((candidate) => candidate.group === 'idea')
     expect(ideas.map((idea) => `${idea.id}:${idea.state}`)).toEqual(['idea-sensor:done', 'idea-light:todo', 'idea-seat:todo', 'idea-stack:todo'])
     expect(ideas.map((idea) => idea.text)).toEqual(['Add a sensor at the front. It is the robot’s eyes.', 'Add a light on top.', 'Add a seat. Ride it in Explore.', 'Stack bricks on top. They ride along.'])
-    expect(row(rows, 'idea-light').action).toEqual({ kind: 'arm', partId: ROBOTICS_PART_IDS.light, rotation: 0 })
+    // The light, the seat and the stacked bricks come already on the robot's top (lane P).
+    expect(row(rows, 'idea-light').action).toEqual({ kind: 'arm', partId: ROBOTICS_PART_IDS.light, rotation: 0, onRobot: 'robot' })
+    expect(row(rows, 'idea-seat').action).toMatchObject({ kind: 'arm', partId: ROBOTICS_PART_IDS.seat, onRobot: 'robot' })
     // Stacking asks for several bricks, so its part stays armed after each one (every other row places once).
-    expect(row(rows, 'idea-stack').action).toEqual({ kind: 'arm', partId: 'brick_2x2', rotation: 0, repeat: true })
+    expect(row(rows, 'idea-stack').action).toEqual({ kind: 'arm', partId: 'brick_2x2', rotation: 0, repeat: true, onRobot: 'robot' })
     expect(row(rows, 'idea-sensor').action).toBeNull()
   })
 
