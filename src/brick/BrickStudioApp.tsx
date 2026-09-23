@@ -63,6 +63,7 @@ import { ROBOTICS_PARTS, isRoboticsPart } from '../robotics/parts/catalog'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): the chunk is never requested without the flag.
 const RoboticsPanel = lazy(() => import('../robotics/ui/RoboticsPanel').then((module) => ({ default: module.RoboticsPanel })))
+const ExploreRidePrompt = lazy(() => import('../robotics/explore/ExploreRidePrompt'))
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
 import { BUILD_PATH, parseClassroomEntryIntent, type ClassroomEntryIntent } from '../routes'
@@ -1594,7 +1595,10 @@ export default function BrickStudioApp({
           />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
-      ) : <TouchExploreControlsGate readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
+      ) : <>
+        <TouchExploreControlsGate readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />
+        {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><ExploreRidePrompt liveRoom={Boolean(livePolicy)} /></Suspense>}
+      </>}
       <Toast />
       <Announcer />
       {!readOnly && <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />}

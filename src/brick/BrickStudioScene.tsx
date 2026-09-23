@@ -124,10 +124,13 @@ import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
 import { clearDraftSnap, snapDraft } from '../robotics/scene/draftSnap'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
+import { exploreRideFrame } from '../robotics/explore/rideBridge'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
 // mechanics nudge. The chunk is never requested without the flag.
 const RoboticsBuildLayer = lazy(() => import('../robotics/scene/RoboticsBuildLayer'))
+// Robot Workshop spike: riding creations in Explore (the same flag).
+const ExploreRides = lazy(() => import('../robotics/explore/ExploreRides'))
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -1642,6 +1645,16 @@ function ExplorerAvatar({
       bufferCharacterJump(character.current)
       lastTouchJump.current = store.jumpNonce
     }
+    // Robot Workshop spike (null without the flag): riding sits the character on a creation's seat; hopping off puts it down beside it.
+    const ride = exploreRideFrame(body.current)
+    if (ride) {
+      keys.current.clear()
+      // A teleport: a kinematic target stopped short of the seat in real Chrome (as on the old robotics branch).
+      body.current.setTranslation(ride.position, true)
+      if (ride.mode === 'place') { resetMotionAt(ride.position); character.current.facingYaw = ride.facingYaw }
+      Object.assign(motion.current, { facingYaw: ride.facingYaw, horizontalSpeed: 0, verticalVelocity: 0, grounded: true })
+      return
+    }
 
     if (keys.current.size && exploreKeyboardBlocked(document.activeElement)) keys.current.clear()
     readExploreKeys(keys.current, store.exploreKeyboardMode, false, keyboardMove.current)
@@ -1823,7 +1836,8 @@ function ExploreScene({
   const plateSize = usePlateSize()
   const gridWorldSize = plateSize * STUD
 
-  const bricks = useBrickStore((state) => state.bricks)
+  // A live creation (ridden, or parked where a ride left it; Robot Workshop spike) is drawn by the ride layer, not here.
+  const bricks = useVisibleBricks(useBrickStore((state) => state.bricks))
   const reducedMotion = useBrickStore((state) => state.reducedMotion)
   const graphicsPaused = useBrickStore((state) => state.graphicsPaused)
   const EnvironmentWorld = environment.World
@@ -1839,6 +1853,7 @@ function ExploreScene({
         </Suspense>
       </RuntimeEnvironmentBoundary>
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
+      {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><ExploreRides /></Suspense>}
       <RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} />
       <ExplorerAvatar
         onPose={onLocalAvatarPose}
