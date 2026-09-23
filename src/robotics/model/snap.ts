@@ -11,13 +11,15 @@ import { add, distance, scale, type Vec3 } from './vec'
  * Magnetic connections for the armed ghost (docs/robotics/KID-UX.md §S; contract §3:
  * "a wheel snaps onto a free axle end", "a motor's output face accepts one axle").
  *
- * - An **axle** snaps into a free motor socket or through a loose wheel's hole; a
- *   **wheel** snaps onto a free axle end. The ghost snaps when the pointer is over the
- *   part it connects to, or anywhere near where the snapped part would sit (about 1.5
- *   studs), over another brick or over the bare baseplate. When two places compete, the
- *   one nearer the pointer wins. Every pose comes from the same connector geometry the
- *   mechanism reader (`mechanism.ts`) checks, so a snapped part is connected by
- *   construction.
+ * - An **axle** snaps into a free motor socket; a **wheel** snaps onto a free axle end.
+ *   The ghost snaps when the pointer is over the part it connects to, or anywhere near
+ *   where the snapped part would sit (about 1.5 studs), over another brick or over the
+ *   bare baseplate. When two places compete, the one nearer the pointer wins. Every pose
+ *   comes from the same connector geometry the mechanism reader (`mechanism.ts`) checks,
+ *   so a snapped part is connected by construction. An axle never snaps through a loose
+ *   wheel's hole (kid-UX lane W): a wheel on an axle with no motor cannot spin, so that
+ *   place would look connected and not be; a loose wheel gets its own one-tap fix
+ *   (`wheelFix.ts`) that builds the whole chain.
  * - A **motor** hovered over a plate near one of its edges turns so its socket faces out
  *   over that edge and sits flush with it, sliding along the edge to the nearest spot with
  *   room; at a corner the student's own turn (R) picks between the two edges, and away from
@@ -113,7 +115,7 @@ export type SnapInput = {
   context?: SnapContext
 }
 
-const isPlatePart = (part: BrickPart | undefined): part is BrickPart => part?.kind === 'plate'
+export const isPlatePart = (part: BrickPart | undefined): part is BrickPart => part?.kind === 'plate'
 
 export function createSnapContext(bricks: readonly BrickInstance[], partMap: PartMap, plateSize: number): SnapContext {
   let mechanisms: Mechanisms | null = null
@@ -173,19 +175,11 @@ function connectorTargetsFor(context: SnapContext, partId: string): SnapTarget[]
   const targets: SnapTarget[] = []
   const push = (target: Omit<SnapTarget, 'blocked'>) => targets.push({ ...target, blocked: !fits(context, partId, target.pose) })
   if (spec.axle) {
+    // Free motor sockets only: an axle through a loose wheel's hole turns nothing (see the note above).
     for (const motor of mechanisms.motors) {
       if (motor.axleId) continue
       const pose = validPose(rawPose(part, spec.axle.center, motor.socket.point, motor.socket.normal, spec.axle.halfLength, plateSize), part, plateSize)
       if (pose) push({ key: `socket:${motor.motorId}`, kind: 'socket', brickId: motor.motorId, ownerIds: [motor.motorId], point: motor.socket.point, outward: motor.socket.normal, pose })
-    }
-    for (const wheel of mechanisms.wheels) {
-      if (wheel.axleId) continue
-      for (const sign of [1, -1] as const) {
-        const outward = scale(wheel.axis, sign)
-        const face = add(wheel.center, scale(outward, wheel.halfThickness))
-        const pose = validPose(rawPose(part, spec.axle.center, face, outward, spec.axle.halfLength, plateSize), part, plateSize)
-        if (pose) push({ key: `hole:${wheel.wheelId}:${sign > 0 ? 'a' : 'b'}`, kind: 'wheel-hole', brickId: wheel.wheelId, ownerIds: [wheel.wheelId], point: face, outward, pose })
-      }
     }
   } else if (spec.wheel) {
     for (const axle of mechanisms.axles) {
@@ -242,15 +236,15 @@ function hintFor(context: SnapContext, armed: 'axle' | 'wheel', hitBrick: BrickI
 
 /* ------------------------------------------------------------------ motors on plate edges */
 
-type Rect = { x0: number; x1: number; z0: number; z1: number }
+export type Rect = { x0: number; x1: number; z0: number; z1: number }
 
-function plateRect(plate: BrickInstance, part: BrickPart): Rect {
+export function plateRect(plate: BrickInstance, part: BrickPart): Rect {
   const size = rotatedSize(part, plate.rotation)
   return { x0: plate.x, x1: plate.x + size.width, z0: plate.z, z1: plate.z + size.depth }
 }
 
 /** Long sides first: a car's motors go on its long sides (on a square plate, left and right). */
-function preferredEdges(rect: Rect): readonly PlateEdge[] {
+export function preferredEdges(rect: Rect): readonly PlateEdge[] {
   return rect.x1 - rect.x0 > rect.z1 - rect.z0 ? ['far', 'near'] : ['left', 'right']
 }
 
@@ -281,10 +275,10 @@ function edgesByDistance(rect: Rect, px: number, pz: number, reach: number, rota
     .map((entry) => entry.edge)
 }
 
-type EdgeSlots = { rotation: 0 | 1 | 2 | 3; y: number; lo: number; hi: number; pose: (slot: number) => SnapPose; slotOf: (px: number, pz: number) => number }
+export type EdgeSlots = { rotation: 0 | 1 | 2 | 3; y: number; lo: number; hi: number; pose: (slot: number) => SnapPose; slotOf: (px: number, pz: number) => number }
 
 /** Where a motor can sit flush along an edge: one grid slot per stud along it. */
-function edgeSlots(plate: BrickInstance, platePart: BrickPart, motorPart: BrickPart, edge: PlateEdge): EdgeSlots {
+export function edgeSlots(plate: BrickInstance, platePart: BrickPart, motorPart: BrickPart, edge: PlateEdge): EdgeSlots {
   const rect = plateRect(plate, platePart)
   const rotation = EDGE_ROTATION[edge]
   const size = rotatedSize(motorPart, rotation)
@@ -492,4 +486,14 @@ function validPose(pose: SnapPose | null, part: BrickPart, plateSize: number): S
   const size = rotatedSize(part, pose.rotation)
   if (pose.y < 0 || pose.x < 0 || pose.z < 0 || pose.x + size.width > plateSize || pose.z + size.depth > plateSize) return null
   return pose
+}
+
+/**
+ * The grid pose a part takes when its connector (along its local X through `localCenter`) touches
+ * `point` and its body extends `reach` along `outward`; null when that pose is off the stud grid,
+ * below the ground or off the build plate. The same rule every snap target uses, shared with the
+ * one-tap fixes (`wheelFix.ts`) so a fixed wheel is connected by construction too.
+ */
+export function connectorPose(part: BrickPart, localCenter: Vec3, point: Vec3, outward: Vec3, reach: number, plateSize: number): SnapPose | null {
+  return validPose(rawPose(part, localCenter, point, outward, reach, plateSize), part, plateSize)
 }

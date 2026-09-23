@@ -1,19 +1,19 @@
-import { draftIsValid } from '../../brick/brickRules'
-import { rotatedSize } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
-import { isDevicePart, roboticsSpec } from '../parts/catalog'
-import { creationComponent, deviceName, type DeriveInput, type DerivedCreation } from './creations'
-import { createSnapContext, freeMotorSpots } from './snap'
+import { isDevicePart, roboticsSpec, type RoboticsPartRole } from '../parts/catalog'
+import { creationComponent, type DeriveInput, type DerivedCreation } from './creations'
+import { planPutOnRobot, type FixOutcome } from './fixPlans'
+import { rotatedSize } from '../../brick/parts'
 
 /**
  * What to tell a student right after a device lands somewhere it cannot work
- * (docs/robotics/KID-UX.md §S), in one line, where they are looking:
+ * (docs/robotics/KID-UX.md §S; kid-UX lane W), in one line, where they are looking:
  *
  * - **Not attached**: a device beside a robot (within a few studs) but not on it names the
- *   robot and how to attach it: "Right motor isn't on Buggy yet. Put it on Buggy's plate."
- *   The how is always something that works: the plate only when it has room for the device
- *   (for a motor, a spot on an edge facing out), else stacking it on the robot. A device
- *   whose own bricks carry a hub is a robot of its own and is left alone.
+ *   robot, and a one-tap fix puts it on: "This motor isn't on Buggy yet." [Put it on Buggy]
+ *   (`fix`, planned by `planPutOnRobot`: a motor to a free edge spot facing out, the other side
+ *   of a robot with one motor first; a sensor or a light on top). When there is no room the
+ *   line says so. A robot with no plate yet gets "Put them both on a plate." A device whose own
+ *   bricks carry a hub is a robot of its own and is left alone.
  * - **Bare ground**: a motor standing on the baseplate can never take an axle and a wheel
  *   (its socket is one plate lower than an axle on the ground), so it says
  *   "Put motors on a plate so wheels reach the ground".
@@ -22,9 +22,10 @@ import { createSnapContext, freeMotorSpots } from './snap'
  */
 export const NEAR_ROBOT_STUDS = 4
 export const BARE_GROUND_TEXT = 'Put motors on a plate so wheels reach the ground'
+export const BOTH_ON_A_PLATE = 'Put them both on a plate.'
 
 export type PlacementAdvice =
-  | { kind: 'not-attached'; brickId: string; creationId: string; text: string }
+  | { kind: 'not-attached'; brickId: string; creationId: string; text: string; fix: FixOutcome | null; needsPlate: boolean }
   | { kind: 'bare-ground'; brickId: string; text: string }
 
 type Robot = Pick<DerivedCreation, 'id' | 'name' | 'brickIds'>
@@ -39,7 +40,7 @@ export function placementAdvice(input: DeriveInput, robots: readonly Robot[], br
   const ownHub = component.some((id) => roboticsSpec(byId.get(id)?.partId ?? '')?.role === 'hub')
   if (!attached && !ownHub) {
     const robot = nearestRobot(input, robots, brick)
-    if (robot) return { kind: 'not-attached', brickId, creationId: robot.id, text: notAttachedText(input, robot, brick) }
+    if (robot) return notAttached(input, robot, brick)
   }
   if (spec.role === 'motor' && brick.y === 0) return { kind: 'bare-ground', brickId, text: BARE_GROUND_TEXT }
   return null
@@ -50,33 +51,31 @@ export function motorsOnBareGround(bricks: readonly BrickInstance[]): string[] {
   return bricks.filter((brick) => brick.y === 0 && roboticsSpec(brick.partId)?.role === 'motor').map((brick) => brick.id)
 }
 
-function notAttachedText(input: DeriveInput, robot: Robot, device: BrickInstance): string {
-  const name = deviceName(input, device)
-  const plates = robot.brickIds.map((id) => input.bricks.find((candidate) => candidate.id === id)).filter((brick): brick is BrickInstance => Boolean(brick && input.partMap[brick.partId]?.kind === 'plate'))
-  const motor = roboticsSpec(device.partId)?.role === 'motor'
-  const how = plates.some((plate) => hasRoomOnPlate(input, plate, device)) ? `Put it on ${robot.name}'s plate.`
-    : motor && !plates.length ? 'Put them both on a plate.'
-      : `Stack it on ${robot.name}.`
-  return `${name} isn't on ${robot.name} yet. ${how}`
+/** What a third grader calls the part: "motor", "sensor", "light". */
+export function partWord(role: RoboticsPartRole | undefined): string {
+  switch (role) {
+    case 'motor': case 'hinge-motor': return 'motor'
+    case 'distance-sensor': return 'sensor'
+    case 'light': return 'light'
+    case 'button': return 'button'
+    case 'hub': return 'hub'
+    case 'seat': return 'seat'
+    case 'wheel': return 'wheel'
+    case 'axle': return 'axle'
+    default: return 'part'
+  }
 }
 
-/** Is there a spot on the plate's top where the device fits (a motor: on an edge, facing out)? */
-function hasRoomOnPlate(input: DeriveInput, plate: BrickInstance, device: BrickInstance): boolean {
-  const others = input.bricks.filter((brick) => brick.id !== device.id)
-  if (roboticsSpec(device.partId)?.role === 'motor') return freeMotorSpots(createSnapContext(others, input.partMap, input.plateSize), plate.id, device.partId).length > 0
-  const platePart = input.partMap[plate.partId]
-  const devicePart = input.partMap[device.partId]
-  if (!platePart || !devicePart) return false
-  const rect = footprint(plate, input)!
-  for (const rotation of [0, 1] as const) {
-    const size = rotatedSize(devicePart, rotation)
-    for (let x = rect.x0; x + size.width <= rect.x1; x += 1) {
-      for (let z = rect.z0; z + size.depth <= rect.z1; z += 1) {
-        if (draftIsValid({ partId: device.partId, x, y: plate.y + platePart.height, z, rotation, color: device.color }, others, null, input.partMap, input.plateSize)) return true
-      }
-    }
-  }
-  return false
+/** "This motor isn't on Buggy yet." and the one-tap fix that puts it on, or why it can't. */
+export function notAttached(input: DeriveInput, robot: Robot, device: BrickInstance): Extract<PlacementAdvice, { kind: 'not-attached' }> {
+  const what = `This ${partWord(roboticsSpec(device.partId)?.role)} isn't on ${robot.name} yet.`
+  const plates = robot.brickIds.map((id) => input.bricks.find((candidate) => candidate.id === id)).filter((brick): brick is BrickInstance => Boolean(brick && input.partMap[brick.partId]?.kind === 'plate'))
+  const motor = roboticsSpec(device.partId)?.role === 'motor'
+  const base = { kind: 'not-attached' as const, brickId: device.id, creationId: robot.id }
+  // A motor beside a robot with no plate: it has nowhere to go that works until there is one.
+  if (motor && !plates.length) return { ...base, text: `${what} ${BOTH_ON_A_PLATE}`, fix: null, needsPlate: true }
+  const fix = planPutOnRobot(input, robot, device.id)
+  return { ...base, text: fix.ok ? what : `${what} ${fix.text}`.trim(), fix, needsPlate: false }
 }
 
 type Rect = { x0: number; x1: number; z0: number; z1: number }
@@ -91,17 +90,18 @@ function footprint(brick: BrickInstance, input: DeriveInput): Rect | null {
 const gapBetween = (a: Rect, b: Rect) => Math.hypot(Math.max(0, a.x0 - b.x1, b.x0 - a.x1), Math.max(0, a.z0 - b.z1, b.z0 - a.z1))
 
 /** The robot whose bricks come nearest the device, within a few studs. */
-function nearestRobot(input: DeriveInput, robots: readonly Robot[], device: BrickInstance): Robot | null {
+export function nearestRobot<T extends Robot>(input: DeriveInput, robots: readonly T[], device: BrickInstance, reach = NEAR_ROBOT_STUDS): T | null {
   const own = footprint(device, input)
   if (!own) return null
-  let best: { robot: Robot; gap: number } | null = null
+  let best: { robot: T; gap: number } | null = null
   for (const robot of robots) {
     for (const id of robot.brickIds) {
+      if (id === device.id) continue
       const brick = input.bricks.find((candidate) => candidate.id === id)
       const rect = brick ? footprint(brick, input) : null
       if (!rect) continue
       const gap = gapBetween(own, rect)
-      if (gap <= NEAR_ROBOT_STUDS && (!best || gap < best.gap)) best = { robot, gap }
+      if (gap <= reach && (!best || gap < best.gap)) best = { robot, gap }
     }
   }
   return best?.robot ?? null

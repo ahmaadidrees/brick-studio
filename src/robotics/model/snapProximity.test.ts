@@ -59,16 +59,17 @@ describe('proximity snap: an axle', () => {
     expect(result.hint).toBeNull()
   })
 
-  it('when a socket and a loose wheel compete, the one nearer the pointer wins', () => {
-    // A loose wheel two studs out: an axle can go into the socket (x 26–28) or through the wheel (x 23–25).
+  it('a loose wheel nearby never pulls the axle away from the socket (kid-UX lane W)', () => {
+    // A loose wheel two studs out: an axle through it (x 23–25) would turn nothing, so only the socket (x 26–28) is a target.
     const bricks = [...noLeftAxle(), brick('loose', ROBOTICS_PART_IDS.wheel, 22, 0, 31)]
     const nearSocket = find(bricks, ROBOTICS_PART_IDS.axleShort, world(25.8, 0, 32.5))
     expect(nearSocket.found?.target.kind).toBe('socket')
     expect(pose(nearSocket)).toEqual(inLeftSocket)
     const nearWheel = find(bricks, ROBOTICS_PART_IDS.axleShort, world(25.2, 0, 32.5))
-    expect(nearWheel.found?.target.kind).toBe('wheel-hole')
-    expect(pose(nearWheel)).toEqual({ x: 23, y: 0, z: 32, rotation: 0 })
-    expect(deriveMechanisms(placed(bricks, ROBOTICS_PART_IDS.axleShort, pose(nearWheel)!), partMap, plateSize).wheelById.get('loose')?.axleId).toBe('new')
+    expect(nearWheel.found?.target.kind).toBe('socket')
+    expect(pose(nearWheel)).toEqual(inLeftSocket)
+    // Aimed right at the wheel, beyond the socket's reach: nothing to snap to.
+    expect(find(bricks, ROBOTICS_PART_IDS.axleShort, world(21.5, 0, 32.5)).found).toBeNull()
   })
 
   it('at a motor standing on the ground there is nothing to snap to, and the hint says why', () => {
@@ -223,10 +224,10 @@ describe('what glows', () => {
     expect(createSnapContext([brick('plate', 'plate_6x8', 28, 0, 26)], partMap, plateSize).motorEdgeRuns(ROBOTICS_PART_IDS.motor)).toEqual([])
   })
 
-  it('for an axle: free sockets and loose wheels; for a wheel: free axle ends', () => {
+  it('for an axle: free motor sockets only, never a loose wheel; for a wheel: free axle ends', () => {
     const bare = roverBricks().filter((candidate) => ![ROVER_IDS.leftAxle, ROVER_IDS.rightAxle, ROVER_IDS.leftWheel, ROVER_IDS.rightWheel].includes(candidate.id as never))
     const context = createSnapContext([...bare, brick('loose', ROBOTICS_PART_IDS.wheel, 20, 0, 40)], partMap, plateSize)
-    expect(context.connectorTargets(ROBOTICS_PART_IDS.axleShort).map((target) => target.key).sort()).toEqual(['hole:loose:a', 'hole:loose:b', `socket:${ROVER_IDS.leftMotor}`, `socket:${ROVER_IDS.rightMotor}`])
+    expect(context.connectorTargets(ROBOTICS_PART_IDS.axleShort).map((target) => target.key).sort()).toEqual([`socket:${ROVER_IDS.leftMotor}`, `socket:${ROVER_IDS.rightMotor}`])
     const axles = createSnapContext(roverBricks().filter((candidate) => candidate.id !== ROVER_IDS.leftWheel), partMap, plateSize)
     expect(axles.connectorTargets(ROBOTICS_PART_IDS.wheel).map((target) => target.key)).toEqual([`end:${ROVER_IDS.leftAxle}:0`])
   })

@@ -79,22 +79,28 @@ describe('placement advice', () => {
     return placementAdvice(input, deriveCreations(input), id)
   }
 
-  it('a motor on the ground beside Buggy names the robot and how to attach it', () => {
+  // Kid-UX lane W: "This motor isn't on Buggy yet." and a one-tap fix that puts it on, where it works.
+  it('a motor on the ground beside Buggy names the robot and the one tap that puts it on its side', () => {
     const { bricks, section } = buggy()
-    expect(adviceFor([...bricks, brick('motor', ROBOTICS_PART_IDS.motor, 35, 0, 30)], section, 'motor')).toEqual({
-      kind: 'not-attached', brickId: 'motor', creationId: 'buggy', text: "Right motor isn't on Buggy yet. Put it on Buggy's plate.",
+    expect(adviceFor([...bricks, brick('motor', ROBOTICS_PART_IDS.motor, 35, 0, 30)], section, 'motor')).toMatchObject({
+      kind: 'not-attached', brickId: 'motor', creationId: 'buggy', text: "This motor isn't on Buggy yet.", needsPlate: false,
+      // The nearest spot on the plate's side with room for its axle: the right edge behind the hub, facing out.
+      fix: { ok: true, label: 'Put it on Buggy', steps: [{ op: 'move', brickId: 'motor', pose: { x: 31, y: 1, z: 31, rotation: 0 } }] },
     })
   })
 
-  it('with no room left on the plate it says what still works: stack it on the robot', () => {
+  it('with no room left on the plate it says so, and what would help', () => {
     // The finished rover: both side spots, the front and the back of its plate are taken.
     const section: RoboticsSection = { ...emptyRoboticsSection(), creations: [{ id: 'rover', name: 'Buggy', anchorBrickIds: [ROVER_IDS.plate, ROVER_IDS.hub] }] }
-    expect(adviceFor([...roverBricks(), brick('extra', ROBOTICS_PART_IDS.motor, 30, 0, 37)], section, 'extra')?.text).toBe("Right motor isn't on Buggy yet. Stack it on Buggy.")
+    const advice = adviceFor([...roverBricks(), brick('extra', ROBOTICS_PART_IDS.motor, 30, 0, 37)], section, 'extra')
+    expect(advice?.text).toBe("This motor isn't on Buggy yet. There's no room for it on Buggy. Try a bigger plate.")
+    expect(advice?.kind === 'not-attached' && advice.fix?.ok).toBe(false)
   })
 
-  it('a sensor or a light beside it says the same; one on it says nothing', () => {
+  it('a sensor or a light beside it says the same, and goes on top; one on it says nothing', () => {
     const { bricks, section } = buggy()
-    expect(adviceFor([...bricks, brick('eyes', ROBOTICS_PART_IDS.distanceSensor, 30, 0, 23)], section, 'eyes')?.text).toBe("Front sensor isn't on Buggy yet. Put it on Buggy's plate.")
+    const eyes = adviceFor([...bricks, brick('eyes', ROBOTICS_PART_IDS.distanceSensor, 30, 0, 23)], section, 'eyes')
+    expect(eyes).toMatchObject({ text: "This sensor isn't on Buggy yet.", fix: { ok: true, label: 'Put it on Buggy', steps: [{ op: 'move', brickId: 'eyes', pose: { x: 30, y: 1, z: 26, rotation: 0 } }] } })
     expect(adviceFor([...bricks, brick('lamp', ROBOTICS_PART_IDS.light, 30, 1, 32)], section, 'lamp')).toBeNull()
   })
 
@@ -111,11 +117,11 @@ describe('placement advice', () => {
     expect(adviceFor([...bricks, brick('hub2', ROBOTICS_PART_IDS.hub, 35, 0, 27)], section, 'hub2')).toBeNull()
   })
 
-  it('beside a robot with no plate: a motor needs a plate for both, anything else can stack on it', () => {
+  it('beside a robot with no plate: a motor needs a plate for both, anything else goes on top of it', () => {
     const section: RoboticsSection = { ...emptyRoboticsSection(), creations: [{ id: 'post', name: 'Post', anchorBrickIds: ['hub'] }] }
     const hub = brick('hub', ROBOTICS_PART_IDS.hub, 30, 0, 30)
-    expect(adviceFor([hub, brick('motor', ROBOTICS_PART_IDS.motor, 35, 0, 30)], section, 'motor')?.text).toBe("Right motor isn't on Post yet. Put them both on a plate.")
-    expect(adviceFor([hub, brick('lamp', ROBOTICS_PART_IDS.light, 35, 0, 30)], section, 'lamp')?.text).toBe("Light isn't on Post yet. Stack it on Post.")
+    expect(adviceFor([hub, brick('motor', ROBOTICS_PART_IDS.motor, 35, 0, 30)], section, 'motor')).toMatchObject({ text: "This motor isn't on Post yet. Put them both on a plate.", fix: null, needsPlate: true })
+    expect(adviceFor([hub, brick('lamp', ROBOTICS_PART_IDS.light, 35, 0, 30)], section, 'lamp')).toMatchObject({ text: "This light isn't on Post yet.", fix: { ok: true, steps: [{ op: 'move', brickId: 'lamp', pose: { x: 33, y: 6, z: 30 } }] } })
   })
 
   it('more than a few studs away it is not "beside" the robot', () => {

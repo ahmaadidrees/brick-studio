@@ -58,16 +58,12 @@ describe('an axle', () => {
     expect(snap(grounded, ROBOTICS_PART_IDS.axleShort, 'motor')).toBeNull()
   })
 
-  it('goes through the hole of a loose wheel, on the side the pointer is', () => {
+  it('never goes through the hole of a loose wheel: a wheel on an axle with no motor cannot spin (kid-UX lane W)', () => {
     const wheel: BrickInstance = { id: 'wheel', partId: ROBOTICS_PART_IDS.wheel, x: 30, y: 0, z: 30, rotation: 0, color: '#1f2a33' }
     const mechanisms = deriveMechanisms([wheel], partMap, plateSize)
     const link = mechanisms.wheelById.get('wheel')!
-    const outside = snap([wheel], ROBOTICS_PART_IDS.axleShort, 'wheel', { x: link.center.x + 1, y: link.center.y, z: link.center.z })
-    expect(outside).toEqual({ x: 31, y: 0, z: 31, rotation: 0 })
-    const inside = snap([wheel], ROBOTICS_PART_IDS.axleShort, 'wheel', { x: link.center.x - 1, y: link.center.y, z: link.center.z })
-    expect(inside).toEqual({ x: 28, y: 0, z: 31, rotation: 0 })
-    const placed = [wheel, { ...outside!, id: 'axle', partId: ROBOTICS_PART_IDS.axleShort, color: '#000' }]
-    expect(deriveMechanisms(placed, partMap, plateSize).wheelById.get('wheel')?.axleId).toBe('axle')
+    expect(snap([wheel], ROBOTICS_PART_IDS.axleShort, 'wheel', { x: link.center.x + 1, y: link.center.y, z: link.center.z })).toBeNull()
+    expect(snap([wheel], ROBOTICS_PART_IDS.axleShort, 'wheel', { x: link.center.x - 1, y: link.center.y, z: link.center.z })).toBeNull()
   })
 })
 

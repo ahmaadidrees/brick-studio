@@ -10,6 +10,9 @@ import type { BrickDraft, BrickInstance, BrickPart } from '../../brick/types'
 import { useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { brickOriginFor, type PartMap } from '../model/grid'
+import { otherSideSpot, previewProblem, type OtherSideSpot, type PreviewProblem } from '../model/fixPlans'
+import { looseWheelsByRobot, wheelSpins } from '../model/looseWheels'
+import { deriveMechanisms, type WheelLink } from '../model/mechanism'
 import { GAP_TEXT, gapMarkers, type GapMarker } from '../model/nearMiss'
 import { BARE_GROUND_TEXT, motorsOnBareGround } from '../model/placementAdvice'
 import type { EdgeRun, SnapPose, SnapTarget } from '../model/snap'
@@ -35,11 +38,21 @@ import './connectionMarkers.css'
  * Always, in build mode: a red gap marker on every near miss (a wheel or an axle next to a
  * connector without connecting) and, next to a motor standing on the bare ground, why it
  * cannot take a wheel. Nothing here takes a pointer event or writes to the document.
+ *
+ * Kid-UX lane W adds: every wheel that can't spin carries a red "can't spin" mark (a ring with a
+ * bar across its hub, on both faces) and a small red badge with its number in the robot panel's
+ * list, for as long as it stays loose. A second motor armed for a robot with one shows a
+ * motor-shaped target exactly across from the first ("the other side"), green, or red with what
+ * is in the way outlined. A robot part's ghost that is red says why beside it ("Something is in
+ * the way.", "No room on the plate. Try a bigger plate.") and outlines what is in the way; so
+ * does a fix that could not be done (and where its part would have gone, in red).
  */
 const TARGET = '#12b76a'
 const TARGET_LIT = '#35f28e'
 const DIM = '#7d8a90'
 const GAP = '#e5383b'
+/** What is in the way: outlined in orange, so it reads apart from the red ghost that can't go there. */
+const WAY = '#ff8a00'
 
 const noRaycast = () => null
 const ring = new THREE.TorusGeometry(1, 0.13, 12, 40)
@@ -212,7 +225,7 @@ function SnappedGhost({ draft, part, plateSize }: { draft: BrickDraft; part: Bri
   )
 }
 
-function Label({ at, text, tone, emphasis = false }: { at: Vec3; text: string; tone: 'gap' | 'advice'; emphasis?: boolean }) {
+function Label({ at, text, tone, emphasis = false }: { at: Vec3; text: string; tone: 'gap' | 'advice' | 'done'; emphasis?: boolean }) {
   return (
     <Html position={[at.x, at.y, at.z]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
       <div className={`robotics-connect-label is-${tone}${emphasis ? ' is-emphasis' : ''}`} data-testid={`robotics-connect-label-${tone}`}>{text}</div>
@@ -251,6 +264,77 @@ function GapMark({ marker }: { marker: GapMarker }) {
   )
 }
 
+/** A wheel that can't spin: on each face, a red ring round its hub with a bar across it. */
+function CantSpinMark({ wheel }: { wheel: WheelLink }) {
+  const materials = useRef<(THREE.Material | null)[]>([])
+  const groups = useRef<(THREE.Group | null)[]>([])
+  const size = 0.42
+  useMarkerFrame(materials, CANT_SPIN_LEVELS, false, wheel.center, size, 16, (factor) => groups.current.forEach((group) => group?.scale.setScalar(size * Math.min(factor, 1.6))))
+  const faces = [1, -1].map((sign) => ({ sign, at: add(wheel.center, scale(wheel.axis, sign * (wheel.halfThickness + 0.03))), facing: facing(scale(wheel.axis, sign)) }))
+  return (
+    <>
+      {faces.map(({ sign, at, facing: quaternion }) => (
+        <group key={sign} ref={(group) => { groups.current[sign > 0 ? 0 : 1] = group }} position={[at.x, at.y, at.z]} quaternion={quaternion} scale={size}>
+          <mesh geometry={ring} raycast={noRaycast} renderOrder={5}>
+            <meshBasicMaterial ref={(material) => { materials.current[sign > 0 ? 0 : 2] = material }} color={GAP} transparent opacity={0.9} depthWrite={false} toneMapped={false} />
+          </mesh>
+          <mesh geometry={unitBox} rotation={[0, 0, Math.PI / 4]} scale={[0.16, 2.1, 0.04]} raycast={noRaycast} renderOrder={5}>
+            <meshBasicMaterial ref={(material) => { materials.current[sign > 0 ? 1 : 3] = material }} color={GAP} transparent opacity={0.9} depthWrite={false} toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </>
+  )
+}
+const CANT_SPIN_LEVELS: Level[] = [{ base: 0.65, swing: 0.3, lit: 1 }]
+
+/** The number the robot panel gives a loose wheel, in a small red badge above it (so "Fix wheel 2" can be found). */
+function WheelBadge({ at, number }: { at: Vec3; number: number | null }) {
+  return (
+    <Html position={[at.x, at.y, at.z]} center zIndexRange={[8, 0]} style={{ pointerEvents: 'none' }}>
+      <div className="robotics-cant-spin-badge" data-testid="robotics-cant-spin-badge" aria-hidden="true">{number ?? '!'}</div>
+    </Html>
+  )
+}
+
+/** A brick outlined (what is in the way), seen through whatever stands in front of it. */
+function BrickOutline({ brick, part, plateSize, color }: { brick: BrickInstance; part: BrickPart | undefined; plateSize: number; color: string }) {
+  const geometry = useMemo(() => (part ? createBrickGeometry(part) : null), [part])
+  useEffect(() => () => geometry?.dispose(), [geometry])
+  if (!part || !geometry) return null
+  const origin = brickOriginFor(brick, part, plateSize)
+  return (
+    <group position={[origin.x, origin.y, origin.z]} rotation={[0, (brick.rotation * Math.PI) / 2, 0]}>
+      <mesh geometry={geometry} scale={1.05} raycast={noRaycast} renderOrder={7}>
+        <meshBasicMaterial color={color} transparent opacity={0.22} depthTest={false} depthWrite={false} toneMapped={false} />
+        <Edges scale={1} color={color} lineWidth={3} threshold={20} renderOrder={8} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/** A part drawn where it would go: green where it fits (the other side), red where it can't. */
+function PartGhost({ part, pose, plateSize, color, opacity = 0.3 }: { part: BrickPart | undefined; pose: SnapPose; plateSize: number; color: string; opacity?: number }) {
+  const geometry = useMemo(() => (part ? createBrickGeometry(part) : null), [part])
+  useEffect(() => () => geometry?.dispose(), [geometry])
+  if (!part || !geometry) return null
+  const origin = brickOriginFor({ ...pose }, part, plateSize)
+  return (
+    <group position={[origin.x, origin.y, origin.z]} rotation={[0, (pose.rotation * Math.PI) / 2, 0]}>
+      <mesh geometry={geometry} scale={1.02} raycast={noRaycast} renderOrder={6}>
+        <meshBasicMaterial color={color} transparent opacity={opacity} depthTest={false} depthWrite={false} toneMapped={false} />
+        <Edges scale={1} color={color} lineWidth={3} threshold={20} renderOrder={8} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Where the second motor goes: a motor-shaped target across from the first, breathing green; red when there is no room. */
+function OtherSideTarget({ spot, part, plateSize, lit }: { spot: OtherSideSpot; part: BrickPart | undefined; plateSize: number; lit: boolean }) {
+  const color = spot.free ? (lit ? TARGET_LIT : TARGET) : GAP
+  return <PartGhost part={part} pose={spot.pose} plateSize={plateSize} color={color} opacity={spot.free ? (lit ? 0.45 : 0.32) : 0.28} />
+}
+
 export const HINT_TEXT: Record<string, string> = { 'needs-axle': 'Put an axle in first', 'motor-on-ground': 'Put the motor on a plate first' }
 
 type Summary = {
@@ -263,17 +347,25 @@ type Summary = {
   hint: string | null
   gaps: { key: string; brickId: string; text: string }[]
   labels: { brickId: string; text: string; tone: string; emphasis: boolean }[]
+  /** Wheels showing the red "can't spin" mark (or, near an axle end, the gap marker), with their badge numbers. */
+  cantSpin: { brickId: string; number: number | null; mark: 'ring' | 'gap' }[]
+  /** The second motor's target for a robot with one motor, while a motor is armed. */
+  otherSide: { motorId: string; pose: SnapPose; free: boolean; mirrored: boolean; blockers: string[] }[]
+  /** Why the robot part's ghost is red here, and what is outlined. */
+  preview: PreviewProblem | null
+  /** Every brick outlined as in the way (red ghost, other side, a fix that could not be done). */
+  outlined: string[]
 }
-let summary: Summary = { armed: null, targets: [], runs: [], dimSockets: [], snappedKey: null, ghostSnapped: false, hint: null, gaps: [], labels: [] }
+let summary: Summary = { armed: null, targets: [], runs: [], dimSockets: [], snappedKey: null, ghostSnapped: false, hint: null, gaps: [], labels: [], cantSpin: [], otherSide: [], preview: null, outlined: [] }
 
-const topOf = (brick: BrickInstance, partMap: PartMap, plateSize: number, lift: number): Vec3 | null => {
+const topOf = (brick: Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>, partMap: PartMap, plateSize: number, lift: number): Vec3 | null => {
   const part = partMap[brick.partId]
   if (!part) return null
   const origin = brickOriginFor(brick, part, plateSize)
   return { x: origin.x, y: origin.y + part.height * PLATE_HEIGHT + lift, z: origin.z }
 }
 
-type PartLabel = { brickId: string; at: Vec3; text: string; tone: 'gap' | 'advice'; emphasis: boolean }
+type PartLabel = { brickId: string; at: Vec3; text: string; tone: 'gap' | 'advice' | 'done'; emphasis: boolean }
 
 export default function ConnectionMarkers() {
   const mode = useBrickStore((state) => state.mode)
@@ -293,6 +385,7 @@ export default function ConnectionMarkers() {
 
   const visible = useMemo(() => (hidden ? bricks.filter((brick) => !hidden.has(brick.id)) : bricks), [bricks, hidden])
   const others = useMemo(() => (movingId ? bricks.filter((brick) => brick.id !== movingId) : bricks), [bricks, movingId])
+  const byId = useMemo(() => new Map(bricks.map((brick) => [brick.id, brick])), [bricks])
 
   // What the armed part can connect to: the same context the snapper answers from.
   const armedPartId = active && draft && !groupMove ? draft.partId : null
@@ -300,7 +393,13 @@ export default function ConnectionMarkers() {
   const armedPart = armedPartId ? partMap[armedPartId] : undefined
   const context = useMemo(() => (armedRole === 'axle' || armedRole === 'wheel' || armedRole === 'motor' ? sharedSnapContext(others, partMap, plateSize) : null), [armedRole, others, partMap, plateSize])
   const targets = useMemo(() => (context && armedPartId && armedRole !== 'motor' ? context.connectorTargets(armedPartId).filter((target) => !target.blocked) : []), [context, armedPartId, armedRole])
-  const runs = useMemo(() => (context && armedPartId && armedRole === 'motor' ? context.motorEdgeRuns(armedPartId) : []), [context, armedPartId, armedRole])
+  // A second motor for a robot with one: the spot across from the first, shown instead of the plate's edge bars.
+  const otherSides = useMemo(() => (armedRole === 'motor' ? model.creations.map((creation) => otherSideSpot({ bricks: others, partMap, plateSize }, creation)).filter((spot): spot is OtherSideSpot => spot !== null) : []), [armedRole, model.creations, others, partMap, plateSize])
+  const runs = useMemo(() => {
+    if (!context || !armedPartId || armedRole !== 'motor') return []
+    const shown = new Set(otherSides.map((spot) => spot.plateId))
+    return context.motorEdgeRuns(armedPartId).filter((run) => !shown.has(run.plateId))
+  }, [context, armedPartId, armedRole, otherSides])
   const dimSockets = useMemo(() => (context && armedRole === 'wheel' ? context.mechanisms().motors.filter((motor) => !motor.axleId) : []), [context, armedRole])
 
   const snap = snapState.snap
@@ -308,10 +407,21 @@ export default function ConnectionMarkers() {
   const snappedKey = snappedHere ? snap!.targetKey : null
   const ghostSnapped = Boolean(snappedHere && draft && armedPart && draftIsValid(draft, others as BrickInstance[], null, partMap, plateSize))
   const hint = armedPartId && snapState.hint?.partId === armedPartId && !snappedHere ? snapState.hint : null
+  // A robot part's ghost that is red says why, beside it, and outlines what is in the way.
+  const preview = useMemo(() => (draft && armedPartId ? previewProblem({ bricks: others, partMap, plateSize }, draft, null, snappedHere ? snap?.kind ?? null : null) : null), [draft, armedPartId, others, partMap, plateSize, snappedHere, snap])
 
   // Always in build mode: near misses (not on a part being moved), motors on the bare ground, and the part the latest advice line is about.
   const gaps = useMemo(() => (active ? gapMarkers(visible, partMap, plateSize).filter((marker) => marker.brickId !== movingId) : []), [active, visible, partMap, plateSize, movingId])
   const grounded = useMemo(() => new Set(active ? motorsOnBareGround(visible) : []), [active, visible])
+  // Every wheel that can't spin: its red mark (a near miss keeps its gap marker instead) and its number in the robot's list.
+  const cantSpin = useMemo(() => {
+    if (!active) return []
+    const mechanisms = deriveMechanisms(visible, partMap, plateSize)
+    const numbers = new Map<string, number>()
+    for (const ids of looseWheelsByRobot({ ...model.input, bricks: visible }, model.creations, mechanisms).values()) ids.forEach((id, index) => { if (ids.length > 1) numbers.set(id, index + 1) })
+    const gapped = new Set(gaps.filter((marker) => marker.kind === 'wheel-axle').map((marker) => marker.brickId))
+    return wheelSpins(mechanisms).filter((wheel) => !wheel.spins && wheel.wheelId !== movingId).map((wheel) => ({ link: mechanisms.wheelById.get(wheel.wheelId)!, number: numbers.get(wheel.wheelId) ?? null, mark: gapped.has(wheel.wheelId) ? 'gap' as const : 'ring' as const }))
+  }, [active, visible, partMap, plateSize, model, gaps, movingId])
   const labels = useMemo(() => {
     if (!active) return []
     const list: PartLabel[] = []
@@ -319,16 +429,32 @@ export default function ConnectionMarkers() {
       const advice = grounded.has(brick.id) ? BARE_GROUND_TEXT : note?.brickId === brick.id ? note.text : null
       const at = advice ? topOf(brick, partMap, plateSize, 0.42) : null
       // A hint about a motor that already says why (on the bare ground) makes that line stand out instead of adding another.
-      if (advice && at) list.push({ brickId: brick.id, at, text: advice, tone: 'advice', emphasis: hint?.brickId === brick.id })
+      if (advice && at) list.push({ brickId: brick.id, at, text: advice, tone: note?.brickId === brick.id && note.tone === 'done' && !grounded.has(brick.id) ? 'done' : 'advice', emphasis: hint?.brickId === brick.id })
     }
     if (hint && !list.some((label) => label.brickId === hint.brickId)) list.push({ brickId: hint.brickId, at: { x: hint.point.x, y: hint.point.y + 0.5, z: hint.point.z }, text: HINT_TEXT[hint.kind] ?? '', tone: 'advice', emphasis: true })
     for (const marker of gaps) {
       // The motor's own line already says it is too low; the red ring shows where.
       if (marker.text === GAP_TEXT.motorTooLow && grounded.has(marker.targetId)) continue
+      if (list.some((label) => label.brickId === marker.brickId)) continue
       list.push({ brickId: marker.brickId, at: { x: marker.at.x, y: marker.at.y + 0.55, z: marker.at.z }, text: marker.text, tone: 'gap', emphasis: false })
     }
+    // The red ghost's reason, above it.
+    const ghostTop = draft && preview ? topOf(draft, partMap, plateSize, 0.5) : null
+    if (ghostTop && preview) list.push({ brickId: 'ghost', at: ghostTop, text: preview.text, tone: 'gap', emphasis: false })
+    // The other side with no room: why, above where the motor would go (only while the ghost is not already saying it).
+    for (const spot of otherSides) {
+      if (spot.free || (ghostTop && preview)) continue
+      const at = topOf({ partId: 'robo_motor', ...spot.pose }, partMap, plateSize, 0.5)
+      if (at) list.push({ brickId: `other-side:${spot.motorId}`, at, text: 'No room for a motor here. Try a bigger plate.', tone: 'gap', emphasis: false })
+    }
     return list
-  }, [active, visible, grounded, note, hint, gaps, partMap, plateSize])
+  }, [active, visible, grounded, note, hint, gaps, partMap, plateSize, draft, preview, otherSides])
+  // What is in the way: of the red ghost, of the other side, of a fix that could not be done.
+  const outlined = useMemo(() => {
+    if (!active) return []
+    const ids = new Set<string>([...(preview?.blockers ?? []), ...otherSides.filter((spot) => !spot.free).flatMap((spot) => spot.blockers), ...(note?.blockers ?? [])])
+    return [...ids].map((id) => byId.get(id)).filter((brick): brick is BrickInstance => Boolean(brick) && !hidden?.has(brick!.id))
+  }, [active, preview, otherSides, note, byId, hidden])
 
   useEffect(() => {
     summary = {
@@ -341,6 +467,10 @@ export default function ConnectionMarkers() {
       hint: hint ? HINT_TEXT[hint.kind] ?? null : null,
       gaps: gaps.map((gap) => ({ key: gap.key, brickId: gap.brickId, text: gap.text })),
       labels: labels.map((label) => ({ brickId: label.brickId, text: label.text, tone: label.tone, emphasis: label.emphasis })),
+      cantSpin: cantSpin.map((wheel) => ({ brickId: wheel.link.wheelId, number: wheel.number, mark: wheel.mark })),
+      otherSide: otherSides.map((spot) => ({ motorId: spot.motorId, pose: spot.pose, free: spot.free, mirrored: spot.mirrored, blockers: spot.blockers })),
+      preview,
+      outlined: outlined.map((brick) => brick.id),
     }
   })
 
@@ -353,13 +483,24 @@ export default function ConnectionMarkers() {
   }, [])
 
   if (!active) return null
+  const motorPart = partMap.robo_motor
+  const noteGhost = note?.ghost ?? null
   return (
     <>
       {armedPart && targets.map((target) => <ConnectorTarget key={target.key} target={target} part={armedPart} plateSize={plateSize} lit={target.key === snappedKey} />)}
       {armedPart && runs.map((run) => <EdgeTarget key={`${run.key}:${run.poses[0].x},${run.poses[0].z}`} run={run} part={armedPart} plateSize={plateSize} lit={run.key === snappedKey && run.poses.some((pose) => pose.x === draft?.x && pose.z === draft?.z)} />)}
+      {otherSides.map((spot) => <OtherSideTarget key={spot.motorId} spot={spot} part={motorPart} plateSize={plateSize} lit={Boolean(draft && spot.free && draft.x === spot.pose.x && draft.y === spot.pose.y && draft.z === spot.pose.z && draft.rotation === spot.pose.rotation)} />)}
       {dimSockets.map((motor) => <DimSocket key={motor.motorId} at={motor.socket.point} direction={motor.socket.normal} />)}
       {ghostSnapped && draft && armedPart && <SnappedGhost draft={draft} part={armedPart} plateSize={plateSize} />}
       {gaps.map((marker) => <GapMark key={marker.key} marker={marker} />)}
+      {cantSpin.map((wheel) => (
+        <group key={wheel.link.wheelId}>
+          {wheel.mark === 'ring' && <CantSpinMark wheel={wheel.link} />}
+          <WheelBadge at={{ x: wheel.link.center.x, y: wheel.link.center.y + wheel.link.radius + 0.22, z: wheel.link.center.z }} number={wheel.number} />
+        </group>
+      ))}
+      {outlined.map((brick) => <BrickOutline key={`way:${brick.id}`} brick={brick} part={partMap[brick.partId]} plateSize={plateSize} color={WAY} />)}
+      {noteGhost && <PartGhost part={partMap[noteGhost.partId]} pose={noteGhost.pose} plateSize={plateSize} color={GAP} opacity={0.25} />}
       {labels.map((label) => <Label key={`${label.tone}:${label.brickId}`} at={label.at} text={label.text} tone={label.tone} emphasis={label.emphasis} />)}
     </>
   )

@@ -1,17 +1,23 @@
 import { CarFront, Check, ChevronDown, CodeXml, Play, Plug, RotateCw, Wrench } from 'lucide-react'
 import { lazy, Suspense, useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { PartThumbnail } from '../../brick/PartThumbnail'
-import { BRICK_PART_MAP } from '../../brick/parts'
+import { BRICK_PART_MAP, STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { readiness } from '../drive/readiness'
 import { runStepAction } from '../guide/actions'
+import { armRobotPlate, fixWheel, removePart, runNoteAction, showRefusal } from '../guide/fixes'
 import { nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
 import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
+import { planWheelFix, wheelProblemText } from '../model/fixPlans'
+import { wheelSpins } from '../model/looseWheels'
+import { deriveMechanisms } from '../model/mechanism'
+import { NEAR_MISS_REACH_STUDS } from '../model/nearMiss'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
-import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
+import { PUT_A_PLATE_DOWN, installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { useStageStore } from '../state/stageStore'
+import { LooseWheelRow, LooseWheels, useLooseWheels } from './WheelFixes'
 import { DeviceInspector } from '../wiring/DeviceInspector'
 import { WiringModeToggle } from '../wiring/WiringModeToggle'
 import './robotics.css'
@@ -54,19 +60,26 @@ export function RoboticsPanel({ compact = false, live = false }: { compact?: boo
   )
 }
 
+/**
+ * The line at the top: what assisted wiring did, or advice about the part just placed. A line with
+ * a one-tap fix ("Add a motor for it", "Put it on Buggy") stays until the fix is done, the line is
+ * closed or another line takes its place; any other line goes after nine seconds.
+ */
 function WiringLine() {
   const note = useRoboticsStore((state) => state.wiringNote)
   const dismiss = useRoboticsStore((state) => state.dismissWiringNote)
   const undo = useRoboticsStore((state) => state.undoWiring)
   useEffect(() => {
-    if (!note) return
+    if (!note || note.action) return
     const timer = window.setTimeout(dismiss, 9000)
     return () => window.clearTimeout(timer)
   }, [note, dismiss])
   if (!note) return null
+  const action = note.action
   return (
-    <div className="robotics-wiring-line" role="status" data-testid="robotics-wiring-line">
+    <div className={`robotics-wiring-line${note.tone === 'done' ? ' is-done' : ''}${action ? ' has-action' : ''}`} role="status" data-testid="robotics-wiring-line">
       <span>{note.text}</span>
+      {action && <button type="button" className="robotics-line-action" onClick={() => runNoteAction(action)} data-testid="robotics-line-action">{action.label}</button>}
       {note.undoable && <button type="button" className="robotics-link-button" onClick={undo}>Undo</button>}
       <button type="button" className="robotics-link-button" aria-label="Dismiss" onClick={dismiss}>×</button>
     </div>
@@ -190,11 +203,7 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
           {inspector}
           {creation && (
             <Fold title="Parts" note={creation.lines.attached} open={partsOpen} onToggle={() => setPartsOpen(!partsOpen)} testId="robotics-parts-fold">
-              <ul className="robotics-lines">
-                <li>{creation.lines.attached} · {creation.lines.parts}</li>
-                <DriveSidesLines creation={creation} />
-              </ul>
-              <PartRows creation={creation} selectedId={selectedId} />
+              <PartsBody creation={creation} selectedId={selectedId} />
             </Fold>
           )}
           {creation && (
@@ -284,6 +293,7 @@ function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreat
           {shown.map((row) => <StepRow key={row.id} row={row} live={live} textId={row.state === 'current' && row.id !== 'ready' ? reasonId : undefined} />)}
         </ol>
       )}
+      {!focus && !live && <LooseWheels creation={creation} ready={ready} />}
       {choices.length > 0 && (
         <>
           <h4 className="robotics-subtitle">What should it do?</h4>
@@ -393,14 +403,30 @@ function DriveSidesLines({ creation }: { creation: DerivedCreation }) {
   )
 }
 
+/**
+ * What the Parts fold lists: the counts, with the wheels on the car and the loose ones apart
+ * ("2 wheels on the car · 3 loose wheels"), each loose wheel with Fix and Take it off.
+ */
+function PartsBody({ creation, selectedId }: { creation: DerivedCreation; selectedId: string | null }) {
+  const loose = useLooseWheels(creation)
+  return (
+    <>
+      <ul className="robotics-lines">
+        <li data-testid="robotics-parts-line">{creation.lines.attached} · {creation.lines.parts}{loose.length ? ` · ${loose.length} loose wheel${loose.length === 1 ? '' : 's'}` : ''}</li>
+        <DriveSidesLines creation={creation} />
+      </ul>
+      <PartRows creation={creation} selectedId={selectedId} />
+      {loose.length > 0 && <ul className="robotics-loose-list in-parts" aria-label="Loose wheels">{loose.map((wheel) => <LooseWheelRow key={wheel.wheelId} wheel={wheel} only={loose.length === 1} />)}</ul>}
+    </>
+  )
+}
+
 /** A picked axle, wheel or seat (devices get the wiring inspector instead). */
 function SelectedPart({ creation, brickId, role }: { creation: DerivedCreation | null; brickId: string; role: string }) {
   const model = useRoboticsStore((state) => state.model)
   let text: string
-  if (role === 'wheel') {
-    const wheel = creation?.wheels.find((candidate) => candidate.brickId === brickId) ?? null
-    text = wheel ? (wheel.onAxle ? `On an axle${wheel.motorId ? ` in ${motorName(creation!, wheel.motorId)}` : ' with no motor'}` : wheel.note ?? 'Not on an axle') : 'Not on an axle. Put it on the end of an axle.'
-  } else if (role === 'axle') {
+  if (role === 'wheel') return <SelectedWheel brickId={brickId} />
+  if (role === 'axle') {
     const axle = model.creations.flatMap((candidate) => candidate.axles).find((candidate) => candidate.brickId === brickId)
     text = axle ? `${axle.motorId ? `In ${motorName(creation!, axle.motorId)}` : 'Not in a motor'} · ${axle.wheelIds.length ? `${axle.wheelIds.length} wheel${axle.wheelIds.length === 1 ? '' : 's'} on it` : 'no wheel on it'}` : 'Not in a motor. Put it in a motor’s axle hole.'
   } else if (role === 'seat') {
@@ -409,6 +435,38 @@ function SelectedPart({ creation, brickId, role }: { creation: DerivedCreation |
     text = creation ? `Part of ${creation.name}` : 'Not part of a robot yet'
   }
   return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>{roleTitle(role) === 'Part' ? role : roleTitle(role)}</strong> · {text}</p>
+}
+
+/**
+ * A picked wheel (kid-UX lane W): whether it spins and, when it can't, why, the one tap that fixes
+ * it and Take it off. With no room for a motor the button shows what is in the way instead.
+ */
+function SelectedWheel({ brickId }: { brickId: string }) {
+  const model = useRoboticsStore((state) => state.model)
+  const view = useMemo(() => {
+    const { input } = model
+    const mechanisms = deriveMechanisms(input.bricks, input.partMap, input.plateSize)
+    const spin = wheelSpins(mechanisms).find((wheel) => wheel.wheelId === brickId) ?? null
+    if (!spin || spin.spins) return { spin, problem: null, fix: null }
+    return { spin, problem: wheelProblemText(mechanisms, brickId, NEAR_MISS_REACH_STUDS * STUD), fix: planWheelFix(input, brickId, mechanisms) }
+  }, [model, brickId])
+  const { spin, problem, fix } = view
+  if (!spin?.spins && problem && fix) {
+    return (
+      <div className="robotics-selected-wheel">
+        <p className="robotics-selected" data-testid="robotics-selected-part"><strong>Wheel</strong> · {problem}{!fix.ok && fix.text ? ` ${fix.text}` : ''}</p>
+        <div className="robotics-selected-actions">
+          {fix.ok && <button type="button" className="robotics-loose-fix" onClick={() => fixWheel(brickId)} data-testid="robotics-wheel-fix">{fix.label}</button>}
+          {!fix.ok && fix.reason === 'no-plate' && <button type="button" className="robotics-loose-fix" onClick={armRobotPlate} data-testid="robotics-wheel-fix">{PUT_A_PLATE_DOWN}</button>}
+          {!fix.ok && fix.reason !== 'no-plate' && fix.reason !== 'nothing' && <button type="button" className="robotics-loose-fix" onClick={() => showRefusal(fix)} data-testid="robotics-wheel-fix">What's in the way?</button>}
+          <button type="button" className="robotics-loose-remove" onClick={() => removePart(brickId)}>Take it off</button>
+        </div>
+      </div>
+    )
+  }
+  const motorId = spin?.motorId ?? null
+  const motor = motorId ? model.creations.flatMap((candidate) => candidate.motors).find((candidate) => candidate.brickId === motorId) : null
+  return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>Wheel</strong> · {spin?.spins ? `On an axle in ${motor?.name ?? 'a motor'}. It spins.` : 'Not on an axle.'}</p>
 }
 
 function describeMotor(motor: DerivedMotor) {
@@ -436,7 +494,8 @@ function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; 
     const report = hingeReports[hinge.brickId]
     rows.push({ id: hinge.brickId, text: `${hinge.name} · ${describeHinge(hinge)}${report ? ` · at ${Math.round(report.angle)}°${report.blocked ? ' · blocked' : ''}` : ''}`, tone: hinge.locked ? 'bad' : hinge.plugged ? undefined : 'warn' })
   }
-  for (const wheel of creation.wheels) rows.push({ id: wheel.brickId, text: `Wheel · ${wheel.onAxle ? `on an axle${wheel.motorId ? ` in ${motorName(creation, wheel.motorId)}` : ''}` : wheel.note ?? 'Not on an axle'}`, tone: wheel.onAxle ? undefined : 'bad' })
+  // Loose wheels are listed apart, each with its fix (PartsBody).
+  for (const wheel of creation.wheels) if (wheel.onAxle) rows.push({ id: wheel.brickId, text: `Wheel · on an axle${wheel.motorId ? ` in ${motorName(creation, wheel.motorId)}` : ''}` })
   for (const sensor of creation.sensors) rows.push({ id: sensor.brickId, text: `${sensor.name} · faces ${sensor.facing} · ${sensor.plugged ? 'plugged in' : 'Not plugged in'}`, tone: sensor.plugged ? undefined : 'warn' })
   for (const device of [...creation.lights, ...creation.buttons]) rows.push({ id: device.brickId, text: `${device.name} · ${device.plugged ? 'plugged in' : 'Not plugged in'}`, tone: device.plugged ? undefined : 'warn' })
   if (!rows.length) return null

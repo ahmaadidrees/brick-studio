@@ -10,7 +10,13 @@ import { isDevicePart, roboticsSpec } from '../parts/catalog'
 import { mergeRoboticsHistory } from '../program/programs'
 import { overlappingBricks } from '../model/blocked'
 import { brickOriginFor } from '../model/grid'
+import { ADD_A_MOTOR, MOTORS_GO_ON_THE_SIDES, planMotorToSide, planWheelFix, wheelProblemText } from '../model/fixPlans'
+import { wheelSpins } from '../model/looseWheels'
+import { deriveMechanisms } from '../model/mechanism'
+import { NEAR_MISS_REACH_STUDS } from '../model/nearMiss'
 import { placementAdvice } from '../model/placementAdvice'
+import type { SnapPose } from '../model/snap'
+import { socketCoveredBy } from '../model/socketRoom'
 import type { Vec3 } from '../model/vec'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
@@ -54,6 +60,35 @@ export type WiringNote = {
   added: RoboticsConnection[]
   /** The part the line is about when it is advice (not attached, bare ground), so the scene says it next to the part too. */
   brickId?: string
+  /** One tap that fixes what the line is about ("Add a motor for it", "Put it on Buggy"); `guide/fixes.ts` runs it. */
+  action?: NoteAction
+  /** What is in the way of that fix, outlined in the scene. */
+  blockers?: string[]
+  /** Where the missing part would go, drawn red in the scene. */
+  ghost?: { partId: string; pose: SnapPose } | null
+  /** `done`: the line says a fix worked ("The wheel can spin now!"), shown in green beside the part. */
+  tone?: 'done'
+}
+
+/** The one-tap fixes a line can offer (kid-UX lane W). Every one is a single Undo. */
+export type NoteAction =
+  | { kind: 'fix-wheel'; brickId: string; label: string }
+  | { kind: 'put-on'; brickId: string; creationId: string; label: string }
+  | { kind: 'motor-to-side'; brickId: string; label: string }
+  | { kind: 'arm-plate'; label: string }
+
+/** The button that arms the robot plate (`ROBOT_PLATE_PART`) when a fix needs a plate first. */
+export const PUT_A_PLATE_DOWN = 'Put a plate down'
+
+/**
+ * Advice the fixes themselves set off (a wheel moved onto its axle is placed, a motor added for it
+ * is placed): while a fix runs, placements wire and name as always but say nothing of their own;
+ * the fix says what it did.
+ */
+let adviceMuted = 0
+export function withAdviceMuted<T>(run: () => T): T {
+  adviceMuted += 1
+  try { return run() } finally { adviceMuted -= 1 }
 }
 
 export type SimState = {
@@ -100,6 +135,12 @@ export type RoboticsState = {
   publishSimReports: (contacts: ContactReport[], hingeReports: Record<string, HingeReport>, motorAngles: Record<string, number>) => void
   /** A placement was refused: when the ghost was snapped to a connector, name what is in the way. */
   explainBlockedPlacement: () => void
+  /** A wheel that can't spin: the line on it, with the one tap that makes it spin. */
+  adviseWheel: (wheelId: string) => void
+  /** A motor whose socket is over its plate: "Motors go on the sides…", with the one tap that moves it there. */
+  adviseMotorSide: (motorId: string, robotBrickIds?: readonly string[]) => void
+  /** Drops the line once what it is about is fixed some other way (the wheel spins, the part is on, the motor faces out). */
+  settleWiringNote: () => void
 }
 
 const WIRING_LABEL_PREFIX = 'Connect '
@@ -186,6 +227,8 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const joining = reached.length > 1
     if (!isDevicePart(brick.partId)) {
       if (joining) get().openJoinCard(reached, component, brick.id)
+      // A wheel that can't spin says so the moment it lands, with the one tap that fixes it (kid-UX lane W).
+      else if (!adviceMuted && roboticsSpec(brick.partId)?.role === 'wheel') get().adviseWheel(brick.id)
       return
     }
     const existing = joining ? null : reached[0] ?? null
@@ -196,7 +239,12 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const robots = pending && !pending.creationId ? [...model.creations, { id: 'candidate', name: pending.suggestedName, brickIds: pending.anchorBrickIds }] : model.creations
     const advice = existing || joining ? null : placementAdvice(model.input, robots, brick.id, component)
     if (advice?.kind === 'not-attached') {
-      set({ wiringNote: { text: advice.text, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: brick.id } })
+      if (!adviceMuted) {
+        // "This motor isn't on Buggy yet." and one tap puts it on (kid-UX lane W).
+        const fix = advice.fix
+        const action: NoteAction | null = fix?.ok ? { kind: 'put-on', brickId: brick.id, creationId: advice.creationId, label: fix.label } : advice.needsPlate ? { kind: 'arm-plate', label: PUT_A_PLATE_DOWN } : null
+        set({ wiringNote: { text: advice.text, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: brick.id, ...(action ? { action } : {}), ...(fix && !fix.ok ? { blockers: fix.blockers } : {}) } })
+      }
       return
     }
 
@@ -217,10 +265,10 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
           section = connect(section, device.id, plan.hubId, plan.port)
           added.push({ deviceId: device.id, hubId: plan.hubId, port: plan.port })
           lines.push(`${deviceName(model.input, device)} connected to port ${plan.port}`)
-        } else if (plan.reason === 'no-hub') refusal = `${deviceName(model.input, device)} placed unpowered · add a hub to plug it in`
-        else if (plan.reason === 'ports-full') refusal = `Ports A–D are full. Unplug something to plug in ${deviceName(model.input, device)}`
+        } else if (plan.reason === 'no-hub') refusal = `${deviceName(model.input, device)} needs a hub. Add a hub to plug it in.`
+        else if (plan.reason === 'ports-full') refusal = `The hub is full. Unplug something to plug in ${deviceName(model.input, device)}.`
       }
-    } else if (spec.role !== 'hub') refusal = `${deviceName(model.input, brick)} placed · plug it into a port in its panel`
+    } else if (spec.role !== 'hub') refusal = `${deviceName(model.input, brick)} isn't plugged in yet. Pick it to plug it in.`
     if (lines.length) {
       if (existing) {
         // The same write refreshes the creation's anchors to its whole component (section.ts:
@@ -237,6 +285,8 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     } else if (refusal) {
       set({ wiringNote: { text: advice?.text ?? refusal, undoable: false, nonce: Date.now(), entry: null, added: [], ...(advice ? { brickId: brick.id } : {}) } })
     }
+    // A motor away from the sides of its plate: its socket is over the plate, so no axle can go in (kid-UX lane W).
+    if (spec.role === 'motor' && !adviceMuted) get().adviseMotorSide(brick.id, component)
 
     if (joining) {
       set({ model })
@@ -422,10 +472,45 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       useBrickStore.setState({ toast: `No room for the motor there. ${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.` })
       return
     }
-    const fits = spec?.axle ? (roboticsSpec(target.partId)?.socket ? `fits ${nameOf(target)}'s socket` : `fits through the ${nameOf(target)}`) : `fits the axle end`
     const what = spec?.axle ? 'The axle' : 'The wheel'
     const fix = roboticsSpec(target.partId)?.socket ? ' Turn or move the motor so its socket faces open space.' : ' Move it so the end has open space.'
-    useBrickStore.setState({ toast: `${what} ${fits}, but there it would overlap ${blockers.slice(0, 2).map(nameOf).join(' and ')}.${fix}` })
+    useBrickStore.setState({ toast: `${what} can't go there. ${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.${fix}` })
+  },
+
+  adviseWheel: (wheelId) => {
+    const { input } = computeModel(useBrickStore.getState())
+    const mechanisms = deriveMechanisms(input.bricks, input.partMap, input.plateSize)
+    const spin = wheelSpins(mechanisms).find((wheel) => wheel.wheelId === wheelId)
+    if (!spin || spin.spins) return
+    const fix = planWheelFix(input, wheelId, mechanisms)
+    // With no room the button still says what it would do; pressing it says why not and outlines what is in the way.
+    const action: NoteAction = fix.ok ? { kind: 'fix-wheel', brickId: wheelId, label: fix.label } : fix.reason === 'no-plate' ? { kind: 'arm-plate', label: PUT_A_PLATE_DOWN } : { kind: 'fix-wheel', brickId: wheelId, label: ADD_A_MOTOR }
+    set({ wiringNote: { text: wheelProblemText(mechanisms, wheelId, NEAR_MISS_REACH_STUDS * STUD), undoable: false, nonce: Date.now(), entry: null, added: [], brickId: wheelId, action } })
+  },
+
+  adviseMotorSide: (motorId, robotBrickIds) => {
+    const { input } = computeModel(useBrickStore.getState())
+    const motor = input.bricks.find((brick) => brick.id === motorId)
+    if (!motor) return
+    const covered = socketCoveredBy(motor, input.bricks, input.partMap, input.plateSize)
+    if (!covered?.length) return
+    const fix = planMotorToSide(input, motorId, robotBrickIds ? { brickIds: [...robotBrickIds] } : null)
+    if (fix.ok) set({ wiringNote: { text: MOTORS_GO_ON_THE_SIDES, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: motorId, action: { kind: 'motor-to-side', brickId: motorId, label: fix.label } } })
+    else if (fix.reason !== 'nothing') set({ wiringNote: { text: `${MOTORS_GO_ON_THE_SIDES} ${fix.text}`, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: motorId, blockers: fix.blockers } })
+  },
+
+  settleWiringNote: () => {
+    const note = get().wiringNote
+    const action = note?.action
+    if (!note || !action || action.kind === 'arm-plate') return
+    const { input, creations } = get().model
+    const brick = input.bricks.find((candidate) => candidate.id === action.brickId)
+    if (!brick) { set({ wiringNote: null }); return }
+    let settled = false
+    if (action.kind === 'fix-wheel') settled = wheelSpins(deriveMechanisms(input.bricks, input.partMap, input.plateSize)).some((wheel) => wheel.wheelId === brick.id && wheel.spins)
+    else if (action.kind === 'put-on') settled = creations.some((creation) => creation.brickIds.includes(brick.id))
+    else if (action.kind === 'motor-to-side') settled = (socketCoveredBy(brick, input.bricks, input.partMap, input.plateSize)?.length ?? 0) === 0
+    if (settled) set({ wiringNote: null })
   },
 }))
 
@@ -447,8 +532,9 @@ export function installRoboticsWatcher() {
     const bricksChanged = state.bricks !== previous.bricks
     if (bricksChanged || state.documentMetadata !== previous.documentMetadata) {
       robotics.refreshModel()
-      // A line about a part that is gone (Undo, Delete) no longer applies.
+      // A line about a part that is gone (Undo, Delete) no longer applies; nor does a fix for something already fixed.
       if (robotics.wiringNote?.brickId && !state.bricks.some((brick) => brick.id === robotics.wiringNote?.brickId)) robotics.dismissWiringNote()
+      else useRoboticsStore.getState().settleWiringNote()
       // An edit while a nudge runs, or is still starting, retires it: the construction, never
       // the simulation, is the truth. A change that leaves the behaviour key alone (a rename)
       // is not such an edit.

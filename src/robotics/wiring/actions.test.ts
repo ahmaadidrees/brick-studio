@@ -96,7 +96,7 @@ describe('unplug and plug in', () => {
     const light = place(ROBOTICS_PART_IDS.light, 33, 1, 28)
     expect(portOf(light)).toBe('D')
     const second = place(ROBOTICS_PART_IDS.light, 28, 1, 27)
-    expect(robotics().wiringNote?.text).toBe('Ports A–D are full. Unplug something to plug in Light')
+    expect(robotics().wiringNote?.text).toBe('The hub is full. Unplug something to plug in Light.')
     const depth = useBrickStore.getState().undoStack.length
     expect(plugDeviceIn(second)).toBe(false)
     expect(toast()).toBe('The hub is full. Unplug something to free a port.')
@@ -212,7 +212,7 @@ describe('rename and wiring mode', () => {
     expect(setWiringMode('manual')).toBe(false)
     const light = place(ROBOTICS_PART_IDS.light, 33, 1, 28)
     expect(portOf(light)).toBeNull()
-    expect(robotics().wiringNote).toMatchObject({ text: 'Light placed · plug it into a port in its panel', undoable: false })
+    expect(robotics().wiringNote).toMatchObject({ text: "Light isn't plugged in yet. Pick it to plug it in.", undoable: false })
     expect(hubForDevice(light)).toBe(hub)
     expect(plugDeviceIn(light)).toBe(true)
     expect(portOf(light)).toBe('D')

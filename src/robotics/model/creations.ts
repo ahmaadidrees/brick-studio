@@ -6,6 +6,7 @@ import { deriveBodies, type RigidBody } from './bodies'
 import { connectionOf } from './control'
 import { brickFrame, toWorldDirection, toWorldPoint, type PartMap } from './grid'
 import { deriveMechanisms, wheelsOnMotor, type Mechanisms } from './mechanism'
+import { socketCoveredBy } from './socketRoom'
 import type { RoboticsCreation, RoboticsSection, TestSpace } from './section'
 import { cross, dot, sameDirection, type Vec3 } from './vec'
 
@@ -46,6 +47,11 @@ export type DerivedMotor = DerivedDevice & {
   wheelIds: string[]
   /** Which way the body goes when this motor runs at positive power, relative to the creation's forward. */
   drives: 'forward' | 'backward' | 'sideways' | null
+  /**
+   * Nothing in its socket, and no axle could go in: the socket is over the plate or against another
+   * part (a motor in the middle of the plate, or facing in). Motors go on the sides (kid-UX lane W).
+   */
+  socketCovered?: boolean
 }
 
 export type DerivedWheel = {
@@ -295,7 +301,8 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
       case 'seat': seats.push(brick.id); break
       case 'motor': {
         const link = mechanisms.motorById.get(brick.id)!
-        motors.push({ ...device(brick, 'motor'), socketNormal: link.socket.normal, socketPoint: link.socket.point, axleId: link.axleId, wheelIds: wheelsOnMotor(mechanisms, brick.id).map((wheel) => wheel.wheelId), drives: null })
+        const socketCovered = !link.axleId && (socketCoveredBy(brick, input.bricks, input.partMap, input.plateSize)?.length ?? 0) > 0
+        motors.push({ ...device(brick, 'motor'), socketNormal: link.socket.normal, socketPoint: link.socket.point, axleId: link.axleId, wheelIds: wheelsOnMotor(mechanisms, brick.id).map((wheel) => wheel.wheelId), drives: null, socketCovered })
         break
       }
       case 'distance-sensor': {
@@ -446,7 +453,8 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
   // A plate-high brick on the ground: a motor standing on it holds its axle at a wheel's hole height.
   const onPlate = brickIds.some((id) => { const brick = bricksById.get(id)!; return brick.y === 0 && input.partMap[brick.partId]?.height === 1 && !roboticsSpec(brick.partId) })
   const partCounts: [number, string][] = [
-    [hubs.length, 'hub'], [motors.length, 'motor'], [hinges.length, 'hinge motor'], [wheels.length, 'wheel'], [axles.length, 'axle'],
+    // Wheels on an axle only: a loose wheel is counted apart, where the panel lists it with its fix (kid-UX lane W).
+    [hubs.length, 'hub'], [motors.length, 'motor'], [hinges.length, 'hinge motor'], [wheels.filter((wheel) => wheel.onAxle).length, 'wheel'], [axles.length, 'axle'],
     [sensors.length, 'distance sensor'], [lights.length, 'light'], [buttons.length, 'button'], [seats.length, 'seat'],
   ]
   const parts = partCounts.filter(([count]) => count > 0).map(([count, noun]) => plural(count, noun)).join(', ') || 'no robotics parts yet'

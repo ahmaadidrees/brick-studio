@@ -2,8 +2,10 @@ import { rotateLocalPoint } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { readinessPlan, type ReadinessStep } from '../drive/readiness'
 import type { DerivedCreation, DerivedMotor } from '../model/creations'
+import { otherSideSpot } from '../model/fixPlans'
+import type { SnapPose } from '../model/snap'
 import { dot, type Vec3 } from '../model/vec'
-import { ROBOTICS_PART_IDS, roboticsSpec } from '../parts/catalog'
+import { ROBOTICS_PART_IDS, ROBOT_PLATE_PART, roboticsSpec } from '../parts/catalog'
 import type { RoboticsModel } from '../state/roboticsStore'
 
 /**
@@ -27,8 +29,10 @@ export type StepState = 'done' | 'current' | 'todo'
 export type StepGroup = 'step' | 'choice' | 'idea'
 
 export type StepAction =
-  /** Arm a part in the studio, turned the way this robot needs it. */
-  | { kind: 'arm'; partId: string; rotation: 0 | 1 | 2 | 3 }
+  /** Arm a part in the studio, turned the way this robot needs it (and its ghost already `at` the spot, when there is one). */
+  | { kind: 'arm'; partId: string; rotation: 0 | 1 | 2 | 3; at?: SnapPose }
+  /** A one-tap fix (kid-UX lane W): move a motor whose socket is over the plate to the side. */
+  | { kind: 'fix'; fix: 'motor-to-side'; brickId: string }
   /** Plug a device into its hub's first free port. */
   | { kind: 'plug'; deviceId: string }
   /** Open Drive (a rover) or Try it (a gate, a signal light). */
@@ -42,7 +46,7 @@ export type NextStep = {
   id: string
   group: StepGroup
   text: string
-  /** A second, smaller line (choices only). */
+  /** A second, smaller line: a choice's detail, or why the step can't be done where it should ("No room there…"). */
   hint?: string
   state: StepState
   /** Null when there is nothing to do about it yet (the play row before the robot is ready). */
@@ -71,7 +75,8 @@ const MOTOR_SOCKET = roboticsSpec(ROBOTICS_PART_IDS.motor)?.socket?.normal ?? { 
 const ALONG_X: Vec3 = { x: 1, y: 0, z: 0 }
 /** Sensors and seats look along -Z when they are not turned. */
 const LOOKS: Vec3 = { x: 0, y: 0, z: -1 }
-const PLATE_PART = 'plate_6x8'
+/** The robot plate, the same part as the drawer's first robot tile. */
+const PLATE_PART = ROBOT_PLATE_PART
 const ARM_PART = 'brick_1x4'
 const STACK_PART = 'brick_2x2'
 
@@ -79,6 +84,7 @@ const arm = (partId: string, rotation: Rotation = 0): StepAction => ({ kind: 'ar
 const reversed = (vector: Vec3): Vec3 => ({ x: -vector.x, y: -vector.y, z: -vector.z })
 
 export const READY_TO_DRIVE = 'Ready to drive!'
+export const OTHER_SIDE_NO_ROOM = 'No room there. Try a bigger plate.'
 export const READY_TO_TRY = 'Ready to try!'
 
 export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 'input'>): NextStep[] {
@@ -87,8 +93,15 @@ export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 
   const open = plan.steps.findIndex((step) => !step.done)
   const rows: NextStep[] = plan.steps.map((step, index) => {
     const state: StepState = step.done ? 'done' : index === open ? 'current' : 'todo'
-    const icon = state === 'current' && step.fix === 'add-hub' ? { part: ROBOTICS_PART_IDS.hub } : state === 'current' && step.fix === 'select' && step.id === 'motors' ? { symbol: 'turn' as const } : stepIcon(step)
-    return { id: step.id, group: 'step', text: state === 'current' ? step.now : step.text, state, action: state === 'done' ? null : stepAction(step, state, creation, bricks), icon }
+    const icon = state === 'current' && step.fix === 'add-hub' ? { part: ROBOTICS_PART_IDS.hub } : state === 'current' && step.fix === 'select' && step.id === 'motors' ? { symbol: 'turn' as const } : state === 'current' && step.fix === 'side' ? { symbol: 'fix' as const } : stepIcon(step)
+    const row: NextStep = { id: step.id, group: 'step', text: state === 'current' ? step.now : step.text, state, action: state === 'done' ? null : stepAction(step, state, creation, bricks), icon }
+    // "The other side" is shown, not told: the second motor comes armed at the mirror of the first; with no room there, the row says so.
+    if (state === 'current' && step.id === 'motors' && !step.fix && creation.motors.length === 1) {
+      const other = otherSideSpot(model.input, creation)
+      if (other?.free && row.action?.kind === 'arm') row.action = { ...row.action, rotation: other.pose.rotation, at: other.pose }
+      else if (other && !other.free) row.hint = OTHER_SIDE_NO_ROOM
+    }
+    return row
   })
   if (!plan.kind) return [...rows, ...choices(creation, open === -1)]
   const ready = open === -1
@@ -132,6 +145,7 @@ function stepAction(step: ReadinessStep, state: StepState, creation: DerivedCrea
   const current = state === 'current'
   // A step about a placed brick (a motor to turn, a brick holding a gate's arm, a part to unplug for room): pick it.
   if (current && (step.fix === 'select' || step.fix === 'unplug')) return step.brickId && bricks.has(step.brickId) ? { kind: 'select', brickId: step.brickId } : null
+  if (current && step.fix === 'side') return step.brickId && bricks.has(step.brickId) ? { kind: 'fix', fix: 'motor-to-side', brickId: step.brickId } : null
   if (current && step.fix === 'add-hub') return arm(ROBOTICS_PART_IDS.hub)
   switch (step.id) {
     case 'plate': return arm(PLATE_PART)

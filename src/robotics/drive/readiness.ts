@@ -37,9 +37,10 @@ export type ReadinessStep = {
   brickId: string | null
   /**
    * How the step is done when it is not the obvious way: `select` a brick to turn or take off, or,
-   * with a full hub, `unplug` a part that does not drive (`brickId`) or `add-hub`.
+   * with a full hub, `unplug` a part that does not drive (`brickId`) or `add-hub`; `side` moves a
+   * motor whose socket is over its plate to the side (one tap, kid-UX lane W).
    */
-  fix?: 'select' | 'unplug' | 'add-hub'
+  fix?: 'select' | 'unplug' | 'add-hub' | 'side'
 }
 
 export type ReadinessPlan = { path: RobotPath | null; kind: PlayKind | null; steps: ReadinessStep[] }
@@ -138,10 +139,13 @@ function motorsStep(creation: DerivedCreation): ReadinessStep {
   const motors = creation.motors
   const step = (done: boolean, now: string, brickId: string | null = null, fix?: ReadinessStep['fix']): ReadinessStep => ({ id: 'motors', text: 'Put a motor on each side.', done, now, brickId, ...(fix ? { fix } : {}) })
   if (motors.length === 0) return step(false, 'Put a motor on each side.')
-  if (motors.length === 1) return step(false, 'Put a motor on the other side.', motors[0].brickId)
+  // A motor in the middle of the plate (or facing into it) can't take an axle: it goes to the side first.
+  if (motors.length === 1) return motors[0].socketCovered ? sideStep(motors[0]) : step(false, 'Put a motor on the other side.', motors[0].brickId)
   // Said by where the motor is, not by its name: a motor's default name follows the way it faces.
   const facingIn = motorFacingIn(motors)
   if (facingIn) return step(false, `Turn the ${sideOf(facingIn, motors)} motor to face out.`, facingIn.brickId, 'select')
+  const covered = motors.find((motor) => motor.socketCovered)
+  if (covered) return sideStep(covered)
   if (!creation.drivePair && candidatePairs(motors).length === 0) return step(false, 'Put the motors on opposite sides, facing out.', motors[motors.length - 1].brickId, 'select')
   const complete = motors.every((motor) => motor.axleId && motor.wheelIds.length > 0)
   if (complete) {
@@ -153,6 +157,11 @@ function motorsStep(creation: DerivedCreation): ReadinessStep {
     if (astray) return step(false, `${astray.name} faces ${facingWord(astray.socketNormal, sides.forward)}. Turn it to face out to the side.`, astray.brickId, 'select')
   }
   return step(true, 'Put a motor on each side.')
+}
+
+/** "Move Left motor to the side of the plate." — its socket is over the plate, so no axle fits. */
+function sideStep(motor: DerivedMotor): ReadinessStep {
+  return { id: 'motors', text: 'Put a motor on each side.', done: false, now: `Move ${motor.name} to the side of the plate.`, brickId: motor.brickId, fix: 'side' }
 }
 
 /**

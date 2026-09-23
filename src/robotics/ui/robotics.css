@@ -112,6 +112,21 @@
 .robotics-parts li.bad { color: #a12c1d; background: #ffe1dc; }
 .robotics-parts li.selected { box-shadow: inset 0 0 0 2px var(--studio-blue, #3e83d7); }
 .robotics-selected { margin: 0; padding: 10px 12px; border-radius: 12px; font-weight: 700; color: var(--studio-ink); background: #e8effb; }
+/* Loose wheels (kid-UX lane W): the line under the steps, a row per wheel with Fix and Take it off. */
+.robotics-loose { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 2px solid rgba(229, 56, 59, .35); border-radius: 14px; background: #fff5f4; }
+.robotics-loose-line { margin: 0; color: #8a1c1f; font-size: 15px; font-weight: 800; line-height: 1.3; }
+.robotics-loose-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.robotics-loose-list.in-parts { margin-top: 2px; }
+.robotics-loose-row { display: flex; align-items: center; gap: 8px; }
+.robotics-loose-number { flex: 0 0 auto; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 999px; color: #fff; background: #e5383b; font-size: 15px; font-weight: 900; }
+.robotics-loose-fix, .robotics-loose-remove { min-height: 44px; padding: 0 12px; border-radius: 10px; font-family: inherit; font-size: 15px; font-weight: 900; line-height: 1.15; cursor: pointer; }
+.robotics-loose-fix { flex: 1 1 auto; border: 0; color: #fff; background: var(--studio-blue, #3e83d7); }
+.robotics-loose-fix:hover { background: var(--studio-blue-dark, #2f5fb3); }
+.robotics-loose-remove { flex: 0 0 auto; border: 2px solid var(--studio-panel-border); color: var(--studio-ink); background: var(--studio-panel); }
+.robotics-loose-remove:hover { background: var(--studio-panel-soft); }
+.robotics-loose-fix:focus-visible, .robotics-loose-remove:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.robotics-selected-wheel { display: flex; flex-direction: column; gap: 8px; }
+.robotics-selected-actions { display: flex; gap: 8px; }
 .robotics-space { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: var(--studio-muted); font-weight: 800; }
 .robotics-chip { min-height: 44px; padding: 0 14px; border: 1px solid var(--studio-panel-border); border-radius: 999px; font-family: inherit; font-weight: 800; font-size: 14px; line-height: 1; color: var(--studio-ink); background: var(--studio-panel); cursor: pointer; }
 .robotics-chip.active { color: #fff; border-color: var(--studio-blue-dark, #2f5fb3); background: var(--studio-blue, #3e83d7); }
@@ -125,6 +140,13 @@
 .robotics-nudge-status { color: var(--studio-muted); font-size: 14px; font-weight: 800; }
 .robotics-contact { margin: 0; padding: 6px 8px; border-radius: 8px; color: #a12c1d; background: #ffe1dc; font-weight: 800; }
 .robotics-wiring-line { position: absolute; z-index: 16; top: calc(var(--brick-header-block) + 12px); left: 50%; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box; transform: translateX(-50%); padding: 6px 8px 6px 14px; border: 1px solid var(--studio-panel-border); border-radius: 11px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-md, 0 8px 22px rgba(38, 60, 81, .13)); font-size: 14px; font-weight: 800; }
+/* The line's one-tap fix ("Add a motor for it", "Put it on Buggy"): a real button, 44 px (kid-UX lane W). */
+.robotics-wiring-line.has-action { max-width: min(640px, calc(100% - 32px)); }
+.robotics-wiring-line > span { flex: 1 1 auto; min-width: 0; }
+.robotics-wiring-line.is-done { border-color: rgba(18, 183, 106, .55); background: #effaf4; }
+.robotics-line-action { min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; font-family: inherit; font-weight: 900; font-size: 15px; line-height: 1.15; color: #fff; background: var(--studio-blue, #3e83d7); cursor: pointer; white-space: nowrap; }
+.robotics-line-action:hover { background: var(--studio-blue-dark, #2f5fb3); }
+.robotics-line-action:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
 .robotics-link-button { min-width: 44px; min-height: 44px; border: 0; padding: 0 10px; border-radius: 8px; font-family: inherit; font-weight: 900; font-size: 14px; line-height: 1.2; color: var(--studio-blue-dark, #2f5fb3); background: transparent; cursor: pointer; }
 .robotics-link-button:hover { background: var(--studio-panel-soft); }
 .robotics-link-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
