@@ -579,6 +579,7 @@ export const PREVIEW_TEXT = {
   onThePlate: "It needs to sit on the robot's plate.",
   edge: 'Too close to the edge.',
   lowPlate: 'Motors go on a plate on the ground.',
+  wheelInTheWay: 'A wheel is in the way.',
 } as const
 
 /**
@@ -598,7 +599,9 @@ export function previewProblem(input: Pick<DeriveInput, 'bricks' | 'partMap' | '
   if (draft.x < 0 || draft.z < 0 || draft.y < 0 || draft.x + size.width > input.plateSize || draft.z + size.depth > input.plateSize) return { text: PREVIEW_TEXT.edge, blockers: [] }
   const blockers = overlappingBricks(draft, others, input.partMap)
   const ids = blockers.map((brick) => brick.id)
-  if (snapKind === 'plate-edge') return { text: PREVIEW_TEXT.noRoom, blockers: ids }
+  // Loose wheels (or axles) standing where the motor goes: they move, the plate is big enough.
+  const onlyLoose = blockers.length > 0 && blockers.every((brick) => ['wheel', 'axle'].includes(roboticsSpec(brick.partId)?.role ?? ''))
+  if (snapKind === 'plate-edge') return { text: onlyLoose ? PREVIEW_TEXT.wheelInTheWay : PREVIEW_TEXT.noRoom, blockers: ids }
   // A device sunk into a plate it should stand on.
   if (isDevicePart(draft.partId) && blockers.length && blockers.every((brick) => isPlatePart(input.partMap[brick.partId]))) return { text: PREVIEW_TEXT.onThePlate, blockers: ids }
   return { text: PREVIEW_TEXT.inTheWay, blockers: ids }

@@ -280,6 +280,9 @@ async function leosCar() {
   const plugged = await s.robo((state) => state.model.creations[0].motors.map((motor) => motor.port?.port ?? null))
   check('A:plugged', plugged.filter(Boolean).length === 4, `the hub plugged every motor in: ports ${plugged.join(', ')}`)
   check('A:ready', (await s.currentText()) === 'Ready to drive!' && await s.page.getByTestId('robotics-play-button').isEnabled(), `"${await s.currentText()}", Drive on`)
+  // The robot's own model agrees with what the harness put down: four wheels, each on an axle in one of its motors.
+  const modelWheels = await s.robo((state) => state.model.creations[0].wheels.map((wheel) => ({ id: wheel.brickId, onAxle: wheel.onAxle, motor: Boolean(wheel.motorId) })))
+  check('A:model-agrees', modelWheels.length === 4 && modelWheels.every((wheel) => wheel.onAxle && wheel.motor) && Object.values(wheels).every((id) => modelWheels.some((wheel) => wheel.id === id)), `model.creations[0].wheels: ${modelWheels.length} wheels, ${modelWheels.filter((wheel) => wheel.onAxle && wheel.motor).length} on an axle in a motor — the four the harness placed`)
 
   // Leo's leftovers: three wheels beside the car. Drive stays on; the line says they stay here.
   await choose(s, M.wheel)
@@ -290,6 +293,8 @@ async function leosCar() {
   check('A:ready-with-loose', (await s.currentText()) === 'Ready to drive!' && await s.page.getByTestId('robotics-play-button').isEnabled(), 'still ready, Drive on')
   const readyLine = await s.page.getByTestId('robotics-loose-line').textContent()
   check('A:ready-loose-line', readyLine === "4 wheels spin. 3 wheels aren't on an axle. They stay here when you drive.", `under "Ready to drive!": "${readyLine}"`)
+  const afterLeftovers = await s.robo((state) => state.model.creations[0].wheels.filter((wheel) => wheel.onAxle && wheel.motorId).length)
+  check('A:model-leftovers', afterLeftovers === 4, `the model still counts ${afterLeftovers} wheels on the car; the 3 leftovers are not its wheels (and each carries its red mark)`)
   await frame(s)
   await s.shot('W07-ready-with-loose-wheels')
   await s.panel.getByRole('button', { name: /^Parts/ }).click()

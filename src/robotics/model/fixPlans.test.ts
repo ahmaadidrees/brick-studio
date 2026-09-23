@@ -234,6 +234,11 @@ describe('a red preview says why', () => {
     expect(previewProblem(input(buggy()), { partId: M.motor, x: 28, y: 1, z: 28, rotation: 2 }, null, 'plate-edge')).toEqual({ text: 'No room on the plate. Try a bigger plate.', blockers: ['hub'] })
   })
 
+  it('a motor snapped to a side where only loose wheels stand: a wheel is in the way (not "try a bigger plate")', () => {
+    const bricks = plateWithCornerWheels()
+    expect(previewProblem(input(bricks), { partId: M.motor, x: 28, y: 1, z: 28, rotation: 2 }, null, 'plate-edge')).toEqual({ text: 'A wheel is in the way.', blockers: ['w-front-left'] })
+  })
+
   it('a device sunk into a plate it should stand on: it needs to sit on the robot\'s plate', () => {
     expect(previewProblem(input(buggy()), { partId: M.distanceSensor, x: 30, y: 0, z: 26, rotation: 0 }, null)?.text).toBe("It needs to sit on the robot's plate.")
   })

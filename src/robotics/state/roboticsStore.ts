@@ -494,7 +494,9 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const spec = roboticsSpec(draft.partId)
     if (spec?.socket) {
       // A motor snapped onto a plate's side with no room left there: the same words as the red ghost's line.
-      useBrickStore.setState({ toast: `No room on the plate. ${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.` })
+      const problem = previewProblem({ ...input, bricks: others }, draft, null, snap.kind)
+      const named = `${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.`
+      useBrickStore.setState({ toast: problem?.text === 'A wheel is in the way.' ? problem.text : `No room on the plate. ${named}` })
       return
     }
     const what = spec?.axle ? 'The axle' : 'The wheel'
