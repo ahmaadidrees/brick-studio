@@ -55,8 +55,9 @@ async function snap(label = '') {
   const file = path.join(out, `${String(count).padStart(3, '0')}${label ? `-${label.replace(/[^a-z0-9-]+/gi, '-').slice(0, 40)}` : ''}.png`)
   const [width, height] = await safari.exec(() => [window.innerWidth, window.innerHeight])
   const raw = `${file}.raw.png`
-  await safari.pageScreenshot(raw)
-  // Scale device pixels to CSS pixels so a coordinate read off the image is a coordinate to tap.
+  // The layout viewport only (the full web-view screenshot reaches under Safari's toolbar and would be squashed),
+  // then device pixels to CSS pixels, so a coordinate read off the image is a coordinate to tap.
+  await safari.viewportScreenshot(raw)
   await run('sips', ['-z', String(height), String(width), raw, '--out', file])
   await unlink(raw)
   return file

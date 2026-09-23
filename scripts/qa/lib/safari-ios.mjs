@@ -189,9 +189,27 @@ export class SafariSimulator {
   /** Element Send Keys: WebKit types the text into the element as keyboard input (input events fire per character). */
   sendKeys(elementId, text) { return this.command('POST', `/element/${elementId}/value`, { text }) }
 
-  /** The page only (WebDriver screenshot, device pixels). */
+  /**
+   * The page (WebDriver screenshot, device pixels). On iPadOS 26 Safari this is the WHOLE web view, which reaches up
+   * under Safari's toolbar: 1640×2360 on an iPad Air 11" while the layout viewport is 820×1094 CSS px starting 86 pt
+   * down. Scaling it to the viewport's size squashes it (coordinates read off it miss by up to ~75 px); use
+   * `viewportScreenshot` for anything a tester reads coordinates from.
+   */
   async pageScreenshot(file) {
     const base64 = await this.command('GET', '/screenshot')
+    await writeFile(file, Buffer.from(base64, 'base64'))
+    return file
+  }
+
+  /**
+   * Exactly the layout viewport (device pixels): an element screenshot of the root element, which WebKit crops to
+   * its rect — the same space as `getBoundingClientRect` and the `origin: 'viewport'` touch actions. Verified
+   * 2026-09-23 (iPad Air 11" M4, iOS 26.5): 1640×2188 for a 820×1094 viewport, with a fixed `top: 0` probe at the
+   * image's first row (the full `pageScreenshot` has it 172 px down).
+   */
+  async viewportScreenshot(file) {
+    const root = await this.findElement('html')
+    const base64 = await this.command('GET', `/element/${root}/screenshot`)
     await writeFile(file, Buffer.from(base64, 'base64'))
     return file
   }
