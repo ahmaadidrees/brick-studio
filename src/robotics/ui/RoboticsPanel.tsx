@@ -273,7 +273,7 @@ function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreat
   const headingId = useId()
   return (
     <section className="robotics-steps" aria-labelledby={headingId} data-testid="robotics-next-steps">
-      <h3 className="robotics-section-title" id={headingId}>{shown.length === 1 ? 'Next step' : 'Next steps'}</h3>
+      <h3 className="robotics-section-title" id={headingId}>{shown.length === 1 && shown[0].state !== 'done' ? 'Next step' : 'Next steps'}</h3>
       {shown.length > 0 && (
         <ol className="robotics-step-list">
           {shown.map((row) => <StepRow key={row.id} row={row} live={live} textId={row.state === 'current' && row.id !== 'ready' ? reasonId : undefined} />)}
