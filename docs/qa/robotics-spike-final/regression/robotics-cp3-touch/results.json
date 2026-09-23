@@ -1,0 +1,2678 @@
+{
+  "origin": "http://127.0.0.1:5232",
+  "at": "2026-09-23T13:06:52.965Z",
+  "orientation": "portrait",
+  "device": {
+    "name": "iPad Air 11-inch (M4)",
+    "udid": "F219AEB2-3E29-41D4-91AB-6BA943B005D7",
+    "runtime": "26.5",
+    "safari": "26.5"
+  },
+  "input": "W3C touch actions through safaridriver to Safari on the iOS Simulator; tap points from element rects (DOM) and the studio's world→screen projection (canvas)",
+  "offset": {
+    "x": 8,
+    "z": 0
+  },
+  "env": {
+    "height": 1094,
+    "coarse": true,
+    "maxTouchPoints": 5,
+    "compact": true,
+    "dpr": 2,
+    "width": 820,
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15",
+    "hover": false,
+    "anyFine": false
+  },
+  "passed": 46,
+  "total": 46,
+  "results": [
+    {
+      "id": "env:touch-device",
+      "ok": true,
+      "detail": "the page sees a touch device: pointer coarse true, hover false, maxTouchPoints 5; user agent says \"Macintosh; Intel Mac OS X 10_15_7\""
+    },
+    {
+      "id": "camera:one-finger-orbit",
+      "ok": true,
+      "detail": "a one-finger drag across open canvas turned the view (a 3-unit x axis went from 98,42 px to 106,-26 px on screen); page scale 1, scrollY 0"
+    },
+    {
+      "id": "arm:plate_6x8",
+      "ok": true,
+      "detail": "tapping \"6 × 8 Plate\" armed plate_6x8; drawer sheet closed"
+    },
+    {
+      "id": "ghost-tap:swallowed-evidence",
+      "ok": true,
+      "detail": "with the plate armed, its ghost at 29,0,28 covers 246×131 px on screen (x 284–530, y 424–555; 24 px slop around it). A tap at (422, 460), inside it, did nothing (swallowed as a ghost grab)"
+    },
+    {
+      "id": "ghost:6 × 8 plate on the baseplate",
+      "ok": true,
+      "detail": "6 × 8 plate on the baseplate: one tap at (589, 523; one stud there is 25 px) put the ghost at 36,0,26 r0 (wanted 36,0,26 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:6 × 8 plate on the baseplate",
+      "ok": true,
+      "detail": "6 × 8 plate on the baseplate: Place placed plate_6x8 at 36,0,26 r0"
+    },
+    {
+      "id": "proof:real-touch-events",
+      "ok": true,
+      "detail": "the page received 6 pointerdown events with pointerType \"touch\" for the proof taps; click events arrived with pointerType mouse"
+    },
+    {
+      "id": "arm:robo_hub",
+      "ok": true,
+      "detail": "tapping \"Hub\" armed robo_hub; drawer sheet closed"
+    },
+    {
+      "id": "ghost:Hub on the plate",
+      "ok": true,
+      "detail": "Hub on the plate: one tap at (603, 506; one stud there is 25 px) put the ghost at 37,1,27 r0 (wanted 37,1,27 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:Hub on the plate",
+      "ok": true,
+      "detail": "Hub on the plate: Place placed robo_hub at 37,1,27 r0"
+    },
+    {
+      "id": "hub:card-opens",
+      "ok": true,
+      "detail": "placing the hub opened the creation card: {\"suggestedName\":\"Creation\",\"creationId\":null}"
+    },
+    {
+      "id": "card:name-focus-by-tap",
+      "ok": true,
+      "detail": "a tap focused the name field (Creation name); visual viewport {\"offsetTop\":0,\"height\":1094} of 1094 (scale 1)"
+    },
+    {
+      "id": "card:name-entered",
+      "ok": true,
+      "detail": "the field reads \"Touch buggy\""
+    },
+    {
+      "id": "card:named",
+      "ok": true,
+      "detail": "after \"Not now\" the card is closed and the creation is named \"Touch buggy\""
+    },
+    {
+      "id": "arm:robo_motor",
+      "ok": true,
+      "detail": "tapping \"Motor\" armed robo_motor; drawer sheet closed"
+    },
+    {
+      "id": "ghost:First motor (right side)",
+      "ok": true,
+      "detail": "First motor (right side): one tap at (204, 540; one stud there is 22 px) put the ghost at 39,1,31 r0 (wanted 39,1,31 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:First motor (right side)",
+      "ok": true,
+      "detail": "First motor (right side): Place placed robo_motor at 39,1,31 r0"
+    },
+    {
+      "id": "motor1:wired-no-card",
+      "ok": true,
+      "detail": "no card; wiring line: Right motor connected to port A"
+    },
+    {
+      "id": "arm:robo_motor",
+      "ok": true,
+      "detail": "tapping \"Motor\" armed robo_motor; drawer sheet closed"
+    },
+    {
+      "id": "motor2:spot-hidden-in-3d",
+      "ok": true,
+      "detail": "from the 3D view a tap on the second motor's spot at (147, 513) put the ghost at 36,1,31 — on the plate"
+    },
+    {
+      "id": "ghost:Second motor (left side, Rotate tapped twice, from the top view)",
+      "ok": true,
+      "detail": "Second motor (left side, Rotate tapped twice, from the top view): one tap at (181, 548; one stud there is 25 px) put the ghost at 36,1,31 r2 (wanted 36,1,31 r2); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:Second motor (left side, Rotate tapped twice, from the top view)",
+      "ok": true,
+      "detail": "Second motor (left side, Rotate tapped twice, from the top view): Place placed robo_motor at 36,1,31 r2"
+    },
+    {
+      "id": "motor2:wired-no-card",
+      "ok": true,
+      "detail": "no card; wiring line: Left motor connected to port B"
+    },
+    {
+      "id": "arm:robo_axle_short",
+      "ok": true,
+      "detail": "tapping \"Short axle\" armed robo_axle_short; drawer sheet closed"
+    },
+    {
+      "id": "ghost:Short axle snapped into the left motor (tap the motor)",
+      "ok": true,
+      "detail": "Short axle snapped into the left motor (tap the motor): one tap at (146, 474; one stud there is 21 px) put the ghost at 34,0,32 r0 (wanted 34,0,32 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:Short axle snapped into the left motor (tap the motor)",
+      "ok": true,
+      "detail": "Short axle snapped into the left motor (tap the motor): Place placed robo_axle_short at 34,0,32 r0"
+    },
+    {
+      "id": "arm:robo_axle_short",
+      "ok": true,
+      "detail": "tapping \"Short axle\" armed robo_axle_short; drawer sheet closed"
+    },
+    {
+      "id": "ghost:Short axle snapped into the right motor (tap the motor)",
+      "ok": true,
+      "detail": "Short axle snapped into the right motor (tap the motor): one tap at (204, 500; one stud there is 22 px) put the ghost at 42,0,32 r0 (wanted 42,0,32 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:Short axle snapped into the right motor (tap the motor)",
+      "ok": true,
+      "detail": "Short axle snapped into the right motor (tap the motor): Place placed robo_axle_short at 42,0,32 r0"
+    },
+    {
+      "id": "axles:in-sockets",
+      "ok": true,
+      "detail": "motors report axles: [true,true]"
+    },
+    {
+      "id": "arm:robo_wheel",
+      "ok": true,
+      "detail": "tapping \"Wheel\" armed robo_wheel; drawer sheet closed"
+    },
+    {
+      "id": "ghost:Wheel snapped onto the left axle end (tap, Place)",
+      "ok": true,
+      "detail": "Wheel snapped onto the left axle end (tap, Place): one tap at (102, 474; one stud there is 20 px) put the ghost at 33,0,31 r0 (wanted 33,0,31 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:Wheel snapped onto the left axle end (tap, Place)",
+      "ok": true,
+      "detail": "Wheel snapped onto the left axle end (tap, Place): Place placed robo_wheel at 33,0,31 r0"
+    },
+    {
+      "id": "arm:robo_wheel",
+      "ok": true,
+      "detail": "tapping \"Wheel\" armed robo_wheel; drawer sheet closed"
+    },
+    {
+      "id": "double-tap-place:Wheel snapped onto the right axle end (double tap)",
+      "ok": true,
+      "detail": "Wheel snapped onto the right axle end (double tap): double tap at (255, 543) placed robo_wheel at 44,0,31 r0"
+    },
+    {
+      "id": "double-tap:no-page-zoom",
+      "ok": true,
+      "detail": "after the double tap the page scale is 1 (the studio root is touch-action none)"
+    },
+    {
+      "id": "arm:robo_distance_sensor",
+      "ok": true,
+      "detail": "tapping \"Distance sensor\" armed robo_distance_sensor; drawer sheet closed"
+    },
+    {
+      "id": "ghost:Distance sensor at the front edge (from the top view)",
+      "ok": true,
+      "detail": "Distance sensor at the front edge (from the top view): one tap at (218, 423; one stud there is 18 px) put the ghost at 38,1,26 r0 (wanted 38,1,26 r0); nothing placed yet: true",
+      "extra": {
+        "how": "one tap"
+      }
+    },
+    {
+      "id": "placed:Distance sensor at the front edge (from the top view)",
+      "ok": true,
+      "detail": "Distance sensor at the front edge (from the top view): Place placed robo_distance_sensor at 38,1,26 r0"
+    },
+    {
+      "id": "sensor:wired",
+      "ok": true,
+      "detail": "wiring line: Front sensor connected to port C"
+    },
+    {
+      "id": "rover:assembled",
+      "ok": true,
+      "detail": "one creation \"Touch buggy\" over 9 bricks and 3 bodies; wheels [{\"onAxle\":true,\"note\":null},{\"onAxle\":true,\"note\":null}]; ready: Axles and wheels on both motors, so it can roll"
+    },
+    {
+      "id": "rover:card-never-reopened",
+      "ok": true,
+      "detail": "the card stayed closed through seven more parts"
+    },
+    {
+      "id": "fonts:robotics-shorthand",
+      "ok": true,
+      "detail": "computed fonts (robotics.css declares name 900 15px, chip 800 11.5px, link 900 12px via `font: … inherit`): {\".robotics-name\":{\"fontSize\":\"16px\",\"fontWeight\":\"900\",\"fontFamily\":\"Nunito, ui-rounded, system-ui, -apple-sy\"},\".robotics-chip\":{\"fontSize\":\"13px\",\"fontWeight\":\"800\",\"fontFamily\":\"Nunito, ui-rounded, system-ui, -apple-sy\"},\".robotics-nudge-row .studio-button\":{\"fontSize\":\"13px\",\"fontWeight\":\"900\",\"fontFamily\":\"Nunito, ui-rounded, system-ui, -apple-sy\"},\".robotics-link-button\":{\"fontSize\":\"13px\",\"fontWeight\":\"900\",\"fontFamily\":\"Nunito, ui-rounded, system-ui, -apple-sy\"}}"
+    },
+    {
+      "id": "drive:rolls",
+      "ok": true,
+      "detail": "after 2.6 s: 4.89 forward, -0.02 sideways, yaw -0.2°, simulated 2.59 s"
+    },
+    {
+      "id": "drive:rover-visible",
+      "ok": true,
+      "detail": "the driving rover's chassis is at (300, 469) on screen: on open canvas"
+    },
+    {
+      "id": "reset:built-pose",
+      "ok": true,
+      "detail": "after Reset: status \"Built pose\", run gone, document unchanged"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "info",
+      "id": "ua-desktop",
+      "detail": "iPadOS Safari reports a Macintosh user agent; only pointer/hover media queries and maxTouchPoints reveal the tablet. Any UA sniffing would treat it as a desktop."
+    },
+    {
+      "severity": "major",
+      "id": "tap-on-ghost",
+      "detail": "A tap on the armed ghost's own footprint (plus 24 px) is taken as a ghost grab and does nothing; only a drag moves it (with the ghost riding 44 px above the finger) or a double tap places it where it already is. The 6 × 8 plate's first ghost covers 246×131 px at the home camera, right where a student taps to put the plate \"a bit over\". The rule is the app's (BrickStudioScene ghost grab), so Chrome touch emulation behaves the same: a design finding, not a WebKit one."
+    },
+    {
+      "severity": "risk",
+      "id": "click-pointerType-mouse",
+      "detail": "In iPadOS Safari a tap's click event carries pointerType \"mouse\" (Chrome's touch emulation reports \"touch\"). The studio's mesh onClick handlers (Baseplate, BrickObject, instanced bricks) read click.pointerType to ignore touch taps, so in Safari they see a mouse click; only the canvas-level touch click guard (450 ms after a touch pointerup) keeps a first tap from placing. It held for every tap of this run. Emulation hides this."
+    },
+    {
+      "severity": "harness",
+      "id": "typing-not-drivable",
+      "detail": "WebDriver typing into the focused field fired key events but inserted no text (field still \"Creation\"); the name was entered with a script-dispatched input event instead. The software keyboard was not exercised."
+    },
+    {
+      "severity": "minor",
+      "id": "needs-scroll:[data-testid=\"robotics-reset\"]",
+      "detail": "\"Reset\" was not in view: it needs a scroll of aside[data-testid=robotics-panel][aria-label=\"Robotics\"].robotics-panel.compact (485 px)"
+    }
+  ],
+  "swallowedTaps": [
+    {
+      "step": "plate at the checkpoint-1 spot",
+      "at": [
+        422,
+        460
+      ],
+      "ghost": {
+        "y": 0,
+        "z": 28,
+        "partId": "plate_6x8",
+        "x": 29,
+        "rotation": 0
+      },
+      "footprint": {
+        "ghost": {
+          "y": 0,
+          "z": 28,
+          "partId": "plate_6x8",
+          "x": 29,
+          "rotation": 0
+        },
+        "left": 284,
+        "right": 530,
+        "top": 424,
+        "bottom": 555
+      }
+    }
+  ],
+  "aimSizes": [
+    {
+      "step": "6 × 8 plate on the baseplate",
+      "studPx": 25
+    },
+    {
+      "step": "Hub on the plate",
+      "studPx": 25
+    },
+    {
+      "step": "First motor (right side)",
+      "studPx": 22
+    },
+    {
+      "step": "Second motor (left side, Rotate tapped twice, from the top view)",
+      "studPx": 25
+    },
+    {
+      "step": "Short axle snapped into the left motor (tap the motor)",
+      "studPx": 21
+    },
+    {
+      "step": "Short axle snapped into the right motor (tap the motor)",
+      "studPx": 22
+    },
+    {
+      "step": "Wheel snapped onto the left axle end (tap, Place)",
+      "studPx": 20
+    },
+    {
+      "step": "Wheel snapped onto the right axle end (double tap)",
+      "studPx": 24
+    },
+    {
+      "step": "Distance sensor at the front edge (from the top view)",
+      "studPx": 18
+    }
+  ],
+  "smallTargets": [
+    {
+      "surface": "commandStrip",
+      "name": "Select a placed brick ([ and ] step thro",
+      "width": 180,
+      "height": 23
+    }
+  ],
+  "smallText": [
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "This browser only"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Scene"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Character"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "People"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Build"
+    },
+    {
+      "surface": "header",
+      "size": 12.5,
+      "text": "Explore"
+    },
+    {
+      "surface": "cameraCluster",
+      "size": 10,
+      "text": "Frame"
+    },
+    {
+      "surface": "cameraCluster",
+      "size": 10,
+      "text": "Top"
+    },
+    {
+      "surface": "cameraCluster",
+      "size": 10,
+      "text": "Front"
+    },
+    {
+      "surface": "cameraCluster",
+      "size": 10,
+      "text": "3D"
+    },
+    {
+      "surface": "dock",
+      "size": 11,
+      "text": "Bricks"
+    },
+    {
+      "surface": "toast",
+      "size": 12,
+      "text": "This build is already blank."
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Choose its shape and size"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "2 × 4 Plate"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "4 × 6 Plate"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "6 × 8 Plate"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Brush color"
+    },
+    {
+      "surface": "commandStrip",
+      "size": 9,
+      "text": "Placing"
+    },
+    {
+      "surface": "commandStrip",
+      "size": 11,
+      "text": "Rotate"
+    },
+    {
+      "surface": "commandStrip",
+      "size": 11,
+      "text": "Cancel"
+    },
+    {
+      "surface": "commandStrip",
+      "size": 11,
+      "text": "Place"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Hub"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Motor"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Short axle"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Long axle"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Wheel"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Distance sensor"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Light"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Button"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Hinge motor"
+    },
+    {
+      "surface": "drawerSheet",
+      "size": 10,
+      "text": "Seat"
+    },
+    {
+      "surface": "commandStrip",
+      "size": 11,
+      "text": "Jump to brick"
+    }
+  ],
+  "stages": [
+    {
+      "name": "start",
+      "shot": "01-start.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 0,
+          "top": 0,
+          "left": 0,
+          "bottom": 134
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "buildTools": 1.4,
+          "commandStrip": 3.4,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 92.9,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "commandStrip": {
+            "y": 960,
+            "x": 8,
+            "width": 804,
+            "height": 46
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "toast": {
+            "y": 136,
+            "x": 318,
+            "width": 184,
+            "height": 40
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        },
+        {
+          "surface": "toast",
+          "size": 12,
+          "text": "This build is already blank."
+        }
+      ]
+    },
+    {
+      "name": "drawer-plates",
+      "shot": "02-drawer-plates.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 0,
+          "top": 0,
+          "left": 0,
+          "bottom": 134
+        },
+        "coveredPercentBy": {
+          "div[data-testid=brick-sheet-backdrop].brick-sheet-backdrop": 51.2,
+          "drawerSheet": 48.8
+        },
+        "freeCanvasPercent": 0,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "drawerSheet": {
+            "y": 592,
+            "x": 0,
+            "width": 820,
+            "height": 502
+          },
+          "commandStrip": {
+            "y": 960,
+            "x": 8,
+            "width": 804,
+            "height": 46
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [
+          {
+            "b": "commandStrip",
+            "width": 804,
+            "a": "drawerSheet",
+            "height": 46
+          },
+          {
+            "b": "dock",
+            "width": 128,
+            "a": "drawerSheet",
+            "height": 60
+          }
+        ],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Choose its shape and size"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "2 × 4 Plate"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "4 × 6 Plate"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "6 × 8 Plate"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Brush color"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "tap-on-ghost-swallowed",
+      "shot": "03-tap-on-ghost-swallowed.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 0,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "buildTools": 1.4,
+          "commandStrip": 9.2,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 87.2,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ],
+      "footprint": {
+        "ghost": {
+          "y": 0,
+          "z": 28,
+          "partId": "plate_6x8",
+          "x": 29,
+          "rotation": 0
+        },
+        "left": 284,
+        "right": 530,
+        "top": 424,
+        "bottom": 555
+      }
+    },
+    {
+      "name": "plate-placed",
+      "shot": "04-plate-placed.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 0,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "buildTools": 1.4,
+          "commandStrip": 9.2,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 87.2,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "drawer-robotics",
+      "shot": "05-drawer-robotics.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 0,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "drawerSheet": 54.6,
+          "div[data-testid=brick-sheet-backdrop].brick-sheet-backdrop": 45.4
+        },
+        "freeCanvasPercent": 0,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "drawerSheet": {
+            "y": 534,
+            "x": 0,
+            "width": 820,
+            "height": 560
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [
+          {
+            "b": "commandStrip",
+            "width": 804,
+            "a": "drawerSheet",
+            "height": 98
+          },
+          {
+            "b": "dock",
+            "width": 128,
+            "a": "drawerSheet",
+            "height": 60
+          }
+        ],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Choose its shape and size"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Hub"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Motor"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Short axle"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Long axle"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Wheel"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Distance sensor"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Light"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Button"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Hinge motor"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Seat"
+        },
+        {
+          "surface": "drawerSheet",
+          "size": 10,
+          "text": "Brush color"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "hub-card",
+      "shot": "06-hub-card.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "buildTools": 1.4,
+          "commandStrip": 9.2,
+          "card": 17.5,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 69.7,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "card": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 491
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "card-name-focused",
+      "shot": "07-card-name-focused.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "buildTools": 1.4,
+          "commandStrip": 9.2,
+          "card": 17.5,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 69.7,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "card": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 491
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ],
+      "focus": {
+        "innerHeight": 1094,
+        "focused": "Creation name",
+        "visual": {
+          "offsetTop": 0,
+          "height": 1094
+        },
+        "scale": 1
+      }
+    },
+    {
+      "name": "motors",
+      "shot": "08-motors.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "panel": 26.1,
+          "wiringLine": 2.8,
+          "commandStrip": 9.2,
+          "buildTools": 1.4,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 58.3,
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "wiringLine": {
+            "y": 140,
+            "x": 8,
+            "width": 334,
+            "height": 64
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 732
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "axles",
+      "shot": "09-axles.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "panel": 26.5,
+          "wiringLine": 2.8,
+          "commandStrip": 9.2,
+          "buildTools": 1.4,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 57.8,
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "wiringLine": {
+            "y": 140,
+            "x": 8,
+            "width": 334,
+            "height": 64
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 746
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          }
+        },
+        "overlaps": [],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "wheels",
+      "shot": "10-wheels.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 186
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "panel": 31.2,
+          "buildTools": 1.4,
+          "commandStrip": 7.5,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 57.7,
+        "rects": {
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          },
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 880
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "commandStrip": {
+            "y": 908,
+            "x": 8,
+            "width": 804,
+            "height": 98
+          },
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          }
+        },
+        "overlaps": [
+          {
+            "b": "commandStrip",
+            "width": 300,
+            "a": "panel",
+            "height": 44
+          }
+        ],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 9,
+          "text": "Placing"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Rotate"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Cancel"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Place"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "rover-built",
+      "shot": "11-rover-built.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 150
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "panel": 31.2,
+          "wiringLine": 2.9,
+          "commandStrip": 5.3,
+          "buildTools": 1.4,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 56.9,
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "wiringLine": {
+            "y": 140,
+            "x": 8,
+            "width": 346,
+            "height": 64
+          },
+          "commandStrip": {
+            "y": 944,
+            "x": 8,
+            "width": 804,
+            "height": 62
+          },
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 880
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          }
+        },
+        "overlaps": [
+          {
+            "b": "commandStrip",
+            "width": 300,
+            "a": "panel",
+            "height": 8
+          }
+        ],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [
+        {
+          "surface": "commandStrip",
+          "name": "Select a placed brick ([ and ] step thro",
+          "width": 180,
+          "height": 23
+        }
+      ],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Jump to brick"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ],
+      "fonts": {
+        ".robotics-name": {
+          "fontSize": "16px",
+          "fontWeight": "900",
+          "fontFamily": "Nunito, ui-rounded, system-ui, -apple-sy"
+        },
+        ".robotics-chip": {
+          "fontSize": "13px",
+          "fontWeight": "800",
+          "fontFamily": "Nunito, ui-rounded, system-ui, -apple-sy"
+        },
+        ".robotics-nudge-row .studio-button": {
+          "fontSize": "13px",
+          "fontWeight": "900",
+          "fontFamily": "Nunito, ui-rounded, system-ui, -apple-sy"
+        },
+        ".robotics-link-button": {
+          "fontSize": "13px",
+          "fontWeight": "900",
+          "fontFamily": "Nunito, ui-rounded, system-ui, -apple-sy"
+        }
+      }
+    },
+    {
+      "name": "driving",
+      "shot": "12-driving.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 150
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "panel": 31.2,
+          "wiringLine": 2.9,
+          "commandStrip": 5.3,
+          "buildTools": 1.4,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 56.9,
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "wiringLine": {
+            "y": 140,
+            "x": 8,
+            "width": 346,
+            "height": 64
+          },
+          "commandStrip": {
+            "y": 944,
+            "x": 8,
+            "width": 804,
+            "height": 62
+          },
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 880
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          }
+        },
+        "overlaps": [
+          {
+            "b": "commandStrip",
+            "width": 300,
+            "a": "panel",
+            "height": 8
+          }
+        ],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [
+        {
+          "surface": "commandStrip",
+          "name": "Select a placed brick ([ and ] step thro",
+          "width": 180,
+          "height": 23
+        }
+      ],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Jump to brick"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    },
+    {
+      "name": "reset",
+      "shot": "13-reset.jpg",
+      "layout": {
+        "canvas": {
+          "y": 64,
+          "x": 0,
+          "width": 820,
+          "height": 1030
+        },
+        "framingInsets": {
+          "right": 384,
+          "top": 0,
+          "left": 0,
+          "bottom": 150
+        },
+        "coveredPercentBy": {
+          "dock": 0.9,
+          "panel": 31.2,
+          "wiringLine": 2.9,
+          "commandStrip": 5.3,
+          "buildTools": 1.4,
+          "cameraCluster": 1.4
+        },
+        "freeCanvasPercent": 56.9,
+        "rects": {
+          "header": {
+            "y": 0,
+            "x": 0,
+            "width": 820,
+            "height": 64
+          },
+          "wiringLine": {
+            "y": 140,
+            "x": 8,
+            "width": 346,
+            "height": 64
+          },
+          "commandStrip": {
+            "y": 944,
+            "x": 8,
+            "width": 804,
+            "height": 62
+          },
+          "panel": {
+            "y": 72,
+            "x": 436,
+            "width": 300,
+            "height": 880
+          },
+          "cameraCluster": {
+            "y": 76,
+            "x": 754,
+            "width": 58,
+            "height": 200
+          },
+          "buildTools": {
+            "y": 76,
+            "x": 8,
+            "width": 202,
+            "height": 58
+          },
+          "dock": {
+            "y": 1014,
+            "x": 346,
+            "width": 128,
+            "height": 60
+          }
+        },
+        "overlaps": [
+          {
+            "b": "commandStrip",
+            "width": 300,
+            "a": "panel",
+            "height": 8
+          }
+        ],
+        "viewport": {
+          "dpr": 2,
+          "width": 820,
+          "height": 1094,
+          "visual": {
+            "width": 820,
+            "offsetTop": 0,
+            "height": 1094
+          }
+        }
+      },
+      "smallTargets": [
+        {
+          "surface": "commandStrip",
+          "name": "Select a placed brick ([ and ] step thro",
+          "width": 180,
+          "height": 23
+        }
+      ],
+      "smallText": [
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "This browser only"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Scene"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Character"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "People"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Build"
+        },
+        {
+          "surface": "header",
+          "size": 12.5,
+          "text": "Explore"
+        },
+        {
+          "surface": "commandStrip",
+          "size": 11,
+          "text": "Jump to brick"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Frame"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Top"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "Front"
+        },
+        {
+          "surface": "cameraCluster",
+          "size": 10,
+          "text": "3D"
+        },
+        {
+          "surface": "dock",
+          "size": 11,
+          "text": "Bricks"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+
+iPad Air 11-inch (M4) (F219AEB2-3E29-41D4-91AB-6BA943B005D7) · Safari 26.5 · portrait 820×1094 @2x · compact layout true
+PASS env:touch-device — the page sees a touch device: pointer coarse true, hover false, maxTouchPoints 5; user agent says "Macintosh; Intel Mac OS X 10_15_7"
+  INFO ua-desktop — iPadOS Safari reports a Macintosh user agent; only pointer/hover media queries and maxTouchPoints reveal the tablet. Any UA sniffing would treat it as a desktop.
+  shot 01-start.jpg
+
+0. Camera by touch
+PASS camera:one-finger-orbit — a one-finger drag across open canvas turned the view (a 3-unit x axis went from 98,42 px to 106,-26 px on screen); page scale 1, scrollY 0
+
+1. Proof of touch: arm, position, Place
+  shot 02-drawer-plates.jpg
+PASS arm:plate_6x8 — tapping "6 × 8 Plate" armed plate_6x8; drawer sheet closed
+PASS ghost-tap:swallowed-evidence — with the plate armed, its ghost at 29,0,28 covers 246×131 px on screen (x 284–530, y 424–555; 24 px slop around it). A tap at (422, 460), inside it, did nothing (swallowed as a ghost grab)
+  MAJOR tap-on-ghost — A tap on the armed ghost's own footprint (plus 24 px) is taken as a ghost grab and does nothing; only a drag moves it (with the ghost riding 44 px above the finger) or a double tap places it where it already is. The 6 × 8 plate's first ghost covers 246×131 px at the home camera, right where a student taps to put the plate "a bit over". The rule is the app's (BrickStudioScene ghost grab), so Chrome touch emulation behaves the same: a design finding, not a WebKit one.
+  shot 03-tap-on-ghost-swallowed.jpg
+PASS ghost:6 × 8 plate on the baseplate — 6 × 8 plate on the baseplate: one tap at (589, 523; one stud there is 25 px) put the ghost at 36,0,26 r0 (wanted 36,0,26 r0); nothing placed yet: true
+PASS placed:6 × 8 plate on the baseplate — 6 × 8 plate on the baseplate: Place placed plate_6x8 at 36,0,26 r0
+PASS proof:real-touch-events — the page received 6 pointerdown events with pointerType "touch" for the proof taps; click events arrived with pointerType mouse
+  RISK click-pointerType-mouse — In iPadOS Safari a tap's click event carries pointerType "mouse" (Chrome's touch emulation reports "touch"). The studio's mesh onClick handlers (Baseplate, BrickObject, instanced bricks) read click.pointerType to ignore touch taps, so in Safari they see a mouse click; only the canvas-level touch click guard (450 ms after a touch pointerup) keeps a first tap from placing. It held for every tap of this run. Emulation hides this.
+  shot 04-plate-placed.jpg
+
+2. Hub and the creation card
+  shot 05-drawer-robotics.jpg
+PASS arm:robo_hub — tapping "Hub" armed robo_hub; drawer sheet closed
+PASS ghost:Hub on the plate — Hub on the plate: one tap at (603, 506; one stud there is 25 px) put the ghost at 37,1,27 r0 (wanted 37,1,27 r0); nothing placed yet: true
+PASS placed:Hub on the plate — Hub on the plate: Place placed robo_hub at 37,1,27 r0
+PASS hub:card-opens — placing the hub opened the creation card: {"suggestedName":"Creation","creationId":null}
+  shot 06-hub-card.jpg
+PASS card:name-focus-by-tap — a tap focused the name field (Creation name); visual viewport {"offsetTop":0,"height":1094} of 1094 (scale 1)
+  shot 07-card-name-focused.jpg
+  HARNESS typing-not-drivable — WebDriver typing into the focused field fired key events but inserted no text (field still "Creation"); the name was entered with a script-dispatched input event instead. The software keyboard was not exercised.
+PASS card:name-entered — the field reads "Touch buggy"
+PASS card:named — after "Not now" the card is closed and the creation is named "Touch buggy"
+
+3. Motors
+PASS arm:robo_motor — tapping "Motor" armed robo_motor; drawer sheet closed
+PASS ghost:First motor (right side) — First motor (right side): one tap at (204, 540; one stud there is 22 px) put the ghost at 39,1,31 r0 (wanted 39,1,31 r0); nothing placed yet: true
+PASS placed:First motor (right side) — First motor (right side): Place placed robo_motor at 39,1,31 r0
+PASS motor1:wired-no-card — no card; wiring line: Right motor connected to port A
+PASS arm:robo_motor — tapping "Motor" armed robo_motor; drawer sheet closed
+PASS motor2:spot-hidden-in-3d — from the 3D view a tap on the second motor's spot at (147, 513) put the ghost at 36,1,31 — on the plate
+PASS ghost:Second motor (left side, Rotate tapped twice, from the top view) — Second motor (left side, Rotate tapped twice, from the top view): one tap at (181, 548; one stud there is 25 px) put the ghost at 36,1,31 r2 (wanted 36,1,31 r2); nothing placed yet: true
+PASS placed:Second motor (left side, Rotate tapped twice, from the top view) — Second motor (left side, Rotate tapped twice, from the top view): Place placed robo_motor at 36,1,31 r2
+PASS motor2:wired-no-card — no card; wiring line: Left motor connected to port B
+  shot 08-motors.jpg
+
+4. Axles by tapping the motors
+PASS arm:robo_axle_short — tapping "Short axle" armed robo_axle_short; drawer sheet closed
+PASS ghost:Short axle snapped into the left motor (tap the motor) — Short axle snapped into the left motor (tap the motor): one tap at (146, 474; one stud there is 21 px) put the ghost at 34,0,32 r0 (wanted 34,0,32 r0); nothing placed yet: true
+PASS placed:Short axle snapped into the left motor (tap the motor) — Short axle snapped into the left motor (tap the motor): Place placed robo_axle_short at 34,0,32 r0
+PASS arm:robo_axle_short — tapping "Short axle" armed robo_axle_short; drawer sheet closed
+PASS ghost:Short axle snapped into the right motor (tap the motor) — Short axle snapped into the right motor (tap the motor): one tap at (204, 500; one stud there is 22 px) put the ghost at 42,0,32 r0 (wanted 42,0,32 r0); nothing placed yet: true
+PASS placed:Short axle snapped into the right motor (tap the motor) — Short axle snapped into the right motor (tap the motor): Place placed robo_axle_short at 42,0,32 r0
+PASS axles:in-sockets — motors report axles: [true,true]
+  shot 09-axles.jpg
+
+5. Wheels by tapping the axle ends
+PASS arm:robo_wheel — tapping "Wheel" armed robo_wheel; drawer sheet closed
+PASS ghost:Wheel snapped onto the left axle end (tap, Place) — Wheel snapped onto the left axle end (tap, Place): one tap at (102, 474; one stud there is 20 px) put the ghost at 33,0,31 r0 (wanted 33,0,31 r0); nothing placed yet: true
+PASS placed:Wheel snapped onto the left axle end (tap, Place) — Wheel snapped onto the left axle end (tap, Place): Place placed robo_wheel at 33,0,31 r0
+PASS arm:robo_wheel — tapping "Wheel" armed robo_wheel; drawer sheet closed
+PASS double-tap-place:Wheel snapped onto the right axle end (double tap) — Wheel snapped onto the right axle end (double tap): double tap at (255, 543) placed robo_wheel at 44,0,31 r0
+PASS double-tap:no-page-zoom — after the double tap the page scale is 1 (the studio root is touch-action none)
+  shot 10-wheels.jpg
+
+6. Sensor from the top view
+PASS arm:robo_distance_sensor — tapping "Distance sensor" armed robo_distance_sensor; drawer sheet closed
+PASS ghost:Distance sensor at the front edge (from the top view) — Distance sensor at the front edge (from the top view): one tap at (218, 423; one stud there is 18 px) put the ghost at 38,1,26 r0 (wanted 38,1,26 r0); nothing placed yet: true
+PASS placed:Distance sensor at the front edge (from the top view) — Distance sensor at the front edge (from the top view): Place placed robo_distance_sensor at 38,1,26 r0
+PASS sensor:wired — wiring line: Front sensor connected to port C
+PASS rover:assembled — one creation "Touch buggy" over 9 bricks and 3 bodies; wheels [{"onAxle":true,"note":null},{"onAxle":true,"note":null}]; ready: Axles and wheels on both motors, so it can roll
+PASS rover:card-never-reopened — the card stayed closed through seven more parts
+PASS fonts:robotics-shorthand — computed fonts (robotics.css declares name 900 15px, chip 800 11.5px, link 900 12px via `font: … inherit`): {".robotics-name":{"fontSize":"16px","fontWeight":"900","fontFamily":"Nunito, ui-rounded, system-ui, -apple-sy"},".robotics-chip":{"fontSize":"13px","fontWeight":"800","fontFamily":"Nunito, ui-rounded, system-ui, -apple-sy"},".robotics-nudge-row .studio-button":{"fontSize":"13px","fontWeight":"900","fontFamily":"Nunito, ui-rounded, system-ui, -apple-sy"},".robotics-link-button":{"fontSize":"13px","fontWeight":"900","fontFamily":"Nunito, ui-rounded, system-ui, -apple-sy"}}
+  shot 11-rover-built.jpg
+
+7. Drive forward and Reset from the panel
+PASS drive:rolls — after 2.6 s: 4.89 forward, -0.02 sideways, yaw -0.2°, simulated 2.59 s
+PASS drive:rover-visible — the driving rover's chassis is at (300, 469) on screen: on open canvas
+  shot 12-driving.jpg
+  MINOR needs-scroll:[data-testid="robotics-reset"] — "Reset" was not in view: it needs a scroll of aside[data-testid=robotics-panel][aria-label="Robotics"].robotics-panel.compact (485 px)
+PASS reset:built-pose — after Reset: status "Built pose", run gone, document unchanged
+  shot 13-reset.jpg
+
+46/46 checks passed; 5 findings; evidence in docs/qa/robotics-spike-final/regression/robotics-cp3-touch

@@ -32,7 +32,10 @@ robotics kit?* Everything below was built to answer it and is evidenced in real 
 Programs and cables live in the world document's versioned `robotics` section: they autosave, reload and ride along with
 the world. Studio Undo covers construction and cables but never reverts code (Blockly has its own undo).
 
-## Evidence (real Chrome 1366×768 unless noted; all against the integration branch on 127.0.0.1:5232)
+## Evidence (real Chrome 1366×768 unless noted; every row re-run on commit `d34ebfb` on 127.0.0.1:5232)
+
+Summary file: `regression/summary.txt`. Lane-by-lane evidence with more screenshots: `../robotics-cp2/`, `../robotics-cp3/`,
+`../robotics-cp4/`; the checkpoint 1 repair and the lead's review: `../robotics-spike-cp1-repair/README.md`.
 
 | Checkpoint | Harness | Result | Evidence |
 |---|---|---|---|
@@ -42,8 +45,8 @@ the world. Studio Undo covers construction and cables but never reverts code (Bl
 | 2 · run controller and stage | `scripts/qa/robotics-cp2-run.mjs` | 18/18 | `regression/robotics-cp2-run/` |
 | 2 · Code view journeys (rover, joystick, gate, signal post, reload) | `scripts/qa/robotics-cp2-code.mjs` | 51/51 | `regression/robotics-cp2-code/` |
 | 2 · the five failures | `scripts/qa/robotics-cp2-failures.mjs` | 70/70 | `regression/robotics-cp2-failures/` |
-| 3 · build journey by real touch, iPadOS Safari (simulator) | `scripts/qa/robotics-cp3-touch.mjs` | 46/46 | `../robotics-cp3/touch/portrait-after-fixes/` |
-| 3 · Code view by real touch, iPadOS Safari (simulator) | `scripts/qa/robotics-cp3-ipad-code.mjs` | see below | `../robotics-cp3/ipad-code/` |
+| 3 · build journey by real touch, iPadOS Safari (simulator, portrait) | `scripts/qa/robotics-cp3-touch.mjs` | 46/46 | `regression/robotics-cp3-touch/` |
+| 3 · Code view by real touch, iPadOS Safari (simulator, portrait, stacked layout) | `scripts/qa/robotics-cp3-ipad-code.mjs` | 39/39 | `regression/robotics-cp3-ipad-code/` |
 | 4 · Explore riding | `scripts/qa/robotics-cp4-explore.mjs` | 24/24 | `regression/robotics-cp4-explore/` |
 
 Unit and type checks on the final commit: `npx vitest run` (whole suite, including Codex's
@@ -73,6 +76,8 @@ A rover missing a wheel is still a rover (same run space, same wall).
 - **Physical iPad**: every touch result is iPadOS Safari 26.5 on the iOS Simulator (real WebKit, real touch events, one
   finger). A real iPad, pinch and landscape are unverified; landscape needs someone to rotate the simulator (⌘←) and re-run
   the touch harnesses, which write to `landscape/` folders.
+- **Portrait tablet panel**: in Build, the creation panel's Nudge Reset needs a scroll inside the panel (Hide collapses
+  it). Blockly's number dialog brings up the full keyboard on a real iPad (a decimal keypad needs a custom prompt).
 - **Studio-wide touch findings left for `main`** (`../robotics-cp3/touch/README.md`): a tap inside the armed ghost's own
   area does nothing; a spot hidden behind a part needs the Top view; Safari reports a tap's click as `pointerType: mouse`.
 - **Later by design**: the Worlds starter gallery, a drive-pair picker (the pair is proposed automatically; "Choose two

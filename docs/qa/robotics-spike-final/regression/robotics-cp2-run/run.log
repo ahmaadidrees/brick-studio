@@ -5,11 +5,11 @@ PASS A.rover-built — a rover of 9 bricks, runs on the test plate, drive pair w
 PASS A.stage-open — stage on the testPlate: 14/14 studio bricks hidden, props ["wall"]
 PASS A.beam-sees-wall — before Run the front sensor reads 12 studs to the wall (hit true)
   shot A2-stage-open-world-hidden-wall-beam.png
-PASS A.driving — 1.5 s after Run: 3.33 studs/s, sensor 8.05 studs
+PASS A.driving — 1.5 s after Run: 3.33 studs/s, sensor 8.02 studs
   shot A3-rover-driving.png
 PASS A.stops-before-wall — braked at 2.99 studs (t=2.92 s), rests 2.47 studs from the wall, speed 0
-PASS A.distance-shrinks — sensor every 0.25 s: 12 → 11.67 → 11 → 10.22 → 9.41 → 8.58 → 7.74 → 6.91 → 6.08 → 5.24 → 4.41 → 3.58 → 2.78 → 2.49 → 2.47 → 2.47 → 2.47
-PASS A.real-time — program time 4.01 s over 4.01 s of wall time since Run (stalls dropped since the stage opened: 0.000 s)
+PASS A.distance-shrinks — sensor every 0.25 s: 12 → 11.67 → 11 → 10.22 → 9.4 → 8.58 → 7.74 → 6.91 → 6.08 → 5.24 → 4.41 → 3.58 → 2.78 → 2.49 → 2.47 → 2.47 → 2.47
+PASS A.real-time — program time 4.03 s over 4.04 s of wall time since Run (stalls dropped since the stage opened: 0.000 s)
   shot A4-rover-stopped-before-wall.png
 PASS A.reset — Reset rebuilds the stage at the built pose (every body at x = z = 0), program stopped
   shot A5-rover-reset.png

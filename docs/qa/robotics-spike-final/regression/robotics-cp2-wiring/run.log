@@ -10,7 +10,7 @@ PASS W0.cables-lifted — every cable arcs above both of its ends (lifts 1.68, 1
   shot W1-rover-cables.png
 
 W1. Hub ports: select the hub in the canvas, pick the sensor from its port list, move it to D
-PASS W1.hub-selected — clicking the hub at (617, 361) selects it (brick-1790165931671-0ieiod)
+PASS W1.hub-selected — clicking the hub at (617, 361) selects it (brick-1790168423110-o6v5ni)
 PASS W1.hub-ports — hub inspector: ALeft motor | BRight motor | CFront sensor | DPort D · free
   shot W2-hub-inspector.png
 PASS W1.port-selects-device — clicking port C in the hub list selects the front sensor; its inspector says Port C
@@ -49,7 +49,7 @@ PASS W5.label — history: Swap ports of Left motor and Right motor
   shot W6-swapped.png
 
 W6. Rename
-PASS W6.renamed — devices: {"brick-1790165932116-rrzgu8":{"name":"Big wheel"}}
+PASS W6.renamed — devices: {"brick-1790168423568-8lnlsf":{"name":"Big wheel"}}
 PASS W6.label-and-toast — history: Rename Left motor to Big wheel; toast: Left motor is now called Big wheel. Blocks that use it show the new name.
 PASS W6.block-and-panel — block: run Big wheel · B ▾ at 40 %
   shot W7-renamed.png
@@ -69,7 +69,7 @@ PASS W8.light-inspector — inspector: Unplugged
   shot W9-manual-light-unplugged.png
 
 W9. Delete the right motor, then Undo
-PASS W9.right-selected — clicking the right motor selects it (brick-1790165932245-o57w3a); Port A
+PASS W9.right-selected — clicking the right motor selects it (brick-1790168423699-ermrsq); Port A
 PASS W9.deleted — the right motor is gone
 PASS W9.cable-kept — its cable stays in the document (stale), so Undo can restore it
 PASS W9.cable-not-drawn — a stale cable is not drawn

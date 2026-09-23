@@ -10,24 +10,24 @@ PASS A.wiring-left-motor — assisted wiring line: Left motor connected to port 
 PASS A.wiring-right-motor — assisted wiring line: Right motor connected to port B
 PASS A.wiring-sensor — assisted wiring line: Front sensor connected to port C
 PASS A.one-creation — one creation over 9 bricks and 3 bodies
-PASS A.two-wheels-on-motors — wheels: [{"id":"brick-1790166308074-zehzkz","onAxle":true,"note":null},{"id":"brick-1790166308209-8t5ui8","onAxle":true,"note":null}]
+PASS A.two-wheels-on-motors — wheels: [{"id":"brick-1790168332147-5p147w","onAxle":true,"note":null},{"id":"brick-1790168332281-98dbyl","onAxle":true,"note":null}]
 PASS A.ready-line — ready line: Axles and wheels on both motors, so it can roll
-PASS A.drive-pair-reversed — drive pair reversed: ["brick-1790166307681-0se9vn"]
+PASS A.drive-pair-reversed — drive pair reversed: ["brick-1790168331752-x1kg8y"]
 PASS A.card-stays-closed-for-existing — a device joining the saved creation does not reopen the card (naming never interrupts building)
 PASS A.anchors-refreshed — the wiring writes refreshed the creation's anchors to every stud-attached brick (5; axles and wheels join by mechanism links, never as anchors)
   shot A3-rover-panel.png
 PASS A.named — the creation was renamed from the panel
-PASS A.rolls — after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°
+PASS A.rolls — after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°
 PASS A.bodies-hidden-while-running — 9 bricks drawn by the simulation
   shot A4-rover-rolls.png
 PASS A.reset-document-unchanged — document identical after Nudge + Reset
 PASS A.reset-shows-built-pose — Reset returns to the built pose
 PASS A.wheel-off-note — wheel card: Not on an axle · the nearest axle end is 1 stud away
 PASS A.wheel-off-selected-part — selected wheel says Not on an axle
-PASS A.wheel-off-motor-spins — left motor output turned 290°, wheel stayed (not simulated), body moved 0.00
+PASS A.wheel-off-motor-spins — left motor output turned 289°, wheel stayed (not simulated), body moved 0.00
   shot A5-wheel-off-axle.png
 PASS A.wheel-back-on — wheel back on its axle
-PASS A.same-sign-turns — both at +40%: yaw -68.4°, drift 0.63
+PASS A.same-sign-turns — both at +40%: yaw -68.5°, drift 0.62
 PASS A.reversed-shown — panel: drive pair shows Right motor reversed
   shot A6-same-sign-turns.png
 PASS A.reset-again-unchanged — document identical after every nudge
@@ -51,7 +51,7 @@ PASS B.panel-angle — panel reports the hinge angle
   shot B2-gate-swings.png
 PASS B.back-to-zero — back at 0.0°
 PASS B.reset-unchanged — document identical after the swing + Reset
-PASS B.locked — locked; bridging joint [["brick-1790166328414-kuibf3","brick-1790166321132-uk2qub"]]
+PASS B.locked — locked; bridging joint [["brick-1790168352470-9h7xow","brick-1790168345204-5hutfi"]]
 PASS B.locked-line — ready line: Arm motor's arm is built into the frame, so it can't swing
   shot B3-gate-built-into-frame.png
 PASS B.locked-nudge-explains — nudge on a locked hinge: The arm is built into the frame, so it cannot swing.

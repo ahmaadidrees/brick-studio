@@ -1,7 +1,10 @@
-robotics-spike-cp1 :: exit 1 ::  :: FAIL lines 1
+commit d34ebfb on 127.0.0.1:5232
+robotics-spike-cp1 :: exit 0 :: 49/49 checks passed :: FAIL lines 0
 robotics-spike-cp1-pointer :: exit 0 :: 78/78 checks passed :: FAIL lines 0
 robotics-cp2-wiring :: exit 0 :: 53/53 checks passed :: FAIL lines 0
 robotics-cp2-run :: exit 0 :: 18/18 checks passed :: FAIL lines 0
-robotics-cp2-code :: exit 1 ::  :: FAIL lines 1
-robotics-cp2-failures :: exit 1 :: 69/70 checks passed :: FAIL lines 1
+robotics-cp2-code :: exit 0 :: 51/51 checks passed :: FAIL lines 0
+robotics-cp2-failures :: exit 0 :: 70/70 checks passed :: FAIL lines 0
 robotics-cp4-explore :: exit 0 :: 24/24 checks passed :: FAIL lines 0
+robotics-cp3-touch (iPadOS Safari, simulator) :: exit 0 :: 46/46 checks passed; 5 findings; evidence in docs/qa/robotics-spike-final/regression/robotics-cp3-touch :: FAIL lines 0
+robotics-cp3-ipad-code (iPadOS Safari, simulator) :: exit 0 :: 39/39 checks passed; 1 findings; evidence in docs/qa/robotics-spike-final/regression/robotics-cp3-ipad-code :: FAIL lines 0

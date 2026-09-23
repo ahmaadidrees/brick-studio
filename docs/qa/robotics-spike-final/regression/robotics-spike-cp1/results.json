@@ -1,7 +1,7 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
-  "at": "2026-09-23T12:25:33.028Z",
+  "at": "2026-09-23T12:59:17.113Z",
   "results": [
     {
       "id": "A.card-opens-on-first-device",
@@ -46,7 +46,7 @@
     {
       "id": "A.two-wheels-on-motors",
       "ok": true,
-      "detail": "wheels: [{\"id\":\"brick-1790166308074-zehzkz\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790166308209-8t5ui8\",\"onAxle\":true,\"note\":null}]"
+      "detail": "wheels: [{\"id\":\"brick-1790168332147-5p147w\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790168332281-98dbyl\",\"onAxle\":true,\"note\":null}]"
     },
     {
       "id": "A.ready-line",
@@ -56,7 +56,7 @@
     {
       "id": "A.drive-pair-reversed",
       "ok": true,
-      "detail": "drive pair reversed: [\"brick-1790166307681-0se9vn\"]"
+      "detail": "drive pair reversed: [\"brick-1790168331752-x1kg8y\"]"
     },
     {
       "id": "A.card-stays-closed-for-existing",
@@ -76,7 +76,7 @@
     {
       "id": "A.rolls",
       "ok": true,
-      "detail": "after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°"
+      "detail": "after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°"
     },
     {
       "id": "A.bodies-hidden-while-running",
@@ -106,7 +106,7 @@
     {
       "id": "A.wheel-off-motor-spins",
       "ok": true,
-      "detail": "left motor output turned 290°, wheel stayed (not simulated), body moved 0.00"
+      "detail": "left motor output turned 289°, wheel stayed (not simulated), body moved 0.00"
     },
     {
       "id": "A.wheel-back-on",
@@ -116,7 +116,7 @@
     {
       "id": "A.same-sign-turns",
       "ok": true,
-      "detail": "both at +40%: yaw -68.4°, drift 0.63"
+      "detail": "both at +40%: yaw -68.5°, drift 0.62"
     },
     {
       "id": "A.reversed-shown",
@@ -196,7 +196,7 @@
     {
       "id": "B.locked",
       "ok": true,
-      "detail": "locked; bridging joint [[\"brick-1790166328414-kuibf3\",\"brick-1790166321132-uk2qub\"]]"
+      "detail": "locked; bridging joint [[\"brick-1790168352470-9h7xow\",\"brick-1790168345204-5hutfi\"]]"
     },
     {
       "id": "B.locked-line",

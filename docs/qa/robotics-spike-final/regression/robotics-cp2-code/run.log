@@ -30,10 +30,10 @@ PASS R1.studio-hidden — the brick drawer, creation panel and command strip are
 
 R2. Run: it drives and stops before the wall
   shot C2-rover-running.png
-PASS R2.drives — top speed 3.33 studs/s
-PASS R2.stops-before-wall — the sensor read 2.45 studs at rest (never under 2.45): it never touched the wall
+PASS R2.drives — top speed 3.34 studs/s
+PASS R2.stops-before-wall — the sensor read 2.48 studs at rest (never under 2.48): it never touched the wall
 PASS R2.readings-are-the-blocks-values — stage chips {"Front sensor":"2.5 studs","Motors":"0 · 0 % (speed 0 · 0 %)","Speed":"0.0 st/s"} match the observation the blocks read
-PASS R2.status — status: Done · 4.2 s
+PASS R2.status — status: Done · 4.1 s
   shot C3-rover-stopped-before-wall.png
 
 R3. Reset
@@ -45,12 +45,12 @@ PASS R4.saved — typed 6 into the field: saved as revision 1
 PASS R4.changed-line — while it runs: "Changed · press Run to use it"
   shot C5-changed-while-running.png
 PASS R4.run-keeps-its-revision — the run that started with 3 still braked at 3: rests 2.47 studs from the wall
-PASS R4.stops-earlier — with 6 it rests 5.47 studs from the wall (with 3: 2.47)
+PASS R4.stops-earlier — with 6 it rests 5.46 studs from the wall (with 3: 2.47)
 PASS R4.no-changed-line — the new run uses the saved program: no "Changed" line
   shot C6-stops-earlier.png
 
 R4b. A block from the palette; Delete and ⌘Z inside the workspace
-PASS R4b.dragged-in — dragged "stop Left motor · A" out of the palette: Left motor · A (value brick-1790166707133-2zew0e)
+PASS R4b.dragged-in — dragged "stop Left motor · A" out of the palette: Left motor · A (value brick-1790168514199-y612z5)
 PASS R4b.snapped — it snapped under "stop motors" (robo_stop_motor)
 PASS R4b.blockly-keys — Delete removed the block and ⌘Z brought it back (Blockly’s own undo), both saved
 PASS R4b.studio-untouched — the studio saw neither key: no brick deleted, nothing on its Undo stack
@@ -69,9 +69,9 @@ PASS R6.still-runs — rewired, it still drives and stops before the wall: 5.45 
 R7. A "Joystick drive" program: the on-screen joystick and the arrow keys
 PASS R7.new-program — the + menu added "Joystick drive" as a second tab and made it active
   shot C9-joystick-drive.png
-PASS R7.joystick-drives — mouse-dragging the stick up: 3.39 studs/s forward, wall 12.0 → 9.4 studs; chip "Motors 41 · 41 % (speed 35 · 34 %)"
+PASS R7.joystick-drives — mouse-dragging the stick up: 3.40 studs/s forward, wall 12.0 → 9.2 studs; chip "Motors 41 · 41 % (speed 34 · 36 %)"
 PASS R7.joystick-release — letting go centres the stick and the motors stop
-PASS R7.arrow-up — ArrowUp held: 6.71 studs/s, wall 12.0 → 10.6 studs
+PASS R7.arrow-up — ArrowUp held: 6.41 studs/s, wall 12.0 → 10.8 studs
 PASS R7.arrow-left — ArrowLeft held: raw powers -100 and -100 (the right motor is reversed, so equal signs spin the rover)
 PASS R7.keypad-lights — the Keys pad lights the arrow being held
   shot C10-keys.png

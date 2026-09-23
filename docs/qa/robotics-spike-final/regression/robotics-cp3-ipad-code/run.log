@@ -1,0 +1,72 @@
+
+iPad Air 11-inch (M4) (F219AEB2-3E29-41D4-91AB-6BA943B005D7) · Safari 26.5 · 820×1094 @2x · portrait true
+PASS env:touch-portrait — the page sees a touch device in portrait: pointer coarse true, hover false, maxTouchPoints 5, 820×1094 CSS px of a 820×1180 screen (Safari's bars take the rest)
+
+0. Build the rover (store placements) and name it
+PASS build:rover-named — one creation "Mars buggy" over 9 bricks (Axles and wheels on both motors, so it can roll); the name field was focused by a tap and filled by a script input event, "Not now" tapped
+  shot 01-build-panel.jpg
+PASS studio:long-press-selects-nothing — a 0.8 s press on "✓9 bricks attached · 1 hub, 2 motors, 2 …" selected nothing (studio -webkit-user-select none; the panel's name field stays text)
+
+1. Open the Code view by touch
+PASS open:code-button — tapped "Code" (61×44 px) in the creation panel; the Code view opened
+PASS first-run:state — first run: 1 script, palette collapsed, 9 rail rows, goal "Try it: change 3 to 6. Does it stop earlier or later?"
+  shot 02-code-first-run.jpg
+PASS first-run:controls-reachable — every Code control is on screen and on top at the tap point; the nine rail rows end at y 450 of 1094 (rows 64×50); all at least 44 px
+PASS first-run:controls-above-bottom-edge — every control is at least 16 px above the bottom edge (closest: 71 px)
+PASS layout:portrait-stacked — portrait: the editor spans the top (820×515 at y 64) and the stage the bottom (820×515 at y 579); framing insets top 674, left 0, bottom 51 px
+PASS first-run:page-inside-viewport — the Code view fits the 820×1094 Safari viewport (surfaces outside it: none); visual viewport offset 0, page scroll 0: nothing sits under Safari's bars
+PASS first-run:goal-number-on-screen — the goal says "change 3 to 6"; the 3 is at x 682–692 while the scripts area ends at x 820 (script 108 px wide at scale 1 in a 679 px scripts area)
+PASS stage:wall-framed — the test plate's wall spans x 390–628, y 771–905 on screen; the stage's free area is x 0–820, y 738–1043
+
+2. Run and Reset by touch
+  shot 03-running.jpg
+PASS run:drives-and-stops-before-wall — tapped Run: top speed 3.34 studs/s; at rest the sensor reads 2.49 studs (never under 2.49): stopped before the wall
+PASS run:readings-update — the Front sensor chip went through 16 values (12.0 studs → 2.5 studs); Speed chip "0.0 st/s"; status "Done · 4.1 s"
+PASS run:stage-bar-steady — while "Running · 1.0 s" shows, Reset stays at {"y":589,"x":726,"width":84,"height":44} (was {"y":589,"x":726,"width":84,"height":44}), Test plate / My world at {"y":589,"x":630,"width":87,"height":44} (was {"y":589,"x":630,"width":87,"height":44}), the readings start at y 644 (was 644)
+PASS run:rover-in-view-at-rest — at rest the chassis centre is at (436, 890); the stage's free area is x 0–820, y 738–1043
+  shot 04-stopped-before-wall.jpg
+PASS reset:built-pose — tapped Reset: every body within 0.0062 of its built pose, sensor 12 studs, status "Ready"
+
+3. Edit the program by touch
+PASS edit:drag-scripts — a one-finger drag of 40 px on empty scripts moved them -40 px; the 3 is now at x 642–652; the page did not scroll or zoom ({"scrollY":0,"scrollX":0,"offsetTop":0,"offsetLeft":0,"docScrollTop":0,"bodyScrollTop":0,"scale":1})
+  shot 05-scripts-dragged.jpg
+PASS edit:tap-number-opens-prompt — tapping the 3 (its round block is 40×32 px on screen) opened Blockly's own modal "Change value:" prompt (on a touch device Blockly edits numbers in a <dialog>, not in place): input 266×44 (18px, type text, inputmode null), OK 88×44, Cancel 88×44
+PASS edit:prompt-targets-44 — the prompt's input, OK and Cancel are 44, 44 and 44 px tall
+  shot 06-change-value-prompt.jpg
+  HARNESS prompt-typing-not-drivable — WebDriver typing into the focused prompt fired key events but inserted no text (still "3"); the 6 was entered with a script-dispatched input event, then OK was tapped. The software keyboard was not exercised (the simulator has a hardware keyboard connected).
+PASS edit:number-saved — after OK the field reads 6; saved as revision 1 (was 0); the prompt closed
+PASS edit:stops-earlier — with 6 the rover rests 5.47 studs from the wall (with 3: 2.49)
+  shot 07-stops-earlier.jpg
+PASS palette:opens-over-scripts — tapping Motion opened a 353 px palette over the scripts; the scripts area stays 679 px (was 679) and the script stays at x 177
+  shot 08-palette-motion.jpg
+PASS palette:tap-again-closes — tapping Motion again closed the palette (open: false); the scripts area is 679 px
+PASS palette:drag-block-in — the palette was scrolled 150 px by a vertical drag to reach its last block; a touch drag from the palette to under "stop motors" added "stop Left motor · A" (snapped under stop-before-wall:stop); saved (revision 3); the palette went back in as the drag began; the page never scrolled or zoomed over 19 samples
+  shot 09-block-dragged-in.jpg
+PASS palette:drag-block-out-deletes — a touch drag of that block (grabbed on the block: true) onto the rail deleted it; saved (revision 5); the page never scrolled or zoomed
+  shot 10-block-dragged-out.jpg
+  shot 11-dropdown-menu.jpg
+PASS edit:dropdown-by-tap — tapping "forward ▾" (98×36 px) opened a menu of "forward" 103×44, "backward" 103×44; tapping "backward" set backward
+PASS tab:double-tap-rename — a double tap on the tab opened its rename field (44 px tall, focused true) without zooming the page; a tap on the scripts closed it, name kept ("Stop before the wall")
+
+4. Joystick drive
+  shot 12-starters-menu.jpg
+PASS program:joystick-drive-added — "+" then "Joystick drive": tabs Stop before the wall | Joystick drive (active); menu items stop-before-wall 276×67, joystick-drive 276×83, blank 276×51
+PASS program:script-in-view-after-switch — switching programs with the palette open: the palette went in, and "when joystick moves" is at x 177–350 in a scripts area x 141–820
+  shot 13-joystick-program.jpg
+PASS joystick:drives — a touch drag of the knob 14 px up read "up 9, right 0", "up 29, right 0", "up 41, right 0" while held; the rover reached 3.40 studs/s and moved 3.4 studs (wall 12.0 → 8.6 studs)
+PASS joystick:release-stops — lifting the finger centred the stick ("up 0, right 0") and the motors stopped (0, 0 %)
+PASS joystick:page-still — the page never scrolled or zoomed during the joystick drag (19 samples) and no text was selected
+PASS keys:hold-selects-nothing — holding ↑ selected no text and raised no callout
+PASS keys:hold-up — holding ↑ (48×44 px) lit it for 9 samples and drove 8.90 studs/s (wall 12.0 → 3.4); lifting stopped the motors
+  shot 14-keys.jpg
+
+5. Test plate / My world, Back to build
+PASS space:my-world — tapped "My world": the stage is in myWorld (props: none), the creation's run space is saved as myWorld
+  shot 15-my-world.jpg
+PASS space:test-plate — tapped "Test plate": the stage is in testPlate (props: wall), saved as testPlate
+PASS back:construction-unchanged — tapped "Back to build": Code view closed, stage closed, creation panel back; bricks, cables, device names and the creation exactly as built (run space testPlate → testPlate)
+PASS back:programs-kept — both programs kept: Stop before the wall r7, Joystick drive r0
+  shot 16-back-to-build.jpg
+PASS page-errors — no uncaught errors or rejections on the page
+
+39/39 checks passed; 1 findings; evidence in docs/qa/robotics-spike-final/regression/robotics-cp3-ipad-code

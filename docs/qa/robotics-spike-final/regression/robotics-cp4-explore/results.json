@@ -1,12 +1,12 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
-  "at": "2026-09-23T12:23:24.113Z",
+  "at": "2026-09-23T13:05:36.454Z",
   "results": [
     {
       "id": "A.rover-with-seat",
       "ok": true,
-      "detail": "“Mars buggy”, a rover of 10 bricks with seat brick-1790166185914-3n07dw, drive pair true, motors plugged [true,true] (assisted wiring)"
+      "detail": "“Mars buggy”, a rover of 10 bricks with seat brick-1790168718421-j6klin, drive pair true, motors plugged [true,true] (assisted wiring)"
     },
     {
       "id": "B.explore-ready",
@@ -16,7 +16,7 @@
     {
       "id": "B.walked-up-with-keys",
       "ok": true,
-      "detail": "walked 4.7 studs with W held; the seat is near (nearestId creation-mue2q4ta-cdyt9)"
+      "detail": "walked 4.7 studs with W held; the seat is near (nearestId creation-mue48ewk-2ih2y)"
     },
     {
       "id": "B.prompt",
@@ -26,7 +26,7 @@
     {
       "id": "C.riding",
       "ok": true,
-      "detail": "riding creation-mue2q4ta-cdyt9; the controller runs “Joystick drive” (starter, compiled on the fly, not saved)"
+      "detail": "riding creation-mue48ewk-2ih2y; the controller runs “Joystick drive” (starter, compiled on the fly, not saved)"
     },
     {
       "id": "C.seated",
@@ -51,7 +51,7 @@
     {
       "id": "C.drove-forward",
       "ok": true,
-      "detail": "W held 1.1 s: the rover drove 10.4 studs (10.4 along its forward, -Z), heading change 0.1°"
+      "detail": "W held 1.1 s: the rover drove 10.5 studs (10.5 along its forward, -Z), heading change 0.1°"
     },
     {
       "id": "C.rider-carried",
@@ -61,7 +61,7 @@
     {
       "id": "C.turned",
       "ok": true,
-      "detail": "← held 1.0 s: the rover turned 74° (positive = left) and its chassis moved 1.66 studs"
+      "detail": "← held 1.0 s: the rover turned 74° (positive = left) and its chassis moved 1.71 studs"
     },
     {
       "id": "D.hopped-off",
@@ -91,7 +91,7 @@
     {
       "id": "D.solid",
       "ok": true,
-      "detail": "W held 2.2 s toward the rover: the character closed from 4.18 to 1.74 units of its centre and stopped (moved 0.000 over the last 0.4 s), never overlapping its colliders; the rover did not move (0.0000)"
+      "detail": "W held 2.2 s toward the rover: the character closed from 4.18 to 1.59 units of its centre and stopped (moved 0.000 over the last 0.4 s), never overlapping its colliders; the rover did not move (0.0000)"
     },
     {
       "id": "E.document-unchanged",
@@ -132,9 +132,9 @@
         "z": 5
       },
       "to": {
-        "x": 0.006,
-        "y": 0.385,
-        "z": 2.113
+        "x": 0,
+        "y": 0.384,
+        "z": 2.111
       },
       "studs": 4.66,
       "method": "keyboard (W held until the prompt appeared)"
@@ -146,31 +146,31 @@
         "z": 0.007
       },
       "to": {
-        "x": 0.002,
-        "y": 0.036,
-        "z": -6.461
+        "x": -0.002,
+        "y": 0.037,
+        "z": -6.5
       },
-      "studs": 10.43,
-      "forwardStuds": 10.43,
+      "studs": 10.5,
+      "forwardStuds": 10.5,
       "speedWhileHeld": 5.533,
       "riderToSeatWhileDriving": 0.092
     },
     "turn": {
       "fromYawDeg": -180,
-      "toYawDeg": -105.9,
-      "turnedDeg": 74,
-      "chassisMovedStuds": 1.66
+      "toYawDeg": -106.3,
+      "turnedDeg": 73.7,
+      "chassisMovedStuds": 1.71
     },
     "hopOff": {
       "avatar": {
-        "x": -3.329,
+        "x": -3.372,
         "y": 0.385,
-        "z": -2.808
+        "z": -2.894
       },
       "parkedChassis": {
-        "x": -0.819,
+        "x": -0.834,
         "y": 0.035,
-        "z": -7.086
+        "z": -7.156
       },
       "studsFromFootprint": 0.75,
       "groundY": 0.385
@@ -179,206 +179,206 @@
       "droveStuds": 3.62,
       "focusAfterRide": "DIV",
       "hopOffAvatar": {
-        "x": -5.522,
+        "x": -5.562,
         "y": 0.385,
-        "z": -3.444
+        "z": -3.535
       }
     },
     "walkInto": {
-      "aimYaw": 2.864,
-      "startDistanceToCentre": 4.182,
-      "closestDistanceToCentre": 1.739,
+      "aimYaw": 2.858,
+      "startDistanceToCentre": 4.183,
+      "closestDistanceToCentre": 1.592,
       "stalledOverLast": 0,
       "maxAvatarOverlaps": 0,
       "roverMoved": 0,
       "trail": [
         {
-          "t": 2,
-          "x": -5.522,
+          "t": 1,
+          "x": -5.562,
           "y": 0.385,
-          "z": -3.444,
-          "footprint": 0.749
+          "z": -3.535,
+          "footprint": 0.747
         },
         {
-          "t": 86,
-          "x": -5.5,
-          "y": 0.385,
-          "z": -3.523,
-          "footprint": 0.617
+          "t": 85,
+          "x": -5.539,
+          "y": 0.373,
+          "z": -3.615,
+          "footprint": 0.613
         },
         {
-          "t": 170,
-          "x": -5.443,
-          "y": 0.38,
-          "z": -3.723,
-          "footprint": 0.281
+          "t": 169,
+          "x": -5.48,
+          "y": 0.374,
+          "z": -3.815,
+          "footprint": 0.277
         },
         {
           "t": 253,
-          "x": -5.372,
-          "y": 0.38,
-          "z": -3.971,
+          "x": -5.408,
+          "y": 0.374,
+          "z": -4.062,
           "footprint": 0
         },
         {
-          "t": 337,
-          "x": -5.296,
-          "y": 0.38,
-          "z": -4.239,
+          "t": 338,
+          "x": -5.33,
+          "y": 0.375,
+          "z": -4.33,
           "footprint": 0
         },
         {
-          "t": 422,
-          "x": -5.217,
-          "y": 0.381,
-          "z": -4.514,
+          "t": 423,
+          "x": -5.234,
+          "y": 0.375,
+          "z": -4.66,
           "footprint": 0
         },
         {
           "t": 507,
-          "x": -5.138,
-          "y": 0.382,
-          "z": -4.793,
+          "x": -5.153,
+          "y": 0.376,
+          "z": -4.938,
           "footprint": 0
         },
         {
           "t": 592,
-          "x": -5.042,
-          "y": 0.382,
-          "z": -5.129,
+          "x": -5.071,
+          "y": 0.376,
+          "z": -5.218,
           "footprint": 0
         },
         {
-          "t": 675,
-          "x": -4.962,
-          "y": 0.383,
-          "z": -5.409,
+          "t": 676,
+          "x": -4.99,
+          "y": 0.377,
+          "z": -5.497,
           "footprint": 0
         },
         {
           "t": 759,
-          "x": -4.926,
-          "y": 0.491,
-          "z": -5.536,
+          "x": -4.971,
+          "y": 0.389,
+          "z": -5.561,
           "footprint": 0
         },
         {
-          "t": 842,
-          "x": -4.853,
-          "y": 0.573,
-          "z": -5.794,
+          "t": 843,
+          "x": -4.916,
+          "y": 0.577,
+          "z": -5.756,
           "footprint": 0
         },
         {
-          "t": 926,
-          "x": -4.853,
+          "t": 927,
+          "x": -4.903,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.799,
           "footprint": 0
         },
         {
-          "t": 1009,
-          "x": -4.853,
+          "t": 1012,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1092,
-          "x": -4.853,
+          "t": 1095,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1176,
-          "x": -4.853,
+          "t": 1179,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1258,
-          "x": -4.853,
+          "t": 1263,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1341,
-          "x": -4.853,
+          "t": 1346,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1425,
-          "x": -4.853,
+          "t": 1430,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1508,
-          "x": -4.853,
+          "t": 1513,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1592,
-          "x": -4.853,
+          "t": 1596,
+          "x": -4.871,
           "y": 0.573,
-          "z": -5.794,
+          "z": -5.911,
           "footprint": 0
         },
         {
-          "t": 1676,
-          "x": -4.853,
+          "t": 1679,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         },
         {
           "t": 1762,
-          "x": -4.853,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         },
         {
-          "t": 1847,
-          "x": -4.853,
+          "t": 1846,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         },
         {
-          "t": 1931,
-          "x": -4.853,
+          "t": 1930,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         },
         {
-          "t": 2017,
-          "x": -4.853,
+          "t": 2014,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         },
         {
-          "t": 2102,
-          "x": -4.853,
+          "t": 2099,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         },
         {
-          "t": 2186,
-          "x": -4.853,
+          "t": 2182,
+          "x": -4.838,
           "y": 0.573,
-          "z": -5.794,
+          "z": -6.023,
           "footprint": 0
         }
       ]

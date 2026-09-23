@@ -1,26 +1,26 @@
 
 A. Build: the rover from loose parts, a seat on its hub, named Mars buggy
-PASS A.rover-with-seat — “Mars buggy”, a rover of 10 bricks with seat brick-1790166185914-3n07dw, drive pair true, motors plugged [true,true] (assisted wiring)
+PASS A.rover-with-seat — “Mars buggy”, a rover of 10 bricks with seat brick-1790168718421-j6klin, drive pair true, motors plugged [true,true] (assisted wiring)
   shot A1-build-rover-with-seat.png
 
 B. Explore: walk up to the seat with the keyboard
 PASS B.explore-ready — Explore open, the character spawned at {"x":0,"y":0.385,"z":5}; candidate [{"name":"Mars buggy","status":"rideable","program":{"source":"starter","name":"Joystick drive"}}]
   shot B1-explore-start.png
-PASS B.walked-up-with-keys — walked 4.7 studs with W held; the seat is near (nearestId creation-mue2q4ta-cdyt9)
+PASS B.walked-up-with-keys — walked 4.7 studs with W held; the seat is near (nearestId creation-mue48ewk-2ih2y)
 PASS B.prompt — prompt: “Mars buggyDrives with a new Joystick drive program (not saved)Press E to ride Mars buggyRide”
   shot B2-prompt-press-e-to-ride.png
 
 C. Ride: E, then drive with W and turn with ←
-PASS C.riding — riding creation-mue2q4ta-cdyt9; the controller runs “Joystick drive” (starter, compiled on the fly, not saved)
+PASS C.riding — riding creation-mue48ewk-2ih2y; the controller runs “Joystick drive” (starter, compiled on the fly, not saved)
 PASS C.seated — the character sits on the seat: 0.000 units from the seat centre on the ground, 0.390 above the pan
 PASS C.mirrored — 3/3 controller bodies mirrored as kinematic bodies in the Explore world; the studio hides the creation's 10 bricks (of 14); chassis {"x":0,"y":0.035,"z":0.007} ↔ mirror {"x":0,"y":0.035,"z":0.007}
 PASS C.prompt — prompt: “Riding Mars buggyA new Joystick drive program (not saved) reads WASD / arrowsPress E to hop offHop off”
   shot C1-riding-seated.png
 PASS C.still-without-keys — with no key held the rover moved 0.000 studs in 0.7 s
   shot C2-driving-forward.png
-PASS C.drove-forward — W held 1.1 s: the rover drove 10.4 studs (10.4 along its forward, -Z), heading change 0.1°
+PASS C.drove-forward — W held 1.1 s: the rover drove 10.5 studs (10.5 along its forward, -Z), heading change 0.1°
 PASS C.rider-carried — while driving, the character stayed on the seat (0.092 units from it: one physics step at speed)
-PASS C.turned — ← held 1.0 s: the rover turned 74° (positive = left) and its chassis moved 1.66 studs
+PASS C.turned — ← held 1.0 s: the rover turned 74° (positive = left) and its chassis moved 1.71 studs
   shot C3-turned-left.png
 
 D. Hop off: E, then walk into the rover
@@ -31,7 +31,7 @@ PASS D.can-ride-again — beside it the prompt offers the ride again: “Mars bu
 PASS D.ride-button — the Ride button starts a ride; W then drove 3.6 studs (focus on DIV, not the button)
 PASS D.hop-off-button — the Hop off button puts the character down 0.75 studs from the rover
   shot D2-walked-into-rover-blocked.png
-PASS D.solid — W held 2.2 s toward the rover: the character closed from 4.18 to 1.74 units of its centre and stopped (moved 0.000 over the last 0.4 s), never overlapping its colliders; the rover did not move (0.0000)
+PASS D.solid — W held 2.2 s toward the rover: the character closed from 4.18 to 1.59 units of its centre and stopped (moved 0.000 over the last 0.4 s), never overlapping its colliders; the rover did not move (0.0000)
 
 E. Back to building: the construction is exactly as before
 PASS E.document-unchanged — document snapshot identical after the ride (2222 characters, sorted keys)

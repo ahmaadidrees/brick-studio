@@ -1,7 +1,7 @@
 {
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
-  "at": "2026-09-23T12:29:30.741Z",
+  "at": "2026-09-23T13:05:15.651Z",
   "only": "all",
   "shots": [
     "F1a-build-wheel-not-on-axle.png",
@@ -33,13 +33,13 @@
       "spaceAfter": "testPlate",
       "testPlate": {
         "wheelOnStage": false,
-        "leftMotorDegrees": 541.4,
+        "leftMotorDegrees": 553.6,
         "leftMotorSpeedPercent": 39.9,
         "chassisMovedStuds": 0,
         "chassisYawDegrees": -0.03,
         "leftChip": {
           "value": "40 %",
-          "detail": "speed 40 % · 581°",
+          "detail": "speed 40 % · 593°",
           "tone": "live"
         }
       },
@@ -50,38 +50,38 @@
         ],
         "inFront": true,
         "degreesAtShots": [
-          1586,
-          1665.2
+          1592.1,
+          1671.3
         ]
       },
       "myWorld": {
-        "leftMotorDegrees": 389.2,
+        "leftMotorDegrees": 386.1,
         "wheelDrawnByStudioAtBuiltPose": true
       }
     },
     "F2": {
       "rawBlocks": {
-        "yawDegreesAfter3s": -86.6,
-        "pivotFromWheelsMidpointStuds": 0.17,
+        "yawDegreesAfter3s": -86.8,
+        "pivotFromWheelsMidpointStuds": 0.18,
         "pivot": {
-          "x": -0.528,
+          "x": -0.524,
           "z": 0.258
         },
         "meanForwardSpeedStudsPerSecond": 0.07,
         "left": {
           "powerPercent": 40,
-          "speedPercent": 27.5,
-          "forwardPercent": 27.5
+          "speedPercent": 29.5,
+          "forwardPercent": 29.5
         },
         "right": {
           "powerPercent": 40,
-          "speedPercent": 25.8,
-          "forwardPercent": -25.8
+          "speedPercent": 26.8,
+          "forwardPercent": -26.8
         },
         "chips": {
           "Motors": {
             "value": "40 · −40 %",
-            "detail": "speed 29 · −26 % · Right motor is mounted reversed",
+            "detail": "speed 28 · −27 % · Right motor is mounted reversed",
             "tone": "bad"
           },
           "Speed": {
@@ -92,22 +92,22 @@
         }
       },
       "repaired": {
-        "yawDegrees": 0,
-        "forwardStuds": 4.12,
+        "yawDegrees": -0.07,
+        "forwardStuds": 4.13,
         "chip": {
           "value": "40 · 40 %",
-          "detail": "speed 34 · 34 %",
+          "detail": "speed 35 · 33 %",
           "tone": "live"
         }
       },
       "driveHelper": {
-        "yawDegrees": -0.04,
-        "forwardStuds": 4.1,
+        "yawDegrees": -0.01,
+        "forwardStuds": 4.12,
         "left": 40,
         "right": -40,
         "chip": {
           "value": "40 · 40 %",
-          "detail": "speed 35 · 34 %",
+          "detail": "speed 33 · 35 %",
           "tone": "live"
         }
       }
@@ -116,20 +116,20 @@
       "raw": {
         "left": {
           "powerPercent": 0,
-          "speedPercent": 5.9,
-          "positionDegrees": 48.4,
+          "speedPercent": 6.4,
+          "positionDegrees": 50.5,
           "plugged": false,
-          "forwardPercent": 5.9
+          "forwardPercent": 6.4
         },
         "right": {
           "powerPercent": -40,
-          "speedPercent": -25.1,
-          "positionDegrees": -262.1,
+          "speedPercent": -25.2,
+          "positionDegrees": -270.8,
           "plugged": true,
-          "forwardPercent": 25.1
+          "forwardPercent": 25.2
         },
-        "chassisYawDegrees": 26.3,
-        "chassisMovedStuds": 4.15,
+        "chassisYawDegrees": 26.4,
+        "chassisMovedStuds": 4.18,
         "chips": {
           "Front sensor": {
             "value": "10.1 studs",
@@ -156,7 +156,7 @@
       ],
       "beam": {
         "dx": -24.8,
-        "dz": -0.05,
+        "dz": -0.04,
         "lengthStuds": 40
       },
       "beamOnScreen": {
@@ -185,7 +185,7 @@
         "z": 26,
         "row": "Front sensor · faces forward · port C"
       },
-      "repairedStopStuds": 2.48
+      "repairedStopStuds": 2.47
     },
     "F4": {
       "maxArmDegrees": 0,
@@ -224,25 +224,25 @@
         "run Left motor · A at 40 %",
         "run Right motor · B at 40 %"
       ],
-      "yawDegrees": -0.99,
-      "forwardStuds": 4.58,
+      "yawDegrees": -1.08,
+      "forwardStuds": 4.57,
       "left": {
         "powerPercent": 40,
-        "speedPercent": 34.1,
-        "positionDegrees": 226.7,
+        "speedPercent": 33.5,
+        "positionDegrees": 219.2,
         "plugged": true,
-        "forwardPercent": 34.1
+        "forwardPercent": 33.5
       },
       "right": {
         "powerPercent": 40,
-        "speedPercent": 33.4,
-        "positionDegrees": 210.4,
+        "speedPercent": 34,
+        "positionDegrees": 202,
         "plugged": true,
-        "forwardPercent": 33.4
+        "forwardPercent": 34
       },
       "chip": {
         "value": "40 · 40 %",
-        "detail": "speed 34 · 33 %",
+        "detail": "speed 34 · 34 %",
         "tone": "live"
       }
     }
@@ -320,11 +320,11 @@
         "toast": "Left motor is unplugged. Blocks that use it show “Not plugged in”.",
         "drawn": {
           "cables": [
-            "brick-1790166466257-hn4uca→B",
-            "brick-1790166466751-1sokki→C"
+            "brick-1790168611070-hqdc9w→B",
+            "brick-1790168611567-714on8→C"
           ],
           "stubs": [
-            "brick-1790166466159-kjtm9b"
+            "brick-1790168610972-wzn5pm"
           ]
         }
       },
@@ -486,12 +486,12 @@
     {
       "id": "F1.run.motor-turns",
       "ok": true,
-      "detail": "the left motor's output turned 541.4° at 39.9 % speed"
+      "detail": "the left motor's output turned 553.6° at 39.9 % speed"
     },
     {
       "id": "F1.run.chip",
       "ok": true,
-      "detail": "the stage's chip: Left motor 40 % (speed 40 % · 581°)"
+      "detail": "the stage's chip: Left motor 40 % (speed 40 % · 593°)"
     },
     {
       "id": "F1.run.rover-still",
@@ -501,12 +501,12 @@
     {
       "id": "F1.run.output-closeups",
       "ok": true,
-      "detail": "two close-ups of the left motor's output (socket at 1090, 506 on screen), taken at 1586° and 1665°"
+      "detail": "two close-ups of the left motor's output (socket at 1090, 506 on screen), taken at 1592° and 1671°"
     },
     {
       "id": "F1.world.wheel-stays",
       "ok": true,
-      "detail": "in My world the loose wheel stays where it was built (the studio's own copy, not simulated) while the axle beside it turns 389.2°"
+      "detail": "in My world the loose wheel stays where it was built (the studio's own copy, not simulated) while the axle beside it turns 386.1°"
     },
     {
       "id": "F1.repair",
@@ -541,27 +541,27 @@
     {
       "id": "F2.run.turns",
       "ok": true,
-      "detail": "it spun 87° on the spot instead of driving straight: it turned about a point 0.17 studs from midway between its wheels, forward speed averaged 0.07 st/s (chip \"Speed 0.1 st/s\")"
+      "detail": "it spun 87° on the spot instead of driving straight: it turned about a point 0.18 studs from midway between its wheels, forward speed averaged 0.07 st/s (chip \"Speed 0.1 st/s\")"
     },
     {
       "id": "F2.run.opposite-speeds",
       "ok": true,
-      "detail": "forward speeds as the creation feels them: left 27.5 %, right -25.8 % (both commanded +40)"
+      "detail": "forward speeds as the creation feels them: left 29.5 %, right -26.8 % (both commanded +40)"
     },
     {
       "id": "F2.run.chip",
       "ok": true,
-      "detail": "the stage's Motors chip: 40 · −40 % (speed 29 · −26 % · Right motor is mounted reversed), tone bad"
+      "detail": "the stage's Motors chip: 40 · −40 % (speed 28 · −27 % · Right motor is mounted reversed), tone bad"
     },
     {
       "id": "F2.edit-while-running",
       "ok": true,
-      "detail": "typed −40 while it spun: saved (revision 6), the stage says \"Changed · press Run to use it\" and the run keeps spinning (-111° → -127°)"
+      "detail": "typed −40 while it spun: saved (revision 6), the stage says \"Changed · press Run to use it\" and the run keeps spinning (-111° → -128°)"
     },
     {
       "id": "F2.repair",
       "ok": true,
-      "detail": "Reset, Run: with \"run Right motor at −40 %\" it drives straight: yaw -0.0°, 4.1 studs in 1.3 s, chip 40 · 40 %"
+      "detail": "Reset, Run: with \"run Right motor at −40 %\" it drives straight: yaw -0.1°, 4.1 studs in 1.3 s, chip 40 · 40 %"
     },
     {
       "id": "F2.helper-goes-straight",
@@ -621,12 +621,12 @@
     {
       "id": "F5.run.left-does-nothing",
       "ok": true,
-      "detail": "the left motor ignores \"run … at 40 %\": power 0 %, and it only coasts at 5.9 % as the rover drags its wheel round"
+      "detail": "the left motor ignores \"run … at 40 %\": power 0 %, and it only coasts at 6.4 % as the rover drags its wheel round"
     },
     {
       "id": "F5.run.right-runs",
       "ok": true,
-      "detail": "the right motor still runs: power -40 %, speed -25.1 %"
+      "detail": "the right motor still runs: power -40 %, speed -25.2 %"
     },
     {
       "id": "F5.run.creation-moves-one-side",
@@ -696,7 +696,7 @@
     {
       "id": "F3.repair.stops",
       "ok": true,
-      "detail": "the same program, now reading \"Front sensor · C\", stops 2.48 studs before the wall"
+      "detail": "the same program, now reading \"Front sensor · C\", stops 2.47 studs before the wall"
     },
     {
       "id": "F4.build.ready-line",
@@ -771,7 +771,7 @@
     {
       "id": "F2d.run.straight",
       "ok": true,
-      "detail": "run Left motor · A at 40 % → run Right motor · B at 40 %: it drives straight, 4.58 studs in 1.5 s, yaw -1.0°, chip 40 · 40 % (speed 34 · 33 %)"
+      "detail": "run Left motor · A at 40 % → run Right motor · B at 40 %: it drives straight, 4.57 studs in 1.5 s, yaw -1.1°, chip 40 · 40 % (speed 34 · 34 %)"
     },
     {
       "id": "console-clean",

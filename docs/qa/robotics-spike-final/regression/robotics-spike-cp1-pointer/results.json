@@ -2,7 +2,7 @@
   "origin": "http://127.0.0.1:5232",
   "viewport": "1366x768",
   "input": "real mouse and keyboard via Playwright CDP; positions from the studio's own world→screen projection",
-  "at": "2026-09-23T12:18:39.171Z",
+  "at": "2026-09-23T13:00:10.569Z",
   "results": [
     {
       "id": "ghost:6 × 8 Plate at 28,0,26",
@@ -77,7 +77,7 @@
     {
       "id": "ghost:Short axle snapped into the left motor socket",
       "ok": true,
-      "detail": "Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (489, 372)"
+      "detail": "Short axle snapped into the left motor socket: ghost at 26,0,32 r0 after aiming at (489, 371)"
     },
     {
       "id": "placed:Short axle snapped into the left motor socket",
@@ -112,7 +112,7 @@
     {
       "id": "ghost:Wheel snapped onto the right axle end",
       "ok": true,
-      "detail": "Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (661, 484)"
+      "detail": "Wheel snapped onto the right axle end: ghost at 36,0,31 r0 after aiming at (661, 485)"
     },
     {
       "id": "placed:Wheel snapped onto the right axle end",
@@ -122,7 +122,7 @@
     {
       "id": "ghost:Distance sensor (from the top view)",
       "ok": true,
-      "detail": "Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (599, 298)"
+      "detail": "Distance sensor (from the top view): ghost at 30,1,26 r0 after aiming at (599, 297)"
     },
     {
       "id": "placed:Distance sensor (from the top view)",
@@ -147,7 +147,7 @@
     {
       "id": "A.wheels-on-motors",
       "ok": true,
-      "detail": "wheels: [{\"id\":\"brick-1790165891065-kl9ov0\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790165891729-m2aftv\",\"onAxle\":true,\"note\":null}]"
+      "detail": "wheels: [{\"id\":\"brick-1790168382587-l22zwo\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790168383269-r494jg\",\"onAxle\":true,\"note\":null}]"
     },
     {
       "id": "A.ready-line",
@@ -167,12 +167,12 @@
     {
       "id": "A.rolls",
       "ok": true,
-      "detail": "after 2.6 s: moved 4.92 forward, -0.01 sideways, yaw 0.0°"
+      "detail": "after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°"
     },
     {
       "id": "A.clock",
       "ok": true,
-      "detail": "simulated 2.61 s in about 2.6 s of wall time"
+      "detail": "simulated 2.62 s in about 2.6 s of wall time"
     },
     {
       "id": "A.reset-document-unchanged",
@@ -247,7 +247,7 @@
     {
       "id": "ghost:6 × 8 Plate at 20,0,20",
       "ok": true,
-      "detail": "6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (785, 253)"
+      "detail": "6 × 8 Plate at 20,0,20: ghost at 20,0,20 r0 after aiming at (785, 252)"
     },
     {
       "id": "placed:6 × 8 Plate at 20,0,20",
@@ -257,7 +257,7 @@
     {
       "id": "ghost:Left post",
       "ok": true,
-      "detail": "Left post: ghost at 20,1,20 r0 after aiming at (798, 213)"
+      "detail": "Left post: ghost at 20,1,20 r0 after aiming at (798, 214)"
     },
     {
       "id": "placed:Left post",
@@ -332,7 +332,7 @@
     {
       "id": "ghost:Sensor on the hub",
       "ok": true,
-      "detail": "Sensor on the hub: ghost at 21,7,27 r0 after aiming at (473, 409)"
+      "detail": "Sensor on the hub: ghost at 21,7,27 r0 after aiming at (473, 408)"
     },
     {
       "id": "placed:Sensor on the hub",
