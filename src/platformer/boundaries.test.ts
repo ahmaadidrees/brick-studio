@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 /* The /2d chunk stays light: nothing from the 3D studio, three.js or the physics engine ever gets imported. */
 
-const root = decodeURIComponent(new URL('.', import.meta.url).pathname)
+const root = join(process.cwd(), 'src', 'platformer')
 
 function sources(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
