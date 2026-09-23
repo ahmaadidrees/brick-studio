@@ -1,6 +1,6 @@
 import type { BrickInstance } from '../../brick/types'
 import { ROLE_LABELS, roboticsSpec, type HubPort, type RoboticsPartRole } from '../parts/catalog'
-import { WORLD_NODE, deriveStudJoints, type StudJoint } from './assembly'
+import { WORLD_NODE, brickIdOfNode, deriveStudJoints, type StudJoint } from './assembly'
 import { deriveBodies, type RigidBody } from './bodies'
 import { connectionOf } from './control'
 import { brickFrame, toWorldDirection, type PartMap } from './grid'
@@ -310,7 +310,11 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
   const provisionalKind: CreationKind = drivePair ? 'rover' : hasHinge ? 'gate' : hubs.length > 0 && (sensors.length > 0 || lights.length > 0 || buttons.length > 0) && motors.length === 0 ? 'signal' : 'creation'
   const testSpace = record.testSpace ?? defaultTestSpace(provisionalKind)
   const graph = deriveBodies(input.bricks, input.partMap, input.plateSize, { anchorToWorld: testSpace === 'myWorld', joints, mechanisms })
-  const bodies = graph.bodies.filter((body) => body.brickIds.some((id) => members.has(id)))
+  // In My world every brick studded to the plate joins the one anchored body; only the creation's own
+  // bricks belong to it (the rest is the world's scenery, which a sensor must still see).
+  const bodies = graph.bodies
+    .filter((body) => body.brickIds.some((id) => members.has(id)))
+    .map((body) => (body.brickIds.every((id) => members.has(id)) ? body : { ...body, nodes: body.nodes.filter((node) => members.has(brickIdOfNode(node)!)), brickIds: body.brickIds.filter((id) => members.has(id)) }))
   const armBodyIds: string[] = []
   for (const id of brickIds) {
     const brick = bricksById.get(id)!

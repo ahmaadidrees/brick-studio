@@ -178,6 +178,12 @@ describe('creations', () => {
     expect(gate.bodies).toHaveLength(2)
     expect(gate.bodies.find((body) => body.brickIds.includes(GATE_IDS.plate))!.anchored).toBe(true)
 
+    // A loose brick standing on the build plate is anchored too, but it is my world's, not the gate's.
+    const [withScenery] = deriveCreations(fixtureInput([...gateBricks(), { id: 'loose', partId: 'brick_2x4', x: 40, y: 0, z: 40, rotation: 0, color: '#888888' }], section([GATE_IDS.hinge])))
+    expect(withScenery.bodies.flatMap((body) => body.brickIds)).not.toContain('loose')
+    expect(withScenery.bodies.flatMap((body) => body.nodes)).not.toContain('loose')
+    expect(withScenery.bodies.flatMap((body) => body.brickIds).sort()).toEqual(gate.bodies.flatMap((body) => body.brickIds).sort())
+
     const [locked] = deriveCreations(fixtureInput(gateBricks({ builtIntoFrame: true }), section([GATE_IDS.hinge])))
     expect(locked.hinges[0].locked).toBe(true)
     expect(locked.armBodyIds).toHaveLength(0)

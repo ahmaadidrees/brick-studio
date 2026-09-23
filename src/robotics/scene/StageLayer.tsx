@@ -70,11 +70,11 @@ const discGeometry = (() => {
 })()
 const notchGeometry = new THREE.BoxGeometry(0.05, 0.12, 0.06)
 const beamGeometry = (() => {
-  const beam = new THREE.CylinderGeometry(0.018, 0.018, 1, 8, 1, true)
+  const beam = new THREE.CylinderGeometry(0.028, 0.028, 1, 8, 1, true)
   beam.translate(0, 0.5, 0)
   return beam
 })()
-const beamDotGeometry = new THREE.SphereGeometry(0.07, 12, 8)
+const beamDotGeometry = new THREE.SphereGeometry(0.09, 12, 8)
 const Y_UP = new THREE.Vector3(0, 1, 0)
 
 let wallTexture: THREE.CanvasTexture | null = null
@@ -145,8 +145,8 @@ function StageBrick({ brick, node, plateSize, highlighted, onLight, button }: {
         <meshStandardMaterial ref={material} color={brick.color} roughness={0.58} metalness={0.02} />
       </mesh>
       {onLight && (
-        <mesh ref={glow} geometry={geometry} scale={1.35} visible={false} renderOrder={4}>
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.35} depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} />
+        <mesh ref={glow} geometry={geometry} scale={1.3} visible={false} renderOrder={4}>
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.3} depthWrite={false} toneMapped={false} />
         </mesh>
       )}
       {highlighted && (
@@ -448,7 +448,7 @@ function StageScene({ session }: { session: StageSession }) {
       if (color) {
         handle.material.color.set(LIGHT_HEX[color])
         handle.material.emissive.set(LIGHT_HEX[color])
-        handle.material.emissiveIntensity = 1.6
+        handle.material.emissiveIntensity = 0.7
         ;(handle.glow.material as THREE.MeshBasicMaterial).color.set(LIGHT_HEX[color])
         handle.glow.visible = true
       } else {

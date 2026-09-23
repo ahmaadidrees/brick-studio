@@ -326,6 +326,21 @@ describe('the gate and the signal post in my world', () => {
     controller.dispose()
   })
 
+  it('in my world a sensor sees the world: a brick standing on the plate in front of it is seen, and stays in the studio', () => {
+    // The signal post's sensor looks along -Z from grid z = 40, 7.5 plates up; a stack of three loose
+    // bricks 4 studs ahead (near face at z = 36) is tall enough to be in its way.
+    const loose = (id: string, y: number) => ({ id, partId: 'brick_2x4', x: 41, y, z: 32, rotation: 0 as const, color: '#888888' })
+    const bricks = [...signalPostBricks(), loose('loose', 0), loose('loose-2', 3), loose('loose-3', 6)]
+    const { controller } = stage(bricks, SIGNAL_IDS.hub, SIGNAL_WIRING)
+    expect(controller.hiddenBrickIds.has('loose')).toBe(false)
+    expect(controller.simulatedBrickIds.has('loose')).toBe(false)
+    frames(controller, 0.1)
+    const reading = controller.observe().sensors[SIGNAL_IDS.sensor]
+    expect(reading.hit).toBe(true)
+    expect(reading.distanceStuds).toBeCloseTo(4, 1)
+    controller.dispose()
+  })
+
   it('the signal post turns its light red when the visitor arrives', () => {
     const { creation, controller } = stage(signalPostBricks(), SIGNAL_IDS.hub, SIGNAL_WIRING)
     expect(controller.space).toBe('myWorld')
