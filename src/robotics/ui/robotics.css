@@ -91,7 +91,7 @@
 .robotics-step-icon { flex: 0 0 auto; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--studio-panel-soft); overflow: hidden; }
 .robotics-step-icon .part-thumbnail { width: 32px; height: 32px; filter: none; }
 .robotics-step-icon.symbol { color: var(--studio-blue-dark, #3565bf); background: var(--primary-soft, #e8effb); }
-.robotics-step-icon.symbol.drive, .robotics-step-icon.symbol.try { color: #fff; background: var(--success, #1f7a46); }
+.robotics-step-icon.symbol.drive, .robotics-step-icon.symbol.try, .robotics-step-icon.symbol.worked { color: #fff; background: var(--success, #1f7a46); }
 .robotics-step-icon.symbol.fix { color: var(--danger-text, #b0432e); background: var(--danger-soft, #fbe4e0); }
 
 /* Folded sections: Parts and More. */

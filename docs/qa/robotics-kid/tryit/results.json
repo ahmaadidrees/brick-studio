@@ -1,0 +1,450 @@
+{
+  "origin": "http://127.0.0.1:5243",
+  "viewports": [
+    "1366x768",
+    "1024x768",
+    "1024x768 touch"
+  ],
+  "at": "2026-09-23T20:03:34.802Z",
+  "runsPerFirstTryCheck": 5,
+  "measured": {
+    "gate": [
+      {
+        "run": 1,
+        "seenAtSeconds": 1.9,
+        "seenWhile": "arriving",
+        "armWhenTheyStop": 74.7,
+        "maxArm": 90,
+        "workedAtSeconds": 2.2,
+        "line": "It worked! The gate opened.",
+        "armAfter": 0,
+        "visitorAfter": "away"
+      },
+      {
+        "run": 2,
+        "seenAtSeconds": 1.9,
+        "seenWhile": "arriving",
+        "armWhenTheyStop": 75.4,
+        "maxArm": 90,
+        "workedAtSeconds": 2.3,
+        "line": "It worked! The gate opened.",
+        "armAfter": 0,
+        "visitorAfter": "away"
+      },
+      {
+        "run": 3,
+        "seenAtSeconds": 2,
+        "seenWhile": "arriving",
+        "armWhenTheyStop": 75.4,
+        "maxArm": 90,
+        "workedAtSeconds": 2.2,
+        "line": "It worked! The gate opened.",
+        "armAfter": 0,
+        "visitorAfter": "away"
+      },
+      {
+        "run": 4,
+        "seenAtSeconds": 2,
+        "seenWhile": "arriving",
+        "armWhenTheyStop": 70.9,
+        "maxArm": 90,
+        "workedAtSeconds": 2.2,
+        "line": "It worked! The gate opened.",
+        "armAfter": 0,
+        "visitorAfter": "away"
+      },
+      {
+        "run": 5,
+        "seenAtSeconds": 2,
+        "seenWhile": "arriving",
+        "armWhenTheyStop": 70.9,
+        "maxArm": 90,
+        "workedAtSeconds": 2.2,
+        "line": "It worked! The gate opened.",
+        "armAfter": 0,
+        "visitorAfter": "away"
+      }
+    ],
+    "signal": [
+      {
+        "run": 1,
+        "standingSamples": 23,
+        "redWhileStanding": true,
+        "lightAfter": null,
+        "line": "It worked! The light came on."
+      },
+      {
+        "run": 2,
+        "standingSamples": 24,
+        "redWhileStanding": true,
+        "lightAfter": null,
+        "line": "It worked! The light came on."
+      },
+      {
+        "run": 3,
+        "standingSamples": 25,
+        "redWhileStanding": true,
+        "lightAfter": null,
+        "line": "It worked! The light came on."
+      },
+      {
+        "run": 4,
+        "standingSamples": 24,
+        "redWhileStanding": true,
+        "lightAfter": null,
+        "line": "It worked! The light came on."
+      },
+      {
+        "run": 5,
+        "standingSamples": 24,
+        "redWhileStanding": true,
+        "lightAfter": null,
+        "line": "It worked! The light came on."
+      }
+    ],
+    "signalLightInBuild": {
+      "brickColor": "#c6ced4",
+      "pixel": [
+        222,
+        225,
+        226
+      ]
+    },
+    "signalLightOnStage": {
+      "off": [
+        208,
+        212,
+        215
+      ],
+      "on": [
+        255,
+        117,
+        92
+      ]
+    },
+    "code": [
+      {
+        "run": 1,
+        "statusBefore": "Ready",
+        "maxArm": 45,
+        "line": "It worked! The gate opened.",
+        "chips": [
+          "Front sensor3 steps awaysees something",
+          "Arm motoropenturned to 45"
+        ]
+      },
+      {
+        "run": 2,
+        "statusBefore": "Ready",
+        "maxArm": 45,
+        "line": "It worked! The gate opened.",
+        "chips": [
+          "Front sensor3 steps awaysees something",
+          "Arm motoropenturned to 45"
+        ]
+      },
+      {
+        "run": 3,
+        "statusBefore": "Ready",
+        "maxArm": 45,
+        "line": "It worked! The gate opened.",
+        "chips": [
+          "Front sensor3 steps awaysees something",
+          "Arm motoropenturned to 45"
+        ]
+      },
+      {
+        "run": 4,
+        "statusBefore": "Ready",
+        "maxArm": 45,
+        "line": "It worked! The gate opened.",
+        "chips": [
+          "Front sensor3 steps awaysees something",
+          "Arm motoropenturned to 45"
+        ]
+      },
+      {
+        "run": 5,
+        "statusBefore": "Ready",
+        "maxArm": 45,
+        "line": "It worked! The gate opened.",
+        "chips": [
+          "Front sensor3 steps awaysees something",
+          "Arm motoropenturned to 45"
+        ]
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "A.build-ready",
+      "ok": true,
+      "detail": "placed from the drawer; the panel's next step reads \"Ready to try!\""
+    },
+    {
+      "id": "A.before",
+      "ok": true,
+      "detail": "before: arm 0°, sensor sees nothing, \"Press the big button. Watch what happens.\""
+    },
+    {
+      "id": "A.run1.first-try-opens",
+      "ok": true,
+      "detail": "run 1: seen while still walking up (1.9 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+    },
+    {
+      "id": "A.run1.open-before-they-stop",
+      "ok": true,
+      "detail": "run 1: the gate was already 75° open when the visitor stopped"
+    },
+    {
+      "id": "A.run1.it-worked",
+      "ok": true,
+      "detail": "run 1: \"It worked! The gate opened.\" as soon as it opened"
+    },
+    {
+      "id": "A.run1.closes-after",
+      "ok": true,
+      "detail": "run 1: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "A.kid-words",
+      "ok": true,
+      "detail": "no \"studs\" or \"°\" in the Try it lines: \"Front sensorsees nothingArm motorclosed It worked! The gate opened.\""
+    },
+    {
+      "id": "A.ready-row-after",
+      "ok": true,
+      "detail": "back in Build the ready row reads \"It worked! Try it again\" with a tick"
+    },
+    {
+      "id": "A.ready-row-edit",
+      "ok": true,
+      "detail": "one more brick on the gate's plate: \"Ready to try!\""
+    },
+    {
+      "id": "A.run2.first-try-opens",
+      "ok": true,
+      "detail": "run 2: seen while still walking up (1.9 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+    },
+    {
+      "id": "A.run2.open-before-they-stop",
+      "ok": true,
+      "detail": "run 2: the gate was already 75° open when the visitor stopped"
+    },
+    {
+      "id": "A.run2.it-worked",
+      "ok": true,
+      "detail": "run 2: \"It worked! The gate opened.\" as soon as it opened"
+    },
+    {
+      "id": "A.run2.closes-after",
+      "ok": true,
+      "detail": "run 2: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "A.run3.first-try-opens",
+      "ok": true,
+      "detail": "run 3: seen while still walking up (2.0 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+    },
+    {
+      "id": "A.run3.open-before-they-stop",
+      "ok": true,
+      "detail": "run 3: the gate was already 75° open when the visitor stopped"
+    },
+    {
+      "id": "A.run3.it-worked",
+      "ok": true,
+      "detail": "run 3: \"It worked! The gate opened.\" as soon as it opened"
+    },
+    {
+      "id": "A.run3.closes-after",
+      "ok": true,
+      "detail": "run 3: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "A.run4.first-try-opens",
+      "ok": true,
+      "detail": "run 4: seen while still walking up (2.0 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+    },
+    {
+      "id": "A.run4.open-before-they-stop",
+      "ok": true,
+      "detail": "run 4: the gate was already 71° open when the visitor stopped"
+    },
+    {
+      "id": "A.run4.it-worked",
+      "ok": true,
+      "detail": "run 4: \"It worked! The gate opened.\" as soon as it opened"
+    },
+    {
+      "id": "A.run4.closes-after",
+      "ok": true,
+      "detail": "run 4: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "A.run5.first-try-opens",
+      "ok": true,
+      "detail": "run 5: seen while still walking up (2.0 s), the arm opened to 90° (hinge reading), seen the whole time they stood there"
+    },
+    {
+      "id": "A.run5.open-before-they-stop",
+      "ok": true,
+      "detail": "run 5: the gate was already 71° open when the visitor stopped"
+    },
+    {
+      "id": "A.run5.it-worked",
+      "ok": true,
+      "detail": "run 5: \"It worked! The gate opened.\" as soon as it opened"
+    },
+    {
+      "id": "A.run5.closes-after",
+      "ok": true,
+      "detail": "run 5: once they had gone the gate closed (0°) and the line still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "B.still-says",
+      "ok": true,
+      "detail": "11 s after the press the visitor is back and the gate closed (0°), and the stage still says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "C.build-looks-off",
+      "ok": true,
+      "detail": "in Build the kit's light looks off: a pale grey lamp (#c6ced4; the pixels under its dome [222,225,226])"
+    },
+    {
+      "id": "C.run1.on-while-there",
+      "ok": true,
+      "detail": "run 1: off until they walked into the beam, red for all 23 samples while they stood there"
+    },
+    {
+      "id": "C.run1.off-after",
+      "ok": true,
+      "detail": "run 1: off again once they had gone; the stage says \"It worked! The light came on.\""
+    },
+    {
+      "id": "C.looks-on-and-off",
+      "ok": true,
+      "detail": "on the stage the dome is grey when off [208,212,215] and red when on [255,117,92]"
+    },
+    {
+      "id": "C.run2.on-while-there",
+      "ok": true,
+      "detail": "run 2: off until they walked into the beam, red for all 24 samples while they stood there"
+    },
+    {
+      "id": "C.run2.off-after",
+      "ok": true,
+      "detail": "run 2: off again once they had gone; the stage says \"It worked! The light came on.\""
+    },
+    {
+      "id": "C.run3.on-while-there",
+      "ok": true,
+      "detail": "run 3: off until they walked into the beam, red for all 25 samples while they stood there"
+    },
+    {
+      "id": "C.run3.off-after",
+      "ok": true,
+      "detail": "run 3: off again once they had gone; the stage says \"It worked! The light came on.\""
+    },
+    {
+      "id": "C.run4.on-while-there",
+      "ok": true,
+      "detail": "run 4: off until they walked into the beam, red for all 24 samples while they stood there"
+    },
+    {
+      "id": "C.run4.off-after",
+      "ok": true,
+      "detail": "run 4: off again once they had gone; the stage says \"It worked! The light came on.\""
+    },
+    {
+      "id": "C.run5.on-while-there",
+      "ok": true,
+      "detail": "run 5: off until they walked into the beam, red for all 24 samples while they stood there"
+    },
+    {
+      "id": "C.run5.off-after",
+      "ok": true,
+      "detail": "run 5: off again once they had gone; the stage says \"It worked! The light came on.\""
+    },
+    {
+      "id": "D.turned-still-works",
+      "ok": true,
+      "detail": "the sensor turned to face the near side: the visitor came to where it now looks (side of the beam, 3 steps away) and \"It worked! The gate opened.\""
+    },
+    {
+      "id": "D.blocked-says-why",
+      "ok": true,
+      "detail": "with a wall of its own bricks in front of its sensor (14 bricks in the robot) the visitor walked up to the gate's front, was never seen, and the stage says \"The sensor didn’t see them. It looks this way\" with an arrow along the beam (-26° on screen)"
+    },
+    {
+      "id": "D.blocked-ready-row",
+      "ok": true,
+      "detail": "back in Build the ready row reads \"The gate didn’t open. Try it again\""
+    },
+    {
+      "id": "D.repaired-works",
+      "ok": true,
+      "detail": "wall gone (Undo ×3): \"It worked! The gate opened.\""
+    },
+    {
+      "id": "D.wall-says-why",
+      "ok": true,
+      "detail": "a wall of loose bricks 2 steps in front of the sensor (not part of the 4-brick robot): it saw the wall before anyone came, and the stage says \"The sensor already sees something. Give it room in front.\""
+    },
+    {
+      "id": "E.run1.runs-and-reacts",
+      "ok": true,
+      "detail": "run 1: typed 45 (saved), status was \"Ready\"; \"Someone walks up\" ran the new code: the arm went to 45° and the stage says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "E.kid-words",
+      "ok": true,
+      "detail": "Code's stage chips: [\"Front sensor3 steps awaysees something\",\"Arm motoropenturned to 45\"]"
+    },
+    {
+      "id": "E.changed-then-walk",
+      "ok": true,
+      "detail": "edited to 80 while it ran: \"Your code changed. Press Run to try it.\"; \"Someone walks up\" ran the newest code (arm 80°)"
+    },
+    {
+      "id": "E.run2.runs-and-reacts",
+      "ok": true,
+      "detail": "run 2: typed 45 (saved), status was \"Ready\"; \"Someone walks up\" ran the new code: the arm went to 45° and the stage says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "E.run3.runs-and-reacts",
+      "ok": true,
+      "detail": "run 3: typed 45 (saved), status was \"Ready\"; \"Someone walks up\" ran the new code: the arm went to 45° and the stage says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "E.run4.runs-and-reacts",
+      "ok": true,
+      "detail": "run 4: typed 45 (saved), status was \"Ready\"; \"Someone walks up\" ran the new code: the arm went to 45° and the stage says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "E.run5.runs-and-reacts",
+      "ok": true,
+      "detail": "run 5: typed 45 (saved), status was \"Ready\"; \"Someone walks up\" ran the new code: the arm went to 45° and the stage says \"It worked! The gate opened.\""
+    },
+    {
+      "id": "F.cables-stay",
+      "ok": true,
+      "detail": "before: 2 cables drawn; while the arm swings to 60° the same 2 ride with the gate's frame (none left out)"
+    },
+    {
+      "id": "G.1024",
+      "ok": true,
+      "detail": "at 1024×768 it works first time and the line sits above the button, on screen (300×75 px)"
+    },
+    {
+      "id": "G.touch-hint",
+      "ok": true,
+      "detail": "on a touch screen (pointer: coarse) the Drive view says \"Drag the blue ball to drive\""
+    },
+    {
+      "id": "console-clean",
+      "ok": true,
+      "detail": "no console errors"
+    }
+  ]
+}

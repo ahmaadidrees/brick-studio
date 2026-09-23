@@ -343,24 +343,41 @@ describe('starters against the fixture creations', () => {
     expect(starters[1].controller).toBe(true)
   })
 
-  it('gate: smart-gate turns the arm motor to 90°, waits 2 s and closes', () => {
+  it('gate: smart-gate keeps the arm open while the sensor sees something and closes it when it does not', () => {
     const { creation } = wiredGate()
     const starters = startersFor(creation)
     expect(starters.map((starter) => starter.id)).toEqual(['smart-gate', 'blank'])
     expect(defaultStarterFor(creation).id).toBe('smart-gate')
     const result = compileProgram(starters[0].workspace, compileContextFor(creation))
     expect(result).toMatchObject({ ok: true, diagnostics: [] })
-    expect(describeIR(result.ir)).toBe(`when sensorSees ${GATE_IDS.sensor}\n  turn ${GATE_IDS.hinge} to 90\n  wait 2\n  turn ${GATE_IDS.hinge} to 0`)
+    expect(describeIR(result.ir)).toBe([
+      'when run',
+      '  forever',
+      `    if sees(${GATE_IDS.sensor} < 5)`,
+      `      turn ${GATE_IDS.hinge} to 90`,
+      '    else',
+      `      turn ${GATE_IDS.hinge} to 0`,
+    ].join('\n'))
+    // The tip still names a number in the program.
+    expect(starters[0].goal).toBe('Try it: change 90 to 45. How far does the door open now?')
   })
 
-  it('signal post: set the light red, wait, turn it off', () => {
+  it('signal post: the light is red while the sensor sees something and off when it does not', () => {
     const { creation } = wiredSignalPost()
     const starters = startersFor(creation)
     expect(starters.map((starter) => starter.id)).toEqual(['signal-post', 'blank'])
     expect(defaultStarterFor(creation).id).toBe('signal-post')
     const result = compileProgram(starters[0].workspace, compileContextFor(creation))
     expect(result).toMatchObject({ ok: true, diagnostics: [] })
-    expect(describeIR(result.ir)).toBe(`when sensorSees ${SIGNAL_IDS.sensor}\n  light ${SIGNAL_IDS.light} red\n  wait 2\n  light ${SIGNAL_IDS.light} off`)
+    expect(describeIR(result.ir)).toBe([
+      'when run',
+      '  forever',
+      `    if sees(${SIGNAL_IDS.sensor} < 5)`,
+      `      light ${SIGNAL_IDS.light} red`,
+      '    else',
+      `      light ${SIGNAL_IDS.light} off`,
+    ].join('\n'))
+    expect(starters[0].goal).toBe('Try it: change red to green. Then press “Someone walks up”.')
   })
 
   it('every starter is one script (the first-run state), and a rover with no sensor starts from joystick drive', () => {

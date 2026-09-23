@@ -239,6 +239,32 @@
 .robo-drive-visitor:hover:not(:disabled) { background: #2d59ad; }
 .robo-drive-visitor:disabled { opacity: .5; cursor: default; box-shadow: none; }
 
+/* Kid lane Y: what the last walk-up did, in the hint's place over the big button, until the next one. */
+.robo-drive-result { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.robo-drive-result p { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 0; }
+.robo-drive-result.good { background: #e4f4ea; color: var(--robo-green); font-size: 18px; }
+.robo-drive-result.good::after { border-top-color: #e4f4ea; }
+.robo-drive-result.good svg { flex: 0 0 auto; }
+.robo-drive-result.warn { background: #fff1c2; color: #5c4000; }
+.robo-drive-result.warn::after { border-top-color: #fff1c2; }
+.robo-drive-code-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--robo-blue);
+  box-shadow: 0 1px 4px rgba(38, 60, 81, .18);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+.robo-beam-arrow { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #f4ca3a; color: #263c51; vertical-align: middle; transition: transform .2s; }
+
 /* ------------------------------------------------------------------ not ready, live room */
 
 .robo-drive-cardonly { align-items: center; justify-content: center; background: rgba(248, 244, 235, .55); }

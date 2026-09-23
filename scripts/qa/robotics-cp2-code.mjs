@@ -254,7 +254,9 @@ const minDistance = Math.min(...trace.map((entry) => entry.d))
 measured.roverFirstRun = { stoppedAtStuds: stopped.sensors[rover.sensor].distanceStuds, minimumStuds: minDistance, trace: trace.map((entry) => `${entry.t.toFixed(2)}s:${entry.d.toFixed(2)}`) }
 check('R2.drives', trace.some((entry) => entry.speed > 2), `top speed ${Math.max(...trace.map((entry) => entry.speed)).toFixed(2)} studs/s`)
 check('R2.stops-before-wall', stopped.sensors[rover.sensor].hit && stopped.sensors[rover.sensor].distanceStuds > 1.5 && stopped.sensors[rover.sensor].distanceStuds < 3 && minDistance > 1.5, `the sensor read ${stopped.sensors[rover.sensor].distanceStuds.toFixed(2)} studs at rest (never under ${minDistance.toFixed(2)}): it never touched the wall`)
-check('R2.readings-are-the-blocks-values', chips['Front sensor'] === `${stopped.sensors[rover.sensor].distanceStuds.toFixed(1)} studs` && chips.Speed === `${stopped.speed.toFixed(1)} st/s`, `stage chips ${JSON.stringify(chips)} match the observation the blocks read`)
+// Kid lane Y: the sensor chip says how far in steps (a stud is a step), whole numbers without a decimal, and "sees something" under it inside 5.
+const steps = (studs) => { const whole = Math.round(studs); const text = Math.abs(studs - whole) < 0.05 ? String(whole) : studs.toFixed(1); return `${text} ${text === '1' ? 'step' : 'steps'} away` }
+check('R2.readings-are-the-blocks-values', chips['Front sensor'] === `${steps(stopped.sensors[rover.sensor].distanceStuds)} (sees something)` && chips.Speed === `${stopped.speed.toFixed(1)} st/s`, `stage chips ${JSON.stringify(chips)} match the observation the blocks read`)
 // The program ended with `stop motors`: the stage says it is done, not still running.
 check('R2.status', (await s.text('robo-status')).startsWith('Done ·'), `status: ${await s.text('robo-status')}`)
 await s.shot('C3-rover-stopped-before-wall')
@@ -281,7 +283,7 @@ await sleep(700)
 section = await s.section()
 const edited = section.programs[0]
 check('R4.saved', JSON.stringify(edited.workspace).includes('"NUM":6') && edited.revision === 1, `typed 6 into the field: saved as revision ${edited.revision}`)
-check('R4.changed-line', (await s.text('robo-changed')) === 'Changed · press Run to use it' && (await s.observation()).phase === 'running', `while it runs: "${await s.text('robo-changed')}"`)
+check('R4.changed-line', (await s.text('robo-changed')) === 'Your code changed. Press Run to try it.' && (await s.observation()).phase === 'running', `while it runs: "${await s.text('robo-changed')}"`)
 await s.shot('C5-changed-while-running')
 await page.waitForFunction((sensor) => { const o = window.__robotics.stageStore.getState().stageObservation; return o && o.timeSeconds > 1 && Math.abs(o.speedStudsPerSecond) < 0.02 }, rover.sensor, { timeout: 15_000 })
 await sleep(500)
@@ -465,7 +467,7 @@ await page.getByTestId('robo-run').click()
 await sleep(400)
 await s.shot('G1-gate-my-world')
 await page.getByTestId('robo-visitor').click()
-// The starter opens to 90°, waits 2 s and closes: sample until the door is on its way back.
+// The starter keeps the door open (90°) while the visitor is there and shuts it once they have gone: sample until the door is on its way back.
 let maxAngle = 0
 let openChip = ''
 let shotTaken = false

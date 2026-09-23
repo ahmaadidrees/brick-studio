@@ -50,7 +50,7 @@ export const SCENERY_FRICTION = 0.6
  */
 export const MOTOR_TARGET_SPEED_FRACTION = 0.75
 export const MOTOR_TARGET_GAIN = 10
-/** A visitor waits this long at the end of its walk before it walks back. */
+/** A visitor waits this long at the end of its walk before it walks back, unless its prop says how long (`pauseSeconds`). */
 export const VISITOR_PAUSE_SECONDS = 2
 /**
  * Clock policy. Frame time accumulates and the world advances in whole fixed steps,
@@ -285,27 +285,38 @@ export function createMechanics(input: MechanicsInput): Mechanics {
       visitors.push({ prop, body, phase: 'away', t: 0, position: { ...start } })
     }
   }
-  const walkDuration = (visitor: Visitor) => Math.max(0, visitor.prop.path.length - 1) * Math.max(dt, visitor.prop.secondsPerLeg)
+  /** Seconds each leg takes: the prop's own list (the walk-up test's quick steps, then slow ones into the beam), else `secondsPerLeg` each. */
+  const legTimes = (visitor: Visitor): number[] => {
+    const legs = Math.max(0, visitor.prop.path.length - 1)
+    const own = visitor.prop.legSeconds
+    return Array.from({ length: legs }, (_, index) => Math.max(dt, own && own.length === legs && Number.isFinite(own[index]) ? own[index] : visitor.prop.secondsPerLeg))
+  }
+  const walkDuration = (visitor: Visitor) => legTimes(visitor).reduce((sum, seconds) => sum + seconds, 0)
   const walkPoint = (visitor: Visitor, s: number): Vec3 => {
     const path = visitor.prop.path
     if (path.length < 2) return { ...path[0] }
-    const perLeg = Math.max(dt, visitor.prop.secondsPerLeg)
-    const clamped = clamp(s, 0, walkDuration(visitor))
-    const leg = Math.min(path.length - 2, Math.floor(clamped / perLeg))
-    return lerp(path[leg], path[leg + 1], clamp((clamped - leg * perLeg) / perLeg, 0, 1))
+    let left = clamp(s, 0, walkDuration(visitor))
+    const times = legTimes(visitor)
+    for (let leg = 0; leg < times.length; leg += 1) {
+      if (left <= times[leg] || leg === times.length - 1) return lerp(path[leg], path[leg + 1], clamp(left / times[leg], 0, 1))
+      left -= times[leg]
+    }
+    return { ...path[path.length - 1] }
   }
+  const pauseOf = (visitor: Visitor) => (Number.isFinite(visitor.prop.pauseSeconds) ? Math.max(0, visitor.prop.pauseSeconds!) : VISITOR_PAUSE_SECONDS)
   const advanceVisitor = (visitor: Visitor) => {
     if (visitor.phase === 'away') return
     visitor.t += dt
     const duration = walkDuration(visitor)
+    // Whole fixed steps add up with rounding: a phase ends on the step that reaches its time.
     if (visitor.phase === 'arriving') {
       visitor.position = walkPoint(visitor, visitor.t)
-      if (visitor.t >= duration) { visitor.phase = 'here'; visitor.t = 0 }
+      if (visitor.t >= duration - stepEpsilon) { visitor.phase = 'here'; visitor.t = 0 }
     } else if (visitor.phase === 'here') {
-      if (visitor.t >= VISITOR_PAUSE_SECONDS) { visitor.phase = 'leaving'; visitor.t = 0 }
+      if (visitor.t >= pauseOf(visitor) - stepEpsilon) { visitor.phase = 'leaving'; visitor.t = 0 }
     } else {
       visitor.position = walkPoint(visitor, duration - visitor.t)
-      if (visitor.t >= duration) { visitor.phase = 'away'; visitor.t = 0 }
+      if (visitor.t >= duration - stepEpsilon) { visitor.phase = 'away'; visitor.t = 0 }
     }
     visitor.body.setNextKinematicTranslation(visitor.position)
   }

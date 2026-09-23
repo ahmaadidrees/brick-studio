@@ -1,7 +1,7 @@
-import { ArrowLeft, Gauge, PersonStanding, RotateCcw } from 'lucide-react'
+import { ArrowLeft, CircleCheck, CodeXml, Gauge, PersonStanding, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
 import { useBrickStore } from '../../brick/store'
-import { LIVE_ROOM_CODE_LINE } from '../code/codeViewState'
+import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { suspendStudioShortcuts } from '../code/studioKeys'
 import { plateCurb } from '../explore/plateCurb'
 import { rideProgramKey } from '../explore/rideModel'
@@ -14,9 +14,11 @@ import { simBehaviorKey, useRoboticsStore } from '../state/roboticsStore'
 import { useStageStore, type StageOptions, type StageSession } from '../state/stageStore'
 import { driveCourse, driveFramePoints, propFramePoints } from './course'
 import { DriveJoystick, type Axes } from './DriveJoystick'
+import { BeamArrow } from './BeamArrow'
 import { useDriveView } from './driveViewState'
 import { choosePlayProgram } from './playProgram'
 import { readiness, type PlayKind } from './readiness'
+import { ARM_OPEN_DEGREES, tryLine } from './tryOutcome'
 import './drive.css'
 
 /**
@@ -270,9 +272,28 @@ function useDriveKeys(): ReadonlySet<ProgramKey> {
   return held
 }
 
+/** The primary pointer is a finger (an iPad): no arrow keys to name. The same test as the Explore ride card's. */
+function useCoarsePointer(): boolean {
+  const query = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(pointer: coarse)') : null)
+  const [coarse, setCoarse] = useState(() => query()?.matches ?? false)
+  useEffect(() => {
+    const media = query()
+    if (!media) return
+    const update = () => setCoarse(media.matches)
+    update()
+    media.addEventListener?.('change', update)
+    return () => media.removeEventListener?.('change', update)
+  }, [])
+  return coarse
+}
+
+/** What to do with the joystick: with a finger, the blue ball; with a keyboard likely, the arrow keys too. */
+export const driveHint = (touch: boolean) => (touch ? 'Drag the blue ball to drive' : 'Drag the joystick or use the arrow keys')
+
 function DriveFoot({ observation, active }: { observation: RunObservation | null; active: boolean }) {
   const held = useDriveKeys()
   const hintId = useId()
+  const touch = useCoarsePointer()
   const onJoystick = useCallback((up: number, right: number) => useStageStore.getState().setStageJoystick(up, right), [])
   const speed = observation ? Math.abs(observation.speedStudsPerSecond) : 0
   // Everything for driving sits in one corner, so the course has the rest of the canvas.
@@ -284,7 +305,7 @@ function DriveFoot({ observation, active }: { observation: RunObservation | null
         <strong>{speed.toFixed(1)}</strong>
         <span>studs a second</span>
       </div>
-      <p className="robo-drive-hint" id={hintId} data-testid="robo-drive-hint">Drag the joystick or use the arrow keys</p>
+      <p className="robo-drive-hint" id={hintId} data-testid="robo-drive-hint">{driveHint(touch)}</p>
       <div className={`robo-drive-stick${active ? '' : ' waiting'}`}>
         <DriveJoystick onChange={onJoystick} keyAxes={keyAxes(held)} describedBy={hintId} />
       </div>
@@ -297,8 +318,6 @@ function DriveFoot({ observation, active }: { observation: RunObservation | null
 export type TryResult = { id: string; label: string; value: string; tone: 'on' | 'off'; swatch?: string }
 
 const SWATCH: Record<string, string> = { red: '#ff3b30', orange: '#ff9500', yellow: '#ffd60a', green: '#34c759', blue: '#0a84ff', purple: '#bf5af2', white: '#ffffff' }
-/** An arm this far from where it was built reads as open. */
-const OPEN_DEGREES = 20
 
 /** What a student watches for, in words: does the sensor see something, is the arm open, is the light on. */
 export function tryResults(creation: DerivedCreation, observation: RunObservation | null): TryResult[] {
@@ -312,7 +331,7 @@ export function tryResults(creation: DerivedCreation, observation: RunObservatio
   for (const hinge of creation.hinges) {
     if (!hinge.plugged) continue
     const angle = observation?.motors[hinge.brickId]?.positionDegrees ?? 0
-    const open = Math.abs(angle) >= OPEN_DEGREES
+    const open = Math.abs(angle) >= ARM_OPEN_DEGREES
     results.push({ id: hinge.brickId, label: hinge.name, value: open ? 'open' : 'closed', tone: open ? 'on' : 'off' })
   }
   for (const light of creation.lights) {
@@ -327,6 +346,13 @@ function TryFoot({ creation, stage, observation }: { creation: DerivedCreation; 
   const hasVisitor = Boolean(stage?.controller.props.some((prop) => prop.kind === 'visitor'))
   const walking = observation?.visitorPhase === 'arriving' || observation?.visitorPhase === 'here' || observation?.visitorPhase === 'leaving'
   const results = useMemo(() => tryResults(creation, observation), [creation, observation])
+  // Kid lane Y: after every walk-up, one line says it worked or why not, and stays until the next.
+  const walk = useStageStore((state) => (state.walk?.creationId === creation.id ? state.walk : null))
+  const line = walk ? tryLine(walk, creation) : null
+  const openCode = () => {
+    useDriveView.getState().closeDrive()
+    useCodeView.getState().openCode(creation.id)
+  }
   const hintId = useId()
   return (
     <>
@@ -341,7 +367,21 @@ function TryFoot({ creation, stage, observation }: { creation: DerivedCreation; 
         </ul>
       </footer>
       <div className="robo-drive-side">
-        <p className="robo-drive-hint" id={hintId} data-testid="robo-drive-hint">Press the big button. Watch what happens.</p>
+        {line && walk
+          ? (
+            <div className={`robo-drive-hint robo-drive-result ${line.tone}`} id={hintId} role="status" data-testid="robo-try-result" data-verdict={walk.verdict ?? undefined}>
+              <p>
+                {line.tone === 'good' && <CircleCheck size={20} aria-hidden="true" />}
+                <span>{line.text}{line.pointsAtBeam && <> <BeamArrow /></>}</span>
+              </p>
+              {line.pointsAtCode && (
+                <button type="button" className="robo-drive-code-link" onClick={openCode} data-testid="robo-try-open-code">
+                  <CodeXml size={16} aria-hidden="true" />Open Code
+                </button>
+              )}
+            </div>
+          )
+          : <p className="robo-drive-hint" id={hintId} role="status" data-testid="robo-drive-hint">{walk ? 'Here they come. Watch the sensor.' : 'Press the big button. Watch what happens.'}</p>}
         <button
           type="button"
           className="robo-drive-visitor"

@@ -127,4 +127,19 @@ describe('what the scene draws', () => {
     expect(scene.cables).toEqual([])
     expect(scene.stubs).toEqual([])
   })
+  it('…unless they ride with their body: a cable whose device and hub share a body moves with it; one between two bodies is left out', () => {
+    // Kid lane Y ("Test the motors"): the chassis carries the hub and the sensor; the left motor rides on another body here.
+    const hidden = new Set([ROVER_IDS.hub, ROVER_IDS.leftMotor, ROVER_IDS.rightMotor, ROVER_IDS.sensor])
+    const bodyOf: Record<string, string> = { [ROVER_IDS.hub]: 'chassis', [ROVER_IDS.sensor]: 'chassis', [ROVER_IDS.rightMotor]: 'chassis', [ROVER_IDS.leftMotor]: 'elsewhere' }
+    const bodies = { simulated: hidden, bodyOfBrick: (id: string) => bodyOf[id] ?? null, poses: () => new Map() }
+    const scene = cableScene(rover(wired()), ROVER_IDS.sensor, hidden, bodies)
+    expect(scene.cables).toEqual([])
+    expect([...scene.riding.keys()]).toEqual(['chassis'])
+    const riding = scene.riding.get('chassis')!
+    expect(riding.map((cable) => cable.deviceId).sort()).toEqual([ROVER_IDS.rightMotor, ROVER_IDS.sensor].sort())
+    // The same route as in Build (drawn at the built pose, moved with the body), and the selection still lights it.
+    const built = cableScene(rover(wired()), ROVER_IDS.sensor, new Set())
+    expect(riding.find((cable) => cable.deviceId === ROVER_IDS.sensor)!.points).toEqual(built.cables.find((cable) => cable.deviceId === ROVER_IDS.sensor)!.points)
+    expect(riding.find((cable) => cable.deviceId === ROVER_IDS.sensor)!.lit).toBe(true)
+  })
 })

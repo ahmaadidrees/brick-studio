@@ -101,7 +101,31 @@ export type RunSpace = 'testPlate' | 'myWorld'
  */
 export type TestProp =
   | { id: string; kind: 'wall'; center: Vec3; size: Vec3; /** A colour over its brick pattern (the Drive view's course posts); plain brick when absent. Additive, drive lane. */ color?: string }
-  | { id: string; kind: 'visitor'; path: Vec3[]; size: Vec3; secondsPerLeg: number; /** Which way the figure looks while it waits (world, horizontal). Additive, run lane. */ facing?: Vec3 }
+  | {
+    id: string; kind: 'visitor'; path: Vec3[]; size: Vec3; secondsPerLeg: number
+    /** Which way the figure looks while it waits (world, horizontal). Additive, run lane. */
+    facing?: Vec3
+    /** Seconds each leg of the path takes, one per leg; `secondsPerLeg` each when absent. Additive, kid lane Y. */
+    legSeconds?: number[]
+    /** How long it waits at the end of its walk; `VISITOR_PAUSE_SECONDS` when absent. Additive, kid lane Y. */
+    pauseSeconds?: number
+    /** The sensor it walks up to (`run/walkUp.ts`). Additive, kid lane Y. */
+    sensorId?: DeviceId
+    /** How the walk was planned: where it stops, which way it came, and what was in the way. Additive, kid lane Y. */
+    walk?: { standStuds: number; approach: WalkApproach; problem: WalkProblem | null; /** Studs to one of the student's bricks in the beam, inside "sees something". */ wallStuds?: number }
+  }
+
+/**
+ * Which way the visitor came to its stop: across the beam from the camera's side or the other,
+ * straight up the beam, or (no room in the beam) up to the front of the robot.
+ */
+export type WalkApproach = 'side' | 'other-side' | 'ahead' | 'front'
+/**
+ * What made the walk less than ideal: the sensor does not look level (`looks-away`), one of the
+ * student's bricks is in the beam inside "sees something" (`wall`), the beam runs into the robot
+ * itself so nobody can stand in it (`no-room`), or the walk passes through something (`crowded`).
+ */
+export type WalkProblem = 'looks-away' | 'wall' | 'no-room' | 'crowded'
 
 export type SensorBeam = { deviceId: DeviceId; from: Vec3; to: Vec3; hit: boolean }
 

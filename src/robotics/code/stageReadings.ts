@@ -1,4 +1,6 @@
+import { ARM_OPEN_DEGREES } from '../drive/tryOutcome'
 import { driveSidesOf, type DerivedCreation, type DerivedDevice, type DerivedMotor, type DriveSides } from '../model/creations'
+import { SEES_SOMETHING_STUDS } from '../program/types'
 import type { RunObservation } from '../run/types'
 import { isRecord, walkBlocks } from '../program/workspaceJson'
 
@@ -30,6 +32,15 @@ const round = (value: number) => {
 }
 const signed = (value: number) => `${round(value) < 0 ? '−' : ''}${Math.abs(round(value))}`
 const unplugged = (device: DerivedDevice, label = device.name): ReadingChip => ({ id: device.brickId, label, value: 'not plugged in', tone: 'warn' })
+/**
+ * How far away, in a third grader's words (kid lane Y): a stud is a "step", whole numbers
+ * without a decimal ("3 steps away", "2.4 steps away", "1 step away").
+ */
+export function stepsAway(studs: number): string {
+  const whole = Math.round(studs)
+  const text = Math.abs(studs - whole) < 0.05 ? String(whole) : studs.toFixed(1)
+  return `${text} ${text === '1' ? 'step' : 'steps'} away`
+}
 /** "Left motor", "Left motor and Right motor", "3 motors". */
 const someMotors = (motors: readonly DerivedMotor[]) => (motors.length > 2 ? `${motors.length} motors` : motors.map((motor) => motor.name).join(' and '))
 
@@ -113,10 +124,13 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
   for (const sensor of creation.sensors) {
     if (!sensor.plugged) { chips.push(unplugged(sensor)); continue }
     const reading = observation?.sensors[sensor.brickId]
+    // Kid words: how many steps away; "sees something" under it when a "when … sees something" block would fire.
+    const sees = Boolean(reading?.hit && reading.distanceStuds < SEES_SOMETHING_STUDS)
     chips.push({
       id: sensor.brickId,
       label: sensor.name,
-      value: !reading ? '—' : reading.hit ? `${reading.distanceStuds.toFixed(1)} studs` : 'nothing seen',
+      value: !reading ? '—' : reading.hit ? stepsAway(reading.distanceStuds) : 'nothing seen',
+      ...(sees ? { detail: 'sees something' } : {}),
       tone: !reading ? 'idle' : 'live',
     })
   }
@@ -135,11 +149,14 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
     if (!hinge.plugged) { chips.push(unplugged(hinge)); continue }
     const reading = observation?.motors[hinge.brickId]
     const stuck = reading?.stuck ?? (hinge.locked ? 'locked' : null)
+    // Kid words: open or closed; how far it turned (the number a "turn … to" block uses) underneath.
+    const angle = reading ? round(reading.positionDegrees) : 0
+    const turned = reading && angle !== 0 ? `turned to ${signed(reading.positionDegrees)}` : null
     chips.push({
       id: hinge.brickId,
       label: hinge.name,
-      value: reading ? `${signed(reading.positionDegrees)}°` : '—',
-      ...(stuck ? { detail: stuck === 'locked' ? 'built into the frame · can’t swing' : 'blocked · pushing on something' } : {}),
+      value: reading ? (Math.abs(reading.positionDegrees) >= ARM_OPEN_DEGREES ? 'open' : 'closed') : '—',
+      ...(stuck ? { detail: stuck === 'locked' ? 'built into the frame · can’t swing' : 'blocked · pushing on something' } : turned ? { detail: turned } : {}),
       tone: stuck ? 'bad' : reading ? 'live' : 'idle',
     })
   }

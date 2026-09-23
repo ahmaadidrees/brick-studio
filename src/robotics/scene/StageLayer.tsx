@@ -8,6 +8,7 @@ import { brickIdOfNode, isArmNode } from '../model/assembly'
 import { brickFrame, toWorldDirection, toWorldPoint } from '../model/grid'
 import type { Vec3 } from '../model/vec'
 import { MOTOR_SOCKET_RADIUS, roboticsSpec } from '../parts/catalog'
+import { setBeamScreenAngle } from '../drive/BeamArrow'
 import { buildHingeHousing, buildHingeTurntable } from '../parts/geometry'
 import { PROGRAM_KEYS, type LightColor } from '../program/types'
 import { programKeyFromEvent } from '../run/input'
@@ -30,6 +31,7 @@ import { setHiddenBrickIds } from './hiddenBricks'
 const CORAL = '#f17861'
 const BEAM_IDLE = '#f4ca3a'
 const BEAM_HIT = '#e7473c'
+const BEAM_POINTER = '#ffcf1f'
 const PUBLISH_SECONDS = 0.1
 export const LIGHT_HEX: Record<LightColor, string> = {
   red: '#ff3b30', orange: '#ff9500', yellow: '#ffd60a', green: '#34c759', blue: '#0a84ff', purple: '#bf5af2', white: '#ffffff',
@@ -257,6 +259,36 @@ function BuiltPoseShell({ brick, plateSize }: { brick: BrickInstance; plateSize:
   )
 }
 
+/**
+ * Kid lane Y: when the sensor did not see the visitor, a yellow arrowhead rides the sensor's beam
+ * (thicker while it points), so "It looks this way" shows which way that is.
+ */
+const pointerGeometry = (() => {
+  const cone = new THREE.ConeGeometry(0.16, 0.4, 16)
+  cone.translate(0, 0.2, 0)
+  return cone
+})()
+
+function BeamPointer({ register }: { register: (mesh: THREE.Mesh | null) => void }) {
+  return (
+    <mesh ref={register} geometry={pointerGeometry} visible={false} renderOrder={6}>
+      <meshBasicMaterial color={BEAM_POINTER} depthTest={false} transparent opacity={0.95} toneMapped={false} />
+    </mesh>
+  )
+}
+
+/** A light that is off looks off: its colour greyed and dimmed, whatever it was painted (kid lane Y). */
+const LIGHT_OFF_GREY = new THREE.Color('#9aa4ab')
+const lightOffColors = new Map<string, THREE.Color>()
+function lightOffColor(base: string): THREE.Color {
+  let color = lightOffColors.get(base)
+  if (!color) {
+    color = new THREE.Color(base).lerp(LIGHT_OFF_GREY, 0.55).multiplyScalar(0.9)
+    lightOffColors.set(base, color)
+  }
+  return color
+}
+
 /* ------------------------------------------------------------------ input */
 
 const EDITABLE = 'input, textarea, select, [contenteditable="true"], .blocklyWidgetDiv, .blocklyDropDownDiv'
@@ -302,7 +334,7 @@ function useStageKeys(controller: RunController) {
 const contactKeyOf = (observation: RunObservation | null) =>
   observation ? [...new Set(observation.contacts.flatMap((contact) => [contact.brickId, contact.otherBrickId].filter((id): id is string => Boolean(id))))].sort().join('|') : ''
 
-const scratch = { from: new THREE.Vector3(), to: new THREE.Vector3(), direction: new THREE.Vector3() }
+const scratch = { from: new THREE.Vector3(), to: new THREE.Vector3(), direction: new THREE.Vector3(), screenA: new THREE.Vector3(), screenB: new THREE.Vector3() }
 
 function StageScene({ session }: { session: StageSession }) {
   const { controller, creation, plateSize, bricks } = session
@@ -318,6 +350,15 @@ function StageScene({ session }: { session: StageSession }) {
   const contactKey = useStageStore((state) => contactKeyOf(state.stageObservation))
   const contactIds = useMemo(() => new Set(contactKey ? contactKey.split('|') : []), [contactKey])
   const sincePublish = useRef(0)
+  // Kid lane Y: the sensor whose beam "It looks this way" points at, while that line shows.
+  const pointedSensor = useStageStore((state) => (state.walk && (state.walk.verdict === 'not-seen' || state.walk.verdict === 'wall') ? state.walk.sensorId : null))
+  const pointed = useRef<string | null>(null)
+  pointed.current = pointedSensor
+  const pointer = useRef<THREE.Mesh | null>(null)
+  useEffect(() => {
+    if (!pointedSensor) setBeamScreenAngle(null)
+    return () => setBeamScreenAngle(null)
+  }, [pointedSensor])
 
   useEffect(() => {
     setHiddenBrickIds(controller.hiddenBrickIds)
@@ -345,7 +386,7 @@ function StageScene({ session }: { session: StageSession }) {
     figures.current.set(prop.id, { ...handle, last: null, yaw: facing ? Math.atan2(facing.x, facing.z) : 0, stride: 0 })
   }])), [controller.props])
 
-  useFrame((_, delta) => {
+  useFrame((frameState, delta) => {
     controller.advance(delta)
     const poses = controller.poses()
     for (const [id, group] of groups.current) {
@@ -387,6 +428,7 @@ function StageScene({ session }: { session: StageSession }) {
       figure.last = now
     }
 
+    let pointerShown = false
     for (const id of sensorIds) {
       const handle = beams.current.get(id)
       if (!handle) continue
@@ -396,26 +438,43 @@ function StageScene({ session }: { session: StageSession }) {
       scratch.to.set(beam.to.x, beam.to.y, beam.to.z)
       scratch.direction.subVectors(scratch.to, scratch.from)
       const length = Math.max(1e-3, scratch.direction.length())
+      // "It looks this way": the beam thick and pulsing, an arrowhead on it, its direction on screen for the line's arrow.
+      const pointing = pointed.current === id
+      const pulse = pointing ? 0.75 + 0.25 * Math.sin(frameState.clock.elapsedTime * 6) : 1
       handle.group.visible = true
       handle.line.position.copy(scratch.from)
       handle.line.quaternion.setFromUnitVectors(Y_UP, scratch.direction.normalize())
-      handle.line.scale.set(beam.hit ? 1.4 : 1, length, beam.hit ? 1.4 : 1)
-      handle.material.color.set(beam.hit ? BEAM_HIT : BEAM_IDLE)
-      handle.material.opacity = beam.hit ? 0.9 : 0.55
+      const width = pointing ? 2.6 : beam.hit ? 1.4 : 1
+      handle.line.scale.set(width, length, width)
+      handle.material.color.set(beam.hit ? BEAM_HIT : pointing ? BEAM_POINTER : BEAM_IDLE)
+      handle.material.opacity = pointing ? 0.95 * pulse : beam.hit ? 0.9 : 0.55
       handle.dot.visible = beam.hit
       handle.dot.position.copy(scratch.to)
+      if (pointing && pointer.current) {
+        pointerShown = true
+        pointer.current.visible = true
+        pointer.current.position.copy(scratch.from).addScaledVector(scratch.direction, Math.min(length * 0.6, 1.4 + 0.25 * pulse))
+        pointer.current.quaternion.setFromUnitVectors(Y_UP, scratch.direction)
+        const a = scratch.screenA.copy(scratch.from).project(frameState.camera)
+        const b = scratch.screenB.copy(scratch.from).addScaledVector(scratch.direction, 1).project(frameState.camera)
+        setBeamScreenAngle((Math.atan2(-(b.y - a.y) * frameState.size.height, (b.x - a.x) * frameState.size.width) * 180) / Math.PI)
+      }
     }
+    if (!pointerShown && pointer.current) pointer.current.visible = false
 
+    // Kid lane Y: a light that is off looks off (greyed, dim); on, it is its colour, glowing.
     for (const [id, handle] of lights.current) {
       const color = observation.lights[id] ?? null
       if (color) {
         handle.material.color.set(LIGHT_HEX[color])
         handle.material.emissive.set(LIGHT_HEX[color])
-        handle.material.emissiveIntensity = 0.7
-        ;(handle.glow.material as THREE.MeshBasicMaterial).color.set(LIGHT_HEX[color])
+        handle.material.emissiveIntensity = 1.1
+        const glow = handle.glow.material as THREE.MeshBasicMaterial
+        glow.color.set(LIGHT_HEX[color])
+        glow.opacity = 0.45
         handle.glow.visible = true
       } else {
-        handle.material.color.set(handle.base)
+        handle.material.color.copy(lightOffColor(handle.base))
         handle.material.emissive.set('#000000')
         handle.material.emissiveIntensity = 0
         handle.glow.visible = false
@@ -458,6 +517,7 @@ function StageScene({ session }: { session: StageSession }) {
         ? <Wall key={prop.id} prop={prop} register={(group) => { if (group) props.current.set(prop.id, group); else props.current.delete(prop.id) }} />
         : <Visitor key={prop.id} prop={prop} register={figureRegister.get(prop.id)!} />)}
       {sensorIds.map((id) => <Beam key={id} register={beamRegister.get(id)!} />)}
+      <BeamPointer register={(mesh) => { pointer.current = mesh }} />
       {[...contactIds].filter((id) => !drawn.has(id) && !controller.hiddenBrickIds.has(id)).map((id) => { const brick = byId.get(id); return brick ? <BuiltPoseShell key={`contact-${id}`} brick={brick} plateSize={plateSize} /> : null })}
     </group>
   )

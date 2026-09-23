@@ -1,4 +1,6 @@
-import { Flag, Focus, Lightbulb, Octagon, PersonStanding, RotateCcw } from 'lucide-react'
+import { CircleCheck, Flag, Focus, Lightbulb, Octagon, PersonStanding, RotateCcw } from 'lucide-react'
+import { BeamArrow } from '../drive/BeamArrow'
+import type { TryLine, TryVerdict } from '../drive/tryOutcome'
 import type { DerivedCreation } from '../model/creations'
 import type { ProgramKey } from '../program/types'
 import type { RunObservation, RunSpace } from '../run/types'
@@ -36,6 +38,11 @@ export type StagePanelProps = {
   onFrame: () => void
   onJoystick: (up: number, right: number) => void
   onKey: (key: ProgramKey, down: boolean) => void
+  /** What the last walk-up said (kid lane Y): it worked, or why not. */
+  walkLine?: TryLine | null
+  walkVerdict?: TryVerdict | null
+  /** Someone is walking up and there is no verdict yet. */
+  walking?: boolean
 }
 
 export function StagePanel(props: StagePanelProps) {
@@ -67,8 +74,16 @@ export function StagePanel(props: StagePanelProps) {
       </div>
       <div className="robo-code-lines">
         {runBlocked && <p className="robo-line bad" role="alert" data-testid="robo-run-blocked"><strong>Can’t run yet:</strong> {runBlocked}</p>}
-        {changed && <p className="robo-line changed" data-testid="robo-changed"><strong>Changed</strong> · press Run to use it</p>}
+        {changed && <p className="robo-line changed" data-testid="robo-changed"><strong>Your code changed.</strong> Press Run to try it.</p>}
         {notice && <p className="robo-line" data-testid="robo-stage-notice">{notice}</p>}
+        {props.walkLine
+          ? (
+            <p className={`robo-line walk ${props.walkLine.tone}`} role="status" data-testid="robo-try-result" data-verdict={props.walkVerdict ?? undefined}>
+              {props.walkLine.tone === 'good' && <CircleCheck size={17} aria-hidden="true" />}
+              <span>{props.walkLine.text}{props.walkLine.pointsAtBeam && <> <BeamArrow /></>}</span>
+            </p>
+          )
+          : props.walking && <p className="robo-line walk" role="status" data-testid="robo-try-result">Here they come. Watch the sensor.</p>}
       </div>
       <div className="robo-code-readings" aria-label="Readings" data-testid="robo-readings">
         {chips.map((chip) => (

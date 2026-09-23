@@ -8,8 +8,9 @@ import type { BlockDiagnostic, CompileResult, ProgramKey } from '../program/type
 import type { RunSpace, TestProp } from '../run/types'
 import { createProgramRuntime } from '../runtime'
 import { FIXED_STEP } from '../sim/mechanics'
+import { tryLine } from '../drive/tryOutcome'
 import { useRoboticsStore } from '../state/roboticsStore'
-import { useStageStore } from '../state/stageStore'
+import { ensureStageRunning, setStageRunner, useStageStore } from '../state/stageStore'
 import { WiringModeToggle } from '../wiring/WiringModeToggle'
 import { BlocklyWorkspace, type BlocklyWorkspaceHandle } from './BlocklyWorkspace'
 import { useCodeView } from './codeViewState'
@@ -66,6 +67,8 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
   const [compile, setCompile] = useState<CompileResult | null>(null)
   const [runBlocked, setRunBlocked] = useState<string | null>(null)
   const [ran, setRan] = useState<Ran | null>(null)
+  // The run's program and revision, for the stage runner (called outside React's render).
+  const ranRef = useRef<Ran | null>(null)
   const [saveProblem, setSaveProblem] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   // First run (contract §6): a program opened before its first edit gets the small palette, collapsed.
@@ -113,28 +116,52 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
 
   const resetRun = useCallback(() => {
     setRan(null)
+    ranRef.current = null
     setRunBlocked(null)
     useStageStore.getState().resetStage()
     frame()
   }, [frame])
 
-  const run = () => {
+  /** Run: the newest code, fresh from the current pose. False when it cannot run (the stage says why). */
+  const run = (): boolean => {
     const handle = workspace.current
-    if (!handle || !active) return
+    if (!handle || !active) return false
     handle.flush()
     const result = handle.compileNow()
-    if (!result) return
+    if (!result) return false
     if (!result.ok) {
       const first = result.diagnostics.find((diagnostic) => diagnostic.severity === 'error')
       setRunBlocked(first?.message ?? 'Fix the blocks marked in red first.')
       if (first?.blockId) handle.revealBlock(first.blockId)
-      return
+      return false
     }
     setRunBlocked(null)
     const saved = activeProgramOf(currentSection(), creation.id) ?? active
     useStageStore.getState().runOnStage(createProgramRuntime(result.ir, { fixedStep: FIXED_STEP }))
-    setRan({ programId: saved.id, revision: saved.revision })
+    ranRef.current = { programId: saved.id, revision: saved.revision }
+    setRan(ranRef.current)
+    return true
   }
+
+  /**
+   * A stage input ("Someone walks up", the joystick, the keys pad, a button on the stage) tests
+   * the newest code (kid lane Y): when nothing runs, or what runs is older than the saved program,
+   * it runs the newest first, as Run would. An edit alone never restarts a run (CP2-PLAN §1).
+   */
+  const ensureRunning = (): boolean => {
+    workspace.current?.flush()
+    const current = activeProgramOf(currentSection(), creation.id)
+    const last = ranRef.current
+    const newest = Boolean(current && last && last.programId === current.id && last.revision === current.revision)
+    if (useStageStore.getState().stageObservation?.phase === 'running' && newest) return true
+    return run()
+  }
+  const ensureRunningRef = useRef(ensureRunning)
+  useEffect(() => { ensureRunningRef.current = ensureRunning })
+  useEffect(() => {
+    setStageRunner({ creationId: creation.id, ensureRunning: () => ensureRunningRef.current() })
+    return () => setStageRunner(null)
+  }, [creation.id])
 
   const selectProgram = (programId: string) => {
     workspace.current?.flush()
@@ -163,8 +190,23 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
     workspace.current?.flush()
     useCodeView.getState().closeCode()
   }
-  const onJoystick = useCallback((up: number, right: number) => useStageStore.getState().setStageJoystick(up, right), [])
-  const onKey = useCallback((key: ProgramKey, down: boolean) => useStageStore.getState().setStageKey(key, down), [])
+  // The on-screen joystick and keys pad start the newest code when first pushed (a stage input, as above).
+  const joystickEngaged = useRef(false)
+  const onJoystick = useCallback((up: number, right: number) => {
+    const centred = up === 0 && right === 0
+    if (!centred && !joystickEngaged.current) {
+      joystickEngaged.current = true
+      if (!ensureStageRunning()) return
+    }
+    if (centred) joystickEngaged.current = false
+    useStageStore.getState().setStageJoystick(up, right)
+  }, [])
+  const onKey = useCallback((key: ProgramKey, down: boolean) => {
+    if (down && !ensureStageRunning()) return
+    useStageStore.getState().setStageKey(key, down)
+  }, [])
+  const walk = useStageStore((state) => (state.walk?.creationId === creation.id ? state.walk : null))
+  const walkLine = useMemo(() => (walk ? tryLine(walk, creation) : null), [walk, creation])
 
   const ours = Boolean(active && ran && ran.programId === active.id)
   const running = observation?.phase === 'running'
@@ -249,6 +291,10 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
         onReset={resetRun}
         onSpace={chooseSpace}
         onVisitor={() => useStageStore.getState().triggerVisitor()}
+        // What the last walk-up said is about the code that ran: once the code has changed, it is not shown.
+        walkLine={changed ? null : walkLine}
+        walkVerdict={changed ? null : walk?.verdict ?? null}
+        walking={!changed && Boolean(walk && !walk.verdict)}
         onFrame={frame}
         onJoystick={onJoystick}
         onKey={onKey}

@@ -6,6 +6,8 @@ import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { readiness } from '../drive/readiness'
+import { useLastTryRow } from '../drive/tryOutcome'
+import type { TriedIcon } from '../guide/nextSteps'
 import { runStepAction } from '../guide/actions'
 import { FIRST_IDEAS_DONE, nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
 import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
@@ -266,7 +268,9 @@ function PlayButtons({ creation, live, reasonId }: { creation: DerivedCreation; 
  */
 function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreation; live: boolean; focus: boolean; reasonId: string }) {
   const model = useRoboticsStore((state) => state.model)
-  const rows = useMemo(() => nextSteps(creation, model), [creation, model])
+  // Kid lane Y: after a try, the ready row says what happened ("It worked! Try it again").
+  const tried = useLastTryRow(creation.id)
+  const rows = useMemo(() => nextSteps(creation, model, { tried }), [creation, model, tried])
   const path = rows.filter((row) => row.group === 'step')
   const choices = rows.filter((row) => row.group === 'choice')
   const ideas = rows.filter((row) => row.group === 'idea')
@@ -347,7 +351,8 @@ function StepRow({ row, live, textId }: { row: NextStep; live: boolean; textId?:
   )
 }
 
-function StepIconView({ icon }: { icon: StepIcon }) {
+function StepIconView({ icon }: { icon: StepIcon | TriedIcon }) {
+  if ('symbol' in icon && icon.symbol === 'worked') return <span className="robotics-step-icon symbol worked" aria-hidden="true"><Check size={22} /></span>
   if ('part' in icon) {
     const part = BRICK_PART_MAP[icon.part]
     if (part) return <span className="robotics-step-icon" aria-hidden="true"><PartThumbnail part={part} /></span>

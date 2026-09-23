@@ -418,6 +418,12 @@
 .robo-line { margin: 0; padding: 7px 11px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(38, 60, 81, .12); font-size: 12.5px; font-weight: 700; }
 .robo-line.bad { color: #8a1f15; background: #ffe6e1; }
 .robo-line.changed { color: #6b4a00; background: #fff1c2; }
+/* Kid lane Y: what the last walk-up did. */
+.robo-line.walk { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 800; }
+.robo-line.walk.good { color: var(--robo-green); background: #e4f4ea; }
+.robo-line.walk.warn { color: #5c4000; background: #fff1c2; }
+.robo-line.walk svg { flex: 0 0 auto; }
+.robo-line .robo-beam-arrow { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; background: #f4ca3a; color: #263c51; vertical-align: middle; transition: transform .2s; }
 
 .robo-code-readings { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 10px 12px; pointer-events: none; }
 .robo-code-readings:empty { display: none; }

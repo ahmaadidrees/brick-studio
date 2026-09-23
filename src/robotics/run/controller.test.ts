@@ -11,6 +11,7 @@ import { SENSOR_MAX_RANGE_STUDS, type DeviceId } from '../program/types'
 import { VISITOR_PAUSE_SECONDS } from '../sim/mechanics'
 import { createRunController, defaultProps, deriveCreationForSpace, type StageRunController } from './controller'
 import type { ActuatorIntent, IntentSource, ProgramRuntime, RunSpace, TestProp, TickSnapshot } from './types'
+import { WALK_UP } from './walkUp'
 
 /**
  * The run controller against the three spike builds and the five failures (CP2-PLAN §2),
@@ -297,14 +298,18 @@ describe('the gate and the signal post in my world', () => {
     fresh.dispose()
   })
 
-  it('the visitor pauses about two seconds, walks back, and the sensor clears', () => {
+  it('the visitor walks up (quick steps, then slow ones into the beam), waits in the beam, walks back, and the sensor clears', () => {
     const { controller } = stage(gateBricks(), GATE_IDS.hinge, GATE_WIRING)
+    const visitor = controller.props[0] as Extract<TestProp, { kind: 'visitor' }>
+    const walk = visitor.legSeconds!.reduce((sum, seconds) => sum + seconds, 0)
+    const pause = visitor.pauseSeconds ?? VISITOR_PAUSE_SECONDS
+    expect(pause).toBe(WALK_UP.pauseSeconds)
     controller.triggerVisitor()
-    frames(controller, 2.6)
+    frames(controller, walk + 0.1)
     expect(controller.observe().visitorPhase).toBe('here')
-    frames(controller, VISITOR_PAUSE_SECONDS)
+    frames(controller, pause)
     expect(controller.observe().visitorPhase).toBe('leaving')
-    frames(controller, 3)
+    frames(controller, walk + 0.1)
     expect(controller.observe().visitorPhase).toBe('away')
     expect(controller.observe().sensors[GATE_IDS.sensor].hit).toBe(false)
     controller.dispose()
