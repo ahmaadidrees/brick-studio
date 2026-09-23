@@ -203,12 +203,12 @@ describe('rename and wiring mode', () => {
     expect(section().devices[left]).toEqual({ name: 'Big wheel' })
   })
 
-  it('Wiring: manual is an undoable setting; a device placed in manual gets no cable and the line says where to plug it', () => {
+  it('Wiring: manual ("Plug in by itself: off") is an undoable setting; a device placed in manual gets no cable and the line says where to plug it', () => {
     const { hub } = rover()
     expect(setWiringMode('manual')).toBe(true)
     expect(section().settings.wiring).toBe('manual')
-    expect(topLabel()).toBe('Wiring: manual')
-    expect(toast()).toBe('Wiring: manual. New parts wait for you to plug them in.')
+    expect(topLabel()).toBe('Plug in by itself: off')
+    expect(toast()).toBe('Plug in by itself is off. New parts wait for you to plug them in.')
     expect(setWiringMode('manual')).toBe(false)
     const light = place(ROBOTICS_PART_IDS.light, 33, 1, 28)
     expect(portOf(light)).toBeNull()

@@ -1,7 +1,9 @@
 import { useBrickStore } from '../../brick/store'
 import { useDriveView } from '../drive/driveViewState'
 import { plugDeviceIn } from '../wiring/actions'
+import { runIdeaAction } from './ideaActions'
 import type { StepAction } from './nextSteps'
+import { armOnce } from './oneShot'
 
 /**
  * Does what a next-steps row says, through the studio's own actions: arming a part is
@@ -14,6 +16,8 @@ export function runStepAction(action: StepAction): void {
     case 'arm': {
       useBrickStore.getState().choosePart(action.partId)
       for (let turn = 0; turn < action.rotation; turn += 1) useBrickStore.getState().rotate()
+      // Placed once, then the brush is put down (lane P, guide/oneShot.ts); a row that asks for several keeps it.
+      if (!action.repeat) armOnce(action.partId)
       return
     }
     case 'plug':
@@ -24,6 +28,11 @@ export function runStepAction(action: StepAction): void {
       return
     case 'select':
       useBrickStore.getState().selectBrick(action.brickId)
+      return
+    case 'paint':
+    case 'rename':
+    case 'code':
+      runIdeaAction(action)
       return
   }
 }

@@ -52,3 +52,37 @@ button.wiring-hub-port { cursor: pointer; background: var(--studio-panel-soft); 
 button.wiring-hub-port:hover { box-shadow: inset 0 0 0 2px var(--studio-panel-border); }
 button.wiring-hub-port:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
 .wiring-mode .robotics-chip { min-height: 44px; padding: 0 14px; }
+/* Simple first (lane P): what the part does and whether it is plugged in, in a third grader's words; the
+   rest (ports, the cable, the code line, the wiring buttons) is behind the part's own More. */
+.wiring-does { color: var(--studio-ink); font-size: 14px; font-weight: 800; line-height: 1.3; }
+.wiring-plugged { color: #1f6b3e; white-space: nowrap; }
+.wiring-plugged svg { margin-left: 3px; vertical-align: -2px; }
+.wiring-plug-in { align-self: flex-start; min-width: 132px; }
+.wiring-hub-plugged { margin: 0; color: var(--studio-ink); font-size: 14px; font-weight: 800; line-height: 1.35; }
+.wiring-inspector .robotics-fold { gap: 10px; }
+@media (any-pointer: coarse) {
+  .wiring-does, .wiring-hub-plugged { font-size: 15px; }
+}
+/* The part's card (lane P): a picture, the name (a pencil makes it editable), what it does, big Turn and Remove. */
+.robotics-panel .wiring-card { padding: 10px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel-soft); }
+.wiring-picture { flex: 0 0 auto; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 12px; background: var(--studio-panel); overflow: hidden; }
+.wiring-picture .part-thumbnail { width: 48px; height: 48px; }
+.wiring-name-row { display: flex; align-items: center; gap: 4px; }
+.wiring-name-row .wiring-name { flex: 1 1 auto; min-width: 0; }
+.wiring-name[readonly] { border-bottom-color: transparent; cursor: default; }
+.wiring-name.editing { border-bottom-color: var(--studio-blue, #3e83d7); background: var(--studio-panel); }
+.wiring-rename { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; color: var(--studio-blue-dark, #2f5fb3); background: transparent; cursor: pointer; }
+.wiring-rename:hover { background: var(--studio-panel); }
+.wiring-rename:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.wiring-part-actions { display: flex; gap: 8px; }
+.wiring-big-button { flex: 1 1 0; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; border: 2px solid var(--studio-panel-border); border-radius: 12px; font-family: inherit; font-size: 16px; font-weight: 900; line-height: 1; color: var(--studio-ink); background: var(--studio-panel); cursor: pointer; }
+.wiring-big-button svg { color: var(--studio-blue-dark, #2f5fb3); }
+.wiring-big-button:hover { border-color: rgba(88, 136, 218, .6); }
+.wiring-big-button.danger { color: var(--danger, #aa302a); }
+.wiring-big-button.danger svg { color: currentColor; }
+.wiring-big-button.danger:hover { border-color: rgba(241, 120, 97, .7); }
+.wiring-big-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.wiring-head-role { display: flex; align-items: center; gap: 8px; }
+@media (any-pointer: coarse) {
+  .wiring-big-button { min-height: 52px; font-size: 17px; }
+}

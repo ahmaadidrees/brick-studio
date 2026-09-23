@@ -6,7 +6,7 @@ import { FOUR_WHEEL_IDS, GATE_IDS, ROVER_IDS, SIGNAL_IDS, fixtureInput, fourWhee
 import { emptyRoboticsSection, type RoboticsConnection } from '../model/section'
 import { ROBOTICS_PART_IDS } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
-import { nextSteps, type NextStep } from './nextSteps'
+import { FIRST_IDEAS_DONE, nextSteps, type NextStep } from './nextSteps'
 
 beforeAll(() => installRoboticsParts(true))
 
@@ -54,6 +54,15 @@ const row = (rows: NextStep[], id: string) => rows.find((candidate) => candidate
 
 const R = ROVER_IDS
 const ROVER_WIRES: Wire[] = [[R.leftMotor, R.hub, 'A'], [R.rightMotor, R.hub, 'B'], [R.sensor, R.hub, 'C']]
+const DRESSED_WIRES: Wire[] = [...ROVER_WIRES, ['light', R.hub, 'D']]
+/** The rover with its first four ideas done: a light and a seat in their own colours, a brick on the hub. */
+const dressedRover = (extra: BrickInstance[] = []) => [
+  ...roverBricks(),
+  { ...at('light', ROBOTICS_PART_IDS.light, 29, 7, 27), color: '#e7473c' },
+  { ...at('seat', ROBOTICS_PART_IDS.seat, 30, 7, 28), color: '#3e83d7' },
+  { ...at('roof', 'brick_2x2', 31, 7, 29), color: '#e7473c' },
+  ...extra,
+]
 
 describe('the rover path', () => {
   it('a motor on the bare ground: a plate comes first', () => {
@@ -144,7 +153,8 @@ describe('the rover path', () => {
     expect(ideas.map((idea) => `${idea.id}:${idea.state}`)).toEqual(['idea-sensor:done', 'idea-light:todo', 'idea-seat:todo', 'idea-stack:todo'])
     expect(ideas.map((idea) => idea.text)).toEqual(['Add a sensor at the front. It is the robot’s eyes.', 'Add a light on top.', 'Add a seat. Ride it in Explore.', 'Stack bricks on top. They ride along.'])
     expect(row(rows, 'idea-light').action).toEqual({ kind: 'arm', partId: ROBOTICS_PART_IDS.light, rotation: 0 })
-    expect(row(rows, 'idea-stack').action).toEqual({ kind: 'arm', partId: 'brick_2x2', rotation: 0 })
+    // Stacking asks for several bricks, so its part stays armed after each one (every other row places once).
+    expect(row(rows, 'idea-stack').action).toEqual({ kind: 'arm', partId: 'brick_2x2', rotation: 0, repeat: true })
     expect(row(rows, 'idea-sensor').action).toBeNull()
   })
 
@@ -153,8 +163,9 @@ describe('the rover path', () => {
     expect(row(noSensor.rows, 'idea-sensor')).toMatchObject({ state: 'todo', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.distanceSensor, rotation: 0 } })
     const sideways = robot(roverBricks({ sensorSideways: true }), R.hub, ROVER_WIRES)
     expect(row(sideways.rows, 'idea-sensor')).toMatchObject({ text: 'Turn the sensor to face the front.', action: { kind: 'select', brickId: R.sensor }, icon: { symbol: 'turn' } })
-    const dressed = robot([...roverBricks(), at('light', ROBOTICS_PART_IDS.light, 29, 7, 27), at('seat', ROBOTICS_PART_IDS.seat, 30, 7, 28), at('roof', 'brick_2x2', 31, 7, 29)], R.hub, [...ROVER_WIRES, ['light', R.hub, 'D']])
-    expect(dressed.rows.filter((candidate) => candidate.group === 'idea').map((idea) => idea.state)).toEqual(['done', 'done', 'done', 'done'])
+    const dressed = robot(dressedRover(), R.hub, DRESSED_WIRES)
+    // The first four done: they give way to a line saying so and more ideas (see "more ideas" below).
+    expect(dressed.rows.filter((candidate) => candidate.group === 'idea').map((idea) => `${idea.id}:${idea.state}`)).toEqual(['ideas-done:done', 'idea-paint:todo', 'idea-name:todo', 'idea-taller:todo', 'idea-code:todo'])
     expect(current(dressed.rows)?.id).toBe('ready')
   })
 })
@@ -261,7 +272,9 @@ describe('the gate path', () => {
     expect(current(unplugged.rows)).toMatchObject({ id: 'plug', text: 'Plug Front sensor into the hub.', action: { kind: 'plug', deviceId: G.sensor } })
     const ready = robot(gateBricks(), G.hinge, GATE_WIRES)
     expect(current(ready.rows)).toMatchObject({ id: 'ready', text: 'Ready to try!', icon: { symbol: 'try' } })
-    expect(ready.rows.some((candidate) => candidate.group === 'idea')).toBe(false)
+    // A gate goes straight to the ideas that make it yours (lane P); its Code idea opens the Smart gate.
+    expect(ready.rows.filter((candidate) => candidate.group === 'idea').map((idea) => idea.id)).toEqual(['idea-paint', 'idea-name', 'idea-code'])
+    expect(row(ready.rows, 'idea-code')).toMatchObject({ text: 'Change how far it opens. Try it in Code.', action: { kind: 'code', creationId: 'robot', starter: 'smart-gate' } })
   })
 })
 
@@ -285,5 +298,54 @@ describe('the signal light path', () => {
     expect(current(unplugged.rows)).toMatchObject({ id: 'plug', text: 'Plug Light into the hub.', action: { kind: 'plug', deviceId: S.light } })
     const ready = robot(signalPostBricks(), S.hub, [[S.sensor, S.hub, 'A'], [S.light, S.hub, 'B']])
     expect(current(ready.rows)).toMatchObject({ id: 'ready', text: 'Ready to try!', action: { kind: 'play', creationId: 'robot' } })
+  })
+})
+
+describe('more ideas once the first ones are done (lane P)', () => {
+  const ideas = (rows: NextStep[]) => rows.filter((candidate) => candidate.group === 'idea')
+
+  it('the first four done: a line saying so, then paint it, name it, build it taller and stop at a wall in Code', () => {
+    const { rows } = robot(dressedRover(), R.hub, DRESSED_WIRES)
+    expect(row(rows, 'ideas-done')).toMatchObject({ text: FIRST_IDEAS_DONE, state: 'done', action: null })
+    expect(row(rows, 'idea-paint')).toMatchObject({ text: 'Paint it your colors.', state: 'todo', action: { kind: 'paint', creationId: 'robot' }, icon: { symbol: 'paint' } })
+    expect(row(rows, 'idea-name')).toMatchObject({ text: 'Give it a name of your own.', state: 'todo', action: { kind: 'rename', creationId: 'robot' }, icon: { symbol: 'name' } })
+    expect(row(rows, 'idea-taller')).toMatchObject({ text: 'Build it taller. Stack 5 bricks on it.', state: 'todo', action: { kind: 'arm', partId: 'brick_2x2', rotation: 0, repeat: true } })
+    expect(row(rows, 'idea-code')).toMatchObject({ text: 'Make it stop at a wall. Try it in Code.', state: 'todo', action: { kind: 'code', creationId: 'robot', starter: 'stop-before-wall' }, icon: { symbol: 'code' } })
+  })
+
+  it('each is done by doing it (painted, named, five bricks stacked, the program made) and stays tappable, so the list never ends empty-handed', () => {
+    const stack = [10, 13, 16, 19].map((y, index) => ({ ...at(`stack-${index}`, 'brick_2x2', 31, y, 29), color: '#65b85a' }))
+    // The hub repainted: a body part no longer in its own colour.
+    const bricks = dressedRover(stack).map((brick) => (brick.id === R.hub ? { ...brick, color: '#e7473c' } : brick))
+    const section = {
+      ...emptyRoboticsSection(),
+      creations: [{ id: 'robot', name: 'Rocket', anchorBrickIds: [R.hub] }],
+      connections: DRESSED_WIRES.map(([deviceId, hubId, port]) => ({ deviceId, hubId, port })),
+      programs: [{ id: 'p1', creationId: 'robot', name: 'Stop before the wall', workspace: {}, deviceNames: {}, starter: 'stop-before-wall', revision: 0 }],
+    }
+    const input = fixtureInput(bricks, section)
+    const rows = nextSteps(deriveCreations(input)[0], { input })
+    expect(ideas(rows).map((idea) => `${idea.id}:${idea.state}`)).toEqual(['ideas-done:done', 'idea-paint:done', 'idea-name:done', 'idea-taller:done', 'idea-code:done'])
+    expect(ideas(rows).filter((idea) => idea.id !== 'ideas-done').every((idea) => idea.action !== null)).toBe(true)
+  })
+
+  it('a default name is not the student’s own; four stacked bricks are not five', () => {
+    for (const name of ['Buggy', 'Buggy 2', 'Robot', 'My robot', 'Signal light 3']) {
+      const section = { ...emptyRoboticsSection(), creations: [{ id: 'robot', name, anchorBrickIds: [R.hub] }], connections: DRESSED_WIRES.map(([deviceId, hubId, port]) => ({ deviceId, hubId, port })) }
+      const input = fixtureInput(dressedRover(), section)
+      expect(row(nextSteps(deriveCreations(input)[0], { input }), 'idea-name').state).toBe('todo')
+    }
+    const three = [10, 13, 16].map((y, index) => ({ ...at(`stack-${index}`, 'brick_2x2', 31, y, 29), color: '#65b85a' }))
+    expect(row(robot(dressedRover(three), R.hub, DRESSED_WIRES).rows, 'idea-taller').state).toBe('todo')
+  })
+
+  it('a rover without a sensor has no Code idea; a signal light gets paint, name and the light’s color in Code', () => {
+    const noSensor = [...without(roverBricks(), R.sensor), { ...at('front-sensor-less-light', ROBOTICS_PART_IDS.light, 29, 7, 27), color: '#e7473c' }]
+    const { rows } = robot(noSensor, R.hub, [[R.leftMotor, R.hub, 'A'], [R.rightMotor, R.hub, 'B'], ['front-sensor-less-light', R.hub, 'C']])
+    // Its first idea (a sensor at the front) is still to do, so the first four stay.
+    expect(ideas(rows).map((idea) => idea.id)).toEqual(['idea-sensor', 'idea-light', 'idea-seat', 'idea-stack'])
+    const signal = robot(signalPostBricks(), S.hub, [[S.sensor, S.hub, 'A'], [S.light, S.hub, 'B']])
+    expect(ideas(signal.rows).map((idea) => idea.id)).toEqual(['idea-paint', 'idea-name', 'idea-code'])
+    expect(row(signal.rows, 'idea-code')).toMatchObject({ text: 'Pick the light’s color. Try it in Code.', action: { kind: 'code', starter: 'signal-post' } })
   })
 })

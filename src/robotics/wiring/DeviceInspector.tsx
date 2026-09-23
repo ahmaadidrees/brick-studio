@@ -1,28 +1,36 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Check, PenLine, RotateCw, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { PartThumbnail } from '../../brick/PartThumbnail'
+import { BRICK_PART_MAP } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { freePorts, hubPorts, livePort, type PortState } from '../model/control'
-import { deviceName, type DerivedCreation } from '../model/creations'
+import { deviceName, driveSidesOf, type DerivedCreation, type FacingWord } from '../model/creations'
 import { isDeviceRole, roboticsSpec, type HubPort, type RoboticsDeviceKind } from '../parts/catalog'
 import { useRoboticsStore } from '../state/roboticsStore'
+import { Fold } from '../ui/Fold'
 import { DEVICE_NAME_LIMIT, hubForDevice, lastKnownDeviceName, moveDeviceToPort, plugDeviceIn, renameDevice, swapDevicePorts, unplugDevice } from './actions'
 import { selectDeviceReading } from './readings'
 import './wiring.css'
 
 /**
  * The device inspector (contract §5, the mock's Wiring board): shown in the creation
- * panel while a device is selected. Name field, plugged-in state, the hub's four port
- * chips (free / used by another device / this one / free but was a deleted part's),
- * what the device is doing right now, the block that uses it (with "Not plugged in"
- * when it is unplugged) and the wiring buttons. A chip on a free port moves or plugs
- * the device there; a chip on a used port swaps with that device. Selecting the hub
- * shows its ports and what is in each; a port with a device selects that device.
+ * panel while a device is selected. Simple first (lane P, docs/robotics/KID-UX.md): its
+ * name, one line in a third grader's words saying what it does and whether it is plugged
+ * in, and "Plug it in" when it is not; the studio's Color and Delete stay in the command
+ * strip. Everything else sits behind the part's own More: the plugged-in state, the hub's
+ * four port chips (free / used by another device / this one / free but was a deleted
+ * part's), what the device is doing right now, the block that uses it (with "Not plugged
+ * in" when it is unplugged) and the wiring buttons. A chip on a free port moves or plugs
+ * the device there; a chip on a used port swaps with that device. Selecting the hub says
+ * it is the robot's brain and what is plugged into it, by name; its More lists the ports,
+ * and a port with a device selects that device. Every part starts with its More shut.
  */
 export function DeviceInspector({ brickId, creation }: { brickId: string; creation: DerivedCreation | null }) {
   const model = useRoboticsStore((state) => state.model)
   const brick = model.input.bricks.find((candidate) => candidate.id === brickId) ?? null
   const role = brick ? roboticsSpec(brick.partId)?.role : undefined
   if (!brick || !role || !isDeviceRole(role)) return null
-  return role === 'hub' ? <HubInspector hubId={brickId} /> : <DeviceWiring brickId={brickId} role={role} creation={creation} />
+  return role === 'hub' ? <HubInspector key={brickId} hubId={brickId} /> : <DeviceWiring key={brickId} brickId={brickId} role={role} creation={creation} />
 }
 
 const ROLE_TITLES: Record<RoboticsDeviceKind, string> = { hub: 'Hub', motor: 'Motor', 'hinge-motor': 'Hinge motor', 'distance-sensor': 'Distance sensor', light: 'Light', button: 'Button' }
@@ -43,27 +51,86 @@ function usePorts(hubId: string | null): PortState[] {
   return useMemo(() => (hubId ? hubPorts(model.section, hubId, byId, (id) => lastKnownDeviceName(id, { undoStack, documentMetadata })) : []), [model, byId, hubId, undoStack, documentMetadata])
 }
 
+/**
+ * The part's name, the student's own. It sits just under the next step, so a tap that lands a
+ * little low must not open an iPad's keyboard (lane P): the name only becomes a text field from
+ * its pencil, or from a mouse click on it. Saved on Enter or when the field is left.
+ */
 function NameField({ brickId, name }: { brickId: string; name: string }) {
   const [draft, setDraft] = useState<string | null>(null)
+  const field = useRef<HTMLInputElement>(null)
+  /** Escape leaves the field without saving: the blur that follows must not save the draft. */
+  const abandoned = useRef(false)
+  const editing = draft !== null
   useEffect(() => setDraft(null), [brickId, name])
+  useEffect(() => {
+    if (!editing) return
+    field.current?.focus()
+    field.current?.select()
+  }, [editing])
   const commit = () => {
     if (draft !== null && draft.trim() && draft.trim() !== name) renameDevice(brickId, draft)
     setDraft(null)
   }
   return (
-    <input
-      type="text"
-      className="wiring-name"
-      aria-label="Device name"
-      maxLength={DEVICE_NAME_LIMIT}
-      value={draft ?? name}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') (event.target as HTMLInputElement).blur()
-        if (event.key === 'Escape') { setDraft(null); (event.target as HTMLInputElement).blur() }
-      }}
-    />
+    <div className="wiring-name-row">
+      <input
+        ref={field}
+        type="text"
+        className={`wiring-name${editing ? ' editing' : ''}`}
+        aria-label="Device name"
+        maxLength={DEVICE_NAME_LIMIT}
+        readOnly={!editing}
+        value={draft ?? name}
+        onPointerDown={(event) => { if (!editing && event.pointerType === 'mouse') setDraft(name) }}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          if (abandoned.current) abandoned.current = false
+          else if (editing) commit()
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') (event.target as HTMLInputElement).blur()
+          if (event.key === 'Escape') { abandoned.current = true; setDraft(null); (event.target as HTMLInputElement).blur() }
+        }}
+      />
+      {!editing && (
+        <button type="button" className="wiring-rename" aria-label={`Rename ${name}`} title="Change the name" onClick={() => setDraft(name)} data-testid="wiring-rename">
+          <PenLine size={18} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** The part as the drawer draws it, in its own colour: the first thing in its card. */
+function PartPicture({ brickId }: { brickId: string }) {
+  const brick = useBrickStore((state) => state.bricks.find((candidate) => candidate.id === brickId) ?? null)
+  const part = brick ? BRICK_PART_MAP[brick.partId] : undefined
+  const color = brick?.color
+  const tinted = useMemo(() => (part && color ? { ...part, defaultColor: color } : null), [part, color])
+  if (!tinted) return null
+  return <span className="wiring-picture" aria-hidden="true"><PartThumbnail part={tinted} /></span>
+}
+
+/**
+ * Big Turn and Remove for the part in its card (Sam, 8, on an iPad: "big Turn and Remove buttons").
+ * They are the command strip's Rotate and Delete, for this part alone.
+ */
+function PartButtons({ brickId, name }: { brickId: string; name: string }) {
+  const only = () => {
+    const state = useBrickStore.getState()
+    if (state.selectedIds.length !== 1 || state.selectedId !== brickId) state.selectBrick(brickId)
+    return useBrickStore.getState()
+  }
+  return (
+    <div className="wiring-part-actions">
+      <button type="button" className="wiring-big-button" aria-label={`Turn ${name}`} title="Turn it a quarter (R)" onClick={() => only().rotate()} data-testid="wiring-turn">
+        <RotateCw size={20} aria-hidden="true" />Turn
+      </button>
+      <button type="button" className="wiring-big-button danger" aria-label={`Remove ${name}`} title="Take it off (Delete)" onClick={() => only().deleteSelected()} data-testid="wiring-remove">
+        <Trash2 size={20} aria-hidden="true" />Remove
+      </button>
+    </div>
   )
 }
 
@@ -103,6 +170,46 @@ function describe(role: RoboticsDeviceKind, brickId: string, creation: DerivedCr
       return sensor ? `${title} · faces ${sensor.facing}` : title
     }
     default: return `${title} · in ${creation.name}`
+  }
+}
+
+const SEES: Record<FacingWord, string> = {
+  forward: 'it sees what is in front',
+  backward: 'it sees what is behind',
+  left: 'it looks to the left',
+  right: 'it looks to the right',
+  'the far side': 'it looks to the far side',
+  'the near side': 'it looks to the near side',
+  up: 'it looks up',
+  down: 'it looks down',
+}
+
+/** What the part does, in a third grader's words, for the inspector's first line (no ports, no numbers). */
+export function whatItDoes(role: Exclude<RoboticsDeviceKind, 'hub'>, brickId: string, creation: DerivedCreation | null): string {
+  if (!creation) return 'Not on a robot yet'
+  switch (role) {
+    case 'motor': {
+      const motor = creation.motors.find((candidate) => candidate.brickId === brickId)
+      if (!motor || !motor.axleId) return 'Turns a wheel once it has an axle'
+      if (!motor.wheelIds.length) return 'Turns its axle. Add a wheel to it.'
+      const sides = driveSidesOf(creation)
+      if (sides?.left.includes(brickId)) return sides.left.length > 1 ? 'Turns a wheel on the left' : 'Turns the left wheel'
+      if (sides?.right.includes(brickId)) return sides.right.length > 1 ? 'Turns a wheel on the right' : 'Turns the right wheel'
+      return 'Turns its wheel'
+    }
+    case 'hinge-motor': {
+      const hinge = creation.hinges.find((candidate) => candidate.brickId === brickId)
+      if (hinge?.locked) return 'Swings the arm, but the arm is stuck'
+      if (!hinge?.armBrickIds.length) return 'Swings an arm. Put a long brick on it.'
+      return creation.kind === 'gate' ? 'Swings the gate open' : 'Swings the arm'
+    }
+    case 'distance-sensor': {
+      const sensor = creation.sensors.find((candidate) => candidate.brickId === brickId)
+      if (creation.kind !== 'rover') return 'The robot’s eyes: it sees who walks up'
+      return `The robot’s eyes: ${sensor ? SEES[sensor.facing] : 'it sees what is in front'}`
+    }
+    case 'light': return 'Lights up in a color'
+    case 'button': return 'Does something when it is pressed'
   }
 }
 
@@ -174,73 +281,85 @@ function DeviceWiring({ brickId, role, creation }: { brickId: string; role: Excl
     hint = UNPLUGGED_HINTS[role]
   }
   const stale = ports.filter((port) => port.staleName)
+  const [more, setMore] = useState(false)
 
   return (
-    <section className="wiring-inspector" aria-label={`${name} wiring`} data-testid="robotics-device-inspector" data-device-id={brickId}>
+    <section className="wiring-inspector wiring-card" aria-label={`${name} wiring`} data-testid="robotics-device-inspector" data-device-id={brickId}>
       <div className="wiring-head">
-        <RoleIcon role={role} />
+        <PartPicture brickId={brickId} />
         <div className="wiring-head-text">
           <NameField brickId={brickId} name={name} />
-          <span className="wiring-sub" data-testid="wiring-sub">{describe(role, brickId, creation)}</span>
+          <span className="wiring-does" data-testid="wiring-does">
+            {whatItDoes(role, brickId, creation)} · {plugged ? <span className="wiring-plugged">plugged in<Check size={15} strokeWidth={3} aria-hidden="true" /></span> : hubId ? 'not plugged in' : 'add a hub to plug it in'}
+          </span>
         </div>
       </div>
-      <div className="wiring-box">
-        <div className="wiring-row">
-          <span className="wiring-label">Plugged in</span>
-          <span className={`wiring-pill ${stateTone}`} data-testid="wiring-state">{stateLabel}</span>
-        </div>
-        {hubId && (
+      {!plugged && free[0] && <button type="button" className="wiring-button primary wiring-plug-in" onClick={() => plugDeviceIn(brickId, free[0])} data-testid="wiring-plug-in">Plug it in</button>}
+      <PartButtons brickId={brickId} name={name} />
+      <Fold title="More" label={`More about ${name}`} open={more} onToggle={() => setMore(!more)} testId="robotics-part-more">
+        <span className="wiring-head-role"><RoleIcon role={role} /><span className="wiring-sub" data-testid="wiring-sub">{describe(role, brickId, creation)}</span></span>
+        <div className="wiring-box">
           <div className="wiring-row">
-            <span id={`wiring-ports-${brickId}`}>Port</span>
-            <div className="wiring-chips" role="group" aria-labelledby={`wiring-ports-${brickId}`}>
-              {ports.map((port) => {
-                const mine = port.deviceId === brickId && !port.deviceMissing
-                const other = port.used && !mine ? nameOfPort(port) : null
-                const state = mine ? 'this' : port.used ? 'used' : port.staleName ? 'stale' : 'free'
-                const label = mine
-                  ? `Port ${port.port}: ${name} is plugged in here`
-                  : other
-                    ? `Port ${port.port}: ${other}. Swap with ${other}`
-                    : `Port ${port.port}: free${port.staleName ? ` (was ${port.staleName})` : ''}. ${plugged ? 'Move' : 'Plug'} ${name} ${plugged ? 'here' : 'in here'}`
-                return (
-                  <button
-                    key={port.port}
-                    type="button"
-                    className={`wiring-port ${state}`}
-                    data-port={port.port}
-                    data-state={state}
-                    aria-label={label}
-                    title={label}
-                    aria-pressed={mine}
-                    disabled={mine}
-                    onClick={() => {
-                      if (other && port.deviceId) swapDevicePorts(brickId, port.deviceId)
-                      else if (plugged) moveDeviceToPort(brickId, port.port)
-                      else plugDeviceIn(brickId, port.port)
-                    }}
-                  >
-                    {port.port}
-                  </button>
-                )
-              })}
-            </div>
+            <span className="wiring-label">Plugged in</span>
+            <span className={`wiring-pill ${stateTone}`} data-testid="wiring-state">{stateLabel}</span>
           </div>
-        )}
-        {stale.length > 0 && <p className="wiring-note" data-testid="wiring-stale">{stale.map((port) => `Port ${port.port} is free (was ${port.staleName})`).join(' · ')}</p>}
-        <div className="wiring-row">
-          <span>Right now</span>
-          <strong data-testid="wiring-reading">{reading}</strong>
+          {hubId && (
+            <div className="wiring-row">
+              <span id={`wiring-ports-${brickId}`}>Port</span>
+              <div className="wiring-chips" role="group" aria-labelledby={`wiring-ports-${brickId}`}>
+                {ports.map((port) => {
+                  const mine = port.deviceId === brickId && !port.deviceMissing
+                  const other = port.used && !mine ? nameOfPort(port) : null
+                  const state = mine ? 'this' : port.used ? 'used' : port.staleName ? 'stale' : 'free'
+                  const label = mine
+                    ? `Port ${port.port}: ${name} is plugged in here`
+                    : other
+                      ? `Port ${port.port}: ${other}. Swap with ${other}`
+                      : `Port ${port.port}: free${port.staleName ? ` (was ${port.staleName})` : ''}. ${plugged ? 'Move' : 'Plug'} ${name} ${plugged ? 'here' : 'in here'}`
+                  return (
+                    <button
+                      key={port.port}
+                      type="button"
+                      className={`wiring-port ${state}`}
+                      data-port={port.port}
+                      data-state={state}
+                      aria-label={label}
+                      title={label}
+                      aria-pressed={mine}
+                      disabled={mine}
+                      onClick={() => {
+                        if (other && port.deviceId) swapDevicePorts(brickId, port.deviceId)
+                        else if (plugged) moveDeviceToPort(brickId, port.port)
+                        else plugDeviceIn(brickId, port.port)
+                      }}
+                    >
+                      {port.port}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+          {stale.length > 0 && <p className="wiring-note" data-testid="wiring-stale">{stale.map((port) => `Port ${port.port} is free (was ${port.staleName})`).join(' · ')}</p>}
+          <div className="wiring-row">
+            <span>Right now</span>
+            <strong data-testid="wiring-reading">{reading}</strong>
+          </div>
+          <p className="wiring-hint">{hint}</p>
         </div>
-        <p className="wiring-hint">{hint}</p>
-      </div>
-      <BlockPreview role={role} name={name} port={cable?.port ?? null} />
-      <div className="wiring-actions">
-        {plugged && <button type="button" className="wiring-button" onClick={() => unplugDevice(brickId)}>Unplug</button>}
-        {plugged && free[0] && <button type="button" className="wiring-button" onClick={() => moveDeviceToPort(brickId, free[0])}>Move to port {free[0]}</button>}
-        {!plugged && free[0] && <button type="button" className="wiring-button primary" onClick={() => plugDeviceIn(brickId, free[0])}>Plug into port {free[0]}</button>}
-      </div>
+        <BlockPreview role={role} name={name} port={cable?.port ?? null} />
+        <div className="wiring-actions">
+          {plugged && <button type="button" className="wiring-button" onClick={() => unplugDevice(brickId)}>Unplug</button>}
+          {plugged && free[0] && <button type="button" className="wiring-button" onClick={() => moveDeviceToPort(brickId, free[0])}>Move to port {free[0]}</button>}
+          {!plugged && free[0] && <button type="button" className="wiring-button primary" onClick={() => plugDeviceIn(brickId, free[0])}>Plug into port {free[0]}</button>}
+        </div>
+      </Fold>
     </section>
   )
+}
+
+function joinNames(names: readonly string[]) {
+  return names.length <= 2 ? names.join(' and ') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
 function HubInspector({ hubId }: { hubId: string }) {
@@ -250,37 +369,46 @@ function HubInspector({ hubId }: { hubId: string }) {
   const ports = usePorts(hubId)
   const used = ports.filter((port) => port.used).length
   const select = useBrickStore((state) => state.selectBrick)
+  const [more, setMore] = useState(false)
+  const plugged = ports.flatMap((port) => {
+    const device = port.used && port.deviceId && !port.deviceMissing ? byId.get(port.deviceId) : null
+    return device ? [deviceName(model.input, device)] : []
+  })
   return (
-    <section className="wiring-inspector" aria-label={`${name} ports`} data-testid="robotics-hub-inspector" data-device-id={hubId}>
+    <section className="wiring-inspector wiring-card" aria-label={`${name} ports`} data-testid="robotics-hub-inspector" data-device-id={hubId}>
       <div className="wiring-head">
-        <RoleIcon role="hub" />
+        <PartPicture brickId={hubId} />
         <div className="wiring-head-text">
           <NameField brickId={hubId} name={name} />
-          <span className="wiring-sub">Hub · {used === 4 ? 'all four ports used' : `${4 - used} of 4 ports free`}</span>
+          <span className="wiring-does" data-testid="wiring-does">The robot’s brain</span>
         </div>
       </div>
-      <ul className="wiring-hub-ports" aria-label="Ports">
-        {ports.map((port) => {
-          const device = port.used && port.deviceId ? byId.get(port.deviceId) : null
-          const deviceLabel = device ? deviceName(model.input, device) : null
-          return (
-            <li key={port.port}>
-              {device ? (
-                <button type="button" className="wiring-hub-port" data-port={port.port} data-state="used" onClick={() => select(device.id)} aria-label={`Port ${port.port}: ${deviceLabel}. Select ${deviceLabel}`}>
-                  <span className="wiring-port used" aria-hidden="true">{port.port}</span>
-                  <span>{deviceLabel}</span>
-                </button>
-              ) : (
-                <div className="wiring-hub-port" data-port={port.port} data-state={port.staleName ? 'stale' : 'free'}>
-                  <span className={`wiring-port ${port.staleName ? 'stale' : 'free'}`} aria-hidden="true">{port.port}</span>
-                  <span>Port {port.port} · free{port.staleName ? ` (was ${port.staleName})` : ''}</span>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      <p className="wiring-hint">Select a port’s part to see its cable. Cables route themselves; there is nothing to drag along a path.</p>
+      <p className="wiring-hub-plugged" data-testid="hub-plugged">{plugged.length ? `Plugged in: ${joinNames(plugged)}` : 'Nothing is plugged in yet.'}</p>
+      <PartButtons brickId={hubId} name={name} />
+      <Fold title="More" label={`More about ${name}`} open={more} onToggle={() => setMore(!more)} testId="robotics-part-more">
+        <span className="wiring-head-role"><RoleIcon role="hub" /><span className="wiring-sub">Hub · {used === 4 ? 'all four ports used' : `${4 - used} of 4 ports free`}</span></span>
+        <ul className="wiring-hub-ports" aria-label="Ports">
+          {ports.map((port) => {
+            const device = port.used && port.deviceId ? byId.get(port.deviceId) : null
+            const deviceLabel = device ? deviceName(model.input, device) : null
+            return (
+              <li key={port.port}>
+                {device ? (
+                  <button type="button" className="wiring-hub-port" data-port={port.port} data-state="used" onClick={() => select(device.id)} aria-label={`Port ${port.port}: ${deviceLabel}. Select ${deviceLabel}`}>
+                    <span className="wiring-port used" aria-hidden="true">{port.port}</span>
+                    <span>{deviceLabel}</span>
+                  </button>
+                ) : (
+                  <div className="wiring-hub-port" data-port={port.port} data-state={port.staleName ? 'stale' : 'free'}>
+                    <span className={`wiring-port ${port.staleName ? 'stale' : 'free'}`} aria-hidden="true">{port.port}</span>
+                    <span>Port {port.port} · free{port.staleName ? ` (was ${port.staleName})` : ''}</span>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      </Fold>
     </section>
   )
 }

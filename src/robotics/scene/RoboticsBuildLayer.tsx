@@ -25,6 +25,7 @@ import { registerCanvasInsets } from './cameraInsets'
 import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets, viewOffsetFor } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
 import DriveFollow from './DriveFollow'
+import PlacedFlash from './PlacedFlash'
 import StageLayer from './StageLayer'
 
 /**
@@ -406,6 +407,7 @@ export default function RoboticsBuildLayer() {
       {sim && simCreation && <SimBodies sim={sim} model={model} creation={simCreation} />}
       <StageLayer />
       <DriveFollow />
+      <PlacedFlash />
     </>
   )
 }

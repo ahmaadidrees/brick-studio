@@ -61,6 +61,7 @@ import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } fro
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
 import { studioShortcutsSuspended } from '../robotics/code/studioKeys'
 import { ROBOTICS_PARTS, isRoboticsPart } from '../robotics/parts/catalog'
+import { paintSelectionWith } from '../robotics/paint/selectionPaint'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): the chunk is never requested without the flag.
 const RoboticsPanel = lazy(() => import('../robotics/ui/RoboticsPanel').then((module) => ({ default: module.RoboticsPanel })))
@@ -459,6 +460,30 @@ const PART_CATEGORIES: { id: PartCategory; label: string }[] = [
   { id: 'custom', label: 'My bricks' },
 ]
 
+/**
+ * Robot Workshop only: the drawer's category is remembered for this viewer across reloads (so Robots
+ * stays Robots). My bricks is not (another world may have none). Browser storage may be unavailable;
+ * then it starts at All, as it always has.
+ */
+const DRAWER_CATEGORY_KEY = 'brickgineers.drawer-category'
+
+function savedDrawerCategory(): PartCategory {
+  try {
+    const saved = window.localStorage.getItem(DRAWER_CATEGORY_KEY)
+    return saved !== 'custom' && PART_CATEGORIES.some((entry) => entry.id === saved) ? saved as PartCategory : 'all'
+  } catch {
+    return 'all'
+  }
+}
+
+function saveDrawerCategory(category: PartCategory) {
+  try {
+    window.localStorage.setItem(DRAWER_CATEGORY_KEY, category)
+  } catch {
+    // Private windows and blocked storage: the drawer simply starts at All next time.
+  }
+}
+
 /** Categories are derived from the real part kinds; nothing here invents shapes the catalog lacks. */
 function partCategory(part: { kind: string; id: string }, customIds: ReadonlySet<string>): PartCategory {
   if (customIds.has(part.id)) return 'custom'
@@ -473,9 +498,10 @@ function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPa
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<PartCategory>('all')
-  const searchId = useId()
   const robotics = isRoboticsPrototypeEnabled()
+  const [category, setCategory] = useState<PartCategory>(() => (robotics ? savedDrawerCategory() : 'all'))
+  const searchId = useId()
+  useEffect(() => { if (robotics) saveDrawerCategory(category) }, [robotics, category])
   const parts = useMemo(() => [
     ...BRICK_PARTS,
     ...(robotics ? ROBOTICS_PARTS : []),
@@ -586,14 +612,18 @@ function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse:
 }
 
 /**
- * The drawer palette sets only the brush: the armed draft (or the group being moved) takes the
- * color through the store's brush path, but placed bricks are never recolored from here — the
- * command strip's Color popover owns selection recolor. Nothing here touches history.
+ * The drawer palette sets the brush: the armed draft (or the group being moved) takes the color
+ * through the store's brush path. Placed bricks are recolored from here only in the Robot
+ * Workshop (VITE_ROBOTICS_PROTOTYPE): with bricks selected, a swatch paints them too, as one
+ * Undo (its paint mode says how, `robotics/paint/selectionPaint.ts`; else as the command strip's
+ * Color popover does). Otherwise nothing here touches history.
  */
 function useBrushColor() {
   return useCallback((color: string) => {
     const state = useBrickStore.getState()
+    const picked = isRoboticsPrototypeEnabled() && (state.selectedIds.length > 0 || state.selectedId !== null)
     if (state.draft) state.setActiveColor(color)
+    else if (picked) { if (!paintSelectionWith(color)) state.setActiveColor(color) }
     else useBrickStore.setState({ activeColor: color })
   }, [])
 }

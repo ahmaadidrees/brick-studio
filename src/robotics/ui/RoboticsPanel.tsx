@@ -1,5 +1,5 @@
-import { CarFront, Check, ChevronDown, CodeXml, Play, Plug, RotateCw, Wrench } from 'lucide-react'
-import { lazy, Suspense, useEffect, useId, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { CarFront, Check, CodeXml, Paintbrush, PenLine, Play, Plug, RotateCw, Wrench } from 'lucide-react'
+import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { PartThumbnail } from '../../brick/PartThumbnail'
 import { BRICK_PART_MAP } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
@@ -7,13 +7,17 @@ import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { readiness } from '../drive/readiness'
 import { runStepAction } from '../guide/actions'
-import { nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
+import { FIRST_IDEAS_DONE, nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
 import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
+import { installPaintMode } from '../paint/paint'
+import { PaintBar, PaintRow } from '../paint/PaintRow'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { useStageStore } from '../state/stageStore'
 import { DeviceInspector } from '../wiring/DeviceInspector'
 import { WiringModeToggle } from '../wiring/WiringModeToggle'
+import { Fold } from './Fold'
+import { installRobotFocusWatcher, useFocusedCreation } from './robotFocus'
 import './robotics.css'
 
 /** The Code view (Blockly and all) loads only when a creation is opened in it. */
@@ -32,6 +36,9 @@ const DriveView = lazy(() => import('../drive/DriveView'))
 export function RoboticsPanel({ compact = false, live = false }: { compact?: boolean; live?: boolean }) {
   useEffect(() => {
     installRoboticsWatcher()
+    // Lane P: the panel follows the robot the student touches; paint mode.
+    installRobotFocusWatcher()
+    installPaintMode()
     // Dev-only hook for the QA harnesses (scripts/qa/robotics-*.mjs): the stores, plus what
     // the scene layer adds (a world→screen projector, so a harness can aim a real pointer at a socket).
     if (import.meta.env.DEV) {
@@ -50,6 +57,7 @@ export function RoboticsPanel({ compact = false, live = false }: { compact?: boo
     <>
       <WiringLine />
       {card ? <CreationCard compact={compact} /> : <CreationPanel compact={compact} live={live} />}
+      <PaintBar />
     </>
   )
 }
@@ -104,7 +112,7 @@ function CreationCard({ compact }: { compact: boolean }) {
   const stuck = creation.hinges.some((hinge) => hinge.locked)
   const submit = (event: FormEvent) => { event.preventDefault(); confirm(name, false) }
   return (
-    <aside className={`robotics-card${compact ? ' compact' : ''}`} aria-label={joining ? 'Robots joined' : 'New robot'} data-testid="robotics-creation-card">
+    <aside className={`robotics-card${compact ? ' compact' : ''}`} aria-label={joining ? 'Robots joined' : 'New robot'} data-testid="robotics-creation-card" data-popover-avoid="">
       <form className="robotics-card-form" onSubmit={submit}>
         <header className="robotics-card-head">
           <strong>{title}</strong>
@@ -147,20 +155,6 @@ function roleTitle(role: string | undefined) {
   }
 }
 
-function useFocusedCreation(): DerivedCreation | null {
-  const creations = useRoboticsStore((state) => state.model.creations)
-  const selectedId = useBrickStore((state) => state.selectedId)
-  const simCreationId = useRoboticsStore((state) => state.sim?.creationId ?? null)
-  return useMemo(() => {
-    if (simCreationId) return creations.find((creation) => creation.id === simCreationId) ?? null
-    if (selectedId) {
-      const owner = creations.find((creation) => creation.brickIds.includes(selectedId) || creation.wheels.some((wheel) => wheel.brickId === selectedId))
-      if (owner) return owner
-    }
-    return creations.length ? creations[creations.length - 1] : null
-  }, [creations, selectedId, simCreationId])
-}
-
 function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
   const creation = useFocusedCreation()
   const selectedId = useBrickStore((state) => state.selectedId)
@@ -169,6 +163,9 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
   const [partsOpen, setPartsOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const reasonId = useId()
+  // A part picked: its card sits under the next step, so the panel shows its top (lane P).
+  const aside = useRef<HTMLElement>(null)
+  useEffect(() => { if (selectedId) aside.current?.scrollTo?.({ top: 0 }) }, [selectedId])
   const selected = selectedId ? bricks.find((brick) => brick.id === selectedId) ?? null : null
   const selectedSpec = selected ? roboticsSpec(selected.partId) : null
   if (!creation && !selectedSpec) return null
@@ -176,7 +173,7 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
     ? (isDeviceRole(selectedSpec.role) ? <DeviceInspector brickId={selected.id} creation={creation} /> : <SelectedPart creation={creation} brickId={selected.id} role={selectedSpec.role} />)
     : null
   return (
-    <aside className={`robotics-panel${compact ? ' compact' : ''}${collapsed ? ' collapsed' : ''}`} aria-label="Robot" data-testid="robotics-panel">
+    <aside ref={aside} className={`robotics-panel${compact ? ' compact' : ''}${collapsed ? ' collapsed' : ''}`} aria-label="Robot" data-testid="robotics-panel" data-popover-avoid="">
       <header className="robotics-panel-head">
         {creation ? <RobotName key={creation.id} creation={creation} /> : <strong className="robotics-panel-title">Robot part</strong>}
         <button type="button" className="robotics-link-button" aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>{collapsed ? 'Show' : 'Hide'}</button>
@@ -188,6 +185,7 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
           {/* A part the student picked: only the step that matters now stays above its panel. */}
           {creation && <NextSteps creation={creation} live={live} focus={inspector !== null} reasonId={reasonId} />}
           {inspector}
+          {creation && <PaintRow creation={creation} />}
           {creation && (
             <Fold title="Parts" note={creation.lines.attached} open={partsOpen} onToggle={() => setPartsOpen(!partsOpen)} testId="robotics-parts-fold">
               <ul className="robotics-lines">
@@ -292,7 +290,7 @@ function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreat
       )}
       {ready && !focus && ideas.length > 0 && (
         <>
-          <h4 className="robotics-subtitle">Make it yours</h4>
+          <h4 className="robotics-subtitle">{ideas.some((row) => row.text === FIRST_IDEAS_DONE) ? 'More ideas' : 'Make it yours'}</h4>
           <ul className="robotics-step-list" data-testid="robotics-ideas">{ideas.map((row) => <StepRow key={row.id} row={row} live={live} />)}</ul>
         </>
       )}
@@ -310,6 +308,19 @@ function StepRow({ row, live, textId }: { row: NextStep; live: boolean; textId?:
       </span>
     </>
   )
+  if (row.state === 'done' && row.action) {
+    // A "Make it yours" idea done once can be done again (paint it again, rename it…): still a button, with its tick.
+    const again = row.action
+    return (
+      <li className="robotics-step done again" data-step={row.id} data-state="done">
+        <button type="button" className="robotics-step-button again" disabled={live && again.kind === 'code'} onClick={() => runStepAction(again)}>
+          <span className="robotics-step-check" aria-hidden="true"><Check size={16} strokeWidth={3} /></span>
+          <span className="robotics-step-text">{row.text}</span>
+          <span className="visually-hidden"> (done)</span>
+        </button>
+      </li>
+    )
+  }
   if (row.state === 'done') {
     return (
       <li className="robotics-step done" data-step={row.id} data-state="done">
@@ -327,7 +338,7 @@ function StepRow({ row, live, textId }: { row: NextStep; live: boolean; textId?:
         type="button"
         className={`robotics-step-button ${row.state}`}
         aria-current={row.state === 'current' ? 'step' : undefined}
-        disabled={live && action.kind === 'play'}
+        disabled={live && (action.kind === 'play' || action.kind === 'code')}
         onClick={() => runStepAction(action)}
       >
         {body}
@@ -342,30 +353,15 @@ function StepIconView({ icon }: { icon: StepIcon }) {
     if (part) return <span className="robotics-step-icon" aria-hidden="true"><PartThumbnail part={part} /></span>
   }
   const symbol = 'symbol' in icon ? icon.symbol : 'fix'
-  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : Wrench
+  const Icon = symbol === 'plug' ? Plug : symbol === 'drive' ? CarFront : symbol === 'try' ? Play : symbol === 'turn' ? RotateCw : symbol === 'paint' ? Paintbrush : symbol === 'name' ? PenLine : symbol === 'code' ? CodeXml : Wrench
   return <span className={`robotics-step-icon symbol ${symbol}`} aria-hidden="true"><Icon size={22} /></span>
-}
-
-/** A folded section (Parts, More): one big toggle, shut by default. */
-function Fold({ title, note, open, onToggle, testId, children }: { title: string; note?: string; open: boolean; onToggle: () => void; testId: string; children: ReactNode }) {
-  const bodyId = useId()
-  return (
-    <section className={`robotics-fold${open ? ' open' : ''}`} data-testid={testId}>
-      <button type="button" className="robotics-fold-toggle" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
-        <span>{title}</span>
-        {note && <small>{note}</small>}
-        <ChevronDown size={18} aria-hidden="true" />
-      </button>
-      {open && <div className="robotics-fold-body" id={bodyId}>{children}</div>}
-    </section>
-  )
 }
 
 function RunSpace({ creation }: { creation: DerivedCreation }) {
   const setTestSpace = useRoboticsStore((state) => state.setTestSpace)
   return (
     <div className="robotics-space" role="group" aria-label="Where it runs">
-      <span>Runs on</span>
+      <span>Where it runs</span>
       <button type="button" className={`robotics-chip${creation.testSpace === 'testPlate' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'testPlate'} onClick={() => setTestSpace(creation.id, 'testPlate')}>Test plate</button>
       <button type="button" className={`robotics-chip${creation.testSpace === 'myWorld' ? ' active' : ''}`} aria-pressed={creation.testSpace === 'myWorld'} onClick={() => setTestSpace(creation.id, 'myWorld')}>My world</button>
     </div>
@@ -434,7 +430,8 @@ function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; 
   for (const motor of creation.motors) rows.push({ id: motor.brickId, text: `${motor.name} · ${describeMotor(motor)}`, tone: motor.plugged ? undefined : 'warn' })
   for (const hinge of creation.hinges) {
     const report = hingeReports[hinge.brickId]
-    rows.push({ id: hinge.brickId, text: `${hinge.name} · ${describeHinge(hinge)}${report ? ` · at ${Math.round(report.angle)}°${report.blocked ? ' · blocked' : ''}` : ''}`, tone: hinge.locked ? 'bad' : hinge.plugged ? undefined : 'warn' })
+    // Open or shut, not degrees (a 9-year-old does not read "°", lane P); open past the Try it view's 20°.
+    rows.push({ id: hinge.brickId, text: `${hinge.name} · ${describeHinge(hinge)}${report ? ` · ${Math.abs(report.angle) >= 20 ? 'open' : 'shut'}${report.blocked ? ' · blocked' : ''}` : ''}`, tone: hinge.locked ? 'bad' : hinge.plugged ? undefined : 'warn' })
   }
   for (const wheel of creation.wheels) rows.push({ id: wheel.brickId, text: `Wheel · ${wheel.onAxle ? `on an axle${wheel.motorId ? ` in ${motorName(creation, wheel.motorId)}` : ''}` : wheel.note ?? 'Not on an axle'}`, tone: wheel.onAxle ? undefined : 'bad' })
   for (const sensor of creation.sensors) rows.push({ id: sensor.brickId, text: `${sensor.name} · faces ${sensor.facing} · ${sensor.plugged ? 'plugged in' : 'Not plugged in'}`, tone: sensor.plugged ? undefined : 'warn' })
@@ -456,7 +453,11 @@ function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; 
   )
 }
 
-/** Motor tests without code (the checkpoint-1 mechanics check), kept in More for grown-ups and curious builders. */
+/**
+ * Motor tests without code (the checkpoint-1 mechanics check), kept in More for grown-ups and curious
+ * builders, in plain words: spin, swing open, shut (no percents or degrees; lane P). The powers and
+ * angles are the ones they always were: 40 %, ±60°, 0°.
+ */
 function NudgeControls({ creation }: { creation: DerivedCreation }) {
   const sim = useRoboticsStore((state) => state.sim)
   const simLoading = useRoboticsStore((state) => state.simLoading)
@@ -466,7 +467,6 @@ function NudgeControls({ creation }: { creation: DerivedCreation }) {
   const driveForward = useRoboticsStore((state) => state.driveForward)
   const stopAll = useRoboticsStore((state) => state.stopAll)
   const resetSim = useRoboticsStore((state) => state.resetSim)
-  const motorAngles = useRoboticsStore((state) => state.motorAngles)
   const contacts = useRoboticsStore((state) => state.contacts)
   const running = sim?.creationId === creation.id
   const ensure = async () => { if (!running) await startSim(creation.id) }
@@ -477,24 +477,24 @@ function NudgeControls({ creation }: { creation: DerivedCreation }) {
       <header><strong>Test the motors</strong><span>no code needed</span></header>
       {creation.drivePair && (
         <div className="robotics-nudge-row">
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); driveForward(creation.id, 0.4) }}>Drive forward 40%</button>
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); driveForward(creation.id, -0.4) }}>Back 40%</button>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); driveForward(creation.id, 0.4) }}>Drive forward</button>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); driveForward(creation.id, -0.4) }}>Drive back</button>
         </div>
       )}
       {creation.motors.map((motor) => (
         <div className="robotics-nudge-row" key={motor.brickId}>
-          <span className="robotics-nudge-label">{motor.name}{running && motorAngles[motor.brickId] !== undefined ? ` · ${Math.round((motorAngles[motor.brickId] * 180) / Math.PI)}°` : ''}</span>
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeMotor(motor.brickId, 0.4) }}>Run 40%</button>
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeMotor(motor.brickId, -0.4) }}>Run −40%</button>
+          <span className="robotics-nudge-label">{motor.name}</span>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeMotor(motor.brickId, 0.4) }}>Spin</button>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeMotor(motor.brickId, -0.4) }}>Spin back</button>
           <button type="button" className="studio-button" onClick={() => nudgeMotor(motor.brickId, 0)} disabled={!running}>Stop</button>
         </div>
       ))}
       {creation.hinges.map((hinge) => (
         <div className="robotics-nudge-row" key={hinge.brickId}>
           <span className="robotics-nudge-label">{hinge.name}</span>
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeHinge(hinge.brickId, 60) }}>Swing to 60°</button>
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeHinge(hinge.brickId, -60) }}>Swing to −60°</button>
-          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeHinge(hinge.brickId, 0) }}>Back to 0°</button>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeHinge(hinge.brickId, 60) }}>Swing open</button>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeHinge(hinge.brickId, -60) }}>Swing the other way</button>
+          <button type="button" className="studio-button" onClick={async () => { await ensure(); nudgeHinge(hinge.brickId, 0) }}>Shut</button>
         </div>
       ))}
       <div className="robotics-nudge-row">

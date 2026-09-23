@@ -168,6 +168,7 @@ export function renameDevice(deviceId: string, name: string): boolean {
 export function setWiringMode(mode: WiringMode): boolean {
   const context = wiring()
   if (context.section.settings.wiring === mode) return false
-  const toast = mode === 'manual' ? 'Wiring: manual. New parts wait for you to plug them in.' : 'Wiring: assisted. New parts plug into the first free port.'
-  return write(context, { ...context.section, settings: { ...context.section.settings, wiring: mode } }, `Wiring: ${mode}`, toast)
+  // In a third grader's words (lane P): "assisted" is "Plug in by itself: on".
+  const toast = mode === 'manual' ? 'Plug in by itself is off. New parts wait for you to plug them in.' : 'Plug in by itself is on. New parts plug into the hub.'
+  return write(context, { ...context.section, settings: { ...context.section.settings, wiring: mode } }, `Plug in by itself: ${mode === 'manual' ? 'off' : 'on'}`, toast)
 }
