@@ -235,9 +235,20 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const reached = model.creations.filter((creation) => creation.brickIds.some((id) => component.includes(id)))
     const joining = reached.length > 1
     if (!isDevicePart(brick.partId)) {
+      const role = roboticsSpec(brick.partId)?.role
       if (joining) get().openJoinCard(reached, component, brick.id)
       // A wheel that can't spin says so the moment it lands, with the one tap that fixes it (kid-UX lane W).
-      else if (!adviceMuted && roboticsSpec(brick.partId)?.role === 'wheel') get().adviseWheel(brick.id)
+      else if (!adviceMuted && role === 'wheel') get().adviseWheel(brick.id)
+      // A seat beside a robot but not on it: "This seat isn't on Buggy yet." [Put it on top] (Ava).
+      else if (!adviceMuted && role === 'seat' && !reached.length) {
+        const pending = get().card
+        const robots = pending && !pending.creationId ? [...model.creations, { id: 'candidate', name: pending.suggestedName, brickIds: pending.anchorBrickIds }] : model.creations
+        const advice = placementAdvice(model.input, robots, brick.id, component)
+        if (advice?.kind === 'not-attached') {
+          const action: NoteAction | null = advice.fix?.ok ? { kind: 'put-on', brickId: brick.id, creationId: advice.creationId, label: advice.fix.label } : null
+          set({ wiringNote: { text: advice.text, undoable: false, nonce: Date.now(), entry: null, added: [], brickId: brick.id, ...(action ? { action } : {}), ...(advice.fix && !advice.fix.ok ? { blockers: advice.fix.blockers } : {}) } })
+        }
+      }
       return
     }
     const existing = joining ? null : reached[0] ?? null
@@ -477,8 +488,8 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
     const nameOf = (brick: BrickInstance) => (isDevicePart(brick.partId) ? deviceName(input, brick) : input.partMap[brick.partId]?.name ?? 'a brick')
     const spec = roboticsSpec(draft.partId)
     if (spec?.socket) {
-      // A motor snapped onto a plate edge with no room left along it.
-      useBrickStore.setState({ toast: `No room for the motor there. ${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.` })
+      // A motor snapped onto a plate's side with no room left there: the same words as the red ghost's line.
+      useBrickStore.setState({ toast: `No room on the plate. ${blockers.slice(0, 2).map(nameOf).join(' and ')} ${blockers.length > 1 ? 'are' : 'is'} in the way.` })
       return
     }
     const what = spec?.axle ? 'The axle' : 'The wheel'

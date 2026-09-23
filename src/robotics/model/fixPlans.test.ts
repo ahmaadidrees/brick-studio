@@ -172,6 +172,21 @@ describe('a part beside the robot, and a motor in the wrong place', () => {
     expect(planPutOnRobot(input(bricks), { name: 'Speedy', brickIds: ['plate', 'hub', 'left'] }, 'eyes')).toMatchObject({ ok: true, steps: [{ op: 'move', pose: { x: 30, y: 1, z: 26, rotation: 0 } }] })
   })
 
+  it('a seat or a light goes on the very top ("Put it on top"); a sensor on the plate (Ava)', () => {
+    const rover = roverBricks()
+    const robot = { name: 'Buggy', brickIds: rover.map((brick) => brick.id).filter((id) => id !== ROVER_IDS.leftWheel && id !== ROVER_IDS.rightWheel && id !== ROVER_IDS.leftAxle && id !== ROVER_IDS.rightAxle) }
+    const bricks = [...rover, at('seat', M.seat, 30, 0, 22), at('lamp', M.light, 33, 0, 23), at('eyes', M.distanceSensor, 38, 0, 27)]
+    const seat = planPutOnRobot(input(bricks), robot, 'seat')
+    expect(seat).toMatchObject({ ok: true, label: 'Put it on top', done: 'The seat is on Buggy now.', undoLabel: 'Put the seat on Buggy' })
+    // On the top of the robot (the hub and the motors stand 7 plates up), studded on: it rides along.
+    expect((seat as FixPlan).steps[0]).toMatchObject({ op: 'move', brickId: 'seat', pose: { y: 7 } })
+    const after = apply(bricks, seat)
+    const [buggy] = deriveCreations(input(after, robotSection(ROVER_IDS.hub, 'Buggy')))
+    expect(buggy.seats).toContain('seat')
+    expect(planPutOnRobot(input(bricks), robot, 'lamp')).toMatchObject({ ok: true, label: 'Put it on top', steps: [{ pose: { y: 7 } }] })
+    expect(planPutOnRobot(input(bricks), robot, 'eyes')).toMatchObject({ ok: true, label: 'Put it on Buggy', steps: [{ pose: { y: 1 } }] })
+  })
+
   it('a motor in the middle of the plate moves to the side (an end of it, leaving the middle for the hub)', () => {
     const bricks = [at('plate', 'plate_6x8', 28, 0, 26), at('middle', M.motor, 29, 1, 29, 2)]
     expect(socketRoomOf(bricks[1], bricks, input(bricks).partMap, 64)).toBe('covered')

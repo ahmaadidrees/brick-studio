@@ -86,7 +86,8 @@ describe('the rover path', () => {
     const bricks = [at('plate', 'plate_4x6', 30, 0, 26), at('hub', ROBOTICS_PART_IDS.hub, 30, 1, 25), at('left', ROBOTICS_PART_IDS.motor, 30, 1, 29, 2)]
     const { rows } = robot(bricks, 'hub', [['left', 'hub', 'A']])
     expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put a motor on the other side.', hint: 'No room there. Try a bigger plate.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor } })
-    expect((current(rows)?.action as { at?: unknown }).at).toBeUndefined()
+    // The motor starts there, red, the reason above it: never on top of the hub.
+    expect((current(rows)?.action as { at?: unknown }).at).toEqual({ x: 31, y: 1, z: 29, rotation: 0 })
   })
 
   it('a motor in the middle of the plate: one tap moves it to the side', () => {
@@ -237,7 +238,8 @@ describe('a robot with nothing to do yet', () => {
     expect(readiness(creation)).toEqual({ kind: null, ready: false, reason: 'Add motors to make it move, or a sensor and a light.' })
     expect(states(rows)).toEqual(['hub:done'])
     expect(rows.filter((candidate) => candidate.group === 'choice')).toEqual([
-      { id: 'choose-move', group: 'choice', text: 'Make it move', hint: 'Add motors and wheels.', state: 'current', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 0 }, icon: { part: ROBOTICS_PART_IDS.motor } },
+      // Kid-UX lane W: the motor starts where it goes (the back of the left side, as on the Buggy), never on top of the hub.
+      { id: 'choose-move', group: 'choice', text: 'Make it move', hint: 'Add motors and wheels.', state: 'current', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 2, at: { x: 28, y: 1, z: 31, rotation: 2 } }, icon: { part: ROBOTICS_PART_IDS.motor } },
       { id: 'choose-see', group: 'choice', text: 'Make it see and light up', hint: 'Add a sensor and a light.', state: 'current', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.distanceSensor, rotation: 0 }, icon: { part: ROBOTICS_PART_IDS.distanceSensor } },
     ])
     expect(rows.some((candidate) => candidate.id === 'ready' || candidate.group === 'idea')).toBe(false)

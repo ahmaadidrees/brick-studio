@@ -104,6 +104,12 @@ describe('placement advice', () => {
     expect(adviceFor([...bricks, brick('lamp', ROBOTICS_PART_IDS.light, 30, 1, 32)], section, 'lamp')).toBeNull()
   })
 
+  it('a seat beside it: "This seat isn\'t on Buggy yet." and Put it on top (Ava); a seat on it says nothing', () => {
+    const { bricks, section } = buggy()
+    expect(adviceFor([...bricks, brick('seat', ROBOTICS_PART_IDS.seat, 30, 0, 23)], section, 'seat')).toMatchObject({ kind: 'not-attached', text: "This seat isn't on Buggy yet.", fix: { ok: true, label: 'Put it on top', steps: [{ op: 'move', brickId: 'seat', pose: { y: 7 } }] } })
+    expect(adviceFor([...bricks, brick('seat', ROBOTICS_PART_IDS.seat, 30, 7, 28)], section, 'seat')).toBeNull()
+  })
+
   it('a motor on the bare ground with no robot near says why it cannot take a wheel', () => {
     const { bricks, section } = buggy()
     expect(adviceFor([...bricks, brick('motor', ROBOTICS_PART_IDS.motor, 10, 0, 10)], section, 'motor')).toEqual({ kind: 'bare-ground', brickId: 'motor', text: BARE_GROUND_TEXT })

@@ -10,7 +10,7 @@ import type { BrickDraft, BrickInstance, BrickPart } from '../../brick/types'
 import { useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
 import { brickOriginFor, type PartMap } from '../model/grid'
-import { otherSideSpot, planMotorToSide, previewProblem, type OtherSideSpot, type PreviewProblem } from '../model/fixPlans'
+import { NO_ROOM_FOR_MOTOR, otherSideSpot, planMotorToSide, previewProblem, type OtherSideSpot, type PreviewProblem } from '../model/fixPlans'
 import { looseWheelsByRobot, wheelSpins } from '../model/looseWheels'
 import { deriveMechanisms, type WheelLink } from '../model/mechanism'
 import { GAP_TEXT, gapMarkers, type GapMarker } from '../model/nearMiss'
@@ -441,7 +441,13 @@ export default function ConnectionMarkers() {
   const ghostSnapped = Boolean(snappedHere && draft && armedPart && draftIsValid(draft, others as BrickInstance[], null, partMap, plateSize))
   const hint = armedPartId && snapState.hint?.partId === armedPartId && !snappedHere ? snapState.hint : null
   // A robot part's ghost that is red says why, beside it, and outlines what is in the way.
-  const preview = useMemo(() => (draft && armedPartId ? previewProblem({ bricks: others, partMap, plateSize }, draft, null, snappedHere ? snap?.kind ?? null : null) : null), [draft, armedPartId, others, partMap, plateSize, snappedHere, snap])
+  const preview = useMemo(() => {
+    if (!draft || !armedPartId) return null
+    const problem = previewProblem({ bricks: others, partMap, plateSize }, draft, null, snappedHere ? snap?.kind ?? null : null)
+    // Sitting on the other side's red spot (armed there by the next step): the reason is the step's own.
+    const across = problem && otherSides.find((spot) => !spot.free && spot.pose.x === draft.x && spot.pose.y === draft.y && spot.pose.z === draft.z && spot.pose.rotation === draft.rotation)
+    return problem && across ? { ...problem, text: across.why ?? NO_ROOM_FOR_MOTOR } : problem
+  }, [draft, armedPartId, others, partMap, plateSize, snappedHere, snap, otherSides])
 
   // Always in build mode: near misses (not on a part being moved), motors on the bare ground, and the part the latest advice line is about.
   const gaps = useMemo(() => (active ? gapMarkers(visible, partMap, plateSize).filter((marker) => marker.brickId !== movingId) : []), [active, visible, partMap, plateSize, movingId])
@@ -478,7 +484,7 @@ export default function ConnectionMarkers() {
     for (const spot of otherSides) {
       if (spot.free || (ghostTop && preview)) continue
       const at = topOf({ partId: 'robo_motor', ...spot.pose }, partMap, plateSize, 0.5)
-      if (at) list.push({ brickId: `other-side:${spot.motorId}`, at, text: 'No room for a motor here. Try a bigger plate.', tone: 'gap', emphasis: false })
+      if (at) list.push({ brickId: `other-side:${spot.motorId}`, at, text: spot.why ?? NO_ROOM_FOR_MOTOR, tone: 'gap', emphasis: false })
     }
     return list
   }, [active, visible, grounded, note, hint, gaps, partMap, plateSize, draft, preview, otherSides])

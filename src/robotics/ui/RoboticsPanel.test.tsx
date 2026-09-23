@@ -119,7 +119,8 @@ describe('the panel', () => {
     expect(within(steps()).getByText('Add a hub. It is the robot’s brain.')).toBeInTheDocument()
     expect(within(steps()).getByText('What should it do?')).toBeInTheDocument()
     fireEvent.click(within(steps()).getByRole('button', { name: /Make it move/ }))
-    expect(useBrickStore.getState().draft).toMatchObject({ partId: ROBOTICS_PART_IDS.motor, rotation: 0 })
+    // It starts where it goes: the back of the plate's left side, facing out (never on top of the hub).
+    expect(useBrickStore.getState().draft).toMatchObject({ partId: ROBOTICS_PART_IDS.motor, x: 28, y: 1, z: 31, rotation: 2 })
     fireEvent.click(within(steps()).getByRole('button', { name: /Make it see and light up/ }))
     expect(useBrickStore.getState().draft?.partId).toBe(ROBOTICS_PART_IDS.distanceSensor)
   })

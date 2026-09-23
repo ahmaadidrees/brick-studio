@@ -386,7 +386,7 @@ describe('a device beside a robot, a motor on the bare ground (docs/robotics/KID
     for (let turn = 0; turn < pose.rotation; turn += 1) useBrickStore.getState().rotate()
     useBrickStore.getState().setDraftPosition(pose.x, pose.y, pose.z)
     expect(useBrickStore.getState().placeDraft()).toBe(false)
-    expect(useBrickStore.getState().toast).toBe('No room for the motor there. Hub is in the way.')
+    expect(useBrickStore.getState().toast).toBe('No room on the plate. Hub is in the way.')
     useBrickStore.getState().cancelInteraction()
   })
 })

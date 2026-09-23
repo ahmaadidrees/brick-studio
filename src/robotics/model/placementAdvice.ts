@@ -1,7 +1,7 @@
 import type { BrickInstance } from '../../brick/types'
-import { isDevicePart, roboticsSpec, type RoboticsPartRole } from '../parts/catalog'
+import { roboticsSpec, type RoboticsPartRole } from '../parts/catalog'
 import { creationComponent, type DeriveInput, type DerivedCreation } from './creations'
-import { planPutOnRobot, type FixOutcome } from './fixPlans'
+import { isRobotAttachable, planPutOnRobot, type FixOutcome } from './fixPlans'
 import { rotatedSize } from '../../brick/parts'
 
 /**
@@ -34,7 +34,8 @@ export function placementAdvice(input: DeriveInput, robots: readonly Robot[], br
   const byId = new Map(input.bricks.map((brick) => [brick.id, brick]))
   const brick = byId.get(brickId)
   const spec = brick ? roboticsSpec(brick.partId) : null
-  if (!brick || !spec || !isDevicePart(brick.partId)) return null
+  // Devices, and a seat (kid-UX lane W, Ava: a seat left beside the robot gives it nothing to ride).
+  if (!brick || !spec || !isRobotAttachable(brick.partId)) return null
   const members = new Set(component)
   const attached = robots.some((robot) => robot.brickIds.some((id) => members.has(id)))
   const ownHub = component.some((id) => roboticsSpec(byId.get(id)?.partId ?? '')?.role === 'hub')

@@ -2,7 +2,7 @@ import { rotateLocalPoint } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { readinessPlan, type ReadinessStep } from '../drive/readiness'
 import type { DerivedCreation, DerivedMotor } from '../model/creations'
-import { otherSideSpot } from '../model/fixPlans'
+import { SOMETHING_IN_THE_WAY, motorStartSpot, otherSideSpot } from '../model/fixPlans'
 import type { SnapPose } from '../model/snap'
 import { dot, type Vec3 } from '../model/vec'
 import { ROBOTICS_PART_IDS, ROBOT_PLATE_PART, roboticsSpec } from '../parts/catalog'
@@ -96,14 +96,16 @@ export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 
     const icon = state === 'current' && step.fix === 'add-hub' ? { part: ROBOTICS_PART_IDS.hub } : state === 'current' && step.fix === 'select' && step.id === 'motors' ? { symbol: 'turn' as const } : state === 'current' && step.fix === 'side' ? { symbol: 'fix' as const } : stepIcon(step)
     const row: NextStep = { id: step.id, group: 'step', text: state === 'current' ? step.now : step.text, state, action: state === 'done' ? null : stepAction(step, state, creation, bricks), icon }
     // "The other side" is shown, not told: the next motor comes armed across from the first; with no room there, the row says so.
-    if (state === 'current' && step.id === 'motors' && !step.fix && creation.motors.length > 0) {
-      const other = otherSideSpot(model.input, creation)
-      if (other?.free && row.action?.kind === 'arm') row.action = { ...row.action, rotation: other.pose.rotation, at: other.pose }
-      else if (other && !other.free) row.hint = OTHER_SIDE_NO_ROOM
+    // A motor from the steps never starts on top of the hub: it starts where it goes (red, with why, when there is no room).
+    if (state === 'current' && step.id === 'motors' && !step.fix && row.action?.kind === 'arm') {
+      const start = motorStartSpot(model.input, creation)
+      if (start) row.action = { ...row.action, rotation: start.pose.rotation, at: start.pose }
+      const other = creation.motors.length > 0 ? otherSideSpot(model.input, creation) : null
+      if (other && !other.free) row.hint = other.why === SOMETHING_IN_THE_WAY ? SOMETHING_IN_THE_WAY : OTHER_SIDE_NO_ROOM
     }
     return row
   })
-  if (!plan.kind) return [...rows, ...choices(creation, open === -1)]
+  if (!plan.kind) return [...rows, ...choices(creation, open === -1, motorStartSpot(model.input, creation))]
   const ready = open === -1
   rows.push({
     id: 'ready',
@@ -172,7 +174,10 @@ function stepAction(step: ReadinessStep, state: StepState, creation: DerivedCrea
   }
 }
 
-function choices(creation: DerivedCreation, now: boolean): NextStep[] {
+/** A motor armed where it goes (never on top of the hub). */
+const motorAt = (start: { pose: SnapPose } | null): StepAction => (start ? { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: start.pose.rotation, at: start.pose } : arm(ROBOTICS_PART_IDS.motor))
+
+function choices(creation: DerivedCreation, now: boolean, start: { pose: SnapPose } | null): NextStep[] {
   const state: StepState = now ? 'current' : 'todo'
   const hasHub = creation.hubs.length > 0
   // Motors must stand on a plate so their wheels reach the ground: a hub on the bare ground gets one first.
@@ -184,7 +189,7 @@ function choices(creation: DerivedCreation, now: boolean): NextStep[] {
       text: 'Make it move',
       hint: plateFirst ? 'Put a plate down. Then move the hub onto it.' : 'Add motors and wheels.',
       state,
-      action: plateFirst ? arm(PLATE_PART) : arm(ROBOTICS_PART_IDS.motor),
+      action: plateFirst ? arm(PLATE_PART) : motorAt(start),
       icon: { part: plateFirst ? PLATE_PART : ROBOTICS_PART_IDS.motor },
     },
     {

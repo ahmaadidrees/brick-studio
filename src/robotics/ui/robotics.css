@@ -116,8 +116,9 @@
 .robotics-loose { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 2px solid rgba(229, 56, 59, .35); border-radius: 14px; background: #fff5f4; }
 .robotics-loose-line { margin: 0; color: #8a1c1f; font-size: 15px; font-weight: 800; line-height: 1.3; }
 .robotics-loose-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.robotics-loose-list.in-parts { margin-top: 2px; }
 .robotics-loose-row { display: flex; align-items: center; gap: 8px; }
+.robotics-loose-actions { display: flex; flex: 1 1 auto; gap: 8px; }
+.robotics-parts .robotics-loose-actions { margin-top: 6px; }
 .robotics-loose-number { flex: 0 0 auto; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 999px; color: #fff; background: #e5383b; font-size: 15px; font-weight: 900; }
 .robotics-loose-fix, .robotics-loose-remove { min-height: 44px; padding: 0 12px; border-radius: 10px; font-family: inherit; font-size: 15px; font-weight: 900; line-height: 1.15; cursor: pointer; }
 .robotics-loose-fix { flex: 1 1 auto; border: 0; color: #fff; background: var(--studio-blue, #3e83d7); }
@@ -141,8 +142,13 @@
 .robotics-contact { margin: 0; padding: 6px 8px; border-radius: 8px; color: #a12c1d; background: #ffe1dc; font-weight: 800; }
 .robotics-wiring-line { position: absolute; z-index: 16; top: calc(var(--brick-header-block) + 12px); left: 50%; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); box-sizing: border-box; transform: translateX(-50%); padding: 6px 8px 6px 14px; border: 1px solid var(--studio-panel-border); border-radius: 11px; color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-md, 0 8px 22px rgba(38, 60, 81, .13)); font-size: 14px; font-weight: 800; }
 /* The line's one-tap fix ("Add a motor for it", "Put it on Buggy"): a real button, 44 px (kid-UX lane W). */
-.robotics-wiring-line.has-action { max-width: min(640px, calc(100% - 32px)); }
+/* A line with a fix can take two rows: a studio message below it moves down to stay clear of the button. */
+.brick-studio:has(.robotics-wiring-line.has-action) .brick-toast { margin-top: 58px; }
+/* Where the line is narrow (1024 px with the panel open) the button goes under the words instead of squeezing them. */
+.robotics-wiring-line.has-action { flex-wrap: wrap; row-gap: 6px; max-width: min(640px, calc(100% - 32px)); }
 .robotics-wiring-line > span { flex: 1 1 auto; min-width: 0; }
+.robotics-wiring-line.has-action > span { min-width: min(190px, 100%); }
+.robotics-wiring-line.has-action > .robotics-link-button { margin-left: auto; }
 .robotics-wiring-line.is-done { border-color: rgba(18, 183, 106, .55); background: #effaf4; }
 .robotics-line-action { min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; font-family: inherit; font-weight: 900; font-size: 15px; line-height: 1.15; color: #fff; background: var(--studio-blue, #3e83d7); cursor: pointer; white-space: nowrap; }
 .robotics-line-action:hover { background: var(--studio-blue-dark, #2f5fb3); }

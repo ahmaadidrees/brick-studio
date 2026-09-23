@@ -33,16 +33,25 @@ export function useLooseWheels(creation: DerivedCreation): LooseWheel[] {
   return useMemo(() => looseWheelsOf(model, creation), [model, creation])
 }
 
-/** One loose wheel: its number, Fix and Take it off (44 px targets). */
-export function LooseWheelRow({ wheel, only }: { wheel: LooseWheel; only: boolean }) {
+/** A loose wheel's Fix and Take it off (44 px targets). */
+export function LooseWheelButtons({ wheel, only }: { wheel: LooseWheel; only: boolean }) {
   const name = only ? 'the wheel' : `wheel ${wheel.number}`
   return (
-    <li className="robotics-loose-row" data-brick-id={wheel.wheelId} data-testid="robotics-loose-wheel">
-      {!only && <span className="robotics-loose-number" aria-hidden="true">{wheel.number}</span>}
+    <span className="robotics-loose-actions">
       <button type="button" className="robotics-loose-fix" onClick={() => fixWheel(wheel.wheelId)} title={wheel.label} aria-label={`Fix ${name}: ${wheel.label}`}>
         {only ? 'Fix it' : `Fix wheel ${wheel.number}`}
       </button>
       <button type="button" className="robotics-loose-remove" onClick={() => removePart(wheel.wheelId)} aria-label={`Take ${name} off`}>Take it off</button>
+    </span>
+  )
+}
+
+/** One loose wheel under the steps: its number (as on the wheel in the scene), Fix and Take it off. */
+export function LooseWheelRow({ wheel, only }: { wheel: LooseWheel; only: boolean }) {
+  return (
+    <li className="robotics-loose-row" data-brick-id={wheel.wheelId} data-testid="robotics-loose-wheel">
+      {!only && <span className="robotics-loose-number" aria-hidden="true">{wheel.number}</span>}
+      <LooseWheelButtons wheel={wheel} only={only} />
     </li>
   )
 }

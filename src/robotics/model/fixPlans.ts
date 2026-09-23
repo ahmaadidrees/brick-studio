@@ -340,7 +340,11 @@ export type OtherSideSpot = {
   mirrored: boolean
   /** What is in the way when it is not free. */
   blockers: string[]
+  /** Why it is not free, in a third grader's words: loose parts that can move, or no room on the plate. */
+  why: string | null
 }
+
+export const SOMETHING_IN_THE_WAY = 'Something is in the way there.'
 
 /**
  * Where a robot's next motor goes when all its motors are on one side of their plate, facing out
@@ -369,7 +373,7 @@ export function otherSideSpot(input: Pick<DeriveInput, 'bricks' | 'partMap' | 'p
   const rect = plateRect(plate, platePart)
   const opposite = OPPOSITE_EDGE[facing]
   const open = (pose: SnapPose) => layout.fits(MOTOR, pose, ignore) && socketOpenAt(layout, pose, ignore)
-  const base = { plateId: plate.id }
+  const base = { plateId: plate.id, why: null }
   for (const { motor } of frames) {
     const mirror = mirroredMotorPose(motor, motorPart, rect, facing)
     if (open(mirror)) return { ...base, motorId: motor.id, pose: mirror, free: true, mirrored: true, blockers: [] }
@@ -383,7 +387,27 @@ export function otherSideSpot(input: Pick<DeriveInput, 'bricks' | 'partMap' | 'p
   }
   const inTheWay = layout.blockers(MOTOR, mirror, ignore)
   const socketWay = inTheWay.length ? [] : socketCoveredBy({ id: 'fix:motor', partId: MOTOR, ...mirror }, layout.others(ignore), input.partMap, input.plateSize) ?? []
-  return { ...base, motorId: first.motor.id, pose: mirror, free: false, mirrored: true, blockers: inTheWay.length ? inTheWay : socketWay }
+  const blockers = inTheWay.length ? inTheWay : socketWay
+  // Only loose wheels or axles there: they move (a wheel's own fix moves it), so the plate is big enough.
+  const movable = blockers.length > 0 && blockers.every((id) => ['wheel', 'axle'].includes(roleOf(layout.byId.get(id)) ?? ''))
+  return { ...base, motorId: first.motor.id, pose: mirror, free: false, mirrored: true, blockers, why: movable ? SOMETHING_IN_THE_WAY : NO_ROOM_FOR_MOTOR }
+}
+
+/**
+ * Where a motor armed from the next steps starts, so its ghost is never on top of the hub: the other
+ * side of the robot's motors when there is room there (else that spot, red, with what is in the
+ * way), or, for its first motor, the back end of a long side of its plate (where the Buggy has its
+ * motors, leaving the front for the hub). Null when the robot has no plate on the ground.
+ */
+export function motorStartSpot(input: Pick<DeriveInput, 'bricks' | 'partMap' | 'plateSize'>, robot: Pick<DerivedCreation, 'brickIds'>): { pose: SnapPose; free: boolean } | null {
+  const other = otherSideSpot(input, robot)
+  if (other) return { pose: other.pose, free: other.free }
+  const layout = layoutOf(input)
+  const plates = robot.brickIds.map((id) => layout.byId.get(id)).filter((brick): brick is BrickInstance => Boolean(brick) && isGroundPlate(layout, brick!))
+  if (!plates.length) return null
+  const rect = plateRect(plates[0], input.partMap[plates[0].partId]!)
+  const [spot] = openMotorSpots(layout, plates, { x: rect.x0, z: rect.z1 }, new Set())
+  return spot ? { pose: spot, free: true } : null
 }
 
 /* ------------------------------------------------------------------ a part beside a robot */
@@ -422,6 +446,8 @@ function topSpot(layout: Layout, members: readonly BrickInstance[], device: Bric
   // A sensor or a seat keeps the way it faces; anything else may turn to fit.
   const role = roleOf(device)
   const rotations = role === 'distance-sensor' || role === 'seat' ? [device.rotation] : [device.rotation, ((device.rotation + 1) % 4) as SnapPose['rotation']]
+  // A seat or a light goes on the very top (to ride it; to be seen); a sensor, a button or a hub on the plate.
+  const highest = goesOnTop(role)
   let best: { pose: SnapPose; cost: number } | null = null
   for (const carrier of members) {
     const carrierPart = layout.input.partMap[carrier.partId]
@@ -434,7 +460,7 @@ function topSpot(layout: Layout, members: readonly BrickInstance[], device: Bric
         for (let z = rect.z0; z + size.depth <= rect.z1; z += 1) {
           const pose: SnapPose = { x, y: top, z, rotation }
           if (!layout.fits(device.partId, pose, ignore)) continue
-          const cost = top * 2 + travel(from, centerOf(pose, part))
+          const cost = (highest ? -top : top) * 2 + travel(from, centerOf(pose, part))
           if (!best || cost < best.cost - 1e-9) best = { pose, cost }
         }
       }
@@ -443,22 +469,34 @@ function topSpot(layout: Layout, members: readonly BrickInstance[], device: Bric
   return best?.pose ?? null
 }
 
+/** Parts that belong on the very top of a robot: a seat (to ride it) and a light (to be seen). */
+const goesOnTop = (role: string | null) => role === 'seat' || role === 'light'
+export const PUT_IT_ON_TOP = 'Put it on top'
+
+/** Parts a student puts on a robot: its devices and a seat. */
+export const isRobotAttachable = (partId: string) => isDevicePart(partId) || roboticsSpec(partId)?.role === 'seat'
+
 /**
  * Puts a part that lies beside a robot onto it, where it works: a motor on an edge of the robot's
- * plate facing out (the other side of a robot with one motor first), anything else on top.
+ * plate facing out (the other side of a robot with one motor first); a seat or a light on the very
+ * top ("Put it on top"); a sensor, a button or a hub on the plate.
  */
 export function planPutOnRobot(input: DeriveInput, robot: Pick<DerivedCreation, 'name' | 'brickIds'>, brickId: string): FixOutcome {
   const layout = layoutOf(input)
   const device = layout.byId.get(brickId)
   const part = device ? input.partMap[device.partId] : undefined
-  if (!device || !part || !isDevicePart(device.partId)) return refusal(brickId, 'nothing')
-  const name = deviceName(input, device)
+  if (!device || !part || !isRobotAttachable(device.partId)) return refusal(brickId, 'nothing')
+  const name = roleOf(device) === 'seat' ? 'The seat' : deviceName(input, device)
   const onTop = studdedOnTop(layout, device)
   if (onTop.length) return refusal(brickId, 'stacked', `Something is on top of ${name}. Take it off first.`, { blockers: onTop })
   const ignore = new Set([brickId])
   const members = robot.brickIds.filter((id) => id !== brickId).map((id) => layout.byId.get(id)).filter((brick): brick is BrickInstance => Boolean(brick))
   const from = centerOf(device, part)
-  const plan = (pose: SnapPose): FixPlan => ({ ok: true, brickId, label: `Put it on ${robot.name}`, undoLabel: `Put ${name} on ${robot.name}`, done: `${name} is on ${robot.name} now.`, steps: [{ op: 'move', brickId, pose }] })
+  const onTopLabel = goesOnTop(roleOf(device))
+  const plan = (pose: SnapPose): FixPlan => ({
+    ok: true, brickId, label: onTopLabel ? PUT_IT_ON_TOP : `Put it on ${robot.name}`, undoLabel: `Put ${name === 'The seat' ? 'the seat' : name} on ${robot.name}`,
+    done: `${name} is on ${robot.name} now.`, steps: [{ op: 'move', brickId, pose }],
+  })
   if (roleOf(device) === 'motor') {
     const other = otherSideSpot(input, robot, ignore)
     if (other?.free) return plan(other.pose)

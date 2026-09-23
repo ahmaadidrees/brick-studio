@@ -125,6 +125,26 @@ describe('a part beside the robot, a motor in the wrong place', () => {
     expect(section().connections.some((cable) => cable.deviceId === stray)).toBe(false)
   })
 
+  it('a seat dropped beside Speedy: "This seat isn\'t on Speedy yet." and Put it on top; it rides along after (Ava)', () => {
+    speedy()
+    const seat = place(M.seat, 30, 0, 23)
+    expect(robotics().wiringNote).toMatchObject({ text: "This seat isn't on Speedy yet.", brickId: seat, action: { kind: 'put-on', label: 'Put it on top' } })
+    runNoteAction(robotics().wiringNote!.action!)
+    expect(find(seat)!.y).toBe(7)
+    expect(robotics().model.creations[0].seats).toContain(seat)
+    expect(robotics().wiringNote).toMatchObject({ text: 'The seat is on Speedy now.', tone: 'done', undoable: true })
+    brick().undo()
+    expect(pose(seat)).toEqual({ x: 30, y: 0, z: 23, rotation: 0 })
+  })
+
+  it('a light and a sensor beside Speedy say the same, with their one tap', () => {
+    speedy()
+    place(M.light, 33, 0, 23)
+    expect(robotics().wiringNote).toMatchObject({ text: "This light isn't on Speedy yet.", action: { kind: 'put-on', label: 'Put it on top' } })
+    place(M.distanceSensor, 36, 0, 27)
+    expect(robotics().wiringNote).toMatchObject({ text: "This sensor isn't on Speedy yet.", action: { kind: 'put-on', label: 'Put it on Speedy' } })
+  })
+
   it('a motor dropped in the middle of the plate: "Motors go on the sides…" and one tap moves it there', () => {
     place('plate_6x8', 28, 0, 26)
     const middle = place(M.motor, 29, 1, 29, 2)
