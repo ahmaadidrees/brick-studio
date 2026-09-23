@@ -121,7 +121,8 @@ const panel = page.getByTestId('robotics-panel')
 const inspector = page.getByTestId('robotics-device-inspector')
 /** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
 const openFold = async (name) => {
-  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  // The panel's own folds by test id: a picked part has a More of its own (lane P).
+  const toggle = panel.getByTestId(name === 'More' ? 'robotics-more-fold' : 'robotics-parts-fold').locator('> .robotics-fold-toggle')
   if (!(await toggle.count())) return
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
 }
@@ -132,14 +133,22 @@ const rowTone = async (id) => { await openFold('Parts'); return (await partRow(i
 /** The step the robot panel highlights now (the first thing its Next steps ask for). */
 const nextStep = async () => { const step = panel.locator('[data-testid=robotics-next-steps] [aria-current=step]'); return (await step.count()) ? norm(await step.first().textContent()) : null }
 const selectedPartLine = async () => ((await page.getByTestId('robotics-selected-part').count()) ? norm(await page.getByTestId('robotics-selected-part').textContent()) : null)
-const inspectorText = async () => ({
-  name: await inspector.getByLabel('Device name').inputValue(),
-  sub: norm(await inspector.getByTestId('wiring-sub').textContent()),
-  state: norm(await inspector.getByTestId('wiring-state').textContent()),
-  reading: norm(await inspector.getByTestId('wiring-reading').textContent()),
-  block: norm(await inspector.getByTestId('wiring-block').textContent()),
-  hint: norm(await inspector.locator('.wiring-hint').textContent()),
-})
+/** Opens the picked part's own More (lane P: a part's card is simple first; its wiring is behind More). */
+const partMore = async () => {
+  const toggle = page.locator('[data-testid=robotics-device-inspector], [data-testid=robotics-hub-inspector]').getByRole('button', { name: /^More about / })
+  if ((await toggle.count()) && (await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(120) }
+}
+const inspectorText = async () => {
+  await partMore()
+  return {
+    name: await inspector.getByLabel('Device name').inputValue(),
+    sub: norm(await inspector.getByTestId('wiring-sub').textContent()),
+    state: norm(await inspector.getByTestId('wiring-state').textContent()),
+    reading: norm(await inspector.getByTestId('wiring-reading').textContent()),
+    block: norm(await inspector.getByTestId('wiring-block').textContent()),
+    hint: norm(await inspector.locator('.wiring-hint').textContent()),
+  }
+}
 
 /* ---------------------------------------------------------------- Code: blocks, chips, stage */
 const observation = () => stage((state) => {
@@ -605,6 +614,8 @@ async function failureReversedOtherWay() {
   const picked = await clickPart(world(38.5, 7, 32.5), 'the outboard motor')
   const inspectorBefore = picked.selected === ids.rightMotor ? await inspectorText() : null
   if (picked.selected === ids.rightMotor) {
+    // Lane P: the name becomes a text field from its pencil.
+    await inspector.getByTestId('wiring-rename').click()
     await inspector.getByLabel('Device name').fill('Right motor')
     await inspector.getByLabel('Device name').press('Enter')
     await sleep(300)
@@ -655,6 +666,7 @@ async function failureSensorSideways() {
   // The sensor sits behind the taller hub from this camera: select it from the hub's port list.
   const hubPick = await clickPart(world(31, 7, 29), 'the hub')
   assert.equal(hubPick.selected, ids.hub, 'the hub is selected by a click')
+  await partMore()
   const portButton = page.getByTestId('robotics-hub-inspector').getByRole('button', { name: /^Port C: .*sensor/ })
   const portLabel = await portButton.getAttribute('aria-label')
   await portButton.click()
@@ -718,6 +730,7 @@ async function failureSensorSideways() {
   // Repair: select the sensor from the hub's list and turn it with R until it faces forward.
   await frameOn(Object.values(ids))
   await clickPart(world(31, 7, 29), 'the hub')
+  await partMore()
   await page.getByTestId('robotics-hub-inspector').getByRole('button', { name: /^Port C: .*sensor/ }).click()
   await sleep(200)
   for (let turn = 0; turn < 3; turn += 1) { await page.keyboard.press('r'); await sleep(150) }
@@ -754,6 +767,7 @@ async function failureArmInFrame() {
   check('F4.build.hinge-row', hingeRow?.includes("arm stuck to the frame, so it can't swing") && (await rowTone(ids.hinge)).includes('bad'), `the hinge motor's row (red): "${hingeRow}"`)
   const hubPick = await clickPart(world(22, 7, 26), 'the hub')
   assert.equal(hubPick.selected, ids.hub, 'the hub is selected by a click')
+  await partMore()
   await page.getByTestId('robotics-hub-inspector').getByRole('button', { name: /^Port A: Arm motor/ }).click()
   await sleep(300)
   const hingeInspector = (await selectedId()) === ids.hinge ? await inspectorText() : null
@@ -843,6 +857,7 @@ async function failureUnplugged(roverIds) {
   await frameOn(Object.values(ids))
   const picked = await clickPart(world(29.5, 7, 32.5), 'the left motor')
   assert.equal(picked.selected, ids.leftMotor, 'the left motor is selected by a click')
+  await partMore()
   await inspector.getByRole('button', { name: 'Unplug', exact: true }).click()
   await sleep(300)
   const unplugged = await inspectorText()
@@ -913,6 +928,7 @@ async function failureUnplugged(roverIds) {
   // Repair: plug it back into port A from the inspector.
   await frameOn(Object.values(ids))
   await clickPart(world(29.5, 7, 32.5), 'the left motor')
+  await partMore()
   await inspector.getByRole('button', { name: 'Plug into port A' }).click()
   await sleep(300)
   const replugged = await inspectorText()

@@ -183,6 +183,6 @@
 }
 
 /* Lane P: the command strip's Color popover is never hidden behind the robot panel or card. It slides
-   left to clear them (CommandStrip's `data-popover-avoid`); where the screen is too narrow for that, the
-   strip rises over the panel while the popover is open. */
-.build-shell:has(.command-strip-popover) > .command-strip { z-index: 16; }
+   left to clear them (CommandStrip's `data-popover-avoid`); where the screen is too narrow for that
+   (`data-over-panel`), the strip rises over the panel while the popover is open. */
+.build-shell:has(.command-strip-popover[data-over-panel]) > .command-strip { z-index: 16; }

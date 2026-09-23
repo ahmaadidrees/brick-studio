@@ -89,7 +89,8 @@ const clickNudge = async (name) => { await page.getByRole('button', { name, exac
 const resetNudge = async () => { await page.getByTestId('robotics-reset').click(); await sleep(150) }
 /** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
 const openFold = async (name) => {
-  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  // The panel's own folds by test id: a picked part has a More of its own (lane P).
+  const toggle = panel.getByTestId(name === 'More' ? 'robotics-more-fold' : 'robotics-parts-fold').locator('> .robotics-fold-toggle')
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
 }
 const newBuild = async () => { await robo((state) => state.resetSim()); await brick((state) => state.newBuild()); await sleep(150) }
@@ -152,7 +153,7 @@ check('A.named', (await creations())[0].name === 'Mars buggy', 'the creation was
 // Nudge both motors as a drive pair → it rolls (the motor tests are in the panel's More).
 const before = await snapshot()
 await openFold('More')
-await page.getByRole('button', { name: 'Drive forward 40%' }).click()
+await page.getByRole('button', { name: 'Drive forward', exact: true }).click()
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(2600)
 let sim = await simState()
@@ -171,7 +172,7 @@ let loose = (await creations())[0]
 const looseWheel = loose.wheels.find((w) => w.id === ids.leftWheel)
 check('A.wheel-off-note', looseWheel && !looseWheel.onAxle && looseWheel.note.startsWith('Not on an axle'), `wheel card: ${looseWheel?.note}`)
 check('A.wheel-off-selected-part', (await page.getByTestId('robotics-selected-part').textContent()).includes('Not on an axle'), 'selected wheel says Not on an axle')
-await page.getByRole('button', { name: 'Run 40%' }).first().click()
+await page.getByRole('button', { name: 'Spin', exact: true }).first().click()
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(1600)
 sim = await simState()
@@ -184,7 +185,7 @@ await sleep(200)
 check('A.wheel-back-on', (await creations())[0].wheels.every((w) => w.onAxle), 'wheel back on its axle')
 
 // Both motors commanded the same way → it turns; the card shows one motor reversed.
-const runButtons = page.getByRole('button', { name: 'Run 40%', exact: true })
+const runButtons = page.getByRole('button', { name: 'Spin', exact: true })
 await runButtons.nth(0).click()
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await runButtons.nth(1).click()
@@ -248,7 +249,7 @@ check('B.named', (await creations())[0].name === 'Castle gate', 'the gate was re
 const gateBefore = await snapshot()
 await openFold('More')
 await openFold('Parts')
-await clickNudge('Swing to 60°')
+await clickNudge('Swing open')
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(2600)
 sim = await simState()
@@ -257,9 +258,10 @@ const armBody = await bodyOf(gate.door)
 const report = sim.reports[gate.hinge]
 const arm = sim.poses[armBody]
 check('B.swings-about-axis', frameBody !== armBody && report && report.angle > 55 && report.angle < 65 && Math.abs(arm.rotation.x) < 0.02 && Math.abs(arm.rotation.z) < 0.02 && sim.poses[frameBody].position.y === 0 && sim.poses[frameBody].rotation.w === 1, `hinge at ${report?.angle?.toFixed(1)}°, arm quaternion x=${arm.rotation.x.toFixed(3)} z=${arm.rotation.z.toFixed(3)}, frame unmoved`)
-check('B.panel-angle', (await panel.textContent()).includes('at 6') || (await panel.textContent()).includes('at 5'), 'panel reports the hinge angle')
+// Lane P: the part row says open or shut, not degrees.
+check('B.panel-angle', (await panel.textContent()).includes(' · open'), 'panel reports the hinge is open')
 await shot('B2-gate-swings')
-await clickNudge('Back to 0°')
+await clickNudge('Shut')
 await sleep(2600)
 sim = await simState()
 check('B.back-to-zero', Math.abs(sim.reports[gate.hinge].angle) < 3, `back at ${sim.reports[gate.hinge].angle.toFixed(1)}°`)
@@ -276,7 +278,7 @@ g = (await creations())[0]
 check('B.locked', g.hinges[0].locked && g.arms === 0 && g.hinges[0].bridging.length === 1 && g.hinges[0].bridging[0][1] === gate.door, `locked; bridging joint ${JSON.stringify(g.hinges[0].bridging)}`)
 check('B.locked-line', g.lines.ready.includes("built into the frame, so it can't swing"), `ready line: ${g.lines.ready}`)
 await shot('B3-gate-built-into-frame')
-await clickNudge('Swing to 60°')
+await clickNudge('Swing open')
 await sleep(700)
 check('B.locked-nudge-explains', (await brick((state) => state.toast))?.includes('built into the frame'), `nudge on a locked hinge: ${await brick((state) => state.toast)}`)
 sim = await simState()

@@ -19,9 +19,13 @@ export function PaintRow({ creation }: { creation: DerivedCreation }) {
   const headingId = useId()
   const section = useRef<HTMLElement>(null)
   const name = nameOf(color)
-  // Painting grows the row by a line and "Paint all": scroll the panel so all of it is in sight.
+  // Painting grows the row by a line and "Paint all": scroll the panel so all of it is in sight;
+  // done painting, the panel goes back to its top (the robot's name, Drive and Code).
+  const wasPainting = useRef(false)
   useEffect(() => {
     if (painting) section.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+    else if (wasPainting.current) section.current?.closest('.robotics-panel')?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    wasPainting.current = painting
   }, [painting])
   return (
     <section ref={section} className={`robotics-paint${painting ? ' painting' : ''}`} aria-labelledby={headingId} data-testid="robotics-paint">

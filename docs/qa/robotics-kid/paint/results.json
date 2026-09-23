@@ -1,0 +1,300 @@
+{
+  "harness": "scripts/qa/robotics-kid-paint.mjs",
+  "origin": "http://127.0.0.1:5244",
+  "viewports": [
+    "1366x768",
+    "1024x768",
+    "820x1094 touch (iPad portrait)"
+  ],
+  "at": "2026-09-23T19:35:47.465Z",
+  "passed": 50,
+  "failed": 0,
+  "counts": {
+    "pickColour": 1,
+    "paintTwoBricks": {
+      "colour": 1,
+      "bricks": 2,
+      "done": 1
+    }
+  },
+  "shots": [
+    "1366-01-buggy-paint-row.png",
+    "1366-02-painting-red.png",
+    "1366-03-two-bricks-painted.png",
+    "1366-04-paint-all-green.png",
+    "1366-05-undo-paint-all.png",
+    "1366-06-picked-and-drawer-swatch.png",
+    "1366-07-motor-card.png",
+    "1366-08-motor-more.png",
+    "1366-09-idea-placed-once.png",
+    "1366-10-gate-motor-test.png",
+    "1366-11-signal-light-hub-picked.png",
+    "1366-12-gate-try-it.png",
+    "1366-13-back-from-try-it-framed.png",
+    "1366-14-back-from-drive-framed.png",
+    "1366-15-color-popover.png",
+    "1024-01-buggy-paint-row.png",
+    "1024-02-painting.png",
+    "1024-03-motor-card.png",
+    "1024-04-motor-more.png",
+    "1024-05-color-popover.png",
+    "ipad-820-01-buggy-by-touch.png",
+    "ipad-820-02-painting-by-touch.png",
+    "ipad-820-03-motor-card-by-touch.png",
+    "ipad-820-color-popover.png",
+    "ipad-1180-01-buggy-by-touch.png",
+    "ipad-1180-color-popover.png"
+  ],
+  "results": [
+    {
+      "id": "A.buggy",
+      "ok": true,
+      "detail": "a Buggy kit placed from the drawer: 9 bricks"
+    },
+    {
+      "id": "A.paint-row",
+      "ok": true,
+      "detail": "the robot panel has a Paint row of twelve colours"
+    },
+    {
+      "id": "A1.painting",
+      "ok": true,
+      "detail": "one click on red: the bar says \"PaintingRedTap bricks to paint themDone\""
+    },
+    {
+      "id": "A1.strip-steps-aside",
+      "ok": true,
+      "detail": "the command strip steps aside for the paint bar"
+    },
+    {
+      "id": "A1.paint-line",
+      "ok": true,
+      "detail": "the Paint row says what a tap does and offers \"Paint all of Buggy\", in sight"
+    },
+    {
+      "id": "A1.two-bricks",
+      "ok": true,
+      "detail": "two clicks painted the hub and the left motor red (the right motor untouched)"
+    },
+    {
+      "id": "A1.one-undo-each",
+      "ok": true,
+      "detail": "one history entry per brick: Paint brick red | Paint brick red"
+    },
+    {
+      "id": "A1.nothing-selected",
+      "ok": true,
+      "detail": "nothing gets selected; painting goes on"
+    },
+    {
+      "id": "A2.paint-all",
+      "ok": true,
+      "detail": "Paint all of Buggy: plate, hub and motors green; wheels, axles and the sensor keep their colours"
+    },
+    {
+      "id": "A2.one-entry",
+      "ok": true,
+      "detail": "one history entry \"Paint Buggy green\"; the line says \"Buggy is green now!\""
+    },
+    {
+      "id": "A3.undo-one-step",
+      "ok": true,
+      "detail": "one Undo puts every brick back as it was before Paint all"
+    },
+    {
+      "id": "A3.done",
+      "ok": true,
+      "detail": "Done: painting stops, the command strip is back"
+    },
+    {
+      "id": "A3.clicks",
+      "ok": true,
+      "detail": "painting two bricks took 4 clicks: the colour, one per brick, Done"
+    },
+    {
+      "id": "A4.picked",
+      "ok": true,
+      "detail": "a click picks the right motor (not painting any more)"
+    },
+    {
+      "id": "A4.swatch-paints",
+      "ok": true,
+      "detail": "the drawer's purple swatch painted the picked motor (one entry, \"Paint brick purple\"), and it stays picked"
+    },
+    {
+      "id": "A5.card-line",
+      "ok": true,
+      "detail": "the motor's card says \"Turns the left wheel · plugged in\""
+    },
+    {
+      "id": "A5.no-ports-no-code",
+      "ok": true,
+      "detail": "no port letters, code line, Unplug or Move to port before More: \"Turns the left wheel · plugged inTurnRemoveMore\""
+    },
+    {
+      "id": "A5.big-buttons",
+      "ok": true,
+      "detail": "big Turn (150×48) and Remove (150×48)"
+    },
+    {
+      "id": "A5.picture-and-pencil",
+      "ok": true,
+      "detail": "a picture of the part; the name is text with a pencil beside it"
+    },
+    {
+      "id": "A5.more-has-wiring",
+      "ok": true,
+      "detail": "More has the port chips, the code line and Unplug"
+    },
+    {
+      "id": "A6.armed",
+      "ok": true,
+      "detail": "the idea row armed a light; the strip says Placing"
+    },
+    {
+      "id": "A6.placed-once",
+      "ok": true,
+      "detail": "placed: nothing is left armed and the strip says \"Pick a brick from the drawer\""
+    },
+    {
+      "id": "A6.flash",
+      "ok": true,
+      "detail": "the new light flashes"
+    },
+    {
+      "id": "A7.robots-before",
+      "ok": true,
+      "detail": "the drawer shows Robots"
+    },
+    {
+      "id": "A7.robots-after-reload",
+      "ok": true,
+      "detail": "after a reload the drawer still shows Robots"
+    },
+    {
+      "id": "B.two-robots",
+      "ok": true,
+      "detail": "robots: Gate, Signal light"
+    },
+    {
+      "id": "B.gate-focused",
+      "ok": true,
+      "detail": "a click on the Gate's hub: the panel is \"Gate\""
+    },
+    {
+      "id": "B.gate-test-running",
+      "ok": true,
+      "detail": "the Gate’s motor test runs (Swing open)"
+    },
+    {
+      "id": "B.light-title",
+      "ok": true,
+      "detail": "a click on the Signal light's hub: the panel is \"Signal light\" with its hub's card"
+    },
+    {
+      "id": "B.gate-test-stopped",
+      "ok": true,
+      "detail": "the Gate’s test stopped"
+    },
+    {
+      "id": "B.light-steps",
+      "ok": true,
+      "detail": "its steps: \"Next stepReady to try!\""
+    },
+    {
+      "id": "B.light-code",
+      "ok": true,
+      "detail": "Code opens the Signal light’s program"
+    },
+    {
+      "id": "B.back-from-code",
+      "ok": true,
+      "detail": "back from Code: the panel is \"Signal light\""
+    },
+    {
+      "id": "B.gate-kept",
+      "ok": true,
+      "detail": "nothing picked: the robot touched last (the Gate) stays, not the newest"
+    },
+    {
+      "id": "B.back-focus",
+      "ok": true,
+      "detail": "back from Try it: the panel is \"Gate\""
+    },
+    {
+      "id": "B.back-framed",
+      "ok": true,
+      "detail": "the Gate framed clear of the drawer, the panel and the strip (11/11 of its bricks inside the free area {\"left\":276,\"right\":922,\"top\":80,\"bottom\":702})"
+    },
+    {
+      "id": "B.back-from-drive",
+      "ok": true,
+      "detail": "back from Drive: the Buggy's panel, the Buggy framed in the free area (9/9 inside)"
+    },
+    {
+      "id": "B.popover-1366",
+      "ok": true,
+      "detail": "the Color popover (678–914) clears the panel (from 922)"
+    },
+    {
+      "id": "C.paint-1024",
+      "ok": true,
+      "detail": "at 1024: a colour, then a click on the hub paints it"
+    },
+    {
+      "id": "C.paint-all-in-sight",
+      "ok": true,
+      "detail": "the bar and \"Paint all\" are in sight"
+    },
+    {
+      "id": "C.popover-clear",
+      "ok": true,
+      "detail": "the Color popover (396,533–632,697) and the panel (640,76–940,684) do not overlap; all four of its corners are on top"
+    },
+    {
+      "id": "D.framed-beside-panel",
+      "ok": true,
+      "detail": "the Buggy is framed in the free area beside the panel (9/9 bricks inside, the free area ends at 416 px, the panel starts at 416 px)"
+    },
+    {
+      "id": "D.picked-kit-painted",
+      "ok": true,
+      "detail": "with the new kit picked, a tap on green paints it green; its wheels stay as they were"
+    },
+    {
+      "id": "D.tap-paints",
+      "ok": true,
+      "detail": "then orange, and a tap on the hub paints it orange (nothing picked)"
+    },
+    {
+      "id": "D.finger-targets",
+      "ok": true,
+      "detail": "every control on the part's card is at least 44 px: Rename Left motor 44×44, Turn Left motor 130×52, Remove Left motor 130×52, More about Left motor 268×44"
+    },
+    {
+      "id": "D.name-no-keyboard",
+      "ok": true,
+      "detail": "the name is not a text field until its pencil is tapped (no keyboard from a low tap)"
+    },
+    {
+      "id": "D.low-tap-stays-read-only",
+      "ok": true,
+      "detail": "a tap on the name itself leaves it read-only"
+    },
+    {
+      "id": "D.popover-clear",
+      "ok": true,
+      "detail": "the Color popover (148,721–408,959) and the panel (416,72–736,850) do not overlap"
+    },
+    {
+      "id": "E.popover-clear",
+      "ok": true,
+      "detail": "the Color popover (528,511–788,749) and the panel (796,76–1096,736) do not overlap"
+    },
+    {
+      "id": "console.clean",
+      "ok": true,
+      "detail": "no console errors or page errors"
+    }
+  ]
+}

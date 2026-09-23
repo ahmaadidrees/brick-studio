@@ -70,6 +70,7 @@ button.wiring-hub-port:focus-visible { outline: 3px solid var(--studio-focus); o
 .wiring-name-row { display: flex; align-items: center; gap: 4px; }
 .wiring-name-row .wiring-name { flex: 1 1 auto; min-width: 0; }
 .wiring-name[readonly] { border-bottom-color: transparent; cursor: default; }
+.wiring-name[readonly]:focus, .wiring-name[readonly]:focus-visible { outline: none; }
 .wiring-name.editing { border-bottom-color: var(--studio-blue, #3e83d7); background: var(--studio-panel); }
 .wiring-rename { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 10px; color: var(--studio-blue-dark, #2f5fb3); background: transparent; cursor: pointer; }
 .wiring-rename:hover { background: var(--studio-panel); }

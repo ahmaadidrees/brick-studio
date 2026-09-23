@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { MAX_HISTORY_ENTRIES, useBrickStore, type BrickHistoryDelta, type BrickHistoryEntry } from '../../brick/store'
 import { useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
+import { usePlacedFlash } from '../guide/oneShot'
 import { registerBrickTap } from '../scene/brickTap'
 import { useRoboticsStore } from '../state/roboticsStore'
 import { ownerOf, useRobotFocus } from '../ui/robotFocus'
@@ -167,6 +168,11 @@ let unsubscribers: (() => void)[] = []
 export function installPaintMode() {
   if (unsubscribers.length) return
   registerSelectionPainter(paintPicked)
+  // Dev-only hook for the QA harnesses (scripts/qa/robotics-kid-paint.mjs), beside the panel's stores.
+  if (import.meta.env.DEV && typeof window !== 'undefined') {
+    const host = window as unknown as { __robotics?: Record<string, unknown> }
+    host.__robotics = Object.assign(host.__robotics ?? {}, { paintMode: usePaintMode, placedFlash: usePlacedFlash })
+  }
   unsubscribers = [
     () => registerSelectionPainter(null),
     usePaintMode.subscribe((state, previous) => {

@@ -124,6 +124,29 @@ describe('the Color popover beside the robot panel', () => {
     const popover = screen.getByRole('dialog', { name: 'Brick color' })
     // Its right edge (796) must end 8 px left of the panel (640): 164 px to the left.
     expect(popover.style.translate).toBe('-164px 0')
+    expect(popover).not.toHaveAttribute('data-over-panel')
+    panel.remove()
+  })
+
+  it('where it cannot slide clear (a panel across the screen), it says so, so the strip can rise over the panel', () => {
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const box = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
+      if (this.classList.contains('command-strip-popover')) {
+        const shift = Number.parseFloat((this as HTMLElement).style.translate || '0')
+        return box(60 + shift, 520, 236, 160)
+      }
+      if (this.hasAttribute('data-popover-avoid')) return box(0, 76, 1024, 600)
+      return box(0, 0, 0, 0)
+    })
+    render(<BrickStudioApp />)
+    const panel = document.createElement('aside')
+    panel.setAttribute('data-popover-avoid', '')
+    document.body.append(panel)
+    act(() => useBrickStore.getState().selectBrick(red.id))
+    fireEvent.click(screen.getByRole('button', { name: 'Recolor brick' }))
+    const popover = screen.getByRole('dialog', { name: 'Brick color' })
+    expect(popover.style.translate).toBe('-52px 0')
+    expect(popover).toHaveAttribute('data-over-panel')
     panel.remove()
   })
 

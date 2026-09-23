@@ -206,13 +206,8 @@ function roverIdeas(creation: DerivedCreation, model: Pick<RoboticsModel, 'input
   const facingFront = creation.sensors.find((sensor) => sensor.facing === 'forward') ?? null
   const turnSensor = !facingFront && creation.sensors.length > 0 ? creation.sensors[0] : null
   const turnText = creation.sensors.length === 1 ? 'Turn the sensor to face the front.' : `Turn ${turnSensor?.name ?? 'a sensor'} to face the front.`
-  const byId = new Map(model.input.bricks.map((brick) => [brick.id, brick]))
   // Bricks of the student's own on top: anything that is not a robotics part or the plate it stands on.
-  const stacked = creation.brickIds.some((id) => {
-    const brick = byId.get(id)
-    if (!brick || roboticsSpec(brick.partId)) return false
-    return !(brick.y === 0 && model.input.partMap[brick.partId]?.height === 1)
-  })
+  const stacked = stackedBricks(creation, model) > 0
   const idea = (id: string, text: string, done: boolean, action: StepAction, icon: StepIcon): NextStep => ({ id, group: 'idea', text, state: done ? 'done' : 'todo', action: done ? null : action, icon })
   return [
     turnSensor

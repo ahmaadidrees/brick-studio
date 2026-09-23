@@ -113,11 +113,12 @@ const POPOVER_GAP = 8
 /**
  * Floating panels that must never cover the popover mark themselves `data-popover-avoid` (the Robot
  * Workshop's robot panel and card). The popover slides left until it clears them, as far as the
- * screen allows. Nothing is marked in the studio without the robotics prototype, so there it never
+ * screen allows; `over` says it still could not (the robotics stylesheet then lifts the strip over
+ * the panel). Nothing is marked in the studio without the robotics prototype, so there it never
  * moves and its entrance animation is untouched.
  */
 function useClearOfMarkedPanels(popover: RefObject<HTMLDivElement | null>) {
-  const [shift, setShift] = useState(0)
+  const [placement, setPlacement] = useState({ shift: 0, over: false })
   const applied = useRef(0)
   useLayoutEffect(() => {
     const measure = () => {
@@ -130,20 +131,17 @@ function useClearOfMarkedPanels(popover: RefObject<HTMLDivElement | null>) {
       const left = rect.left + applied.current
       const right = rect.right + applied.current
       let needed = 0
-      for (const panel of marked) {
-        const box = panel.getBoundingClientRect()
-        if (box.width <= 0 || box.height <= 0 || box.bottom <= rect.top || box.top >= rect.bottom) continue
-        if (box.left < right && box.right > left) needed = Math.max(needed, right - box.left + POPOVER_GAP)
-      }
+      const boxes = marked.map((panel) => panel.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0 && box.bottom > rect.top && box.top < rect.bottom)
+      for (const box of boxes) if (box.left < right && box.right > left) needed = Math.max(needed, right - box.left + POPOVER_GAP)
       const next = Math.max(0, Math.min(needed, left - POPOVER_GAP))
       applied.current = next
-      setShift(next)
+      setPlacement({ shift: next, over: boxes.some((box) => box.left < right - next && box.right > left - next) })
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
   }, [popover])
-  return shift
+  return placement
 }
 
 /**
@@ -154,7 +152,7 @@ function useClearOfMarkedPanels(popover: RefObject<HTMLDivElement | null>) {
 function ColorPopover({ color, count, onPick, onClose }: ColorPopoverProps) {
   const panel = useRef<HTMLDivElement>(null)
   const headingId = useId()
-  const shift = useClearOfMarkedPanels(panel)
+  const { shift, over } = useClearOfMarkedPanels(panel)
   useEffect(() => {
     panel.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -179,7 +177,7 @@ function ColorPopover({ color, count, onPick, onClose }: ColorPopoverProps) {
     }
   }, [onClose])
   return (
-    <div ref={panel} className="command-strip-popover" role="dialog" aria-labelledby={headingId} data-shortcut-pause="" style={shift ? { translate: `${-shift}px 0` } : undefined}>
+    <div ref={panel} className="command-strip-popover" role="dialog" aria-labelledby={headingId} data-shortcut-pause="" data-over-panel={over ? '' : undefined} style={shift ? { translate: `${-shift}px 0` } : undefined}>
       <div className="command-strip-popover-title" id={headingId}>{count > 1 ? `Color all ${count} bricks` : 'Brick color'}</div>
       <ColorPalette targetColor={color} onPick={onPick} label="Brick color" />
     </div>

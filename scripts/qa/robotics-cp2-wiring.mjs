@@ -14,6 +14,9 @@
  * draws (`window.__robotics.cables`, dev only) and what the inspector says. Kid-UX pass
  * (docs/robotics/KID-UX.md §G): the Wiring toggle, the run space and the motor tests sit in the
  * robot panel's folded More, the part rows in its folded Parts; both are opened with a click.
+ * Lane P: a part's card is simple first, so its ports, cable, code line and wiring buttons are
+ * behind the part's own More (opened with a click before they are read), and the toggle reads
+ * "Plug in by itself: On / Off".
  *
  *   PATH=/opt/homebrew/opt/node@22/bin:$PATH node scripts/qa/robotics-cp2-wiring.mjs
  *
@@ -67,14 +70,19 @@ const selectedId = () => brick((state) => state.selectedId)
 const inspector = page.getByTestId('robotics-device-inspector')
 const hubInspector = page.getByTestId('robotics-hub-inspector')
 const panel = page.getByTestId('robotics-panel')
-const stateText = () => inspector.getByTestId('wiring-state').textContent()
-const readingText = () => inspector.getByTestId('wiring-reading').textContent()
-const blockText = () => inspector.getByTestId('wiring-block').textContent()
+/** Opens the picked part's own More (lane P: its ports, cable, code line and wiring buttons are there). */
+const partMore = async () => {
+  const toggle = page.locator('[data-testid=robotics-device-inspector], [data-testid=robotics-hub-inspector]').getByRole('button', { name: /^More about / })
+  if ((await toggle.count()) && (await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(120) }
+}
+const stateText = async () => { await partMore(); return inspector.getByTestId('wiring-state').textContent() }
+const readingText = async () => { await partMore(); return inspector.getByTestId('wiring-reading').textContent() }
+const blockText = async () => { await partMore(); return inspector.getByTestId('wiring-block').textContent() }
 const chip = (port) => inspector.locator(`button.wiring-port[data-port="${port}"]`)
-const chipStates = () => inspector.locator('button.wiring-port').evaluateAll((buttons) => buttons.map((button) => `${button.dataset.port}:${button.dataset.state}`).join(' '))
+const chipStates = async () => { await partMore(); return inspector.locator('button.wiring-port').evaluateAll((buttons) => buttons.map((button) => `${button.dataset.port}:${button.dataset.state}`).join(' ')) }
 /** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
 const openFold = async (name) => {
-  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  const toggle = panel.getByTestId(name === 'More' ? 'robotics-more-fold' : 'robotics-parts-fold').locator('> .robotics-fold-toggle')
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
 }
 const steps = []
@@ -140,10 +148,10 @@ await sleep(200)
 const card = page.getByTestId('robotics-creation-card')
 await card.getByRole('button', { name: 'Keep building' }).click()
 await sleep(200)
-// Kid-UX: the short card has no wiring toggle; "Wiring: assisted / manual" lives in the panel's More.
+// Kid-UX: the short card has no wiring toggle; "Plug in by itself: On / Off" (assisted / manual) lives in the panel's More.
 await openFold('More')
 await openFold('Parts')
-check('W0.more-has-wiring-toggle', await panel.getByRole('group', { name: 'Wiring' }).count() === 1 && await panel.getByRole('button', { name: 'assisted' }).getAttribute('aria-pressed') === 'true', 'the robot panel’s More shows "Wiring: assisted / manual", assisted pressed')
+check('W0.more-has-wiring-toggle', await panel.getByRole('group', { name: 'Plug in by itself' }).count() === 1 && await panel.getByRole('group', { name: 'Plug in by itself' }).getByRole('button', { name: 'On', exact: true }).getAttribute('aria-pressed') === 'true', 'the robot panel’s More shows "Plug in by itself: On / Off", On (assisted) pressed')
 await shot('W0-more-wiring-toggle')
 ids.leftMotor = await place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2 })
 check('W0.left-motor-A', (await wiringNote()) === 'Left motor connected to port A', `assisted: ${await wiringNote()}`)
@@ -168,12 +176,15 @@ await shot('W1-rover-cables', { clipTo: ROVER_BOX })
 console.log('\nW1. Hub ports: select the hub in the canvas, pick the sensor from its port list, move it to D')
 let picked = await clickPart(world(31, 7, 29), 'the hub top')
 check('W1.hub-selected', picked.selected === ids.hub, `clicking the hub at (${picked.at.x.toFixed(0)}, ${picked.at.y.toFixed(0)}) selects it (${picked.selected})`)
+check('W1.hub-simple-first', (await hubInspector.getByTestId('wiring-does').textContent()) === 'The robot’s brain' && (await hubInspector.getByTestId('hub-plugged').textContent()) === 'Plugged in: Left motor, Right motor and Front sensor', `the hub's card: "${await hubInspector.getByTestId('wiring-does').textContent()}" · "${await hubInspector.getByTestId('hub-plugged').textContent()}"`)
+await partMore()
 const hubRows = await hubInspector.locator('.wiring-hub-port').allTextContents()
 check('W1.hub-ports', hubRows.join(' | ') === 'ALeft motor | BRight motor | CFront sensor | DPort D · free', `hub inspector: ${hubRows.join(' | ')}`)
 await shot('W2-hub-inspector')
 await hubInspector.getByRole('button', { name: 'Port C: Front sensor. Select Front sensor' }).click()
 await sleep(200)
 check('W1.port-selects-device', (await selectedId()) === ids.sensor && (await stateText()) === 'Port C', 'clicking port C in the hub list selects the front sensor; its inspector says Port C')
+await partMore()
 await chip('D').click()
 await sleep(250)
 s = await readBack('W1 sensor moved to D')
@@ -183,6 +194,7 @@ check('W1.sensor-moved', portOf(s, ids.sensor) === 'D' && (await toast()) === 'F
 console.log('\nW2. Left motor: select in the canvas, move to port C with a chip')
 picked = await clickPart(world(29.5, 7, 32.5), 'the left motor top')
 check('W2.motor-selected', picked.selected === ids.leftMotor, `clicking the left motor at (${picked.at.x.toFixed(0)}, ${picked.at.y.toFixed(0)}) selects it`)
+check('W2.simple-first', (await inspector.getByTestId('wiring-does').textContent()) === 'Turns the left wheel · plugged in', `before More, the card says "${await inspector.getByTestId('wiring-does').textContent()}"`)
 check('W2.inspector-port-A', (await stateText()) === 'Port A' && (await chipStates()) === 'A:this B:used C:free D:used', `inspector: ${await stateText()}; chips ${await chipStates()}`)
 check('W2.reading-stopped', (await readingText()) === 'Stopped', `Right now: ${await readingText()}`)
 check('W2.block-label', (await blockText()).includes('Left motor · A') && !(await blockText()).includes('Not plugged in'), `block: ${await blockText()}`)
@@ -246,7 +258,7 @@ await shot('W7-renamed')
 
 /* ---------------------------------------------------------------- W7. a live reading, and a wiring edit retires the nudge */
 console.log('\nW7. Live reading while a nudge runs; a wiring edit retires it')
-await panel.getByRole('button', { name: 'Run 40%', exact: true }).first().click()
+await panel.getByRole('button', { name: 'Spin', exact: true }).first().click()
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(1200)
 const live = await readingText()
@@ -261,11 +273,11 @@ check('W7.edit-retires-run', (await robo((state) => state.sim)) === null && port
 check('W7.reading-back-to-rest', (await readingText()) === 'Stopped', `Right now after the run: ${await readingText()}`)
 
 /* ---------------------------------------------------------------- W8. manual wiring */
-console.log('\nW8. Wiring: manual, then place a light')
-await panel.getByRole('group', { name: 'Wiring' }).getByRole('button', { name: 'manual' }).click()
+console.log('\nW8. Plug in by itself: off (manual wiring), then place a light')
+await panel.getByRole('group', { name: 'Plug in by itself' }).getByRole('button', { name: 'Off', exact: true }).click()
 await sleep(250)
 s = await readBack('W8 manual')
-check('W8.manual', s.settings.wiring === 'manual' && (await topLabel()) === 'Wiring: manual' && (await toast()) === 'Wiring: manual. New parts wait for you to plug them in.', `mode ${s.settings.wiring}; toast: ${await toast()}`)
+check('W8.manual', s.settings.wiring === 'manual' && (await topLabel()) === 'Plug in by itself: off' && (await toast()) === 'Plug in by itself is off. New parts wait for you to plug them in.', `mode ${s.settings.wiring}; toast: ${await toast()}`)
 ids.light = await place({ partId: 'robo_light', x: 33, y: 1, z: 28 })
 await sleep(200)
 s = await readBack('W8 light placed in manual')
@@ -273,7 +285,7 @@ check('W8.light-unplugged', portOf(s, ids.light) === null && (await wiringNote()
 check('W8.light-stub', (await drawn()).stubs.some((stub) => stub.deviceId === ids.light), 'the light shows a loose cable end')
 picked = await clickPart(world(33.5, 4, 28.5), 'the light top')
 check('W8.light-selected', picked.selected === ids.light, 'clicking the light selects it')
-check('W8.light-inspector', (await stateText()) === 'Unplugged' && (await inspector.getByRole('button', { name: /^Plug into port / }).count()) === 1, `inspector: ${await stateText()}`)
+check('W8.light-inspector', (await stateText()) === 'Unplugged' && (await inspector.getByRole('button', { name: /^Plug into port / }).count()) === 1 && (await inspector.getByRole('button', { name: 'Plug it in' }).count()) === 1, `inspector: ${await stateText()}; "Plug it in" in its card`)
 await shot('W9-manual-light-unplugged', { clipTo: ROVER_BOX })
 
 /* ---------------------------------------------------------------- W9. delete a wired device, undo */
@@ -288,6 +300,7 @@ check('W9.deleted', !(await brick((state, id) => state.bricks.some((b) => b.id =
 check('W9.cable-kept', portOf(s, ids.rightMotor) === 'A', 'its cable stays in the document (stale), so Undo can restore it')
 check('W9.cable-not-drawn', !(await drawn()).cables.some((c) => c.deviceId === ids.rightMotor), 'a stale cable is not drawn')
 picked = await clickPart(world(31, 7, 29), 'the hub top')
+await partMore()
 const staleRows = await hubInspector.locator('.wiring-hub-port').allTextContents()
 check('W9.port-free-was', picked.selected === ids.hub && staleRows[0] === 'APort A · free (was Right motor)', `hub inspector: ${staleRows.join(' | ')}`)
 await shot('W10-deleted-port-free-was', { clipTo: ROVER_BOX })

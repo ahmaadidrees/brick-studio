@@ -81,6 +81,8 @@ function NameField({ brickId, name }: { brickId: string; name: string }) {
         aria-label="Device name"
         maxLength={DEVICE_NAME_LIMIT}
         readOnly={!editing}
+        // Read-only it is not a stop for Tab (the pencil is) and a tap on it does not light it up.
+        tabIndex={editing ? 0 : -1}
         value={draft ?? name}
         onPointerDown={(event) => { if (!editing && event.pointerType === 'mouse') setDraft(name) }}
         onChange={(event) => setDraft(event.target.value)}
