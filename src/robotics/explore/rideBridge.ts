@@ -47,16 +47,18 @@ export function exploreCameraBoom(target: RideVector, direction: RideVector, dis
 }
 
 /**
- * What the camera looks at while someone rides: the robot's middle, between its base and the
- * rider's head, so a tall robot is framed whole instead of hanging off the bottom of the screen
- * below its rider. Null (the character's head, as always) without the flag and while walking.
+ * What the camera looks at, given the character's head (its usual target, this frame): while
+ * someone rides, the robot's middle, between its base and the rider's head, so a tall robot is
+ * framed whole instead of hanging off the bottom of the screen below its rider; walking with her
+ * head wedged among parts (a wheel well), a point just above them. Null (her head, as always)
+ * without the flag and otherwise.
  */
-let cameraTargetHandler: (() => RideVector | null) | null = null
+let cameraTargetHandler: ((head: RideVector) => RideVector | null) | null = null
 
-export function setExploreCameraTargetHandler(next: (() => RideVector | null) | null) {
+export function setExploreCameraTargetHandler(next: ((head: RideVector) => RideVector | null) | null) {
   cameraTargetHandler = next
 }
 
-export function exploreCameraTarget(): RideVector | null {
-  return cameraTargetHandler ? cameraTargetHandler() : null
+export function exploreCameraTarget(head: RideVector): RideVector | null {
+  return cameraTargetHandler ? cameraTargetHandler(head) : null
 }

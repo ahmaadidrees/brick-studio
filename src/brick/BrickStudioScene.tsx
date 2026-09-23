@@ -1762,9 +1762,10 @@ function ExplorerAvatar({
       pose.grounded = motion.current.grounded
       onPose(pose)
     }
-    // Robot Workshop spike (null without the flag): while riding, the camera frames the robot, not only the rider's head.
-    const rideTarget = exploreCameraTarget()
-    const target = rideTarget ? cameraTarget.current.set(rideTarget.x, rideTarget.y, rideTarget.z) : cameraTarget.current.set(position.x, position.y + 0.52, position.z)
+    const target = cameraTarget.current.set(position.x, position.y + 0.52, position.z)
+    // Robot Workshop spike (null without the flag): riding, frame the robot; head wedged among parts, look from just above them.
+    const moved = exploreCameraTarget(target)
+    if (moved) target.set(moved.x, moved.y, moved.z)
     const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
     const direction = cameraDirection.current.copy(boom).normalize()

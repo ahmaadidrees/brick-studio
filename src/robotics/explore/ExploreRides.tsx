@@ -74,12 +74,7 @@ export default function ExploreRides() {
     setExploreCameraHandler(createCameraLift(cameraWorld, new (rapier as unknown as RapierModule).Ball(CAMERA_PROBE_RADIUS), avatarBody))
     // While riding, the camera frames the robot rather than only the rider's head; walking with her head
     // wedged among parts (a wheel well), it looks from just above them.
-    setExploreCameraTargetHandler(() => {
-      const riding = rideCameraTarget()
-      if (riding) return riding
-      const avatar = lastAvatarPosition()
-      return avatar ? unwedgedTarget(cameraWorld, rapier as unknown as RapierModule, { x: avatar.x, y: avatar.y + 0.52, z: avatar.z }, avatarBody()) : null
-    })
+    setExploreCameraTargetHandler((head) => rideCameraTarget() ?? unwedgedTarget(cameraWorld, rapier as unknown as RapierModule, head, avatarBody()))
     const removeKeys = installRideKeys()
     return () => {
       removeKeys()
