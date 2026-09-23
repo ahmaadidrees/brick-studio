@@ -87,7 +87,8 @@ export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 
   const open = plan.steps.findIndex((step) => !step.done)
   const rows: NextStep[] = plan.steps.map((step, index) => {
     const state: StepState = step.done ? 'done' : index === open ? 'current' : 'todo'
-    return { id: step.id, group: 'step', text: state === 'current' ? step.now : step.text, state, action: state === 'done' ? null : stepAction(step, state, creation, bricks), icon: stepIcon(step) }
+    const icon = state === 'current' && step.fix === 'add-hub' ? { part: ROBOTICS_PART_IDS.hub } : state === 'current' && step.fix === 'select' && step.id === 'motors' ? { symbol: 'turn' as const } : stepIcon(step)
+    return { id: step.id, group: 'step', text: state === 'current' ? step.now : step.text, state, action: state === 'done' ? null : stepAction(step, state, creation, bricks), icon }
   })
   if (!plan.kind) return [...rows, ...choices(creation, open === -1)]
   const ready = open === -1
@@ -132,12 +133,14 @@ function motorNeeding(creation: DerivedCreation, need: 'axle' | 'wheel'): Derive
 
 function stepAction(step: ReadinessStep, state: StepState, creation: DerivedCreation, bricks: ReadonlyMap<string, BrickInstance>): StepAction | null {
   const current = state === 'current'
+  // A step about a placed brick (a motor to turn, a brick holding a gate's arm, a part to unplug for room): pick it.
+  if (current && (step.fix === 'select' || step.fix === 'unplug')) return step.brickId && bricks.has(step.brickId) ? { kind: 'select', brickId: step.brickId } : null
+  if (current && step.fix === 'add-hub') return arm(ROBOTICS_PART_IDS.hub)
   switch (step.id) {
     case 'plate': return arm(PLATE_PART)
     case 'hub': return arm(ROBOTICS_PART_IDS.hub)
     case 'motors': {
       const motors = creation.motors
-      if (current && motors.length >= 2 && step.brickId) return { kind: 'select', brickId: step.brickId }
       // The second motor comes armed facing away from the first, so its axle hole points out on the other side.
       const first = motors.length === 1 ? motors[0] : null
       return arm(ROBOTICS_PART_IDS.motor, first ? rotationToward(MOTOR_SOCKET, reversed(first.socketNormal)) : 0)
@@ -151,7 +154,7 @@ function stepAction(step: ReadinessStep, state: StepState, creation: DerivedCrea
       return arm(ROBOTICS_PART_IDS.wheel, rotationToward(ALONG_X, motor?.socketNormal ?? null, true))
     }
     case 'arm': return arm(ARM_PART)
-    case 'unstick': return step.brickId && bricks.has(step.brickId) ? { kind: 'select', brickId: step.brickId } : null
+    case 'unstick': return null
     case 'sensor': return arm(ROBOTICS_PART_IDS.distanceSensor)
     case 'light': return arm(ROBOTICS_PART_IDS.light)
     case 'plug': return current && step.brickId ? { kind: 'plug', deviceId: step.brickId } : null

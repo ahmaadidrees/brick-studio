@@ -1,12 +1,13 @@
+import { STUD } from '../../brick/parts'
 import type { BrickInstance } from '../../brick/types'
 import { ROLE_LABELS, roboticsSpec, type HubPort, type RoboticsPartRole } from '../parts/catalog'
 import { WORLD_NODE, brickIdOfNode, deriveStudJoints, type StudJoint } from './assembly'
 import { deriveBodies, type RigidBody } from './bodies'
 import { connectionOf } from './control'
-import { brickFrame, toWorldDirection, type PartMap } from './grid'
+import { brickFrame, toWorldDirection, toWorldPoint, type PartMap } from './grid'
 import { deriveMechanisms, wheelsOnMotor, type Mechanisms } from './mechanism'
 import type { RoboticsCreation, RoboticsSection, TestSpace } from './section'
-import { cross, dot, type Vec3 } from './vec'
+import { cross, dot, sameDirection, type Vec3 } from './vec'
 
 /**
  * Creations (contract §2, §4): a name over a set of bodies. Membership follows
@@ -70,6 +71,16 @@ export type DerivedSensor = DerivedDevice & { normal: Vec3; facing: FacingWord }
 
 export type DrivePair = { leftId: string; rightId: string; reversedIds: string[]; forward: Vec3 }
 
+/**
+ * Every motor that drives (KID-UX, four-wheel cars): the motors with a wheel whose axles lie
+ * along the drive axis, on the side of the robot their wheels are on (left or right of its
+ * middle, looking forward), each side in build order. A motor whose socket faces right runs
+ * the robot backward at positive power, so it is in `reversedIds` whichever side it is on
+ * (a mirror-mounted right motor is; one hung outboard with its socket facing in is not).
+ * The drive pair is the first motor of each side.
+ */
+export type DriveSides = { left: string[]; right: string[]; reversedIds: string[]; forward: Vec3 }
+
 export type DerivedCreation = {
   id: string
   name: string
@@ -90,6 +101,8 @@ export type DerivedCreation = {
   axles: { brickId: string; motorId: string | null; wheelIds: string[] }[]
   wheels: DerivedWheel[]
   drivePair: DrivePair | null
+  /** Null exactly when `drivePair` is: its first left and first right motors are the pair. */
+  driveSides: DriveSides | null
   /** True when one of its bricks is a plate lying on the ground: motors standing on it reach the ground with their wheels. */
   onPlate: boolean
   /** Which way it would drive: the drive pair's forward, or, with a wheel missing, the forward its motors' axles give. */
@@ -173,8 +186,45 @@ const facingFromNormal = (normal: Vec3, forward: Vec3 | null): FacingWord => {
   return normal.x < 0 ? 'left' : 'right'
 }
 
-/** Default names read off the build; the section's `devices` override them. */
-export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput, 'partMap' | 'plateSize'>): string {
+/** Motors facing the same way on one line no further apart than this (studs) are twins: a four-wheel car's two on a side. */
+const TWIN_REACH_STUDS = 14
+
+/**
+ * Where a motor stands among its twins, the motors that face the same way with their sockets on
+ * the same line (the two on a four-wheel car's left side): Front, Middle or Back along a line from
+ * the far side to the near side, Left, Middle or Right along one across. Empty when it has none,
+ * so a rover's motors keep their names, and so do two motors facing the same way on different
+ * lines (contract F2d: the outboard motor facing in is "Left motor" too until renamed).
+ */
+function placeAmongTwins(brick: BrickInstance, socket: { point: Vec3; normal: Vec3 }, input: Pick<DeriveInput, 'bricks' | 'partMap' | 'plateSize'>): string {
+  const along: 'x' | 'z' = Math.abs(socket.normal.x) > 0.5 ? 'z' : 'x'
+  const across: 'x' | 'z' = along === 'z' ? 'x' : 'z'
+  let before = 0
+  let after = 0
+  for (const other of input.bricks) {
+    const spec = roboticsSpec(other.partId)
+    const part = input.partMap[other.partId]
+    if (other.id === brick.id || spec?.role !== 'motor' || !part) continue
+    const frame = brickFrame(other, part, input.plateSize)
+    if (!sameDirection(toWorldDirection(frame, spec.socket!.normal), socket.normal)) continue
+    const point = toWorldPoint(frame, spec.socket!.point)
+    if (Math.abs(point.y - socket.point.y) > 1e-3 || Math.abs(point[across] - socket.point[across]) > 1e-3) continue
+    const gap = point[along] - socket.point[along]
+    if (Math.abs(gap) < 1e-3 || Math.abs(gap) > TWIN_REACH_STUDS * STUD) continue
+    if (gap < 0) before += 1
+    else after += 1
+  }
+  if (!before && !after) return ''
+  if (!before) return along === 'z' ? 'Front' : 'Left'
+  if (!after) return along === 'z' ? 'Back' : 'Right'
+  return 'Middle'
+}
+
+/**
+ * Default names read off the build; the section's `devices` override them. Given the world's
+ * bricks, a motor with twins is told apart by where it stands ("Front left motor").
+ */
+export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput, 'partMap' | 'plateSize'> & { bricks?: readonly BrickInstance[] }): string {
   const spec = roboticsSpec(brick.partId)
   const part = input.partMap[brick.partId]
   if (!spec || !part) return 'Part'
@@ -184,7 +234,12 @@ export function defaultDeviceName(brick: BrickInstance, input: Pick<DeriveInput,
     return facing === 'the far side' ? 'Front' : facing === 'the near side' ? 'Back' : facing === 'left' ? 'Left' : facing === 'right' ? 'Right' : ''
   }
   switch (spec.role) {
-    case 'motor': return `${side(toWorldDirection(frame, spec.socket!.normal)) || 'Drive'} motor`
+    case 'motor': {
+      const socket = { point: toWorldPoint(frame, spec.socket!.point), normal: toWorldDirection(frame, spec.socket!.normal) }
+      const word = side(socket.normal) || 'Drive'
+      const place = input.bricks ? placeAmongTwins(brick, socket, { ...input, bricks: input.bricks }) : ''
+      return place ? `${place} ${word.toLowerCase()} motor` : `${word} motor`
+    }
     case 'hinge-motor': return 'Arm motor'
     case 'distance-sensor': return `${side(toWorldDirection(frame, spec.sensor!.normal)) || 'Distance'} sensor`
     case 'hub': return 'Hub'
@@ -284,24 +339,41 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
     wheels.push({ brickId: link.wheelId, onAxle: false, axleId: null, motorId: null, note: `Not on an axle${where ? ` · the nearest axle end is ${where}` : ''}` })
   }
 
-  // Drive pair (contract §6): two motors with wheels whose axles are parallel.
-  let drivePair: DrivePair | null = null
-  const driven = motors.filter((motor) => motor.wheelIds.length > 0)
-  for (let i = 0; i < driven.length && !drivePair; i += 1) {
-    for (let j = i + 1; j < driven.length && !drivePair; j += 1) {
-      const a = driven[i]
-      const b = driven[j]
-      if (Math.abs(dot(a.socketNormal, b.socketNormal)) < 0.999) continue
-      const axleAxis = a.socketNormal
-      const sensorForward = sensors.map((sensor) => sensor.normal).find((normal) => Math.abs(dot(normal, axleAxis)) < 0.01 && Math.abs(normal.y) < 0.5)
-      const forward = sensorForward ?? (Math.abs(axleAxis.x) > 0.5 ? { x: 0, y: 0, z: -1 } : { x: -1, y: 0, z: 0 })
+  // Drive sides (contract §6, KID-UX): the motors with wheels whose axles lie along one axis, split
+  // by which side of the robot their wheels stand on. The axis with the most of them drives (the
+  // first parallel pair in build order breaks a tie, as the pair was chosen before there were
+  // sides); wheels all in one line, one behind the other, make no sides. The drive pair is the
+  // first motor of each side, so a two-motor rover's pair is what it always was.
+  const forwardFor = (axleAxis: Vec3): Vec3 => sensors.map((sensor) => sensor.normal).find((normal) => Math.abs(dot(normal, axleAxis)) < 0.01 && Math.abs(normal.y) < 0.5)
+    ?? (Math.abs(axleAxis.x) > 0.5 ? { x: 0, y: 0, z: -1 } : { x: -1, y: 0, z: 0 })
+  const driven = motors.filter((motor) => motor.wheelIds.length > 0 && Math.abs(motor.socketNormal.y) < 0.5)
+  let driveSides: DriveSides | null = null
+  for (let i = 0; i < driven.length; i += 1) {
+    for (let j = i + 1; j < driven.length; j += 1) {
+      const axleAxis = driven[i].socketNormal
+      if (Math.abs(dot(axleAxis, driven[j].socketNormal)) < 0.999) continue
+      const onAxis = driven.filter((motor) => Math.abs(dot(motor.socketNormal, axleAxis)) >= 0.999)
+      if (driveSides && onAxis.length <= driveSides.left.length + driveSides.right.length) continue
+      const forward = forwardFor(axleAxis)
       const left = cross(UP, forward)
-      const leftMotor = dot(a.socketNormal, left) >= dot(b.socketNormal, left) ? a : b
-      const rightMotor = leftMotor === a ? b : a
-      const reversedIds = [a, b].filter((motor) => dot(cross(motor.socketNormal, UP), forward) < 0).map((motor) => motor.brickId)
-      drivePair = { leftId: leftMotor.brickId, rightId: rightMotor.brickId, reversedIds, forward }
+      // How far to the robot's left each motor's wheels stand.
+      const leftness = new Map(onAxis.map((motor) => [motor.brickId, motor.wheelIds.reduce((sum, id) => sum + dot(mechanisms.wheelById.get(id)!.center, left), 0) / motor.wheelIds.length]))
+      const min = Math.min(...leftness.values())
+      const max = Math.max(...leftness.values())
+      if (max - min < 1e-3) continue
+      const middle = (min + max) / 2
+      driveSides = {
+        left: onAxis.filter((motor) => leftness.get(motor.brickId)! >= middle).map((motor) => motor.brickId),
+        right: onAxis.filter((motor) => leftness.get(motor.brickId)! < middle).map((motor) => motor.brickId),
+        reversedIds: onAxis.filter((motor) => dot(cross(motor.socketNormal, UP), forward) < 0).map((motor) => motor.brickId),
+        forward,
+      }
     }
   }
+  const pairIds = driveSides ? [driveSides.left[0], driveSides.right[0]] : []
+  const drivePair: DrivePair | null = driveSides
+    ? { leftId: pairIds[0], rightId: pairIds[1], reversedIds: driveSides.reversedIds.filter((id) => pairIds.includes(id)), forward: driveSides.forward }
+    : null
   // The shape of a rover without its wheels: two motors with axles whose sockets line up. A rover
   // that loses a wheel stays a rover (same run space, same wall ahead); only driving it needs the pair.
   let driveForward: Vec3 | null = drivePair?.forward ?? null
@@ -405,10 +477,22 @@ function deriveOne(derivation: Derivation, record: RoboticsCreation, saved: bool
     armBodyIds,
     hubs, motors, hinges, sensors, lights, buttons, seats, axles, wheels,
     drivePair,
+    driveSides,
     onPlate,
     driveForward,
     lines: { attached, parts, ready },
   }
+}
+
+/**
+ * The motors a drive command runs, by side, when the creation can drive: its sides, or just its
+ * pair for a creation that carries a pair and no sides. Null without a drive pair, so a creation
+ * whose pair is taken away cannot drive through its sides either.
+ */
+export function driveSidesOf(creation: Pick<DerivedCreation, 'drivePair'> & { driveSides?: DriveSides | null }): DriveSides | null {
+  const pair = creation.drivePair
+  if (!pair) return null
+  return creation.driveSides ?? { left: [pair.leftId], right: [pair.rightId], reversedIds: [...pair.reversedIds], forward: pair.forward }
 }
 
 export function deriveCreations(input: DeriveInput): DerivedCreation[] {

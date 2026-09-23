@@ -1,7 +1,7 @@
 import type { BrickInstance } from '../../brick/types'
 import { connect } from '../model/control'
 import { deriveCreations, type DerivedCreation } from '../model/creations'
-import { GATE_IDS, ROVER_IDS, SIGNAL_IDS, fixtureInput, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
+import { FOUR_WHEEL_IDS, GATE_IDS, ROVER_IDS, SIGNAL_IDS, fixtureInput, fourWheelBricks, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsSection } from '../model/section'
 import type { HubPort } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
@@ -24,6 +24,13 @@ export function wiredCreation(bricks: BrickInstance[], anchorId: string, hubId: 
 export function wiredRover(options: Parameters<typeof roverBricks>[0] & { unplug?: string[] } = {}): WiredFixture {
   const cables = ([[ROVER_IDS.leftMotor, 'A'], [ROVER_IDS.rightMotor, 'B'], [ROVER_IDS.sensor, 'C']] as const).filter(([id]) => !options.unplug?.includes(id))
   return wiredCreation(roverBricks(options), ROVER_IDS.hub, ROVER_IDS.hub, cables, 'Buggy')
+}
+
+/** Four-wheel car: front left motor on A, front right on B, back left on C, back right on D (the order a student adds them). */
+export function wiredFourWheel(options: Parameters<typeof fourWheelBricks>[0] & { unplug?: string[] } = {}): WiredFixture {
+  const ids = FOUR_WHEEL_IDS
+  const cables = ([[ids.frontLeftMotor, 'A'], [ids.frontRightMotor, 'B'], [ids.backLeftMotor, 'C'], [ids.backRightMotor, 'D']] as const).filter(([id]) => !options.unplug?.includes(id))
+  return wiredCreation(fourWheelBricks(options), ids.hub, ids.hub, cables, 'Four-wheel car')
 }
 
 /** Gate: arm (hinge) motor on A, sensor on B. */

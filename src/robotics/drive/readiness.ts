@@ -1,15 +1,18 @@
-import type { DerivedCreation, DerivedDevice, DerivedMotor } from '../model/creations'
+import { driveSidesOf, type DerivedCreation, type DerivedDevice, type DerivedMotor } from '../model/creations'
 import { dot, scale, sub, type Vec3 } from '../model/vec'
-import { ROBOTICS_PART_IDS, roboticsSpec } from '../parts/catalog'
+import { HUB_PORTS, ROBOTICS_PART_IDS, roboticsSpec } from '../parts/catalog'
 
 /**
  * Can this creation be played with right now, and if not, the one thing to do first,
  * in words a third grader reads (docs/robotics/KID-UX.md §copy). Pure; the panel's Drive /
  * Try it button and the next-steps guide both read it.
  *
- * - A creation with a drive pair and both motors plugged in can **drive**.
+ * - A creation **drives** when every motor has an axle and a wheel, the wheels stand on both
+ *   sides, every wheel rolls forward (no motor faces front, back, up or down) and every motor
+ *   with a wheel is plugged in: a four-wheel car's four, not only the first two.
  * - A creation with a hinge motor or a light and a sensor can be **tried** (its starter runs
- *   and someone walks up to it).
+ *   and someone walks up to it): a gate needs an arm on its hinge motor, free of the frame,
+ *   and a sensor to see who walks up.
  *
  * `readinessPlan` is the same answer as a checklist: the path the robot is on and each step
  * of it, done or not. `readiness().reason` is always the first open step's `now`, so the
@@ -32,6 +35,11 @@ export type ReadinessStep = {
   now: string
   /** The brick that step is about right now: the motor to turn or give an axle, the part to plug in, the brick to take off. */
   brickId: string | null
+  /**
+   * How the step is done when it is not the obvious way: `select` a brick to turn or take off, or,
+   * with a full hub, `unplug` a part that does not drive (`brickId`) or `add-hub`.
+   */
+  fix?: 'select' | 'unplug' | 'add-hub'
 }
 
 export type ReadinessPlan = { path: RobotPath | null; kind: PlayKind | null; steps: ReadinessStep[] }
@@ -77,10 +85,12 @@ const SOCKET_REACH = (() => {
 /** The middle of a motor, read back from its axle hole: two motors side by side facing each other share a hole point but not a middle. */
 const motorMiddle = (motor: DerivedMotor): Vec3 => sub(motor.socketPoint, scale(motor.socketNormal, SOCKET_REACH))
 
+const centroid = (points: readonly Vec3[]): Vec3 => scale(points.reduce((total, point) => ({ x: total.x + point.x, y: total.y + point.y, z: total.z + point.z }), { x: 0, y: 0, z: 0 }), 1 / points.length)
+
 /**
- * The pairs a rover could drive on before it has wheels: two motors on opposite sides whose axle
- * holes face away from each other, or two motors that already hold axles along one line (a motor
- * mounted outboard, facing in, is fine once its axle is in: the model drives any such pair).
+ * The pairs a rover could drive on before its wheels are on: two motors on opposite sides whose
+ * axle holes face away from each other, or two motors that already hold axles along one line (a
+ * motor mounted outboard, facing in, is fine once its axle is in: the model drives any such pair).
  */
 export function candidatePairs(motors: readonly DerivedMotor[]): MotorPair[] {
   const pairs: MotorPair[] = []
@@ -97,21 +107,6 @@ export function candidatePairs(motors: readonly DerivedMotor[]): MotorPair[] {
   return pairs
 }
 
-const pairProgress = (pair: MotorPair) => pair.reduce((total, motor) => total + (motor.axleId ? 1 : 0) + (motor.wheelIds.length ? 1 : 0), 0)
-
-/** The pair to finish: the model's drive pair once there is one, else the candidate furthest along (the first on a tie). */
-export function roverPair(creation: DerivedCreation): MotorPair | null {
-  const drive = creation.drivePair
-  if (drive) {
-    const left = creation.motors.find((motor) => motor.brickId === drive.leftId)
-    const right = creation.motors.find((motor) => motor.brickId === drive.rightId)
-    if (left && right) return [left, right]
-  }
-  let best: MotorPair | null = null
-  for (const pair of candidatePairs(creation.motors)) if (!best || pairProgress(pair) > pairProgress(best)) best = pair
-  return best
-}
-
 /** A motor with no axle yet whose axle hole points back into the robot (toward the middle of its motors), where no axle fits. */
 export function motorFacingIn(motors: readonly DerivedMotor[]): DerivedMotor | null {
   if (motors.length < 2) return null
@@ -120,8 +115,6 @@ export function motorFacingIn(motors: readonly DerivedMotor[]): DerivedMotor | n
   return motors.find((motor, index) => !motor.axleId && dot(motor.socketNormal, sub(middles[index], middle)) < -EPSILON) ?? null
 }
 
-const centroid = (points: readonly Vec3[]): Vec3 => scale(points.reduce((total, point) => ({ x: total.x + point.x, y: total.y + point.y, z: total.z + point.z }), { x: 0, y: 0, z: 0 }), 1 / points.length)
-
 /** Where a motor sits among the others, in the studio's words for the sides of the plate. */
 function sideOf(motor: DerivedMotor, motors: readonly DerivedMotor[]): 'left' | 'right' | 'front' | 'back' {
   const offset = sub(motorMiddle(motor), centroid(motors.map(motorMiddle)))
@@ -129,32 +122,71 @@ function sideOf(motor: DerivedMotor, motors: readonly DerivedMotor[]): 'left' | 
   return offset.z < 0 ? 'front' : 'back'
 }
 
+/** Which way a motor that is not on a side faces: along the robot (forward, backward), or up or down. */
+function facingWord(normal: Vec3, forward: Vec3): string {
+  if (Math.abs(normal.y) > 0.5) return normal.y > 0 ? 'up' : 'down'
+  return dot(normal, forward) >= 0 ? 'forward' : 'backward'
+}
+
+/**
+ * The motors step, the robot's shape: two motors or more, none facing into the robot where no
+ * axle fits, two that can pair up; and once every motor has its axle and its wheel, wheels on both
+ * sides with every wheel rolling forward (the model's drive sides). The shape checks that need
+ * wheels wait for them, so a missing wheel is always asked for before a turned motor.
+ */
+function motorsStep(creation: DerivedCreation): ReadinessStep {
+  const motors = creation.motors
+  const step = (done: boolean, now: string, brickId: string | null = null, fix?: ReadinessStep['fix']): ReadinessStep => ({ id: 'motors', text: 'Put a motor on each side.', done, now, brickId, ...(fix ? { fix } : {}) })
+  if (motors.length === 0) return step(false, 'Put a motor on each side.')
+  if (motors.length === 1) return step(false, 'Put a motor on the other side.', motors[0].brickId)
+  // Said by where the motor is, not by its name: a motor's default name follows the way it faces.
+  const facingIn = motorFacingIn(motors)
+  if (facingIn) return step(false, `Turn the ${sideOf(facingIn, motors)} motor to face out.`, facingIn.brickId, 'select')
+  if (!creation.drivePair && candidatePairs(motors).length === 0) return step(false, 'Put the motors on opposite sides, facing out.', motors[motors.length - 1].brickId, 'select')
+  const complete = motors.every((motor) => motor.axleId && motor.wheelIds.length > 0)
+  if (complete) {
+    const sides = driveSidesOf(creation)
+    if (!sides) return step(false, 'Put the motors on opposite sides, facing out.', motors[motors.length - 1].brickId, 'select')
+    // A wheel that does not roll forward drags the robot sideways (it is braked, even plugged in).
+    const onSides = new Set([...sides.left, ...sides.right])
+    const astray = motors.find((motor) => !onSides.has(motor.brickId))
+    if (astray) return step(false, `${astray.name} faces ${facingWord(astray.socketNormal, sides.forward)}. Turn it to face out to the side.`, astray.brickId, 'select')
+  }
+  return step(true, 'Put a motor on each side.')
+}
+
+/**
+ * Plug every motor in (an unplugged motor holds its wheel still), or, when every port of the
+ * robot's hubs is taken by its own parts (a Buggy with its sensor and four motors), make room
+ * first: unplug a part that does not drive, or add a hub.
+ */
+function motorPlugStep(creation: DerivedCreation): ReadinessStep {
+  const text = 'Plug the motors into the hub.'
+  const motors = creation.motors
+  const unplugged = motors.find((motor) => !motor.plugged) ?? null
+  if (motors.length < 2 || !unplugged) return { id: 'plug', text, done: motors.length >= 2, now: text, brickId: null }
+  const devices = [...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons]
+  const full = creation.hubs.every((hub) => devices.filter((device) => device.port?.hubId === hub.brickId).length >= HUB_PORTS.length)
+  if (!full) return { id: 'plug', text, done: false, now: `Plug ${unplugged.name} into the hub.`, brickId: unplugged.brickId }
+  const spare = [...creation.sensors, ...creation.lights, ...creation.buttons, ...creation.hinges].find((device) => device.plugged)
+  return spare
+    ? { id: 'plug', text, done: false, now: `The hub is full. Unplug ${spare.name} to plug in ${unplugged.name}.`, brickId: spare.brickId, fix: 'unplug' }
+    : { id: 'plug', text, done: false, now: `The hub is full. Add another hub for ${unplugged.name}.`, brickId: unplugged.brickId, fix: 'add-hub' }
+}
+
 function roverSteps(creation: DerivedCreation): ReadinessStep[] {
   const motors = creation.motors
-  const pair = roverPair(creation)
   const hubName = creation.hubs.length > 0 ? 'hub' : 'motor'
-  // A pair with wheels on both is always the model's drive pair; the check only guards that rule.
-  const pairDrives = pair !== null && (pair.some((motor) => motor.wheelIds.length === 0) || creation.drivePair !== null)
-  let motorsNow = 'Put a motor on each side.'
-  let motorBrick: string | null = null
-  if (motors.length === 1) {
-    motorsNow = 'Put a motor on the other side.'
-    motorBrick = motors[0].brickId
-  } else if (motors.length >= 2 && !(pair && pairDrives)) {
-    // Said by where the motor is, not by its name: a motor's default name follows the way it faces.
-    const facingIn = motorFacingIn(motors)
-    motorsNow = facingIn ? `Turn the ${sideOf(facingIn, motors)} motor to face out.` : 'Put the motors on opposite sides, facing out.'
-    motorBrick = (facingIn ?? motors[motors.length - 1]).brickId
-  }
-  const noAxle = pair?.find((motor) => !motor.axleId) ?? null
-  const noWheel = pair?.find((motor) => motor.wheelIds.length === 0) ?? null
+  const noAxle = motors.find((motor) => !motor.axleId) ?? null
+  const noWheel = motors.find((motor) => motor.wheelIds.length === 0) ?? null
+  const enough = motors.length >= 2
   return [
     { id: 'plate', text: 'Put the robot on a plate.', done: creation.onPlate, now: `Put a plate down. Then move the ${hubName} onto it.`, brickId: null },
     hubStep(creation),
-    { id: 'motors', text: 'Put a motor on each side.', done: pair !== null && pairDrives, now: motorsNow, brickId: motorBrick },
-    { id: 'axles', text: 'Put an axle in each motor.', done: pair !== null && !noAxle, now: noAxle ? `Put an axle in ${noAxle.name}.` : 'Put an axle in each motor.', brickId: noAxle?.brickId ?? null },
-    { id: 'wheels', text: 'Put a wheel on each axle.', done: pair !== null && !noWheel, now: noWheel ? `Put a wheel on ${noWheel.name}’s axle.` : 'Put a wheel on each axle.', brickId: noWheel?.brickId ?? null },
-    pair ? plugStep(pair, 'Plug the motors into the hub.') : { id: 'plug', text: 'Plug the motors into the hub.', done: false, now: 'Plug the motors into the hub.', brickId: null },
+    motorsStep(creation),
+    { id: 'axles', text: 'Put an axle in each motor.', done: enough && !noAxle, now: noAxle ? `Put an axle in ${noAxle.name}.` : 'Put an axle in each motor.', brickId: noAxle?.brickId ?? null },
+    { id: 'wheels', text: 'Put a wheel on each axle.', done: enough && !noWheel, now: noWheel ? `Put a wheel on ${noWheel.name}’s axle.` : 'Put a wheel on each axle.', brickId: noWheel?.brickId ?? null },
+    motorPlugStep(creation),
   ]
 }
 
@@ -172,7 +204,7 @@ function gateSteps(creation: DerivedCreation): ReadinessStep[] {
     const arm = new Set(locked.armBrickIds)
     const joint = locked.bridging[0]
     const holder = joint ? (arm.has(joint.upperBrickId) ? joint.lowerBrickId ?? joint.upperBrickId : joint.upperBrickId) : null
-    steps.push({ id: 'unstick', text: 'The arm swings free.', done: false, now: 'The arm is stuck to the frame. Take off the brick that joins them.', brickId: holder })
+    steps.push({ id: 'unstick', text: 'The arm swings free.', done: false, now: 'The arm is stuck to the frame. Take off the brick that joins them.', brickId: holder, fix: 'select' })
   }
   steps.push(
     { id: 'sensor', text: 'Add a sensor so it sees who walks up.', done: creation.sensors.length > 0, now: 'Add a sensor so it sees who walks up.', brickId: null },

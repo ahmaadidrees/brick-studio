@@ -378,8 +378,8 @@ await page.mouse.up()
 await sleep(700)
 const released = await s.observation()
 measured.joystick = { up: pushed.speed, sensorBefore: startSensor, sensorPushed: pushed.sensors[rover.sensor].distanceStuds, releasedSpeed: released.speed }
-const stickPower = Number(pushedChips.Motors?.split(' ')[0])
-check('R7.joystick-drives', pushed.speed > 1.5 && pushed.sensors[rover.sensor].distanceStuds < startSensor - 1 && stickPower > 30 && stickPower < 50 && pushedChips.Motors?.startsWith(`${stickPower} · ${stickPower} %`), `mouse-dragging the stick up: ${pushed.speed.toFixed(2)} studs/s forward, wall ${startSensor.toFixed(1)} → ${pushed.sensors[rover.sensor].distanceStuds.toFixed(1)} studs; chip "Motors ${pushedChips.Motors}"`)
+const stickPower = Number(pushedChips.Motors?.match(/^Left (\d+) · /)?.[1])
+check('R7.joystick-drives', pushed.speed > 1.5 && pushed.sensors[rover.sensor].distanceStuds < startSensor - 1 && stickPower > 30 && stickPower < 50 && pushedChips.Motors?.startsWith(`Left ${stickPower} · Right ${stickPower} %`), `mouse-dragging the stick up: ${pushed.speed.toFixed(2)} studs/s forward, wall ${startSensor.toFixed(1)} → ${pushed.sensors[rover.sensor].distanceStuds.toFixed(1)} studs; chip "Motors ${pushedChips.Motors}"`)
 check('R7.joystick-release', Math.abs(released.motors[rover.leftMotor].powerPercent) < 1 && Math.abs(released.motors[rover.rightMotor].powerPercent) < 1, 'letting go centres the stick and the motors stop')
 // From the built pose again, so the arrow keys have room before the wall.
 await page.getByTestId('robo-reset').click()

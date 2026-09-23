@@ -24,7 +24,7 @@
  *                                   motor, and the same two raw blocks drive straight
  *
  * Kid-UX pass (docs/robotics/KID-UX.md §G): cards are named and closed with Keep building; the
- * panel's part rows and its drive line ("Drives with …") sit in its folded Parts, opened with a
+ * panel's part rows and its drive sides ("Left side: … · Right side: …") sit in its folded Parts, opened with a
  * click before they are read; what the model used to print as the creation's ready line is now
  * the step the panel highlights in its Next steps ("Put a wheel on Left motor’s axle.").
  *
@@ -348,7 +348,7 @@ async function failureWheelOff() {
   check('F1.build.wheel-row', wheelRow?.startsWith('Wheel · Not on an axle') && (await rowTone(ids.leftWheel)).includes('bad'), `the panel's row for the wheel (red): "${wheelRow}"`)
   check('F1.build.motor-row', leftMotorRow?.includes('axle in it, no wheel'), `the left motor's row: "${leftMotorRow}"`)
   check('F1.build.ready-line', step === 'Put a wheel on Left motor’s axle.', `the robot's next step: "${step}"`)
-  check('F1.build.no-drive-pair', !lines.some((line) => line.includes('Drives with')), `the drive line is gone: ${JSON.stringify(lines)}`)
+  check('F1.build.no-drive-pair', !lines.some((line) => line.includes('Left side:')), `the drive sides line is gone: ${JSON.stringify(lines)}`)
   await shot('F1a-build-wheel-not-on-axle')
   await reloadStudio()
   check('F1.reload', (await rowText(ids.leftWheel))?.startsWith('Wheel · Not on an axle') && (await brick((state, id) => state.bricks.find((b) => b.id === id)?.x, ids.leftWheel)) === 24, `after a save and cold reload the wheel is still off: "${await rowText(ids.leftWheel)}"`)
@@ -456,7 +456,7 @@ async function failureWheelOff() {
   await sleep(300)
   await page.keyboard.press('Escape')
   const repaired = await panelLines()
-  check('F1.repair', picked.selected === ids.leftWheel && (await rowText(ids.leftWheel))?.startsWith('Wheel · on an axle in Left motor') && repaired.some((line) => line.includes('Drives with Left motor + Right motor')), `nudged back on: "${await rowText(ids.leftWheel)}"; ${repaired.find((line) => line.includes('Drives with'))}`)
+  check('F1.repair', picked.selected === ids.leftWheel && (await rowText(ids.leftWheel))?.startsWith('Wheel · on an axle in Left motor') && repaired.includes('Left side: Left motor · Right side: Right motor'), `nudged back on: "${await rowText(ids.leftWheel)}"; ${repaired.find((line) => line.includes('Left side:'))}`)
 }
 
 /* ================================================================ F2. One motor mounted backwards */
@@ -464,11 +464,11 @@ async function failureReversed() {
   console.log('\nF2. One motor mounted backwards: two raw motor blocks at 40 %')
   const ids = await buildRover('Mirror buggy')
   const lines = await panelLines()
-  const driveLine = lines.find((line) => line.includes('Drives with')) ?? null
+  const driveLine = lines.find((line) => line.includes('Left side:')) ?? null
   const rightRow = await rowText(ids.rightMotor)
   const leftRow = await rowText(ids.leftMotor)
-  seen.F2 = { build: { driveLine, leftRow, rightRow } }
-  check('F2.build.drive-line', driveLine?.endsWith('Drives with Left motor + Right motor · Right motor faces the other way'), `the panel's drive line: "${driveLine}"`)
+  seen.F2 = { build: { driveLine, lines, leftRow, rightRow } }
+  check('F2.build.drive-line', driveLine === 'Left side: Left motor · Right side: Right motor' && lines.includes('Right motor faces the other way'), `the panel's drive lines: "${driveLine}" / "${lines.find((line) => line.includes('other way'))}"`)
   check('F2.build.motor-rows', rightRow?.includes('faces the other way') && leftRow && !leftRow.includes('other way'), `rows: "${leftRow}" / "${rightRow}"`)
   const picked = await clickPart(world(32.5, 7, 32.5), 'the right motor')
   const rightInspector = picked.selected === ids.rightMotor ? await inspectorText() : null
@@ -524,7 +524,7 @@ async function failureReversed() {
   }
   check('F2.run.turns', Math.abs(yaw) > 60 && drift < 1 && meanSpeed < 0.5, `it spun ${Math.abs(yaw).toFixed(0)}° on the spot instead of driving straight: it turned about a point ${drift.toFixed(2)} studs from midway between its wheels, forward speed averaged ${meanSpeed.toFixed(2)} st/s (chip "Speed ${speedChip?.value}")`)
   check('F2.run.opposite-speeds', last.motors[ids.leftMotor].forwardPercent > 20 && last.motors[ids.rightMotor].forwardPercent < -20, `forward speeds as the creation feels them: left ${last.motors[ids.leftMotor].forwardPercent} %, right ${last.motors[ids.rightMotor].forwardPercent} % (both commanded +40)`)
-  check('F2.run.chip', drive && /^40 · −40 %$/.test(drive.value) && /^speed \d+ · −\d+ % · Right motor is mounted reversed$/.test(drive.detail ?? '') && drive.tone === 'bad', `the stage's Motors chip: ${drive?.value} (${drive?.detail}), tone ${drive?.tone}`)
+  check('F2.run.chip', drive && /^Left 40 · Right −40 %$/.test(drive.value) && /^speed \d+ · −\d+ % · Right motor faces the other way$/.test(drive.detail ?? '') && drive.tone === 'bad', `the stage's Motors chip: ${drive?.value} (${drive?.detail}), tone ${drive?.tone}`)
   if (!shotTaken) await shot('F2b-code-raw-blocks-rover-turns')
 
   // Repair, typed while it still spins: the right motor at −40. The run keeps the program it started with.
@@ -544,7 +544,7 @@ async function failureReversed() {
   const fixed = await poseOf(ids.hub)
   const fixedChip = (await chips()).Motors
   measured.F2.repaired = { yawDegrees: Number(yawOf(fixed.rotation).toFixed(2)), forwardStuds: Number((-(fixed.position.z - fixStart.position.z) / STUD).toFixed(2)), chip: fixedChip }
-  check('F2.repair', Math.abs(yawOf(fixed.rotation)) < 3 && -(fixed.position.z - fixStart.position.z) / STUD > 2 && fixedChip?.value === '40 · 40 %', `Reset, Run: with "run Right motor at −40 %" it drives straight: yaw ${yawOf(fixed.rotation).toFixed(1)}°, ${(-(fixed.position.z - fixStart.position.z) / STUD).toFixed(1)} studs in 1.3 s, chip ${fixedChip?.value}`)
+  check('F2.repair', Math.abs(yawOf(fixed.rotation)) < 3 && -(fixed.position.z - fixStart.position.z) / STUD > 2 && fixedChip?.value === 'Left 40 · Right 40 %', `Reset, Run: with "run Right motor at −40 %" it drives straight: yaw ${yawOf(fixed.rotation).toFixed(1)}°, ${(-(fixed.position.z - fixStart.position.z) / STUD).toFixed(1)} studs in 1.3 s, chip ${fixedChip?.value}`)
   await shot('F2d-repaired-right-at-minus-40')
   await resetStage()
 
@@ -558,7 +558,7 @@ async function failureReversed() {
   const straight = await poseOf(ids.hub)
   const helperChip = (await chips()).Motors
   measured.F2.driveHelper = { yawDegrees: Number(yawOf(straight.rotation).toFixed(2)), forwardStuds: Number((-(straight.position.z - start.position.z) / STUD).toFixed(2)), left: helper.motors[ids.leftMotor].powerPercent, right: helper.motors[ids.rightMotor].powerPercent, chip: helperChip }
-  check('F2.helper-goes-straight', Math.abs(yawOf(straight.rotation)) < 3 && -(straight.position.z - start.position.z) / STUD > 2 && helper.motors[ids.rightMotor].powerPercent === -40 && helperChip?.value === '40 · 40 %', `"drive forward at 40 %" sends ${helper.motors[ids.leftMotor].powerPercent} and ${helper.motors[ids.rightMotor].powerPercent} (the pair knows the right motor is reversed): straight, yaw ${yawOf(straight.rotation).toFixed(1)}°, chip ${helperChip?.value}`)
+  check('F2.helper-goes-straight', Math.abs(yawOf(straight.rotation)) < 3 && -(straight.position.z - start.position.z) / STUD > 2 && helper.motors[ids.rightMotor].powerPercent === -40 && helperChip?.value === 'Left 40 · Right 40 %', `"drive forward at 40 %" sends ${helper.motors[ids.leftMotor].powerPercent} and ${helper.motors[ids.rightMotor].powerPercent} (the pair knows the right motor is reversed): straight, yaw ${yawOf(straight.rotation).toFixed(1)}°, chip ${helperChip?.value}`)
   await resetStage()
   await page.getByRole('tab', { name: 'My program' }).click()
   await sleep(500)
@@ -614,12 +614,12 @@ async function failureReversedOtherWay() {
     }
   }
   const lines = await panelLines()
-  const driveLine = lines.find((line) => line.includes('Drives with')) ?? null
+  const driveLine = lines.find((line) => line.includes('Left side:')) ?? null
   const rows = { left: await rowText(ids.leftMotor), right: await rowText(ids.rightMotor) }
   const step = await nextStep()
   seen.F2d = { build: { rightRowBefore, inspectorBefore, driveLine, rows, nextStep: step } }
   check('F2d.build.same-name', /^Left motor/.test(rightRowBefore ?? '') && inspectorBefore?.name === 'Left motor', `named from the way its socket faces, the outboard motor is also "Left motor" until renamed: "${rightRowBefore}"`)
-  check('F2d.build.no-reversed', driveLine?.endsWith('Drives with Left motor + Right motor') && !/other way/.test(driveLine) && rows.right && !rows.right.includes('other way') && rows.left && !rows.left.includes('other way') && step === 'Ready to drive!', `renamed and plugged in: "${driveLine}"; rows "${rows.left}" / "${rows.right}"; next step "${step}"`)
+  check('F2d.build.no-reversed', driveLine === 'Left side: Left motor · Right side: Right motor' && !lines.some((line) => /other way/.test(line)) && rows.right && !rows.right.includes('other way') && rows.left && !rows.left.includes('other way') && step === 'Ready to drive!', `renamed and plugged in: "${driveLine}"; rows "${rows.left}" / "${rows.right}"; next step "${step}"`)
   await brick((state) => state.selectBrick(null))
   await shot('F2e-build-same-way-no-reversed')
 
@@ -640,7 +640,7 @@ async function failureReversedOtherWay() {
   const end = await poseOf(ids.hub)
   const drive = (await chips()).Motors
   measured.F2d = { program, yawDegrees: Number(yawOf(end.rotation).toFixed(2)), forwardStuds: Number((-(end.position.z - start.position.z) / STUD).toFixed(2)), left: o.motors[ids.leftMotor], right: o.motors[ids.rightMotor], chip: drive }
-  check('F2d.run.straight', Math.abs(yawOf(end.rotation)) < 3 && measured.F2d.forwardStuds > 2 && drive?.value === '40 · 40 %', `${program.join(' → ')}: it drives straight, ${measured.F2d.forwardStuds} studs in 1.5 s, yaw ${yawOf(end.rotation).toFixed(1)}°, chip ${drive?.value} (${drive?.detail})`)
+  check('F2d.run.straight', Math.abs(yawOf(end.rotation)) < 3 && measured.F2d.forwardStuds > 2 && drive?.value === 'Left 40 · Right 40 %', `${program.join(' → ')}: it drives straight, ${measured.F2d.forwardStuds} studs in 1.5 s, yaw ${yawOf(end.rotation).toFixed(1)}°, chip ${drive?.value} (${drive?.detail})`)
   await shot('F2f-code-same-way-raw-blocks-straight')
   await resetStage()
   await back()

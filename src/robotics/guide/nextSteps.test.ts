@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import type { BrickInstance } from '../../brick/types'
 import { readiness } from '../drive/readiness'
 import { deriveCreations } from '../model/creations'
-import { GATE_IDS, ROVER_IDS, SIGNAL_IDS, fixtureInput, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
+import { FOUR_WHEEL_IDS, GATE_IDS, ROVER_IDS, SIGNAL_IDS, fixtureInput, fourWheelBricks, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsConnection } from '../model/section'
 import { ROBOTICS_PART_IDS } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
@@ -82,7 +82,7 @@ describe('the rover path', () => {
   it('two motors facing each other: turn the one on the left, then the one on the right', () => {
     const bricks = [...pick(roverBricks(), R.plate, R.hub), at('in-left', ROBOTICS_PART_IDS.motor, 28, 1, 31, 0), at('in-right', ROBOTICS_PART_IDS.motor, 31, 1, 31, 2)]
     const { rows } = robot(bricks, R.hub)
-    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Turn the left motor to face out.', action: { kind: 'select', brickId: 'in-left' }, icon: { part: ROBOTICS_PART_IDS.motor } })
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Turn the left motor to face out.', action: { kind: 'select', brickId: 'in-left' }, icon: { symbol: 'turn' } })
     const turned = robot([...pick(roverBricks(), R.plate, R.hub), at('in-left', ROBOTICS_PART_IDS.motor, 28, 1, 31, 2), at('in-right', ROBOTICS_PART_IDS.motor, 31, 1, 31, 2)], R.hub)
     expect(current(turned.rows)).toMatchObject({ text: 'Turn the right motor to face out.', action: { kind: 'select', brickId: 'in-right' } })
   })
@@ -156,6 +156,55 @@ describe('the rover path', () => {
     const dressed = robot([...roverBricks(), at('light', ROBOTICS_PART_IDS.light, 29, 7, 27), at('seat', ROBOTICS_PART_IDS.seat, 30, 7, 28), at('roof', 'brick_2x2', 31, 7, 29)], R.hub, [...ROVER_WIRES, ['light', R.hub, 'D']])
     expect(dressed.rows.filter((candidate) => candidate.group === 'idea').map((idea) => idea.state)).toEqual(['done', 'done', 'done', 'done'])
     expect(current(dressed.rows)?.id).toBe('ready')
+  })
+})
+
+const F = FOUR_WHEEL_IDS
+const FOUR_WIRES: Wire[] = [[F.frontLeftMotor, F.hub, 'A'], [F.frontRightMotor, F.hub, 'B'], [F.backLeftMotor, F.hub, 'C'], [F.backRightMotor, F.hub, 'D']]
+
+describe('a four-wheel car (every motor drives)', () => {
+  it('all four motors with wheels, plugged in: ready to drive', () => {
+    const { rows } = robot(fourWheelBricks(), F.hub, FOUR_WIRES)
+    expect(current(rows)?.id).toBe('ready')
+    expect(states(rows)).toEqual(['plate:done', 'hub:done', 'motors:done', 'axles:done', 'wheels:done', 'plug:done', 'ready:current'])
+  })
+
+  it('every motor needs its axle and its wheel, in build order, named where they stand', () => {
+    const noBackAxles = robot(without(fourWheelBricks(), F.backLeftAxle, F.backRightAxle, F.backLeftWheel, F.backRightWheel), F.hub, FOUR_WIRES)
+    expect(current(noBackAxles.rows)).toMatchObject({ id: 'axles', text: 'Put an axle in Back left motor.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.axleShort, rotation: 0 } })
+    const wheelOff = robot(fourWheelBricks({ backLeftWheelOff: true }), F.hub, FOUR_WIRES)
+    expect(current(wheelOff.rows)).toMatchObject({ id: 'wheels', text: 'Put a wheel on Back left motor’s axle.' })
+  })
+
+  it('every motor must be plugged in, not only the first two', () => {
+    const { rows } = robot(fourWheelBricks(), F.hub, FOUR_WIRES.filter(([id]) => id !== F.backRightMotor))
+    expect(current(rows)).toMatchObject({ id: 'plug', text: 'Plug Back right motor into the hub.', action: { kind: 'plug', deviceId: F.backRightMotor } })
+  })
+
+  it('a motor facing backward, its wheel behind it: turn it (the row picks it)', () => {
+    const { rows } = robot(fourWheelBricks({ backRightFacingBack: true }), F.hub, FOUR_WIRES)
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Back motor faces backward. Turn it to face out to the side.', action: { kind: 'select', brickId: F.backRightMotor }, icon: { symbol: 'turn' } })
+  })
+
+  it('a missing wheel is asked for before a turned motor', () => {
+    const bricks = fourWheelBricks({ backRightFacingBack: true, backLeftWheelOff: true })
+    const { rows } = robot(bricks, F.hub, FOUR_WIRES)
+    expect(current(rows)?.text).toBe('Put a wheel on Back left motor’s axle.')
+  })
+
+  it('a full hub: pick the part to unplug for room, or arm another hub', () => {
+    const sensor = at('4wd-sensor', ROBOTICS_PART_IDS.distanceSensor, 30, 1, 18)
+    const withSensor = robot([...fourWheelBricks(), sensor], F.hub, [[F.frontLeftMotor, F.hub, 'A'], [F.frontRightMotor, F.hub, 'B'], [sensor.id, F.hub, 'C'], [F.backLeftMotor, F.hub, 'D']])
+    expect(current(withSensor.rows)).toMatchObject({ id: 'plug', text: 'The hub is full. Unplug Front sensor to plug in Back right motor.', action: { kind: 'select', brickId: sensor.id } })
+    const fifth = [at('4wd-corner-motor', ROBOTICS_PART_IDS.motor, 28, 1, 18, 2), at('4wd-corner-axle', ROBOTICS_PART_IDS.axleShort, 26, 0, 19), at('4wd-corner-wheel', ROBOTICS_PART_IDS.wheel, 25, 0, 18)]
+    const five = robot([...fourWheelBricks(), ...fifth], F.hub, FOUR_WIRES)
+    expect(current(five.rows)).toMatchObject({ id: 'plug', text: 'The hub is full. Add another hub for Front left motor.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.hub }, icon: { part: ROBOTICS_PART_IDS.hub } })
+  })
+
+  it('wheels all on one side: put the motors on opposite sides', () => {
+    const left = [F.frontPlate, F.backPlate, F.hub, F.frontLeftMotor, F.backLeftMotor, F.frontLeftAxle, F.backLeftAxle, F.frontLeftWheel, F.backLeftWheel]
+    const { rows } = robot(pick(fourWheelBricks(), ...left), F.hub, [[F.frontLeftMotor, F.hub, 'A'], [F.backLeftMotor, F.hub, 'B']])
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put the motors on opposite sides, facing out.', action: { kind: 'select' } })
   })
 })
 

@@ -1,4 +1,5 @@
-import type { DerivedCreation, DerivedDevice } from '../model/creations'
+import { driveSidesOf, type DerivedCreation, type DerivedDevice } from '../model/creations'
+import { dot } from '../model/vec'
 import { AXIS_OPTIONS, BUILTIN_ALIASES, CONTROLLER_HAT_TYPES, HAT_BLOCK_TYPES, KEY_OPTIONS, NO_DEVICE, isRoboBlockType, type DeviceMenuKind } from './catalog/blocks'
 import { DEVICE_KIND_WORDS } from './devices'
 import {
@@ -14,9 +15,10 @@ import { connectedBlock, isDisabledBlock, isRecord, topBlocks, utf8Bytes, variab
  * diagnostic in a student's words naming their parts, and `ok` is false only when one of
  * them is an error. Every IR node carries the id of the block it came from.
  *
- * Helper blocks are lowered here onto the creation's drive pair with each motor's
- * reversal folded into the sign, so the IR and the runtime never need to know what a
- * drive pair is.
+ * Helper blocks are lowered here onto every motor of the creation's drive sides (the drive
+ * pair and any more motors with wheels on each side, a four-wheel car's four) with each
+ * motor's reversal folded into the sign, so the IR and the runtime never need to know what
+ * a drive pair is.
  */
 
 export type CompileDeviceKind = 'motor' | 'hinge' | 'sensor' | 'light' | 'button'
@@ -36,6 +38,11 @@ export type CompileContext = {
   devices: Readonly<Record<DeviceId, CompileDevice>>
   /** The configured drive pair, if the creation has one. `reversedIds` flip the sign of their power. */
   drivePair: { leftId: DeviceId; rightId: DeviceId; reversedIds: readonly DeviceId[] } | null
+  /**
+   * Every motor a helper runs, by side, the pair's first (a four-wheel car's four). Helpers run
+   * only when there is a drive pair; without sides they run just the pair.
+   */
+  driveSides?: DriveMotors | null
   /** Without a drive pair: why the build offers none, in the card's words ("Left motor has no wheel on its axle"). */
   drivePairMissing?: string
   /** Last known names, for blocks naming a device that is gone (`program.deviceNames`). */
@@ -47,6 +54,9 @@ export type CompileContext = {
    */
   worldBrickIds?: ReadonlySet<string>
 }
+
+/** The motors a helper runs on each side; `reversedIds` flip the sign of their power. */
+export type DriveMotors = { left: readonly DeviceId[]; right: readonly DeviceId[]; reversedIds: readonly DeviceId[] }
 
 /** The compile context for a creation as derived from the build, with a program's remembered names. */
 export function compileContextFor(creation: DerivedCreation, program?: Pick<RoboticsProgram, 'deviceNames'> | null, worldBrickIds?: ReadonlySet<string>): CompileContext {
@@ -60,11 +70,13 @@ export function compileContextFor(creation: DerivedCreation, program?: Pick<Robo
   for (const light of creation.lights) add('light', light)
   for (const button of creation.buttons) add('button', button)
   const pair = creation.drivePair
+  const sides = driveSidesOf(creation)
   const missing = pair ? null : whyNoDrivePair(creation)
   return {
     creationName: creation.name,
     devices,
     drivePair: pair ? { leftId: pair.leftId, rightId: pair.rightId, reversedIds: [...pair.reversedIds] } : null,
+    ...(sides ? { driveSides: { left: [...sides.left], right: [...sides.right], reversedIds: [...sides.reversedIds] } } : {}),
     ...(missing ? { drivePairMissing: missing } : {}),
     deviceNames: { ...(program?.deviceNames ?? {}) },
     ...(worldBrickIds ? { worldBrickIds } : {}),
@@ -75,7 +87,12 @@ export function compileContextFor(creation: DerivedCreation, program?: Pick<Robo
 function whyNoDrivePair(creation: DerivedCreation): string | null {
   const { motors } = creation
   if (motors.length === 0) return null
-  if (motors.filter((motor) => motor.wheelIds.length > 0).length >= 2) return 'its wheeled motors’ axles don’t line up'
+  const wheeled = motors.filter((motor) => motor.wheelIds.length > 0)
+  if (wheeled.length >= 2) {
+    // Axles that line up but make no pair: the wheels stand in one line, one behind the other.
+    const lined = wheeled.some((a, index) => wheeled.slice(index + 1).some((b) => Math.abs(dot(a.socketNormal, b.socketNormal)) >= 0.999))
+    return lined ? 'its wheels are all on one side' : 'its wheeled motors’ axles don’t line up'
+  }
   if (motors.length === 1) return `${motors[0].name} is its only motor`
   const bare = motors.filter((motor) => motor.wheelIds.length === 0).slice(0, 2)
   return bare.map((motor) => `${motor.name} has ${motor.axleId ? 'no wheel on its axle' : 'nothing in its socket'}`).join(' · ')
@@ -259,23 +276,28 @@ function statementInput(owner: WorkspaceBlockJson, name: string, ctx: Ctx): Stmt
   return first ? chain(first, ctx) : []
 }
 
-/** Helper blocks run on the drive pair; without one they say so and compile to nothing. */
-function drivePair(block: WorkspaceBlockJson, ctx: Ctx): CompileContext['drivePair'] {
+/**
+ * Helper blocks run every motor on each side of the drive (just the pair when the context has
+ * no sides); without a drive pair they say so and compile to nothing.
+ */
+function driveMotors(block: WorkspaceBlockJson, ctx: Ctx): DriveMotors | null {
   const blockId = idOf(block, ctx)
   const pair = ctx.context.drivePair
   if (!pair) {
     report(ctx, 'error', 'drive.no-pair', ctx.context.drivePairMissing ? `Choose two drive motors first · ${ctx.context.drivePairMissing}` : 'Choose two drive motors first', blockId)
     return null
   }
-  for (const motorId of [pair.leftId, pair.rightId]) checkDevice(ctx, blockId, motorId, 'motor')
-  return pair
+  const sides = ctx.context.driveSides ?? { left: [pair.leftId], right: [pair.rightId], reversedIds: pair.reversedIds }
+  for (const motorId of [...sides.left, ...sides.right]) checkDevice(ctx, blockId, motorId, 'motor')
+  return sides
 }
 
-function onPair(pair: NonNullable<CompileContext['drivePair']>, left: Expr, right: Expr, blockId: string): Stmt[] {
-  const signed = (motorId: DeviceId, value: Expr) => (pair.reversedIds.includes(motorId) ? negate(value, blockId) : value)
+/** Left motors then right motors, each run at its side's power with its reversal folded into the sign. */
+function onSides(sides: DriveMotors, left: Expr, right: Expr, blockId: string): Stmt[] {
+  const signed = (motorId: DeviceId, value: Expr) => (sides.reversedIds.includes(motorId) ? negate(value, blockId) : value)
   return [
-    { op: 'runMotor', deviceId: pair.leftId, percent: signed(pair.leftId, left), blockId },
-    { op: 'runMotor', deviceId: pair.rightId, percent: signed(pair.rightId, right), blockId },
+    ...sides.left.map((motorId): Stmt => ({ op: 'runMotor', deviceId: motorId, percent: signed(motorId, left), blockId })),
+    ...sides.right.map((motorId): Stmt => ({ op: 'runMotor', deviceId: motorId, percent: signed(motorId, right), blockId })),
   ]
 }
 
@@ -285,32 +307,31 @@ function statement(block: WorkspaceBlockJson, ctx: Ctx): Stmt[] {
   switch (type) {
     case 'robo_drive': {
       const power = input(block, 'POWER', 'number', ctx)
-      const pair = drivePair(block, ctx)
-      if (!pair) return []
+      const sides = driveMotors(block, ctx)
+      if (!sides) return []
       const signed = fieldString(block, 'DIRECTION') === 'backward' ? negate(power, blockId) : power
-      return onPair(pair, signed, signed, blockId)
+      return onSides(sides, signed, signed, blockId)
     }
     case 'robo_turn': {
       const power = input(block, 'POWER', 'number', ctx)
       const seconds = input(block, 'SECONDS', 'number', ctx)
-      const pair = drivePair(block, ctx)
-      if (!pair) return []
+      const sides = driveMotors(block, ctx)
+      if (!sides) return []
       // Spin in place: turning left runs the left side backward and the right side forward.
       const toRight = fieldString(block, 'DIRECTION') === 'right'
       return [
-        ...onPair(pair, toRight ? power : negate(power, blockId), toRight ? negate(power, blockId) : power, blockId),
+        ...onSides(sides, toRight ? power : negate(power, blockId), toRight ? negate(power, blockId) : power, blockId),
         { op: 'wait', seconds, blockId },
-        { op: 'stopMotor', deviceId: pair.leftId, blockId },
-        { op: 'stopMotor', deviceId: pair.rightId, blockId },
+        ...[...sides.left, ...sides.right].map((motorId): Stmt => ({ op: 'stopMotor', deviceId: motorId, blockId })),
       ]
     }
     case 'robo_drive_joystick': {
-      const pair = drivePair(block, ctx)
-      if (!pair) return []
+      const sides = driveMotors(block, ctx)
+      if (!sides) return []
       // Arcade mix; the controller clamps each side to ±100.
       const up = (): Expr => ({ kind: 'joystick', axis: 'up', blockId })
       const right = (): Expr => ({ kind: 'joystick', axis: 'right', blockId })
-      return onPair(pair, { kind: 'binary', op: '+', left: up(), right: right(), blockId }, { kind: 'binary', op: '-', left: up(), right: right(), blockId }, blockId)
+      return onSides(sides, { kind: 'binary', op: '+', left: up(), right: right(), blockId }, { kind: 'binary', op: '-', left: up(), right: right(), blockId }, blockId)
     }
     case 'robo_stop_motors':
       return [{ op: 'stopAllMotors', blockId }]

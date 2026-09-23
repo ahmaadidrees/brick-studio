@@ -8,7 +8,7 @@ import { useDriveView } from '../drive/driveViewState'
 import { readiness } from '../drive/readiness'
 import { runStepAction } from '../guide/actions'
 import { nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
-import { deriveCandidate, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
+import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { useStageStore } from '../state/stageStore'
@@ -188,7 +188,7 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
             <Fold title="Parts" note={creation.lines.attached} open={partsOpen} onToggle={() => setPartsOpen(!partsOpen)} testId="robotics-parts-fold">
               <ul className="robotics-lines">
                 <li>{creation.lines.attached} · {creation.lines.parts}</li>
-                {creation.drivePair && <li>Drives with {motorName(creation, creation.drivePair.leftId)} + {motorName(creation, creation.drivePair.rightId)}{creation.drivePair.reversedIds.length ? ` · ${creation.drivePair.reversedIds.map((id) => motorName(creation, id)).join(', ')} faces the other way` : ''}</li>}
+                <DriveSidesLines creation={creation} />
               </ul>
               <PartRows creation={creation} selectedId={selectedId} />
             </Fold>
@@ -369,6 +369,23 @@ function RunSpace({ creation }: { creation: DerivedCreation }) {
 
 function motorName(creation: DerivedCreation, id: string) {
   return creation.motors.find((motor) => motor.brickId === id)?.name ?? 'motor'
+}
+
+/**
+ * Which motors drive on each side (every motor with a wheel on the drive axis: a four-wheel car's
+ * four), and which of them face the other way: the same power turns their wheels backward, which
+ * Drive and the drive block take care of.
+ */
+function DriveSidesLines({ creation }: { creation: DerivedCreation }) {
+  const sides = driveSidesOf(creation)
+  if (!sides) return null
+  const names = (ids: readonly string[]) => joinNames(ids.map((id) => motorName(creation, id)))
+  return (
+    <>
+      <li data-testid="robotics-drive-sides">Left side: {names(sides.left)} · Right side: {names(sides.right)}</li>
+      {sides.reversedIds.length > 0 && <li>{names(sides.reversedIds)} {sides.reversedIds.length === 1 ? 'faces' : 'face'} the other way</li>}
+    </>
+  )
 }
 
 /** A picked axle, wheel or seat (devices get the wiring inspector instead). */

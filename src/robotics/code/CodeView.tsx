@@ -16,7 +16,7 @@ import { useCodeView } from './codeViewState'
 import { activateProgram, activeProgramOf, addProgram, currentSection, ensureProgramFor, programsOf, removeProgram, renameProgramTo } from './programActions'
 import { ProgramTabs } from './ProgramTabs'
 import { StagePanel } from './StagePanel'
-import { programUsesInput } from './stageReadings'
+import { programTurnsOnPurpose, programUsesInput } from './stageReadings'
 import { suspendStudioShortcuts } from './studioKeys'
 import './code.css'
 
@@ -238,6 +238,7 @@ function CodeViewFor({ creation }: { creation: DerivedCreation }) {
         space={stage?.space ?? creation.testSpace}
         hasVisitor={hasVisitor}
         showInput={Boolean(active && programUsesInput(active.workspace))}
+        turnsOnPurpose={Boolean(active && programTurnsOnPurpose(active.workspace, creation))}
         runBlocked={runBlocked}
         changed={changed}
         notice={stageNotice?.reason === 'edit' ? 'The build changed, so the stage went back to the built pose.' : null}

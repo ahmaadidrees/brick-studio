@@ -47,10 +47,12 @@ export type RideCandidate = {
   program: RideProgramSummary | null
 }
 
-export function rideStatus(creation: Pick<DerivedCreation, 'drivePair' | 'motors'>): RideStatus {
+export function rideStatus(creation: Pick<DerivedCreation, 'drivePair' | 'motors'> & Partial<Pick<DerivedCreation, 'driveSides'>>): RideStatus {
   const pair = creation.drivePair
   if (!pair) return 'no-drive-pair'
-  const plugged = creation.motors.some((motor) => (motor.brickId === pair.leftId || motor.brickId === pair.rightId) && motor.plugged)
+  // Any motor that drives (a four-wheel car's four, not only the pair).
+  const driving = new Set(creation.driveSides ? [...creation.driveSides.left, ...creation.driveSides.right] : [pair.leftId, pair.rightId])
+  const plugged = creation.motors.some((motor) => driving.has(motor.brickId) && motor.plugged)
   return plugged ? 'rideable' : 'unplugged'
 }
 

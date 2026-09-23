@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { useBrickStore } from '../../brick/store'
 import { useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
+import { fourWheelBricks } from '../model/fixtures'
 import { readRoboticsSection, writeRoboticsSection } from '../model/section'
 import { ROBOTICS_PART_IDS } from '../parts/catalog'
 import { installRoboticsParts } from '../parts/install'
@@ -175,7 +176,8 @@ describe('the panel', () => {
     const rows = within(screen.getByRole('list', { name: 'Parts found' })).getAllByRole('listitem')
     expect(rows.find((row) => row.dataset.brickId === ids.rightMotor)).toHaveTextContent('Right motor · axle and wheel on it · plugged in · faces the other way')
     expect(rows.find((row) => row.dataset.brickId === ids.leftMotor)).toHaveTextContent('Left motor · axle and wheel on it · plugged in')
-    expect(panel()).toHaveTextContent('Drives with Left motor + Right motor · Right motor faces the other way')
+    expect(screen.getByTestId('robotics-drive-sides')).toHaveTextContent('Left side: Left motor · Right side: Right motor')
+    expect(panel()).toHaveTextContent('Right motor faces the other way')
     fireEvent.click(screen.getByRole('button', { name: /^More/ }))
     expect(screen.getByRole('group', { name: 'Where it runs' })).toHaveTextContent('Runs onTest plateMy world')
     expect(screen.getByRole('button', { name: 'Test plate' })).toHaveAttribute('aria-pressed', 'true')
@@ -194,6 +196,22 @@ describe('the panel', () => {
     expect(currentStep()).toHaveTextContent('Plug Left motor into the hub.')
     fireEvent.click(currentStep()!)
     expect(section().connections.some((cable) => cable.deviceId === ids.leftMotor)).toBe(true)
+    expect(playButton()).toBeEnabled()
+  })
+
+  it('a four-wheel car: Drive waits for all four motors; Parts lists them by side', () => {
+    render(<RoboticsPanel />)
+    for (const brick of fourWheelBricks()) place(brick.partId, brick.x, brick.y, brick.z, brick.rotation)
+    keepBuilding()
+    expect(playButton()).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: /^Parts/ }))
+    expect(screen.getByTestId('robotics-drive-sides')).toHaveTextContent('Left side: Front left motor and Back left motor · Right side: Front right motor and Back right motor')
+    expect(panel()).toHaveTextContent('Front right motor and Back right motor face the other way')
+    const backRight = useBrickStore.getState().bricks.find((brick) => brick.x === 31 && brick.z === 28 && brick.partId === ROBOTICS_PART_IDS.motor)!.id
+    act(() => useBrickStore.getState().setRoboticsSection(writeRoboticsSection({ ...section(), connections: section().connections.filter((cable) => cable.deviceId !== backRight) }), 'Unplug Back right motor'))
+    expect(playButton()).toBeDisabled()
+    expect(currentStep()).toHaveTextContent('Plug Back right motor into the hub.')
+    fireEvent.click(currentStep()!)
     expect(playButton()).toBeEnabled()
   })
 
