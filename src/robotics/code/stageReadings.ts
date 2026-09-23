@@ -1,6 +1,6 @@
 import { driveSidesOf, type DerivedCreation, type DerivedDevice, type DerivedMotor, type DriveSides } from '../model/creations'
 import type { RunObservation } from '../run/types'
-import { walkBlocks } from '../program/workspaceJson'
+import { isRecord, walkBlocks } from '../program/workspaceJson'
 
 /**
  * What the stage panel shows, derived from the run's observation and the creation
@@ -37,10 +37,11 @@ const someMotors = (motors: readonly DerivedMotor[]) => (motors.length > 2 ? `${
  * The drive, by side, every motor on it counted, as the creation feels it: a motor that faces
  * the other way is flipped, so "drive forward at 40 %" reads Left 40 · Right 40 and two raw
  * "run … at 50 %" blocks on a mirror-mounted pair read Left 50 · Right −50, with speeds of
- * opposite signs: the two sides fight and the robot turns. A side reads its busiest motor; one
- * of its motors left still (a program written before the car had four wheels) is named.
+ * opposite signs: the two sides fight and the robot turns. A turn the program asks for with the
+ * helpers (`turnsOnPurpose`) is just a turn. A side reads its busiest motor; one of its motors
+ * left still (a program written before the car had four wheels) is named.
  */
-function driveChip(creation: DerivedCreation, sides: DriveSides, observation: RunObservation | null): ReadingChip {
+function driveChip(creation: DerivedCreation, sides: DriveSides, observation: RunObservation | null, turnsOnPurpose: boolean): ReadingChip {
   const reversed = new Set(sides.reversedIds)
   const felt = (motor: DerivedMotor, percent: number) => (reversed.has(motor.brickId) ? -percent : percent)
   const motorsOf = (ids: readonly string[]) => ids.flatMap((id) => creation.motors.filter((motor) => motor.brickId === id))
@@ -75,7 +76,7 @@ function driveChip(creation: DerivedCreation, sides: DriveSides, observation: Ru
   const busiest = (side: typeof readLeft) => side.reduce((best, entry) => (Math.abs(entry.power) > Math.abs(best.power) ? entry : best)).power
   const [powerLeft, powerRight] = [busiest(readLeft), busiest(readRight)]
   const [speedLeft, speedRight] = [sideSpeed(left)!, sideSpeed(right)!]
-  const fighting = Math.abs(speedLeft) > 5 && Math.abs(speedRight) > 5 && Math.sign(speedLeft) !== Math.sign(speedRight)
+  const fighting = !turnsOnPurpose && Math.abs(speedLeft) > 5 && Math.abs(speedRight) > 5 && Math.sign(speedLeft) !== Math.sign(speedRight)
   // Motors not doing what their side does: running the other way, or left still.
   const odd = [...readLeft.map((entry) => ({ ...entry, side: powerLeft })), ...readRight.map((entry) => ({ ...entry, side: powerRight }))].filter((entry) => Math.abs(entry.side) >= 1)
   const against = odd.filter((entry) => Math.abs(entry.power) >= 1 && Math.sign(entry.power) !== Math.sign(entry.side)).map((entry) => entry.motor)
@@ -97,8 +98,16 @@ function driveChip(creation: DerivedCreation, sides: DriveSides, observation: Ru
   }
 }
 
+export type ReadingOptions = {
+  /**
+   * The program moves the drive motors only with the drive helpers (see `programTurnsOnPurpose`),
+   * so sides running opposite ways are a turn it asked for, not two motors fighting.
+   */
+  turnsOnPurpose?: boolean
+}
+
 /** The readings chips for the devices this creation has, in the order the mock reads them: sensors, drive, motors, arms, lights, buttons. */
-export function readingChips(creation: DerivedCreation, observation: RunObservation | null): ReadingChip[] {
+export function readingChips(creation: DerivedCreation, observation: RunObservation | null, options: ReadingOptions = {}): ReadingChip[] {
   const chips: ReadingChip[] = []
   const live = observation !== null
   for (const sensor of creation.sensors) {
@@ -113,7 +122,7 @@ export function readingChips(creation: DerivedCreation, observation: RunObservat
   }
   const sides = driveSidesOf(creation)
   const sideIds = new Set(sides ? [...sides.left, ...sides.right] : [])
-  if (sides) chips.push(driveChip(creation, sides, observation), { id: 'speed', label: 'Speed', value: live ? `${observation.speedStudsPerSecond.toFixed(1)} st/s` : '—', tone: live ? 'live' : 'idle' })
+  if (sides) chips.push(driveChip(creation, sides, observation, options.turnsOnPurpose ?? false), { id: 'speed', label: 'Speed', value: live ? `${observation.speedStudsPerSecond.toFixed(1)} st/s` : '—', tone: live ? 'live' : 'idle' })
   for (const motor of creation.motors) {
     if (sideIds.has(motor.brickId)) continue
     if (!motor.plugged) { chips.push(unplugged(motor)); continue }
@@ -170,6 +179,30 @@ export function stageStatus(observation: RunObservation | null, loading: boolean
 }
 
 const INPUT_BLOCKS = new Set(['robo_when_joystick_moves', 'robo_when_controls_update', 'robo_joystick', 'robo_key_held', 'robo_when_key_pressed', 'robo_drive_joystick'])
+
+const DRIVE_HELPERS = new Set(['robo_drive', 'robo_turn', 'robo_drive_joystick'])
+const RAW_MOTOR_BLOCKS = new Set(['robo_run_motor', 'robo_turn_motor_to'])
+
+/**
+ * The program drives with the helpers (drive, turn, drive using joystick) and moves no drive
+ * motor with a raw block, so when its sides run opposite ways the robot turns because it was
+ * told to. Two raw "run … at 40 %" blocks on a mirror-mounted pair spin it too, by mistake:
+ * that program is not one of these, and its chip still says which motor faces the other way.
+ */
+export function programTurnsOnPurpose(workspace: unknown, creation: Pick<DerivedCreation, 'drivePair' | 'driveSides'>): boolean {
+  const sides = driveSidesOf(creation)
+  if (!sides) return false
+  const driveIds = new Set([...sides.left, ...sides.right])
+  let helpers = false
+  let raw = false
+  walkBlocks(workspace, (block) => {
+    if (typeof block.type !== 'string') return
+    if (DRIVE_HELPERS.has(block.type)) helpers = true
+    const motor = isRecord(block.fields) ? block.fields.MOTOR : undefined
+    if (RAW_MOTOR_BLOCKS.has(block.type) && typeof motor === 'string' && driveIds.has(motor)) raw = true
+  })
+  return helpers && !raw
+}
 
 /** The program reads the joystick or the keys, so the stage offers the on-screen joystick and key pad. */
 export function programUsesInput(workspace: unknown): boolean {

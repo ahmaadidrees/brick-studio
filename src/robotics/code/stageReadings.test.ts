@@ -5,7 +5,7 @@ import { starterFor } from '../program/starters'
 import { installRoboticsParts } from '../parts/install'
 import type { MotorReading, RunObservation } from '../run/types'
 import { joystickAxes } from './StageInput'
-import { programUsesInput, readingChips, stageStatus } from './stageReadings'
+import { programTurnsOnPurpose, programUsesInput, readingChips, stageStatus } from './stageReadings'
 import { problemList, propFramePoints } from './CodeView'
 
 beforeAll(() => installRoboticsParts(true))
@@ -119,6 +119,39 @@ describe('the Motors chip on a four-wheel car (every motor counted)', () => {
     const { creation } = wiredFourWheel({ backRightFacingBack: true })
     const chips = readingChips(creation, observation({ motors: { ...car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 40, [ids.frontRightMotor]: 40 }), [ids.backRightMotor]: motor({ powerPercent: 0, speedPercent: 0, positionDegrees: 0 }) } }))
     expect(chips.map((chip) => [chip.label, chip.value])).toEqual([['Motors', 'Left 40 · Right 40 %'], ['Speed', '0.0 st/s'], ['Back motor', '0 %']])
+  })
+})
+
+describe('a turn the program asks for is not a fight', () => {
+  it('with the helpers only, sides running opposite ways read as a turn; with raw blocks, as a fight', () => {
+    const ids = FOUR_WHEEL_IDS
+    // The joystick pushed hard right: every motor at +100, the left side rolls forward, the right side back.
+    const motors = Object.fromEntries([ids.frontLeftMotor, ids.backLeftMotor, ids.frontRightMotor, ids.backRightMotor].map((id) => {
+      const right = id === ids.frontRightMotor || id === ids.backRightMotor
+      return [id, motor({ powerPercent: 100, speedPercent: 76, forwardPercent: right ? -76 : 76 })]
+    }))
+    const { creation } = wiredFourWheel()
+    expect(readingChips(creation, observation({ motors }), { turnsOnPurpose: true })[0]).toMatchObject({ value: 'Left 100 · Right −100 %', detail: 'speed 76 · −76 %', tone: 'live' })
+    expect(readingChips(creation, observation({ motors }))[0]).toMatchObject({ detail: 'speed 76 · −76 % · the right motors face the other way', tone: 'bad' })
+  })
+
+  it('knows a helpers-only program from one that runs a drive motor with a raw block', () => {
+    const { creation } = wiredRover()
+    const program = (...body: { type: string; fields?: Record<string, unknown> }[]) => {
+      const blocks = body.map((block, index) => ({ ...block, id: `b${index}` })) as { type: string; id: string; next?: unknown }[]
+      for (let index = blocks.length - 1; index > 0; index -= 1) blocks[index - 1].next = { block: blocks[index] }
+      return { blocks: { languageVersion: 0, blocks: [{ type: 'robo_when_run', id: 'hat', next: { block: blocks[0] } }] } }
+    }
+    expect(programTurnsOnPurpose(starterFor(creation, 'joystick-drive')!.workspace, creation)).toBe(true)
+    expect(programTurnsOnPurpose(starterFor(creation, 'stop-before-wall')!.workspace, creation)).toBe(true)
+    expect(programTurnsOnPurpose(program({ type: 'robo_turn', fields: { DIRECTION: 'left' } }), creation)).toBe(true)
+    // Contract failure F2: two raw blocks on the mirror-mounted pair.
+    expect(programTurnsOnPurpose(program({ type: 'robo_run_motor', fields: { MOTOR: ROVER_IDS.leftMotor } }, { type: 'robo_run_motor', fields: { MOTOR: ROVER_IDS.rightMotor } }), creation)).toBe(false)
+    expect(programTurnsOnPurpose(program({ type: 'robo_drive', fields: { DIRECTION: 'forward' } }, { type: 'robo_turn_motor_to', fields: { MOTOR: ROVER_IDS.rightMotor } }), creation)).toBe(false)
+    // A raw block on a motor that does not drive leaves the helpers' turns alone; no helper, no turn on purpose.
+    expect(programTurnsOnPurpose(program({ type: 'robo_turn', fields: { DIRECTION: 'left' } }, { type: 'robo_run_motor', fields: { MOTOR: 'an-arm-motor' } }), creation)).toBe(true)
+    expect(programTurnsOnPurpose(starterFor(creation, 'blank')!.workspace, creation)).toBe(false)
+    expect(programTurnsOnPurpose(starterFor(creation, 'joystick-drive')!.workspace, { ...creation, drivePair: null })).toBe(false)
   })
 })
 
