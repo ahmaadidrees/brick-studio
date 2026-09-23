@@ -162,8 +162,8 @@ describe('the panel', () => {
     expect(useBrickStore.getState().draft?.partId).toBe(ROBOTICS_PART_IDS.seat)
     // Folded: the parts list, the run space, the wiring mode and the motor tests are out of sight.
     expect(screen.queryByRole('list', { name: 'Parts found' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Drive forward 40%' })).toBeNull()
-    expect(screen.queryByRole('group', { name: 'Wiring' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Drive forward' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Plug in by itself' })).toBeNull()
     expect(screen.getByRole('button', { name: /^Parts/ })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('button', { name: /^More/ })).toHaveAttribute('aria-expanded', 'false')
     const words = panel().textContent ?? ''
@@ -181,12 +181,16 @@ describe('the panel', () => {
     expect(screen.getByTestId('robotics-drive-sides')).toHaveTextContent('Left side: Left motor · Right side: Right motor')
     expect(panel()).toHaveTextContent('Right motor faces the other way')
     fireEvent.click(screen.getByRole('button', { name: /^More/ }))
-    expect(screen.getByRole('group', { name: 'Where it runs' })).toHaveTextContent('Runs onTest plateMy world')
+    // In a third grader's words (lane P): where it runs, plug in by itself, spin and swing (no % or °).
+    expect(screen.getByRole('group', { name: 'Where it runs' })).toHaveTextContent('Where it runsTest plateMy world')
     expect(screen.getByRole('button', { name: 'Test plate' })).toHaveAttribute('aria-pressed', 'true')
     fireEvent.click(screen.getByRole('button', { name: 'My world' }))
     expect(section().creations[0].testSpace).toBe('myWorld')
-    expect(screen.getByRole('group', { name: 'Wiring' })).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: 'Test the motors' })).getByRole('button', { name: 'Drive forward 40%' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Plug in by itself' })).toHaveTextContent('Plug in by itselfOnOff')
+    const tests = within(screen.getByRole('region', { name: 'Test the motors' }))
+    expect(tests.getByRole('button', { name: 'Drive forward' })).toBeInTheDocument()
+    expect(tests.getAllByRole('button', { name: 'Spin' })).toHaveLength(2)
+    expect(screen.getByRole('region', { name: 'Test the motors' }).textContent).not.toMatch(/%|°/)
     expect(screen.getByTestId('robotics-sim-status')).toHaveTextContent('Stopped')
   })
 
@@ -264,7 +268,9 @@ describe('a gate and a signal light', () => {
     place(ROBOTICS_PART_IDS.distanceSensor, 21, 7, 27)
     expect(playButton()).toBeEnabled()
     expect(currentStep()).toHaveTextContent('Ready to try!')
-    expect(screen.queryByTestId('robotics-ideas')).toBeNull()
+    // Ready, a gate gets ideas too (lane P): paint it, name it, how far it opens in Code.
+    const ideas = within(screen.getByTestId('robotics-ideas')).getAllByRole('listitem').map((item) => item.dataset.step)
+    expect(ideas).toEqual(['idea-paint', 'idea-name', 'idea-code'])
   })
 
   it('a gate stuck to its frame: the fix row picks the brick to take off', () => {

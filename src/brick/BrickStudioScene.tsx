@@ -124,6 +124,7 @@ import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
 import { currentCanvasInsets } from '../robotics/scene/cameraInsets'
 import { clearDraftSnap, snapDraft } from '../robotics/scene/draftSnap'
+import { brickTapsTaken, takeBrickTap } from '../robotics/scene/brickTap'
 import { framePoseInFreeArea } from '../robotics/scene/framing'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
 import { studioEditingSuspended } from '../robotics/code/studioKeys'
@@ -230,7 +231,8 @@ function applyTouchPositionIntent(
 ) {
   const state = useBrickStore.getState()
   if (!state.draft) {
-    state.selectBrick(fallbackSelectionId)
+    // Robot Workshop paint mode takes a tap on a brick (it paints it); nothing registered, nothing taken.
+    if (!takeBrickTap(fallbackSelectionId)) state.selectBrick(fallbackSelectionId)
     return
   }
   const { clientX, clientY } = event.nativeEvent
@@ -423,7 +425,7 @@ function BrickObject({ brick, explore = false, buildGesture, cameraActive, mouse
           if (isConfirmationPlacementPointer(pointerType)) return
           if (isDragTrailingClick(event.delta, mouseTravel)) return
           if (draft && !explore) placeDraft()
-          else if (!explore) {
+          else if (!explore && !takeBrickTap(brick.id)) {
             const nativeEvent = event.nativeEvent as MouseEvent
             selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || useBrickStore.getState().selectionMode)
           }
@@ -549,7 +551,7 @@ function InstancedBrickGroup({
         if (isDragTrailingClick(event.delta, mouseTravel)) return
         const state = useBrickStore.getState()
         if (state.draft) state.placeDraft()
-        else {
+        else if (!takeBrickTap(brick.id)) {
           const nativeEvent = event.nativeEvent as MouseEvent
           state.selectBrick(brick.id, nativeEvent.metaKey || nativeEvent.ctrlKey || nativeEvent.shiftKey || state.selectionMode)
         }
@@ -913,9 +915,9 @@ function BuildSelectionInput() {
       if (current.gesture.dragging && !current.brickId) {
         const rect = canvas.getBoundingClientRect()
         const ids = selectBricksInMarquee(state.bricks, camera, rect.width, rect.height, finished.rectangle, getBuildPlateSize(state.documentMetadata))
-        state.selectBricks(current.additive ? [...new Set([...state.selectedIds, ...ids])] : ids)
+        if (!takeBrickTap(ids)) state.selectBricks(current.additive ? [...new Set([...state.selectedIds, ...ids])] : ids)
       } else if (!current.gesture.dragging && current.brickId) {
-        state.selectBrick(current.brickId, current.additive || current.explicitMode)
+        if (!takeBrickTap(current.brickId)) state.selectBrick(current.brickId, current.additive || current.explicitMode)
       } else if (shouldClearSelectionOnEmptyTap({
         dragged: current.gesture.dragging,
         hitBrickId: current.brickId,
@@ -1173,7 +1175,9 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       if (event.pointerType === 'mouse' || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return
       // Off the ghost: arm a hold over whatever brick is under the pointer.
       // Deliberately not consumed — until the hold fires this is still an
-      // ordinary camera gesture, and a hold that stays still never moves it.
+      // ordinary camera gesture, and a hold that stays still never moves it. While paint mode
+      // takes brick taps, a hold is a (slow) tap that paints, never a grab.
+      if (brickTapsTaken()) return
       const brickId = findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current)
       if (!brickId) return
       const { pointerId, pointerType } = event

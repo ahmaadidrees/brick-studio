@@ -181,3 +181,8 @@
   /* Stacked: the stage is the lower half; the message goes just under its bar and readings. */
   .brick-studio:has(.robo-code-editor) .brick-toast { left: 16px; top: calc(var(--brick-header-block) + (100vh - var(--brick-header-block)) / 2 + 150px); max-width: calc(100% - 32px); }
 }
+
+/* Lane P: the command strip's Color popover is never hidden behind the robot panel or card. It slides
+   left to clear them (CommandStrip's `data-popover-avoid`); where the screen is too narrow for that
+   (`data-over-panel`), the strip rises over the panel while the popover is open. */
+.build-shell:has(.command-strip-popover[data-over-panel]) > .command-strip { z-index: 16; }

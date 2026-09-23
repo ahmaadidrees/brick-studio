@@ -72,12 +72,14 @@ async function openStudio(width, height) {
   s.rows = () => s.steps.locator('li[data-step]').evaluateAll((items) => items.map((item) => ({ id: item.dataset.step, state: item.dataset.state, text: item.querySelector('.robotics-step-text')?.firstChild?.textContent?.trim() ?? item.textContent.trim() })))
   s.currentText = async () => { const current = s.steps.locator('[aria-current=step]'); return (await current.count()) ? (await current.first().locator('.robotics-step-text').textContent()).trim() : null }
   s.play = page.getByTestId('robotics-play-button')
+  // The panel's own folds by test id: a picked part has a More of its own (lane P).
+  const foldToggle = (name) => s.panel.getByTestId(name === 'More' ? 'robotics-more-fold' : 'robotics-parts-fold').locator('> .robotics-fold-toggle')
   s.openFold = async (name) => {
-    const toggle = s.panel.getByRole('button', { name: new RegExp(`^${name}`) })
+    const toggle = foldToggle(name)
     if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(200) }
   }
   s.closeFold = async (name) => {
-    const toggle = s.panel.getByRole('button', { name: new RegExp(`^${name}`) })
+    const toggle = foldToggle(name)
     if ((await toggle.getAttribute('aria-expanded')) === 'true') { await toggle.click(); await sleep(200) }
   }
   /** The panel's visible words, target sizes and text sizes (only what is on screen, not folded away). */
@@ -249,7 +251,8 @@ record('journey.clicks', true, `drawer ${clicks.drawer} (category and part, twic
 await s.openFold('More')
 await s.page.evaluate(() => { const panel = document.querySelector('[data-testid=robotics-panel]'); panel.scrollTop = panel.scrollHeight })
 await sleep(200)
-check('more.contents', (await s.panel.getByRole('group', { name: 'Where it runs' }).count()) === 1 && (await s.panel.getByRole('group', { name: 'Wiring' }).count()) === 1 && (await s.panel.getByRole('button', { name: 'Drive forward 40%' }).count()) === 1, 'More holds where it runs, the wiring mode and the motor tests')
+// Lane P: More in kid words ("Plug in by itself: On / Off", "Drive forward", no % or °).
+check('more.contents', (await s.panel.getByRole('group', { name: 'Where it runs' }).count()) === 1 && (await s.panel.getByRole('group', { name: 'Plug in by itself' }).count()) === 1 && (await s.panel.getByRole('button', { name: 'Drive forward', exact: true }).count()) === 1, 'More holds where it runs, plug in by itself and the motor tests')
 await s.shot('1366-10-more-open')
 await s.closeFold('More')
 await s.openFold('Parts')
@@ -269,6 +272,9 @@ await sleep(300)
 check('plug.selected', (await s.brick((state) => state.selectedId)) === leftMotorId && (await page.getByTestId('robotics-device-inspector').count()) === 1, 'clicking the left motor shows its panel under the one step that matters now')
 check('plug.focus', (await s.steps.locator('li[data-step]').count()) === 1 && (await s.currentText()) === 'Ready to drive!', `with a part picked the next steps show one row: "${await s.currentText()}"`)
 await s.shot('1366-12-part-picked')
+// Lane P: the part's card is simple first; Unplug is behind its own More.
+await page.getByTestId('robotics-device-inspector').getByRole('button', { name: /^More about / }).click()
+await sleep(150)
 await page.getByTestId('robotics-device-inspector').getByRole('button', { name: 'Unplug', exact: true }).click()
 await sleep(300)
 await page.keyboard.press('Escape')
@@ -334,8 +340,9 @@ async function screens(t) {
   await place(t, { partId: 'brick_2x2', x: 31, y: 7, z: 27 })
   await t.robo((state) => state.dismissWiringNote())
   await frameAll(t)
-  const ticked = await t.page.getByTestId('robotics-ideas').locator('li').evaluateAll((items) => items.map((item) => item.dataset.state))
-  check(`${tag}.ideas-ticked`, ticked.every((state) => state === 'done') && await t.play.isEnabled(), `${tag}: after a sensor, a light, a seat and a brick on top the ideas read ${ticked.join(', ')}; Drive still on`)
+  // Lane P: the four done give way to "You did all 4 ideas!" and more ideas, so the list never ends empty-handed.
+  const ticked = await t.page.getByTestId('robotics-ideas').locator('li').evaluateAll((items) => items.map((item) => `${item.dataset.step}:${item.dataset.state}`))
+  check(`${tag}.ideas-ticked`, ticked[0] === 'ideas-done:done' && ticked.slice(1).map((entry) => entry.split(':')[0]).join() === 'idea-paint,idea-name,idea-taller,idea-code' && await t.play.isEnabled(), `${tag}: after a sensor, a light, a seat and a brick on top the ideas read ${ticked.join(', ')}; Drive still on`)
   await t.shot(`${tag}-14-made-it-mine`)
 
   // A gate: not ready (no sensor), then stuck to its frame, then ready.

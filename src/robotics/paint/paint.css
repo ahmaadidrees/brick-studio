@@ -1,0 +1,36 @@
+/* Robot Workshop paint (lane P): the robot panel's Paint row, and the bar that takes the command
+   strip's place while painting. Every control a finger or a mouse uses is at least 44 px; text is
+   14 px on a desktop, 15 px on touch (docs/robotics/KID-UX.md). */
+.robotics-paint { display: flex; flex-direction: column; gap: 8px; margin: 0 -6px; padding: 6px; border-radius: 14px; }
+.robotics-paint.painting { background: var(--primary-soft, #e8effb); box-shadow: inset 0 0 0 2px rgba(88, 136, 218, .35); }
+.robotics-paint-chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 2px; }
+.robotics-paint-chip { min-width: 44px; min-height: 44px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 12px; background: transparent; cursor: pointer; }
+.robotics-paint-chip:hover .robotics-paint-dot { transform: scale(1.08); }
+.robotics-paint-chip:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: -1px; }
+.robotics-paint-dot { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 999px; color: #fff; box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .12), 0 0 0 1px rgba(0, 0, 0, .14); transition: transform .12s ease; }
+.robotics-paint-dot svg { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .65)); }
+.robotics-paint-chip.on .robotics-paint-dot { box-shadow: inset 0 -4px 0 rgba(0, 0, 0, .12), 0 0 0 3px #fff, 0 0 0 6px var(--studio-blue-dark, #3565bf); }
+.robotics-paint-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; font-size: 15px; font-weight: 800; color: var(--studio-ink); }
+.robotics-paint-all { width: 100%; justify-content: flex-start; font-size: 16px; }
+.robotics-paint-all-icon { flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 9px; color: #fff; box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .12), 0 0 0 1px rgba(0, 0, 0, .14); }
+.robotics-paint-all-icon svg { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .65)); }
+
+/* The bar: the command strip's look and place (it carries the strip's classes); the strip itself steps aside. */
+.build-shell:has(> .robotics-paint-bar) > .command-strip:not(.robotics-paint-bar) { display: none; }
+.robotics-paint-bar .command-strip-chip-text strong { font-size: 15px; }
+.robotics-paint-swatch { color: #fff; }
+.robotics-paint-swatch svg { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .65)); }
+.robotics-paint-hint { color: var(--studio-muted); font-size: 14px; font-weight: 800; white-space: nowrap; }
+/* A brush for a pointer while painting, its tip where the tap lands. */
+.brick-studio:has(.robotics-paint-bar) .brick-canvas {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M20 4l8 8-10 10-8-8z' fill='%23f4ca3a' stroke='%23263c51' stroke-width='2' stroke-linejoin='round'/%3E%3Cpath d='M9.5 15.5l7 7-2.5 2.5c-2 2-5 2.2-7 .8L3 29.5c.3-2.4 1.3-4.4 3.2-5.8-1.3-2.1-.9-5 1.1-7z' fill='%23e7473c' stroke='%23263c51' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") 3 29, crosshair;
+}
+
+@media (any-pointer: coarse) {
+  .robotics-paint-line, .robotics-paint-hint { font-size: 15px; }
+  .robotics-paint-dot { width: 36px; height: 36px; }
+}
+.brick-compact-layout .robotics-paint-bar .command-strip-actions { flex: 0 0 auto; margin-left: auto; }
+@media (max-width: 520px) {
+  .robotics-paint-hint { display: none; }
+}

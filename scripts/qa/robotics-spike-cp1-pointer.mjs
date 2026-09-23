@@ -86,7 +86,8 @@ const waitForSim = () => page.waitForFunction(() => window.__robotics.roboticsSt
 const resetNudge = async () => { await page.getByTestId('robotics-reset').click(); await sleep(150) }
 /** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
 const openFold = async (name) => {
-  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  // The panel's own folds by test id: a picked part has a More of its own (lane P).
+  const toggle = panel.getByTestId(name === 'More' ? 'robotics-more-fold' : 'robotics-parts-fold').locator('> .robotics-fold-toggle')
   if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
 }
 /** The camera cluster, as a student uses it: a spot hidden behind a taller part is aimed at from the top view. */
@@ -215,7 +216,7 @@ await shot('P3-rover-built')
 // Drive: it rolls; the document is untouched by the run and by Reset (the motor tests are in the panel's More).
 const before = await snapshot()
 await openFold('More')
-await page.getByRole('button', { name: 'Drive forward 40%' }).click()
+await page.getByRole('button', { name: 'Drive forward', exact: true }).click()
 await waitForSim()
 await sleep(2600)
 let sim = await simState()
@@ -229,7 +230,7 @@ check('A.reset-document-unchanged', (await snapshot()) === before, 'document ide
 // Edit while running: placing a brick with the mouse retires the run; the edit stays; Undo takes only the brick.
 // (While a run is live the creation's authored bricks are hidden and the moving bodies drawn instead, so the
 // brick goes on clear baseplate beside the rover: aiming at the plate's authored spot would hit the baseplate.)
-await page.getByRole('button', { name: 'Drive forward 40%' }).click()
+await page.getByRole('button', { name: 'Drive forward', exact: true }).click()
 await waitForSim()
 await sleep(600)
 const extra = await placeByPointer({ partId: 'brick_1x1', point: world(36.5, 0, 28.5), expect: { x: 36, y: 0, z: 28 }, note: '1 × 1 brick placed while the rover ran' })
@@ -252,7 +253,7 @@ let loose = (await creations())[0]
 const looseWheel = loose.wheels.find((w) => w.id === ids.leftWheel)
 check('A.wheel-off-note', looseWheel && !looseWheel.onAxle && looseWheel.note.startsWith('Not on an axle'), `wheel card: ${looseWheel?.note}`)
 check('A.wheel-off-selected-part', (await page.getByTestId('robotics-selected-part').textContent()).includes('Not on an axle'), 'selected wheel says Not on an axle')
-await page.getByRole('button', { name: 'Run 40%' }).first().click()
+await page.getByRole('button', { name: 'Spin', exact: true }).first().click()
 await waitForSim()
 await sleep(1600)
 sim = await simState()
@@ -308,7 +309,7 @@ await sleep(700)
 await shot('P8-gate-built')
 const gateBefore = await snapshot()
 await openFold('More')
-await page.getByRole('button', { name: 'Swing to 60°', exact: true }).first().click()
+await page.getByRole('button', { name: 'Swing open', exact: true }).first().click()
 await waitForSim()
 await sleep(2600)
 sim = await simState()
@@ -329,7 +330,7 @@ await sleep(250)
 g = (await creations())[0]
 check('B.locked', g.hinges[0].locked && g.arms === 0, `the arm is built into the frame: locked ${g.hinges[0].locked}`)
 check('B.locked-line', g.lines.ready.includes("built into the frame, so it can't swing"), `ready line: ${g.lines.ready}`)
-await page.getByRole('button', { name: 'Swing to 60°', exact: true }).first().click()
+await page.getByRole('button', { name: 'Swing open', exact: true }).first().click()
 await sleep(700)
 check('B.locked-nudge-explains', (await toast())?.includes('built into the frame'), `nudge on a locked hinge: ${await toast()}`)
 await shot('P10-gate-locked')

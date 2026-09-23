@@ -13,7 +13,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { CustomColorPicker } from './CustomColorPicker'
 import { BRICK_COLORS, BRICK_PART_MAP } from './parts'
 import { useBrickStore } from './store'
@@ -108,6 +108,42 @@ type ColorPopoverProps = {
   onClose: () => void
 }
 
+const POPOVER_GAP = 8
+
+/**
+ * Floating panels that must never cover the popover mark themselves `data-popover-avoid` (the Robot
+ * Workshop's robot panel and card). The popover slides left until it clears them, as far as the
+ * screen allows; `over` says it still could not (the robotics stylesheet then lifts the strip over
+ * the panel). Nothing is marked in the studio without the robotics prototype, so there it never
+ * moves and its entrance animation is untouched.
+ */
+function useClearOfMarkedPanels(popover: RefObject<HTMLDivElement | null>) {
+  const [placement, setPlacement] = useState({ shift: 0, over: false })
+  const applied = useRef(0)
+  useLayoutEffect(() => {
+    const measure = () => {
+      const element = popover.current
+      const marked = [...document.querySelectorAll<HTMLElement>('[data-popover-avoid]')]
+      if (!element || !marked.length) return
+      // Measured where it will rest: the entrance animation (a slide) is finished first.
+      element.getAnimations?.().forEach((animation) => animation.finish())
+      const rect = element.getBoundingClientRect()
+      const left = rect.left + applied.current
+      const right = rect.right + applied.current
+      let needed = 0
+      const boxes = marked.map((panel) => panel.getBoundingClientRect()).filter((box) => box.width > 0 && box.height > 0 && box.bottom > rect.top && box.top < rect.bottom)
+      for (const box of boxes) if (box.left < right && box.right > left) needed = Math.max(needed, right - box.left + POPOVER_GAP)
+      const next = Math.max(0, Math.min(needed, left - POPOVER_GAP))
+      applied.current = next
+      setPlacement({ shift: next, over: boxes.some((box) => box.left < right - next && box.right > left - next) })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [popover])
+  return placement
+}
+
 /**
  * Non-modal popover above the Color button. Escape and an outside tap close it (Escape is taken in the
  * capture phase so the builder shortcut does not also clear the selection); "Any color" stacks the
@@ -116,6 +152,7 @@ type ColorPopoverProps = {
 function ColorPopover({ color, count, onPick, onClose }: ColorPopoverProps) {
   const panel = useRef<HTMLDivElement>(null)
   const headingId = useId()
+  const { shift, over } = useClearOfMarkedPanels(panel)
   useEffect(() => {
     panel.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -140,7 +177,7 @@ function ColorPopover({ color, count, onPick, onClose }: ColorPopoverProps) {
     }
   }, [onClose])
   return (
-    <div ref={panel} className="command-strip-popover" role="dialog" aria-labelledby={headingId} data-shortcut-pause="">
+    <div ref={panel} className="command-strip-popover" role="dialog" aria-labelledby={headingId} data-shortcut-pause="" data-over-panel={over ? '' : undefined} style={shift ? { translate: `${-shift}px 0` } : undefined}>
       <div className="command-strip-popover-title" id={headingId}>{count > 1 ? `Color all ${count} bricks` : 'Brick color'}</div>
       <ColorPalette targetColor={color} onPick={onPick} label="Brick color" />
     </div>

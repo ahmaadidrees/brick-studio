@@ -53,6 +53,11 @@ function inspect(id: string) {
   act(() => useBrickStore.getState().selectBrick(id))
   return render(<Inspected />)
 }
+/** Opens the part's own More (ports, the cable, the code line and the wiring buttons live there; lane P). */
+function more() {
+  const toggle = screen.getByRole('button', { name: /^More about / })
+  if (toggle.getAttribute('aria-expanded') !== 'true') fireEvent.click(toggle)
+}
 const chip = (port: string) => screen.getAllByRole('button').find((button) => button.dataset.port === port)!
 const stateOf = () => screen.getByTestId('wiring-state').textContent
 const chipStates = () => screen.getAllByRole('button').filter((button) => button.classList.contains('wiring-port')).map((button) => `${button.dataset.port}:${button.dataset.state}`).join(' ')
@@ -66,11 +71,18 @@ beforeEach(() => {
 })
 
 describe('a device', () => {
-  it('shows its name, port, the four port chips, what it is doing and the block that uses it', () => {
+  it('simple first: its name and one line in a third grader’s words; ports, the cable and the code line behind More', () => {
     const { left } = rover()
     inspect(left)
     const inspector = screen.getByTestId('robotics-device-inspector')
     expect(screen.getByRole('textbox', { name: 'Device name' })).toHaveValue('Left motor')
+    expect(within(inspector).getByTestId('wiring-does')).toHaveTextContent('Turns a wheel once it has an axle · plugged in')
+    // Nothing technical until More: no port letters, no code line, no Unplug or Move to port.
+    expect(inspector.textContent).not.toMatch(/port [A-D]\b|\bport\b|run .* at|reversed|Unplug|Move to|name follows/i)
+    expect(screen.queryByTestId('wiring-state')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Unplug' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'More about Left motor' })).toHaveAttribute('aria-expanded', 'false')
+    more()
     expect(within(inspector).getByTestId('wiring-sub')).toHaveTextContent('Motor · nothing in its socket')
     expect(stateOf()).toBe('Port A')
     expect(chipStates()).toBe('A:this B:used C:used D:free')
@@ -88,6 +100,7 @@ describe('a device', () => {
   it('a chip on a free port moves it there; Unplug shows it unplugged; Plug into port brings it back', () => {
     const { left } = rover()
     inspect(left)
+    more()
     fireEvent.click(chip('D'))
     expect(portOf(left)).toBe('D')
     expect(stateOf()).toBe('Port D')
@@ -99,14 +112,47 @@ describe('a device', () => {
     expect(screen.getByTestId('wiring-block')).toHaveTextContent('Not plugged in')
     expect(chipStates()).toBe('A:free B:used C:used D:free')
     expect(chip('A')).toHaveAccessibleName('Port A: free. Plug Left motor in here')
+    // Unplugged, the first line says so and offers one big "Plug it in".
+    expect(screen.getByTestId('wiring-does')).toHaveTextContent('Turns a wheel once it has an axle · not plugged in')
+    expect(screen.getByRole('button', { name: 'Plug it in' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Plug into port A' }))
     expect(portOf(left)).toBe('A')
     expect(screen.getByTestId('wiring-block')).not.toHaveTextContent('Not plugged in')
+    expect(screen.queryByRole('button', { name: 'Plug it in' })).toBeNull()
+  })
+
+  it('"Plug it in" plugs it into the first free port with one tap', () => {
+    const { left } = rover()
+    act(() => { useBrickStore.getState().selectBrick(left) })
+    render(<Inspected />)
+    more()
+    fireEvent.click(screen.getByRole('button', { name: 'Unplug' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Plug it in' }))
+    expect(portOf(left)).toBe('A')
+    expect(screen.getByTestId('wiring-does')).toHaveTextContent('plugged in')
+  })
+
+  it('each part says what it does: a wheel side, a sensor’s eyes, a light; a part off any robot says so', () => {
+    const ids = rover()
+    const leftAxle = place(ROBOTICS_PART_IDS.axleShort, 26, 0, 32)
+    place(ROBOTICS_PART_IDS.axleShort, 34, 0, 32)
+    place(ROBOTICS_PART_IDS.wheel, 25, 0, 31)
+    place(ROBOTICS_PART_IDS.wheel, 36, 0, 31)
+    expect(leftAxle).toBeTruthy()
+    const light = place(ROBOTICS_PART_IDS.light, 33, 1, 28)
+    const loose = place(ROBOTICS_PART_IDS.motor, 50, 0, 50)
+    const line = (id: string) => { cleanup(); inspect(id); return screen.getByTestId('wiring-does').textContent }
+    expect(line(ids.left)).toBe('Turns the left wheel · plugged in')
+    expect(line(ids.right)).toBe('Turns the right wheel · plugged in')
+    expect(line(ids.sensor)).toBe('The robot’s eyes: it sees what is in front · plugged in')
+    expect(line(light)).toBe('Lights up in a color · plugged in')
+    expect(line(loose)).toBe('Not on a robot yet · add a hub to plug it in')
   })
 
   it('a chip on a used port swaps with that device', () => {
     const { left, right } = rover()
     inspect(left)
+    more()
     fireEvent.click(chip('B'))
     expect([portOf(left), portOf(right)]).toEqual(['B', 'A'])
     expect(stateOf()).toBe('Port B')
@@ -116,6 +162,7 @@ describe('a device', () => {
   it('renames from the name field on Enter; Escape abandons the edit', () => {
     const { left } = rover()
     inspect(left)
+    more()
     const field = screen.getByRole('textbox', { name: 'Device name' })
     fireEvent.change(field, { target: { value: 'Big wheel' } })
     fireEvent.keyDown(field, { key: 'Escape' })
@@ -133,6 +180,9 @@ describe('a device', () => {
     place(ROBOTICS_PART_IDS.light, 33, 1, 28)
     const second = place(ROBOTICS_PART_IDS.light, 28, 1, 27)
     inspect(second)
+    expect(screen.getByTestId('wiring-does')).toHaveTextContent('Lights up in a color · not plugged in')
+    expect(screen.queryByRole('button', { name: 'Plug it in' })).toBeNull()
+    more()
     expect(stateOf()).toBe('No free port')
     expect(chipStates()).toBe('A:used B:used C:used D:used')
     expect(screen.queryByRole('button', { name: /^Plug into/ })).toBeNull()
@@ -143,6 +193,7 @@ describe('a device', () => {
     place('plate_6x8', 28, 0, 26)
     const motor = place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
     inspect(motor)
+    more()
     expect(stateOf()).toBe('No hub')
     expect(screen.queryByRole('group')).toBeNull()
   })
@@ -151,6 +202,7 @@ describe('a device', () => {
     const { left } = rover()
     const creationId = section().creations[0].id
     inspect(left)
+    more()
     await act(async () => { await robotics().startSim(creationId) })
     act(() => {
       robotics().nudgeMotor(left, 0.4)
@@ -162,10 +214,55 @@ describe('a device', () => {
   })
 })
 
+describe('the part card (Sam, 8, on an iPad)', () => {
+  it('shows a picture; the name only becomes a text field from its pencil, so a low tap never opens the keyboard', () => {
+    const { left } = rover()
+    inspect(left)
+    const inspector = screen.getByTestId('robotics-device-inspector')
+    expect(inspector.querySelector('.wiring-picture .part-thumbnail')).not.toBeNull()
+    const field = screen.getByRole('textbox', { name: 'Device name' })
+    expect(field).toHaveAttribute('readonly')
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Left motor' }))
+    expect(field).not.toHaveAttribute('readonly')
+    expect(document.activeElement).toBe(field)
+    fireEvent.change(field, { target: { value: 'Zoom' } })
+    fireEvent.keyDown(field, { key: 'Enter' })
+    expect(section().devices[left]).toEqual({ name: 'Zoom' })
+    expect(screen.getByRole('textbox', { name: 'Device name' })).toHaveAttribute('readonly')
+  })
+
+  it('big Turn and Remove act on this part alone', () => {
+    const { left, right } = rover()
+    inspect(left)
+    const before = useBrickStore.getState().bricks.find((brick) => brick.id === left)!.rotation
+    fireEvent.click(screen.getByRole('button', { name: 'Turn Left motor' }))
+    expect(useBrickStore.getState().bricks.find((brick) => brick.id === left)!.rotation).toBe((before + 1) % 4)
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Rotate brick')
+    // A motor's default name follows the way it faces, so after a turn it is found by what it is.
+    fireEvent.click(screen.getByTestId('wiring-remove'))
+    expect(useBrickStore.getState().bricks.some((brick) => brick.id === left)).toBe(false)
+    expect(useBrickStore.getState().bricks.some((brick) => brick.id === right)).toBe(true)
+  })
+})
+
 describe('the hub', () => {
+  it('is the robot’s brain and says what is plugged in by name, no port letters; More lists the ports', () => {
+    rover()
+    const hub = section().connections[0].hubId
+    inspect(hub)
+    const inspector = screen.getByTestId('robotics-hub-inspector')
+    expect(within(inspector).getByTestId('wiring-does')).toHaveTextContent('The robot’s brain')
+    expect(within(inspector).getByTestId('hub-plugged')).toHaveTextContent('Plugged in: Left motor, Right motor and Front sensor')
+    expect(inspector.textContent).not.toMatch(/\bport\b|Cables route themselves/i)
+    expect(screen.queryByRole('list', { name: 'Ports' })).toBeNull()
+    more()
+    expect(screen.getByRole('list', { name: 'Ports' })).toBeInTheDocument()
+  })
+
   it('lists its ports with their devices; a port selects its device; a deleted device’s port reads free (was …)', () => {
     const { hub, right, sensor } = rover()
     inspect(hub)
+    more()
     const list = screen.getByRole('list', { name: 'Ports' })
     expect(within(list).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['ALeft motor', 'BRight motor', 'CFront sensor', 'DPort D · free'])
     fireEvent.click(screen.getByRole('button', { name: 'Port C: Front sensor. Select Front sensor' }))
@@ -175,19 +272,22 @@ describe('the hub', () => {
       useBrickStore.getState().deleteSelected()
       useBrickStore.getState().selectBrick(hub)
     })
+    expect(screen.getByTestId('hub-plugged')).toHaveTextContent('Plugged in: Left motor and Front sensor')
+    more()
     expect(within(screen.getByRole('list', { name: 'Ports' })).getAllByRole('listitem')[1]).toHaveTextContent('Port B · free (was Right motor)')
   })
 })
 
 describe('the wiring mode toggle', () => {
-  it('switches the project between assisted and manual, pressed state and all', () => {
+  it('"Plug in by itself: On / Off" switches the project between assisted and manual, pressed state and all', () => {
     rover()
     render(<WiringModeToggle />)
-    const group = screen.getByRole('group', { name: 'Wiring' })
-    expect(within(group).getByRole('button', { name: 'assisted' })).toHaveAttribute('aria-pressed', 'true')
-    fireEvent.click(within(group).getByRole('button', { name: 'manual' }))
+    const group = screen.getByRole('group', { name: 'Plug in by itself' })
+    expect(within(group).getByRole('button', { name: 'On' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(within(group).getByRole('button', { name: 'Off' }))
     expect(section().settings.wiring).toBe('manual')
-    expect(within(group).getByRole('button', { name: 'manual' })).toHaveAttribute('aria-pressed', 'true')
-    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Wiring: manual')
+    expect(within(group).getByRole('button', { name: 'Off' })).toHaveAttribute('aria-pressed', 'true')
+    expect(useBrickStore.getState().undoStack.at(-1)?.label).toBe('Plug in by itself: off')
+    expect(useBrickStore.getState().toast).toBe('Plug in by itself is off. New parts wait for you to plug them in.')
   })
 })
