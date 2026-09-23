@@ -100,7 +100,7 @@ export type RunSpace = 'testPlate' | 'myWorld'
  * so a sensor has something to see in My world.
  */
 export type TestProp =
-  | { id: string; kind: 'wall'; center: Vec3; size: Vec3 }
+  | { id: string; kind: 'wall'; center: Vec3; size: Vec3; /** A colour over its brick pattern (the Drive view's course posts); plain brick when absent. Additive, drive lane. */ color?: string }
   | { id: string; kind: 'visitor'; path: Vec3[]; size: Vec3; secondsPerLeg: number; /** Which way the figure looks while it waits (world, horizontal). Additive, run lane. */ facing?: Vec3 }
 
 export type SensorBeam = { deviceId: DeviceId; from: Vec3; to: Vec3; hit: boolean }

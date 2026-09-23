@@ -335,7 +335,7 @@ async function scrollIntoViewByScript(spec, first) {
 }
 
 const PART_NAMES = { plate_6x8: '6 × 8 Plate', robo_hub: 'Hub', robo_motor: 'Motor', robo_axle_short: 'Short axle', robo_wheel: 'Wheel', robo_distance_sensor: 'Distance sensor' }
-const CATEGORY = { plate_6x8: 'Plates', robo_hub: 'Robotics', robo_motor: 'Robotics', robo_axle_short: 'Robotics', robo_wheel: 'Robotics', robo_distance_sensor: 'Robotics' }
+const CATEGORY = { plate_6x8: 'Plates', robo_hub: 'Robots', robo_motor: 'Robots', robo_axle_short: 'Robots', robo_wheel: 'Robots', robo_distance_sensor: 'Robots' }
 const sheetOpen = () => qa(() => Boolean([...document.querySelectorAll('[role="dialog"]')].find((d) => d.querySelector('.part-grid'))))
 const drawerVisible = () => qa(() => { const grid = document.querySelector('.part-grid'); if (!grid) return false; const r = grid.getBoundingClientRect(); return r.width > 0 && r.height > 0 })
 

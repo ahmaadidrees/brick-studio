@@ -256,7 +256,7 @@ describe('the gate path', () => {
 
   it('no sensor: one, so it sees who walks up; then plugged in; then ready to try', () => {
     const noSensor = robot(without(gateBricks(), G.sensor), G.hinge, GATE_WIRES.slice(0, 1))
-    expect(current(noSensor.rows)).toMatchObject({ id: 'sensor', text: 'Add a sensor so it sees who walks up.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.distanceSensor } })
+    expect(current(noSensor.rows)).toMatchObject({ id: 'sensor', text: 'Add a sensor so it can see.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.distanceSensor } })
     const unplugged = robot(gateBricks(), G.hinge, GATE_WIRES.slice(0, 1))
     expect(current(unplugged.rows)).toMatchObject({ id: 'plug', text: 'Plug Front sensor into the hub.', action: { kind: 'plug', deviceId: G.sensor } })
     const ready = robot(gateBricks(), G.hinge, GATE_WIRES)

@@ -18,6 +18,8 @@ import './robotics.css'
 
 /** The Code view (Blockly and all) loads only when a creation is opened in it. */
 const CodeView = lazy(() => import('../code/CodeView'))
+/** The Drive view (Drive / Try it) loads only when a robot is opened in it. */
+const DriveView = lazy(() => import('../drive/DriveView'))
 
 /**
  * The Robot Workshop's build-mode panels (kid-UX pass, docs/robotics/KID-UX.md §G): the
@@ -39,9 +41,11 @@ export function RoboticsPanel({ compact = false, live = false }: { compact?: boo
   }, [])
   const card = useRoboticsStore((state) => state.card)
   const coding = useCodeView((state) => state.creationId !== null)
+  const driving = useDriveView((state) => state.creationId !== null)
   // Contract §8: no Code or Run in a live room.
   useEffect(() => { if (live && coding) useCodeView.getState().closeCode() }, [live, coding])
   if (coding && !live) return <Suspense fallback={null}><CodeView /></Suspense>
+  if (driving) return <Suspense fallback={null}><DriveView live={live} /></Suspense>
   return (
     <>
       <WiringLine />

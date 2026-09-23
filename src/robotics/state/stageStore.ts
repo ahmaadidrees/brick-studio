@@ -2,9 +2,10 @@ import { create } from 'zustand'
 import { useBrickStore, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import type { DerivedCreation } from '../model/creations'
+import type { PartMap } from '../model/grid'
 import type { DeviceId, ProgramKey } from '../program/types'
 import type { StageRunController } from '../run/controller'
-import type { ProgramRuntime, RunObservation, RunSpace } from '../run/types'
+import type { ProgramRuntime, RunObservation, RunSpace, TestProp } from '../run/types'
 import type { RapierModule } from '../sim/colliders'
 import { computeModel, simBehaviorKey, useRoboticsStore } from './roboticsStore'
 
@@ -24,7 +25,20 @@ import { computeModel, simBehaviorKey, useRoboticsStore } from './roboticsStore'
  *   run space, plate, parts), resets an open stage at the new built pose — the construction
  *   is the truth — or closes it when the creation is gone; leaving build mode closes it.
  *   Program and name edits do neither.
+ * - `openStage(creationId, space, options)` (additive, the Drive view): `options.props` replaces
+ *   `defaultProps` (a test plate course) and `options.freeBodies` leaves every body free in either
+ *   space (in My world a robot built on the plate rolls off it, as a ride in Explore does). The
+ *   options stay with the session, so a reset or an edit rebuilds the same stage.
  */
+export type StageGeometry = { bricks: readonly BrickInstance[]; partMap: PartMap; plateSize: number }
+
+export type StageOptions = {
+  /** The test props instead of `defaultProps`, computed on every (re)build from the creation as it runs. */
+  props?: (creation: DerivedCreation, space: RunSpace, geometry: StageGeometry) => TestProp[]
+  /** Every body free in either space (the creation is derived as on the test plate; My world keeps its scenery). */
+  freeBodies?: boolean
+}
+
 export type StageSession = {
   creationId: string
   space: RunSpace
@@ -38,6 +52,8 @@ export type StageSession = {
   behaviorKey: string
   /** Increments on every (re)build, so a scene can remount cleanly. */
   generation: number
+  /** What `openStage` was given beyond the space (none for the Code view). */
+  options?: StageOptions
 }
 
 /** Why the stage was last rebuilt without being asked to (the Code view can say "Changed · the run was reset"). */
@@ -49,7 +65,7 @@ export type StageState = {
   /** The controller's observation, throttled (~10 Hz while the scene runs; immediately after every stage action). */
   stageObservation: RunObservation | null
   stageNotice: StageNotice
-  openStage: (creationId: string, space?: RunSpace) => Promise<void>
+  openStage: (creationId: string, space?: RunSpace, options?: StageOptions) => Promise<void>
   runOnStage: (runtime: ProgramRuntime | null) => void
   stopStage: () => void
   resetStage: () => void
@@ -76,18 +92,20 @@ async function loadModules(): Promise<StageModules> {
 
 /** Every open, reset and close advances this; an open that finds it moved on after an await was cancelled. */
 let stageGeneration = 0
-let pendingOpen: { creationId: string; space: RunSpace | undefined } | null = null
+let pendingOpen: { creationId: string; space: RunSpace | undefined; options: StageOptions | undefined } | null = null
 
-function build(creationId: string, space: RunSpace | undefined, { rapier, run }: StageModules): StageSession | null {
+function build(creationId: string, space: RunSpace | undefined, { rapier, run }: StageModules, options?: StageOptions): StageSession | null {
   const brickState = useBrickStore.getState()
   const model = computeModel(brickState)
   const saved = model.creations.find((creation) => creation.id === creationId)
   if (!saved) return null
   const resolved = space ?? saved.testSpace
-  const creation = run.deriveCreationForSpace(model.input, creationId, resolved)
+  const creation = run.deriveCreationForSpace(model.input, creationId, options?.freeBodies ? 'testPlate' : resolved)
   if (!creation) return null
-  const controller = run.createRunController({ rapier, bricks: brickState.bricks, partMap: model.input.partMap, plateSize: model.input.plateSize, creation, space: resolved })
-  return { creationId, space: resolved, spaceChosen: space !== undefined, controller, creation, plateSize: model.input.plateSize, bricks: brickState.bricks, behaviorKey: simBehaviorKey(brickState), generation: stageGeneration }
+  const geometry: StageGeometry = { bricks: brickState.bricks, partMap: model.input.partMap, plateSize: model.input.plateSize }
+  const props = options?.props ? options.props(creation, resolved, geometry) : undefined
+  const controller = run.createRunController({ rapier, ...geometry, creation, space: resolved, props })
+  return { creationId, space: resolved, spaceChosen: space !== undefined, controller, creation, plateSize: model.input.plateSize, bricks: brickState.bricks, behaviorKey: simBehaviorKey(brickState), generation: stageGeneration, ...(options ? { options } : {}) }
 }
 
 /** Rebuilds the open stage synchronously at the built pose (Rapier is loaded once a stage has opened). */
@@ -96,7 +114,7 @@ function rebuild(notice: StageNotice) {
   if (!current || !modules) return
   stageGeneration += 1
   current.controller.dispose()
-  const next = build(current.creationId, current.spaceChosen ? current.space : undefined, modules)
+  const next = build(current.creationId, current.spaceChosen ? current.space : undefined, modules, current.options)
   useStageStore.setState({ stage: next, stageLoading: false, stageObservation: next ? next.controller.observe() : null, stageNotice: next ? notice : null })
 }
 
@@ -112,20 +130,20 @@ export const useStageStore = create<StageState>((set, get) => {
     stageObservation: null,
     stageNotice: null,
 
-    openStage: async (creationId, space) => {
+    openStage: async (creationId, space, options) => {
       installStageWatcher()
       get().closeStage()
       // The nudge and the stage never share the scene.
       useRoboticsStore.getState().resetSim()
       const token = stageGeneration
       const cancelled = () => token !== stageGeneration
-      pendingOpen = { creationId, space }
+      pendingOpen = { creationId, space, options }
       set({ stageLoading: true })
       try {
         const loaded = await loadModules()
         if (cancelled()) return
         // From here nothing yields: the stage is built from the document as it is now.
-        const session = build(creationId, space, loaded)
+        const session = build(creationId, space, loaded, options)
         set({ stage: session, stageObservation: session ? session.controller.observe() : null, stageNotice: null })
       } finally {
         if (!cancelled()) {
@@ -183,7 +201,7 @@ function onDocumentChange(state: BrickState, previous: BrickState) {
   if (!stageState.stage) {
     // Still opening: start again from the edited document (the generation token cancels the old start).
     const pending = pendingOpen
-    if (pending) void stageState.openStage(pending.creationId, pending.space)
+    if (pending) void stageState.openStage(pending.creationId, pending.space, pending.options)
     return
   }
   if (!computeModel(state).creations.some((creation) => creation.id === stageState.stage!.creationId)) stageState.closeStage()

@@ -347,7 +347,7 @@ async function screens(t) {
   await place(t, { partId: 'robo_hub', x: 20, y: 1, z: 24 })
   await t.robo((state) => state.dismissWiringNote())
   await frameAll(t)
-  check(`${tag}.gate-not-ready`, (await t.currentText()) === 'Add a sensor so it sees who walks up.' && (await t.play.textContent()).trim() === 'Try it' && await t.play.isDisabled(), `${tag}: Try it is off; "${await t.currentText()}"`)
+  check(`${tag}.gate-not-ready`, (await t.currentText()) === 'Add a sensor so it can see.' && (await t.play.textContent()).trim() === 'Try it' && await t.play.isDisabled(), `${tag}: Try it is off; "${await t.currentText()}"`)
   await audit(t, `${tag}.gate`)
   await t.shot(`${tag}-16-gate-not-ready`)
   const bridge = [await place(t, { partId: 'brick_2x2', x: 23, y: 2, z: 21 }), await place(t, { partId: 'brick_2x2', x: 23, y: 5, z: 21 })]

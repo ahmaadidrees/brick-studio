@@ -207,7 +207,7 @@ function gateSteps(creation: DerivedCreation): ReadinessStep[] {
     steps.push({ id: 'unstick', text: 'The arm swings free.', done: false, now: 'The arm is stuck to the frame. Take off the brick that joins them.', brickId: holder, fix: 'select' })
   }
   steps.push(
-    { id: 'sensor', text: 'Add a sensor so it sees who walks up.', done: creation.sensors.length > 0, now: 'Add a sensor so it sees who walks up.', brickId: null },
+    { id: 'sensor', text: 'Add a sensor so it can see.', done: creation.sensors.length > 0, now: 'Add a sensor so it can see.', brickId: null },
     plugStep([...creation.hinges, ...creation.sensors], 'Plug the parts into the hub.'),
   )
   return steps

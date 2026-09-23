@@ -154,6 +154,8 @@ describe('the panel', () => {
     expect(currentStep()).toHaveTextContent('Ready to drive!')
     fireEvent.click(currentStep()!)
     expect(useDriveView.getState().creationId).toBe(robotId())
+    // The Drive view takes the panel's place while it is open (lane D); back to build for the rest.
+    act(() => useDriveView.getState().closeDrive())
     const ideas = screen.getByTestId('robotics-ideas')
     expect(within(ideas).getAllByRole('listitem').map((item) => `${item.dataset.step}:${item.dataset.state}`)).toEqual(['idea-sensor:done', 'idea-light:todo', 'idea-seat:todo', 'idea-stack:todo'])
     fireEvent.click(within(ideas).getByRole('button', { name: /Add a seat/ }))
@@ -258,7 +260,7 @@ describe('a gate and a signal light', () => {
     gate()
     expect(playButton()).toHaveTextContent('Try it')
     expect(playButton()).toBeDisabled()
-    expect(currentStep()).toHaveTextContent('Add a sensor so it sees who walks up.')
+    expect(currentStep()).toHaveTextContent('Add a sensor so it can see.')
     place(ROBOTICS_PART_IDS.distanceSensor, 21, 7, 27)
     expect(playButton()).toBeEnabled()
     expect(currentStep()).toHaveTextContent('Ready to try!')

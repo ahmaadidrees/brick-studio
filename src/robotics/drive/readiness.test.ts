@@ -47,7 +47,7 @@ describe('readiness', () => {
   it('a gate needs an arm and a sensor before it can be tried', () => {
     const wires: RoboticsConnection[] = [{ deviceId: GATE_IDS.hinge, hubId: GATE_IDS.hub, port: 'A' }]
     expect(readiness(creationOf(gateBricks().filter((brick) => brick.id !== GATE_IDS.door && brick.id !== GATE_IDS.sensor), GATE_IDS.hinge, wires)).reason).toBe('Put a long brick on top of Arm motor. It will swing.')
-    expect(readiness(creationOf(gateBricks().filter((brick) => brick.id !== GATE_IDS.sensor), GATE_IDS.hinge, wires))).toEqual({ kind: 'try', ready: false, reason: 'Add a sensor so it sees who walks up.' })
+    expect(readiness(creationOf(gateBricks().filter((brick) => brick.id !== GATE_IDS.sensor), GATE_IDS.hinge, wires))).toEqual({ kind: 'try', ready: false, reason: 'Add a sensor so it can see.' })
   })
   it('a hub alone has nothing to play yet', () => {
     expect(readiness(creationOf(roverBricks().filter((brick) => brick.id === ROVER_IDS.plate || brick.id === ROVER_IDS.hub), ROVER_IDS.hub, []))).toEqual({ kind: null, ready: false, reason: 'Add motors to make it move, or a sensor and a light.' })
