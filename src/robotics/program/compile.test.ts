@@ -202,6 +202,16 @@ describe('helpers on the drive pair', () => {
     expect(result.ir.scripts[0].body).toEqual([{ op: 'stopAllMotors', blockId: 'stop' }])
   })
 
+  it('without a drive pair the helper says why, from the build: a wheel off its axle', () => {
+    const { creation } = wiredRover({ leftWheelOff: true })
+    const context = compileContextFor(creation)
+    expect(context.drivePairMissing).toBe('Left motor has no wheel on its axle')
+    const result = compileProgram(drive('forward', 40), context)
+    expect(result.diagnostics).toEqual([expect.objectContaining({ code: 'drive.no-pair', severity: 'error', message: 'Choose two drive motors first · Left motor has no wheel on its axle' })])
+    // With a drive pair there is nothing to explain.
+    expect(compileContextFor(wiredRover().creation)).not.toHaveProperty('drivePairMissing')
+  })
+
   it('with the rover fixture: left motor forward, right motor (mounted mirror-wise) negated', () => {
     const { creation } = wiredRover()
     const result = compileProgram(drive('forward', 40), compileContextFor(creation))

@@ -36,6 +36,8 @@ export type CompileContext = {
   devices: Readonly<Record<DeviceId, CompileDevice>>
   /** The configured drive pair, if the creation has one. `reversedIds` flip the sign of their power. */
   drivePair: { leftId: DeviceId; rightId: DeviceId; reversedIds: readonly DeviceId[] } | null
+  /** Without a drive pair: why the build offers none, in the card's words ("Left motor has no wheel on its axle"). */
+  drivePairMissing?: string
   /** Last known names, for blocks naming a device that is gone (`program.deviceNames`). */
   deviceNames: Readonly<Record<DeviceId, string>>
   /**
@@ -58,13 +60,25 @@ export function compileContextFor(creation: DerivedCreation, program?: Pick<Robo
   for (const light of creation.lights) add('light', light)
   for (const button of creation.buttons) add('button', button)
   const pair = creation.drivePair
+  const missing = pair ? null : whyNoDrivePair(creation)
   return {
     creationName: creation.name,
     devices,
     drivePair: pair ? { leftId: pair.leftId, rightId: pair.rightId, reversedIds: [...pair.reversedIds] } : null,
+    ...(missing ? { drivePairMissing: missing } : {}),
     deviceNames: { ...(program?.deviceNames ?? {}) },
     ...(worldBrickIds ? { worldBrickIds } : {}),
   }
+}
+
+/** Why a creation with motors has no drive pair (two motors with wheels whose axles line up), or null. */
+function whyNoDrivePair(creation: DerivedCreation): string | null {
+  const { motors } = creation
+  if (motors.length === 0) return null
+  if (motors.filter((motor) => motor.wheelIds.length > 0).length >= 2) return 'its wheeled motors’ axles don’t line up'
+  if (motors.length === 1) return `${motors[0].name} is its only motor`
+  const bare = motors.filter((motor) => motor.wheelIds.length === 0).slice(0, 2)
+  return bare.map((motor) => `${motor.name} has ${motor.axleId ? 'no wheel on its axle' : 'nothing in its socket'}`).join(' · ')
 }
 
 type Ctx = {
@@ -250,7 +264,7 @@ function drivePair(block: WorkspaceBlockJson, ctx: Ctx): CompileContext['drivePa
   const blockId = idOf(block, ctx)
   const pair = ctx.context.drivePair
   if (!pair) {
-    report(ctx, 'error', 'drive.no-pair', 'Choose two drive motors first', blockId)
+    report(ctx, 'error', 'drive.no-pair', ctx.context.drivePairMissing ? `Choose two drive motors first · ${ctx.context.drivePairMissing}` : 'Choose two drive motors first', blockId)
     return null
   }
   for (const motorId of [pair.leftId, pair.rightId]) checkDevice(ctx, blockId, motorId, 'motor')

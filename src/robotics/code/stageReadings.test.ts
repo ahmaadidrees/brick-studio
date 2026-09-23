@@ -47,6 +47,10 @@ describe('readings chips', () => {
     expect(readingChips(creation, null).map((chip) => [chip.label, chip.value])).toEqual([
       ['Front sensor', '—'], ['Motors', 'Left motor not plugged in'], ['Speed', '—'],
     ])
+    expect(readingChips(creation, null)[1].detail).toBe('Left motor · Right motor')
+    // While it runs, the motor still plugged in shows that it turns.
+    const running = readingChips(creation, observation({ motors: { [ROVER_IDS.leftMotor]: motor({ plugged: false, speedPercent: 4 }), [ROVER_IDS.rightMotor]: motor({ powerPercent: 40, speedPercent: 26, forwardPercent: -26 }) } }))
+    expect(running[1]).toMatchObject({ value: 'Left motor not plugged in', detail: 'Right motor speed −26 %', tone: 'warn' })
   })
 
   it('reads a gate’s arm in degrees, and says when it is stuck', () => {
