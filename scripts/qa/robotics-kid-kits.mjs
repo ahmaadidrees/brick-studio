@@ -175,8 +175,9 @@ const focus = await desk.brick((state) => ({ selected: [...state.selectedIds], t
 // Lane P: nothing stays picked after a kit lands (a picked kit painted its tyres from the strip's Color and
 // swallowed the next click on one of its parts); the panel shows the new robot all the same (A.panel-shows-buggy).
 check('A.focused', focus.selected.length === 0, 'nothing stays picked, so the next click picks one part; the panel shows the new robot')
-const frame = await desk.robo((state) => ({ brickIds: state.frameRequest?.brickIds ?? [], points: state.frameRequest?.points?.length ?? 0 }))
-check('A.framed', JSON.stringify(frame.brickIds) === JSON.stringify(buggy.brickIds) && frame.points === 4, 'the camera framed the new robot with ground around it')
+const frame = await desk.robo((state) => ({ brickIds: state.frameRequest?.brickIds ?? [], snug: state.frameRequest?.snug === true }))
+// Lane P: framed snug, the robot filling most of the canvas the drawer and the panel leave free (was: with ground around it).
+check('A.framed', JSON.stringify(frame.brickIds) === JSON.stringify(buggy.brickIds) && frame.snug, 'the camera framed the new robot snug in the free canvas')
 const panelText = await page.getByTestId('robotics-panel').evaluate((element) => `${element.innerText} ${[...element.querySelectorAll('input')].map((input) => input.value).join(' ')}`).catch(() => '')
 check('A.panel-shows-buggy', panelText.includes('Buggy'), 'the robot panel shows Buggy')
 check('A.toast', focus.toast === 'Buggy is ready to drive!', `status line: ${focus.toast}`)

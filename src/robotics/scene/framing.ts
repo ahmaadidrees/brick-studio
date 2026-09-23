@@ -1,6 +1,7 @@
 import type { BuildBounds } from '../../brick/bounds'
 import { createBuildFramePose, type BuildCameraPoint, type BuildFramePose } from '../../brick/buildCamera'
-import type { ViewPreset } from '../../brick/types'
+import { BRICK_PART_MAP, PLATE_HEIGHT, STUD, brickWorldPosition, rotatedSize } from '../../brick/parts'
+import type { BrickInstance, ViewPreset } from '../../brick/types'
 
 /**
  * Framing a creation inside the free canvas area. Panels sit over the canvas (the
@@ -139,4 +140,71 @@ export function boundsWithPoints(bounds: BuildBounds, points: readonly Vec[], pa
 export function viewOffsetFor(viewport: { width: number; height: number }, insets: CanvasInsets): { x: number; y: number } {
   const free = freeArea(viewport, insets)
   return { x: (free.left + free.right) / 2 - viewport.width / 2, y: (free.top + free.bottom) / 2 - viewport.height / 2 }
+}
+
+/**
+ * How far along `direction` (from `target`) a camera stands so the `points` fill `fill` of the canvas
+ * area the panels leave free, as the view offset shows it (`viewOffsetFor` puts `target` at that area's
+ * middle): the nearest distance at which every point stays within that share of the free area's half
+ * width and half height (lane P: a kit framed at 1024 × 768 was drawn 130 px wide in a 364 px gap).
+ * Pure pinhole projection with the camera's vertical field of view; null when nothing fits.
+ */
+export function snugFrameDistance(
+  points: readonly Vec[],
+  target: Vec,
+  direction: Vec,
+  verticalFovDegrees: number,
+  viewport: { width: number; height: number },
+  insets: CanvasInsets,
+  fill = 0.7,
+): number | null {
+  if (!points.length) return null
+  const free = freeArea(viewport, insets)
+  const back = norm(direction)
+  const forward = mul(back, -1)
+  const right = norm(cross(forward, UP))
+  const up = cross(right, forward)
+  const tanHalf = Math.tan((verticalFovDegrees * Math.PI) / 360)
+  const aspect = viewport.width / viewport.height
+  const allowX = (fill * free.width) / 2
+  const allowY = (fill * free.height) / 2
+  const fits = (distance: number) => points.every((point) => {
+    const relative = sub(point, add(target, mul(back, distance)))
+    const depth = relative.x * forward.x + relative.y * forward.y + relative.z * forward.z
+    if (depth <= 0.1) return false
+    const x = (relative.x * right.x + relative.y * right.y + relative.z * right.z) / (depth * tanHalf * aspect) * (viewport.width / 2)
+    const y = (relative.x * up.x + relative.y * up.y + relative.z * up.z) / (depth * tanHalf) * (viewport.height / 2)
+    return Math.abs(x) <= allowX && Math.abs(y) <= allowY
+  })
+  let far = 8
+  while (!fits(far)) { far *= 2; if (far > 4000) return null }
+  let near = 0.5
+  for (let step = 0; step < 30; step += 1) {
+    const middle = (near + far) / 2
+    if (fits(middle)) far = middle
+    else near = middle
+  }
+  return far
+}
+
+/** The box these bricks fill (no padding, unlike the studio's build bounds): its eight corners and its middle. */
+export function brickBox(bricks: readonly Pick<BrickInstance, 'partId' | 'x' | 'y' | 'z' | 'rotation'>[], plateSize: number): { corners: Vec[]; middle: Vec } | null {
+  const min = { x: Infinity, y: Infinity, z: Infinity }
+  const max = { x: -Infinity, y: -Infinity, z: -Infinity }
+  for (const brick of bricks) {
+    const part = BRICK_PART_MAP[brick.partId]
+    if (!part) continue
+    const size = rotatedSize(part, brick.rotation)
+    const [x, y, z] = brickWorldPosition(brick, plateSize)
+    min.x = Math.min(min.x, x - (size.width * STUD) / 2)
+    max.x = Math.max(max.x, x + (size.width * STUD) / 2)
+    min.z = Math.min(min.z, z - (size.depth * STUD) / 2)
+    max.z = Math.max(max.z, z + (size.depth * STUD) / 2)
+    min.y = Math.min(min.y, y)
+    max.y = Math.max(max.y, y + part.height * PLATE_HEIGHT)
+  }
+  if (!Number.isFinite(min.x)) return null
+  const corners: Vec[] = []
+  for (const x of [min.x, max.x]) for (const y of [min.y, max.y]) for (const z of [min.z, max.z]) corners.push({ x, y, z })
+  return { corners, middle: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2, z: (min.z + max.z) / 2 } }
 }

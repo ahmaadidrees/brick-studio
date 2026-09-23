@@ -207,6 +207,24 @@ async function robotInView(t, ids) {
   const outside = points.filter((p) => !p.inFront || p.x < free.left || p.x > free.right || p.y < free.top || p.y > free.bottom)
   return { free, points: points.length, outside: outside.length }
 }
+/** The robot's drawn box on screen (every corner of every brick) and the free area it sits in. */
+const drawnBox = (t, ids) => t.page.evaluate((list) => {
+  const hook = window.__robotics
+  const { bricks, partMap, plateSize } = hook.roboticsStore.getState().model.input
+  const points = []
+  for (const brick of bricks.filter((b) => list.includes(b.id))) {
+    const part = partMap[brick.partId]
+    const turned = brick.rotation % 2 === 1
+    const w = turned ? part.depth : part.width
+    const d = turned ? part.width : part.depth
+    for (const [dx, dz] of [[0, 0], [w, 0], [0, d], [w, d]]) for (const y of [0, part.height]) points.push(hook.project({ x: (brick.x + dx - plateSize / 2) * 0.62, y: (brick.y + y) * 0.18, z: (brick.z + dz - plateSize / 2) * 0.62 }))
+  }
+  const rect = hook.canvasRect()
+  const insets = hook.insets()
+  const free = { left: rect.left + insets.left, right: rect.left + rect.width - insets.right, top: rect.top + insets.top, bottom: rect.top + rect.height - insets.bottom }
+  const box = { left: Math.min(...points.map((p) => p.x)), right: Math.max(...points.map((p) => p.x)), top: Math.min(...points.map((p) => p.y)), bottom: Math.max(...points.map((p) => p.y)) }
+  return { box, free, width: box.right - box.left, inside: box.left >= free.left && box.right <= free.right && box.top >= free.top && box.bottom <= free.bottom }
+}, ids)
 
 /* ================================================================ A. paint at 1366×768 */
 console.log('\nA. Paint a Buggy (1366×768)')
@@ -359,6 +377,7 @@ await desk.sleep(200)
 const seatsOf = async () => (await desk.robo((state, id) => state.model.creations.find((c) => c.id === id)?.seats ?? [], seatBuggy.id))
 const attachedCount = async () => (await desk.robo((state, id) => state.model.creations.find((c) => c.id === id)?.brickIds.length ?? 0, seatBuggy.id))
 const hubTopY = await desk.brick((state, id) => { const hub = state.bricks.find((b) => b.id === id); return hub.y + 6 }, seatBuggy.hubId)
+const { buggyLeft, buggyMiddleZ } = await desk.brick((state, ids) => { const mine = state.bricks.filter((b) => ids.includes(b.id)); return { buggyLeft: Math.min(...mine.map((b) => b.x)), buggyMiddleZ: Math.round(mine.reduce((sum, b) => sum + b.z, 0) / mine.length) } }, seatBuggy.brickIds)
 const beforeSeat = await attachedCount()
 await page.getByTestId('robotics-ideas').getByRole('button', { name: /Add a seat/ }).click()
 await desk.sleep(250)
@@ -375,10 +394,8 @@ await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
 await desk.sleep(300)
 await page.getByTestId('robotics-ideas').getByRole('button', { name: /Add a seat/ }).click()
 await desk.sleep(200)
-const bare = await desk.screenOf(world(38, 0, 44))
-await page.mouse.move(bare.x - 30, bare.y - 30, { steps: 4 })
-await page.mouse.move(bare.x, bare.y, { steps: 8 })
-await desk.sleep(250)
+// Bare ground beside the car, in view (the mouse wheel zooms out first when it is not).
+const bare = await aimAt(desk, world(buggyLeft - 5, 0, buggyMiddleZ), 'bare ground beside the Buggy')
 seatGhost = await desk.brick((state) => state.draft && { x: state.draft.x, y: state.draft.y, z: state.draft.z })
 const bricksBeforeLoose = await desk.brick((state) => state.bricks.length)
 await page.mouse.click(bare.x, bare.y)
@@ -425,7 +442,10 @@ await page.getByTestId('robo-back').click()
 await desk.sleep(900)
 check('B.back-from-code', (await desk.title()) === 'Signal light', `back from Code: the panel is "${await desk.title()}"`)
 
-// Back from Try it: the Gate stays the panel's, framed clear of the drawer and the panel.
+// Back from Try it: the Gate stays the panel's, framed clear of the drawer and the panel. Back from Code the
+// Signal light is framed close, so the Gate is out of view: Frame shows the whole build first, as a student does.
+await page.getByRole('button', { name: 'Frame build' }).click()
+await desk.sleep(700)
 await hitBrick(desk, gate.hubId, 'the Gate’s hub')
 await page.keyboard.press('Escape')
 await desk.sleep(200)
@@ -471,6 +491,10 @@ await desk.context.close()
 console.log('\nC. 1024×768')
 const small = await openStudio(1024, 768)
 const smallBuggy = await placeKit(small, 'buggy', world(32, 0, 32))
+await small.sleep(500)
+// Framed big in the gap between the drawer and the panel (Ava: it was drawn about 150 px wide in ~360).
+const framedSmall = await drawnBox(small, smallBuggy.brickIds)
+check('C.framed-big', framedSmall.inside && framedSmall.width >= 0.5 * (framedSmall.free.right - framedSmall.free.left), `the Buggy is drawn ${Math.round(framedSmall.width)} px wide in the ${Math.round(framedSmall.free.right - framedSmall.free.left)} px gap between the drawer and the panel, all of it inside`)
 await small.clearToast()
 await small.page.keyboard.press('Escape')
 await small.sleep(300)

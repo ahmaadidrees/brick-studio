@@ -3,7 +3,7 @@ import { getBuildBounds } from '../../brick/bounds'
 import { createBuildFramePose } from '../../brick/buildCamera'
 import { roverBricks } from '../model/fixtures'
 import { installRoboticsParts } from '../parts/install'
-import { boundsWithPoints, framePoseInFreeArea, freeArea, measureCanvasInsets, NO_INSETS, viewOffsetFor } from './framing'
+import { boundsWithPoints, brickBox, framePoseInFreeArea, freeArea, measureCanvasInsets, NO_INSETS, snugFrameDistance, viewOffsetFor } from './framing'
 
 // The rover fixture uses robotics parts; the studio's part map must know them before bounds are read.
 installRoboticsParts(true)
@@ -150,5 +150,54 @@ describe('view offset instead of a sideways slide', () => {
     const free = freeArea(viewport, insets)
     expect(viewOffsetFor(viewport, insets)).toEqual({ x: (free.left + free.right) / 2 - viewport.width / 2, y: (free.top + free.bottom) / 2 - viewport.height / 2 })
     expect(viewOffsetFor(viewport, NO_INSETS)).toEqual({ x: 0, y: 0 })
+  })
+})
+
+describe('snugFrameDistance (lane P: a robot drawn big in the gap between the drawer and the panel)', () => {
+  const direction = norm({ x: 14, y: 12, z: 16 })
+  const box = brickBox(roverBricks(), 64)!
+  const at = (distance: number) => ({ x: box.middle.x + direction.x * distance, y: box.middle.y + direction.y * distance, z: box.middle.z + direction.z * distance })
+  /** Where the corners land relative to the view's middle (the view offset then puts that middle in the free area's). */
+  const spread = (distance: number) => {
+    const points = box.corners.map((corner) => project(corner, at(distance), box.middle))
+    return { x: Math.max(...points.map((p) => Math.abs(p.x - viewport.width / 2))), y: Math.max(...points.map((p) => Math.abs(p.y - viewport.height / 2))) }
+  }
+
+  it('brickBox: the rover’s own box, with no padding', () => {
+    expect(box.corners).toHaveLength(8)
+    // The plate is 6 × 8 studs at 28, 26 and the wheels stand two studs out on each side.
+    expect(Math.max(...box.corners.map((c) => c.x)) - Math.min(...box.corners.map((c) => c.x))).toBeCloseTo(12 * 0.62, 5)
+  })
+
+  it('at 1024 × 768 beside a drawer and a panel, the rover fills 70 % of the gap: wider than the old frame, still inside it', () => {
+    const small = { width: 1024, height: 768 }
+    const insets = { left: 276, right: 384, top: 64, bottom: 90 }
+    const free = freeArea(small, insets)
+    const distance = snugFrameDistance(box.corners, box.middle, direction, FOV, small, insets)!
+    expect(distance).toBeGreaterThan(0)
+    // Measured in the 1024-wide view with the same projection.
+    const project1024 = (point: { x: number; y: number; z: number }) => {
+      const forward = norm({ x: box.middle.x - at(distance).x, y: box.middle.y - at(distance).y, z: box.middle.z - at(distance).z })
+      const right = norm({ x: -forward.z, y: 0, z: forward.x })
+      const up = { x: right.y * forward.z - right.z * forward.y, y: right.z * forward.x - right.x * forward.z, z: right.x * forward.y - right.y * forward.x }
+      const rel = { x: point.x - at(distance).x, y: point.y - at(distance).y, z: point.z - at(distance).z }
+      const depth = rel.x * forward.x + rel.y * forward.y + rel.z * forward.z
+      const halfHeight = depth * Math.tan((FOV * Math.PI) / 360)
+      return { x: ((rel.x * right.x + rel.y * right.y + rel.z * right.z) / (halfHeight * (small.width / small.height))) * (small.width / 2), y: ((rel.x * up.x + rel.y * up.y + rel.z * up.z) / halfHeight) * (small.height / 2) }
+    }
+    const xs = box.corners.map((corner) => project1024(corner).x)
+    const ys = box.corners.map((corner) => project1024(corner).y)
+    expect(Math.max(...xs.map(Math.abs))).toBeLessThanOrEqual((0.7 * free.width) / 2 + 0.5)
+    expect(Math.max(...ys.map(Math.abs))).toBeLessThanOrEqual((0.7 * free.height) / 2 + 0.5)
+    // Snug: a little nearer and it would not fit.
+    expect(Math.max(...xs.map(Math.abs))).toBeGreaterThan((0.7 * free.width) / 2 - 3)
+  })
+
+  it('nearer means bigger: the snug distance at 1366 × 768 with no panels leaves the corners inside 70 % of the view', () => {
+    const distance = snugFrameDistance(box.corners, box.middle, direction, FOV, viewport, NO_INSETS)!
+    const inside = spread(distance)
+    expect(inside.x).toBeLessThanOrEqual((0.7 * viewport.width) / 2 + 0.5)
+    expect(inside.y).toBeLessThanOrEqual((0.7 * viewport.height) / 2 + 0.5)
+    expect(snugFrameDistance([], box.middle, direction, FOV, viewport, NO_INSETS)).toBeNull()
   })
 })

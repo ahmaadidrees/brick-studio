@@ -22,7 +22,7 @@ import ConnectionMarkers from './ConnectionMarkers'
 import { registerDraftSnapper, reportSnapHint } from './draftSnap'
 import { sharedSnapContext } from './snapContext'
 import { registerCanvasInsets } from './cameraInsets'
-import { boundsWithPoints, framePoseInFreeArea, measureCanvasInsets, viewOffsetFor } from './framing'
+import { boundsWithPoints, brickBox, framePoseInFreeArea, measureCanvasInsets, snugFrameDistance, viewOffsetFor } from './framing'
 import { useHiddenBrickIds } from './hiddenBricks'
 import DriveFollow from './DriveFollow'
 import PlacedFlash from './PlacedFlash'
@@ -283,7 +283,17 @@ function CreationFraming() {
       const plateSize = getBuildPlateSize(state.documentMetadata)
       const canvas = gl.domElement
       const viewport = { width: canvas.clientWidth || 1, height: canvas.clientHeight || 1 }
-      const pose = framePoseInFreeArea(boundsWithPoints(getBuildBounds(bricks, plateSize), request.points ?? []), camera.fov, viewport, measureCanvasInsets(canvas), 'home', null, false)
+      const insets = measureCanvasInsets(canvas)
+      let pose = framePoseInFreeArea(boundsWithPoints(getBuildBounds(bricks, plateSize), request.points ?? []), camera.fov, viewport, insets, 'home', null, false)
+      // Snug (lane P): the robot's own bricks fill most of the free area, looking from the same side.
+      const box = request.snug ? brickBox(bricks, plateSize) : null
+      if (box) {
+        const back = { x: pose.position.x - pose.target.x, y: pose.position.y - pose.target.y, z: pose.position.z - pose.target.z }
+        const length = Math.hypot(back.x, back.y, back.z) || 1
+        const direction = { x: back.x / length, y: back.y / length, z: back.z / length }
+        const distance = snugFrameDistance(box.corners, box.middle, direction, camera.fov, viewport, insets)
+        if (distance) pose = { target: box.middle, position: { x: box.middle.x + direction.x * distance, y: box.middle.y + direction.y * distance, z: box.middle.z + direction.z * distance }, distance }
+      }
       camera.position.set(pose.position.x, pose.position.y, pose.position.z)
       const orbit = controls as OrbitControlsImpl | null
       if (orbit?.target) {
