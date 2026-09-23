@@ -59,8 +59,12 @@ export type ExplorePosition = { x: number; y: number; z: number }
 export type BrickState = {
   documentMetadata: CreateBrickStudioDocumentOptions
   setDocumentMetadata: (metadata: CreateBrickStudioDocumentOptions) => void
-  /** Replaces the document's robotics section as one undoable, document-level edit (`null` removes it). */
-  setRoboticsSection: (robotics: CreateBrickStudioDocumentOptions['robotics'] | null, label?: string) => void
+  /**
+   * Replaces the document's robotics section as one undoable, document-level edit (`null` removes it).
+   * `history: false` updates the document without an undo entry (robotics program edits, which
+   * Blockly's own undo covers); the default is unchanged.
+   */
+  setRoboticsSection: (robotics: CreateBrickStudioDocumentOptions['robotics'] | null, label?: string, options?: { history?: boolean }) => void
   getDocumentSnapshot: () => BrickStudioDocument
   mode: BrickMode
   bricks: BrickInstance[]
@@ -155,6 +159,25 @@ export type BrickState = {
 }
 
 const cloneBrick = (brick: BrickInstance) => ({ ...brick })
+
+type RoboticsEnvelope = CreateBrickStudioDocumentOptions['robotics']
+/** Decides the robotics section when Undo/Redo restores a document-level entry. */
+export type RoboticsHistoryMerge = (restored: RoboticsEnvelope, current: RoboticsEnvelope) => RoboticsEnvelope
+
+let roboticsHistoryMerge: RoboticsHistoryMerge | null = null
+
+/**
+ * Lets the robotics layer keep what studio history must not revert (its programs) when
+ * Undo/Redo restores a document-level entry. `null` unregisters; with nothing registered
+ * the restored section is used exactly as recorded.
+ */
+export function registerRoboticsHistoryMerge(merge: RoboticsHistoryMerge | null) {
+  roboticsHistoryMerge = merge
+}
+
+function restoredRobotics(restored: RoboticsEnvelope, current: RoboticsEnvelope): RoboticsEnvelope {
+  return roboticsHistoryMerge ? roboticsHistoryMerge(restored, current) : restored
+}
 
 function applyHistoryEntry(bricks: BrickInstance[], entry: BrickHistoryEntry, direction: 'undo' | 'redo') {
   const changedIds = new Set(entry.deltas.flatMap((delta) => {
@@ -505,13 +528,17 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     registerCustomParts(metadata.customParts ?? [])
     set({ documentMetadata: { plateSize: metadata.plateSize, environmentId: metadata.environmentId, customParts: metadata.customParts?.map((part) => ({ ...part })) ?? [], ...(robotics ? { robotics } : {}) } })
   },
-  setRoboticsSection: (robotics, label = 'Robotics change') => {
+  setRoboticsSection: (robotics, label = 'Robotics change', options) => {
     const state = get()
     const beforeDocument = state.getDocumentSnapshot()
     const documentMetadata = { ...state.documentMetadata, ...(robotics ? { robotics } : {}) }
     if (!robotics) delete documentMetadata.robotics
     const afterDocument = createBrickStudioDocument(state.bricks, documentMetadata)
     if (JSON.stringify(beforeDocument) === JSON.stringify(afterDocument)) return
+    if (options?.history === false) {
+      set({ documentMetadata })
+      return
+    }
     const selectedNow = effectiveSelectedIds(state)
     set({
       documentMetadata,
@@ -1085,8 +1112,9 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     // the selection restore only applies while no brush is armed.
     const brushArmed = !previous.documentBefore && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (previous.documentBefore) registerCustomParts(previous.documentBefore.customParts)
+    const robotics = previous.documentBefore ? restoredRobotics(previous.documentBefore.robotics, state.documentMetadata.robotics) : undefined
     set({
-      ...(previous.documentBefore ? { documentMetadata: { plateSize: previous.documentBefore.plateSize, environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts, ...(previous.documentBefore.robotics ? { robotics: previous.documentBefore.robotics } : {}) }, activePartId: null, clipboard: null } : {}),
+      ...(previous.documentBefore ? { documentMetadata: { plateSize: previous.documentBefore.plateSize, environmentId: previous.documentBefore.environmentId, customParts: previous.documentBefore.customParts, ...(robotics ? { robotics } : {}) }, activePartId: null, clipboard: null } : {}),
       bricks: previous.documentBefore?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, previous, 'undo'),
       undoStack: state.undoStack.slice(0, -1),
       redoStack: appendHistory(state.redoStack, previous),
@@ -1107,8 +1135,9 @@ export const useBrickStore = create<BrickState>((set, get) => withGraphicsPauseG
     }
     const brushArmed = !next.documentAfter && Boolean(state.draft && !state.movingId && !state.movingSelection)
     if (next.documentAfter) registerCustomParts(next.documentAfter.customParts)
+    const robotics = next.documentAfter ? restoredRobotics(next.documentAfter.robotics, state.documentMetadata.robotics) : undefined
     set({
-      ...(next.documentAfter ? { documentMetadata: { plateSize: next.documentAfter.plateSize, environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts, ...(next.documentAfter.robotics ? { robotics: next.documentAfter.robotics } : {}) }, activePartId: null, clipboard: null } : {}),
+      ...(next.documentAfter ? { documentMetadata: { plateSize: next.documentAfter.plateSize, environmentId: next.documentAfter.environmentId, customParts: next.documentAfter.customParts, ...(robotics ? { robotics } : {}) }, activePartId: null, clipboard: null } : {}),
       bricks: next.documentAfter?.bricks.map(cloneBrick) ?? applyHistoryEntry(state.bricks, next, 'redo'),
       undoStack: appendHistory(state.undoStack, next),
       redoStack: state.redoStack.slice(0, -1),

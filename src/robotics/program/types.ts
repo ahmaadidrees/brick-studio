@@ -123,6 +123,8 @@ export type DiagnosticCode =
   /** A controller script (when joystick moves / when controls update) that waits or loops forever. */
   | 'program.controller-waits'
   | 'program.unknown-block'
+  /** An input slot left empty: a number slot uses 0, a condition slot counts as false. */
+  | 'program.empty-slot'
   /** Runtime faults and notes. */
   | 'runtime.budget-exceeded'
   | 'runtime.non-finite'
