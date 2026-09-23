@@ -77,16 +77,21 @@ const SOCKET_REACH = (() => {
 /** The middle of a motor, read back from its axle hole: two motors side by side facing each other share a hole point but not a middle. */
 const motorMiddle = (motor: DerivedMotor): Vec3 => sub(motor.socketPoint, scale(motor.socketNormal, SOCKET_REACH))
 
-/** Two motors on opposite sides whose axle holes face away from each other: the pair a rover drives on. */
-export function outwardPairs(motors: readonly DerivedMotor[]): MotorPair[] {
+/**
+ * The pairs a rover could drive on before it has wheels: two motors on opposite sides whose axle
+ * holes face away from each other, or two motors that already hold axles along one line (a motor
+ * mounted outboard, facing in, is fine once its axle is in: the model drives any such pair).
+ */
+export function candidatePairs(motors: readonly DerivedMotor[]): MotorPair[] {
   const pairs: MotorPair[] = []
   for (let i = 0; i < motors.length; i += 1) {
     for (let j = i + 1; j < motors.length; j += 1) {
       const a = motors[i]
       const b = motors[j]
-      if (dot(a.socketNormal, b.socketNormal) > -0.999) continue
-      if (dot(a.socketNormal, sub(motorMiddle(a), motorMiddle(b))) <= EPSILON) continue
-      pairs.push([a, b])
+      const along = dot(a.socketNormal, b.socketNormal)
+      const outward = along < -0.999 && dot(a.socketNormal, sub(motorMiddle(a), motorMiddle(b))) > EPSILON
+      const axled = Math.abs(along) > 0.999 && a.axleId !== null && b.axleId !== null
+      if (outward || axled) pairs.push([a, b])
     }
   }
   return pairs
@@ -94,25 +99,25 @@ export function outwardPairs(motors: readonly DerivedMotor[]): MotorPair[] {
 
 const pairProgress = (pair: MotorPair) => pair.reduce((total, motor) => total + (motor.axleId ? 1 : 0) + (motor.wheelIds.length ? 1 : 0), 0)
 
-/** The pair to finish: the drive pair once there is one, else the outward pair furthest along (the first on a tie). */
+/** The pair to finish: the model's drive pair once there is one, else the candidate furthest along (the first on a tie). */
 export function roverPair(creation: DerivedCreation): MotorPair | null {
-  const pairs = outwardPairs(creation.motors)
   const drive = creation.drivePair
   if (drive) {
-    const match = pairs.find(([a, b]) => (a.brickId === drive.leftId && b.brickId === drive.rightId) || (a.brickId === drive.rightId && b.brickId === drive.leftId))
-    if (match) return match
+    const left = creation.motors.find((motor) => motor.brickId === drive.leftId)
+    const right = creation.motors.find((motor) => motor.brickId === drive.rightId)
+    if (left && right) return [left, right]
   }
   let best: MotorPair | null = null
-  for (const pair of pairs) if (!best || pairProgress(pair) > pairProgress(best)) best = pair
+  for (const pair of candidatePairs(creation.motors)) if (!best || pairProgress(pair) > pairProgress(best)) best = pair
   return best
 }
 
-/** A motor whose axle hole points back into the robot (toward the middle of its motors). */
+/** A motor with no axle yet whose axle hole points back into the robot (toward the middle of its motors), where no axle fits. */
 export function motorFacingIn(motors: readonly DerivedMotor[]): DerivedMotor | null {
   if (motors.length < 2) return null
   const middles = motors.map(motorMiddle)
   const middle = centroid(middles)
-  return motors.find((motor, index) => dot(motor.socketNormal, sub(middles[index], middle)) < -EPSILON) ?? null
+  return motors.find((motor, index) => !motor.axleId && dot(motor.socketNormal, sub(middles[index], middle)) < -EPSILON) ?? null
 }
 
 const centroid = (points: readonly Vec3[]): Vec3 => scale(points.reduce((total, point) => ({ x: total.x + point.x, y: total.y + point.y, z: total.z + point.z }), { x: 0, y: 0, z: 0 }), 1 / points.length)
@@ -128,7 +133,7 @@ function roverSteps(creation: DerivedCreation): ReadinessStep[] {
   const motors = creation.motors
   const pair = roverPair(creation)
   const hubName = creation.hubs.length > 0 ? 'hub' : 'motor'
-  // A pair with wheels on both is always a drive pair; the check only guards the model's own rule.
+  // A pair with wheels on both is always the model's drive pair; the check only guards that rule.
   const pairDrives = pair !== null && (pair.some((motor) => motor.wheelIds.length === 0) || creation.drivePair !== null)
   let motorsNow = 'Put a motor on each side.'
   let motorBrick: string | null = null

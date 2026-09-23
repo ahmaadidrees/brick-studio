@@ -23,6 +23,11 @@
  *   F2d the other way round         the right motor outboard with its socket facing in: no reversed
  *                                   motor, and the same two raw blocks drive straight
  *
+ * Kid-UX pass (docs/robotics/KID-UX.md §G): cards are named and closed with Keep building; the
+ * panel's part rows and its drive line ("Drives with …") sit in its folded Parts, opened with a
+ * click before they are read; what the model used to print as the creation's ready line is now
+ * the step the panel highlights in its Next steps ("Put a wheel on Left motor’s axle.").
+ *
  * Every diagnosis is read from what the app shows: the panel's lines and part rows, the
  * selected-part line and the device inspector in Build; the blocks' warning text, outline, dropdown
  * labels and glow, the problems list and the run-blocked line in Code; the stage's reading chips and
@@ -114,10 +119,18 @@ const frameOn = async (ids) => { await robo((state, list) => state.requestFrame(
 /* ---------------------------------------------------------------- Build: what the panel and inspector say */
 const panel = page.getByTestId('robotics-panel')
 const inspector = page.getByTestId('robotics-device-inspector')
-const panelLines = async () => (await panel.locator('.robotics-lines li').allTextContents()).map(norm)
+/** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
+const openFold = async (name) => {
+  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  if (!(await toggle.count())) return
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
+}
+const panelLines = async () => { await openFold('Parts'); return (await panel.locator('.robotics-lines li').allTextContents()).map(norm) }
 const partRow = (id) => panel.locator(`.robotics-parts li[data-brick-id="${id}"]`)
-const rowText = async (id) => ((await partRow(id).count()) ? norm(await partRow(id).textContent()) : null)
-const rowTone = async (id) => ((await partRow(id).count()) ? (await partRow(id).getAttribute('class')).split(' ').filter(Boolean) : null)
+const rowText = async (id) => { await openFold('Parts'); return (await partRow(id).count()) ? norm(await partRow(id).textContent()) : null }
+const rowTone = async (id) => { await openFold('Parts'); return (await partRow(id).count()) ? (await partRow(id).getAttribute('class')).split(' ').filter(Boolean) : null }
+/** The step the robot panel highlights now (the first thing its Next steps ask for). */
+const nextStep = async () => { const step = panel.locator('[data-testid=robotics-next-steps] [aria-current=step]'); return (await step.count()) ? norm(await step.first().textContent()) : null }
 const selectedPartLine = async () => ((await page.getByTestId('robotics-selected-part').count()) ? norm(await page.getByTestId('robotics-selected-part').textContent()) : null)
 const inspectorText = async () => ({
   name: await inspector.getByLabel('Device name').inputValue(),
@@ -230,7 +243,7 @@ const runProgram = async () => { await page.getByTestId('robo-run').click(); awa
 const resetStage = async () => { await page.getByTestId('robo-reset').click(); await sleep(500) }
 
 /* ---------------------------------------------------------------- builds */
-/** The rover from loose parts (robotics fixtures' layout); the card is named and closed with "Not now". */
+/** The rover from loose parts (robotics fixtures' layout); the card is named and closed with "Keep building". */
 async function buildRover(name, { leftWheelOff = false, sensorSideways = false } = {}) {
   await stage((state) => state.closeStage())
   if (await brick((state) => state.bricks.length)) await brick((state) => state.newBuild())
@@ -239,8 +252,8 @@ async function buildRover(name, { leftWheelOff = false, sensorSideways = false }
   ids.plate = await place({ partId: 'plate_6x8', x: 28, y: 0, z: 26, color: '#3e83d7' })
   ids.hub = await place({ partId: 'robo_hub', x: 29, y: 1, z: 27, color: '#f5eee0' })
   const card = page.getByTestId('robotics-creation-card')
-  await card.getByLabel('Creation name').fill(name)
-  await card.getByRole('button', { name: 'Not now' }).click()
+  await card.getByLabel('Robot name').fill(name)
+  await card.getByRole('button', { name: 'Keep building' }).click()
   ids.leftMotor = await place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2, color: GREY })
   ids.rightMotor = await place({ partId: 'robo_motor', x: 31, y: 1, z: 31, rotation: 0, color: GREY })
   ids.leftAxle = await place({ partId: 'robo_axle_short', x: 26, y: 0, z: 32, color: GREY })
@@ -272,8 +285,8 @@ async function buildGate(name, { builtIntoFrame = false } = {}) {
   ids.sill = await place({ partId: 'plate_2x4', x: 21, y: 1, z: 21, rotation: 1, color: GREY })
   ids.hinge = await place({ partId: 'robo_hinge_motor', x: 21, y: 2, z: 21, color: '#e7473c' })
   const card = page.getByTestId('robotics-creation-card')
-  await card.getByLabel('Creation name').fill(name)
-  await card.getByRole('button', { name: 'Not now' }).click()
+  await card.getByLabel('Robot name').fill(name)
+  await card.getByRole('button', { name: 'Keep building' }).click()
   if (builtIntoFrame) {
     // The student props the door's far end up from the sill: two 2×2 bricks, the door rests on their studs.
     ids.bridge1 = await place({ partId: 'brick_2x2', x: 23, y: 2, z: 21, color: GREY })
@@ -329,12 +342,13 @@ async function failureWheelOff() {
   const wheelRow = await rowText(ids.leftWheel)
   const leftMotorRow = await rowText(ids.leftMotor)
   const selectedLine = await selectedPartLine()
-  seen.F1.build = { lines, wheelRow, leftMotorRow, selectedLine }
+  const step = await nextStep()
+  seen.F1.build = { lines, wheelRow, leftMotorRow, selectedLine, nextStep: step }
   check('F1.build.selected-line', (selectedLine ?? '').startsWith('Wheel · Not on an axle'), `with the wheel still selected, the selected-part line reads "${selectedLine}"`)
   check('F1.build.wheel-row', wheelRow?.startsWith('Wheel · Not on an axle') && (await rowTone(ids.leftWheel)).includes('bad'), `the panel's row for the wheel (red): "${wheelRow}"`)
   check('F1.build.motor-row', leftMotorRow?.includes('axle in it, no wheel'), `the left motor's row: "${leftMotorRow}"`)
-  check('F1.build.ready-line', lines.some((line) => line.includes('1 wheel not on an axle')), `the creation's line: "${lines[1]}"`)
-  check('F1.build.no-drive-pair', !lines.some((line) => line.includes('Drive:')), `the drive line is gone: ${JSON.stringify(lines)}`)
+  check('F1.build.ready-line', step === 'Put a wheel on Left motor’s axle.', `the robot's next step: "${step}"`)
+  check('F1.build.no-drive-pair', !lines.some((line) => line.includes('Drives with')), `the drive line is gone: ${JSON.stringify(lines)}`)
   await shot('F1a-build-wheel-not-on-axle')
   await reloadStudio()
   check('F1.reload', (await rowText(ids.leftWheel))?.startsWith('Wheel · Not on an axle') && (await brick((state, id) => state.bricks.find((b) => b.id === id)?.x, ids.leftWheel)) === 24, `after a save and cold reload the wheel is still off: "${await rowText(ids.leftWheel)}"`)
@@ -442,7 +456,7 @@ async function failureWheelOff() {
   await sleep(300)
   await page.keyboard.press('Escape')
   const repaired = await panelLines()
-  check('F1.repair', picked.selected === ids.leftWheel && (await rowText(ids.leftWheel))?.startsWith('Wheel · on an axle in Left motor') && repaired.some((line) => line.includes('Drive: Left motor + Right motor')), `nudged back on: "${await rowText(ids.leftWheel)}"; ${repaired.find((line) => line.includes('Drive:'))}`)
+  check('F1.repair', picked.selected === ids.leftWheel && (await rowText(ids.leftWheel))?.startsWith('Wheel · on an axle in Left motor') && repaired.some((line) => line.includes('Drives with Left motor + Right motor')), `nudged back on: "${await rowText(ids.leftWheel)}"; ${repaired.find((line) => line.includes('Drives with'))}`)
 }
 
 /* ================================================================ F2. One motor mounted backwards */
@@ -450,12 +464,12 @@ async function failureReversed() {
   console.log('\nF2. One motor mounted backwards: two raw motor blocks at 40 %')
   const ids = await buildRover('Mirror buggy')
   const lines = await panelLines()
-  const driveLine = lines.find((line) => line.includes('Drive:')) ?? null
+  const driveLine = lines.find((line) => line.includes('Drives with')) ?? null
   const rightRow = await rowText(ids.rightMotor)
   const leftRow = await rowText(ids.leftMotor)
   seen.F2 = { build: { driveLine, leftRow, rightRow } }
-  check('F2.build.drive-line', driveLine?.endsWith('Drive: Left motor + Right motor · Right motor reversed'), `the panel's drive line: "${driveLine}"`)
-  check('F2.build.motor-rows', rightRow?.includes('runs backward (reversed)') && leftRow?.includes('runs forward'), `rows: "${leftRow}" / "${rightRow}"`)
+  check('F2.build.drive-line', driveLine?.endsWith('Drives with Left motor + Right motor · Right motor faces the other way'), `the panel's drive line: "${driveLine}"`)
+  check('F2.build.motor-rows', rightRow?.includes('faces the other way') && leftRow && !leftRow.includes('other way'), `rows: "${leftRow}" / "${rightRow}"`)
   const picked = await clickPart(world(32.5, 7, 32.5), 'the right motor')
   const rightInspector = picked.selected === ids.rightMotor ? await inspectorText() : null
   seen.F2.build.rightInspector = rightInspector
@@ -569,8 +583,8 @@ async function failureReversedOtherWay() {
   ids.plate = await place({ partId: 'plate_6x8', x: 28, y: 0, z: 26, color: '#3e83d7' })
   ids.hub = await place({ partId: 'robo_hub', x: 29, y: 1, z: 27, color: '#f5eee0' })
   const card = page.getByTestId('robotics-creation-card')
-  await card.getByLabel('Creation name').fill('Same-way buggy')
-  await card.getByRole('button', { name: 'Not now' }).click()
+  await card.getByLabel('Robot name').fill('Same-way buggy')
+  await card.getByRole('button', { name: 'Keep building' }).click()
   ids.leftMotor = await place({ partId: 'robo_motor', x: 28, y: 1, z: 31, rotation: 2, color: GREY })
   ids.leftAxle = await place({ partId: 'robo_axle_short', x: 26, y: 0, z: 32, color: GREY })
   ids.leftWheel = await place({ partId: 'robo_wheel', x: 25, y: 0, z: 31, color: '#1f2a33' })
@@ -584,7 +598,7 @@ async function failureReversedOtherWay() {
   ids.sensor = await place({ partId: 'robo_distance_sensor', x: 30, y: 1, z: 26, color: '#f4ca3a' })
   await robo((state) => state.dismissWiringNote())
   await frameOn(Object.values(ids))
-  if (await card.count()) await card.getByRole('button', { name: 'Not now' }).click()
+  if (await card.count()) await card.getByRole('button', { name: 'Keep building' }).click()
 
   // Both motors face -X, so both are named for that side; the student renames the second one.
   const rightRowBefore = await rowText(ids.rightMotor)
@@ -600,11 +614,12 @@ async function failureReversedOtherWay() {
     }
   }
   const lines = await panelLines()
-  const driveLine = lines.find((line) => line.includes('Drive:')) ?? null
+  const driveLine = lines.find((line) => line.includes('Drives with')) ?? null
   const rows = { left: await rowText(ids.leftMotor), right: await rowText(ids.rightMotor) }
-  seen.F2d = { build: { rightRowBefore, inspectorBefore, driveLine, rows } }
+  const step = await nextStep()
+  seen.F2d = { build: { rightRowBefore, inspectorBefore, driveLine, rows, nextStep: step } }
   check('F2d.build.same-name', /^Left motor/.test(rightRowBefore ?? '') && inspectorBefore?.name === 'Left motor', `named from the way its socket faces, the outboard motor is also "Left motor" until renamed: "${rightRowBefore}"`)
-  check('F2d.build.no-reversed', driveLine?.endsWith('Drive: Left motor + Right motor') && !/reversed/.test(driveLine) && rows.right?.includes('runs forward') && rows.left?.includes('runs forward'), `renamed and plugged in: "${driveLine}"; rows "${rows.left}" / "${rows.right}"`)
+  check('F2d.build.no-reversed', driveLine?.endsWith('Drives with Left motor + Right motor') && !/other way/.test(driveLine) && rows.right && !rows.right.includes('other way') && rows.left && !rows.left.includes('other way') && step === 'Ready to drive!', `renamed and plugged in: "${driveLine}"; rows "${rows.left}" / "${rows.right}"; next step "${step}"`)
   await brick((state) => state.selectBrick(null))
   await shot('F2e-build-same-way-no-reversed')
 
@@ -733,9 +748,10 @@ async function failureArmInFrame() {
   const ids = await buildGate('Stuck gate', { builtIntoFrame: true })
   const lines = await panelLines()
   const hingeRow = await rowText(ids.hinge)
-  seen.F4 = { build: { lines, hingeRow } }
-  check('F4.build.ready-line', lines.some((line) => line.includes("Arm motor's arm is built into the frame, so it can't swing")), `the creation's line: "${lines[1]}"`)
-  check('F4.build.hinge-row', hingeRow?.includes("arm built into the frame, so it can't swing") && (await rowTone(ids.hinge)).includes('bad'), `the hinge motor's row (red): "${hingeRow}"`)
+  const step = await nextStep()
+  seen.F4 = { build: { lines, hingeRow, nextStep: step } }
+  check('F4.build.ready-line', step === 'The arm is stuck to the frame. Take off the brick that joins them.', `the robot's next step: "${step}"`)
+  check('F4.build.hinge-row', hingeRow?.includes("arm stuck to the frame, so it can't swing") && (await rowTone(ids.hinge)).includes('bad'), `the hinge motor's row (red): "${hingeRow}"`)
   const hubPick = await clickPart(world(22, 7, 26), 'the hub')
   assert.equal(hubPick.selected, ids.hub, 'the hub is selected by a click')
   await page.getByTestId('robotics-hub-inspector').getByRole('button', { name: /^Port A: Arm motor/ }).click()
@@ -746,7 +762,7 @@ async function failureArmInFrame() {
   await shot('F4a-build-arm-built-into-frame')
   await brick((state) => state.selectBrick(null))
   await reloadStudio()
-  check('F4.reload', (await panelLines()).some((line) => line.includes("Arm motor's arm is built into the frame")), `after a save and cold reload: "${(await panelLines())[1]}"`)
+  check('F4.reload', (await nextStep()) === 'The arm is stuck to the frame. Take off the brick that joins them.', `after a save and cold reload the next step still says: "${await nextStep()}"`)
   await frameOn(Object.values(ids))
 
   await openCode()
@@ -791,8 +807,9 @@ async function failureArmInFrame() {
     await page.keyboard.press('Delete')
     await sleep(300)
   }
-  const after = await panelLines()
-  check('F4.repair.line', after.some((line) => line.includes('Fixed side on the frame, moving side on the arm')), `with the two bricks deleted: "${after[1]}"`)
+  const after = await nextStep()
+  const repairedRow = await rowText(ids.hinge)
+  check('F4.repair.line', after === 'Ready to try!' && repairedRow?.includes('swings 1 brick'), `with the two bricks deleted: next step "${after}"; row "${repairedRow}"`)
   await openCode()
   await runProgram()
   await sleep(300)

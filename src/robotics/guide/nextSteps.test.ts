@@ -93,6 +93,21 @@ describe('the rover path', () => {
     expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put the motors on opposite sides, facing out.', action: { kind: 'select', brickId: 'back' } })
   })
 
+  it('a motor mounted outboard facing in is fine once its axle and wheel are on (it drives straight)', () => {
+    // The checkpoint-2 "other way round" rover: the right motor hangs from a beam outboard of its wheel.
+    const outboard = [
+      ...pick(roverBricks(), R.plate, R.hub, R.leftMotor, R.leftAxle, R.leftWheel, R.sensor),
+      at('pillar', 'pillar_1x1', 33, 1, 32), at('beam', 'brick_1x6', 33, 10, 32, 1), at('riser', 'brick_1x1', 37, 7, 32),
+      at('right', ROBOTICS_PART_IDS.motor, 37, 1, 31, 2), at('right-axle', ROBOTICS_PART_IDS.axleShort, 35, 0, 32), at('right-wheel', ROBOTICS_PART_IDS.wheel, 34, 0, 31),
+    ]
+    const { rows, creation } = robot(outboard, R.hub, [[R.leftMotor, R.hub, 'A'], ['right', R.hub, 'B']])
+    expect(creation.drivePair?.reversedIds).toEqual([])
+    expect(current(rows)?.id).toBe('ready')
+    // Before its wheel goes on, the pair already counts (its axle is in), so the wheel is the next step.
+    const noWheel = robot(outboard.filter((brick) => brick.id !== 'right-wheel'), R.hub, [[R.leftMotor, R.hub, 'A'], ['right', R.hub, 'B']])
+    expect(current(noWheel.rows)?.text).toMatch(/^Put a wheel on .*’s axle\.$/)
+  })
+
   it('two motors facing out: an axle in each, in turn, lined up with the motor', () => {
     const noAxles = robot(pick(roverBricks(), R.plate, R.hub, R.leftMotor, R.rightMotor), R.hub, ROVER_WIRES.slice(0, 2))
     expect(current(noAxles.rows)).toMatchObject({ id: 'axles', text: 'Put an axle in Left motor.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.axleShort, rotation: 0 }, icon: { part: ROBOTICS_PART_IDS.axleShort } })

@@ -15,6 +15,8 @@
  * checkpoint-1 repairs from the browser side: naming does not interrupt building,
  * the creation is framed inside the free canvas area, an edit while a nudge runs
  * retires the run, Reset and a cold reload keep the authored geometry and cables.
+ * Kid-UX pass (docs/robotics/KID-UX.md §G): the card is named and closed with Keep building,
+ * and the motor tests ("Nudge") are in the robot panel's folded More, opened with a click.
  *
  *   PATH=/opt/homebrew/opt/node@22/bin:$PATH node scripts/qa/robotics-spike-cp1-pointer.mjs
  *
@@ -82,6 +84,11 @@ const panel = page.getByTestId('robotics-panel')
 const card = page.getByTestId('robotics-creation-card')
 const waitForSim = () => page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 const resetNudge = async () => { await page.getByTestId('robotics-reset').click(); await sleep(150) }
+/** Opens a folded section of the robot panel (Parts, More) when it is shut: the kid-UX panel folds both by default. */
+const openFold = async (name) => {
+  const toggle = panel.getByRole('button', { name: new RegExp(`^${name}`) })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') { await toggle.click(); await sleep(150) }
+}
 /** The camera cluster, as a student uses it: a spot hidden behind a taller part is aimed at from the top view. */
 const view = async (name) => { await page.getByRole('button', { name, exact: true }).click(); await sleep(650) }
 
@@ -163,8 +170,8 @@ check('A.card-opens-on-first-device', (await cardState())?.creationId === null, 
 let framed = await framedInsideFreeArea([ids.plate, ids.hub])
 check('A.framed-in-free-area', framed.inside, `the card framed the pair inside the free canvas area (insets L${Math.round(framed.insets.left)} R${Math.round(framed.insets.right)} B${Math.round(framed.insets.bottom)}; ${framed.corners} corners checked)`)
 await shot('P1-hub-card-framed')
-await card.getByLabel('Creation name').fill('Pointer buggy')
-await card.getByRole('button', { name: 'Not now' }).click()
+await card.getByLabel('Robot name').fill('Pointer buggy')
+await card.getByRole('button', { name: 'Keep building' }).click()
 await sleep(200)
 check('A.named-on-card', (await creations())[0]?.name === 'Pointer buggy', 'the card named the creation')
 
@@ -203,8 +210,9 @@ framed = await framedInsideFreeArea(Object.values(ids))
 check('A.rover-framed', framed.inside, `the whole rover framed inside the free area (${framed.corners} corners)`)
 await shot('P3-rover-built')
 
-// Drive: it rolls; the document is untouched by the run and by Reset.
+// Drive: it rolls; the document is untouched by the run and by Reset (the motor tests are in the panel's More).
 const before = await snapshot()
+await openFold('More')
 await page.getByRole('button', { name: 'Drive forward 40%' }).click()
 await waitForSim()
 await sleep(2600)
@@ -224,7 +232,7 @@ await waitForSim()
 await sleep(600)
 const extra = await placeByPointer({ partId: 'brick_1x1', point: world(36.5, 0, 28.5), expect: { x: 36, y: 0, z: 28 }, note: '1 × 1 brick placed while the rover ran' })
 await sleep(200)
-check('A.edit-retires-run', (await simState()) === null && await page.getByTestId('robotics-sim-status').textContent() === 'Built pose', 'an edit while the nudge ran retired it and the studio shows the built pose')
+check('A.edit-retires-run', (await simState()) === null && await page.getByTestId('robotics-sim-status').textContent() === 'Stopped', 'an edit while the nudge ran retired it and the studio shows the built pose (the motor tests say "Stopped")')
 check('A.edit-kept', (await brick((state, id) => state.bricks.some((b) => b.id === id), extra.id)), 'the brick placed during the run is part of the construction')
 await shot('P5-edit-while-running')
 await page.getByRole('button', { name: 'Undo', exact: true }).first().click() // the history cluster: the brick
@@ -280,9 +288,9 @@ gate.rightPost = (await placeByPointer({ partId: 'pillar_1x1', point: world(25.5
 gate.sill = (await placeByPointer({ partId: 'plate_2x4', point: world(23, 1, 22), rotation: 1, expect: { x: 21, y: 1, z: 21 }, note: 'Sill (turned once)' })).id
 gate.hinge = (await placeByPointer({ partId: 'robo_hinge_motor', point: world(22, 2, 22), expect: { x: 21, y: 2, z: 21 }, note: 'Hinge motor on the sill' })).id
 await sleep(400)
-check('B.card-on-hinge', (await cardState())?.creationId === null && await card.getByText('Hinge motor added').count() === 1, 'placing the hinge motor opens the card')
-await card.getByLabel('Creation name').fill('Pointer gate')
-await card.getByRole('button', { name: 'Not now' }).click()
+check('B.card-on-hinge', (await cardState())?.creationId === null && await card.getByText('You started a robot!').count() === 1 && (await card.getByLabel('Robot name').inputValue()) === 'Gate', 'placing the hinge motor opens the card, named "Gate"')
+await card.getByLabel('Robot name').fill('Pointer gate')
+await card.getByRole('button', { name: 'Keep building' }).click()
 await sleep(150)
 gate.door = (await placeByPointer({ partId: 'brick_1x4', point: world(22.6, 8, 21.5), rotation: 1, expect: { x: 21, y: 8, z: 21 }, note: 'Door on the turntable (turned once)' })).id
 gate.hub = (await placeByPointer({ partId: 'robo_hub', point: world(22, 1, 26), expect: { x: 20, y: 1, z: 24 }, note: 'Hub' })).id
@@ -297,6 +305,7 @@ await robo((state, list) => state.requestFrame(list), Object.values(gate))
 await sleep(700)
 await shot('P8-gate-built')
 const gateBefore = await snapshot()
+await openFold('More')
 await page.getByRole('button', { name: 'Swing to 60°', exact: true }).first().click()
 await waitForSim()
 await sleep(2600)

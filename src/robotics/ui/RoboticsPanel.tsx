@@ -116,7 +116,7 @@ function CreationCard({ compact }: { compact: boolean }) {
         )}
         <label className="robotics-field">
           Robot name
-          <input type="text" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} autoComplete="off" />
+          <input type="text" aria-label="Robot name" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} autoComplete="off" />
         </label>
         <button type="submit" className="robotics-big-button primary robotics-card-go">Keep building</button>
       </form>
