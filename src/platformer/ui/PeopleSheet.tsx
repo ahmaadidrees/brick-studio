@@ -79,13 +79,13 @@ function RoomSection({ session, onInvite, inviteLink }: { session: GameSession; 
           {!session.classroomRoom && (
             <div className="p2d-row-pair">
               <Button fullWidth icon={<Save size={18} />} onClick={() => room.saveLevel()}>
-                Save level
+                Save world
               </Button>
               <Button
                 fullWidth
                 icon={<RotateCcw size={18} />}
                 onClick={() => {
-                  if (confirm('Put the level back the way it was when you last saved it? Everyone sees the change.')) room.restoreLevel()
+                  if (confirm('Put the world back the way it was when you last saved it? Everyone sees the change.')) room.restoreLevel()
                 }}
               >
                 Restore save
@@ -106,11 +106,11 @@ function RoomSection({ session, onInvite, inviteLink }: { session: GameSession; 
               Let removed players back in ({session.bannedCount})
             </Button>
           )}
-          {session.classroomRoom && <p className="p2d-note">This class level saves to its account world by itself; restore earlier versions from My worlds.</p>}
+          {session.classroomRoom && <p className="p2d-note">This class world saves by itself; restore earlier versions from My worlds.</p>}
         </>
       ) : !session.roomCanBuild ? (
         <p className="p2d-note">
-          <Lock size={16} aria-hidden="true" /> You can play this level, but not change it.
+          <Lock size={16} aria-hidden="true" /> You can play this world, but not change it.
         </p>
       ) : settings.buildLocked ? (
         <p className="p2d-note">

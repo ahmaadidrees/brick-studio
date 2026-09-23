@@ -1,28 +1,12 @@
-import { ArrowLeft, ArrowRight, Blocks, Eraser } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Box, Eraser } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import type { LevelStyle, Theme } from '@brick-studio/platformer-core/engine/level'
-import { ALL_CATEGORY, DrawerFab, DrawerPanel, DrawerSheet, DrawerToggle, HistoryTools, PartPicker, type DrawerItem, type DrawerLabels } from '../../shell'
+import { ALL_CATEGORY, BRICK_DRAWER_LABELS, DrawerFab, DrawerPanel, DrawerSheet, DrawerToggle, HistoryTools, PartPicker, type DrawerItem } from '../../shell'
 import type { Editor } from '../editor/editor'
 import { CATEGORIES, PALETTE } from '../editor/palette'
 import { Art } from './art'
 
-export const BLOCK_DRAWER_LABELS: DrawerLabels = {
-  title: 'Blocks',
-  search: 'Search blocks',
-  searchPlaceholder: 'Search blocks…',
-  grid: 'Blocks to place',
-  categorySelect: 'Block category',
-  categoryTabs: 'Block categories',
-  plural: 'blocks',
-  panel: 'Block drawer',
-  open: 'Open block drawer',
-  collapse: 'Collapse block drawer',
-  close: 'Close block drawer',
-  expand: 'Expand block drawer',
-  shrink: 'Make block drawer smaller',
-}
-
-const DRAWER_ID = 'p2d-block-drawer'
+const DRAWER_ID = 'p2d-brick-drawer'
 const DRAWER_CATEGORIES = [{ id: ALL_CATEGORY, label: 'All' }, ...CATEGORIES]
 const CATEGORY_LABEL = new Map(CATEGORIES.map((c) => [c.id, c.label]))
 
@@ -42,7 +26,7 @@ interface Props {
 }
 
 /**
- * Building a 2D level, laid out like the 3D studio: the block drawer on the left (the same drawer as the 3D bricks),
+ * Building a 2D level, laid out like the 3D studio: the Bricks drawer on the left (the same drawer, and name, as the 3D studio's),
  * Undo and Redo beside it, and a strip along the bottom saying what a click places.
  */
 export function BuildShell({ editor, theme, look, compact, touch, drawerOpen, onDrawerOpen }: Props) {
@@ -52,7 +36,8 @@ export function BuildShell({ editor, theme, look, compact, touch, drawerOpen, on
     () => PALETTE.map((it) => ({ id: it.id, name: it.label, category: it.category, thumbnail: <Art k={themedIcon(it.icon, theme)} box={40} look={look} className="p2d-part-art" /> })),
     [theme, look],
   )
-  const searchText = useCallback((item: DrawerItem) => `${item.id} ${CATEGORY_LABEL.get(item.category as never) ?? ''}`, [])
+  // Search matches a brick's name, its category's name and the category's older name (critters were "enemies").
+  const searchText = useCallback((item: DrawerItem) => `${item.id} ${item.category} ${CATEGORY_LABEL.get(item.category as never) ?? ''}`, [])
   const choose = (id: string) => {
     const item = PALETTE.find((p) => p.id === id)
     if (item) editor.select(item)
@@ -66,7 +51,7 @@ export function BuildShell({ editor, theme, look, compact, touch, drawerOpen, on
         choose(id)
         onPicked?.()
       }}
-      labels={BLOCK_DRAWER_LABELS}
+      labels={BRICK_DRAWER_LABELS}
       denseCatalog={dense}
       searchText={searchText}
     />
@@ -76,19 +61,19 @@ export function BuildShell({ editor, theme, look, compact, touch, drawerOpen, on
     <div className={`p2d-build-shell${compact ? ' p2d-compact-shell' : ''}${!compact && !drawerOpen ? ' p2d-drawer-collapsed' : ''}`}>
       {compact ? (
         <>
-          <DrawerFab labels={BLOCK_DRAWER_LABELS} open={sheetOpen} onOpen={() => setSheetOpen(true)} />
+          <DrawerFab labels={BRICK_DRAWER_LABELS} open={sheetOpen} onOpen={() => setSheetOpen(true)} />
           {sheetOpen && (
-            <DrawerSheet labels={BLOCK_DRAWER_LABELS} icon={<Blocks size={24} aria-hidden="true" />} onClose={closeSheet} titleId="p2d-sheet-title">
+            <DrawerSheet labels={BRICK_DRAWER_LABELS} icon={<Box size={24} aria-hidden="true" />} onClose={closeSheet} titleId="p2d-sheet-title">
               {picker(false, closeSheet)}
             </DrawerSheet>
           )}
         </>
       ) : drawerOpen ? (
-        <DrawerPanel id={DRAWER_ID} labels={BLOCK_DRAWER_LABELS} icon={<Blocks size={27} aria-hidden="true" />} onCollapse={() => onDrawerOpen(false)}>
+        <DrawerPanel id={DRAWER_ID} labels={BRICK_DRAWER_LABELS} icon={<Box size={27} aria-hidden="true" />} onCollapse={() => onDrawerOpen(false)}>
           {picker(true)}
         </DrawerPanel>
       ) : (
-        <DrawerToggle id={DRAWER_ID} labels={BLOCK_DRAWER_LABELS} onOpen={() => onDrawerOpen(true)} />
+        <DrawerToggle id={DRAWER_ID} labels={BRICK_DRAWER_LABELS} onOpen={() => onDrawerOpen(true)} />
       )}
       <div className="brick-history-cluster p2d-history" role="group" aria-label="Build tools">
         <HistoryTools onUndo={() => editor.undo()} onRedo={() => editor.redo()} canUndo={editor.undoStack.length > 0} canRedo={editor.redoStack.length > 0} />

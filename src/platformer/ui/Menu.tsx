@@ -35,13 +35,13 @@ export function Menu(p: Props) {
     if (p.open) setView(p.view ?? 'main')
   }, [p.open, p.view])
   const s = p.session
-  const restartLabel = p.building ? 'Play from the start' : s.solo ? 'Restart the level' : 'Back to the start'
+  const restartLabel = p.building ? 'Play from the start' : s.solo ? 'Start over' : 'Back to the start'
   const kicker = view === 'controls' ? 'Controls' : s.solo ? 'Paused' : 'The game keeps going while this is open'
   return (
     <Sheet
       open={p.open}
       onClose={p.onClose}
-      title={p.title || 'Untitled level'}
+      title={p.title || 'Untitled world'}
       description={kicker}
       variant="dialog"
       size="md"

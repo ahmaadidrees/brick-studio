@@ -7,8 +7,6 @@ export type RenameWorldDialogProps = {
   currentTitle: string
   onRename: (title: string) => Promise<void>
   onClose: () => void
-  /** What is being renamed: a 3D world (default) or a 2D level. */
-  noun?: 'world' | 'level'
   maxLength?: number
 }
 
@@ -17,7 +15,7 @@ export type RenameWorldDialogProps = {
  * A shared Dialog so builder shortcuts pause while typing; focus returns to
  * whatever opened it.
  */
-export function RenameWorldDialog({ currentTitle, onRename, onClose, noun = 'world', maxLength = WORLD_TITLE_MAX_LENGTH }: RenameWorldDialogProps) {
+export function RenameWorldDialog({ currentTitle, onRename, onClose, maxLength = WORLD_TITLE_MAX_LENGTH }: RenameWorldDialogProps) {
   const formId = useId()
   const input = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState(currentTitle)
@@ -30,20 +28,20 @@ export function RenameWorldDialog({ currentTitle, onRename, onClose, noun = 'wor
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const next = title.trim().slice(0, maxLength).trim()
-    if (!next) { setError(`Give your ${noun} a name.`); return }
+    if (!next) { setError('Give your world a name.'); return }
     if (next === currentTitle) { onClose(); return }
     setBusy(true)
     setError('')
     onRename(next)
       .then(() => closeRef.current())
-      .catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : `Could not rename this ${noun}. Try again.`); setBusy(false) })
+      .catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : 'Could not rename this world. Try again.'); setBusy(false) })
   }
 
   return (
     <Dialog
       open
       onClose={onClose}
-      title={`Rename ${noun}`}
+      title="Rename world"
       description="The new name shows in My worlds and in the header."
       dismissible={!busy}
       initialFocusRef={input}
@@ -55,7 +53,7 @@ export function RenameWorldDialog({ currentTitle, onRename, onClose, noun = 'wor
       <form id={formId} onSubmit={submit}>
         <TextField
           ref={input}
-          label={noun === 'level' ? 'Level name' : 'World name'}
+          label="World name"
           value={title}
           maxLength={maxLength}
           disabled={busy}

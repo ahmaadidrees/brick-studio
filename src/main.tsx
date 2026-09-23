@@ -50,7 +50,7 @@ const experience = route === 'teacher-callback'
 
 createRoot(document.getElementById('root')!).render(
   <AppErrorBoundary>
-    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>{route === 'landing' ? `Welcome to ${BRAND_NAME}…` : route === 'platformer' ? 'Opening 2D levels…' : 'Opening the studio…'}</div>}>
+    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>{route === 'landing' ? `Welcome to ${BRAND_NAME}…` : route === 'platformer' ? 'Opening 2D worlds…' : 'Opening the studio…'}</div>}>
       {experience}
     </Suspense>
   </AppErrorBoundary>,

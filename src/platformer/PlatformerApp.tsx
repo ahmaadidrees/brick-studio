@@ -36,7 +36,7 @@ export default function PlatformerApp() {
       return (
         <Notice title="We couldn't find that page">
           <Button href="/2d" variant="primary" icon={<House size={18} />}>
-            2D levels
+            2D worlds
           </Button>
         </Notice>
       )
@@ -49,7 +49,7 @@ const HOME = () => window.location.assign('/2d')
 function Notice({ title, body, busy, children }: { title: string; body?: string; busy?: boolean; children?: ReactNode }) {
   return (
     <div className="p2d-page">
-      <AppHeader variant="page" title="2D levels" />
+      <AppHeader variant="page" title="2D worlds" />
       <main className="p2d-notice">
         <div className="p2d-card">
           {busy && <LoaderCircle className="ui-spin" size={28} aria-hidden="true" />}
@@ -80,7 +80,7 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
           done({ level, source: { kind: 'cloud', world: w } })
         } catch (e) {
           if (e instanceof NotALevelError) return window.location.replace(`/build?world=${encodeURIComponent(world)}`)
-          if (!cancelled) setError(e instanceof Error ? e.message : 'This level could not be opened.')
+          if (!cancelled) setError(e instanceof Error ? e.message : 'This world could not be opened.')
         }
         return
       }
@@ -89,7 +89,7 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
         if (level) return done({ level, source: { kind: 'draft', id: draft } })
       }
       if (!fresh && !draft) {
-        // "Your latest 2D level": the account's newest, else this browser's newest, else a new one.
+        // "Your latest 2D world": the account's newest, else this browser's newest, else a new one.
         if (browserClassroomClient.getSession()) {
           try {
             const me = browserClassroomClient.getSession()?.user.id
@@ -108,7 +108,7 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
         const level = recent ? loadDraft(recent.id) : null
         if (recent && level) return done({ level, source: { kind: 'draft', id: recent.id } })
       }
-      done({ level: createBlankLevel(160, 27, 'My level'), source: { kind: 'new' } })
+      done({ level: createBlankLevel(160, 27, 'My world'), source: { kind: 'new' } })
     })()
     return () => {
       cancelled = true
@@ -117,16 +117,16 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
 
   if (error)
     return (
-      <Notice title="This level could not be opened" body={error}>
+      <Notice title="This world could not be opened" body={error}>
         <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D levels
+          2D worlds
         </Button>
       </Notice>
     )
-  if (!loaded) return <Notice title="Opening your level…" busy />
+  if (!loaded) return <Notice title="Opening your world…" busy />
   // Someone else's level opened here (not through its room) is for playing only.
   const readOnly = loaded.source.kind === 'cloud' && !loaded.source.world.canEdit
-  return <GameScreen level={loaded.level} source={loaded.source} startMode={readOnly ? 'play' : 'build'} onExit={HOME} exitLabel="Back to 2D levels" />
+  return <GameScreen level={loaded.level} source={loaded.source} startMode={readOnly ? 'play' : 'build'} onExit={HOME} exitLabel="Back to 2D worlds" />
 }
 
 function CoursePage({ id }: { id: string }) {
@@ -135,7 +135,7 @@ function CoursePage({ id }: { id: string }) {
     return (
       <Notice title="We couldn't find that course">
         <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D levels
+          2D worlds
         </Button>
       </Notice>
     )
@@ -147,7 +147,7 @@ function CoursePage({ id }: { id: string }) {
       source={{ kind: 'course', id: course.id }}
       startMode="play"
       onExit={HOME}
-      exitLabel="Back to 2D levels"
+      exitLabel="Back to 2D worlds"
       onNext={next ? () => window.location.assign(`/2d/play/${next.id}`) : undefined}
     />
   )
@@ -155,21 +155,21 @@ function CoursePage({ id }: { id: string }) {
 
 function SharedPage({ code }: { code: string | null }) {
   const [level, setLevel] = useState<LevelDesign | null>(null)
-  const [error, setError] = useState(code ? '' : 'This link does not include a level.')
+  const [error, setError] = useState(code ? '' : 'This link does not include a world.')
   useEffect(() => {
     if (!code) return
     decodeShareCode(code).then(setLevel, () => setError('That share link could not be read. Ask for a new one.'))
   }, [code])
   if (error)
     return (
-      <Notice title="This level could not be opened" body={error}>
+      <Notice title="This world could not be opened" body={error}>
         <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D levels
+          2D worlds
         </Button>
       </Notice>
     )
-  if (!level) return <Notice title="Opening the level…" busy />
-  return <GameScreen level={level} source={{ kind: 'shared' }} startMode="play" onExit={HOME} exitLabel="Back to 2D levels" />
+  if (!level) return <Notice title="Opening the world…" busy />
+  return <GameScreen level={level} source={{ kind: 'shared' }} startMode="play" onExit={HOME} exitLabel="Back to 2D worlds" />
 }
 
 /** Before joining a guest room: check it exists and ask for a name (signed-in users get theirs filled in). */
@@ -202,7 +202,7 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
     return (
       <Notice title="The room service is unreachable" body={`${error} Check the connection and try again.`}>
         <Button href="/2d" icon={<House size={18} />}>
-          2D levels
+          2D worlds
         </Button>
       </Notice>
     )
@@ -211,7 +211,7 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
     return (
       <Notice title="This room has closed" body="Rooms are forgotten about two hours after everyone leaves. Ask for a new link, or open your own.">
         <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D levels
+          2D worlds
         </Button>
       </Notice>
     )
@@ -240,7 +240,7 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
         </form>
       )}
       <Button href="/2d" variant="quiet" icon={<House size={18} />}>
-        Back to 2D levels
+        Back to 2D worlds
       </Button>
     </Notice>
   )
@@ -264,7 +264,7 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
   }, [worldId, signedIn])
   if (!signedIn && account.status !== 'loading')
     return (
-      <Notice title="Sign in to open this level" body="Class levels open for the students and teacher of the class.">
+      <Notice title="Sign in to open this world" body="Class worlds open for the students and teacher of the class.">
         <Button variant="primary" icon={<LogIn size={18} />} onClick={() => goToJoin({ mode: 'signin', next: currentPath() })}>
           Sign in
         </Button>
@@ -272,13 +272,13 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
     )
   if (error)
     return (
-      <Notice title="This level could not be opened" body={error}>
+      <Notice title="This world could not be opened" body={error}>
         <Button href="/worlds" variant="primary" icon={<House size={18} />}>
           My worlds
         </Button>
       </Notice>
     )
-  if (!title) return <Notice title="Opening the level…" busy />
+  if (!title) return <Notice title="Opening the world…" busy />
   const invited = new URLSearchParams(window.location.search).get('invited') === '1'
   if (invited) window.history.replaceState(null, '', window.location.pathname)
   return (

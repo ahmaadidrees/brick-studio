@@ -165,7 +165,8 @@
    keeps the bottom centre. Both move with the drawer state; compact layouts pin them to the
    screen edges. */
 .brick-history-cluster { position: absolute; z-index: 13; top: var(--brick-panel-top); left: 288px; display: flex; align-items: center; gap: 4px; max-width: calc(100% - 304px - 72px); box-sizing: border-box; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-.build-shell.drawer-collapsed .brick-history-cluster { left: 80px; }
+/* Clear of the collapsed "Bricks" button (it ends about 112px in). */
+.build-shell.drawer-collapsed .brick-history-cluster { left: 124px; }
 .brick-history-cluster > * { flex: 0 0 auto; }
 .brick-history-tools { display: flex; gap: 0; padding: 0 3px; border-radius: 10px; background: var(--studio-panel-soft); }
 .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }

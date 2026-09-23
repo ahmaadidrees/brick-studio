@@ -33,7 +33,7 @@ export async function cloudWorldInfo(id: string): Promise<ClassroomWorld> {
 export async function createCloudLevel(level: LevelDesign): Promise<ClassroomWorld> {
   const { world } = await browserClassroomClient.request<{ world: ClassroomWorld }>('/worlds', 'POST', {
     kind: 'personal',
-    title: level.title.trim().slice(0, 80) || 'My level',
+    title: level.title.trim().slice(0, 80) || 'My world',
     document: createPlatformerDocument(level),
   })
   return world
@@ -86,7 +86,7 @@ export class CloudLevelSaver {
       try {
         const { world } = await browserClassroomClient.request<{ world: ClassroomWorld }>(`/worlds/${this.world.id}`, 'PUT', {
           expectedRevision: this.world.revision,
-          title: level.title.trim().slice(0, 80) || 'My level',
+          title: level.title.trim().slice(0, 80) || 'My world',
           document: createPlatformerDocument(level),
         })
         this.world = { ...this.world, ...world }
@@ -95,8 +95,8 @@ export class CloudLevelSaver {
       } catch (error) {
         this.pending ??= level
         this.error = error instanceof ClassroomError && error.code === 'revision_conflict'
-          ? 'A newer version of this level was saved somewhere else. Reload to get it.'
-          : error instanceof Error ? error.message : 'Saving did not work. Your level is still here.'
+          ? 'A newer version of this world was saved somewhere else. Reload to get it.'
+          : error instanceof Error ? error.message : 'Saving did not work. Your world is still here.'
         this.set('error')
       }
     })()

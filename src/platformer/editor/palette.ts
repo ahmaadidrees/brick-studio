@@ -7,9 +7,9 @@ export const CATEGORIES: { id: Category; label: string }[] = [
   { id: 'terrain', label: 'Terrain' },
   { id: 'blocks', label: 'Blocks' },
   { id: 'items', label: 'Items' },
-  { id: 'enemies', label: 'Enemies' },
+  { id: 'enemies', label: 'Critters' },
   { id: 'gizmos', label: 'Gizmos' },
-  { id: 'course', label: 'Course' },
+  { id: 'course', label: 'Start and goal' },
 ]
 
 export type Placement =

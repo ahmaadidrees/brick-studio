@@ -15,7 +15,7 @@ import { parseRoomRef, playWithFriends } from './rooms'
 import { levelThumb } from './thumbs'
 
 /**
- * `/2d`: the 2D side of Brickgineers. Start or continue a level, play a course, find your levels (this browser's
+ * `/2d`: the 2D side of Brickgineers. Start or continue a world, try a starter world, find your worlds (this browser's
  * and, when signed in, your account's), and play with friends. The header matches every other page, with the
  * 3D ⇄ 2D switch in place of page actions.
  */
@@ -73,15 +73,15 @@ export function Home2D() {
 
   return (
     <div className="p2d-page">
-      <AppHeader variant="page" title="2D levels" actions={<DimensionSwitch current="2d" />} />
+      <AppHeader variant="page" title="2D worlds" actions={<DimensionSwitch current="2d" />} />
       <main className="p2d-home" id="p2d-main">
         <section className="p2d-hero" aria-labelledby="p2d-hero-title">
           <div className="p2d-hero-copy">
-            <h1 id="p2d-hero-title">Build a 2D level. Then run through it.</h1>
-            <p>Place blocks, springs and enemies on a side-scrolling level, then play it: alone, with friends, or with your class.</p>
+            <h1 id="p2d-hero-title">Build a 2D world. Then run through it.</h1>
+            <p>Place bricks, springs and critters in a side-scrolling world, then play it: alone, with friends, or with your class.</p>
             <div className="p2d-hero-actions">
               <Button href="/2d/build?new=1" variant="primary" size="lg" icon={<Plus size={20} />}>
-                Start a new level
+                Start a new world
               </Button>
               {latest && (
                 <Button href={latest.href} size="lg" icon={<Hammer size={20} />}>
@@ -90,7 +90,7 @@ export function Home2D() {
               )}
             </div>
             <p className="p2d-hero-note">
-              Prefer bricks? <a href="/build">Switch to 3D building</a>. {signedIn ? 'Your 2D levels save to your account, next to your 3D worlds.' : 'Sign in to save your levels to your account and share them with your class.'}
+              Prefer bricks? <a href="/build">Switch to 3D building</a>. {signedIn ? 'Your 2D worlds save to your account, next to your 3D ones.' : 'Sign in to save your worlds to your account and share them with your class.'}
             </p>
           </div>
           <div className="p2d-hero-art" aria-hidden="true">
@@ -105,7 +105,7 @@ export function Home2D() {
         )}
 
         <section className="p2d-section" aria-labelledby="p2d-courses">
-          <h2 id="p2d-courses">Play a course</h2>
+          <h2 id="p2d-courses">Try a starter world</h2>
           <div className="p2d-cards">
             {courses.map(({ c, level, thumb, sub }) => (
               <LevelCard key={c.id} thumb={thumb} smooth={level.style === 'cartoon'} title={c.title} sub={sub}>
@@ -121,15 +121,15 @@ export function Home2D() {
         </section>
 
         <section className="p2d-section" aria-labelledby="p2d-yours">
-          <h2 id="p2d-yours">Your levels</h2>
+          <h2 id="p2d-yours">Your worlds</h2>
           {signedIn && worlds === null && !worldsError && (
             <p className="p2d-muted" role="status">
-              <LoaderCircle className="ui-spin" size={16} aria-hidden="true" /> Loading your levels…
+              <LoaderCircle className="ui-spin" size={16} aria-hidden="true" /> Loading your worlds…
             </p>
           )}
           {worldsError && <p className="p2d-error">{worldsError}</p>}
           <div className="p2d-cards">
-            <LevelCard thumb={levelThumb(createBlankLevel(160, 27, 'My level'), 'blank:cartoon')} smooth title="New level" sub="A start, a floor and a flag" badge>
+            <LevelCard thumb={levelThumb(createBlankLevel(160, 27, 'My world'), 'blank:cartoon')} smooth title="New world" sub="A start, a floor and a flag" badge>
               <Button href="/2d/build?new=1" variant="primary" size="sm" icon={<Plus size={16} />}>
                 Start
               </Button>
@@ -177,8 +177,8 @@ export function Home2D() {
         <section className="p2d-section p2d-friends" aria-labelledby="p2d-friends-title">
           <h2 id="p2d-friends-title">Play with friends</h2>
           <p className="p2d-muted">
-            Pick “With friends” on any level to open a room and copy its link. Everyone in a room shares one world: build and play at the same time, up to 16 players.
-            {signedIn && ' To play with your class, share a level from its menu or from My worlds.'}
+            Pick “With friends” on any world to open a room and copy its link. Everyone in a room shares one world: build and play at the same time, up to 16 players.
+            {signedIn && ' To play with your class, share a world from its menu or from My worlds.'}
           </p>
           <JoinBox />
         </section>

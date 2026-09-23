@@ -26,8 +26,8 @@ Without an account (nothing is sent anywhere unless you choose to):
   that carries the whole build, which anyone can open and remix into their own draft. Rooms expire
   about two hours after the last activity, so export to keep the build.
 
-- **2D levels** (`/2d`): build a side-scrolling level from blocks, springs and enemies, run and jump through it,
-  play three ready-made courses, or open a room for up to 16 players who build and play in one level. The 3D / 2D
+- **2D worlds** (`/2d`): build a side-scrolling world from bricks, springs and critters, run and jump through it,
+  try three starter worlds, or open a room for up to 16 players who build and play in one world. The 3D / 2D
   switch at the top of either builder goes straight to the other. See [docs/PLATFORMER.md](docs/PLATFORMER.md).
 
 With a class account:
@@ -46,7 +46,7 @@ With a class account:
 | `/live/:roomId` | A live Build together room (owner view, or guest view via the invite link) |
 | `/world#…` | Read-only reader for a shared build; the snapshot is compressed into the URL fragment; Remix copies it into your local draft |
 | `/auth/teacher-callback` | Return leg of the teacher Google sign-in (PKCE) |
-| `/2d/*` | 2D levels: home, builder, courses, guest rooms and class rooms ([docs/PLATFORMER.md](docs/PLATFORMER.md)) |
+| `/2d/*` | 2D worlds: home, builder, starter worlds, guest rooms and class rooms ([docs/PLATFORMER.md](docs/PLATFORMER.md)) |
 
 ## Quick start
 
@@ -107,7 +107,7 @@ Deeper docs:
 
 - [docs/classroom/API.md](docs/classroom/API.md) — classroom API, auth model, limits
 - [docs/LIVE_WORLD_PROTOCOL.md](docs/LIVE_WORLD_PROTOCOL.md) — live-room wire contract
-- [docs/PLATFORMER.md](docs/PLATFORMER.md) — 2D levels: routes, saving, rooms, running locally, deploying
+- [docs/PLATFORMER.md](docs/PLATFORMER.md) — 2D worlds: routes, saving, rooms, running locally, deploying
 - [docs/classroom/TEACHER-PILOT.md](docs/classroom/TEACHER-PILOT.md) — running the first class
 - [docs/PERF-BASELINE.md](docs/PERF-BASELINE.md) and [docs/CHROMEBOOK-CHECKLIST.md](docs/CHROMEBOOK-CHECKLIST.md) — device measurements
 - [scripts/README.md](scripts/README.md) — fixtures, brand assets, load harness

@@ -2,7 +2,7 @@ import type { LevelStyle } from '@brick-studio/platformer-core/engine/level'
 import { Atlas } from '../render/atlas'
 import { CartoonSkin } from '../render/cartoon/cartoonSkin'
 
-/* The game's own art as images for the interface (the block drawer, cards, decorations), in either look. */
+/* The game's own art as images for the interface (the Bricks drawer, cards, decorations), in either look. */
 
 const atlas = new Atlas()
 /** Interface pictures in the cartoon look are drawn at 3× so they stay sharp on any screen. */

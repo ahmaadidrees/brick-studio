@@ -29,7 +29,7 @@ export function PlateArt({ world }: { world: WorldsWorld }) {
 
 /**
  * Card art for a 2D level: a pixel side-scroller strip (sky, floor, a ? block and the hero). Decorative only; the
- * "2D level" chip says it in words.
+ * "2D world" chip says it in words.
  */
 export function LevelArt() {
   const px = (x: number, y: number, w: number, h: number, fill: string) => <rect x={x * 4} y={y * 4} width={w * 4} height={h * 4} fill={fill} />
@@ -52,10 +52,10 @@ export function LevelArt() {
   </div>
 }
 
-/** "2D level" on every 2D card, so the two kinds of world are easy to tell apart. */
+/** "2D world" on every 2D card, so the two kinds of world are easy to tell apart. */
 export function FormatChip({ world }: { world: WorldsWorld }) {
   if (!isLevel2d(world)) return null
-  return <span className="worlds-chip-tag worlds-chip-2d"><Square size={14} aria-hidden="true" /> 2D level</span>
+  return <span className="worlds-chip-tag worlds-chip-2d"><Square size={14} aria-hidden="true" /> 2D world</span>
 }
 
 /**

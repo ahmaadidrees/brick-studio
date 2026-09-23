@@ -33,13 +33,16 @@ describe('2D build shell', () => {
   it('picks blocks from the same drawer as the 3D bricks', () => {
     const editor = fakeEditor()
     shell(editor)
-    const drawer = screen.getByRole('complementary', { name: 'Block drawer' })
-    expect(within(drawer).getByRole('heading', { name: 'Blocks' })).toBeInTheDocument()
+    const drawer = screen.getByRole('complementary', { name: 'Brick drawer' })
+    expect(within(drawer).getByRole('heading', { name: 'Bricks' })).toBeInTheDocument()
     expect(within(drawer).getByRole('button', { name: 'Ground' })).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.change(within(drawer).getByRole('searchbox', { name: 'Search blocks' }), { target: { value: 'enem' } })
+    fireEvent.change(within(drawer).getByRole('searchbox', { name: 'Search bricks' }), { target: { value: 'critter' } })
     expect(within(drawer).getByRole('button', { name: 'Walker' })).toBeInTheDocument()
     expect(within(drawer).queryByRole('button', { name: 'Ground' })).toBeNull()
+    // The older word still finds them.
+    fireEvent.change(within(drawer).getByRole('searchbox', { name: 'Search bricks' }), { target: { value: 'enem' } })
+    expect(within(drawer).getByRole('button', { name: 'Walker' })).toBeInTheDocument()
 
     fireEvent.click(within(drawer).getByRole('button', { name: 'Walker' }))
     expect(editor.select).toHaveBeenCalledWith(PALETTE.find((p) => p.id === 'walker'))
@@ -47,12 +50,12 @@ describe('2D build shell', () => {
 
   it('narrows the drawer by category and says when nothing matches', () => {
     shell(fakeEditor())
-    const drawer = screen.getByRole('complementary', { name: 'Block drawer' })
-    fireEvent.change(within(drawer).getByRole('combobox', { name: 'Block category' }), { target: { value: 'course' } })
+    const drawer = screen.getByRole('complementary', { name: 'Brick drawer' })
+    fireEvent.change(within(drawer).getByRole('combobox', { name: 'Brick category' }), { target: { value: 'course' } })
     expect(within(drawer).getAllByRole('button').map((b) => b.getAttribute('title')).filter(Boolean)).toEqual(['Start', 'Checkpoint', 'Goal'])
-    fireEvent.change(within(drawer).getByRole('searchbox', { name: 'Search blocks' }), { target: { value: 'lava' } })
-    expect(within(drawer).getByRole('status')).toHaveTextContent('No blocks match “lava”.')
-    fireEvent.click(within(drawer).getByRole('button', { name: 'Show all blocks' }))
+    fireEvent.change(within(drawer).getByRole('searchbox', { name: 'Search bricks' }), { target: { value: 'lava' } })
+    expect(within(drawer).getByRole('status')).toHaveTextContent('No bricks match “lava”.')
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Show all bricks' }))
     expect(within(drawer).getByRole('button', { name: 'Ground' })).toBeInTheDocument()
   })
 
@@ -83,23 +86,23 @@ describe('2D build shell', () => {
   it('collapses the drawer to a toggle', () => {
     const onDrawerOpen = vi.fn()
     const { rerender } = shell(fakeEditor(), { onDrawerOpen })
-    fireEvent.click(screen.getByRole('button', { name: 'Collapse block drawer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse brick drawer' }))
     expect(onDrawerOpen).toHaveBeenCalledWith(false)
     rerender(<BuildShell editor={fakeEditor()} theme="day" look="cartoon" compact={false} touch={false} drawerOpen={false} onDrawerOpen={onDrawerOpen} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Open block drawer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open brick drawer' }))
     expect(onDrawerOpen).toHaveBeenCalledWith(true)
   })
 
   it('uses a button and a bottom sheet on compact screens', () => {
     const editor = fakeEditor()
     shell(editor, { compact: true, touch: true })
-    expect(screen.queryByRole('complementary', { name: 'Block drawer' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Open block drawer' }))
-    const sheet = screen.getByRole('dialog', { name: 'Blocks' })
+    expect(screen.queryByRole('complementary', { name: 'Brick drawer' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Open brick drawer' }))
+    const sheet = screen.getByRole('dialog', { name: 'Bricks' })
     fireEvent.click(within(sheet).getByRole('tab', { name: 'Items' }))
     fireEvent.click(within(sheet).getByRole('button', { name: 'Coin' }))
     expect(editor.select).toHaveBeenCalledWith(PALETTE.find((p) => p.id === 'coin'))
-    expect(screen.queryByRole('dialog', { name: 'Blocks' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Bricks' })).toBeNull()
     expect(screen.getByRole('group', { name: 'Placing' })).toHaveTextContent('Tap or drag to place')
   })
 })

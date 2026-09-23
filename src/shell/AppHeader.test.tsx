@@ -190,7 +190,6 @@ describe('AppHeader editor', () => {
       onRequestMode,
       worldTitle: 'Lava run',
       onRenameWorld,
-      renameNoun: 'level',
       renameMaxLength: 60,
       hideCharacter: true,
       modeLabels: { explore: 'Play' },
@@ -199,7 +198,7 @@ describe('AppHeader editor', () => {
       livePolicy: { connection: 'online', isOwner: false, peopleCount: 2 },
       worldMenu: ({ openRename }) => <button type="button" onClick={openRename}>Level menu</button>,
     })} />)
-    expect(screen.getByRole('button', { name: '2D levels' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('button', { name: '2D worlds' })).toHaveAttribute('aria-current', 'page')
     fireEvent.click(screen.getByRole('button', { name: '3D bricks' }))
     expect(onSwitchDimension).toHaveBeenCalledWith('3d')
     expect(screen.queryByRole('button', { name: 'Character' })).toBeNull()
@@ -210,8 +209,8 @@ describe('AppHeader editor', () => {
     expect(onRequestMode).toHaveBeenCalledWith('explore')
     expect(screen.queryByRole('button', { name: 'This build' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Level menu' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Rename level' })
-    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Level name' }), { target: { value: 'Lava run 2' } })
+    const dialog = await screen.findByRole('dialog', { name: 'Rename world' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'World name' }), { target: { value: 'Lava run 2' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save name' }))
     await waitFor(() => expect(onRenameWorld).toHaveBeenCalledWith('Lava run 2'))
   })

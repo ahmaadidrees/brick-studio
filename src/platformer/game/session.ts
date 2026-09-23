@@ -102,7 +102,7 @@ const EFFECT_SOUNDS: Partial<Record<Effect['k'], SoundName>> = {
 
 const REJECT_MESSAGES: Record<string, string> = {
   locked: 'The host has locked building',
-  read_only: 'You can play this level, but not change it',
+  read_only: 'You can play this world, but not change it',
   host_only: 'Only the host can reset the world',
 }
 
@@ -128,7 +128,7 @@ export class GameSession {
   onStatus: (() => void) | null = null
   onMenu: (() => void) | null = null
   onModeChange: (() => void) | null = null
-  /** Short messages for the player ("Level saved", "The host has locked building"). */
+  /** Short messages for the player ("World saved", "The host has locked building"). */
   onToast: ((msg: string) => void) | null = null
   /** Solo: the player reached the goal (time in ticks, best in ticks or -1). */
   onClear: ((time: number, best: number, newBest: boolean) => void) | null = null
@@ -223,7 +223,7 @@ export class GameSession {
   /** Why building is not possible right now, for the Build button's hint. */
   get buildBlockedReason(): string | null {
     if (this.canBuild) return null
-    return this.roomCanBuild ? 'The host has locked building' : 'You can play this level, but not change it'
+    return this.roomCanBuild ? 'The host has locked building' : 'You can play this world, but not change it'
   }
 
   start() {
@@ -285,7 +285,7 @@ export class GameSession {
         if (me && me.canBuild !== this.roomCanBuild) {
           this.roomCanBuild = me.canBuild
           if (!me.canBuild) {
-            this.onToast?.('You can play this level, but not change it')
+            this.onToast?.('You can play this world, but not change it')
             if (this.mode === 'build') this.setMode('play')
           }
         }
@@ -301,7 +301,7 @@ export class GameSession {
         }
         this.onRoom?.()
       },
-      saved: () => this.onToast?.('Level saved'),
+      saved: () => this.onToast?.('World saved'),
       notice: (message: string) => this.onToast?.(message),
       bonk: () => {
         this.player.squash = 14
@@ -383,8 +383,12 @@ export class GameSession {
         p.riding = 0
         p.invuln = Math.max(p.invuln, 30)
       } else respawn(p, this.ctx, false)
-      // Course rules: pressing Play starts the level fresh (enemies home, blocks and coins back).
-      if (this.solo) this.emit({ t: 'reset' })
+      // Pressing Play alone starts the world fresh: enemies home, blocks and coins back, and the clock from zero.
+      if (this.solo) {
+        this.emit({ t: 'reset' })
+        p.runStart = this.ctx.tick
+        p.clearTime = -1
+      }
       this.camera.reset()
     }
     this.mode = mode
@@ -554,7 +558,7 @@ export class GameSession {
     this.camera.bottomPad = Math.max(0, Math.round(cssPx * k))
   }
 
-  /** The docked block drawer covers the left of the view while building. */
+  /** The docked Bricks drawer covers the left of the view while building. */
   setLeftInset(cssPx: number) {
     const r = this.renderer.canvas.getBoundingClientRect()
     const k = r.width > 0 ? this.renderer.width / r.width : 1
@@ -708,7 +712,7 @@ export class GameSession {
       timeTicks: p.clearTime >= 0 ? p.clearTime : Math.max(0, t - p.runStart),
       pmeter: p.pmeter,
       pFull: p.pmeter >= P_SEGMENTS && (this.frameCount >> 2) % 2 === 0,
-      message: p.celebrate ? (this.newBest ? 'NEW BEST!' : 'COURSE CLEAR!') : undefined,
+      message: p.celebrate ? (this.newBest ? 'NEW BEST!' : 'YOU MADE IT!') : undefined,
       sub: p.celebrate ? `TIME ${formatTime(p.clearTime)}${best ? '   ' + best : ''}` : undefined,
     }
   }

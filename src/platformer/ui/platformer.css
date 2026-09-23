@@ -521,7 +521,7 @@
   }
 }
 
-/* ---------- Building: the block drawer, history and the placing strip, laid out like the 3D studio ---------- */
+/* ---------- Building: the Bricks drawer, history and the placing strip, laid out like the 3D studio ---------- */
 
 /*
  * The drawer is the 3D studio's own component (src/shell/PartDrawer.tsx) with the 3D class names. These rules are
@@ -593,7 +593,7 @@
 
 /* Undo and Redo, top-left beside the drawer (the 3D studio's history cluster). */
 .p2d-studio .brick-history-cluster { position: absolute; z-index: 13; top: 12px; left: 288px; display: flex; align-items: center; gap: 4px; box-sizing: border-box; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
-.p2d-studio .p2d-drawer-collapsed .brick-history-cluster { left: 80px; }
+.p2d-studio .p2d-drawer-collapsed .brick-history-cluster { left: 124px; }
 .p2d-studio .p2d-compact-shell .brick-history-cluster { left: max(8px, env(safe-area-inset-left)); top: 8px; }
 .p2d-studio .brick-history-tools { display: flex; gap: 0; padding: 0 3px; border-radius: 10px; background: var(--studio-panel-soft); }
 .p2d-studio .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }

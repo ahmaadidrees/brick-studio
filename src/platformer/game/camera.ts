@@ -13,7 +13,7 @@ export class Camera {
 
   /** How much of the bottom of the view is covered (touch buttons, the build bar), in pixels. */
   bottomPad = 0
-  /** How much of the left of the view is covered (the docked block drawer while building), in pixels. */
+  /** How much of the left of the view is covered (the docked Bricks drawer while building), in pixels. */
   leftPad = 0
 
   follow(px: number, py: number, vxPx: number, onGround: boolean, viewW: number, viewH: number, levelW: number, levelH: number) {

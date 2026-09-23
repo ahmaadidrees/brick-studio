@@ -1,9 +1,12 @@
-# 2D levels (`/2d`)
+# 2D worlds (`/2d`)
 
-The 2D side of Brickgineers: build a side-scrolling level from blocks, springs, enemies and pipes, then run and jump
+The 2D side of Brickgineers: build a side-scrolling world from bricks, springs, critters and tubes, then run and jump
 through it, alone, with friends in a room, or with the class. It shares the site, the header, the design system,
 student and teacher accounts, My worlds and class sharing with the 3D builder. A 3D ⇄ 2D switch sits at the top of
 both builders (and on the `/2d` pages), and the landing page offers both ("Two ways to build").
+
+Words: the interface calls a 2D world a *world* (like the 3D ones) and the three ready-made ones *starter worlds*; the
+code and the saved format call it a *level* (`LevelDesign`, `levelToJson`) and the starter worlds *courses*.
 
 ## Routes
 
@@ -150,6 +153,6 @@ Then production, then the site. No database migration and no new secrets are nee
 ## Not done yet
 
 - My worlds' "building now" counts only look at 3D rooms, so live 2D class rooms do not show there.
-- Account 2D levels have no picture of the level in lists (cards show 2D art; local drafts and courses do show
-  their level).
-- 2D levels share the 50-world account limit with 3D worlds.
+- Account 2D worlds have no picture of the world in lists (cards show 2D art; local drafts and starter worlds do
+  show theirs).
+- 2D worlds share the 50-world account limit with 3D worlds.

@@ -58,7 +58,7 @@ const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: 
 
 /**
  * A 2D level in progress, laid out like the 3D studio: the shared header on top (3D ⇄ 2D, the level's name and save
- * state, Scene, People, Build | Play, the ⋯ menu) and the game below. Building adds the block drawer, Undo and Redo,
+ * state, Scene, People, Build | Play, the ⋯ menu) and the game below. Building adds the Bricks drawer, Undo and Redo,
  * and the strip that says what a click places. Playing is the game alone, with a pause button.
  *
  * Where edits go: an account level saves to the account a moment after each change; a signed-in student's new
@@ -174,7 +174,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           .catch((error: { code?: string; message?: string }) => {
             creatingCloud.current = null
             draftId.current = saveDraft(draftId.current, s.timeline.world.design)
-            say(error?.code === 'world_limit' ? 'Your account is full, so this level is saved in this browser only.' : 'Could not save to your account, so this level is saved in this browser for now.')
+            say(error?.code === 'world_limit' ? 'Your account is full, so this world is saved in this browser only.' : 'Could not save to your account, so this world is saved in this browser for now.')
           })
         return
       }
@@ -401,12 +401,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const shareLink = async () => {
     if (!s) return
     const code = await encodeShareCode(s.timeline.world.design)
-    await copy(`${location.origin}/2d/play#l=${code}`, 'Link copied. Anyone who opens it gets this level.')
+    await copy(`${location.origin}/2d/play#l=${code}`, 'Link copied. Anyone who opens it gets this world.')
   }
   const inviteLink = source.kind === 'room' ? `${location.origin}/2d/${source.roomKind === 'guest' ? 'r' : 'w'}/${source.roomId}` : undefined
-  const invite = inviteLink ? () => void copy(inviteLink, source.kind === 'room' && source.roomKind === 'classroom' ? 'Link copied. Classmates who can open this level can join with it.' : 'Invite link copied') : undefined
+  const invite = inviteLink ? () => void copy(inviteLink, source.kind === 'room' && source.roomKind === 'classroom' ? 'Link copied. Classmates who can open this world can join with it.' : 'Invite link copied') : undefined
   const rename = async (next: string) => {
-    const t = next.trim().slice(0, 60) || 'Untitled level'
+    const t = next.trim().slice(0, 60) || 'Untitled world'
     if (s && t !== s.timeline.world.design.title) s.applyEdit([{ o: 'title', title: t }])
     setTitle(t)
   }
@@ -435,7 +435,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     saveNow.current()
     if (creatingCloud.current) await creatingCloud.current
     if (saver.current && !(await saver.current.flush())) {
-      say('Your level has not saved yet. Check your connection, then try again.')
+      say('Your world has not saved yet. Check your connection, then try again.')
       return
     }
     then()
@@ -476,7 +476,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       setSharing(false)
       // Building together happens in the level's live room, where the owner is already waiting.
       if (next.visibility !== 'private' && next.canEdit) window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)
-      else say(next.visibility === 'private' ? 'Only you can see this level now.' : 'Shared. Your classmates can play it from My worlds.')
+      else say(next.visibility === 'private' ? 'Only you can see this world now.' : 'Shared. Your classmates can play it from My worlds.')
     } catch (error) {
       say(error instanceof Error ? error.message : 'Sharing did not work. Try again.')
     } finally {
@@ -498,7 +498,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   // A toast takes the hint's place at the top rather than landing on it.
   const playHint = hint === 'play' && !build && !!s?.joined && !covered && !toast
   const offlineAfterJoin = !!s?.room && s.joined && s.roomStatus === 'offline'
-  const sceneLocked = !s ? null : s.canBuild ? null : (s.buildBlockedReason ?? 'You can play this level, but not change it.')
+  const sceneLocked = !s ? null : s.canBuild ? null : (s.buildBlockedReason ?? 'You can play this world, but not change it.')
   // A pointer click on a header button hands the keyboard straight back to the game (keyboard users keep focus).
   const releaseFocus = (e: React.MouseEvent) => {
     if (e.detail > 0) (e.target as HTMLElement).closest<HTMLButtonElement>('button:not([aria-haspopup])')?.blur()
@@ -513,13 +513,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           onSwitchDimension={inRoom ? undefined : (target) => target === '3d' && switchTo3D()}
           worldTitle={title}
           onRenameWorld={s?.canBuild ? rename : undefined}
-          renameNoun="level"
           renameMaxLength={60}
           saveStatus={{ source: saveSource }}
           onOpenWorldSetup={() => setScene(true)}
           hideCharacter
           onStartLiveWorld={inRoom ? undefined : startRoom}
-          startLiveTitle="Open a room for friends with this level"
+          startLiveTitle="Open a room for friends with this world"
           livePolicy={livePolicy}
           mode={build ? 'build' : 'explore'}
           onRequestMode={(next) => (next === 'build' ? tryBuild() : s?.setMode('play'))}
@@ -589,7 +588,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         )}
         {buildHint && (
           <div className="p2d-hint p2d-hint-dock" role="status">
-            {touch ? 'Pick a block, then tap or drag to place it. Two fingers look around.' : 'Pick a block, then click or drag to place it. Right-click erases.'}
+            {touch ? 'Pick a brick, then tap or drag to place it. Two fingers look around.' : 'Pick a brick, then click or drag to place it. Right-click erases.'}
           </div>
         )}
 
@@ -618,8 +617,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
 
         {clear && !menu && (
           <div className="p2d-overlay">
-            <div className="p2d-card p2d-clear" role="dialog" aria-label="Level clear">
-              <p className="p2d-kicker">{source.kind === 'course' ? 'Course clear' : 'Level clear'}</p>
+            <div className="p2d-card p2d-clear" role="dialog" aria-label="You made it">
+              <p className="p2d-kicker">{source.kind === 'course' ? 'Starter world' : 'Flag reached'}</p>
               <h2 className="p2d-clear-title">{clear.newBest ? 'New best time!' : 'You made it!'}</h2>
               <p className="p2d-clear-time">
                 <span>Time</span> {formatTime(clear.time)}
@@ -632,7 +631,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               </p>
               {onNext && (
                 <Button variant="primary" fullWidth icon={<Play size={18} />} onClick={onNext} autoFocus>
-                  Next course
+                  Next world
                 </Button>
               )}
               <Button

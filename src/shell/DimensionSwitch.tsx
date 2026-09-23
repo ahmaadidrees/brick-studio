@@ -7,7 +7,7 @@ export const DIMENSION_HREF: Record<BuildDimension, string> = { '3d': '/build', 
 
 const LABELS: Record<BuildDimension, { short: string; long: string }> = {
   '3d': { short: '3D', long: '3D bricks' },
-  '2d': { short: '2D', long: '2D levels' },
+  '2d': { short: '2D', long: '2D worlds' },
 }
 
 export type DimensionSwitchProps = {

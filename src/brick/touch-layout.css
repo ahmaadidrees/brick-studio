@@ -53,7 +53,7 @@
   .brick-studio { --brick-header-height: 64px; }
   .build-shell .part-library { width: 260px; bottom: 12px; overflow-y: auto; touch-action: pan-y; }
   .build-shell .brick-history-cluster { left: 284px; }
-  .build-shell.drawer-collapsed .brick-history-cluster { left: 76px; }
+  .build-shell.drawer-collapsed .brick-history-cluster { left: 124px; }
   .brick-history-tools .studio-icon-button > span, .brick-capacity-status { display: none; }
   .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
   .part-library .part-grid { min-height: 160px; }

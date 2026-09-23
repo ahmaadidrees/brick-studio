@@ -47,7 +47,7 @@ export function SceneSheet({ open, onClose, design, lockedReason, onStyle, onThe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, style, theme])
   return (
-    <Sheet open={open} onClose={onClose} title="Scene" description="How this level looks. Everyone who plays it sees the same." variant="dialog" size="md" className="p2d-menu">
+    <Sheet open={open} onClose={onClose} title="Scene" description="How this world looks. Everyone who plays it sees the same." variant="dialog" size="md" className="p2d-menu">
       <div className="p2d-menu-body">
         <section className="p2d-scene-group" aria-labelledby="p2d-look-title">
           <h3 id="p2d-look-title">Look</h3>

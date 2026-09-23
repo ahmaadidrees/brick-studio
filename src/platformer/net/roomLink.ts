@@ -119,7 +119,7 @@ export class RoomLink implements Link {
       if (this.closed) return
       if (isRefusal(error)) {
         this.closed = true
-        this.setStatus('offline', error instanceof Error ? error.message : 'You cannot join this level right now.')
+        this.setStatus('offline', error instanceof Error ? error.message : 'You cannot join this world right now.')
       } else this.scheduleRetry()
     })
   }

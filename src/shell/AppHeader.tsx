@@ -113,8 +113,7 @@ export type AppHeaderEditorProps = CommonProps & {
   hideCharacter?: boolean
   /** The People tool's tooltip outside a room (what "Build together" starts). */
   startLiveTitle?: string
-  /** What rename calls the build, and its longest name. */
-  renameNoun?: 'world' | 'level'
+  /** The longest name rename allows (2D worlds keep shorter names). */
   renameMaxLength?: number
   /** Replaces the ⋯ "This build" menu; gets the header's rename opener. */
   worldMenu?: (controls: { openRename?: () => void }) => ReactNode
@@ -196,7 +195,7 @@ function EditorHeader({
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
   onSaveToAccount, onGoHome, onSwitchDimension,
-  dimension = '3d', modeLabels, modeLock, hideCharacter = false, startLiveTitle, renameNoun = 'world', renameMaxLength, worldMenu,
+  dimension = '3d', modeLabels, modeLock, hideCharacter = false, startLiveTitle, renameMaxLength, worldMenu,
   session, className, accountMenuDefaultOpen, onKeyDown, id,
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
@@ -224,8 +223,8 @@ function EditorHeader({
         <div className="app-header-world">
           <span className="app-header-title" title={title}>{title}</span>
           {onRenameWorld && (
-            <Button variant="quiet" size="sm" iconOnly icon={<Pencil size={16} />} aria-label={`Rename ${renameNoun}`} title={`Rename ${renameNoun}`} className="app-header-rename" onClick={() => setRenaming(true)}>
-              Rename {renameNoun}
+            <Button variant="quiet" size="sm" iconOnly icon={<Pencil size={16} />} aria-label="Rename world" title="Rename world" className="app-header-rename" onClick={() => setRenaming(true)}>
+              Rename world
             </Button>
           )}
         </div>
@@ -252,7 +251,7 @@ function EditorHeader({
         />}
       </div>
       {renaming && onRenameWorld && (
-        <RenameWorldDialog currentTitle={title} onRename={onRenameWorld} onClose={() => setRenaming(false)} noun={renameNoun} maxLength={renameMaxLength} />
+        <RenameWorldDialog currentTitle={title} onRename={onRenameWorld} onClose={() => setRenaming(false)} maxLength={renameMaxLength} />
       )}
     </header>
   )

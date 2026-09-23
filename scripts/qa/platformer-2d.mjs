@@ -1,4 +1,4 @@
-// 2D levels end to end against a local Vite + Worker, as a guest (no Supabase needed): the landing page's way in,
+// 2D worlds end to end against a local Vite + Worker, as a guest (no Supabase needed): the landing page's way in,
 // the /2d home, a course, building a level that saves in the browser, the 3D ⇄ 2D switch both ways, a guest room
 // with two players (join by link, see each other move, edits reach everyone, the host locks building), and the
 // touch layouts (iPad landscape, phone portrait).
@@ -86,9 +86,9 @@ try {
   const desk = await open(DESKTOP, 'desktop')
   const { page } = desk
 
-  await step('landing: "Make a 2D level" and the two-ways section', async () => {
+  await step('landing: "Make a 2D world" and the two-ways section', async () => {
     await page.goto(`${origin}/`)
-    const cta = page.getByRole('link', { name: 'Make a 2D level', exact: true })
+    const cta = page.getByRole('link', { name: 'Make a 2D world', exact: true })
     await cta.waitFor()
     assert.equal(await cta.getAttribute('href'), '/2d/build')
     const ways = page.locator('#two-ways')
@@ -115,18 +115,22 @@ try {
     await shot(page, 'desktop-build')
   })
 
-  await step('studio layout: the block drawer, header tools, Scene and the strip', async () => {
-    const drawer = page.getByRole('complementary', { name: 'Block drawer' })
-    await drawer.getByRole('heading', { name: 'Blocks' }).waitFor()
+  await step('studio layout: the Bricks drawer, header tools, Scene and the strip', async () => {
+    const drawer = page.getByRole('complementary', { name: 'Brick drawer' })
+    await drawer.getByRole('heading', { name: 'Bricks' }).waitFor()
     for (const name of ['Scene', 'Build together']) await page.getByRole('button', { name, exact: true }).waitFor()
     assert.equal(await page.getByRole('radio', { name: 'Build' }).getAttribute('aria-checked'), 'true')
-    await drawer.getByRole('searchbox', { name: 'Search blocks' }).fill('coin')
+    await drawer.getByRole('searchbox', { name: 'Search bricks' }).fill('coin')
     await drawer.getByRole('button', { name: 'Coin', exact: true }).click()
     await page.locator('.p2d-strip').getByText('Coin', { exact: true }).waitFor()
-    await drawer.getByRole('searchbox', { name: 'Search blocks' }).fill('')
+    await drawer.getByRole('searchbox', { name: 'Search bricks' }).fill('')
     await drawer.getByRole('button', { name: 'Ground', exact: true }).click()
-    await page.getByRole('button', { name: 'Collapse block drawer' }).click()
-    await page.getByRole('button', { name: 'Open block drawer' }).click()
+    await page.getByRole('button', { name: 'Collapse brick drawer' }).click()
+    // Collapsed, the Bricks button and Undo / Redo sit side by side without touching.
+    const toggle = await page.getByRole('button', { name: 'Open brick drawer' }).boundingBox()
+    const history = await page.getByRole('group', { name: 'Build tools' }).boundingBox()
+    assert(toggle.x + toggle.width + 4 <= history.x, `the Bricks button runs into Undo / Redo (${JSON.stringify({ toggle, history })})`)
+    await page.getByRole('button', { name: 'Open brick drawer' }).click()
     await drawer.waitFor()
     // New levels start in the cartoon look, drawn at the screen's resolution.
     assert.equal(await page.evaluate(() => window.__game2d.timeline.world.design.style), 'cartoon')
@@ -167,7 +171,7 @@ try {
   })
 
   await step('switch: 3D → 2D reopens the level just built', async () => {
-    await page.locator('.app-header-dimension').getByRole('button', { name: '2D levels' }).click()
+    await page.locator('.app-header-dimension').getByRole('button', { name: '2D worlds' }).click()
     await page.waitForURL(/\/2d\/build/)
     await page.locator('.p2d-game.p2d-building').waitFor()
     await page.waitForFunction(() => !!window.__game2d)
@@ -176,11 +180,11 @@ try {
 
   await step('/2d home: continue, courses, the switch, no sideways scroll', async () => {
     await page.goto(`${origin}/2d`)
-    await page.getByRole('heading', { name: 'Build a 2D level. Then run through it.' }).waitFor()
+    await page.getByRole('heading', { name: 'Build a 2D world. Then run through it.' }).waitFor()
     await page.getByRole('link', { name: /^Continue “/ }).waitFor()
-    assert.equal(await page.getByRole('navigation', { name: 'Build in 3D or 2D' }).getByRole('button', { name: '2D levels' }).getAttribute('aria-current'), 'page')
+    assert.equal(await page.getByRole('navigation', { name: 'Build in 3D or 2D' }).getByRole('button', { name: '2D worlds' }).getAttribute('aria-current'), 'page')
     assert.equal(await page.getByRole('link', { name: 'Play', exact: true }).count(), 3)
-    await page.getByRole('article', { name: 'My level' }).waitFor()
+    await page.getByRole('article', { name: 'My world' }).waitFor()
     await noSideScroll(page)
     await shot(page, 'desktop-2d-home')
   })
@@ -315,12 +319,12 @@ try {
   await step('phone: landing and /2d fit the width', async () => {
     const p = phone.page
     await p.goto(`${origin}/`)
-    await p.getByRole('link', { name: 'Make a 2D level', exact: true }).waitFor()
+    await p.getByRole('link', { name: 'Make a 2D world', exact: true }).waitFor()
     await noSideScroll(p)
     await p.locator('#two-ways').scrollIntoViewIfNeeded()
     await shot(p, 'phone-landing-two-ways')
     await p.goto(`${origin}/2d`)
-    await p.getByRole('heading', { name: 'Build a 2D level. Then run through it.' }).waitFor()
+    await p.getByRole('heading', { name: 'Build a 2D world. Then run through it.' }).waitFor()
     await noSideScroll(p)
     await shot(p, 'phone-2d-home')
   })
@@ -340,8 +344,8 @@ try {
     await p.goto(`${origin}/2d/build?new=1`)
     await p.locator('.p2d-game.p2d-building').waitFor()
     await p.waitForFunction(() => !!window.__game2d)
-    await p.getByRole('button', { name: 'Open block drawer' }).click()
-    const sheet = p.getByRole('dialog', { name: 'Blocks' })
+    await p.getByRole('button', { name: 'Open brick drawer' }).click()
+    const sheet = p.getByRole('dialog', { name: 'Bricks' })
     await sheet.getByRole('tab', { name: 'Blocks', exact: true }).click()
     await shot(p, 'phone-build-sheet')
     await sheet.getByRole('button', { name: 'Spring', exact: true }).click()
