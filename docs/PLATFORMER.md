@@ -34,6 +34,11 @@ it, and it never loads three.js, Rapier or the 3D studio. `src/platformer/routes
 - `src/platformer`: the `/2d` pages, game session, canvas renderer, sound, keyboard/gamepad/touch input and the
   editor. Styles are `ui/platformer.css`: every class is prefixed `p2d-` and uses the shared tokens.
 - `src/shell/DimensionSwitch.tsx`: the 3D ⇄ 2D switch used by both builders and the `/2d` pages.
+- Shared with the 3D studio, so both builders look and work the same: the editor header (`AppHeader`, with
+  `dimension="2d"`: Scene, People, Build | Play and a ⋯ menu of the level's own), the part drawer
+  (`src/shell/PartDrawer.tsx`: docked panel, collapsed toggle, and on compact screens a button and bottom sheet),
+  Undo and Redo (`src/shell/HistoryTools.tsx`) and the compact-layout rule (`src/shell/useCompactLayout.ts`). The 2D
+  builder's copy of the drawer's styles is in the Building section of `platformer.css`; change it with the 3D studio's.
 - `multiplayer/worker/src/platformerRoom.ts`: the `PlatformerRoom` Durable Object, one per live 2D room.
 - `multiplayer/worker/src/classroomRoutes.ts`: the HTTP routes below; `classroom/index.ts` knows world formats.
 

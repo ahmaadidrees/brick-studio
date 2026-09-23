@@ -171,5 +171,7 @@ export class Input {
 
 function isTyping(t: EventTarget | null): boolean {
   if (!t || !(t instanceof HTMLElement)) return false
-  return t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT'
+  if (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return true
+  // Controls that take the arrow keys themselves (the header's Build | Play, tabs, menus) keep them.
+  return !!t.closest('[role="radiogroup"], [role="tablist"], [role="menu"]')
 }

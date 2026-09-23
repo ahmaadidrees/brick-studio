@@ -548,6 +548,13 @@ export class GameSession {
     this.camera.bottomPad = Math.max(0, Math.round(cssPx * k))
   }
 
+  /** The docked block drawer covers the left of the view while building. */
+  setLeftInset(cssPx: number) {
+    const r = this.renderer.canvas.getBoundingClientRect()
+    const k = r.width > 0 ? this.renderer.width / r.width : 1
+    this.camera.leftPad = Math.max(0, Math.round(cssPx * k))
+  }
+
   /** Centre the camera on the player (or where Play will resume). */
   focusPlayer() {
     const w = this.timeline.world

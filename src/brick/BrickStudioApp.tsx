@@ -23,19 +23,14 @@ import {
   MousePointer2,
   UserRound,
   Palette,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
-  Redo2,
   RotateCcw,
   RotateCw,
-  Search,
   SlidersHorizontal,
   Trash2,
-  Undo2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import BrickStudioScene, { type BrickStudioSceneProps } from './BrickStudioScene'
 import { BrandLockup } from '../brand'
 import { Button, SaveStatus, type SaveStatusSource } from '../ui'
@@ -54,7 +49,7 @@ import { PartThumbnail } from './PartThumbnail'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import type { StudioDocumentCommands } from './StudioMenu'
-import { AppHeader, DIMENSION_HREF, WORLDS_PATH, classroomIntentRedirect, describeLivePresence, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession, type BuildDimension, type LivePresence } from '../shell'
+import { AppHeader, BRICK_DRAWER_LABELS, HistoryTools, useCompactLayout, DIMENSION_HREF, DrawerFab, DrawerPanel, DrawerSheet, DrawerToggle, PartPicker, WORLDS_PATH, type DrawerItem, classroomIntentRedirect, describeLivePresence, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession, type BuildDimension, type LivePresence } from '../shell'
 import { isPlatformerDocument } from '@brick-studio/platformer-core/document'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
@@ -280,33 +275,6 @@ function useLocalStorageHealth(enabled: boolean) {
   return blocked
 }
 
-// Narrow and portrait screens use the creative dock. Landscape touch tablets
-// have room for a persistent palette without taking away the editing canvas.
-function useCompactLayout() {
-  const [queries] = useState(() => ['(max-width: 900px)', '(pointer: coarse)'].map((query) => window.matchMedia?.(query) ?? null))
-  const matchesCompact = useCallback(() => {
-    const touch = queries[1]?.matches ?? false
-    // Landscape tablets retain a palette; narrow/portrait screens use the dock.
-    const tabletPalette = touch && window.innerWidth >= 960 && window.innerHeight >= 600 && window.innerWidth > window.innerHeight
-    return !tabletPalette && (queries.some((query) => query?.matches) || window.innerWidth <= 900)
-  }, [queries])
-  const [compact, setCompact] = useState(matchesCompact)
-
-  useEffect(() => {
-    const update = () => setCompact(matchesCompact())
-    update()
-    for (const query of queries) query?.addEventListener?.('change', update)
-    window.addEventListener('resize', update)
-    window.addEventListener('orientationchange', update)
-    return () => {
-      for (const query of queries) query?.removeEventListener?.('change', update)
-      window.removeEventListener('resize', update)
-      window.removeEventListener('orientationchange', update)
-    }
-  }, [queries, matchesCompact])
-
-  return compact
-}
 
 /**
  * The header's save chip is the shared `SaveStatus` primitive fed with the real enum the
@@ -420,10 +388,7 @@ function HistoryCluster() {
   const count = useBrickStore((state) => state.bricks.length)
   const budget = useBrickStore((state) => state.brickBudget)
   return <div className="brick-history-cluster" role="group" aria-label="Build tools">
-    <div className="brick-history-tools" role="group" aria-label="Edit history">
-      <button className="studio-icon-button" type="button" onClick={undo} disabled={!canUndo} aria-label="Undo" title="Undo (⌘Z)"><Undo2 size={18} aria-hidden="true" /><span>Undo</span></button>
-      <button className="studio-icon-button" type="button" onClick={redo} disabled={!canRedo} aria-label="Redo" title="Redo (⇧⌘Z)"><Redo2 size={18} aria-hidden="true" /><span>Redo</span></button>
-    </div>
+    <HistoryTools onUndo={undo} onRedo={redo} canUndo={canUndo} canRedo={canRedo} />
     <SelectionModeControl />
     <span className="brick-capacity-status" aria-label={`${count} of ${budget} brick capacity`} title="Bricks placed of the current capacity">{count} / {budget}</span>
   </div>
@@ -460,86 +425,40 @@ function partCategory(part: { kind: string; id: string }, customIds: ReadonlySet
 function PartGrid({ customParts, onChoose, onCreatePart, canCreatePart, customPartHelp, denseCatalog = false }: PartGridProps) {
   const activePartId = useBrickStore((state) => state.activePartId)
   const choosePart = useBrickStore((state) => state.choosePart)
-  const [query, setQuery] = useState('')
-  const [category, setCategory] = useState<PartCategory>('all')
-  const searchId = useId()
   const parts = useMemo(() => [
     ...BRICK_PARTS,
     ...customParts.map(customPartToBrickPart),
   ], [customParts])
   const customIds = useMemo(() => new Set(customParts.map((part) => part.id)), [customParts])
   const categories = useMemo(() => PART_CATEGORIES.filter((entry) => entry.id !== 'custom' || customParts.length > 0), [customParts.length])
-  const trimmedQuery = query.trim().toLowerCase()
-  const visibleParts = useMemo(() => parts.filter((part) => {
-    if (category !== 'all' && partCategory(part, customIds) !== category) return false
-    return !trimmedQuery || part.name.toLowerCase().includes(trimmedQuery) || part.id.toLowerCase().includes(trimmedQuery)
-  }), [parts, category, customIds, trimmedQuery])
+  const items = useMemo<DrawerItem[]>(() => parts.map((part) => ({
+    id: part.id,
+    name: part.name,
+    category: partCategory(part, customIds),
+    thumbnail: <PartThumbnail part={part} />,
+  })), [parts, customIds])
   return (
-    <>
-      <div className="part-search-row">
-      <div className="part-search">
-        <Search size={16} aria-hidden="true" />
-        <input
-          id={searchId}
-          type="search"
-          value={query}
-          placeholder="Search bricks…"
-          aria-label="Search bricks"
-          autoComplete="off"
-          enterKeyHint="search"
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            // Escape clears the search first; a second Escape leaves the field so the build shortcut can take it.
-            if (event.key !== 'Escape') return
-            if (query) { event.preventDefault(); event.stopPropagation(); setQuery('') } else event.currentTarget.blur()
-          }}
-        />
-        {query && <button type="button" className="part-search-clear" aria-label="Clear search" onClick={() => setQuery('')}><X size={14} aria-hidden="true" /></button>}
-      </div>
-      {denseCatalog && <select className="part-category-select" aria-label="Brick category" value={category} onChange={event => setCategory(event.target.value as PartCategory)}>{categories.map(entry => <option key={entry.id} value={entry.id}>{entry.label}</option>)}</select>}
-      </div>
-      <button
-        className="create-part-entry"
-        type="button"
-        aria-label="Create a brick"
-        onClick={onCreatePart}
-        disabled={!canCreatePart}
-        title={!canCreatePart ? customPartHelp : 'Create a reusable brick with snapped dimensions'}
-      >
-        <span className="create-part-entry-icon"><Plus size={19} /></span>
-        <span><strong>Create a brick</strong><small>{canCreatePart ? 'Choose its shape and size' : customPartHelp}</small></span>
-      </button>
-      {!denseCatalog && <div className="part-categories" role="tablist" aria-label="Brick categories">
-        {categories.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            role="tab"
-            aria-selected={category === entry.id}
-            className={`part-category${category === entry.id ? ' active' : ''}`}
-            onClick={() => setCategory(entry.id)}
-          >{entry.label}</button>
-        ))}
-      </div>}
-      <div className="part-grid" aria-label="Brick shapes">
-        {visibleParts.map((part) => (
-          <button
-            key={part.id}
-            className={`library-part ${activePartId === part.id ? 'active' : ''}`}
-            type="button"
-            aria-pressed={activePartId === part.id}
-            onClick={() => { choosePart(part.id); onChoose?.() }}
-            title={part.name}
-          >
-            <PartThumbnail part={part} />
-            <span>{part.name}</span>
-          </button>
-        ))}
-        {visibleParts.length === 0 && (
-          <p className="part-grid-empty" role="status">No bricks match {trimmedQuery ? `“${query.trim()}”` : 'this category'}.{trimmedQuery && <> <button type="button" className="part-grid-empty-clear" onClick={() => { setQuery(''); setCategory('all') }}>Show all bricks</button></>}</p>
-        )}
-      </div>
-    </>
+    <PartPicker
+      items={items}
+      categories={categories}
+      activeId={activePartId}
+      onChoose={(id) => { choosePart(id); onChoose?.() }}
+      labels={BRICK_DRAWER_LABELS}
+      denseCatalog={denseCatalog}
+      beforeCategories={
+        <button
+          className="create-part-entry"
+          type="button"
+          aria-label="Create a brick"
+          onClick={onCreatePart}
+          disabled={!canCreatePart}
+          title={!canCreatePart ? customPartHelp : 'Create a reusable brick with snapped dimensions'}
+        >
+          <span className="create-part-entry-icon"><Plus size={19} /></span>
+          <span><strong>Create a brick</strong><small>{canCreatePart ? 'Choose its shape and size' : customPartHelp}</small></span>
+        </button>
+      }
+    />
   )
 }
 
@@ -548,24 +467,21 @@ function PartLibrary({ onCollapse, ...gridProps }: PartGridProps & { onCollapse:
   const brushColor = useBrickStore((state) => state.activeColor)
   const setBrushColor = useBrushColor()
   return (
-    <aside inert={graphicsPaused} className="part-library" id="brick-part-library" aria-label="Brick drawer">
-      <div className="library-title">
-        <h2 className="library-heading"><Box size={27} aria-hidden="true" />Bricks</h2>
-        <button
-          className="studio-icon-button library-collapse-button"
-          type="button"
-          aria-label="Collapse brick drawer"
-          aria-controls="brick-part-library"
-          aria-expanded="true"
-          onClick={onCollapse}
-        ><PanelLeftClose size={18} /></button>
-      </div>
+    <DrawerPanel
+      id="brick-part-library"
+      labels={BRICK_DRAWER_LABELS}
+      icon={<Box size={27} aria-hidden="true" />}
+      onCollapse={onCollapse}
+      inert={graphicsPaused}
+      footer={
+        <section className="library-colors">
+          <label><Palette size={15} aria-hidden="true" /> Brush color</label>
+          <ColorPalette targetColor={brushColor} onPick={setBrushColor} label="Brush color" />
+        </section>
+      }
+    >
       <PartGrid {...gridProps} denseCatalog />
-      <section className="library-colors">
-        <label><Palette size={15} aria-hidden="true" /> Brush color</label>
-        <ColorPalette targetColor={brushColor} onPick={setBrushColor} label="Brush color" />
-      </section>
-    </aside>
+    </DrawerPanel>
   )
 }
 
@@ -584,46 +500,22 @@ function useBrushColor() {
 
 function BrickDrawerSheet(props: PartGridProps & { onClose: () => void }) {
   const { onClose } = props
-  const [expanded, setExpanded] = useState(false)
   const brushColor = useBrickStore((state) => state.activeColor)
   const setBrushColor = useBrushColor()
-  const panel = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const restoreTo = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    panel.current?.focus({ preventScroll: true })
-    // Capture phase: Escape must close the sheet without also reaching the global builder
-    // shortcut that cancels the armed brush.
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]')
-      if (dialogs[dialogs.length - 1] !== panel.current) return
-      event.stopPropagation()
-      onClose()
-    }
-    window.addEventListener('keydown', closeOnEscape, true)
-    return () => {
-      window.removeEventListener('keydown', closeOnEscape, true)
-      restoreTo?.focus({ preventScroll: true })
-    }
-  }, [onClose])
-
   return (
-    <>
-      <div className="brick-sheet-backdrop" data-testid="brick-sheet-backdrop" onPointerDown={onClose} aria-hidden="true" />
-      <div ref={panel} className={`brick-sheet${expanded ? ' brick-sheet-expanded' : ''}`} role="dialog" aria-modal="true" aria-labelledby="brick-sheet-title" tabIndex={-1}>
-        <button type="button" className="brick-sheet-size" aria-label={expanded ? 'Make brick drawer smaller' : 'Expand brick drawer'} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}><span className="brick-sheet-grip" aria-hidden="true" /></button>
-        <div className="library-title">
-          <h2 className="library-heading" id="brick-sheet-title"><Box size={24} aria-hidden="true" />Bricks</h2>
-          <button className="studio-icon-button" type="button" aria-label="Close brick drawer" onClick={onClose}><X size={18} /></button>
-        </div>
-        <PartGrid {...props} onChoose={onClose} />
+    <DrawerSheet
+      labels={BRICK_DRAWER_LABELS}
+      icon={<Box size={24} aria-hidden="true" />}
+      onClose={onClose}
+      footer={
         <section className="brick-sheet-colors">
           <label><Palette size={15} aria-hidden="true" /> Brush color</label>
           <ColorPalette targetColor={brushColor} onPick={setBrushColor} label="Brush color" />
         </section>
-      </div>
-    </>
+      }
+    >
+      <PartGrid {...props} onChoose={onClose} />
+    </DrawerSheet>
   )
 }
 
@@ -804,19 +696,7 @@ function BuildShell({
         <>
           {/* Scene and Character live in the header's "World tools" row; the dock keeps only the
               brick drawer, which the header has no equivalent for. */}
-          <nav className="brick-creative-dock" aria-label="Creative tools">
-            <button
-              className="brick-drawer-fab"
-              type="button"
-              aria-label="Open brick drawer"
-              aria-haspopup="dialog"
-              aria-expanded={sheetOpen}
-              onClick={openSheet}
-            >
-              <Plus size={22} />
-              <span>Bricks</span>
-            </button>
-          </nav>
+          <DrawerFab labels={BRICK_DRAWER_LABELS} open={sheetOpen} onOpen={openSheet} />
           {sheetOpen && <BrickDrawerSheet
             customParts={customParts}
             canCreatePart={canEditCustomParts}
@@ -833,14 +713,7 @@ function BuildShell({
           onCreatePart={openCreate}
           onCollapse={() => setDrawerOpen(false)}
         /> : (
-          <button
-            className="brick-drawer-toggle"
-            type="button"
-            aria-label="Open brick drawer"
-            aria-controls="brick-part-library"
-            aria-expanded="false"
-            onClick={() => setDrawerOpen(true)}
-          ><PanelLeftOpen size={18} /><span>Bricks</span></button>
+          <DrawerToggle id="brick-part-library" labels={BRICK_DRAWER_LABELS} onOpen={() => setDrawerOpen(true)} />
         )}
       </>}
       <HistoryCluster />

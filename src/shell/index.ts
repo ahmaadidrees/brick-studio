@@ -18,3 +18,6 @@ export {
   classroomIntentPath, classroomIntentRedirect,
   type JoinMode, type JoinOptions, type Navigate,
 } from './navigation'
+export { ALL_CATEGORY, BRICK_DRAWER_LABELS, DrawerFab, DrawerPanel, DrawerSheet, DrawerToggle, PartPicker, type DrawerCategory, type DrawerItem, type DrawerLabels, type DrawerPanelProps, type DrawerSheetProps, type PartPickerProps } from './PartDrawer'
+export { useCompactLayout } from './useCompactLayout'
+export { HistoryTools, type HistoryToolsProps } from './HistoryTools'

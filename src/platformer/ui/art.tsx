@@ -21,10 +21,11 @@ export function artSize(key: string): { width: number; height: number } {
   return { width: canvas.width, height: canvas.height }
 }
 
-/** A piece of game art shown crisp: whole-number scaling when it fits the box, otherwise shrunk to fit. */
+/** A piece of game art shown crisp: the largest whole-number scaling that fits the box, otherwise shrunk to fit. */
 export function Art({ k, box, scale, className }: { k: string; box?: number; scale?: number; className?: string }) {
   const { width, height } = artSize(k)
   const big = Math.max(width, height)
-  const s = scale ?? (box === undefined ? 1 : big * 2 <= box ? 2 : big <= box ? 1 : box / big)
+  const fit = box === undefined ? 1 : box / big
+  const s = scale ?? (fit >= 1 ? Math.floor(fit) : fit)
   return <img className={['p2d-art', className].filter(Boolean).join(' ')} src={artSrc(k)} width={Math.round(width * s)} height={Math.round(height * s)} alt="" draggable={false} />
 }

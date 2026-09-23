@@ -179,4 +179,49 @@ describe('AppHeader editor', () => {
     fireEvent.click(screen.getByRole('menuitem', { name: 'Save this build to my account' }))
     expect(props.onSaveToAccount).toHaveBeenCalledTimes(1)
   })
+
+  it('the 2D builder: 2D side of the switch, Build | Play for everyone in a room, no Character, its own ⋯ menu', async () => {
+    const onSwitchDimension = vi.fn()
+    const onRequestMode = vi.fn()
+    const onRenameWorld = vi.fn(async () => undefined)
+    render(<AppHeader {...editorProps({
+      dimension: '2d',
+      onSwitchDimension,
+      onRequestMode,
+      worldTitle: 'Lava run',
+      onRenameWorld,
+      renameNoun: 'level',
+      renameMaxLength: 60,
+      hideCharacter: true,
+      modeLabels: { explore: 'Play' },
+      modeLock: { locked: false },
+      startLiveTitle: 'Open a room for friends with this level',
+      livePolicy: { connection: 'online', isOwner: false, peopleCount: 2 },
+      worldMenu: ({ openRename }) => <button type="button" onClick={openRename}>Level menu</button>,
+    })} />)
+    expect(screen.getByRole('button', { name: '2D levels' })).toHaveAttribute('aria-current', 'page')
+    fireEvent.click(screen.getByRole('button', { name: '3D bricks' }))
+    expect(onSwitchDimension).toHaveBeenCalledWith('3d')
+    expect(screen.queryByRole('button', { name: 'Character' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Scene' })).toBeInTheDocument()
+    // In 2D rooms everyone picks their own mode, even a guest.
+    const group = screen.getByRole('radiogroup', { name: 'Studio mode' })
+    fireEvent.click(within(group).getByRole('radio', { name: 'Play' }))
+    expect(onRequestMode).toHaveBeenCalledWith('explore')
+    expect(screen.queryByRole('button', { name: 'This build' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Level menu' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Rename level' })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Level name' }), { target: { value: 'Lava run 2' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save name' }))
+    await waitFor(() => expect(onRenameWorld).toHaveBeenCalledWith('Lava run 2'))
+  })
+
+  it('the 2D builder outside a room: People opens a room for friends', () => {
+    const onStartLiveWorld = vi.fn()
+    render(<AppHeader {...editorProps({ dimension: '2d', onStartLiveWorld, startLiveTitle: 'Open a room for friends with this level', hideCharacter: true })} />)
+    const people = screen.getByRole('button', { name: 'Build together' })
+    expect(people).toHaveAttribute('title', 'Open a room for friends with this level')
+    fireEvent.click(people)
+    expect(onStartLiveWorld).toHaveBeenCalledTimes(1)
+  })
 })

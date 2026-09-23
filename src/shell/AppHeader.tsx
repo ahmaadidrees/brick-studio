@@ -102,6 +102,22 @@ export type AppHeaderEditorProps = CommonProps & {
   onGoHome: () => void
   /** 3D ⇄ 2D: shown beside the mark when given (the studio saves first, then leaves for the 2D builder). */
   onSwitchDimension?: (target: BuildDimension) => void
+  /* The 2D builder uses this header too; everything below defaults to the 3D studio. */
+  /** Which builder this is (the current side of the 3D ⇄ 2D switch). */
+  dimension?: BuildDimension
+  /** The second mode's name and the modes' icons ("Play" in 2D). */
+  modeLabels?: { explore?: string; exploreIcon?: ReactNode; buildIcon?: ReactNode }
+  /** Overrides the live-room lock (in 2D rooms everyone switches their own mode). */
+  modeLock?: { locked: boolean; reason?: string }
+  /** Hide the Character tool (2D has no characters yet). */
+  hideCharacter?: boolean
+  /** The People tool's tooltip outside a room (what "Build together" starts). */
+  startLiveTitle?: string
+  /** What rename calls the build, and its longest name. */
+  renameNoun?: 'world' | 'level'
+  renameMaxLength?: number
+  /** Replaces the ⋯ "This build" menu; gets the header's rename opener. */
+  worldMenu?: (controls: { openRename?: () => void }) => ReactNode
 }
 
 export type AppHeaderProps = AppHeaderLandingProps | AppHeaderPageProps | AppHeaderEditorProps
@@ -151,10 +167,10 @@ function PageHeader({ title, actions, session, className, accountMenuDefaultOpen
   )
 }
 
-type PeopleEntryProps = { livePolicy?: HeaderLivePolicy; onStartLiveWorld?: () => void }
+type PeopleEntryProps = { livePolicy?: HeaderLivePolicy; onStartLiveWorld?: () => void; startTitle?: string }
 
 /** People = "Build together" outside a room; inside a room it opens the live People panel. */
-function PeopleEntry({ livePolicy, onStartLiveWorld }: PeopleEntryProps) {
+function PeopleEntry({ livePolicy, onStartLiveWorld, startTitle = 'Start a shared world from this build' }: PeopleEntryProps) {
   if (livePolicy) {
     const count = livePolicy.peopleCount
     const label = count === undefined ? 'People' : `People, ${count} ${livePolicy.connection === 'online' ? 'here' : 'last seen'}`
@@ -168,7 +184,7 @@ function PeopleEntry({ livePolicy, onStartLiveWorld }: PeopleEntryProps) {
   }
   if (!onStartLiveWorld) return null
   return (
-    <Button variant="quiet" className="app-header-tool app-header-people" icon={<Users size={17} />} onClick={onStartLiveWorld} aria-label="Build together" title="Start a shared world from this build">
+    <Button variant="quiet" className="app-header-tool app-header-people" icon={<Users size={17} />} onClick={onStartLiveWorld} aria-label="Build together" title={startTitle}>
       People
     </Button>
   )
@@ -180,14 +196,16 @@ function EditorHeader({
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
   onSaveToAccount, onGoHome, onSwitchDimension,
+  dimension = '3d', modeLabels, modeLock, hideCharacter = false, startLiveTitle, renameNoun = 'world', renameMaxLength, worldMenu,
   session, className, accountMenuDefaultOpen, onKeyDown, id,
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
   const title = worldTitle || livePolicy?.roomTitle || NEUTRAL_WORLD_TITLE
-  const locked = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
-  const lockedReason = livePolicy && !livePolicy.isOwner
+  const locked = modeLock ? modeLock.locked : Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
+  const lockedReason = modeLock?.reason ?? (livePolicy && !livePolicy.isOwner
     ? 'The room owner switches between Build and Explore for everyone.'
-    : 'Modes switch once the shared world is back online.'
+    : 'Modes switch once the shared world is back online.')
+  const openRename = onRenameWorld ? () => setRenaming(true) : undefined
   const inRoom = Boolean(livePolicy)
 
   return (
@@ -202,12 +220,12 @@ function EditorHeader({
           className="app-header-brand app-header-mark"
           onClick={(event) => { event.preventDefault(); onGoHome() }}
         />
-        {onSwitchDimension && <DimensionSwitch current="3d" onSwitch={onSwitchDimension} className="app-header-dimension" />}
+        {onSwitchDimension && <DimensionSwitch current={dimension} onSwitch={onSwitchDimension} className="app-header-dimension" />}
         <div className="app-header-world">
           <span className="app-header-title" title={title}>{title}</span>
           {onRenameWorld && (
-            <Button variant="quiet" size="sm" iconOnly icon={<Pencil size={16} />} aria-label="Rename world" title="Rename world" className="app-header-rename" onClick={() => setRenaming(true)}>
-              Rename world
+            <Button variant="quiet" size="sm" iconOnly icon={<Pencil size={16} />} aria-label={`Rename ${renameNoun}`} title={`Rename ${renameNoun}`} className="app-header-rename" onClick={() => setRenaming(true)}>
+              Rename {renameNoun}
             </Button>
           )}
         </div>
@@ -215,26 +233,26 @@ function EditorHeader({
       </div>
       <div className="app-header-tools" role="group" aria-label="World tools">
         <Button variant="quiet" className="app-header-tool" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
-        <Button variant="quiet" className="app-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
-        <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} />
+        {!hideCharacter && <Button variant="quiet" className="app-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>}
+        <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} startTitle={startLiveTitle} />
       </div>
       <div className="app-header-mode">
-        <ModeSwitch mode={mode} onRequestMode={onRequestMode} canExplore={canExplore} exploreReason={exploreReason} locked={locked} lockedReason={lockedReason} />
+        <ModeSwitch mode={mode} onRequestMode={onRequestMode} canExplore={canExplore} exploreReason={exploreReason} locked={locked} lockedReason={lockedReason} exploreLabel={modeLabels?.explore} exploreIcon={modeLabels?.exploreIcon} buildIcon={modeLabels?.buildIcon} />
       </div>
       <div className="app-header-end">
         <AccountChip session={session} context="editor" onSaveToAccount={onSaveToAccount} menuDefaultOpen={accountMenuDefaultOpen} />
-        <WorldMenu
+        {worldMenu ? worldMenu({ openRename }) : <WorldMenu
           align="end"
-          onRename={onRenameWorld ? () => setRenaming(true) : undefined}
+          onRename={openRename}
           onExportProject={onExportProject}
           onImportProject={inRoom ? undefined : onImportProject}
           onNewBuild={inRoom ? undefined : onNewBuild}
           onOpenSettings={onOpenSettings}
           onOpenHelp={onOpenHelp}
-        />
+        />}
       </div>
       {renaming && onRenameWorld && (
-        <RenameWorldDialog currentTitle={title} onRename={onRenameWorld} onClose={() => setRenaming(false)} />
+        <RenameWorldDialog currentTitle={title} onRename={onRenameWorld} onClose={() => setRenaming(false)} noun={renameNoun} maxLength={renameMaxLength} />
       )}
     </header>
   )

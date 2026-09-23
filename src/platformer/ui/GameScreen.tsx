@@ -1,23 +1,26 @@
-import { Hammer, House, Lock, Menu as MenuIcon, Pause, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react'
+import { Hammer, House, Lock, Menu as MenuIcon, Pause, Play, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Feel } from '@brick-studio/platformer-core/engine/feel'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
 import { InviteSheet } from '../../classroom/InviteSheet'
-import { DimensionSwitch, useClassroomSession } from '../../shell'
-import { Button, SaveStatus, type SaveStatusSource } from '../../ui'
-import { CATEGORIES, PALETTE, type Category } from '../editor/palette'
+import { AppHeader, useClassroomSession, useCompactLayout, type HeaderLivePolicy } from '../../shell'
+import { Button, type SaveStatusSource } from '../../ui'
+import { CATEGORIES, PALETTE } from '../editor/palette'
 import { GameSession, type Mode, type RoomOptions } from '../game/session'
-import { playerColor } from '../render/art/palette'
 import { formatTime } from '../render/renderer'
+import { BuildShell } from './BuildShell'
 import { CloudLevelSaver, createCloudLevel } from './cloudLevel'
-import { Dock } from './Dock'
 import { saveDraft } from './drafts'
 import { FeelPanel } from './FeelPanel'
 import { loadFeel, saveFeel } from './feelStore'
-import { Menu } from './Menu'
+import { LevelMenu } from './LevelMenu'
+import { Menu, type MenuView } from './Menu'
+import { PeopleSheet } from './PeopleSheet'
 import { clientKey, hasSeen, markSeen, saveSoundPrefs, soundPrefs, type SoundPrefs } from './prefs'
+import { playWithFriends } from './rooms'
+import { SceneSheet } from './SceneSheet'
 import { encodeShareCode } from './shareCode'
 import { TouchControls } from './TouchControls'
 
@@ -54,8 +57,9 @@ type Hint = 'play' | 'build' | null
 const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
 
 /**
- * A 2D level in progress. Playing shows the game and two buttons (Build, Menu); building adds the 3D ⇄ 2D switch,
- * Play, Undo and Redo on top and one bar of things to place below. Everything else is in the menu.
+ * A 2D level in progress, laid out like the 3D studio: the shared header on top (3D ⇄ 2D, the level's name and save
+ * state, Scene, People, Build | Play, the ⋯ menu) and the game below. Building adds the block drawer, Undo and Redo,
+ * and the strip that says what a click places. Playing is the game alone, with a pause button.
  *
  * Where edits go: an account level saves to the account a moment after each change; a signed-in student's new
  * level becomes an account level on its first edit (so it shows up in My worlds, ready to share); guests keep a
@@ -81,8 +85,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const [feel, setFeel] = useState<Feel>(loadFeel)
   const [feelOpen, setFeelOpen] = useState(false)
   const [menu, setMenu] = useState(false)
+  const [menuView, setMenuView] = useState<MenuView>('main')
+  const [people, setPeople] = useState(false)
+  const [scene, setScene] = useState(false)
+  const [drawerOpen, setDrawerOpen] = useState(true)
+  const compact = useCompactLayout()
   const [mode, setMode] = useState<Mode>(startMode)
-  const [category, setCategory] = useState<Category>('terrain')
   const [sound, setSound] = useState<SoundPrefs>(() => soundPrefs(inRoom))
   const [showStats, setShowStats] = useState(false)
   const [touch, setTouch] = useState(coarse)
@@ -121,7 +129,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     s.sound.setMuted(prefs.muted)
     s.sound.setMusic(prefs.music)
     s.onStatus = () => refresh((n) => n + 1)
-    s.onMenu = () => setMenu((m) => !m)
+    s.onMenu = () => {
+      setMenuView('main')
+      setMenu((m) => !m)
+    }
     s.onModeChange = () => setMode(s.mode)
     s.onToast = say
     // Let the goal fanfare play, then offer what to do next.
@@ -201,7 +212,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }, [level])
 
   // Solo games pause while a menu or card is open; in rooms the world keeps going but you stand still.
-  const covered = menu || !!clear || sharing
+  const covered = menu || !!clear || sharing || people || scene
   useEffect(() => {
     const s = sessionRef.current
     if (!s) return
@@ -214,6 +225,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     history.pushState({ p2dGame: true }, '')
     const onPop = () => {
       history.pushState({ p2dGame: true }, '')
+      setMenuView('main')
       setMenu(true)
     }
     window.addEventListener('popstate', onPop)
@@ -279,10 +291,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         s.placeResume(s.editor.hover[0], s.editor.hover[1])
         say('Play will start here')
       }
+      // [ and ] step through the categories; 1 to 9 pick within the chosen block's category.
+      const category = s.editor.item.category
       if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
         const i = CATEGORIES.findIndex((c) => c.id === category)
         const next = CATEGORIES[(i + (e.code === 'BracketLeft' ? CATEGORIES.length - 1 : 1)) % CATEGORIES.length]
-        setCategory(next.id)
+        const first = PALETTE.find((p) => p.category === next.id)
+        if (first) s.editor.select(first)
       }
       const digit = /^Digit([1-9])$/.exec(e.code)
       if (digit) {
@@ -300,7 +315,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
     }
-  }, [category])
+  }, [])
 
   // Pointer input for building: one finger or the mouse paints, two fingers or space/middle-drag pan.
   const pointers = useRef(new Map<number, { x: number; y: number }>())
@@ -351,16 +366,24 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     s.panCamera(e.deltaX * 0.5 + (e.shiftKey ? e.deltaY * 0.5 : 0), e.shiftKey ? 0 : e.deltaY * 0.5)
   }
 
-  // Keep the level clear of whatever covers the bottom of the screen.
-  const dockRef = useRef<HTMLDivElement>(null)
+  // Keep the level clear of whatever covers the edges of the game: the drawer and the strip while building,
+  // the touch buttons while playing.
   const insetMode = useRef<Mode | null>(null)
   useEffect(() => {
     const s = sessionRef.current
-    if (!s) return
-    const dock = dockRef.current?.querySelector('.p2d-dock-bar')
-    if (mode === 'build') s.setBottomInset(dock ? window.innerHeight - dock.getBoundingClientRect().top + 8 : 0)
-    else s.setBottomInset(touch ? s.renderer.canvas.getBoundingClientRect().height * 0.22 : 0)
-    // Entering build mode: bring the player into the part of the screen the bar leaves free.
+    const stage = hostRef.current
+    if (!s || !stage) return
+    const area = stage.getBoundingClientRect()
+    const strip = stage.parentElement?.querySelector('.p2d-strip, .brick-creative-dock')
+    const drawer = stage.parentElement?.querySelector('.part-library')
+    if (mode === 'build') {
+      s.setBottomInset(strip ? area.bottom - strip.getBoundingClientRect().top + 8 : 0)
+      s.setLeftInset(drawer ? drawer.getBoundingClientRect().right - area.left + 8 : 0)
+    } else {
+      s.setBottomInset(touch ? s.renderer.canvas.getBoundingClientRect().height * 0.22 : 0)
+      s.setLeftInset(0)
+    }
+    // Entering build mode: bring the player into the part of the screen the drawer and strip leave free.
     if (mode === 'build' && insetMode.current !== 'build') s.focusPlayer()
     insetMode.current = mode
   })
@@ -382,8 +405,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }
   const inviteLink = source.kind === 'room' ? `${location.origin}/2d/${source.roomKind === 'guest' ? 'r' : 'w'}/${source.roomId}` : undefined
   const invite = inviteLink ? () => void copy(inviteLink, source.kind === 'room' && source.roomKind === 'classroom' ? 'Link copied. Classmates who can open this level can join with it.' : 'Invite link copied') : undefined
-  const commitTitle = () => {
-    const t = title.trim().slice(0, 60) || 'Untitled level'
+  const rename = async (next: string) => {
+    const t = next.trim().slice(0, 60) || 'Untitled level'
     if (s && t !== s.timeline.world.design.title) s.applyEdit([{ o: 'title', title: t }])
     setTitle(t)
   }
@@ -398,6 +421,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     setFeel(f)
     saveFeel(f)
     s?.setFeel(f)
+  }
+  const openMenu = (view: MenuView = 'main') => {
+    setMenuView(view)
+    setMenu(true)
   }
   const tryBuild = () => {
     if (s?.setMode('build')) setMenu(false)
@@ -414,6 +441,17 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     then()
   }
   const switchTo3D = () => void leave(() => window.location.assign('/build'))
+  /** People outside a room: open a room for friends with this level (the level is copied into it). */
+  const startRoom = () => {
+    if (!s || busy) return
+    setBusy(true)
+    void leave(() =>
+      playWithFriends(s.timeline.world.design).catch((error: Error) => {
+        say(error.message)
+        setBusy(false)
+      }),
+    )
+  }
 
   // Sharing an account level with the class: the same invite sheet as My worlds.
   const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : null)
@@ -452,203 +490,215 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       ? { kind: 'cloud', status: saver.current.status }
       : { kind: 'local' }
   const players = s?.room?.players ?? []
-  const me = s?.room?.num ?? 0
+  const livePolicy: HeaderLivePolicy | undefined =
+    inRoom && s
+      ? { connection: s.roomStatus, isOwner: s.isHost, roomTitle: title, peopleCount: s.joined ? players.length : undefined, onOpenPeople: s.joined ? () => setPeople(true) : undefined }
+      : undefined
   const buildHint = hint === 'build' && build && (s?.editCount ?? 0) === 0
   // A toast takes the hint's place at the top rather than landing on it.
   const playHint = hint === 'play' && !build && !!s?.joined && !covered && !toast
   const offlineAfterJoin = !!s?.room && s.joined && s.roomStatus === 'offline'
+  const sceneLocked = !s ? null : s.canBuild ? null : (s.buildBlockedReason ?? 'You can play this level, but not change it.')
+  // A pointer click on a header button hands the keyboard straight back to the game (keyboard users keep focus).
+  const releaseFocus = (e: React.MouseEvent) => {
+    if (e.detail > 0) (e.target as HTMLElement).closest<HTMLButtonElement>('button:not([aria-haspopup])')?.blur()
+  }
 
   return (
-    <div className={`p2d-game ${build ? 'p2d-building' : 'p2d-playing'} ${touch ? 'p2d-is-touch' : ''}`} data-joined={s?.joined ? 'yes' : 'no'}>
-      <div
-        className="p2d-stage"
-        ref={hostRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        onPointerLeave={() => s?.editor.leave()}
-        onContextMenu={(e) => e.preventDefault()}
-        onWheel={onWheel}
-      >
-        <canvas ref={canvasRef} className="p2d-canvas" />
+    <div className={`p2d-game p2d-studio ${build ? 'p2d-building' : 'p2d-playing'} ${touch ? 'p2d-is-touch' : ''} ${compact ? 'p2d-compact' : ''}`} data-joined={s?.joined ? 'yes' : 'no'}>
+      <div className="p2d-header" onClickCapture={releaseFocus}>
+        <AppHeader
+          variant="editor"
+          dimension="2d"
+          onSwitchDimension={inRoom ? undefined : (target) => target === '3d' && switchTo3D()}
+          worldTitle={title}
+          onRenameWorld={s?.canBuild ? rename : undefined}
+          renameNoun="level"
+          renameMaxLength={60}
+          saveStatus={{ source: saveSource }}
+          onOpenWorldSetup={() => setScene(true)}
+          hideCharacter
+          onStartLiveWorld={inRoom ? undefined : startRoom}
+          startLiveTitle="Open a room for friends with this level"
+          livePolicy={livePolicy}
+          mode={build ? 'build' : 'explore'}
+          onRequestMode={(next) => (next === 'build' ? tryBuild() : s?.setMode('play'))}
+          canExplore
+          modeLabels={{ explore: 'Play', exploreIcon: <Play size={16} />, buildIcon: s && !s.canBuild ? <Lock size={16} /> : <Hammer size={16} /> }}
+          modeLock={{ locked: false }}
+          onOpenHelp={() => openMenu('controls')}
+          onGoHome={() => void leave(() => window.location.assign('/'))}
+          worldMenu={({ openRename }) => (
+            <LevelMenu
+              onRename={openRename}
+              onShareLink={s?.solo ? () => void shareLink() : undefined}
+              onInvite={invite}
+              onShareWithClass={canShareWithClass ? openShare : undefined}
+              onResetWorld={s?.solo && build ? () => s.resetWorld() : undefined}
+              onNewLevel={inRoom ? undefined : () => void leave(() => window.location.assign('/2d/build?new=1'))}
+              sound={sound}
+              onSound={changeSound}
+              onControls={() => openMenu('controls')}
+              onFeel={() => setFeelOpen(true)}
+              onExit={() => void leave(onExit)}
+              exitLabel={exitLabel ?? 'Back'}
+            />
+          )}
+        />
       </div>
 
-      {/* Buttons give focus back after a click so Space and Enter keep going to the game. */}
-      <div className="p2d-topbar" onPointerDown={(e) => e.stopPropagation()} onClickCapture={(e) => (e.target as HTMLElement).closest('button')?.blur()}>
-        <div className="p2d-tb-start">
-          {build && (
-            <>
-              {!inRoom && <DimensionSwitch current="2d" onSwitch={switchTo3D} />}
-              <Button variant="primary" icon={<Play size={18} />} onClick={() => s?.setMode('play')} title="Play from your player (Tab)" className="p2d-pill">
-                Play
-              </Button>
-              <Button iconOnly icon={<Undo2 size={18} />} aria-label="Undo" title="Undo" disabled={!s?.editor.undoStack.length} onClick={() => s?.editor.undo()}>
-                Undo
-              </Button>
-              <Button iconOnly icon={<Redo2 size={18} />} aria-label="Redo" title="Redo" disabled={!s?.editor.redoStack.length} onClick={() => s?.editor.redo()}>
-                Redo
-              </Button>
-              <SaveStatus autoCompact source={saveSource} className="p2d-save" />
-            </>
-          )}
+      <div className="p2d-body">
+        <div
+          className="p2d-stage"
+          ref={hostRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          onPointerLeave={() => s?.editor.leave()}
+          onContextMenu={(e) => e.preventDefault()}
+          onWheel={onWheel}
+        >
+          <canvas ref={canvasRef} className="p2d-canvas" />
         </div>
-        <div className="p2d-tb-center">
-          {s?.room && s.joined && (
-            <button type="button" className="p2d-dots" onClick={() => setMenu(true)} aria-label={`${players.length} players in the room`}>
-              {players.slice(0, 16).map((p) => (
-                <span key={p.num} className={`p2d-dot ${p.num === me ? 'p2d-me' : ''}`} style={{ background: playerColor(p.num)[0] }} />
-              ))}
-              <span className="p2d-count">{players.length}</span>
-            </button>
-          )}
-          {s?.room && s.joined && (s.roomStatus === 'reconnecting' || s.roomStatus === 'connecting') && <span className="p2d-pill-note">Reconnecting…</span>}
-        </div>
-        <div className="p2d-tb-end">
-          {!build && s && (
-            <Button icon={s.canBuild ? <Hammer size={18} /> : <Lock size={18} />} onClick={tryBuild} title={s.buildBlockedReason ?? 'Build (Tab)'} className={`p2d-pill ${s.canBuild ? '' : 'p2d-locked'}`}>
-              Build
+
+        {build && s && <BuildShell editor={s.editor} theme={s.timeline.world.design.theme} compact={compact} touch={touch} drawerOpen={drawerOpen} onDrawerOpen={setDrawerOpen} />}
+
+        {!build && s && (
+          <div className="p2d-play-tools" onClickCapture={releaseFocus}>
+            <Button iconOnly icon={s.solo ? <Pause size={20} /> : <MenuIcon size={20} />} aria-label={s.solo ? 'Pause' : 'Menu'} title={s.solo ? 'Pause (Esc)' : 'Menu (Esc)'} onClick={() => openMenu()}>
+              {s.solo ? 'Pause' : 'Menu'}
             </Button>
-          )}
-          <Button iconOnly icon={s && !s.solo ? <MenuIcon size={20} /> : <Pause size={20} />} aria-label="Menu" title="Menu (Esc)" onClick={() => setMenu(true)}>
-            Menu
-          </Button>
-        </div>
-      </div>
+          </div>
+        )}
+        {!build && touch && s && !covered && <TouchControls input={s.input} />}
 
-      {build && s && (
-        <div ref={dockRef}>
-          <Dock editor={s.editor} theme={s.timeline.world.design.theme} category={category} onCategory={setCategory} />
-        </div>
-      )}
-      {!build && touch && s && !covered && <TouchControls input={s.input} />}
+        {playHint && (
+          <div className="p2d-hint p2d-hint-top" role="status">
+            {touch ? (
+              <>
+                Slide on the pad to move. <b>Jump</b> jumps, hold it to go higher. Hold <b>Run</b> to go fast.
+              </>
+            ) : (
+              <>
+                <kbd>←</kbd> <kbd>→</kbd> move · <kbd>Space</kbd> jumps (hold to go higher) · hold <kbd>Shift</kbd> to run
+              </>
+            )}
+            {source.kind === 'course' && <span className="p2d-hint-goal"> Reach the flag at the end!</span>}
+          </div>
+        )}
+        {buildHint && (
+          <div className="p2d-hint p2d-hint-dock" role="status">
+            {touch ? 'Pick a block, then tap or drag to place it. Two fingers look around.' : 'Pick a block, then click or drag to place it. Right-click erases.'}
+          </div>
+        )}
 
-      {playHint && (
-        <div className="p2d-hint p2d-hint-top" role="status">
-          {touch ? (
-            <>
-              Slide on the pad to move. <b>Jump</b> jumps, hold it to go higher. Hold <b>Run</b> to go fast.
-            </>
-          ) : (
-            <>
-              <kbd>←</kbd> <kbd>→</kbd> move · <kbd>Space</kbd> jumps (hold to go higher) · hold <kbd>Shift</kbd> to run
-            </>
-          )}
-          {source.kind === 'course' && <span className="p2d-hint-goal"> Reach the flag at the end!</span>}
-        </div>
-      )}
-      {buildHint && (
-        <div className="p2d-hint p2d-hint-dock" role="status">
-          {touch ? 'Pick something below, then tap or drag to place it. Two fingers look around.' : 'Pick something below, then click or drag to place it. Right-click erases.'}
-        </div>
-      )}
-
-      {s?.room && !s.joined && (
-        <div className="p2d-overlay">
-          <div className="p2d-card">
-            <p className="p2d-lead">{s.roomStatus === 'offline' ? s.roomDetail || 'Could not join the room.' : 'Joining the room…'}</p>
-            {s.roomStatus === 'offline' && (
+        {s?.room && !s.joined && (
+          <div className="p2d-overlay">
+            <div className="p2d-card">
+              <p className="p2d-lead">{s.roomStatus === 'offline' ? s.roomDetail || 'Could not join the room.' : 'Joining the room…'}</p>
+              {s.roomStatus === 'offline' && (
+                <Button fullWidth icon={<House size={18} />} onClick={onExit}>
+                  {exitLabel ?? 'Back'}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {offlineAfterJoin && s?.roomDetail && (
+          <div className="p2d-overlay">
+            <div className="p2d-card">
+              <p className="p2d-lead">{s.roomDetail}</p>
               <Button fullWidth icon={<House size={18} />} onClick={onExit}>
                 {exitLabel ?? 'Back'}
               </Button>
-            )}
+            </div>
           </div>
-        </div>
-      )}
-      {offlineAfterJoin && s?.roomDetail && (
-        <div className="p2d-overlay">
-          <div className="p2d-card">
-            <p className="p2d-lead">{s.roomDetail}</p>
-            <Button fullWidth icon={<House size={18} />} onClick={onExit}>
-              {exitLabel ?? 'Back'}
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
 
-      {clear && !menu && (
-        <div className="p2d-overlay">
-          <div className="p2d-card p2d-clear" role="dialog" aria-label="Level clear">
-            <p className="p2d-kicker">{source.kind === 'course' ? 'Course clear' : 'Level clear'}</p>
-            <h2 className="p2d-clear-title">{clear.newBest ? 'New best time!' : 'You made it!'}</h2>
-            <p className="p2d-clear-time">
-              <span>Time</span> {formatTime(clear.time)}
-              {clear.best >= 0 && !clear.newBest && (
-                <>
-                  {' '}
-                  · <span>Best</span> {formatTime(clear.best)}
-                </>
+        {clear && !menu && (
+          <div className="p2d-overlay">
+            <div className="p2d-card p2d-clear" role="dialog" aria-label="Level clear">
+              <p className="p2d-kicker">{source.kind === 'course' ? 'Course clear' : 'Level clear'}</p>
+              <h2 className="p2d-clear-title">{clear.newBest ? 'New best time!' : 'You made it!'}</h2>
+              <p className="p2d-clear-time">
+                <span>Time</span> {formatTime(clear.time)}
+                {clear.best >= 0 && !clear.newBest && (
+                  <>
+                    {' '}
+                    · <span>Best</span> {formatTime(clear.best)}
+                  </>
+                )}
+              </p>
+              {onNext && (
+                <Button variant="primary" fullWidth icon={<Play size={18} />} onClick={onNext} autoFocus>
+                  Next course
+                </Button>
               )}
-            </p>
-            {onNext && (
-              <Button variant="primary" fullWidth icon={<Play size={18} />} onClick={onNext} autoFocus>
-                Next course
-              </Button>
-            )}
-            <Button
-              variant={onNext ? 'secondary' : 'primary'}
-              fullWidth
-              icon={<RotateCcw size={18} />}
-              autoFocus={!onNext}
-              onClick={() => {
-                setClear(null)
-                sessionRef.current?.restartRun()
-              }}
-            >
-              Play again
-            </Button>
-            {source.kind !== 'course' && s?.canBuild && (
               <Button
+                variant={onNext ? 'secondary' : 'primary'}
                 fullWidth
-                icon={<Hammer size={18} />}
+                icon={<RotateCcw size={18} />}
+                autoFocus={!onNext}
                 onClick={() => {
                   setClear(null)
-                  sessionRef.current?.setMode('build')
+                  sessionRef.current?.restartRun()
                 }}
               >
-                Keep building
+                Play again
               </Button>
-            )}
-            <Button fullWidth variant="quiet" icon={<House size={18} />} onClick={() => void leave(onExit)}>
-              {exitLabel ?? 'Back'}
-            </Button>
+              {source.kind !== 'course' && s?.canBuild && (
+                <Button
+                  fullWidth
+                  icon={<Hammer size={18} />}
+                  onClick={() => {
+                    setClear(null)
+                    sessionRef.current?.setMode('build')
+                  }}
+                >
+                  Keep building
+                </Button>
+              )}
+              <Button fullWidth variant="quiet" icon={<House size={18} />} onClick={() => void leave(onExit)}>
+                {exitLabel ?? 'Back'}
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {touch && portrait && !portraitOk && !menu && (
-        <div className="p2d-overlay p2d-rotate">
-          <div className="p2d-card">
-            <div className="p2d-phone" aria-hidden="true" />
-            <p className="p2d-lead">Turn sideways for a bigger view</p>
-            <Button fullWidth onClick={() => setPortraitOk(true)}>
-              Play like this
-            </Button>
+        {touch && portrait && !portraitOk && !menu && !build && (
+          <div className="p2d-overlay p2d-rotate">
+            <div className="p2d-card">
+              <div className="p2d-phone" aria-hidden="true" />
+              <p className="p2d-lead">Turn sideways for a bigger view</p>
+              <Button fullWidth onClick={() => setPortraitOk(true)}>
+                Play like this
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {toast && (
-        <div className="p2d-toast" role="status">
-          {toast}
-        </div>
-      )}
+        {toast && (
+          <div className="p2d-toast" role="status">
+            {toast}
+          </div>
+        )}
 
-      {showStats && s && (
-        <div className="p2d-stats">
-          {s.stats.fps} fps · sim {s.stats.simMs.toFixed(2)} ms · draw {s.stats.renderMs.toFixed(2)} ms · {s.stats.entities} things · tick {s.stats.tick} · rollbacks {s.stats.rollbacks}
-          {s.room ? ` · resyncs ${s.stats.resyncs} · ping ${s.room.rtt} ms` : ''} · {s.renderer.width}×{s.renderer.height} @{s.renderer.scale}x
-        </div>
-      )}
+        {showStats && s && (
+          <div className="p2d-stats">
+            {s.stats.fps} fps · sim {s.stats.simMs.toFixed(2)} ms · draw {s.stats.renderMs.toFixed(2)} ms · {s.stats.entities} things · tick {s.stats.tick} · rollbacks {s.stats.rollbacks}
+            {s.room ? ` · resyncs ${s.stats.resyncs} · ping ${s.room.rtt} ms` : ''} · {s.renderer.width}×{s.renderer.height} @{s.renderer.scale}x
+          </div>
+        )}
+      </div>
 
       {s && (
         <Menu
           open={menu}
+          view={menuView}
           session={s}
           building={build}
           title={title}
-          onTitle={setTitle}
-          onTitleDone={commitTitle}
           sound={sound}
           onSound={changeSound}
           touch={touch}
@@ -657,10 +707,6 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             setMenu(false)
             s.restartRun()
           }}
-          onShareLink={s.solo ? () => void shareLink() : undefined}
-          onShareWithClass={canShareWithClass ? openShare : undefined}
-          onInvite={invite}
-          inviteLink={inviteLink}
           onFeel={() => {
             setMenu(false)
             setFeelOpen(true)
@@ -669,6 +715,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           exitLabel={exitLabel ?? 'Back'}
         />
       )}
+      {s && <PeopleSheet open={people} onClose={() => setPeople(false)} session={s} onInvite={invite} inviteLink={inviteLink} />}
+      {s && <SceneSheet open={scene} onClose={() => setScene(false)} design={s.timeline.world.design} lockedReason={sceneLocked} onPick={(theme) => s.applyEdit([{ o: 'theme', theme }])} />}
       {sharing && cloudWorld && (
         <InviteSheet
           world={cloudWorld}

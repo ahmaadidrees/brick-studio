@@ -115,7 +115,33 @@ try {
     await shot(page, 'desktop-build')
   })
 
-  await step('switch: 2D → 3D from the build bar', async () => {
+  await step('studio layout: the block drawer, header tools, Scene and the strip', async () => {
+    const drawer = page.getByRole('complementary', { name: 'Block drawer' })
+    await drawer.getByRole('heading', { name: 'Blocks' }).waitFor()
+    for (const name of ['Scene', 'Build together']) await page.getByRole('button', { name, exact: true }).waitFor()
+    assert.equal(await page.getByRole('radio', { name: 'Build' }).getAttribute('aria-checked'), 'true')
+    await drawer.getByRole('searchbox', { name: 'Search blocks' }).fill('coin')
+    await drawer.getByRole('button', { name: 'Coin', exact: true }).click()
+    await page.locator('.p2d-strip').getByText('Coin', { exact: true }).waitFor()
+    await drawer.getByRole('searchbox', { name: 'Search blocks' }).fill('')
+    await drawer.getByRole('button', { name: 'Ground', exact: true }).click()
+    await page.getByRole('button', { name: 'Collapse block drawer' }).click()
+    await page.getByRole('button', { name: 'Open block drawer' }).click()
+    await drawer.waitFor()
+    await page.getByRole('button', { name: 'Scene', exact: true }).click()
+    await page.getByRole('radio', { name: /Underground/ }).click()
+    await page.waitForFunction(() => window.__game2d.timeline.world.design.theme === 'underground')
+    await page.getByRole('button', { name: 'Scene', exact: true }).click()
+    await page.getByRole('radio', { name: /^Day/ }).click()
+    await page.waitForFunction(() => window.__game2d.timeline.world.design.theme === 'day')
+    await page.getByRole('radio', { name: 'Play' }).click()
+    await page.locator('.p2d-game.p2d-playing').waitFor()
+    await page.getByRole('radio', { name: 'Build' }).click()
+    await page.locator('.p2d-game.p2d-building').waitFor()
+    await shot(page, 'desktop-build-studio')
+  })
+
+  await step('switch: 2D → 3D from the header', async () => {
     await page.getByRole('navigation', { name: 'Build in 3D or 2D' }).getByRole('button', { name: '3D bricks' }).click()
     await page.waitForURL(/\/build$/)
     const start = page.getByRole('button', { name: 'Start building', exact: true })
@@ -182,8 +208,8 @@ try {
     await g.getByLabel('Your name').fill('Sam')
     await g.getByRole('button', { name: 'Join', exact: true }).click()
     await joined(g)
-    await page.getByRole('button', { name: '2 players in the room' }).waitFor()
-    await g.getByRole('button', { name: '2 players in the room' }).waitFor()
+    await page.getByRole('button', { name: 'People, 2 here' }).waitFor()
+    await g.getByRole('button', { name: 'People, 2 here' }).waitFor()
   })
 
   await step('room: the host sees the guest move', async () => {
@@ -205,7 +231,7 @@ try {
 
   await step('room: the host builds and the guest sees it', async () => {
     const g = guest.page
-    await page.getByRole('button', { name: 'Build', exact: true }).click()
+    await page.getByRole('radio', { name: 'Build' }).click()
     await page.locator('.p2d-game.p2d-building').waitFor()
     const n = await tileCount(page)
     await placeInSky(page, { dx: 0.62 })
@@ -216,15 +242,14 @@ try {
 
   await step('room: "Only I can build" locks the guest out of building', async () => {
     const g = guest.page
-    await page.getByRole('button', { name: 'Menu', exact: true }).click()
+    await page.getByRole('button', { name: /^People/ }).click()
     const lock = page.getByRole('switch', { name: /Only I can build/ })
     await lock.click()
     await page.waitForFunction(() => window.__game2d.settings.buildLocked === true)
     await shot(page, 'room-host-menu')
     await page.keyboard.press('Escape')
     await g.waitForFunction(() => window.__game2d.canBuild === false, null, { timeout: 5000 })
-    await g.locator('.p2d-pill.p2d-locked').waitFor()
-    await g.getByRole('button', { name: 'Build', exact: true }).click()
+    await g.getByRole('radio', { name: 'Build' }).click()
     await g.locator('.p2d-toast').waitFor()
     assert.equal(await g.locator('.p2d-game.p2d-building').count(), 0, 'the guest got into building anyway')
     await shot(g, 'room-guest-locked')
@@ -281,6 +306,24 @@ try {
     await p.getByRole('button', { name: 'Jump', exact: true }).waitFor()
     await touchControlsFit(p)
     await shot(p, 'phone-course')
+  })
+  await step('phone: building uses the drawer sheet', async () => {
+    const p = phone.page
+    await p.setViewportSize({ width: 390, height: 844 })
+    await p.goto(`${origin}/2d/build?new=1`)
+    await p.locator('.p2d-game.p2d-building').waitFor()
+    await p.waitForFunction(() => !!window.__game2d)
+    await p.getByRole('button', { name: 'Open block drawer' }).click()
+    const sheet = p.getByRole('dialog', { name: 'Blocks' })
+    await sheet.getByRole('tab', { name: 'Blocks', exact: true }).click()
+    await shot(p, 'phone-build-sheet')
+    await sheet.getByRole('button', { name: 'Spring', exact: true }).click()
+    await sheet.waitFor({ state: 'detached' })
+    await p.locator('.p2d-strip').getByText('Spring', { exact: true }).waitFor()
+    await placeInSky(p, { touch: true })
+    await p.waitForFunction(() => window.__game2d.editCount > 0)
+    await noSideScroll(p)
+    await shot(p, 'phone-build')
   })
   await step('small phone: the touch controls fit at 320px and sideways', async () => {
     const p = phone.page

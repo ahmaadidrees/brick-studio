@@ -293,18 +293,40 @@
   }
 }
 
-/* ---------- The game ---------- */
+/* ---------- The game: the studio header on top, the game below ---------- */
 
 .p2d-game {
+  /* The 3D studio's lane-local names (brick-studio.css), so the shared drawer looks the same here. */
+  --studio-panel-soft: #f3f5f9;
+  --studio-focus: var(--focus, #3565bf);
   position: fixed;
   inset: 0;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  background: #000;
+  color: var(--text);
+  background: var(--bg);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   font-family: var(--font-body);
+}
+
+.p2d-header {
+  position: relative;
+  z-index: var(--z-header, 20);
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.p2d-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  /* Shows around the game only when the screen is a very different shape from it. */
+  background: var(--text);
 }
 
 .p2d-stage {
@@ -325,109 +347,16 @@
   image-rendering: crisp-edges;
 }
 
-.p2d-topbar {
+/* Playing: pause (solo) or the menu (rooms), top-right over the game. */
+.p2d-play-tools {
   position: absolute;
   z-index: var(--z-hud);
-  top: 0;
-  right: 0;
-  left: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: calc(var(--space-3) + env(safe-area-inset-top)) max(var(--space-3), env(safe-area-inset-right)) 0 max(var(--space-3), env(safe-area-inset-left));
-  pointer-events: none;
+  top: var(--space-3);
+  right: max(var(--space-3), env(safe-area-inset-right));
 }
 
-.p2d-topbar > * > * {
-  pointer-events: auto;
-}
-
-.p2d-tb-start,
-.p2d-tb-end {
-  display: flex;
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.p2d-tb-end {
-  justify-content: flex-end;
-}
-
-.p2d-tb-center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding-top: 4px;
-}
-
-.p2d-topbar .ui-button,
-.p2d-topbar .shell-dimension-switch .ui-segmented-track {
+.p2d-play-tools .ui-button {
   box-shadow: var(--shadow-md);
-}
-
-.p2d-topbar .shell-dimension-switch .ui-segmented-track {
-  background: var(--surface);
-}
-
-.p2d-pill.ui-button {
-  border-radius: var(--radius-pill);
-}
-
-.p2d-locked.ui-button {
-  opacity: 0.8;
-}
-
-.p2d-save {
-  padding: 4px 10px;
-  background: var(--surface);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-sm);
-}
-
-.p2d-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 36px;
-  padding: 0 12px;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-md);
-  cursor: pointer;
-  font: inherit;
-}
-
-.p2d-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
-}
-
-.p2d-dot.p2d-me {
-  outline: 2px solid var(--primary-strong);
-  outline-offset: 1px;
-}
-
-.p2d-count {
-  margin-left: 4px;
-  font-weight: 800;
-}
-
-.p2d-pill-note {
-  padding: 4px 12px;
-  font-size: var(--text-sm);
-  font-weight: 800;
-  color: var(--warning-text);
-  background: var(--warning-soft);
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-sm);
 }
 
 .p2d-stats {
@@ -446,7 +375,7 @@
 .p2d-toast {
   position: absolute;
   z-index: var(--z-toast);
-  top: calc(env(safe-area-inset-top) + 72px);
+  top: var(--space-4);
   left: 50%;
   max-width: calc(100% - 32px);
   padding: var(--space-3) var(--space-4);
@@ -484,11 +413,18 @@
 }
 
 .p2d-hint-top {
-  top: calc(env(safe-area-inset-top) + 72px);
+  top: var(--space-4);
 }
 
+/* Above the placing strip, clear of the docked drawer. */
 .p2d-hint-dock {
-  bottom: calc(env(safe-area-inset-bottom) + 160px);
+  bottom: calc(env(safe-area-inset-bottom) + 84px);
+}
+
+.p2d-building:not(.p2d-compact) .p2d-hint-dock,
+.p2d-building:not(.p2d-compact) .p2d-toast {
+  left: calc(50% + 138px);
+  max-width: min(560px, calc(100% - 320px));
 }
 
 .p2d-hint-goal {
@@ -574,199 +510,250 @@
   }
 }
 
-/* ---------- Build bar ---------- */
+/* ---------- Building: the block drawer, history and the placing strip, laid out like the 3D studio ---------- */
 
-.p2d-dock {
+/*
+ * The drawer is the 3D studio's own component (src/shell/PartDrawer.tsx) with the 3D class names. These rules are
+ * the 3D studio's (brick-studio.css, desktop-layout.css, touch-layout.css) scoped to this screen, so both builders'
+ * drawers look the same without loading the 3D stylesheet here. Change them together.
+ */
+
+.p2d-build-shell {
   position: absolute;
-  z-index: var(--z-hud);
-  left: 50%;
-  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  width: min(1040px, calc(100% - 20px));
-  transform: translateX(-50%);
+  inset: 0;
   pointer-events: none;
 }
 
-.p2d-dock-tip {
-  max-width: 100%;
-  padding: 6px 14px;
+.p2d-build-shell > * {
+  pointer-events: auto;
+}
+
+.p2d-studio .studio-icon-button { min-height: var(--studio-control-height); width: var(--studio-control-height); display: grid; place-items: center; padding: 0; border: 1px solid var(--studio-panel-border); border-radius: var(--studio-control-radius); color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 4px 14px rgba(38, 60, 81, .08)); font: 800 12px/1 inherit; cursor: pointer; }
+.p2d-studio .studio-icon-button:hover:not(:disabled) { border-color: rgba(88, 136, 218, .46); color: var(--studio-blue-dark); background: rgba(88, 136, 218, .08); }
+.p2d-studio .studio-icon-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.p2d-studio .studio-icon-button:disabled { opacity: .38; cursor: default; }
+
+.p2d-studio .part-library { position: absolute; z-index: 12; top: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); width: 264px; display: flex; flex-direction: column; box-sizing: border-box; padding: 10px; border: 1px solid var(--studio-panel-border); border-radius: var(--radius-lg, 16px); background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.p2d-studio .library-title { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 8px; }
+.p2d-studio .library-title h2 { margin: 2px 0 0; font: 600 18px/1.1 var(--font-display, 'Fredoka'), sans-serif; }
+.p2d-studio .library-heading { display: flex; align-items: center; gap: 10px; }
+.p2d-studio .library-heading svg { color: var(--studio-blue); }
+.p2d-studio .library-title .library-heading { font-size: 25px; }
+.p2d-studio .library-collapse-button { width: 38px; min-height: 38px; height: 38px; flex: 0 0 auto; border-radius: 10px; box-shadow: none; }
+.p2d-studio .brick-drawer-toggle { position: absolute; z-index: 13; top: 12px; left: max(12px, env(safe-area-inset-left)); min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid var(--studio-panel-border); border-radius: var(--studio-control-radius); color: var(--studio-ink); background: var(--studio-panel); box-shadow: var(--shadow-sm, 0 6px 18px rgba(38, 60, 81, .1)); font: 800 12px/1 inherit; cursor: pointer; }
+.p2d-studio .brick-drawer-toggle:hover { border-color: rgba(88, 136, 218, .46); color: var(--studio-blue-dark); }
+.p2d-studio .brick-drawer-toggle:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.p2d-studio .part-search-row { flex: 0 0 auto; min-width: 0; }
+.p2d-studio .part-library .part-search-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.p2d-studio .part-search { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; min-height: 44px; margin: 0 0 9px; padding: 0 10px; border: 1px solid var(--studio-panel-border); border-radius: var(--studio-control-radius); color: var(--studio-muted); background: var(--studio-panel-soft); }
+.p2d-studio .part-library .part-search { flex: 1 1 auto; min-width: 0; margin: 0; }
+.p2d-studio .part-search:focus-within { border-color: var(--studio-blue); outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.p2d-studio .part-search input { flex: 1; min-width: 0; min-height: 32px; border: 0; color: var(--studio-ink); background: transparent; font: 700 13px/1.2 inherit; outline: none; }
+.p2d-studio .part-library .part-search input { width: 0; font-size: 12px; }
+.p2d-studio .part-search input::placeholder { color: var(--studio-muted); font-weight: 700; }
+.p2d-studio .part-search input::-webkit-search-cancel-button { display: none; }
+.p2d-studio .part-search-clear { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; border: 0; border-radius: 8px; color: var(--studio-muted); background: transparent; cursor: pointer; }
+.p2d-studio .part-search-clear:hover { color: var(--studio-blue-dark); background: rgba(88, 136, 218, .12); }
+.p2d-studio .part-search-clear:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.p2d-studio .part-category-select { width: 88px; flex: 0 0 88px; min-width: 0; min-height: 36px; padding: 0 6px; border: 1px solid var(--studio-panel-border); border-radius: 10px; color: var(--studio-ink); background: var(--studio-panel-soft); font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.p2d-studio .part-category-select:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.p2d-studio .part-categories { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 9px; }
+.p2d-studio .part-category { min-height: 32px; padding: 0 11px; border: 1px solid transparent; border-radius: 999px; color: var(--studio-muted); background: var(--studio-panel-soft); font: 800 11px/1 inherit; cursor: pointer; }
+.p2d-studio .part-category:hover { color: var(--studio-blue-dark); }
+.p2d-studio .part-category.active { border-color: rgba(88, 136, 218, .4); color: var(--studio-blue-dark); background: rgba(88, 136, 218, .14); }
+.p2d-studio .part-category:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.p2d-studio .part-grid { min-height: 0; flex: 1 1 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 5px; overflow-y: auto; overscroll-behavior: contain; padding: 1px; touch-action: pan-y; }
+.p2d-studio .library-part { min-height: 78px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 6px 2px; border: 2px solid transparent; border-radius: 12px; color: var(--studio-ink); background: var(--studio-panel-soft); font-size: 10px; font-weight: 800; line-height: 1.15; text-align: center; cursor: pointer; }
+.p2d-studio .library-part:hover { background: rgba(88, 136, 218, .1); }
+.p2d-studio .library-part:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.p2d-studio .library-part.active { border-color: var(--studio-blue); color: var(--studio-blue-dark); background: rgba(88, 136, 218, .14); }
+.p2d-studio .part-grid-empty { grid-column: 1 / -1; margin: 4px 0; padding: 12px; border-radius: 10px; color: var(--studio-muted); background: var(--studio-panel-soft); font-size: 12px; font-weight: 700; line-height: 1.45; text-align: center; }
+.p2d-studio .part-grid-empty-clear { min-height: 32px; padding: 0 8px; border: 0; border-radius: 8px; color: var(--studio-blue-dark); background: transparent; font: 800 12px/1 inherit; text-decoration: underline; cursor: pointer; }
+.p2d-part-art { image-rendering: pixelated; filter: drop-shadow(0 3px 3px rgba(38, 60, 81, .18)); }
+
+@media (pointer: coarse) {
+  .p2d-studio .part-search { min-height: 48px; }
+  .p2d-studio .part-search input { min-height: 44px; }
+  .p2d-studio .library-collapse-button { width: 44px; height: 44px; min-height: 44px; }
+  .p2d-studio .part-category, .p2d-studio .part-library .part-category-select { min-height: 44px; }
+  .p2d-studio .part-category { padding: 0 14px; }
+  .p2d-studio .part-search-clear { width: 44px; height: 44px; }
+}
+
+/* Undo and Redo, top-left beside the drawer (the 3D studio's history cluster). */
+.p2d-studio .brick-history-cluster { position: absolute; z-index: 13; top: 12px; left: 288px; display: flex; align-items: center; gap: 4px; box-sizing: border-box; padding: 6px; border: 1px solid var(--studio-panel-border); border-radius: 14px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.p2d-studio .p2d-drawer-collapsed .brick-history-cluster { left: 80px; }
+.p2d-studio .p2d-compact-shell .brick-history-cluster { left: max(8px, env(safe-area-inset-left)); top: 8px; }
+.p2d-studio .brick-history-tools { display: flex; gap: 0; padding: 0 3px; border-radius: 10px; background: var(--studio-panel-soft); }
+.p2d-studio .brick-history-tools .studio-icon-button { width: auto; min-width: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 0; box-shadow: none; background: transparent; }
+.p2d-studio .brick-history-tools .studio-icon-button > span { white-space: nowrap; }
+.p2d-studio .p2d-compact-shell .brick-history-tools .studio-icon-button { width: 44px; padding: 0; }
+.p2d-studio .p2d-compact-shell .brick-history-tools .studio-icon-button > span { display: none; }
+
+/* What a click places: the 3D studio's command strip, bottom-centre of the space the drawer leaves. */
+.p2d-strip {
+  position: absolute;
+  z-index: 14;
+  left: calc(50% + 138px);
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 6px 12px;
+  width: max-content;
+  max-width: calc(100% - 312px);
+  box-sizing: border-box;
+  padding: 6px 6px 6px 10px;
+  transform: translateX(-50%);
+  color: var(--studio-ink);
+  background: var(--studio-panel);
+  border: 1px solid var(--studio-panel-border);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--studio-panel-shadow);
+}
+
+.p2d-drawer-collapsed .p2d-strip {
+  left: 50%;
+  max-width: calc(100% - 24px);
+}
+
+.p2d-strip-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.p2d-strip-swatch {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  color: var(--studio-blue-dark);
+  background: var(--studio-panel-soft);
+  border-radius: 10px;
+}
+
+.p2d-strip-swatch img {
+  image-rendering: pixelated;
+}
+
+.p2d-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.p2d-strip-kicker {
+  color: var(--studio-muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.p2d-strip-text strong {
+  max-width: 180px;
   overflow: hidden;
-  font-size: var(--text-sm);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--primary-contrast);
-  background: rgba(38, 60, 81, 0.86);
-  border-radius: var(--radius-pill);
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.p2d-dock-tip b {
-  margin-right: 4px;
-  color: var(--brand-butter);
+.p2d-strip-hint {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--studio-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.p2d-dock-bar {
+.p2d-strip-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  max-width: 100%;
-  padding: var(--space-2);
-  overflow-x: auto;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  pointer-events: auto;
-  scrollbar-width: none;
+  gap: 4px;
+  margin-left: auto;
 }
 
-.p2d-dock-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.p2d-dock-cats,
-.p2d-dock-items,
-.p2d-dock-tools {
-  display: flex;
+.p2d-strip-button {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-}
-
-.p2d-dock-cats {
-  padding-right: var(--space-3);
-  border-right: 1px solid var(--border);
-}
-
-.p2d-dock-tools {
-  padding-left: var(--space-3);
-  border-left: 1px solid var(--border);
-}
-
-.p2d-cat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  min-width: 48px;
-  height: 56px;
-  padding: 0 6px;
-  font: 700 11px / 1 var(--font-body);
-  color: var(--text-muted);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-md);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--studio-ink);
+  background: var(--studio-panel-soft);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
   cursor: pointer;
 }
 
-.p2d-cat:hover {
-  background: var(--primary-soft);
+.p2d-strip-button:hover {
+  color: var(--studio-blue-dark);
+  background: rgba(88, 136, 218, 0.1);
 }
 
-.p2d-cat[aria-selected='true'] {
-  color: var(--primary-strong);
-  background: var(--primary-soft);
-  box-shadow: inset 0 0 0 2px var(--primary-strong);
+.p2d-strip-button:focus-visible {
+  outline: 3px solid var(--studio-focus);
+  outline-offset: 1px;
 }
 
-.p2d-cat-label {
-  display: none;
-}
-
-.p2d-item {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 56px;
-  height: 56px;
-  padding: 0;
-  color: var(--text);
-  background: #a9d4f5;
-  border: 0;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-}
-
-.p2d-item:hover {
-  box-shadow: inset 0 0 0 2px var(--primary);
-}
-
-.p2d-item[aria-pressed='true'] {
-  box-shadow: 0 0 0 3px var(--primary-strong);
-}
-
-.p2d-item.p2d-tool {
-  background: var(--surface-2);
-}
-
-.p2d-item.p2d-eraser[aria-pressed='true'] {
+.p2d-strip-button[aria-pressed='true'] {
   color: var(--primary-contrast);
-  background: var(--danger);
-  box-shadow: none;
+  background: var(--studio-blue);
 }
 
-.p2d-cat:focus-visible,
-.p2d-item:focus-visible,
-.p2d-dots:focus-visible,
-.p2d-switch-row:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
-}
+/* Compact screens (the 3D studio's compact shell): the drawer is a button and a bottom sheet; the strip sits beside
+   the button. */
+.p2d-studio .brick-creative-dock { position: absolute; z-index: 16; bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); display: flex; padding: 5px; border: 1px solid var(--studio-panel-border); border-radius: 20px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); }
+.p2d-studio .brick-drawer-fab { min-width: 104px; min-height: 48px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 5px 12px; border: 0; border-radius: 14px; color: var(--primary-contrast, #ffffff); background: var(--studio-blue); font: 800 11px/1.2 inherit; cursor: pointer; }
+.p2d-studio .brick-drawer-fab:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 3px; }
+.p2d-studio .brick-drawer-fab:active { background: var(--studio-blue-dark); }
+.p2d-compact-shell .p2d-strip { left: calc(max(8px, env(safe-area-inset-left)) + 128px); right: max(8px, env(safe-area-inset-right)); bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-width: none; transform: none; }
+.p2d-compact-shell .p2d-strip-hint { display: none; }
+.p2d-compact .p2d-hint-dock { bottom: calc(env(safe-area-inset-bottom) + 80px); }
 
-@media (min-width: 1060px) and (min-height: 640px) {
-  .p2d-cat-label {
-    display: block;
-  }
-  .p2d-cat {
-    min-width: 66px;
-  }
-}
+.p2d-studio .brick-sheet-backdrop { position: absolute; z-index: var(--z-sheet, 30); inset: 0; background: rgba(38, 60, 81, .34); animation: p2d-fade-in 150ms ease; }
+.p2d-studio .brick-sheet { position: absolute; z-index: calc(var(--z-sheet, 30) + 1); right: 0; bottom: 0; left: 0; max-height: min(68%, 560px); display: flex; flex-direction: column; box-sizing: border-box; padding: 0 15px calc(15px + env(safe-area-inset-bottom)); border-radius: 24px 24px 0 0; background: var(--studio-panel); box-shadow: 0 -14px 44px rgba(38, 60, 81, .24); touch-action: pan-y; overflow-y: auto; overscroll-behavior: contain; animation: p2d-sheet-rise 220ms cubic-bezier(.2,.9,.3,1); }
+.p2d-studio .brick-sheet-expanded { max-height: calc(100% - 12px); }
+.p2d-studio .brick-sheet:focus { outline: none; }
+.p2d-studio .brick-sheet-size { display: grid; place-items: center; flex: 0 0 44px; width: 100%; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: ns-resize; }
+.p2d-studio .brick-sheet-size:focus-visible { outline: 3px solid var(--studio-focus); border-radius: 8px; }
+.p2d-studio .brick-sheet-grip { flex: 0 0 auto; width: 46px; height: 5px; margin: 0; border-radius: 3px; background: var(--studio-panel-border); }
+.p2d-studio .brick-sheet .library-title { flex: 0 0 auto; margin-bottom: 8px; }
+.p2d-studio .brick-sheet .library-title h2 { font-size: 16px; }
+.p2d-studio .brick-sheet .part-search { min-height: 44px; }
+.p2d-studio .brick-sheet .part-categories { flex: 0 0 auto; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; touch-action: pan-x; }
+.p2d-studio .brick-sheet .part-category { flex: 0 0 auto; }
+.p2d-studio .brick-sheet .part-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.p2d-studio .brick-sheet .library-part { min-height: 96px; }
 
-@media (max-width: 760px) {
-  .p2d-dock-bar {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-  .p2d-dock-cats {
-    justify-content: center;
-    width: 100%;
-    padding: 0 0 6px;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-  }
-  .p2d-dock-tools {
-    padding-left: 6px;
-  }
-  .p2d-save {
-    display: none;
+@keyframes p2d-fade-in {
+  from {
+    opacity: 0;
   }
 }
 
-@media (max-height: 460px) {
-  .p2d-dock-tip {
-    display: none;
-  }
-  .p2d-item,
-  .p2d-cat {
-    width: 48px;
-    height: 48px;
-  }
-  .p2d-cat {
-    min-width: 44px;
+@keyframes p2d-sheet-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
   }
 }
 
-@media (max-width: 640px) {
-  .p2d-pill.ui-button .ui-button-label {
-    display: none;
-  }
-  .p2d-pill.ui-button {
-    width: var(--control-height);
-    padding: 0;
-  }
+/* Short screens (landscape phones): tighter drawer and strip. */
+@media (max-height: 520px) {
+  .p2d-studio .part-library { top: 8px; bottom: 8px; padding: 8px; }
+  .p2d-studio .library-title .library-heading { font-size: 20px; }
+  .p2d-studio .brick-history-cluster { top: 8px; }
 }
 
 /* ---------- Touch controls ---------- */
@@ -1160,14 +1147,97 @@
   margin-top: var(--space-4);
 }
 
+/* ---------- Scene (the header's Scene in 2D) ---------- */
+
+.p2d-scenes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+}
+
+.p2d-scene {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  color: var(--text);
+  text-align: left;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+}
+
+.p2d-scene img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.p2d-scene-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+}
+
+.p2d-scene-text span {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.p2d-scene:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.p2d-scene:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.p2d-scene[aria-checked='true'] {
+  border-color: var(--primary-strong);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.p2d-scene:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.p2d-scene-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--primary-contrast);
+  background: var(--primary-strong);
+  border-radius: 50%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .p2d-toast,
   .p2d-hint,
-  .p2d-phone {
+  .p2d-phone,
+  .p2d-studio .brick-sheet,
+  .p2d-studio .brick-sheet-backdrop {
     animation: none;
   }
   .p2d-knob,
   .p2d-switch {
     transition: none;
   }
+}
+
+/* A sheet that opens on a section needs no divider above it. */
+.p2d-menu .p2d-menu-section:first-child {
+  padding-top: 0;
+  border-top: 0;
 }

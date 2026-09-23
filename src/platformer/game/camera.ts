@@ -13,6 +13,8 @@ export class Camera {
 
   /** How much of the bottom of the view is covered (touch buttons, the build bar), in pixels. */
   bottomPad = 0
+  /** How much of the left of the view is covered (the docked block drawer while building), in pixels. */
+  leftPad = 0
 
   follow(px: number, py: number, vxPx: number, onGround: boolean, viewW: number, viewH: number, levelW: number, levelH: number) {
     const ground = this.bottomPad ? 0.6 : 0.72
@@ -46,7 +48,7 @@ export class Camera {
   }
 
   jumpTo(px: number, py: number, viewW: number, viewH: number, levelW: number, levelH: number, margin = 0) {
-    this.x = px - viewW / 2
+    this.x = px - this.leftPad - (viewW - this.leftPad) / 2
     this.y = py - (viewH - this.bottomPad) * (margin ? 0.5 : 0.6)
     this.snapped = true
     this.clamp(viewW, viewH, levelW, levelH, margin, this.bottomPad)
@@ -57,8 +59,10 @@ export class Camera {
   }
 
   private clamp(viewW: number, viewH: number, levelW: number, levelH: number, margin = 0, below = 0) {
-    if (levelW <= viewW) this.x = (levelW - viewW) / 2
-    else this.x = Math.max(-margin, Math.min(levelW - viewW + margin, this.x))
+    // While building, the drawer covers the left of the view, so the level may slide out from under it.
+    const left = margin ? this.leftPad : 0
+    if (levelW <= viewW - left) this.x = (levelW - viewW - left) / 2
+    else this.x = Math.max(-margin - left, Math.min(levelW - viewW + margin, this.x))
     const minY = -3 * TILE - margin
     const maxY = levelH - viewH + Math.max(margin, below)
     if (maxY < minY) this.y = maxY
