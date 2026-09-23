@@ -1,0 +1,299 @@
+{
+  "origin": "http://127.0.0.1:5244",
+  "viewport": "1366x768 (journeys), 1366x768 and 1024x768 (screens)",
+  "at": "2026-09-23T08:33:00.326Z",
+  "measured": {
+    "roverFirstRun": {
+      "stoppedAtStuds": 2.48,
+      "minimumStuds": 2.48,
+      "trace": [
+        "0.00s:12.00",
+        "0.20s:11.77",
+        "0.42s:11.24",
+        "0.74s:10.24",
+        "0.95s:9.56",
+        "1.27s:8.49",
+        "1.48s:7.80",
+        "1.78s:6.80",
+        "2.00s:6.07",
+        "2.22s:5.35",
+        "2.55s:4.24",
+        "2.75s:3.57",
+        "2.98s:2.82",
+        "3.33s:2.48",
+        "3.53s:2.48"
+      ]
+    },
+    "stopsEarlier": {
+      "with3": 2.47,
+      "with6": 5.47
+    },
+    "joystick": {
+      "up": 3.39,
+      "sensorBefore": 12,
+      "sensorPushed": 9.47,
+      "releasedSpeed": 0
+    },
+    "gate": {
+      "maxAngle": 90,
+      "openChip": "90°"
+    }
+  },
+  "results": [
+    {
+      "id": "screens.1366.first-run",
+      "ok": true,
+      "detail": "the rover opens on \"Stop before the wall\": one script, palette collapsed, goal line shown"
+    },
+    {
+      "id": "screens.1366.second-tab",
+      "ok": true,
+      "detail": "a second program tab, \"Joystick drive\", is open"
+    },
+    {
+      "id": "screens.1366.diagnostics",
+      "ok": true,
+      "detail": "problems: Can’t runFront sensor is missingHeads upLeft motor is not plugged in"
+    },
+    {
+      "id": "screens.1366.run-blocked",
+      "ok": true,
+      "detail": "Can’t run yet: Front sensor is missing"
+    },
+    {
+      "id": "screens.1024.first-run",
+      "ok": true,
+      "detail": "the rover opens on \"Stop before the wall\": one script, palette collapsed, goal line shown"
+    },
+    {
+      "id": "screens.1024.second-tab",
+      "ok": true,
+      "detail": "a second program tab, \"Joystick drive\", is open"
+    },
+    {
+      "id": "screens.1024.diagnostics",
+      "ok": true,
+      "detail": "problems: Can’t runFront sensor is missingHeads upLeft motor is not plugged in"
+    },
+    {
+      "id": "screens.1024.run-blocked",
+      "ok": true,
+      "detail": "Can’t run yet: Front sensor is missing"
+    },
+    {
+      "id": "R1.default-starter",
+      "ok": true,
+      "detail": "Code created \"Stop before the wall\" (revision 0) and made it the active program"
+    },
+    {
+      "id": "R1.first-run-state",
+      "ok": true,
+      "detail": "palette collapsed (no category open, flyout hidden), the nine-category rail visible, one script"
+    },
+    {
+      "id": "R1.test-plate",
+      "ok": true,
+      "detail": "the rover opens on the test plate, with its wall"
+    },
+    {
+      "id": "R1.goal",
+      "ok": true,
+      "detail": "goal line: Try it: change 3 to 6. Does it stop earlier or later?"
+    },
+    {
+      "id": "R1.framed-into-stage",
+      "ok": true,
+      "detail": "the framing counts the Code view: canvas insets left 820 px, top 198 px, bottom 51 px"
+    },
+    {
+      "id": "R1.studio-hidden",
+      "ok": true,
+      "detail": "the brick drawer, creation panel and command strip are out of the way"
+    },
+    {
+      "id": "R2.drives",
+      "ok": true,
+      "detail": "top speed 3.34 studs/s"
+    },
+    {
+      "id": "R2.stops-before-wall",
+      "ok": true,
+      "detail": "the sensor read 2.48 studs at rest (never under 2.48): it never touched the wall"
+    },
+    {
+      "id": "R2.readings-are-the-blocks-values",
+      "ok": true,
+      "detail": "stage chips {\"Front sensor\":\"2.5 studs\",\"Motors\":\"0 · 0 % (speed 0 · 0 %)\",\"Speed\":\"0.0 st/s\"} match the observation the blocks read"
+    },
+    {
+      "id": "R2.status",
+      "ok": true,
+      "detail": "status: Running · 4.2 s"
+    },
+    {
+      "id": "R3.reset",
+      "ok": true,
+      "detail": "Reset: every body within 0.0062 of its built pose, program stopped, sensor 12 studs, status \"Ready\""
+    },
+    {
+      "id": "R4.saved",
+      "ok": true,
+      "detail": "typed 6 into the field: saved as revision 1"
+    },
+    {
+      "id": "R4.changed-line",
+      "ok": true,
+      "detail": "while it runs: \"Changed · press Run to use it\""
+    },
+    {
+      "id": "R4.run-keeps-its-revision",
+      "ok": true,
+      "detail": "the run that started with 3 still braked at 3: rests 2.47 studs from the wall"
+    },
+    {
+      "id": "R4.stops-earlier",
+      "ok": true,
+      "detail": "with 6 it rests 5.47 studs from the wall (with 3: 2.47)"
+    },
+    {
+      "id": "R4.no-changed-line",
+      "ok": true,
+      "detail": "the new run uses the saved program: no \"Changed\" line"
+    },
+    {
+      "id": "R4b.dragged-in",
+      "ok": true,
+      "detail": "dragged \"stop Left motor · A\" out of the palette: Left motor · A (value brick-1790152319466-l1saus)"
+    },
+    {
+      "id": "R4b.snapped",
+      "ok": true,
+      "detail": "it snapped under \"stop motors\" (robo_stop_motor)"
+    },
+    {
+      "id": "R4b.blockly-keys",
+      "ok": true,
+      "detail": "Delete removed the block and ⌘Z brought it back (Blockly’s own undo), both saved"
+    },
+    {
+      "id": "R4b.studio-untouched",
+      "ok": true,
+      "detail": "the studio saw neither key: no brick deleted, nothing on its Undo stack"
+    },
+    {
+      "id": "R5.construction-unchanged",
+      "ok": true,
+      "detail": "back in Build: bricks, cables and creation exactly as built; the stage is closed"
+    },
+    {
+      "id": "R5.select-motor",
+      "ok": true,
+      "detail": "clicking the left motor at (517, 381) selects it"
+    },
+    {
+      "id": "R5.port-C",
+      "ok": true,
+      "detail": "left motor on C, front sensor swapped to A"
+    },
+    {
+      "id": "R6.label-C",
+      "ok": true,
+      "detail": "the blocks read \"Left motor · C\" and \"Front sensor · A\""
+    },
+    {
+      "id": "R6.still-runs",
+      "ok": true,
+      "detail": "rewired, it still drives and stops before the wall: 5.45 studs"
+    },
+    {
+      "id": "R7.new-program",
+      "ok": true,
+      "detail": "the + menu added \"Joystick drive\" as a second tab and made it active"
+    },
+    {
+      "id": "R7.joystick-drives",
+      "ok": true,
+      "detail": "mouse-dragging the stick up: 3.39 studs/s forward, wall 12.0 → 9.5 studs; chip \"Motors 41 · 41 % (speed 34 · 35 %)\""
+    },
+    {
+      "id": "R7.joystick-release",
+      "ok": true,
+      "detail": "letting go centres the stick and the motors stop"
+    },
+    {
+      "id": "R7.arrow-up",
+      "ok": true,
+      "detail": "ArrowUp held: 6.41 studs/s, wall 12.0 → 10.8 studs"
+    },
+    {
+      "id": "R7.arrow-left",
+      "ok": true,
+      "detail": "ArrowLeft held: raw powers -100 and -100 (the right motor is reversed, so equal signs spin the rover)"
+    },
+    {
+      "id": "R7.keypad-lights",
+      "ok": true,
+      "detail": "the Keys pad lights the arrow being held"
+    },
+    {
+      "id": "R8.construction-unchanged",
+      "ok": true,
+      "detail": "bricks, poses, attachments and cables identical to before Code opened (after the student’s own port move)"
+    },
+    {
+      "id": "R8.reload",
+      "ok": true,
+      "detail": "after a cold reload: 2 programs (Stop before the wall, Joystick drive), active program kept, construction and cables intact"
+    },
+    {
+      "id": "R8.reopen",
+      "ok": true,
+      "detail": "Code reopens on the active tab, \"Joystick drive\""
+    },
+    {
+      "id": "G.default",
+      "ok": true,
+      "detail": "the gate opens on \"Smart gate\" in My world, with \"Someone walks up\""
+    },
+    {
+      "id": "G.door-opens",
+      "ok": true,
+      "detail": "the visitor walked into the beam: the door swung to 90.0° about the hinge only (chip \"90°\")"
+    },
+    {
+      "id": "G.reset-zero",
+      "ok": true,
+      "detail": "Reset: door at 0°"
+    },
+    {
+      "id": "G.scenery-in-view",
+      "ok": true,
+      "detail": "the scenery brick is on the stage at (1144, 567)"
+    },
+    {
+      "id": "G.stage-never-edits",
+      "ok": true,
+      "detail": "after a click and a drag on it (selected: yes), the brick has not moved and nothing is armed"
+    },
+    {
+      "id": "G.construction-unchanged",
+      "ok": true,
+      "detail": "the gate is exactly as built"
+    },
+    {
+      "id": "S.card-opens-code",
+      "ok": true,
+      "detail": "\"Code this creation\" named it and opened Code on \"Signal post\" in My world"
+    },
+    {
+      "id": "S.light-red",
+      "ok": true,
+      "detail": "the light chip reads \"red\""
+    },
+    {
+      "id": "console-clean",
+      "ok": true,
+      "detail": "no console errors, and nothing fetched from Blockly’s media folder"
+    }
+  ]
+}

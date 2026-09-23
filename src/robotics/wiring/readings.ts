@@ -2,6 +2,7 @@ import type { RoboticsDeviceKind } from '../parts/catalog'
 import type { LightColor } from '../program/types'
 import type { RunObservation, SensorReading } from '../run/types'
 import type { RoboticsState } from '../state/roboticsStore'
+import { useStageStore } from '../state/stageStore'
 
 /**
  * "Right now" in the device inspector (contract §5: selecting a device shows its
@@ -42,9 +43,10 @@ export function readingFromObservation(observation: Pick<RunObservation, 'motors
   return null
 }
 
-/** The live source the inspector reads. The Code view replaces this body to prefer its stage's observation. */
+/** The live source the inspector reads: the open stage's observation first (the Code view's run), else the Nudge. */
 function liveReading(state: ReadingState, deviceId: string): DeviceReadingValues | null {
-  return readingFromNudge(state, deviceId)
+  const observation = useStageStore.getState().stageObservation
+  return (observation && readingFromObservation(observation, deviceId)) ?? readingFromNudge(state, deviceId)
 }
 
 const degrees = (value: number) => `${Math.round(value)}°`

@@ -14,6 +14,7 @@ import type { Vec3 } from '../model/vec'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
 import type { ContactReport, HingeReport, Mechanics } from '../sim/mechanics'
+import { useCodeView } from '../code/codeViewState'
 
 /**
  * Robotics UI state beside the brick store. The document (bricks + the robotics
@@ -285,7 +286,7 @@ export const useRoboticsStore = create<RoboticsState>((set, get) => ({
       writeSection(section, `Name creation ${trimmed}`)
     }
     set({ card: null, model: computeModel(useBrickStore.getState()) })
-    if (thenCode) useBrickStore.setState({ toast: `${trimmed} is ready to code. The Code view arrives in checkpoint 2.` })
+    if (thenCode) useCodeView.getState().openCode(id)
   },
 
   renameCreation: (id, name) => {

@@ -126,6 +126,7 @@ import { currentCanvasInsets } from '../robotics/scene/cameraInsets'
 import { clearDraftSnap, snapDraft } from '../robotics/scene/draftSnap'
 import { framePoseInFreeArea } from '../robotics/scene/framing'
 import { useVisibleBricks } from '../robotics/scene/hiddenBricks'
+import { studioEditingSuspended } from '../robotics/code/studioKeys'
 import { exploreRideFrame } from '../robotics/explore/rideBridge'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): highlights, port labels, motor outputs and the
@@ -1128,7 +1129,8 @@ function GhostDragInput({ cameraActive, gesture, mouseTravel }: { cameraActive: 
       abortHold()
       suppressClick.current = false
       const state = useBrickStore.getState()
-      if (state.mode !== 'build' || buildCameraSpaceHeld || event.button !== 0) return
+      // The robotics Code view parks build gestures: its stage is a preview, never an edit.
+      if (state.mode !== 'build' || buildCameraSpaceHeld || event.button !== 0 || studioEditingSuspended()) return
       if (!state.draft && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
         const brickId = findBrickAtPointer(event, canvas, camera, scene, raycaster.current, pointer.current)
         const ids = state.selectedIds.length ? state.selectedIds : state.selectedId ? [state.selectedId] : []

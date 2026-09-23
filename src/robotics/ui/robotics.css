@@ -72,6 +72,8 @@
 .robotics-link-button { border: 0; padding: 2px 6px; border-radius: 6px; font-family: inherit; font-weight: 900; font-size: 12px; line-height: 1.2; color: var(--studio-blue-dark, #2f5fb3); background: transparent; cursor: pointer; }
 .robotics-link-button:hover { background: var(--studio-panel-soft); }
 .robotics-link-button:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 1px; }
+.robotics-code-button { min-height: 32px; padding: 0 14px; border-radius: 999px; font-weight: 900; }
+.robotics-live-line { margin: 0; padding: 7px 10px; border-radius: 9px; color: var(--studio-muted); background: var(--studio-panel-soft); font-weight: 800; }
 .brick-mode-explore .robotics-card, .brick-mode-explore .robotics-panel, .brick-mode-explore .robotics-wiring-line { display: none; }
 /* With a robotics card or panel on the right, the studio toast centres in the canvas between the drawer and
    the panel instead of landing on the panel's name field (desktop and landscape tablet layouts only). */

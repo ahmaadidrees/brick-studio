@@ -59,6 +59,7 @@ import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
 import { isRoboticsPrototypeEnabled } from '../robotics/flag'
+import { studioShortcutsSuspended } from '../robotics/code/studioKeys'
 import { ROBOTICS_PARTS, isRoboticsPart } from '../robotics/parts/catalog'
 
 // Robot Workshop spike (VITE_ROBOTICS_PROTOTYPE=1): the chunk is never requested without the flag.
@@ -126,6 +127,8 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
   useEffect(() => {
     if (!enabled) return
     const handler = (event: KeyboardEvent) => {
+      // The robotics Code view owns the keyboard while it is open (src/robotics/code/studioKeys.ts).
+      if (studioShortcutsSuspended()) return
       if (event.defaultPrevented || document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]')) return
       const target = event.target
       // Any dialog, modal or not (the strip's Color popover, the People panel), and anything marked
@@ -778,6 +781,8 @@ type BuildShellProps = {
   customPartHelp?: string
   onCreatePart: (definition: CustomPartDefinition) => boolean
   onResizeSelection: (delta: ResizeDelta) => boolean
+  /** In a live room: robotics Code and Run are unavailable (contract §8). */
+  live?: boolean
 }
 
 function BuildShell({
@@ -788,6 +793,7 @@ function BuildShell({
   customPartHelp,
   onCreatePart,
   onResizeSelection,
+  live = false,
 }: BuildShellProps) {
   const coarsePointer = useCoarsePointerPreference()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -855,7 +861,7 @@ function BuildShell({
       <HistoryCluster />
       <CameraCluster />
       <CommandStrip coarsePointer={coarsePointer} onResize={openResize} />
-      {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><RoboticsPanel compact={compact} /></Suspense>}
+      {isRoboticsPrototypeEnabled() && <Suspense fallback={null}><RoboticsPanel compact={compact} live={live} /></Suspense>}
       <CreateBrickSheet
         open={createOpen}
         existingCount={customParts.length}
@@ -1592,6 +1598,7 @@ export default function BrickStudioApp({
             customPartHelp={customPartHelp}
             onCreatePart={createCustomPart}
             onResizeSelection={resizeSelection}
+            live={Boolean(livePolicy)}
           />
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
