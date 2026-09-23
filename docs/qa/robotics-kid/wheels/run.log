@@ -1,0 +1,129 @@
+
+A. Leo's car from separate parts (1366×768)
+PASS A:robot-plate-first — the first tile after "Robot parts" is {"testId":"robot-plate-part","text":"Robot plate"}
+  shot W01-robot-plate-tile.png
+PASS A:robot-plate-arms — the Robot plate tile armed plate_6x8
+PASS A:ghost:robot plate — robot plate: aimed near, the ghost shows 28,0,26 r0
+PASS A:placed:robot plate — robot plate: one click placed it at 28,0,26 r0
+PASS A:ghost:wheel front left — wheel front left: aimed near, the ghost shows 28,1,26 r0
+PASS A:placed:wheel front left — wheel front left: one click placed it at 28,1,26 r0
+PASS A:cant-spin-line:front left — the line: "This wheel can't spin yet. It needs an axle in a motor." [Add a motor for it]
+PASS A:cant-spin-mark:front left — on the wheel: the red can't-spin mark and the line (1 marked)
+  shot W02-wheel-cant-spin.png
+PASS A:ghost:wheel front right — wheel front right: aimed near, the ghost shows 33,1,26 r0
+PASS A:placed:wheel front right — wheel front right: one click placed it at 33,1,26 r0
+PASS A:cant-spin-line:front right — the line: "This wheel can't spin yet. It needs an axle in a motor." [Add a motor for it]
+PASS A:cant-spin-mark:front right — on the wheel: the red can't-spin mark and the line (2 marked)
+PASS A:ghost:wheel back left — wheel back left: aimed near, the ghost shows 28,1,31 r0
+PASS A:placed:wheel back left — wheel back left: one click placed it at 28,1,31 r0
+PASS A:cant-spin-line:back left — the line: "This wheel can't spin yet. It needs an axle in a motor." [Add a motor for it]
+PASS A:cant-spin-mark:back left — on the wheel: the red can't-spin mark and the line (3 marked)
+PASS A:ghost:wheel back right — wheel back right: aimed near, the ghost shows 33,1,31 r0
+PASS A:placed:wheel back right — wheel back right: one click placed it at 33,1,31 r0
+PASS A:cant-spin-line:back right — the line: "This wheel can't spin yet. It needs an axle in a motor." [Add a motor for it]
+PASS A:cant-spin-mark:back right — on the wheel: the red can't-spin mark and the line (4 marked)
+PASS A:four-loose-wheels — four wheels on the plate, none spinning, every one marked; no robot yet (a wheel is not a robot: the fix makes one)
+  shot W03-four-wheels-marked.png
+PASS A:fix-one — the back-right wheel now stands on the ground at 36,0,31 on an axle in a new motor, and spins
+PASS A:fix-one-undo — one history entry: "Add a motor for the wheel"
+PASS A:fix-one-line — the line: "Added a motor and an axle. The wheel can spin now!"
+  shot W04-first-fix-card.png
+PASS A:loose-line — under the steps: "1 wheel spins. 3 wheels aren't on an axle."
+PASS A:loose-numbers — the scene numbers the loose wheels 1, 2, 3, as the rows do
+  shot W05-loose-wheels-in-panel.png
+PASS A:all-wheels-spin — after three taps on Fix wheel 1: 4 of 4 wheels spin
+PASS A:nothing-in-the-air — every motor stands on the plate (y 1), every axle and wheel on the ground (y 0): plate_6x8@0 wheel@0 wheel@0 wheel@0 wheel@0 axle_short@0 motor@1 axle_short@0 motor@1 axle_short@0 motor@1 axle_short@0 motor@1
+PASS A:motor-names — four motors, named by where they stand: Back left motor, Back right motor, Front left motor, Front right motor
+  shot W06-four-wheels-spin.png
+PASS A:hub-step — the next step: "Add a hub. It is the robot’s brain."
+PASS A:ghost:hub on the front motors — hub on the front motors: aimed near, the ghost shows 29,7,26 r0
+PASS A:placed:hub on the front motors — hub on the front motors: one click placed it at 29,7,26 r0
+PASS A:plugged — the hub plugged every motor in: ports A, B, C, D
+PASS A:ready — "Ready to drive!", Drive on
+PASS A:model-agrees — model.creations[0].wheels: 4 wheels, 4 on an axle in a motor — the four the harness placed
+PASS A:ghost:leftover wheel 29 — leftover wheel 29: aimed near, the ghost shows 29,0,36 r0
+PASS A:placed:leftover wheel 29 — leftover wheel 29: one click placed it at 29,0,36 r0
+PASS A:ghost:leftover wheel 31 — leftover wheel 31: aimed near, the ghost shows 31,0,36 r0
+PASS A:placed:leftover wheel 31 — leftover wheel 31: one click placed it at 31,0,36 r0
+PASS A:ghost:leftover wheel 33 — leftover wheel 33: aimed near, the ghost shows 33,0,36 r0
+PASS A:placed:leftover wheel 33 — leftover wheel 33: one click placed it at 33,0,36 r0
+PASS A:ready-with-loose — still ready, Drive on
+PASS A:ready-loose-line — under "Ready to drive!": "4 wheels spin. 3 wheels aren't on an axle. They stay here when you drive."
+PASS A:model-leftovers — the model still counts 4 wheels on the car; the 3 leftovers are not its wheels (and each carries its red mark)
+  shot W07-ready-with-loose-wheels.png
+PASS A:parts-apart — Parts: "14 bricks attached · 1 hub, 4 motors, 4 wheels, 4 axles · 3 loose wheels"
+  shot W08-parts-loose-apart.png
+PASS A:leftovers-not-driven — the three loose wheels are not part of the car on the test plate
+PASS A:drives — ArrowUp held 2.5 s drove Speedy 14.0 studs forward
+  shot W09-driving.png
+PASS A:leftovers-still-here — back in the build, the three loose wheels are where they were
+PASS A:taken-off — Take it off, three times: the loose wheels are gone and the loose-wheel line with them
+PASS A:counts — 9 placements and 4 fixes, 0 that looked connected but were not
+
+B. No room on Leo's 4 × 6 plate
+PASS B:ghost:4 × 6 plate — 4 × 6 plate: aimed near, the ghost shows 30,0,26 r0
+PASS B:placed:4 × 6 plate — 4 × 6 plate: one click placed it at 30,0,26 r0
+PASS B:ghost:hub over the far end — hub over the far end: aimed near, the ghost shows 30,1,25 r0
+PASS B:placed:hub over the far end — hub over the far end: one click placed it at 30,1,25 r0
+PASS B:ghost:motor near the left side — motor near the left side: aimed near, the ghost shows 30,1,29 r2 with the green snapped outline
+PASS B:placed:motor near the left side — motor near the left side: one click placed it at 30,1,29 r2
+PASS B:other-side-no-room-row — the row: "Put a motor on the other side. No room there. Try a bigger plate."
+PASS B:other-side-red — the other side: red at {"x":31,"y":1,"z":29,"rotation":0}, the left motor outlined, "No room for a motor here. Try a bigger plate." above it
+  shot W10-no-room-other-side.png
+PASS B:ghost:wheel at the near-right corner — wheel at the near-right corner: aimed near, the ghost shows 33,1,29 r0
+PASS B:placed:wheel at the near-right corner — wheel at the near-right corner: one click placed it at 33,1,29 r0
+PASS B:wheel-line — the line: "This wheel can't spin yet. It needs an axle in a motor."
+PASS B:no-room — "No room for a motor here. Try a bigger plate."; outlined: 1 part(s); a red motor where it would go; nothing moved
+PASS B:no-room-outlined — the motor in the way is outlined
+  shot W11-no-room-wheel.png
+PASS B:counts — 0 that looked connected but were not (the wheel carries its red mark)
+
+C. Sam: the green spot faces out, never on the hub, the name stays
+PASS C:ghost:robot plate — robot plate: aimed near, the ghost shows 28,0,26 r0
+PASS C:placed:robot plate — robot plate: one click placed it at 28,0,26 r0
+PASS C:ghost:hub — hub: aimed near, the ghost shows 29,1,27 r0
+PASS C:placed:hub — hub: one click placed it at 29,1,27 r0
+PASS C:not-on-hub — aimed at the hub's top, the ghost goes to the left side of the plate: 28,1,31 r2
+  shot W12-motor-over-hub-goes-to-side.png
+PASS C:ghost:motor aimed at the hub — motor aimed at the hub: aimed near, the ghost shows 28,1,31 r2 with the green snapped outline
+PASS C:placed:motor aimed at the hub — motor aimed at the hub: one click placed it at 28,1,31 r2
+PASS C:other-side-row — the row: "Put a motor on the other side."
+PASS C:armed-across — the row armed the motor across from the first: 31,1,31 r0
+PASS C:green-target — a green motor-shaped target at {"x":31,"y":1,"z":31,"rotation":0}
+  shot W13-other-side-green.png
+PASS C:ghost:motor on the green spot, near its back corner — motor on the green spot, near its back corner: aimed near, the ghost shows 31,1,31 r0 with the green snapped outline
+PASS C:placed:motor on the green spot, near its back corner — motor on the green spot, near its back corner: one click placed it at 31,1,31 r0
+PASS C:faces-out — it faces out to the right: "Right motor", socket open
+PASS C:step-ticked — "A motor on each side" is done only now: "Put an axle in Left motor."
+PASS C:full-red — with both sides full the ghost is red: "No room on the plate. Try a bigger plate.", outlined 1
+  shot W14-no-room-red-preview.png
+PASS C:not-placed-on-hub — the click placed nothing; no motor on the hub
+PASS C:rotate-keeps-name — after each Rotate: Left motor, Left motor, Left motor
+PASS C:turned-wrong-way — turned three times it no longer faces a side (facing-in, crossways): an arrow shows where Turn it puts it
+PASS C:turn-row — the row, in kid words: "Turn Left motor around."
+  shot W15-turn-it-arrow.png
+PASS C:turned — one tap turned it back to face out: 28,1,31 r2, still "Left motor"
+
+D. Sam on a touch screen: Place alone never puts a motor on the hub
+PASS D:touch-device — the page sees a touch screen: hover none true, pointer coarse true
+PASS D:ghost-on-side — the motor's ghost starts on a side of the plate (29,1,33 r2), not on the hub (top at y 7)
+  shot W16-touch-ghost-on-side.png
+PASS D:placed-on-side — Place alone put the motor at 29,1,33 r2: on the plate's side, facing out
+PASS D:touch-wheel-line — a wheel tapped onto the plate: "This wheel can't spin yet. It needs an axle in a motor.", its button 156×44 px, the line inside the screen
+  shot W17-touch-wheel-line.png
+PASS D:touch-fixed — one tap: the wheel spins ({"id":"brick-1790197163833-xivnk7","spins":true,"marked":false}), "Added a motor and an axle. The wheel can spin now!"
+  shot W18-touch-wheel-fixed.png
+
+E. Ava: a seat, a light and a sensor dropped beside the Buggy
+PASS E:seat-line — a seat on the ground beside Buggy: "This seat isn't on Buggy yet." [Put it on top]
+  shot W19-seat-beside.png
+PASS E:seat-on — one tap put it on Buggy at 31,7,29 (height 7): "The seat is on Buggy now."
+PASS E:seat-rides — the seat is on the very top, one of the robot’s seats: it can be ridden in Explore
+  shot W20-seat-on-top.png
+PASS E:light-line — a light on the ground beside Buggy: "This light isn't on Buggy yet." [Put it on top]
+PASS E:light-on — one tap put it on Buggy at 33,7,29 (height 7): "Light is on Buggy now."
+PASS E:sensor-line — a sensor on the ground beside Buggy: "This sensor isn't on Buggy yet." [Put it on Buggy]
+PASS E:sensor-on — one tap put it on Buggy at 29,1,28 (height 1): "Front sensor is on Buggy now."
+PASS console.clean — no console errors or page errors
+
+97/97 checks passed · docs/qa/robotics-kid/wheels

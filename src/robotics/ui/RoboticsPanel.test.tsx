@@ -119,7 +119,8 @@ describe('the panel', () => {
     expect(within(steps()).getByText('Add a hub. It is the robot’s brain.')).toBeInTheDocument()
     expect(within(steps()).getByText('What should it do?')).toBeInTheDocument()
     fireEvent.click(within(steps()).getByRole('button', { name: /Make it move/ }))
-    expect(useBrickStore.getState().draft).toMatchObject({ partId: ROBOTICS_PART_IDS.motor, rotation: 0 })
+    // It starts where it goes: the back of the plate's left side, facing out (never on top of the hub).
+    expect(useBrickStore.getState().draft).toMatchObject({ partId: ROBOTICS_PART_IDS.motor, x: 28, y: 1, z: 31, rotation: 2 })
     fireEvent.click(within(steps()).getByRole('button', { name: /Make it see and light up/ }))
     expect(useBrickStore.getState().draft?.partId).toBe(ROBOTICS_PART_IDS.distanceSensor)
   })
@@ -306,5 +307,78 @@ describe('in a live room', () => {
     expect(currentStep()).toBeDisabled()
     fireEvent.click(within(screen.getByTestId('robotics-ideas')).getByRole('button', { name: /Add a light/ }))
     expect(useBrickStore.getState().draft?.partId).toBe(ROBOTICS_PART_IDS.light)
+  })
+})
+
+describe('loose wheels (kid-UX lane W)', () => {
+  it('ready to drive with wheels that can\'t spin: Drive stays on and, under the ready row, how many spin and that the loose ones stay here', () => {
+    render(<RoboticsPanel />)
+    const ids = rover(6)
+    // Leo's leftovers: two wheels standing on the robot's plate, one beside it.
+    place(ROBOTICS_PART_IDS.wheel, 33, 1, 26)
+    place(ROBOTICS_PART_IDS.wheel, 28, 1, 26)
+    place(ROBOTICS_PART_IDS.wheel, 38, 0, 26)
+    act(() => useRoboticsStore.getState().dismissWiringNote())
+    expect(currentStep()).toHaveTextContent('Ready to drive!')
+    expect(playButton()).toBeEnabled()
+    const loose = screen.getByTestId('robotics-loose-wheels')
+    expect(within(loose).getByTestId('robotics-loose-line')).toHaveTextContent("2 wheels spin. 3 wheels aren't on an axle. They stay here when you drive.")
+    expect(within(loose).getAllByRole('button').map((button) => button.textContent)).toEqual(['Fix wheel 1', 'Take it off', 'Fix wheel 2', 'Take it off', 'Fix wheel 3', 'Take it off'])
+    // The Parts count keeps the wheels on the car apart from the loose ones.
+    fireEvent.click(within(panel()).getByRole('button', { name: /^Parts/ }))
+    expect(screen.getByTestId('robotics-parts-line')).toHaveTextContent('1 hub, 2 motors, 2 wheels, 2 axles · 3 loose wheels')
+    // Take it off: gone, and the line counts one fewer.
+    fireEvent.click(within(loose).getAllByRole('button', { name: 'Take wheel 3 off' })[0])
+    expect(screen.getByTestId('robotics-loose-line')).toHaveTextContent("2 wheels spin. 2 wheels aren't on an axle.")
+    expect(ids.leftWheel).toBeDefined()
+  })
+
+  it('a picked wheel that can\'t spin says so and offers its fix; after it, it spins', () => {
+    render(<RoboticsPanel />)
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    keepBuilding()
+    const wheel = place(ROBOTICS_PART_IDS.wheel, 36, 0, 31)
+    act(() => useBrickStore.getState().selectBrick(wheel))
+    expect(screen.getByTestId('robotics-selected-part')).toHaveTextContent("Wheel · This wheel can't spin yet. It needs an axle in a motor.")
+    fireEvent.click(screen.getByTestId('robotics-wheel-fix'))
+    expect(screen.getByTestId('robotics-selected-part')).toHaveTextContent('Wheel · On an axle in Right motor. It spins.')
+  })
+
+  it('the line after a wheel lands has its fix as a real button', () => {
+    render(<RoboticsPanel />)
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.wheel, 33, 1, 31)
+    const line = screen.getByTestId('robotics-wiring-line')
+    expect(line).toHaveTextContent("This wheel can't spin yet. It needs an axle in a motor.")
+    fireEvent.click(within(line).getByRole('button', { name: 'Add a motor for it' }))
+    expect(screen.getByTestId('robotics-wiring-line')).toHaveTextContent('Added a motor and an axle. The wheel can spin now!')
+  })
+})
+
+describe('a part beside the robot (kid-UX lane W)', () => {
+  it('its panel never says to add a hub to a robot that has one: "Not on Speedy" and Put it on Speedy', () => {
+    render(<RoboticsPanel />)
+    place('plate_6x8', 28, 0, 26)
+    place(ROBOTICS_PART_IDS.hub, 29, 1, 27)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Robot name' }), { target: { value: 'Speedy' } })
+    keepBuilding()
+    place(ROBOTICS_PART_IDS.motor, 28, 1, 31, 2)
+    const stray = place(ROBOTICS_PART_IDS.motor, 36, 0, 30)
+    act(() => useBrickStore.getState().selectBrick(stray))
+    const inspector = screen.getByTestId('robotics-device-inspector')
+    // What to do is on the card itself (the line and its one tap); the plug state sits in the part's More (lane P).
+    expect(within(inspector).getByTestId('wiring-hint')).toHaveTextContent("This motor isn't on Speedy yet.")
+    expect(inspector).not.toHaveTextContent('Add a hub')
+    fireEvent.click(within(inspector).getByRole('button', { name: /^More about / }))
+    expect(within(inspector).getByTestId('wiring-state')).toHaveTextContent('Not on Speedy')
+    expect(inspector).not.toHaveTextContent('Add a hub')
+    fireEvent.click(within(inspector).getByTestId('wiring-put-on'))
+    const motor = useBrickStore.getState().bricks.find((brick) => brick.id === stray)!
+    expect([motor.x, motor.y, motor.z, motor.rotation]).toEqual([31, 1, 31, 0])
+    const after = screen.getByTestId('robotics-device-inspector')
+    const more = within(after).getByRole('button', { name: /^More about / })
+    if (more.getAttribute('aria-expanded') !== 'true') fireEvent.click(more)
+    expect(within(after).getByTestId('wiring-state')).toHaveTextContent('Port B')
   })
 })

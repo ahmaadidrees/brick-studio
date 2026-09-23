@@ -22,6 +22,28 @@
 }
 .robotics-connect-label.is-gap { color: #a4161a; border-color: #e5383b; }
 .robotics-connect-label.is-advice { color: #7a3d00; border-color: #f0a020; }
+.robotics-connect-label.is-done { color: #0f5132; border-color: #12b76a; }
+
+/* A wheel that can't spin: a small red badge above it with its number in the robot panel's list (kid-UX lane W). */
+.robotics-cant-spin-badge {
+  box-sizing: border-box;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #e5383b;
+  box-shadow: 0 2px 8px rgba(31, 42, 51, 0.3);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
 /* The pointer is at the part the line is about (an axle aimed at a motor on the ground): the line stands out. */
 .robotics-connect-label.is-emphasis { background: #fff4d6; box-shadow: 0 0 0 4px rgba(240, 160, 32, 0.35), 0 4px 14px rgba(31, 42, 51, 0.2); animation: robotics-connect-nudge 900ms ease-in-out infinite alternate; }
 @keyframes robotics-connect-nudge { from { transform: scale(1); } to { transform: scale(1.06); } }

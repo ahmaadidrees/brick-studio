@@ -1,6 +1,10 @@
 import { Bot } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
+import { PartThumbnail } from '../../brick/PartThumbnail'
+import { BRICK_PART_MAP } from '../../brick/parts'
+import { useBrickStore } from '../../brick/store'
 import { scheduleThumbnailWork } from '../../brick/thumbnailWorkQueue'
+import { ROBOT_PLATE_PART } from '../parts/catalog'
 import { armKit, useKitStore } from './kitPlacement'
 import { cachedKitPicture, renderKitPictures } from './kitPictures'
 import { KITS, type Kit, type KitId } from './kits'
@@ -25,13 +29,40 @@ export function KitShelf({ onChoose }: { onChoose?: () => void }) {
   const armedKit = useKitStore((state) => state.armed?.kitId ?? null)
   const headingId = useId()
   return (
-    <section className="kit-shelf" aria-labelledby={headingId} data-testid="kit-shelf">
-      <h3 className="kit-shelf-heading" id={headingId}>Start with a kit</h3>
-      <div className="kit-cards">
-        {KITS.map((kit) => <KitCard key={kit.id} kit={kit} armed={armedKit === kit.id} onChoose={onChoose} />)}
-      </div>
-      <h3 className="kit-shelf-heading kit-shelf-parts">Robot parts</h3>
-    </section>
+    <>
+      <section className="kit-shelf" aria-labelledby={headingId} data-testid="kit-shelf">
+        <h3 className="kit-shelf-heading" id={headingId}>Start with a kit</h3>
+        <div className="kit-cards">
+          {KITS.map((kit) => <KitCard key={kit.id} kit={kit} armed={armedKit === kit.id} onChoose={onChoose} />)}
+        </div>
+        <h3 className="kit-shelf-heading kit-shelf-parts">Robot parts</h3>
+      </section>
+      <RobotPlateTile onChoose={onChoose} />
+    </>
+  )
+}
+
+/**
+ * The first robot part (kid-UX lane W): a plate big enough for a car, the Buggy's own size, named
+ * the way a student would ask for it. It is the studio's 6 × 8 plate, armed in the brush colour
+ * like any plate; the next step "Put the robot on a plate" arms the same part.
+ */
+function RobotPlateTile({ onChoose }: { onChoose?: () => void }) {
+  const active = useBrickStore((state) => state.activePartId === ROBOT_PLATE_PART && !state.movingId && !state.movingSelection)
+  const part = BRICK_PART_MAP[ROBOT_PLATE_PART]
+  if (!part) return null
+  return (
+    <button
+      type="button"
+      className={`library-part robot-plate-part ${active ? 'active' : ''}`}
+      aria-pressed={active}
+      title="Robot plate"
+      data-testid="robot-plate-part"
+      onClick={() => { useBrickStore.getState().choosePart(ROBOT_PLATE_PART); onChoose?.() }}
+    >
+      <PartThumbnail part={part} />
+      <span>Robot plate</span>
+    </button>
   )
 }
 

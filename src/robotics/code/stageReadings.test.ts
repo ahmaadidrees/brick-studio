@@ -137,7 +137,7 @@ describe('the Motors chip on a four-wheel car (every motor counted)', () => {
   it('a motor facing the wrong way is not on a side: it keeps its own chip', () => {
     const { creation } = wiredFourWheel({ backRightFacingBack: true })
     const chips = readingChips(creation, observation({ motors: { ...car({ [ids.frontLeftMotor]: 40, [ids.backLeftMotor]: 40, [ids.frontRightMotor]: 40 }), [ids.backRightMotor]: motor({ powerPercent: 0, speedPercent: 0, positionDegrees: 0 }) } }))
-    expect(chips.map((chip) => [chip.label, chip.value])).toEqual([['Motors', 'Left 40 · Right 40 %'], ['Speed', '0.0 st/s'], ['Back motor', '0 %']])
+    expect(chips.map((chip) => [chip.label, chip.value])).toEqual([['Motors', 'Left 40 · Right 40 %'], ['Speed', '0.0 st/s'], ['Back right motor', '0 %']])
   })
 })
 

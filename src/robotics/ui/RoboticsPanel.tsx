@@ -1,7 +1,7 @@
 import { CarFront, Check, CodeXml, Paintbrush, PenLine, Play, Plug, RotateCw, Wrench } from 'lucide-react'
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { PartThumbnail } from '../../brick/PartThumbnail'
-import { BRICK_PART_MAP } from '../../brick/parts'
+import { BRICK_PART_MAP, STUD } from '../../brick/parts'
 import { useBrickStore } from '../../brick/store'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { useDriveView } from '../drive/driveViewState'
@@ -9,13 +9,20 @@ import { readiness } from '../drive/readiness'
 import { useLastTryRow } from '../drive/tryOutcome'
 import type { TriedIcon } from '../guide/nextSteps'
 import { runStepAction } from '../guide/actions'
+import { armRobotPlate, fixWheel, putOnRobot, removePart, runNoteAction, showRefusal } from '../guide/fixes'
 import { FIRST_IDEAS_DONE, nextSteps, type NextStep, type StepIcon } from '../guide/nextSteps'
 import { deriveCandidate, driveSidesOf, type DerivedCreation, type DerivedHinge, type DerivedMotor } from '../model/creations'
+import { planPutOnRobot, planWheelFix, wheelProblemText } from '../model/fixPlans'
+import { nearestRobot } from '../model/placementAdvice'
+import { wheelSpins } from '../model/looseWheels'
+import { deriveMechanisms } from '../model/mechanism'
+import { NEAR_MISS_REACH_STUDS } from '../model/nearMiss'
 import { installPaintMode } from '../paint/paint'
 import { PaintBar, PaintRow } from '../paint/PaintRow'
 import { isDeviceRole, roboticsSpec } from '../parts/catalog'
-import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
+import { PUT_A_PLATE_DOWN, installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { useStageStore } from '../state/stageStore'
+import { LooseWheelButtons, LooseWheels, useLooseWheels, type LooseWheel } from './WheelFixes'
 import { DeviceInspector } from '../wiring/DeviceInspector'
 import { WiringModeToggle } from '../wiring/WiringModeToggle'
 import { Fold } from './Fold'
@@ -64,19 +71,26 @@ export function RoboticsPanel({ compact = false, live = false }: { compact?: boo
   )
 }
 
+/**
+ * The line at the top: what assisted wiring did, or advice about the part just placed. A line with
+ * a one-tap fix ("Add a motor for it", "Put it on Buggy") stays until the fix is done, the line is
+ * closed or another line takes its place; any other line goes after nine seconds.
+ */
 function WiringLine() {
   const note = useRoboticsStore((state) => state.wiringNote)
   const dismiss = useRoboticsStore((state) => state.dismissWiringNote)
   const undo = useRoboticsStore((state) => state.undoWiring)
   useEffect(() => {
-    if (!note) return
+    if (!note || note.action) return
     const timer = window.setTimeout(dismiss, 9000)
     return () => window.clearTimeout(timer)
   }, [note, dismiss])
   if (!note) return null
+  const action = note.action
   return (
-    <div className="robotics-wiring-line" role="status" data-testid="robotics-wiring-line">
+    <div className={`robotics-wiring-line${note.tone === 'done' ? ' is-done' : ''}${action ? ' has-action' : ''}`} role="status" data-testid="robotics-wiring-line">
       <span>{note.text}</span>
+      {action && <button type="button" className="robotics-line-action" onClick={() => runNoteAction(action)} data-testid="robotics-line-action">{action.label}</button>}
       {note.undoable && <button type="button" className="robotics-link-button" onClick={undo}>Undo</button>}
       <button type="button" className="robotics-link-button" aria-label="Dismiss" onClick={dismiss}>×</button>
     </div>
@@ -190,11 +204,7 @@ function CreationPanel({ compact, live }: { compact: boolean; live: boolean }) {
           {creation && <PaintRow creation={creation} />}
           {creation && (
             <Fold title="Parts" note={creation.lines.attached} open={partsOpen} onToggle={() => setPartsOpen(!partsOpen)} testId="robotics-parts-fold">
-              <ul className="robotics-lines">
-                <li>{creation.lines.attached} · {creation.lines.parts}</li>
-                <DriveSidesLines creation={creation} />
-              </ul>
-              <PartRows creation={creation} selectedId={selectedId} />
+              <PartsBody creation={creation} selectedId={selectedId} />
             </Fold>
           )}
           {creation && (
@@ -286,6 +296,7 @@ function NextSteps({ creation, live, focus, reasonId }: { creation: DerivedCreat
           {shown.map((row) => <StepRow key={row.id} row={row} live={live} textId={row.state === 'current' && row.id !== 'ready' ? reasonId : undefined} />)}
         </ol>
       )}
+      {!focus && <LooseWheels creation={creation} ready={ready && !live} />}
       {choices.length > 0 && (
         <>
           <h4 className="robotics-subtitle">What should it do?</h4>
@@ -394,22 +405,91 @@ function DriveSidesLines({ creation }: { creation: DerivedCreation }) {
   )
 }
 
+/**
+ * What the Parts fold lists: the counts, the wheels on the car apart from the loose ones
+ * ("1 hub, 2 motors, 2 wheels, 2 axles · 3 loose wheels"), each loose wheel with Fix and Take it off.
+ */
+function PartsBody({ creation, selectedId }: { creation: DerivedCreation; selectedId: string | null }) {
+  const loose = useLooseWheels(creation)
+  return (
+    <>
+      <ul className="robotics-lines">
+        <li data-testid="robotics-parts-line">{creation.lines.attached} · {creation.lines.parts}{loose.length ? ` · ${loose.length} loose wheel${loose.length === 1 ? '' : 's'}` : ''}</li>
+        <DriveSidesLines creation={creation} />
+      </ul>
+      <PartRows creation={creation} selectedId={selectedId} loose={loose} />
+    </>
+  )
+}
+
 /** A picked axle, wheel or seat (devices get the wiring inspector instead). */
 function SelectedPart({ creation, brickId, role }: { creation: DerivedCreation | null; brickId: string; role: string }) {
   const model = useRoboticsStore((state) => state.model)
   let text: string
-  if (role === 'wheel') {
-    const wheel = creation?.wheels.find((candidate) => candidate.brickId === brickId) ?? null
-    text = wheel ? (wheel.onAxle ? `On an axle${wheel.motorId ? ` in ${motorName(creation!, wheel.motorId)}` : ' with no motor'}` : wheel.note ?? 'Not on an axle') : 'Not on an axle. Put it on the end of an axle.'
-  } else if (role === 'axle') {
+  if (role === 'wheel') return <SelectedWheel brickId={brickId} />
+  if (role === 'axle') {
     const axle = model.creations.flatMap((candidate) => candidate.axles).find((candidate) => candidate.brickId === brickId)
     text = axle ? `${axle.motorId ? `In ${motorName(creation!, axle.motorId)}` : 'Not in a motor'} · ${axle.wheelIds.length ? `${axle.wheelIds.length} wheel${axle.wheelIds.length === 1 ? '' : 's'} on it` : 'no wheel on it'}` : 'Not in a motor. Put it in a motor’s axle hole.'
   } else if (role === 'seat') {
-    text = creation?.seats.includes(brickId) ? `On ${creation.name}. In Explore, walk up and press E to ride.` : 'Put it on a robot to ride it in Explore.'
+    if (!creation?.seats.includes(brickId)) return <SelectedLooseSeat brickId={brickId} />
+    text = `On ${creation.name}. In Explore, walk up and press E to ride.`
   } else {
     text = creation ? `Part of ${creation.name}` : 'Not part of a robot yet'
   }
   return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>{roleTitle(role) === 'Part' ? role : roleTitle(role)}</strong> · {text}</p>
+}
+
+/**
+ * A picked wheel (kid-UX lane W): whether it spins and, when it can't, why, the one tap that fixes
+ * it and Take it off. With no room for a motor the button shows what is in the way instead.
+ */
+function SelectedWheel({ brickId }: { brickId: string }) {
+  const model = useRoboticsStore((state) => state.model)
+  const view = useMemo(() => {
+    const { input } = model
+    const mechanisms = deriveMechanisms(input.bricks, input.partMap, input.plateSize)
+    const spin = wheelSpins(mechanisms).find((wheel) => wheel.wheelId === brickId) ?? null
+    if (!spin || spin.spins) return { spin, problem: null, fix: null }
+    return { spin, problem: wheelProblemText(mechanisms, brickId, NEAR_MISS_REACH_STUDS * STUD), fix: planWheelFix(input, brickId, mechanisms) }
+  }, [model, brickId])
+  const { spin, problem, fix } = view
+  if (!spin?.spins && problem && fix) {
+    return (
+      <div className="robotics-selected-wheel">
+        <p className="robotics-selected" data-testid="robotics-selected-part"><strong>Wheel</strong> · {problem}{!fix.ok && fix.text ? ` ${fix.text}` : ''}</p>
+        <div className="robotics-selected-actions">
+          {fix.ok && <button type="button" className="robotics-loose-fix" onClick={() => fixWheel(brickId)} data-testid="robotics-wheel-fix">{fix.label}</button>}
+          {!fix.ok && fix.reason === 'no-plate' && <button type="button" className="robotics-loose-fix" onClick={armRobotPlate} data-testid="robotics-wheel-fix">{PUT_A_PLATE_DOWN}</button>}
+          {!fix.ok && fix.reason !== 'no-plate' && fix.reason !== 'nothing' && <button type="button" className="robotics-loose-fix" onClick={() => showRefusal(fix)} data-testid="robotics-wheel-fix">What's in the way?</button>}
+          <button type="button" className="robotics-loose-remove" onClick={() => removePart(brickId)}>Take it off</button>
+        </div>
+      </div>
+    )
+  }
+  const motorId = spin?.motorId ?? null
+  const motor = motorId ? model.creations.flatMap((candidate) => candidate.motors).find((candidate) => candidate.brickId === motorId) : null
+  return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>Wheel</strong> · {spin?.spins ? `On an axle in ${motor?.name ?? 'a motor'}. It spins.` : 'Not on an axle.'}</p>
+}
+
+/** A picked seat that is not on a robot: which robot it is beside and the one tap that puts it on top (kid-UX lane W, Ava). */
+function SelectedLooseSeat({ brickId }: { brickId: string }) {
+  const model = useRoboticsStore((state) => state.model)
+  const beside = useMemo(() => {
+    const brick = model.input.bricks.find((candidate) => candidate.id === brickId)
+    const robot = brick ? nearestRobot(model.input, model.creations, brick) : null
+    return brick && robot ? { robot, fix: planPutOnRobot(model.input, robot, brickId) } : null
+  }, [model, brickId])
+  if (!beside) return <p className="robotics-selected" data-testid="robotics-selected-part"><strong>Seat</strong> · Put it on a robot to ride it in Explore.</p>
+  return (
+    <div className="robotics-selected-wheel">
+      <p className="robotics-selected" data-testid="robotics-selected-part"><strong>Seat</strong> · This seat isn't on {beside.robot.name} yet.{beside.fix.ok ? '' : ` ${beside.fix.text}`}</p>
+      {beside.fix.ok && (
+        <div className="robotics-selected-actions">
+          <button type="button" className="robotics-loose-fix" onClick={() => putOnRobot(brickId, beside.robot.id)} data-testid="robotics-seat-put-on">{beside.fix.label}</button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function describeMotor(motor: DerivedMotor) {
@@ -427,9 +507,9 @@ function describeHinge(hinge: DerivedHinge) {
   return `swings ${hinge.armBrickIds.length} ${hinge.armBrickIds.length === 1 ? 'brick' : 'bricks'} · ${plugged}`
 }
 
-function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; selectedId?: string | null }) {
+function PartRows({ creation, selectedId = null, loose = [] }: { creation: DerivedCreation; selectedId?: string | null; loose?: readonly LooseWheel[] }) {
   const hingeReports = useRoboticsStore((state) => state.hingeReports)
-  const rows: { id: string; text: string; tone?: 'warn' | 'bad'; ports?: { port: string; device: string | null }[] }[] = []
+  const rows: { id: string; text: string; tone?: 'warn' | 'bad'; ports?: { port: string; device: string | null }[]; loose?: LooseWheel }[] = []
   const devices = [...creation.motors, ...creation.hinges, ...creation.sensors, ...creation.lights, ...creation.buttons]
   for (const hub of creation.hubs) rows.push({ id: hub.brickId, text: `${hub.name} · plugs`, ports: (['A', 'B', 'C', 'D'] as const).map((port) => ({ port, device: devices.find((device) => device.port?.hubId === hub.brickId && device.port.port === port)?.name ?? null })) })
   for (const motor of creation.motors) rows.push({ id: motor.brickId, text: `${motor.name} · ${describeMotor(motor)}`, tone: motor.plugged ? undefined : 'warn' })
@@ -438,7 +518,12 @@ function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; 
     // Open or shut, not degrees (a 9-year-old does not read "°", lane P); open past the Try it view's 20°.
     rows.push({ id: hinge.brickId, text: `${hinge.name} · ${describeHinge(hinge)}${report ? ` · ${Math.abs(report.angle) >= 20 ? 'open' : 'shut'}${report.blocked ? ' · blocked' : ''}` : ''}`, tone: hinge.locked ? 'bad' : hinge.plugged ? undefined : 'warn' })
   }
-  for (const wheel of creation.wheels) rows.push({ id: wheel.brickId, text: `Wheel · ${wheel.onAxle ? `on an axle${wheel.motorId ? ` in ${motorName(creation, wheel.motorId)}` : ''}` : wheel.note ?? 'Not on an axle'}`, tone: wheel.onAxle ? undefined : 'bad' })
+  for (const wheel of creation.wheels) if (wheel.onAxle) rows.push({ id: wheel.brickId, text: `Wheel · on an axle${wheel.motorId ? ` in ${motorName(creation, wheel.motorId)}` : ''}` })
+  // Every wheel that can't spin, numbered as the scene numbers it, with its fix and Take it off (kid-UX lane W).
+  for (const wheel of loose) {
+    const note = creation.wheels.find((candidate) => candidate.brickId === wheel.wheelId)?.note ?? (wheel.onAxle ? 'Its axle needs a motor' : 'Not on an axle')
+    rows.push({ id: wheel.wheelId, text: `Wheel${loose.length > 1 ? ` ${wheel.number}` : ''} · ${note}`, tone: 'bad', loose: wheel })
+  }
   for (const sensor of creation.sensors) rows.push({ id: sensor.brickId, text: `${sensor.name} · faces ${sensor.facing} · ${sensor.plugged ? 'plugged in' : 'Not plugged in'}`, tone: sensor.plugged ? undefined : 'warn' })
   for (const device of [...creation.lights, ...creation.buttons]) rows.push({ id: device.brickId, text: `${device.name} · ${device.plugged ? 'plugged in' : 'Not plugged in'}`, tone: device.plugged ? undefined : 'warn' })
   if (!rows.length) return null
@@ -452,6 +537,7 @@ function PartRows({ creation, selectedId = null }: { creation: DerivedCreation; 
               {row.ports.map(({ port, device }) => <span key={port} className={`robotics-port-chip${device ? ' used' : ''}`} title={device ? `Port ${port}: ${device}` : `Port ${port}: free`} aria-label={device ? `Port ${port}, ${device}` : `Port ${port}, free`}>{port}</span>)}
             </span>
           )}
+          {row.loose && <LooseWheelButtons wheel={row.loose} only={loose.length === 1} />}
         </li>
       ))}
     </ul>

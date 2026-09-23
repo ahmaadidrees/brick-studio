@@ -80,26 +80,47 @@ describe('the rover path', () => {
     expect(row(rows, 'plug')).toMatchObject({ state: 'todo', action: null })
   })
 
-  it('one motor: the other side, armed facing the other way', () => {
+  it('one motor: the other side, armed facing the other way, its ghost already across from the first', () => {
     const { rows } = robot(pick(roverBricks(), R.plate, R.hub, R.rightMotor), R.hub, [[R.rightMotor, R.hub, 'A']])
-    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put a motor on the other side.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 2 } })
-    // With the left motor instead, the second one comes armed facing right.
+    // Kid-UX lane W: the other side is shown, not told: the mirror of the right motor across the plate.
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put a motor on the other side.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 2, at: { x: 28, y: 1, z: 31, rotation: 2 } } })
+    expect(current(rows)?.hint).toBeUndefined()
+    // With the left motor instead, the second one comes armed facing right, where the Buggy has its right motor.
     const other = robot(pick(roverBricks(), R.plate, R.hub, R.leftMotor), R.hub, [[R.leftMotor, R.hub, 'A']])
-    expect(current(other.rows)?.action).toEqual({ kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 0 })
+    expect(current(other.rows)?.action).toEqual({ kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 0, at: { x: 31, y: 1, z: 31, rotation: 0 } })
   })
 
-  it('two motors facing each other: turn the one on the left, then the one on the right', () => {
+  it('one motor with no room on the other side: the row says so under the step', () => {
+    // Leo's first car: a 4 × 6 plate, a hub across its far end (hanging a stud over it) and a motor on the left of its near end.
+    const bricks = [at('plate', 'plate_4x6', 30, 0, 26), at('hub', ROBOTICS_PART_IDS.hub, 30, 1, 25), at('left', ROBOTICS_PART_IDS.motor, 30, 1, 29, 2)]
+    const { rows } = robot(bricks, 'hub', [['left', 'hub', 'A']])
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put a motor on the other side.', hint: 'No room there. Try a bigger plate.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor } })
+    // The motor starts there, red, the reason above it: never on top of the hub.
+    expect((current(rows)?.action as { at?: unknown }).at).toEqual({ x: 31, y: 1, z: 29, rotation: 0 })
+  })
+
+  it('a motor in the middle of the plate: one tap moves it to the side', () => {
+    const bricks = [pick(roverBricks(), R.plate)[0], at('middle', ROBOTICS_PART_IDS.motor, 29, 1, 28, 2), at('hub', ROBOTICS_PART_IDS.hub, 30, 1, 31)]
+    const { rows, creation } = robot(bricks, R.plate, [['middle', 'hub', 'A']])
+    expect(creation.motors[0].socketRoom).toBe('covered')
+    // Named for where it stands, not the way it faces: in the middle of the plate it is "Middle motor".
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Move Middle motor to the side of the plate.', action: { kind: 'fix', fix: 'motor-to-side', brickId: 'middle' }, icon: { symbol: 'fix' } })
+  })
+
+  it('two motors facing each other: turn the one on the left around, then the one on the right (one tap each)', () => {
     const bricks = [...pick(roverBricks(), R.plate, R.hub), at('in-left', ROBOTICS_PART_IDS.motor, 28, 1, 31, 0), at('in-right', ROBOTICS_PART_IDS.motor, 31, 1, 31, 2)]
-    const { rows } = robot(bricks, R.hub)
-    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Turn the left motor to face out.', action: { kind: 'select', brickId: 'in-left' }, icon: { symbol: 'turn' } })
+    const { rows, creation } = robot(bricks, R.hub)
+    // Named by the side they stand on, so turning them never renames them (kid-UX lane W).
+    expect(creation.motors.map((motor) => [motor.name, motor.socketRoom])).toEqual([['Left motor', 'facing-in'], ['Right motor', 'facing-in']])
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Turn Left motor around.', action: { kind: 'fix', fix: 'motor-to-side', brickId: 'in-left' }, icon: { symbol: 'fix' } })
     const turned = robot([...pick(roverBricks(), R.plate, R.hub), at('in-left', ROBOTICS_PART_IDS.motor, 28, 1, 31, 2), at('in-right', ROBOTICS_PART_IDS.motor, 31, 1, 31, 2)], R.hub)
-    expect(current(turned.rows)).toMatchObject({ text: 'Turn the right motor to face out.', action: { kind: 'select', brickId: 'in-right' } })
+    expect(current(turned.rows)).toMatchObject({ text: 'Turn Right motor around.', action: { kind: 'fix', brickId: 'in-right' } })
   })
 
-  it('two motors on the same side, both facing out that way: put them on opposite sides', () => {
+  it('two motors on the same side, both facing out that way: a motor on the other side, shown across from the first', () => {
     const bricks = [at('p', 'plate_6x8', 28, 0, 26), at('front', ROBOTICS_PART_IDS.motor, 28, 1, 26, 2), at('back', ROBOTICS_PART_IDS.motor, 28, 1, 31, 2), at('h', ROBOTICS_PART_IDS.hub, 28, 7, 26)]
     const { rows } = robot(bricks, 'p')
-    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put the motors on opposite sides, facing out.', action: { kind: 'select', brickId: 'back' } })
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put a motor on the other side.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 0, at: { x: 31, y: 1, z: 26, rotation: 0 } } })
   })
 
   it('a motor mounted outboard facing in is fine once its axle and wheel are on (it drives straight)', () => {
@@ -125,10 +146,12 @@ describe('the rover path', () => {
     expect(current(oneAxle.rows)?.text).toBe('Put an axle in Right motor.')
   })
 
-  it('a motor facing front or back gets its axle turned a quarter', () => {
+  it('a motor facing the front or the back of the plate is turned to face the side first (one tap)', () => {
+    // A car's motors go on its long sides (kid-UX lane W): at the plate's ends a wheel would roll sideways.
     const bricks = [at('p', 'plate_6x8', 28, 0, 26), at('h', ROBOTICS_PART_IDS.hub, 29, 1, 28), at('front', ROBOTICS_PART_IDS.motor, 29, 1, 26, 1), at('back', ROBOTICS_PART_IDS.motor, 29, 1, 31, 3)]
-    const { rows } = robot(bricks, 'p')
-    expect(current(rows)).toMatchObject({ id: 'axles', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.axleShort, rotation: 1 } })
+    const { rows, creation } = robot(bricks, 'p')
+    expect(creation.motors.map((motor) => [motor.name, motor.crossways])).toEqual([['Front motor', true], ['Back motor', true]])
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Turn Front motor to face the side.', action: { kind: 'fix', fix: 'motor-to-side', brickId: 'front' } })
   })
 
   it('axles in, wheels next; a wheel left off its axle is named by its motor', () => {
@@ -194,7 +217,8 @@ describe('a four-wheel car (every motor drives)', () => {
 
   it('a motor facing backward, its wheel behind it: turn it (the row picks it)', () => {
     const { rows } = robot(fourWheelBricks({ backRightFacingBack: true }), F.hub, FOUR_WIRES)
-    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Back motor faces backward. Turn it to face out to the side.', action: { kind: 'select', brickId: F.backRightMotor }, icon: { symbol: 'turn' } })
+    // It keeps its name when turned: it stands at the back of the right side (kid-UX lane W).
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Back right motor faces backward. Turn it to face the side.', action: { kind: 'select', brickId: F.backRightMotor }, icon: { symbol: 'turn' } })
   })
 
   it('a missing wheel is asked for before a turned motor', () => {
@@ -212,10 +236,10 @@ describe('a four-wheel car (every motor drives)', () => {
     expect(current(five.rows)).toMatchObject({ id: 'plug', text: 'The hub is full. Add another hub for Front left motor.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.hub }, icon: { part: ROBOTICS_PART_IDS.hub } })
   })
 
-  it('wheels all on one side: put the motors on opposite sides', () => {
+  it('wheels all on one side: a motor on the other side, shown across from the first', () => {
     const left = [F.frontPlate, F.backPlate, F.hub, F.frontLeftMotor, F.backLeftMotor, F.frontLeftAxle, F.backLeftAxle, F.frontLeftWheel, F.backLeftWheel]
     const { rows } = robot(pick(fourWheelBricks(), ...left), F.hub, [[F.frontLeftMotor, F.hub, 'A'], [F.backLeftMotor, F.hub, 'B']])
-    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put the motors on opposite sides, facing out.', action: { kind: 'select' } })
+    expect(current(rows)).toMatchObject({ id: 'motors', text: 'Put a motor on the other side.', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 0, at: { x: 31, y: 1, z: 21, rotation: 0 } } })
   })
 })
 
@@ -225,7 +249,8 @@ describe('a robot with nothing to do yet', () => {
     expect(readiness(creation)).toEqual({ kind: null, ready: false, reason: 'Add motors to make it move, or a sensor and a light.' })
     expect(states(rows)).toEqual(['hub:done'])
     expect(rows.filter((candidate) => candidate.group === 'choice')).toEqual([
-      { id: 'choose-move', group: 'choice', text: 'Make it move', hint: 'Add motors and wheels.', state: 'current', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 0 }, icon: { part: ROBOTICS_PART_IDS.motor } },
+      // Kid-UX lane W: the motor starts where it goes (the back of the left side, as on the Buggy), never on top of the hub.
+      { id: 'choose-move', group: 'choice', text: 'Make it move', hint: 'Add motors and wheels.', state: 'current', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.motor, rotation: 2, at: { x: 28, y: 1, z: 31, rotation: 2 } }, icon: { part: ROBOTICS_PART_IDS.motor } },
       { id: 'choose-see', group: 'choice', text: 'Make it see and light up', hint: 'Add a sensor and a light.', state: 'current', action: { kind: 'arm', partId: ROBOTICS_PART_IDS.distanceSensor, rotation: 0 }, icon: { part: ROBOTICS_PART_IDS.distanceSensor } },
     ])
     expect(rows.some((candidate) => candidate.id === 'ready' || candidate.group === 'idea')).toBe(false)

@@ -353,7 +353,8 @@ async function failureWheelOff() {
   const selectedLine = await selectedPartLine()
   const step = await nextStep()
   seen.F1.build = { lines, wheelRow, leftMotorRow, selectedLine, nextStep: step }
-  check('F1.build.selected-line', (selectedLine ?? '').startsWith('Wheel · Not on an axle'), `with the wheel still selected, the selected-part line reads "${selectedLine}"`)
+  // Kid-UX lane W: the picked wheel says it in a third grader's words, with its one-tap fix beside it.
+  check('F1.build.selected-line', (selectedLine ?? '').startsWith("Wheel · This wheel isn't on the axle yet."), `with the wheel still selected, the selected-part line reads "${selectedLine}"`)
   check('F1.build.wheel-row', wheelRow?.startsWith('Wheel · Not on an axle') && (await rowTone(ids.leftWheel)).includes('bad'), `the panel's row for the wheel (red): "${wheelRow}"`)
   check('F1.build.motor-row', leftMotorRow?.includes('axle in it, no wheel'), `the left motor's row: "${leftMotorRow}"`)
   check('F1.build.ready-line', step === 'Put a wheel on Left motor’s axle.', `the robot's next step: "${step}"`)

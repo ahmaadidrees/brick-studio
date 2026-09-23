@@ -45,6 +45,13 @@ export type RoboticsPartSpec = {
 const plates = (count: number) => count * PLATE_HEIGHT
 const studs = (count: number) => count * STUD
 
+/**
+ * The robot plate (kid-UX lane W): the drawer's first robot tile, "Robot plate", and the part the
+ * next step "Put the robot on a plate" arms. The studio's 6 × 8 plate, the size the Buggy stands on:
+ * room for a hub and a motor on each side.
+ */
+export const ROBOT_PLATE_PART = 'plate_6x8'
+
 export const ROBOTICS_PART_IDS = {
   hub: 'robo_hub',
   motor: 'robo_motor',

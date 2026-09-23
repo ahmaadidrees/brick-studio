@@ -171,7 +171,8 @@ await sleep(200)
 let loose = (await creations())[0]
 const looseWheel = loose.wheels.find((w) => w.id === ids.leftWheel)
 check('A.wheel-off-note', looseWheel && !looseWheel.onAxle && looseWheel.note.startsWith('Not on an axle'), `wheel card: ${looseWheel?.note}`)
-check('A.wheel-off-selected-part', (await page.getByTestId('robotics-selected-part').textContent()).includes('Not on an axle'), 'selected wheel says Not on an axle')
+// Kid-UX lane W: the picked wheel says it in a third grader's words, with the one tap that puts it back on.
+check('A.wheel-off-selected-part', (await page.getByTestId('robotics-selected-part').textContent()).includes("This wheel isn't on the axle yet.") && (await page.getByTestId('robotics-wheel-fix').textContent()) === "Put it on Left motor's axle", 'selected wheel says "This wheel isn\'t on the axle yet." and offers "Put it on Left motor\'s axle"')
 await page.getByRole('button', { name: 'Spin', exact: true }).first().click()
 await page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
 await sleep(1600)

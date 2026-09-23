@@ -281,7 +281,8 @@ check('W8.manual', s.settings.wiring === 'manual' && (await topLabel()) === 'Plu
 ids.light = await place({ partId: 'robo_light', x: 33, y: 1, z: 28 })
 await sleep(200)
 s = await readBack('W8 light placed in manual')
-check('W8.light-unplugged', portOf(s, ids.light) === null && (await wiringNote()) === 'Light placed · plug it into a port in its panel', `light cable: ${portOf(s, ids.light)}; line: ${await wiringNote()}`)
+// Kid-UX lane W: the manual-wiring line in a third grader's words.
+check('W8.light-unplugged', portOf(s, ids.light) === null && (await wiringNote()) === "Light isn't plugged in yet. Pick it to plug it in.", `light cable: ${portOf(s, ids.light)}; line: ${await wiringNote()}`)
 check('W8.light-stub', (await drawn()).stubs.some((stub) => stub.deviceId === ids.light), 'the light shows a loose cable end')
 picked = await clickPart(world(33.5, 4, 28.5), 'the light top')
 check('W8.light-selected', picked.selected === ids.light, 'clicking the light selects it')
