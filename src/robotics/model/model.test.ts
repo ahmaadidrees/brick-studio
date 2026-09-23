@@ -280,6 +280,7 @@ describe('the robotics section in the document', () => {
       creations: [{ id: 'c1', name: 'Mars buggy', anchorBrickIds: [ROVER_IDS.hub], testSpace: 'testPlate' }],
       devices: { [ROVER_IDS.leftMotor]: { name: 'Port motor' } },
       connections: [{ deviceId: ROVER_IDS.leftMotor, hubId: ROVER_IDS.hub, port: 'A' }],
+      programs: [],
     }
     const document = fixtureDocument(roverBricks(), section)
     const serialized = serializeBrickStudioDocument(document)

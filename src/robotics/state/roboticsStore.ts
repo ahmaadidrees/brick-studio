@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { getBuildPlateSize } from '../../brick/buildPlate'
 import { createPartMap } from '../../brick/parts'
-import { useBrickStore, type BrickHistoryEntry, type BrickState } from '../../brick/store'
+import { registerRoboticsHistoryMerge, useBrickStore, type BrickHistoryEntry, type BrickState } from '../../brick/store'
 import type { BrickInstance } from '../../brick/types'
 import { connect, planAssistedConnection } from '../model/control'
 import { anchorableBrickIds, creationComponent, defaultCreationName, deriveCreations, deviceName, type DeriveInput, type DerivedCreation } from '../model/creations'
 import { readRoboticsSection, writeRoboticsSection, type RoboticsConnection, type RoboticsSection, type TestSpace } from '../model/section'
 import { isDevicePart, roboticsSpec } from '../parts/catalog'
+import { mergeRoboticsHistory } from '../program/programs'
 import { overlappingBricks } from '../model/blocked'
 import { lastDraftSnap } from '../scene/draftSnap'
 import { setHiddenBrickIds } from '../scene/hiddenBricks'
@@ -359,6 +360,8 @@ let watcherInstalled = false
 export function installRoboticsWatcher() {
   if (watcherInstalled) return
   watcherInstalled = true
+  // Studio Undo/Redo restores construction and cables but never reverts programs (CP2-PLAN §1).
+  registerRoboticsHistoryMerge(mergeRoboticsHistory)
   useBrickStore.subscribe((state, previous) => {
     const robotics = useRoboticsStore.getState()
     const bricksChanged = state.bricks !== previous.bricks
