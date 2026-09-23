@@ -13,7 +13,7 @@ import { useHiddenBrickIds } from '../scene/hiddenBricks'
 import type { RapierModule } from '../sim/colliders'
 import { computeModel } from '../state/roboticsStore'
 import { CURB_PROP_IDS, plateHalfWidth } from './plateCurb'
-import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection } from './rideFixtures'
+import { RIDE_CREATION_ID, SEAT_ID, seatedRoverBricks, seatedRoverSection, towerRoverBricks } from './rideFixtures'
 import { BACK_TO_START, RIDER_STANDING_Y, rideLimit, yawOf } from './rideModel'
 import {
   BUILD_CHANGED, DISMOUNT_MIN_SECONDS, advanceRides, bringBackRide, liveRide, rideAvatarFrame, resetExploreRideForTests, seatOf, useExploreRideStore, type RideEnvironment,
@@ -155,6 +155,30 @@ describe('the ride state machine', () => {
     expect(live.controller.mechanics.disposed).toBe(true)
     expect(documentText()).toBe(before)
     hidden.unmount()
+  })
+
+  it('a seat on a tall tower: beside the robot on the ground the Ride card comes up and stays until she walks away; riding puts her on the seat up there', () => {
+    load(seatedRoverSection(), towerRoverBricks())
+    ride().enter(RAPIER as unknown as RapierModule)
+    // One stud outside the right wheel, on the ground, about four units below the seat.
+    const beside = (studs: number) => body((37 + studs - 32) * STUD, RIDER_STANDING_Y, (29 - 32) * STUD)
+    expect(rideAvatarFrame(beside(1))).toBeNull()
+    expect(ride().nearestId).toBe(RIDE_CREATION_ID)
+    // Stepping about and out to four studs keeps it; five and a half studs out, it goes.
+    rideAvatarFrame(beside(4))
+    expect(ride().nearestId).toBe(RIDE_CREATION_ID)
+    rideAvatarFrame(beside(5.5))
+    expect(ride().nearestId).toBeNull()
+    rideAvatarFrame(beside(4))
+    expect(ride().nearestId).toBeNull()
+    rideAvatarFrame(beside(2))
+    expect(ride().nearestId).toBe(RIDE_CREATION_ID)
+    expect(ride().pressRideKey()).toBe(true)
+    const live = liveRide(RIDE_CREATION_ID)!
+    const seated = rideAvatarFrame(beside(2))!
+    expect(seated.mode).toBe('seat')
+    expect(seated.position.y).toBeCloseTo(seatOf(live).point.y + RIDER_STANDING_Y, 6)
+    expect(seated.position.y).toBeGreaterThan(4)
   })
 
   it('rides again from where it was parked, with a fresh program run', () => {

@@ -31,6 +31,8 @@
 .explore-ride-prompt-hint { display: inline-flex; align-items: center; gap: 5px; color: var(--studio-muted); font-size: 14px; font-weight: 750; }
 .explore-ride-prompt kbd { min-width: 24px; height: 22px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; border: 1px solid var(--studio-panel-border); border-bottom-width: 2px; border-radius: 6px; background: var(--studio-surface, #fff); color: var(--studio-blue-dark, inherit); font: inherit; font-size: 13px; }
 .explore-ride-prompt-button { flex: none; min-height: 44px; }
+/* Near a robot the Ride button is the one thing to press: big. */
+.explore-ride-prompt[data-state='ride'] .explore-ride-prompt-button { min-height: 52px; min-width: 112px; padding-inline: 24px; font-size: 18px; font-weight: 850; }
 @media (prefers-reduced-motion: no-preference) {
   .explore-ride-prompt { transition: opacity .16s ease, visibility .16s ease; }
 }
@@ -41,4 +43,5 @@
   .explore-ride-prompt-label { font-size: 17px; }
   .explore-ride-prompt-detail, .explore-ride-prompt-code { font-size: 15px; }
   .explore-ride-prompt-button { min-height: 44px; min-width: 88px; }
+  .explore-ride-prompt[data-state='ride'] .explore-ride-prompt-button { min-height: 56px; min-width: 120px; }
 }

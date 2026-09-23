@@ -14,7 +14,7 @@ import type { HopOffRange } from './hopOff'
 import { plateCurb } from './plateCurb'
 import type { RideAvatarBody, RideAvatarFrame } from './rideBridge'
 import {
-  BACK_TO_START, IDENTITY_POSE, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
+  BACK_TO_START, IDENTITY_POSE, RIDE_KEEP_STUDS, chooseRideProgram, footprintInWorld, hopOffPoints, isTipped, localFootprint, rideCandidates, rideReach, riderPosition, rideTrouble, seatInWorld, seatMountAtBuild, yawOf,
   type Footprint, type Pose, type RideCandidate, type RideProgramChoice, type SeatMount, type SeatWorld,
 } from './rideModel'
 
@@ -221,8 +221,10 @@ function updateNearest(avatar: Vec3) {
   if (state.phase !== 'walking') return
   let best: { id: string; reach: number } | null = null
   for (const candidate of state.candidates) {
+    // The robot whose Ride card is up keeps it a little further out, so it stays until she walks away.
+    const keep = candidate.creationId === state.nearestId ? RIDE_KEEP_STUDS : 0
     for (const seat of seatsNow(candidate.creationId)) {
-      const reach = rideReach(avatar, seat.world, seat.mount, seat.footprint)
+      const reach = rideReach(avatar, seat.world, seat.mount, seat.footprint, keep)
       if (reach === null) continue
       if (!best || reach < best.reach) best = { id: candidate.creationId, reach }
     }
