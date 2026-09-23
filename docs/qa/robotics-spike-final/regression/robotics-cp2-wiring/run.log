@@ -1,0 +1,93 @@
+
+W0. Rover from loose parts (store placement, as checkpoint 1)
+PASS W0.card-has-wiring-toggle — the creation card shows "Wiring: assisted / manual", assisted pressed
+  shot W0-card-wiring-toggle.png
+PASS W0.left-motor-A — assisted: Left motor connected to port A
+PASS W0.sensor-C — assisted: Front sensor connected to port C
+PASS W0.section — cables: ["A","B","C"]
+PASS W0.cables-drawn — 3 cables drawn, 0 loose ends, none lit
+PASS W0.cables-lifted — every cable arcs above both of its ends (lifts 1.68, 1.68, 1.46)
+  shot W1-rover-cables.png
+
+W1. Hub ports: select the hub in the canvas, pick the sensor from its port list, move it to D
+PASS W1.hub-selected — clicking the hub at (617, 361) selects it (brick-1790152656752-0rtwgj)
+PASS W1.hub-ports — hub inspector: ALeft motor | BRight motor | CFront sensor | DPort D · free
+  shot W2-hub-inspector.png
+PASS W1.port-selects-device — clicking port C in the hub list selects the front sensor; its inspector says Port C
+PASS W1.sensor-moved — sensor on D; toast: Front sensor moved to port D. Port C is free again.
+
+W2. Left motor: select in the canvas, move to port C with a chip
+PASS W2.motor-selected — clicking the left motor at (517, 381) selects it
+PASS W2.inspector-port-A — inspector: Port A; chips A:this B:used C:free D:used
+PASS W2.reading-stopped — Right now: Stopped
+PASS W2.block-label — block: run Left motor · A ▾ at 40 %
+PASS W2.cable-lit — the selected motor’s cable is the one lit
+  shot W3-left-motor-port-A.png
+PASS W2.moved-to-C — section: left motor on C; inspector: Port C
+PASS W2.toast — toast: Left motor moved to port C. Port A is free again.
+PASS W2.cable-redrawn — the cable now runs to port C, still lit
+PASS W2.undo-label — history: Move Left motor to port C
+PASS W2.block-follows — block: run Left motor · C ▾ at 40 %
+  shot W4-moved-to-C.png
+
+W3. Unplug
+PASS W3.unplugged — section: null; inspector: Unplugged · No power
+PASS W3.not-plugged-in-pill — block: run Left motor ▾ at 40 %Not plugged in
+PASS W3.loose-stub — the scene draws a loose cable with a red plug and no cable to the hub
+PASS W3.toast — toast: Left motor is unplugged. Blocks that use it show “Not plugged in”.
+PASS W3.panel-row — the creation panel row says Not plugged in
+  shot W5-unplugged.png
+
+W4. Plug back in
+PASS W4.plugged — section: A; toast: Left motor connected to port A.
+PASS W4.stub-gone — the loose end is gone; the cable is back
+
+W5. Swap with the right motor
+PASS W5.swapped — left on B, right on A
+PASS W5.toast — toast: Swapped ports. Left motor is on port B, Right motor is on port A.
+PASS W5.label — history: Swap ports of Left motor and Right motor
+  shot W6-swapped.png
+
+W6. Rename
+PASS W6.renamed — devices: {"brick-1790152657200-1t70o1":{"name":"Big wheel"}}
+PASS W6.label-and-toast — history: Rename Left motor to Big wheel; toast: Left motor is now called Big wheel. Blocks that use it show the new name.
+PASS W6.block-and-panel — block: run Big wheel · B ▾ at 40 %
+  shot W7-renamed.png
+
+W7. Live reading while a nudge runs; a wiring edit retires it
+PASS W7.live-reading — Right now while the nudge runs: 40 % · output at 125°
+  shot W8-live-reading.png
+PASS W7.edit-retires-run — the wiring edit retired the running nudge; the studio shows the built pose
+PASS W7.reading-back-to-rest — Right now after the run: Stopped
+
+W8. Wiring: manual, then place a light
+PASS W8.manual — mode manual; toast: Wiring: manual. New parts wait for you to plug them in.
+PASS W8.light-unplugged — light cable: null; line: Light placed · plug it into a port in its panel
+PASS W8.light-stub — the light shows a loose cable end
+PASS W8.light-selected — clicking the light selects it
+PASS W8.light-inspector — inspector: Unplugged
+  shot W9-manual-light-unplugged.png
+
+W9. Delete the right motor, then Undo
+PASS W9.right-selected — clicking the right motor selects it (brick-1790152657332-ckf89y); Port A
+PASS W9.deleted — the right motor is gone
+PASS W9.cable-kept — its cable stays in the document (stale), so Undo can restore it
+PASS W9.cable-not-drawn — a stale cable is not drawn
+PASS W9.port-free-was — hub inspector: APort A · free (was Right motor) | BPort B · free | CBig wheel | DFront sensor
+  shot W10-deleted-port-free-was.png
+PASS W9.undo-restores — Undo brings the motor back and the section is exactly as before the delete
+PASS W9.cable-back — the cable is drawn again on port A
+PASS W9.inspector-back — after Undo the right motor is selected again: Port A, its cable lit
+  shot W11-undo-cable-back.png
+
+W10. Save and reload
+PASS W10.round-trip — cables, names and the wiring mode survive autosave and reload
+PASS W10.drawn-after-reload — 3 cables and the light's loose end drawn after reload
+  shot W12-reloaded.png
+
+W11. Zoomed in with the mouse wheel: the selected cable and both of its ends
+PASS W11.selected-zoomed — zoomed in, clicking Big wheel selects it and lights its cable
+  shot W13-zoomed-selected-cable.png
+PASS console.clean — no console errors or page errors
+
+53/53 checks passed · docs/qa/robotics-spike-final/regression/robotics-cp2-wiring

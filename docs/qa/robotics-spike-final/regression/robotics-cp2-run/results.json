@@ -1,0 +1,97 @@
+{
+  "origin": "http://127.0.0.1:5232",
+  "viewport": "1366x768",
+  "at": "2026-09-23T08:38:15.064Z",
+  "results": [
+    {
+      "id": "A.rover-built",
+      "ok": true,
+      "detail": "a rover of 9 bricks, runs on the test plate, drive pair with 1 reversed motor"
+    },
+    {
+      "id": "A.stage-open",
+      "ok": true,
+      "detail": "stage on the testPlate: 14/14 studio bricks hidden, props [\"wall\"]"
+    },
+    {
+      "id": "A.beam-sees-wall",
+      "ok": true,
+      "detail": "before Run the front sensor reads 12 studs to the wall (hit true)"
+    },
+    {
+      "id": "A.driving",
+      "ok": true,
+      "detail": "1.5 s after Run: 3.33 studs/s, sensor 7.94 studs"
+    },
+    {
+      "id": "A.stops-before-wall",
+      "ok": true,
+      "detail": "braked at 2.99 studs (t=2.92 s), rests 2.47 studs from the wall, speed 0"
+    },
+    {
+      "id": "A.distance-shrinks",
+      "ok": true,
+      "detail": "sensor every 0.25 s: 12 → 11.67 → 11 → 10.22 → 9.41 → 8.58 → 7.75 → 6.91 → 6.08 → 5.25 → 4.41 → 3.58 → 2.78 → 2.49 → 2.47 → 2.47 → 2.47"
+    },
+    {
+      "id": "A.real-time",
+      "ok": true,
+      "detail": "program time 4.06 s over 4.06 s of wall time since Run (stalls dropped since the stage opened: 0.000 s)"
+    },
+    {
+      "id": "A.reset",
+      "ok": true,
+      "detail": "Reset rebuilds the stage at the built pose (every body at x = z = 0), program stopped"
+    },
+    {
+      "id": "A.document-unchanged",
+      "ok": true,
+      "detail": "the document is identical after open, run, reset and close"
+    },
+    {
+      "id": "B.gate-built",
+      "ok": true,
+      "detail": "a gate with one arm, runs in myWorld"
+    },
+    {
+      "id": "B.stage-open",
+      "ok": true,
+      "detail": "stage in my world: the studio hides the gate's 11 bricks and keeps 4 scenery bricks; props [\"visitor\"]"
+    },
+    {
+      "id": "B.nothing-seen-yet",
+      "ok": true,
+      "detail": "before anyone walks up: sensor 40 studs, arm at 0°"
+    },
+    {
+      "id": "B.door-opens",
+      "ok": true,
+      "detail": "visitor at 3 studs; arm at 90°"
+    },
+    {
+      "id": "B.about-hinge-only",
+      "ok": true,
+      "detail": "door rotation x=0.0000 z=0.0000 (pure turn about the vertical hinge axis)"
+    },
+    {
+      "id": "B.reset-zero",
+      "ok": true,
+      "detail": "Reset: arm at 0°"
+    },
+    {
+      "id": "B.document-unchanged",
+      "ok": true,
+      "detail": "the document is identical after the gate run"
+    },
+    {
+      "id": "C.light-red",
+      "ok": true,
+      "detail": "light red with the visitor 3 studs away"
+    },
+    {
+      "id": "console-clean",
+      "ok": true,
+      "detail": "no console errors"
+    }
+  ]
+}

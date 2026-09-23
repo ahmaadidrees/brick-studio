@@ -1,0 +1,102 @@
+
+Screens at 1366×768
+PASS screens.1366.first-run — the rover opens on "Stop before the wall": one script, palette collapsed, goal line shown
+  shot A1-first-run-1366.png
+  shot A2-starters-menu-1366.png
+PASS screens.1366.second-tab — a second program tab, "Joystick drive", is open
+  shot A3-second-program-1366.png
+PASS screens.1366.diagnostics — problems: Can’t runFront sensor is missingHeads upLeft motor is not plugged in
+PASS screens.1366.run-blocked — Can’t run yet: Front sensor is missing
+  shot A4-diagnostics-1366.png
+
+Screens at 1024×768
+PASS screens.1024.first-run — the rover opens on "Stop before the wall": one script, palette collapsed, goal line shown
+  shot A1-first-run-1024.png
+  shot A2-starters-menu-1024.png
+PASS screens.1024.second-tab — a second program tab, "Joystick drive", is open
+  shot A3-second-program-1024.png
+PASS screens.1024.diagnostics — problems: Can’t runFront sensor is missingHeads upLeft motor is not plugged in
+PASS screens.1024.run-blocked — Can’t run yet: Front sensor is missing
+  shot A4-diagnostics-1024.png
+
+R1. Rover: first run
+PASS R1.default-starter — Code created "Stop before the wall" (revision 0) and made it the active program
+PASS R1.first-run-state — palette collapsed (no category open, flyout hidden), the nine-category rail visible, one script
+PASS R1.test-plate — the rover opens on the test plate, with its wall
+PASS R1.goal — goal line: Try it: change 3 to 6. Does it stop earlier or later?
+PASS R1.framed-into-stage — the framing counts the Code view: canvas insets left 820 px, top 198 px, bottom 51 px
+PASS R1.studio-hidden — the brick drawer, creation panel and command strip are out of the way
+  shot C1-rover-first-run.png
+
+R2. Run: it drives and stops before the wall
+  shot C2-rover-running.png
+PASS R2.drives — top speed 3.33 studs/s
+PASS R2.stops-before-wall — the sensor read 2.48 studs at rest (never under 2.48): it never touched the wall
+PASS R2.readings-are-the-blocks-values — stage chips {"Front sensor":"2.5 studs","Motors":"0 · 0 % (speed 0 · 0 %)","Speed":"0.0 st/s"} match the observation the blocks read
+PASS R2.status — status: Done · 4.1 s
+  shot C3-rover-stopped-before-wall.png
+
+R3. Reset
+PASS R3.reset — Reset: every body within 0.0062 of its built pose, program stopped, sensor 12 studs, status "Ready"
+  shot C4-rover-reset.png
+
+R4. Edit the 3 to 6 while it runs
+PASS R4.saved — typed 6 into the field: saved as revision 1
+PASS R4.changed-line — while it runs: "Changed · press Run to use it"
+  shot C5-changed-while-running.png
+PASS R4.run-keeps-its-revision — the run that started with 3 still braked at 3: rests 2.47 studs from the wall
+PASS R4.stops-earlier — with 6 it rests 5.47 studs from the wall (with 3: 2.47)
+PASS R4.no-changed-line — the new run uses the saved program: no "Changed" line
+  shot C6-stops-earlier.png
+
+R4b. A block from the palette; Delete and ⌘Z inside the workspace
+PASS R4b.dragged-in — dragged "stop Left motor · A" out of the palette: Left motor · A (value brick-1790152904159-so44e2)
+PASS R4b.snapped — it snapped under "stop motors" (robo_stop_motor)
+PASS R4b.blockly-keys — Delete removed the block and ⌘Z brought it back (Blockly’s own undo), both saved
+PASS R4b.studio-untouched — the studio saw neither key: no brick deleted, nothing on its Undo stack
+
+R5. Back to build: move the left motor to port C with the inspector
+PASS R5.construction-unchanged — back in Build: bricks, cables and creation exactly as built; the stage is closed
+PASS R5.select-motor — clicking the left motor at (517, 381) selects it
+PASS R5.port-C — left motor on C, front sensor swapped to A
+  shot C7-build-left-motor-port-C.png
+
+R6. Back to Code: the block says "· C" and the rover still stops
+PASS R6.label-C — the blocks read "Left motor · C" and "Front sensor · A"
+  shot C8-code-block-shows-C.png
+PASS R6.still-runs — rewired, it still drives and stops before the wall: 5.45 studs
+
+R7. A "Joystick drive" program: the on-screen joystick and the arrow keys
+PASS R7.new-program — the + menu added "Joystick drive" as a second tab and made it active
+  shot C9-joystick-drive.png
+PASS R7.joystick-drives — mouse-dragging the stick up: 3.40 studs/s forward, wall 12.0 → 9.3 studs; chip "Motors 41 · 41 % (speed 35 · 35 %)"
+PASS R7.joystick-release — letting go centres the stick and the motors stop
+PASS R7.arrow-up — ArrowUp held: 6.63 studs/s, wall 12.0 → 10.7 studs
+PASS R7.arrow-left — ArrowLeft held: raw powers -100 and -100 (the right motor is reversed, so equal signs spin the rover)
+PASS R7.keypad-lights — the Keys pad lights the arrow being held
+  shot C10-keys.png
+
+R8. Back to build: construction unchanged; save and cold reload
+PASS R8.construction-unchanged — bricks, poses, attachments and cables identical to before Code opened (after the student’s own port move)
+PASS R8.reload — after a cold reload: 2 programs (Stop before the wall, Joystick drive), active program kept, construction and cables intact
+PASS R8.reopen — Code reopens on the active tab, "Joystick drive"
+  shot C11-reloaded.png
+
+G. Gate in My world
+PASS G.default — the gate opens on "Smart gate" in My world, with "Someone walks up"
+  shot G1-gate-my-world.png
+  shot G2-door-open.png
+PASS G.door-opens — the visitor walked into the beam: the door swung to 90.0° about the hinge only (chip "90°")
+PASS G.reset-zero — Reset: door at 0°
+  shot G3-gate-reset.png
+PASS G.scenery-in-view — the scenery brick is on the stage at (1144, 567)
+PASS G.stage-never-edits — after a click and a drag on it (selected: yes), the brick has not moved and nothing is armed
+PASS G.construction-unchanged — the gate is exactly as built
+
+S. Signal post: the card’s "Code this creation"
+PASS S.card-opens-code — "Code this creation" named it and opened Code on "Signal post" in My world
+PASS S.light-red — the light chip reads "red"
+  shot S1-signal-red.png
+PASS console-clean — no console errors, and nothing fetched from Blockly’s media folder
+
+51/51 checks passed

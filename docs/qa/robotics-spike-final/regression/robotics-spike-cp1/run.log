@@ -1,0 +1,73 @@
+
+A. Rover from loose parts
+PASS A.card-opens-on-first-device — placing the hub on non-creation bricks opens the creation card
+  shot A1-hub-card.png
+PASS A.hub-card-copy — card: "Hub added", "2 bricks attached"
+PASS A.code-opens — Code this creation opens the Code view
+PASS A.creation-saved-on-code — Code this creation keeps the creation with its default name (Creation)
+PASS A.wiring-left-motor — assisted wiring line: Left motor connected to port A
+  shot A2-motor-wired.png
+PASS A.wiring-right-motor — assisted wiring line: Right motor connected to port B
+PASS A.wiring-sensor — assisted wiring line: Front sensor connected to port C
+PASS A.one-creation — one creation over 9 bricks and 3 bodies
+PASS A.two-wheels-on-motors — wheels: [{"id":"brick-1790152832379-sitsiu","onAxle":true,"note":null},{"id":"brick-1790152832515-ml5lb1","onAxle":true,"note":null}]
+PASS A.ready-line — ready line: Axles and wheels on both motors, so it can roll
+PASS A.drive-pair-reversed — drive pair reversed: ["brick-1790152831984-54htcj"]
+PASS A.card-stays-closed-for-existing — a device joining the saved creation does not reopen the card (naming never interrupts building)
+PASS A.anchors-refreshed — the wiring writes refreshed the creation's anchors to every stud-attached brick (5; axles and wheels join by mechanism links, never as anchors)
+  shot A3-rover-panel.png
+PASS A.named — the creation was renamed from the panel
+PASS A.rolls — after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°
+PASS A.bodies-hidden-while-running — 9 bricks drawn by the simulation
+  shot A4-rover-rolls.png
+PASS A.reset-document-unchanged — document identical after Nudge + Reset
+PASS A.reset-shows-built-pose — Reset returns to the built pose
+PASS A.wheel-off-note — wheel card: Not on an axle · the nearest axle end is 1 stud away
+PASS A.wheel-off-selected-part — selected wheel says Not on an axle
+PASS A.wheel-off-motor-spins — left motor output turned 289°, wheel stayed (not simulated), body moved 0.00
+  shot A5-wheel-off-axle.png
+PASS A.wheel-back-on — wheel back on its axle
+PASS A.same-sign-turns — both at +40%: yaw -68.4°, drift 0.63
+PASS A.reversed-shown — panel: drive pair shows Right motor reversed
+  shot A6-same-sign-turns.png
+PASS A.reset-again-unchanged — document identical after every nudge
+
+D. Save and reload
+PASS D.round-trip — the document round-trips through autosave and reload byte for byte
+PASS D.creation-survives — creation name and cables survive reload
+  shot D1-reloaded.png
+
+B. Gate from loose parts
+PASS B.card-on-hinge — placing the hinge motor opens the card
+PASS B.hub-powers-waiting-hinge — hub arrival wires the hinge: Arm motor connected to port A
+PASS B.base-and-arm — gate: 2 bodies, 1 arm, hinge carries 1 brick
+PASS B.zero-line — ready line: Fixed side on the frame, moving side on the arm · zero is as built
+PASS B.my-world — a gate runs in my world by default (frame anchored to the plate)
+PASS B.card-stays-closed-for-existing — the door, hub and sensor joined the gate without reopening the card
+  shot B1-gate-panel.png
+PASS B.named — the gate was renamed from the panel
+PASS B.swings-about-axis — hinge at 60.0°, arm quaternion x=0.000 z=-0.000, frame unmoved
+PASS B.panel-angle — panel reports the hinge angle
+  shot B2-gate-swings.png
+PASS B.back-to-zero — back at 0.0°
+PASS B.reset-unchanged — document identical after the swing + Reset
+PASS B.locked — locked; bridging joint [["brick-1790152852668-fxo471","brick-1790152845404-pbuw4b"]]
+PASS B.locked-line — ready line: Arm motor's arm is built into the frame, so it can't swing
+  shot B3-gate-built-into-frame.png
+PASS B.locked-nudge-explains — nudge on a locked hinge: The arm is built into the frame, so it cannot swing.
+PASS B.locked-does-not-move — the arm did not move
+
+C. Signal post
+PASS C.no-card-for-second-device — the sensor joined the post without a card
+PASS C.signal-post — signal post: 1 hub, 1 distance sensor, 1 light
+PASS C.signal-ready — ready line: Hub, sensor and light, so it can sense and signal
+PASS C.signal-wired — cables: sensor A, Light connected to port B
+  shot C1-signal-post.png
+
+D2. Legacy document loads unchanged
+PASS D2.legacy-unchanged — a document without a robotics section loads and snapshots unchanged
+PASS D2.legacy-no-creations — no creations, no card
+PASS D2.drawer-has-robotics — the drawer offers a Robotics category
+  shot D2-legacy-and-drawer.png
+
+49/49 checks passed

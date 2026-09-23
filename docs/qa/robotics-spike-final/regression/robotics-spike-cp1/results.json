@@ -1,0 +1,252 @@
+{
+  "origin": "http://127.0.0.1:5232",
+  "viewport": "1366x768",
+  "at": "2026-09-23T08:40:57.300Z",
+  "results": [
+    {
+      "id": "A.card-opens-on-first-device",
+      "ok": true,
+      "detail": "placing the hub on non-creation bricks opens the creation card"
+    },
+    {
+      "id": "A.hub-card-copy",
+      "ok": true,
+      "detail": "card: \"Hub added\", \"2 bricks attached\""
+    },
+    {
+      "id": "A.code-opens",
+      "ok": true,
+      "detail": "Code this creation opens the Code view"
+    },
+    {
+      "id": "A.creation-saved-on-code",
+      "ok": true,
+      "detail": "Code this creation keeps the creation with its default name (Creation)"
+    },
+    {
+      "id": "A.wiring-left-motor",
+      "ok": true,
+      "detail": "assisted wiring line: Left motor connected to port A"
+    },
+    {
+      "id": "A.wiring-right-motor",
+      "ok": true,
+      "detail": "assisted wiring line: Right motor connected to port B"
+    },
+    {
+      "id": "A.wiring-sensor",
+      "ok": true,
+      "detail": "assisted wiring line: Front sensor connected to port C"
+    },
+    {
+      "id": "A.one-creation",
+      "ok": true,
+      "detail": "one creation over 9 bricks and 3 bodies"
+    },
+    {
+      "id": "A.two-wheels-on-motors",
+      "ok": true,
+      "detail": "wheels: [{\"id\":\"brick-1790152832379-sitsiu\",\"onAxle\":true,\"note\":null},{\"id\":\"brick-1790152832515-ml5lb1\",\"onAxle\":true,\"note\":null}]"
+    },
+    {
+      "id": "A.ready-line",
+      "ok": true,
+      "detail": "ready line: Axles and wheels on both motors, so it can roll"
+    },
+    {
+      "id": "A.drive-pair-reversed",
+      "ok": true,
+      "detail": "drive pair reversed: [\"brick-1790152831984-54htcj\"]"
+    },
+    {
+      "id": "A.card-stays-closed-for-existing",
+      "ok": true,
+      "detail": "a device joining the saved creation does not reopen the card (naming never interrupts building)"
+    },
+    {
+      "id": "A.anchors-refreshed",
+      "ok": true,
+      "detail": "the wiring writes refreshed the creation's anchors to every stud-attached brick (5; axles and wheels join by mechanism links, never as anchors)"
+    },
+    {
+      "id": "A.named",
+      "ok": true,
+      "detail": "the creation was renamed from the panel"
+    },
+    {
+      "id": "A.rolls",
+      "ok": true,
+      "detail": "after 2.6 s: moved 4.93 forward, -0.01 sideways, yaw 0.0°"
+    },
+    {
+      "id": "A.bodies-hidden-while-running",
+      "ok": true,
+      "detail": "9 bricks drawn by the simulation"
+    },
+    {
+      "id": "A.reset-document-unchanged",
+      "ok": true,
+      "detail": "document identical after Nudge + Reset"
+    },
+    {
+      "id": "A.reset-shows-built-pose",
+      "ok": true,
+      "detail": "Reset returns to the built pose"
+    },
+    {
+      "id": "A.wheel-off-note",
+      "ok": true,
+      "detail": "wheel card: Not on an axle · the nearest axle end is 1 stud away"
+    },
+    {
+      "id": "A.wheel-off-selected-part",
+      "ok": true,
+      "detail": "selected wheel says Not on an axle"
+    },
+    {
+      "id": "A.wheel-off-motor-spins",
+      "ok": true,
+      "detail": "left motor output turned 289°, wheel stayed (not simulated), body moved 0.00"
+    },
+    {
+      "id": "A.wheel-back-on",
+      "ok": true,
+      "detail": "wheel back on its axle"
+    },
+    {
+      "id": "A.same-sign-turns",
+      "ok": true,
+      "detail": "both at +40%: yaw -68.4°, drift 0.63"
+    },
+    {
+      "id": "A.reversed-shown",
+      "ok": true,
+      "detail": "panel: drive pair shows Right motor reversed"
+    },
+    {
+      "id": "A.reset-again-unchanged",
+      "ok": true,
+      "detail": "document identical after every nudge"
+    },
+    {
+      "id": "D.round-trip",
+      "ok": true,
+      "detail": "the document round-trips through autosave and reload byte for byte"
+    },
+    {
+      "id": "D.creation-survives",
+      "ok": true,
+      "detail": "creation name and cables survive reload"
+    },
+    {
+      "id": "B.card-on-hinge",
+      "ok": true,
+      "detail": "placing the hinge motor opens the card"
+    },
+    {
+      "id": "B.hub-powers-waiting-hinge",
+      "ok": true,
+      "detail": "hub arrival wires the hinge: Arm motor connected to port A"
+    },
+    {
+      "id": "B.base-and-arm",
+      "ok": true,
+      "detail": "gate: 2 bodies, 1 arm, hinge carries 1 brick"
+    },
+    {
+      "id": "B.zero-line",
+      "ok": true,
+      "detail": "ready line: Fixed side on the frame, moving side on the arm · zero is as built"
+    },
+    {
+      "id": "B.my-world",
+      "ok": true,
+      "detail": "a gate runs in my world by default (frame anchored to the plate)"
+    },
+    {
+      "id": "B.card-stays-closed-for-existing",
+      "ok": true,
+      "detail": "the door, hub and sensor joined the gate without reopening the card"
+    },
+    {
+      "id": "B.named",
+      "ok": true,
+      "detail": "the gate was renamed from the panel"
+    },
+    {
+      "id": "B.swings-about-axis",
+      "ok": true,
+      "detail": "hinge at 60.0°, arm quaternion x=0.000 z=-0.000, frame unmoved"
+    },
+    {
+      "id": "B.panel-angle",
+      "ok": true,
+      "detail": "panel reports the hinge angle"
+    },
+    {
+      "id": "B.back-to-zero",
+      "ok": true,
+      "detail": "back at 0.0°"
+    },
+    {
+      "id": "B.reset-unchanged",
+      "ok": true,
+      "detail": "document identical after the swing + Reset"
+    },
+    {
+      "id": "B.locked",
+      "ok": true,
+      "detail": "locked; bridging joint [[\"brick-1790152852668-fxo471\",\"brick-1790152845404-pbuw4b\"]]"
+    },
+    {
+      "id": "B.locked-line",
+      "ok": true,
+      "detail": "ready line: Arm motor's arm is built into the frame, so it can't swing"
+    },
+    {
+      "id": "B.locked-nudge-explains",
+      "ok": true,
+      "detail": "nudge on a locked hinge: The arm is built into the frame, so it cannot swing."
+    },
+    {
+      "id": "B.locked-does-not-move",
+      "ok": true,
+      "detail": "the arm did not move"
+    },
+    {
+      "id": "C.no-card-for-second-device",
+      "ok": true,
+      "detail": "the sensor joined the post without a card"
+    },
+    {
+      "id": "C.signal-post",
+      "ok": true,
+      "detail": "signal post: 1 hub, 1 distance sensor, 1 light"
+    },
+    {
+      "id": "C.signal-ready",
+      "ok": true,
+      "detail": "ready line: Hub, sensor and light, so it can sense and signal"
+    },
+    {
+      "id": "C.signal-wired",
+      "ok": true,
+      "detail": "cables: sensor A, Light connected to port B"
+    },
+    {
+      "id": "D2.legacy-unchanged",
+      "ok": true,
+      "detail": "a document without a robotics section loads and snapshots unchanged"
+    },
+    {
+      "id": "D2.legacy-no-creations",
+      "ok": true,
+      "detail": "no creations, no card"
+    },
+    {
+      "id": "D2.drawer-has-robotics",
+      "ok": true,
+      "detail": "the drawer offers a Robotics category"
+    }
+  ]
+}

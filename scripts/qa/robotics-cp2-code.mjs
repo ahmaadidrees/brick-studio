@@ -249,7 +249,8 @@ measured.roverFirstRun = { stoppedAtStuds: stopped.sensors[rover.sensor].distanc
 check('R2.drives', trace.some((entry) => entry.speed > 2), `top speed ${Math.max(...trace.map((entry) => entry.speed)).toFixed(2)} studs/s`)
 check('R2.stops-before-wall', stopped.sensors[rover.sensor].hit && stopped.sensors[rover.sensor].distanceStuds > 1.5 && stopped.sensors[rover.sensor].distanceStuds < 3 && minDistance > 1.5, `the sensor read ${stopped.sensors[rover.sensor].distanceStuds.toFixed(2)} studs at rest (never under ${minDistance.toFixed(2)}): it never touched the wall`)
 check('R2.readings-are-the-blocks-values', chips['Front sensor'] === `${stopped.sensors[rover.sensor].distanceStuds.toFixed(1)} studs` && chips.Speed === `${stopped.speed.toFixed(1)} st/s`, `stage chips ${JSON.stringify(chips)} match the observation the blocks read`)
-check('R2.status', (await s.text('robo-status')).startsWith('Running ·'), `status: ${await s.text('robo-status')}`)
+// The program ended with `stop motors`: the stage says it is done, not still running.
+check('R2.status', (await s.text('robo-status')).startsWith('Done ·'), `status: ${await s.text('robo-status')}`)
 await s.shot('C3-rover-stopped-before-wall')
 
 console.log('\nR3. Reset')

@@ -104,8 +104,11 @@ check('A.card-opens-on-first-device', (await cardState())?.creationId === null, 
 await shot('A1-hub-card')
 check('A.hub-card-copy', await card.getByText('Hub added').count() === 1 && await card.getByText('2 bricks attached').count() === 1, 'card: "Hub added", "2 bricks attached"')
 await card.getByRole('button', { name: 'Code this creation' }).click()
-await sleep(200)
-check('A.code-stub-toast', (await brick((state) => state.toast))?.includes('checkpoint 2'), `Code this creation is a stub: ${await brick((state) => state.toast)}`)
+await sleep(600)
+// Checkpoint 2: Code this creation opens the Code view (it was a toast stub in checkpoint 1). Back to build to keep building.
+check('A.code-opens', (await page.evaluate(() => window.__robotics.codeView.getState().creationId)) !== null && await page.getByRole('button', { name: 'Back to build' }).count() === 1, 'Code this creation opens the Code view')
+await page.getByRole('button', { name: 'Back to build' }).click()
+await sleep(400)
 let list = await creations()
 check('A.creation-saved-on-code', list.length === 1 && list[0].name === 'Creation', `Code this creation keeps the creation with its default name (${list[0]?.name})`)
 
