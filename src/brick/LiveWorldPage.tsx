@@ -327,7 +327,11 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
         ? await props.fetchWorldSummary(roomId)
         : await getLiveWorld(roomId, { headers: { Authorization: `Bearer ${session.session.accessToken}` } });
       if (active) { setTitle(summary.title || 'Classroom world'); setReady(true); }
-    })().catch(reason => { if (active) { setError(friendlyReason(reason)); setCanRecover(Boolean(checkingWorld && oldOwnerToken && reason?.status === 404)); } });
+    })().catch(reason => {
+      // A 2D level's room lives at /2d/w/<id>; old or hand-typed /live links for one go there.
+      if (active && reason?.status === 409 && /2D level/i.test(String(reason?.message ?? ''))) { window.location.replace(`/2d/w/${roomId}`); return; }
+      if (active) { setError(friendlyReason(reason)); setCanRecover(Boolean(checkingWorld && oldOwnerToken && reason?.status === 404)); }
+    });
     return () => { active = false; };
   }, [auth.user.id, client, roomId, props.fetchWorldSummary, retry]);
   const session = useLiveRoomSession({ connectRoom, roomId: ready ? roomId : null, profile: ready ? profile : null });

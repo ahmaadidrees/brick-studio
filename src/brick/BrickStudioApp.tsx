@@ -54,7 +54,8 @@ import { PartThumbnail } from './PartThumbnail'
 import { resizeBuildPlate, createBrickStudioDocument, type BrickStudioDocument } from './brickDocument'
 import { BRICK_COLORS, BRICK_PART_MAP, BRICK_PARTS, customPartToBrickPart, registerCustomParts } from './parts'
 import type { StudioDocumentCommands } from './StudioMenu'
-import { AppHeader, WORLDS_PATH, classroomIntentRedirect, describeLivePresence, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession, type LivePresence } from '../shell'
+import { AppHeader, DIMENSION_HREF, WORLDS_PATH, classroomIntentRedirect, describeLivePresence, goToJoin, goToLiveWorld, goToNewLiveRoom, useClassroomSession, type BuildDimension, type LivePresence } from '../shell'
+import { isPlatformerDocument } from '@brick-studio/platformer-core/document'
 import { useBrickStore } from './store'
 import { normalizeTouchStick } from './touchInput'
 import type { CharacterId, CustomPartDefinition, EnvironmentId, ViewPreset } from './types'
@@ -1456,11 +1457,8 @@ export default function BrickStudioApp({
           source: { kind: 'local' },
           detail: 'This build stays in this browser on this device. Use My Worlds to save a copy to your account, or Download build to keep a file.',
         }
-  const goHome = () => { void (async () => {
-    if (livePolicy) {
-      livePolicy.onGoHome?.()
-      return
-    }
+  /** Leave the studio for another page once this build is safely saved (account or browser). */
+  const leaveStudioFor = (href: string) => { void (async () => {
     if (cloud.world) {
       if (!await cloud.flush()) {
         useBrickStore.setState({ toast: 'Your account save needs attention. Resolve it or download a recovery copy before leaving.' })
@@ -1470,8 +1468,17 @@ export default function BrickStudioApp({
       const saved = saveLocalBrickStudioProject(window.localStorage, useBrickStore.getState().getDocumentSnapshot())
       if (!saved.ok) { useBrickStore.setState({ toast: saved.error.message }); return }
     }
-    window.location.assign('/')
+    window.location.assign(href)
   })().catch(reason => useBrickStore.setState({ toast: String(reason) })) }
+  const goHome = () => {
+    if (livePolicy) {
+      livePolicy.onGoHome?.()
+      return
+    }
+    leaveStudioFor('/')
+  }
+  // 3D ⇄ 2D from the header pill; a live room is left from its own menu instead.
+  const switchDimension = livePolicy || readOnly ? undefined : (target: BuildDimension) => leaveStudioFor(DIMENSION_HREF[target])
   const openWorldSetup = (tab: 'environment' | 'character' = 'environment') => { setWorldSetupTab(tab); setWorldSetupOpen(true) }
   /**
    * The one way a cloud world enters this editor: the save sheet's Open and `/build?world=<id>`
@@ -1501,6 +1508,8 @@ export default function BrickStudioApp({
       try {
         const world = await browserClassroomClient.getWorld(entryWorldId)
         if (cancelled) return
+        // A 2D level opens in the 2D builder, never as a 3D build.
+        if (isPlatformerDocument(world.document)) { window.location.replace(`/2d/build?world=${encodeURIComponent(world.id)}`); return }
         if (!world.document) throw new Error('This world did not include a complete build.')
         await openCloudWorld(world.document, world)
       } catch {
@@ -1561,6 +1570,7 @@ export default function BrickStudioApp({
           exploreReason="Place a brick first, then explore."
           onSaveToAccount={cloud.world || livePolicy || autoSave.status === 'saving' ? undefined : () => setClassroomIntent('save')}
           onGoHome={goHome}
+          onSwitchDimension={switchDimension}
         />
       ) : (
         <ExploreHud

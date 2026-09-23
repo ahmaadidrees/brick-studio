@@ -72,6 +72,12 @@
 .shell-mode-switch .ui-segmented-option { min-height: 44px; padding: 0 14px; border-radius: var(--radius-pill); font-weight: 800; }
 .shell-mode-switch .ui-segmented-selected { background: var(--primary-strong); }
 
+/* 3D ⇄ 2D pill (DimensionSwitch): the mode pill's shape, one size smaller, in both builders and on the 2D pages. */
+.shell-dimension-switch { display: inline-flex; flex: 0 0 auto; }
+.shell-dimension-switch .ui-segmented-track { border-radius: var(--radius-pill); padding: 3px; }
+.shell-dimension-switch .ui-segmented-option { min-width: 44px; min-height: 38px; gap: 5px; padding: 0 12px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 800; }
+.app-header-editor .app-header-dimension { margin: 0 4px 0 2px; }
+
 /* ---- Account chip ---- */
 .shell-account-chip { display: inline-flex; align-items: center; min-height: 44px; }
 .shell-account-signin.ui-button { color: var(--primary-strong); }
@@ -159,6 +165,8 @@
   .shell-mode-switch .ui-segmented-option { padding: 0 10px; }
   .shell-mode-switch .ui-segmented-option > span:not(.ui-segmented-icon) { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .shell-mode-switch .ui-segmented-option { position: relative; min-width: 44px; }
+  .shell-dimension-switch .ui-segmented-option { padding: 0 8px; }
+  .shell-dimension-switch .ui-segmented-icon { display: none; }
   .shell-account-trigger { max-width: none; padding: 3px; }
   .shell-account-text, .shell-account-chevron { display: none; }
   .shell-account-signin.ui-button .ui-button-label { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

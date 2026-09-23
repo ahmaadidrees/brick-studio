@@ -25,6 +25,8 @@ export type ClassroomWorldMemberSummary = { id: string; displayName: string }
 export type ClassroomClassmate = ClassroomWorldMemberSummary
 export type ClassroomWorld = {
   id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document?: BrickStudioDocument
+  /** What the world holds: a 3D brick build or a 2D level (`/2d`). Older servers omit it: treat that as 'brick'. */
+  format?: 'brick' | '2d'
   visibility: ClassroomWorldVisibility
   /** Whether the caller may change bricks: owner, shared with edit, or the class/group rules. */
   canEdit: boolean

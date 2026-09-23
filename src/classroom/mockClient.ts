@@ -1,4 +1,5 @@
 import { createBrickStudioDocument, studentPasswordError, type BrickStudioDocument } from '@brick-studio/core'
+import { isPlatformerDocument } from '@brick-studio/platformer-core/document'
 import { ClassroomError } from './client'
 import type {
   ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
@@ -139,6 +140,8 @@ export function createMockClient({ as = 'guest', delay = 0, worldLimit = 50 }: M
     .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id))
   const worldView = (world: MockWorld, user: MockUser, canEdit: boolean, full = false): ClassroomWorld => ({
     id: world.id, title: world.title, ownerId: world.ownerId, classId: world.classId, kind: world.kind, revision: world.revision, updatedAt: world.updatedAt,
+    // Like the Worker: the document says whether this is a 3D build or a 2D level.
+    format: isPlatformerDocument(world.document) ? '2d' : 'brick',
     visibility: world.kind === 'personal' ? world.visibility : 'class', canEdit, classCanEdit: world.kind === 'personal' ? world.classCanEdit : true, ownerName: ownerName(world), ownerClassId: world.kind === 'personal' ? userById(world.ownerId)?.classId ?? null : world.classId,
     sharedAt: world.kind === 'personal' && world.visibility !== 'private' ? world.sharedAt : null,
     // Who is invited is the owner's and the teacher's business, never a fellow invitee's.

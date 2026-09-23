@@ -20,6 +20,8 @@ const JoinPage = lazy(() => import('./pages/join/JoinPage'))
 const WorldsPage = lazy(() => import('./pages/worlds/WorldsPage'))
 const ClassPage = lazy(() => import('./pages/class/ClassPage'))
 const ProjectorPage = lazy(() => import('./pages/class/ProjectorPage'))
+// The 2D side (docs/PLATFORMER.md): its own chunk, so the 3D studio and the landing page never load it.
+const PlatformerApp = lazy(() => import('./platformer/PlatformerApp'))
 const { route, canonicalPath } = resolveAppRoute(window.location)
 if (canonicalPath) window.history.replaceState(null, '', canonicalPath)
 const experience = route === 'teacher-callback'
@@ -40,13 +42,15 @@ const experience = route === 'teacher-callback'
       ? <ClassPage />
     : route === 'class-projector'
       ? <ProjectorPage />
+    : route === 'platformer'
+      ? <PlatformerApp />
     : route === 'dev-ui' && UiGallery
       ? <UiGallery />
       : <main style={{ padding: '3rem', maxWidth: 640, margin: 'auto' }}><h1>We couldn't find that page</h1><p>Your saved builds are still available.</p><p><a href="/">Home</a> · <a href="/build">Open the studio</a></p></main>
 
 createRoot(document.getElementById('root')!).render(
   <AppErrorBoundary>
-    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>{route === 'landing' ? `Welcome to ${BRAND_NAME}…` : 'Opening the studio…'}</div>}>
+    <Suspense fallback={<div style={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', background: '#f4f2ed', color: '#405761', fontWeight: 800 }}>{route === 'landing' ? `Welcome to ${BRAND_NAME}…` : route === 'platformer' ? 'Opening 2D levels…' : 'Opening the studio…'}</div>}>
       {experience}
     </Suspense>
   </AppErrorBoundary>,

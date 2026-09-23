@@ -1,0 +1,1157 @@
+/*
+ * The 2D side of Brickgineers (docs/PLATFORMER.md). Every class is prefixed `p2d-` and every color, radius,
+ * shadow and font comes from the design tokens in src/styles.css, so 2D pages read as the same product; the only
+ * new look is the pixel art inside the game itself. Loaded with the /2d chunk only.
+ */
+
+.p2d-art {
+  display: block;
+  flex: none;
+  image-rendering: pixelated;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* ---------- Pages (home, notices) ---------- */
+
+.p2d-page {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.p2d-home {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right)) calc(var(--space-8) + env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
+}
+
+.p2d-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-7);
+  align-items: center;
+  padding: var(--space-7);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.p2d-hero h1 {
+  margin: 0 0 var(--space-3);
+  font: 700 clamp(28px, 4vw, 40px) / 1.1 var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+.p2d-hero p {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.p2d-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 var(--space-4);
+}
+
+.p2d-hero .p2d-hero-note {
+  font-size: var(--text-md);
+}
+
+.p2d-hero-note a {
+  color: var(--primary-strong);
+  font-weight: 800;
+}
+
+.p2d-hero-art {
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  aspect-ratio: 16 / 9;
+  background: #79b8ff;
+}
+
+.p2d-hero-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.p2d-section {
+  margin-top: var(--space-8);
+}
+
+.p2d-section h2 {
+  margin: 0 0 var(--space-4);
+  font: 700 22px / 1.2 var(--font-display);
+}
+
+.p2d-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
+  gap: var(--space-5);
+}
+
+.p2d-level-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.p2d-thumb-box {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #79b8ff;
+  border-bottom: 1px solid var(--border);
+}
+
+.p2d-thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: pixelated;
+}
+
+.p2d-badge {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.p2d-badge > svg {
+  box-sizing: content-box;
+  padding: 10px;
+  color: var(--primary-contrast);
+  background: var(--primary-strong);
+  border-radius: 50%;
+  box-shadow: var(--shadow-md);
+}
+
+.p2d-level-art {
+  display: flex;
+  height: 100%;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-5);
+  padding-bottom: 18%;
+  background: linear-gradient(transparent 78%, #5fcf52 78% 82%, #d4884a 82%), #79b8ff;
+}
+
+.p2d-level-art-block {
+  margin-bottom: 48px;
+}
+
+.p2d-level-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.p2d-level-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.p2d-level-card h3 {
+  margin: 0;
+  overflow: hidden;
+  font: 600 18px / 1.25 var(--font-display);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p2d-level-card-sub {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.p2d-level-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.p2d-friends > p {
+  max-width: 720px;
+  margin: 0 0 var(--space-4);
+  line-height: 1.5;
+}
+
+.p2d-join {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  max-width: 640px;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.p2d-join > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.p2d-muted {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.p2d-error {
+  margin: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--danger-text);
+  background: var(--danger-soft);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+}
+
+.p2d-notice {
+  display: grid;
+  min-height: calc(100% - 80px);
+  place-items: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.p2d-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  width: min(460px, calc(100vw - 32px));
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.p2d-card > svg {
+  align-self: center;
+  color: var(--primary-strong);
+}
+
+.p2d-notice-title {
+  margin: 0;
+  font: 700 24px / 1.2 var(--font-display);
+}
+
+.p2d-lead {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.p2d-name-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+@media (max-width: 860px) {
+  .p2d-hero {
+    grid-template-columns: 1fr;
+    padding: var(--space-5);
+  }
+  .p2d-hero-art {
+    order: -1;
+  }
+  .p2d-join {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ---------- The game ---------- */
+
+.p2d-game {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  font-family: var(--font-body);
+}
+
+.p2d-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.p2d-building .p2d-stage {
+  cursor: crosshair;
+}
+
+.p2d-canvas {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.p2d-topbar {
+  position: absolute;
+  z-index: var(--z-hud);
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: calc(var(--space-3) + env(safe-area-inset-top)) max(var(--space-3), env(safe-area-inset-right)) 0 max(var(--space-3), env(safe-area-inset-left));
+  pointer-events: none;
+}
+
+.p2d-topbar > * > * {
+  pointer-events: auto;
+}
+
+.p2d-tb-start,
+.p2d-tb-end {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.p2d-tb-end {
+  justify-content: flex-end;
+}
+
+.p2d-tb-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: 4px;
+}
+
+.p2d-topbar .ui-button,
+.p2d-topbar .shell-dimension-switch .ui-segmented-track {
+  box-shadow: var(--shadow-md);
+}
+
+.p2d-topbar .shell-dimension-switch .ui-segmented-track {
+  background: var(--surface);
+}
+
+.p2d-pill.ui-button {
+  border-radius: var(--radius-pill);
+}
+
+.p2d-locked.ui-button {
+  opacity: 0.8;
+}
+
+.p2d-save {
+  padding: 4px 10px;
+  background: var(--surface);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+
+.p2d-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  font: inherit;
+}
+
+.p2d-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.p2d-dot.p2d-me {
+  outline: 2px solid var(--primary-strong);
+  outline-offset: 1px;
+}
+
+.p2d-count {
+  margin-left: 4px;
+  font-weight: 800;
+}
+
+.p2d-pill-note {
+  padding: 4px 12px;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  color: var(--warning-text);
+  background: var(--warning-soft);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+}
+
+.p2d-stats {
+  position: absolute;
+  z-index: var(--z-hud);
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 16px);
+  padding: 4px 8px;
+  font: 12px ui-monospace, monospace;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 4px;
+}
+
+.p2d-toast {
+  position: absolute;
+  z-index: var(--z-toast);
+  top: calc(env(safe-area-inset-top) + 72px);
+  left: 50%;
+  max-width: calc(100% - 32px);
+  padding: var(--space-3) var(--space-4);
+  transform: translateX(-50%);
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  color: var(--primary-contrast);
+  background: var(--text);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: p2d-pop 0.2s ease-out;
+}
+
+.p2d-hint {
+  position: absolute;
+  z-index: var(--z-hud);
+  left: 50%;
+  width: max-content;
+  max-width: min(660px, calc(100% - 32px));
+  padding: var(--space-3) var(--space-4);
+  transform: translateX(-50%);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: p2d-pop 0.25s ease-out;
+}
+
+.p2d-hint-top {
+  top: calc(env(safe-area-inset-top) + 72px);
+}
+
+.p2d-hint-dock {
+  bottom: calc(env(safe-area-inset-bottom) + 160px);
+}
+
+.p2d-hint-goal {
+  display: block;
+  font-weight: 800;
+}
+
+.p2d-game kbd,
+.p2d-menu kbd {
+  padding: 0 6px;
+  font: 700 12px ui-monospace, monospace;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.p2d-overlay {
+  position: absolute;
+  z-index: var(--z-sheet);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: var(--backdrop);
+}
+
+.p2d-kicker {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.p2d-clear-title {
+  margin: 0;
+  font: 700 28px / 1.2 var(--font-display);
+}
+
+.p2d-clear-time {
+  margin: 0 0 var(--space-2);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.p2d-clear-time span {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.p2d-phone {
+  width: 46px;
+  height: 76px;
+  margin: 4px auto;
+  background: #79b8ff;
+  border: 4px solid var(--text);
+  border-radius: 10px;
+  animation: p2d-turn 2.6s ease-in-out infinite;
+}
+
+@keyframes p2d-turn {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+  55%,
+  85% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes p2d-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+}
+
+/* ---------- Build bar ---------- */
+
+.p2d-dock {
+  position: absolute;
+  z-index: var(--z-hud);
+  left: 50%;
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: min(1040px, calc(100% - 20px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.p2d-dock-tip {
+  max-width: 100%;
+  padding: 6px 14px;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--primary-contrast);
+  background: rgba(38, 60, 81, 0.86);
+  border-radius: var(--radius-pill);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p2d-dock-tip b {
+  margin-right: 4px;
+  color: var(--brand-butter);
+}
+
+.p2d-dock-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 100%;
+  padding: var(--space-2);
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  scrollbar-width: none;
+}
+
+.p2d-dock-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.p2d-dock-cats,
+.p2d-dock-items,
+.p2d-dock-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.p2d-dock-cats {
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--border);
+}
+
+.p2d-dock-tools {
+  padding-left: var(--space-3);
+  border-left: 1px solid var(--border);
+}
+
+.p2d-cat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 48px;
+  height: 56px;
+  padding: 0 6px;
+  font: 700 11px / 1 var(--font-body);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.p2d-cat:hover {
+  background: var(--primary-soft);
+}
+
+.p2d-cat[aria-selected='true'] {
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+  box-shadow: inset 0 0 0 2px var(--primary-strong);
+}
+
+.p2d-cat-label {
+  display: none;
+}
+
+.p2d-item {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  color: var(--text);
+  background: #a9d4f5;
+  border: 0;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.p2d-item:hover {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.p2d-item[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px var(--primary-strong);
+}
+
+.p2d-item.p2d-tool {
+  background: var(--surface-2);
+}
+
+.p2d-item.p2d-eraser[aria-pressed='true'] {
+  color: var(--primary-contrast);
+  background: var(--danger);
+  box-shadow: none;
+}
+
+.p2d-cat:focus-visible,
+.p2d-item:focus-visible,
+.p2d-dots:focus-visible,
+.p2d-switch-row:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (min-width: 1060px) and (min-height: 640px) {
+  .p2d-cat-label {
+    display: block;
+  }
+  .p2d-cat {
+    min-width: 66px;
+  }
+}
+
+@media (max-width: 760px) {
+  .p2d-dock-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .p2d-dock-cats {
+    justify-content: center;
+    width: 100%;
+    padding: 0 0 6px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .p2d-dock-tools {
+    padding-left: 6px;
+  }
+  .p2d-save {
+    display: none;
+  }
+}
+
+@media (max-height: 460px) {
+  .p2d-dock-tip {
+    display: none;
+  }
+  .p2d-item,
+  .p2d-cat {
+    width: 48px;
+    height: 48px;
+  }
+  .p2d-cat {
+    min-width: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .p2d-pill.ui-button .ui-button-label {
+    display: none;
+  }
+  .p2d-pill.ui-button {
+    width: var(--control-height);
+    padding: 0;
+  }
+}
+
+/* ---------- Touch controls ---------- */
+
+.p2d-touch {
+  position: absolute;
+  z-index: var(--z-hud);
+  inset: auto 0 0 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.p2d-dpad,
+.p2d-face button {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Kept away from the left edge, where Safari's swipe means Back. */
+.p2d-dpad {
+  position: absolute;
+  left: calc(env(safe-area-inset-left) + 30px);
+  bottom: calc(env(safe-area-inset-bottom) + 18px);
+  width: 176px;
+  height: 124px;
+  color: #fff;
+  background: rgba(38, 60, 81, 0.42);
+  border: 3px solid rgba(255, 255, 255, 0.45);
+  border-radius: 24px;
+}
+
+.p2d-arrow {
+  position: absolute;
+  opacity: 0.9;
+}
+
+.p2d-arrow-l {
+  top: 38px;
+  left: 12px;
+}
+
+.p2d-arrow-r {
+  top: 38px;
+  right: 12px;
+}
+
+.p2d-arrow-d {
+  bottom: 4px;
+  left: 70px;
+}
+
+.p2d-face {
+  position: absolute;
+  right: calc(env(safe-area-inset-right) + 22px);
+  bottom: calc(env(safe-area-inset-bottom) + 18px);
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.p2d-face button {
+  font: 800 13px / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  border: 3px solid rgba(255, 255, 255, 0.65);
+  border-radius: 50%;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+}
+
+.p2d-run {
+  width: 76px;
+  height: 76px;
+  margin-bottom: 28px;
+  background: rgba(53, 101, 191, 0.72);
+}
+
+.p2d-jump {
+  width: 96px;
+  height: 96px;
+  background: rgba(201, 70, 58, 0.78);
+}
+
+.p2d-face button:active {
+  filter: brightness(1.15);
+  transform: translateY(2px);
+}
+
+/* ---------- Menu (the shared Sheet; it renders into document.body) ---------- */
+
+.p2d-menu-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.p2d-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.p2d-menu-list .ui-button-quiet {
+  justify-content: flex-start;
+}
+
+.p2d-row-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.p2d-menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.p2d-menu-section h3,
+.p2d-controls h3 {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.p2d-invite {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.p2d-invite code {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3);
+  overflow: hidden;
+  font: 700 13px ui-monospace, monospace;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.p2d-players {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.p2d-players li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 46px;
+  padding: 4px 6px 4px 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.p2d-swatch {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.p2d-pname {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p2d-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.p2d-tag.p2d-you {
+  color: var(--primary-strong);
+}
+
+.p2d-switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  text-align: left;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font: inherit;
+}
+
+.p2d-switch-text {
+  flex: 1;
+}
+
+.p2d-switch-label {
+  display: block;
+  font-weight: 800;
+}
+
+.p2d-switch-detail {
+  display: block;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.p2d-switch {
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 30px;
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  transition: background 0.15s;
+}
+
+.p2d-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s;
+}
+
+.p2d-switch-row[aria-checked='true'] .p2d-switch {
+  background: var(--primary-strong);
+}
+
+.p2d-switch-row[aria-checked='true'] .p2d-knob {
+  transform: translateX(22px);
+}
+
+.p2d-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.p2d-controls section + section {
+  margin-top: var(--space-4);
+}
+
+.p2d-controls dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) 0 0;
+}
+
+.p2d-controls dt {
+  font-weight: 800;
+}
+
+.p2d-controls dd,
+.p2d-controls p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.p2d-controls p {
+  margin-top: var(--space-3);
+}
+
+/* ---------- Tuning panel ---------- */
+
+.p2d-feel {
+  position: absolute;
+  z-index: var(--z-drawer);
+  top: calc(env(safe-area-inset-top) + 68px);
+  right: max(var(--space-3), env(safe-area-inset-right));
+  width: min(400px, calc(100% - 24px));
+  max-height: calc(100% - 84px);
+  padding: var(--space-4);
+  overflow: auto;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.p2d-feel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.p2d-feel h2 {
+  margin: 0;
+  font: 600 18px var(--font-display);
+}
+
+.p2d-feel h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.p2d-feel-hint {
+  margin: var(--space-2) 0;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.p2d-feel label {
+  display: grid;
+  grid-template-columns: 1fr 110px 52px;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 3px 0;
+  font-size: var(--text-sm);
+}
+
+.p2d-feel label.changed .name {
+  color: var(--primary-strong);
+  font-weight: 800;
+}
+
+.p2d-feel input[type='range'] {
+  width: 100%;
+  accent-color: var(--primary-strong);
+}
+
+.p2d-feel .value {
+  font: 12px ui-monospace, monospace;
+  text-align: right;
+}
+
+.p2d-feel footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p2d-toast,
+  .p2d-hint,
+  .p2d-phone {
+    animation: none;
+  }
+  .p2d-knob,
+  .p2d-switch {
+    transition: none;
+  }
+}

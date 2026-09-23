@@ -3,6 +3,7 @@ import { useState, type HTMLAttributes, type ReactNode } from 'react'
 import { BrandLockup } from '../brand'
 import { Button, SaveStatus, type SaveStatusSource } from '../ui'
 import { AccountChip } from './AccountChip'
+import { DimensionSwitch, type BuildDimension } from './DimensionSwitch'
 import { ModeSwitch, type StudioMode } from './ModeSwitch'
 import { RenameWorldDialog } from './RenameWorldDialog'
 import type { ClassroomSessionState } from './useClassroomSession'
@@ -99,6 +100,8 @@ export type AppHeaderEditorProps = CommonProps & {
   onOpenMyClass?: () => void
   /* Home */
   onGoHome: () => void
+  /** 3D ⇄ 2D: shown beside the mark when given (the studio saves first, then leaves for the 2D builder). */
+  onSwitchDimension?: (target: BuildDimension) => void
 }
 
 export type AppHeaderProps = AppHeaderLandingProps | AppHeaderPageProps | AppHeaderEditorProps
@@ -176,7 +179,7 @@ function EditorHeader({
   worldTitle, onRenameWorld, saveStatus,
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
-  onSaveToAccount, onGoHome,
+  onSaveToAccount, onGoHome, onSwitchDimension,
   session, className, accountMenuDefaultOpen, onKeyDown, id,
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
@@ -199,6 +202,7 @@ function EditorHeader({
           className="app-header-brand app-header-mark"
           onClick={(event) => { event.preventDefault(); onGoHome() }}
         />
+        {onSwitchDimension && <DimensionSwitch current="3d" onSwitch={onSwitchDimension} className="app-header-dimension" />}
         <div className="app-header-world">
           <span className="app-header-title" title={title}>{title}</span>
           {onRenameWorld && (

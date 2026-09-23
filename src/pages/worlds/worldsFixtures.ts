@@ -1,7 +1,7 @@
 import { createBrickStudioDocument } from '@brick-studio/core'
 import { createMockClient, MOCK_IDS, type MockRole } from '../../classroom/mockClient'
 import type { ClassroomAuthResult, ClassroomCheckpoint } from '../../classroom/contracts'
-import type { WorldsClient, WorldsClass, WorldsWorld } from './worldsData'
+import { emptyDocument, type WorldsClient, type WorldsClass, type WorldsWorld } from './worldsData'
 
 /**
  * Thin wrapper over `src/classroom/mockClient.ts` (W1): the page-specific bits
@@ -56,7 +56,7 @@ export function createFakeWorldsClient({ session, worlds, classes, checkpoints }
     setWorldSharing: (id, sharing) => mock.setWorldSharing(id, sharing),
     setWorldHidden: (id, hidden) => mock.setWorldHidden(id, hidden),
     copyWorld: id => mock.copyWorld(id),
-    createSharedWorld: (classId, title, kind) => mock.createWorld({ title, document: createBrickStudioDocument([]), kind, classId }),
+    createSharedWorld: (classId, title, kind, format = 'brick') => mock.createWorld({ title, document: emptyDocument(format, title) as ReturnType<typeof createBrickStudioDocument>, kind, classId }).then((world) => ({ ...world, format })),
     signOut: () => mock.signOut(),
   }
 }

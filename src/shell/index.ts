@@ -6,6 +6,7 @@ export {
   type ClassStorage,
 } from './rememberedTeacherClass'
 export { WorldMenu, type WorldMenuProps } from './WorldMenu'
+export { DimensionSwitch, DIMENSION_HREF, type BuildDimension, type DimensionSwitchProps } from './DimensionSwitch'
 export { ModeSwitch, DEFAULT_EXPLORE_REASON, DEFAULT_LOCKED_REASON, type ModeSwitchProps, type StudioMode } from './ModeSwitch'
 export { RenameWorldDialog, WORLD_TITLE_MAX_LENGTH, type RenameWorldDialogProps } from './RenameWorldDialog'
 export { useClassroomSession, displayNameFor, resetClassroomSessionCache, type ClassroomSessionState, type ClassroomSessionStatus, type ClassroomSessionClient } from './useClassroomSession'

@@ -57,7 +57,33 @@ describe('semantics and structure', () => {
     expect(signin).toHaveAttribute('href', '/build?classroom=signin')
     expect(signin.closest('.landing-hero-signin')).not.toBeNull()
     const order = [...hero.querySelectorAll('a')].map((a) => a.textContent)
-    expect(order).toEqual(['Start building', 'Join a class', 'Student login'])
+    expect(order).toEqual(['Start building', 'Make a 2D level', 'Join a class', 'Student login'])
+  })
+
+  it('makes 2D building a first-class choice: hero, a two-ways section and the nav', () => {
+    render(<LandingPage />)
+    const hero = screen.getByRole('heading', { level: 1 }).closest('section')!
+    expect(within(hero).getByRole('link', { name: 'Make a 2D level' })).toHaveAttribute('href', '/2d/build')
+    expect(within(hero).getByRole('link', { name: 'Make a 2D level' }).className).toMatch(/\bui-button\b/)
+
+    const ways = document.getElementById('two-ways')!
+    expect(within(ways).getByRole('heading', { level: 2 })).toHaveTextContent('Stack it in 3D. Or draw it in 2D.')
+    expect(within(ways).getByRole('heading', { level: 3, name: '3D worlds' })).toBeInTheDocument()
+    expect(within(ways).getByRole('heading', { level: 3, name: /2D levels/ })).toBeInTheDocument()
+    expect(within(ways).getByRole('link', { name: 'Build in 3D' })).toHaveAttribute('href', '/build')
+    expect(within(ways).getByRole('link', { name: 'Build in 2D' })).toHaveAttribute('href', '/2d/build')
+    expect(within(ways).getByRole('link', { name: 'Play a course' })).toHaveAttribute('href', '/2d')
+    expect(within(ways).getByText(/the 3D \/ 2D switch at the top of the builder/)).toBeInTheDocument()
+
+    const nav = screen.getByRole('navigation', { name: BRAND_NAME })
+    expect(within(nav).getByRole('link', { name: '2D levels' })).toHaveAttribute('href', '#two-ways')
+    expect(screen.getByText('2D levels', { selector: 'dt' })).toBeInTheDocument()
+  })
+
+  it('routes the 2D calls to action through the platformerHref contract', () => {
+    render(<LandingPage platformerHref="/2d/build?new=1" />)
+    expect(screen.getByRole('link', { name: 'Make a 2D level' })).toHaveAttribute('href', '/2d/build?new=1')
+    expect(screen.getByRole('link', { name: 'Build in 2D' })).toHaveAttribute('href', '/2d/build?new=1')
   })
 
   it('names the LEGO Group non-affiliation honestly', () => {

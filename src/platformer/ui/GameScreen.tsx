@@ -1,0 +1,680 @@
+import { Hammer, House, Lock, Menu as MenuIcon, Pause, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import type { Feel } from '@brick-studio/platformer-core/engine/feel'
+import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import { browserClassroomClient } from '../../classroom/client'
+import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
+import { InviteSheet } from '../../classroom/InviteSheet'
+import { DimensionSwitch, useClassroomSession } from '../../shell'
+import { Button, SaveStatus, type SaveStatusSource } from '../../ui'
+import { CATEGORIES, PALETTE, type Category } from '../editor/palette'
+import { GameSession, type Mode, type RoomOptions } from '../game/session'
+import { playerColor } from '../render/art/palette'
+import { formatTime } from '../render/renderer'
+import { CloudLevelSaver, createCloudLevel } from './cloudLevel'
+import { Dock } from './Dock'
+import { saveDraft } from './drafts'
+import { FeelPanel } from './FeelPanel'
+import { loadFeel, saveFeel } from './feelStore'
+import { Menu } from './Menu'
+import { clientKey, hasSeen, markSeen, saveSoundPrefs, soundPrefs, type SoundPrefs } from './prefs'
+import { encodeShareCode } from './shareCode'
+import { TouchControls } from './TouchControls'
+
+export type LevelSource =
+  | { kind: 'course'; id: string }
+  | { kind: 'draft'; id: string }
+  | { kind: 'new' }
+  | { kind: 'shared' }
+  /** An account level (a classroom world holding a 2D level), edited alone. */
+  | { kind: 'cloud'; world: ClassroomWorld }
+  /** A live room: a guest room opened by link, or a class level's room. */
+  | { kind: 'room'; roomKind: 'guest' | 'classroom'; roomId: string }
+
+interface Props {
+  level: LevelDesign
+  source: LevelSource
+  startMode: Mode
+  onExit: () => void
+  exitLabel?: string
+  /** Solo courses: go on to the next course, if there is one. */
+  onNext?: () => void
+  /** Join a live room instead of playing alone. */
+  room?: Omit<RoomOptions, 'key' | 'lag'>
+}
+
+interface Clear {
+  time: number
+  best: number
+  newBest: boolean
+}
+
+type Hint = 'play' | 'build' | null
+
+const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches
+
+/**
+ * A 2D level in progress. Playing shows the game and two buttons (Build, Menu); building adds the 3D ⇄ 2D switch,
+ * Play, Undo and Redo on top and one bar of things to place below. Everything else is in the menu.
+ *
+ * Where edits go: an account level saves to the account a moment after each change; a signed-in student's new
+ * level becomes an account level on its first edit (so it shows up in My worlds, ready to share); guests keep a
+ * draft in this browser; rooms save by themselves.
+ */
+export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext, room }: Props) {
+  const hostRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sessionRef = useRef<GameSession | null>(null)
+  const draftId = useRef<string | null>(source.kind === 'draft' ? source.id : null)
+  const savedEdits = useRef(0)
+  const toastTimer = useRef(0)
+  const saver = useRef<CloudLevelSaver | null>(null)
+  const creatingCloud = useRef(false)
+  const account = useClassroomSession()
+  const signedIn = account.status === 'student' || account.status === 'teacher'
+  const signedInRef = useRef(signedIn)
+  signedInRef.current = signedIn
+  const inRoom = !!room
+  const [feel, setFeel] = useState<Feel>(loadFeel)
+  const [feelOpen, setFeelOpen] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const [mode, setMode] = useState<Mode>(startMode)
+  const [category, setCategory] = useState<Category>('terrain')
+  const [sound, setSound] = useState<SoundPrefs>(() => soundPrefs(inRoom))
+  const [showStats, setShowStats] = useState(false)
+  const [touch, setTouch] = useState(coarse)
+  const [toast, setToast] = useState<string | null>(null)
+  const [title, setTitle] = useState(level.title)
+  const [hint, setHint] = useState<Hint>(null)
+  const [portrait, setPortrait] = useState(false)
+  const [portraitOk, setPortraitOk] = useState(false)
+  const [clear, setClear] = useState<Clear | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const [classmates, setClassmates] = useState<ClassroomClassmate[] | null>(null)
+  const [classmatesError, setClassmatesError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [, refresh] = useState(0)
+
+  const say = (msg: string) => {
+    setToast(msg)
+    window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(null), 3200)
+  }
+
+  useEffect(() => {
+    const host = hostRef.current!
+    // ?lag=150 simulates that many milliseconds of network delay each way (for testing).
+    const lag = Number(new URLSearchParams(location.search).get('lag') ?? 0) || 0
+    const s = new GameSession(canvasRef.current!, level, {
+      feel: loadFeel(),
+      room: room ? { ...room, lag, key: clientKey() } : undefined,
+      recordKey: source.kind === 'course' ? `course:${source.id}` : null,
+    })
+    sessionRef.current = s
+    if (source.kind === 'cloud' && source.world.canEdit) saver.current = new CloudLevelSaver(source.world, () => refresh((n) => n + 1))
+    // Dev builds expose the session for scripted play-testing from the console.
+    if (import.meta.env.DEV) (window as unknown as { __game2d: GameSession }).__game2d = s
+    const prefs = soundPrefs(inRoom)
+    s.sound.setMuted(prefs.muted)
+    s.sound.setMusic(prefs.music)
+    s.onStatus = () => refresh((n) => n + 1)
+    s.onMenu = () => setMenu((m) => !m)
+    s.onModeChange = () => setMode(s.mode)
+    s.onToast = say
+    // Let the goal fanfare play, then offer what to do next.
+    s.onClear = (time, best, newBest) =>
+      window.setTimeout(() => {
+        if (s.player.clearTime === time) setClear({ time, best, newBest })
+      }, 1600)
+    s.editor.onChange = () => refresh((n) => n + 1)
+    s.onRoom = () => {
+      refresh((n) => n + 1)
+      setTitle(s.timeline.world.design.title)
+    }
+    if (startMode === 'build') s.setMode('build')
+    const fit = () => {
+      const r = host.getBoundingClientRect()
+      s.resize(r.width, r.height, window.devicePixelRatio || 1)
+    }
+    const ro = new ResizeObserver(fit)
+    ro.observe(host)
+    fit()
+    s.start()
+
+    // Keep the player's work: save a moment after edits, and on the way out.
+    const save = () => {
+      if (s.room || s.editCount === savedEdits.current) return
+      savedEdits.current = s.editCount
+      const design = s.timeline.world.design
+      if (saver.current) return saver.current.schedule(design)
+      if (source.kind === 'cloud') return // someone else's level, opened to look at
+      if (signedInRef.current && !creatingCloud.current) {
+        // A signed-in builder's level goes to the account on its first edit, so it is in My worlds, ready to share.
+        creatingCloud.current = true
+        createCloudLevel(design)
+          .then((world) => {
+            saver.current = new CloudLevelSaver(world, () => refresh((n) => n + 1))
+            saver.current.schedule(s.timeline.world.design)
+            window.history.replaceState(window.history.state, '', `/2d/build?world=${encodeURIComponent(world.id)}`)
+            say('Saved to your account. Find it in My worlds.')
+          })
+          .catch((error: { code?: string; message?: string }) => {
+            creatingCloud.current = false
+            draftId.current = saveDraft(draftId.current, s.timeline.world.design)
+            say(error?.code === 'world_limit' ? 'Your account is full, so this level is saved in this browser only.' : 'Could not save to your account, so this level is saved in this browser for now.')
+          })
+        return
+      }
+      if (!creatingCloud.current) draftId.current = saveDraft(draftId.current, design)
+    }
+    const autosave = window.setInterval(save, 1000)
+    const unlock = () => s.sound.unlock()
+    const onTouch = () => setTouch(true)
+    const onHide = () => {
+      if (document.visibilityState !== 'hidden') return
+      save()
+      void saver.current?.flush()
+    }
+    window.addEventListener('pointerdown', unlock)
+    window.addEventListener('keydown', unlock)
+    window.addEventListener('touchstart', onTouch, { passive: true })
+    window.addEventListener('beforeunload', save)
+    document.addEventListener('visibilitychange', onHide)
+    return () => {
+      save()
+      void saver.current?.flush()
+      window.clearInterval(autosave)
+      ro.disconnect()
+      s.stop()
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+      window.removeEventListener('touchstart', onTouch)
+      window.removeEventListener('beforeunload', save)
+      document.removeEventListener('visibilitychange', onHide)
+      sessionRef.current = null
+    }
+    // The session is created once per level; later prop changes are not expected.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [level])
+
+  // Solo games pause while a menu or card is open; in rooms the world keeps going but you stand still.
+  const covered = menu || !!clear || sharing
+  useEffect(() => {
+    const s = sessionRef.current
+    if (!s) return
+    s.setPaused(covered && s.solo)
+    s.input.setSuspended(covered)
+  }, [covered])
+
+  // Back (including Safari's edge swipe) opens the menu instead of leaving the game.
+  useEffect(() => {
+    history.pushState({ p2dGame: true }, '')
+    const onPop = () => {
+      history.pushState({ p2dGame: true }, '')
+      setMenu(true)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  useEffect(() => {
+    if (typeof matchMedia === 'undefined') return
+    const mq = matchMedia('(orientation: portrait)')
+    const on = () => setPortrait(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+
+  // First-time hints: controls when you first play, how to place things when you first build.
+  useEffect(() => {
+    if (mode === 'play' && !hasSeen('play')) {
+      markSeen('play')
+      setHint('play')
+      const t = window.setTimeout(() => setHint((h) => (h === 'play' ? null : h)), 9000)
+      return () => window.clearTimeout(t)
+    }
+    if (mode === 'build' && (!hasSeen('build') || source.kind === 'new')) {
+      markSeen('build')
+      setHint('build')
+      return
+    }
+    setHint((h) => (h === 'build' && mode !== 'build' ? null : h))
+  }, [mode, source.kind])
+
+  // Keyboard shortcuts that are not movement.
+  const spaceHeld = useRef(false)
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const s = sessionRef.current
+      if (!s) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      if (e.code === 'Backquote') setFeelOpen((v) => !v)
+      if (e.code === 'F3') {
+        e.preventDefault()
+        setShowStats((v) => !v)
+      }
+      if (s.mode !== 'build' || s.input.suspended) return
+      const mod = e.metaKey || e.ctrlKey
+      if (mod && e.code === 'KeyZ') {
+        e.preventDefault()
+        if (e.shiftKey) s.editor.redo()
+        else s.editor.undo()
+        return
+      }
+      if (mod && e.code === 'KeyY') {
+        e.preventDefault()
+        s.editor.redo()
+        return
+      }
+      if (mod) return
+      if (e.code === 'Space') spaceHeld.current = true
+      if (e.code === 'KeyE') s.editor.setErasing(!s.editor.erasing)
+      if (e.code === 'KeyR') s.editor.flip()
+      if (e.code === 'KeyP' && s.editor.hover) {
+        s.placeResume(s.editor.hover[0], s.editor.hover[1])
+        say('Play will start here')
+      }
+      if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+        const i = CATEGORIES.findIndex((c) => c.id === category)
+        const next = CATEGORIES[(i + (e.code === 'BracketLeft' ? CATEGORIES.length - 1 : 1)) % CATEGORIES.length]
+        setCategory(next.id)
+      }
+      const digit = /^Digit([1-9])$/.exec(e.code)
+      if (digit) {
+        const items = PALETTE.filter((p) => p.category === category)
+        const item = items[Number(digit[1]) - 1]
+        if (item) s.editor.select(item)
+      }
+    }
+    const up = (e: KeyboardEvent) => {
+      if (e.code === 'Space') spaceHeld.current = false
+    }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+    }
+  }, [category])
+
+  // Pointer input for building: one finger or the mouse paints, two fingers or space/middle-drag pan.
+  const pointers = useRef(new Map<number, { x: number; y: number }>())
+  const panning = useRef(false)
+  const worldAt = (e: React.PointerEvent) => {
+    const s = sessionRef.current!
+    return s.renderer.toWorld(e.clientX, e.clientY, Math.round(s.camera.x), Math.round(s.camera.y))
+  }
+  const onPointerDown = (e: React.PointerEvent) => {
+    const s = sessionRef.current
+    if (!s || s.mode !== 'build') return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointers.current.size >= 2 || e.button === 1 || spaceHeld.current) {
+      // A second finger means pan: take back whatever the first finger just placed.
+      if (pointers.current.size >= 2) s.editor.abortStroke()
+      else s.editor.cancelStroke()
+      panning.current = true
+      return
+    }
+    const [wx, wy] = worldAt(e)
+    s.editor.pointerDown(wx, wy, e.button === 2)
+  }
+  const onPointerMove = (e: React.PointerEvent) => {
+    const s = sessionRef.current
+    if (!s || s.mode !== 'build') return
+    const prev = pointers.current.get(e.pointerId)
+    if (panning.current && prev) {
+      const r = s.renderer.canvas.getBoundingClientRect()
+      const k = s.renderer.width / r.width / Math.max(1, pointers.current.size)
+      s.panCamera(-(e.clientX - prev.x) * k, -(e.clientY - prev.y) * k)
+      pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      return
+    }
+    if (prev) pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const [wx, wy] = worldAt(e)
+    s.editor.pointerMove(wx, wy)
+  }
+  const onPointerUp = (e: React.PointerEvent) => {
+    const s = sessionRef.current
+    pointers.current.delete(e.pointerId)
+    if (pointers.current.size === 0) panning.current = false
+    s?.editor.pointerUp()
+  }
+  const onWheel = (e: React.WheelEvent) => {
+    const s = sessionRef.current
+    if (!s || s.mode !== 'build') return
+    s.panCamera(e.deltaX * 0.5 + (e.shiftKey ? e.deltaY * 0.5 : 0), e.shiftKey ? 0 : e.deltaY * 0.5)
+  }
+
+  // Keep the level clear of whatever covers the bottom of the screen.
+  const dockRef = useRef<HTMLDivElement>(null)
+  const insetMode = useRef<Mode | null>(null)
+  useEffect(() => {
+    const s = sessionRef.current
+    if (!s) return
+    const dock = dockRef.current?.querySelector('.p2d-dock-bar')
+    if (mode === 'build') s.setBottomInset(dock ? window.innerHeight - dock.getBoundingClientRect().top + 8 : 0)
+    else s.setBottomInset(touch ? s.renderer.canvas.getBoundingClientRect().height * 0.22 : 0)
+    // Entering build mode: bring the player into the part of the screen the bar leaves free.
+    if (mode === 'build' && insetMode.current !== 'build') s.focusPlayer()
+    insetMode.current = mode
+  })
+
+  const s = sessionRef.current
+  const build = mode === 'build'
+  const copy = async (text: string, done: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      say(done)
+    } catch {
+      window.prompt('Copy this link', text)
+    }
+  }
+  const shareLink = async () => {
+    if (!s) return
+    const code = await encodeShareCode(s.timeline.world.design)
+    await copy(`${location.origin}/2d/play#l=${code}`, 'Link copied. Anyone who opens it gets this level.')
+  }
+  const inviteLink = source.kind === 'room' ? `${location.origin}/2d/${source.roomKind === 'guest' ? 'r' : 'w'}/${source.roomId}` : undefined
+  const invite = inviteLink ? () => void copy(inviteLink, source.kind === 'room' && source.roomKind === 'classroom' ? 'Link copied. Classmates who can open this level can join with it.' : 'Invite link copied') : undefined
+  const commitTitle = () => {
+    const t = title.trim().slice(0, 60) || 'Untitled level'
+    if (s && t !== s.timeline.world.design.title) s.applyEdit([{ o: 'title', title: t }])
+    setTitle(t)
+  }
+  const changeSound = (p: SoundPrefs) => {
+    setSound(p)
+    saveSoundPrefs(p, inRoom)
+    s?.sound.unlock()
+    s?.sound.setMuted(p.muted)
+    s?.sound.setMusic(p.music)
+  }
+  const changeFeel = (f: Feel) => {
+    setFeel(f)
+    saveFeel(f)
+    s?.setFeel(f)
+  }
+  const tryBuild = () => {
+    if (s?.setMode('build')) setMenu(false)
+  }
+  /** Leave once any account save has landed. */
+  const leave = async (then: () => void) => {
+    if (saver.current && !(await saver.current.flush())) {
+      say('Your level has not saved yet. Check your connection, then try again.')
+      return
+    }
+    then()
+  }
+  const switchTo3D = () => void leave(() => window.location.assign('/build'))
+
+  // Sharing an account level with the class: the same invite sheet as My worlds.
+  const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : null)
+  const canShareWithClass = !!cloudWorld && account.status === 'student' && cloudWorld.ownerId === account.user?.id && cloudWorld.kind === 'personal'
+  const openShare = () => {
+    const classId = account.classes?.[0]?.id
+    setMenu(false)
+    setSharing(true)
+    if (classmates !== null || !classId) return
+    browserClassroomClient.listClassmates(classId).then(setClassmates, (error: Error) => setClassmatesError(error.message))
+  }
+  const answerShare = async (next: ClassroomWorldSharing) => {
+    if (!cloudWorld || !s) return
+    setBusy(true)
+    try {
+      if (saver.current) {
+        saver.current.schedule(s.timeline.world.design)
+        await saver.current.flush()
+      }
+      const updated = await browserClassroomClient.setWorldSharing(cloudWorld.id, next)
+      if (saver.current) saver.current.world = { ...saver.current.world, ...updated }
+      setSharing(false)
+      // Building together happens in the level's live room, where the owner is already waiting.
+      if (next.visibility !== 'private' && next.canEdit) window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)
+      else say(next.visibility === 'private' ? 'Only you can see this level now.' : 'Shared. Your classmates can play it from My worlds.')
+    } catch (error) {
+      say(error instanceof Error ? error.message : 'Sharing did not work. Try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveSource: SaveStatusSource = inRoom
+    ? { kind: 'live', connection: s?.roomStatus ?? 'connecting' }
+    : saver.current
+      ? { kind: 'cloud', status: saver.current.status }
+      : { kind: 'local' }
+  const players = s?.room?.players ?? []
+  const me = s?.room?.num ?? 0
+  const buildHint = hint === 'build' && build && (s?.editCount ?? 0) === 0
+  const playHint = hint === 'play' && !build && !!s?.joined && !covered
+  const offlineAfterJoin = !!s?.room && s.joined && s.roomStatus === 'offline'
+
+  return (
+    <div className={`p2d-game ${build ? 'p2d-building' : 'p2d-playing'} ${touch ? 'p2d-is-touch' : ''}`} data-joined={s?.joined ? 'yes' : 'no'}>
+      <div
+        className="p2d-stage"
+        ref={hostRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={() => s?.editor.leave()}
+        onContextMenu={(e) => e.preventDefault()}
+        onWheel={onWheel}
+      >
+        <canvas ref={canvasRef} className="p2d-canvas" />
+      </div>
+
+      {/* Buttons give focus back after a click so Space and Enter keep going to the game. */}
+      <div className="p2d-topbar" onPointerDown={(e) => e.stopPropagation()} onClickCapture={(e) => (e.target as HTMLElement).closest('button')?.blur()}>
+        <div className="p2d-tb-start">
+          {build && (
+            <>
+              {!inRoom && <DimensionSwitch current="2d" onSwitch={switchTo3D} />}
+              <Button variant="primary" icon={<Play size={18} />} onClick={() => s?.setMode('play')} title="Play from your player (Tab)" className="p2d-pill">
+                Play
+              </Button>
+              <Button iconOnly icon={<Undo2 size={18} />} aria-label="Undo" title="Undo" disabled={!s?.editor.undoStack.length} onClick={() => s?.editor.undo()}>
+                Undo
+              </Button>
+              <Button iconOnly icon={<Redo2 size={18} />} aria-label="Redo" title="Redo" disabled={!s?.editor.redoStack.length} onClick={() => s?.editor.redo()}>
+                Redo
+              </Button>
+              <SaveStatus autoCompact source={saveSource} className="p2d-save" />
+            </>
+          )}
+        </div>
+        <div className="p2d-tb-center">
+          {s?.room && s.joined && (
+            <button type="button" className="p2d-dots" onClick={() => setMenu(true)} aria-label={`${players.length} players in the room`}>
+              {players.slice(0, 16).map((p) => (
+                <span key={p.num} className={`p2d-dot ${p.num === me ? 'p2d-me' : ''}`} style={{ background: playerColor(p.num)[0] }} />
+              ))}
+              <span className="p2d-count">{players.length}</span>
+            </button>
+          )}
+          {s?.room && s.joined && (s.roomStatus === 'reconnecting' || s.roomStatus === 'connecting') && <span className="p2d-pill-note">Reconnecting…</span>}
+        </div>
+        <div className="p2d-tb-end">
+          {!build && s && (
+            <Button icon={s.canBuild ? <Hammer size={18} /> : <Lock size={18} />} onClick={tryBuild} title={s.buildBlockedReason ?? 'Build (Tab)'} className={`p2d-pill ${s.canBuild ? '' : 'p2d-locked'}`}>
+              Build
+            </Button>
+          )}
+          <Button iconOnly icon={s && !s.solo ? <MenuIcon size={20} /> : <Pause size={20} />} aria-label="Menu" title="Menu (Esc)" onClick={() => setMenu(true)}>
+            Menu
+          </Button>
+        </div>
+      </div>
+
+      {build && s && (
+        <div ref={dockRef}>
+          <Dock editor={s.editor} theme={s.timeline.world.design.theme} category={category} onCategory={setCategory} />
+        </div>
+      )}
+      {!build && touch && s && !covered && <TouchControls input={s.input} />}
+
+      {playHint && (
+        <div className="p2d-hint p2d-hint-top" role="status">
+          {touch ? (
+            <>
+              Slide on the pad to move. <b>Jump</b> jumps, hold it to go higher. Hold <b>Run</b> to go fast.
+            </>
+          ) : (
+            <>
+              <kbd>←</kbd> <kbd>→</kbd> move · <kbd>Space</kbd> jumps (hold to go higher) · hold <kbd>Shift</kbd> to run
+            </>
+          )}
+          {source.kind === 'course' && <span className="p2d-hint-goal"> Reach the flag at the end!</span>}
+        </div>
+      )}
+      {buildHint && (
+        <div className="p2d-hint p2d-hint-dock" role="status">
+          {touch ? 'Pick something below, then tap or drag to place it. Two fingers look around.' : 'Pick something below, then click or drag to place it. Right-click erases.'}
+        </div>
+      )}
+
+      {s?.room && !s.joined && (
+        <div className="p2d-overlay">
+          <div className="p2d-card">
+            <p className="p2d-lead">{s.roomStatus === 'offline' ? s.roomDetail || 'Could not join the room.' : 'Joining the room…'}</p>
+            {s.roomStatus === 'offline' && (
+              <Button fullWidth icon={<House size={18} />} onClick={onExit}>
+                {exitLabel ?? 'Back'}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+      {offlineAfterJoin && s?.roomDetail && (
+        <div className="p2d-overlay">
+          <div className="p2d-card">
+            <p className="p2d-lead">{s.roomDetail}</p>
+            <Button fullWidth icon={<House size={18} />} onClick={onExit}>
+              {exitLabel ?? 'Back'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {clear && !menu && (
+        <div className="p2d-overlay">
+          <div className="p2d-card p2d-clear" role="dialog" aria-label="Level clear">
+            <p className="p2d-kicker">{source.kind === 'course' ? 'Course clear' : 'Level clear'}</p>
+            <h2 className="p2d-clear-title">{clear.newBest ? 'New best time!' : 'You made it!'}</h2>
+            <p className="p2d-clear-time">
+              <span>Time</span> {formatTime(clear.time)}
+              {clear.best >= 0 && !clear.newBest && (
+                <>
+                  {' '}
+                  · <span>Best</span> {formatTime(clear.best)}
+                </>
+              )}
+            </p>
+            {onNext && (
+              <Button variant="primary" fullWidth icon={<Play size={18} />} onClick={onNext} autoFocus>
+                Next course
+              </Button>
+            )}
+            <Button
+              variant={onNext ? 'secondary' : 'primary'}
+              fullWidth
+              icon={<RotateCcw size={18} />}
+              autoFocus={!onNext}
+              onClick={() => {
+                setClear(null)
+                sessionRef.current?.restartRun()
+              }}
+            >
+              Play again
+            </Button>
+            {source.kind !== 'course' && s?.canBuild && (
+              <Button
+                fullWidth
+                icon={<Hammer size={18} />}
+                onClick={() => {
+                  setClear(null)
+                  sessionRef.current?.setMode('build')
+                }}
+              >
+                Keep building
+              </Button>
+            )}
+            <Button fullWidth variant="quiet" icon={<House size={18} />} onClick={() => void leave(onExit)}>
+              {exitLabel ?? 'Back'}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {touch && portrait && !portraitOk && !menu && (
+        <div className="p2d-overlay p2d-rotate">
+          <div className="p2d-card">
+            <div className="p2d-phone" aria-hidden="true" />
+            <p className="p2d-lead">Turn sideways for a bigger view</p>
+            <Button fullWidth onClick={() => setPortraitOk(true)}>
+              Play like this
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="p2d-toast" role="status">
+          {toast}
+        </div>
+      )}
+
+      {showStats && s && (
+        <div className="p2d-stats">
+          {s.stats.fps} fps · sim {s.stats.simMs.toFixed(2)} ms · draw {s.stats.renderMs.toFixed(2)} ms · {s.stats.entities} things · tick {s.stats.tick} · rollbacks {s.stats.rollbacks}
+          {s.room ? ` · resyncs ${s.stats.resyncs} · ping ${s.room.rtt} ms` : ''} · {s.renderer.width}×{s.renderer.height} @{s.renderer.scale}x
+        </div>
+      )}
+
+      {s && (
+        <Menu
+          open={menu}
+          session={s}
+          building={build}
+          title={title}
+          onTitle={setTitle}
+          onTitleDone={commitTitle}
+          sound={sound}
+          onSound={changeSound}
+          touch={touch}
+          onClose={() => setMenu(false)}
+          onRestart={() => {
+            setMenu(false)
+            s.restartRun()
+          }}
+          onShareLink={s.solo ? () => void shareLink() : undefined}
+          onShareWithClass={canShareWithClass ? openShare : undefined}
+          onInvite={invite}
+          inviteLink={inviteLink}
+          onFeel={() => {
+            setMenu(false)
+            setFeelOpen(true)
+          }}
+          onExit={() => void leave(onExit)}
+          exitLabel={exitLabel ?? 'Back'}
+        />
+      )}
+      {sharing && cloudWorld && (
+        <InviteSheet
+          world={cloudWorld}
+          className={account.className ?? 'your class'}
+          classmates={classmates}
+          classmatesError={classmatesError || undefined}
+          busy={busy}
+          onInvite={(next) => void answerShare(next)}
+          onStopSharing={cloudWorld.visibility !== 'private' ? () => void answerShare({ visibility: 'private', canEdit: false }) : undefined}
+          onClose={() => setSharing(false)}
+        />
+      )}
+      {feelOpen && <FeelPanel feel={feel} onChange={changeFeel} onClose={() => setFeelOpen(false)} />}
+    </div>
+  )
+}

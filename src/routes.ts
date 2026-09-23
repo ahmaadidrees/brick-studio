@@ -1,6 +1,9 @@
 export const BUILD_PATH = '/build'
 
-export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'join' | 'worlds' | 'class' | 'class-projector' | 'not-found'
+export type AppRoute = 'landing' | 'build' | 'published' | 'live' | 'teacher-callback' | 'dev-ui' | 'join' | 'worlds' | 'class' | 'class-projector' | 'platformer' | 'not-found'
+
+/** The 2D side: `/2d` and everything under it (the 2D chunk picks the page, see src/platformer/routes2d.ts). */
+export const PLATFORMER_PATH = '/2d'
 
 /**
  * Account entry intents carried by `/build?classroom=<intent>`.
@@ -38,6 +41,7 @@ export function resolveAppRoute(
   if (pathname === '/auth/teacher-callback') return { route: 'teacher-callback' }
   if (pathname === '/dev/ui' && dev) return { route: 'dev-ui' }
   if (/^\/live\/[^/]+\/?$/.test(pathname)) return { route: 'live' }
+  if (pathname === PLATFORMER_PATH || pathname.startsWith(`${PLATFORMER_PATH}/`)) return { route: 'platformer' }
   if (/^\/world\/?$/.test(pathname)) return { route: 'published' }
   if (pathname === '/build' || pathname === '/build/') {
     return { route: 'build', ...(pathname.endsWith('/') ? { canonicalPath: `${BUILD_PATH}${search}${hash}` } : {}) }

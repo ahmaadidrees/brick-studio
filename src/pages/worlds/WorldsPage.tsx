@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Blocks, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, MonitorSmartphone, Plus, Search, Settings, Users } from 'lucide-react'
+import { Blocks, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, MonitorSmartphone, Plus, Search, Settings, Square, Users } from 'lucide-react'
 import { BrickMark } from '../../brand'
 import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
@@ -10,7 +10,7 @@ import { InviteSheet } from '../../classroom/InviteSheet'
 import { markInvitesSeen, seenInviteIds, unseenInvites } from '../../classroom/inviteSeen'
 import { InviteBanner } from './InviteBanner'
 import {
-  browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isInviteOnly, isMine, isShared, liveHref, matchesSearch, readLocalDraft,
+  browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isInviteOnly, isMine, isShared, liveHref, matchesSearch, NEW_LEVEL_2D_HREF, readLocalDraft,
   SAVE_DRAFT_HREF, sharedForBuilding, signInHref, type Classmate, type LocalDraft, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
 import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
@@ -244,10 +244,10 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     await client.setWorldHidden(world.id, !world.hiddenByTeacher); await reload()
     setNotice(world.hiddenByTeacher ? `“${world.title}” is visible to the class again.` : `“${world.title}” is hidden from the class.`)
   })
-  const createShared = (title: string, kind: 'class' | 'group') => {
+  const createShared = (title: string, kind: 'class' | 'group', format: 'brick' | '2d' = 'brick') => {
     if (!currentClass) return
     run(async () => {
-      await client.createSharedWorld(currentClass.id, title, kind); await reload()
+      await client.createSharedWorld(currentClass.id, title, kind, format); await reload()
       setNotice(kind === 'group' ? `“${title}” is ready. Add students in World controls.` : `“${title}” is ready for the whole class.`)
     })
   }
@@ -303,6 +303,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
           <div className="worlds-title-actions">
             {/* The one obvious way to start something, on every section of this page. */}
             <Button href={NEW_BUILD_HREF} variant="primary" icon={<Plus size={18} />}>New build</Button>
+            <Button href={NEW_LEVEL_2D_HREF} variant="secondary" icon={<Square size={18} />}>New 2D level</Button>
             {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
           </div>
         </div>
@@ -453,15 +454,17 @@ function EmptyState({ title, message, action }: { title: string; message: string
   </div>
 }
 
-/** Teacher-only: the existing create-shared-world contract (title + whole class / assigned group). */
-function StartSharedWorld({ busy, className, onCreate }: { busy: boolean; className: string; onCreate: (title: string, kind: 'class' | 'group') => void }) {
+/** Teacher-only: the create-shared-world contract (title + whole class / assigned group), as a 3D world or a 2D level. */
+function StartSharedWorld({ busy, className, onCreate }: { busy: boolean; className: string; onCreate: (title: string, kind: 'class' | 'group', format: 'brick' | '2d') => void }) {
   const [kind, setKind] = useState<'class' | 'group'>('class')
+  const [format, setFormat] = useState<'brick' | '2d'>('brick')
   const [title, setTitle] = useState('')
-  return <form className="worlds-start" onSubmit={event => { event.preventDefault(); if (title.trim()) { onCreate(title.trim(), kind); setTitle('') } }}>
+  return <form className="worlds-start" onSubmit={event => { event.preventDefault(); if (title.trim()) { onCreate(title.trim(), kind, format); setTitle('') } }}>
     <h2 className="worlds-section-title">Start a shared world</h2>
-    <p className="worlds-help">Starts as an empty plate; build in it from the studio. {className} can join it right away.</p>
+    <p className="worlds-help">{format === '2d' ? 'Starts as a 2D level with a start, a floor and a flag; build it together in the 2D builder.' : 'Starts as an empty plate; build in it from the studio.'} {className} can join it right away.</p>
     <div className="worlds-start-row">
       <TextField label="Shared world name" name="title" value={title} onChange={event => setTitle(event.target.value)} required maxLength={80} autoComplete="off" />
+      <SegmentedControl<'brick' | '2d'> label="Kind" showLabel value={format} onChange={setFormat} options={[{ value: 'brick', label: '3D world' }, { value: '2d', label: '2D level' }]} />
       <SegmentedControl<'class' | 'group'> label="Access" showLabel value={kind} onChange={setKind} options={[{ value: 'class', label: 'Whole class' }, { value: 'group', label: 'Assigned group' }]} />
       <Button type="submit" variant="primary" loading={busy} loadingLabel="Creating…" disabled={!title.trim()}>Start world</Button>
     </div>

@@ -1,4 +1,6 @@
 import { BUILD_PLATE_SIZES, DEFAULT_BUILD_PLATE_SIZE, createBrickStudioDocument, type BuildPlateSize } from '@brick-studio/core'
+import { createPlatformerDocument } from '@brick-studio/platformer-core/document'
+import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
 import { browserClassroomClient, type ClassroomClient } from '../../classroom/client'
 import type { ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
@@ -43,7 +45,8 @@ export type WorldsClient = {
   setWorldSharing: (id: string, sharing: WorldSharing) => Promise<WorldsWorld>
   setWorldHidden: (id: string, hidden: boolean) => Promise<WorldsWorld>
   copyWorld: (id: string) => Promise<WorldsWorld>
-  createSharedWorld: (classId: string, title: string, kind: 'class' | 'group') => Promise<WorldsWorld>
+  /** A class or group world for the teacher: a 3D build (the default) or a 2D level. */
+  createSharedWorld: (classId: string, title: string, kind: 'class' | 'group', format?: 'brick' | '2d') => Promise<WorldsWorld>
   signOut: () => Promise<void>
 }
 
@@ -69,9 +72,14 @@ export function createWorldsClient(client: ClassroomClient = browserClassroomCli
     setWorldSharing: (id, sharing) => client.request<{ world: WorldsWorld }>(`/worlds/${id}/sharing`, 'PATCH', sharing).then(world),
     setWorldHidden: (id, hidden) => client.request<{ world: WorldsWorld }>(`/worlds/${id}/visibility`, 'PATCH', { hiddenByTeacher: hidden }).then(world),
     copyWorld: id => client.request<{ world: WorldsWorld }>(`/worlds/${id}/copy`, 'POST').then(world),
-    createSharedWorld: (classId, title, kind) => client.request<{ world: WorldsWorld }>('/worlds', 'POST', { title, classId, kind, document: createBrickStudioDocument([]) }).then(world),
+    createSharedWorld: (classId, title, kind, format = 'brick') => client.request<{ world: WorldsWorld }>('/worlds', 'POST', { title, classId, kind, document: emptyDocument(format, title) }).then(world),
     signOut: () => client.signOut(),
   }
+}
+
+/** What a new shared world starts as: an empty plate, or a 2D level with a start, a floor and a flag. */
+export function emptyDocument(format: 'brick' | '2d', title: string) {
+  return format === '2d' ? createPlatformerDocument(createBlankLevel(160, 27, title.slice(0, 60))) : createBrickStudioDocument([])
 }
 
 export const browserWorldsClient = createWorldsClient()
@@ -102,14 +110,19 @@ export function readLocalDraft(storage: Pick<Storage, 'getItem'> = globalThis.lo
 
 // Shared helpers ----------------------------------------------------------------------------------
 
-/** Opening one of your own worlds hands it to the editor (W6 owns `/build?world=`). */
-export const buildHref = (world: Pick<WorldsWorld, 'id'>) => `/build?world=${encodeURIComponent(world.id)}`
+/** A 2D level (the `/2d` builder and rooms) rather than a 3D brick build. */
+export const isLevel2d = (world: Pick<WorldsWorld, 'format'>) => world.format === '2d'
+/** Opening one of your own worlds hands it to its editor: the 3D studio (`/build?world=`) or the 2D builder. */
+export const buildHref = (world: Pick<WorldsWorld, 'id' | 'format'>) =>
+  isLevel2d(world) ? `/2d/build?world=${encodeURIComponent(world.id)}` : `/build?world=${encodeURIComponent(world.id)}`
 /**
  * Joining or visiting someone else's world goes through the live room, the way
  * shared worlds are joined today: the room id is the world id without dashes
- * (`LiveWorldPage`), and the Worker's `canEdit` decides viewer or editor there.
+ * (`LiveWorldPage`, or `/2d/w/` for a 2D level), and the Worker's `canEdit` decides viewer or editor there.
  */
-export const liveHref = (world: Pick<WorldsWorld, 'id'>) => `/live/${world.id.replaceAll('-', '')}`
+export const liveHref = (world: Pick<WorldsWorld, 'id' | 'format'>) => `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+/** A new 2D level, next to "New build". */
+export const NEW_LEVEL_2D_HREF = '/2d/build?new=1'
 export const SAVE_DRAFT_HREF = '/build?classroom=save'
 export const CONTINUE_DRAFT_HREF = '/build'
 export const signInHref = (next = '/worlds') => `/join?mode=signin&next=${encodeURIComponent(next)}`

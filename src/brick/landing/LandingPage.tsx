@@ -9,6 +9,7 @@ import {
   Menu,
   Play,
   SlidersHorizontal,
+  Square,
   User,
   Users,
   X,
@@ -19,7 +20,7 @@ import { BRAND_NAME, BrandLockup } from '../../brand'
 import { Button } from '../../ui/Button'
 import { AppHeader } from '../../shell'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
-import { ClassroomVignette, HeroDiorama, NovaPlaceholder, ScenePlaceholder, StepArt } from './LandingArt'
+import { ClassroomVignette, HeroDiorama, NovaPlaceholder, PixelLevelArt, ScenePlaceholder, StepArt } from './LandingArt'
 import './landing.css'
 
 /*
@@ -35,8 +36,13 @@ const MEDIA_BASE = '/brand/media'
 export type LandingPageProps = {
   /** Destination of "Start building" / "Continue building"; account intents are appended as `?classroom=<intent>`. */
   studioHref?: string
+  /** Destination of the 2D builder ("Make a 2D level", "Build in 2D"). */
+  platformerHref?: string
   className?: string
 }
+
+/** The 2D side's own pages: courses, your levels, play with friends. */
+const PLATFORMER_HOME_HREF = '/2d'
 
 type AccountIntent = 'join' | 'signin' | 'teacher'
 
@@ -204,7 +210,7 @@ const FAQ = [
 
 /* ---------------------------------------------------------------- page --- */
 
-export function LandingPage({ studioHref = '/build', className }: LandingPageProps) {
+export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build', className }: LandingPageProps) {
   // Detected exactly as the studio does; reading never creates or mutates a draft.
   const [continueBuild] = useState(() => {
     try { return window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY) !== null } catch { return false }
@@ -214,6 +220,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
   const mainId = useId()
   const navId = useId()
   const stepsId = useId()
+  const waysId = useId()
   const worldsId = useId()
   const yoursId = useId()
   const classroomId = useId()
@@ -275,6 +282,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
             </Button>
             <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
               <a className="landing-nav-link" href="#how-it-works">How it works</a>
+              <a className="landing-nav-link" href="#two-ways">2D levels</a>
               <a className="landing-nav-link" href="#teachers">For teachers</a>
               <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
             </nav>
@@ -311,6 +319,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
               Then step inside.
             </h1>
             <p className="landing-hero-lede">Create, explore, and build together in your browser.</p>
+            <p className="landing-hero-lede landing-hero-ways">Build with 3D bricks, or make a 2D level you can run and jump through.</p>
           </div>
           <div className="landing-hero-stage">
             <BrandPicture
@@ -327,6 +336,7 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
           <div className="landing-hero-actions">
             <p className="landing-cta-row landing-cta-stack">
               <StartCta href={studioHref} continueBuild={continueBuild} />
+              <CtaLink href={platformerHref} icon={<Square size={18} />}>Make a 2D level</CtaLink>
               <CtaLink href={joinHref} icon={<Users size={18} />}>Join a class</CtaLink>
             </p>
             <p className="landing-hero-signin">
@@ -334,6 +344,36 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
             </p>
             <p className="landing-hero-trust">No account needed to start.</p>
           </div>
+        </section>
+
+        <section id="two-ways" className="landing-section landing-ways" aria-labelledby={waysId}>
+          <SectionHeading
+            id={waysId}
+            eyebrow="Two ways to build"
+            title="Stack it in 3D. Or draw it in 2D."
+            lede="Both save the same way, share with your class the same way, and are one tap apart: the 3D / 2D switch at the top of the builder."
+          />
+          <ul className="landing-ways-grid">
+            <li className="landing-way">
+              <div className="landing-way-art"><StepArt kind="build" /></div>
+              <div className="landing-way-copy">
+                <h3>3D worlds</h3>
+                <p>Stack bricks on a plate, pick a scene and a character, then step inside and explore what you built.</p>
+                <CtaLink href={studioHref} variant="primary" icon={<Play size={18} />}>Build in 3D</CtaLink>
+              </div>
+            </li>
+            <li className="landing-way landing-way-2d">
+              <div className="landing-way-art landing-way-art-pixel"><PixelLevelArt /></div>
+              <div className="landing-way-copy">
+                <h3>2D levels <span className="landing-way-new">New</span></h3>
+                <p>Place blocks, springs and enemies on a side-scrolling level, then run and jump through it. Play three ready-made courses, or build with friends in one live level.</p>
+                <p className="landing-cta-row landing-cta-row-compact">
+                  <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Build in 2D</CtaLink>
+                  <CtaLink href={PLATFORMER_HOME_HREF} icon={<Play size={18} />}>Play a course</CtaLink>
+                </p>
+              </div>
+            </li>
+          </ul>
         </section>
 
         <section id="how-it-works" className="landing-section landing-how" aria-labelledby={stepsId}>
@@ -519,6 +559,8 @@ export function LandingPage({ studioHref = '/build', className }: LandingPagePro
             <dl>
               <dt>Building</dt>
               <dd>Pick a brick from the drawer and tap or click the plate to place it. Undo and redo sit in the toolbar. Explore switches to your character; walk and jump with the keyboard, or with touch controls on phones and tablets.</dd>
+              <dt>2D levels</dt>
+              <dd>Choose 2D with the 3D / 2D switch in the builder. Pick blocks, springs, enemies or the goal flag from the bar at the bottom and tap or click to place them, then press Play to run through your level. Signed-in students find their levels in My Worlds and share them with the class the same way as 3D worlds.</dd>
               <dt>Saving</dt>
               <dd>Guest drafts save automatically in this browser. The world menu can export any build as a file and import it again later. Signed-in students save to My Worlds.</dd>
               <dt>Sharing</dt>

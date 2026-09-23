@@ -309,3 +309,59 @@ export function ClassroomVignette() {
     </svg>
   )
 }
+
+/**
+ * A side-scrolling level in the 2D mode's pixel style: sky, a hill, a ? block with coins, the hero and a walker on
+ * a grass-and-brick floor. Drawn on a 4 px grid with crisp edges so it reads as pixel art at any size.
+ */
+export function PixelLevelArt() {
+  const px = (x: number, y: number, w: number, h: number, fill: string, key?: string) => <rect key={key} x={x * 4} y={y * 4} width={w * 4} height={h * 4} fill={fill} />
+  const bricks = []
+  for (let row = 0; row < 3; row++) {
+    for (let col = -1; col < 21; col++) bricks.push(px(col * 4 + (row % 2) * 2, 34 + row * 3, 4, 3, '#D4884A', `b${row}-${col}`), px(col * 4 + (row % 2) * 2, 34 + row * 3, 4, 1, '#F2B273', `h${row}-${col}`), px(col * 4 + (row % 2) * 2 + 3, 34 + row * 3, 1, 3, '#A45D2C', `s${row}-${col}`))
+  }
+  return (
+    <svg className="landing-pixel-art" viewBox="0 0 320 180" preserveAspectRatio="xMidYMid slice" shapeRendering="crispEdges" aria-hidden="true" focusable="false">
+      {px(0, 0, 80, 45, '#79B8FF')}
+      {/* clouds */}
+      {px(8, 6, 12, 3, '#FFFFFF')}
+      {px(10, 4, 7, 2, '#FFFFFF')}
+      {px(58, 9, 10, 3, '#FFFFFF')}
+      {px(60, 7, 5, 2, '#FFFFFF')}
+      {/* hill */}
+      {px(46, 24, 16, 8, '#66CC6A')}
+      {px(49, 21, 10, 3, '#66CC6A')}
+      {px(52, 19, 4, 2, '#66CC6A')}
+      {px(55, 21, 4, 11, '#3F9E52')}
+      {/* coins */}
+      {px(30, 11, 2, 3, '#FFC22E')}
+      {px(35, 9, 2, 3, '#FFC22E')}
+      {px(40, 11, 2, 3, '#FFC22E')}
+      {/* ? block */}
+      {px(33, 17, 6, 6, '#263C51')}
+      {px(34, 18, 4, 4, '#FFC22E')}
+      {px(35, 18, 2, 1, '#FFFFFF')}
+      {px(36, 19, 1, 1, '#FFFFFF')}
+      {px(36, 21, 1, 1, '#FFFFFF')}
+      {/* hero */}
+      {px(14, 24, 5, 2, '#FFCF33')}
+      {px(14, 26, 5, 2, '#F6C08C')}
+      {px(17, 26, 1, 1, '#263C51')}
+      {px(14, 28, 5, 3, '#2F6FE0')}
+      {px(13, 29, 1, 1, '#F6C08C')}
+      {px(19, 29, 1, 1, '#F6C08C')}
+      {px(14, 31, 2, 1, '#5A2E14')}
+      {px(17, 31, 2, 1, '#5A2E14')}
+      {/* walker */}
+      {px(66, 27, 5, 4, '#9AA3B8')}
+      {px(67, 28, 3, 1, '#E0453A')}
+      {px(66, 31, 2, 1, '#263C51')}
+      {px(69, 31, 2, 1, '#263C51')}
+      {px(68, 26, 1, 1, '#FFC22E')}
+      {/* floor */}
+      {px(0, 32, 80, 2, '#5FCF52')}
+      {px(0, 32, 80, 1, '#A8F07E')}
+      {bricks}
+    </svg>
+  )
+}

@@ -1,4 +1,5 @@
 import { rememberClass } from './rememberedClass'
+import { isPlatformerDocument } from '@brick-studio/platformer-core/document'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Blocks, CircleAlert, CircleCheck, LoaderCircle, LogOut, UserRound, Users } from 'lucide-react'
 import type { BrickStudioDocument } from '../brick/brickDocument'
@@ -196,6 +197,8 @@ export function ClassroomPanel({ intent, invitedClassCode, getDocument, onOpenWo
   })
   const openWorld = (world: ClassroomWorld) => void run(async () => {
     const result = await client.request<{ world: ClassroomWorld }>(`/worlds/${world.id}`)
+    // A 2D level opens in the 2D builder, never as a 3D build.
+    if (isPlatformerDocument(result.world.document)) { window.location.assign(`/2d/build?world=${encodeURIComponent(world.id)}`); return }
     if (!result.world.document) throw new Error('This world did not include a complete build.')
     await onOpenWorld(result.world.document, result.world); onClose()
   })

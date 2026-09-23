@@ -197,6 +197,8 @@
 .worlds-card-art svg { width: auto; height: 100%; }
 .worlds-plate { fill: var(--primary-soft); stroke: var(--border); stroke-width: 1.5; }
 .worlds-stud { fill: var(--primary); opacity: 0.55; }
+.worlds-card-art-2d { padding: 0; background: #79B8FF; }
+.worlds-card-art-2d svg { width: 100%; height: 100%; }
 .worlds-card-art-shared .worlds-plate { fill: var(--accent-soft); }
 .worlds-card-art-shared .worlds-stud { fill: var(--accent); opacity: 0.6; }
 .worlds-card-art-class .worlds-plate { fill: var(--warning-soft); }
@@ -220,6 +222,7 @@
   font-weight: 600;
 }
 .worlds-chip-shared { background: var(--accent-soft); color: var(--danger-text); }
+.worlds-chip-2d { background: var(--primary-soft); color: var(--primary-strong); }
 .worlds-chip-build { background: var(--primary-soft); color: var(--primary-strong); }
 .worlds-chip-look { background: var(--surface-2); color: var(--text-muted); }
 

@@ -481,9 +481,24 @@ describe('teacher', () => {
     fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Market day' } })
     fireEvent.click(screen.getByRole('button', { name: 'Start world' }))
 
-    await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Market day', 'class'))
+    await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Market day', 'class', 'brick'))
     expect(screen.getByRole('region', { name: 'Shared by students' })).toBeInTheDocument()
     expect(within(screen.getByRole('article', { name: 'Sky Bridge' })).getByRole('button', { name: 'Hide from class' })).toBeInTheDocument()
+
+    // The same form starts a 2D level for the class.
+    fireEvent.click(screen.getByRole('radio', { name: '2D level' }))
+    fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Platform party' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Start world' }))
+    await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Platform party', 'class', '2d'))
+    const card = await screen.findByRole('article', { name: 'Platform party' })
+    expect(within(card).getByText('2D level')).toBeInTheDocument()
+    expect(within(card).getByRole('link', { name: 'Join' })).toHaveAttribute('href', expect.stringMatching(/^\/2d\/w\/[a-z0-9-]+$/))
+  })
+
+  it('links 2D levels to the 2D builder and rooms, and offers a new 2D level beside New build', async () => {
+    draw(createFakeWorldsClient())
+    await settled()
+    expect(screen.getByRole('link', { name: 'New 2D level' })).toHaveAttribute('href', '/2d/build?new=1')
   })
 
   it('offers the way back to the class page: a header button and a link on the selected class', async () => {

@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Users } from 'lucide-react'
+import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Square, Users } from 'lucide-react'
 import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
-import { buildingCount, classmatesLabel, isInviteOnly, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
+import { buildingCount, classmatesLabel, isInviteOnly, isLevel2d, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
  * Plate-pattern card art. There are no thumbnails, so the card shows the build
@@ -11,6 +11,7 @@ import { buildingCount, classmatesLabel, isInviteOnly, isShared, plateSizeOf, sh
  * carry every fact.
  */
 export function PlateArt({ world }: { world: WorldsWorld }) {
+  if (isLevel2d(world)) return <LevelArt />
   const plate = plateSizeOf(world)
   const studs = plate === 128 ? 7 : plate === 96 ? 6 : 5
   const step = 100 / studs
@@ -24,6 +25,37 @@ export function PlateArt({ world }: { world: WorldsWorld }) {
       ))}
     </svg>
   </div>
+}
+
+/**
+ * Card art for a 2D level: a pixel side-scroller strip (sky, floor, a ? block and the hero). Decorative only; the
+ * "2D level" chip says it in words.
+ */
+export function LevelArt() {
+  const px = (x: number, y: number, w: number, h: number, fill: string) => <rect x={x * 4} y={y * 4} width={w * 4} height={h * 4} fill={fill} />
+  return <div className="worlds-card-art worlds-card-art-2d" aria-hidden="true">
+    <svg viewBox="0 0 100 100" role="presentation" focusable="false" shapeRendering="crispEdges" preserveAspectRatio="xMidYMid slice">
+      {px(0, 0, 25, 25, '#79B8FF')}
+      {px(3, 4, 6, 2, '#FFFFFF')}
+      {px(15, 6, 5, 2, '#FFFFFF')}
+      {px(11, 9, 4, 4, '#263C51')}
+      {px(12, 10, 2, 2, '#FFC22E')}
+      {px(5, 14, 3, 1, '#FFCF33')}
+      {px(5, 15, 3, 1, '#F6C08C')}
+      {px(5, 16, 3, 2, '#2F6FE0')}
+      {px(17, 15, 3, 3, '#9AA3B8')}
+      {px(0, 18, 25, 1, '#5FCF52')}
+      {px(0, 19, 25, 6, '#D4884A')}
+      {px(0, 21, 25, 1, '#A45D2C')}
+      {px(0, 23, 25, 1, '#A45D2C')}
+    </svg>
+  </div>
+}
+
+/** "2D level" on every 2D card, so the two kinds of world are easy to tell apart. */
+export function FormatChip({ world }: { world: WorldsWorld }) {
+  if (!isLevel2d(world)) return null
+  return <span className="worlds-chip-tag worlds-chip-2d"><Square size={14} aria-hidden="true" /> 2D level</span>
 }
 
 /**
@@ -123,7 +155,7 @@ export function WorldCard({ world, children, byline, chip, menu }: CardProps) {
       </div>
       {byline && <p className="worlds-card-owner">{byline}</p>}
       <p className="worlds-card-saved"><CloudCheck size={14} aria-hidden="true" /> <time dateTime={world.updatedAt} title={new Date(world.updatedAt).toLocaleString()}>{formatSavedDate(world.updatedAt)}</time></p>
-      {chip && <p className="worlds-card-chips">{chip}</p>}
+      {(chip || isLevel2d(world)) && <p className="worlds-card-chips"><FormatChip world={world} />{chip}</p>}
       <div className="worlds-card-actions">{children}</div>
     </div>
   </article>
