@@ -38,7 +38,7 @@
 .robo-drive > * { pointer-events: auto; }
 
 .robo-drive button { font-family: inherit; cursor: pointer; }
-.robo-drive button:focus-visible, .robo-drive-joystick:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
+.robo-drive button:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
 .robo-drive-spacer { flex: 1 1 auto; }
 
 /* ------------------------------------------------------------------ the bar */

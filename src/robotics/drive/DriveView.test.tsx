@@ -5,7 +5,7 @@ import { useBrickStore } from '../../brick/store'
 import { GATE_SECTION, loadWorld, storedPrograms, storedSection } from '../code/codeTestFixtures'
 import { LIVE_ROOM_CODE_LINE, useCodeView } from '../code/codeViewState'
 import { studioShortcutsSuspended } from '../code/studioKeys'
-import { GATE_IDS, ROVER_IDS, SIGNAL_IDS, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
+import { FOUR_WHEEL_IDS, GATE_IDS, ROVER_IDS, SIGNAL_IDS, fourWheelBricks, gateBricks, roverBricks, signalPostBricks } from '../model/fixtures'
 import { emptyRoboticsSection, type RoboticsSection } from '../model/section'
 import { installRoboticsParts } from '../parts/install'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
@@ -68,11 +68,17 @@ function advance(seconds: number) {
   act(() => useStageStore.getState().publishStageObservation(current.controller.observe()))
 }
 /** How far the chassis has moved along the robot's forward since the stage was built (world units). */
-const travelled = () => {
+const travelled = (hub: string = ROVER_IDS.hub) => {
   const current = stage()
-  const pose = current.controller.poses().get(current.controller.bodyOfBrick(ROVER_IDS.hub)!)!
+  const pose = current.controller.poses().get(current.controller.bodyOfBrick(hub)!)!
   const forward = current.creation.drivePair!.forward
   return pose.position.x * forward.x + pose.position.z * forward.z
+}
+/** The chassis's turn about the vertical since the stage was built, degrees (positive: to the left). */
+const turned = (hub: string) => {
+  const current = stage()
+  const { rotation: q } = current.controller.poses().get(current.controller.bodyOfBrick(hub)!)!
+  return (2 * Math.atan2(q.y, q.w) * 180) / Math.PI
 }
 const input = () => stage().controller.snapshot.input
 
@@ -168,6 +174,28 @@ describe('Drive', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Test plate' }))
     await running('testPlate')
     expect(stage().controller.props.map((prop) => prop.id)).toEqual(COURSE_IDS)
+    expect(documentJson()).toBe(before)
+  })
+
+  it('a four-wheel car drives too: all four motors, from the keys, on its own course', async () => {
+    const ids = FOUR_WHEEL_IDS
+    loadWorld(fourWheelBricks(), { ...emptyRoboticsSection(), creations: [{ id: 'car', name: 'Four-wheel car', anchorBrickIds: [ids.hub] }], connections: ([[ids.frontLeftMotor, 'A'], [ids.frontRightMotor, 'B'], [ids.backLeftMotor, 'C'], [ids.backRightMotor, 'D']] as const).map(([deviceId, port]) => ({ deviceId, hubId: ids.hub, port })) })
+    const before = documentJson()
+    await openDrive('car')
+    await running('testPlate')
+    expect(stage().controller.props.map((prop) => prop.id)).toEqual(COURSE_IDS)
+    fireEvent.keyDown(window, { key: 'ArrowUp' })
+    advance(1)
+    const motors = stage().controller.observe().motors
+    expect([ids.frontLeftMotor, ids.frontRightMotor, ids.backLeftMotor, ids.backRightMotor].every((id) => Math.abs(motors[id].powerPercent) > 50)).toBe(true)
+    expect(travelled(ids.hub)).toBeGreaterThan(1)
+    fireEvent.keyUp(window, { key: 'ArrowUp' })
+    fireEvent.keyDown(window, { key: 'a' })
+    advance(1.2)
+    fireEvent.keyUp(window, { key: 'a' })
+    // Four wheels skid round more slowly than the rover's two, but they turn it the way A says: left.
+    expect(turned(ids.hub)).toBeGreaterThan(15)
+    expect(storedPrograms('car')).toEqual([])
     expect(documentJson()).toBe(before)
   })
 

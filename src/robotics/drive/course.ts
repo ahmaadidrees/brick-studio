@@ -128,7 +128,9 @@ function wall(id: string, area: Pick<CourseArea, 'forward' | 'across'>, s: numbe
 /**
  * The course's props: the fence (four walls just outside the area, meeting at the corners) and
  * the posts that fit inside it: a pair either side of the robot's path, far enough apart for it
- * to drive between them, then one in the middle of its path further on.
+ * to drive between them, then one in the middle of its path further on. Where the plate leaves
+ * less room ahead (a robot built near its edge), the posts move in with the fence, and one that
+ * would stand too close to the robot or the fence is left out.
  */
 export function courseProps(area: CourseArea, footprint: Footprint): TestProp[] {
   const thick = COURSE.fenceThicknessStuds * STUD
@@ -149,10 +151,13 @@ export function courseProps(area: CourseArea, footprint: Footprint): TestProp[] 
   const width = footprint.t1 - footprint.t0
   const middle = (footprint.t0 + footprint.t1) / 2
   const fits = (s: number, t: number) => s - post / 2 > footprint.s1 + STUD && s + post / 2 < area.s1 - clear && t - post / 2 > area.t0 + clear && t + post / 2 < area.t1 - clear
-  const gateS = footprint.s1 + Math.max(7 * STUD, 0.55 * width) + post / 2
+  const room = area.s1 - footprint.s1
+  const gate = Math.min(Math.max(7 * STUD, 0.55 * width), 0.45 * room)
+  const far = Math.min(Math.max(14 * STUD, 1.15 * width), room - post - clear - STUD)
   const gateT = width / 2 + 3 * STUD
-  const farS = footprint.s1 + Math.max(14 * STUD, 1.15 * width) + post / 2
-  const posts: [string, number, number, string][] = [['post-right', gateS, middle - gateT, COURSE.gateColor], ['post-left', gateS, middle + gateT, COURSE.gateColor], ['post-far', farS, middle, COURSE.farColor]]
+  const posts: [string, number, number, string][] = []
+  if (gate >= 3 * STUD) posts.push(['post-right', footprint.s1 + gate + post / 2, middle - gateT, COURSE.gateColor], ['post-left', footprint.s1 + gate + post / 2, middle + gateT, COURSE.gateColor])
+  if (far >= gate + post + 2 * STUD) posts.push(['post-far', footprint.s1 + far + post / 2, middle, COURSE.farColor])
   for (const [id, s, t, color] of posts) if (fits(s, t)) props.push(wall(id, area, s, t, post, post, postHeight, color))
   return props
 }

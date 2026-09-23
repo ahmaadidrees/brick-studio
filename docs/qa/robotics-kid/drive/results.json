@@ -1,0 +1,484 @@
+{
+  "origin": "http://127.0.0.1:5254",
+  "viewports": [
+    "1366x768",
+    "1024x768"
+  ],
+  "at": "2026-09-23T16:12:19.807Z",
+  "measured": {
+    "1366.framing": {
+      "insets": {
+        "left": 0,
+        "right": 286.75,
+        "top": 67,
+        "bottom": 0
+      },
+      "courseMarginsPx": {
+        "left": 110,
+        "right": 109,
+        "top": 95,
+        "bottom": 99
+      },
+      "robotPlateWidthPx": 97
+    },
+    "1366.joystick": {
+      "knobUp": 92,
+      "speedWhileHeld": 8.2,
+      "speedShown": "Speed8.2studs a second",
+      "movedForwardStuds": 9.14,
+      "turnedDegrees": -0.1
+    },
+    "1366.arrowLeft": {
+      "turnedDegrees": 67.5,
+      "movedStuds": 2.67,
+      "knobLean": -100
+    },
+    "1366.keys": {
+      "arrowRightDegrees": -60.4,
+      "wForwardStuds": 4.31
+    },
+    "1366.myWorld": {
+      "arrowUpForwardStuds": 6.3
+    },
+    "1366.fourWheel": {
+      "movedForwardStuds": 8.88,
+      "speedWhileHeld": 8.68,
+      "arrowLeftDegrees": 59.2,
+      "powers": [
+        92,
+        -92,
+        92,
+        -92
+      ]
+    },
+    "1366.gate": {
+      "maxDoorDegrees": 90,
+      "whileOpen": "Front sensorsees somethingArm motoropen"
+    },
+    "1366.signal": {
+      "light": "red",
+      "results": "Front sensorsees somethingLightred"
+    },
+    "1024.framing": {
+      "insets": {
+        "left": 0,
+        "right": 280.75,
+        "top": 67,
+        "bottom": 0
+      },
+      "courseMarginsPx": {
+        "left": 61,
+        "right": 47,
+        "top": 144,
+        "bottom": 192
+      },
+      "robotPlateWidthPx": 71
+    },
+    "1024.joystick": {
+      "knobUp": 92,
+      "speedWhileHeld": 8.2,
+      "speedShown": "Speed8.2studs a second",
+      "movedForwardStuds": 8.89,
+      "turnedDegrees": 0
+    },
+    "1024.arrowLeft": {
+      "turnedDegrees": 64.5,
+      "movedStuds": 2.56,
+      "knobLean": -100
+    },
+    "1024.keys": {
+      "arrowRightDegrees": -60.3,
+      "wForwardStuds": 4.61
+    },
+    "1024.myWorld": {
+      "arrowUpForwardStuds": 6.29
+    },
+    "1024.fourWheel": {
+      "movedForwardStuds": 8.56,
+      "speedWhileHeld": 8.74,
+      "arrowLeftDegrees": 58.9,
+      "powers": [
+        92,
+        -92,
+        92,
+        -92
+      ]
+    },
+    "1024.gate": {
+      "maxDoorDegrees": 90.1,
+      "whileOpen": "Front sensorsees somethingArm motoropen"
+    },
+    "1024.signal": {
+      "light": "red",
+      "results": "Front sensorsees somethingLightred"
+    },
+    "1024.touch": {
+      "knobUp": 92,
+      "movedForwardStuds": 9.79,
+      "scroll": {
+        "x": 0,
+        "y": 0,
+        "top": 0,
+        "scale": 1
+      },
+      "smallestTargetPx": 44
+    }
+  },
+  "results": [
+    {
+      "id": "1366.D1.drive-ready",
+      "ok": true,
+      "detail": "Drive opens driving-ready: the program is already running and there is no Run button to find"
+    },
+    {
+      "id": "1366.D1.what-it-says",
+      "ok": true,
+      "detail": "bar: Back to build · Buggy · Test plate (on) / My world · Reset; the line: \"Drag the joystick or use the arrow keys\""
+    },
+    {
+      "id": "1366.D1.course",
+      "ok": true,
+      "detail": "the test plate has its course: fence-ahead, fence-behind, fence-right, fence-left, post-right, post-left, post-far"
+    },
+    {
+      "id": "1366.D1.studio-aside",
+      "ok": true,
+      "detail": "the drawer, the command strip, the camera cluster and the robotics panel are out of the way"
+    },
+    {
+      "id": "1366.D1.insets",
+      "ok": true,
+      "detail": "the framing counts the bar (top 67 px) and the speed/hint/joystick column (right 287 px); nothing covers the bottom or the left"
+    },
+    {
+      "id": "1366.D1.framed",
+      "ok": true,
+      "detail": "the whole fenced course is on screen clear of every control (margins {\"left\":110,\"right\":109,\"top\":95,\"bottom\":99} px) and the robot's 6-stud plate is drawn 97 px wide"
+    },
+    {
+      "id": "1366.D2.joystick-drives",
+      "ok": true,
+      "detail": "dragging the knob up (92 % up) drove it 9.1 studs forward at 8.2 studs/s (readout \"Speed8.2studs a second\"), turning -0.1°"
+    },
+    {
+      "id": "1366.D2.let-go-stops",
+      "ok": true,
+      "detail": "letting go: the knob springs back and the motors stop (speed 0.00 studs/s)"
+    },
+    {
+      "id": "1366.D3.arrow-turns",
+      "ok": true,
+      "detail": "ArrowLeft held 0.8 s: it turned 67° to the left on the spot (moved 2.7 studs); the knob leans left while the key is held"
+    },
+    {
+      "id": "1366.D3.arrow-right-and-w",
+      "ok": true,
+      "detail": "ArrowRight turned it back -60°; W drove it 4.3 studs forward"
+    },
+    {
+      "id": "1366.D3.page-still",
+      "ok": true,
+      "detail": "after the drag and the keys the page has not scrolled or zoomed (scroll 0,0; scale 1)"
+    },
+    {
+      "id": "1366.D4.reset",
+      "ok": true,
+      "detail": "Reset: back where it started (0.000 from the built pose), driving-ready again"
+    },
+    {
+      "id": "1366.D5.my-world",
+      "ok": true,
+      "detail": "My world: no course, the student's 3 scenery bricks stay drawn by the studio (only the robot's 9 bricks are the stage's), and the robot is free to roll"
+    },
+    {
+      "id": "1366.D5.drives-in-my-world",
+      "ok": true,
+      "detail": "ArrowUp in My world drove it 6.3 studs forward among the student's bricks"
+    },
+    {
+      "id": "1366.D5.back-to-test-plate",
+      "ok": true,
+      "detail": "Test plate again: the course is back and it is driving-ready"
+    },
+    {
+      "id": "1366.D6.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: every brick, cable, name and creation (run space included) is exactly as built; 0 programs saved; Undo stack unchanged (16); the stage is closed"
+    },
+    {
+      "id": "1366.D6.studio-back",
+      "ok": true,
+      "detail": "the build tools are back"
+    },
+    {
+      "id": "1366.D7.edit-closes",
+      "ok": true,
+      "detail": "taking a wheel off while it drives closes Drive: the construction is the truth"
+    },
+    {
+      "id": "1366.D7.not-ready",
+      "ok": true,
+      "detail": "opened without the wheel: \"Buggy is almost ready!Put a wheel on Left motor’s axle.Back to build\" (and no stage)"
+    },
+    {
+      "id": "1366.W1.opens",
+      "ok": true,
+      "detail": "the car from loose parts (assisted wiring plugged all four motors in) opens driving-ready on its course"
+    },
+    {
+      "id": "1366.W1.drives",
+      "ok": true,
+      "detail": "the joystick drove all four motors (92, -92, 92, -92 %): 8.9 studs forward at 8.7 studs/s"
+    },
+    {
+      "id": "1366.W1.turns",
+      "ok": true,
+      "detail": "ArrowLeft held 1.2 s turned it 59° to the left"
+    },
+    {
+      "id": "1366.W1.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: the car is exactly as built and no program was saved"
+    },
+    {
+      "id": "1366.T1.try-it",
+      "ok": true,
+      "detail": "Try it opens in My world with its visitor, a big \"Someone walks up\" button and one line; no space switch"
+    },
+    {
+      "id": "1366.T1.framed",
+      "ok": true,
+      "detail": "the gate is framed clear of the bar, the results and the button column"
+    },
+    {
+      "id": "1366.T1.closed",
+      "ok": true,
+      "detail": "before: \"Front sensorsees nothingArm motorclosed\""
+    },
+    {
+      "id": "1366.T2.door-opens",
+      "ok": true,
+      "detail": "someone walked up: the door swung to 90.0° and the results read \"Front sensorsees somethingArm motoropen\""
+    },
+    {
+      "id": "1366.T2.door-closes",
+      "ok": true,
+      "detail": "after the visitor, the starter closed the door again"
+    },
+    {
+      "id": "1366.T2.hinge-only",
+      "ok": true,
+      "detail": "the door turns about the hinge only"
+    },
+    {
+      "id": "1366.T2.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: the gate is exactly as built and no program was saved (the Smart gate starter ran on the fly)"
+    },
+    {
+      "id": "1366.T3.off",
+      "ok": true,
+      "detail": "before: \"Front sensorsees nothingLightoff\""
+    },
+    {
+      "id": "1366.T3.light-red",
+      "ok": true,
+      "detail": "someone walked up: the light is red; the results read \"Front sensorsees somethingLightred\"; the button waits while they walk"
+    },
+    {
+      "id": "1366.T3.escape-closes",
+      "ok": true,
+      "detail": "Escape is Back to build too; the signal light is as built and no program was saved"
+    },
+    {
+      "id": "1024.D1.drive-ready",
+      "ok": true,
+      "detail": "Drive opens driving-ready: the program is already running and there is no Run button to find"
+    },
+    {
+      "id": "1024.D1.what-it-says",
+      "ok": true,
+      "detail": "bar: Back to build · Buggy · Test plate (on) / My world · Reset; the line: \"Drag the joystick or use the arrow keys\""
+    },
+    {
+      "id": "1024.D1.course",
+      "ok": true,
+      "detail": "the test plate has its course: fence-ahead, fence-behind, fence-right, fence-left, post-right, post-left, post-far"
+    },
+    {
+      "id": "1024.D1.studio-aside",
+      "ok": true,
+      "detail": "the drawer, the command strip, the camera cluster and the robotics panel are out of the way"
+    },
+    {
+      "id": "1024.D1.insets",
+      "ok": true,
+      "detail": "the framing counts the bar (top 67 px) and the speed/hint/joystick column (right 281 px); nothing covers the bottom or the left"
+    },
+    {
+      "id": "1024.D1.framed",
+      "ok": true,
+      "detail": "the whole fenced course is on screen clear of every control (margins {\"left\":61,\"right\":47,\"top\":144,\"bottom\":192} px) and the robot's 6-stud plate is drawn 71 px wide"
+    },
+    {
+      "id": "1024.D2.joystick-drives",
+      "ok": true,
+      "detail": "dragging the knob up (92 % up) drove it 8.9 studs forward at 8.2 studs/s (readout \"Speed8.2studs a second\"), turning 0.0°"
+    },
+    {
+      "id": "1024.D2.let-go-stops",
+      "ok": true,
+      "detail": "letting go: the knob springs back and the motors stop (speed 0.00 studs/s)"
+    },
+    {
+      "id": "1024.D3.arrow-turns",
+      "ok": true,
+      "detail": "ArrowLeft held 0.8 s: it turned 64° to the left on the spot (moved 2.6 studs); the knob leans left while the key is held"
+    },
+    {
+      "id": "1024.D3.arrow-right-and-w",
+      "ok": true,
+      "detail": "ArrowRight turned it back -60°; W drove it 4.6 studs forward"
+    },
+    {
+      "id": "1024.D3.page-still",
+      "ok": true,
+      "detail": "after the drag and the keys the page has not scrolled or zoomed (scroll 0,0; scale 1)"
+    },
+    {
+      "id": "1024.D4.reset",
+      "ok": true,
+      "detail": "Reset: back where it started (0.000 from the built pose), driving-ready again"
+    },
+    {
+      "id": "1024.D5.my-world",
+      "ok": true,
+      "detail": "My world: no course, the student's 3 scenery bricks stay drawn by the studio (only the robot's 9 bricks are the stage's), and the robot is free to roll"
+    },
+    {
+      "id": "1024.D5.drives-in-my-world",
+      "ok": true,
+      "detail": "ArrowUp in My world drove it 6.3 studs forward among the student's bricks"
+    },
+    {
+      "id": "1024.D5.back-to-test-plate",
+      "ok": true,
+      "detail": "Test plate again: the course is back and it is driving-ready"
+    },
+    {
+      "id": "1024.D6.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: every brick, cable, name and creation (run space included) is exactly as built; 0 programs saved; Undo stack unchanged (16); the stage is closed"
+    },
+    {
+      "id": "1024.D6.studio-back",
+      "ok": true,
+      "detail": "the build tools are back"
+    },
+    {
+      "id": "1024.D7.edit-closes",
+      "ok": true,
+      "detail": "taking a wheel off while it drives closes Drive: the construction is the truth"
+    },
+    {
+      "id": "1024.D7.not-ready",
+      "ok": true,
+      "detail": "opened without the wheel: \"Buggy is almost ready!Put a wheel on Left motor’s axle.Back to build\" (and no stage)"
+    },
+    {
+      "id": "1024.W1.opens",
+      "ok": true,
+      "detail": "the car from loose parts (assisted wiring plugged all four motors in) opens driving-ready on its course"
+    },
+    {
+      "id": "1024.W1.drives",
+      "ok": true,
+      "detail": "the joystick drove all four motors (92, -92, 92, -92 %): 8.6 studs forward at 8.7 studs/s"
+    },
+    {
+      "id": "1024.W1.turns",
+      "ok": true,
+      "detail": "ArrowLeft held 1.2 s turned it 59° to the left"
+    },
+    {
+      "id": "1024.W1.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: the car is exactly as built and no program was saved"
+    },
+    {
+      "id": "1024.T1.try-it",
+      "ok": true,
+      "detail": "Try it opens in My world with its visitor, a big \"Someone walks up\" button and one line; no space switch"
+    },
+    {
+      "id": "1024.T1.framed",
+      "ok": true,
+      "detail": "the gate is framed clear of the bar, the results and the button column"
+    },
+    {
+      "id": "1024.T1.closed",
+      "ok": true,
+      "detail": "before: \"Front sensorsees nothingArm motorclosed\""
+    },
+    {
+      "id": "1024.T2.door-opens",
+      "ok": true,
+      "detail": "someone walked up: the door swung to 90.1° and the results read \"Front sensorsees somethingArm motoropen\""
+    },
+    {
+      "id": "1024.T2.door-closes",
+      "ok": true,
+      "detail": "after the visitor, the starter closed the door again"
+    },
+    {
+      "id": "1024.T2.hinge-only",
+      "ok": true,
+      "detail": "the door turns about the hinge only"
+    },
+    {
+      "id": "1024.T2.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: the gate is exactly as built and no program was saved (the Smart gate starter ran on the fly)"
+    },
+    {
+      "id": "1024.T3.off",
+      "ok": true,
+      "detail": "before: \"Front sensorsees nothingLightoff\""
+    },
+    {
+      "id": "1024.T3.light-red",
+      "ok": true,
+      "detail": "someone walked up: the light is red; the results read \"Front sensorsees somethingLightred\"; the button waits while they walk"
+    },
+    {
+      "id": "1024.T3.escape-closes",
+      "ok": true,
+      "detail": "Escape is Back to build too; the signal light is as built and no program was saved"
+    },
+    {
+      "id": "1024.touch.one-finger-drives",
+      "ok": true,
+      "detail": "one finger dragged the knob up (92 % up): the robot drove 9.8 studs forward; lifting the finger centred it"
+    },
+    {
+      "id": "1024.touch.page-still",
+      "ok": true,
+      "detail": "the page did not scroll or zoom (scroll 0,0; scale 1)"
+    },
+    {
+      "id": "1024.touch.targets",
+      "ok": true,
+      "detail": "with a touch screen every button in the view is at least 44 px tall (smallest 44 px)"
+    },
+    {
+      "id": "1024.touch.document-unchanged",
+      "ok": true,
+      "detail": "Back to build: the robot is exactly as built and no program was saved"
+    },
+    {
+      "id": "console-clean",
+      "ok": true,
+      "detail": "no console errors"
+    }
+  ]
+}

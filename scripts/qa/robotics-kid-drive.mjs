@@ -308,6 +308,61 @@ async function drivePart(width, height) {
   await s.context.close()
 }
 
+/** The four-wheel car (lane M2's fixture, from loose parts): all four motors drive it in the Drive view. */
+async function fourWheelPart(width, height) {
+  console.log(`\nFour-wheel car at ${width}×${height}`)
+  const s = await openStudio(width, height)
+  const { page, sleep, tag } = s
+  await s.brick((state) => state.newBuild())
+  await sleep(150)
+  const ids = {}
+  ids.frontPlate = await s.place({ partId: 'plate_6x8', x: 28, y: 0, z: 18, color: '#3e83d7' })
+  ids.backPlate = await s.place({ partId: 'plate_6x8', x: 28, y: 0, z: 26, color: '#3e83d7' })
+  ids.hub = await s.place({ partId: 'robo_hub', x: 29, y: 1, z: 24, color: '#f5eee0' })
+  await s.name('Four-wheel car')
+  ids.frontLeftMotor = await s.place({ partId: 'robo_motor', x: 28, y: 1, z: 21, rotation: 2, color: GREY })
+  ids.frontRightMotor = await s.place({ partId: 'robo_motor', x: 31, y: 1, z: 21, rotation: 0, color: GREY })
+  ids.backLeftMotor = await s.place({ partId: 'robo_motor', x: 28, y: 1, z: 28, rotation: 2, color: GREY })
+  ids.backRightMotor = await s.place({ partId: 'robo_motor', x: 31, y: 1, z: 28, rotation: 0, color: GREY })
+  for (const [x, z] of [[26, 22], [34, 22], [26, 29], [34, 29]]) await s.place({ partId: 'robo_axle_short', x, y: 0, z, color: GREY })
+  for (const [x, z] of [[25, 21], [36, 21], [25, 28], [36, 28]]) await s.place({ partId: 'robo_wheel', x, y: 0, z, color: '#1f2a33' })
+  await s.robo((state) => state.dismissWiringNote())
+  await sleep(300)
+  const built = await snapshotDocument(s)
+  const motors = [ids.frontLeftMotor, ids.frontRightMotor, ids.backLeftMotor, ids.backRightMotor]
+  const plugged = await s.robo((state, list) => list.every((id) => state.model.creations.at(-1).motors.find((motor) => motor.brickId === id)?.plugged), motors)
+  await s.openDrive(await s.creationId(), 'testPlate')
+  check(`${tag}.W1.opens`, plugged && (await s.stageInfo()).props.length === 7, 'the car from loose parts (assisted wiring plugged all four motors in) opens driving-ready on its course')
+  const centre = world(31, 0.5, 26)
+  const start = await s.chassis(ids.hub)
+  const stick = await page.getByTestId('robo-drive-joystick').boundingBox()
+  const middle = { x: stick.x + stick.width / 2, y: stick.y + stick.height / 2 }
+  await page.mouse.move(middle.x, middle.y)
+  await page.mouse.down()
+  await page.mouse.move(middle.x, middle.y - 44, { steps: 10 })
+  await sleep(800)
+  const held = await s.observation()
+  await s.shot('D7-four-wheel')
+  await page.mouse.up()
+  await sleep(800)
+  const afterStick = await s.chassis(ids.hub)
+  const a = apply(start, centre)
+  const b = apply(afterStick, centre)
+  const forward = ((b.x - a.x) * start.forward.x + (b.z - a.z) * start.forward.z) / STUD
+  const allFour = motors.every((id) => Math.abs(held.motors[id].powerPercent) > 50)
+  await page.keyboard.down('ArrowLeft')
+  await sleep(1200)
+  await page.keyboard.up('ArrowLeft')
+  await sleep(500)
+  const turn = turnOf(await s.chassis(ids.hub), start.forward) - turnOf(afterStick, start.forward)
+  measured[`${tag}.fourWheel`] = { movedForwardStuds: +forward.toFixed(2), speedWhileHeld: held.speed, arrowLeftDegrees: +turn.toFixed(1), powers: motors.map((id) => held.motors[id].powerPercent) }
+  check(`${tag}.W1.drives`, allFour && forward > 3 && held.speed > 2, `the joystick drove all four motors (${motors.map((id) => held.motors[id].powerPercent).join(', ')} %): ${forward.toFixed(1)} studs forward at ${held.speed.toFixed(1)} studs/s`)
+  check(`${tag}.W1.turns`, turn > 15, `ArrowLeft held 1.2 s turned it ${turn.toFixed(0)}° to the left`)
+  await s.back()
+  check(`${tag}.W1.document-unchanged`, (await snapshotDocument(s)) === built && ((await s.section()).programs?.length ?? 0) === 0, 'Back to build: the car is exactly as built and no program was saved')
+  await s.context.close()
+}
+
 /** One finger on the joystick, as on an iPad: Chrome with touch, driven through the DevTools touch events. */
 async function touchPart(width, height) {
   console.log(`\nTouch at ${width}×${height}`)
@@ -432,6 +487,7 @@ async function tryPart(width, height) {
 
 for (const [width, height] of [[1366, 768], [1024, 768]]) {
   await drivePart(width, height)
+  await fourWheelPart(width, height)
   await tryPart(width, height)
 }
 await touchPart(1024, 768)

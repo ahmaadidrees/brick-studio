@@ -4,7 +4,7 @@ import { useBrickStore } from '../../brick/store'
 import { loadWorld } from '../code/codeTestFixtures'
 import { ROVER_IDS, fixtureInput, roverBricks } from '../model/fixtures'
 import { installRoboticsParts } from '../parts/install'
-import { wiredRover } from '../program/testFixtures'
+import { wiredFourWheel, wiredRover } from '../program/testFixtures'
 import type { TestProp } from '../run/types'
 import { installRoboticsWatcher, useRoboticsStore } from '../state/roboticsStore'
 import { resetStageStoreForTests, useStageStore } from '../state/stageStore'
@@ -81,6 +81,23 @@ describe('the test plate course', () => {
     expect(area.s1).toBeLessThan(plateHalf + 20)
     // No post fits in so little room: only the fence.
     expect(courseProps(area, footprint).map((prop) => prop.id)).toEqual(['fence-ahead', 'fence-behind', 'fence-right', 'fence-left'])
+  })
+
+  it('a four-wheel car built nearer the plate’s edge gets the whole course, its posts moved in', () => {
+    const car = wiredFourWheel()
+    const input = fixtureInput(car.bricks, car.section)
+    const axes = driveAxes(car.creation)!
+    const footprint = robotFootprint(car.creation, input, axes)!
+    const props = walls(driveCourse(car.creation, input))
+    expect(props.map((prop) => prop.id)).toEqual(['fence-ahead', 'fence-behind', 'fence-right', 'fence-left', 'post-right', 'post-left', 'post-far'])
+    const robot = { x0: -footprint.t1, x1: -footprint.t0, z0: -footprint.s1, z1: -footprint.s0 }
+    const fenceAhead = box(props.find((wall) => wall.id === 'fence-ahead')!)
+    for (const post of props.filter((wall) => wall.id.startsWith('post'))) {
+      // Ahead of the car's nose, short of the fence, and on the plate.
+      expect(box(post).z1).toBeLessThan(robot.z0)
+      expect(box(post).z0).toBeGreaterThan(fenceAhead.z1)
+      expect(Math.abs(box(post).z0)).toBeLessThan((64 * STUD) / 2)
+    }
   })
 
   it('frames the course on the test plate and a patch of ground ahead in My world', () => {
