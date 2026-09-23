@@ -398,14 +398,15 @@ for (let runIndex = 1; runIndex <= RUNS; runIndex += 1) {
 }
 
 /* ================================================================ F. Test the motors keeps the cables */
-console.log('\nF. More → Test the motors: the cables stay while the arm swings')
+console.log('\nF. More → Test the motors (Swing open): the cables stay while the arm swings')
 {
   const s = await openStudio({ tag: 'nudge' })
   const robot = await placeKit(s, 'gate', 'Gate')
   await s.brick((state) => state.selectBrick(null))
   await s.page.getByTestId('robotics-more-fold').getByRole('button', { name: /More/ }).click()
   const before = await s.hook((hook) => hook.cables())
-  await s.page.getByRole('button', { name: 'Swing to 60°' }).click()
+  // "Swing to 60°" here; lane P words it "Swing open" (the same 60°).
+  await s.page.getByRole('button', { name: /^(Swing to 60°|Swing open)$/ }).click()
   await s.page.waitForFunction(() => window.__robotics.roboticsStore.getState().sim !== null, null, { timeout: 20_000 })
   await s.sleep(1500)
   const during = await s.hook((hook) => hook.cables())

@@ -463,7 +463,7 @@ await page.getByTestId('robo-run').click()
 await sleep(400)
 await s.shot('G1-gate-my-world')
 await page.getByTestId('robo-visitor').click()
-// The starter opens to 90°, waits 2 s and closes: sample until the door is on its way back.
+// The starter keeps the door open (90°) while the visitor is there and shuts it once they have gone: sample until the door is on its way back.
 let maxAngle = 0
 let openChip = ''
 let shotTaken = false
