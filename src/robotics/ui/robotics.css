@@ -27,9 +27,11 @@
   line-height: 1.35;
 }
 .robotics-panel.collapsed { gap: 0; }
-/* A narrower card and panel on smaller laptops and landscape tablets leave the robot more of the canvas. */
+/* A narrower card and panel on smaller laptops and landscape tablets leave the robot more of the canvas: at
+   1024 px the drawer and a 300 px panel leave 35 % of it free, so framing (scene/framing.ts) still keeps the
+   robot clear of both. */
 @media (max-width: 1180px) {
-  .robotics-card, .robotics-panel { width: min(320px, calc(100% - 96px)); }
+  .robotics-card, .robotics-panel { width: min(300px, calc(100% - 96px)); }
 }
 .robotics-card.compact, .robotics-panel.compact { top: calc(var(--brick-header-block) + 8px); width: min(320px, calc(100% - 16px)); max-height: calc(100% - var(--brick-header-block) - 150px); }
 

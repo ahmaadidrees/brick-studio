@@ -104,9 +104,6 @@ export function nextSteps(creation: DerivedCreation, model: Pick<RoboticsModel, 
   return rows
 }
 
-/** The rows of `nextSteps` that are the robot's path (without choices and ideas). */
-export const pathRows = (rows: readonly NextStep[]) => rows.filter((row) => row.group === 'step')
-
 function stepIcon(step: ReadinessStep): StepIcon {
   switch (step.id) {
     case 'plate': return { part: PLATE_PART }
