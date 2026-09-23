@@ -195,3 +195,24 @@ native scrolling started, so the panel probably does scroll by touch. A human sh
   the web view and pass under it; a real finger would hit the pill. It is an artifact of the automation window, not of
   the app. Hidden windows build up across sessions: by the end of this pass there were four (shot 09). A human can clear
   them from Show All Windows, and they do not affect the page.
+
+## After the lead's fixes (2026-09-23, integration branch `d4ed33b`)
+
+Same harness, same simulator (iPad Air 11-inch M4, iPadOS Safari 26.5, portrait), against the integration branch:
+**46/46 checks**, evidence in `portrait-after-fixes/`. The rover now rolls 5.3 studs forward in open canvas (the nudge
+frames nine studs ahead and behind inside the free area); the wiring line sits under the history cluster; hub ports are
+chips; robotics controls are at least 44 px on touch. One minor note remains: in portrait the Nudge section's Reset needs a
+scroll inside the panel (the panel's Hide collapses it).
+
+Fixed in the robotics layer (`d4ed33b`): findings 1 (rover under the panel, presets ignoring the panel), 4 (wiring line
+over the name row), 5 (invalid font shorthands), 6 (targets under 44 px), 7 for robotics text, 8 (port markers).
+
+Left for the studio on `main`, not changed in this spike because they are studio-wide input behaviour, not robotics:
+- Finding 2: a tap inside the armed ghost's own area (plus 24 px slop) starts a ghost drag and does nothing on release;
+  a large ghost (a 6×8 plate) makes it hard to nudge by tapping. Dragging the ghost works, as the onboarding says.
+- Finding 3: a spot hidden behind another part in the 3D view is not tappable (the hit lands on the part in front); the
+  Top view reaches it, and the harness uses it.
+- Finding 9: Safari reports a tap's `click` with `pointerType: "mouse"`; the studio's 450 ms touch-click guard is what
+  stops a first tap from placing, and it held on every tap. Deciding touch vs mouse from `pointerdown` would be sturdier.
+- Landscape could not be scripted (no rotate command in safaridriver or simctl); it needs a person to rotate the
+  simulator (⌘←) and re-run the harness, which writes to `landscape/`.
