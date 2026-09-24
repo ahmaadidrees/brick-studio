@@ -240,9 +240,10 @@ export function encode({ name, frames, fps, width = 1280, height = 720, scale = 
 /**
  * The hero cut: a 4:3 video with a virtual camera, like a screen-recording app's auto zoom. While the cursor shows,
  * the camera zooms in and follows it; when it fades (the game plays) the camera eases back out to the whole view.
- * The camera moves smoothly (it chases the cursor, it never jumps) and never leaves the frame.
+ * The camera moves smoothly (it chases the cursor, it never jumps) and never leaves the frame. It plays a little
+ * slower than life (`speed`, HERO_SPEED) so a viewer can follow each pick and click.
  */
-export function hero({ name, fps, width, height, scale, track }, { zoom = 1.45, aspect = 4 / 3, out = [1200, 900] } = {}) {
+export function hero({ name, fps, width, height, scale, track }, { zoom = 1.45, aspect = 4 / 3, out = [1200, 900], speed = Number(process.env.HERO_SPEED ?? 0.8) } = {}) {
   const base = path.join(OUT, name)
   const full = { w: Math.min(width, height * aspect), h: Math.min(height, width / aspect) }
   const cam = { x: width / 2, y: height / 2, z: 1 }
@@ -267,7 +268,7 @@ export function hero({ name, fps, width, height, scale, track }, { zoom = 1.45, 
   const cmds = `${base}-hero-camera.txt`
   writeFileSync(cmds, lines.join('\n') + '\n')
   const input = ['-framerate', String(fps), '-i', path.join(OUT, `${name}-frames`, 'f%05d.jpg')]
-  const vf = `sendcmd=f='${cmds}',crop@cam=${even(full.w)}:${even(full.h)},scale=${out[0]}:${out[1]}:flags=lanczos,fps=30,${VIDEO}`
+  const vf = `sendcmd=f='${cmds}',crop@cam=${even(full.w)}:${even(full.h)},setpts=PTS/${speed},scale=${out[0]}:${out[1]}:flags=lanczos,fps=30,${VIDEO}`
   ffmpeg([...input, '-vf', vf, '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', ...VIDEO_TAGS, '-movflags', '+faststart', '-an', `${base}-hero.mp4`], 'hero mp4')
   ffmpeg([...input, '-vf', vf, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '34', '-row-mt', '1', ...VIDEO_TAGS, '-an', `${base}-hero.webm`], 'hero webm')
 }
