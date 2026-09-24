@@ -243,7 +243,7 @@ export function encode({ name, frames, fps, width = 1280, height = 720, scale = 
  * The camera moves smoothly (it chases the cursor, it never jumps) and never leaves the frame. It plays a little
  * slower than life (`speed`, HERO_SPEED) so a viewer can follow each pick and click.
  */
-export function hero({ name, fps, width, height, scale, track }, { zoom = 1.45, aspect = 4 / 3, out = [1200, 900], speed = Number(process.env.HERO_SPEED ?? 0.8), file = path.join(OUT, `${name}-hero`), crf = [21, 34] } = {}) {
+export function hero({ name, fps, width, height, scale, track }, { zoom = 1.45, aspect = 4 / 3, out = [1200, 900], speed = Number(process.env.HERO_SPEED ?? 0.65), file = path.join(OUT, `${name}-hero`), crf = [21, 34] } = {}) {
   const base = path.join(OUT, name)
   const full = { w: Math.min(width, height * aspect), h: Math.min(height, width / aspect) }
   const cam = { x: width / 2, y: height / 2, z: 1 }
