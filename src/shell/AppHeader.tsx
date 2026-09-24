@@ -81,6 +81,8 @@ export type AppHeaderEditorProps = CommonProps & {
   /** Account worlds only: shows the pencil and the Rename entry. */
   onRenameWorld?: (title: string) => Promise<void>
   saveStatus: HeaderSaveStatus
+  /** Optional task-specific save controls. */
+  editorActions?: ReactNode
   /* Tools */
   onOpenWorldSetup: (tab?: 'environment' | 'character') => void
   /** People outside a room = "Build together" (starts a shared world). */
@@ -194,7 +196,7 @@ function EditorHeader({
   worldTitle, onRenameWorld, saveStatus,
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
-  onSaveToAccount, onGoHome, onSwitchDimension,
+  onSaveToAccount, onGoHome, onSwitchDimension, editorActions,
   dimension = '3d', modeLabels, modeLock, hideCharacter = false, startLiveTitle, renameMaxLength, worldMenu,
   session, className, accountMenuDefaultOpen, onKeyDown, id,
 }: AppHeaderEditorProps) {
@@ -231,6 +233,7 @@ function EditorHeader({
         <SaveStatus autoCompact source={saveStatus.source} detail={saveStatus.detail} className="app-header-save" />
       </div>
       <div className="app-header-tools" role="group" aria-label="World tools">
+        {editorActions}
         <Button variant="quiet" className="app-header-tool" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
         {!hideCharacter && <Button variant="quiet" className="app-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>}
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} startTitle={startLiveTitle} />

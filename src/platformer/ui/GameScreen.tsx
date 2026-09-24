@@ -84,7 +84,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   /** The first save to the account failed: this level is kept in this browser for the rest of the visit. */
   const cloudFailed = useRef(false)
   /** Save whatever is unsaved right now (set by the session effect). */
-  const saveNow = useRef<() => boolean>(() => true)
+  const saveNow = useRef<(force?: boolean) => boolean>(() => true)
   const account = useClassroomSession()
   const signedIn = account.status === 'student' || account.status === 'teacher'
   const signedInRef = useRef(signedIn)
@@ -189,8 +189,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     }
 
     // Keep the player's work: save a moment after edits, and on the way out. Returns false when work is unsaved.
-    const save = (): boolean => {
-      if (s.room || s.editCount === savedEdits.current) return true
+    const save = (force = false): boolean => {
+      if (s.room || (!force && s.editCount === savedEdits.current)) return true
+      if (force) cloudFailed.current = false
       const edits = s.editCount
       const design = s.timeline.world.design
       if (saver.current) {
@@ -215,9 +216,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             // From now on this level is kept in this browser (keepLocally says so itself if that fails too).
             creatingCloud.current = null
             cloudFailed.current = true
+            refresh((n) => n + 1)
             if (!keepLocally(s.editCount)) return
             say(error?.code === 'world_limit' ? 'Your account is full, so this world is saved in this browser only.' : 'Could not save to your account, so this world is saved in this browser for now.')
-          })
+          }).finally(() => { creatingCloud.current = null })
         return false
       }
       return keepLocally(edits)
@@ -506,25 +508,55 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const canShareWithClass = !!cloudWorld && account.status === 'student' && cloudWorld.ownerId === account.user?.id && cloudWorld.kind === 'personal'
 
   /** Reuse a saved world when classmates already have access; never create a guest copy of account work. */
-  const startRoom = () => {
-    if (!s || busy) return
-    if (cloudWorld) {
-      if (cloudWorld.visibility === 'private') {
-        if (canShareWithClass) openShare()
-        else say('This saved world is private. Ask its owner to share it with your class.')
+  const saveAccount = async (): Promise<ClassroomWorld | null> => {
+    if (!s || !signedIn) return null
+    if (source.kind === 'room') {
+      if (source.roomKind !== 'guest' || !s.isHost || !s.joined) return null
+      // Keep the guest room running until its current construction is safely copied.
+      const world = await createCloudLevel(s.timeline.world.design)
+      return world
+    }
+    if (source.kind === 'cloud' && !source.world.canEdit) return null
+    saveNow.current(true)
+    if (creatingCloud.current) await creatingCloud.current
+    const saved = saver.current
+    if (!saved) return null
+    saved.schedule(s.timeline.world.design)
+    if (!(await saved.flush())) return null
+    return saved.world
+  }
+  const saveAccountAction = async (share = false) => {
+    if (busy || !s) return
+    setBusy(true)
+    try {
+      const world = await saveAccount()
+      if (!world) { say('Not saved to your account yet. Check your connection, then choose Retry save.'); return }
+      if (source.kind === 'room') {
+        window.location.assign(`/2d/build?world=${encodeURIComponent(world.id)}${share ? '&share=1' : ''}`)
         return
       }
-      setBusy(true)
-      void leave(() => window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)).finally(() => setBusy(false))
+      refresh(n => n + 1)
+      if (share && account.status === 'student') openShare()
+      else say('Saved to your account. Find it in My worlds.')
+    } catch (error) {
+      cloudFailed.current = true
+      refresh(n => n + 1)
+      say(error instanceof Error ? error.message : 'Could not save. Choose Retry save to try again.')
+    } finally { setBusy(false) }
+  }
+  const startRoom = () => {
+    if (!s || busy || account.status === 'loading') return
+    if (signedIn) {
+      if (cloudWorld && (!ownsCloudWorld || cloudWorld.visibility !== 'private')) {
+        if (cloudWorld.visibility === 'private') { say('Ask the owner to share this world with your class.'); return }
+        void leave(() => window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}`))
+      } else if (cloudWorld && canShareWithClass) openShare()
+      else void saveAccountAction(true)
       return
     }
     setBusy(true)
-    void leave(() =>
-      playWithFriends(s.timeline.world.design).catch((error: Error) => {
-        say(error.message)
-        setBusy(false)
-      }),
-    )
+    void leave(() => playWithFriends(s.timeline.world.design).catch((error: Error) => say(error.message)))
+      .finally(() => setBusy(false))
   }
 
   const recoveryWorldId = signedIn && (ownsCloudWorld || teachesCloudWorld)
@@ -533,13 +565,21 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       ? recoveryWorldUuid(source.roomId)
       : null
   const openShare = () => {
-    const classId = account.classes?.[0]?.id
     setMenu(false)
     setPeople(false)
     setSharing(true)
-    if (classmates !== null || !classId) return
-    browserClassroomClient.listClassmates(classId).then(setClassmates, (error: Error) => setClassmatesError(error.message))
+    setClassmatesError('')
   }
+  const inviteClassId = account.classes?.[0]?.id
+  useEffect(() => {
+    if (!sharing || classmates !== null || !inviteClassId) return
+    let cancelled = false
+    browserClassroomClient.listClassmates(inviteClassId).then(
+      roster => { if (!cancelled) setClassmates(roster) },
+      (error: Error) => { if (!cancelled) setClassmatesError(error.message) },
+    )
+    return () => { cancelled = true }
+  }, [sharing, classmates, inviteClassId])
   const answerShare = async (next: ClassroomWorldSharing) => {
     if (!cloudWorld || !s) return
     setBusy(true)
@@ -570,6 +610,18 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     }
   }
 
+  const openedShare = useRef(false)
+  useEffect(() => {
+    if (!openedShare.current && canShareWithClass && new URLSearchParams(location.search).get('share') === '1') {
+      openedShare.current = true
+      const nextUrl = new URL(window.location.href)
+      nextUrl.searchParams.delete('share')
+      window.history.replaceState(window.history.state, '', nextUrl.pathname + nextUrl.search + nextUrl.hash)
+      openShare()
+    }
+  }, [canShareWithClass])
+  const canSaveAccount = signedIn && (source.kind === 'room' ? source.roomKind === 'guest' && !!s?.isHost && !!s?.joined : source.kind !== 'cloud' || source.world.canEdit)
+  const saveLabel = busy ? 'Saving…' : cloudFailed.current || saver.current?.status === 'error' ? 'Retry save' : source.kind === 'room' ? 'Save a copy to my account' : saver.current ? 'Save now' : 'Save to my account'
   const saveSource: SaveStatusSource = inRoom
     ? { kind: 'live', connection: s?.roomStatus ?? 'connecting' }
     : saver.current
@@ -598,6 +650,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         <AppHeader
           variant="editor"
           dimension="2d"
+          editorActions={canSaveAccount ? <Button disabled={busy} onClick={() => void saveAccountAction(source.kind === 'room')}>{saveLabel}</Button> : undefined}
           onSwitchDimension={inRoom ? undefined : (target) => target === '3d' && switchTo3D()}
           worldTitle={title}
           onRenameWorld={s?.canBuild ? rename : undefined}

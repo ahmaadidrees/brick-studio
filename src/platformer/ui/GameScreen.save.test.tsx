@@ -12,14 +12,15 @@ import { saveCharacter } from './prefs'
 import type { ClassroomWorld } from '../../classroom/contracts'
 
 const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '' }))
-vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; flush = state.flush; constructor(world: unknown) { this.world = world } } }))
+vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; schedule = vi.fn(); flush = state.flush; constructor(world: unknown) { this.world = world } } }))
 vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]) } }))
 vi.mock('../../shell', () => ({
   useClassroomSession: () => ({ status: 'student', user: { id: 'student' }, classes: [] }),
   useCompactLayout: () => false,
-  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void; livePolicy?: { onOpenPeople?: () => void } }) => (
+  AppHeader: (p: { editorActions?: ReactNode; saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void; livePolicy?: { onOpenPeople?: () => void } }) => (
     <div>
       <span>{p.saveStatus.source.error}</span>
+      {p.editorActions}
       <button className="app-header-tool" onClick={() => p.onOpenWorldSetup('character')}>Character</button>
       {p.onStartLiveWorld && <button onClick={p.onStartLiveWorld}>People action</button>}
       {p.livePolicy?.onOpenPeople && <button onClick={p.livePolicy.onOpenPeople}>People</button>}
@@ -40,6 +41,7 @@ vi.mock('../game/session', () => ({
     room = null
     solo = true
     canBuild = true
+    isHost = true
     joined = true
     mode = 'build'
     editor = {}
@@ -171,7 +173,7 @@ it('opens the same shared account world after flushing instead of creating a gue
   vi.unstubAllGlobals()
   expect(state.flush).toHaveBeenCalledOnce()
   expect(state.create).not.toHaveBeenCalled()
-  expect(assign).toHaveBeenCalledWith('/2d/w/12345678123442348234123456789abc?invited=1')
+  expect(assign).toHaveBeenCalledWith('/2d/w/12345678123442348234123456789abc')
 })
 
 it('asks a student to choose sharing before opening a private saved world with classmates', async () => {
@@ -199,4 +201,42 @@ it('lets an owner invite again inside the room without navigation or a new game 
   fireEvent.click(screen.getByRole('button', { name: 'People' }))
   fireEvent.click(screen.getByRole('button', { name: 'Invite more' }))
   expect(screen.getByText('Invited: student-a,student-b')).toBeInTheDocument()
+})
+
+it('explicitly saves an untouched world to the account', async () => {
+  state.create.mockResolvedValue(savedWorld('private'))
+  open()
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save to my account' })); await Promise.resolve() })
+  expect(state.create).toHaveBeenCalledOnce()
+  expect(state.flush).toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Save now' })).toBeInTheDocument()
+})
+it('People waits for first account creation and opens classmates rather than a guest room', async () => {
+  let finish!: (world: ClassroomWorld) => void
+  state.create.mockImplementation(() => new Promise(resolve => { finish = resolve }))
+  open()
+  fireEvent.click(screen.getByRole('button', { name: 'People action' }))
+  expect(state.create).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('dialog', { name: 'Share with classmates' })).toBeNull()
+  await act(async () => { finish(savedWorld('private')); await Promise.resolve() })
+  expect(screen.getByRole('dialog', { name: 'Share with classmates' })).toBeInTheDocument()
+})
+it('retries a failed first account save without another edit', async () => {
+  state.create.mockRejectedValueOnce(new Error('Offline')).mockResolvedValueOnce(savedWorld('private'))
+  open()
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save to my account' })); await Promise.resolve() })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Retry save' })); await Promise.resolve() })
+  expect(state.create).toHaveBeenCalledTimes(2)
+  expect(screen.getByRole('button', { name: 'Save now' })).toBeInTheDocument()
+})
+
+it('lets a signed-in guest host keep an account copy and continue to classroom invitations', async () => {
+  state.create.mockResolvedValue(savedWorld('private'))
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'guest', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Owner', url: 'ws://localhost/test' }} startMode="play" onExit={() => {}} />)
+  const assign = vi.fn()
+  vi.stubGlobal('window', { ...window, addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window), location: { ...window.location, assign } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save a copy to my account' })); await Promise.resolve() })
+  expect(state.create).toHaveBeenCalledOnce()
+  expect(assign).toHaveBeenCalledWith('/2d/build?world=12345678-1234-4234-8234-123456789abc&share=1')
+  vi.unstubAllGlobals()
 })

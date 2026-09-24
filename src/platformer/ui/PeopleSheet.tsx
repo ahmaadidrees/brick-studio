@@ -81,7 +81,7 @@ function RoomSection({ session, onInvite, inviteLink, onInviteMore }: { session:
           {!session.classroomRoom && (
             <div className="p2d-row-pair">
               <Button fullWidth icon={<Save size={18} />} onClick={() => room.saveLevel()}>
-                Save world
+                Save room checkpoint
               </Button>
               <Button
                 fullWidth

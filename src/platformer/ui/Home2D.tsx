@@ -12,6 +12,7 @@ import { formatTime } from '../render/renderer'
 import { Art } from './art'
 import { deleteDraft, listDrafts, loadDraft, type Draft } from './drafts'
 import { parseRoomRef, playWithFriends } from './rooms'
+import { createCloudLevel } from './cloudLevel'
 import { levelThumb } from './thumbs'
 
 /**
@@ -58,9 +59,13 @@ export function Home2D() {
   const latest = mine[0] ? { href: `/2d/build?world=${encodeURIComponent(mine[0].id)}`, title: mine[0].title } : local[0] ? { href: `/2d/build?draft=${encodeURIComponent(local[0].d.id)}`, title: local[0].d.title } : null
 
   const friends = (level: LevelDesign) => {
+    if (busy || account.status === 'loading') return
     setBusy(true)
     setError('')
-    playWithFriends(level).catch((e: Error) => {
+    const opening = signedIn
+      ? createCloudLevel(level).then(world => { window.location.assign(`/2d/build?world=${encodeURIComponent(world.id)}&share=1`) })
+      : playWithFriends(level)
+    opening.catch((e: Error) => {
       setError(e.message)
       setBusy(false)
     })
@@ -177,7 +182,7 @@ export function Home2D() {
         <section className="p2d-section p2d-friends" aria-labelledby="p2d-friends-title">
           <h2 id="p2d-friends-title">Play with friends</h2>
           <p className="p2d-muted">
-            Pick “With friends” on any world to open a room and copy its link. Everyone in a room shares one world: build and play at the same time, up to 16 players.
+            Pick “With friends” on a starter or browser world. Signed-in students save an account copy and choose classmates; guests open a room by link. Up to 16 players can build and play together.
             {signedIn && ' To play with your class, share a world from its menu or from My worlds.'}
           </p>
           <JoinBox />
