@@ -163,7 +163,7 @@ has the tools for writing another one.
 
 Order: Worker to staging, rehearse, Worker to production, then the site. The site calls the new routes, so it
 never goes first. No database migration and no new secrets are needed: 2D class worlds use the existing world
-documents (`format: "2d"`).
+documents (a 2D document says `format: "brickgineers-2d"`; world lists call it `"2d"`).
 
 **The one thing that cannot be undone.** The Worker's `v4` migration creates the `PlatformerRoom` Durable Object
 class. Once an environment has applied it, that Worker cannot be rolled back to a version from before `v4` (Cloudflare
@@ -173,16 +173,25 @@ stay in every later deploy. So:
 1. **Check what each environment has.** Before deploying, confirm the migration tags already applied to staging and
    production are `v1`–`v3` (the Cloudflare dashboard's Durable Objects page, or the last deploy's output). The
    deploy should report applying only `v4`.
-2. **Staging.** `npm run test:worker`, then `npx wrangler deploy --env staging` in `multiplayer/worker`. Point a
-   staging site build at it and rehearse, signed in as a teacher and as two students:
-   - 3D: open an existing class world, build together, leave, reopen: nothing changed for 3D.
-   - 2D guest: build, play, open a room with friends, a second browser joins, the host locks building.
-   - 2D class world: create one, share it for building, both students edit, the last one closes the tab,
-     reopen from My worlds: every edit is there. Then with the network cut mid-edit (devtools offline), rejoin:
-     the room still has the edits and saves them.
-   - Watch the Worker logs for errors throughout.
-   Exit criteria: all of the above pass, no Worker errors, and `node scripts/qa/platformer-2d.mjs` passes against
-   staging (`UI_ORIGIN`, and the site's `VITE_*_SERVER_URL` pointing at staging).
+2. **Staging Worker.** `npm run test:worker`, then `npx wrangler deploy --env staging` in `multiplayer/worker`.
+   Two separate checks follow; they test different things, so both are needed.
+   - *Local site against the staging Worker* (Worker integration). Run the dev site locally with
+     `VITE_LIVE_SERVER_URL` and `VITE_CLASSROOM_SERVER_URL` set to the staging Worker's origin, then
+     `node scripts/qa/platformer-2d.mjs`. The harness only drives a localhost site (it refuses remote origins on
+     purpose, since it creates guest data) and uses dev-build hooks, so it cannot run against a deployed site.
+     This proves the staging Worker's routes and rooms work with this branch's client; it does not test the
+     deployed site bundle.
+   - *Staging site rehearsal* (the real bundle, by hand). Deploy a preview of the site whose `VITE_*_SERVER_URL`
+     point at the staging Worker, and rehearse in real browsers, signed in as a teacher and as two students:
+     - 3D: open an existing class world, build together, leave, reopen: nothing changed for 3D.
+     - 2D guest: build, play, open a room with friends, a second browser joins, the host locks building.
+     - 2D class world: create one, share it for building, both students edit, the last one closes the tab,
+       reopen from My worlds: every edit is there. Then cut the network mid-edit (devtools offline), rejoin: the
+       room still has the edits and saves them.
+     - The landing page and `/2d` load, the hero demo plays, and the browser console shows no errors.
+     - Watch the Worker logs (`npx wrangler tail --env staging`) throughout.
+   Exit criteria: the harness passes against the staging Worker, every rehearsal step passes, and the Worker logs
+   show no errors.
 3. **Production Worker.** `npx wrangler deploy` in `multiplayer/worker`. Record the version id it prints.
 4. **Site.** Deploy the site as usual; check brickgineers.com serves the new landing page and `/2d`.
 
