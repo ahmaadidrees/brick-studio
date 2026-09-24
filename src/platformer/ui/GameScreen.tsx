@@ -12,7 +12,7 @@ import { GameSession, type Mode, type RoomOptions } from '../game/session'
 import { formatTime } from '../render/renderer'
 import { BuildShell } from './BuildShell'
 import { CloudLevelSaver, createCloudLevel } from './cloudLevel'
-import { saveDraft } from './drafts'
+import { draftSaveMessage, saveDraft, type DraftSaveFailure } from './drafts'
 import { FeelPanel } from './FeelPanel'
 import { loadFeel, saveFeel } from './feelStore'
 import { LevelMenu } from './LevelMenu'
@@ -71,12 +71,15 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const sessionRef = useRef<GameSession | null>(null)
   const draftId = useRef<string | null>(source.kind === 'draft' ? source.id : null)
   const savedEdits = useRef(0)
+  // Why the level could not be kept in this browser, while that is so (the header says so; leaving asks first).
+  const [localFailure, setLocalFailure] = useState<DraftSaveFailure | null>(null)
+  const localFailureRef = useRef<DraftSaveFailure | null>(null)
   const toastTimer = useRef(0)
   const saver = useRef<CloudLevelSaver | null>(null)
   /** A signed-in builder's first save, while the level becomes an account level. */
   const creatingCloud = useRef<Promise<void> | null>(null)
   /** Save whatever is unsaved right now (set by the session effect). */
-  const saveNow = useRef<() => void>(() => {})
+  const saveNow = useRef<() => boolean>(() => true)
   const account = useClassroomSession()
   const signedIn = account.status === 'student' || account.status === 'teacher'
   const signedInRef = useRef(signedIn)
@@ -155,14 +158,39 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     fit()
     s.start()
 
-    // Keep the player's work: save a moment after edits, and on the way out.
-    const save = () => {
-      if (s.room || s.editCount === savedEdits.current) return
-      savedEdits.current = s.editCount
+    /** Keep the level in this browser. The edit count only counts as saved once the browser has it. */
+    const keepLocally = (edits: number) => {
+      const result = saveDraft(draftId.current, s.timeline.world.design)
+      if (result.ok) {
+        draftId.current = result.id
+        savedEdits.current = edits
+        if (localFailureRef.current) {
+          localFailureRef.current = null
+          setLocalFailure(null)
+        }
+        return true
+      }
+      if (localFailureRef.current !== result.reason) {
+        localFailureRef.current = result.reason
+        setLocalFailure(result.reason)
+        say(draftSaveMessage(result.reason))
+      }
+      return false
+    }
+
+    // Keep the player's work: save a moment after edits, and on the way out. Returns false when work is unsaved.
+    const save = (): boolean => {
+      if (s.room || s.editCount === savedEdits.current) return true
+      const edits = s.editCount
       const design = s.timeline.world.design
-      if (saver.current) return saver.current.schedule(design)
-      if (source.kind === 'cloud') return // someone else's level, opened to look at
+      if (saver.current) {
+        savedEdits.current = edits
+        saver.current.schedule(design)
+        return true
+      }
+      if (source.kind === 'cloud') return true // someone else's level, opened to look at
       if (signedInRef.current && !creatingCloud.current) {
+        savedEdits.current = edits
         // A signed-in builder's level goes to the account on its first edit, so it is in My worlds, ready to share.
         creatingCloud.current = createCloudLevel(design)
           .then((world) => {
@@ -173,12 +201,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           })
           .catch((error: { code?: string; message?: string }) => {
             creatingCloud.current = null
-            draftId.current = saveDraft(draftId.current, s.timeline.world.design)
+            if (!keepLocally(s.editCount)) return
             say(error?.code === 'world_limit' ? 'Your account is full, so this world is saved in this browser only.' : 'Could not save to your account, so this world is saved in this browser for now.')
           })
-        return
+        return true
       }
-      if (!creatingCloud.current) draftId.current = saveDraft(draftId.current, design)
+      if (creatingCloud.current) return true
+      return keepLocally(edits)
     }
     saveNow.current = save
     const autosave = window.setInterval(save, 1000)
@@ -192,7 +221,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     window.addEventListener('pointerdown', unlock)
     window.addEventListener('keydown', unlock)
     window.addEventListener('touchstart', onTouch, { passive: true })
-    window.addEventListener('beforeunload', save)
+    // Closing the tab with work the browser would not keep: ask first.
+    const onUnload = (event: BeforeUnloadEvent) => {
+      if (save()) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onUnload)
     document.addEventListener('visibilitychange', onHide)
     return () => {
       save()
@@ -203,7 +238,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       window.removeEventListener('pointerdown', unlock)
       window.removeEventListener('keydown', unlock)
       window.removeEventListener('touchstart', onTouch)
-      window.removeEventListener('beforeunload', save)
+      window.removeEventListener('beforeunload', onUnload)
       document.removeEventListener('visibilitychange', onHide)
       sessionRef.current = null
     }
@@ -432,7 +467,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   /** Leave once any account save has landed. */
   const leave = async (then: () => void) => {
     // Save now rather than on the next autosave tick; a level still becoming an account level finishes that first.
-    saveNow.current()
+    if (!saveNow.current() && !confirm('This world is not saved anywhere yet. Leave anyway and lose it?\n\nCancel, then use "Copy a link to this world" in the menu to keep it.')) return
     if (creatingCloud.current) await creatingCloud.current
     if (saver.current && !(await saver.current.flush())) {
       say('Your world has not saved yet. Check your connection, then try again.')
@@ -469,7 +504,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     try {
       if (saver.current) {
         saver.current.schedule(s.timeline.world.design)
-        await saver.current.flush()
+        // Never open the class room (which loads the saved copy) while this editor holds newer work.
+        if (!(await saver.current.flush())) {
+          say('Your world has not saved yet, so sharing waits. Check your connection, then try again.')
+          return
+        }
       }
       const updated = await browserClassroomClient.setWorldSharing(cloudWorld.id, next)
       if (saver.current) saver.current.world = { ...saver.current.world, ...updated }
@@ -488,7 +527,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     ? { kind: 'live', connection: s?.roomStatus ?? 'connecting' }
     : saver.current
       ? { kind: 'cloud', status: saver.current.status }
-      : { kind: 'local' }
+      : { kind: 'local', error: localFailure ? draftSaveMessage(localFailure) : undefined }
   const players = s?.room?.players ?? []
   const livePolicy: HeaderLivePolicy | undefined =
     inRoom && s
