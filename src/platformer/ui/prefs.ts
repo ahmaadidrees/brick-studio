@@ -57,9 +57,9 @@ export interface SoundPrefs {
   music: boolean
 }
 
-/** Rooms always start without music: a classroom of chiptune is a lot. */
+/** Music is opt-in for solo play; rooms always start without music. Sound effects default on. */
 export function soundPrefs(inRoom: boolean): SoundPrefs {
-  return { muted: get('brick-studio.2d.muted') === '1', music: !inRoom && get('brick-studio.2d.music') !== '0' }
+  return { muted: get('brick-studio.2d.muted') === '1', music: !inRoom && get('brick-studio.2d.music') === '1' }
 }
 
 export function saveSoundPrefs(p: SoundPrefs, inRoom: boolean) {
