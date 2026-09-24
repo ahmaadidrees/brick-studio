@@ -35,7 +35,7 @@ export type LevelSource =
   /** An account level (a classroom world holding a 2D level), edited alone. */
   | { kind: 'cloud'; world: ClassroomWorld }
   /** A live room: a guest room opened by link, or a class level's room. */
-  | { kind: 'room'; roomKind: 'guest' | 'classroom'; roomId: string }
+  | { kind: 'room'; roomKind: 'guest' | 'classroom'; roomId: string; world?: ClassroomWorld }
 
 interface Props {
   level: LevelDesign
@@ -112,6 +112,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const [portraitOk, setPortraitOk] = useState(false)
   const [clear, setClear] = useState<Clear | null>(null)
   const [sharing, setSharing] = useState(false)
+  const [roomWorld, setRoomWorld] = useState(source.kind === 'room' ? source.world ?? null : null)
   const [classmates, setClassmates] = useState<ClassroomClassmate[] | null>(null)
   const [classmatesError, setClassmatesError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -499,7 +500,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }
   const switchTo3D = () => void leave(() => window.location.assign('/build'))
   // Sharing an account level with the class: the same invite sheet as My worlds.
-  const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : null)
+  const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : roomWorld)
   const ownsCloudWorld = !!cloudWorld && cloudWorld.ownerId === account.user?.id
   const teachesCloudWorld = !!cloudWorld && account.status === 'teacher' && (account.classes ?? []).some(({ id }) => id === cloudWorld.ownerClassId || id === cloudWorld.classId)
   const canShareWithClass = !!cloudWorld && account.status === 'student' && cloudWorld.ownerId === account.user?.id && cloudWorld.kind === 'personal'
@@ -534,6 +535,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const openShare = () => {
     const classId = account.classes?.[0]?.id
     setMenu(false)
+    setPeople(false)
     setSharing(true)
     if (classmates !== null || !classId) return
     browserClassroomClient.listClassmates(classId).then(setClassmates, (error: Error) => setClassmatesError(error.message))
@@ -552,7 +554,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       }
       const updated = await browserClassroomClient.setWorldSharing(cloudWorld.id, next)
       if (saver.current) saver.current.world = { ...saver.current.world, ...updated }
+      if (inRoom) setRoomWorld(previous => previous ? { ...previous, ...updated } : updated)
       setSharing(false)
+      if (inRoom) {
+        say(next.visibility === 'private' ? 'Only you can open this world now.' : 'Invites updated. Your classmates can join from My worlds.')
+        return
+      }
       // Building together happens in the level's live room, where the owner is already waiting.
       if (next.visibility !== 'private' && next.canEdit) window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)
       else say(next.visibility === 'private' ? 'Only you can see this world now.' : 'Shared. Your classmates can play it from My worlds.')
@@ -795,7 +802,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           exitLabel={exitLabel ?? 'Back'}
         />
       )}
-      {s && <PeopleSheet open={people} onClose={() => setPeople(false)} session={s} onInvite={invite} inviteLink={inviteLink} />}
+      {s && <PeopleSheet open={people} onClose={() => setPeople(false)} session={s} onInvite={invite} inviteLink={inviteLink} onInviteMore={canShareWithClass ? openShare : undefined} />}
       <CharacterSheet open={characterOpen} selected={character} onSelect={changeCharacter} onClose={() => setCharacterOpen(false)} />
       <RecoverySheet open={recoveryOpen} worldId={recoveryWorldId} worldTitle={title} onClose={() => setRecoveryOpen(false)} />
       {s && (

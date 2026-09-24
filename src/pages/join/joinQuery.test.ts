@@ -40,3 +40,9 @@ describe('account rules', () => {
     expect(allGreen(passwordRules('brick tower', 'sky_builder'))).toBe(true)
   })
 })
+
+it('returns a signed-in student to the same compact 2D classroom invite', () => {
+  const next = '/2d/w/12345678123442348234123456789abc'
+  const query = parseJoinQuery('?mode=signin&next=' + encodeURIComponent(next))
+  expect(joinDestination('student', query.next)).toBe(next)
+})

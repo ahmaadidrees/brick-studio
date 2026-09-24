@@ -11,25 +11,26 @@ import { GameScreen } from './GameScreen'
 import { saveCharacter } from './prefs'
 import type { ClassroomWorld } from '../../classroom/contracts'
 
-const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, create: vi.fn(), flush: vi.fn(), characterOption: '' }))
+const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '' }))
 vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; flush = state.flush; constructor(world: unknown) { this.world = world } } }))
-vi.mock('../../classroom/client', () => ({ browserClassroomClient: { listClassmates: vi.fn().mockResolvedValue([]) } }))
+vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]) } }))
 vi.mock('../../shell', () => ({
   useClassroomSession: () => ({ status: 'student', user: { id: 'student' }, classes: [] }),
   useCompactLayout: () => false,
-  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void }) => (
+  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void; livePolicy?: { onOpenPeople?: () => void } }) => (
     <div>
       <span>{p.saveStatus.source.error}</span>
       <button className="app-header-tool" onClick={() => p.onOpenWorldSetup('character')}>Character</button>
       {p.onStartLiveWorld && <button onClick={p.onStartLiveWorld}>People action</button>}
+      {p.livePolicy?.onOpenPeople && <button onClick={p.livePolicy.onOpenPeople}>People</button>}
       {p.worldMenu({ openRename() {} })}
     </div>
   ),
 }))
 vi.mock('./LevelMenu', () => ({ LevelMenu: (p: { onExit: () => void }) => <button onClick={p.onExit}>Leave test world</button> }))
 vi.mock('./BuildShell', () => ({ BuildShell: () => null }))
-vi.mock('./PeopleSheet', () => ({ PeopleSheet: () => null }))
-vi.mock('../../classroom/InviteSheet', () => ({ InviteSheet: () => <div role="dialog" aria-label="Share with classmates" /> }))
+vi.mock('./PeopleSheet', () => ({ PeopleSheet: (p: { open: boolean; onInviteMore?: () => void }) => p.open && p.onInviteMore ? <button onClick={p.onInviteMore}>Invite more</button> : null }))
+vi.mock('../../classroom/InviteSheet', () => ({ InviteSheet: (p: { world: ClassroomWorld; onInvite: (value: unknown) => void }) => <div role="dialog" aria-label="Share with classmates"><span>Invited: {p.world.members?.map(member => member.id).join(',')}</span><button onClick={() => p.onInvite({ visibility: 'members', canEdit: true, members: [...(p.world.members?.map(member => member.id) ?? []), 'student-b'] })}>Add classmate B</button></div> }))
 vi.mock('./SceneSheet', () => ({ SceneSheet: () => null }))
 vi.mock('./Menu', () => ({ Menu: () => null }))
 vi.mock('../game/session', () => ({
@@ -179,4 +180,23 @@ it('asks a student to choose sharing before opening a private saved world with c
   expect(screen.getByRole('dialog', { name: 'Share with classmates' })).toBeInTheDocument()
   expect(state.create).not.toHaveBeenCalled()
   expect(state.flush).not.toHaveBeenCalled()
+})
+
+it('lets an owner invite again inside the room without navigation or a new game session', async () => {
+  const world = { ...savedWorld('class'), visibility: 'members' as const, members: [{ id: 'student-a', displayName: 'A' }] }
+  state.sharing.mockResolvedValue({ ...world, members: [...world.members, { id: 'student-b', displayName: 'B' }] })
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: world.id.replaceAll('-', ''), world }} room={{ roomId: world.id, name: 'Owner', url: 'ws://localhost/test' }} startMode="play" onExit={() => {}} />)
+  const session = state.session
+  const assign = vi.fn()
+  vi.stubGlobal('window', { ...window, addEventListener: window.addEventListener.bind(window), removeEventListener: window.removeEventListener.bind(window), location: { ...window.location, assign } })
+  fireEvent.click(screen.getByRole('button', { name: 'People' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Invite more' }))
+  expect(screen.getByText('Invited: student-a')).toBeInTheDocument()
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Add classmate B' })); await Promise.resolve() })
+  expect(state.sharing).toHaveBeenCalledWith(world.id, { visibility: 'members', canEdit: true, members: ['student-a', 'student-b'] })
+  expect(assign).not.toHaveBeenCalled()
+  expect(state.session).toBe(session)
+  fireEvent.click(screen.getByRole('button', { name: 'People' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Invite more' }))
+  expect(screen.getByText('Invited: student-a,student-b')).toBeInTheDocument()
 })

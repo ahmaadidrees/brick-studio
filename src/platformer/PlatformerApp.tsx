@@ -1,5 +1,6 @@
+import type { ClassroomWorld } from '../classroom/contracts'
 import { House, LoaderCircle, LogIn, Play } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { COURSES, courseById } from '@brick-studio/platformer-core/levels/courses'
 import type { RoomInfo } from '@brick-studio/platformer-core/net/protocol'
@@ -252,19 +253,25 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
 /** A class level's live room: signed-in only; the Worker checks this account may open it and names the host. */
 function ClassRoomPage({ worldId }: { worldId: string }) {
   const account = useClassroomSession()
-  const [title, setTitle] = useState<string | null>(null)
+  const [world, setWorld] = useState<ClassroomWorld | null>(null)
+  const level = useMemo(() => createBlankLevel(40, 20, world?.title ?? '…'), [world?.title])
   const [error, setError] = useState('')
   const signedIn = account.status === 'student' || account.status === 'teacher'
   useEffect(() => {
     if (!browserClassroomClient.getSession()) return
+    let cancelled = false
+    setError('')
+    setWorld(null)
     cloudWorldInfo(worldId).then(
       (w) => {
+        if (cancelled) return
         if (w.format !== '2d') return window.location.replace(`/live/${worldId.replaceAll('-', '')}`)
-        setTitle(w.title)
+        setWorld(w)
       },
-      (e: Error) => setError(e.message),
+      (e: Error) => { if (!cancelled) setError(e instanceof Error && 'status' in e && e.status === 404 ? 'This world isn’t available to this account. Ask its owner to invite you, or check which account you’re using.' : e.message) },
     )
-  }, [worldId, signedIn])
+    return () => { cancelled = true }
+  }, [worldId, signedIn, account.user?.id])
   if (!signedIn && account.status !== 'loading')
     return (
       <Notice title="Sign in to open this world" body="Class worlds open for the students and teacher of the class.">
@@ -281,13 +288,14 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
         </Button>
       </Notice>
     )
-  if (!title) return <Notice title="Opening the world…" busy />
+  if (!world) return <Notice title="Opening the world…" busy />
   const invited = new URLSearchParams(window.location.search).get('invited') === '1'
   if (invited) window.history.replaceState(null, '', window.location.pathname)
   return (
     <GameScreen
-      level={createBlankLevel(40, 20, title)}
-      source={{ kind: 'room', roomKind: 'classroom', roomId: worldId.replaceAll('-', '') }}
+      key={`${worldId}:${account.user?.id}`}
+      level={level}
+      source={{ kind: 'room', roomKind: 'classroom', roomId: worldId.replaceAll('-', ''), world }}
       startMode="play"
       room={{ roomId: worldId.replaceAll('-', ''), name: account.displayName ?? 'Builder', url: () => classRoomSocketUrl(worldId) }}
       onExit={() => window.location.assign('/worlds')}

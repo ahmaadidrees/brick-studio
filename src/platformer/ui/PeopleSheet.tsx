@@ -11,21 +11,22 @@ interface Props {
   /** Copy the room's link. */
   onInvite?: () => void
   inviteLink?: string
+  onInviteMore?: () => void
 }
 
 /**
  * The header's People in a room: the invite link, who is here, and (for the host) the room's controls. The game keeps
  * going while it is open, as rooms never pause.
  */
-export function PeopleSheet({ open, onClose, session, onInvite, inviteLink }: Props) {
+export function PeopleSheet({ open, onClose, session, onInvite, inviteLink, onInviteMore }: Props) {
   return (
     <Sheet open={open} onClose={onClose} title="People" description="The game keeps going while this is open" variant="dialog" size="md" className="p2d-menu">
-      {session.room && <RoomSection session={session} onInvite={onInvite} inviteLink={inviteLink} />}
+      {session.room && <RoomSection session={session} onInvite={onInvite} inviteLink={inviteLink} onInviteMore={onInviteMore} />}
     </Sheet>
   )
 }
 
-function RoomSection({ session, onInvite, inviteLink }: { session: GameSession; onInvite?: () => void; inviteLink?: string }) {
+function RoomSection({ session, onInvite, inviteLink, onInviteMore }: { session: GameSession; onInvite?: () => void; inviteLink?: string; onInviteMore?: () => void }) {
   const room = session.room!
   const me = room.num
   const host = session.isHost
@@ -35,13 +36,14 @@ function RoomSection({ session, onInvite, inviteLink }: { session: GameSession; 
   }
   return (
     <section className="p2d-menu-section" aria-label="Room">
+      {onInviteMore && <Button icon={<Users size={18} />} onClick={onInviteMore}>Invite more</Button>}
       {onInvite && (
         <>
           <h3>Invite</h3>
           <div className="p2d-invite">
             {inviteLink && <code>{inviteLink.replace(/^https?:\/\//, '')}</code>}
             <Button icon={<Link2 size={18} />} onClick={onInvite}>
-              Copy link
+              {session.classroomRoom ? 'Copy link for invited classmates' : 'Copy link'}
             </Button>
           </div>
         </>
