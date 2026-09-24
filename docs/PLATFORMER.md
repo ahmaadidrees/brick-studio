@@ -153,7 +153,7 @@ DEMO_OUT=demo-out node scripts/demo/record-3d.mjs # build a staircase in 3D, the
 DEMO_OUT=demo-out node scripts/demo/social-cut.mjs # both, with title cards, for LinkedIn and other feeds
 ```
 
-Each recording writes a 1080p MP4, a smaller MP4 and WebM for the web, a square cut and a poster image; the social
+Each recording writes a 1080p MP4, a smaller MP4 and WebM for the web, a square cut, a poster image and a 4:3 hero cut whose camera zooms in on the cursor while building and eases out for play; the social
 cut joins them into one 16:9 and one square video with the words on screen (feeds play videos muted).
 `DEMO_PREVIEW=1` runs a recording's storyboard without saving frames, to check the timing, and
 `node scripts/demo/encode.mjs build-3d` encodes a recording again from its saved frames. `scripts/demo/lib/studio.mjs`

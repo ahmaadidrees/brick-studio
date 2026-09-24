@@ -11,6 +11,7 @@
  */
 import { spawnSync } from 'node:child_process'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { launchOptions, loadChromium } from '../../qa/lib/env.mjs'
 
@@ -75,6 +76,9 @@ export class Director {
   constructor({ name, width = 1280, height = 720, scale = 1.5, fps = 60, css = '', gpu = false }) {
     Object.assign(this, { name, width, height, scale, fps, css, gpu })
     this.frame = 0
+    // Where the cursor is on each frame and whether it shows: the hero cut's camera follows it.
+    this.track = []
+    this.cursorShown = true
     this.mouse = { x: width / 2, y: height / 2 }
     this.dir = path.join(OUT, `${name}-frames`)
   }
@@ -110,6 +114,7 @@ export class Director {
       const file = path.join(this.dir, `f${String(this.frame).padStart(5, '0')}.jpg`)
       await this.page.screenshot({ path: file, type: 'jpeg', quality: 93, animations: 'disabled', caret: 'hide' })
     }
+    this.track.push([Math.round(this.mouse.x), Math.round(this.mouse.y), this.cursorShown ? 1 : 0])
     this.frame++
   }
 
@@ -136,6 +141,7 @@ export class Director {
 
   /** Fade the drawn cursor out (while the game plays) or back in. */
   async cursor(visible) {
+    this.cursorShown = visible
     await this.page.evaluate((v) => window.__demoCursor?.fade(v ? 1 : 0), visible)
   }
 
@@ -190,7 +196,7 @@ export class Director {
   async finish({ squareFocusX = 0.5 } = {}) {
     await this.browser.close()
     const { name, fps, width, height, scale } = this
-    const meta = { name, frames: this.frame, fps, seconds: this.frame / fps, width, height, scale, squareFocusX }
+    const meta = { name, frames: this.frame, fps, seconds: this.frame / fps, width, height, scale, squareFocusX, track: this.track }
     await writeFile(path.join(OUT, `${name}.json`), JSON.stringify(meta, null, 2))
     encode(meta)
   }
@@ -213,7 +219,7 @@ export function ffmpeg(args, label) {
  * (LinkedIn and anywhere else), a smaller 30 fps MP4 and WebM for the website, a square cut for social feeds, and a
  * poster image. `meta` is what the recording saved as OUT/<name>.json, so encode.mjs can redo this without recording.
  */
-export function encode({ name, frames, fps, width = 1280, height = 720, scale = 1.5, squareFocusX = 0.5 }) {
+export function encode({ name, frames, fps, width = 1280, height = 720, scale = 1.5, squareFocusX = 0.5, track }) {
   const base = path.join(OUT, name)
   const dir = path.join(OUT, `${name}-frames`)
   const input = ['-framerate', String(fps), '-i', path.join(dir, 'f%05d.jpg')]
@@ -227,5 +233,41 @@ export function encode({ name, frames, fps, width = 1280, height = 720, scale = 
   const x = Math.max(0, Math.min(W - side, Math.round(W * squareFocusX - side / 2)))
   ffmpeg([...input, '-vf', `crop=${side}:${side}:${x}:0,scale=1080:1080,${VIDEO}`, ...h264(19), `${base}-square.mp4`], 'square')
   ffmpeg(['-i', path.join(dir, 'f00000.jpg'), '-vf', 'scale=1600:-2', '-q:v', '3', `${base}-poster.jpg`], 'poster')
+  if (track) hero({ name, fps, width, height, scale, track })
   console.log(`[${name}] ${frames} frames (${(frames / fps).toFixed(1)} s) → ${base}-*.mp4 / .webm / -poster.jpg`)
+}
+
+/**
+ * The hero cut: a 4:3 video with a virtual camera, like a screen-recording app's auto zoom. While the cursor shows,
+ * the camera zooms in and follows it; when it fades (the game plays) the camera eases back out to the whole view.
+ * The camera moves smoothly (it chases the cursor, it never jumps) and never leaves the frame.
+ */
+export function hero({ name, fps, width, height, scale, track }, { zoom = 1.45, aspect = 4 / 3, out = [1200, 900] } = {}) {
+  const base = path.join(OUT, name)
+  const full = { w: Math.min(width, height * aspect), h: Math.min(height, width / aspect) }
+  const cam = { x: width / 2, y: height / 2, z: 1 }
+  const dt = 1 / fps
+  const even = (v) => Math.max(2, Math.round(v * scale / 2) * 2)
+  const lines = track.map(([mx, my, shown], i) => {
+    const tz = shown ? zoom : 1
+    const tx = shown ? mx : width / 2
+    const ty = shown ? my : height / 2
+    cam.z += (tz - cam.z) * (1 - Math.exp(-dt * 2.2))
+    cam.x += (tx - cam.x) * (1 - Math.exp(-dt * 2.6))
+    cam.y += (ty - cam.y) * (1 - Math.exp(-dt * 2.6))
+    const w = full.w / cam.z
+    const h = full.h / cam.z
+    const x = Math.min(width - w, Math.max(0, cam.x - w / 2))
+    const y = Math.min(height - h, Math.max(0, cam.y - h / 2))
+    const [W, H] = [even(w), even(h)]
+    const X = Math.min(Math.round(width * scale) - W, Math.round(x * scale))
+    const Y = Math.min(Math.round(height * scale) - H, Math.round(y * scale))
+    return `${(i * dt).toFixed(4)} crop@cam w ${W}, crop@cam h ${H}, crop@cam x ${X}, crop@cam y ${Y};`
+  })
+  const cmds = `${base}-hero-camera.txt`
+  writeFileSync(cmds, lines.join('\n') + '\n')
+  const input = ['-framerate', String(fps), '-i', path.join(OUT, `${name}-frames`, 'f%05d.jpg')]
+  const vf = `sendcmd=f='${cmds}',crop@cam=${even(full.w)}:${even(full.h)},scale=${out[0]}:${out[1]}:flags=lanczos,fps=30,${VIDEO}`
+  ffmpeg([...input, '-vf', vf, '-c:v', 'libx264', '-preset', 'slow', '-crf', '21', ...VIDEO_TAGS, '-movflags', '+faststart', '-an', `${base}-hero.mp4`], 'hero mp4')
+  ffmpeg([...input, '-vf', vf, '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '34', '-row-mt', '1', ...VIDEO_TAGS, '-an', `${base}-hero.webm`], 'hero webm')
 }
