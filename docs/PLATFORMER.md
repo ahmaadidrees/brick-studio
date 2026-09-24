@@ -161,9 +161,40 @@ has the tools for writing another one.
 
 ## Deploying
 
-The Worker must go out before the site, because the site calls the new routes. Deploy the Worker to staging first:
-the `v4` migration creates the `PlatformerRoom` class, and Durable Object migrations cannot be undone once applied.
-Then production, then the site. No database migration and no new secrets are needed.
+Order: Worker to staging, rehearse, Worker to production, then the site. The site calls the new routes, so it
+never goes first. No database migration and no new secrets are needed: 2D class worlds use the existing world
+documents (`format: "2d"`).
+
+**The one thing that cannot be undone.** The Worker's `v4` migration creates the `PlatformerRoom` Durable Object
+class. Once an environment has applied it, that Worker cannot be rolled back to a version from before `v4` (Cloudflare
+refuses version rollbacks across a Durable Object class change), and the class, its binding and the migration must
+stay in every later deploy. So:
+
+1. **Check what each environment has.** Before deploying, confirm the migration tags already applied to staging and
+   production are `v1`–`v3` (the Cloudflare dashboard's Durable Objects page, or the last deploy's output). The
+   deploy should report applying only `v4`.
+2. **Staging.** `npm run test:worker`, then `npx wrangler deploy --env staging` in `multiplayer/worker`. Point a
+   staging site build at it and rehearse, signed in as a teacher and as two students:
+   - 3D: open an existing class world, build together, leave, reopen: nothing changed for 3D.
+   - 2D guest: build, play, open a room with friends, a second browser joins, the host locks building.
+   - 2D class world: create one, share it for building, both students edit, the last one closes the tab,
+     reopen from My worlds: every edit is there. Then with the network cut mid-edit (devtools offline), rejoin:
+     the room still has the edits and saves them.
+   - Watch the Worker logs for errors throughout.
+   Exit criteria: all of the above pass, no Worker errors, and `node scripts/qa/platformer-2d.mjs` passes against
+   staging (`UI_ORIGIN`, and the site's `VITE_*_SERVER_URL` pointing at staging).
+3. **Production Worker.** `npx wrangler deploy` in `multiplayer/worker`. Record the version id it prints.
+4. **Site.** Deploy the site as usual; check brickgineers.com serves the new landing page and `/2d`.
+
+**If something goes wrong.**
+- *The site:* roll the site back in Vercel to the previous deployment. The Worker can stay: the old site never
+  calls the 2D routes, and 3D is unchanged.
+- *The Worker, after `v4`:* do not try a Cloudflare rollback to a pre-`v4` version; it will be refused. Fix forward:
+  a new build that keeps `PlatformerRoom`, its binding and all four migration tags, with the faulty code reverted.
+  If the 2D rooms themselves are the problem, the site can be rolled back first so nobody reaches them while the
+  fix is made.
+- *Unsaved class edits:* a 2D class room keeps edits it could not save in its own storage and retries from its alarm;
+  it does not expire while they are pending, so a fix-forward deploy does not lose them.
 
 ## Not done yet
 

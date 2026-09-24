@@ -215,7 +215,9 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
         </Button>
       </Notice>
     )
-  const refused = !ownerToken && (info.full ? 'This room is full.' : info.closed ? 'The host has closed this room to new players.' : null)
+  const refused = !ownerToken && info.full ? 'This room is full.' : null
+  // Closed to new players only: someone who was here before is let back in, and only the room knows who that was.
+  const closedNote = !ownerToken && !info.full && info.closed
   const join = () => {
     const n = name.trim().slice(0, 16) || 'Builder'
     saveGuestName(n)
@@ -233,9 +235,10 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
             join()
           }}
         >
+          {closedNote && <p className="p2d-note">The host has closed this room to new players. If you were in it before, you can rejoin.</p>}
           <TextField label="Your name" value={name} maxLength={16} autoFocus autoComplete="off" placeholder="Builder" onChange={(e) => setName(e.target.value)} />
           <Button type="submit" variant="primary" size="lg" fullWidth icon={<Play size={20} />}>
-            {ownerToken ? 'Open the room' : 'Join'}
+            {ownerToken ? 'Open the room' : closedNote ? 'Rejoin' : 'Join'}
           </Button>
         </form>
       )}

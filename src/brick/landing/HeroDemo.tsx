@@ -1,11 +1,12 @@
 import { Maximize2, Pause, Play, X } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 /*
  * The hero's demo: the recorded 3D and 2D clips (scripts/demo) play one after the other. The 3D | 2D pill shows which
  * is on and how far along it is, and jumps on a click; Pause stops the motion (it plays on its own for longer than
  * five seconds); Full screen opens the whole-screen cut with its captions. With reduced motion nothing plays until
- * asked: each clip shows its finished build.
+ * asked: each clip shows its finished build. The clips (about a megabyte) wait until the page itself has loaded;
+ * until then the poster stands in, so they never hold up the first paint.
  */
 
 const MEDIA_BASE = '/brand/media'
@@ -37,6 +38,15 @@ export function HeroDemo() {
   const video = useRef<HTMLVideoElement | null>(null)
   const dialog = useRef<HTMLDialogElement>(null)
   const [fullOpen, setFullOpen] = useState(false)
+  const [pageLoaded, setPageLoaded] = useState(() => typeof document !== 'undefined' && document.readyState === 'complete')
+  const pills = useRef<(HTMLButtonElement | null)[]>([])
+
+  useEffect(() => {
+    if (pageLoaded) return
+    const done = () => setPageLoaded(true)
+    window.addEventListener('load', done, { once: true })
+    return () => window.removeEventListener('load', done)
+  }, [pageLoaded])
   // Whether the hero was playing when full screen opened, so closing it picks up where it was.
   const resume = useRef(false)
 
@@ -57,6 +67,15 @@ export function HeroDemo() {
     setView(key)
   }
   const next = () => show(view === '3d' ? '2d' : '3d')
+  // A radio group: arrow keys move the choice (and focus) between 3D and 2D; Tab reaches only the chosen one.
+  const onPillKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return
+    event.preventDefault()
+    const i = CLIPS.findIndex((c) => c.key === view)
+    const to = (i + (event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? CLIPS.length - 1 : 1)) % CLIPS.length
+    show(CLIPS[to].key)
+    pills.current[to]?.focus()
+  }
   const clip = CLIPS.find((c) => c.key === view)!
 
   const openFull = () => {
@@ -73,26 +92,30 @@ export function HeroDemo() {
 
   return (
     <figure className="landing-demo">
-      <video
-        key={view}
-        ref={attach}
-        className="landing-demo-video"
-        aria-label={clip.name}
-        playsInline
-        preload="metadata"
-        autoPlay={playing}
-        poster={`${MEDIA_BASE}/demo-${view}-poster.jpg`}
-        width={960}
-        height={720}
-        onTimeUpdate={(event) => {
-          const el = event.currentTarget
-          if (el.duration) setDone(el.currentTime / el.duration)
-        }}
-        onEnded={next}
-      >
-        <source src={`${MEDIA_BASE}/demo-${view}.webm`} type="video/webm" />
-        <source src={`${MEDIA_BASE}/demo-${view}.mp4`} type="video/mp4" />
-      </video>
+      {pageLoaded ? (
+        <video
+          key={view}
+          ref={attach}
+          className="landing-demo-video"
+          aria-label={clip.name}
+          playsInline
+          preload="metadata"
+          autoPlay={playing}
+          poster={`${MEDIA_BASE}/demo-${view}-poster.jpg`}
+          width={960}
+          height={720}
+          onTimeUpdate={(event) => {
+            const el = event.currentTarget
+            if (el.duration) setDone(el.currentTime / el.duration)
+          }}
+          onEnded={next}
+        >
+          <source src={`${MEDIA_BASE}/demo-${view}.webm`} type="video/webm" />
+          <source src={`${MEDIA_BASE}/demo-${view}.mp4`} type="video/mp4" />
+        </video>
+      ) : (
+        <img className="landing-demo-video" src={`${MEDIA_BASE}/demo-${view}-poster.jpg`} alt={clip.name} width={960} height={720} />
+      )}
       <div className="landing-demo-controls">
         <button type="button" className="landing-demo-button" aria-label={playing ? 'Pause the demo' : 'Play the demo'} onClick={() => setPlaying((p) => !p)}>
           {playing ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
@@ -104,7 +127,17 @@ export function HeroDemo() {
       </div>
       <div className="landing-demo-switch" role="radiogroup" aria-label="Show the 3D or 2D builder">
         {CLIPS.map((c) => (
-          <button key={c.key} type="button" role="radio" aria-checked={view === c.key} className={`landing-demo-pill landing-demo-pill-${c.key}`} onClick={() => show(c.key)}>
+          <button
+            key={c.key}
+            ref={(el) => { pills.current[CLIPS.indexOf(c)] = el }}
+            type="button"
+            role="radio"
+            aria-checked={view === c.key}
+            tabIndex={view === c.key ? 0 : -1}
+            className={`landing-demo-pill landing-demo-pill-${c.key}`}
+            onClick={() => show(c.key)}
+            onKeyDown={onPillKey}
+          >
             {c.label}
             <span className="landing-demo-progress" aria-hidden="true" style={{ width: view === c.key && !reduced ? `${Math.round(done * 100)}%` : 0 }} />
           </button>

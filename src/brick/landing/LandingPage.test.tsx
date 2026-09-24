@@ -298,6 +298,14 @@ describe('bundle and asset boundaries', () => {
     fireEvent.click(pills()[0])
     expect(container.querySelector('.landing-demo-video source')).toHaveAttribute('src', '/brand/media/demo-3d.webm')
 
+    // A radio group: only the chosen pill is in the tab order, and arrow keys move the choice and focus.
+    expect(pills().map((p) => p.tabIndex)).toEqual([0, -1])
+    fireEvent.keyDown(pills()[0], { key: 'ArrowRight' })
+    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    expect(document.activeElement).toBe(pills()[1])
+    fireEvent.keyDown(pills()[1], { key: 'ArrowLeft' })
+    expect(document.activeElement).toBe(pills()[0])
+
     fireEvent.click(screen.getByRole('button', { name: 'Pause the demo' }))
     expect(screen.getByRole('button', { name: 'Play the demo' })).toBeInTheDocument()
 

@@ -152,7 +152,7 @@ function StartCta({ href, continueBuild, className }: { href: string; continueBu
 }
 
 /** The strip under the hero: plain facts, no numbers to decode. */
-const FACTS = ['Runs in any browser', 'Chromebooks, iPads and laptops', 'Nothing to install', 'Students join with a class code'] as const
+const FACTS = ['Runs right in the browser', 'Chromebooks, iPads and laptops', 'Nothing to install', 'Students join with a class code'] as const
 
 const FAQ = [
   {
