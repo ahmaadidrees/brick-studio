@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { GameScreen } from './GameScreen'
 import { saveCharacter } from './prefs'
+import type { ClassroomWorld } from '../../classroom/contracts'
 
 const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, create: vi.fn(), flush: vi.fn(), characterOption: '' }))
 vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; flush = state.flush; constructor(world: unknown) { this.world = world } } }))
@@ -83,9 +84,10 @@ afterEach(() => {
 const browserFull = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError') })
 const open = (onExit = () => {}) => render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'new' }} startMode="build" onExit={onExit} />)
 
-const savedWorld = (visibility: 'private' | 'class') => ({
+const savedWorld = (visibility: 'private' | 'class'): ClassroomWorld => ({
   id: '12345678-1234-4234-8234-123456789abc', title: 'Saved world', kind: 'personal', format: '2d',
   ownerId: 'student', ownerClassId: 'class-1', classId: 'class-1', canEdit: true, visibility, classCanEdit: visibility === 'class', members: [], revision: 1,
+  updatedAt: '2026-09-24T00:00:00Z', ownerName: 'Student', sharedAt: visibility === 'class' ? '2026-09-24T00:00:00Z' : null,
 })
 
 it('starts with the saved character and applies a new choice immediately', () => {
