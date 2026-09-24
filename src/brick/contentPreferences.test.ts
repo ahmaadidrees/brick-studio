@@ -77,3 +77,13 @@ describe('appearance persistence', () => {
     expect(normalizeCharacterAppearance(null)).toEqual(DEFAULT_CHARACTER_APPEARANCE)
   })
 })
+
+ it('persists bounded character sizes and defaults invalid sizes to regular', () => {
+   for (const size of ['small', 'large'] as const) {
+     const storage = memoryStorage()
+     saveCharacterPreferences({ characterId: 'classic', palette: {}, appearance: normalizeCharacterAppearance({ size }) }, storage)
+     expect(loadCharacterPreferences(storage).appearance?.size).toBe(size)
+   }
+   expect(normalizeCharacterAppearance({ size: 999 }).size).toBeUndefined()
+   expect(normalizeCharacterAppearance({ size: 'regular' }).size).toBeUndefined()
+ })

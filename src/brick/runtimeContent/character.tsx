@@ -1,3 +1,4 @@
+import { characterSizeScale } from '@brick-studio/core'
 import { Suspense } from 'react'
 import { BlockAvatar } from '../BlockAvatar'
 import { ADDITIVE_CHARACTER_BY_ID } from '../characters/index'
@@ -125,6 +126,7 @@ export function RuntimeCharacterAvatar({
   }
 
   return (
+    <group name="character-size" scale={characterSizeScale(appearance)}>
     <RuntimeContentBoundary
       fallback={<ClassicAvatar {...visualProps} />}
       resetKey={resolvedId}
@@ -134,6 +136,7 @@ export function RuntimeCharacterAvatar({
         <Avatar {...visualProps} />
       </Suspense>
     </RuntimeContentBoundary>
+    </group>
   )
 }
 

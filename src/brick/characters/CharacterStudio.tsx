@@ -1,3 +1,4 @@
+import { normalizeCharacterAppearance } from '@brick-studio/core'
 import { Sparkles, Undo2 } from 'lucide-react'
 import { useId, useState } from 'react'
 import { Button } from '../../ui'
@@ -81,6 +82,14 @@ export function CharacterStudio({
               event.preventDefault(); setPage(pages[next][0]); document.getElementById(`${id}-${pages[next][0]}`)?.focus()
             }}>{label}</button>)}
         </div>
+        <div className="character-studio__sections" role="group" aria-label="Character size">
+          <span>Size</span>
+          {(['small', 'regular', 'large'] as const).map(size => <button type="button" key={size}
+            aria-pressed={(draft.appearance?.size ?? 'regular') === size}
+            onClick={() => edit({ ...draft, appearance: normalizeCharacterAppearance({ ...draft.appearance, size }) })}
+          >{size[0].toUpperCase() + size.slice(1)}</button>)}
+        </div>
+        <p>Changing size in Explore moves you to a safe standing spot.</p>
         <div className="character-studio__panel" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${page}`}>
         {page === 'characters' && <ContentPicker
           hideHeader

@@ -3,7 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Pause, Play, RotateCcw } from 'lucide-react'
 import { Component, useEffect, useRef, useState, useSyncExternalStore, type ComponentRef, type ReactNode } from 'react'
 import { Vector3, type Group } from 'three'
-import type { CharacterAppearance } from '@brick-studio/core'
+import { characterSizeScale, type CharacterAppearance } from '@brick-studio/core'
 import { Button } from '../../ui'
 import { createMotionSnapshot } from '../avatarMotion'
 import { RuntimeCharacterAvatar, useRuntimeCharacter } from '../runtimeContent/character'
@@ -95,11 +95,11 @@ function PreviewFigure({ characterId, palette, appearance, reducedMotion, action
       if (root.current) root.current.position.y = airborne ? 1.5 * t - 1.875 * t * t : 0
     } else if (root.current) root.current.position.y = 0
   }, -1)
-  return <group ref={root}>
+  return <group position={[0, (characterSizeScale(appearance) - 1) * 0.36, 0]}><group ref={root}>
     <RuntimeCharacterAvatar characterId={characterId} palette={palette} appearance={appearance}
       motion={motion} reducedMotion={reducedMotion} compact
       onLoadError={() => onStatus('Character unavailable. Showing Classic Builder.')} />
-  </group>
+  </group></group>
 }
 
 /** A small real 3D toy-room stage; no scene assets, physics or extra canvases. */

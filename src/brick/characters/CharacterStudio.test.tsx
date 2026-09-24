@@ -137,3 +137,13 @@ describe('CharacterStudio', () => {
     } finally { Object.defineProperty(globalThis, 'localStorage', descriptor) }
   })
 })
+
+it('offers size for every character and leaves the change in the draft until Apply', () => {
+  const change = vi.fn()
+  render(<CharacterStudio draft={{ ...draft, characterId: 'cc0-hero' }} onDraftChange={change} characterDescriptors={characters} paletteGroups={paletteGroups} />)
+  const sizes = within(screen.getByRole('group', { name: 'Character size' }))
+  expect(sizes.getByRole('button', { name: 'Regular' })).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.click(sizes.getByRole('button', { name: 'Small' }))
+  expect(change.mock.calls[0][0].appearance.size).toBe('small')
+  expect(persistence.save).not.toHaveBeenCalled()
+})

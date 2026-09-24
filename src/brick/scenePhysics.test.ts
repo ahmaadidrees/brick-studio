@@ -87,16 +87,16 @@ describe('Explore camera boom obstruction', () => {
   })
 })
 
-function createSpawnShapes() {
+function createSpawnShapes(scale = 1) {
   const clearanceExpansion = EXPLORE_SPAWN_HEAD_CLEARANCE / 2
   return {
-    avatar: new RAPIER.Capsule(EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS),
+    avatar: new RAPIER.Capsule(EXPLORER_CAPSULE_HALF_HEIGHT * scale, EXPLORER_CAPSULE_RADIUS * scale),
     clearance: new RAPIER.Capsule(
-      EXPLORER_CAPSULE_HALF_HEIGHT + Math.max(0, clearanceExpansion - EXPLORE_SPAWN_SIDE_CLEARANCE),
-      EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_SIDE_CLEARANCE,
+      EXPLORER_CAPSULE_HALF_HEIGHT * scale + Math.max(0, clearanceExpansion - EXPLORE_SPAWN_SIDE_CLEARANCE),
+      EXPLORER_CAPSULE_RADIUS * scale + EXPLORE_SPAWN_SIDE_CLEARANCE,
     ),
     clearanceOffset: clearanceExpansion,
-    standingY: EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_FLOOR_GAP,
+    standingY: (EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS) * scale + EXPLORE_SPAWN_FLOOR_GAP,
   }
 }
 
@@ -205,4 +205,18 @@ describe('safe Explore spawning', () => {
     expect(world.getCollider(obstacle.handle)).not.toBeNull()
     world.free()
   })
+})
+
+it('lets a small character stand under a low ceiling but finds an open spot for a large one', () => {
+  const world = createSupportedWorld()
+  const ceiling = world.createRigidBody(RAPIER.RigidBodyDesc.fixed())
+  world.createCollider(RAPIER.ColliderDesc.cuboid(1, 0.1, 1).setTranslation(0, 0.8, 0), ceiling)
+  world.step()
+  for (const scale of [0.75, 1.25]) {
+    const shapes = createSpawnShapes(scale)
+    const under = { x: 0, y: shapes.standingY, z: 0 }
+    const open = { x: 4, y: shapes.standingY, z: 0 }
+    expect(findSafeExploreSpawn(world, [under, open], shapes.avatar, shapes.clearance, shapes.clearanceOffset)).toEqual(scale === 0.75 ? under : open)
+  }
+  world.free()
 })

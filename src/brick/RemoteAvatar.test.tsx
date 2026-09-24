@@ -83,9 +83,15 @@ describe('remote avatar rendering', () => {
     expect(group.position.x).toBeLessThan(10)
   })
 
+  it('uses the shared size for remote characters', async () => {
+    const { group, update } = await renderAvatar()
+    await update({ appearance: { body: 'classic', face: 'friendly', hair: 'cap', outfit: 'explorer', accessory: 'none', skinColor: '#f0bd86', hairColor: '#593c2e', size: 'large' } })
+    expect(group.getObjectByName('character-size')!.scale.toArray()).toEqual([1.25, 1.25, 1.25])
+  })
+
   it('preserves shortest-arc character turning across the yaw wrap', async () => {
     const { group, frame, update } = await renderAvatar({ facingYaw: Math.PI - 0.1 })
-    const facing = group.children[0].children[0]
+    const facing = group.getObjectByName('character-size')!.children[0].children[0]
     frame()
     const initial = facing.rotation.y
     await update({ facingYaw: -Math.PI + 0.1 })

@@ -1,4 +1,4 @@
-import type { CharacterAppearance } from '@brick-studio/core'
+import { characterSizeScale, type CharacterAppearance } from '@brick-studio/core'
 import { exploreKeyboardBlocked, followCameraYaw, readExploreKeys } from './explorePreferences'
 import { Edges, OrbitControls } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
@@ -158,7 +158,6 @@ const PLACE_POP_START_SCALE = 0.86
 const PLACE_POP_DURATION = 0.15
 const BLOCKED_SHAKE_DURATION = 0.22
 const BLOCKED_SHAKE_AMPLITUDE = STUD * 0.16
-const EXPLORE_STANDING_Y = EXPLORER_CAPSULE_HALF_HEIGHT + EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_FLOOR_GAP
 const EXPLORE_CLEARANCE_CENTER_OFFSET = EXPLORE_SPAWN_HEAD_CLEARANCE / 2
 const EXPLORE_SPAWN_RETRY_FRAMES = 12
 const EXPLORE_SPAWN_MAX_ATTEMPTS = 3
@@ -1437,6 +1436,10 @@ function ExplorerAvatar({
   respawnBelowY?: number
 }) {
   const plateSize = usePlateSize()
+  const sizeScale = characterSizeScale(appearance)
+  const capsuleHalfHeight = EXPLORER_CAPSULE_HALF_HEIGHT * sizeScale
+  const capsuleRadius = EXPLORER_CAPSULE_RADIUS * sizeScale
+  const standingY = capsuleHalfHeight + capsuleRadius + EXPLORE_SPAWN_FLOOR_GAP
 
   const body = useRef<RapierRigidBody>(null)
   const collider = useRef<RapierCollider>(null)
@@ -1467,19 +1470,19 @@ function ExplorerAvatar({
   const { camera } = useThree()
   const cameraProbe = useMemo(() => new rapier.Ball(CAMERA_PROBE_RADIUS), [rapier])
   const avatarSpawnCapsule = useMemo(
-    () => new rapier.Capsule(EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS),
-    [rapier],
+    () => new rapier.Capsule(capsuleHalfHeight, capsuleRadius),
+    [rapier, capsuleHalfHeight, capsuleRadius],
   )
   const clearanceCapsule = useMemo(() => new rapier.Capsule(
-    EXPLORER_CAPSULE_HALF_HEIGHT
+    capsuleHalfHeight
       + Math.max(0, EXPLORE_SPAWN_HEAD_CLEARANCE / 2 - EXPLORE_SPAWN_SIDE_CLEARANCE),
-    EXPLORER_CAPSULE_RADIUS + EXPLORE_SPAWN_SIDE_CLEARANCE,
-  ), [rapier])
+    capsuleRadius + EXPLORE_SPAWN_SIDE_CLEARANCE,
+  ), [rapier, capsuleHalfHeight, capsuleRadius])
   const fallbackSpawnCandidates = useMemo(() => createExploreSpawnCandidates({
     gridSize: plateSize,
     stud: STUD,
-    standingY: EXPLORE_STANDING_Y,
-  }), [plateSize])
+    standingY,
+  }), [plateSize, standingY])
   const boomDistance = useRef<number | null>(null)
   const spawnPending = useRef(true)
   const spawnAttempts = useRef(0)
@@ -1696,7 +1699,7 @@ function ExplorerAvatar({
       pose.grounded = motion.current.grounded
       onPose(pose)
     }
-    const target = cameraTarget.current.set(position.x, position.y + 0.52, position.z)
+    const target = cameraTarget.current.set(position.x, position.y + 0.52 * sizeScale, position.z)
     const desiredDistance = store.touchCameraDistance
     const boom = computeOrbitBoom(orbit.current.yaw, orbit.current.pitch, desiredDistance, orbitBoom.current)
     const direction = cameraDirection.current.copy(boom).normalize()
@@ -1726,11 +1729,11 @@ function ExplorerAvatar({
       ref={body}
       type="kinematicPosition"
       colliders={false}
-      position={[0, EXPLORE_STANDING_Y, 5]}
+      position={[0, standingY, 5]}
       enabledRotations={[false, false, false]}
       ccd
     >
-      <CapsuleCollider ref={collider} args={[EXPLORER_CAPSULE_HALF_HEIGHT, EXPLORER_CAPSULE_RADIUS]} friction={0.2} />
+      <CapsuleCollider ref={collider} args={[capsuleHalfHeight, capsuleRadius]} friction={0.2} />
       <group visible={avatarVisible}>
         <RuntimeCharacterAvatar
           characterId={characterId}
@@ -1801,6 +1804,7 @@ function ExploreScene({
       {bricks.map((brick) => <BrickCollider key={brick.id} brick={brick} />)}
       <RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} />
       <ExplorerAvatar
+        key={characterSizeScale(localCharacterAppearance)}
         onPose={onLocalAvatarPose}
         characterId={localCharacterId}
         palette={localCharacterPalette}

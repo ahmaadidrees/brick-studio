@@ -1279,9 +1279,9 @@ it("broadcasts and persists bounded appearance changes for another builder", asy
   const owner = await connectWorld(roomId, "owner_style", ownerToken, undefined, 3);
   const guest = await connectWorld(roomId, "guest_style", undefined, undefined, 3);
   await guest.inbox!.next("players");
-  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Stylist", characterId: "toy-figure", appearance: { hair: "bun", accessory: "glasses", body: "broad" } } });
+  send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setProfile", profile: { displayName: "Stylist", characterId: "toy-figure", appearance: { hair: "bun", accessory: "glasses", body: "broad", size: "large" } } });
   const updated = await guest.inbox!.next("players");
-  expect(updated).toMatchObject({ players: expect.arrayContaining([expect.objectContaining({ playerId: "owner_style", profile: expect.objectContaining({ appearance: expect.objectContaining({ hair: "bun", accessory: "glasses", body: "broad" }) }) })]) });
+  expect(updated).toMatchObject({ players: expect.arrayContaining([expect.objectContaining({ playerId: "owner_style", profile: expect.objectContaining({ appearance: expect.objectContaining({ hair: "bun", accessory: "glasses", body: "broad", size: "large" }) }) })]) });
 });
 
 it("reports distinct connected classroom accounts for the class list without world data", async () => {

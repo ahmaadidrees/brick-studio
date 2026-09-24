@@ -1,4 +1,4 @@
-/** Bounded cosmetic choices shared by persistence, multiplayer and rendering. */
+/** Bounded character choices shared by persistence, multiplayer and rendering. */
 export const CHARACTER_APPEARANCE_OPTIONS = {
   body: ['classic', 'broad', 'slim'],
   face: ['friendly', 'freckles', 'rosy'],
@@ -9,7 +9,7 @@ export const CHARACTER_APPEARANCE_OPTIONS = {
 
 export type CharacterAppearance = {
   [K in keyof typeof CHARACTER_APPEARANCE_OPTIONS]: (typeof CHARACTER_APPEARANCE_OPTIONS)[K][number]
-} & { skinColor: string; hairColor: string }
+} & { skinColor: string; hairColor: string; size?: 'small' | 'regular' | 'large' }
 
 export const DEFAULT_CHARACTER_APPEARANCE: Readonly<CharacterAppearance> = Object.freeze({
   body: 'classic', face: 'friendly', hair: 'cap', outfit: 'explorer', accessory: 'none',
@@ -29,5 +29,11 @@ export function normalizeCharacterAppearance(value: unknown): CharacterAppearanc
   for (const key of ['skinColor', 'hairColor'] as const) {
     if (typeof source[key] === 'string' && /^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(source[key])) result[key] = source[key].toLowerCase()
   }
+  if (source.size === 'small' || source.size === 'large') result.size = source.size
   return result
+}
+
+/** Shared by avatar rendering and the physical body; unknown/legacy values stay regular. */
+export function characterSizeScale(appearance?: Pick<CharacterAppearance, 'size'>): number {
+  return appearance?.size === 'small' ? 0.75 : appearance?.size === 'large' ? 1.25 : 1
 }
