@@ -138,3 +138,46 @@ it("refuses an edit while a due access check cannot run, then accepts it once th
   });
   expect(r.dbTile()).toBe(4);
 });
+
+it("after a revision conflict, keeps the room's copy and saves its edits on top of the newer version", async () => {
+  const r = await openRoom();
+  // Someone saved the world elsewhere after this room opened it: tile (1, 1) changed, the revision moved on.
+  const elsewhere = createBlankLevel(40, 20, "Durable");
+  elsewhere.tiles[41] = 5;
+  r.world.document = createPlatformerDocument(elsewhere);
+  (r.db.worlds[0] as unknown as { revision: number }).revision += 1;
+  send(r.socket, edit(3));
+  await r.inbox.next("ev");
+  await vi.waitFor(() => { if (r.dbTile() !== 3) throw new Error("not saved yet"); }, { timeout: 4000, interval: 10 });
+  const saved = levelFromJson(r.world.document.level);
+  expect(saved.tiles[41]).toBe(5); // their change
+  expect(saved.tiles[TILE]).toBe(3); // ours, on top
+  const stored = await runInDurableObject(r.stub, async (_room: PlatformerRoom, state: DurableObjectState) =>
+    (await state.storage.get<Stored & { conflictCopy?: { level: LevelJson } }>("room"))!);
+  expect(levelFromJson(stored.conflictCopy!.level).tiles[TILE]).toBe(3);
+  expect(stored.pending).toBeUndefined();
+});
+
+it("waits for the retry time, not every second, once an unsaved room is past its expiry", async () => {
+  const r = await openRoom();
+  r.db.commitFailure = new Error("offline");
+  send(r.socket, edit(3));
+  await r.inbox.next("ev");
+  r.socket.close();
+  await vi.waitFor(() => { if (r.db.commitAttempts < 1) throw new Error("no save tried yet"); }, { timeout: 4000, interval: 10 });
+  const later = Date.now() + 3 * 60 * 60 * 1000;
+  const clock = vi.spyOn(Date, "now").mockReturnValue(later);
+  try {
+    await runDurableObjectAlarm(r.stub);
+    const next = await runInDurableObject(r.stub, async (_room: PlatformerRoom, state: DurableObjectState) => {
+      const record = (await state.storage.get<Stored & { commitDueAt?: number }>("room"))!;
+      return { alarm: await state.storage.getAlarm(), due: record.commitDueAt, pending: !!record.pending };
+    });
+    expect(next.pending).toBe(true);
+    // The backoff's next step (not a wake-up every second because the old expiry has passed).
+    expect(next.alarm).toBe(next.due);
+    expect(next.due! - later).toBe(2000);
+  } finally {
+    clock.mockRestore();
+  }
+});

@@ -1,4 +1,6 @@
 import { createPlatformerDocument, validatePlatformerDocument } from "@brick-studio/platformer-core/document";
+import { editDesign } from "@brick-studio/platformer-core/engine/designEdit";
+import type { EditOp } from "@brick-studio/platformer-core/engine/events";
 import { levelFromJson, levelToJson, type LevelJson } from "@brick-studio/platformer-core/engine/level";
 import { MAX_PLAYERS, PROTOCOL, type ClientMsg, type RoomInfo } from "@brick-studio/platformer-core/net/protocol";
 import { RoomCore, type RoomMeta, type RoomSocket, type TrustedIdentity } from "@brick-studio/platformer-core/net/roomCore";
@@ -36,6 +38,8 @@ const COMMIT_MAX_LAG_MS = 5000;
 const COMMIT_RETRY_BACKOFF_MS = [1000, 2000, 5000, 15_000];
 /** Edits nobody can save right now (the database is down, or no known editor may save) are retried this often. */
 const COMMIT_PARKED_RETRY_MS = 5 * 60 * 1000;
+/** Edit operations kept for replaying onto a newer copy after a conflict; past this, only the conflict copy is kept. */
+const MAX_PENDING_OPS = 20_000;
 const COMMIT_DELAY_NOTICE_AFTER = 3;
 const REAUTH_INTERVAL_MS = 60 * 1000;
 /** Edits and host actions need a classroom check at most this old. */
@@ -50,7 +54,8 @@ const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{
 
 const SAVE_DELAYED_MESSAGE = "Saving to your class level is delayed. Your changes stay live in this room and will be saved automatically.";
 const SAVE_BLOCKED_MESSAGE = "Your changes are live in this room but could not be saved to the class level. Rejoin from My worlds to keep saving.";
-const SAVE_REPLACED_MESSAGE = "Someone saved a newer version of this level, so the room reloaded it. The last few changes made here could not be kept.";
+const SAVE_REPLACED_MESSAGE = "Someone saved a newer version of this level, so the room reloaded it. The changes made here are kept as a copy the teacher can ask for.";
+const SAVE_REBASED_MESSAGE = "Someone saved a newer version of this level, so the room took it and put the changes made here back on top.";
 const LEVEL_UPDATED_MESSAGE = "This level was updated, so the room reloaded it.";
 
 export type PlatformerRoomKind = "guest" | "classroom";
@@ -76,6 +81,15 @@ type PlatformerRecord = {
   ownerIdentity?: ClassroomSessionIdentity;
   /** Class rooms: when the alarm should try the next save of `pending`. */
   commitDueAt?: number;
+  /**
+   * Class rooms: the edit operations in `pending`, in the order the room applied them, so a save that finds a newer
+   * copy in the database can put them back on top of it. Absent once there were too many to keep.
+   */
+  pendingOps?: EditOp[];
+  /** Class rooms: more edits arrived than `pendingOps` keeps, so a conflict can only keep the copy. */
+  pendingOpsLost?: boolean;
+  /** Class rooms: the room's own version from the last save that found a newer copy, kept for recovery. */
+  conflictCopy?: { level: LevelJson; revision: number; at: number };
   /** Guest rooms: SHA-256 of the owner token; the token itself is never stored. */
   ownerTokenVerifier?: string;
   meta?: RoomMeta;
@@ -313,7 +327,9 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
         }
       }
     }
+    const accepted = core.stats.events;
     core.message(sock, message);
+    const acceptedEdit = msg.type === "ev" && msg.ev?.t === "edit" && core.stats.events > accepted;
     if (msg.type === "hello") {
       const player = core.player(sock);
       if (player) {
@@ -322,10 +338,21 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
         attachment.identity = { ...attachment.identity, key: player.key };
       }
     }
-    if (msg.type === "ev" && msg.ev?.t === "edit" && this.record.kind === "classroom" && core.dirty) {
+    if (acceptedEdit && this.record.kind === "classroom" && core.dirty) {
       // Keep the edited level in storage before anything else, so it survives whatever happens next.
       this.record.pending = levelToJson(core.design);
       this.record.unsaved = true;
+      if (!this.record.pendingOpsLost) {
+        const ops = (msg as { ev: { ops: EditOp[] } }).ev.ops;
+        const kept = this.record.pendingOps ?? [];
+        if (kept.length + ops.length <= MAX_PENDING_OPS) {
+          kept.push(...ops);
+          this.record.pendingOps = kept;
+        } else {
+          delete this.record.pendingOps;
+          this.record.pendingOpsLost = true;
+        }
+      }
       if (attachment.access?.canEdit) this.record.lastEditor = identityOf(attachment.access);
       // A backstop that outlives eviction; the in-memory debounce normally saves well before it.
       const backstop = !this.record.commitDueAt;
@@ -490,7 +517,7 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     this.commitDueBy = 0;
     const document = createPlatformerDocument(core ? core.design : levelFromJson(record.pending!));
     if (core) core.dirty = false;
-    let outcome: "saved" | "replaced" | "refused" | "failed" = "refused";
+    let outcome: "saved" | "rebased" | "replaced" | "refused" | "failed" = "refused";
     try {
       for (const identity of identities) {
         try {
@@ -510,9 +537,14 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
           }
           if (code === "revision_conflict") {
             try {
+              // Someone saved elsewhere since. Keep the room's version first, whatever happens next.
               const latest = await loadClassroomLevel(this.env, record.classroomWorldId);
-              await this.adopt(latest.document.level, latest.revision, latest.title, SAVE_REPLACED_MESSAGE);
-              outcome = "replaced";
+              record.conflictCopy = { level: document.level, revision: record.dbRevision ?? 1, at: Date.now() };
+              if (record.pendingOps && !record.pendingOpsLost && await this.rebase(latest.document.level, latest.revision, latest.title, record.pendingOps)) outcome = "rebased";
+              else {
+                await this.adopt(latest.document.level, latest.revision, latest.title, SAVE_REPLACED_MESSAGE);
+                outcome = "replaced";
+              }
             } catch { outcome = "failed"; }
           } else outcome = "failed";
           break;
@@ -521,12 +553,26 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     } finally {
       this.commitInFlight = false;
     }
+    if (outcome === "rebased") {
+      // The newer copy with this room's edits on top is pending now; save it straight away.
+      this.commitFailures = 0;
+      await this.persist(false);
+      if (this.core?.dirty) this.scheduleCommit();
+      else await this.scheduleAlarm();
+      return;
+    }
     if (outcome === "saved" || outcome === "replaced") {
       this.commitFailures = 0;
       this.saveNotice = null;
       // Edits that arrived while this save was out stay pending for the next one.
       if (core?.dirty) record.pending = levelToJson(core.design);
-      else { delete record.pending; record.unsaved = false; delete record.commitDueAt; }
+      else {
+        delete record.pending;
+        delete record.pendingOps;
+        delete record.pendingOpsLost;
+        record.unsaved = false;
+        delete record.commitDueAt;
+      }
       await this.persist(false);
       if (core?.dirty) this.scheduleCommit();
       return;
@@ -569,6 +615,33 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     return out;
   }
 
+  /**
+   * After a conflict: take the newer copy from the database and put this room's edits back on top of it, in the
+   * order the room applied them. The result is pending, to be saved against the newer revision. False when the
+   * result is not a valid level (then the caller takes the newer copy as it is; the conflict copy keeps ours).
+   */
+  private async rebase(level: LevelJson, revision: number, title: string | undefined, ops: EditOp[]): Promise<boolean> {
+    const record = this.record!;
+    const newer = validatePlatformerDocument({ ...createPlatformerDocument(levelFromJson(level)) });
+    if (!newer.ok) return false;
+    const merged = levelFromJson(newer.document.level);
+    for (const op of ops) editDesign(merged, op);
+    const checked = validatePlatformerDocument({ ...createPlatformerDocument(merged) });
+    if (!checked.ok) return false;
+    record.level = newer.document.level;
+    record.dbRevision = revision;
+    if (title) record.title = title;
+    record.pending = checked.document.level;
+    record.unsaved = true;
+    record.commitDueAt = Date.now();
+    if (this.core) {
+      this.core.replaceLevel(record.pending, true);
+      if (this.core.live) this.core.notice(SAVE_REBASED_MESSAGE);
+    }
+    await this.persist(false);
+    return true;
+  }
+
   /** Take a level from the database as the room's own (a newer copy, or after a conflict). */
   private async adopt(level: LevelJson, revision: number, title: string | undefined, notice: string): Promise<void> {
     const record = this.record!;
@@ -578,6 +651,8 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     record.dbRevision = revision;
     record.unsaved = false;
     delete record.pending;
+    delete record.pendingOps;
+    delete record.pendingOpsLost;
     delete record.commitDueAt;
     if (title) record.title = title;
     if (this.core) {
@@ -628,8 +703,8 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
   private async scheduleAlarm(): Promise<void> {
     const record = this.record;
     if (!record) return;
-    const expiry = record.expiresAt + PLATFORMER_ROOM_EXPIRY_GRACE_MS;
-    const at = record.pending && record.commitDueAt ? Math.min(record.commitDueAt, expiry) : expiry;
+    // Pending edits follow their own retry schedule; expiry only matters once nothing is pending.
+    const at = record.pending && record.commitDueAt ? record.commitDueAt : record.expiresAt + PLATFORMER_ROOM_EXPIRY_GRACE_MS;
     await this.ctx.storage.setAlarm(Math.max(at, Date.now() + 1000));
   }
 
