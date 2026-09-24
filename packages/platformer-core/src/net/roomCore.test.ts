@@ -585,3 +585,55 @@ describe('RoomCore: saved design and snapshots', () => {
     expect('world' in base && deserializeWorld(base.world).design.tiles[TILE]).toBe(3)
   })
 })
+
+describe('RoomCore: snapshot limits', () => {
+  function builderRoom() {
+    let now = 100_000
+    const level = createBlankLevel(40, 20)
+    const core = new RoomCore('limitslimits', cloneLevel(level), { now: () => now })
+    const s = new FakeSocket()
+    core.connect(s, { key: 'builder', canBuild: true, host: false })
+    core.message(s, JSON.stringify({ type: 'hello', v: PROTOCOL, key: 'builder', name: 'Builder' }))
+    now += 10_000
+    const send = (world: unknown) => core.message(s, JSON.stringify({ type: 'keyframe', tick: 200, lastSeq: 0, world }))
+    return { core, level, send }
+  }
+  const walker = (patch: Partial<Record<number, number>> = {}) => {
+    const row = [1, 1, 4000, 4000, 256, 256, 0, 0, 4000, 4000, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+    for (const [i, v] of Object.entries(patch)) row[Number(i)] = v as number
+    return row
+  }
+
+  it('takes a snapshot whose every field is within the limits, and keeps its own copy', () => {
+    const r = builderRoom()
+    const world = serializeWorld(createWorld(r.level, 200))
+    world.entities = [walker()]
+    world.nextId = 2
+    r.send(world)
+    expect(r.core.stats.keyframes).toBe(1)
+  })
+
+  const unsafe: [string, (w: ReturnType<typeof serializeWorld>) => void][] = [
+    ['a huge height far above the level', (w) => (w.entities = [walker({ 3: -1e100, 5: 1e100, 9: -1e100 })])],
+    ['a position far outside the level', (w) => (w.entities = [walker({ 2: 1e9 })])],
+    ['a fractional coordinate', (w) => (w.entities = [walker({ 2: 4000.5 })])],
+    ['a speed beyond any in play', (w) => (w.entities = [walker({ 6: 1e7 })])],
+    ['an unknown kind', (w) => (w.entities = [walker({ 1: 99 })])],
+    ['a short entity row', (w) => (w.entities = [walker().slice(0, 10)])],
+    ['a repeated id', (w) => (w.entities = [walker(), walker()])],
+    ['an id at or past nextId', (w) => { w.entities = [walker({ 0: 5 })]; w.nextId = 5 }],
+    ['a bump off the level', (w) => (w.bumps = [[400, 2, 3]])],
+    ['too many entities', (w) => (w.entities = Array.from({ length: 5000 }, (_, i) => walker({ 0: i + 1 })))],
+  ]
+  for (const [what, spoil] of unsafe) {
+    it(`refuses a snapshot with ${what}`, () => {
+      const r = builderRoom()
+      const world = serializeWorld(createWorld(r.level, 200))
+      world.nextId = 10_000
+      spoil(world)
+      r.send(world)
+      expect(r.core.stats.keyframes).toBe(0)
+      expect(r.core.stats.badKeyframes).toBe(1)
+    })
+  }
+})

@@ -890,8 +890,65 @@ export function serializeWorld(w: World): WorldJson {
   }
 }
 
+/*
+ * Limits a snapshot must keep. Snapshots arrive from other players, so every number is checked before the physics
+ * sees it: the loops that walk an entity's tiles need its box to be on (or near) the level and of sane size. The
+ * margins are far wider than play ever reaches (entities are retired a few tiles below the level).
+ */
+const MAX_SNAPSHOT_ENTITIES = 4096
+const MAX_SNAPSHOT_BUMPS = 1024
+const MAX_SNAPSHOT_RESPAWNS = 4096
+const MAX_ENTITY_ID = 10_000_000
+const MAX_TIMER = 10_000_000
+const MARGIN_X = 16 * TS
+const MARGIN_Y = 32 * TS
+const MAX_SIZE = 8 * TS
+const MAX_SPEED = 2 * TS
+const ENTITY_KINDS = new Set<number>(Object.values(EK))
+const ENTITY_STATES = new Set<number>(Object.values(ES))
+
+const int = (v: unknown, lo: number, hi: number): v is number => Number.isSafeInteger(v) && (v as number) >= lo && (v as number) <= hi
+
+/** Throws unless `j` is a snapshot this game can run safely: every field present, whole and within bounds. */
+function checkWorldJson(j: WorldJson, width: number, height: number) {
+  const bad = (what: string) => {
+    throw new Error(`bad snapshot: ${what}`)
+  }
+  if (!j || typeof j !== 'object') bad('shape')
+  if (!int(j.tick, 0, 2 ** 31)) bad('tick')
+  if (typeof j.tiles !== 'string') bad('tiles')
+  if (!int(j.nextId, 1, MAX_ENTITY_ID)) bad('nextId')
+  if (!Array.isArray(j.entities) || j.entities.length > MAX_SNAPSHOT_ENTITIES) bad('entities')
+  if (!Array.isArray(j.bumps) || j.bumps.length > MAX_SNAPSHOT_BUMPS) bad('bumps')
+  if (!Array.isArray(j.respawns) || j.respawns.length > MAX_SNAPSHOT_RESPAWNS) bad('respawns')
+  const minX = -MARGIN_X, maxX = width * TS + MARGIN_X
+  const minY = -MARGIN_Y, maxY = height * TS + MARGIN_Y
+  const span = (Math.max(width, height) + 64) * TS
+  const ids = new Set<number>()
+  for (const row of j.entities) {
+    if (!Array.isArray(row) || row.length !== ENTITY_FIELDS.length) bad('entity row')
+    const [id, kind, x, y, w, h, vx, vy, ox, oy, dir, state, timer, spawn, owner, a, b, c, rm] = row
+    if (!int(id, 1, j.nextId - 1) || ids.has(id)) bad('entity id')
+    ids.add(id)
+    if (!ENTITY_KINDS.has(kind) || !ENTITY_STATES.has(state)) bad('entity kind')
+    if (!int(x, minX, maxX) || !int(ox, minX, maxX) || !int(y, minY, maxY) || !int(oy, minY, maxY)) bad('entity position')
+    if (!int(w, 1, MAX_SIZE) || !int(h, 1, MAX_SIZE)) bad('entity size')
+    if (!int(vx, -MAX_SPEED, MAX_SPEED) || !int(vy, -MAX_SPEED, MAX_SPEED)) bad('entity speed')
+    if (!int(dir, -1, 1) || !int(timer, -MAX_TIMER, MAX_TIMER) || !int(spawn, 0, MAX_ENTITY_ID) || !int(owner, 0, 64)) bad('entity fields')
+    if (!int(a, -span, span) || !int(b, -span, span) || !int(c, -span, span) || !int(rm, 0, 2)) bad('entity fields')
+  }
+  for (const row of j.bumps) {
+    if (!Array.isArray(row) || row.length !== 3 || !int(row[0], 0, width - 1) || !int(row[1], 0, height - 1) || !int(row[2], -MAX_TIMER, MAX_TIMER)) bad('bump')
+  }
+  for (const row of j.respawns) {
+    if (!Array.isArray(row) || row.length !== 2 || !int(row[0], 0, MAX_ENTITY_ID) || !int(row[1], 0, 2 ** 31)) bad('respawn')
+  }
+}
+
+/** A world from a snapshot. Throws when the snapshot is malformed or outside the limits above. */
 export function deserializeWorld(j: WorldJson): World {
-  const design = levelFromJson(j.level)
+  const design = levelFromJson(j?.level)
+  checkWorldJson(j, design.width, design.height)
   const w = createWorld(design, j.tick)
   w.tiles = decodeRuns(j.tiles, design.width * design.height, TILE_ID_COUNT)
   w.nextId = j.nextId

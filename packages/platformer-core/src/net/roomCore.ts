@@ -2,7 +2,7 @@ import { TICK_MS } from '../engine/constants'
 import { editDesign } from '../engine/designEdit'
 import { isValidEvent } from '../engine/events'
 import { levelFromJson, levelToJson, type LevelDesign, type LevelJson } from '../engine/level'
-import { deserializeWorld } from '../engine/world'
+import { deserializeWorld, serializeWorld, type WorldJson } from '../engine/world'
 import {
   DEFAULT_SETTINGS,
   HASH_EVERY,
@@ -450,9 +450,10 @@ export class RoomCore {
 
   /**
    * A snapshot from the provider becomes the new base for joiners and resyncs. The room does not run the game, so it
-   * cannot check the live state; it checks what it can: the snapshot must read as a world, sit on the tick it
-   * claims, include every event up to it, and carry exactly the design the room applied by then (what gets saved),
-   * so no snapshot can change what is built. Only a player who may build provides them.
+   * cannot check the live state is right, only that it is safe: every field must be whole and within the game's
+   * limits (deserializeWorld). It must also sit on the tick it claims, include every event up to it, and carry
+   * exactly the design the room applied by then (what gets saved), so no snapshot can change what is built. Only
+   * a player who may build provides them.
    */
   private keyframe(c: Client, msg: Extract<ClientMsg, { type: 'keyframe' }>) {
     const provider = this.provider()
@@ -464,10 +465,14 @@ export class RoomCore {
     if (this.events.some((e) => e.seq > msg.lastSeq && e.tick <= msg.tick)) return
     const expected = this.designAt(msg.tick)
     let snapshot: LevelJson
+    let clean: WorldJson
     try {
+      // deserializeWorld checks every field against the game's limits; the room keeps its own re-serialized copy,
+      // never the message as sent.
       const world = deserializeWorld(msg.world)
-      if (world.tick !== msg.tick || world.tiles.length !== world.design.width * world.design.height) throw new Error('shape')
+      if (world.tick !== msg.tick) throw new Error('tick')
       snapshot = levelToJson(world.design)
+      clean = serializeWorld(world)
     } catch {
       this.stats.badKeyframes++
       return
@@ -476,7 +481,7 @@ export class RoomCore {
       this.stats.badKeyframes++
       return
     }
-    this.base = { tick: msg.tick, world: msg.world }
+    this.base = { tick: msg.tick, world: clean }
     this.baseDesign = expected
     this.events = this.events.filter((e) => e.tick > msg.tick)
     this.stats.keyframes++
