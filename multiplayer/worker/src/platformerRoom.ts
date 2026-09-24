@@ -34,6 +34,8 @@ const GUEST_SAVE_DELAY_MS = 2000;
 export const PLATFORMER_COMMIT_DEBOUNCE_MS = 1000;
 const COMMIT_MAX_LAG_MS = 5000;
 const COMMIT_RETRY_BACKOFF_MS = [1000, 2000, 5000, 15_000];
+/** Edits nobody can save right now (the database is down, or no known editor may save) are retried this often. */
+const COMMIT_PARKED_RETRY_MS = 5 * 60 * 1000;
 const COMMIT_DELAY_NOTICE_AFTER = 3;
 const REAUTH_INTERVAL_MS = 60 * 1000;
 /** Edits and host actions need a classroom check at most this old. */
@@ -63,6 +65,17 @@ type PlatformerRecord = {
   dbRevision?: number;
   /** Class rooms: edits the database has not confirmed yet. */
   unsaved?: boolean;
+  /**
+   * Class rooms: the level with those edits, kept in storage as each edit is accepted, so a restart, the last
+   * player leaving or a database outage never loses them. Cleared once the database has it.
+   */
+  pending?: LevelJson;
+  /** Class rooms: who made the latest edit, the first identity a save is made as. */
+  lastEditor?: ClassroomSessionIdentity;
+  /** Class rooms: the owner's or teacher's last session here, the last identity a save is tried as. */
+  ownerIdentity?: ClassroomSessionIdentity;
+  /** Class rooms: when the alarm should try the next save of `pending`. */
+  commitDueAt?: number;
   /** Guest rooms: SHA-256 of the owner token; the token itself is never stored. */
   ownerTokenVerifier?: string;
   meta?: RoomMeta;
@@ -96,6 +109,9 @@ const identityOf = (access: ClassroomSocketAccess): ClassroomSessionIdentity => 
   userId: access.userId, sessionId: access.sessionId, authVersion: access.authVersion,
 });
 
+const sameIdentity = (a: ClassroomSessionIdentity | undefined, b: ClassroomSessionIdentity) =>
+  !!a && a.userId === b.userId && a.sessionId === b.sessionId && a.authVersion === b.authVersion;
+
 function trustedClassroomIdentity(access: ClassroomSocketAccess): TrustedIdentity {
   return { key: access.userId, host: access.isTeacher || access.isOwner, name: access.isTeacher ? "Teacher" : access.username, canBuild: access.canEdit };
 }
@@ -119,7 +135,6 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
   private commitDueBy = 0;
   private commitInFlight = false;
   private commitFailures = 0;
-  private lastEditor: ClassroomSessionIdentity | null = null;
   private saveNotice: "delayed" | "blocked" | null = null;
 
   constructor(ctx: DurableObjectState, env: PlatformerRoomEnv) {
@@ -217,6 +232,10 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
       }
       identity = trustedClassroomIdentity(given);
       access = { ...given, checkedAt: Date.now() };
+      if ((given.isOwner || given.isTeacher) && given.canEdit) {
+        record.ownerIdentity = identityOf(given);
+        await this.persist(false);
+      }
     } else {
       const token = grant.ownerToken;
       const host = typeof token === "string" && OWNER_TOKEN_PATTERN.test(token) && !!record.ownerTokenVerifier
@@ -242,7 +261,9 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
   private ensureCore(): RoomCore {
     if (this.core) return this.core;
     const record = this.record!;
-    const core = new RoomCore(record.roomId, levelFromJson(record.level), { classroom: record.kind === "classroom", meta: record.meta });
+    const core = new RoomCore(record.roomId, levelFromJson(record.pending ?? record.level), { classroom: record.kind === "classroom", meta: record.meta });
+    // Edits kept from before a restart are still owed to the database.
+    if (record.pending) core.dirty = true;
     this.core = core;
     for (const socket of this.openSockets()) {
       const attachment = this.attachment(socket);
@@ -286,7 +307,10 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
       const privileged = (msg.type === "ev" && (msg.ev?.t === "edit" || msg.ev?.t === "reset")) || msg.type === "settings" || msg.type === "kick" || msg.type === "unban";
       const age = now - attachment.access.checkedAt;
       if ((privileged && age > PRIVILEGED_ACCESS_MAX_AGE_MS) || age > REAUTH_INTERVAL_MS) {
-        if (!(await this.reauthorize(socket, attachment))) return;
+        if (!(await this.reauthorize(socket, attachment, privileged))) {
+          if (privileged) this.refuseUnchecked(socket, msg);
+          return;
+        }
       }
     }
     core.message(sock, message);
@@ -298,7 +322,17 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
         attachment.identity = { ...attachment.identity, key: player.key };
       }
     }
-    if (msg.type === "ev" && msg.ev?.t === "edit" && attachment.access?.canEdit) this.lastEditor = identityOf(attachment.access);
+    if (msg.type === "ev" && msg.ev?.t === "edit" && this.record.kind === "classroom" && core.dirty) {
+      // Keep the edited level in storage before anything else, so it survives whatever happens next.
+      this.record.pending = levelToJson(core.design);
+      this.record.unsaved = true;
+      if (attachment.access?.canEdit) this.record.lastEditor = identityOf(attachment.access);
+      // A backstop that outlives eviction; the in-memory debounce normally saves well before it.
+      const backstop = !this.record.commitDueAt;
+      if (backstop) this.record.commitDueAt = Date.now() + COMMIT_MAX_LAG_MS;
+      await this.persist(false);
+      if (backstop) await this.scheduleAlarm();
+    }
     socket.serializeAttachment(attachment);
     core.flushPoses();
     await this.afterChange();
@@ -324,15 +358,24 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
   private async whenEmpty(): Promise<void> {
     if (!this.core || this.core.playerCount > 0) return;
     if (this.record?.kind === "classroom") {
-      if (this.core.dirty) await this.commit();
+      if (this.core.dirty || this.record.pending) await this.commit();
     } else await this.saveGuestNow();
   }
 
   // -------------------------------------------------------------------------------------------
   // Classroom access
 
-  /** Re-check one classroom socket. Returns false when the socket was closed. */
-  private async reauthorize(socket: WebSocket, attachment: PlatformerAttachment): Promise<boolean> {
+  /** A privileged message whose access check could not run: undo the sender's prediction, say why. */
+  private refuseUnchecked(socket: WebSocket, msg: Partial<ClientMsg> & { cid?: unknown }): void {
+    const core = this.ensureCore();
+    if (msg.type === "ev" && typeof msg.cid === "string") core.rejectEvent(socket as unknown as RoomSocket, msg.cid, "unchecked");
+  }
+
+  /**
+   * Re-check one classroom socket. False when the socket was closed, or when the check could not run and the
+   * message is privileged (it waits for a check that succeeds).
+   */
+  private async reauthorize(socket: WebSocket, attachment: PlatformerAttachment, privileged: boolean): Promise<boolean> {
     const access = attachment.access;
     const worldId = this.record?.classroomWorldId;
     if (!access || !worldId) return true;
@@ -349,8 +392,12 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
         this.ensureCore().refuse(socket as unknown as RoomSocket, "access", error.message);
         return false;
       }
-      // The permission service is unavailable: keep playing and check again on the next message.
-      return true;
+      // The permission service is unavailable: playing goes on, but nothing that changes the level or the room
+      // does until a check succeeds. The old check no longer counts, so the next privileged message asks again.
+      // Only privileged messages re-check at once; play re-checks on its usual interval, sparing the service.
+      if (attachment.access) attachment.access.checkedAt = Math.min(attachment.access.checkedAt, Date.now() - PRIVILEGED_ACCESS_MAX_AGE_MS - 1);
+      socket.serializeAttachment(attachment);
+      return !privileged;
     }
   }
 
@@ -374,7 +421,7 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     for (const socket of this.openSockets()) {
       const attachment = this.attachment(socket);
       if (!attachment?.access || (userId && attachment.access.userId !== userId)) continue;
-      if (change === "membership") await this.reauthorize(socket, attachment);
+      if (change === "membership") await this.reauthorize(socket, attachment, false);
       else this.ensureCore().refuse(socket as unknown as RoomSocket, "access", "Your classroom access changed.");
     }
     return json({ ok: true });
@@ -426,60 +473,100 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     }, Math.max(0, at - now));
   }
 
-  /** One write-behind save of the class level. Callers run inside `serialized`. */
+  /**
+   * One write-behind save of the class level. Callers run inside `serialized`. Nobody needs to be connected:
+   * the save is made as the last editor, then any connected editor, then the owner's or teacher's last session
+   * (the classroom service checks each is still allowed). Until one lands, `pending` keeps the edits in
+   * storage and the alarm keeps trying; the room does not expire with them.
+   */
   private async commit(): Promise<void> {
     const core = this.core, record = this.record;
-    if (!core || !record?.classroomWorldId || !core.dirty || this.commitInFlight) return;
+    if (!record?.classroomWorldId || this.commitInFlight) return;
+    if (!core?.dirty && !record.pending) return;
     if (this.commitTimer) { clearTimeout(this.commitTimer); this.commitTimer = null; }
-    const identity = this.editorIdentity();
-    if (!identity) {
-      record.unsaved = true;
-      await this.persist(false);
-      this.notifySave("blocked");
-      return;
-    }
+    const identities = this.commitIdentities();
+    if (!identities.length) return this.park("blocked");
     this.commitInFlight = true;
     this.commitDueBy = 0;
-    const document = createPlatformerDocument(core.design);
-    core.dirty = false;
-    record.unsaved = true;
-    let retryIn = 0;
+    const document = createPlatformerDocument(core ? core.design : levelFromJson(record.pending!));
+    if (core) core.dirty = false;
+    let outcome: "saved" | "replaced" | "refused" | "failed" = "refused";
     try {
-      const saved = await commitClassroomWorld(this.env, record.classroomWorldId, document, record.dbRevision ?? 1, identity, "2d");
-      record.dbRevision = saved.revision;
-      record.level = document.level;
-      record.title = saved.title;
-      record.unsaved = core.dirty;
-      this.commitFailures = 0;
-      this.saveNotice = null;
-    } catch (error) {
-      core.dirty = true;
-      const code = error instanceof ClassroomHttpError ? error.code : "unavailable";
-      if (code === "revision_conflict") {
+      for (const identity of identities) {
         try {
-          const latest = await loadClassroomLevel(this.env, record.classroomWorldId);
-          await this.adopt(latest.document.level, latest.revision, latest.title, SAVE_REPLACED_MESSAGE);
-        } catch { retryIn = COMMIT_RETRY_BACKOFF_MS[0]; }
-      } else if (code === "access_revoked" || code === "read_only") {
-        // This editor may no longer save; another connected editor can.
-        if (this.lastEditor?.userId === identity.userId) this.lastEditor = null;
-        retryIn = this.editorIdentity(identity.userId) ? 1 : 0;
-        if (!retryIn) this.notifySave("blocked");
-      } else {
-        this.commitFailures += 1;
-        retryIn = COMMIT_RETRY_BACKOFF_MS[Math.min(this.commitFailures - 1, COMMIT_RETRY_BACKOFF_MS.length - 1)];
-        if (this.commitFailures >= COMMIT_DELAY_NOTICE_AFTER) this.notifySave("delayed");
+          const saved = await commitClassroomWorld(this.env, record.classroomWorldId, document, record.dbRevision ?? 1, identity, "2d");
+          record.dbRevision = saved.revision;
+          record.level = document.level;
+          record.title = saved.title;
+          outcome = "saved";
+          break;
+        } catch (error) {
+          const code = error instanceof ClassroomHttpError ? error.code : "unavailable";
+          if (code === "access_revoked" || code === "read_only") {
+            // This identity may no longer save: forget it and try the next.
+            if (sameIdentity(record.lastEditor, identity)) delete record.lastEditor;
+            if (sameIdentity(record.ownerIdentity, identity)) delete record.ownerIdentity;
+            continue;
+          }
+          if (code === "revision_conflict") {
+            try {
+              const latest = await loadClassroomLevel(this.env, record.classroomWorldId);
+              await this.adopt(latest.document.level, latest.revision, latest.title, SAVE_REPLACED_MESSAGE);
+              outcome = "replaced";
+            } catch { outcome = "failed"; }
+          } else outcome = "failed";
+          break;
+        }
       }
     } finally {
       this.commitInFlight = false;
     }
+    if (outcome === "saved" || outcome === "replaced") {
+      this.commitFailures = 0;
+      this.saveNotice = null;
+      // Edits that arrived while this save was out stay pending for the next one.
+      if (core?.dirty) record.pending = levelToJson(core.design);
+      else { delete record.pending; record.unsaved = false; delete record.commitDueAt; }
+      await this.persist(false);
+      if (core?.dirty) this.scheduleCommit();
+      return;
+    }
+    if (core) core.dirty = true;
+    if (outcome === "refused") return this.park("blocked");
+    this.commitFailures += 1;
+    if (this.commitFailures >= COMMIT_DELAY_NOTICE_AFTER) this.notifySave("delayed");
+    if (this.commitFailures > COMMIT_RETRY_BACKOFF_MS.length) return this.park("delayed");
+    // Retries run from the alarm, which also outlives a restart.
+    record.commitDueAt = Date.now() + COMMIT_RETRY_BACKOFF_MS[this.commitFailures - 1];
     await this.persist(false);
-    if (retryIn) {
-      this.commitTimer = setTimeout(() => {
-        this.commitTimer = null;
-        void this.serialized(() => this.commit());
-      }, retryIn);
-    } else if (core.dirty) this.scheduleCommit();
+    await this.scheduleAlarm();
+  }
+
+  /** Edits that cannot be saved now: keep them, say so, and let the alarm try again later. */
+  private async park(state: "delayed" | "blocked"): Promise<void> {
+    const record = this.record!;
+    if (this.core?.dirty) record.pending = levelToJson(this.core.design);
+    record.unsaved = true;
+    record.commitDueAt = Date.now() + COMMIT_PARKED_RETRY_MS;
+    this.notifySave(state);
+    await this.persist(false);
+    await this.scheduleAlarm();
+  }
+
+  /** Who a save is tried as, in order: the last editor, a connected editor, the owner's or teacher's last session. */
+  private commitIdentities(): ClassroomSessionIdentity[] {
+    const record = this.record!;
+    const out: ClassroomSessionIdentity[] = [];
+    const add = (identity: ClassroomSessionIdentity | undefined) => {
+      if (identity && !out.some((known) => sameIdentity(known, identity))) out.push(identity);
+    };
+    add(record.lastEditor);
+    for (const socket of this.openSockets()) {
+      const access = this.attachment(socket)?.access;
+      if (access?.canEdit) add(identityOf(access));
+    }
+    add(record.ownerIdentity);
+    return out;
   }
 
   /** Take a level from the database as the room's own (a newer copy, or after a conflict). */
@@ -490,22 +577,14 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     record.level = checked.document.level;
     record.dbRevision = revision;
     record.unsaved = false;
+    delete record.pending;
+    delete record.commitDueAt;
     if (title) record.title = title;
     if (this.core) {
       this.core.replaceLevel(record.level, false);
       if (this.core.live) this.core.notice(notice);
     }
     await this.persist(false);
-  }
-
-  /** Someone who may still save: the last editor if connected, else any connected editor. */
-  private editorIdentity(excludeUserId?: string): ClassroomSessionIdentity | null {
-    const editors = this.openSockets().flatMap((socket) => {
-      const access = this.attachment(socket)?.access;
-      return access?.canEdit && access.userId !== excludeUserId ? [identityOf(access)] : [];
-    });
-    if (this.lastEditor && this.lastEditor.userId !== excludeUserId && editors.some((editor) => editor.userId === this.lastEditor!.userId)) return this.lastEditor;
-    return editors[0] ?? null;
   }
 
   private notifySave(state: "delayed" | "blocked"): void {
@@ -522,17 +601,18 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
       const record = this.record;
       if (!record) return;
       const now = Date.now();
+      // Class edits the database does not have yet: try again. They are never dropped by expiry.
+      if (record.kind === "classroom" && (record.pending || this.core?.dirty)) {
+        if ((record.commitDueAt ?? 0) <= now) await this.commit();
+        if (this.record?.pending) {
+          await this.scheduleAlarm();
+          return;
+        }
+      }
       if (this.openSockets().length > 0) {
         record.expiresAt = now + PLATFORMER_ROOM_TTL_MS;
         await this.persist(true);
         return;
-      }
-      if (record.kind === "classroom" && (record.unsaved || this.core?.dirty)) {
-        if (this.core?.dirty) await this.commit();
-        if (this.record?.unsaved) {
-          // Nobody is left to save as; the next person to open the level reconciles.
-          record.unsaved = false;
-        }
       }
       if (now >= record.expiresAt) {
         await this.ctx.storage.deleteAll();
@@ -540,8 +620,17 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
         this.core = null;
         return;
       }
-      await this.ctx.storage.setAlarm(record.expiresAt + PLATFORMER_ROOM_EXPIRY_GRACE_MS);
+      await this.scheduleAlarm();
     });
+  }
+
+  /** One alarm: the next save try of pending class edits, else the room's expiry. */
+  private async scheduleAlarm(): Promise<void> {
+    const record = this.record;
+    if (!record) return;
+    const expiry = record.expiresAt + PLATFORMER_ROOM_EXPIRY_GRACE_MS;
+    const at = record.pending && record.commitDueAt ? Math.min(record.commitDueAt, expiry) : expiry;
+    await this.ctx.storage.setAlarm(Math.max(at, Date.now() + 1000));
   }
 
   private expired(): boolean {
@@ -559,7 +648,7 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     if (!this.record) return;
     await this.ctx.storage.put("room", this.record);
     this.lastTouchPersist = Date.now();
-    if (scheduleAlarm) await this.ctx.storage.setAlarm(this.record.expiresAt + PLATFORMER_ROOM_EXPIRY_GRACE_MS);
+    if (scheduleAlarm) await this.scheduleAlarm();
   }
 
   private attachment(socket: WebSocket): PlatformerAttachment | null {

@@ -104,6 +104,7 @@ const REJECT_MESSAGES: Record<string, string> = {
   locked: 'The host has locked building',
   read_only: 'You can play this world, but not change it',
   host_only: 'Only the host can reset the world',
+  unchecked: 'Could not check your class access, so that change was not made. Try again in a moment.',
 }
 
 /*

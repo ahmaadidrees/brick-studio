@@ -118,7 +118,7 @@ export type ServerMsg =
       classroom: boolean
     }
   | { type: 'ev'; e: StampedEvent }
-  | { type: 'reject'; cid: string; reason: 'invalid' | 'locked' | 'read_only' | 'host_only' }
+  | { type: 'reject'; cid: string; reason: 'invalid' | 'locked' | 'read_only' | 'host_only' | 'unchecked' }
   | { type: 'poses'; list: [number, Pose][] }
   | { type: 'pong'; c: number; s: number }
   | { type: 'players'; players: PlayerInfo[] }

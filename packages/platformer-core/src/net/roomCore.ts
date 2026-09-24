@@ -302,6 +302,11 @@ export class RoomCore {
   }
 
   /** Tell everyone something (the level was reloaded, saving is delayed). */
+  /** The host refused an event before the room saw it (a classroom access check could not run). */
+  rejectEvent(sock: RoomSocket, cid: string, reason: Extract<ServerMsg, { type: 'reject' }>['reason']) {
+    if (typeof cid === 'string' && cid.length <= 64) this.send(sock, { type: 'reject', cid, reason })
+  }
+
   notice(message: string) {
     this.broadcast({ type: 'notice', message })
   }
