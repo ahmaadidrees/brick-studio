@@ -23,7 +23,13 @@ describe('generated character frames', () => {
   it('plants each supporting foot, passes under the hips and alternates the legs', () => {
     for (const gait of ['walk', 'run'] as const) {
       const height = 23
-      const poses = Array.from({ length: 100 }, (_, i) => gaitLeg(i / 100, gait, height, -height * 0.35))
+      const poses = Array.from({ length: 100 }, (_, i) => {
+        const phase = i / 100
+        const hipY = gait === 'walk'
+          ? -height * 0.44 + Math.sin(phase * Math.PI * 4) * height * 0.006
+          : -height * 0.35 + Math.sin(phase * Math.PI * 4) * height * 0.04
+        return gaitLeg(phase, gait, height, hipY)
+      })
       const support = poses.filter(pose => pose.planted)
       expect(support.every(pose => pose.ankle.y === -height * 0.088)).toBe(true)
       expect(support[0].ankle.x).toBeGreaterThan(0)
@@ -32,6 +38,13 @@ describe('generated character frames', () => {
       for (const pose of poses) {
         expect(Math.hypot(pose.knee.x - pose.hip.x, pose.knee.y - pose.hip.y)).toBeCloseTo(height * 0.20)
         expect(Math.hypot(pose.ankle.x - pose.knee.x, pose.ankle.y - pose.knee.y)).toBeCloseTo(height * 0.20)
+      }
+      if (gait === 'walk') {
+        for (const pose of support) {
+          const reach = Math.hypot(pose.ankle.x - pose.hip.x, pose.ankle.y - pose.hip.y)
+          expect(reach).toBeGreaterThanOrEqual(height * 0.35)
+          expect(reach).toBeLessThan(height * 0.4)
+        }
       }
       expect(gaitLeg(0, gait, height, -height * 0.35)).toEqual(gaitLeg(1, gait, height, -height * 0.35))
       expect(gaitLeg(0.5, gait, height, -height * 0.35).ankle.x).toBeLessThan(0)

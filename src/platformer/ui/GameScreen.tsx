@@ -498,9 +498,25 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     then()
   }
   const switchTo3D = () => void leave(() => window.location.assign('/build'))
-  /** People outside a room: open a room for friends with this level (the level is copied into it). */
+  // Sharing an account level with the class: the same invite sheet as My worlds.
+  const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : null)
+  const ownsCloudWorld = !!cloudWorld && cloudWorld.ownerId === account.user?.id
+  const teachesCloudWorld = !!cloudWorld && account.status === 'teacher' && (account.classes ?? []).some(({ id }) => id === cloudWorld.ownerClassId || id === cloudWorld.classId)
+  const canShareWithClass = !!cloudWorld && account.status === 'student' && cloudWorld.ownerId === account.user?.id && cloudWorld.kind === 'personal'
+
+  /** Reuse a saved world when classmates already have access; never create a guest copy of account work. */
   const startRoom = () => {
     if (!s || busy) return
+    if (cloudWorld) {
+      if (cloudWorld.visibility === 'private') {
+        if (canShareWithClass) openShare()
+        else say('This saved world is private. Ask its owner to share it with your class.')
+        return
+      }
+      setBusy(true)
+      void leave(() => window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)).finally(() => setBusy(false))
+      return
+    }
     setBusy(true)
     void leave(() =>
       playWithFriends(s.timeline.world.design).catch((error: Error) => {
@@ -510,16 +526,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     )
   }
 
-  // Sharing an account level with the class: the same invite sheet as My worlds.
-  const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : null)
-  const ownsCloudWorld = !!cloudWorld && cloudWorld.ownerId === account.user?.id
-  const teachesCloudWorld = !!cloudWorld && account.status === 'teacher' && (account.classes ?? []).some(({ id }) => id === cloudWorld.ownerClassId || id === cloudWorld.classId)
   const recoveryWorldId = signedIn && (ownsCloudWorld || teachesCloudWorld)
     ? recoveryWorldUuid(cloudWorld!.id)
     : signedIn && source.kind === 'room' && source.roomKind === 'classroom' && s?.classroomRoom && s.joined && s.isHost
       ? recoveryWorldUuid(source.roomId)
       : null
-  const canShareWithClass = !!cloudWorld && account.status === 'student' && cloudWorld.ownerId === account.user?.id && cloudWorld.kind === 'personal'
   const openShare = () => {
     const classId = account.classes?.[0]?.id
     setMenu(false)

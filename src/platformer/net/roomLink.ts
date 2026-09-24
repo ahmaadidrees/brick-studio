@@ -80,6 +80,9 @@ export class RoomLink implements Link {
   private pingTimer: ReturnType<typeof setInterval> | undefined
   private retry = 0
   private closed = false
+  private generation = 0
+  private retryTimer: ReturnType<typeof setTimeout> | undefined
+  private watchdog: ReturnType<typeof setTimeout> | undefined
   private sendAt = 0
   private recvAt = 0
   private readonly url: RoomLinkOptions['url']
@@ -100,34 +103,98 @@ export class RoomLink implements Link {
   }
 
   connect() {
+    if (this.closed) this.closed = false
+    if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) return
+    clearTimeout(this.retryTimer)
+    this.retryTimer = undefined
+    clearTimeout(this.watchdog)
+    this.watchdog = undefined
+    const generation = ++this.generation
     this.closed = false
     this.setStatus(this.retry ? 'reconnecting' : 'connecting')
     const open = (url: string) => {
-      if (this.closed) return
+      if (this.closed || generation !== this.generation) return
       const ws = new WebSocket(url)
       this.ws = ws
-      ws.onopen = () => this.send({ type: 'hello', v: PROTOCOL, name: this.name, key: this.key })
-      ws.onmessage = (e) => this.later('recv', () => this.receive(e.data as string))
+      const armWatchdog = () => {
+        clearTimeout(this.watchdog)
+        this.watchdog = setTimeout(() => {
+          if (generation === this.generation && this.ws === ws && !this.closed) this.failAttempt(ws, generation)
+        }, 10_000)
+      }
+      armWatchdog()
+      ws.onopen = () => {
+        if (generation !== this.generation || this.ws !== ws || this.closed) return
+        armWatchdog()
+        this.send({ type: 'hello', v: PROTOCOL, name: this.name, key: this.key })
+      }
+      ws.onmessage = (e) => this.later('recv', () => {
+        if (generation === this.generation && this.ws === ws && !this.closed) {
+          armWatchdog()
+          this.receive(e.data as string)
+        }
+      })
       ws.onclose = () => {
+        if (generation !== this.generation || this.ws !== ws) return
+        this.ws = null
+        ++this.generation
+        clearTimeout(this.watchdog)
+        this.watchdog = undefined
         clearInterval(this.pingTimer)
         this.synced = false
         if (!this.closed) this.scheduleRetry()
       }
     }
     if (typeof this.url === 'string') return open(this.url)
-    this.url().then(open, (error: unknown) => {
-      if (this.closed) return
+    // Ticket providers can hang indefinitely; retry them if they have not returned promptly.
+    this.watchdog = setTimeout(() => {
+      if (generation === this.generation && !this.closed) {
+        ++this.generation
+        this.scheduleRetry()
+      }
+    }, 10_000)
+    this.url().then((url) => {
+      if (generation !== this.generation || this.closed) return
+      clearTimeout(this.watchdog)
+      this.watchdog = undefined
+      open(url)
+    }, (error: unknown) => {
+      if (generation !== this.generation || this.closed) return
+      clearTimeout(this.watchdog)
+      this.watchdog = undefined
       if (isRefusal(error)) {
         this.closed = true
+        clearTimeout(this.retryTimer)
+        this.retryTimer = undefined
+        clearInterval(this.pingTimer)
+        this.ws?.close()
         this.setStatus('offline', error instanceof Error ? error.message : 'You cannot join this world right now.')
-      } else this.scheduleRetry()
+      } else {
+        ++this.generation
+        this.scheduleRetry()
+      }
     })
   }
 
+  private failAttempt(ws: WebSocket, generation: number) {
+    if (generation !== this.generation || this.ws !== ws) return
+    clearTimeout(this.watchdog)
+    clearInterval(this.pingTimer)
+    this.synced = false
+    this.ws = null
+    ++this.generation
+    try { ws.close() } catch { /* already closed */ }
+    if (!this.closed) this.scheduleRetry()
+  }
+
   private scheduleRetry() {
+    if (this.closed || this.retryTimer) return
     this.setStatus('reconnecting')
     const wait = Math.min(8000, 800 * 2 ** this.retry++)
-    setTimeout(() => !this.closed && this.connect(), wait)
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = undefined
+      if (!this.closed) this.connect()
+    }, wait)
   }
 
   /** Deliver in order, after the simulated delay (or at once when there is none). */
@@ -228,8 +295,17 @@ export class RoomLink implements Link {
         this.h.bonk(msg.from)
         return
       case 'error':
-        if (msg.code === 'full' || msg.code === 'version' || msg.code === 'closed' || msg.code === 'kicked' || msg.code === 'access' || msg.code === 'rate') {
+        if (msg.code === 'full' || msg.code === 'rate') {
+          if (this.ws) this.failAttempt(this.ws, this.generation)
+        } else if (msg.code === 'version' || msg.code === 'closed' || msg.code === 'kicked' || msg.code === 'access') {
           this.closed = true
+          clearTimeout(this.watchdog)
+          this.watchdog = undefined
+          clearTimeout(this.retryTimer)
+          this.retryTimer = undefined
+          clearInterval(this.pingTimer)
+          this.synced = false
+          this.ws?.close()
           this.setStatus('offline', msg.message)
         }
         return
@@ -301,6 +377,11 @@ export class RoomLink implements Link {
 
   close() {
     this.closed = true
+    ++this.generation
+    clearTimeout(this.retryTimer)
+    clearTimeout(this.watchdog)
+    this.retryTimer = undefined
+    this.watchdog = undefined
     clearInterval(this.pingTimer)
     this.ws?.close()
     this.setStatus('offline')

@@ -17,12 +17,12 @@ export interface GaitLeg {
 export function gaitLeg(phase: number, gait: 'walk' | 'run', height: number, hipY: number): GaitLeg {
   const p = ((phase % 1) + 1) % 1
   const stance = gait === 'walk' ? 0.62 : 0.38
-  const stride = height * (gait === 'walk' ? 0.16 : 0.23)
+  const stride = height * (gait === 'walk' ? 0.12 : 0.23)
   const planted = p < stance
   const t = planted ? p / stance : (p - stance) / (1 - stance)
   const ankle: Point = {
     x: planted ? stride * (1 - 2 * t) : -stride * Math.cos(Math.PI * t),
-    y: -height * 0.088 - (planted ? 0 : Math.sin(Math.PI * t) * height * (gait === 'walk' ? 0.11 : 0.26)),
+    y: -height * 0.088 - (planted ? 0 : Math.sin(Math.PI * t) * height * (gait === 'walk' ? 0.045 : 0.26)),
   }
   const hip = { x: 0, y: hipY }
   const upper = height * 0.20
@@ -68,8 +68,8 @@ export function drawLocomotion(
   const image = warmLocomotion(id)
   if (!image) return null
   const cycle = phase * Math.PI * 2
-  const bob = Math.sin(cycle * 2) * height * (gait === 'walk' ? 0.018 : 0.04)
-  const hipY = -height * 0.35 + bob
+  const bob = Math.sin(cycle * 2) * height * (gait === 'walk' ? 0.006 : 0.04)
+  const hipY = -height * (gait === 'walk' ? 0.44 : 0.35) + bob
   const near = gaitLeg(phase, gait, height, hipY)
   const far = gaitLeg(phase + 0.5, gait, height, hipY)
   const rects = PARTS[id]

@@ -10,15 +10,17 @@ import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-cor
 import { GameScreen } from './GameScreen'
 import { saveCharacter } from './prefs'
 
-const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, create: vi.fn(), characterOption: '' }))
-vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class {} }))
+const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, create: vi.fn(), flush: vi.fn(), characterOption: '' }))
+vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; flush = state.flush; constructor(world: unknown) { this.world = world } } }))
+vi.mock('../../classroom/client', () => ({ browserClassroomClient: { listClassmates: vi.fn().mockResolvedValue([]) } }))
 vi.mock('../../shell', () => ({
   useClassroomSession: () => ({ status: 'student', user: { id: 'student' }, classes: [] }),
   useCompactLayout: () => false,
-  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void }) => (
+  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void }) => (
     <div>
       <span>{p.saveStatus.source.error}</span>
       <button className="app-header-tool" onClick={() => p.onOpenWorldSetup('character')}>Character</button>
+      {p.onStartLiveWorld && <button onClick={p.onStartLiveWorld}>People action</button>}
       {p.worldMenu({ openRename() {} })}
     </div>
   ),
@@ -26,6 +28,7 @@ vi.mock('../../shell', () => ({
 vi.mock('./LevelMenu', () => ({ LevelMenu: (p: { onExit: () => void }) => <button onClick={p.onExit}>Leave test world</button> }))
 vi.mock('./BuildShell', () => ({ BuildShell: () => null }))
 vi.mock('./PeopleSheet', () => ({ PeopleSheet: () => null }))
+vi.mock('../../classroom/InviteSheet', () => ({ InviteSheet: () => <div role="dialog" aria-label="Share with classmates" /> }))
 vi.mock('./SceneSheet', () => ({ SceneSheet: () => null }))
 vi.mock('./Menu', () => ({ Menu: () => null }))
 vi.mock('../game/session', () => ({
@@ -71,6 +74,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
   state.create.mockReset()
+  state.flush.mockReset().mockResolvedValue(true)
   state.session = null
   state.characterOption = ''
   localStorage.clear()
@@ -78,6 +82,11 @@ afterEach(() => {
 
 const browserFull = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError') })
 const open = (onExit = () => {}) => render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'new' }} startMode="build" onExit={onExit} />)
+
+const savedWorld = (visibility: 'private' | 'class') => ({
+  id: '12345678-1234-4234-8234-123456789abc', title: 'Saved world', kind: 'personal', format: '2d',
+  ownerId: 'student', ownerClassId: 'class-1', classId: 'class-1', canEdit: true, visibility, classCanEdit: visibility === 'class', members: [], revision: 1,
+})
 
 it('starts with the saved character and applies a new choice immediately', () => {
   localStorage.setItem('brick-studio.2d.character.v1', 'brick-fox')
@@ -148,4 +157,24 @@ it('leaves without asking once a failed account save has fallen back to this bro
   expect(confirmLeave).not.toHaveBeenCalled()
   expect(onExit).toHaveBeenCalledOnce()
   expect(localStorage.getItem('brick-studio.2d.drafts.v1')).not.toBeNull()
+})
+
+it('opens the same shared account world after flushing instead of creating a guest copy', async () => {
+  const assign = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('class') }} startMode="build" onExit={() => {}} />)
+  vi.stubGlobal('window', Object.assign(Object.create(window), { location: { assign }, clearTimeout: vi.fn() }))
+  fireEvent.click(screen.getByRole('button', { name: 'People action' }))
+  await act(async () => { await Promise.resolve() })
+  vi.unstubAllGlobals()
+  expect(state.flush).toHaveBeenCalledOnce()
+  expect(state.create).not.toHaveBeenCalled()
+  expect(assign).toHaveBeenCalledWith('/2d/w/12345678123442348234123456789abc?invited=1')
+})
+
+it('asks a student to choose sharing before opening a private saved world with classmates', async () => {
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('private') }} startMode="build" onExit={() => {}} />)
+  fireEvent.click(screen.getByRole('button', { name: 'People action' }))
+  expect(screen.getByRole('dialog', { name: 'Share with classmates' })).toBeInTheDocument()
+  expect(state.create).not.toHaveBeenCalled()
+  expect(state.flush).not.toHaveBeenCalled()
 })
