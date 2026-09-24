@@ -195,6 +195,32 @@ try {
     await shot(guest, 'room-peer-brick-fox')
   })
 
+  await step('room: run gait and quantized phase cross the server', async () => {
+    const guest = peer.page
+    await guest.keyboard.down('Shift')
+    await guest.keyboard.down('ArrowRight')
+    try {
+      await guest.waitForFunction(() => window.__game2d.lookOf(window.__game2d.player).gait === 'run', null, { timeout: 5000 })
+      await page.waitForFunction(() => {
+        const game = window.__game2d
+        return [...game.remotes.map.values()].some((remote) => {
+          const pose = remote.poses.at(-1)
+          const look = game.remotes.looks(game.timeline.tick).find((entry) => entry.num === remote.num)
+          return pose?.ga === 1 && Number.isInteger(pose.gp) && pose.gp >= 0 && pose.gp <= 255 &&
+            look?.gait === 'run' && look.gaitPhase >= 0 && look.gaitPhase < 1
+        })
+      }, null, { timeout: 7000 })
+      roomObservations.ownerSeesGait = await page.evaluate(() => {
+        const game = window.__game2d
+        const remote = [...game.remotes.map.values()][0]
+        return { pose: remote?.poses.at(-1), look: game.remotes.looks(game.timeline.tick)[0] }
+      })
+    } finally {
+      await guest.keyboard.up('ArrowRight')
+      await guest.keyboard.up('Shift')
+    }
+  })
+
   await step('room: a legacy pose with no identity appears as Classic', async () => {
     const guest = peer.page
     // Emulate an older client only at the transport boundary; the choice itself is still made in the UI.

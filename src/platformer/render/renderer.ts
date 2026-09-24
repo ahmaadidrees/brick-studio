@@ -24,6 +24,9 @@ export interface PlayerLook {
   character?: CharacterId
   /** Shared animation clock; poses still determine movement when this is omitted. */
   animationFrame?: number
+  /** Cosmetic locomotion; phase follows distance travelled, not render-frame timing. */
+  gait?: 'walk' | 'run'
+  gaitPhase?: number
   /** 0..1 translucency for players shown while building. */
   alpha?: number
   squash?: number

@@ -84,6 +84,10 @@ export interface Pose {
   ch?: CharacterId
   /** Cosmetic animation clock (0..255), independent of the world simulation. */
   af?: number
+  /** Cosmetic ground gait: 0 walk, 1 run. Older clients omit it. */
+  ga?: 0 | 1
+  /** Distance-based gait phase quantized to 0..255; independent of gameplay state. */
+  gp?: number
 }
 
 /** What a joining player needs: a starting world and every event since. */
@@ -214,6 +218,8 @@ export function isValidPose(p: unknown): p is Pose {
     isInt(o.t) &&
     (o.it === undefined || (typeof o.it === 'string' && o.it.length <= 16)) &&
     (o.ch === undefined || isCharacterId(o.ch)) &&
-    (o.af === undefined || (isInt(o.af) && o.af >= 0 && o.af <= 255))
+    (o.af === undefined || (isInt(o.af) && o.af >= 0 && o.af <= 255)) &&
+    (o.ga === undefined || o.ga === 0 || o.ga === 1) &&
+    (o.gp === undefined || (isInt(o.gp) && o.gp >= 0 && o.gp <= 255))
   )
 }

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brickgineers movement comparison</title>
+<style>
+body{font:16px system-ui;color:#263c51;background:#f8f4eb;margin:24px auto;max-width:1150px;padding:0 20px}h1{margin-bottom:8px}p{margin-top:0}header{display:flex;gap:20px;align-items:center;flex-wrap:wrap}button,input{min-height:44px}button{padding:0 20px;border:1px solid #a9b7c2;border-radius:10px;background:white;color:inherit;font:inherit}section{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}article{background:white;border:1px solid #ded9cb;border-radius:16px;overflow:hidden}h2{font-size:16px;margin:12px 16px}canvas{display:block;width:100%;height:auto;background:#e7f3f7}@media(max-width:640px){section{grid-template-columns:1fr}}
+</style>
+<h1>Movement comparison</h1><p>The same game renderer, enlarged so the footsteps are easier to compare.</p>
+<header><button id="pause">Pause</button><button id="direction">Face left</button><label>Speed <input id="speed" type="range" min="0.25" max="1.5" step="0.25" value="1"></label></header>
+<main id="grid"></main>
+<script type="module">
+import {drawGeneratedCharacter} from '/src/platformer/characters/atlas.ts';
+const entries=[];
+for(const [id,name] of [['builder','Builder'],['bolt-bot','Bolt Bot'],['brick-fox','Brick Fox']]){
+ const row=document.createElement('section');document.querySelector('#grid').append(row);
+ for(const [mode,label] of [['before','Previous movement'],['walk','New walk'],['run','New run']]){
+  const card=document.createElement('article');const h=document.createElement('h2');h.textContent=name+' · '+label;const canvas=document.createElement('canvas');canvas.width=360;canvas.height=215;card.append(h,canvas);row.append(card);entries.push({id,mode,ctx:canvas.getContext('2d')});
+ }
+}
+let paused=false,facing=1,time=0,last=0;
+document.querySelector('#pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Resume':'Pause'};
+document.querySelector('#direction').onclick=e=>{facing*=-1;e.target.textContent=facing===1?'Face left':'Face right'};
+function frame(now){if(last&&!paused)time+=(now-last)/1000*Number(document.querySelector('#speed').value);last=now;
+ for(const {id,mode,ctx} of entries){ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,360,215);ctx.scale(6,6);ctx.fillStyle='#a5b8be';ctx.fillRect(0,32,60,0.35);
+ const oldPose=['walk1','walk2','walk3','walk2'][Math.floor(time*18)%4];
+ drawGeneratedCharacter(ctx,{character:id,x:30,y:32,facing,size:'small',pose:oldPose,spark:false,animationFrame:Math.floor(time*60),...(mode==='before'?{}:{gait:mode,gaitPhase:(time*(mode==='run'?2.35:1.4))%1})},'cartoon',n=>n,0,0);
+ }requestAnimationFrame(frame)}requestAnimationFrame(frame);
+</script></html>

@@ -111,19 +111,22 @@ describe('RoomCore', () => {
     const b = r.join('B')
     const worldHash = hashWorld(createWorld(r.core.design))
     const base = { m: 0, x: 10, y: 50, f: 1, a: 'stand', s: 0, v: 1, q: 0, t: 1 }
-    r.send(a, { type: 'pose', p: { ...base, ch: 'brick-fox', af: 42, assetUrl: 'https://untrusted.invalid/skin.png' } })
+    r.send(a, { type: 'pose', p: { ...base, ch: 'brick-fox', af: 42, ga: 1, gp: 127, assetUrl: 'https://untrusted.invalid/skin.png' } })
     r.send(b, { type: 'pose', p: base })
     r.core.flushPoses()
     expect(a.last('poses')?.list).toEqual([
-      [1, { ...base, ch: 'brick-fox', af: 42 }],
+      [1, { ...base, ch: 'brick-fox', af: 42, ga: 1, gp: 127 }],
       [2, base],
     ])
 
     r.send(a, { type: 'pose', p: { ...base, t: 2, ch: 'https://untrusted.invalid/skin.png' } })
     r.send(a, { type: 'pose', p: { ...base, t: 2, af: 256 } })
+    r.send(a, { type: 'pose', p: { ...base, t: 2, ga: 2 } })
+    r.send(a, { type: 'pose', p: { ...base, t: 2, gp: 256 } })
+    r.send(a, { type: 'pose', p: { ...base, t: 2, gp: -1 } })
     r.core.flushPoses(true)
     expect(a.last('poses')?.list).toEqual([
-      [1, { ...base, ch: 'brick-fox', af: 42 }],
+      [1, { ...base, ch: 'brick-fox', af: 42, ga: 1, gp: 127 }],
       [2, base],
     ])
     expect(hashWorld(createWorld(r.core.design))).toBe(worldHash)

@@ -569,6 +569,8 @@ export class GameSession {
       t,
       ch: this.character,
       af: this.frameCount & 255,
+      ...(l.gait === undefined ? {} : { ga: l.gait === 'run' ? 1 as const : 0 as const }),
+      gp: Math.floor((l.gaitPhase ?? 0) * 256) & 255,
     }
   }
 
@@ -721,7 +723,7 @@ export class GameSession {
   // Drawing
 
   protected lookOf(p: Player): PlayerLook {
-    return playerLook(p, this.frameCount, this.character)
+    return playerLook(p, this.frameCount, this.character, this.feel.walkMax / SUB)
   }
 
   protected hud(): Hud | null {
@@ -786,7 +788,7 @@ export class GameSession {
 }
 
 /** Which sprite a player shows this frame. */
-export function playerLook(p: Player, frame: number, character: CharacterId = DEFAULT_CHARACTER): PlayerLook {
+export function playerLook(p: Player, frame: number, character: CharacterId = DEFAULT_CHARACTER, walkMax = DEFAULT_FEEL.walkMax): PlayerLook {
   const big = p.power !== POWER.SMALL
   let pose: PlayerPose = 'stand'
   if (p.dead) pose = 'dead'
@@ -797,6 +799,11 @@ export function playerLook(p: Player, frame: number, character: CharacterId = DE
   else if (p.kick > 0) pose = 'kick'
   else if (p.throwAnim > 0) pose = 'throw'
   else if (p.vx !== 0) pose = (['walk1', 'walk2', 'walk3', 'walk2'] as const)[Math.floor(p.anim / (SUB * 5)) % 4]
+  // One full left/right stride takes 64 pixels of horizontal travel at every speed.
+  // The distance counter does not advance while stopped, so a resumed walk keeps its phase.
+  const gaitPhase = ((p.anim % (64 * SUB)) + 64 * SUB) % (64 * SUB) / (64 * SUB)
+  const moving = pose === 'walk1' || pose === 'walk2' || pose === 'walk3'
+  const gait = moving ? (Math.abs(p.vx) / SUB > walkMax + 0.125 ? 'run' : 'walk') : undefined
   let size: 'small' | 'big' = big && !p.dead ? 'big' : 'small'
   let spark = p.power === POWER.SPARK
   if (p.transform > 0 && (p.transform >> 2) % 2 === 0) {
@@ -813,6 +820,8 @@ export function playerLook(p: Player, frame: number, character: CharacterId = DE
     pose,
     character,
     animationFrame: frame & 255,
+    gait,
+    gaitPhase,
     spark,
     visible: !blink,
     squash: p.squash,

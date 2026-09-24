@@ -1,6 +1,7 @@
 import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
 import type { LevelStyle } from '@brick-studio/platformer-core/engine/level'
 import type { PlayerPose } from '../render/art/characters'
+import { drawLocomotion, warmLocomotion } from './locomotion'
 
 const CELL = 256
 const SHEET_WIDTH = CELL * 6
@@ -104,6 +105,8 @@ export interface CharacterDrawLook {
   spark: boolean
   squash?: number
   animationFrame?: number
+  gait?: 'walk' | 'run'
+  gaitPhase?: number
 }
 
 function sparkCue(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
@@ -134,11 +137,31 @@ export function drawGeneratedCharacter(
   camY: number,
 ): number | null {
   if (!generated(look.character)) return null
+  // Warm the selected character's jointed artwork during idle, before its first step.
+  warmLocomotion(look.character)
+  const normalHeight = style === 'cartoon' ? (look.size === 'big' ? 34 : 23) : (look.size === 'big' ? 31 : 17)
+  if (look.gait && look.gaitPhase !== undefined) {
+    const cx = snap(look.x) - camX
+    const feet = snap(look.y) - camY
+    const squash = look.squash ? 0.6 : 1
+    ctx.save()
+    if (squash !== 1) {
+      ctx.translate(0, feet)
+      ctx.scale(1, squash)
+      ctx.translate(0, -feet)
+    }
+    const drawnTop = drawLocomotion(ctx, look.character, look.gaitPhase, look.gait, cx, feet, look.facing, normalHeight)
+    ctx.restore()
+    const top = drawnTop === null ? null : feet + (drawnTop - feet) * squash
+    if (top !== null) {
+      if (look.spark) sparkCue(ctx, cx + look.facing * 7, top + 3, style === 'cartoon' ? 3 : 2.2)
+      return top
+    }
+  }
   const image = loadedImage(look.character)
   const frame = characterFrame(look.character, look.pose, look.animationFrame)
   if (!image || !frame) return null
 
-  const normalHeight = style === 'cartoon' ? (look.size === 'big' ? 34 : 23) : (look.size === 'big' ? 31 : 17)
   // Keep the same source-pixel scale across poses: a tucked jump or crouch should not enlarge the face.
   const idle = BOUNDS[look.character][0]
   const idleHeight = idle[3] - idle[1]

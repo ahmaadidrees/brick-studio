@@ -219,6 +219,8 @@ export class RoomCore {
           ...(msg.p.it === undefined ? {} : { it: msg.p.it }),
           ...(msg.p.ch === undefined ? {} : { ch: msg.p.ch }),
           ...(msg.p.af === undefined ? {} : { af: msg.p.af }),
+          ...(msg.p.ga === undefined ? {} : { ga: msg.p.ga }),
+          ...(msg.p.gp === undefined ? {} : { gp: msg.p.gp }),
         })
         return
       case 'ping':

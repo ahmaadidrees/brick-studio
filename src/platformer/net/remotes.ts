@@ -6,6 +6,21 @@ import { isCharacterId, type CharacterId, type PlayerInfo, type Pose } from '@br
 
 /** How far behind the newest pose other players are drawn, to smooth out network jitter. */
 const DELAY = 6
+/** Poses normally arrive three ticks apart; beyond six, a wrapped phase is ambiguous. */
+const MAX_GAIT_GAP = 6
+
+const isWalkPose = (a: string) => a === 'walk1' || a === 'walk2' || a === 'walk3'
+
+/** Interpolate the sender's distance clock forward through 255 → 0 only for continuous gait. */
+function gaitPhaseBetween(a: Pose, b: Pose, fraction: number): number | undefined {
+  if (a.m !== 0 || b.m !== 0 || !isWalkPose(a.a) || !isWalkPose(b.a) || a.ga === undefined || a.ga !== b.ga || a.f !== b.f) return undefined
+  if (b.t - a.t <= 0 || b.t - a.t > MAX_GAIT_GAP || (b.x - a.x) * a.f <= 0) return undefined
+  if (a.gp === undefined || b.gp === undefined || !Number.isInteger(a.gp) || !Number.isInteger(b.gp) || a.gp < 0 || a.gp > 255 || b.gp < 0 || b.gp > 255) return undefined
+  const advance = (b.gp - a.gp + 256) % 256
+  // More than half a cycle between nearby poses is likely a discontinuity, not a safe forward stride.
+  if (advance >= 128) return undefined
+  return Math.round(a.gp + advance * fraction) % 256
+}
 
 interface Remote {
   num: number
@@ -92,7 +107,8 @@ export class Remotes {
         const f = (t - a.t) / (b.t - a.t)
         // A teleport (respawn) should not glide across the level.
         if (Math.abs(b.x - a.x) > 96 || Math.abs(b.y - a.y) > 96) return b
-        return { ...a, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }
+        const gp = gaitPhaseBetween(a, b, f)
+        return { ...a, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, ...(gp === undefined ? {} : { gp }) }
       }
     }
     return last
@@ -113,6 +129,8 @@ export class Remotes {
         pose: p.a as PlayerPose,
         character: r.character,
         animationFrame: p.af,
+        gait: p.ga === undefined ? undefined : p.ga === 1 ? 'run' : 'walk',
+        gaitPhase: p.gp === undefined ? undefined : p.gp / 256,
         spark: p.s === 2,
         visible: p.v === 1,
         name: r.name,

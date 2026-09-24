@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHARACTER_OPTIONS, characterPreviewStyle, normalizeCharacterId } from './catalog'
 import { characterFrame, drawGeneratedCharacter } from './atlas'
+import { gaitLeg } from './locomotion'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -19,6 +20,57 @@ describe('character choices', () => {
 })
 
 describe('generated character frames', () => {
+  it('plants each supporting foot, passes under the hips and alternates the legs', () => {
+    for (const gait of ['walk', 'run'] as const) {
+      const height = 23
+      const poses = Array.from({ length: 100 }, (_, i) => gaitLeg(i / 100, gait, height, -height * 0.35))
+      const support = poses.filter(pose => pose.planted)
+      expect(support.every(pose => pose.ankle.y === -height * 0.088)).toBe(true)
+      expect(support[0].ankle.x).toBeGreaterThan(0)
+      expect(support.at(-1)!.ankle.x).toBeLessThan(0)
+      expect(poses.filter(pose => !pose.planted).every(pose => pose.ankle.y <= -height * 0.088)).toBe(true)
+      for (const pose of poses) {
+        expect(Math.hypot(pose.knee.x - pose.hip.x, pose.knee.y - pose.hip.y)).toBeCloseTo(height * 0.20)
+        expect(Math.hypot(pose.ankle.x - pose.knee.x, pose.ankle.y - pose.knee.y)).toBeCloseTo(height * 0.20)
+      }
+      expect(gaitLeg(0, gait, height, -height * 0.35)).toEqual(gaitLeg(1, gait, height, -height * 0.35))
+      expect(gaitLeg(0.5, gait, height, -height * 0.35).ankle.x).toBeLessThan(0)
+    }
+  })
+
+  it('loads the separate parts and mirrors the complete jointed character', () => {
+    class MotionImage {
+      decoding = ''
+      src = ''
+      naturalWidth = 1536
+      naturalHeight = 1024
+      onload: (() => void) | null = null
+      onerror: (() => void) | null = null
+      static images: MotionImage[] = []
+      constructor() { MotionImage.images.push(this) }
+    }
+    vi.stubGlobal('Image', MotionImage)
+    const ctx = {
+      save: vi.fn(), restore: vi.fn(), drawImage: vi.fn(), translate: vi.fn(), scale: vi.fn(), rotate: vi.fn(),
+      beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), closePath: vi.fn(), fill: vi.fn(), stroke: vi.fn(),
+    } as unknown as CanvasRenderingContext2D
+    const look = { character: 'bolt-bot' as const, x: 80, y: 120, facing: 1 as const, size: 'small' as const, pose: 'walk1' as const, spark: false, gait: 'walk' as const, gaitPhase: 0 }
+    expect(drawGeneratedCharacter(ctx, look, 'cartoon', (n) => n, 0, 0)).toBeNull()
+    const sheet = MotionImage.images.find(image => image.src.endsWith('bolt-bot-rig-v1.png'))!
+    sheet.onload?.()
+    for (let i = 0; i < 8; i++) drawGeneratedCharacter(ctx, { ...look, gaitPhase: i / 8 }, 'cartoon', (n) => n, 0, 0)
+    const calls = vi.mocked(ctx.drawImage).mock.calls
+    expect(calls.length).toBe(8 * 9) // two arms, two three-part legs, one body
+    expect(new Set(calls.map(call => `${call[1]},${call[2]}`)).size).toBe(5)
+    expect(ctx.translate).toHaveBeenCalledWith(80, 120)
+    drawGeneratedCharacter(ctx, { ...look, facing: -1 }, 'cartoon', (n) => n, 0, 0)
+    expect(ctx.scale).toHaveBeenCalledWith(-1, 1)
+    const normalTop = drawGeneratedCharacter(ctx, look, 'cartoon', (n) => n, 0, 0)!
+    const squashedTop = drawGeneratedCharacter(ctx, { ...look, squash: 5 }, 'cartoon', (n) => n, 0, 0)!
+    expect(ctx.scale).toHaveBeenCalledWith(1, 0.6)
+    expect(squashedTop).toBeCloseTo(120 - (120 - normalTop) * 0.6)
+  })
+
   it('uses bounded, curated cells for movement and blinking', () => {
     expect(characterFrame('classic', 'stand')).toBeNull()
     expect(characterFrame('builder', 'stand', 0)?.index).toBe(0)
