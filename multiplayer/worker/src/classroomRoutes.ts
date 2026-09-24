@@ -223,6 +223,26 @@ async function handlePlatformerRequest(request: Request, env: Env, url: URL): Pr
     const ownerToken = url.searchParams.get("ownerToken") ?? undefined;
     return platformerConnect(stub, request, { kind: "guest", ownerToken });
   }
+  // Authenticated recovery of snapshots that outlive the live room. Do not create or refresh a room here.
+  const recoveryRoute = url.pathname.match(/^\/classroom\/worlds\/([^/]+)\/platformer-recovery(?:\/([^/]+))?$/);
+  if (recoveryRoute) {
+    if (request.method !== "GET" && !(request.method === "DELETE" && recoveryRoute[2])) return json({ code: "method_not_allowed" }, 405);
+    const id = canonicalWorldId(recoveryRoute[1]);
+    if (!id) throw new ClassroomHttpError(404, "not_found", "World not found.");
+    const copyId = recoveryRoute[2];
+    if (copyId && copyId !== "legacy" && !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(copyId)) {
+      return json({ error: "not_found" }, 404);
+    }
+    const access = await authorizeClassroomWorld(request, env, id);
+    if (!access.isOwner && !access.isTeacher) return json({ error: "access_required" }, 403);
+    await loadClassroomLevel(env, id); // Recovery documents belong only to 2D classroom worlds.
+    const stub = env.PLATFORMER_ROOMS.get(env.PLATFORMER_ROOMS.idFromName(id.replaceAll("-", "")));
+    const path = `/internal/recovery${copyId ? `/${copyId}` : ""}`;
+    return stub.fetch(`https://platformer.internal${path}`, {
+      method: request.method,
+      headers: { "x-platformer-access": JSON.stringify({ kind: "classroom", access } satisfies PlatformerConnectGrant) },
+    });
+  }
   // A class level's room: a signed-in ticket for this level, then the socket.
   const ticketRoute = url.pathname.match(/^\/classroom\/worlds\/([^/]+)\/platformer-ticket$/);
   if (ticketRoute) {
@@ -277,7 +297,8 @@ export async function handleReleaseRequest(
         ),
         origin,
       );
-    if (url.pathname.startsWith("/platformer/") || url.pathname.endsWith("/platformer-ticket")) {
+    if (url.pathname.startsWith("/platformer/") || url.pathname.endsWith("/platformer-ticket")
+        || /^\/classroom\/worlds\/[^/]+\/platformer-recovery(?:\/[^/]+)?$/.test(url.pathname)) {
       const handled = await handlePlatformerRequest(request, env, url);
       if (handled) return outgoing(handled, origin);
     }

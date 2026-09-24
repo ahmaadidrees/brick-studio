@@ -40,6 +40,9 @@ const COMMIT_RETRY_BACKOFF_MS = [1000, 2000, 5000, 15_000];
 const COMMIT_PARKED_RETRY_MS = 5 * 60 * 1000;
 /** Edit operations kept for replaying onto a newer copy after a conflict; past this, only the conflict copy is kept. */
 const MAX_PENDING_OPS = 20_000;
+/** Recovery copies are never pruned automatically. At capacity, pending work stays parked in the room. */
+export const MAX_PLATFORMER_RECOVERY_COPIES = 16;
+const RECOVERY_PREFIX = "recovery:";
 const COMMIT_DELAY_NOTICE_AFTER = 3;
 const REAUTH_INTERVAL_MS = 60 * 1000;
 /** Edits and host actions need a classroom check at most this old. */
@@ -54,7 +57,7 @@ const UUID_PATTERN = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{
 
 const SAVE_DELAYED_MESSAGE = "Saving to your class level is delayed. Your changes stay live in this room and will be saved automatically.";
 const SAVE_BLOCKED_MESSAGE = "Your changes are live in this room but could not be saved to the class level. Rejoin from My worlds to keep saving.";
-const SAVE_REPLACED_MESSAGE = "Someone saved a newer version of this level, so the room reloaded it. The changes made here are kept as a copy the teacher can ask for.";
+const SAVE_REPLACED_MESSAGE = "Someone saved a newer version of this level, so the room reloaded it. The changes made here are kept as a recovery copy for the teacher.";
 const SAVE_REBASED_MESSAGE = "Someone saved a newer version of this level, so the room took it and put the changes made here back on top.";
 const LEVEL_UPDATED_MESSAGE = "This level was updated, so the room reloaded it.";
 
@@ -88,12 +91,20 @@ type PlatformerRecord = {
   pendingOps?: EditOp[];
   /** Class rooms: more edits arrived than `pendingOps` keeps, so a conflict can only keep the copy. */
   pendingOpsLost?: boolean;
-  /** Class rooms: the room's own version from the last save that found a newer copy, kept for recovery. */
+  /** Legacy recovery field. Moved to a separate durable key before room expiry. */
   conflictCopy?: { level: LevelJson; revision: number; at: number };
   /** Guest rooms: SHA-256 of the owner token; the token itself is never stored. */
   ownerTokenVerifier?: string;
   meta?: RoomMeta;
   expiresAt: number;
+};
+
+type PlatformerRecoveryCopy = {
+  id: string;
+  worldId: string;
+  level: LevelJson;
+  revision: number;
+  at: number;
 };
 
 type PlatformerAttachment = {
@@ -179,6 +190,12 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     if (url.pathname === "/internal/classroom-invalidate" && request.method === "POST") {
       return this.serialized(() => this.invalidate(request));
     }
+    if (url.pathname === "/internal/recovery" && request.method === "GET") {
+      return this.serialized(() => this.recovery(request));
+    }
+    if (url.pathname.startsWith("/internal/recovery/") && (request.method === "GET" || request.method === "DELETE")) {
+      return this.serialized(() => this.recovery(request, url.pathname.slice("/internal/recovery/".length)));
+    }
     if (url.pathname === "/init" && request.method === "POST" && request.headers.get("x-platformer-init") === "1") {
       return this.serialized(() => this.init(request));
     }
@@ -191,6 +208,82 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
       return json(info);
     }
     return json({ error: "not_found" }, 404);
+  }
+
+  /** Called only through the Worker router with its own grant; always check the current class permission. */
+  private async recovery(request: Request, id?: string): Promise<Response> {
+    let grant: PlatformerConnectGrant | null = null;
+    try { grant = JSON.parse(request.headers.get("x-platformer-access") ?? "null") as PlatformerConnectGrant | null; } catch { /* no grant */ }
+    if (grant?.kind !== "classroom" || !grant.access || !UUID_PATTERN.test(grant.access.worldId)) {
+      return json({ error: "access_required" }, 401);
+    }
+    if (this.record && (this.record.kind !== "classroom" || this.record.classroomWorldId !== grant.access.worldId)) {
+      return json({ error: "room_not_found" }, 404);
+    }
+    try {
+      const access = await revalidateClassroomWorldAccess(this.env, identityOf(grant.access), grant.access.worldId);
+      if (!access.isOwner && !access.isTeacher) return json({ error: "access_required" }, 403);
+    } catch (error) {
+      if (error instanceof ClassroomHttpError) return json({ error: error.code }, error.status);
+      return json({ error: "access_unavailable" }, 503);
+    }
+    if (id) {
+      if (id !== "legacy" && !UUID_PATTERN.test(id)) return json({ error: "not_found" }, 404);
+      const embedded = id === "legacy" && this.record?.kind === "classroom" && this.record.conflictCopy;
+      const copy = await this.ctx.storage.get<PlatformerRecoveryCopy>(RECOVERY_PREFIX + id);
+      if (!embedded && copy?.worldId !== grant.access.worldId) return json({ error: "not_found" }, 404);
+      if (request.method === "DELETE") {
+        // Explicitly remove only this archive entry. The current level and pending edits are untouched.
+        if (embedded) {
+          delete this.record!.conflictCopy;
+          await this.persist(false);
+        }
+        if (copy?.worldId === grant.access.worldId) await this.ctx.storage.delete(RECOVERY_PREFIX + id);
+        if (this.record?.pending) {
+          // A full archive may have parked a conflict. Recheck permissions on its ordinary save retry.
+          this.record.commitDueAt = Date.now() + 1000;
+          await this.persist(false);
+          await this.scheduleAlarm();
+        }
+        return new Response(null, { status: 204 });
+      }
+      if (embedded) {
+        return json({ id, worldId: grant.access.worldId, ...this.record!.conflictCopy });
+      }
+      return json(copy);
+    }
+    const copies = await this.ctx.storage.list<PlatformerRecoveryCopy>({ prefix: RECOVERY_PREFIX });
+    const items = [...copies.values()]
+      .filter((copy) => copy.worldId === grant.access.worldId)
+      .map(({ id, revision, at }) => ({ id, revision, at }));
+    if (this.record?.kind === "classroom" && this.record.conflictCopy && !items.some((item) => item.id === "legacy")) {
+      const { revision, at } = this.record.conflictCopy;
+      items.push({ id: "legacy", revision, at });
+    }
+    return json({ copies: items.sort((a, b) => b.at - a.at), capacity: MAX_PLATFORMER_RECOVERY_COPIES });
+  }
+
+  /** Immutable snapshots survive room expiry. Capacity is a backpressure signal, never a reason to delete a copy. */
+  private async archiveRecovery(level: LevelJson, revision: number, at = Date.now(), id = crypto.randomUUID()): Promise<boolean> {
+    const worldId = this.record?.classroomWorldId;
+    if (!worldId) return false;
+    const existing = await this.ctx.storage.list<PlatformerRecoveryCopy>({ prefix: RECOVERY_PREFIX });
+    // A legacy copy keeps the same export ID when its expiring room record is migrated.
+    if (id === "legacy" && existing.has(RECOVERY_PREFIX + id)) return true;
+    if (existing.size >= MAX_PLATFORMER_RECOVERY_COPIES) return false;
+    await this.ctx.storage.put(RECOVERY_PREFIX + id, { id, worldId, level, revision, at } satisfies PlatformerRecoveryCopy);
+    return true;
+  }
+
+  /** Upgrade a copy written by an older Worker before dropping its expiring room record. */
+  private async preserveLegacyRecovery(): Promise<boolean> {
+    const record = this.record;
+    if (record?.kind !== "classroom" || !record.conflictCopy) return true;
+    const { level, revision, at } = record.conflictCopy;
+    if (!await this.archiveRecovery(level, revision, at, "legacy")) return false;
+    delete record.conflictCopy;
+    await this.persist(false);
+    return true;
   }
 
   // -------------------------------------------------------------------------------------------
@@ -517,7 +610,7 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     this.commitDueBy = 0;
     const document = createPlatformerDocument(core ? core.design : levelFromJson(record.pending!));
     if (core) core.dirty = false;
-    let outcome: "saved" | "rebased" | "replaced" | "refused" | "failed" = "refused";
+    let outcome: "saved" | "rebased" | "replaced" | "refused" | "failed" | "archive_full" = "refused";
     try {
       for (const identity of identities) {
         try {
@@ -537,11 +630,13 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
           }
           if (code === "revision_conflict") {
             try {
-              // Someone saved elsewhere since. Keep the room's version first, whatever happens next.
+              // Someone saved elsewhere since. Keep the room's version before replacing or rebasing it.
               const latest = await loadClassroomLevel(this.env, record.classroomWorldId);
-              record.conflictCopy = { level: document.level, revision: record.dbRevision ?? 1, at: Date.now() };
-              if (record.pendingOps && !record.pendingOpsLost && await this.rebase(latest.document.level, latest.revision, latest.title, record.pendingOps)) outcome = "rebased";
-              else {
+              if (!await this.preserveLegacyRecovery() || !await this.archiveRecovery(document.level, record.dbRevision ?? 1)) {
+                outcome = "archive_full";
+              } else if (record.pendingOps && !record.pendingOpsLost && await this.rebase(latest.document.level, latest.revision, latest.title, record.pendingOps)) {
+                outcome = "rebased";
+              } else {
                 await this.adopt(latest.document.level, latest.revision, latest.title, SAVE_REPLACED_MESSAGE);
                 outcome = "replaced";
               }
@@ -578,6 +673,7 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
       return;
     }
     if (core) core.dirty = true;
+    if (outcome === "archive_full") return this.park("blocked");
     if (outcome === "refused") return this.park("blocked");
     this.commitFailures += 1;
     if (this.commitFailures >= COMMIT_DELAY_NOTICE_AFTER) this.notifySave("delayed");
@@ -690,7 +786,13 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
         return;
       }
       if (now >= record.expiresAt) {
-        await this.ctx.storage.deleteAll();
+        if (!await this.preserveLegacyRecovery()) {
+          // A full archive must keep the older copy too; retry after someone exports and clears space.
+          record.expiresAt = now + COMMIT_PARKED_RETRY_MS;
+          await this.persist(true);
+          return;
+        }
+        await this.ctx.storage.delete("room");
         this.record = null;
         this.core = null;
         return;
