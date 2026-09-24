@@ -13,6 +13,8 @@ const d = new Director({
 const page = await d.open('/2d/build?new=1')
 await page.locator('.p2d-game.p2d-building').waitFor()
 await page.waitForFunction(() => !!window.__game2d)
+// No coin counter or timer: the clip is about making the world, not a score.
+await page.evaluate(() => { window.__game2d.hud = () => null })
 await page.waitForTimeout(800)
 await d.start()
 

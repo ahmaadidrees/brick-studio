@@ -1,5 +1,5 @@
 /**
- * Demo: building in 3D, then stepping inside. A fresh plate: stack a rainbow staircase (three 2 × 4 bricks, each
+ * Demo: building in 3D, then stepping inside. A fresh plate in Brick Valley: stack a rainbow staircase (three 2 × 4 bricks, each
  * half on the one below, and a 2 × 2 on top), then Explore: hop up the steps, flip at the top, and swing the camera
  * round to see the build.
  *
@@ -21,6 +21,11 @@ const start = page.getByRole('button', { name: 'Start building', exact: true })
 await start.waitFor({ timeout: 30000 })
 await start.click()
 await page.waitForTimeout(1500)
+// Build in Brick Valley rather than on the bare studio plate: a toy landscape reads as a toy, not a tool.
+await page.getByRole('button', { name: 'Scene' }).first().click()
+await page.getByRole('dialog').getByText(process.env.SCENE ?? 'Brick Valley', { exact: true }).click()
+await page.getByRole('dialog').getByRole('button', { name: 'Apply', exact: true }).click()
+await page.waitForTimeout(4000)
 await d.start()
 
 const state = (fn) => page.evaluate(fn)
@@ -98,18 +103,18 @@ const swatch = (i) => drawer.getByRole('group', { name: 'Brush color' }).getByRo
 /** Pick, aim, glide there on camera, click. */
 async function place(target, { color, part } = {}) {
   if (part) {
-    await d.moveTo(drawer.getByRole('button', { name: part, exact: true }), 700)
+    await d.moveTo(drawer.getByRole('button', { name: part, exact: true }), 520)
     await d.click()
   }
   if (color !== undefined) {
-    await d.moveTo(swatch(color), 650)
+    await d.moveTo(swatch(color), 480)
     await d.click()
   }
   const here = { ...d.mouse }
   const spot = await aim(plate, target)
   await page.mouse.move(here.x, here.y)
-  await d.move(spot.x, spot.y, 750)
-  await d.wait(120)
+  await d.move(spot.x, spot.y, 620)
+  await d.wait(80)
   const before = await bricks()
   await d.click({ after: 260 })
   if ((await bricks()) !== before + 1) throw new Error(`the brick at ${JSON.stringify(target)} was not placed`)
