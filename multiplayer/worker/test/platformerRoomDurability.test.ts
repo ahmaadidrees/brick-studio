@@ -6,13 +6,13 @@
 import { createPlatformerDocument } from "@brick-studio/platformer-core/document";
 import { createBlankLevel, levelFromJson, type LevelJson } from "@brick-studio/platformer-core/engine/level";
 import { PROTOCOL } from "@brick-studio/platformer-core/net/protocol";
-import { runInDurableObject } from "cloudflare:test";
+import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { afterEach, expect, it, vi } from "vitest";
 import { ClassroomService } from "../src/classroom";
 import { handleReleaseRequest } from "../src/classroomRoutes";
 import type { Env } from "../src/index";
 import type { PlatformerRoom } from "../src/platformerRoom";
-import { alarmAfter, commitGate, fakeEnv, fixture, Inbox, randomWorldUuid, routeEnv, send, sockets, teacherCaller, withClockAhead, workerEnv } from "./classroomFixture";
+import { commitGate, fakeEnv, fixture, Inbox, randomWorldUuid, routeEnv, send, sockets, teacherCaller, withClockAhead, workerEnv } from "./classroomFixture";
 
 afterEach(() => {
   for (const socket of sockets.splice(0)) try { socket.close(); } catch { /* already closed */ }
@@ -45,6 +45,13 @@ async function openRoom() {
   const stored = () => runInDurableObject(stub, async (_room: PlatformerRoom, state: DurableObjectState) => (await state.storage.get<Stored>("room"))!);
   const dbTile = () => levelFromJson(world.document.level).tiles[TILE];
   return { ...f, world, socket, inbox, stub, stored, dbTile };
+}
+
+/** Advance the room's clock by `ms` and fire its alarm, as the runtime would. */
+async function alarmAfter(room: { stub: DurableObjectStub<PlatformerRoom> }, ms: number): Promise<boolean> {
+  const now = Date.now() + ms;
+  const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+  try { return await runDurableObjectAlarm(room.stub); } finally { clock.mockRestore(); }
 }
 
 /** Tile (9, 2) on a 40-wide level. */
@@ -121,7 +128,7 @@ it("refuses an edit while a due access check cannot run, then accepts it once th
   });
   await withClockAhead(61_000, async () => {
     send(r.socket, edit(3, "durable:down"));
-    expect((await r.inbox.next("reject")) as { cid: string; reason: string }).toMatchObject({ cid: "durable:down", reason: "unchecked" });
+    expect((await r.inbox.next("reject")) as unknown as { cid: string; reason: string }).toMatchObject({ cid: "durable:down", reason: "unchecked" });
     expect(r.inbox.peek("ev")).toHaveLength(0);
     down = false;
     const saved = r.db.nextCommit();
