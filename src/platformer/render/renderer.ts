@@ -2,6 +2,8 @@ import { SUB, TILE } from '@brick-studio/platformer-core/engine/constants'
 import type { LevelStyle } from '@brick-studio/platformer-core/engine/level'
 import { T, isAnimated } from '@brick-studio/platformer-core/engine/tiles'
 import { EK, ES, type Entity, type World } from '@brick-studio/platformer-core/engine/world'
+import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
+import { drawGeneratedCharacter } from '../characters/atlas'
 import type { PlayerPose } from './art/characters'
 import { CartoonSkin } from './cartoon/cartoonSkin'
 import { PixelSkin } from './pixelSkin'
@@ -18,6 +20,10 @@ export interface PlayerLook {
   spark: boolean
   visible: boolean
   name?: string
+  /** Selected appearance. Omission keeps the original procedural look for older callers. */
+  character?: CharacterId
+  /** Shared animation clock; poses still determine movement when this is omitted. */
+  animationFrame?: number
   /** 0..1 translucency for players shown while building. */
   alpha?: number
   squash?: number
@@ -362,11 +368,19 @@ export class Renderer {
     if (!p.visible) return
     const ctx = this.ctx
     const skin = this.skin
+    if (p.alpha !== undefined) ctx.globalAlpha = p.alpha
+    const generatedTop = p.character && p.character !== 'classic'
+      ? drawGeneratedCharacter(ctx, { ...p, character: p.character }, skin.style, skin.snap.bind(skin), camX, camY)
+      : null
+    if (generatedTop !== null) {
+      ctx.globalAlpha = 1
+      if (p.name) skin.label(ctx, p.name, p.x - camX, generatedTop, '#ffffff')
+      return
+    }
     const key = `p:${p.num}:${p.size}:${p.pose}:${p.spark ? 1 : 0}${p.facing < 0 ? '|f' : ''}`
     const s = skin.sprite(key)
     const x = skin.snap(p.x - s.w / 2) - camX
     let y = skin.snap(p.y - s.h) - camY
-    if (p.alpha !== undefined) ctx.globalAlpha = p.alpha
     if (p.squash) {
       const h = skin.snap(s.h * 0.6)
       y += s.h - h

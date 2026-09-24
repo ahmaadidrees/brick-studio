@@ -105,6 +105,30 @@ describe('RoomCore', () => {
     expect(a.inbox.length).toBe(count)
   })
 
+  it('relays allowlisted character IDs, accepts legacy poses, and drops invalid identities and extra fields', () => {
+    const r = room()
+    const a = r.join('A')
+    const b = r.join('B')
+    const worldHash = hashWorld(createWorld(r.core.design))
+    const base = { m: 0, x: 10, y: 50, f: 1, a: 'stand', s: 0, v: 1, q: 0, t: 1 }
+    r.send(a, { type: 'pose', p: { ...base, ch: 'brick-fox', af: 42, assetUrl: 'https://untrusted.invalid/skin.png' } })
+    r.send(b, { type: 'pose', p: base })
+    r.core.flushPoses()
+    expect(a.last('poses')?.list).toEqual([
+      [1, { ...base, ch: 'brick-fox', af: 42 }],
+      [2, base],
+    ])
+
+    r.send(a, { type: 'pose', p: { ...base, t: 2, ch: 'https://untrusted.invalid/skin.png' } })
+    r.send(a, { type: 'pose', p: { ...base, t: 2, af: 256 } })
+    r.core.flushPoses(true)
+    expect(a.last('poses')?.list).toEqual([
+      [1, { ...base, ch: 'brick-fox', af: 42 }],
+      [2, base],
+    ])
+    expect(hashWorld(createWorld(r.core.design))).toBe(worldHash)
+  })
+
   it('knows the host only by the host key', () => {
     const r = room()
     const kid = r.join('Kid')

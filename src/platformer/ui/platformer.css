@@ -1160,6 +1160,111 @@
 
 /* ---------- Scene (the header's Scene in 2D) ---------- */
 
+.p2d-recovery-body { display: grid; gap: var(--space-3); }
+.p2d-recovery-body > p { margin: 0; color: var(--text-muted); line-height: 1.5; }
+.p2d-recovery-list { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.p2d-recovery-list li {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.p2d-recovery-list li > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.p2d-recovery-list li strong { font-size: var(--text-md); }
+.p2d-recovery-list li span { color: var(--text-muted); font-size: var(--text-sm); }
+.p2d-recovery-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: var(--space-2); }
+.p2d-recovery-list .ui-button { flex: 0 0 auto; min-height: 44px; }
+.p2d-recovery-remove.ui-button { color: var(--danger-text); }
+.p2d-recovery-error { padding: var(--space-3); border-radius: var(--radius-md); background: var(--danger-soft); color: var(--danger-text); }
+.p2d-recovery-error p { margin: 0 0 var(--space-2); }
+@media (max-width: 520px) {
+  .p2d-recovery-list li { align-items: stretch; flex-direction: column; }
+  .p2d-recovery-actions { width: 100%; }
+  .p2d-recovery-list .ui-button { flex: 1 1 130px; }
+}
+
+/* Character pictures are the same sprites used in the 2D game. */
+.p2d-character-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.p2d-character-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 188px;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.p2d-character-card:hover { border-color: var(--primary); }
+.p2d-character-card:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.p2d-character-card[aria-checked='true'] {
+  border-color: var(--primary-strong);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.p2d-character-picture {
+  display: grid;
+  height: 112px;
+  place-items: center;
+  background: var(--studio-panel-soft, var(--bg));
+}
+
+.p2d-character-sprite {
+  display: block;
+  width: 92px;
+  height: 92px;
+  image-rendering: pixelated;
+}
+
+.p2d-character-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  padding: var(--space-3);
+  line-height: 1.35;
+}
+
+.p2d-character-copy strong { font-family: var(--font-display); font-size: var(--text-md); }
+.p2d-character-copy > span { color: var(--text-muted); font-size: var(--text-sm); }
+.p2d-character-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary-strong);
+  color: var(--primary-contrast);
+}
+
+@media (max-width: 680px) {
+  .p2d-character-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .p2d-character-card { min-height: 160px; }
+  .p2d-character-picture { height: 86px; }
+  .p2d-character-sprite { width: 72px; height: 72px; }
+}
+
 .p2d-scene-group {
   display: flex;
   flex-direction: column;

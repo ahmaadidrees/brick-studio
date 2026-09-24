@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Classic Brickgineer">
+  <g stroke="#263c51" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path fill="#34435e" d="M44 104h17v10H34v-7zm26 0h17l10 3v7H70z"/>
+    <path fill="#5888da" d="M43 79h42v28H70V89H60v18H43z"/>
+    <path fill="#f17861" d="M43 53h42l7 29H36z"/>
+    <path fill="#f2c37f" d="m39 58-10 18 8 6 13-16zm50 0 10 18-8 6-13-16z"/>
+    <path fill="#f2c37f" d="M44 24h40v28c0 14-8 22-20 22S44 66 44 52z"/>
+    <path fill="#f3ca74" d="M42 22c2-10 10-17 22-17s20 7 22 17v12H42z"/>
+    <path fill="#f3ca74" d="M32 33h64v9H32z"/>
+    <path fill="#f3ca74" d="M58 3h12v10H58z"/>
+  </g>
+  <g fill="#263c51"><circle cx="55" cy="49" r="2.5"/><circle cx="73" cy="49" r="2.5"/></g>
+  <path d="M57 59q7 7 14 0" fill="none" stroke="#263c51" stroke-width="3" stroke-linecap="round"/>
+</svg>

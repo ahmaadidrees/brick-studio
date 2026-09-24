@@ -1,6 +1,8 @@
 import type { WorldEvent } from '../engine/events'
 import type { LevelJson } from '../engine/level'
 import type { WorldJson } from '../engine/world'
+import { isCharacterId, type CharacterId } from '../characters'
+export { CHARACTER_IDS, DEFAULT_CHARACTER, isCharacterId, type CharacterId } from '../characters'
 
 /*
  * The room protocol, shared by the browser and the room server. JSON over one WebSocket.
@@ -78,6 +80,10 @@ export interface Pose {
   t: number
   /** Building: the palette item in hand. */
   it?: string
+  /** Cosmetic identity. Older clients omit it and appear as Classic. */
+  ch?: CharacterId
+  /** Cosmetic animation clock (0..255), independent of the world simulation. */
+  af?: number
 }
 
 /** What a joining player needs: a starting world and every event since. */
@@ -206,6 +212,8 @@ export function isValidPose(p: unknown): p is Pose {
     (o.v === 0 || o.v === 1) &&
     isInt(o.q) &&
     isInt(o.t) &&
-    (o.it === undefined || (typeof o.it === 'string' && o.it.length <= 16))
+    (o.it === undefined || (typeof o.it === 'string' && o.it.length <= 16)) &&
+    (o.ch === undefined || isCharacterId(o.ch)) &&
+    (o.af === undefined || (isInt(o.af) && o.af >= 0 && o.af <= 255))
   )
 }

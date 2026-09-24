@@ -17,7 +17,7 @@ import { createWorld, deserializeWorld, hashWorld, serializeWorld, type Effect }
 import { Sound, type SoundName } from '../audio/sound'
 import { Input, type InputFrame } from '../input/input'
 import { Timeline, type EventRecord } from '@brick-studio/platformer-core/net/timeline'
-import { DEFAULT_SETTINGS, HASH_EVERY, KEYFRAME_EVERY, type Base, type PlayerInfo, type Pose, type RoomSettings, type StampedEvent } from '@brick-studio/platformer-core/net/protocol'
+import { DEFAULT_CHARACTER, DEFAULT_SETTINGS, HASH_EVERY, KEYFRAME_EVERY, isCharacterId, type Base, type CharacterId, type PlayerInfo, type Pose, type RoomSettings, type StampedEvent } from '@brick-studio/platformer-core/net/protocol'
 import { RoomLink, type LinkStatus, type RoomLinkOptions, type Welcome } from '../net/roomLink'
 import { Remotes } from '../net/remotes'
 import { playerColor } from '../render/art/palette'
@@ -78,6 +78,7 @@ export interface RoomOptions {
 
 export interface SessionOptions {
   feel?: Feel
+  character?: CharacterId
   room?: RoomOptions
   /** Where to keep this course's best time (solo only), or null for none. */
   recordKey?: string | null
@@ -122,6 +123,7 @@ export class GameSession {
   player: Player
   feel: FeelSub
   mode: Mode = 'play'
+  character: CharacterId = DEFAULT_CHARACTER
   particles: Particle[] = []
   stats: SessionStats = { resyncs: 0, fps: 0, simMs: 0, renderMs: 0, rollbacks: 0, entities: 0, tick: 0 }
   link: Link
@@ -180,6 +182,7 @@ export class GameSession {
     level: LevelDesign,
     opts: SessionOptions = {},
   ) {
+    if (isCharacterId(opts.character)) this.character = opts.character
     this.renderer = new Renderer(canvas)
     this.feel = feelToSub(opts.feel ?? DEFAULT_FEEL)
     this.recordKey = opts.room ? null : (opts.recordKey ?? null)
@@ -242,6 +245,13 @@ export class GameSession {
     this.input.detach(window)
     this.link.close()
     this.sound.setMusic(false)
+  }
+
+  /** Change only the local appearance, and announce it to the room immediately. */
+  setCharacter(id: CharacterId): void {
+    if (!isCharacterId(id) || this.character === id) return
+    this.character = id
+    if (this.room && this.joined) this.room.sendPose(this.pose())
   }
 
   private roomHandlers() {
@@ -327,6 +337,7 @@ export class GameSession {
       return
     }
     this.silent = true
+    this.remotes.resetPoseHistory()
     this.timeline.reset(world)
     for (const e of events) this.timeline.addRemote({ tick: e.tick, seq: e.seq, by: e.by, ev: e.ev, cid: e.cid })
     const target = this.link.serverTick(performance.now())
@@ -543,7 +554,7 @@ export class GameSession {
     const t = this.timeline.tick
     if (this.mode === 'build') {
       const h = this.editor.hover
-      return { m: 1, x: h ? h[0] : -1, y: h ? h[1] : -1, f: 1, a: 'stand', s: 0, v: 1, q: 0, t, it: this.editor.erasing ? 'eraser' : this.editor.item.id }
+      return { m: 1, x: h ? h[0] : -1, y: h ? h[1] : -1, f: 1, a: 'stand', s: 0, v: 1, q: 0, t, it: this.editor.erasing ? 'eraser' : this.editor.item.id, ch: this.character, af: this.frameCount & 255 }
     }
     const l = this.lookOf(this.player)
     return {
@@ -556,6 +567,8 @@ export class GameSession {
       v: l.visible ? 1 : 0,
       q: this.player.squash,
       t,
+      ch: this.character,
+      af: this.frameCount & 255,
     }
   }
 
@@ -708,7 +721,7 @@ export class GameSession {
   // Drawing
 
   protected lookOf(p: Player): PlayerLook {
-    return playerLook(p, this.frameCount)
+    return playerLook(p, this.frameCount, this.character)
   }
 
   protected hud(): Hud | null {
@@ -773,7 +786,7 @@ export class GameSession {
 }
 
 /** Which sprite a player shows this frame. */
-export function playerLook(p: Player, frame: number): PlayerLook {
+export function playerLook(p: Player, frame: number, character: CharacterId = DEFAULT_CHARACTER): PlayerLook {
   const big = p.power !== POWER.SMALL
   let pose: PlayerPose = 'stand'
   if (p.dead) pose = 'dead'
@@ -798,6 +811,8 @@ export function playerLook(p: Player, frame: number): PlayerLook {
     facing: p.wallSide ? (p.wallSide as 1 | -1) : p.facing,
     size,
     pose,
+    character,
+    animationFrame: frame & 255,
     spark,
     visible: !blink,
     squash: p.squash,

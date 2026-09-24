@@ -2,6 +2,7 @@ import { Hammer, House, Lock, Menu as MenuIcon, Pause, Play, RotateCcw } from 'l
 import { useEffect, useRef, useState } from 'react'
 import type { Feel } from '@brick-studio/platformer-core/engine/feel'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
 import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
 import { InviteSheet } from '../../classroom/InviteSheet'
@@ -11,6 +12,7 @@ import { CATEGORIES, PALETTE } from '../editor/palette'
 import { GameSession, type Mode, type RoomOptions } from '../game/session'
 import { formatTime } from '../render/renderer'
 import { BuildShell } from './BuildShell'
+import { CharacterSheet } from './CharacterSheet'
 import { CloudLevelSaver, createCloudLevel } from './cloudLevel'
 import { draftSaveMessage, saveDraft, type DraftSaveFailure } from './drafts'
 import { FeelPanel } from './FeelPanel'
@@ -18,8 +20,9 @@ import { loadFeel, saveFeel } from './feelStore'
 import { LevelMenu } from './LevelMenu'
 import { Menu, type MenuView } from './Menu'
 import { PeopleSheet } from './PeopleSheet'
-import { clientKey, hasSeen, markSeen, saveSoundPrefs, soundPrefs, type SoundPrefs } from './prefs'
+import { clientKey, hasSeen, markSeen, saveCharacter, savedCharacter, saveSoundPrefs, soundPrefs, type SoundPrefs } from './prefs'
 import { playWithFriends } from './rooms'
+import { RecoverySheet, recoveryWorldUuid } from './RecoverySheet'
 import { SceneSheet } from './SceneSheet'
 import { encodeShareCode } from './shareCode'
 import { TouchControls } from './TouchControls'
@@ -93,6 +96,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const [menuView, setMenuView] = useState<MenuView>('main')
   const [people, setPeople] = useState(false)
   const [scene, setScene] = useState(false)
+  const [characterOpen, setCharacterOpen] = useState(false)
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
+  const [character, setCharacter] = useState<CharacterId>(savedCharacter)
   const [drawerOpen, setDrawerOpen] = useState(true)
   const compact = useCompactLayout()
   const [mode, setMode] = useState<Mode>(startMode)
@@ -123,6 +129,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     const lag = Number(new URLSearchParams(location.search).get('lag') ?? 0) || 0
     const s = new GameSession(canvasRef.current!, level, {
       feel: loadFeel(),
+      character,
       room: room ? { ...room, lag, key: clientKey() } : undefined,
       recordKey: source.kind === 'course' ? `course:${source.id}` : null,
     })
@@ -252,7 +259,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }, [level])
 
   // Solo games pause while a menu or card is open; in rooms the world keeps going but you stand still.
-  const covered = menu || !!clear || sharing || people || scene
+  const covered = menu || !!clear || sharing || people || scene || characterOpen || recoveryOpen
   useEffect(() => {
     const s = sessionRef.current
     if (!s) return
@@ -462,6 +469,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     saveFeel(f)
     s?.setFeel(f)
   }
+  const changeCharacter = (id: CharacterId) => {
+    setCharacter(id)
+    saveCharacter(id)
+    sessionRef.current?.setCharacter(id)
+  }
   const openMenu = (view: MenuView = 'main') => {
     setMenuView(view)
     setMenu(true)
@@ -500,6 +512,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
 
   // Sharing an account level with the class: the same invite sheet as My worlds.
   const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : null)
+  const ownsCloudWorld = !!cloudWorld && cloudWorld.ownerId === account.user?.id
+  const teachesCloudWorld = !!cloudWorld && account.status === 'teacher' && (account.classes ?? []).some(({ id }) => id === cloudWorld.ownerClassId || id === cloudWorld.classId)
+  const recoveryWorldId = signedIn && (ownsCloudWorld || teachesCloudWorld)
+    ? recoveryWorldUuid(cloudWorld!.id)
+    : signedIn && source.kind === 'room' && source.roomKind === 'classroom' && s?.classroomRoom && s.joined && s.isHost
+      ? recoveryWorldUuid(source.roomId)
+      : null
   const canShareWithClass = !!cloudWorld && account.status === 'student' && cloudWorld.ownerId === account.user?.id && cloudWorld.kind === 'personal'
   const openShare = () => {
     const classId = account.classes?.[0]?.id
@@ -550,7 +569,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const sceneLocked = !s ? null : s.canBuild ? null : (s.buildBlockedReason ?? 'You can play this world, but not change it.')
   // A pointer click on a header button hands the keyboard straight back to the game (keyboard users keep focus).
   const releaseFocus = (e: React.MouseEvent) => {
-    if (e.detail > 0) (e.target as HTMLElement).closest<HTMLButtonElement>('button:not([aria-haspopup])')?.blur()
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>('button:not([aria-haspopup])')
+    // A sheet needs its opener to keep focus so Escape can return there.
+    if (e.detail > 0 && button && !button.classList.contains('app-header-tool')) button.blur()
   }
 
   return (
@@ -564,8 +585,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           onRenameWorld={s?.canBuild ? rename : undefined}
           renameMaxLength={60}
           saveStatus={{ source: saveSource }}
-          onOpenWorldSetup={() => setScene(true)}
-          hideCharacter
+          onOpenWorldSetup={(tab) => tab === 'character' ? setCharacterOpen(true) : setScene(true)}
           onStartLiveWorld={inRoom ? undefined : startRoom}
           startLiveTitle="Open a room for friends with this world"
           livePolicy={livePolicy}
@@ -582,6 +602,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               onShareLink={s?.solo ? () => void shareLink() : undefined}
               onInvite={invite}
               onShareWithClass={canShareWithClass ? openShare : undefined}
+              onRecoveryCopies={recoveryWorldId ? () => setRecoveryOpen(true) : undefined}
               onResetWorld={s?.solo && build ? () => s.resetWorld() : undefined}
               onNewLevel={inRoom ? undefined : () => void leave(() => window.location.assign('/2d/build?new=1'))}
               sound={sound}
@@ -764,6 +785,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         />
       )}
       {s && <PeopleSheet open={people} onClose={() => setPeople(false)} session={s} onInvite={invite} inviteLink={inviteLink} />}
+      <CharacterSheet open={characterOpen} selected={character} onSelect={changeCharacter} onClose={() => setCharacterOpen(false)} />
+      <RecoverySheet open={recoveryOpen} worldId={recoveryWorldId} worldTitle={title} onClose={() => setRecoveryOpen(false)} />
       {s && (
         <SceneSheet
           open={scene}

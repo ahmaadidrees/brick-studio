@@ -2,7 +2,7 @@ import { sub } from '@brick-studio/platformer-core/engine/constants'
 import type { OtherBody } from '@brick-studio/platformer-core/engine/player'
 import type { PlayerPose } from '../render/art/characters'
 import type { PlayerLook } from '../render/renderer'
-import type { PlayerInfo, Pose } from '@brick-studio/platformer-core/net/protocol'
+import { isCharacterId, type CharacterId, type PlayerInfo, type Pose } from '@brick-studio/platformer-core/net/protocol'
 
 /** How far behind the newest pose other players are drawn, to smooth out network jitter. */
 const DELAY = 6
@@ -12,6 +12,8 @@ interface Remote {
   name: string
   poses: Pose[]
   squash: number
+  character: CharacterId
+  characterTick: number
 }
 
 export interface RemoteCursor {
@@ -33,14 +35,30 @@ export class Remotes {
       keep.add(p.num)
       const r = this.map.get(p.num)
       if (r) r.name = p.name
-      else this.map.set(p.num, { num: p.num, name: p.name, poses: [], squash: 0 })
+      else this.map.set(p.num, { num: p.num, name: p.name, poses: [], squash: 0, character: 'classic', characterTick: -Infinity })
     }
     for (const n of this.map.keys()) if (!keep.has(n)) this.map.delete(n)
+  }
+
+  /** A new room snapshot may start at an earlier tick (for example after a Worker restart). */
+  resetPoseHistory() {
+    for (const r of this.map.values()) {
+      r.poses.length = 0
+      r.characterTick = -Infinity
+      r.squash = 0
+      // Keep the last known identity until this player sends a pose in the new timeline.
+    }
   }
 
   addPose(num: number, p: Pose) {
     const r = this.map.get(num)
     if (!r) return
+    // A new selection shows at once, even while position interpolation trails the latest pose.
+    // Older clients have no identity field and keep the original Classic appearance.
+    if (p.t >= r.characterTick) {
+      r.character = isCharacterId(p.ch) ? p.ch : 'classic'
+      r.characterTick = p.t
+    }
     // Poses can arrive out of order; keep them sorted by the sender's tick.
     if (r.poses.length && p.t < r.poses[r.poses.length - 1].t) {
       r.poses.push(p)
@@ -93,6 +111,8 @@ export class Remotes {
         facing: p.f,
         size: p.s > 0 && p.a !== 'dead' ? 'big' : 'small',
         pose: p.a as PlayerPose,
+        character: r.character,
+        animationFrame: p.af,
         spark: p.s === 2,
         visible: p.v === 1,
         name: r.name,

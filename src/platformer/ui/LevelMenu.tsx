@@ -1,4 +1,4 @@
-import { FilePlus2, Gamepad2, House, Link2, MoreHorizontal, Music, Pencil, RotateCcw, Share2, SlidersHorizontal, Users, Volume2, VolumeX } from 'lucide-react'
+import { FilePlus2, Gamepad2, History, House, Link2, MoreHorizontal, Music, Pencil, RotateCcw, Share2, SlidersHorizontal, Users, Volume2, VolumeX } from 'lucide-react'
 import { Button, Menu, MenuItem, MenuSeparator } from '../../ui'
 import type { SoundPrefs } from './prefs'
 
@@ -13,6 +13,8 @@ interface Props {
   /** Solo building: put coins and enemies back. */
   onResetWorld?: () => void
   onNewLevel?: () => void
+  /** Signed-in owner or teacher: download earlier 2D room copies. */
+  onRecoveryCopies?: () => void
   sound: SoundPrefs
   onSound: (p: SoundPrefs) => void
   onControls: () => void
@@ -39,6 +41,7 @@ export function LevelMenu(p: Props) {
       {p.onShareLink && <MenuItem icon={<Share2 size={18} />} label="Copy a link to this world" description="Anyone who opens it gets their own copy" onSelect={p.onShareLink} />}
       {p.onResetWorld && <MenuItem icon={<RotateCcw size={18} />} label="Bring back coins and enemies" description="Everything you took or stomped comes back" onSelect={p.onResetWorld} />}
       {p.onNewLevel && <MenuItem icon={<FilePlus2 size={18} />} label="New world" description="Start with a floor and a flag" onSelect={p.onNewLevel} />}
+      {p.onRecoveryCopies && <MenuItem icon={<History size={18} />} label="Recovery copies" description="Download an earlier copy of this world" onSelect={p.onRecoveryCopies} />}
       <MenuSeparator />
       <MenuItem icon={p.sound.muted ? <VolumeX size={18} /> : <Volume2 size={18} />} label={p.sound.muted ? 'Turn sound on' : 'Turn sound off'} onSelect={() => p.onSound({ ...p.sound, muted: !p.sound.muted })} />
       <MenuItem icon={<Music size={18} />} label={p.sound.music ? 'Turn music off' : 'Turn music on'} onSelect={() => p.onSound({ ...p.sound, music: !p.sound.music })} />

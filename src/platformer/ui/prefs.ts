@@ -1,5 +1,11 @@
 /* What the 2D mode remembers in this browser. Every read and write survives storage being blocked. */
 
+import { DEFAULT_CHARACTER, type CharacterId } from '@brick-studio/platformer-core/net/protocol'
+import { normalizeCharacterId } from '../characters/catalog'
+
+const CHARACTER_KEY = 'brick-studio.2d.character.v1'
+let visitCharacter: CharacterId | null = null
+
 function get(key: string): string | null {
   try {
     return localStorage.getItem(key)
@@ -8,12 +14,24 @@ function get(key: string): string | null {
   }
 }
 
-function set(key: string, value: string) {
+function set(key: string, value: string): boolean {
   try {
     localStorage.setItem(key, value)
+    return true
   } catch {
     // Private browsing or storage full: the preference lasts for this visit only.
+    return false
   }
+}
+
+/** A cosmetic choice for this player, shared across 2D worlds on this browser. */
+export function savedCharacter(): CharacterId {
+  const stored = get(CHARACTER_KEY)
+  return visitCharacter ?? (stored === null ? DEFAULT_CHARACTER : normalizeCharacterId(stored))
+}
+
+export function saveCharacter(id: CharacterId): void {
+  visitCharacter = set(CHARACTER_KEY, id) ? null : id
 }
 
 /** Identifies this browser to guest rooms, so a dropped connection can rejoin a closed room. */

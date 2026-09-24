@@ -8,15 +8,17 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { GameScreen } from './GameScreen'
+import { saveCharacter } from './prefs'
 
-const state = vi.hoisted(() => ({ session: null as null | { editCount: number }, create: vi.fn() }))
+const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, create: vi.fn(), characterOption: '' }))
 vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class {} }))
 vi.mock('../../shell', () => ({
   useClassroomSession: () => ({ status: 'student', user: { id: 'student' }, classes: [] }),
   useCompactLayout: () => false,
-  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode }) => (
+  AppHeader: (p: { saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void }) => (
     <div>
       <span>{p.saveStatus.source.error}</span>
+      <button className="app-header-tool" onClick={() => p.onOpenWorldSetup('character')}>Character</button>
       {p.worldMenu({ openRename() {} })}
     </div>
   ),
@@ -39,9 +41,11 @@ vi.mock('../game/session', () => ({
     input = { setSuspended() {} }
     renderer: { canvas: HTMLCanvasElement }
     sound = { setMuted() {}, setMusic() {}, unlock() {} }
-    constructor(canvas: HTMLCanvasElement, level: LevelDesign) {
+    setCharacter = vi.fn()
+    constructor(canvas: HTMLCanvasElement, level: LevelDesign, options: { character?: string }) {
       this.timeline = { world: { design: level } }
       this.renderer = { canvas }
+      state.characterOption = options.character ?? ''
       state.session = this
     }
     setMode() { return true }
@@ -67,11 +71,39 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
   state.create.mockReset()
+  state.session = null
+  state.characterOption = ''
   localStorage.clear()
 })
 
 const browserFull = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError') })
 const open = (onExit = () => {}) => render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'new' }} startMode="build" onExit={onExit} />)
+
+it('starts with the saved character and applies a new choice immediately', () => {
+  localStorage.setItem('brick-studio.2d.character.v1', 'brick-fox')
+  open()
+  expect(state.characterOption).toBe('brick-fox')
+  const opener = screen.getByRole('button', { name: 'Character' })
+  opener.focus()
+  fireEvent.click(opener, { detail: 1 })
+  fireEvent.click(screen.getByRole('radio', { name: /Bolt Bot/ }))
+  expect(state.session!.setCharacter).toHaveBeenCalledWith('bolt-bot')
+  expect(localStorage.getItem('brick-studio.2d.character.v1')).toBe('bolt-bot')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(opener).toHaveFocus()
+})
+
+it('keeps the character for this visit when browser storage refuses the preference', () => {
+  const full = browserFull()
+  const view = open()
+  fireEvent.click(screen.getByRole('button', { name: 'Character' }))
+  fireEvent.click(screen.getByRole('radio', { name: /Brick Fox/ }))
+  view.unmount()
+  open()
+  expect(state.characterOption).toBe('brick-fox')
+  full.mockRestore()
+  saveCharacter('builder')
+})
 
 it('keeps asking before closing the tab after the account save and the browser fallback both fail', async () => {
   browserFull()

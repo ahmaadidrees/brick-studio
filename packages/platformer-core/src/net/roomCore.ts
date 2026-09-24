@@ -211,7 +211,15 @@ export class RoomCore {
         return this.event(sock, c, msg)
       case 'pose':
         if (++c.poses > POSES_PER_SECOND || !isValidPose(msg.p)) return
-        this.poses.set(c.num, msg.p)
+        // Broadcast only the protocol fields. In particular, never forward a client-supplied
+        // asset URL or an identity outside the fixed character allowlist.
+        this.poses.set(c.num, {
+          m: msg.p.m, x: msg.p.x, y: msg.p.y, f: msg.p.f, a: msg.p.a,
+          s: msg.p.s, v: msg.p.v, q: msg.p.q, t: msg.p.t,
+          ...(msg.p.it === undefined ? {} : { it: msg.p.it }),
+          ...(msg.p.ch === undefined ? {} : { ch: msg.p.ch }),
+          ...(msg.p.af === undefined ? {} : { af: msg.p.af }),
+        })
         return
       case 'ping':
         if (typeof msg.c === 'number') this.send(sock, { type: 'pong', c: msg.c, s: now })
