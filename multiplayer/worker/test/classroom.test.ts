@@ -180,6 +180,25 @@ describe('live access-change kinds', () => {
     expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { suspended: true })).toEqual({ classId, userId: studentId, reason: 'student_updated', change: 'revocation' });
     expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { temporaryPassword: 'temporary-pass' })).toEqual({ classId, userId: studentId, reason: 'password_reset', change: 'revocation' });
   });
+  it('clears login cooldowns on a successful teacher password reset, not ordinary roster edits', async () => {
+    const call = routesAs(teacher);
+    const clear = vi.spyOn(ClassroomService.prototype, 'clearStudentLoginCooldown').mockResolvedValue(undefined);
+    await call('PATCH', `classes/${classId}/students/${studentId}`, { rosterName: 'Sam New' });
+    expect(clear).not.toHaveBeenCalled();
+    await call('PATCH', `classes/${classId}/students/${studentId}`, { temporaryPassword: 'temporary-pass' });
+    expect(clear).toHaveBeenCalledWith(classId, ['Builder', 'Builder']);
+  });
+  it('does not clear a cooldown when the password provider rejects the reset', async () => {
+    routesAs(teacher);
+    const clear = vi.spyOn(ClassroomService.prototype, 'clearStudentLoginCooldown').mockResolvedValue(undefined);
+    vi.mocked(ClassroomService.prototype.request).mockRejectedValue(new ClassroomHttpError(400, 'invalid_password', 'Password rejected'));
+    const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/classes/${classId}/students/${studentId}`, {
+      method: 'PATCH', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ temporaryPassword: 'temporary-pass' }),
+    }), env);
+    expect(response?.status).toBe(400);
+    expect(clear).not.toHaveBeenCalled();
+  });
   it('classifies a student signing out as a revocation of that session only', async () => {
     const call = routesAs(caller);
     expect(await call('POST', 'auth/logout', {})).toEqual({ userId: studentId, classId, reason: 'logout', change: 'revocation' });
@@ -776,4 +795,29 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
       vi.restoreAllMocks();
     }
   });
+});
+
+it('unlocks both student login buckets while preserving school IP and other student throttles', async () => {
+  const service = new ClassroomService(env);
+  const buckets = new Map<string, number>();
+  vi.spyOn(service, 'rpc').mockImplementation(async (_name, input) => {
+    const count = (buckets.get(input.p_key) ?? 0) + 1;
+    buckets.set(input.p_key, count);
+    return count <= input.p_limit;
+  });
+  vi.spyOn(service, 'remove').mockImplementation(async (table, filter) => {
+    expect(table).toBe('rate_limits');
+    for (const key of filter.slice('key=in.('.length, -1).split(',')) buckets.delete(key);
+    return null;
+  });
+  const keys = ['login:builder', `login:${classId}:builder`, 'login:other', 'ip:school'];
+  for (const key of keys) {
+    for (let attempt = 0; attempt < 12; attempt++) expect(await service.takeRate(key, 12, 300)).toBe(true);
+    expect(await service.takeRate(key, 12, 300)).toBe(false);
+  }
+  await service.clearStudentLoginCooldown(classId, ['Builder']);
+  expect(await service.takeRate(keys[0], 12, 300)).toBe(true);
+  expect(await service.takeRate(keys[1], 12, 300)).toBe(true);
+  expect(await service.takeRate(keys[2], 12, 300)).toBe(false);
+  expect(await service.takeRate(keys[3], 12, 300)).toBe(false);
 });

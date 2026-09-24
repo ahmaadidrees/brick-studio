@@ -104,9 +104,18 @@ export class ClassroomService {
   remove(table: string, filter: string) { return this.request(`/rest/v1/brick_${table}?${filter}`, { method: 'DELETE' }); }
   rpc(name: string, data: Row): Promise<any> { return this.request(`/rest/v1/rpc/brick_${name}`, { method: 'POST', body: JSON.stringify(data) }); }
   /** Takes one token from the named bucket; false once it is empty. Throws only when the database cannot answer. */
-  async takeRate(key: string, limit: number, seconds: number): Promise<boolean> {
+  private async rateKey(key: string): Promise<string> {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key));
-    const hashed = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async clearStudentLoginCooldown(classId: string, usernames: string[]): Promise<void> {
+    const keys = [...new Set(usernames.map(name => name.toLowerCase()))]
+      .flatMap(name => [`login:${name}`, `login:${classId}:${name}`]);
+    const hashes = await Promise.all(keys.map(key => this.rateKey(key)));
+    if (hashes.length) await this.remove('rate_limits', `key=in.(${hashes.join(',')})`);
+  }
+  async takeRate(key: string, limit: number, seconds: number): Promise<boolean> {
+    const hashed = await this.rateKey(key);
     return (await this.rpc('take_rate_limit', { p_key: hashed, p_limit: limit, p_seconds: seconds })) === true;
   }
   async rate(key: string, limit: number, seconds: number) {
@@ -733,6 +742,9 @@ async function route(request: Request, service: ClassroomService, path: string[]
         // Establish a server-only session solely to revoke all provider refresh sessions.
         const resetSession = await service.login(internalEmail(student.user_id), temp);
         await service.request('/auth/v1/logout?scope=global', { method: 'POST' }, resetSession.access_token);
+        // Clear both sign-in spellings only after the teacher's credential reset succeeds.
+        // Keep school IP and other students' limits intact. Include a simultaneous rename.
+        await service.clearStudentLoginCooldown(cls.id, [student.username, updated.username]);
       }
       await service.audit(caller, temp ? 'reset_password' : 'update_student', cls.id, student.user_id);
       // Only an auth_version bump (suspension, temporary password) invalidates the
