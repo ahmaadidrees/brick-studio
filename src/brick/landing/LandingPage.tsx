@@ -1,17 +1,14 @@
 import {
   ArrowRight,
-  Check,
+  Box,
   Cloud,
   Compass,
   KeyRound,
-  Link2,
   LogIn,
   Menu,
   Play,
   SlidersHorizontal,
   Square,
-  User,
-  Users,
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
@@ -20,14 +17,15 @@ import { BRAND_NAME, BrandLockup } from '../../brand'
 import { Button } from '../../ui/Button'
 import { AppHeader } from '../../shell'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
-import { ClassroomVignette, HeroDiorama, NovaPlaceholder, PixelLevelArt, ScenePlaceholder, StepArt } from './LandingArt'
+import { HeroDemo } from './HeroDemo'
+import { PixelLevelArt, ScenePlaceholder } from './LandingArt'
 import './landing.css'
 
 /*
- * Brickgineers marketing page (boards 01, 02 and the landing panels of board
- * 16). Pure presentation: local CSS/SVG art plus optional `<picture>` media
- * from `/brand/media`; no store, protocol, or 3D imports. Brand name and
- * lockup come from `src/brand`; buttons use the `src/ui` button classes.
+ * Brickgineers marketing page. Pure presentation: the hero's recorded demo
+ * clips, local CSS/SVG art and `<picture>` media from `/brand/media`; no
+ * store, protocol, or 3D imports. Brand name and lockup come from `src/brand`;
+ * buttons use the `src/ui` button classes.
  */
 
 /** Root-relative media folder owned by W7. Filenames and intrinsic sizes follow docs/brand/CONTRACTS.md. */
@@ -153,28 +151,8 @@ function StartCta({ href, continueBuild, className }: { href: string; continueBu
   )
 }
 
-const STEPS = [
-  { kind: 'build', title: 'Build it', text: 'Use simple tools to create anything you can imagine.' },
-  { kind: 'explore', title: 'Explore it', text: 'Step inside your world and see it come to life in real time.' },
-  { kind: 'friends', title: 'Bring friends', text: 'Share a link to build together as guests.' },
-] as const
-
-const SCENES = [
-  { key: 'toy-room', name: 'Toy Room', blurb: 'Build on a play table inside a warm bedroom diorama.' },
-  { key: 'brick-valley', name: 'Brick Valley', blurb: 'A colorful landscape built entirely from giant toy-brick forms.' },
-  { key: 'sky-island', name: 'Sky Island', blurb: 'A floating meadow with waterfalls, clouds, ruins, and distant islands.' },
-] as const
-
-const SWATCHES = [
-  { name: 'Cornflower', color: '#5888DA' },
-  { name: 'Coral', color: '#F17861' },
-  { name: 'Butter', color: '#F3CA74' },
-  { name: 'Ink', color: '#263C51' },
-  { name: 'Warm white', color: '#F8F4EB' },
-  { name: 'Leaf', color: '#5FAF7A' },
-  { name: 'Orchid', color: '#9C7BD6' },
-  { name: 'Sky', color: '#A9D4F5' },
-] as const
+/** The strip under the hero: plain facts, no numbers to decode. */
+const FACTS = ['Runs in any browser', 'Chromebooks, iPads and laptops', 'Nothing to install', 'Students join with a class code'] as const
 
 const FAQ = [
   {
@@ -219,11 +197,9 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
   const menuButton = useRef<HTMLButtonElement>(null)
   const mainId = useId()
   const navId = useId()
-  const stepsId = useId()
   const waysId = useId()
-  const worldsId = useId()
-  const yoursId = useId()
-  const classroomId = useId()
+  const friendsId = useId()
+  const codeId = useId()
   const teachersId = useId()
   const faqId = useId()
   const finaleId = useId()
@@ -281,7 +257,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               Menu
             </Button>
             <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
-              <a className="landing-nav-link" href="#how-it-works">How it works</a>
+              <a className="landing-nav-link" href="#two-ways">3D worlds</a>
               <a className="landing-nav-link" href="#two-ways">2D worlds</a>
               <a className="landing-nav-link" href="#teachers">For teachers</a>
               <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
@@ -313,62 +289,92 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
         )}
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero-copy">
+            <span className="landing-eyebrow">3D or 2D · right in your browser</span>
             <h1 id="landing-hero-title">
-              Build a world.
+              Snap it together.
               <br />
-              Then step inside.
+              Then play it.
             </h1>
-            <p className="landing-hero-lede">Create, explore, and build together in your browser.</p>
-            <p className="landing-hero-lede landing-hero-ways">Build with 3D bricks, or make a 2D world you can run and jump through.</p>
-          </div>
-          <div className="landing-hero-stage">
-            <BrandPicture
-              name="hero"
-              widths={[800, 1200, 1600]}
-              width={1600}
-              height={960}
-              sizes="(max-width: 760px) 100vw, (max-width: 1240px) 64vw, 760px"
-              priority
-              alt="A colorful brick castle with a flag on a Toy Room play table, beside a warm lamp and a sunset window."
-              fallback={<HeroDiorama />}
-            />
-          </div>
-          <div className="landing-hero-actions">
-            <p className="landing-cta-row landing-cta-stack">
-              <StartCta href={studioHref} continueBuild={continueBuild} />
-              <CtaLink href={platformerHref} icon={<Square size={18} />}>Make a 2D world</CtaLink>
-              <CtaLink href={joinHref} icon={<Users size={18} />}>Join a class</CtaLink>
+            <p className="landing-hero-lede">Pick a brick, click to place it, press play. Building in 3D or 2D is that easy.</p>
+            <p className="landing-hero-builds">
+              <a className="landing-stud-button landing-stud-button-3d" href={studioHref}>
+                <Box size={22} aria-hidden="true" />
+                {continueBuild ? 'Continue in 3D' : 'Build in 3D'}
+              </a>
+              <a className="landing-stud-button landing-stud-button-2d" href={platformerHref}>
+                <Square size={22} aria-hidden="true" />
+                Build in 2D
+              </a>
             </p>
-            <p className="landing-hero-signin">
-              <a href={signinHref}>Student login</a>
+            {/* A plain GET form: /join reads ?classCode= (src/pages/join/joinQuery.ts). */}
+            <form className="landing-code" action="/join" method="get">
+              <input type="hidden" name="mode" value="join" />
+              <label htmlFor={codeId}>Got a class code?</label>
+              <input id={codeId} name="classCode" placeholder="e.g. BRICK-42" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={32} required />
+              <button type="submit" className="ui-button ui-button-primary">Join</button>
+            </form>
+            <p className="landing-hero-trust">
+              No account needed to start. <a href={signinHref}>Student login</a>
             </p>
-            <p className="landing-hero-trust">No account needed to start.</p>
           </div>
+          <HeroDemo />
         </section>
 
+        <ul className="landing-facts" aria-label="At a glance">
+          {FACTS.map((fact) => <li key={fact}>{fact}</li>)}
+        </ul>
+
         <section id="two-ways" className="landing-section landing-ways" aria-labelledby={waysId}>
-          <SectionHeading
-            id={waysId}
-            eyebrow="Two ways to build"
-            title="Stack it in 3D. Or draw it in 2D."
-            lede="Both save the same way, share with your class the same way, and are one tap apart: the 3D / 2D switch at the top of the builder."
-          />
+          <div className="landing-ways-head">
+            <h2 id={waysId}>
+              Two ways to build.
+              <br />
+              <span>One set of bricks.</span>
+            </h2>
+            <p>Both save the same way, share with your class the same way, and sit one tap apart: the 3D / 2D switch at the top of the builder.</p>
+          </div>
           <ul className="landing-ways-grid">
-            <li className="landing-way">
-              <div className="landing-way-art"><StepArt kind="build" /></div>
+            <li className="landing-way landing-way-3d">
+              <BrandPicture
+                name="scene-toy-room"
+                widths={[400, 800]}
+                width={800}
+                height={500}
+                sizes="(max-width: 860px) 100vw, 620px"
+                alt="A 3D brick build on a play table in the Toy Room scene"
+                fallback={<ScenePlaceholder scene="toy-room" />}
+              />
               <div className="landing-way-copy">
                 <h3>3D worlds</h3>
-                <p>Stack bricks on a plate, pick a scene and a character, then step inside and explore what you built.</p>
-                <CtaLink href={studioHref} variant="primary" icon={<Play size={18} />}>Build in 3D</CtaLink>
+                <p>Stack bricks on a plate, pick a scene, then step inside as your character and explore what you built.</p>
+                <ul className="landing-chips" aria-label="3D worlds include">
+                  <li>Custom bricks</li>
+                  <li>4 scenes</li>
+                  <li>Walk inside</li>
+                </ul>
+                <StartCta href={studioHref} continueBuild={continueBuild} />
               </div>
             </li>
             <li className="landing-way landing-way-2d">
-              <div className="landing-way-art landing-way-art-pixel"><PixelLevelArt /></div>
+              <BrandPicture
+                name="world-2d"
+                widths={[800]}
+                width={800}
+                height={500}
+                sizes="(max-width: 860px) 100vw, 620px"
+                alt="A cartoon 2D world built from bricks, with the player bumping a ? brick"
+                fallback={<PixelLevelArt />}
+              />
               <div className="landing-way-copy">
-                <h3>2D worlds <span className="landing-way-new">New</span></h3>
-                <p>Place bricks, springs and critters in a side-scrolling world, then run and jump through it. Try three starter worlds, or build with friends in one live world.</p>
+                <h3>2D worlds</h3>
+                <p>Place bricks, springs and critters in a side-scrolling world, press Play, and run through it. Cartoon or retro pixel.</p>
+                <ul className="landing-chips" aria-label="2D worlds include">
+                  <li>3 starter worlds</li>
+                  <li>Up to 16 friends</li>
+                  <li>Touch controls</li>
+                </ul>
                 <p className="landing-cta-row landing-cta-row-compact">
-                  <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Build in 2D</CtaLink>
+                  <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Make a 2D world</CtaLink>
                   <CtaLink href={PLATFORMER_HOME_HREF} icon={<Play size={18} />}>Try a starter world</CtaLink>
                 </p>
               </div>
@@ -376,113 +382,27 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
           </ul>
         </section>
 
-        <section id="how-it-works" className="landing-section landing-how" aria-labelledby={stepsId}>
-          <SectionHeading
-            id={stepsId}
-            eyebrow="How it works"
-            title="From your first brick to your own world."
-            lede="Three moves. No install, no account needed to start."
-          />
-          <ol className="landing-steps">
-            {STEPS.map((step, index) => (
-              <li key={step.kind} className={`landing-step landing-step-${step.kind}`}>
-                <div className="landing-step-copy">
-                  <span className="landing-step-number" aria-hidden="true">{index + 1}</span>
-                  <h3>{step.title}</h3>
-                  <p>{step.text}</p>
-                </div>
-                <StepArt kind={step.kind} />
-              </li>
-            ))}
-          </ol>
-          <p className="landing-explain">
-            <Link2 size={16} aria-hidden="true" />
-            Share a link to build together as guests. Join your class to save online.
-          </p>
-          <div className="landing-modes">
-            <div className="landing-mode">
-              <span className="landing-mode-icon" aria-hidden="true"><User size={20} /></span>
-              <div>
-                <h3>Guest</h3>
-                <p>Build, explore, download a copy, and share a temporary room link. Your draft stays in this browser.</p>
-              </div>
-            </div>
-            <div className="landing-mode landing-mode-class">
-              <span className="landing-mode-icon" aria-hidden="true"><Users size={20} /></span>
-              <div>
-                <h3>Class account</h3>
-                <p>Save worlds online, open them on another device, and find your class and group worlds in My Class.</p>
-              </div>
-            </div>
+        <section className="landing-section landing-friends" aria-labelledby={friendsId}>
+          <div className="landing-friends-copy">
+            <h2 id={friendsId}>Better with friends.</h2>
+            <p>Open a room, copy the link, and everyone builds and plays in the same world at the same time. The owner decides who builds.</p>
+            <ol className="landing-friends-steps">
+              <li>Open a room from any build</li>
+              <li>Share the link with your crew</li>
+              <li>Build, race and explore together</li>
+            </ol>
+            <p className="landing-friends-note">Guest rooms last about two hours after the last activity. In a class, shared worlds live in My Class.</p>
           </div>
-          <p className="landing-cta-row landing-cta-row-compact">
-            <StartCta href={studioHref} continueBuild={continueBuild} className="landing-cta-wide" />
-          </p>
-        </section>
-
-        <section className="landing-section landing-scenes" aria-labelledby={worldsId}>
-          <div className="landing-scenes-grid">
-            <div className="landing-scenes-worlds">
-              <SectionHeading id={worldsId} title="Explore ready-made worlds" lede="Every build sits in a scene you can switch at any time, or stays on the plain Classic Studio plate." />
-              <ul className="landing-worlds">
-                {SCENES.map((scene) => (
-                  <li key={scene.key} className="landing-world-card">
-                    <BrandPicture
-                      name={`scene-${scene.key}`}
-                      widths={[400, 800]}
-                      width={800}
-                      height={500}
-                      sizes="(max-width: 560px) 100vw, (max-width: 940px) 50vw, 220px"
-                      alt=""
-                      fallback={<ScenePlaceholder scene={scene.key} />}
-                    />
-                    <h3>{scene.name}</h3>
-                    <p>{scene.blurb}</p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="landing-yours" aria-labelledby={yoursId}>
-              <SectionHeading id={yoursId} title="Make it yours" lede="Pick Pip, Fern, or Nova, then choose the colors that feel like you." />
-              <div className="landing-yours-body">
-                <figure className="landing-character">
-                  <BrandPicture
-                    name="character-nova"
-                    widths={[400]}
-                    width={400}
-                    height={400}
-                    sizes="(max-width: 560px) 50vw, 180px"
-                    alt="Nova, a purple comet creature with a friendly screen face."
-                    fallback={<NovaPlaceholder />}
-                  />
-                  <figcaption>
-                    <strong>Nova</strong>
-                    <span>A friendly comet creature exploring a whole new world.</span>
-                  </figcaption>
-                </figure>
-                <ul className="landing-swatch-row" aria-label="Character color examples">
-                  {SWATCHES.map((swatch, index) => (
-                    <li key={swatch.name} className="landing-swatch" style={{ background: swatch.color }}>
-                      {index === 0 && <Check size={14} aria-hidden="true" />}
-                      <span className="landing-visually-hidden">{swatch.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-section landing-classroom" aria-labelledby={classroomId}>
-          <div className="landing-classroom-card">
-            <ClassroomVignette />
-            <div className="landing-classroom-copy">
-              <h2 id={classroomId}>A creative space for your classroom.</h2>
-              <p>
-                Give students a class code, keep their worlds saved online, and build together in a space you manage.
-              </p>
-            </div>
-            <CtaLink href="#teachers" trailingIcon={<ArrowRight size={18} />}>See classroom tools</CtaLink>
+          <div className="landing-friends-art">
+            <BrandPicture
+              name="scene-brick-valley"
+              widths={[400, 800]}
+              width={800}
+              height={500}
+              sizes="(max-width: 860px) 100vw, 720px"
+              alt="A brick build in the Brick Valley scene"
+              fallback={<ScenePlaceholder scene="brick-valley" />}
+            />
           </div>
         </section>
 
@@ -490,7 +410,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
           <SectionHeading
             id={teachersId}
             eyebrow="For teachers"
-            title="More creating. Less setup."
+            title="Your whole class, one code away."
             lede="Class codes, saved student worlds, and controls you run, inside the same builder your students can try as guests."
           />
           <ul className="landing-features">
@@ -524,6 +444,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               <p className="landing-cta-row landing-cta-row-compact">
                 <CtaLink href={teacherHref} variant="primary" icon={<LogIn size={18} />}>Teacher sign in</CtaLink>
                 <CtaLink href={studioHref} icon={<Play size={18} />}>Try building first</CtaLink>
+                <CtaLink href={joinHref} icon={<KeyRound size={18} />}>Join a class</CtaLink>
               </p>
               <p className="landing-teachers-hint">Continue with your teacher Google account. Email and password sign-in is also available.</p>
               <p className="landing-teachers-hint">

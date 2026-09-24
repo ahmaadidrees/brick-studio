@@ -86,15 +86,17 @@ try {
   const desk = await open(DESKTOP, 'desktop')
   const { page } = desk
 
-  await step('landing: "Make a 2D world" and the two-ways section', async () => {
+  await step('landing: "Build in 2D" in the hero and the two-ways section', async () => {
     await page.goto(`${origin}/`)
-    const cta = page.getByRole('link', { name: 'Make a 2D world', exact: true })
+    const hero = page.locator('.landing-hero')
+    const cta = hero.getByRole('link', { name: 'Build in 2D', exact: true })
     await cta.waitFor()
     assert.equal(await cta.getAttribute('href'), '/2d/build')
+    await hero.getByRole('radiogroup', { name: 'Show the 3D or 2D builder' }).waitFor()
     const ways = page.locator('#two-ways')
-    await ways.getByRole('heading', { name: 'Stack it in 3D. Or draw it in 2D.' }).waitFor()
-    await ways.getByRole('link', { name: 'Build in 2D' }).waitFor()
-    await ways.getByRole('link', { name: 'Build in 3D' }).waitFor()
+    await ways.getByRole('heading', { name: /Two ways to build/ }).waitFor()
+    await ways.getByRole('link', { name: 'Make a 2D world' }).waitFor()
+    await ways.getByRole('link', { name: 'Try a starter world' }).waitFor()
     await shot(page, 'desktop-landing-hero')
     await ways.scrollIntoViewIfNeeded()
     await shot(page, 'desktop-landing-two-ways')
@@ -319,7 +321,7 @@ try {
   await step('phone: landing and /2d fit the width', async () => {
     const p = phone.page
     await p.goto(`${origin}/`)
-    await p.getByRole('link', { name: 'Make a 2D world', exact: true }).waitFor()
+    await p.getByRole('link', { name: 'Build in 2D', exact: true }).waitFor()
     await noSideScroll(p)
     await p.locator('#two-ways').scrollIntoViewIfNeeded()
     await shot(p, 'phone-landing-two-ways')

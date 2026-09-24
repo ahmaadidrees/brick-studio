@@ -66,3 +66,10 @@ PNG files are the no-AVIF/no-WebP fallback only (256-colour palette) and are not
 ## Notes
 
 - Retained 12 unselected files from capture 2026-09-14T23:11:50.683Z (source 57b9c06); hero and scene recaptures do not replace verified character portraits.
+
+## Demo videos
+
+`demo-3d.*`, `demo-2d.*`, their `-poster.jpg`, `demo-full.mp4` and `world-2d-800.*` are made by
+`scripts/demo/site-media.mjs` from the demo recordings (see docs/PLATFORMER.md, "Demo videos"), not by the
+scripts above. The hero plays the 4:3 clips (WebM first, MP4 fallback) and loads `demo-full.mp4` only when someone
+opens full screen.
