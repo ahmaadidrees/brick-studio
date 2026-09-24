@@ -318,7 +318,14 @@ export class GameSession {
 
   /** Start from the room's snapshot and replay every event since, up to the server's present. */
   private joinWorld(base: Base, events: StampedEvent[]) {
-    const world = 'world' in base ? deserializeWorld(base.world) : createWorld(levelFromJson(base.level), base.tick)
+    let world
+    try {
+      world = 'world' in base ? deserializeWorld(base.world) : createWorld(levelFromJson(base.level), base.tick)
+    } catch {
+      // A snapshot this game cannot read: keep the world as it is rather than stopping.
+      this.onToast?.('Could not load the room’s world. Reload the page to rejoin.')
+      return
+    }
     this.silent = true
     this.timeline.reset(world)
     for (const e of events) this.timeline.addRemote({ tick: e.tick, seq: e.seq, by: e.by, ev: e.ev, cid: e.cid })

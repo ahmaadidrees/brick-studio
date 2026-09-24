@@ -2,6 +2,7 @@ import { TICK_MS } from '../engine/constants'
 import { editDesign } from '../engine/designEdit'
 import { isValidEvent } from '../engine/events'
 import { levelFromJson, levelToJson, type LevelDesign, type LevelJson } from '../engine/level'
+import { deserializeWorld } from '../engine/world'
 import {
   DEFAULT_SETTINGS,
   HASH_EVERY,
@@ -108,11 +109,19 @@ export class RoomCore {
   private base: Base | null = null
   private events: StampedEvent[] = []
   private seq = 0
+  /**
+   * The tick of the latest event that changes the design (an edit or a level load). Those events never go back
+   * before it, so the order everyone replays them in (by tick, then seq) is the order they reached the room, the
+   * order `design` (what gets saved) applied them in.
+   */
+  private designTick = 0
+  /** The design as of `base.tick`, as this room applied it: what a snapshot's design has to match. */
+  private baseDesign: LevelDesign | null = null
   private hashes = new Map<number, Map<number, number>>()
   private poses = new Map<number, Pose>()
   private lastPoseFlush = 0
   private joinCounter = 0
-  stats = { events: 0, rejected: 0, resyncs: 0, keyframes: 0, restores: 0 }
+  stats = { events: 0, rejected: 0, resyncs: 0, keyframes: 0, badKeyframes: 0, restores: 0 }
 
   constructor(
     readonly roomId: string,
@@ -163,6 +172,7 @@ export class RoomCore {
     if (this.playerCount === 0) {
       // Nobody left: the next person to arrive starts a fresh world from the saved design.
       this.base = null
+      this.baseDesign = null
       this.events = []
       this.hashes.clear()
       this.poses.clear()
@@ -276,7 +286,7 @@ export class RoomCore {
     this.dirty = markDirty
     this.stats.restores++
     if (!this.base) return true
-    const tick = Math.max(this.serverTick() + 3, this.base.tick + 1)
+    const tick = (this.designTick = Math.max(this.serverTick() + 3, this.base.tick + 1, this.designTick))
     const e: StampedEvent = { tick, seq: ++this.seq, by: 0, cid: `room:${this.seq}`, ev: { t: 'load', level: levelToJson(design) } }
     this.events.push(e)
     this.broadcast({ type: 'ev', e })
@@ -343,8 +353,10 @@ export class RoomCore {
     if (!this.base) {
       this.epoch = this.now()
       this.base = { tick: 0, level: levelToJson(this.design) }
+      this.baseDesign = levelFromJson(this.base.level)
       this.events = []
       this.seq = 0
+      this.designTick = 0
       this.hashes.clear()
     }
     this.send(sock, {
@@ -384,7 +396,8 @@ export class RoomCore {
     }
     const st = this.serverTick()
     const lo = Math.max(st - MAX_LATE, (this.base?.tick ?? 0) + 1)
-    const tick = Math.min(Math.max(msg.tick, lo), st + MAX_EARLY)
+    let tick = Math.min(Math.max(msg.tick, lo), st + MAX_EARLY)
+    if (msg.ev.t === 'edit') tick = this.designTick = Math.max(tick, this.designTick)
     const e: StampedEvent = { tick, seq: ++this.seq, by: c.num, cid: msg.cid, ev: msg.ev }
     this.events.push(e)
     this.stats.events++
@@ -435,17 +448,49 @@ export class RoomCore {
     for (const t of this.hashes.keys()) if (t < st - 900) this.hashes.delete(t)
   }
 
+  /**
+   * A snapshot from the provider becomes the new base for joiners and resyncs. The room does not run the game, so it
+   * cannot check the live state; it checks what it can: the snapshot must read as a world, sit on the tick it
+   * claims, include every event up to it, and carry exactly the design the room applied by then (what gets saved),
+   * so no snapshot can change what is built. Only a player who may build provides them.
+   */
   private keyframe(c: Client, msg: Extract<ClientMsg, { type: 'keyframe' }>) {
     const provider = this.provider()
-    if (!provider || provider.num !== c.num || !this.base) return
+    if (!provider || provider.num !== c.num || !provider.canBuild || !this.base || !this.baseDesign) return
     const st = this.serverTick()
     if (!Number.isInteger(msg.tick) || msg.tick <= this.base.tick || msg.tick > st - MAX_LATE - 1) return
     if (!msg.world || typeof msg.world !== 'object' || msg.world.tick !== msg.tick) return
     // The snapshot must include every event up to its tick.
     if (this.events.some((e) => e.seq > msg.lastSeq && e.tick <= msg.tick)) return
+    const expected = this.designAt(msg.tick)
+    let snapshot: LevelJson
+    try {
+      const world = deserializeWorld(msg.world)
+      if (world.tick !== msg.tick || world.tiles.length !== world.design.width * world.design.height) throw new Error('shape')
+      snapshot = levelToJson(world.design)
+    } catch {
+      this.stats.badKeyframes++
+      return
+    }
+    if (JSON.stringify(snapshot) !== JSON.stringify(levelToJson(expected))) {
+      this.stats.badKeyframes++
+      return
+    }
     this.base = { tick: msg.tick, world: msg.world }
+    this.baseDesign = expected
     this.events = this.events.filter((e) => e.tick > msg.tick)
     this.stats.keyframes++
+  }
+
+  /** The design at the end of `tick`: the base design with every design event up to it, in replay order. */
+  private designAt(tick: number): LevelDesign {
+    let design = levelFromJson(levelToJson(this.baseDesign!))
+    const upTo = this.events.filter((e) => e.tick <= tick).sort((a, b) => a.tick - b.tick || a.seq - b.seq)
+    for (const e of upTo) {
+      if (e.ev.t === 'edit') for (const op of e.ev.ops) editDesign(design, op)
+      else if (e.ev.t === 'load') design = levelFromJson(e.ev.level)
+    }
+    return design
   }
 
   private resync(num: number) {
@@ -458,9 +503,10 @@ export class RoomCore {
     }
   }
 
+  /** Who sends snapshots: the longest-connected player who may build (none in a room of watchers only). */
   private provider(): Client | undefined {
     let best: Client | undefined
-    for (const c of this.clients.values()) if (c.hello && (!best || c.joinedAt < best.joinedAt)) best = c
+    for (const c of this.clients.values()) if (c.hello && c.canBuild && (!best || c.joinedAt < best.joinedAt)) best = c
     return best
   }
 

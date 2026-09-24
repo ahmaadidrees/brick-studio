@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { TICK_MS } from '../engine/constants'
 import { editDesign } from '../engine/designEdit'
 import type { WorldEvent } from '../engine/events'
-import { cloneLevel, levelFromJson, levelToJson } from '../engine/level'
+import { cloneLevel, createBlankLevel, levelFromJson, levelToJson } from '../engine/level'
 import { advanceWorld, createWorld, deserializeWorld, hashWorld, serializeWorld } from '../engine/world'
 import { demoLevel } from '../levels/demo'
 import { MAX_EARLY, MAX_LATE, MAX_PLAYERS, PROTOCOL, cleanName, type ServerMsg } from './protocol'
@@ -490,5 +490,98 @@ describe('room end to end', () => {
     const hashes = clients.map((c) => hashWorld(c.tl!.world))
     expect(new Set(hashes).size).toBe(1)
     expect(clients.every((c) => c.tl!.tick === clients[0].tl!.tick)).toBe(true)
+  })
+})
+
+/*
+ * From the pre-ship review (findings 1 and 3): what the room saves is what everyone sees, and a snapshot can never
+ * change what is built.
+ */
+describe('RoomCore: saved design and snapshots', () => {
+  function classRoom() {
+    let now = 100_000
+    const original = createBlankLevel(40, 20)
+    const core = new RoomCore('reviewreview', cloneLevel(original), { now: () => now, classroom: true })
+    const join = (key: string, canBuild = true) => {
+      const s = new FakeSocket()
+      core.connect(s, { key, host: false, canBuild })
+      core.message(s, JSON.stringify({ type: 'hello', v: PROTOCOL, name: key, key }))
+      return s
+    }
+    const send = (s: FakeSocket, m: unknown) => core.message(s, JSON.stringify(m))
+    return { core, original, join, send, advance: (ms: number) => (now += ms) }
+  }
+  const TILE = 5 * 40 + 5
+  const edit = (cid: string, tick: number, t: number) => ({ type: 'ev', cid, tick, ev: { t: 'edit', ops: [{ o: 'tile', x: 5, y: 5, t, c: 0 }] } })
+  /** The world as a player replaying the room's events sees it at `tick`. */
+  const replay = (r: ReturnType<typeof classRoom>, inbox: ServerMsg[], tick: number) => {
+    const timeline = new Timeline(createWorld(cloneLevel(r.original)), () => {})
+    for (const m of inbox) if (m.type === 'ev') timeline.addRemote(m.e)
+    timeline.advanceTo(tick)
+    return timeline.world
+  }
+
+  it('saves the design players see when edits arrive out of tick order', () => {
+    const r = classRoom()
+    const a = r.join('a')
+    const b = r.join('b')
+    r.advance(1000)
+    r.send(a, edit('a:1', 55, 3))
+    r.send(b, edit('b:1', 50, 4))
+    expect(r.core.design.tiles[TILE]).toBe(4)
+    expect(replay(r, a.inbox, 70).design.tiles[TILE]).toBe(r.core.design.tiles[TILE])
+  })
+
+  it('keeps a level load and later edits in the order they reached the room', () => {
+    const r = classRoom()
+    const a = r.join('a')
+    r.advance(1000)
+    const newer = cloneLevel(r.original)
+    newer.tiles[TILE] = 7
+    r.core.replaceLevel(levelToJson(newer), false)
+    r.send(a, edit('a:1', 40, 3))
+    expect(r.core.design.tiles[TILE]).toBe(3)
+    expect(replay(r, a.inbox, 120).design.tiles[TILE]).toBe(3)
+  })
+
+  it('never lets a player who cannot build provide snapshots', () => {
+    const r = classRoom()
+    const viewer = r.join('viewer', false)
+    const builder = r.join('builder')
+    expect(r.core.players().find((p) => p.provider)?.name).toBe('builder')
+    r.advance(10_000)
+    const w = createWorld(cloneLevel(r.original), 200)
+    r.send(viewer, { type: 'keyframe', tick: 200, lastSeq: 0, world: serializeWorld(w) })
+    expect(r.core.stats.keyframes).toBe(0)
+  })
+
+  it('refuses a snapshot that does not read as a world', () => {
+    const r = classRoom()
+    const builder = r.join('builder')
+    r.advance(10_000)
+    r.send(builder, { type: 'keyframe', tick: 200, lastSeq: 0, world: { tick: 200 } })
+    expect(r.core.stats.keyframes).toBe(0)
+    expect(r.core.stats.badKeyframes).toBe(1)
+    const base = r.join('late').last('welcome')!.base
+    expect(() => ('world' in base ? deserializeWorld(base.world) : levelFromJson(base.level))).not.toThrow()
+  })
+
+  it('refuses a snapshot whose design differs from what the room applied, and takes one that matches', () => {
+    const r = classRoom()
+    const builder = r.join('builder')
+    r.advance(1000)
+    r.send(builder, edit('b:1', 20, 3))
+    r.advance(9000)
+    const forged = cloneLevel(r.core.design)
+    forged.tiles[TILE] = 4
+    r.send(builder, { type: 'keyframe', tick: 200, lastSeq: 1, world: serializeWorld(createWorld(forged, 200)) })
+    expect(r.core.stats.keyframes).toBe(0)
+    expect(r.core.stats.badKeyframes).toBe(1)
+
+    const honest = replay(r, builder.inbox, 200)
+    r.send(builder, { type: 'keyframe', tick: 200, lastSeq: 1, world: serializeWorld(honest) })
+    expect(r.core.stats.keyframes).toBe(1)
+    const base = r.join('late').last('welcome')!.base
+    expect('world' in base && deserializeWorld(base.world).design.tiles[TILE]).toBe(3)
   })
 })
