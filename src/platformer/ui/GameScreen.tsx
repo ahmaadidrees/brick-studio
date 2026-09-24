@@ -78,6 +78,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const saver = useRef<CloudLevelSaver | null>(null)
   /** A signed-in builder's first save, while the level becomes an account level. */
   const creatingCloud = useRef<Promise<void> | null>(null)
+  /** The first save to the account failed: this level is kept in this browser for the rest of the visit. */
+  const cloudFailed = useRef(false)
   /** Save whatever is unsaved right now (set by the session effect). */
   const saveNow = useRef<() => boolean>(() => true)
   const account = useClassroomSession()
@@ -189,24 +191,27 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         return true
       }
       if (source.kind === 'cloud') return true // someone else's level, opened to look at
-      if (signedInRef.current && !creatingCloud.current) {
-        savedEdits.current = edits
+      if (signedInRef.current && !cloudFailed.current) {
+        // On its way to the account, not there yet: nothing counts as saved until it lands.
+        if (creatingCloud.current) return false
         // A signed-in builder's level goes to the account on its first edit, so it is in My worlds, ready to share.
         creatingCloud.current = createCloudLevel(design)
           .then((world) => {
             saver.current = new CloudLevelSaver(world, () => refresh((n) => n + 1))
+            savedEdits.current = s.editCount
             saver.current.schedule(s.timeline.world.design)
             window.history.replaceState(window.history.state, '', `/2d/build?world=${encodeURIComponent(world.id)}`)
             say('Saved to your account. Find it in My worlds.')
           })
           .catch((error: { code?: string; message?: string }) => {
+            // From now on this level is kept in this browser (keepLocally says so itself if that fails too).
             creatingCloud.current = null
+            cloudFailed.current = true
             if (!keepLocally(s.editCount)) return
             say(error?.code === 'world_limit' ? 'Your account is full, so this world is saved in this browser only.' : 'Could not save to your account, so this world is saved in this browser for now.')
           })
-        return true
+        return false
       }
-      if (creatingCloud.current) return true
       return keepLocally(edits)
     }
     saveNow.current = save
@@ -467,8 +472,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   /** Leave once any account save has landed. */
   const leave = async (then: () => void) => {
     // Save now rather than on the next autosave tick; a level still becoming an account level finishes that first.
-    if (!saveNow.current() && !confirm('This world is not saved anywhere yet. Leave anyway and lose it?\n\nCancel, then use "Copy a link to this world" in the menu to keep it.')) return
-    if (creatingCloud.current) await creatingCloud.current
+    let saved = saveNow.current()
+    // A first save to the account still on its way: wait for it, then ask again (it may have fallen back, or failed).
+    if (creatingCloud.current) {
+      await creatingCloud.current
+      saved = saveNow.current()
+    }
+    if (!saved && !confirm('This world is not saved anywhere yet. Leave anyway and lose it?\n\nCancel, then use "Copy a link to this world" in the menu to keep it.')) return
     if (saver.current && !(await saver.current.flush())) {
       say('Your world has not saved yet. Check your connection, then try again.')
       return
