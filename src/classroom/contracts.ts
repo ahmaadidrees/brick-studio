@@ -77,7 +77,7 @@ export interface ClassroomClientSurface {
   getSession(): ClassroomAuthResult | null
   subscribe(listener: () => void): () => void
   setSession(auth: ClassroomAuthResult | null): void
-  request<T>(path: string, method?: string, body?: unknown): Promise<T>
+  request<T>(path: string, method?: string, body?: unknown, retry?: boolean, signal?: AbortSignal): Promise<T>
   authenticate(path: 'register' | 'login' | 'teacher-login', values: Record<string, string>): Promise<ClassroomAuthResult>
   login(input: ClassroomLoginInput): Promise<ClassroomAuthResult>
   register(input: ClassroomRegisterInput): Promise<ClassroomAuthResult>

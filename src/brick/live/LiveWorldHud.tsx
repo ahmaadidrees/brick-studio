@@ -107,7 +107,9 @@ export function LiveWorldHud({
   const sessionReplaced = connection === 'offline' && notice?.code === 'session_replaced'
   const recoveryDocument = snapshot.recoveryDocument
   const recoveryExported = Boolean(recoveryDocument && recoveryDocument === exportedRecovery)
-  const visibleNotice = notice && !sessionReplaced && !(recoveryDocument && notice.code === 'changes_need_review') && notice.seq !== dismissedNoticeSeq ? notice : null
+  const terminalRoomNotice = connection === 'offline' && notice && ['world_full', 'world_locked', 'world_not_found', 'client_update_required'].includes(notice.code) ? notice : null
+  const reconnectNotice = connection === 'reconnecting' && notice && ['reconnecting', 'connection_error', 'connection_timeout', 'sync_timeout', 'heartbeat_timeout'].includes(notice.code)
+  const visibleNotice = notice && !reconnectNotice && !terminalRoomNotice && !sessionReplaced && !(recoveryDocument && notice.code === 'changes_need_review') && notice.seq !== dismissedNoticeSeq ? notice : null
   const guestRoom = roomKind === 'guest'
   const pendingOperations = snapshot.pendingOperations ?? 0
   const hasPendingChanges = pendingOperations > 0
@@ -335,10 +337,10 @@ export function LiveWorldHud({
         {(connection === 'reconnecting' || connection === 'offline') && (
           <div className={`live-recovery-banner${connection === 'offline' ? ' live-recovery-banner-offline' : ''}`} role="status">
             <RefreshCw size={16} className={connection === 'reconnecting' ? 'live-status-spin' : undefined} aria-hidden="true" />
-            <span><strong>{sessionReplaced ? 'This room is open somewhere else' : connection === 'offline' ? 'Building is paused' : 'Reconnecting to the room'}</strong> {sessionReplaced ? 'Close the other tab or device, then rejoin here. Your canvas stays visible.' : connection === 'offline' ? 'Unsent changes are still here. Reconnect, or download a copy from People before leaving.' : 'Unsent changes are still here. Wait for Live before editing again.'}
+            <span><strong>{sessionReplaced ? 'This room is open somewhere else' : connection === 'offline' ? 'Building is paused' : 'Reconnecting to the room'}</strong> {sessionReplaced ? 'Close the other tab or device, then rejoin here. Your canvas stays visible.' : connection === 'offline' ? terminalRoomNotice?.message ?? 'Unsent changes are still here. Reconnect, or download a copy from People before leaving.' : 'We’re getting you back in automatically. Keep this tab open. Building resumes when you’re connected.'}
               {hasPendingChanges && <small className="live-pending-detail">{pendingMessage} Keep this tab open or download a copy from People before leaving.</small>}
             </span>
-            {connection === 'offline' && actions.reconnect && <Button variant="primary" size="sm" onClick={actions.reconnect}>{sessionReplaced ? 'Rejoin here' : 'Try again'}</Button>}
+            {connection === 'offline' && !terminalRoomNotice?.code.includes('update_required') && actions.reconnect && <Button variant="primary" size="sm" onClick={actions.reconnect}>{sessionReplaced ? 'Rejoin here' : 'Try again'}</Button>}
           </div>
         )}
         {visibleNotice && (

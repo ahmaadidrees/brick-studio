@@ -21,7 +21,7 @@ import {
   type PlayerProfile,
 } from "@brick-studio/core";
 import { DurableObject } from "cloudflare:workers";
-import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, revalidateClassroomWorldAccessBatch, type ClassroomEnv, type ClassroomSessionIdentity } from "./classroom/index";
+import { loadClassroomWorld, commitClassroomWorld, revalidateClassroomWorldAccess, revalidateClassroomWorldAccessBatch, ClassroomHttpError, type ClassroomEnv, type ClassroomSessionIdentity } from "./classroom/index";
 
 export interface WorldRoomEnv extends ClassroomEnv {
   WORLD_ROOMS: DurableObjectNamespace<WorldRoom>;
@@ -36,6 +36,19 @@ export type ClassroomSocketAccess = {
   userId: string; username: string; role: "teacher" | "student"; worldId: string; classId: string | null;
   canEdit: boolean; isTeacher: boolean; isOwner: boolean; authVersion: number; sessionId: string;
 };
+
+function permissionDenied(error: unknown): boolean {
+  return error instanceof ClassroomHttpError && error.status >= 400 && error.status < 500
+    && error.status !== 408 && error.status !== 429;
+}
+
+function refusedSocket(code: number, reason: string): Response {
+  const pair = new WebSocketPair();
+  const [client, server] = Object.values(pair);
+  server.accept();
+  server.close(code, reason);
+  return new Response(null, { status: 101, webSocket: client });
+}
 
 /**
  * Why a classroom commit cannot land right now: every usable session was
@@ -412,6 +425,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
 
   constructor(ctx: DurableObjectState, env: WorldRoomEnv) {
     super(ctx, env);
+    this.ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair("ping", "pong"));
     this.ctx.blockConcurrencyWhile(async () => {
       const stored = (await this.ctx.storage.get<WorldRoomRecord>("world")) ?? null;
       if (stored) {
@@ -605,10 +619,14 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         // own commit was landing must not be mistaken for a foreign save.
         await this.settleCommit();
         if (await this.reconcileWithDatabase(latest)) this.broadcastSnapshot();
-      } catch { return json({ error: "classroom_access_denied" }, 403); }
+      } catch (error) {
+        return permissionDenied(error)
+          ? refusedSocket(4003, "Classroom access changed. Rejoin from My Class.")
+          : refusedSocket(4006, "Permission check unavailable. Retrying.");
+      }
     }
     const documentSchema = url.searchParams.get("documentSchema") === "3" ? 3 : 2;
-    if (this.record!.document.schemaVersion > documentSchema) return json({ error: "client_update_required", message: "Refresh Brickgineers to open this expanded world." }, 409);
+    if (this.record!.document.schemaVersion > documentSchema) return refusedSocket(4005, "Refresh Brickgineers to open this expanded world.");
     const playerId = classroomAccess?.userId ?? url.searchParams.get("playerId") ?? "";
     if (!PLAYER_ID_PATTERN.test(playerId)) return json({ error: "invalid_player_id" }, 400);
     const suppliedOwnerToken = url.searchParams.get("ownerToken") ?? "";
@@ -634,12 +652,12 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       : existing;
     const knownPlayer = Boolean(existing || this.record!.profiles[playerId] || knownReconnectVerifier);
     if (!isOwner && knownPlayer && !validReconnect) {
-      return json({ error: "reconnect_token_required" }, 403);
+      return refusedSocket(4003, "Rejoin this world from your saved link.");
     }
     if (this.record!.locked && !isOwner && !validReconnect) {
-      return json({ error: "world_locked" }, 403);
+      return refusedSocket(4007, "This world is locked.");
     }
-    if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existingIdentity) return json({ error: "world_full" }, 429);
+    if (this.openSockets().length >= LIVE_MAX_PLAYERS && !existingIdentity) return refusedSocket(4004, "This world is full.");
 
     let issuedReconnectToken: string | undefined;
     if (!classroomAccess && !isOwner && !knownPlayer) {
@@ -696,6 +714,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     this.send(server, {
       v: LIVE_PROTOCOL_VERSION,
       type: "welcome",
+      heartbeat: true,
       roomId: this.record!.roomId,
       playerId,
       isOwner,
@@ -757,6 +776,11 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       if (attachment.messageRateViolations >= MAX_MESSAGE_RATE_VIOLATIONS) {
         socket.close(1008, "Persistent message-rate violation");
       }
+      return;
+    }
+
+    if (message === "ping") {
+      socket.send("pong");
       return;
     }
 
@@ -1011,9 +1035,8 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
   /**
    * Re-check every connected classroom session (or only one user's) against the
    * current database permissions. Allowed sessions continue with refreshed access
-   * and display names; denied ones close with 4003. Returns false when the check
-   * itself failed: unavailable permission data must never extend a session's
-   * access, so every session in scope is closed.
+   * and display names; denied ones close with 4003. Unavailable permission data
+   * also closes sessions, with a retryable code, so stale access cannot linger.
    */
   private async reauthorizeClassroomSockets(userId?: string): Promise<boolean> {
     const sessions = this.openSockets().flatMap((socket) => {
@@ -1030,11 +1053,19 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
       sessions.forEach(({ socket, attachment }, index) => {
         const access = results[index]?.access;
         if (access) this.applyReauthorizedAccess(socket, attachment, access);
-        else this.revokeSocket(socket, attachment);
+        else if (results[index]?.error && results[index]!.error!.status >= 400
+            && results[index]!.error!.status < 500
+            && results[index]!.error!.status !== 408
+            && results[index]!.error!.status !== 429)
+          this.revokeSocket(socket, attachment);
+        else this.retrySocket(socket, attachment);
       });
       return true;
-    } catch {
-      for (const { socket, attachment } of sessions) this.revokeSocket(socket, attachment);
+    } catch (error) {
+      for (const { socket, attachment } of sessions) {
+        if (permissionDenied(error)) this.revokeSocket(socket, attachment);
+        else this.retrySocket(socket, attachment);
+      }
       return false;
     }
   }
@@ -1273,8 +1304,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     try {
       const access = await revalidateClassroomWorldAccess(this.env, attachment.classroomAccess, attachment.classroomAccess.worldId);
       return this.applyReauthorizedAccess(socket, attachment, access);
-    } catch {
-      this.revokeSocket(socket, attachment);
+    } catch (error) {
+      if (permissionDenied(error)) this.revokeSocket(socket, attachment);
+      else this.retrySocket(socket, attachment);
       return false;
     }
   }
@@ -1296,6 +1328,13 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     attachment.superseded = true;
     socket.serializeAttachment(attachment);
     socket.close(4003, "Classroom access changed. Rejoin from My Class.");
+    this.broadcastPlayers();
+  }
+
+  private retrySocket(socket: WebSocket, attachment: WorldSocketAttachment): void {
+    attachment.superseded = true;
+    socket.serializeAttachment(attachment);
+    socket.close(4006, "Permission check unavailable. Retrying.");
     this.broadcastPlayers();
   }
 

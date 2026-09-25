@@ -242,6 +242,37 @@ export function legacyOwnerToken(pathname: string, hash: string): string | null 
   return parsed.kind === 'join' && classroomWorldIdFromPath(pathname) && /^[a-f0-9]{64}$/i.test(parsed.ownerToken ?? '') ? parsed.ownerToken! : null;
 }
 
+function isTemporaryPreflightError(reason: unknown): boolean {
+  const status = (reason as { status?: number })?.status
+  return status === 0 || status === 408 || status === 429 || (typeof status === 'number' && status >= 500)
+    || reason instanceof LiveWorldGatewayError && reason.code === 'unreachable'
+}
+
+function pausePreflight(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) { reject(new DOMException('Canceled', 'AbortError')); return }
+    const onAbort = () => { clearTimeout(timer); reject(new DOMException('Canceled', 'AbortError')) }
+    const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve() }, ms)
+    signal.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+/** Serial retries continue while this page is mounted; one request is never retried in parallel. */
+async function retryPreflight<T>(run: () => Promise<T>, signal: AbortSignal, onRetry?: () => void): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    if (signal.aborted) throw new DOMException('Canceled', 'AbortError')
+    try { return await run() }
+    catch (reason) {
+      if (signal.aborted || !isTemporaryPreflightError(reason)) throw reason
+      onRetry?.()
+      const retryAfter = (reason as { retryAfterSeconds?: number })?.retryAfterSeconds
+      const base = Math.min(15_000, 350 * 2 ** Math.min(attempt, 6))
+      const delay = Math.max(base + Math.random() * 250, Number.isFinite(retryAfter) ? retryAfter! * 1_000 : 0)
+      await pausePreflight(delay, signal)
+    }
+  }
+}
+
 export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const client = props.classroomClient ?? browserClassroomClient;
   const auth = useSyncExternalStore(client.subscribe, client.getSession);
@@ -251,14 +282,17 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
   const [summary, setSummary] = useState<LiveWorldSummary | null>(null);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [interrupted, setInterrupted] = useState(false);
   const [wantsClassroomSignIn, setWantsClassroomSignIn] = useState(false);
   const fetchSummary = props.fetchWorldSummary ?? fetchLiveWorldSummary;
   useEffect(() => {
     if (parsed.kind !== 'join') return;
     let active = true;
+    const controller = new AbortController();
     setAccess('checking');
-    void fetchSummary(parsed.roomId).then(value => {
-      if (!active) return;
+    setInterrupted(false);
+    void retryPreflight(() => props.fetchWorldSummary ? fetchSummary(parsed.roomId) : fetchLiveWorldSummary(parsed.roomId, { signal: controller.signal }), controller.signal, () => { if (active) setInterrupted(true) }).then(value => {
+      if (!active || controller.signal.aborted) return;
       setSummary(value); setAccess('guest');
     }).catch(reason => {
       if (!active) return;
@@ -267,11 +301,11 @@ export default function LiveWorldPage(props: LiveWorldPageProps = {}) {
       if (reason?.status === 401 || reason?.status === 403 || (reason?.status === 404 && auth && legacyOwnerToken(pathname, props.initialLocation?.hash ?? window.location.hash))) setAccess('classroom');
       else { setError(friendlyReason(reason)); setAccess('error'); }
     });
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [pathname, fetchSummary, retry]); // Account changes must not remount a guest session.
   if (parsed.kind === 'create') return <GuestLiveWorld {...props} />;
   if (parsed.kind === 'invalid') return <BlockedView heading="This live link is not quite right" message="Ask the room owner to copy the invite link again." />;
-  if (access === 'checking') return <BlockedView heading="Checking this room…" message="One moment while we look up the invite." />;
+  if (access === 'checking') return <BlockedView heading="Checking this room…" message={interrupted ? 'Connection interrupted. We’ll keep trying—leave this tab open.' : 'One moment while we look up the invite.'} />;
   if (access === 'error') return <BlockedView heading="Cannot open this world" message={error} onRetry={() => setRetry(n => n + 1)} />;
   if (access === 'guest' && summary) return <GuestLiveWorld {...props} initialSummary={summary} />;
   const worldId = classroomWorldIdFromPath(pathname);
@@ -297,6 +331,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [interrupted, setInterrupted] = useState(false);
   const [canRecover, setCanRecover] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
@@ -305,34 +340,37 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   const profile = useMemo<PlayerProfile>(() => ({ displayName: auth.user.username, characterId: appearance.characterId, palette: appearance.palette, appearance: appearance.appearance }), [auth.user.username, appearance]);
   const connectRoom = useMemo(() => props.connectRoom ?? createLiveRoomConnector(options => createLiveRoomClient({
     ...options, clientId: auth.user.id, identityStorage: null,
-    getTicket: async () => {
+    getTicket: async (signal?: AbortSignal) => {
       if (client.getSession()?.user.id !== auth.user.id) throw Object.assign(new Error('Account changed'), { status: 403 });
-      const result = await client.request<{ ticket: string }>(`/worlds/${worldId}/live-ticket`, 'POST');
+      const result = await client.request<{ ticket: string }>(`/worlds/${worldId}/live-ticket`, 'POST', undefined, true, signal);
       if (client.getSession()?.user.id !== auth.user.id) throw Object.assign(new Error('Account changed'), { status: 403 });
       return result.ticket;
     },
   })), [props.connectRoom, auth.user.id, client, worldId]);
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
     setReady(false); setError(''); setCanRecover(false);
+    setInterrupted(false);
     let checkingWorld = false;
     void (async () => {
       // Refresh expired credentials through the account client before preflight.
-      const me = await client.request<{ user: ClassroomAuth['user']; classes: ClassroomAuth['classes'] }>('/me');
+      const onRetry = () => { if (active) setInterrupted(true) };
+      const me = await retryPreflight(() => client.request<{ user: ClassroomAuth['user']; classes: ClassroomAuth['classes'] }>('/me', 'GET', undefined, true, controller.signal), controller.signal, onRetry);
       const session = client.getSession();
       if (!active || !session || session.user.id !== auth.user.id) return;
       if (me.user.resetRequired) { client.setSession({ ...session, ...me }); return; }
       checkingWorld = true;
-      const summary = props.fetchWorldSummary
-        ? await props.fetchWorldSummary(roomId)
-        : await getLiveWorld(roomId, { headers: { Authorization: `Bearer ${session.session.accessToken}` } });
+      const summary = await retryPreflight<{ title: string | null }>(() => props.fetchWorldSummary
+        ? props.fetchWorldSummary(roomId)
+        : getLiveWorld(roomId, { headers: { Authorization: `Bearer ${client.getSession()?.session.accessToken ?? session.session.accessToken}` }, signal: controller.signal }), controller.signal, onRetry);
       if (active) { setTitle(summary.title || 'Classroom world'); setReady(true); }
     })().catch(reason => {
       // A 2D level's room lives at /2d/w/<id>; old or hand-typed /live links for one go there.
       if (active && reason?.status === 409 && /2D level/i.test(String(reason?.message ?? ''))) { window.location.replace(`/2d/w/${roomId}`); return; }
       if (active) { setError(friendlyReason(reason)); setCanRecover(Boolean(checkingWorld && oldOwnerToken && reason?.status === 404)); }
     });
-    return () => { active = false; };
+    return () => { active = false; controller.abort(); };
   }, [auth.user.id, client, roomId, props.fetchWorldSummary, retry]);
   const session = useLiveRoomSession({ connectRoom, roomId: ready ? roomId : null, profile: ready ? profile : null });
   // The account world behind this room: sharing, members (owner only) and title for invites and presence copy.
@@ -341,7 +379,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
   useEffect(() => {
     if (!ready) return;
     let active = true;
-    client.request<{ world: ClassroomWorld }>(`/worlds/${worldId}`).then(result => { if (active) setWorld(result.world); }, () => { if (active) setWorld(null); });
+    client.request<{ world: ClassroomWorld }>(`/worlds/${worldId}`).then(result => { if (active) setWorld(result?.world ?? null); }).catch(() => { if (active) setWorld(null); });
     return () => { active = false; };
   }, [ready, client, worldId, retry]);
   const [invitedArrival] = useState(consumeInvitedArrival);
@@ -390,7 +428,7 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
     <a className="live-quiet-link" href="/build">Go to builder</a>
   </section></main>;
   if (error) return <BlockedView heading="Cannot open this classroom world" message={error} onRetry={() => setRetry(n => n + 1)} />;
-  if (!ready || session.status !== 'active') return <BlockedView heading="Opening your classroom world…" message="Checking your class access and saved work." />;
+  if (!ready || session.status !== 'active') return <BlockedView heading="Opening your classroom world…" message={interrupted ? 'Connection interrupted. We’ll keep trying—leave this tab open.' : 'Checking your class access and saved work.'} />;
   const snapshot = session.snapshot;
   if (snapshot.notice?.code === 'access_changed' || snapshot.notice?.code === 'classroom_auth_required') {
     return <ClassroomAccessChangedView snapshot={snapshot} actions={session.actions} />;
@@ -467,16 +505,19 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
   const [profile, setProfile] = useState<PlayerProfile | null>(null)
   const [preflight, setPreflight] = useState<PreflightState>(props.initialSummary ? { status: 'ready', summary: props.initialSummary } : { status: 'loading' })
   const [preflightNonce, setPreflightNonce] = useState(0)
+  const [interrupted, setInterrupted] = useState(false)
   const [gateBusy, setGateBusy] = useState(false)
   const [gateError, setGateError] = useState<string | null>(null)
 
   useEffect(() => {
     if (parsed.kind !== 'join' || (props.initialSummary && preflightNonce === 0)) return
     let active = true
+    const controller = new AbortController()
     setPreflight({ status: 'loading' })
-    fetchSummary(parsed.roomId)
+    setInterrupted(false)
+    retryPreflight(() => props.fetchWorldSummary ? fetchSummary(parsed.roomId) : fetchLiveWorldSummary(parsed.roomId, { signal: controller.signal }), controller.signal, () => { if (active) setInterrupted(true) })
       .then((summary) => {
-        if (!active) return
+        if (!active || controller.signal.aborted) return
         setPreflight({ status: 'ready', summary })
         if (summary.title) setRoom((current) => (current ? { ...current, title: summary.title! } : current))
       })
@@ -492,6 +533,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
       })
     return () => {
       active = false
+      controller.abort()
     }
   }, [parsed, fetchSummary, preflightNonce])
 
@@ -575,7 +617,7 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
           <section className="live-gate-card live-blocked-card">
             <span className="live-eyebrow">Live room invite</span>
             <h1>Checking this room…</h1>
-            <p role="status">One moment while we look up the invite.</p>
+            <p role="status">{interrupted ? 'Connection interrupted. We’ll keep trying—leave this tab open.' : 'One moment while we look up the invite.'}</p>
           </section>
         </main>
       )

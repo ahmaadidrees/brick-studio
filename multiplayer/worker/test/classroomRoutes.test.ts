@@ -86,7 +86,11 @@ describe("public routing security", () => {
       ),
       { CLASSROOM_TICKET_SECRET: secret } as Env,
     );
-    expect(r.status).toBe(401);
+    expect(r.status).toBe(101);
+    const socket = r.webSocket!;
+    const closed = new Promise<number>((resolve) => socket.addEventListener("close", (event) => resolve(event.code), { once: true }));
+    socket.accept();
+    expect(await closed).toBe(4003);
   });
   it("rejects valid tickets replayed against another world before service lookup", async () => {
     const ticket = await issueLiveTicket(identity, secret);

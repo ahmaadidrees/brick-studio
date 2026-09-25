@@ -44,6 +44,22 @@ it('requires password replacement before classroom multiplayer access', async ()
   render(<LiveWorldPage classroomClient={c} initialLocation={location} connectRoom={connectRoom} fetchWorldSummary={async () => { throw Object.assign(new Error('Sign in required'), { status: 401 }) }} />)
   expect(await screen.findByLabelText('New password')).toBeInTheDocument(); expect(connectRoom).not.toHaveBeenCalled()
 })
+it('retries a temporary public summary failure before opening the guest gate', async () => {
+  const summary = vi.fn().mockRejectedValueOnce(Object.assign(new Error('Busy'), { status: 503 })).mockResolvedValue({ roomId, mode: 'build', title: 'Recovered', locked: false, playerCount: 0 })
+  render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }} fetchWorldSummary={summary} connectRoom={guestConnector()} />)
+  expect(await screen.findByText('Join Recovered.')).toBeInTheDocument()
+  expect(summary).toHaveBeenCalledTimes(2)
+})
+it('retries a temporary classroom /me failure before connecting', async () => {
+  const fetcher = vi.fn().mockResolvedValueOnce(new Response('{}', { status: 503 })).mockResolvedValue(new Response(JSON.stringify({ user: auth.user, classes: [] })))
+  const c = new ClassroomClient('', fetcher as typeof fetch); c.setSession(auth)
+  const connectRoom = guestConnector()
+  const summary = vi.fn().mockRejectedValueOnce(Object.assign(new Error('Sign in required'), { status: 401 })).mockResolvedValue({ roomId, mode: 'build', title: 'Group', locked: false, playerCount: 0 })
+  render(<LiveWorldPage classroomClient={c} initialLocation={location} fetchWorldSummary={summary} connectRoom={connectRoom} renderWorld={view => <div>{view.selfProfile.displayName}</div>} />)
+  expect(await screen.findByText('ActualName')).toBeInTheDocument()
+  expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('/me'))).toHaveLength(2)
+  expect(connectRoom).toHaveBeenCalledOnce()
+})
 it('uses the account username, ignores old owner links, and disconnects on sign-out', async () => {
   const c = client(); c.setSession(auth);
   const disconnect = vi.fn();

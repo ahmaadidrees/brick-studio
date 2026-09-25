@@ -118,7 +118,16 @@ describe("2D class levels", () => {
     await patchRoomEnv(worldId);
 
     // The 3D room will not take a 2D ticket, and the 2D room will not take someone else's world.
-    expect((await request(`/worlds/${worldId}/connect?ticket=${encodeURIComponent(ticket)}`, { headers: { Upgrade: "websocket" } })).status).toBe(401);
+    const denied3d = await request(`/worlds/${worldId}/connect?ticket=${encodeURIComponent(ticket)}`, { headers: { Upgrade: "websocket" } });
+    expect(denied3d.status).toBe(101);
+    const deniedSocket = denied3d.webSocket!;
+    sockets.push(deniedSocket);
+    const deniedClose = new Promise<number>(resolve => deniedSocket.addEventListener("close", event => resolve(event.code)));
+    const deniedMessages: unknown[] = [];
+    deniedSocket.addEventListener("message", event => deniedMessages.push(event.data));
+    deniedSocket.accept();
+    expect(await deniedClose).toBe(4003);
+    expect(deniedMessages).toEqual([]);
     expect((await request(`/platformer/worlds/${randomWorldUuid()}/connect?ticket=${encodeURIComponent(ticket)}`, { headers: { Upgrade: "websocket" } })).status).toBe(403);
     // A guest link cannot open a class room.
     expect((await request(`/platformer/rooms/${worldId.replaceAll("-", "")}`)).status).toBe(404);

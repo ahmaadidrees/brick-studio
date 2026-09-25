@@ -17,18 +17,21 @@ export type LiveWorldGatewayErrorCode = 'unreachable' | 'not-found' | 'rejected'
 export class LiveWorldGatewayError extends Error {
   readonly code: LiveWorldGatewayErrorCode
   readonly status?: number
+  readonly retryAfterSeconds?: number
 
-  constructor(code: LiveWorldGatewayErrorCode, message: string, status?: number) {
+  constructor(code: LiveWorldGatewayErrorCode, message: string, status?: number, retryAfterSeconds?: number) {
     super(message)
     this.name = 'LiveWorldGatewayError'
     this.code = code
     this.status = status
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
 export type LiveWorldGatewayOptions = {
   baseUrl?: string
   fetch?: typeof globalThis.fetch
+  signal?: AbortSignal
 }
 
 type EnvRecord = Record<string, unknown>
@@ -53,17 +56,25 @@ async function requestJson(
   const baseUrl = (options.baseUrl ?? resolveLiveServerBaseUrl()).replace(/\/+$/, '')
   const fetcher = options.fetch ?? globalThis.fetch
   let response: Response
-  try {
-    response = await fetcher(`${baseUrl}${path}`, init)
-  } catch {
-    throw new LiveWorldGatewayError('unreachable', 'The live room service is unreachable. Check your connection and try again.')
-  }
   let body: unknown = null
+  const controller = new AbortController()
+  let timedOut = false
+  const abort = () => controller.abort()
+  options.signal?.addEventListener('abort', abort, { once: true })
+  if (options.signal?.aborted) controller.abort()
+  const deadline = setTimeout(() => { timedOut = true; abort() }, 20_000)
   try {
-    body = await response.json()
+    response = await fetcher(`${baseUrl}${path}`, { ...init, signal: controller.signal })
+    try { body = await response.json() } catch { body = null }
   } catch {
-    body = null
+    if (options.signal?.aborted) throw new LiveWorldGatewayError('unreachable', 'Request canceled.')
+    throw new LiveWorldGatewayError('unreachable', 'The live room service is unreachable. Check your connection and try again.')
+  } finally {
+    clearTimeout(deadline)
+    options.signal?.removeEventListener('abort', abort)
   }
+  if (timedOut) throw new LiveWorldGatewayError('unreachable', 'The live room service took too long to respond. Try again.', 0)
+  if (options.signal?.aborted) throw new LiveWorldGatewayError('unreachable', 'Request canceled.', 0)
   if (!response.ok) {
     if (response.status === 404 || response.status === 410) {
       throw new LiveWorldGatewayError('not-found', notFoundMessage, response.status)
@@ -75,9 +86,18 @@ async function requestJson(
       'rejected',
       serverMessage ?? `The live room service said no (status ${response.status}). Please try again.`,
       response.status,
+      parseRetryAfter(response),
     )
   }
   return body
+}
+
+function parseRetryAfter(response: Response): number | undefined {
+  const value = response.headers?.get('Retry-After')
+  if (!value) return undefined
+  const seconds = Number(value)
+  const delay = Number.isFinite(seconds) ? seconds : (Date.parse(value) - Date.now()) / 1000
+  return Number.isFinite(delay) ? Math.max(0, delay) : undefined
 }
 
 export type CreateLiveWorld = (request: CreateLiveWorldRequest) => Promise<CreateLiveWorldResponse>

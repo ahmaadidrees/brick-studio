@@ -64,7 +64,7 @@ class FakeSocket implements LiveRoomSocketLike {
   open() { this.onopen?.() }
   drop(code?: number) { this.onclose?.(code === undefined ? undefined : { code }) }
   receive(message: LiveServerMessage) { this.onmessage?.({ data: JSON.stringify(message) }) }
-  messages(): LiveClientMessage[] { return this.sent.map((raw) => JSON.parse(raw) as LiveClientMessage) }
+  messages(): LiveClientMessage[] { return this.sent.filter(raw => raw !== 'ping').map((raw) => JSON.parse(raw) as LiveClientMessage) }
   commandMessages() {
     return this.messages().filter((message): message is Extract<LiveClientMessage, { type: 'commands' }> => message.type === 'commands')
   }
@@ -106,6 +106,7 @@ function createHarness(overrides: Partial<LiveRoomClientOptions> = {}) {
     baseUrl: 'https://live.example',
     store: useBrickStore,
     identityStorage: null,
+    random: () => 0.5,
     createSocket: (url) => {
       const socket = new FakeSocket(url)
       sockets.push(socket)
@@ -172,7 +173,33 @@ describe('live world REST routes', () => {
     await expect(getLiveWorld('ROOM 1234', { baseUrl: 'https://live.example/', fetch: fetcher })).resolves.toMatchObject({ revision: 2, document: empty })
 
     expect(fetcher).toHaveBeenNthCalledWith(1, 'https://live.example/worlds', expect.objectContaining({ method: 'POST' }))
-    expect(fetcher).toHaveBeenNthCalledWith(2, 'https://live.example/worlds/ROOM%201234', undefined)
+    expect(fetcher).toHaveBeenNthCalledWith(2, 'https://live.example/worlds/ROOM%201234', expect.objectContaining({ signal: expect.any(AbortSignal) }))
+  })
+
+  it('forwards a read signal and exposes retry timing and network status', async () => {
+    const controller = new AbortController()
+    const busy = vi.fn().mockResolvedValue({
+      ok: false, status: 429, headers: { get: () => '3' },
+      json: async () => ({ message: 'busy' }),
+    })
+    await expect(getLiveWorld('ROOM1234', { fetch: busy, signal: controller.signal }))
+      .rejects.toMatchObject({ status: 429, retryAfterSeconds: 3 })
+    expect(busy).toHaveBeenCalledWith(expect.stringContaining('/worlds/ROOM1234'), { headers: undefined, signal: expect.any(AbortSignal) })
+    await expect(getLiveWorld('ROOM1234', { fetch: vi.fn().mockRejectedValue(new TypeError('offline')) }))
+      .rejects.toMatchObject({ status: 0 })
+  })
+
+  it('bounds a world read even when its fetch never settles', async () => {
+    vi.useFakeTimers()
+    let signal!: AbortSignal
+    const fetcher = vi.fn((_url: string, init?: RequestInit) => {
+      signal = init!.signal!
+      return new Promise<Response>(() => undefined)
+    }) as unknown as typeof fetch
+    const request = getLiveWorld('ROOM1234', { fetch: fetcher, timeoutMs: 20 })
+    vi.advanceTimersByTime(20)
+    await expect(request).rejects.toMatchObject({ status: 0 })
+    expect(signal.aborted).toBe(true)
   })
 })
 
@@ -329,6 +356,7 @@ describe('live room synchronization', () => {
       baseUrl: 'https://live.example',
       store: useBrickStore,
       reconnectDelaysMs: [25],
+      random: () => 0.5,
       createSocket: (url) => {
         attempts += 1
         if (attempts === 1) throw new Error('WebSocket unavailable')
@@ -1104,6 +1132,7 @@ it('rechecks classroom access on explicit rejoin and does not reuse a revoked ti
 })
 
 it.each([undefined, 429, 500, 503])('keeps a temporary classroom ticket failure (%s) recoverable without losing its draft', async (status) => {
+  vi.useFakeTimers()
   const failure = Object.assign(new Error('temporarily unavailable'), { status })
   const getTicket = vi.fn().mockResolvedValueOnce('first-ticket').mockRejectedValueOnce(failure).mockResolvedValueOnce('fresh-ticket')
   const { client, socket, sockets } = createHarness({ getTicket })
@@ -1114,8 +1143,8 @@ it.each([undefined, 429, 500, 503])('keeps a temporary classroom ticket failure 
   client.reconnect?.()
   await Promise.resolve()
   await Promise.resolve()
-  expect(client.getSnapshot()).toMatchObject({ connection: 'offline', error: { code: 'connection_error' }, recoveryDocument: documentWith(brick('unconfirmed')) })
-  client.reconnect?.()
+  expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', error: { code: 'connection_error' }, recoveryDocument: documentWith(brick('unconfirmed')) })
+  vi.advanceTimersByTime(500)
   await Promise.resolve()
   expect(sockets).toHaveLength(2)
   expect(new URL(socket().url).searchParams.get('ticket')).toBe('fresh-ticket')
@@ -1144,6 +1173,92 @@ it('does not open a socket if disposed while classroom authorization is pending'
   grant('expired-before-open')
   await Promise.resolve()
   expect(sockets).toHaveLength(0)
+})
+
+it('bounds a stalled ticket request, aborts it, and ignores its late result', async () => {
+  vi.useFakeTimers()
+  let resolveFirst!: (ticket: string) => void
+  const signals: Array<AbortSignal | undefined> = []
+  const getTicket = vi.fn((signal?: AbortSignal) => {
+    signals.push(signal)
+    return getTicket.mock.calls.length === 1
+      ? new Promise<string>(resolve => { resolveFirst = resolve })
+      : Promise.resolve('fresh-ticket')
+  })
+  const { client, sockets, socket } = createHarness({ getTicket, joinTimeoutMs: 100, reconnectDelaysMs: [25] })
+  vi.advanceTimersByTime(100)
+  expect(signals[0]?.aborted).toBe(true)
+  expect(client.getSnapshot().connection).toBe('reconnecting')
+  vi.advanceTimersByTime(25)
+  await Promise.resolve()
+  expect(new URL(socket().url).searchParams.get('ticket')).toBe('fresh-ticket')
+  resolveFirst('expired-ticket')
+  await Promise.resolve()
+  expect(sockets).toHaveLength(1)
+})
+
+it('honors a temporary ticket Retry-After without retrying an unauthorized response', async () => {
+  vi.useFakeTimers()
+  let wake!: () => void
+  const getTicket = vi.fn()
+    .mockRejectedValueOnce(Object.assign(new Error('busy'), { status: 429, retryAfterSeconds: 3 }))
+    .mockResolvedValueOnce('fresh-ticket')
+  const { sockets } = createHarness({ getTicket, reconnectDelaysMs: [25], networkEvents: onWake => { wake = onWake; return () => undefined } })
+  await Promise.resolve()
+  await Promise.resolve()
+  vi.advanceTimersByTime(2_999)
+  wake()
+  expect(getTicket).toHaveBeenCalledTimes(1)
+  vi.advanceTimersByTime(1)
+  await Promise.resolve()
+  expect(getTicket).toHaveBeenCalledTimes(2)
+  expect(sockets).toHaveLength(1)
+})
+
+it.each([[4003, 'access_changed'], [4004, 'world_full'], [4005, 'client_update_required'], [4007, 'world_locked']])
+('keeps terminal close %s paused through wake', (closeCode, errorCode) => {
+  vi.useFakeTimers()
+  let wake!: () => void
+  const { client, socket, sockets } = createHarness({ networkEvents: onWake => { wake = onWake; return () => undefined } })
+  welcome(socket())
+  socket().drop(closeCode)
+  wake()
+  vi.advanceTimersByTime(60_000)
+  expect(sockets).toHaveLength(1)
+  expect(client.getSnapshot()).toMatchObject({ connection: 'offline', error: { code: errorCode } })
+})
+
+it('does not ping an older room that does not advertise heartbeat support', () => {
+  vi.useFakeTimers()
+  let wake!: () => void
+  const { socket } = createHarness({ heartbeatMs: 10, networkEvents: onWake => { wake = onWake; return () => undefined } })
+  welcome(socket())
+  wake()
+  vi.advanceTimersByTime(30)
+  expect(socket().sent).not.toContain('ping')
+})
+
+it('replaces a silent heartbeat socket but leaves a superseded tab paused on wake', () => {
+  vi.useFakeTimers()
+  let wake!: () => void
+  const { client, sockets, socket } = createHarness({
+    heartbeatMs: 10,
+    heartbeatTimeoutMs: 25,
+    reconnectDelaysMs: [25],
+    networkEvents: onWake => { wake = onWake; return () => undefined },
+  })
+  welcome(socket(), { heartbeat: true } as Partial<TestWelcome>)
+  vi.advanceTimersByTime(30)
+  expect(client.getSnapshot().connection).toBe('reconnecting')
+  expect(socket().closed).toBe(true)
+  wake()
+  expect(sockets).toHaveLength(2)
+  welcome(socket())
+  socket().drop(4001)
+  wake()
+  vi.advanceTimersByTime(1_000)
+  expect(sockets).toHaveLength(2)
+  expect(client.getSnapshot().error?.code).toBe('session_replaced')
 })
 
  it('rebases an unconfirmed custom brick addition over another builder snapshot', () => {

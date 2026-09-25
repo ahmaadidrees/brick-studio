@@ -67,6 +67,38 @@ it('invokes native-style fetch with the global receiver', async () => {
   const client = new ClassroomClient('', fetcher); client.setSession(auth)
   await expect(client.request('/worlds')).resolves.toEqual({ worlds: [] })
 })
+it('forwards cancellation to the request without clearing the classroom session', async () => {
+  const fetcher = vi.fn((_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => {
+    init.signal?.addEventListener('abort', () => reject(new DOMException('Canceled', 'AbortError')))
+  }))
+  const client = new ClassroomClient('', fetcher as unknown as typeof fetch); client.setSession(auth)
+  const controller = new AbortController()
+  const pending = client.request('/worlds/one/live-ticket', 'POST', undefined, true, controller.signal)
+  controller.abort()
+  await expect(pending).rejects.toMatchObject({ status: 0, code: 'aborted' })
+  expect(client.getSession()).toEqual(auth)
+  expect((fetcher.mock.calls[0][1] as RequestInit).signal?.aborted).toBe(true)
+})
+it('exposes Retry-After on temporary errors and preserves the account', async () => {
+  const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'Slow down' }), { status: 429, headers: { 'Retry-After': '2' } }))
+  const client = new ClassroomClient('', fetcher); client.setSession(auth)
+  await expect(client.request('/me')).rejects.toMatchObject({ status: 429, retryAfterSeconds: 2 })
+  expect(client.getSession()).toEqual(auth)
+})
+it('times out a stalled response body and keeps the session available', async () => {
+  vi.useFakeTimers()
+  try {
+    const fetcher = vi.fn((_url: string, init: RequestInit) => Promise.resolve({
+      json: () => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new DOMException('Timed out', 'AbortError')))),
+    } as Response))
+    const client = new ClassroomClient('', fetcher as unknown as typeof fetch); client.setSession(auth)
+    const pending = client.request('/me')
+    const assertion = expect(pending).rejects.toMatchObject({ status: 0, code: 'timeout' })
+    await vi.advanceTimersByTimeAsync(20_000)
+    await assertion
+    expect(client.getSession()).toEqual(auth)
+  } finally { vi.useRealTimers() }
+})
 it.each([0, 429, 502])('keeps the account available for retry when token renewal temporarily fails (%s)', async status => {
   const fetcher = vi.fn().mockResolvedValueOnce(json({}, 401))
   if (status === 0) fetcher.mockRejectedValueOnce(new Error('offline'))

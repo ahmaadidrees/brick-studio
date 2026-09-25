@@ -29,6 +29,9 @@ export const DEFAULT_LIVE_POSE_INTERVAL_MS = 75
 export const DEFAULT_LIVE_POSE_HEARTBEAT_MS = 1_500
 export const DEFAULT_LIVE_SYNC_TIMEOUT_MS = 5_000
 export const DEFAULT_LIVE_CONNECTION_TIMEOUT_MS = 15_000
+export const DEFAULT_LIVE_JOIN_TIMEOUT_MS = 30_000
+export const DEFAULT_LIVE_HEARTBEAT_MS = 10_000
+export const DEFAULT_LIVE_HEARTBEAT_TIMEOUT_MS = 25_000
 /** Stays below the Worker's retained outcome window so reconnect replay can never outrun dedupe history. */
 export const LIVE_MAX_PENDING_OPERATIONS = 96
 export const LIVE_ROOM_IDENTITY_STORAGE_PREFIX = 'brick-studio.live-room-identity.v1:'
@@ -48,6 +51,8 @@ export type LiveWorldResource = {
 
 export type LiveRoomHttpOptions = {
   headers?: Record<string, string>
+  signal?: AbortSignal
+  timeoutMs?: number
   baseUrl?: string
   fetch?: typeof globalThis.fetch
 }
@@ -101,7 +106,7 @@ export type LiveRoomIdentityStorage = Pick<Storage, 'getItem' | 'setItem'>
 
 export type LiveRoomClientOptions = {
   /** Fetch a fresh short-lived classroom websocket ticket for each connection. */
-  getTicket?: () => Promise<string>
+  getTicket?: (signal?: AbortSignal) => Promise<string>
   roomId: string
   profile: PlayerProfile
   ownerToken?: string
@@ -116,6 +121,12 @@ export type LiveRoomClientOptions = {
   syncTimeoutMs?: number
   /** Bound a stalled WebSocket upgrade or missing welcome before retrying. */
   connectionTimeoutMs?: number
+  /** Deadline from starting a ticket request through receiving welcome. */
+  joinTimeoutMs?: number
+  heartbeatMs?: number
+  heartbeatTimeoutMs?: number
+  random?: () => number
+  networkEvents?: ((onWake: () => void) => () => void) | null
   poseIntervalMs?: number
   poseHeartbeatMs?: number
   visibility?: PoseVisibilitySource
@@ -360,15 +371,33 @@ function liveWebSocketUrl(
 }
 
 async function jsonRequest<T>(fetcher: typeof fetch, url: string, init?: RequestInit): Promise<T> {
-  const response = await fetcher(url, init)
-  if (response.ok) return response.json() as Promise<T>
+  let response: Response
+  try { response = await fetcher(url, init) }
+  catch (reason) { throw Object.assign(reason instanceof Error ? reason : new Error('Network request failed'), { status: 0 }) }
+  if (response.ok) {
+    try { return await response.json() as T }
+    catch (reason) {
+      if (init?.signal?.aborted) throw Object.assign(reason instanceof Error ? reason : new Error('Request aborted'), { status: 0 })
+      throw reason
+    }
+  }
   let message = `Live world server request failed (${response.status})`
   try {
     const body = await response.json() as { message?: unknown; error?: unknown }
     if (typeof body.message === 'string') message = body.message
     else if (typeof body.error === 'string') message = body.error
-  } catch { /* keep status-based message */ }
-  throw Object.assign(new Error(message), { status: response.status })
+  } catch (reason) {
+    if (init?.signal?.aborted) throw Object.assign(reason instanceof Error ? reason : new Error('Request aborted'), { status: 0 })
+    /* keep status-based message */
+  }
+  const retryAfterHeader = response.headers?.get('retry-after')
+  const retryAfterNumber = retryAfterHeader ? Number(retryAfterHeader) : NaN
+  const retryAfter = Number.isFinite(retryAfterNumber) ? retryAfterNumber
+    : retryAfterHeader ? Math.max(0, (Date.parse(retryAfterHeader) - Date.now()) / 1_000) : NaN
+  throw Object.assign(new Error(message), {
+    status: response.status,
+    ...(Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterSeconds: retryAfter } : {}),
+  })
 }
 
 export async function createLiveWorld(
@@ -390,14 +419,30 @@ export async function getLiveWorld(
   options: LiveRoomHttpOptions = {},
 ): Promise<LiveWorldResource> {
   const baseUrl = (options.baseUrl ?? runtimeBaseUrl()).replace(/\/$/, '')
-  const resource = await jsonRequest<LiveWorldResource>(
-    options.fetch ?? globalThis.fetch,
-    `${baseUrl}/worlds/${encodeURIComponent(roomId)}`,
-    options.headers ? { headers: options.headers } : undefined,
-  )
-  const validated = normalizeBrickStudioDocument(resource.document)
-  if (!validated.ok) throw new Error(validated.error.message)
-  return { ...resource, document: validated.document, players: clonePlayers(resource.players ?? []) }
+  const controller = new AbortController()
+  const onAbort = () => controller.abort()
+  if (options.signal?.aborted) controller.abort()
+  else options.signal?.addEventListener('abort', onAbort, { once: true })
+  const timeout = globalThis.setTimeout(() => controller.abort(), options.timeoutMs ?? 20_000)
+  let rejectAborted: ((reason: Error) => void) | undefined
+  const aborted = new Promise<never>((_resolve, reject) => { rejectAborted = reject })
+  const onRequestAbort = () => rejectAborted?.(Object.assign(new Error('Live world request timed out or was cancelled'), { status: 0 }))
+  controller.signal.addEventListener('abort', onRequestAbort, { once: true })
+  try {
+    if (controller.signal.aborted) onRequestAbort()
+    const resource = await Promise.race([jsonRequest<LiveWorldResource>(
+      options.fetch ?? globalThis.fetch,
+      `${baseUrl}/worlds/${encodeURIComponent(roomId)}`,
+      { headers: options.headers, signal: controller.signal },
+    ), aborted])
+    const validated = normalizeBrickStudioDocument(resource.document)
+    if (!validated.ok) throw new Error(validated.error.message)
+    return { ...resource, document: validated.document, players: clonePlayers(resource.players ?? []) }
+  } finally {
+    globalThis.clearTimeout(timeout)
+    controller.signal.removeEventListener('abort', onRequestAbort)
+    options.signal?.removeEventListener('abort', onAbort)
+  }
 }
 
 const defaultCreateSocket = (url: string) => new WebSocket(url) as unknown as LiveRoomSocketLike
@@ -426,6 +471,10 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   const reconnectDelays = options.reconnectDelaysMs ?? DEFAULT_LIVE_RECONNECT_DELAYS_MS
   const syncTimeoutMs = options.syncTimeoutMs ?? DEFAULT_LIVE_SYNC_TIMEOUT_MS
   const connectionTimeoutMs = options.connectionTimeoutMs ?? DEFAULT_LIVE_CONNECTION_TIMEOUT_MS
+  const joinTimeoutMs = options.joinTimeoutMs ?? Math.max(DEFAULT_LIVE_JOIN_TIMEOUT_MS, connectionTimeoutMs)
+  const heartbeatMs = options.heartbeatMs ?? DEFAULT_LIVE_HEARTBEAT_MS
+  const heartbeatTimeoutMs = options.heartbeatTimeoutMs ?? DEFAULT_LIVE_HEARTBEAT_TIMEOUT_MS
+  const random = options.random ?? Math.random
   const now = options.now ?? (() => Date.now())
   const setTimer = options.setTimeout ?? ((handler, timeout) => globalThis.setTimeout(handler, timeout))
   const clearTimer = options.clearTimeout ?? ((timer) => globalThis.clearTimeout(timer))
@@ -438,10 +487,17 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   let disposed = false
   let applyingRemote = false
   let reconnectAttempt = 0
+  let retryNotBefore = 0
   let everOnline = false
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
   let syncTimer: ReturnType<typeof setTimeout> | undefined
   let connectionTimer: ReturnType<typeof setTimeout> | undefined
+  let joinTimer: ReturnType<typeof setTimeout> | undefined
+  let heartbeatTimer: ReturnType<typeof setTimeout> | undefined
+  let attemptGeneration = 0
+  let ticketAbort: AbortController | undefined
+  let lastHeard = 0
+  let heartbeatSupported = false
   let operationSequence = 0n
   let reconnectToken = reusableGuestIdentity?.reconnectToken
   let canonicalDocument: BrickStudioDocument | null = null
@@ -574,6 +630,32 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     connectionTimer = undefined
   }
 
+  const clearJoinWatchdog = () => {
+    if (joinTimer === undefined) return
+    clearTimer(joinTimer)
+    joinTimer = undefined
+  }
+
+  const clearHeartbeat = () => {
+    if (heartbeatTimer === undefined) return
+    clearTimer(heartbeatTimer)
+    heartbeatTimer = undefined
+  }
+
+  const heartbeat = () => {
+    clearHeartbeat()
+    if (disposed || !socket || !socketOpen || !heartbeatSupported) return
+    if (heartbeatSupported && now() - lastHeard >= heartbeatTimeoutMs) {
+      restartConnection('heartbeat_timeout', 'The live connection stopped responding. Rejoining…')
+      return
+    }
+    try { socket.send('ping') } catch {
+      restartConnection('connection_error', 'The live connection stopped responding. Rejoining…')
+      return
+    }
+    heartbeatTimer = setTimer(heartbeat, heartbeatMs)
+  }
+
   const hasOutstandingSync = () => pending.size > 0 || snapshot.awaitingSnapshot
 
   const armSyncWatchdog = (reset = false) => {
@@ -670,6 +752,9 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         const unconfirmedDraft = pending.size > 0 && snapshot.document ? cloneDocument(snapshot.document) : null
         if (!acceptDocument(message.document, 'welcome', message.revision, true)) return
         clearConnectionWatchdog()
+        clearJoinWatchdog()
+        heartbeatSupported = (message as typeof message & { heartbeat?: boolean }).heartbeat === true
+        if (heartbeatSupported) heartbeatTimer = setTimer(heartbeat, heartbeatMs)
         options.onDiagnostic?.('welcome', { revision: message.revision, playerCount: message.players.length })
         const reconnectWelcome = message as typeof message & {
           reconnectToken?: unknown
@@ -833,9 +918,13 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   })
   poseSender.activate()
 
-  const scheduleReconnect = () => {
+  const scheduleReconnect = (retryAfterSeconds?: number) => {
     if (disposed || reconnectTimer !== undefined) return
-    const delay = reconnectDelays[Math.min(reconnectAttempt, reconnectDelays.length - 1)] ?? 1_000
+    clearJoinWatchdog()
+    const baseDelay = reconnectDelays[Math.min(reconnectAttempt, reconnectDelays.length - 1)] ?? 1_000
+    const serverDelay = Number.isFinite(retryAfterSeconds) ? Math.max(0, retryAfterSeconds!) * 1_000 : 0
+    if (serverDelay > 0) retryNotBefore = Math.max(retryNotBefore, now() + serverDelay)
+    const delay = Math.max(Math.round(baseDelay * (0.75 + Math.min(1, Math.max(0, random())) * 0.5)), retryNotBefore - now())
     reconnectAttempt += 1
     options.onDiagnostic?.('reconnect', { attempt: reconnectAttempt })
     publish({ connection: 'reconnecting' })
@@ -848,11 +937,16 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
 
   const restartConnection = (code: string, message: string) => {
     if (disposed) return
+    attemptGeneration++
+    ticketAbort?.abort()
+    ticketAbort = undefined
     const staleSocket = socket
     socket = null
     socketOpen = false
     clearSyncWatchdog()
     clearConnectionWatchdog()
+    clearJoinWatchdog()
+    clearHeartbeat()
     poseSender.transportClosed()
     if (staleSocket) {
       try { staleSocket.close() }
@@ -890,6 +984,8 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     nextSocket.onopen = () => {
       if (disposed || socket !== nextSocket) return
       socketOpen = true
+      lastHeard = now()
+      heartbeatSupported = false
       if (!send({ v: LIVE_PROTOCOL_VERSION, type: 'setProfile', profile: desiredProfile })) {
         restartConnection('connection_error', 'The live world connection closed while joining.')
         return
@@ -898,19 +994,20 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     }
     nextSocket.onmessage = (event) => {
       if (disposed || socket !== nextSocket) return
+      lastHeard = now()
+      if (event.data === 'pong') { heartbeatSupported = true; return }
       handleMessage(event.data)
     }
-    nextSocket.onerror = () => {
-      if (socket === nextSocket) {
-        restartConnection('connection_error', 'The live world connection encountered an error.')
-      }
-    }
+    // Browsers fire error before close. Wait for close so access-denial codes are not lost.
+    nextSocket.onerror = () => undefined
     nextSocket.onclose = (event) => {
       if (socket !== nextSocket) return
       socket = null
       socketOpen = false
       clearSyncWatchdog()
       clearConnectionWatchdog()
+      clearJoinWatchdog()
+      clearHeartbeat()
       poseSender.transportClosed()
       if (disposed) return
       options.onDiagnostic?.('socket_close', { closeCode: event?.code })
@@ -929,25 +1026,61 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         reportError('access_changed', 'Classroom access changed. Rejoin from My Class.')
         return
       }
+      if (event?.code === 4004 || event?.code === 4007) {
+        publish({ connection: 'offline' })
+        reportError(event.code === 4004 ? 'world_full' : 'world_locked',
+          event.code === 4004 ? 'This world is full right now.' : 'The owner closed this world to new builders.')
+        return
+      }
+      if (event?.code === 4005) {
+        publish({ connection: 'offline' })
+        reportError('client_update_required', 'Brickgineers was updated. Reload the page to keep building.')
+        return
+      }
       scheduleReconnect()
     }
   }
 
   const connect = () => {
     if (disposed) return
+    const generation = ++attemptGeneration
+    ticketAbort?.abort()
+    ticketAbort = options.getTicket ? new AbortController() : undefined
+    clearJoinWatchdog()
+    joinTimer = setTimer(() => {
+      joinTimer = undefined
+      if (disposed || generation !== attemptGeneration || snapshot.connection === 'online') return
+      restartConnection('connection_timeout', 'Joining the live world took too long. Trying again…')
+    }, joinTimeoutMs)
     if (!options.getTicket) return openConnection()
-    void options.getTicket().then(ticket => {
-      if (!disposed) openConnection(ticket)
+    let ticketRequest: Promise<string>
+    try { ticketRequest = options.getTicket(ticketAbort?.signal) }
+    catch (reason) { ticketRequest = Promise.reject(reason) }
+    void ticketRequest.then(ticket => {
+      if (disposed || generation !== attemptGeneration) return
+      ticketAbort = undefined
+      openConnection(ticket)
     }).catch((reason: unknown) => {
-      if (disposed) return
-      publish({ connection: 'offline' })
+      if (disposed || generation !== attemptGeneration) return
+      ticketAbort = undefined
       const status = typeof reason === 'object' && reason !== null && 'status' in reason ? reason.status : undefined
+      const retryAfterSeconds = typeof reason === 'object' && reason !== null && 'retryAfterSeconds' in reason
+        && typeof reason.retryAfterSeconds === 'number' ? reason.retryAfterSeconds : undefined
       if (status === 401) {
+        clearJoinWatchdog()
+        publish({ connection: 'offline' })
         reportError('classroom_auth_required', 'Sign in again to rejoin this classroom world. Your visible work is still available to export.')
       } else if (status === 403) {
+        clearJoinWatchdog()
+        publish({ connection: 'offline' })
         reportError('access_changed', 'Classroom access changed. Rejoin from My Class. Your visible work is still available to export.')
+      } else if (status === 404 || status === 410) {
+        clearJoinWatchdog()
+        publish({ connection: 'offline' })
+        reportError('world_not_found', 'This live world is no longer available.')
       } else {
-        reportError('connection_error', 'Could not reach the classroom server. Your work is still here. Try rejoining when your connection returns.')
+        reportError('connection_error', 'Could not reach the classroom server. Your work is still here while we retry.')
+        scheduleReconnect(retryAfterSeconds)
       }
     })
   }
@@ -990,6 +1123,32 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     options.onDocument?.(cloneDocument(localDocument), 'local')
     enqueue(operation)
   })
+
+  const wake = () => {
+    if (disposed || snapshot.error?.code === 'session_replaced' || snapshot.connection === 'offline') return
+    if (socket && socketOpen) {
+      heartbeat()
+      return
+    }
+    if (reconnectTimer === undefined) return
+    if (now() < retryNotBefore) return
+    clearTimer(reconnectTimer)
+    reconnectTimer = undefined
+    connect()
+  }
+  const defaultNetworkEvents = (onWake: () => void) => {
+    if (typeof window === 'undefined') return () => undefined
+    const onVisible = () => { if (document.visibilityState === 'visible') onWake() }
+    window.addEventListener('online', onWake)
+    window.addEventListener('pageshow', onWake)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('online', onWake)
+      window.removeEventListener('pageshow', onWake)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }
+  const stopNetworkEvents = options.networkEvents === null ? () => undefined : (options.networkEvents ?? defaultNetworkEvents)(wake)
 
   connect()
 
@@ -1049,6 +1208,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     requestResync,
     reconnect: () => {
       if (disposed || snapshot.connection !== 'offline') return
+      if (reconnectTimer !== undefined) { clearTimer(reconnectTimer); reconnectTimer = undefined }
       reconnectAttempt = 0
       // Another tab can consume the same playerId#sequence for a different edit.
       // Replaying would receive an unrelated cached ack and silently lose intent.
@@ -1070,9 +1230,15 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       if (disposed) return
       disposed = true
       unsubscribeStore()
+      stopNetworkEvents()
+      attemptGeneration++
+      ticketAbort?.abort()
+      ticketAbort = undefined
       if (reconnectTimer !== undefined) clearTimer(reconnectTimer)
       clearSyncWatchdog()
       clearConnectionWatchdog()
+      clearJoinWatchdog()
+      clearHeartbeat()
       poseSender.deactivate()
       socket?.close()
       socket = null

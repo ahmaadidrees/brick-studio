@@ -13,7 +13,24 @@ export function classJoinHref(classCode: string, origin = window.location.origin
 }
 /** A rejected classroom request. `code` and `details` carry the server's machine-readable reason (e.g. `username_taken` with `suggestions`). */
 export class ClassroomError extends Error {
-  constructor(message: string, public status: number, public code = '', public details: Record<string, unknown> = {}) { super(message) }
+  constructor(message: string, public status: number, public code = '', public details: Record<string, unknown> = {}, public retryAfterSeconds?: number) { super(message) }
+}
+const REQUEST_TIMEOUT_MS = 20_000
+function retryAfterSeconds(response: Response): number | undefined {
+  const value = response.headers.get('Retry-After')
+  if (!value) return undefined
+  const seconds = Number(value)
+  const delay = Number.isFinite(seconds) ? seconds : (Date.parse(value) - Date.now()) / 1000
+  return Number.isFinite(delay) ? Math.max(0, delay) : undefined
+}
+function waitForSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(new ClassroomError('Request canceled.', 0, 'aborted'))
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(new ClassroomError('Request canceled.', 0, 'aborted'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(value => { signal.removeEventListener('abort', onAbort); resolve(value) }, error => { signal.removeEventListener('abort', onAbort); reject(error) })
+  })
 }
 const GOOGLE_FLOW_KEY = 'brick-studio.teacher-google.v1'
 type GoogleFlow = { state: string; verifier: string; startedAt: number; returnTo: string; accountId: string | null }
@@ -41,16 +58,29 @@ export class ClassroomClient implements ClassroomClientSurface {
   private assertContext(epoch: number) {
     if (this.epoch !== epoch) throw new ClassroomError('Your account changed. Please try again.', 401)
   }
-  request<T>(path: string, method = 'GET', body?: unknown, retry = true): Promise<T> {
-    return this.perform<T>(path, method, body, retry, this.epoch)
+  request<T>(path: string, method = 'GET', body?: unknown, retry = true, signal?: AbortSignal): Promise<T> {
+    return this.perform<T>(path, method, body, retry, this.epoch, signal)
   }
-  private async perform<T>(path: string, method: string, body: unknown, retry: boolean, epoch: number): Promise<T> {
+  private async perform<T>(path: string, method: string, body: unknown, retry: boolean, epoch: number, signal?: AbortSignal): Promise<T> {
     this.assertContext(epoch)
+    if (signal?.aborted) throw new ClassroomError('Request canceled.', 0, 'aborted')
     const token = this.auth?.session.accessToken
     let response: Response
-    try { response = await this.fetcher.call(globalThis, `${this.base}/classroom${path}`, { method, headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }) }
-    catch { this.assertContext(epoch); throw new ClassroomError('Could not connect. Your current build is still here. Check your connection and try again.', 0) }
+    let payload: any
+    const controller = new AbortController()
+    let timedOut = false
+    const onAbort = () => controller.abort()
+    signal?.addEventListener('abort', onAbort, { once: true })
+    const timer = setTimeout(() => { timedOut = true; controller.abort() }, REQUEST_TIMEOUT_MS)
+    try {
+      response = await this.fetcher.call(globalThis, `${this.base}/classroom${path}`, { method, headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: controller.signal })
+      payload = await response.json().catch(() => null)
+    }
+    catch { this.assertContext(epoch); throw new ClassroomError(timedOut ? 'The server took too long to respond. Try again.' : signal?.aborted ? 'Request canceled.' : 'Could not connect. Your current build is still here. Check your connection and try again.', 0, timedOut ? 'timeout' : signal?.aborted ? 'aborted' : 'unreachable') }
+    finally { clearTimeout(timer); signal?.removeEventListener('abort', onAbort) }
     this.assertContext(epoch)
+    if (timedOut) throw new ClassroomError('The server took too long to respond. Try again.', 0, 'timeout')
+    if (signal?.aborted) throw new ClassroomError('Request canceled.', 0, 'aborted')
     if (response.status === 401 && retry && this.auth && !path.startsWith('/auth/')) {
       try {
         // Another request may already have renewed this same login context.
@@ -63,7 +93,7 @@ export class ClassroomClient implements ClassroomClientSurface {
               .finally(() => { if (this.refreshing === entry) this.refreshing = null })
             this.refreshing = entry
           }
-          await this.refreshing.promise
+          await waitForSignal(this.refreshing.promise, signal)
         }
         this.assertContext(epoch)
       } catch (error) {
@@ -74,13 +104,12 @@ export class ClassroomClient implements ClassroomClientSurface {
         throw error
       }
       // A world may become inaccessible without invalidating the account.
-      return this.perform<T>(path, method, body, false, epoch)
+      return this.perform<T>(path, method, body, false, epoch, signal)
     }
-    const payload = await response.json().catch(() => null)
     this.assertContext(epoch)
     if (!response.ok) {
       const { error, code, ...details } = payload && typeof payload === 'object' ? payload : {}
-      throw new ClassroomError(typeof error === 'string' ? error : error?.message || payload?.message || `Request failed (${response.status}).`, response.status, typeof code === 'string' ? code : '', details)
+      throw new ClassroomError(typeof error === 'string' ? error : error?.message || payload?.message || `Request failed (${response.status}).`, response.status, typeof code === 'string' ? code : '', details, retryAfterSeconds(response))
     }
     return payload as T
   }

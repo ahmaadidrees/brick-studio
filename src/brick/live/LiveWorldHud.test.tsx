@@ -56,6 +56,20 @@ function renderHud(snapshot = createSnapshot(), actions = createActions(), optio
 }
 
 describe('canvas-first live room chrome', () => {
+  it('explains automatic recovery while building is paused', () => {
+    renderHud(createSnapshot({ connection: 'reconnecting' }))
+    expect(screen.getByText(/getting you back in automatically/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+  })
+
+  it.each(['world_full', 'world_locked', 'world_not_found', 'client_update_required'])('shows the actual %s refusal in the paused banner', (code) => {
+    renderHud(createSnapshot({ connection: 'offline', notice: { seq: 1, code, message: 'Specific room refusal.' } }))
+    const banner = screen.getByText('Building is paused').closest('.live-recovery-banner')!
+    expect(banner).toHaveTextContent('Specific room refusal.')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    if (code === 'client_update_required') expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
+  })
+
   it('starts compact and opens one People panel with invite, roster and room controls', () => {
     renderHud()
 

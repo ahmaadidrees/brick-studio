@@ -59,7 +59,7 @@ export function createLiveRoomConnector(
       const syncing = source.document === null || source.awaitingSnapshot
       // Transport notices expire once a successful welcome restores the session.
       // All server/rejection errors remain visible until the user dismisses them.
-      const recoveredConnectionNotice = ['reconnecting', 'session_replaced', 'connection_error', 'connection_timeout', 'sync_timeout', 'classroom_auth_required', 'access_changed']
+      const recoveredConnectionNotice = ['reconnecting', 'session_replaced', 'connection_error', 'connection_timeout', 'sync_timeout', 'heartbeat_timeout', 'world_full', 'world_locked', 'world_not_found', 'client_update_required', 'classroom_auth_required', 'access_changed']
         .includes(snapshot.notice?.code ?? '')
       const notice = source.connection === 'online' && recoveredConnectionNotice
         ? null

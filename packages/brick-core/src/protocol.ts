@@ -50,6 +50,7 @@ export type LiveClientMessage = VersionedMessage & (
 export type LiveServerMessage = VersionedMessage & (
   | {
       type: 'welcome'
+      heartbeat?: true
       roomId: string
       playerId: string
       isOwner: boolean

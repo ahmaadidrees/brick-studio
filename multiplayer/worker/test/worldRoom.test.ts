@@ -71,13 +71,17 @@ async function connectWorld(roomId: string, playerId: string, ownerToken?: strin
   const response = await roomFetch(url.toString(), {
     headers: { Upgrade: "websocket", origin: "https://virtual-legos.vercel.app" },
   });
-  if (response.status !== 101 || !response.webSocket) return { response, socket: null, inbox: null, welcome: null };
+  if (response.status !== 101 || !response.webSocket) return { response, socket: null, inbox: null, welcome: null, closeCode: null };
   const socket = response.webSocket;
   sockets.push(socket);
   const inbox = new Inbox(socket);
+  const closed = nextClose(socket);
   socket.accept();
-  const welcome = await inbox.next("welcome");
-  return { response, socket, inbox, welcome };
+  const welcome = await Promise.race([
+    inbox.next("welcome"),
+    closed.then(() => null),
+  ]);
+  return { response, socket, inbox, welcome, closeCode: welcome ? null : (await closed).code };
 }
 
 function nextClose(socket: WebSocket, timeoutMs = 3_000): Promise<CloseEvent> {
@@ -103,6 +107,13 @@ afterEach(() => {
 });
 
 describe("WorldRoom", () => {
+  it("advertises and answers the idle heartbeat", async () => {
+    const { roomId, ownerToken } = await createWorld();
+    const owner = await connectWorld(roomId, "heartbeat_owner", ownerToken);
+    expect(owner.welcome).toMatchObject({ heartbeat: true });
+    owner.socket!.send("ping");
+    expect(await owner.inbox!.next("pong")).toMatchObject({ type: "pong" });
+  });
   it("merges concurrent non-owner custom brick additions without replacing existing work", async () => {
     const original = brick("original", 0, 0);
     const { roomId } = await createWorld(createBrickStudioDocument([original]));
@@ -266,11 +277,9 @@ describe("WorldRoom", () => {
     const reconnectToken = legitimate.welcome!.reconnectToken as string;
 
     const observedIdAttack = await connectWorld(roomId, "guest_secure");
-    expect(observedIdAttack.response.status).toBe(403);
-    expect(await observedIdAttack.response.json()).toEqual({ error: "reconnect_token_required" });
+    expect(observedIdAttack.closeCode).toBe(4003);
     const invalidCapability = await connectWorld(roomId, "guest_secure", undefined, "a".repeat(64));
-    expect(invalidCapability.response.status).toBe(403);
-    expect(await invalidCapability.response.json()).toEqual({ error: "reconnect_token_required" });
+    expect(invalidCapability.closeCode).toBe(4003);
 
     send(legitimate.socket!, {
       v: LIVE_PROTOCOL_VERSION,
@@ -292,8 +301,7 @@ describe("WorldRoom", () => {
     const guest = await connectWorld(roomId, "guest_stable");
 
     const attacker = await connectWorld(roomId, "owner_stable");
-    expect(attacker.response.status).toBe(403);
-    expect(await attacker.response.json()).toEqual({ error: "reconnect_token_required" });
+    expect(attacker.closeCode).toBe(4003);
     send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setLocked", locked: true });
     expect(await guest.inbox!.next("locked")).toMatchObject({ locked: true });
 
@@ -494,8 +502,7 @@ describe("WorldRoom", () => {
     expect(await guest.inbox!.next("locked")).toMatchObject({ locked: true });
 
     const stranger = await connectWorld(roomId, "guest_202");
-    expect(stranger.response.status).toBe(403);
-    expect(await stranger.response.json()).toEqual({ error: "world_locked" });
+    expect(stranger.closeCode).toBe(4007);
 
     guest.socket!.close(1000, "reconnect");
     const reconnectToken = guest.welcome!.reconnectToken as string;
@@ -797,8 +804,7 @@ describe("WorldRoom", () => {
       expect(guest.response.status).toBe(101);
     }
     const overflow = await connectWorld(roomId, "guest_999");
-    expect(overflow.response.status).toBe(429);
-    expect(await overflow.response.json()).toEqual({ error: "world_full" });
+    expect(overflow.closeCode).toBe(4004);
   });
 });
 
@@ -838,10 +844,14 @@ it("enforces trusted classroom identity and immediate group revocation without d
     return [];
   });
   let batchUnavailable = false;
+  let singleUnavailable = false;
   const commit = vi.fn().mockRejectedValue(new Error("database unavailable"));
   const access = { userId: "00000000-0000-4000-8000-000000000002", username: "TrueName", role: "student", worldId, classId: null, canEdit: true, isTeacher: false, isOwner: false, authVersion: 1, sessionId: "00000000-0000-4000-8000-000000000004" };
   const rpc = vi.spyOn(ClassroomService.prototype, "rpc").mockImplementation(async (name, input) => {
-    if (name === "authorize_world") return revocation === "none" ? { ...access, classId } : { error: revocation === "password" ? "session_revoked" : revocation === "paused" ? "class_closed" : "not_found" };
+    if (name === "authorize_world") {
+      if (singleUnavailable) throw new Error("permission provider unavailable");
+      return revocation === "none" ? { ...access, classId } : { error: revocation === "password" ? "session_revoked" : revocation === "paused" ? "class_closed" : "not_found" };
+    }
     if (name === "authorize_world_batch") { if (batchUnavailable) throw new Error("permission provider unavailable"); return input.p_identities.map(() => ({ ...access, classId })); }
     return commit(name, input);
   });
@@ -969,6 +979,20 @@ it("enforces trusted classroom identity and immediate group revocation without d
     });
   }
   revocation = "none";
+  const transientResponse = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
+  const transient = transientResponse.webSocket!;
+  sockets.push(transient);
+  const transientInbox = new Inbox(transient);
+  transient.accept();
+  await transientInbox.next("welcome");
+  const transientClosed = nextClose(transient);
+  singleUnavailable = true;
+  await withClockAhead(ACCESS_CACHE_TTL_MS + 100, async () => {
+    send(transient, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: `${access.userId}#8`, commands: [{ op: "place", brick: brick("provider-outage") }] });
+    expect((await transientClosed).code).toBe(4006);
+  });
+  singleUnavailable = false;
+  expect((await stored()).document.bricks.map((b) => b.id)).not.toContain("provider-outage");
   const idleResponse = await stub.fetch(`https://internal/worlds/${roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(access) } });
   const idle = idleResponse.webSocket!;
   sockets.push(idle);
@@ -981,7 +1005,7 @@ it("enforces trusted classroom identity and immediate group revocation without d
     await instance.alarm();
     expect(await state.storage.get("world")).toBeTruthy();
   });
-  expect(await idleClosed).toBe(4003);
+  expect(await idleClosed).toBe(4006);
   rows.mockRestore();
   rpc.mockRestore();
 });
@@ -1035,9 +1059,17 @@ it("denies public classroom snapshots and sockets even with forged internal head
       const response = await workerFetch(`https://worker.test/worlds/${path}${suffix}?playerId=attacker&ownerToken=${ownerToken}`, {
         headers: { Upgrade: "websocket", "x-guest-world-access": "1", "x-world-init": "1", "x-classroom-access": JSON.stringify({ worldId: classroomWorldId, userId: "attacker", username: "Teacher", isTeacher: true }) },
       });
-      expect(response.status).toBe(401);
-      const text = await response.text();
-      expect(text).not.toContain("secret-brick"); expect(text).not.toContain("Secret title");
+      if (suffix) {
+        expect(response.status).toBe(101);
+        const socket = response.webSocket!;
+        const closed = nextClose(socket);
+        socket.accept();
+        expect((await closed).code).toBe(4003);
+      } else {
+        expect(response.status).toBe(401);
+        const text = await response.text();
+        expect(text).not.toContain("secret-brick"); expect(text).not.toContain("Secret title");
+      }
     }
   }
   const direct = await stub.fetch(`https://world.internal/worlds/${roomId}`);
@@ -1194,8 +1226,10 @@ describe("classroom invalidation", () => {
     await applied(second.edit("unaffected", 0), 2, second);
 
     const rejoin = await room.stub.fetch(`https://world.internal/worlds/${room.roomId}/connect`, { headers: { Upgrade: "websocket", "x-classroom-access": JSON.stringify(stale) } });
-    expect(rejoin.status).toBe(403);
-    expect(await rejoin.json()).toEqual({ error: "classroom_access_denied" });
+    expect(rejoin.status).toBe(101);
+    const rejected = nextClose(rejoin.webSocket!);
+    rejoin.webSocket!.accept();
+    expect((await rejected).code).toBe(4003);
   });
 
   it("closing collaboration disconnects every student in every class world while the teacher keeps oversight", async () => {
@@ -1247,7 +1281,7 @@ describe("classroom invalidation", () => {
     expect(response.status).toBe(503);
     expect(await response.json()).toMatchObject({ code: "live_invalidation_failed" });
     expect(db.classes[0].name).toBe("Period 1, renamed");
-    for (const builder of [first, second, supervising]) expect(await builder.closed).toBe(4003);
+    for (const builder of [first, second, supervising]) expect(await builder.closed).toBe(4006);
   });
 });
 
@@ -1256,8 +1290,7 @@ it("protects expanded worlds from legacy clients while allowing capable builders
   const expanded = createBrickStudioDocument([brick("edge", 120, 120)], { plateSize: 128 });
   const { roomId, ownerToken } = await createWorld(expanded);
   const legacy = await connectWorld(roomId, "legacy_expanded");
-  expect(legacy.response.status).toBe(409);
-  expect(await legacy.response.json()).toMatchObject({ error: "client_update_required" });
+  expect(legacy.closeCode).toBe(4005);
   const owner = await connectWorld(roomId, "owner_expanded", ownerToken, undefined, 3);
   expect(owner.welcome).toMatchObject({ document: expanded });
   send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "commands", opId: "owner_expanded#1", commands: [{ op: "place", brick: brick("new_edge", 125, 125) }] });

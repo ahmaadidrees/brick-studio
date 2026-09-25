@@ -34,7 +34,7 @@ export class Inbox {
 
   constructor(readonly socket: WebSocket) {
     socket.addEventListener("message", (event) => {
-      this.messages.push(JSON.parse(String(event.data)) as Message);
+      this.messages.push(String(event.data) === "pong" ? { type: "pong" } as Message : JSON.parse(String(event.data)) as Message);
       this.waiters.splice(0).forEach((resolve) => resolve());
     });
   }

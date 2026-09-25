@@ -185,7 +185,7 @@ describe('live room controller adapter', () => {
     expect(controller.getSnapshot().notice).toEqual({ seq: 2, code: 'room_busy', message: 'Wait for sync.' })
   })
 
-  it('clears a stale reconnect warning on recovery but preserves real errors', () => {
+  it.each(['reconnecting', 'heartbeat_timeout', 'world_full', 'world_locked', 'world_not_found', 'client_update_required'])('clears %s on recovery but preserves real errors', (code) => {
     const harness = createClientHarness()
     const controller = createLiveRoomConnector(harness.createClient)({
       roomId: 'ROOM1234',
@@ -195,10 +195,10 @@ describe('live room controller adapter', () => {
     controller.subscribe(listener)
 
     harness.emitStatus({ connection: 'reconnecting' })
-    harness.emitError('reconnecting', 'Connection lost. Rejoining the live world…')
+    harness.emitError(code, 'Connection lost. Rejoining the live world…')
     expect(controller.getSnapshot()).toMatchObject({
       connection: 'reconnecting',
-      notice: { seq: 1, code: 'reconnecting' },
+      notice: { seq: 1, code },
     })
 
     harness.emitStatus({ connection: 'online' })

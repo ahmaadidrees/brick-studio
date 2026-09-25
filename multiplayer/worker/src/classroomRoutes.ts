@@ -35,6 +35,13 @@ const json = (value: unknown, status = 200) =>
       "cache-control": "no-store",
     },
   });
+function socketRefusal(code: number, reason: string): Response {
+  const pair = new WebSocketPair();
+  const [client, server] = Object.values(pair);
+  server.accept();
+  server.close(code, reason);
+  return new Response(null, { status: 101, webSocket: client });
+}
 export function allowedOrigin(origin: string | null): boolean {
   // Non-browser clients may omit Origin; the literal opaque origin "null" is
   // rejected. Authentication/capability checks still apply without the header.
@@ -483,6 +490,13 @@ export async function handleReleaseRequest(
     });
     return outgoing(response ?? json({ code: "not_found" }, 404), origin);
   } catch (error) {
+    if (external.headers.get("Upgrade")?.toLowerCase() === "websocket"
+        && /^\/worlds\/[a-fA-F0-9-]+\/connect$/.test(new URL(external.url).pathname)) {
+      const terminal = error instanceof ClassroomHttpError && error.status >= 400 && error.status < 500
+        && error.status !== 408 && error.status !== 429;
+      return socketRefusal(terminal ? 4003 : 4006,
+        terminal ? "Classroom access changed. Rejoin from My Class." : "Live world unavailable. Retrying.");
+    }
     if (error instanceof ClassroomBodyError)
       return outgoing(
         json({ error: error.message, code: error.code }, error.status),

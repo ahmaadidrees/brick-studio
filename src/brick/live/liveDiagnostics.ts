@@ -14,6 +14,7 @@ const CONNECTION_STATES = ['connecting', 'online', 'reconnecting', 'offline'] as
 const ERROR_CODES = [
   'session_replaced', 'changes_need_review', 'connection_error', 'sync_timeout', 'connection_timeout',
   'access_changed', 'classroom_auth_required', 'reconnecting', 'invalid_json',
+  'heartbeat_timeout', 'world_full', 'world_locked', 'world_not_found', 'client_update_required',
   'unsupported_message', 'too_many_pending_operations', 'commands_too_large',
   'document_too_large', 'message_too_large', 'text_messages_only', 'rate_limited',
   'unsupported_protocol', 'unknown_message', 'owner_only', 'invalid_mode',
