@@ -1,6 +1,6 @@
 import type { ClassroomWorld } from '../classroom/contracts'
 import { House, LoaderCircle, LogIn, Play } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { COURSES, courseById } from '@brick-studio/platformer-core/levels/courses'
 import type { RoomInfo } from '@brick-studio/platformer-core/net/protocol'
@@ -16,6 +16,9 @@ import { Home2D } from './ui/Home2D'
 import { ownerTokenFor, saveGuestName, savedGuestName } from './ui/prefs'
 import { decodeShareCode } from './ui/shareCode'
 import './ui/platformer.css'
+
+/** The code lab (/2d/lab) is its own chunk: Blockly loads only there. */
+const LabApp = lazy(() => import('./lab/LabApp'))
 
 /** The /2d chunk: one page per load, like the rest of the app (every navigation is a full page load). */
 export default function PlatformerApp() {
@@ -33,6 +36,12 @@ export default function PlatformerApp() {
       return <GuestRoomPage roomId={route.roomId} />
     case 'classroom':
       return <ClassRoomPage worldId={route.worldId} />
+    case 'lab':
+      return (
+        <Suspense fallback={<Notice title="Opening the code lab…" busy />}>
+          <LabApp />
+        </Suspense>
+      )
     default:
       return (
         <Notice title="We couldn't find that page">

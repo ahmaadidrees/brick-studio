@@ -95,12 +95,15 @@ export const RECIPES: readonly Recipe[] = [
 
 export const recipeById = (id: string) => RECIPES.find((r) => r.id === id)
 
-/** Double jump: one more jump in the air, back again on landing. Added to your moves. */
+/**
+ * Double jump: one more jump in the air. "jumps" counts the jumps made in the air since you last landed (memory
+ * starts at 0, so it works at once); landing sets it back to 0. "< 2" would give a triple jump.
+ */
 export const doubleJumpScripts = (): ScriptNode[] => [
-  when.land(setMem('my', 'jumps', 1)),
+  when.land(setMem('my', 'jumps', 0)),
   when.key(
     'space',
-    ifThen(and(not(onGround()), compare(mem('my', 'jumps'), '>', 0)), setSpeed('me', 'up', 4.5), changeMem('my', 'jumps', -1), sound('hop')),
+    ifThen(and(not(onGround()), compare(mem('my', 'jumps'), '<', 1)), setSpeed('me', 'up', 4.5), changeMem('my', 'jumps', 1), sound('hop')),
   ),
 ]
 

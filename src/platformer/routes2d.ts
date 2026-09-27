@@ -7,6 +7,7 @@
  *   /2d/play/<course>      play a course        /2d/play#l=<code> play a level from a share link
  *   /2d/r/<room>           a guest room (32 hex digits)
  *   /2d/w/<world>          a class level's live room (its world id, with or without dashes)
+ *   /2d/lab                the code lab: every brick (and you) is a block program (single player, this browser only)
  */
 
 export type Route2D =
@@ -16,6 +17,7 @@ export type Route2D =
   | { kind: 'shared'; code: string | null }
   | { kind: 'guest'; roomId: string }
   | { kind: 'classroom'; worldId: string }
+  | { kind: 'lab' }
   | { kind: 'not-found' }
 
 /** A world id with dashes, from either spelling; null for anything else. */
@@ -29,6 +31,7 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
   const path = pathname.replace(/\/+$/, '') || '/'
   const query = new URLSearchParams(search)
   if (path === '/2d') return { kind: 'home' }
+  if (path === '/2d/lab') return { kind: 'lab' }
   if (path === '/2d/build') {
     const world = query.get('world')?.trim() || undefined
     const draft = query.get('draft')?.trim() || undefined

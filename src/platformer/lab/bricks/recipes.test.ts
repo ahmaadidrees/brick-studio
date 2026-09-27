@@ -44,11 +44,11 @@ describe('1 · double jump', () => {
   it('gives exactly one extra jump, back again after landing', () => {
     const h = labHarness(applyRecipe(starterDoc(), 'double-jump').doc, flatLevel(60))
     h.run(10)
-    expect(h.player.mem.jumps).toBe(1)
+    expect(h.player.mem.jumps ?? 0).toBe(0)
     h.step({ space: true }, ['space'])
     h.run(12, { space: true })
     h.step({ space: true }, ['space'])
-    expect(h.player.mem.jumps).toBe(0)
+    expect(h.player.mem.jumps).toBe(1)
     expect(h.player.vy).toBeLessThan(0)
     h.run(10, { space: true })
     const vy = h.player.vy
@@ -56,6 +56,16 @@ describe('1 · double jump', () => {
     expect(h.player.vy).toBeGreaterThanOrEqual(vy)
     h.run(120)
     expect(h.player.onGround).toBe(true)
+    expect(h.player.mem.jumps).toBe(0)
+  })
+
+  it('works the moment you add it, while you stand there (no landing needed first)', () => {
+    const h = labHarness(starterDoc(), flatLevel(60))
+    h.run(30)
+    h.setDoc(applyRecipe(h.book.doc, 'double-jump').doc)
+    h.step({ space: true }, ['space'])
+    h.run(12, { space: true })
+    h.step({ space: true }, ['space'])
     expect(h.player.mem.jumps).toBe(1)
   })
 })

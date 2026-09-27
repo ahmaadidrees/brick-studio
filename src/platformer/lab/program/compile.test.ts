@@ -5,6 +5,7 @@ import { carProgram, ledgeWalkerProgram, rocketProgram } from '../bricks/recipes
 import { applyRecipe, starterDoc, brickDef, allBricks } from '../level/doc'
 import { LAB_BLOCK_DEFINITIONS, labToolbox, createBlockDefinitions } from './catalog'
 import { compileProgram, describeIR, listKey } from './compile'
+import { programText } from './text'
 import { LAB_LIMITS, type CompileContext } from './types'
 
 const ctx = (): CompileContext => ({ bricks: allBricks(starterDoc()).map((b) => ({ id: b.id, name: b.name })).concat([{ id: 'car', name: 'Car' }, { id: 'rocket', name: 'Rocket' }]) })
@@ -120,5 +121,31 @@ describe('compiling', () => {
     expect(tooDeep.diagnostics[0].code).toBe('program.too-big')
     const many = program('m', when.appear(...Array.from({ length: LAB_LIMITS.maxBlocks }, () => remove('me'))))
     expect(compileProgram(many, ctx()).diagnostics[0].code).toBe('program.too-big')
+  })
+})
+
+describe('the text views', () => {
+  it('print the Walker as JavaScript and as Python, from the same IR the runtime runs', () => {
+    const walker = BUILTIN_BRICKS.find((b) => b.id === 'walker')!
+    const ir = compileProgram(walker.program, ctx()).ir
+    const js = programText(ir, 'js', ctx().bricks)
+    const py = programText(ir, 'py', ctx().bricks)
+    expect(js).toContain('when("appear", async () => {')
+    expect(js).toContain('me.setSpeed("forward", 0.5)')
+    expect(js).toContain('if (isThere("wall", "ahead")) {')
+    expect(js).toContain('when("touch", "Walker", "on my side", async (them) => {')
+    expect(py).toContain('@when_appear()')
+    expect(py).toContain('while True:')
+    expect(py).toContain('me.set_speed("forward", 0.5)')
+    expect(py).toContain('def script_3(them):')
+  })
+
+  it('print every built-in and recipe without trouble', () => {
+    const doc = starterDoc()
+    const programs: unknown[] = [...BUILTIN_BRICKS.map((b) => b.program), carProgram(), rocketProgram(), ledgeWalkerProgram(), brickDef(applyRecipe(doc, 'throw').doc, 'you')!.program]
+    for (const p of programs) {
+      const ir = compileProgram(p, ctx()).ir
+      for (const lang of ['js', 'py'] as const) expect(programText(ir, lang, ctx().bricks).length).toBeGreaterThan(20)
+    }
   })
 })

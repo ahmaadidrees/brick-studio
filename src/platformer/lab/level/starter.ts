@@ -5,8 +5,9 @@ import type { LabLevel, PlacedThing } from '../sim/world'
  * The lab's starter level, left to right:
  *
  *   x 0–4     an island with coins, across a 12-brick lava gap: too far for one jump, easy with a double jump
+ *   x 17      a curb, so Walkers turn back before the gap
  *   x 19      the start
- *   x 22–31   a ? block, coins, a spring, a crate
+ *   x 22–29   a ? block, coins, a spring
  *   x 34–54   two ledges with Walkers on them (built-in Walkers walk off the ends)
  *   x 57      a moving platform
  *   x 62–100  a long flat road with Walkers, a Flyer and a Spiky: room to drive and to throw
@@ -33,6 +34,8 @@ export function starterLevel(): LabLevel {
   // The gap: open above, lava at the bottom.
   fill(GAP.from, GAP.to, H - 2, H - 2, T.EMPTY)
   fill(GAP.from, GAP.to, H - 1, H - 1, T.LAVA)
+  // A curb at the gap's edge: Walkers turn back at it instead of walking into the lava.
+  fill(GAP.to + 1, GAP.to + 1, H - 3, H - 3, T.HARD)
   // Two ledges for the Walkers.
   fill(34, 41, 16, 16, T.BRICK)
   fill(45, 54, 12, 12, T.BRICK)
@@ -46,7 +49,6 @@ export function starterLevel(): LabLevel {
   put('qblock', 22, 16)
   for (let x = 24; x <= 27; x++) put('coin', x, 17)
   put('spring', 29, 19)
-  put('crate', 31, 19)
   put('walker', 36, 15, 1)
   put('walker', 48, 11, -1)
   put('walker', 44, 19, -1)

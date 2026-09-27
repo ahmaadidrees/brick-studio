@@ -16,6 +16,8 @@ describe('2D routes', () => {
     expect(at('/2d/play/workshop')).toEqual({ kind: 'course', id: 'workshop' })
     expect(at('/2d/play#l=abc')).toEqual({ kind: 'shared', code: 'abc' })
     expect(at('/2d/r/' + 'a'.repeat(32))).toEqual({ kind: 'guest', roomId: 'a'.repeat(32) })
+    expect(at('/2d/lab')).toEqual({ kind: 'lab' })
+    expect(at('/2d/lab/')).toEqual({ kind: 'lab' })
     expect(at('/2d/nope')).toEqual({ kind: 'not-found' })
     expect(at('/2d/r/short')).toEqual({ kind: 'not-found' })
   })

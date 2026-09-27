@@ -52,6 +52,14 @@ describe('the starter level runs', () => {
     expect(fell).toBe(true)
   })
 
+  it('keeps its creatures: the curb turns Walkers back before the lava gap', () => {
+    const h = labHarness()
+    h.run(60 * 60 * 3)
+    expect(h.ofBrick('walker')).toHaveLength(5)
+    expect(h.ofBrick('spiky')).toHaveLength(1)
+    expect(h.ofBrick('flyer')).toHaveLength(1)
+  })
+
   it('launches you off a spring, higher when you hold space', () => {
     const heights: number[] = []
     for (const hold of [false, true]) {

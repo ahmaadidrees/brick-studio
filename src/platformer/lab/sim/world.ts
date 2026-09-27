@@ -1,4 +1,4 @@
-import { TS } from '@brick-studio/platformer-core/engine/constants'
+import { SUB, TS } from '@brick-studio/platformer-core/engine/constants'
 import type { Theme } from '@brick-studio/platformer-core/engine/level'
 import { decodeRuns, encodeRuns } from '@brick-studio/platformer-core/engine/level'
 import { TILE_ID_COUNT } from '@brick-studio/platformer-core/engine/tiles'
@@ -102,7 +102,10 @@ export function advance(w: LabWorld, host: LabHost, input: LabInput = NO_KEYS, t
     t.ox = t.x
     t.oy = t.y
   }
-  for (const t of w.things) if (!t.removed && t.hero && !t.riding) heroStep(t, w.input, host.feel)
+  for (const t of w.things) {
+    if (t.removed || !t.hero || t.riding) continue
+    if (heroStep(t, w.input, host.feel)) w.effects.push({ kind: 'sound', sound: 'hop', x: (t.x + t.w / 2) / SUB, y: (t.y + t.h) / SUB })
+  }
   const solids = solidsFor(w)
   for (const t of physicsOrder(w)) if (stepBody(w, t, solids)) t.events.push({ kind: 'land' })
   for (const t of w.things) {

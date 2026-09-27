@@ -83,7 +83,7 @@ function moveAlongY(w: LabWorld, t: Thing, dy: number, solids: readonly Thing[])
  * The player's controls (engine/player.ts's horizontal speed, jump and gravity, without crouching, the run meter
  * and wall jumps). Speeds are scaled by the thing's run speed and jump power; gravity and friction by its body.
  */
-export function heroStep(t: Thing, input: LabInput, f: FeelSub) {
+export function heroStep(t: Thing, input: LabInput, f: FeelSub): boolean {
   const hs = t.hs
   const run = input.held.x
   const dir = (input.held.right ? 1 : 0) - (input.held.left ? 1 : 0)
@@ -115,7 +115,9 @@ export function heroStep(t: Thing, input: LabInput, f: FeelSub) {
   if (input.pressed.includes('space')) hs.buffer = f.bufferFrames + 1
   if (t.onGround) hs.coyote = f.coyoteFrames
   else if (hs.coyote > 0) hs.coyote--
+  let jumped = false
   if (hs.buffer > 0 && (t.onGround || hs.coyote > 0)) {
+    jumped = true
     const speed = Math.abs(t.vx)
     const tier = speed < sub(1) ? 0 : speed < sub(2.25) ? 1 : speed < sub(3.25) ? 2 : 3
     t.vy = -Math.round((f.jump[tier] * t.jumpPct) / 100)
@@ -134,6 +136,7 @@ export function heroStep(t: Thing, input: LabInput, f: FeelSub) {
   if (t.vy >= 0) hs.jumping = false
   const maxFall = Math.round(f.maxFall * Math.max(1, g))
   if (g > 0 && t.vy > maxFall) t.vy = Math.max(maxFall, t.vy - sub(0.5))
+  return jumped
 }
 
 /** A fresh jump for a hero launched upward by a script: holding space carries it higher, like a normal jump. */
