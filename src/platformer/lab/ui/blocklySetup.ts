@@ -11,12 +11,27 @@ import { BLOCK_CATEGORY, CATEGORY_COLOURS, LAB_BLOCK_DEFINITIONS, createBlockDef
 
 let ready = false
 let activeProvider: OptionsProvider | null = null
+let activeVariableOptions: ((current: string | null) => [string, string][]) | null = null
+let activeOpenDefinition: ((name: string) => void) | null = null
 const trampoline: OptionsProvider = (menu, current) => (activeProvider ? activeProvider(menu, current) : [])
+const variableTrampoline = (current: string | null): [string, string][] => activeVariableOptions?.(current) ?? [['points', 'points']]
+
+export function setVariableOptionsProvider(provider: (current: string | null) => [string, string][]): () => void {
+  activeVariableOptions = provider
+  return () => { if (activeVariableOptions === provider) activeVariableOptions = null }
+}
 
 export function setOptionsProvider(provider: OptionsProvider): () => void {
   activeProvider = provider
   return () => {
     if (activeProvider === provider) activeProvider = null
+  }
+}
+
+export function setDefinitionOpener(opener: (name: string) => void): () => void {
+  activeOpenDefinition = opener
+  return () => {
+    if (activeOpenDefinition === opener) activeOpenDefinition = null
   }
 }
 
@@ -43,8 +58,21 @@ export function ensureBlocklyReady() {
   ready = true
   Blockly.setLocale(En as unknown as Record<string, string>)
   Blockly.registry.register(Blockly.registry.Type.TOOLBOX_ITEM, Blockly.ToolboxCategory.registrationName, RailCategory, true)
+  Blockly.Extensions.register('lab_say_text_limit', function () {
+    this.getField('TEXT')?.setValidator((value) => typeof value === 'string' ? value.slice(0, 120) : null)
+  })
   for (const d of LAB_BLOCK_DEFINITIONS) delete Blockly.Blocks[d.type]
-  Blockly.defineBlocksWithJsonArray(createBlockDefinitions(trampoline) as unknown as Parameters<typeof Blockly.defineBlocksWithJsonArray>[0])
+  Blockly.defineBlocksWithJsonArray(createBlockDefinitions(trampoline, variableTrampoline) as unknown as Parameters<typeof Blockly.defineBlocksWithJsonArray>[0])
+  const callDefinition = Blockly.Blocks.lab_call as { customContextMenu?: (this: Blockly.Block, options: Array<{ text: string; enabled: boolean; callback: () => void }>) => void }
+  callDefinition.customContextMenu = function (options) {
+    const name = this.getFieldValue('NAME')?.trim()
+    const hasDefinition = !!name && this.workspace.getTopBlocks(false).some((b) => b.type === 'lab_define' && b.getFieldValue('NAME')?.trim() === name)
+    options.push({
+      text: `Open “${name}” definition`,
+      enabled: hasDefinition,
+      callback: () => activeOpenDefinition?.(name),
+    })
+  }
   installInkText()
 }
 

@@ -40,6 +40,8 @@ export function createLabWorld(level: LabLevel, host: LabHost, seed = 20260926):
     things: [],
     nextId: 1,
     playerId: 0,
+    variables: {},
+    messages: [],
     start: { ...level.start },
     seed: seed >>> 0,
     input: NO_KEYS,
@@ -49,16 +51,24 @@ export function createLabWorld(level: LabLevel, host: LabHost, seed = 20260926):
   const p = spawnThing(w, host, PLAYER_BRICK, level.start.x * TS + TS / 2, (level.start.y + 1) * TS, 1, 0)
   w.playerId = p.id
   for (const o of level.things) {
+    if (o.brick === 'world') continue
     const info = host.brick(o.brick)
     const spot = placedSpot(info?.costume ?? 'crate', o.x, o.y)
     spawnThing(w, host, o.brick, spot.cx, spot.bottom, o.dir, o.id)
+  }
+  if (host.brick('world')) {
+    const controller = spawnThing(w, host, 'world', 0, 0, 1, 0)
+    controller.system = true
+    controller.gravity = 0
+    controller.solid = 0
+    w.worldId = controller.id
   }
   return w
 }
 
 /** Things stand on things: move what carries first. */
 function physicsOrder(w: LabWorld): Thing[] {
-  const list = w.things.filter((t) => !t.removed && !t.riding)
+  const list = w.things.filter((t) => !t.removed && !t.riding && !t.system)
   const depth = new Map<number, number>()
   for (const t of list) {
     let n = 0
@@ -85,6 +95,11 @@ export function advance(w: LabWorld, host: LabHost, input: LabInput = NO_KEYS, t
   w.effects = []
   w.notes = []
   w.input = input
+  if (w.messages?.length) {
+    const due = w.messages.filter((m) => m.deliverTick <= w.tick)
+    w.messages = w.messages.filter((m) => m.deliverTick > w.tick)
+    for (const t of w.things) if (!t.removed) for (const m of due) t.events.push({ kind: 'message', message: m.name })
+  }
   const budget = { left: LAB_LIMITS.opsPerTick }
   // Things made this frame take their first turn this frame too, before anything moves.
   for (let i = 0; i < w.things.length; i++) {
@@ -103,22 +118,33 @@ export function advance(w: LabWorld, host: LabHost, input: LabInput = NO_KEYS, t
     t.oy = t.y
   }
   for (const t of w.things) {
-    if (t.removed || !t.hero || t.riding) continue
+    if (t.removed || t.system || !t.hero || !t.controlsEnabled || !t.physicsEnabled || t.riding) continue
     if (heroStep(t, w.input, host.feel)) w.effects.push({ kind: 'sound', sound: 'hop', x: (t.x + t.w / 2) / SUB, y: (t.y + t.h) / SUB })
   }
   const solids = solidsFor(w)
-  for (const t of physicsOrder(w)) if (stepBody(w, t, solids)) t.events.push({ kind: 'land' })
+  for (const t of physicsOrder(w)) if (t.physicsEnabled && stepBody(w, t, solids)) t.events.push({ kind: 'land' })
   for (const t of w.things) {
-    if (t.removed || !t.riding) continue
+    if (t.removed || t.system || !t.riding) continue
     const vehicle = findThing(w, t.riding)
     if (vehicle) seat(vehicle, t)
     else t.riding = 0
   }
   updateContacts(w)
 
+  for (const t of w.things) {
+    if (t.removed || !t.costumePlaying) continue
+    const count = host.brick(t.brick)?.appearance?.frames.length ?? 1
+    if (count <= 1) { t.costumeFrame = 1; continue }
+    t.costumeFrame = Math.max(1, Math.min(count, t.costumeFrame))
+    if (w.tick >= t.costumeFrameDue) {
+      t.costumeFrame = (t.costumeFrame % count) + 1
+      t.costumeFrameDue = w.tick + Math.max(1, Math.round(60 / Math.max(1, t.costumeFps)))
+    }
+  }
+
   const below = (w.height + 2) * TS
   for (const t of w.things) {
-    if (t.removed || t.riding || t.y <= below) continue
+    if (t.removed || t.system || t.riding || t.y <= below) continue
     if (t.id === w.playerId) {
       // Falling out hurts the player (their "when I get hurt" decides what that means); far below, back to the start.
       if (w.tick - t.hurtAt >= HURT_GRACE) {

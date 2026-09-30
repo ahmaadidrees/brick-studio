@@ -1,4 +1,5 @@
 import type { Costume } from '../program/types'
+import type { CostumeSet } from '../costumes/model'
 import {
   body,
   changeMem,
@@ -33,6 +34,8 @@ export interface BrickDef {
   /** Picked words, never typed. */
   name: string
   costume: Costume
+  /** Optional kid-painted frames; absent built-ins keep their original art. */
+  appearance?: CostumeSet
   /** The brick it was made from. */
   basedOn: string | null
   origin: 'builtin' | 'copy' | 'mine'
@@ -42,6 +45,17 @@ export interface BrickDef {
 }
 
 export const PLAYER_ID = 'you'
+export const WORLD_ID = 'world'
+
+const worldRules: BrickDef = {
+  id: WORLD_ID,
+  name: 'World rules',
+  costume: 'star',
+  basedOn: null,
+  origin: 'builtin',
+  blurb: 'Code for the whole level: share variables and send messages.',
+  program: program('world', when.appear()),
+}
 
 const you: BrickDef = {
   id: PLAYER_ID,
@@ -201,7 +215,7 @@ const crate: BrickDef = {
 }
 
 /** Built-in bricks, in library order ("You" first). */
-export const BUILTIN_BRICKS: readonly BrickDef[] = [you, walker, spiky, flyer, spring, qblock, platform, coin, goal, ball, crate]
+export const BUILTIN_BRICKS: readonly BrickDef[] = [you, worldRules, walker, spiky, flyer, spring, qblock, platform, coin, goal, ball, crate]
 export const builtinBrick = (id: string): BrickDef | undefined => BUILTIN_BRICKS.find((b) => b.id === id)
 
 /** A blank program for a brand-new brick. */

@@ -37,7 +37,7 @@ export class ProgramBook implements LabHost {
 
   brick(id: string): BrickInfo | null {
     const def = brickDef(this.doc, id)
-    return def ? { id, costume: def.costume, lineage: lineage(this.doc, id) } : null
+    return def ? { id, costume: def.costume, appearance: def.appearance, lineage: lineage(this.doc, id) } : null
   }
 
   /**

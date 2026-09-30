@@ -67,6 +67,12 @@ export function programText(ir: ProgramIR, lang: TextLanguage, bricks: readonly 
         return method('me', 'distance to', WHO_JS[e.who])
       case 'memory':
         return `${e.scope === 'my' ? 'me' : 'player'}.memory.${e.name}`
+      case 'variable':
+        return `${e.scope === 'my' ? 'me' : e.scope}.variables.${e.name}`
+      case 'argument':
+        return e.name
+      case 'position':
+        return `${WHO_JS[e.who]}.${e.axis}`
     }
   }
 
@@ -98,12 +104,32 @@ export function programText(ir: ProgramIR, lang: TextLanguage, bricks: readonly 
         return line(d, method('me', 'face', quote(s.toward)))
       case 'moveTo':
         return line(d, method(s.who, 'move to', quote(s.place)))
+      case 'moveXY':
+        return line(d, method(s.who, 'move to', expr(s.x), expr(s.y)))
+      case 'setControls':
+        return line(d, method(s.who, 'set controls', bool(s.enabled)))
+      case 'setPhysics':
+        return line(d, method(s.who, 'set physics', bool(s.enabled)))
+      case 'setVisible':
+        return line(d, method(s.who, s.visible ? 'show' : 'hide'))
+      case 'frame':
+        return line(d, `me.costumeFrame = ${expr(s.frame)}`)
+      case 'nextFrame':
+        return line(d, method('me', 'next costume frame'))
+      case 'playFrames':
+        return line(d, method('me', 'play costume frames', expr(s.fps)))
+      case 'stopFrames':
+        return line(d, method('me', 'stop costume frames'))
+      case 'sayText':
+        return line(d, method('me', 'say', quote(s.text), expr(s.seconds)))
       case 'hero':
         return line(d, method('me', s.on ? 'run and jump with keys' : 'stop running with keys'))
       case 'heroStat':
         return line(d, `me.${camel(s.stat === 'jump' ? 'jump power' : 'run speed', lang)} = ${expr(s.percent)}`)
       case 'make':
         return line(d, `it = ${call('make', quote(brickName(s.brick)), quote(s.place))}`)
+      case 'makeXY':
+        return line(d, `it = ${call('make at', quote(brickName(s.brick)), expr(s.x), expr(s.y))}`)
       case 'remove':
         return line(d, method(s.who, 'remove'))
       case 'hurt':
@@ -132,6 +158,14 @@ export function programText(ir: ProgramIR, lang: TextLanguage, bricks: readonly 
         return line(d, `${s.scope === 'my' ? 'me' : 'player'}.memory.${s.name} = ${expr(s.value)}`)
       case 'changeMemory':
         return line(d, `${s.scope === 'my' ? 'me' : 'player'}.memory.${s.name} += ${expr(s.by)}`)
+      case 'setVariable':
+        return line(d, `${s.scope === 'my' ? 'me' : s.scope}.variables.${s.name} = ${expr(s.value)}`)
+      case 'changeVariable':
+        return line(d, `${s.scope === 'my' ? 'me' : s.scope}.variables.${s.name} += ${expr(s.by)}`)
+      case 'call':
+        return line(d, `${lang === 'js' ? 'await ' : ''}${s.name}(${s.args.map(expr).join(', ')})`)
+      case 'broadcast':
+        return line(d, call('broadcast', quote(s.message)))
       case 'wait':
         return line(d, lang === 'py' ? `wait(${expr(s.seconds)})` : `await wait(${expr(s.seconds)})`)
       case 'waitUntil':
@@ -171,6 +205,10 @@ export function programText(ir: ProgramIR, lang: TextLanguage, bricks: readonly 
         return `touch, ${q(target(t.target), t.side === 'any' ? 'anywhere' : `on my ${t.side}`)}`
       case 'every':
         return `every, ${t.seconds}`
+      case 'message':
+        return `message, ${q(t.message)}`
+      case 'clicked':
+        return 'clicked'
       default:
         return t.kind === 'stomped' ? 'stomped' : t.kind === 'land' ? 'land' : 'hurt'
     }
@@ -190,5 +228,16 @@ export function programText(ir: ProgramIR, lang: TextLanguage, bricks: readonly 
     }
     lines.push('')
   })
+  for (const procedure of ir.procedures ?? []) {
+    if (lang === 'py') {
+      lines.push(`def ${procedure.name}(${procedure.params.join(', ')}):`)
+      block(procedure.body, 1)
+    } else {
+      lines.push(`async function ${procedure.name}(${procedure.params.join(', ')}) {`)
+      block(procedure.body, 1)
+      lines.push('}')
+    }
+    lines.push('')
+  }
   return lines.join('\n').trimEnd() + '\n'
 }

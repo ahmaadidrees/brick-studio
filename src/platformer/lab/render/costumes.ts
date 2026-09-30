@@ -1,6 +1,7 @@
 import { INK, TONE, WHITE, brick, edge, eye, rr, shade, type G } from '../../render/cartoon/paint'
 import type { Skin, Sprite } from '../../render/skin'
 import type { Costume, LabColor } from '../program/types'
+import type { CostumeFrame, CostumeSet } from '../costumes/model'
 
 /*
  * Costume pictures. Creatures, blocks, springs, coins, the platform and the goal are the cartoon look's own art
@@ -254,9 +255,56 @@ export interface Placed {
   drop: number
 }
 
+const customCanvases = new WeakMap<CostumeFrame, HTMLCanvasElement>()
+const thumbnailCache = new WeakMap<CostumeFrame, Map<number, string>>()
+
+/** Turn one saved frame into a canvas once; its immutable frame object is the cache key. */
+export function costumeFrameCanvas(set: CostumeSet, frame: CostumeFrame): HTMLCanvasElement {
+  let canvas = customCanvases.get(frame)
+  if (canvas) return canvas
+  canvas = document.createElement('canvas')
+  canvas.width = set.width
+  canvas.height = set.height
+  const g = canvas.getContext('2d')
+  if (g) {
+    const data = g.createImageData(set.width, set.height)
+    for (let i = 0; i < set.width * set.height; i++) {
+      const at = i * 8
+      const out = i * 4
+      for (let c = 0; c < 4; c++) data.data[out + c] = parseInt(frame.pixels.slice(at + c * 2, at + c * 2 + 2), 16)
+    }
+    g.putImageData(data, 0, 0)
+  }
+  customCanvases.set(frame, canvas)
+  return canvas
+}
+
+export function costumeThumbnail(set: CostumeSet, px = 64): string {
+  return costumeFrameThumbnail(set, 0, px)
+}
+
+export function costumeFrameThumbnail(set: CostumeSet, index: number, px = 64): string {
+  const frame = set.frames[index] ?? set.frames[0]
+  if (!frame || px < 1) return ''
+  const cached = thumbnailCache.get(frame)?.get(px)
+  if (cached) return cached
+  const c = document.createElement('canvas')
+  c.width = c.height = px
+  const g = c.getContext('2d')
+  if (!g) return ''
+  g.imageSmoothingEnabled = false
+  g.drawImage(costumeFrameCanvas(set, frame), 0, 0, px, px)
+  const url = c.toDataURL()
+  const bySize = thumbnailCache.get(frame) ?? new Map<number, string>()
+  bySize.set(px, url)
+  thumbnailCache.set(frame, bySize)
+  return url
+}
+
 /** Pictures for costumes at a skin's scale, cached (with their colors and their mirror images). */
 export class CostumeArt {
   private cache = new Map<string, Sprite>()
+  private customCache = new WeakMap<CostumeFrame, Map<string, Sprite>>()
 
   constructor(readonly scale: number) {}
 
@@ -356,6 +404,54 @@ export class CostumeArt {
     if (color !== 'none') s = this.tinted(key, s, color)
     return { sprite: s, drop: DRAWN[costume]?.drop ?? 0 }
   }
+
+  /** A kid's painted frame, anchored like the original art and scaled by the original art's outer extent. */
+  custom(set: CostumeSet, index: number, facing: 1 | -1, color: LabColor, side: number): Placed | null {
+    if (!set.frames.length) return null
+    const frame = set.frames[((index % set.frames.length) + set.frames.length) % set.frames.length]
+    const key = `${facing}|${color}|${side}`
+    let variants = this.customCache.get(frame)
+    if (!variants) {
+      variants = new Map()
+      this.customCache.set(frame, variants)
+    }
+    const hit = variants.get(key)
+    if (hit) return { sprite: hit, drop: 0 }
+    const source = costumeFrameCanvas(set, frame)
+    const target = document.createElement('canvas')
+    target.width = set.width
+    target.height = set.height
+    const g = target.getContext('2d')
+    if (!g) return null
+    g.imageSmoothingEnabled = false
+    if (facing < 0) {
+      g.translate(set.width, 0)
+      g.scale(-1, 1)
+    }
+    g.drawImage(source, 0, 0)
+    g.setTransform(1, 0, 0, 1, 0, 0)
+    if (color !== 'none') {
+      if (color === 'white' || color === 'black') {
+        g.globalCompositeOperation = 'source-atop'
+        g.globalAlpha = 0.62
+        g.fillStyle = COLOR_HEX[color]
+        g.fillRect(0, 0, set.width, set.height)
+      } else {
+        const mask = document.createElement('canvas')
+        mask.width = set.width
+        mask.height = set.height
+        mask.getContext('2d')?.drawImage(target, 0, 0)
+        g.globalCompositeOperation = 'color'
+        g.fillStyle = COLOR_HEX[color]
+        g.fillRect(0, 0, set.width, set.height)
+        g.globalCompositeOperation = 'destination-in'
+        g.drawImage(mask, 0, 0)
+      }
+    }
+    const sprite: Sprite = { img: target, w: side, h: side, ox: 0, oy: 0 }
+    variants.set(key, sprite)
+    return { sprite, drop: 0 }
+  }
 }
 
 /** A plain-paint preview of a costume for menus and lists (a data URL), at `px` pixels square. */
@@ -375,4 +471,3 @@ export function costumePreview(skin: Skin, art: CostumeArt, costume: Costume, co
   g.drawImage(s.img, (px - w) / 2, (px - h) / 2, w, h)
   return c.toDataURL()
 }
-

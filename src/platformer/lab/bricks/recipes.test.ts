@@ -278,6 +278,6 @@ describe('5 · Walkers that turn at ledges (editing the built-in)', () => {
   })
 })
 
-it('ships all five as recipes', () => {
-  expect(RECIPES.map((r) => r.id)).toEqual(['double-jump', 'throw', 'car', 'rocket', 'ledge-walker'])
+it('keeps the original eight and adds both student-authoring journeys', () => {
+  expect(RECIPES.map((r) => r.id)).toEqual(['double-jump', 'throw', 'car', 'rocket', 'ledge-walker', 'returning-ball', 'traffic-signal', 'reusable-patrol', 'programmable-car', 'react-character'])
 })

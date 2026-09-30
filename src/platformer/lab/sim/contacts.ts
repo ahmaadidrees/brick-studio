@@ -76,7 +76,7 @@ function tileKeys(w: LabWorld, t: Thing, out: string[]) {
 
 /** Work out every thing's contacts; queue touch and stomp events for what is new. */
 export function updateContacts(w: LabWorld) {
-  const live = w.things.filter((t) => !t.removed && !t.riding)
+  const live = w.things.filter((t) => !t.removed && !t.riding && !t.system)
   const keys = new Map<number, string[]>()
   for (const t of live) keys.set(t.id, [])
   const stomps: [Thing, Thing][] = []
@@ -111,7 +111,7 @@ export function updateContacts(w: LabWorld) {
     // Only a new top contact is a stomp (its touch event was just queued above).
     if (under.events.some((e) => e.kind === 'touch' && e.other === onTop.id && e.side === 'top')) under.events.push({ kind: 'stomped', other: onTop.id })
   }
-  for (const t of w.things) if (t.removed || t.riding) t.contacts = []
+  for (const t of w.things) if (t.removed || t.riding || t.system) t.contacts = []
 }
 
 /** Does a touch (a thing, or a tile kind) match what a script looks for? */

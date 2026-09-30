@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button, Sheet } from '../../../ui'
-import type { BrickDef } from '../bricks/builtins'
+import { WORLD_ID, type BrickDef } from '../bricks/builtins'
 import { RECIPES, type RecipeId } from '../bricks/recipes'
 import { NAME_WORDS, type NameWord } from '../level/doc'
 import { COSTUME_LABELS } from '../program/catalog'
@@ -10,8 +10,8 @@ import { costumeIcon } from './previews'
 
 /** "Add a brick": every brick there is, and making a new one. */
 export function LibrarySheet({ open, bricks, onClose, onPick, onNew }: { open: boolean; bricks: BrickDef[]; onClose: () => void; onPick: (id: string) => void; onNew: () => void }) {
-  const builtins = bricks.filter((b) => b.origin !== 'mine' && b.id !== 'you')
-  const mine = bricks.filter((b) => b.origin === 'mine')
+  const builtins = bricks.filter((b) => b.origin !== 'mine' && b.id !== 'you' && b.id !== WORLD_ID)
+  const mine = bricks.filter((b) => b.origin === 'mine' && b.id !== WORLD_ID)
   const card = (b: BrickDef) => (
     <li key={b.id}>
       <button type="button" className="lab-card" onClick={() => onPick(b.id)}>
@@ -52,12 +52,14 @@ export function LibrarySheet({ open, bricks, onClose, onPick, onNew }: { open: b
   )
 }
 
-/** "I want to…": the five examples. */
+/** "I want to…": runnable examples made from the same blocks as the palette. */
 export function RecipesSheet({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (id: RecipeId) => void }) {
+  const featured = ['programmable-car', 'react-character']
+  const recipes = [...RECIPES].sort((a, b) => Number(!featured.includes(a.id)) - Number(!featured.includes(b.id)))
   return (
     <Sheet open={open} onClose={onClose} title="I want to…" description="Each one is made of the same blocks you have. Open it, try it, change it." size="lg">
       <ul className="lab-recipes">
-        {RECIPES.map((r) => (
+        {recipes.map((r) => (
           <li key={r.id} className="lab-recipe">
             <div>
               <strong className="lab-recipe-want">…{r.want}</strong>
@@ -74,6 +76,52 @@ export function RecipesSheet({ open, onClose, onPick }: { open: boolean; onClose
           </li>
         ))}
       </ul>
+    </Sheet>
+  )
+}
+
+/** Small, in-place examples for the less obvious building blocks. */
+export function CodeHelpSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Sheet open={open} onClose={onClose} title="How to make your own code" description="Drag blocks from the colored categories into a script. Tap or hover over a block for its own tip." size="lg">
+      <div className="lab-code-help">
+        <section>
+          <h3>Remember a number</h3>
+          <p>Open Variables. Set <strong>my</strong> fuel for one thing, <strong>the player’s</strong> score for the player, or <strong>the world’s</strong> coins for everyone. Type the same short name, like <strong>lapCount</strong>, on blocks that share a number.</p>
+        </section>
+        <section>
+          <h3>Make a block you can reuse</h3>
+          <p>Open My Blocks and drag out <strong>define</strong>. Give it a short name, like <strong>boost</strong>, then put steps inside it. Name up to three number inputs; leave the others blank. Drag out <strong>run my block</strong> and use the same name. Select that run block to open its definition.</p>
+        </section>
+        <section>
+          <h3>Send a message</h3>
+          <p>Open Events. <strong>Broadcast</strong> a message such as “go”, then use <strong>when I receive go</strong> to start code on this brick or another brick.</p>
+        </section>
+        <section>
+          <h3>Choose an exact spot</h3>
+          <p>Use <strong>position x/y</strong> to read where a thing is. <strong>Move to x/y</strong> and <strong>make at x/y</strong> use pixels: x goes across the stage, y goes down, and one brick is 16 pixels wide.</p>
+        </section>
+      </div>
+    </Sheet>
+  )
+}
+
+/** Two short learner journeys: draw an expressive character, then inspect a vehicle built from general blocks. */
+export function AuthoringTutorialSheet({ open, onClose, onStart }: { open: boolean; onClose: () => void; onStart: (id: 'react-character' | 'programmable-car') => void }) {
+  return (
+    <Sheet open={open} onClose={onClose} title="Make it yours" description="Start with a small idea, try it on the stage, then open its code and change a step." size="lg">
+      <div className="lab-code-help">
+        <section>
+          <h3>Draw a character that reacts</h3>
+          <p>Open the character’s look editor and draw two costume frames. Start this example, click your character, and watch it speak and change frame. Add another frame or edit its words.</p>
+          <Button variant="primary" onClick={() => onStart('react-character')}>Start character</Button>
+        </section>
+        <section>
+          <h3>Build a car you can ride</h3>
+          <p>Walk next to the car and press ↑. Its code uses a variable, key checks, and positions to carry you; ↓ puts you beside it and gives your controls back. Open the car to inspect each block.</p>
+          <Button variant="primary" onClick={() => onStart('programmable-car')}>Start car</Button>
+        </section>
+      </div>
     </Sheet>
   )
 }

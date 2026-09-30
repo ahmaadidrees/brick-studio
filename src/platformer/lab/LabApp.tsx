@@ -1,20 +1,23 @@
-import { ArrowLeft, Hammer, Lightbulb, Play, RotateCcw } from 'lucide-react'
+import { ArrowLeft, CircleHelp, Hammer, Lightbulb, Play, RotateCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { SegmentedControl } from '../../ui'
-import { PLAYER_ID } from './bricks/builtins'
+import { PLAYER_ID, WORLD_ID } from './bricks/builtins'
 import { recipeById, type RecipeId } from './bricks/recipes'
-import { allBricks, applyRecipe, backToOriginal, baseNoun, brickDef, newBrick, saveAsNewBrick, setProgram, starterDoc, type LabDoc, type NameWord } from './level/doc'
+import { allBricks, applyRecipe, backToOriginal, baseNoun, brickDef, newBrick, saveAsNewBrick, setProgram, setAppearance, starterDoc, type LabDoc, type NameWord } from './level/doc'
 import { clearLabDoc, loadLabDoc, saveLabDoc } from './level/storage'
-import { TARGET_BASE_OPTIONS, type Option, type OptionsProvider } from './program/catalog'
+import { SOUND_LABELS, TARGET_BASE_OPTIONS, type Option, type OptionsProvider } from './program/catalog'
+import { LAB_SOUNDS } from './program/types'
 import type { Costume, LabDiagnostic } from './program/types'
 import { LabSession, type BuildTool, type LabMode, type LabStatus } from './session'
 import { CodePanel, type CodePanelHandle } from './ui/CodePanel'
+import { CostumePanel } from './ui/CostumePanel'
 import { BuildTools, CodeHeader, CodeTools, LiveValues, Problems, ThingList, ViewToggle, type CodeView } from './ui/parts'
 import { programText } from './program/text'
-import { LibrarySheet, NewBrickSheet, RecipesSheet, SaveBrickSheet } from './ui/sheets'
+import { AuthoringTutorialSheet, CodeHelpSheet, LibrarySheet, NewBrickSheet, RecipesSheet, SaveBrickSheet } from './ui/sheets'
 import './lab.css'
 
-type SheetName = 'add' | 'recipes' | 'save' | 'new' | null
+type SheetName = 'add' | 'recipes' | 'save' | 'new' | 'help' | 'tutorial' | null
+type EditorTab = 'code' | 'costumes' | 'sounds'
 
 /**
  * /2d/lab: the code layer. Everything in the level is a program: the code of whatever is open sits on the left,
@@ -32,8 +35,10 @@ export default function LabApp() {
   const [notesVersion, setNotesVersion] = useState(0)
   const [sheet, setSheet] = useState<SheetName>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<'saving' | 'saved' | 'error'>('saving')
   const [tool, setToolState] = useState<BuildTool>({ kind: 'select' })
   const [view, setView] = useState<CodeView>('blocks')
+  const [editorTab, setEditorTab] = useState<EditorTab>('code')
   const [tidyAsked, setTidyAsked] = useState<{ n: number; reveal: string | null }>({ n: 0, reveal: null })
   const toastTimer = useRef(0)
 
@@ -76,18 +81,20 @@ export default function LabApp() {
 
   // Keep the lab in this browser, a moment after each change.
   useEffect(() => {
-    const t = window.setTimeout(() => saveLabDoc(doc), 500)
+    setSaveState('saving')
+    const t = window.setTimeout(() => setSaveState(saveLabDoc(doc) ? 'saved' : 'error'), 500)
     return () => window.clearTimeout(t)
   }, [doc])
 
   const bricks = useMemo(() => allBricks(doc), [doc])
   const def = brickDef(doc, open) ?? brickDef(doc, PLAYER_ID)!
+  const activeEditorTab = def.id === WORLD_ID ? 'code' : editorTab
 
   // The two level-dependent dropdowns: bricks to make, and things to touch.
   const bricksRef = useRef(bricks)
   bricksRef.current = bricks
   const options: OptionsProvider = useCallback((menu, current) => {
-    const list = bricksRef.current.filter((b) => b.id !== PLAYER_ID)
+    const list = bricksRef.current.filter((b) => b.id !== PLAYER_ID && b.id !== WORLD_ID)
     const out: Option[] = menu === 'brick' ? list.map((b) => [b.name, b.id]) : [...TARGET_BASE_OPTIONS, ...list.map((b) => [`a ${b.name}`, `brick:${b.id}`] as Option)]
     if (current && !out.some(([, v]) => v === current)) out.push([menu === 'brick' ? 'a brick that is gone' : 'something that is gone', current])
     return out
@@ -110,6 +117,7 @@ export default function LabApp() {
   }, [view, def.id, doc, bricks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const openBrick = useCallback((brick: string) => {
+    codeRef.current?.flush()
     setOpen(brick)
     sessionRef.current?.open(brick)
   }, [])
@@ -120,7 +128,7 @@ export default function LabApp() {
       if (!s) return
       const before = brickDef(s.doc, brick)
       s.setDoc(setProgram(s.doc, brick, workspace))
-      if (before?.origin === 'builtin' && brick !== PLAYER_ID) say(`This is your own ${before.name} now. Every ${before.name} here runs it. The original is safe.`)
+      if (before?.origin === 'builtin' && brick !== PLAYER_ID && brick !== WORLD_ID) say(`This is your own ${before.name} now. Every ${before.name} here runs it. The original is safe.`)
     },
     [say],
   )
@@ -136,6 +144,7 @@ export default function LabApp() {
   }, [tidyAsked])
 
   const setMode = (mode: LabMode) => {
+    codeRef.current?.flush()
     sessionRef.current?.setMode(mode)
     setStatus(sessionRef.current?.status() ?? null)
   }
@@ -147,6 +156,7 @@ export default function LabApp() {
   }
 
   const pickBrick = (brick: string) => {
+    codeRef.current?.flush()
     const s = sessionRef.current
     if (!s) return
     setSheet(null)
@@ -162,22 +172,26 @@ export default function LabApp() {
   }
 
   const showRecipe = (id: RecipeId) => {
+    codeRef.current?.flush()
     const s = sessionRef.current
     if (!s) return
     setSheet(null)
+    setEditorTab('code')
     const r = applyRecipe(s.doc, id)
     s.setDoc(r.doc)
     if (s.mode !== 'play') s.setMode('play')
     if (r.place) s.dismount()
     const placed = r.place ? s.addNear(r.place) : undefined
+    r.alsoPlace?.forEach((brick, index) => s.addNear(brick, -(index + 1) * 3))
     setOpen(r.open)
-    s.open(r.open, placed)
+    s.open(r.open, r.open === r.place ? placed : undefined)
     s.activate()
     setTidyAsked((t) => ({ n: t.n + 1, reveal: id === 'double-jump' ? 'dj-1' : id === 'throw' ? 'throw-1' : null }))
     say(recipeById(id)?.tryIt ?? '')
   }
 
   const saveNew = (word: NameWord) => {
+    codeRef.current?.flush()
     const s = sessionRef.current
     if (!s) return
     const from = open
@@ -190,6 +204,7 @@ export default function LabApp() {
   }
 
   const makeNew = (costume: Costume, word: NameWord | null) => {
+    codeRef.current?.flush()
     const s = sessionRef.current
     if (!s) return
     const r = newBrick(s.doc, costume, word)
@@ -209,10 +224,10 @@ export default function LabApp() {
   // "In this level": you first, then the bricks there, then the open brick if it has none there.
   const rows = useMemo(() => {
     const counts = status?.counts ?? []
-    const out: { def: NonNullable<ReturnType<typeof brickDef>>; count: number | null }[] = [{ def: brickDef(doc, PLAYER_ID)!, count: null }]
+    const out: { def: NonNullable<ReturnType<typeof brickDef>>; count: number | null }[] = [{ def: brickDef(doc, PLAYER_ID)!, count: null }, { def: brickDef(doc, WORLD_ID)!, count: null }]
     for (const [brick, count] of counts) {
       const d = brickDef(doc, brick)
-      if (d && brick !== PLAYER_ID) out.push({ def: d, count })
+      if (d && brick !== PLAYER_ID && brick !== WORLD_ID) out.push({ def: d, count })
     }
     if (!out.some((r) => r.def.id === def.id)) out.push({ def, count: 0 })
     return out
@@ -241,6 +256,10 @@ export default function LabApp() {
           ]}
         />
         <div className="lab-head-end">
+          <button type="button" className="lab-button" onClick={() => setSheet('tutorial')}>Try a project</button>
+          <button type="button" className="lab-button" onClick={() => setSheet('help')}>
+            <CircleHelp size={16} aria-hidden="true" /> How to…
+          </button>
           <button type="button" className="lab-button" onClick={() => sessionRef.current?.restart()}>
             <RotateCcw size={16} aria-hidden="true" /> Start again
           </button>
@@ -254,22 +273,54 @@ export default function LabApp() {
         <section className="lab-code" aria-label="Code">
           <CodeHeader
             def={def}
-            onOriginal={() => sessionRef.current?.setDoc(backToOriginal(sessionRef.current.doc, def.id))}
-            onSave={() => setSheet('save')}
+            instanceCount={status?.counts.find(([id]) => id === def.id)?.[1] ?? (def.id === PLAYER_ID ? 1 : 0)}
+            canMakeUnique={Boolean(status?.canMakeUnique && status.watch?.brick === def.id)}
+            onOriginal={() => {
+              codeRef.current?.flush()
+              if (sessionRef.current) sessionRef.current.setDoc(backToOriginal(sessionRef.current.doc, def.id))
+            }}
+            onSave={() => {
+              codeRef.current?.flush()
+              setSheet('save')
+            }}
+            onMakeUnique={() => {
+              codeRef.current?.flush()
+              const unique = sessionRef.current?.makeWatchedUnique()
+              if (unique) {
+                setOpen(unique)
+                say('This one now has its own code. Edit it here to make it different.')
+              }
+            }}
           />
-          <div className="lab-code-body">
+          {def.id !== WORLD_ID && <div className="lab-editor-tabs" role="tablist" aria-label="Edit this design">
+            {(['code', 'costumes', 'sounds'] as const).map((tab) => <button type="button" key={tab} role="tab" aria-selected={activeEditorTab === tab} onClick={() => {
+              codeRef.current?.flush()
+              setEditorTab(tab)
+            }}>{tab === 'code' ? 'Code' : tab === 'costumes' ? 'Costumes' : 'Sounds'}</button>)}
+          </div>}
+          {activeEditorTab === 'costumes' && <CostumePanel key={def.id} definition={def} onChange={(appearance) => {
+            const s = sessionRef.current
+            if (s) s.setDoc(setAppearance(s.doc, def.id, appearance))
+          }} />}
+          {activeEditorTab === 'sounds' && <div className="lab-sound-panel" role="tabpanel" aria-label="Sounds">
+            <h3>Try a sound</h3>
+            <p>Preview a sound here. In Code, open Sound and use “play sound” to add it to your creation.</p>
+            <div>{LAB_SOUNDS.map((sound) => <button type="button" className="lab-button" key={sound} onClick={() => sessionRef.current?.previewSound(sound)}><Play size={16} aria-hidden="true" />{SOUND_LABELS[sound]}</button>)}</div>
+          </div>}
+          {activeEditorTab === 'code' && <><div className="lab-code-body">
             <CodePanel ref={codeRef} brickId={def.id} program={def.program} options={options} optionsKey={optionsKey} diagnostics={diagnostics} onChange={onCodeChange} />
             {view === 'blocks' && <CodeTools onTidy={() => codeRef.current?.tidy()} onZoom={(n) => codeRef.current?.zoom(n)} />}
             <ViewToggle view={view} onView={setView} />
             {view !== 'blocks' && (
               <pre className="lab-text" aria-label={view === 'js' ? 'The code as JavaScript' : 'The code as Python'}>
-                <span className="lab-text-note">{view === 'js' ? '// ' : '# '}To read only: change the code with the blocks.</span>
+                <span className="lab-text-note">{view === 'js' ? '// ' : '# '}READ ONLY — change the code with the blocks.</span>
                 {'\n'}
                 {text}
               </pre>
             )}
           </div>
           <Problems diagnostics={diagnostics} onReveal={(id) => codeRef.current?.reveal(id)} />
+          </>}
         </section>
 
         <section className="lab-side" aria-label="Stage">
@@ -294,6 +345,9 @@ export default function LabApp() {
           <button type="button" className="lab-start-over" onClick={startOver}>
             Start the lab over
           </button>
+          <p className={`lab-save-state${saveState === 'error' ? ' lab-save-state-error' : ''}`} role={saveState === 'error' ? 'alert' : 'status'}>
+            {saveState === 'error' ? 'Could not save in this browser. Keep this tab open.' : saveState === 'saved' ? 'Saved in this browser.' : 'Saving in this browser…'}
+          </p>
         </section>
       </main>
 
@@ -305,6 +359,8 @@ export default function LabApp() {
 
       <LibrarySheet open={sheet === 'add'} bricks={bricks} onClose={() => setSheet(null)} onPick={pickBrick} onNew={() => setSheet('new')} />
       <RecipesSheet open={sheet === 'recipes'} onClose={() => setSheet(null)} onPick={showRecipe} />
+      <CodeHelpSheet open={sheet === 'help'} onClose={() => setSheet(null)} />
+      <AuthoringTutorialSheet open={sheet === 'tutorial'} onClose={() => setSheet(null)} onStart={showRecipe} />
       <SaveBrickSheet key={`save-${def.id}`} open={sheet === 'save'} def={def} noun={baseNoun(doc, def.id)} onClose={() => setSheet(null)} onSave={saveNew} />
       <NewBrickSheet open={sheet === 'new'} onClose={() => setSheet(null)} onMake={makeNew} />
     </div>

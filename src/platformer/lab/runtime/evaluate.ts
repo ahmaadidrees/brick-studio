@@ -1,5 +1,5 @@
 import { SUB, TS } from '@brick-studio/platformer-core/engine/constants'
-import type { DiagnosticCode, Expr, LabDiagnostic, MemScope } from '../program/types'
+import { LAB_LIMITS, isSafeIdentifier, type DiagnosticCode, type Expr, type LabDiagnostic, type MemScope, type VariableScope } from '../program/types'
 import { isTouching } from '../sim/contacts'
 import { probe } from '../sim/physics'
 import { findThing, resolveWho } from '../sim/things'
@@ -56,6 +56,18 @@ export const evalBoolean = (e: Expr, ctx: EvalContext): boolean => toBoolean(eva
 export function memoryOf(ctx: Pick<EvalContext, 'world' | 'me'>, scope: MemScope): Record<string, number | boolean> | null {
   if (scope === 'my') return ctx.me.mem
   return findThing(ctx.world, ctx.world.playerId)?.mem ?? null
+}
+
+export function variablesOf(ctx: Pick<EvalContext, 'world' | 'me'>, scope: VariableScope): Record<string, number> | null {
+  if (scope === 'world') return (ctx.world.variables ??= {})
+  if (scope === 'my') return (ctx.me.variables ??= {})
+  const player = findThing(ctx.world, ctx.world.playerId)
+  return player ? (player.variables ??= {}) : null
+}
+
+export function boundedVariable(value: number, ctx: EvalContext): number {
+  finite(value, ctx)
+  return Math.max(-LAB_LIMITS.maxVariableValue, Math.min(LAB_LIMITS.maxVariableValue, value))
 }
 
 /** The world's own dice: a small LCG in the world's state, so a replay rolls the same numbers. */
@@ -157,6 +169,25 @@ export function evalExpr(e: Expr, ctx: EvalContext): Value {
     case 'memory': {
       const mem = memoryOf(ctx, e.scope)
       return mem?.[e.name] ?? 0
+    }
+    case 'variable': {
+      if (!isSafeIdentifier(e.name)) return 0
+      const vars = variablesOf(ctx, e.scope)
+      const value = vars && Object.prototype.hasOwnProperty.call(vars, e.name) ? vars[e.name] : 0
+      return typeof value === 'number' && Number.isFinite(value) ? value : 0
+    }
+    case 'argument': {
+      if (!isSafeIdentifier(e.name)) return 0
+      for (let i = ctx.fiber.frames.length - 1; i >= 0; i--) {
+        const args = ctx.fiber.frames[i].args
+        if (args && Object.prototype.hasOwnProperty.call(args, e.name)) return args[e.name]
+      }
+      return 0
+    }
+    case 'position': {
+      const t = resolveWho(w, me, ctx.fiber, e.who)
+      if (!t) return 0
+      return e.axis === 'x' ? round2((t.x + t.w / 2) / SUB) : round2((t.y + t.h) / SUB)
     }
   }
 }

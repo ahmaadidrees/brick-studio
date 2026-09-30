@@ -30,6 +30,7 @@ import {
 import {
   LAB_LIMITS,
   TILE_KINDS,
+  isSafeIdentifier,
   type BinaryOp,
   type CompileContext,
   type DiagnosticCode,
@@ -37,10 +38,12 @@ import {
   type Expr,
   type LabDiagnostic,
   type ProgramIR,
+  type Procedure,
   type Script,
   type Stmt,
   type Trigger,
   type Who,
+  type VariableScope,
 } from './types'
 import { connectedBlock, isDisabledBlock, isRecord, topBlocks, utf8Bytes, walkBlocks, workspaceText, type WorkspaceBlockJson } from './workspaceJson'
 
@@ -65,6 +68,7 @@ export interface CompiledProgram {
   stmts: ReadonlyMap<string, Stmt>
   /** Scripts by hat block id, in program order. */
   scripts: ReadonlyMap<string, Script>
+  procedures: ReadonlyMap<string, Procedure>
   /** A fingerprint of each statement (with everything inside it), to tell what an edit changed. */
   keys: ReadonlyMap<string, string>
   /** A fingerprint of each script's trigger and body. */
@@ -84,6 +88,25 @@ type Ctx = {
   /** Whether the program has any `make` block, so "it" can mean something. */
   makes: boolean
   bricks: Set<string>
+  procedureNames: Map<string, string[]>
+  currentParams?: Set<string>
+  variableNames: Set<string>
+}
+
+const FREEDOM_TYPES = new Set(['lab_set_variable', 'lab_change_variable', 'lab_variable', 'lab_define', 'lab_call', 'lab_argument', 'lab_broadcast', 'lab_when_message', 'lab_position', 'lab_move_xy', 'lab_make_xy'])
+
+function named(block: WorkspaceBlockJson, field: string, ctx: Ctx): string {
+  const name = fieldString(block, field).trim()
+  if (!isSafeIdentifier(name)) report(ctx, 'error', 'program.bad-name', 'Use a short name starting with a letter, using letters, numbers or _.', idOf(block, ctx))
+  return name
+}
+
+function variable(block: WorkspaceBlockJson, ctx: Ctx): { scope: VariableScope; name: string } {
+  const scope = pick<VariableScope>(block, 'SCOPE', new Set(['my', 'player', 'world']), ctx)
+  const name = named(block, 'NAME', ctx)
+  ctx.variableNames.add(`${scope}:${name}`)
+  if (ctx.variableNames.size > LAB_LIMITS.maxNamedVariables) report(ctx, 'error', 'program.too-many-variables', 'This program has too many different variables. Reuse some names.', idOf(block, ctx))
+  return { scope, name }
 }
 
 const COMPARE: Record<string, BinaryOp> = { LT: '<', LTE: '<=', EQ: '==', NEQ: '!=', GTE: '>=', GT: '>' }
@@ -161,6 +184,7 @@ function who(block: WorkspaceBlockJson, name: string, allowed: Set<string>, ctx:
 
 function brickChoice(block: WorkspaceBlockJson, ctx: Ctx): string {
   const value = fieldString(block, 'BRICK')
+  if (value === 'world') report(ctx, 'error', 'program.unknown-block', 'World rules are shared by the level and cannot be made as a thing.', idOf(block, ctx))
   if (!ctx.bricks.has(value)) report(ctx, 'warning', 'program.brick-missing', 'That brick is not in this level’s bricks. Pick another one.', idOf(block, ctx))
   return value
 }
@@ -229,6 +253,18 @@ function expr(block: WorkspaceBlockJson, ctx: Ctx): Expr {
       return { kind: 'distance', who: who(block, 'WHO', ALLOWED.other, ctx), blockId }
     case 'lab_memory':
       return { kind: 'memory', scope: pick(block, 'SCOPE', ALLOWED.scope, ctx), name: pick(block, 'NAME', ALLOWED.memory, ctx), blockId }
+    case 'lab_variable':
+      return { kind: 'variable', ...variable(block, ctx), blockId }
+    case 'lab_argument': {
+      const name = named(block, 'NAME', ctx)
+      if (!ctx.currentParams?.has(name)) report(ctx, 'error', 'program.bad-argument', 'This input is not named in the custom block above.', blockId)
+      return { kind: 'argument', name, blockId }
+    }
+    case 'lab_position': {
+      const axis = fieldString(block, 'AXIS')
+      if (axis !== 'x' && axis !== 'y') report(ctx, 'error', 'program.unknown-block', 'Choose x or y for this position.', blockId)
+      return { kind: 'position', who: who(block, 'WHO', ALLOWED.whom, ctx), axis: axis === 'y' ? 'y' : 'x', blockId }
+    }
     default:
       if (isLabBlockType(type)) unknownBlock(block, ctx, 'This block does something. It can’t go in a slot.')
       else unknownBlock(block, ctx)
@@ -249,6 +285,23 @@ function statement(block: WorkspaceBlockJson, ctx: Ctx): Stmt | null {
       return { op: 'hero', on: true, blockId }
     case 'lab_hero_off':
       return { op: 'hero', on: false, blockId }
+    case 'lab_set_controls':
+      return { op: 'setControls', who: who(block, 'WHO', ALLOWED.whom, ctx), enabled: pick(block, 'ENABLED', new Set(['true', 'false']), ctx) === 'true', blockId }
+    case 'lab_set_physics':
+      return { op: 'setPhysics', who: who(block, 'WHO', ALLOWED.whom, ctx), enabled: pick(block, 'ENABLED', new Set(['true', 'false']), ctx) === 'true', blockId }
+    case 'lab_show_thing':
+    case 'lab_hide_thing':
+      return { op: 'setVisible', who: who(block, 'WHO', ALLOWED.whom, ctx), visible: type === 'lab_show_thing', blockId }
+    case 'lab_frame':
+      return { op: 'frame', frame: input(block, 'FRAME', 'number', ctx), blockId }
+    case 'lab_next_frame':
+      return { op: 'nextFrame', blockId }
+    case 'lab_play_frames':
+      return { op: 'playFrames', fps: input(block, 'FPS', 'number', ctx), blockId }
+    case 'lab_stop_frames':
+      return { op: 'stopFrames', blockId }
+    case 'lab_say_text':
+      return { op: 'sayText', text: fieldString(block, 'TEXT').replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 120), seconds: input(block, 'SECONDS', 'number', ctx), blockId }
     case 'lab_set_speed':
       return { op: 'setSpeed', who: who(block, 'WHO', ALLOWED.whose, ctx), dir: pick(block, 'DIR', ALLOWED.dir, ctx), value: input(block, 'VALUE', 'number', ctx), blockId }
     case 'lab_change_speed':
@@ -303,6 +356,30 @@ function statement(block: WorkspaceBlockJson, ctx: Ctx): Stmt | null {
     }
     case 'lab_change_memory':
       return { op: 'changeMemory', scope: pick(block, 'SCOPE', ALLOWED.scope, ctx), name: pick(block, 'NAME', ALLOWED.memory, ctx), by: input(block, 'BY', 'number', ctx), blockId }
+    case 'lab_set_variable':
+      return { op: 'setVariable', ...variable(block, ctx), value: input(block, 'VALUE', 'number', ctx), blockId }
+    case 'lab_change_variable':
+      return { op: 'changeVariable', ...variable(block, ctx), by: input(block, 'BY', 'number', ctx), blockId }
+    case 'lab_call': {
+      const name = named(block, 'NAME', ctx)
+      const params = ctx.procedureNames.get(name)
+      if (!params) report(ctx, 'error', 'program.unknown-procedure', `There is no custom block named ${name}. Make one first.`, blockId)
+      if (params) {
+        for (let i = 1; i <= 3; i++) {
+          const plugged = !!inputBlock(block, `ARG${i}`)
+          if (i <= params.length && !plugged) report(ctx, 'error', 'program.bad-argument', `Add a number for ${params[i - 1]} in this custom block call.`, blockId)
+          const connection = isRecord(block.inputs) ? block.inputs[`ARG${i}`] : undefined
+          if (i > params.length && isRecord(connection) && isRecord(connection.block)) report(ctx, 'error', 'program.bad-argument', 'This custom block call has an extra input.', blockId)
+        }
+      }
+      return { op: 'call', name, args: (params ?? []).map((_, i) => input(block, `ARG${i + 1}`, 'number', ctx)), blockId }
+    }
+    case 'lab_broadcast':
+      return { op: 'broadcast', message: named(block, 'MESSAGE', ctx), blockId }
+    case 'lab_move_xy':
+      return { op: 'moveXY', who: who(block, 'WHO', ALLOWED.whom, ctx), x: input(block, 'X', 'number', ctx), y: input(block, 'Y', 'number', ctx), blockId }
+    case 'lab_make_xy':
+      return { op: 'makeXY', brick: brickChoice(block, ctx), x: input(block, 'X', 'number', ctx), y: input(block, 'Y', 'number', ctx), blockId }
     case 'lab_wait':
       return { op: 'wait', seconds: input(block, 'SECONDS', 'number', ctx), blockId }
     case 'lab_wait_until':
@@ -318,7 +395,7 @@ function statement(block: WorkspaceBlockJson, ctx: Ctx): Stmt | null {
     case 'lab_stop_script':
       return { op: 'stopScript', blockId }
     default:
-      if ((HAT_TYPES as readonly string[]).includes(type)) unknownBlock(block, ctx, 'A “when” block can only start a script, at the top.')
+      if ((HAT_TYPES as readonly string[]).includes(type) || type === 'lab_when_message' || type === 'lab_define') unknownBlock(block, ctx, 'A starting block can only go at the top.')
       else if (isLabBlockType(type)) unknownBlock(block, ctx, 'This block is a value. Put it in a slot.')
       else unknownBlock(block, ctx)
       return null
@@ -348,6 +425,10 @@ function trigger(block: WorkspaceBlockJson, ctx: Ctx): Trigger {
       return { kind: 'land' }
     case 'lab_when_hurt':
       return { kind: 'hurt' }
+    case 'lab_when_message':
+      return { kind: 'message', message: named(block, 'MESSAGE', ctx) }
+    case 'lab_when_clicked':
+      return { kind: 'clicked' }
     case 'lab_every': {
       const raw = Number(fieldValue(block, 'SECONDS'))
       return { kind: 'every', seconds: Number.isFinite(raw) ? Math.min(60, Math.max(0.1, raw)) : 1 }
@@ -369,6 +450,7 @@ function result(ir: ProgramIR, ctx: Ctx): CompiledProgram {
   const stmts = new Map<string, Stmt>()
   const keys = new Map<string, string>()
   const scripts = new Map<string, Script>()
+  const procedures = new Map<string, Procedure>()
   const scriptKeys = new Map<string, string>()
   const index = (list: Stmt[]) => {
     for (const stmt of list) {
@@ -393,13 +475,18 @@ function result(ir: ProgramIR, ctx: Ctx): CompiledProgram {
     lists.set(listKey(script.id, 'body'), script.body)
     index(script.body)
   }
-  return { ir, lists, stmts, scripts, keys, scriptKeys, diagnostics, ok: !diagnostics.some((d) => d.severity === 'error') }
+  for (const procedure of ir.procedures ?? []) {
+    procedures.set(procedure.name, procedure)
+    lists.set(listKey(procedure.blockId, 'do'), procedure.body)
+    index(procedure.body)
+  }
+  return { ir, lists, stmts, scripts, procedures, keys, scriptKeys, diagnostics, ok: !diagnostics.some((d) => d.severity === 'error') }
 }
 
 const EMPTY_IR = (): ProgramIR => ({ irVersion: 1, scripts: [] })
 
 export function compileProgram(workspace: unknown, context: CompileContext): CompiledProgram {
-  const ctx: Ctx = { context, diagnostics: [], anonymous: new WeakMap(), anonymousCount: 0, makes: false, bricks: new Set(context.bricks.map((b) => b.id)) }
+  const ctx: Ctx = { context, diagnostics: [], anonymous: new WeakMap(), anonymousCount: 0, makes: false, bricks: new Set(context.bricks.map((b) => b.id)), procedureNames: new Map(), variableNames: new Set() }
   const text = typeof workspace === 'string' ? workspace : workspaceText(workspace ?? {})
   if (text === null) {
     report(ctx, 'error', 'program.unknown-block', 'This program could not be read. Start a new one.', null)
@@ -426,7 +513,7 @@ export function compileProgram(workspace: unknown, context: CompileContext): Com
     parsed,
     (block, depth) => {
       nodes += 1
-      if (typeOf(block) === 'lab_make') ctx.makes = true
+      if (typeOf(block) === 'lab_make' || typeOf(block) === 'lab_make_xy') ctx.makes = true
       if (depth > LAB_LIMITS.maxDepth && !tooDeep) tooDeep = block
     },
     LAB_LIMITS.maxBlocks + 1,
@@ -441,13 +528,35 @@ export function compileProgram(workspace: unknown, context: CompileContext): Com
   }
 
   const scripts: Script[] = []
+  const procedures: Procedure[] = []
   const used = new Set<string>()
+  for (const block of topBlocks(parsed)) {
+    if (isDisabledBlock(block) || typeOf(block) !== 'lab_define') continue
+    const name = named(block, 'NAME', ctx)
+    const rawParams = [1, 2, 3].map((i) => fieldString(block, `ARG${i}`).trim())
+    const params = rawParams.filter(Boolean)
+    rawParams.forEach((param, i) => { if (param) named(block, `ARG${i + 1}`, ctx) })
+    if (rawParams.some((param, i) => !param && rawParams.slice(i + 1).some(Boolean))) report(ctx, 'error', 'program.bad-argument', 'Fill custom block inputs from left to right.', idOf(block, ctx))
+    if (new Set(params).size !== params.length || ctx.procedureNames.has(name)) report(ctx, 'error', 'program.bad-argument', 'Each custom block and its inputs need different names.', idOf(block, ctx))
+    if (ctx.procedureNames.size >= LAB_LIMITS.maxProcedures) report(ctx, 'error', 'program.too-big', 'This program has too many custom blocks.', idOf(block, ctx))
+    else ctx.procedureNames.set(name, params)
+  }
   for (const block of topBlocks(parsed)) {
     if (isDisabledBlock(block)) continue
     const blockId = idOf(block, ctx)
     const type = typeOf(block)
-    if (!(HAT_TYPES as readonly string[]).includes(type)) {
-      if (!isLabBlockType(type)) unknownBlock(block, ctx)
+    if (type === 'lab_define') {
+      const name = fieldString(block, 'NAME').trim()
+      if (procedures.some((p) => p.name === name) || procedures.length >= LAB_LIMITS.maxProcedures) continue
+      ctx.scriptId = blockId
+      ctx.currentParams = new Set(ctx.procedureNames.get(name) ?? [])
+      procedures.push({ name, params: ctx.procedureNames.get(name) ?? [], body: statementInput(block, 'DO', ctx), blockId })
+      ctx.currentParams = undefined
+      ctx.scriptId = undefined
+      continue
+    }
+    if (!(HAT_TYPES as readonly string[]).includes(type) && type !== 'lab_when_message') {
+      if (!isLabBlockType(type) && !FREEDOM_TYPES.has(type)) unknownBlock(block, ctx)
       report(ctx, 'info', 'program.loose-blocks', 'These blocks are not under a “when” block, so they don’t run. Snap them under one.', blockId)
       continue
     }
@@ -468,7 +577,7 @@ export function compileProgram(workspace: unknown, context: CompileContext): Com
   if (!scripts.length && !ctx.diagnostics.some((d) => d.severity === 'error')) {
     report(ctx, 'info', 'program.no-scripts', 'Add a “when” block to start a script.', null)
   }
-  return result({ irVersion: 1, scripts }, ctx)
+  return result({ irVersion: 1, scripts, ...(procedures.length ? { procedures } : {}) }, ctx)
 }
 
 /** Readable pseudo-code for tests and the text views. Not a source of truth. */
@@ -506,6 +615,12 @@ export function describeIR(ir: ProgramIR): string {
         return `distance(${e.who})`
       case 'memory':
         return `${e.scope}.${e.name}`
+      case 'variable':
+        return `${e.scope}.${e.name}`
+      case 'argument':
+        return `arg(${e.name})`
+      case 'position':
+        return `${e.who}.${e.axis}`
     }
   }
   const block = (list: readonly Stmt[], indent: string) => {
@@ -531,16 +646,20 @@ export function describeIR(ir: ProgramIR): string {
         return
       default: {
         const { op, blockId: _id, ...rest } = s
-        const parts = Object.entries(rest).map(([k, v]) => `${k}=${typeof v === 'object' ? show(v as Expr) : String(v)}`)
+        const parts = Object.entries(rest).map(([k, v]) => `${k}=${Array.isArray(v) ? v.map((arg) => show(arg as Expr)).join(',') : typeof v === 'object' ? show(v as Expr) : String(v)}`)
         lines.push(`${indent}${op}${parts.length ? ' ' + parts.join(' ') : ''}`)
       }
     }
   }
   for (const script of ir.scripts) {
     const t = script.trigger
-    const extra = t.kind === 'key' ? ` ${t.key}` : t.kind === 'touch' ? ` ${t.target} ${t.side}` : t.kind === 'every' ? ` ${t.seconds}s` : ''
+    const extra = t.kind === 'key' ? ` ${t.key}` : t.kind === 'touch' ? ` ${t.target} ${t.side}` : t.kind === 'every' ? ` ${t.seconds}s` : t.kind === 'message' ? ` ${t.message}` : ''
     lines.push(`when ${t.kind}${extra}`)
     block(script.body, '  ')
+  }
+  for (const procedure of ir.procedures ?? []) {
+    lines.push(`define ${procedure.name}(${procedure.params.join(', ')})`)
+    block(procedure.body, '  ')
   }
   return lines.join('\n')
 }

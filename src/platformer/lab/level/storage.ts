@@ -1,4 +1,5 @@
 import { levelFromJson, type LabDoc } from './doc'
+import { normalizeCostumeSet } from '../costumes/model'
 
 /** The lab is kept in this browser only (a proof of concept: no account, no rooms). */
 export const LAB_STORAGE_KEY = 'brick-studio.2d.lab.v1'
@@ -11,6 +12,9 @@ export function loadLabDoc(): LabDoc | null {
     if (!doc || doc.v !== 1 || typeof doc.bricks !== 'object' || !doc.level) return null
     // Throws on a level this build cannot read.
     levelFromJson(doc.level)
+    for (const brick of Object.values(doc.bricks)) {
+      if (brick.appearance && !normalizeCostumeSet(brick.appearance)) delete brick.appearance
+    }
     return doc
   } catch {
     return null

@@ -18,7 +18,7 @@ import type {
 } from '../program/types'
 
 /*
- * Built-in bricks and recipes are written as block programs, in the same JSON `Blockly.serialization.workspaces.save`
+ * Built-in bricks and examples are written as block programs, in the same JSON `Blockly.serialization.workspaces.save`
  * produces, so opening one shows exactly the blocks that run. This is a small builder for that JSON: ids are the
  * program's prefix and a counter (stable, so recipes can find their own blocks), number slots get the same editable
  * number shadows the toolbox gives, and scripts are laid out one under another.
@@ -39,6 +39,7 @@ export type WorkspaceJson = { blocks: { languageVersion: 0; blocks: BlockJson[] 
 type Ids = { prefix: string; n: number }
 export type Node = { build: (ids: Ids) => BlockJson; lines: () => number }
 export type Val = number | Node
+export type VariableScope = 'my' | 'player' | 'world'
 
 const nextId = (ids: Ids) => `${ids.prefix}-${++ids.n}`
 
@@ -101,6 +102,23 @@ export function program(prefix: string, ...scripts: ScriptNode[]): WorkspaceJson
   return { blocks: { languageVersion: 0, blocks } }
 }
 
+/** Add reusable block definitions as top-level roots below the event scripts in a workspace. */
+export function addDefinitions(workspace: WorkspaceJson, prefix: string, ...definitions: Node[]): WorkspaceJson {
+  if (!definitions.length) return workspace
+  const blocks = workspace.blocks.blocks.map((b) => ({ ...b }))
+  const bottom = blocks.reduce((y, b) => Math.max(y, (b.y ?? 0) + 220), 24)
+  const ids: Ids = { prefix: `${prefix}-definition`, n: 0 }
+  let y = bottom
+  for (const definition of definitions) {
+    const b = definition.build(ids)
+    b.x = 24
+    b.y = y
+    blocks.push(b)
+    y += Math.round((1.4 + definition.lines()) * 44) + 36
+  }
+  return { blocks: { languageVersion: 0, blocks } }
+}
+
 /** More scripts for an existing program (a recipe added to your moves), below what is there. */
 export function scriptsJson(prefix: string, startY: number, ...scripts: ScriptNode[]): BlockJson[] {
   const built = program(prefix, ...scripts).blocks.blocks
@@ -119,6 +137,7 @@ export const when = {
   land: (...body: Node[]) => hat('lab_when_land', {}, body),
   hurt: (...body: Node[]) => hat('lab_when_hurt', {}, body),
   every: (seconds: number, ...body: Node[]) => hat('lab_every', { SECONDS: seconds }, body),
+  message: (message: string, ...body: Node[]) => hat('lab_when_message', { MESSAGE: message }, body),
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -178,3 +197,35 @@ export const not = (a: Node) => block('lab_not', {}, { VALUE: a })
 const ARITH = { '+': 'ADD', '-': 'MINUS', '*': 'MULTIPLY', '/': 'DIVIDE' } as const
 export const arith = (a: Val, op: keyof typeof ARITH, b: Val) => block('lab_arithmetic', { OP: ARITH[op] }, { A: a, B: b })
 export const random = (lo: Val, hi: Val) => block('lab_random', {}, { LOW: lo, HIGH: hi })
+
+// ---------------------------------------------------------------------------------------------------------------
+// Freedom blocks: named variables, messages, coordinates and reusable procedures.
+
+export const setVariable = (scope: VariableScope, name: string, value: Val) => block('lab_set_variable', { SCOPE: scope, NAME: name }, { VALUE: value })
+export const changeVariable = (scope: VariableScope, name: string, by: Val) => block('lab_change_variable', { SCOPE: scope, NAME: name }, { BY: by })
+export const variable = (scope: VariableScope, name: string) => block('lab_variable', { SCOPE: scope, NAME: name })
+export const broadcast = (message: string) => block('lab_broadcast', { MESSAGE: message })
+export const position = (who: Who, axis: 'x' | 'y') => block('lab_position', { WHO: who, AXIS: axis })
+export const moveXY = (who: Who, x: Val, y: Val) => block('lab_move_xy', { WHO: who }, { X: x, Y: y })
+export const makeXY = (brick: string, x: Val, y: Val) => block('lab_make_xy', { BRICK: brick }, { X: x, Y: y })
+export const call = (name: string, arg1: Val = 0, arg2: Val = 0, arg3: Val = 0) => block('lab_call', { NAME: name }, { ARG1: arg1, ARG2: arg2, ARG3: arg3 })
+export const argument = (name: string) => block('lab_argument', { NAME: name })
+export const define = (name: string, args: readonly string[], ...body: Node[]) =>
+  block('lab_define', { NAME: name, ARG1: args[0] ?? '', ARG2: args[1] ?? '', ARG3: args[2] ?? '' }, {}, { DO: body })
+
+// ---------------------------------------------------------------------------------------------------------------
+// Student-authored characters and control handoff.
+
+/** Give or take control of a thing's own keys. */
+export const setControls = (who: Who, enabled: boolean) => block('lab_set_controls', { WHO: who, ENABLED: enabled ? 'true' : 'false' })
+/** Turn ordinary gravity and collision-driven movement on or off for a thing. */
+export const setPhysics = (who: Who, enabled: boolean) => block('lab_set_physics', { WHO: who, ENABLED: enabled ? 'true' : 'false' })
+export const showThing = (who: Who) => block('lab_show_thing', { WHO: who })
+export const hideThing = (who: Who) => block('lab_hide_thing', { WHO: who })
+/** Select one of the student's drawn costume frames (FRAME is a one-based frame number). */
+export const frame = (index: Val) => block('lab_frame', {}, { FRAME: index })
+export const nextFrame = () => block('lab_next_frame')
+export const playFrames = (fps: Val) => block('lab_play_frames', {}, { FPS: fps })
+export const stopFrames = () => block('lab_stop_frames')
+export const sayText = (text: string, seconds: Val) => block('lab_say_text', { TEXT: text }, { SECONDS: seconds })
+export const whenClicked = (...body: Node[]): ScriptNode => hat('lab_when_clicked', {}, body)

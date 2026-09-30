@@ -1,14 +1,16 @@
 import { T } from '@brick-studio/platformer-core/engine/tiles'
-import { Eraser, Eye, EyeOff, Flag, MousePointer2, Plus, RotateCcw, Sparkles, ZoomIn, ZoomOut, AlignLeft } from 'lucide-react'
+import { Eraser, Eye, EyeOff, Flag, MousePointer2, Plus, RotateCcw, Sparkles, ZoomIn, ZoomOut, AlignLeft, WandSparkles } from 'lucide-react'
 import { characterPreviewStyle } from '../../characters/catalog'
 import type { BrickDef } from '../bricks/builtins'
 import type { LabDiagnostic } from '../program/types'
 import type { BuildTool, LabStatus } from '../session'
 import { costumeIcon, tileIcon } from './previews'
+import { costumeThumbnail } from '../render/costumes'
 
 /** A brick's picture: its costume, or you. */
 export function BrickIcon({ def, size = 36 }: { def: BrickDef | undefined; size?: number }) {
   if (!def) return <span className="lab-icon" style={{ width: size, height: size }} aria-hidden="true" />
+  if (def.appearance) return <span className="lab-icon" style={{ width: size, height: size }} aria-hidden="true"><img src={costumeThumbnail(def.appearance, size)} alt="" width={size} height={size} /></span>
   if (def.costume === 'hero') return <span className="lab-icon lab-icon-you" style={{ width: size, height: size, ...characterPreviewStyle('builder') }} aria-hidden="true" />
   const url = costumeIcon(def.costume)
   return (
@@ -21,32 +23,40 @@ export function BrickIcon({ def, size = 36 }: { def: BrickDef | undefined; size?
 const ORIGIN_WORDS: Record<BrickDef['origin'], string> = { builtin: 'Built-in', copy: 'Your copy', mine: 'Your brick' }
 
 /** What is open in the code panel, and what can be done with it. */
-export function CodeHeader({ def, onOriginal, onSave }: { def: BrickDef; onOriginal: () => void; onSave: () => void }) {
+export function CodeHeader({ def, instanceCount = 0, canMakeUnique, onOriginal, onSave, onMakeUnique }: { def: BrickDef; instanceCount?: number; canMakeUnique: boolean; onOriginal: () => void; onSave: () => void; onMakeUnique: () => void }) {
   const you = def.id === 'you'
+  const world = def.id === 'world'
   const line = you
     ? 'Your moves are code too. Change them to give yourself new powers.'
+    : world
+      ? 'World rules run for the whole level. Use world variables to share numbers between bricks.'
     : def.origin === 'builtin'
-      ? `Every ${def.name} in the level runs this. Change a block to make your own copy.`
+      ? `Shared design · used ${instanceCount} ${instanceCount === 1 ? 'time' : 'times'}. Changes to code and costumes apply to every ${def.name}.`
       : def.origin === 'copy'
-        ? `Your own ${def.name}. Every ${def.name} in the level runs it.`
-        : `A brick you made. Every one in the level runs this.`
+        ? `Shared design · used ${instanceCount} ${instanceCount === 1 ? 'time' : 'times'}. Code and costumes belong to this design.`
+        : `Shared design · used ${instanceCount} ${instanceCount === 1 ? 'time' : 'times'}. Code and costumes belong to this design.`
   return (
     <div className="lab-code-head">
       <BrickIcon def={def} size={40} />
       <div className="lab-code-title">
         <div className="lab-code-name">
           <h2>{def.name}</h2>
-          {!you && <span className={`lab-chip lab-chip-${def.origin}`}>{ORIGIN_WORDS[def.origin]}</span>}
+          {!you && !world && <span className={`lab-chip lab-chip-${def.origin}`}>{ORIGIN_WORDS[def.origin]}</span>}
         </div>
         <p>{line}</p>
       </div>
       <div className="lab-code-actions">
         {def.origin === 'copy' && (
           <button type="button" className="lab-button" onClick={onOriginal}>
-            <RotateCcw size={16} aria-hidden="true" /> Back to the original
+            <RotateCcw size={16} aria-hidden="true" /> Reset code
           </button>
         )}
-        {!you && (
+        {canMakeUnique && (
+          <button type="button" className="lab-button lab-button-unique" onClick={onMakeUnique}>
+            <WandSparkles size={16} aria-hidden="true" /> Make just this one different
+          </button>
+        )}
+        {!you && !world && (
           <button type="button" className="lab-button lab-button-strong" onClick={onSave}>
             <Sparkles size={16} aria-hidden="true" /> Save as a new brick
           </button>
@@ -120,6 +130,14 @@ export function LiveValues({ status, def, onToggle }: { status: LabStatus | null
             </li>
           ))}
         </ul>
+      )}
+      {status?.worldValues && status.worldValues.length > 0 && (
+        <div className="lab-world-values">
+          <strong>World variables</strong>
+          <ul className="lab-live-values">
+            {status.worldValues.map((v) => <li key={v.key}><span className="lab-live-label">{v.label}</span><strong className="lab-live-value">{v.value}</strong></li>)}
+          </ul>
+        </div>
       )}
     </div>
   )
@@ -205,8 +223,8 @@ export type CodeView = 'blocks' | 'js' | 'py'
 export function ViewToggle({ view, onView }: { view: CodeView; onView: (v: CodeView) => void }) {
   const views: [CodeView, string][] = [
     ['blocks', 'Blocks'],
-    ['js', 'JavaScript'],
-    ['py', 'Python'],
+    ['js', 'JavaScript · read only'],
+    ['py', 'Python · read only'],
   ]
   return (
     <div className="lab-views" role="radiogroup" aria-label="Show the code as">

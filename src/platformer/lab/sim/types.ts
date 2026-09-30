@@ -1,6 +1,7 @@
 import type { FeelSub } from '@brick-studio/platformer-core/engine/feel'
 import type { CompiledProgram } from '../program/compile'
-import type { Costume, LabColor, LabDiagnostic, LabKey, LabSound, Phrase, TileKind } from '../program/types'
+import type { Costume, LabColor, LabDiagnostic, LabKey, LabSound, TileKind } from '../program/types'
+import type { CostumeSet } from '../costumes/model'
 
 /*
  * The code lab's world. Everything here is plain data (numbers, strings, arrays, records and one Uint8Array of
@@ -30,6 +31,8 @@ export interface Frame {
   loop: 0 | 1 | 2
   /** Repeat: passes left. */
   left: number
+  /** Numeric inputs owned by this procedure invocation. */
+  args?: Record<string, number>
 }
 
 export const FIBER_READY = 0
@@ -59,6 +62,8 @@ export type LabEvent =
   | { kind: 'stomped'; other: number }
   | { kind: 'land' }
   | { kind: 'hurt'; other: number }
+  | { kind: 'message'; message: string }
+  | { kind: 'clicked' }
 
 /** The player's own "run and jump with the keys" state (the engine player's, trimmed). */
 export interface HeroState {
@@ -73,6 +78,8 @@ export interface HeroState {
 
 export interface Thing {
   id: number
+  /** Invisible world-rule controller; it runs scripts but never collides or renders. */
+  system?: boolean
   /** Which brick it is: the program it runs. */
   brick: string
   x: number
@@ -92,6 +99,10 @@ export interface Thing {
   solid: SolidFlag
   /** Runs and jumps with the keys. */
   hero: boolean
+  /** Whether keys drive this thing when its hero motion is enabled. */
+  controlsEnabled: boolean
+  /** Off makes script position the thing directly, without gravity or collision response. */
+  physicsEnabled: boolean
   jumpPct: number
   speedPct: number
   hs: HeroState
@@ -102,13 +113,23 @@ export interface Thing {
   rider: number
   riding: number
   costume: Costume
+  /** Custom art is selected unless a preset costume block chose a built-in look. */
+  useCustomCostume: boolean
+  /** A custom costume's frame number, starting at 1. */
+  costumeFrame: number
+  costumePlaying: boolean
+  costumeFps: number
+  costumeFrameDue: number
+  /** Whether the thing and its speech/meter are drawn. Hidden things keep sensing and collisions. */
+  visible: boolean
   color: LabColor
   size: number
-  say: Phrase | null
+  say: string | null
   sayUntil: number
   /** Memories shown over my head: `my:fuel`, `player:coins`. */
   shown: string[]
   mem: Record<string, number | boolean>
+  variables?: Record<string, number>
   fibers: Fiber[]
   /** Events for my next turn. */
   events: LabEvent[]
@@ -154,6 +175,10 @@ export interface LabWorld {
   things: Thing[]
   nextId: number
   playerId: number
+  worldId?: number
+  variables?: Record<string, number>
+  /** Broadcasts made this frame; each reaches all things at the start of the next frame. */
+  messages?: { name: string; deliverTick: number }[]
   /** The start, in tiles (the cell the player stands in). */
   start: { x: number; y: number }
   /** For "pick random". */
@@ -168,6 +193,7 @@ export interface LabWorld {
 export interface BrickInfo {
   id: string
   costume: Costume
+  appearance?: CostumeSet
   /** This brick and the bricks it was made from, nearest first: "a Walker" matches a Smart Walker too. */
   lineage: readonly string[]
 }

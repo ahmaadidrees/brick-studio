@@ -6,15 +6,16 @@ import { Sound, type SoundName } from '../audio/sound'
 import { Camera } from '../game/camera'
 import { Renderer, type Particle } from '../render/renderer'
 import { ProgramBook } from './book'
-import { PLAYER_ID } from './bricks/builtins'
-import { brickDef, levelFromJson, moveThing, placeThing, removeThing, setStart, setTiles, type LabDoc } from './level/doc'
+import { PLAYER_ID, WORLD_ID } from './bricks/builtins'
+import { allBricks, brickDef, levelFromJson, makeInstanceUnique, moveThing, placeThing, removeThing, setStart, setTiles, type LabDoc } from './level/doc'
+import type { CostumeSet } from './costumes/model'
 import { MEMORY_ICONS, type LabDiagnostic, type LabKey, type LabSound, type MemoryName } from './program/types'
 import { CostumeArt } from './render/costumes'
 import { drawStage } from './render/stage'
 import { COSTUME_BOX, findThing, placedSpot, spawnThing } from './sim/things'
 import { NO_KEYS, type LabInput, type LabWorld, type Thing, type Trace } from './sim/types'
 import { advance, createLabWorld } from './sim/world'
-import { unride } from './runtime/runtime'
+import { swapProgram, unride } from './runtime/runtime'
 
 /*
  * A lab in progress: the lab document, the world (a still picture of the level while building, the running level
@@ -139,6 +140,8 @@ export interface LabStatus {
   /** Things in the level by brick (the running world's while playing). */
   counts: [string, number][]
   watch: WatchInfo | null
+  canMakeUnique: boolean
+  worldValues: WatchValue[]
 }
 
 const round1 = (v: number) => (Math.abs(v) < 0.05 ? '0' : (Math.round(v * 10) / 10).toString())
@@ -174,6 +177,7 @@ export class LabSession {
 
   private engine: World
   private art: CostumeArt | null = null
+  private appearances = new Map<string, CostumeSet>()
   private glow = new Map<string, number>()
   private glowKey = ''
   private raf = 0
@@ -189,6 +193,7 @@ export class LabSession {
   ) {
     this.renderer = new Renderer(canvas)
     this.doc = doc
+    this.updateAppearances(doc)
     this.book = new ProgramBook(doc)
     this.sound.musicOn = false
     this.world = createLabWorld(levelFromJson(doc.level), this.book)
@@ -296,6 +301,7 @@ export class LabSession {
     const playing = this.mode === 'play'
     this.book.update(doc, playing ? this.world : null)
     this.doc = doc
+    this.updateAppearances(doc)
     if (!playing) {
       // Building: the still picture of the level is made again from the new version.
       const keep = this.keepWatch()
@@ -306,6 +312,15 @@ export class LabSession {
       keep()
     }
     this.onDoc?.(doc)
+  }
+
+  private updateAppearances(doc: LabDoc) {
+    this.appearances = new Map(allBricks(doc).flatMap((def) => def.appearance ? [[def.id, def.appearance] as const] : []))
+  }
+
+  previewSound(sound: LabSound) {
+    this.sound.unlock()
+    this.sound.play(SOUNDS[sound])
   }
 
   setMode(mode: LabMode) {
@@ -358,14 +373,14 @@ export class LabSession {
    * Put a brick in the level near you (or near the middle of the view while building). While playing it also
    * appears in the running level. Returns the running thing's id.
    */
-  addNear(brick: string): number {
+  addNear(brick: string, offsetTiles = 2): number {
     const def = brickDef(this.doc, brick)
-    if (!def) return 0
+    if (!def || brick === WORLD_ID || brick === PLAYER_ID) return 0
     const p = findThing(this.world, this.world.playerId)
     let tx: number
     let ty: number
     if (this.mode === 'play' && p) {
-      tx = Math.floor((p.x + p.w / 2) / TS) + 2 * p.facing
+      tx = Math.floor((p.x + p.w / 2) / TS) + offsetTiles * p.facing
       ty = Math.floor((p.y + p.h - 1) / TS)
     } else {
       tx = Math.floor((this.camera.x + this.renderer.width / 2) / TILE)
@@ -412,6 +427,26 @@ export class LabSession {
     if (p?.riding) unride(this.world, p, true)
   }
 
+  /** Turn the watched placed object into its own design, retaining its position in the running world. */
+  makeWatchedUnique(): string | null {
+    const watched = findThing(this.world, this.watch)
+    if (!watched || watched.system || watched.id === this.world.playerId || !watched.spawn) return null
+    const result = makeInstanceUnique(this.doc, watched.spawn)
+    if (!result.id) return null
+    const oldProgram = this.book.program(watched.brick)
+    this.setDoc(result.doc)
+    if (this.mode === 'play') {
+      watched.brick = result.id
+      const next = this.book.program(result.id)
+      if (next) swapProgram(watched, oldProgram, next)
+    }
+    const instance = this.world.things.find((t) => t.spawn === watched.spawn)
+    this.open(result.id, instance?.id)
+    this.onOpen?.(result.id)
+    this.onStatus?.()
+    return result.id
+  }
+
   /** Show or hide one of the watched thing's memories over it on the stage. */
   toggleShown(key: string) {
     const t = findThing(this.world, this.watch)
@@ -423,18 +458,23 @@ export class LabSession {
   status(): LabStatus {
     const counts = new Map<string, number>()
     if (this.mode === 'play') {
-      for (const t of this.world.things) if (!t.removed && t.id !== this.world.playerId) counts.set(t.brick, (counts.get(t.brick) ?? 0) + 1)
+      for (const t of this.world.things) if (!t.removed && !t.system && t.id !== this.world.playerId) counts.set(t.brick, (counts.get(t.brick) ?? 0) + 1)
     } else for (const t of this.doc.level.things) counts.set(t.brick, (counts.get(t.brick) ?? 0) + 1)
-    return { mode: this.mode, active: this.active, counts: [...counts], watch: this.watchInfo() }
+    const watched = findThing(this.world, this.watch)
+    const canMakeUnique = !!watched && !watched.system && watched.id !== this.world.playerId && watched.spawn > 0 && this.doc.level.things.some((t) => t.id === watched.spawn)
+    const worldValues = Object.entries(this.world.variables ?? {}).map(([name, value]) => ({ key: `world:${name}`, label: name, value: round1(value) }))
+    return { mode: this.mode, active: this.active, counts: [...counts], watch: this.watchInfo(), canMakeUnique, worldValues }
   }
 
   private watchInfo(): WatchInfo | null {
     const t = findThing(this.world, this.watch)
     if (!t) return null
     const values: WatchValue[] = []
-    values.push({ key: 'speed-x', label: '→ speed', value: round1((t.vx / SUB) * 1) })
-    values.push({ key: 'speed-y', label: '↑ speed', value: round1(-t.vy / SUB) })
-    values.push({ key: 'ground', label: 'on the ground', value: t.onGround ? 'yes' : 'no' })
+    if (!t.system) {
+      values.push({ key: 'speed-x', label: '→ speed', value: round1(t.vx / SUB) })
+      values.push({ key: 'speed-y', label: '↑ speed', value: round1(-t.vy / SUB) })
+      values.push({ key: 'ground', label: 'on the ground', value: t.onGround ? 'yes' : 'no' })
+    }
     if (t.rider) values.push({ key: 'rider', label: 'rider', value: t.rider === this.world.playerId ? 'you' : 'someone' })
     if (t.riding) {
       const v = findThing(this.world, t.riding)
@@ -442,6 +482,9 @@ export class LabSession {
     }
     for (const [name, v] of Object.entries(t.mem)) {
       values.push({ key: `my:${name}`, label: `${MEMORY_ICONS[name as MemoryName] ?? ''} ${name}`, value: typeof v === 'boolean' ? (v ? 'yes' : 'no') : round1(v), shown: t.shown.includes(`my:${name}`) })
+    }
+    for (const [name, value] of Object.entries(t.variables ?? {})) {
+      values.push({ key: `variable:${name}`, label: name, value: round1(value) })
     }
     return { id: t.id, brick: t.brick, values }
   }
@@ -584,11 +627,12 @@ export class LabSession {
           this.art,
           {
             world: this.world,
+            appearances: this.appearances,
             frame: this.frame,
             watch: this.watch,
             build,
             hover: build ? this.hover : null,
-            ghost: ghost ? { costume: ghost.costume, w: COSTUME_BOX[ghost.costume].w } : null,
+            ghost: ghost ? { brick: ghost.id, costume: ghost.costume, w: COSTUME_BOX[ghost.costume].w } : null,
             erasing: this.tool.kind === 'erase',
             selected: this.selected ? (this.world.things.find((t) => t.spawn === this.selected)?.id ?? 0) : 0,
           },
@@ -613,7 +657,7 @@ export class LabSession {
   thingAt(wx: number, wy: number): Thing | undefined {
     const px = wx * SUB
     const py = wy * SUB
-    const list = this.world.things.filter((t) => !t.removed && !t.riding)
+    const list = this.world.things.filter((t) => !t.removed && !t.system && !t.riding && (this.mode === 'build' || t.visible !== false))
     for (let i = list.length - 1; i >= 0; i--) {
       const t = list[i]
       const w = Math.max(t.w, TS)
@@ -630,6 +674,7 @@ export class LabSession {
     const hit = this.thingAt(c.wx, c.wy)
     if (this.mode === 'play') {
       if (hit) {
+        hit.events.push({ kind: 'clicked' })
         this.onOpen?.(hit.brick)
         this.open(hit.brick, hit.id)
       }

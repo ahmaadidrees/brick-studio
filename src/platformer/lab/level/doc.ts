@@ -1,9 +1,12 @@
 import type { Theme } from '@brick-studio/platformer-core/engine/level'
 import { decodeRuns, encodeRuns } from '@brick-studio/platformer-core/engine/level'
 import { TILE_ID_COUNT } from '@brick-studio/platformer-core/engine/tiles'
-import { BUILTIN_BRICKS, PLAYER_ID, blankProgram, builtinBrick, type BrickDef } from '../bricks/builtins'
+import { BUILTIN_BRICKS, PLAYER_ID, WORLD_ID, blankProgram, builtinBrick, type BrickDef } from '../bricks/builtins'
 import { scriptsJson, type BlockJson } from '../bricks/dsl'
 import { carProgram, doubleJumpScripts, ledgeWalkerProgram, rocketProgram, throwScripts, type RecipeId } from '../bricks/recipes'
+import { returningBallProgram, returningThrowScripts, reusablePatrolProgram, signalCarProgram, trafficSignalProgram } from '../bricks/freedom'
+import { programmableCarProgram, reactiveCharacterScripts } from '../bricks/authoring'
+import { normalizeCostumeSet, type CostumeSet } from '../costumes/model'
 import { COSTUME_LABELS } from '../program/catalog'
 import type { Costume } from '../program/types'
 import { topBlocks } from '../program/workspaceJson'
@@ -12,8 +15,7 @@ import { starterLevel } from './starter'
 
 /*
  * A lab: its level and the bricks it changed or made. Built-in bricks live in code; editing one here makes this
- * lab's own copy (same id, origin "copy": every thing of that brick in the level runs the copy, and "Back to the
- * original" drops it). "Save as a new brick" turns a brick's code into a brick of its own with a picked name.
+ * lab's own copy (same id, origin "copy": every thing of that brick in the level runs the copy, and "Reset code" restores its original program while keeping artwork). "Save as a new brick" turns a brick's code into a brick of its own with a picked name.
  * Everything is plain data and saved in this browser.
  */
 
@@ -80,11 +82,24 @@ export function setProgram(doc: LabDoc, id: string, program: unknown): LabDoc {
   return { ...doc, bricks: { ...doc.bricks, [id]: next } }
 }
 
-/** Drop this lab's copy of a built-in: the original code comes back. */
+/** Artwork belongs to the design; changing pixels never changes its collision body. */
+export function setAppearance(doc: LabDoc, id: string, value: CostumeSet): LabDoc {
+  const current = brickDef(doc, id)
+  const appearance = normalizeCostumeSet(value)
+  if (!current || id === WORLD_ID || !appearance) return doc
+  return { ...doc, bricks: { ...doc.bricks, [id]: {
+    ...current, origin: current.origin === 'builtin' ? 'copy' : current.origin, appearance: clone(appearance),
+  } } }
+}
+
+/** Restore built-in code without deleting the student's painted costumes. */
 export function backToOriginal(doc: LabDoc, id: string): LabDoc {
   if (doc.bricks[id]?.origin !== 'copy') return doc
   const bricks = { ...doc.bricks }
-  delete bricks[id]
+  const original = builtinBrick(id)
+  if (!original) return doc
+  if (bricks[id].appearance) bricks[id] = { ...bricks[id], program: clone(original.program) }
+  else delete bricks[id]
   return { ...doc, bricks }
 }
 
@@ -107,10 +122,10 @@ export function baseNoun(doc: LabDoc, id: string): string {
  */
 export function saveAsNewBrick(doc: LabDoc, id: string, word: NameWord): { doc: LabDoc; id: string } {
   const def = brickDef(doc, id)
-  if (!def || id === PLAYER_ID) return { doc, id }
+  if (!def || id === PLAYER_ID || id === WORLD_ID) return { doc, id }
   const newId = `my-${doc.nextBrick}`
   const name = `${word} ${baseNoun(doc, id)}`
-  const made: BrickDef = { id: newId, name, costume: def.costume, basedOn: id, origin: 'mine', program: clone(def.program), blurb: `Made from ${def.name}.` }
+  const made: BrickDef = { id: newId, name, costume: def.costume, basedOn: id, origin: 'mine', program: clone(def.program), ...(def.appearance ? { appearance: clone(def.appearance) } : {}), blurb: `Made from ${def.name}.` }
   const bricks = { ...doc.bricks, [newId]: made }
   if (bricks[id]?.origin === 'copy') delete bricks[id]
   const things = doc.level.things.map((t) => (t.brick === id ? { ...t, brick: newId } : t))
@@ -123,6 +138,35 @@ export function newBrick(doc: LabDoc, costume: Costume, word: NameWord | null): 
   const noun = COSTUME_LABELS[costume].replace(/^\? /, '').split(' ').map((s) => s[0].toUpperCase() + s.slice(1)).join(' ')
   const made: BrickDef = { id: newId, name: word ? `${word} ${noun}` : noun, costume, basedOn: null, origin: 'mine', program: blankProgram(newId), blurb: 'Made by you.' }
   return { doc: { ...doc, bricks: { ...doc.bricks, [newId]: made }, nextBrick: doc.nextBrick + 1 }, id: newId }
+}
+
+/** Fork exactly one placed object. Neither the source design nor its other instances change. */
+export function makeInstanceUnique(doc: LabDoc, placedId: number): { doc: LabDoc; id: string | null } {
+  const placed = doc.level.things.find((t) => t.id === placedId)
+  const source = placed && brickDef(doc, placed.brick)
+  if (!placed || !source || source.id === PLAYER_ID || source.id === WORLD_ID) return { doc, id: null }
+  let nextBrick = doc.nextBrick
+  while (brickDef(doc, `my-${nextBrick}`)) nextBrick++
+  const id = `my-${nextBrick}`
+  const made: BrickDef = {
+    ...source,
+    id,
+    name: `My ${source.name.replace(/^My /, '')}`,
+    origin: 'mine',
+    basedOn: source.id,
+    program: clone(source.program),
+    ...(source.appearance ? { appearance: clone(source.appearance) } : {}),
+    blurb: `A separate design made from ${source.name}.`,
+  }
+  return {
+    id,
+    doc: {
+      ...doc,
+      nextBrick: nextBrick + 1,
+      bricks: { ...doc.bricks, [id]: made },
+      level: { ...doc.level, things: doc.level.things.map((t) => t.id === placedId ? { ...t, brick: id } : t) },
+    },
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -186,11 +230,51 @@ export interface RecipeResult {
   open: string
   /** A thing to place next to the player (in the running world too). */
   place?: string
+  /** Companion designs to place nearby, separate from the primary object. */
+  alsoPlace?: string[]
 }
 
 /** Put a recipe's code where it belongs. Vehicles become bricks of the lab's own, placed next to you. */
 export function applyRecipe(doc: LabDoc, recipe: RecipeId): RecipeResult {
   switch (recipe) {
+    case 'react-character':
+      return { doc: setProgram(doc, PLAYER_ID, withScripts(brickDef(doc, PLAYER_ID)!.program, 'react-character', reactiveCharacterScripts())), open: PLAYER_ID }
+    case 'programmable-car': {
+      const id = 'programmable-car'
+      const next = doc.bricks[id] ? doc : { ...doc, bricks: { ...doc.bricks, [id]: {
+        id, name: 'My Driveable Car', costume: 'car', basedOn: null, origin: 'mine',
+        program: programmableCarProgram(), blurb: 'Driving built from keys, variables, motion, and positioning. Change every step.',
+      } satisfies BrickDef } }
+      return { doc: next, open: id, place: id }
+    }
+    case 'returning-ball': {
+      const id = 'returning-ball'
+      const next = doc.bricks[id] ? doc : { ...doc, bricks: { ...doc.bricks, [id]: {
+        id, name: 'Returning Ball', costume: 'ball', basedOn: 'ball', origin: 'mine',
+        program: returningBallProgram(), blurb: 'Launch it with Z. Its code brings it back to you.',
+      } satisfies BrickDef } }
+      return { doc: setProgram(next, PLAYER_ID, withScripts(brickDef(next, PLAYER_ID)!.program, 'returning-throw', returningThrowScripts())), open: PLAYER_ID }
+    }
+    case 'traffic-signal': {
+      const bricks = { ...doc.bricks }
+      bricks['traffic-signal'] ??= {
+        id: 'traffic-signal', name: 'Traffic Signal', costume: 'star', basedOn: null, origin: 'mine',
+        program: trafficSignalProgram(), blurb: 'Sends a message that controls another creation.',
+      }
+      bricks['signal-car'] ??= {
+        id: 'signal-car', name: 'Signal Car', costume: 'car', basedOn: null, origin: 'mine',
+        program: signalCarProgram(), blurb: 'Listens to the signal. Open its code to change the response.',
+      }
+      return { doc: { ...doc, bricks }, open: 'traffic-signal', place: 'traffic-signal', alsoPlace: ['signal-car'] }
+    }
+    case 'reusable-patrol': {
+      const id = 'reusable-patrol'
+      const next = doc.bricks[id] ? doc : { ...doc, bricks: { ...doc.bricks, [id]: {
+        id, name: 'Patrol Bot', costume: 'walker', basedOn: 'walker', origin: 'mine',
+        program: reusablePatrolProgram(), blurb: 'Open its patrol behavior, change the speed input, and reuse it.',
+      } satisfies BrickDef } }
+      return { doc: next, open: id, place: id }
+    }
     case 'double-jump':
       return { doc: setProgram(doc, PLAYER_ID, withScripts(brickDef(doc, PLAYER_ID)!.program, 'dj', doubleJumpScripts())), open: PLAYER_ID }
     case 'throw':

@@ -13,7 +13,7 @@ const ctx = (): CompileContext => ({ bricks: allBricks(starterDoc()).map((b) => 
 describe('the block catalog', () => {
   it('defines every toolbox block, each with a lab_ type, a tooltip and a colour', () => {
     const types = new Set(LAB_BLOCK_DEFINITIONS.map((d) => d.type))
-    for (const cat of labToolbox().contents) for (const b of cat.contents) expect(types.has(b.type as `lab_${string}`), b.type).toBe(true)
+    for (const cat of labToolbox().contents) for (const b of cat.contents) if (b.kind === 'block') expect(types.has(b.type as `lab_${string}`), b.type).toBe(true)
     for (const d of LAB_BLOCK_DEFINITIONS) {
       expect(d.type.startsWith('lab_')).toBe(true)
       expect(d.tooltip.length).toBeGreaterThan(5)
@@ -21,12 +21,13 @@ describe('the block catalog', () => {
     }
   })
 
-  it('only ever shows picked words: no free-text fields anywhere', () => {
+  it('offers short name inputs for custom blocks and messages while keeping other fields guided', () => {
     for (const d of LAB_BLOCK_DEFINITIONS) {
       for (const args of [d.args0, d.args1, d.args2, d.args3]) {
-        for (const a of args ?? []) expect(['field_dropdown', 'field_number', 'input_value', 'input_statement']).toContain(a.type)
+        for (const a of args ?? []) expect(['field_dropdown', 'field_number', 'field_input', 'field_label', 'input_value', 'input_statement']).toContain(a.type)
       }
     }
+    expect(LAB_BLOCK_DEFINITIONS.find((d) => d.type === 'lab_define')?.args0?.some((a) => a.type === 'field_input')).toBe(true)
   })
 
   it('makes the level-dependent dropdowns ask a provider', () => {

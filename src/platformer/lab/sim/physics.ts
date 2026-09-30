@@ -27,7 +27,7 @@ const clampSpeed = (v: number) => Math.max(-MAX_SPEED, Math.min(MAX_SPEED, v))
 
 /** Solid things (and platforms) something may bump into or stand on. */
 export function solidsFor(w: LabWorld): Thing[] {
-  return w.things.filter((t) => !t.removed && t.solid !== SOLID_NONE && !t.riding)
+  return w.things.filter((t) => !t.removed && !t.system && t.solid !== SOLID_NONE && !t.riding)
 }
 
 const ignores = (t: Thing, s: Thing) => s === t || s.id === t.rider || s.id === t.riding
@@ -211,7 +211,7 @@ function solidIn(w: LabWorld, box: Box, me: Thing, platforms: boolean): boolean 
     }
   }
   for (const s of w.things) {
-    if (s.removed || s.riding || s === me || s.id === me.rider || s.id === me.riding) continue
+    if (s.removed || s.system || s.riding || s === me || s.id === me.rider || s.id === me.riding) continue
     if (s.solid === SOLID_NONE || (s.solid !== SOLID_ALL && !platforms)) continue
     if (overlaps(box, s)) return true
   }
@@ -259,7 +259,7 @@ export function probe(w: LabWorld, me: Thing, what: ProbeWhat, where: ProbeWhere
     case 'lava':
       return tileIn(w, box, T.LAVA)
     case 'thing':
-      return w.things.some((s) => !s.removed && !s.riding && s !== me && s.id !== w.playerId && overlaps(box, s))
+      return w.things.some((s) => !s.removed && !s.system && !s.riding && s !== me && s.id !== w.playerId && overlaps(box, s))
     case 'player': {
       const p = findThing(w, w.playerId)
       return !!p && p !== me && !p.riding && overlaps(box, p)

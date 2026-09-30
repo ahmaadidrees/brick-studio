@@ -13,14 +13,14 @@ npm run dev          # then open http://localhost:5173/2d/lab
 
 - **Layout:** code on the left, the stage on the right, and under it the watched thing's live values and
   **In this level** (you first, then each brick with a count; **See inside** opens its code). **+ Add** is the brick
-  library. **Build | Play** in the header; **I want to…** opens the five examples. Over the code, **Blocks |
+  library. **Build | Play** in the header; **I want to…** opens the examples. Over the code, **Blocks |
   JavaScript | Python** shows the same code as text to read.
 - **Keys** (click the stage first; clicks in the code give the keys back to the code): ← → move, space jumps (hold
   for higher), X runs, and Z, ↑, ↓ are free for your own code.
 - The lab is saved in this browser only (`localStorage`, `brick-studio.2d.lab.v1`). **Start the lab over** (under
   the list) clears it.
 
-## The five examples ("I want to…")
+## Starter examples ("I want to…")
 
 Each one is made only of the primitives below; opening it puts the code where it belongs and opens it.
 
@@ -28,12 +28,19 @@ Each one is made only of the primitives below; opening it puts the code where it
 |---|---|---|
 | jump again in the air | your moves | Walk left from the start to the lava gap: one jump can't cross it, a double jump can |
 | throw a ball | your moves | Z. The ball starts at your hand, flies the way you face, bounces, knocks out Walkers; 0.4 s cooldown |
-| drive a car | a new *Car* brick, placed next to you | Walk into it, ↑ gets in, ← → drive (it knocks out Walkers), ↓ gets out |
+| build a car you can ride | a new *Car* brick, placed next to you | Walk next to it and press ↑ to board; arrows drive; ↓ exits beside it. Open its code to see the variable, key checks and position blocks |
+| draw and animate a character | your moves | Draw two costume frames, press Play, then click the character to speak and step to its next frame |
+| ride a shortcut car | a new *Car* brick, placed next to you | The original example stays available: ↑ gets in, ← → drive (it knocks out Walkers), ↓ gets out |
 | ride a rocket | a new *Rocket* brick, placed next to you | ↑ gets on, hold space to thrust; the fuel meter runs down, refills when it lands; ← → steer |
 | make Walkers turn at ledges | your copy of the built-in Walker | Watch the Walkers on the two ledges right of the start |
 
 Recordings of all five: `scripts/demo/record-lab.mjs` (see *Checks* below); stills are in
 `docs/qa/code-lab-2026-09-27/`.
+
+Three more examples extend the same language: [a returning ball, a broadcast-controlled vehicle, and a reusable
+patrol block](CODE-LAB-FREEDOM.md). The **Make it yours** sheet walks through drawing an animated character and
+inspecting the car built from general blocks. [Short tutorials](CODE-LAB-TUTORIALS.md) explain variables, reusable
+blocks, and reopening authored programs.
 
 ## Primitives (the blocks)
 
@@ -46,6 +53,8 @@ Recordings of all five: `scripts/demo/record-lab.mjs` (see *Checks* below); stil
 | ride / take control | `let [them/the player/it] ride me` · `drop my rider` · `someone is riding me?` · `I am riding something?` — a rider's own keys stop moving it; the vehicle's code reads the keys |
 | memory | `set / change [my / the player's] [fuel/jumps/cooldown/coins/…] …` · `[my] [fuel]` (names are picked from a list: they show in the game) |
 | look | `switch costume to […]` · `set my color to […]` · `set my size to N %` · `say [picked phrase] for N seconds` · `show [my fuel] above me` · `play sound […]` |
+| draw and animate | draw costume frames in the appearance editor · `switch to frame N` · `next frame` · `play frames at N per second` · `stop frames` · `when clicked` · `say [your words] for N seconds` |
+| take control | `turn [my/player/it/them] controls and physics on/off` · `show/hide [my/player/it/them]` · position reporters and `move to x/y` |
 | timers | `wait N seconds` · `wait until …` · `every N seconds` (hat) · `seconds since I appeared` |
 | events | `when I appear` · `when [key] pressed` · `when I get stomped` · plus `when I land`, `when I get hurt` / `hurt [who]` |
 | (the player) | `run and jump with the keys` / `stop running with the keys` · `set my [jump power / run speed] to N %` |
@@ -112,7 +121,7 @@ src/platformer/lab/
   program/                   block catalog + toolbox, compiler, IR types and limits
   runtime/                   fiber interpreter, bounded evaluation
   sim/                       world, bodies and the player's controls, touches
-  bricks/                    built-in bricks and the five recipes, written as block programs (dsl.ts)
+  bricks/                    built-in bricks and the examples, written as block programs (dsl.ts)
   level/                     the starter level, the lab document (copies, new bricks, recipes), browser storage
   render/, ui/               costumes and stage overlay; Blockly panel, lists and sheets
 ```
@@ -123,7 +132,7 @@ Routing: `/2d/lab` in `src/platformer/routes2d.ts`, rendered lazily by `Platform
 ## Checks
 
 ```sh
-npx vitest run src/platformer/lab          # compiler, runtime, physics, plain data, and the five examples
+npx vitest run src/platformer/lab          # compiler, runtime, physics, recovery, editor, and ten examples
 npm run check                              # everything, including the engine's determinism tests
 PLAYWRIGHT_MODULE=… DEMO_OUT=demo-out node scripts/demo/record-lab.mjs   # the five recordings (dev site on :5199)
 ```
@@ -133,3 +142,7 @@ timing of a single jump fails to cross the gap and the double jump crosses it; t
 the way you face, bounces, respects the cooldown and knocks out a Walker; the car takes you in, out-runs you and
 lets you out; the rocket climbs while fuel lasts, falls, refills on landing and lifts you onto a cliff no jump
 reaches; the edited Walker never leaves its ledge, and the original does.
+
+`bricks/freedom.test.ts` also steps the returning ball, signal-controlled car and parameterized patrol frame by
+frame. These examples run in this single-player lab and save in this browser's local storage. The JavaScript and
+Python panes remain read-only views of the blocks.

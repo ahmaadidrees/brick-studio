@@ -1,11 +1,11 @@
 import { SUB, sub } from '@brick-studio/platformer-core/engine/constants'
 import { listKey, type CompiledProgram } from '../program/compile'
-import { LAB_LIMITS, type DiagnosticCode, type DiagnosticSeverity, type Stmt, type Who } from '../program/types'
+import { LAB_LIMITS, PHRASE_TEXT, isSafeIdentifier, type DiagnosticCode, type DiagnosticSeverity, type Stmt, type Who } from '../program/types'
 import { matchesTarget, sideMatches } from '../sim/contacts'
 import { heroLaunched } from '../sim/physics'
 import { COSTUME_BOX, boxHitsTiles, boxOf, findThing, newFiber, reshape, resolveWho, spawnThing, spotNear } from '../sim/things'
 import { FIBER_READY, FIBER_SLEEPING, FIBER_WAITING, SOLID_ALL, SOLID_NONE, SOLID_TOP, type Fiber, type Frame, type LabHost, type LabWorld, type Thing, type Trace } from '../sim/types'
-import { RuntimeFault, evalBoolean, evalExpr, evalNumber, finite, memoryOf, spend, toNumber, type EvalContext } from './evaluate'
+import { RuntimeFault, boundedVariable, evalBoolean, evalExpr, evalNumber, finite, memoryOf, spend, toNumber, variablesOf, type EvalContext } from './evaluate'
 
 /*
  * The block runtime (after src/robotics/runtime/runtime.ts): each thing's scripts run as fibers, one fixed step at a
@@ -145,7 +145,7 @@ export function moveThingTo(w: LabWorld, t: Thing, cx: number, bottom: number) {
 
 function countAlive(w: LabWorld): number {
   let n = 0
-  for (const t of w.things) if (!t.removed) n++
+  for (const t of w.things) if (!t.removed && !t.system) n++
   return n
 }
 
@@ -211,11 +211,53 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
       }
       return 'next'
     }
+    case 'moveXY': {
+      const x = boundedVariable(evalNumber(stmt.x, ctx), ctx)
+      const y = boundedVariable(evalNumber(stmt.y, ctx), ctx)
+      advance()
+      const t = target(ctx, stmt.who, stmt.blockId)
+      if (t && !t.system) moveThingTo(w, t, Math.round(x * SUB), Math.round(y * SUB))
+      return 'next'
+    }
     case 'hero':
       advance()
       me.hero = stmt.on
       if (!stmt.on) me.hs.jumping = false
       return 'next'
+    case 'setControls': {
+      advance()
+      const t = target(ctx, stmt.who, stmt.blockId)
+      if (t && !t.system) {
+        t.controlsEnabled = stmt.enabled
+        if (!stmt.enabled) {
+          t.hs.jumping = false
+          t.hs.buffer = 0
+          t.vx = 0
+          t.vy = 0
+        }
+      }
+      return 'next'
+    }
+    case 'setPhysics': {
+      advance()
+      const t = target(ctx, stmt.who, stmt.blockId)
+      if (t && !t.system) {
+        t.physicsEnabled = stmt.enabled
+        t.vx = 0
+        t.vy = 0
+        t.ground = 0
+        t.onGround = false
+        t.hs.jumping = false
+        t.hs.buffer = 0
+      }
+      return 'next'
+    }
+    case 'setVisible': {
+      advance()
+      const t = target(ctx, stmt.who, stmt.blockId)
+      if (t && !t.system) t.visible = stmt.visible
+      return 'next'
+    }
     case 'heroStat': {
       const p = clamp(evalNumber(stmt.percent, ctx), 0, 400)
       advance()
@@ -230,7 +272,7 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
         return 'next'
       }
       const info = host.brick(stmt.brick)
-      if (!info) {
+      if (!info || stmt.brick === 'world') {
         note(ctx, 'warning', 'runtime.nobody', 'That brick is gone, so nothing was made. Pick another one.', stmt.blockId)
         return 'next'
       }
@@ -241,10 +283,28 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
       me.made++
       return 'next'
     }
+    case 'makeXY': {
+      const x = boundedVariable(evalNumber(stmt.x, ctx), ctx)
+      const y = boundedVariable(evalNumber(stmt.y, ctx), ctx)
+      advance()
+      if (me.made >= LAB_LIMITS.makesPerThingPerTick || countAlive(w) >= LAB_LIMITS.maxThings) {
+        note(ctx, 'warning', 'runtime.too-many-things', `The level is full (${LAB_LIMITS.maxThings} things). Remove some things before making more.`, stmt.blockId)
+        return 'next'
+      }
+      const info = host.brick(stmt.brick)
+      if (!info || stmt.brick === 'world') {
+        note(ctx, 'warning', 'runtime.nobody', 'That brick is gone, so nothing was made. Pick another one.', stmt.blockId)
+        return 'next'
+      }
+      const made = spawnThing(w, host, stmt.brick, Math.round(x * SUB), Math.round(y * SUB), me.facing, 0)
+      me.it = made.id
+      me.made++
+      return 'next'
+    }
     case 'remove': {
       advance()
       const t = target(ctx, stmt.who, stmt.blockId)
-      if (!t) return 'next'
+      if (!t || t.system) return 'next'
       if (t.id === w.playerId) {
         note(ctx, 'info', 'runtime.cannot-remove-player', 'The player stays in the level. Try “move the player to the start”.', stmt.blockId)
         return 'next'
@@ -281,7 +341,7 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
     case 'letRide': {
       advance()
       const r = target(ctx, stmt.who, stmt.blockId)
-      if (!r || r === me || r.riding || r.rider || me.riding || findThing(w, me.rider)) return 'next'
+      if (!r || me.system || r.system || r === me || r.riding || r.rider || me.riding || findThing(w, me.rider)) return 'next'
       me.rider = r.id
       r.riding = me.id
       r.vx = 0
@@ -303,7 +363,37 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
     case 'costume':
       advance()
       me.costume = stmt.costume
+      me.useCustomCostume = false
+      me.costumePlaying = false
       reshape(w, me)
+      return 'next'
+    case 'frame': {
+      const frame = evalNumber(stmt.frame, ctx)
+      advance()
+      const count = host.brick(me.brick)?.appearance?.frames.length ?? 1
+      me.useCustomCostume = true
+      me.costumeFrame = clamp(Math.floor(Number.isFinite(frame) ? frame : 1), 1, Math.max(1, count))
+      return 'next'
+    }
+    case 'nextFrame': {
+      advance()
+      const count = Math.max(1, host.brick(me.brick)?.appearance?.frames.length ?? 1)
+      me.useCustomCostume = true
+      me.costumeFrame = (me.costumeFrame % count) + 1
+      return 'next'
+    }
+    case 'playFrames': {
+      const fps = evalNumber(stmt.fps, ctx)
+      advance()
+      me.costumeFps = clamp(Number.isFinite(fps) ? fps : 8, 1, 60)
+      me.useCustomCostume = true
+      me.costumePlaying = true
+      me.costumeFrameDue = w.tick + Math.max(1, Math.round(60 / me.costumeFps))
+      return 'next'
+    }
+    case 'stopFrames':
+      advance()
+      me.costumePlaying = false
       return 'next'
     case 'color':
       advance()
@@ -319,7 +409,14 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
     case 'say': {
       const s = evalNumber(stmt.seconds, ctx)
       advance()
-      me.say = stmt.phrase
+      me.say = PHRASE_TEXT[stmt.phrase]
+      me.sayUntil = w.tick + ticksFor(s)
+      return 'next'
+    }
+    case 'sayText': {
+      const s = evalNumber(stmt.seconds, ctx)
+      advance()
+      me.say = stmt.text.replace(/[\u0000-\u001f\u007f]/g, ' ').slice(0, 120)
       me.sayUntil = w.tick + ticksFor(s)
       return 'next'
     }
@@ -350,6 +447,47 @@ function exec(ctx: Turn, frame: Frame, list: readonly Stmt[], stmt: Stmt): 'next
       if (mem) mem[stmt.name] = finite(toNumber(mem[stmt.name] ?? 0) + by, ctx)
       return 'next'
     }
+    case 'setVariable': {
+      const value = boundedVariable(evalNumber(stmt.value, ctx), ctx)
+      advance()
+      if (!isSafeIdentifier(stmt.name)) return 'next'
+      const vars = variablesOf(ctx, stmt.scope)
+      if (vars) vars[stmt.name] = value
+      return 'next'
+    }
+    case 'changeVariable': {
+      const by = evalNumber(stmt.by, ctx)
+      advance()
+      if (!isSafeIdentifier(stmt.name)) return 'next'
+      const vars = variablesOf(ctx, stmt.scope)
+      if (vars) vars[stmt.name] = boundedVariable((Object.prototype.hasOwnProperty.call(vars, stmt.name) ? vars[stmt.name] : 0) + by, ctx)
+      return 'next'
+    }
+    case 'call': {
+      const procedure = ctx.prog.procedures.get(stmt.name)
+      if (!procedure) {
+        advance()
+        note(ctx, 'error', 'program.unknown-procedure', 'This custom block is missing its definition.', stmt.blockId)
+        return 'next'
+      }
+      if (fiber.frames.filter((f) => f.args).length >= LAB_LIMITS.maxCallDepth) {
+        advance()
+        note(ctx, 'error', 'runtime.call-depth', 'This custom block calls itself too many times. Add a stopping condition.', stmt.blockId)
+        return 'next'
+      }
+      const values = stmt.args.map((arg) => boundedVariable(evalNumber(arg, ctx), ctx))
+      advance()
+      const args: Record<string, number> = {}
+      procedure.params.forEach((name, i) => { if (isSafeIdentifier(name)) args[name] = values[i] ?? 0 })
+      fiber.frames.push({ owner: procedure.blockId, arm: 'do', index: 0, at: procedure.body[0]?.blockId ?? '', loop: 0, left: 0, args })
+      return 'push'
+    }
+    case 'broadcast':
+      advance()
+      w.messages ??= []
+      if (w.messages.length < LAB_LIMITS.maxMessagesPerTick) w.messages.push({ name: stmt.message, deliverTick: w.tick + 1 })
+      else note(ctx, 'warning', 'runtime.message-limit', 'Too many messages went out at once. Add a wait.', stmt.blockId)
+      return 'next'
     case 'wait': {
       const s = evalNumber(stmt.seconds, ctx)
       advance()
@@ -462,11 +600,16 @@ function startScripts(w: LabWorld, host: LabHost, t: Thing, prog: CompiledProgra
   for (const script of prog.ir.scripts) {
     if (t.fibers.some((f) => f.script === script.id)) continue
     const tr = script.trigger
+    // Messages below start in send order. The other hats keep their existing workspace order.
+    if (tr.kind === 'message') continue
     let fire = false
     let them = 0
     switch (tr.kind) {
       case 'appear':
         fire = events.some((e) => e.kind === 'appear')
+        break
+      case 'clicked':
+        fire = events.some((e) => e.kind === 'clicked')
         break
       case 'key':
         fire = w.input.pressed.includes(tr.key)
@@ -500,6 +643,18 @@ function startScripts(w: LabWorld, host: LabHost, t: Thing, prog: CompiledProgra
     }
     if (fire) {
       t.fibers.push(newFiber(script.id, them))
+      trace?.add(script.hatBlockId)
+    }
+  }
+  // A queue can contain several different names in one tick. Start each matching receiver in that order,
+  // with workspace order only as a tie-breaker for hats listening to the same message. A running hat skips
+  // later matches, as it does for every other event.
+  for (const event of events) {
+    if (event.kind !== 'message') continue
+    for (const script of prog.ir.scripts) {
+      if (script.trigger.kind !== 'message' || script.trigger.message !== event.message) continue
+      if (t.fibers.some((fiber) => fiber.script === script.id)) continue
+      t.fibers.push(newFiber(script.id))
       trace?.add(script.hatBlockId)
     }
   }
@@ -553,6 +708,16 @@ export function runThing(w: LabWorld, host: LabHost, t: Thing, prog: CompiledPro
 function changedBehind(f: Fiber, old: CompiledProgram, next: CompiledProgram): boolean {
   for (let k = 0; k < f.frames.length; k++) {
     const frame = f.frames[k]
+    if (frame.args) {
+      // The caller is parked just after its call while this procedure runs. If a live edit changes the
+      // call's input expressions, rerun it so these bound values reflect the new blocks.
+      const caller = f.frames[k - 1]
+      const call = caller && old.lists.get(listKey(caller.owner, caller.arm))?.[caller.index - 1]
+      if (!call || call.op !== 'call' || old.keys.get(call.blockId) !== next.keys.get(call.blockId)) return true
+      const before = [...old.procedures.values()].find((procedure) => procedure.blockId === frame.owner)
+      const after = [...next.procedures.values()].find((procedure) => procedure.blockId === frame.owner)
+      if (!before || !after || before.name !== after.name || before.params.length !== after.params.length || before.params.some((name, index) => name !== after.params[index])) return true
+    }
     if (frame.loop !== 0) continue
     const key = listKey(frame.owner, frame.arm)
     const before = old.lists.get(key)

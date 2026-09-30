@@ -4,7 +4,8 @@
  * is evaluated: the compiler reads workspace JSON, the runtime walks plain data.
  *
  * Units are the kid's: speeds in pixels per frame (a brick is 16 wide), angles in degrees, time in seconds, and
- * settings in percent of normal. Words shown in the game are picked from the lists below, never typed.
+ * settings in percent of normal. Guided choices come from the lists below; variable, procedure, input and message
+ * names are short validated identifiers typed by the student.
  */
 
 /** Keys a program can read. The player's own "run and jump with the keys" uses left, right, space and X. */
@@ -45,6 +46,9 @@ export const PROBE_WHERES: readonly ProbeWhere[] = ['ahead', 'aheadDown', 'below
 
 /** Whose memory: mine, or the player's (shared by every brick, like a score). */
 export type MemScope = 'my' | 'player'
+export type VariableScope = MemScope | 'world'
+/** Safe on ordinary JSON objects before and after a world is serialized. */
+export const isSafeIdentifier = (name: string): boolean => /^[A-Za-z][A-Za-z0-9_]{0,23}$/.test(name) && !['__proto__', 'prototype', 'constructor'].includes(name)
 export const MEM_SCOPES: readonly MemScope[] = ['my', 'player']
 
 /** Memory names are picked, never typed: they show in the game (live values, meters above things). */
@@ -138,6 +142,9 @@ export type Expr =
   /** Bricks (tiles) from my middle to theirs; 999 when they are nowhere. */
   | { kind: 'distance'; who: Who; blockId?: string }
   | { kind: 'memory'; scope: MemScope; name: MemoryName; blockId?: string }
+  | { kind: 'variable'; scope: VariableScope; name: string; blockId?: string }
+  | { kind: 'argument'; name: string; blockId?: string }
+  | { kind: 'position'; who: Who; axis: 'x' | 'y'; blockId?: string }
 
 /**
  * Statements. Each block compiles to exactly one statement with the block's id, so a running program can be
@@ -175,6 +182,20 @@ export type Stmt =
   | { op: 'forever'; body: Stmt[]; blockId: string }
   | { op: 'if'; condition: Expr; then: Stmt[]; else?: Stmt[]; blockId: string }
   | { op: 'stopScript'; blockId: string }
+  | { op: 'setVariable'; scope: VariableScope; name: string; value: Expr; blockId: string }
+  | { op: 'changeVariable'; scope: VariableScope; name: string; by: Expr; blockId: string }
+  | { op: 'call'; name: string; args: Expr[]; blockId: string }
+  | { op: 'broadcast'; message: string; blockId: string }
+  | { op: 'moveXY'; who: Who; x: Expr; y: Expr; blockId: string }
+  | { op: 'makeXY'; brick: string; x: Expr; y: Expr; blockId: string }
+  | { op: 'setControls'; who: Who; enabled: boolean; blockId: string }
+  | { op: 'setPhysics'; who: Who; enabled: boolean; blockId: string }
+  | { op: 'setVisible'; who: Who; visible: boolean; blockId: string }
+  | { op: 'frame'; frame: Expr; blockId: string }
+  | { op: 'nextFrame'; blockId: string }
+  | { op: 'playFrames'; fps: Expr; blockId: string }
+  | { op: 'stopFrames'; blockId: string }
+  | { op: 'sayText'; text: string; seconds: Expr; blockId: string }
 
 /** What starts a script. Event hats start their script unless it is still running from the last time. */
 export type Trigger =
@@ -185,10 +206,13 @@ export type Trigger =
   | { kind: 'land' }
   | { kind: 'hurt' }
   | { kind: 'every'; seconds: number }
+  | { kind: 'message'; message: string }
+  | { kind: 'clicked' }
 
 export type Script = { id: string; trigger: Trigger; body: Stmt[]; hatBlockId: string }
 
-export type ProgramIR = { irVersion: 1; scripts: Script[] }
+export type Procedure = { name: string; params: string[]; body: Stmt[]; blockId: string }
+export type ProgramIR = { irVersion: 1; scripts: Script[]; procedures?: Procedure[] }
 
 export const LAB_LIMITS = Object.freeze({
   /** Blocks in one program. */
@@ -196,6 +220,11 @@ export const LAB_LIMITS = Object.freeze({
   /** Nesting depth of blocks inside blocks. */
   maxDepth: 24,
   maxScripts: 24,
+  maxProcedures: 24,
+  maxNamedVariables: 64,
+  maxCallDepth: 16,
+  maxMessagesPerTick: 32,
+  maxVariableValue: 1_000_000,
   maxWorkspaceBytes: 150_000,
   maxRepeatCount: 10_000,
   /** Ops one thing may spend in one frame, shared by its running scripts. */
@@ -221,12 +250,19 @@ export type DiagnosticCode =
   | 'program.them-outside-touch'
   | 'program.it-without-make'
   | 'program.brick-missing'
+  | 'program.bad-name'
+  | 'program.unknown-procedure'
+  | 'program.bad-argument'
+  | 'program.too-many-variables'
   | 'runtime.budget'
   | 'runtime.non-finite'
   | 'runtime.too-many-things'
   | 'runtime.nobody'
   | 'runtime.cannot-remove-player'
   | 'runtime.level-busy'
+  | 'runtime.call-depth'
+  | 'runtime.message-limit'
+  | 'runtime.variable-limit'
 
 export type LabDiagnostic = {
   code: DiagnosticCode

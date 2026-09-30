@@ -5,7 +5,8 @@ import { drawGeneratedCharacter } from '../../characters/atlas'
 import { rr } from '../../render/cartoon/paint'
 import { playerLook } from '../../game/session'
 import { drawSprite, type Skin } from '../../render/skin'
-import { MEMORY_ICONS, PHRASE_TEXT, type MemoryName } from '../program/types'
+import { MEMORY_ICONS, type MemoryName } from '../program/types'
+import type { CostumeSet } from '../costumes/model'
 import { COSTUME_BOX } from '../sim/things'
 import type { LabWorld, Thing } from '../sim/types'
 import { COLOR_HEX, type CostumeArt } from './costumes'
@@ -25,9 +26,11 @@ export interface StageView {
   build: boolean
   /** Build: the cell under the pointer, what a click would place there, and the thing picked up. */
   hover: { x: number; y: number } | null
-  ghost: { costume: Thing['costume']; w: number } | null
+  ghost: { brick?: string; costume: Thing['costume']; w: number } | null
   erasing: boolean
   selected: number
+  /** Saved painted sheets keyed by brick design id. */
+  appearances?: ReadonlyMap<string, CostumeSet>
 }
 
 /** Draw order: goal behind, then blocks and platforms, then everything else. */
@@ -37,8 +40,13 @@ function layer(t: Thing): number {
   return 2
 }
 
-function drawThing(ctx: CanvasRenderingContext2D, skin: Skin, art: CostumeArt, t: Thing, frame: number, tick: number, camX: number, camY: number) {
-  const placed = art.costume(skin, t.costume, frame + t.id * 7, t.facing, t.color)
+function drawThing(ctx: CanvasRenderingContext2D, skin: Skin, art: CostumeArt, t: Thing, frame: number, tick: number, camX: number, camY: number, appearance?: CostumeSet) {
+  const base = appearance ? art.costume(skin, t.costume, frame + t.id * 7, t.facing, 'none') : null
+  const side = t.costume === 'hero' ? 23 : Math.max(base?.sprite.w ?? COSTUME_BOX[t.costume].w, base?.sprite.h ?? COSTUME_BOX[t.costume].h)
+  const index = (t.costumeFrame ?? 1) - 1
+  const placed = appearance
+    ? art.custom(appearance, index, t.facing, t.color, side)
+    : art.costume(skin, t.costume, frame + t.id * 7, t.facing, t.color)
   if (!placed) return
   const s = placed.sprite
   const k = t.size / 100
@@ -209,21 +217,22 @@ export function drawStage(ctx: CanvasRenderingContext2D, skin: Skin, art: Costum
   const player = w.things.find((t) => t.id === w.playerId)
   // You are a thing like any other: in another costume you are drawn like one; in your own, as the builder.
   const you = (p: Thing) => {
-    if (p.costume !== 'hero') drawThing(ctx, skin, art, p, v.frame, w.tick, camX, camY)
+    const appearance = p.useCustomCostume === false ? undefined : v.appearances?.get(p.brick)
+    if (appearance || p.costume !== 'hero') drawThing(ctx, skin, art, p, v.frame, w.tick, camX, camY, appearance)
     else if (p.color !== 'none') drawPlayerTinted(ctx, skin, w, p, v.frame, camX, camY)
     else drawPlayer(ctx, skin, w, p, v.frame, camX, camY)
   }
-  const inCar = player?.riding ? w.things.find((t) => t.id === player.riding && t.costume === 'car') : undefined
-  const list = w.things.filter((t) => !t.removed && t.id !== w.playerId).sort((a, b) => layer(a) - layer(b) || a.id - b.id)
+  const inCar = player?.riding ? w.things.find((t) => t.id === player.riding && t.costume === 'car' && t.visible !== false) : undefined
+  const list = w.things.filter((t) => !t.removed && !t.system && t.visible !== false && t.id !== w.playerId).sort((a, b) => layer(a) - layer(b) || a.id - b.id)
   for (const t of list) {
-    if (t === inCar && player) you(player)
-    drawThing(ctx, skin, art, t, v.frame, w.tick, camX, camY)
+    if (t === inCar && player && player.visible !== false) you(player)
+    drawThing(ctx, skin, art, t, v.frame, w.tick, camX, camY, t.useCustomCostume === false ? undefined : v.appearances?.get(t.brick))
   }
-  if (player && !inCar) you(player)
+  if (player && !inCar && player.visible !== false) you(player)
 
   // Words and numbers over things.
   for (const t of w.things) {
-    if (t.removed) continue
+    if (t.removed || t.system || t.visible === false) continue
     const cx = (t.x + t.w / 2) / SUB - camX
     let top = t.y / SUB - camY - (t.id === w.playerId ? 10 : 2)
     const pl = player
@@ -233,7 +242,7 @@ export function drawStage(ctx: CanvasRenderingContext2D, skin: Skin, art: Costum
       meter(ctx, MEMORY_ICONS[name] ?? name, mem?.[name] ?? 0, cx, top)
       top -= 10.5
     }
-    if (t.say) bubble(ctx, PHRASE_TEXT[t.say], cx, top)
+    if (t.say) bubble(ctx, t.say, cx, top)
   }
 
   const outline = (t: Thing, color: string, dash: number[]) => {
@@ -249,10 +258,10 @@ export function drawStage(ctx: CanvasRenderingContext2D, skin: Skin, art: Costum
     ctx.stroke()
     ctx.restore()
   }
-  const watched = w.things.find((t) => t.id === v.watch && !t.removed)
+  const watched = w.things.find((t) => t.id === v.watch && !t.removed && !t.system && t.visible !== false)
   if (watched) outline(watched, 'rgba(244, 202, 58, 0.95)', [3, 2])
   if (v.build) {
-    const sel = w.things.find((t) => t.id === v.selected && !t.removed)
+    const sel = w.things.find((t) => t.id === v.selected && !t.removed && !t.system && t.visible !== false)
     if (sel && sel !== watched) outline(sel, 'rgba(53, 101, 191, 0.9)', [])
     if (v.hover) {
       const hx = v.hover.x * TILE - camX
@@ -261,7 +270,10 @@ export function drawStage(ctx: CanvasRenderingContext2D, skin: Skin, art: Costum
       if (v.ghost && !v.erasing) {
         const bw = Math.max(TILE, COSTUME_BOX[v.ghost.costume].w)
         ctx.globalAlpha = 0.5
-        const placed = art.costume(skin, v.ghost.costume, 0, 1, 'none')
+        const painted = v.ghost.brick ? v.appearances?.get(v.ghost.brick) : undefined
+        const base = art.costume(skin, v.ghost.costume, 0, 1, 'none')
+        const side = v.ghost.costume === 'hero' ? 23 : Math.max(base?.sprite.w ?? TILE, base?.sprite.h ?? TILE)
+        const placed = painted ? art.custom(painted, 0, 1, 'none', side) : base
         if (placed) {
           const s = placed.sprite
           const left = bw > TILE ? hx : hx + TILE / 2 - s.w / 2

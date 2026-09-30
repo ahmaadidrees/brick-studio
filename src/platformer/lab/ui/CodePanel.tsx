@@ -1,13 +1,17 @@
 import * as Blockly from 'blockly/core'
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, type Ref } from 'react'
-import { labToolbox, type OptionsProvider } from '../program/catalog'
+import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react'
+import { labToolbox, type BlockDeclaration, type OptionsProvider, type VariableDeclaration } from '../program/catalog'
 import type { DiagnosticSeverity, LabDiagnostic } from '../program/types'
-import { ensureBlocklyReady, setOptionsProvider, workspaceOptions } from './blocklySetup'
+import { ensureBlocklyReady, setDefinitionOpener, setOptionsProvider, setVariableOptionsProvider, workspaceOptions } from './blocklySetup'
+import { AuthoringDialog } from './AuthoringDialog'
+import { readBlockDeclarations, readVariableDeclarations, withVariableDeclarations } from './authoring'
 
 /** Edits rest this long before they go into the level (and, while playing, into the running things). */
 export const SAVE_DEBOUNCE_MS = 220
 
 export interface CodePanelHandle {
+  /** Commit a pending block edit before another action reads or changes the open design. */
+  flush: () => void
   /** Blocks running now (they glow). */
   setGlow: (ids: readonly string[]) => void
   /** Scroll a block's script into view and open its message. */
@@ -61,6 +65,13 @@ function placeScripts(ws: Blockly.WorkspaceSvg) {
   ws.scroll(28 - box.left * ws.scale, 24 - box.top * ws.scale)
 }
 
+function selectedDefinitionName(ws: Blockly.WorkspaceSvg): string | null {
+  const selected = Blockly.getSelected()
+  if (!(selected instanceof Blockly.Block) || selected.workspace !== ws || selected.type !== 'lab_call') return null
+  const name = selected.getFieldValue('NAME')?.trim()
+  return name && ws.getTopBlocks(false).some((b) => b.type === 'lab_define' && b.getFieldValue('NAME')?.trim() === name) ? name : null
+}
+
 /**
  * The open brick's code as blocks (after the robotics branch's BlocklyWorkspace). Injected once per mount; a
  * different brick, or code changed from outside (a recipe), loads in place. Real edits are written back after a
@@ -70,10 +81,17 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
   const hostRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<Blockly.WorkspaceSvg | null>(null)
   const loaded = useRef<{ brick: string; json: string } | null>(null)
+  const lastSavedSnapshot = useRef<string | null>(null)
   const loading = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const glowing = useRef<string[]>([])
   const marked = useRef(new Set<string>())
+  const [selectedCall, setSelectedCall] = useState<string | null>(null)
+  const [dialog, setDialog] = useState<'variable' | 'block' | null>(null)
+  const [declarations, setDeclarations] = useState<{ variables: VariableDeclaration[]; blocks: BlockDeclaration[] }>({ variables: [], blocks: [] })
+  const variablesRef = useRef<VariableDeclaration[]>([])
+  const definitionsRef = useRef<BlockDeclaration[]>([])
+  const toolboxKey = useRef('')
   const props = useRef({ brickId, program, options, onChange, diagnostics })
   props.current = { brickId, program, options, onChange, diagnostics }
 
@@ -105,6 +123,61 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
     marked.current = new Set(map.keys())
   }, [])
 
+  const syncCallInputs = useCallback(() => {
+    const ws = wsRef.current
+    if (!ws) return
+    const definitions = new Map(
+      ws.getTopBlocks(false)
+        .filter((b) => b.type === 'lab_define')
+        .map((b) => [b.getFieldValue('NAME')?.trim(), b]),
+    )
+    quietly(() => {
+      for (const call of ws.getAllBlocks(false).filter((b) => b.type === 'lab_call')) {
+        const definition = definitions.get(call.getFieldValue('NAME')?.trim())
+        const names = definition
+          ? ['ARG1', 'ARG2', 'ARG3'].map((key) => definition.getFieldValue(key)?.trim() ?? '')
+          : ['amount', '', '']
+        let changed = false
+        for (let i = 0; i < 3; i++) {
+          const key = `ARG${i + 1}`
+          const field = call.getField(`LABEL${i + 1}`)
+          const visible = Boolean(names[i])
+          if (field && field.getValue() !== names[i]) {
+            field.setValue(names[i])
+            changed = true
+          }
+          const input = call.getInput(key)
+          if (input && input.isVisible() !== visible) {
+            input.setVisible(visible)
+            changed = true
+          }
+        }
+        if (changed && call instanceof Blockly.BlockSvg) call.render()
+      }
+    })
+  }, [])
+
+  const refreshToolbox = useCallback(() => {
+    const ws = wsRef.current
+    if (!ws) return
+    const blocks = readBlockDeclarations(Blockly.serialization.workspaces.save(ws))
+    definitionsRef.current = blocks
+    const key = JSON.stringify([variablesRef.current, blocks])
+    if (key === toolboxKey.current) return
+    toolboxKey.current = key
+    ws.updateToolbox(labToolbox(variablesRef.current, blocks))
+    quietly(() => {
+      for (const block of ws.getAllBlocks(false)) {
+        const field = block.getField('NAME')
+        if (field instanceof Blockly.FieldDropdown && ['lab_variable', 'lab_set_variable', 'lab_change_variable'].includes(block.type)) {
+          field.getOptions(false)
+          field.forceRerender()
+        }
+      }
+    })
+    setDeclarations({ variables: [...variablesRef.current], blocks })
+  }, [])
+
   const save = useCallback(() => {
     if (timer.current) {
       clearTimeout(timer.current)
@@ -113,8 +186,11 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
     const ws = wsRef.current
     const at = loaded.current
     if (!ws || !at || loading.current) return
-    const json = Blockly.serialization.workspaces.save(ws)
-    loaded.current = { brick: at.brick, json: JSON.stringify(json) }
+    const json = withVariableDeclarations(Blockly.serialization.workspaces.save(ws), variablesRef.current)
+    const snapshot = JSON.stringify(json)
+    if (snapshot === lastSavedSnapshot.current) return
+    lastSavedSnapshot.current = snapshot
+    loaded.current = { brick: at.brick, json: snapshot }
     props.current.onChange(at.brick, json)
   }, [])
 
@@ -126,6 +202,7 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
       glowing.current = []
       marked.current = new Set()
       try {
+        variablesRef.current = readVariableDeclarations(source)
         quietly(() => {
           ws.clear()
           Blockly.serialization.workspaces.load((source ?? {}) as Record<string, unknown>, ws)
@@ -135,23 +212,50 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
       } finally {
         loading.current = false
         loaded.current = { brick, json: JSON.stringify(source ?? {}) }
+        lastSavedSnapshot.current = JSON.stringify(withVariableDeclarations(Blockly.serialization.workspaces.save(ws), variablesRef.current))
       }
       ws.clearUndo()
+      setSelectedCall(null)
       placeScripts(ws)
+      syncCallInputs()
+      refreshToolbox()
       decorate()
     },
-    [decorate],
+    [decorate, refreshToolbox, syncCallInputs],
   )
+
+  const openDefinition = useCallback((name: string) => {
+    const ws = wsRef.current
+    if (!ws) return
+    const definition = ws.getTopBlocks(false).find((b) => b.type === 'lab_define' && b.getFieldValue('NAME')?.trim() === name.trim())
+    if (!definition) return
+    ws.scrollBoundsIntoView(definition.getBoundingRectangle(), 32)
+    definition.select()
+  }, [])
 
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     ensureBlocklyReady()
     const release = setOptionsProvider((menu, current) => props.current.options(menu, current))
+    const releaseVariables = setVariableOptionsProvider((current) => {
+      const names = [...new Set([...variablesRef.current.map((variable) => variable.name), ...(current ? [current] : [])])]
+      return (names.length ? names : ['points']).map((name) => [name, name])
+    })
+    const releaseOpener = setDefinitionOpener(openDefinition)
     const ws = Blockly.inject(host, workspaceOptions(labToolbox()))
     wsRef.current = ws
+    ws.registerButtonCallback('LAB_MAKE_VARIABLE', () => setDialog('variable'))
+    ws.registerButtonCallback('LAB_MAKE_BLOCK', () => setDialog('block'))
     const listener = (e: Blockly.Events.Abstract) => {
-      if (e.isUiEvent || loading.current || e.type === Blockly.Events.FINISHED_LOADING) return
+      if (e.isUiEvent) {
+        setSelectedCall(selectedDefinitionName(ws))
+        return
+      }
+      if (loading.current || e.type === Blockly.Events.FINISHED_LOADING) return
+      syncCallInputs()
+      refreshToolbox()
+      setSelectedCall(selectedDefinitionName(ws))
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(save, SAVE_DEBOUNCE_MS)
     }
@@ -165,13 +269,41 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
       ws.removeChangeListener(listener)
       if (timer.current) save()
       release()
+      releaseVariables()
+      releaseOpener()
       wsRef.current = null
       loaded.current = null
+      lastSavedSnapshot.current = null
+      toolboxKey.current = ''
       ws.dispose()
     }
     // Inject once; later props arrive through refs.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const createVariable = useCallback((variable: VariableDeclaration) => {
+    variablesRef.current = [...variablesRef.current, variable]
+    refreshToolbox()
+    save()
+    setDialog(null)
+  }, [refreshToolbox, save])
+
+  const createBlock = useCallback((definition: BlockDeclaration) => {
+    const ws = wsRef.current
+    if (!ws) return
+    const block = ws.newBlock('lab_define') as Blockly.BlockSvg
+    block.setFieldValue(definition.name, 'NAME')
+    for (let index = 0; index < 3; index++) block.setFieldValue(definition.args[index] ?? '', `ARG${index + 1}`)
+    block.initSvg()
+    block.render()
+    const bounds = ws.getBlocksBoundingBox()
+    block.moveBy(Math.max(28, bounds.right + 30), 30)
+    refreshToolbox()
+    save()
+    block.select()
+    ws.scrollBoundsIntoView(block.getBoundingRectangle(), 30)
+    setDialog(null)
+  }, [refreshToolbox, save])
 
   // Another brick, or its code changed from outside the editor (a recipe, "Back to the original"): load it.
   const programJson = useMemo(() => JSON.stringify(program ?? {}), [program])
@@ -206,6 +338,9 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
   useImperativeHandle(
     ref,
     () => ({
+      flush: () => {
+        save()
+      },
       setGlow: (ids) => {
         const ws = wsRef.current
         if (!ws) return
@@ -232,8 +367,18 @@ export function CodePanel({ brickId, program, options, optionsKey, diagnostics, 
       },
       zoom: (steps) => wsRef.current?.zoomCenter(steps),
     }),
-    [],
+    [save],
   )
 
-  return <div className="lab-code-blockly" ref={hostRef} data-testid="lab-blockly" />
+  return (
+    <>
+      <div className="lab-code-blockly" ref={hostRef} data-testid="lab-blockly" />
+      {selectedCall && (
+        <button type="button" className="lab-open-definition" onClick={() => openDefinition(selectedCall)}>
+          Open “{selectedCall}” definition
+        </button>
+      )}
+      {dialog && <AuthoringDialog mode={dialog} variables={declarations.variables} blocks={declarations.blocks} onVariable={createVariable} onBlock={createBlock} onClose={() => setDialog(null)} />}
+    </>
+  )
 }

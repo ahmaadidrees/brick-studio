@@ -34,14 +34,15 @@ import {
   type ScriptNode,
   type WorkspaceJson,
 } from './dsl'
+import { programmableCarProgram, reactiveCharacterScripts } from './authoring'
 
 /*
- * "I want to…": five examples, each made only from the lab's primitives. Opening one puts its code where it belongs
+ * "I want to…": examples made only from the lab's primitives. Opening one puts its code where it belongs
  * (your moves, a Walker, or a new brick placed next to you) and opens that code, so every recipe is also something
  * to read and change.
  */
 
-export type RecipeId = 'double-jump' | 'throw' | 'car' | 'rocket' | 'ledge-walker'
+export type RecipeId = 'double-jump' | 'throw' | 'car' | 'rocket' | 'ledge-walker' | 'returning-ball' | 'traffic-signal' | 'reusable-patrol' | 'programmable-car' | 'react-character'
 
 export interface Recipe {
   id: RecipeId
@@ -72,15 +73,15 @@ export const RECIPES: readonly Recipe[] = [
   },
   {
     id: 'car',
-    want: 'drive a car',
-    tryIt: 'Walk to the car and press ↑ to get in. ← → drive, ↓ gets out.',
+    want: 'ride the built-in car example',
+    tryIt: 'Built-in riding example: walk to the car and press ↑ to get in. ← → drive, ↓ gets out.',
     uses: ['let them ride me', 'key held?', 'change speed', 'friction', 'a platform'],
     brick: 'car',
   },
   {
     id: 'rocket',
-    want: 'ride a rocket',
-    tryIt: 'Press ↑ at the rocket, then hold space to fly. Watch the fuel.',
+    want: 'ride the built-in rocket example',
+    tryIt: 'Built-in riding example: press ↑ at the rocket, then hold space to fly. Watch the fuel.',
     uses: ['let them ride me', 'key held?', 'change speed up', 'my fuel', 'show above me', 'when I land'],
     brick: 'rocket',
   },
@@ -91,9 +92,49 @@ export const RECIPES: readonly Recipe[] = [
     uses: ['is there ground ahead and down?', 'on the ground?', 'not', 'turn around'],
     brick: 'walker',
   },
+  {
+    id: 'returning-ball',
+    want: 'throw a ball that comes back',
+    tryIt: 'Press Z. Watch the ball fly out, follow you, then return.',
+    uses: ['when key pressed', 'make a thing', 'position x / y', 'move to x / y', 'my cooldown'],
+    brick: 'you + returning ball',
+  },
+  {
+    id: 'traffic-signal',
+    want: 'send a signal to drive a vehicle',
+    tryIt: 'Press Z to send GO and X to send STOP. Watch the car read the shared signal.',
+    uses: ['broadcast', 'when I receive', 'the world’s variable', 'set speed'],
+    brick: 'you + signal car',
+  },
+  {
+    id: 'reusable-patrol',
+    want: 'make a reusable patrol move',
+    tryIt: 'Watch it patrol. Open the definition and change the speed number in its call.',
+    uses: ['define a block', 'number input', 'run my block', 'wait', 'turn around'],
+    brick: 'patrol',
+  },
+  {
+    id: 'programmable-car',
+    want: 'build a car you can ride',
+    tryIt: 'Walk next to it and press ↑ to board. Use the arrows to drive; ↓ lets you out beside it.',
+    uses: ['touching?', 'my driving variable', 'key held?', 'position x / y', 'move to x / y', 'turn controls and physics on or off'],
+    brick: 'car',
+  },
+  {
+    id: 'react-character',
+    want: 'draw and animate a character',
+    tryIt: 'Draw two or more costume frames, press Play, then click your character to say something and change frame.',
+    uses: ['draw costume frames', 'play frames at 4 per second', 'when clicked', 'say your own words', 'next frame'],
+    brick: 'you',
+  },
 ]
 
 export const recipeById = (id: string) => RECIPES.find((r) => r.id === id)
+
+/** The new car is an ordinary program built from reusable blocks; kept separate from the original ride shortcut demo. */
+export const programmableCarRecipeProgram = programmableCarProgram
+/** Append character authoring behavior without replacing the player's movement and recovery code. */
+export const reactiveCharacterRecipeScripts = reactiveCharacterScripts
 
 /**
  * Double jump: one more jump in the air. "jumps" counts the jumps made in the air since you last landed (memory

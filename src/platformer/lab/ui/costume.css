@@ -1,0 +1,33 @@
+.lab-costume-panel { display: flex; flex-direction: column; gap: 15px; min-height: 0; height: 100%; overflow: auto; padding: 16px; box-sizing: border-box; color: #263c51; }
+.lab-costume-panel button { border: 1px solid #d7deeb; background: #fff; color: #263c51; border-radius: 9px; padding: 7px 10px; font: inherit; font-weight: 800; cursor: pointer; }
+.lab-costume-panel button:hover:not(:disabled) { background: #eef3ff; }
+.lab-costume-panel button:disabled { cursor: default; opacity: .45; }
+.lab-costume-panel button:focus-visible, .lab-costume-panel input:focus-visible, .lab-costume-canvas:focus-visible { outline: 3px solid #3565bf; outline-offset: 2px; }
+.lab-costume-heading, .lab-costume-strip-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lab-costume-heading strong { display: block; font: 700 23px Fredoka, Nunito, sans-serif; }
+.lab-costume-heading span { display: block; font-size: 13px; color: #5d7082; }
+.lab-costume-history, .lab-costume-strip-heading > div { display: flex; gap: 6px; flex-wrap: wrap; }
+.lab-costume-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 144px; gap: 16px; }
+.lab-costume-editor { min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.lab-costume-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.lab-costume-panel .lab-costume-tools button.active { background: #3565bf; color: white; border-color: #3565bf; }
+.lab-costume-canvas { width: min(100%, 352px); aspect-ratio: 1; height: auto; image-rendering: pixelated; cursor: crosshair; touch-action: none; border: 2px solid #63778b; border-radius: 4px; background-color: #fff; background-image: linear-gradient(45deg, #e9ebef 25%, transparent 25%), linear-gradient(-45deg, #e9ebef 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e9ebef 75%), linear-gradient(-45deg, transparent 75%, #e9ebef 75%); background-size: 24px 24px; background-position: 0 0, 0 12px, 12px -12px, -12px 0; }
+.lab-costume-colors { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; max-width: 370px; }
+.lab-costume-panel .lab-costume-colors > button { width: 28px; height: 28px; padding: 0; border: 2px solid #8091a0; border-radius: 50%; }
+.lab-costume-panel .lab-costume-colors > button.selected { outline: 3px solid #3565bf; outline-offset: 2px; }
+.lab-costume-custom-color { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; }
+.lab-costume-custom-color input { width: 32px; height: 30px; padding: 0; border: 0; background: transparent; }
+.lab-costume-side { display: flex; flex-direction: column; align-items: stretch; gap: 12px; font-size: 12px; font-weight: 800; }
+.lab-costume-side label { display: flex; flex-direction: column; gap: 4px; }
+.lab-costume-side input { box-sizing: border-box; width: 100%; min-height: 34px; padding: 5px 7px; border: 1px solid #c5d0dc; border-radius: 7px; color: #263c51; font: inherit; }
+.lab-costume-side p { margin: 0; color: #5d7082; font-weight: 700; }
+.lab-costume-preview { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px; border: 1px solid #d7deeb; border-radius: 12px; background: #fff; }
+.lab-costume-preview img { width: 100px; height: 100px; image-rendering: pixelated; background: #f0f2f5; }
+.lab-costume-strip-heading strong { font-size: 16px; }
+.lab-costume-strip { display: flex; gap: 8px; overflow-x: auto; padding: 3px 2px 8px; }
+.lab-costume-panel .lab-costume-strip button { flex: 0 0 88px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 7px; }
+.lab-costume-panel .lab-costume-strip button.selected { border-color: #3565bf; box-shadow: 0 0 0 2px #3565bf; }
+.lab-costume-strip img { width: 64px; height: 64px; image-rendering: pixelated; background: #f0f2f5; }
+.lab-costume-strip span { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.lab-costume-loading { padding: 20px; color: #5d7082; }
+@media (max-width: 700px) { .lab-costume-workspace { grid-template-columns: 1fr; } .lab-costume-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; } .lab-costume-preview { grid-row: span 2; } }
