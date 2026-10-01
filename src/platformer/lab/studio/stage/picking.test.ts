@@ -211,6 +211,47 @@ describe('hit-picking order', () => {
     expect(picked.isStage).toBe(true)
   })
 
+  function worldOf(targets: Target[]): World {
+    return {
+      tick: 0,
+      timerStartTick: 0,
+      bounds: { left: 0, right: 960, bottom: 0, top: 360 },
+      stage: stageTarget,
+      targets,
+      bricks: { brickA, brickB },
+      keysDown: new Set(),
+      mouse: { x: 0, y: 0, down: false },
+      answer: '',
+      rngState: 1,
+      cloneCount: 0,
+      nextTargetId: 10,
+      askQueue: [],
+      nextAskId: 1,
+      hostClock: null,
+    }
+  }
+
+  function ghosted(t: Target, ghost: number): Target {
+    return { ...t, effects: { ...t.effects, ghost } }
+  }
+
+  it('ghost 100 target is not clickable: the target beneath is picked', () => {
+    const bottom = makeSpriteTarget('tBottom', 'brickA', 100, 100)
+    const top = ghosted(makeSpriteTarget('tTop', 'brickA', 100, 100), 100)
+    expect(pickTarget(worldOf([bottom, top]), 100, 100).id).toBe('tBottom')
+  })
+
+  it('ghost 100 alone falls through to the stage', () => {
+    const only = ghosted(makeSpriteTarget('t1', 'brickA', 100, 100), 100)
+    expect(pickTarget(worldOf([only]), 100, 100).isStage).toBe(true)
+  })
+
+  it('ghost 99 is still clickable', () => {
+    const bottom = makeSpriteTarget('tBottom', 'brickA', 100, 100)
+    const top = ghosted(makeSpriteTarget('tTop', 'brickA', 100, 100), 99)
+    expect(pickTarget(worldOf([bottom, top]), 100, 100).id).toBe('tTop')
+  })
+
   it('picks copies correctly in Build mode', () => {
     const design: LevelDesign = {
       id: 'lvl1',
