@@ -7,6 +7,33 @@ import type { PrimitiveCtx, PrimitiveTable } from './contracts'
 import { acosDeg, asinDeg, atanDeg, cosDeg, exp, ln, log10, pow10, sinDeg, tanDeg } from './detmath'
 import { compare, isInt, toBoolean, toNumber, toString } from './values'
 
+/** Powers of 10 for |n| <= 22 to avoid transcendental float noise on integer powers. */
+const POWERS_OF_10: number[] = (() => {
+  const table = [1]
+  let p = 1
+  for (let i = 1; i <= 22; i++) {
+    p *= 10
+    table.push(p)
+  }
+  return table
+})()
+
+function opPow10(n: number): number {
+  if (Number.isInteger(n) && Math.abs(n) <= 22) {
+    const pow = POWERS_OF_10[Math.abs(n)]
+    return n >= 0 ? pow : 1 / pow
+  }
+  return pow10(n)
+}
+
+function opLog10(n: number): number {
+  for (let i = 0; i <= 22; i++) {
+    if (n === POWERS_OF_10[i]) return i
+    if (i > 0 && n === 1 / POWERS_OF_10[i]) return -i
+  }
+  return log10(n)
+}
+
 function add(ctx: PrimitiveCtx): number {
   return toNumber(ctx.arg('NUM1')) + toNumber(ctx.arg('NUM2'))
 }
@@ -61,8 +88,10 @@ function random(ctx: PrimitiveCtx): number {
   const high = nFrom <= nTo ? nTo : nFrom
   if (low === high) return low
   const draw = ctx.runtime.random()
-  if (isInt(from) && isInt(to)) return low + Math.floor(draw * ((high + 1) - low))
-  return draw * (high - low) + low
+  if (isInt(from) && isInt(to)) {
+    return low + Math.floor(draw * (high - low + 1))
+  }
+  return low + draw * (high - low)
 }
 
 function join(ctx: PrimitiveCtx): string {
@@ -132,11 +161,11 @@ function mathop(ctx: PrimitiveCtx): number {
     case 'ln':
       return ln(n)
     case 'log':
-      return log10(n)
+      return opLog10(n)
     case 'e ^':
       return exp(n)
     case '10 ^':
-      return pow10(n)
+      return opPow10(n)
     default:
       return 0
   }
