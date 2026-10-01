@@ -247,6 +247,7 @@ export class Runtime implements RuntimeApi {
 
   greenFlag(): void {
     this.stopAll()
+    this.world.answer = ''
     this.world.timerStartTick = this.world.tick
     for (const target of [this.world.stage, ...this.world.targets]) {
       target.edgeHatState = {}
