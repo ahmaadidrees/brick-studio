@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-01T19:13:54.106Z",
+  "sourceCommit": "c2c24fc7db38dfa661065500989586e64d35dbc3",
+  "workerVersion": "13806073-2294-4f31-bf30-1b77530d8065",
+  "bricks": 2000,
+  "customDesigns": 64,
+  "roomCreationStatus": 201,
+  "twoFreshSocketSnapshotsMatch": true,
+  "documentBytes": 213509,
+  "scope": "Synthetic guest room only; no classroom data modified."
+}
