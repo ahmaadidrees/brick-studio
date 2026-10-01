@@ -1,6 +1,6 @@
 import { BRAND_NAME } from '../brand'
 import type {
-  ClassroomAuthResult as ClassroomAuth, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomClassPatch, ClassroomClientSurface, ClassroomLoginInput, ClassroomMe,
+  ClassroomAuthResult as ClassroomAuth, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomClassPatch, ClassroomClientSurface, ClassroomInvite, ClassroomLoginInput, ClassroomMe,
   ClassroomRegisterInput, ClassroomRoster, ClassroomStudent, ClassroomStudentPatch, ClassroomWorld, ClassroomWorldCreateInput, ClassroomWorldSaveInput, ClassroomWorldSharing,
 } from './contracts'
 export type { ClassroomUser, ClassroomClass, ClassroomClassmate, ClassroomWorld, ClassroomRoster, ClassroomRosterStudent, ClassroomLoginInput, ClassroomClientSurface, ClassroomWorldSharing } from './contracts'
@@ -139,6 +139,10 @@ export class ClassroomClient implements ClassroomClientSurface {
   me() { return this.request<ClassroomMe>('/me') }
   /** Own worlds, then class/group worlds, then classmates' shared worlds; every entry carries `visibility`, `canEdit`, `ownerName`, `sharedAt`. */
   async listWorlds() { return (await this.request<{ worlds: ClassroomWorld[] }>('/worlds')).worlds }
+  async listInvites() { return (await this.request<{ invites: ClassroomInvite[] }>('/invites')).invites }
+  async markInvite(id: string, state: { seen: true } | { joined: true }) { return (await this.request<{ invite: ClassroomInvite }>(`/invites/${encodeURIComponent(id)}`, 'PATCH', state)).invite }
+  /** Explicit resend to selected classmates already allowed into this world. */
+  async inviteAgain(worldId: string, userIds: string[]) { return (await this.request<{ invites: ClassroomInvite[] }>(`/worlds/${encodeURIComponent(worldId)}/invites`, 'POST', { userIds })).invites }
   async listClasses() { return (await this.request<{ classes: ClassroomClass[] }>('/classes')).classes }
   async listStudents(classId: string) { return (await this.request<{ students: ClassroomStudent[] }>(`/classes/${classId}/students`)).students }
   /** Active classmates (id + display name) for the invite picker; a student may only ask about their own class. */

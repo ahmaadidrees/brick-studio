@@ -141,6 +141,7 @@ function trustedClassroomIdentity(access: ClassroomSocketAccess): TrustedIdentit
   return { key: access.userId, host: access.isTeacher || access.isOwner, name: access.isTeacher ? "Teacher" : access.username, canBuild: access.canEdit };
 }
 
+/** Canonicalize with the shared loader, including stable connected-pipe endpoint IDs. */
 function parseLevel(value: unknown): LevelJson | null {
   try {
     return levelToJson(levelFromJson(value));

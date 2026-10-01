@@ -1,10 +1,9 @@
 import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AccountChip } from './AccountChip'
-import type { ClassroomWorld } from '../classroom/contracts'
-import { markInvitesSeen } from '../classroom/inviteSeen'
+import type { ClassroomInvite } from '../classroom/contracts'
 import type { ClassroomSessionState } from './useClassroomSession'
-import { invitesWaitingLabel, resetInviteCountCache, useInviteCount } from './useInviteCount'
+import { invitesWaitingLabel, useInviteCount } from './useInviteCount'
 
 afterEach(() => { cleanup(); window.localStorage.clear() })
 
@@ -90,46 +89,31 @@ describe('AccountChip', () => {
   })
 })
 
-describe('invite badge', () => {
-  const invite = (id: string, ownerId = 'u2'): ClassroomWorld => ({ id, title: `World ${id}`, ownerId, classId: null, kind: 'personal', revision: 1, updatedAt: '2026-09-21T09:00:00Z', visibility: 'members', canEdit: true, classCanEdit: true, ownerName: 'Ben K.', ownerClassId: 'c1', sharedAt: '2026-09-21T09:00:00Z' })
-  const own: ClassroomWorld = { ...invite('w-own', 'u1'), visibility: 'private', sharedAt: null }
-  function stub(worlds: ClassroomWorld[] | Error) {
-    const client = { request: vi.fn(async (path: string) => { if (worlds instanceof Error) throw worlds; return { worlds } as never }) }
-    resetInviteCountCache(client)
-    return client
+describe('invitation entry is separate from the account chip', () => {
+  const invite = (id: string, seenAt: string | null = null): ClassroomInvite => ({ id, worldId: id, title: `World ${id}`, ownerName: 'Ben K.', format: 'brick', canEdit: true, invitedAt: '2026-10-01T09:00:00Z', seenAt, joinedAt: null })
+  function stub(invites: ClassroomInvite[] | Error) {
+    return { request: vi.fn(async (_path: string) => { if (invites instanceof Error) throw invites; return { invites } as never }) }
   }
 
-  it('shows a coral count on the avatar and "N invites waiting" on My worlds', () => {
+  it('keeps the avatar and My worlds description about the account even when invitations are waiting', () => {
     render(<AccountChip session={student} context="page" inviteCount={2} />)
-    const trigger = screen.getByRole('button', { name: 'Account: Ava R., Period 2 — Builders, 2 invites waiting' })
-    const badge = within(trigger).getByLabelText('2 invites waiting')
-    expect(badge).toHaveClass('shell-account-badge')
-    expect(badge).toHaveTextContent('2')
-    fireEvent.click(trigger)
-    const item = screen.getByRole('menuitem', { name: 'My worlds' })
-    expect(document.getElementById(item.getAttribute('aria-describedby')!)).toHaveTextContent('2 invites waiting')
-    expect(invitesWaitingLabel(1)).toBe('1 invite waiting')
-    expect(invitesWaitingLabel(0)).toBe('')
-  })
-
-  it('keeps the plain chip and description when nothing is waiting', () => {
-    render(<AccountChip session={student} context="page" inviteCount={0} />)
     const trigger = screen.getByRole('button', { name: 'Account: Ava R., Period 2 — Builders' })
     expect(trigger.querySelector('.shell-account-badge')).toBeNull()
     fireEvent.click(trigger)
     const item = screen.getByRole('menuitem', { name: 'My worlds' })
     expect(document.getElementById(item.getAttribute('aria-describedby')!)).toHaveTextContent('Your saved builds')
+    expect(invitesWaitingLabel(1)).toBe('1 invite waiting')
+    expect(invitesWaitingLabel(0)).toBe('')
   })
 
-  it('fetches /worlds once per student across mounts and counts only unseen invites', async () => {
-    markInvitesSeen(['w-seen'])
-    const client = stub([own, invite('w-new'), invite('w-seen'), { ...invite('w-class'), visibility: 'class' }])
+  it('shares one lightweight /invites request across hooks and counts server-unread records', async () => {
+    const client = stub([invite('w-new'), invite('w-seen', '2026-10-01T09:01:00Z')])
     const first = renderHook(() => useInviteCount(student, client))
     await waitFor(() => expect(first.result.current).toBe(1))
     const second = renderHook(() => useInviteCount(student, client))
     await waitFor(() => expect(second.result.current).toBe(1))
     expect(client.request).toHaveBeenCalledTimes(1)
-    expect(client.request).toHaveBeenCalledWith('/worlds')
+    expect(client.request.mock.calls[0][0]).toBe('/invites')
   })
 
   it('never fetches for teachers or guests and stays at zero when the request fails', async () => {

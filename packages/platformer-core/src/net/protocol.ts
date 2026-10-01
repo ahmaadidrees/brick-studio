@@ -1,3 +1,4 @@
+import { LEVEL_MAX_WIDTH, LEVEL_MAX_HEIGHT } from '../engine/constants'
 import type { WorldEvent } from '../engine/events'
 import type { LevelJson } from '../engine/level'
 import type { WorldJson } from '../engine/world'
@@ -18,7 +19,7 @@ export { CHARACTER_IDS, DEFAULT_CHARACTER, isCharacterId, type CharacterId } fro
  * host can lock building, close the room to newcomers, remove players, and save or restore the level.
  */
 
-export const PROTOCOL = 3
+export const PROTOCOL = 4
 export const MAX_PLAYERS = 16
 /** An event may be stamped this many ticks in the past (the server clamps anything older). */
 export const MAX_LATE = 30
@@ -88,6 +89,12 @@ export interface Pose {
   ga?: 0 | 1
   /** Distance-based gait phase quantized to 0..255; independent of gameplay state. */
   gp?: number
+  /** Smooth cosmetic gait and landing values, quantized to 0..255. */
+  gb?: number
+  gw?: number
+  lc?: number
+  /** Pipe mouth in tile coordinates, phase 0 entering / 1 emerging. */
+  pi?: { x: number; y: number; phase: 0 | 1; progress: number }
 }
 
 /** What a joining player needs: a starting world and every event since. */
@@ -198,6 +205,13 @@ export function cleanName(raw: unknown): string {
 const isInt = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n)
 const POSE_NAMES = new Set(['stand', 'walk1', 'walk2', 'walk3', 'jump', 'skid', 'wall', 'kick', 'throw', 'crouch', 'dead'])
 
+function validPipePose(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object') return false
+  const p = raw as Record<string, unknown>
+  return isInt(p.x) && p.x >= 0 && p.x < LEVEL_MAX_WIDTH - 1 && isInt(p.y) && p.y >= 0 && p.y < LEVEL_MAX_HEIGHT &&
+    (p.phase === 0 || p.phase === 1) && isInt(p.progress) && p.progress >= 0 && p.progress <= 255
+}
+
 export function isValidPose(p: unknown): p is Pose {
   if (!p || typeof p !== 'object') return false
   const o = p as Record<string, unknown>
@@ -220,6 +234,8 @@ export function isValidPose(p: unknown): p is Pose {
     (o.ch === undefined || isCharacterId(o.ch)) &&
     (o.af === undefined || (isInt(o.af) && o.af >= 0 && o.af <= 255)) &&
     (o.ga === undefined || o.ga === 0 || o.ga === 1) &&
-    (o.gp === undefined || (isInt(o.gp) && o.gp >= 0 && o.gp <= 255))
+    (o.gp === undefined || (isInt(o.gp) && o.gp >= 0 && o.gp <= 255)) &&
+    [o.gb, o.gw, o.lc].every((v) => v === undefined || (isInt(v) && v >= 0 && v <= 255)) &&
+    (o.pi === undefined || (o.m === 0 && validPipePose(o.pi)))
   )
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBrickStudioDocument } from '@brick-studio/core';
+import { PLATFORMER_FORMAT } from '@brick-studio/platformer-core/document';
 import { ClassroomService, WORLD_MEMBER_LIMIT, handleClassroomRequest, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
 type Row = Record<string, any>;
 
@@ -31,11 +32,13 @@ const roster = () => [
 const world = (sharing: Row = {}) => ({ id: treehouse, owner_id: avaId, class_id: null, kind: 'personal', title: 'Treehouse Hideout', revision: 3, updated_at: '2026-09-16T10:00:00Z', document: doc, class_visibility: 'private', class_can_edit: false, hidden_by_teacher: false, class_shared_at: null, ...sharing });
 const invited = (sharing: Row = {}) => world({ class_visibility: 'members', class_shared_at: '2026-09-15T10:00:00Z', ...sharing });
 const benInvited = () => [{ world_id: treehouse, user_id: benId }];
+const arrival = '2026-09-30T10:00:00.000Z';
+const memberState = (row: Row) => ({ invite_id: crypto.randomUUID(), invited_at: arrival, seen_at: null, joined_at: null, ...row });
 
 /** PostgREST stand-in: eq/neq/in filters, PATCH and DELETE returning affected rows, single or batch POST, the RPCs the routes use. */
 function backend(as: Caller, tables: Tables) {
   const events: ClassroomAccessChange[] = [];
-  const db: Record<string, Row[]> = { classes: tables.classes ?? [period3(), { ...period3(), id: otherClassId, teacher_id: otherTeacherId, name: 'Period 4' }], students: roster(), worlds: tables.worlds, world_members: tables.members ?? [], audit_events: [], checkpoints: [] };
+  const db: Record<string, Row[]> = { classes: tables.classes ?? [period3(), { ...period3(), id: otherClassId, teacher_id: otherTeacherId, name: 'Period 4' }], students: roster(), worlds: tables.worlds, world_members: (tables.members ?? []).map(memberState), audit_events: [], checkpoints: [] };
   const matches = (row: Row, query: URLSearchParams) => [...query.entries()].every(([key, value]) => {
     if (['select', 'limit', 'offset', 'order', 'on_conflict'].includes(key)) return true;
     if (value.startsWith('eq.')) return String(row[key]) === value.slice(3);
@@ -57,7 +60,7 @@ function backend(as: Caller, tables: Tables) {
     if (method === 'DELETE') { db[table] = db[table].filter(row => !rows.includes(row)); return Response.json(rows); }
     if (method === 'POST') { const data = JSON.parse(String(init?.body)); const inserted = (Array.isArray(data) ? data : [data]).map(item => ({ id: crypto.randomUUID(), ...item })); db[table].push(...inserted); return Response.json(inserted); }
     const limit = Number(url.searchParams.get('limit') || 1000);
-    return Response.json(rows.slice(0, limit));
+    return Response.json(rows.slice(Number(url.searchParams.get('offset') || 0), Number(url.searchParams.get('offset') || 0) + limit));
   });
   vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(as);
   vi.spyOn(globalThis, 'fetch').mockImplementation(fetcher as typeof fetch);
@@ -69,7 +72,7 @@ function backend(as: Caller, tables: Tables) {
     return { status: response!.status, body: await response!.json() as Row };
   };
   const members = () => db.world_members.filter(row => row.world_id === treehouse).map(row => row.user_id).sort();
-  return { call, events, db, service, members };
+  return { call, events, db, service, members, fetcher };
 }
 afterEach(() => vi.restoreAllMocks());
 
@@ -194,5 +197,103 @@ describe('quiet invites: sharing a personal world with chosen classmates', () =>
     expect((await call('GET', `classes/${otherClassId}/classmates`)).status).toBe(404);
     vi.restoreAllMocks();
     expect((await backend(teacher, { worlds: [] }).call('GET', `classes/${classId}/classmates`)).body.classmates).toHaveLength(3);
+  });
+});
+
+describe('durable recipient invitation state', () => {
+  it('preserves unchanged IDs, timestamps and acknowledgements; removed and re-added members get a new invite', async () => {
+    const { call, db, events } = backend(ava, { worlds: [invited()], members: [{ ...benInvited()[0], seen_at: arrival, joined_at: arrival }] });
+    const original = { ...db.world_members[0] };
+    await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'members', canEdit: true, members: [benId, chloeId] });
+    expect(db.world_members.find(row => row.user_id === benId)).toEqual(original);
+    const added = db.world_members.find(row => row.user_id === chloeId)!;
+    expect(added).toMatchObject({ invite_id: expect.any(String), invited_at: expect.any(String), seen_at: null, joined_at: null });
+    expect(added.invite_id).not.toBe(original.invite_id);
+    await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'members', canEdit: false, members: [chloeId] });
+    await call('PATCH', `worlds/${treehouse}/sharing`, { visibility: 'members', canEdit: false, members: [chloeId, benId] });
+    expect(db.world_members.find(row => row.user_id === benId)).toMatchObject({ seen_at: null, joined_at: null });
+    expect(db.world_members.find(row => row.user_id === benId)!.invite_id).not.toBe(original.invite_id);
+    expect(db.world_members.find(row => row.user_id === chloeId)).toEqual(added);
+    expect(events).toHaveLength(3);
+    expect(events.every(event => event.change === 'membership')).toBe(true);
+  });
+  it('lists only the current recipient with current access and format using batched metadata reads', async () => {
+    const second = '44444444-4444-4444-8444-00000000000b';
+    const { call, db, fetcher } = backend(ben, { worlds: [invited(), invited({ id: second, title: '2D Runway', doc_format: PLATFORMER_FORMAT, class_can_edit: true })], members: [...benInvited(), { world_id: treehouse, user_id: chloeId }, { world_id: second, user_id: benId }] });
+    const result = await call('GET', 'invites?presence=1');
+    expect(result.status).toBe(200);
+    expect(result.body.invites).toHaveLength(2);
+    expect(result.body.invites.find((invite: Row) => invite.worldId === treehouse)).toEqual({ id: db.world_members[0].invite_id, worldId: treehouse, title: 'Treehouse Hideout', ownerName: 'Ava R.', format: 'brick', canEdit: false, invitedAt: arrival, seenAt: null, joinedAt: null });
+    expect(result.body.invites.find((invite: Row) => invite.worldId === second)).toMatchObject({ format: '2d', canEdit: true });
+    const reads = fetcher.mock.calls.map(([url]) => new URL(String(url)));
+    expect(reads).toHaveLength(4); // class + memberships + world metadata + owner roster, independent of invite count
+    expect(reads.filter(url => url.pathname.endsWith('brick_worlds'))).toHaveLength(1);
+    expect(reads.find(url => url.pathname.endsWith('brick_worlds'))!.searchParams.get('select')).toContain('doc_format:document->>format');
+    expect(reads.find(url => url.pathname.endsWith('brick_worlds'))!.searchParams.get('select')!.split(',')).not.toContain('document');
+    expect(JSON.stringify(result.body)).not.toContain('document');
+  });
+  it('omits hidden, private, class-wide, group, suspended-owner and other-class worlds, and closed/disabled sharing', async () => {
+    for (const changes of [{ hidden_by_teacher: true }, { class_visibility: 'private' }, { class_visibility: 'class' }, { kind: 'group', class_id: classId }, { owner_id: pausedId }, { owner_id: cyId }]) {
+      const { call } = backend(ben, { worlds: [invited(changes)], members: benInvited() });
+      expect((await call('GET', 'invites')).body.invites).toEqual([]);
+      vi.restoreAllMocks();
+    }
+    for (const changes of [{ collaboration_open: false }, { students_can_share: false }]) {
+      const { call } = backend(ben, { classes: [{ ...period3(), ...changes }], worlds: [invited()], members: benInvited() });
+      expect((await call('GET', 'invites')).body.invites).toEqual([]);
+      vi.restoreAllMocks();
+    }
+    expect((await backend(teacher, { worlds: [invited()], members: benInvited() }).call('GET', 'invites')).body.invites).toEqual([]);
+  });
+  it('acknowledges only the authenticated recipient, is idempotent and rejects inaccessible or stale invites', async () => {
+    const { call, db } = backend(ben, { worlds: [invited()], members: [...benInvited(), { world_id: treehouse, user_id: chloeId }] });
+    const id = db.world_members[0].invite_id, otherId = db.world_members[1].invite_id;
+    expect((await call('PATCH', `invites/${otherId}`, { seen: true })).status).toBe(404);
+    for (const invalid of [{ seen: false }, { seen: true, joined: true }, { joined: true, canEdit: true }, {}]) expect((await call('PATCH', `invites/${id}`, invalid)).status).toBe(400);
+    const seen = await call('PATCH', `invites/${id}`, { seen: true });
+    expect(seen.body.invite).toMatchObject({ seenAt: expect.any(String), joinedAt: null, canEdit: false });
+    const joined = await call('PATCH', `invites/${id}`, { joined: true });
+    expect(joined.body.invite).toMatchObject({ seenAt: seen.body.invite.seenAt, joinedAt: expect.any(String), canEdit: false });
+    expect((await call('PATCH', `invites/${id}`, { joined: true })).body).toEqual(joined.body);
+    db.worlds[0].hidden_by_teacher = true;
+    expect((await call('PATCH', `invites/${id}`, { seen: true })).status).toBe(404);
+    db.worlds[0].hidden_by_teacher = false;
+    db.world_members = db.world_members.filter(row => row.invite_id !== id);
+    expect((await call('PATCH', `invites/${id}`, { joined: true })).status).toBe(404);
+    expect(db.worlds[0].class_can_edit).toBe(false);
+  });
+  it('resends only targeted existing invitees, invalidating their old IDs while preserving other recipients', async () => {
+    const { call, db, events } = backend(ava, { worlds: [invited()], members: [{ ...benInvited()[0], seen_at: arrival, joined_at: arrival }, { world_id: treehouse, user_id: chloeId, seen_at: arrival }] });
+    const old = { ...db.world_members[0] }, untouched = { ...db.world_members[1] };
+    const result = await call('POST', `worlds/${treehouse}/invites`, { userIds: [benId, benId] });
+    expect(result.status).toBe(200);
+    expect(result.body.invites).toHaveLength(1);
+    expect(result.body.invites[0]).toMatchObject({ worldId: treehouse, invitedAt: expect.any(String), seenAt: null, joinedAt: null, canEdit: false });
+    expect(result.body.invites[0].id).not.toBe(old.invite_id);
+    expect(result.body.invites[0].invitedAt).not.toBe(arrival);
+    expect(db.world_members[1]).toEqual(untouched);
+    expect(db.world_members).toHaveLength(2);
+    expect(events).toEqual([]); // resend does not change the access grant
+    expect(db.audit_events.map(row => row.action)).toEqual(['resend_world_invites']);
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
+    expect((await call('PATCH', `invites/${old.invite_id}`, { joined: true })).status).toBe(404);
+    expect((await call('GET', 'invites')).body.invites[0].id).toBe(result.body.invites[0].id);
+  });
+  it('refuses a non-owner resend, new/suspended/other-class targets and unavailable sharing without changing records', async () => {
+    const { call, db } = backend(ava, { worlds: [invited()], members: [...benInvited(), { world_id: treehouse, user_id: cyId }, { world_id: treehouse, user_id: pausedId }] });
+    const before = JSON.stringify(db.world_members);
+    for (const userIds of [[benId, chloeId], [cyId], [pausedId], [], ['not-a-uuid']]) expect((await call('POST', `worlds/${treehouse}/invites`, { userIds })).status).toBe(400);
+    expect(JSON.stringify(db.world_members)).toBe(before);
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
+    expect((await call('POST', `worlds/${treehouse}/invites`, { userIds: [benId] })).body.code).toBe('owner_required');
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ava);
+    for (const [field, code] of [['collaboration_open', 'class_closed'], ['students_can_share', 'sharing_disabled']]) {
+      db.classes[0][field] = false;
+      expect((await call('POST', `worlds/${treehouse}/invites`, { userIds: [benId] })).body.code).toBe(code);
+      db.classes[0][field] = true;
+    }
+    db.worlds[0].hidden_by_teacher = true;
+    expect((await call('POST', `worlds/${treehouse}/invites`, { userIds: [benId] })).body.code).toBe('world_hidden');
+    expect(JSON.stringify(db.world_members)).toBe(before);
   });
 });

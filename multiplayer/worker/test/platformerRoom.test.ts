@@ -1,5 +1,6 @@
 import { createPlatformerDocument, type PlatformerDocument } from "@brick-studio/platformer-core/document";
 import { createBlankLevel, levelFromJson, levelToJson } from "@brick-studio/platformer-core/engine/level";
+import { T } from "@brick-studio/platformer-core/engine/tiles";
 import { PROTOCOL } from "@brick-studio/platformer-core/net/protocol";
 import { runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -70,6 +71,33 @@ describe("2D guest rooms", () => {
     send(guest.socket, edit("b:2"));
     expect(await guest.inbox.next("reject")).toMatchObject({ cid: "b:2", reason: "locked" });
     expect(await (await request(`/platformer/rooms/${roomId}`)).json()).toMatchObject({ players: 3 });
+  });
+
+  it("preserves pipe links through room parsing, edit storage and clipped remote poses", async () => {
+    const d = createBlankLevel(40, 20, "Connected pipes");
+    for (const x of [5, 25]) {
+      d.tiles[14 * 40 + x] = T.PIPE_L;
+      d.tiles[14 * 40 + x + 1] = T.PIPE_R;
+    }
+    d.pipes = [{ id: 10, x: 5, y: 14, exitId: 20 }, { id: 20, x: 25, y: 14, exitId: 10 }];
+    const response = await request("/platformer/rooms", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ level: levelToJson(d) }) });
+    expect(response.status).toBe(201);
+    const { roomId } = await response.json<{ roomId: string }>();
+    const player = await connect(`/platformer/rooms/${roomId}/connect`);
+    const welcome = await hello(player, "Ava", "pipe-browser");
+    expect(levelFromJson((welcome.base as { level: unknown }).level).pipes).toEqual(d.pipes);
+    const observer = await connect(`/platformer/rooms/${roomId}/connect`);
+    await hello(observer, "Ben", "pipe-observer");
+    const pose = { m: 0, x: 96, y: 225, f: 1, a: "stand", s: 0, v: 1, q: 0, t: 1, pi: { x: 5, y: 14, phase: 0, progress: 127 }, gb: 12, gw: 200, lc: 4 };
+    send(player.socket, { type: "pose", p: { ...pose, pi: { ...pose.pi, extra: "drop" } } });
+    expect((await observer.inbox.next("poses")).list).toEqual([[1, pose]]);
+    send(player.socket, { type: "ev", cid: "pipe:del", tick: 5, ev: { t: "edit", ops: [{ o: "pipeDel", id: 20 }] } });
+    await player.inbox.next("ev");
+    const stub = workerEnv.PLATFORMER_ROOMS.get(workerEnv.PLATFORMER_ROOMS.idFromName(roomId));
+    await vi.waitFor(async () => {
+      const stored = await runInDurableObject(stub, async (_room: PlatformerRoom, state: DurableObjectState) => state.storage.get<{ level: unknown }>("room"));
+      expect(levelFromJson(stored!.level).pipes).toEqual([{ id: 10, x: 5, y: 14, exitId: null }]);
+    }, { timeout: 4000, interval: 50 });
   });
 
   it("keep the level in storage once everyone has left", async () => {

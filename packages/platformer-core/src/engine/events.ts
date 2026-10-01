@@ -1,10 +1,12 @@
-import { OBJECT_KINDS, STYLES, THEMES, type LevelJson, type LevelObject, type LevelStyle, type Theme } from './level'
+import { OBJECT_KINDS, STYLES, THEMES, type LevelJson, type LevelObject, type PipeEndpoint, type LevelStyle, type Theme } from './level'
 import { CONTENT_ID_COUNT, TILE_ID_COUNT } from './tiles'
 
 /** A change a builder makes to the level design. */
 export type EditOp =
   | { o: 'tile'; x: number; y: number; t: number; c: number }
   | { o: 'add'; obj: LevelObject }
+  | { o: 'pipe'; pipe: PipeEndpoint }
+  | { o: 'pipeDel'; id: number }
   | { o: 'del'; id: number }
   | { o: 'move'; id: number; x: number; y: number }
   | { o: 'theme'; theme: Theme }
@@ -56,6 +58,13 @@ function validOp(op: unknown, w: number, h: number): op is EditOp {
       return inRange(o.x, 0, w - 1) && inRange(o.y, 0, h - 1) && inRange(o.t, 0, TILE_ID_COUNT - 1) && inRange(o.c, 0, CONTENT_ID_COUNT - 1)
     case 'add':
       return validObject(o.obj, w, h)
+    case 'pipe': {
+      if (!o.pipe || typeof o.pipe !== 'object') return false
+      const p = o.pipe as Record<string, unknown>
+      return isId(p.id) && inRange(p.x, 0, w - 2) && inRange(p.y, 0, h - 1) &&
+        (p.exitId === null || (isId(p.exitId) && p.exitId !== p.id))
+    }
+    case 'pipeDel':
     case 'del':
       return isId(o.id)
     case 'move':

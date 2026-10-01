@@ -5,6 +5,8 @@ import { levelFromJson, type LevelDesign } from '@brick-studio/platformer-core/e
 import {
   POWER,
   createPlayer,
+  canEnterPipe as playerCanEnterPipe,
+  beginPipeTravel,
   grantEffect,
   respawn,
   stepPlayer,
@@ -27,6 +29,7 @@ import { drawSprite } from '../render/skin'
 import { Camera } from './camera'
 import { Editor } from '../editor/editor'
 import { loadBest, saveBest } from './records'
+import { characterMotion } from '../characters/motion'
 
 export type Mode = 'play' | 'build'
 
@@ -382,6 +385,10 @@ export class GameSession {
 
   setMode(mode: Mode): boolean {
     if (mode === this.mode) return true
+    if (this.player.pipe) {
+      this.onToast?.('Finish travelling through the pipe, then switch modes.')
+      return false
+    }
     if (mode === 'build' && !this.canBuild) {
       this.onToast?.(this.buildBlockedReason ?? 'Building is off')
       return false
@@ -418,6 +425,17 @@ export class GameSession {
 
   toggleMode() {
     this.setMode(this.mode === 'play' ? 'build' : 'play')
+  }
+
+  canEnterPipe(): boolean {
+    if (this.mode !== 'play' || !this.joined || this.paused) return false
+    this.syncCtx()
+    return playerCanEnterPipe(this.player, this.ctx)
+  }
+
+  enterPipe(): void {
+    if (!this.canEnterPipe()) return
+    if (beginPipeTravel(this.player, this.ctx)) this.onStatus?.()
   }
 
   /** In build mode: put the player (where Play resumes) on a tile. */
@@ -571,6 +589,15 @@ export class GameSession {
       af: this.frameCount & 255,
       ...(l.gait === undefined ? {} : { ga: l.gait === 'run' ? 1 as const : 0 as const }),
       gp: Math.floor((l.gaitPhase ?? 0) * 256) & 255,
+      gb: Math.round((l.gaitBlend ?? 0) * 255),
+      gw: Math.round((l.gaitWeight ?? 0) * 255),
+      lc: Math.round((l.landingCompression ?? 0) * 255),
+      ...(this.player.pipe ? { pi: {
+        x: this.player.pipe.mouthX,
+        y: this.player.pipe.mouthY,
+        phase: this.player.pipe.phase === 'enter' ? 0 as const : 1 as const,
+        progress: Math.round(this.player.pipe.progress * 255),
+      } } : {}),
     }
   }
 
@@ -799,11 +826,7 @@ export function playerLook(p: Player, frame: number, character: CharacterId = DE
   else if (p.kick > 0) pose = 'kick'
   else if (p.throwAnim > 0) pose = 'throw'
   else if (p.vx !== 0) pose = (['walk1', 'walk2', 'walk3', 'walk2'] as const)[Math.floor(p.anim / (SUB * 5)) % 4]
-  // One full left/right stride takes 64 pixels of horizontal travel at every speed.
-  // The distance counter does not advance while stopped, so a resumed walk keeps its phase.
-  const gaitPhase = ((p.anim % (64 * SUB)) + 64 * SUB) % (64 * SUB) / (64 * SUB)
-  const moving = pose === 'walk1' || pose === 'walk2' || pose === 'walk3'
-  const gait = moving ? (Math.abs(p.vx) / SUB > walkMax + 0.125 ? 'run' : 'walk') : undefined
+  const motion = characterMotion(p, frame, character, walkMax, pose)
   let size: 'small' | 'big' = big && !p.dead ? 'big' : 'small'
   let spark = p.power === POWER.SPARK
   if (p.transform > 0 && (p.transform >> 2) % 2 === 0) {
@@ -820,8 +843,8 @@ export function playerLook(p: Player, frame: number, character: CharacterId = DE
     pose,
     character,
     animationFrame: frame & 255,
-    gait,
-    gaitPhase,
+    ...motion,
+    ...(p.pipe ? { pipe: { x: p.pipe.mouthX, y: p.pipe.mouthY, phase: p.pipe.phase } } : {}),
     spark,
     visible: !blink,
     squash: p.squash,

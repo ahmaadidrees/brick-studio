@@ -7,8 +7,8 @@ import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, BuildingChip, CardMenu, InviteesChip, OpenWorldButton, PresenceChips, WorldCard } from './WorldCard'
 import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, NEW_BUILD_HREF, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import { InviteSheet } from '../../classroom/InviteSheet'
-import { markInvitesSeen, seenInviteIds, unseenInvites } from '../../classroom/inviteSeen'
-import { InviteBanner } from './InviteBanner'
+import { useStudentInvites } from '../../classroom/inviteStore'
+import { inviteWorldHref, StudentInviteList } from '../../classroom/StudentInvites'
 import {
   browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isInviteOnly, isMine, isShared, liveHref, matchesSearch, NEW_LEVEL_2D_HREF, readLocalDraft,
   SAVE_DRAFT_HREF, sharedForBuilding, signInHref, type Classmate, type LocalDraft, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
@@ -85,6 +85,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const client = useMemo(() => injectedClient ?? defaultClient(), [injectedClient])
   const navigate = useMemo(() => injectedNavigate ?? ((href: string) => window.location.replace(href)), [injectedNavigate])
   const session = useSyncExternalStore(client.subscribe, client.getSession, client.getSession)
+  const { state: inviteState } = useStudentInvites(session?.user.role === 'student' ? session.user.id : null, client.inviteClient)
   const [worlds, setWorlds] = useState<WorldsWorld[]>([])
   const [classes, setClasses] = useState<WorldsClass[]>([])
   const [loading, setLoading] = useState(true)
@@ -94,8 +95,6 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const [section, setSection] = useState('mine')
   const [search, setSearch] = useState('')
   const [inviteWorld, setInviteWorld] = useState<WorldsWorld | null>(null)
-  /** Invites this browser has already answered; kept in state so "Not now" re-renders the banner at once. */
-  const [seen, setSeen] = useState(() => seenInviteIds())
   /** The invite picker's roster: loaded the first time a share sheet opens, kept for the page's life. */
   const [classmates, setClassmates] = useState<Classmate[] | null>(null)
   const [classmatesError, setClassmatesError] = useState('')
@@ -144,8 +143,6 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   }
 
   const myWorlds = useMemo(() => worlds.filter(world => isMine(world, me)).sort(byNewest), [worlds, me])
-  /** Quiet invites this student has not answered yet, newest first; a teacher is never invited to anything. */
-  const invites = useMemo(() => (teacher ? [] : unseenInvites(worlds, me, seen)), [teacher, worlds, me, seen])
   /**
    * A shared personal world belongs to its owner's class (`ownerClassId`). A
    * teacher on multiple classes must not see the same student world under
@@ -185,7 +182,6 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       && (currentClass ? belongsToClass(world, currentClass.id) : false))
     .sort(byNewest)
   // A student's quiet invites get their own section; the teacher sees them among the rest with an invitees chip.
-  const invitedWorlds = teacher ? [] : sharedInClass.filter(isInviteOnly)
   const classmateWorlds = teacher ? sharedInClass : sharedInClass.filter(world => !isInviteOnly(world))
   const classWorlds = worlds.filter(world => world.kind !== 'personal' && world.classId === currentClass?.id).sort(byNewest)
   const collaborationClosed = Boolean(currentClass && !currentClass.collaborationOpen)
@@ -214,11 +210,6 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     if (classmates !== null || teacher || !myClass) return
     setClassmatesError('')
     client.listClassmates(myClass.id).then(setClassmates).catch(failure => setClassmatesError(errorMessage(failure)))
-  }
-  /** "Not now" and "Join and build" both answer the invite, so the banner never asks twice. */
-  const answerInvite = (world: WorldsWorld) => {
-    markInvitesSeen([world.id])
-    setSeen(current => new Set([...current, world.id]))
   }
   const rename = (title: string) => {
     const target = renameTarget
@@ -285,6 +276,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
         <Button href="/build" variant="secondary" size="sm">Open the studio</Button>
       </>}
       session={headerSession}
+      inviteClient={client.inviteClient}
+      onGoToInviteWorld={navigate}
     />
     <div className="worlds-layout">
       {narrow
@@ -313,7 +306,10 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
         {loading && <p className="worlds-loading" role="status"><LoaderCircle className="ui-spin" size={18} aria-hidden="true" /> Loading your worlds…</p>}
 
         {!loading && section === 'mine' && <>
-          <InviteBanner invites={invites} busy={busy} onDismiss={answerInvite} onJoin={answerInvite} />
+          {!teacher && <section aria-label="Shared with you" className="worlds-section">
+            <h2 className="worlds-section-title">Shared with you</h2>
+            <StudentInviteList state={inviteState} search={search} blocked={busy} onGo={invite => navigate(inviteWorldHref(invite))} />
+          </section>}
 
           {draft && <section className="worlds-draft" aria-label="Build in progress">
             <MonitorSmartphone size={22} aria-hidden="true" />
@@ -367,21 +363,6 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             : <>
               {teacher && <StartSharedWorld busy={busy} className={currentClass.name} onCreate={createShared} />}
 
-              {/* Quiet invites: only the classmates the owner picked see this section, and only when it has something. */}
-              {!teacher && filter(invitedWorlds).length > 0 && <section aria-label="Shared with you" className="worlds-section">
-                <h2 className="worlds-section-title">Shared with you</h2>
-                <div className="worlds-grid">{filter(invitedWorlds).map(world => <WorldCard
-                  key={world.id}
-                  world={world}
-                  byline={`${world.ownerName} invited you`}
-                  chip={<><AccessChip world={world} /><BuildingChip world={world} /></>}
-                >
-                  {world.canEdit && <OpenWorldButton href={liveHref(world)} label="Join and build" busy={busy} />}
-                  <OpenWorldButton href={liveHref(world)} label="Visit" variant={world.canEdit ? 'secondary' : 'primary'} busy={busy} />
-                  <Button variant="secondary" size="sm" disabled={busy} onClick={() => copy(world)}>Make my own copy</Button>
-                </WorldCard>)}</div>
-              </section>}
-
               <section aria-label={teacher ? 'Shared by students' : 'Shared by classmates'} className="worlds-section">
                 <h2 className="worlds-section-title">{teacher ? 'Shared by students' : 'Shared by classmates'}</h2>
                 {filter(classmateWorlds).length === 0
@@ -392,8 +373,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                     byline={world.ownerName}
                     chip={<><AccessChip world={world} /><BuildingChip world={world} />{teacher && <InviteesChip world={world} />}</>}
                   >
-                    {world.canEdit && <OpenWorldButton href={liveHref(world)} label="Join and build" busy={busy} />}
-                    <OpenWorldButton href={liveHref(world)} label="Visit" variant={world.canEdit ? 'secondary' : 'primary'} busy={busy} />
+                    <OpenWorldButton href={liveHref(world)} label="Go to world" busy={busy} />
                     {teacher
                       ? <Button variant="secondary" size="sm" disabled={busy} onClick={() => hide(world)}>{world.hiddenByTeacher ? 'Show to class' : 'Hide from class'}</Button>
                       : <Button variant="secondary" size="sm" disabled={busy} onClick={() => copy(world)}>Make my own copy</Button>}
@@ -421,6 +401,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       classmates={classmates}
       classmatesError={classmatesError || undefined}
       onInvite={sharing => invite(inviteWorld, sharing)}
+      onInviteAgain={client.inviteAgain ? userIds => client.inviteAgain!(inviteWorld.id, userIds) : undefined}
       onStopSharing={isShared(inviteWorld) ? () => stopSharing(inviteWorld) : undefined}
       onClose={() => setInviteWorld(null)}
     />}

@@ -122,7 +122,7 @@ export function autoplay(design: LevelDesign, opts: { beam?: number; maxSteps?: 
     for (const s of frontier) {
       for (const m of MACROS) {
         const world = restoreWorld(snapshotWorld(s.world))
-        const p: Player = { ...s.p, ignore: new Map(s.p.ignore), claimedCoins: new Map(s.p.claimedCoins) }
+        const p: Player = { ...s.p, pipe: s.p.pipe ? { ...s.p.pipe } : null, ignore: new Map(s.p.ignore), claimedCoins: new Map(s.p.claimedCoins) }
         const pending = s.pending.slice()
         const c: PlayerContext = { world, feel, tick: world.tick, emit: (ev) => pending.push(ev), sound: () => {}, others: [] }
         let dead = false

@@ -107,6 +107,9 @@ export interface CharacterDrawLook {
   animationFrame?: number
   gait?: 'walk' | 'run'
   gaitPhase?: number
+  gaitBlend?: number
+  gaitWeight?: number
+  landingCompression?: number
 }
 
 function sparkCue(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number) {
@@ -143,14 +146,14 @@ export function drawGeneratedCharacter(
   if (look.gait && look.gaitPhase !== undefined) {
     const cx = snap(look.x) - camX
     const feet = snap(look.y) - camY
-    const squash = look.squash ? 0.6 : 1
+    const squash = look.squash ? 0.6 : 1 - 0.10 * Math.max(0, Math.min(1, look.landingCompression ?? 0))
     ctx.save()
     if (squash !== 1) {
       ctx.translate(0, feet)
       ctx.scale(1, squash)
       ctx.translate(0, -feet)
     }
-    const drawnTop = drawLocomotion(ctx, look.character, look.gaitPhase, look.gait, cx, feet, look.facing, normalHeight)
+    const drawnTop = drawLocomotion(ctx, look.character, look.gaitPhase, look.gait, cx, feet, look.facing, normalHeight, { blend: look.gaitBlend, weight: look.gaitWeight ?? (look.pose === 'stand' ? 0 : 1) })
     ctx.restore()
     const top = drawnTop === null ? null : feet + (drawnTop - feet) * squash
     if (top !== null) {
@@ -166,7 +169,8 @@ export function drawGeneratedCharacter(
   const idle = BOUNDS[look.character][0]
   const idleHeight = idle[3] - idle[1]
   const poseHeight = (normalHeight * frame.sh) / idleHeight
-  const height = snap(look.squash ? poseHeight * 0.6 : poseHeight)
+  const compression = look.squash ? 0.6 : 1 - 0.10 * Math.max(0, Math.min(1, look.landingCompression ?? 0))
+  const height = snap(poseHeight * compression)
   const width = snap((normalHeight * frame.sw) / idleHeight)
   // The fox's tail reaches far left of its body. Place its torso on the hitbox centre.
   const anchor = look.character === 'brick-fox' ? 0.67 : 0.5

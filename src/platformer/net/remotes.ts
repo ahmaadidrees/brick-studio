@@ -104,11 +104,14 @@ export class Remotes {
       const b = list[i]
       if (a.t <= t && t <= b.t) {
         if (a.m !== b.m || b.t === a.t) return b
+        // Pipe travel switches mouths in one tick; never draw a player gliding between them.
+        if (a.pi?.x !== b.pi?.x || a.pi?.y !== b.pi?.y || a.pi?.phase !== b.pi?.phase) return b
         const f = (t - a.t) / (b.t - a.t)
         // A teleport (respawn) should not glide across the level.
         if (Math.abs(b.x - a.x) > 96 || Math.abs(b.y - a.y) > 96) return b
         const gp = gaitPhaseBetween(a, b, f)
-        return { ...a, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, ...(gp === undefined ? {} : { gp }) }
+        const blend = (key: 'gb' | 'gw' | 'lc') => a[key] === undefined || b[key] === undefined ? {} : { [key]: a[key]! + (b[key]! - a[key]!) * f }
+        return { ...a, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, ...(gp === undefined ? {} : { gp }), ...blend('gb'), ...blend('gw'), ...blend('lc') }
       }
     }
     return last
@@ -131,6 +134,10 @@ export class Remotes {
         animationFrame: p.af,
         gait: p.ga === undefined ? undefined : p.ga === 1 ? 'run' : 'walk',
         gaitPhase: p.gp === undefined ? undefined : p.gp / 256,
+        gaitBlend: p.gb === undefined ? (p.ga === 1 ? 1 : 0) : p.gb / 255,
+        gaitWeight: p.gw === undefined ? (isWalkPose(p.a) ? 1 : 0) : p.gw / 255,
+        landingCompression: p.lc === undefined ? 0 : p.lc / 255,
+        ...(p.pi ? { pipe: { x: p.pi.x, y: p.pi.y, phase: p.pi.phase === 0 ? 'enter' as const : 'exit' as const } } : {}),
         spark: p.s === 2,
         visible: p.v === 1,
         name: r.name,
@@ -145,7 +152,7 @@ export class Remotes {
     out.length = 0
     for (const r of this.map.values()) {
       const p = this.sample(r, tick)
-      if (!p || p.m !== 0 || p.a === 'dead') continue
+      if (!p || p.m !== 0 || p.a === 'dead' || p.pi) continue
       const h = p.s > 0 && p.a !== 'crouch' ? sub(26) : sub(14)
       out.push({ num: r.num, x: Math.round(sub(p.x) - sub(6)), y: sub(p.y) - h, w: sub(12), h })
     }

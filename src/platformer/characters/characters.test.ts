@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CHARACTER_OPTIONS, characterPreviewStyle, normalizeCharacterId } from './catalog'
 import { characterFrame, drawGeneratedCharacter } from './atlas'
-import { gaitLeg } from './locomotion'
+import { gaitLeg, locomotionAnchors } from './locomotion'
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -25,9 +25,7 @@ describe('generated character frames', () => {
       const height = 23
       const poses = Array.from({ length: 100 }, (_, i) => {
         const phase = i / 100
-        const hipY = gait === 'walk'
-          ? -height * 0.44 + Math.sin(phase * Math.PI * 4) * height * 0.006
-          : -height * 0.35 + Math.sin(phase * Math.PI * 4) * height * 0.04
+        const { hipY } = locomotionAnchors('builder', phase, height, gait === 'run' ? 1 : 0)
         return gaitLeg(phase, gait, height, hipY)
       })
       const support = poses.filter(pose => pose.planted)
@@ -36,18 +34,36 @@ describe('generated character frames', () => {
       expect(support.at(-1)!.ankle.x).toBeLessThan(0)
       expect(poses.filter(pose => !pose.planted).every(pose => pose.ankle.y <= -height * 0.088)).toBe(true)
       for (const pose of poses) {
-        expect(Math.hypot(pose.knee.x - pose.hip.x, pose.knee.y - pose.hip.y)).toBeCloseTo(height * 0.20)
-        expect(Math.hypot(pose.ankle.x - pose.knee.x, pose.ankle.y - pose.knee.y)).toBeCloseTo(height * 0.20)
+        expect(Math.hypot(pose.knee.x - pose.hip.x, pose.knee.y - pose.hip.y)).toBeCloseTo(height * 0.215)
+        expect(Math.hypot(pose.ankle.x - pose.knee.x, pose.ankle.y - pose.knee.y)).toBeCloseTo(height * 0.215)
       }
       if (gait === 'walk') {
         for (const pose of support) {
           const reach = Math.hypot(pose.ankle.x - pose.hip.x, pose.ankle.y - pose.hip.y)
-          expect(reach).toBeGreaterThanOrEqual(height * 0.35)
+          expect(reach).toBeGreaterThanOrEqual(height * 0.33)
           expect(reach).toBeLessThan(height * 0.4)
         }
       }
-      expect(gaitLeg(0, gait, height, -height * 0.35)).toEqual(gaitLeg(1, gait, height, -height * 0.35))
-      expect(gaitLeg(0.5, gait, height, -height * 0.35).ankle.x).toBeLessThan(0)
+      expect(gaitLeg(0, gait, height, -height * 0.44)).toEqual(gaitLeg(1, gait, height, -height * 0.44))
+      expect(gaitLeg(0.5, gait, height, -height * 0.44).ankle.x).toBeLessThan(0)
+    }
+  })
+
+  it('keeps the head anchor aligned with idle/jump and limits run knee lift', () => {
+    for (const id of ['builder', 'bolt-bot', 'brick-fox'] as const) {
+      for (const height of [17, 23, 31, 34]) {
+        for (const phase of [0, 0.25, 0.5, 0.75]) {
+          const idle = locomotionAnchors(id, phase, height, 0, 0)
+          expect(idle.top).toBe(-height)
+          const walk = locomotionAnchors(id, phase, height, 0)
+          const run = locomotionAnchors(id, phase, height, 1)
+          expect(Math.abs(walk.top - run.top)).toBeLessThan(height * 0.027)
+          expect(run.hipY).toBeLessThan(-height * 0.41)
+          const foot = gaitLeg(phase, 'run', height, run.hipY)
+          expect(foot.ankle.y).toBeGreaterThan(-height * 0.20)
+          if (foot.planted) expect(foot.footAngle).toBe(0)
+        }
+      }
     }
   })
 

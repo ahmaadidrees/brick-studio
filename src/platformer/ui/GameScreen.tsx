@@ -6,6 +6,7 @@ import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
 import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
 import { InviteSheet } from '../../classroom/InviteSheet'
+import { markInviteJoinedForWorld } from '../../classroom/inviteStore'
 import { AppHeader, useClassroomSession, useCompactLayout, type HeaderLivePolicy } from '../../shell'
 import { Button, type SaveStatusSource } from '../../ui'
 import { CATEGORIES, PALETTE } from '../editor/palette'
@@ -116,6 +117,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const [classmates, setClassmates] = useState<ClassroomClassmate[] | null>(null)
   const [classmatesError, setClassmatesError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const leavingRef = useRef(false)
+  const [canEnterPipe, setCanEnterPipe] = useState(false)
+  const markedArrival = useRef(false)
   const [, refresh] = useState(0)
 
   const say = (msg: string) => {
@@ -143,6 +148,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     s.sound.setMusic(prefs.music)
     s.onStatus = () => refresh((n) => n + 1)
     s.onMenu = () => {
+      if (s.mode === 'build' && s.editor.linkingPipe) { s.editor.cancelPipeLink(); return }
       setMenuView('main')
       setMenu((m) => !m)
     }
@@ -270,6 +276,22 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     s.input.setSuspended(covered)
   }, [covered])
 
+  // A contextual control follows the same runtime check as Down; polling updates only on availability changes.
+  useEffect(() => {
+    if (mode !== 'play' || covered) { setCanEnterPipe(false); return }
+    const update = () => setCanEnterPipe(sessionRef.current?.canEnterPipe() ?? false)
+    update()
+    const timer = window.setInterval(update, 100)
+    return () => window.clearInterval(timer)
+  }, [mode, covered])
+
+  // Mark arrival after the classroom room has joined, so a failed connection keeps its invitation unread.
+  useEffect(() => {
+    if (markedArrival.current || source.kind !== 'room' || source.roomKind !== 'classroom' || !sessionRef.current?.joined) return
+    markedArrival.current = true
+    void markInviteJoinedForWorld(source.world?.id ?? source.roomId).catch(() => { markedArrival.current = false })
+  })
+
   // Back (including Safari's edge swipe) opens the menu instead of leaving the game.
   useEffect(() => {
     history.pushState({ p2dGame: true }, '')
@@ -314,7 +336,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       const s = sessionRef.current
       if (!s) return
       const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+      if (t && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return
       if (e.code === 'Backquote') setFeelOpen((v) => !v)
       if (e.code === 'F3') {
         e.preventDefault()
@@ -486,6 +508,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }
   /** Leave once any account save has landed. */
   const leave = async (then: () => void) => {
+    if (leavingRef.current) return
+    leavingRef.current = true
+    setLeaving(true)
+    try {
     // Save now rather than on the next autosave tick; a level still becoming an account level finishes that first.
     let saved = saveNow.current()
     // A first save to the account still on its way: wait for it, then ask again (it may have fallen back, or failed).
@@ -499,6 +525,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       return
     }
     then()
+    } finally {
+      leavingRef.current = false
+      setLeaving(false)
+    }
   }
   const switchTo3D = () => void leave(() => window.location.assign('/build'))
   // Sharing an account level with the class: the same invite sheet as My worlds.
@@ -667,6 +697,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           modeLock={{ locked: false }}
           onOpenHelp={() => openMenu('controls')}
           onGoHome={() => void leave(() => window.location.assign('/'))}
+          onGoToInviteWorld={(href) => leave(() => window.location.assign(href))}
+          inviteNavigationBlocked={busy || leaving}
           worldMenu={({ openRename }) => (
             <LevelMenu
               onRename={openRename}
@@ -711,7 +743,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             </Button>
           </div>
         )}
-        {!build && touch && s && !covered && <TouchControls input={s.input} />}
+        {!build && touch && s && !covered && <TouchControls input={s.input} canEnterPipe={canEnterPipe} onEnterPipe={() => s.enterPipe()} />}
+
+        {!build && !touch && s && !covered && canEnterPipe && <button type="button" className="p2d-enter-pipe" onClick={(event) => { s.enterPipe(); if (event.detail > 0) event.currentTarget.blur() }}>Enter pipe · ↓</button>}
 
         {playHint && (
           <div className="p2d-hint p2d-hint-top" role="status">

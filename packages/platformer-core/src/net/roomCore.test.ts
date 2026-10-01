@@ -132,6 +132,22 @@ describe('RoomCore', () => {
     expect(hashWorld(createWorld(r.core.design))).toBe(worldHash)
   })
 
+  it('accepts atomic pipe pairs, rejects missing destinations and relays clipping state', () => {
+    const r = room()
+    const a = r.join('A')
+    const pair = [{ id: 10, x: 5, y: 10, exitId: 20 }, { id: 20, x: 15, y: 10, exitId: 10 }]
+    r.send(a, { type: 'ev', cid: 'pipes:pair', tick: 1, ev: { t: 'edit', ops: pair.map((pipe) => ({ o: 'pipe', pipe })) } })
+    expect(a.last('ev')?.e.cid).toBe('pipes:pair')
+    expect(r.core.design.pipes).toEqual(pair)
+    r.send(a, { type: 'ev', cid: 'pipes:bad', tick: 1, ev: { t: 'edit', ops: [{ o: 'pipe', pipe: { ...pair[0], exitId: 99 } }] } })
+    expect(a.last('reject')).toMatchObject({ cid: 'pipes:bad', reason: 'invalid' })
+    expect(r.core.design.pipes).toEqual(pair)
+    const p = { m: 0, x: 20, y: 20, f: 1, a: 'stand', s: 0, v: 1, q: 0, t: 1, pi: { x: 5, y: 10, phase: 0, progress: 120 }, gb: 12, gw: 200, lc: 9 }
+    r.send(a, { type: 'pose', p: { ...p, pi: { ...p.pi, extra: 'drop' } } })
+    r.core.flushPoses()
+    expect(a.last('poses')?.list).toEqual([[1, p]])
+  })
+
   it('knows the host only by the host key', () => {
     const r = room()
     const kid = r.join('Kid')

@@ -1371,3 +1371,21 @@
   padding-top: 0;
   border-top: 0;
 }
+
+/* Direct manipulation pipe settings, with keyboard and touch access to placed pipes. */
+.p2d-pipe-panel { position: absolute; z-index: 15; top: 66px; right: max(12px, env(safe-area-inset-right)); width: min(278px, calc(100% - 24px)); padding: 12px; border: 1px solid var(--studio-panel-border); border-radius: 16px; background: var(--studio-panel); box-shadow: var(--studio-panel-shadow); color: var(--studio-ink); box-sizing: border-box; }
+.p2d-pipe-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.p2d-pipe-heading strong { display: flex; align-items: center; gap: 6px; }
+.p2d-pipe-panel p { margin: 10px 0; font-size: 13px; line-height: 1.4; }
+.p2d-pipe-panel button, .p2d-pipe-panel select { min-height: 44px; border: 1px solid var(--studio-panel-border); border-radius: 10px; background: var(--studio-panel); color: inherit; font: inherit; padding: 8px 10px; cursor: pointer; }
+.p2d-pipe-panel > button { width: 100%; margin-top: 6px; font-weight: 700; }
+.p2d-pipe-panel button:focus-visible, .p2d-pipe-panel select:focus-visible, .p2d-pipe-toggle input:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 2px; }
+.p2d-pipe-select { display: grid; gap: 6px; margin-top: 10px; font-size: 12px; }
+.p2d-pipe-select select { width: 100%; font-size: 13px; }
+.p2d-pipe-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 6px; font-size: 14px; }
+.p2d-pipe-toggle input { width: 20px; height: 20px; }
+.p2d-pipe-key { font-size: 11px; opacity: .7; margin-left: 8px; }
+.p2d-enter-pipe { position: absolute; z-index: var(--z-hud); bottom: max(22px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 10px 16px; border: 2px solid #fff; border-radius: 14px; background: #147855; color: #fff; font: 700 14px var(--font-display); cursor: pointer; pointer-events: auto; }
+.p2d-enter-pipe:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 3px; }
+.p2d-touch-enter-pipe { bottom: calc(env(safe-area-inset-bottom) + 155px); }
+.p2d-compact-shell .p2d-pipe-panel { top: 10px; max-height: calc(100% - 90px); overflow-y: auto; }

@@ -2,7 +2,8 @@ import { TS, fdiv, sub } from './constants'
 import { moveX, moveY, overlaps, rowSolid, tileAt, type Box } from './collide'
 import type { WorldEvent } from './events'
 import { P_SEGMENTS, type FeelSub } from './feel'
-import { T, isBumpable, isSolid } from './tiles'
+import { findPipeEndpoint, isPipeMouth, type PipeEndpoint } from './level'
+import { T, hurts, kills, isOneWay, isBumpable, isSolid } from './tiles'
 import { EK, ES, findEntity, findObject, isItem, isKillable, type Effect, type World } from './world'
 
 // =============================================================================================
@@ -80,8 +81,28 @@ export interface PlayerContext {
   bonk?: (num: number) => void
 }
 
+export interface PipeTravel {
+  entryId: number
+  exitId: number
+  sourceX: number
+  sourceY: number
+  destinationX: number
+  destinationY: number
+  /** Current upright mouth in tile coordinates, used for clipping. */
+  mouthX: number
+  mouthY: number
+  phase: 'enter' | 'exit'
+  /** 0..1 within the current phase. */
+  progress: number
+  ticks: number
+}
+
 export interface Player extends Box {
   num: number
+  pipe: PipeTravel | null
+  pipeHold: number
+  /** Exit cannot be entered again while Down remains held. */
+  pipeLock: number
   vx: number
   vy: number
   facing: 1 | -1
@@ -129,6 +150,9 @@ export interface Player extends Box {
 export function createPlayer(num: number): Player {
   return {
     num,
+    pipe: null,
+    pipeHold: 0,
+    pipeLock: 0,
     x: 0,
     y: 0,
     w: PLAYER_W,
@@ -236,6 +260,9 @@ function unstick(p: Player, ctx: PlayerContext) {
 // Life, death and power
 
 export function placePlayer(p: Player, tx: number, ty: number) {
+  p.pipe = null
+  p.pipeHold = 0
+  p.pipeLock = 0
   p.x = tx * TS + (TS - p.w) / 2
   p.y = (ty + 1) * TS - p.h
   p.vx = 0
@@ -273,6 +300,9 @@ export function respawn(p: Player, ctx: PlayerContext, fresh: boolean) {
 
 export function die(p: Player, ctx: PlayerContext) {
   if (p.dead) return
+  p.pipe = null
+  p.pipeHold = 0
+  p.pipeLock = 0
   p.dead = 1
   p.vx = 0
   p.vy = 0
@@ -326,6 +356,111 @@ export function grantEffect(p: Player, e: Effect, ctx: PlayerContext) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Upright, same-level pipes. Travel is local player state; terrain and links remain shared edits.
+
+export const PIPE_HOLD_TICKS = 8
+export const PIPE_PHASE_TICKS = 18
+
+export function getPipeEntry(p: Player, world: World): PipeEndpoint | undefined {
+  if (!p.onGround || p.riding || p.dead || p.celebrate || p.transform || p.pipe || Math.abs(p.vx) > sub(0.5)) return undefined
+  return world.design.pipes?.find((mouth) => isPipeMouth(world, mouth.x, mouth.y) &&
+    Math.abs(p.x + p.w / 2 - (mouth.x + 1) * TS) <= sub(5) &&
+    Math.abs(p.y + p.h - mouth.y * TS) <= sub(1))
+}
+
+/** Check both columns of the shaft above the rim, using the player's full standing height. */
+function clearPipeMouth(p: Player, mouth: PipeEndpoint, ctx: PlayerContext): boolean {
+  const w = ctx.world
+  const height = standingHeight(p)
+  if (!isPipeMouth(w, mouth.x, mouth.y) || mouth.y * TS < height) return false
+  const zone: Box = { x: mouth.x * TS, y: mouth.y * TS - height, w: 2 * TS, h: height }
+  for (let y = fdiv(zone.y, TS); y < mouth.y; y++) {
+    for (let x = mouth.x; x <= mouth.x + 1; x++) {
+      const tile = tileAt(w, x, y)
+      if (isSolid(tile) || isOneWay(tile) || hurts(tile) || kills(tile)) return false
+    }
+  }
+  if (w.entities.some((e) => !e.rm && (isKillable(e) || e.kind === EK.PLATFORM) && overlaps(zone, e))) return false
+  return !ctx.others.some((other) => overlaps(zone, other))
+}
+
+function pipeRoute(p: Player, ctx: PlayerContext): { entry: PipeEndpoint; exit: PipeEndpoint } | undefined {
+  const entry = getPipeEntry(p, ctx.world)
+  if (!entry || entry.id === p.pipeLock || entry.exitId === null) return undefined
+  const exit = findPipeEndpoint(ctx.world.design, entry.exitId)
+  if (!exit || exit.id === entry.id || !clearPipeMouth(p, entry, ctx) || !clearPipeMouth(p, exit, ctx)) return undefined
+  return { entry, exit }
+}
+
+export const canEnterPipe = (p: Player, ctx: PlayerContext): boolean => !!pipeRoute(p, ctx)
+
+/** Touch controls use the same checks as a deliberate hold of Down. */
+export function beginPipeTravel(p: Player, ctx: PlayerContext): boolean {
+  const route = pipeRoute(p, ctx)
+  if (!route) return false
+  const { entry, exit } = route
+  p.crouch = false
+  setHeight(p, standingHeight(p))
+  p.vx = 0
+  p.vy = 0
+  p.riding = 0
+  p.jumping = false
+  p.jumpHold = 0
+  p.buffer = 0
+  p.coyote = 0
+  p.wallSide = 0
+  p.wallLock = 0
+  p.skid = false
+  p.pipeHold = 0
+  p.pipeLock = exit.id
+  p.pipe = {
+    entryId: entry.id, exitId: exit.id,
+    sourceX: entry.x, sourceY: entry.y, destinationX: exit.x, destinationY: exit.y,
+    mouthX: entry.x, mouthY: entry.y, phase: 'enter', progress: 0, ticks: 0,
+  }
+  p.x = (entry.x + 1) * TS - p.w / 2
+  p.y = entry.y * TS - p.h
+  return true
+}
+
+function stepPipeTravel(p: Player, ctx: PlayerContext) {
+  const travel = p.pipe!
+  const entry = findPipeEndpoint(ctx.world.design, travel.entryId)
+  const exit = findPipeEndpoint(ctx.world.design, travel.exitId)
+  // A moving/erased endpoint or a newly blocked exit cancels safely at the original entrance.
+  if (!entry || !exit || entry.x !== travel.sourceX || entry.y !== travel.sourceY ||
+    exit.x !== travel.destinationX || exit.y !== travel.destinationY || entry.exitId !== exit.id ||
+    !clearPipeMouth(p, exit, ctx)) {
+    p.pipe = null
+    p.pipeHold = 0
+    p.pipeLock = travel.entryId
+    p.x = (travel.sourceX + 1) * TS - p.w / 2
+    p.y = travel.sourceY * TS - p.h
+    p.onGround = false
+    return
+  }
+  travel.ticks++
+  travel.progress = Math.min(1, travel.ticks / PIPE_PHASE_TICKS)
+  p.vx = p.vy = 0
+  p.x = (travel.mouthX + 1) * TS - p.w / 2
+  p.y = travel.mouthY * TS - (travel.phase === 'enter' ? p.h - Math.round(p.h * travel.progress) : Math.round(p.h * travel.progress))
+  if (travel.ticks < PIPE_PHASE_TICKS) return
+  if (travel.phase === 'enter') {
+    travel.phase = 'exit'
+    travel.ticks = 0
+    travel.progress = 0
+    travel.mouthX = exit.x
+    travel.mouthY = exit.y
+    p.x = (exit.x + 1) * TS - p.w / 2
+    p.y = exit.y * TS
+  } else {
+    p.pipe = null
+    p.onGround = true
+    p.y = exit.y * TS - p.h
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
 // The step
 
 export function stepPlayer(p: Player, input: PlayerInput, ctx: PlayerContext): void {
@@ -343,6 +478,10 @@ export function stepPlayer(p: Player, input: PlayerInput, ctx: PlayerContext): v
     p.vx = 0
     fallOnly(p, ctx)
     if (p.celebrate === 0) respawn(p, ctx, true)
+    return
+  }
+  if (p.pipe) {
+    stepPipeTravel(p, ctx)
     return
   }
   if (p.transform > 0) {
@@ -364,6 +503,12 @@ export function stepPlayer(p: Player, input: PlayerInput, ctx: PlayerContext): v
   if (p.dead) return
 
   const dirIn = (input.right ? 1 : 0) - (input.left ? 1 : 0)
+  const mouth = getPipeEntry(p, w)
+  if (!input.down || (p.pipeLock && mouth?.id !== p.pipeLock)) p.pipeLock = 0
+  if (input.down && !input.left && !input.right && !input.jump && canEnterPipe(p, ctx)) {
+    p.pipeHold++
+    if (p.pipeHold >= PIPE_HOLD_TICKS && beginPipeTravel(p, ctx)) return
+  } else p.pipeHold = 0
 
   // Crouch (big only). Stays crouched in the air if you jumped from a crouch.
   if (input.down && p.onGround && p.power !== POWER.SMALL && !p.crouch) {

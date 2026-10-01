@@ -4,13 +4,15 @@ import type { Action, Input } from '../input/input'
 
 interface Props {
   input: Input
+  canEnterPipe?: boolean
+  onEnterPipe?: () => void
 }
 
 /**
  * On-screen buttons for touch screens. The d-pad is one surface: sliding a thumb from left to right changes
  * direction without lifting, like a real d-pad. It sits in from the left edge, where Safari's swipe means Back.
  */
-export function TouchControls({ input }: Props) {
+export function TouchControls({ input, canEnterPipe, onEnterPipe }: Props) {
   const padRef = useRef<HTMLDivElement>(null)
   const padActions = useRef<Set<Action>>(new Set())
 
@@ -72,6 +74,7 @@ export function TouchControls({ input }: Props) {
         <ChevronRight className="p2d-arrow p2d-arrow-r" size={40} aria-hidden="true" />
         <ChevronDown className="p2d-arrow p2d-arrow-d" size={30} aria-hidden="true" />
       </div>
+      {canEnterPipe && <button type="button" className="p2d-enter-pipe p2d-touch-enter-pipe" onClick={onEnterPipe}><ChevronDown size={20} aria-hidden="true" /> Enter pipe</button>}
       <div className="p2d-face">
         <button type="button" className="p2d-run" {...button('run')} aria-label="Run">
           Run

@@ -1,3 +1,5 @@
+import { gaitLeg, type GaitLeg } from '../../characters/locomotion'
+import { playerColor } from '../art/palette'
 import type { PlayerPose } from '../art/characters'
 import { INK, TONE, WHITE, edge, rad, rr, stud, type G, type Tone } from './paint'
 
@@ -51,9 +53,17 @@ export interface BuilderColors {
 export const BUILDER_SIZE = { small: { w: 20, h: 23 }, big: { w: 22, h: 34 } } as const
 
 /** Draw the builder with the feet's contact point at (0, 0), facing right. */
-export function drawBuilder(g: G, size: 'small' | 'big', pose: PlayerPose, colors: BuilderColors) {
+export function drawBuilder(g: G, size: 'small' | 'big', pose: PlayerPose, colors: BuilderColors, motion?: BuilderMotion) {
   const big = size === 'big'
-  const rig = RIGS[pose]
+  const gait = motion?.gait
+  const weight = Math.max(0, Math.min(1, motion?.gaitWeight ?? (pose === 'stand' ? 0 : 1)))
+  const blend = Math.max(0, Math.min(1, motion?.gaitBlend ?? (gait === 'run' ? 1 : 0)))
+  const phase = motion?.gaitPhase ?? 0
+  const swing = Math.cos(phase * Math.PI * 2)
+  const rig: Rig = gait ? {
+    ...RIGS.stand, nearArm: -swing * (28 + blend * 22) * weight, farArm: swing * (28 + blend * 22) * weight,
+    bob: (1 - Math.cos(phase * Math.PI * 4)) * (big ? 0.16 : 0.10) * weight, lean: (2 + blend * 4) * weight,
+  } : RIGS[pose]
   const shirt = colors.spark ? SHIRT_SPARK : colors.shirt
   const pants = colors.spark ? colors.shirt : PANTS
   const hat = colors.spark ? HAT_SPARK : HAT
@@ -85,6 +95,12 @@ export function drawBuilder(g: G, size: 'small' | 'big', pose: PlayerPose, color
   }
 
   const leg = (angle: number, tone: Tone, dark: boolean) => {
+    if (gait) {
+      const virtualHeight = (shoeH / 2 + legLen) / 0.352
+      const joints = gaitLeg(phase + (dark ? 0.5 : 0), gait, virtualHeight, hipY, blend, weight, dark ? -0.7 : 0.7, -shoeH / 2)
+      motionLeg(g, joints, legW, shoeH, tone, dark)
+      return
+    }
     g.save()
     g.translate(dark ? -0.8 : 0.6, hipY)
     g.rotate(-rad(angle))
@@ -224,4 +240,63 @@ export function drawBuilder(g: G, size: 'small' | 'big', pose: PlayerPose, color
   arm(rig.nearArm, shirt, false)
   g.restore()
   g.restore()
+}
+
+export interface BuilderMotion {
+  gait?: 'walk' | 'run'
+  gaitPhase?: number
+  gaitBlend?: number
+  gaitWeight?: number
+}
+
+/** Same low foot arc as the generated rigs, drawn in Classic's shorter proportions. */
+function motionLeg(g: G, joints: GaitLeg, width: number, shoeH: number, tone: Tone, dark: boolean) {
+  const segment = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    g.save()
+    g.translate(a.x, a.y)
+    g.rotate(Math.atan2(b.y - a.y, b.x - a.x) - Math.PI / 2)
+    rr(g, -width / 2, -0.4, width, Math.hypot(b.x - a.x, b.y - a.y) + 0.8, 0.7)
+    g.fillStyle = dark ? tone[2] : tone[0]
+    g.fill()
+    edge(g, 0.3, 0.45)
+    g.restore()
+  }
+  segment(joints.hip, joints.knee)
+  segment(joints.knee, joints.ankle)
+  g.save()
+  g.translate(joints.ankle.x, joints.ankle.y)
+  g.rotate(joints.footAngle)
+  rr(g, -width / 2 - 0.3, -shoeH / 2, width + 2.2, shoeH, [shoeH / 2, shoeH / 1.6, 0.9, 0.9])
+  g.fillStyle = dark ? '#1a2a3a' : INK
+  g.fill()
+  g.restore()
+}
+
+export interface ClassicMotionLook extends BuilderMotion {
+  num: number
+  x: number
+  y: number
+  facing: 1 | -1
+  size: 'small' | 'big'
+  pose: PlayerPose
+  spark: boolean
+  squash?: number
+  landingCompression?: number
+}
+
+/** Draw Classic directly so gait phase stays continuous instead of cycling cached poses. */
+export function drawClassicMotion(ctx: CanvasRenderingContext2D, look: ClassicMotionLook, snap: (v: number) => number, camX: number, camY: number): number | null {
+  const x = snap(look.x) - camX
+  const feet = snap(look.y) - camY
+  const [base, dark] = playerColor(look.num)
+  const rgb = parseInt(base.slice(1), 16)
+  const light = (n: number) => Math.round(n + (255 - n) * 0.38)
+  const shirt: Tone = [base, `rgb(${light((rgb >> 16) & 255)}, ${light((rgb >> 8) & 255)}, ${light(rgb & 255)})`, dark]
+  const compression = look.squash ? 0.6 : 1 - 0.10 * Math.max(0, Math.min(1, look.landingCompression ?? 0))
+  ctx.save()
+  ctx.translate(x, feet)
+  ctx.scale(look.facing, compression)
+  drawBuilder(ctx, look.size, look.pose, { shirt, spark: look.spark }, look)
+  ctx.restore()
+  return feet - BUILDER_SIZE[look.size].h * compression
 }

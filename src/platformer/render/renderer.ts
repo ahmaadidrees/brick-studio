@@ -6,6 +6,7 @@ import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
 import { drawGeneratedCharacter } from '../characters/atlas'
 import type { PlayerPose } from './art/characters'
 import { CartoonSkin } from './cartoon/cartoonSkin'
+import { drawClassicMotion } from './cartoon/builder'
 import { PixelSkin } from './pixelSkin'
 import { drawSprite, type Skin } from './skin'
 
@@ -27,6 +28,11 @@ export interface PlayerLook {
   /** Cosmetic locomotion; phase follows distance travelled, not render-frame timing. */
   gait?: 'walk' | 'run'
   gaitPhase?: number
+  gaitBlend?: number
+  gaitWeight?: number
+  landingCompression?: number
+  /** Active pipe mouth in tile coordinates; artwork is clipped at the lip. */
+  pipe?: { x: number; y: number; phase: 'enter' | 'exit' }
   /** 0..1 translucency for players shown while building. */
   alpha?: number
   squash?: number
@@ -370,11 +376,23 @@ export class Renderer {
   private player(p: PlayerLook, camX: number, camY: number) {
     if (!p.visible) return
     const ctx = this.ctx
+    ctx.save()
+    if (p.pipe) {
+      ctx.beginPath()
+      ctx.rect(0, 0, this.width, Math.max(0, p.pipe.y * TILE - camY))
+      ctx.clip()
+    }
+    this.playerArt(p, camX, camY)
+    ctx.restore()
+  }
+
+  private playerArt(p: PlayerLook, camX: number, camY: number) {
+    const ctx = this.ctx
     const skin = this.skin
     if (p.alpha !== undefined) ctx.globalAlpha = p.alpha
     const generatedTop = p.character && p.character !== 'classic'
       ? drawGeneratedCharacter(ctx, { ...p, character: p.character }, skin.style, skin.snap.bind(skin), camX, camY)
-      : null
+      : skin.style === 'cartoon' ? drawClassicMotion(ctx, p, skin.snap.bind(skin), camX, camY) : null
     if (generatedTop !== null) {
       ctx.globalAlpha = 1
       if (p.name) skin.label(ctx, p.name, p.x - camX, generatedTop, '#ffffff')

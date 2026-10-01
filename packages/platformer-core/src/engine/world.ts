@@ -1,6 +1,7 @@
 import { LEVEL_MAX_OBJECTS, RESPAWN_TICKS, SUB, TS, fdiv, sub } from './constants'
 import { moveX, moveY, overlaps, tileAt, type Box } from './collide'
 import type { EditOp, WorldEvent } from './events'
+import { editDesign } from './designEdit'
 import {
   OBJECT_KINDS,
   SINGLETON_KINDS,
@@ -192,7 +193,7 @@ export function createWorld(design: LevelDesign, tick = 0): World {
     tick,
     width: design.width,
     height: design.height,
-    design: { ...design, tiles: design.tiles.slice(), contents: design.contents.slice(), objects: design.objects.map((o) => ({ ...o })) },
+    design: { ...design, tiles: design.tiles.slice(), contents: design.contents.slice(), objects: design.objects.map((o) => ({ ...o })), pipes: (design.pipes ?? []).map((p) => ({ ...p })) },
     tiles: design.tiles.slice(),
     entities: [],
     nextId: 1,
@@ -430,6 +431,10 @@ function applyOp(w: World, op: EditOp): boolean {
       if (w.bumps.length) w.bumps = w.bumps.filter((b) => b.tx !== op.x || b.ty !== op.y)
       return true
     }
+    case 'pipe':
+    case 'pipeDel':
+      // Pipe edits always replace the list, preserving rollback snapshots.
+      return editDesign(d, op)
     case 'add': {
       if (d.objects.length >= LEVEL_MAX_OBJECTS || d.objects.some((o) => o.id === op.obj.id)) return false
       ownObjects(w)
@@ -822,6 +827,9 @@ export function hashWorld(w: World): number {
   mix(w.nextId)
   mix(w.width)
   mix(w.height)
+  for (const p of w.design.pipes ?? []) {
+    mix(p.id); mix(p.x); mix(p.y); mix(p.exitId ?? 0)
+  }
   for (const e of w.entities) {
     mix(e.id)
     mix(e.kind)

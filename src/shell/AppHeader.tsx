@@ -3,6 +3,8 @@ import { useState, type HTMLAttributes, type ReactNode } from 'react'
 import { BrandLockup } from '../brand'
 import { Button, SaveStatus, type SaveStatusSource } from '../ui'
 import { AccountChip } from './AccountChip'
+import { InvitesButton } from '../classroom/StudentInvites'
+import type { InviteClient } from '../classroom/inviteStore'
 import { DimensionSwitch, type BuildDimension } from './DimensionSwitch'
 import { ModeSwitch, type StudioMode } from './ModeSwitch'
 import { RenameWorldDialog } from './RenameWorldDialog'
@@ -24,6 +26,10 @@ type CommonProps = {
   /** Override the live classroom session (gallery, tests). */
   session?: ClassroomSessionState
   className?: string
+  /** Reuse the studio’s save and departure guard when opening a classmate’s world. */
+  onGoToInviteWorld?: (href: string) => void | Promise<void>
+  inviteNavigationBlocked?: boolean
+  inviteClient?: InviteClient
   /** Opens the account menu on mount (gallery). */
   accountMenuDefaultOpen?: boolean
 } & Pick<HTMLAttributes<HTMLElement>, 'onKeyDown' | 'id'>
@@ -136,19 +142,20 @@ function headerClass(variant: AppHeaderVariant, className?: string) {
   return ['app-header', `app-header-${variant}`, className].filter(Boolean).join(' ')
 }
 
-function LandingHeader({ navigation, session, className, accountMenuDefaultOpen, onKeyDown, id }: AppHeaderLandingProps) {
+function LandingHeader({ navigation, session, className, accountMenuDefaultOpen, onKeyDown, id, onGoToInviteWorld, inviteNavigationBlocked, inviteClient }: AppHeaderLandingProps) {
   return (
     <header id={id} className={headerClass('landing', className)} onKeyDown={onKeyDown}>
       <BrandLockup href="/" size={44} srSuffix="Home" className="app-header-brand" />
       {navigation && <div className="app-header-center">{navigation}</div>}
       <div className="app-header-end">
+        <InvitesButton session={session} client={inviteClient} onGoToInviteWorld={onGoToInviteWorld} navigationBlocked={inviteNavigationBlocked} />
         <AccountChip session={session} context="landing" menuDefaultOpen={accountMenuDefaultOpen} />
       </div>
     </header>
   )
 }
 
-function PageHeader({ title, actions, session, className, accountMenuDefaultOpen, onKeyDown, id }: AppHeaderPageProps) {
+function PageHeader({ title, actions, session, className, accountMenuDefaultOpen, onKeyDown, id, onGoToInviteWorld, inviteNavigationBlocked, inviteClient }: AppHeaderPageProps) {
   return (
     <header id={id} className={headerClass('page', className)} onKeyDown={onKeyDown}>
       <div className="app-header-start">
@@ -162,6 +169,7 @@ function PageHeader({ title, actions, session, className, accountMenuDefaultOpen
       </div>
       <div className="app-header-end">
         {actions && <div className="app-header-actions">{actions}</div>}
+        <InvitesButton session={session} client={inviteClient} onGoToInviteWorld={onGoToInviteWorld} navigationBlocked={inviteNavigationBlocked} />
         <AccountChip session={session} context="page" menuDefaultOpen={accountMenuDefaultOpen} />
       </div>
     </header>
@@ -198,7 +206,7 @@ function EditorHeader({
   mode, onRequestMode, canExplore, exploreReason,
   onSaveToAccount, onGoHome, onSwitchDimension, editorActions,
   dimension = '3d', modeLabels, modeLock, hideCharacter = false, startLiveTitle, renameMaxLength, worldMenu,
-  session, className, accountMenuDefaultOpen, onKeyDown, id,
+  session, className, accountMenuDefaultOpen, onKeyDown, id, onGoToInviteWorld, inviteNavigationBlocked, inviteClient,
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
   const title = worldTitle || livePolicy?.roomTitle || NEUTRAL_WORLD_TITLE
@@ -242,6 +250,7 @@ function EditorHeader({
         <ModeSwitch mode={mode} onRequestMode={onRequestMode} canExplore={canExplore} exploreReason={exploreReason} locked={locked} lockedReason={lockedReason} exploreLabel={modeLabels?.explore} exploreIcon={modeLabels?.exploreIcon} buildIcon={modeLabels?.buildIcon} />
       </div>
       <div className="app-header-end">
+        <InvitesButton session={session} client={inviteClient} onGoToInviteWorld={onGoToInviteWorld} navigationBlocked={inviteNavigationBlocked} />
         <AccountChip session={session} context="editor" onSaveToAccount={onSaveToAccount} menuDefaultOpen={accountMenuDefaultOpen} />
         {worldMenu ? worldMenu({ openRename }) : <WorldMenu
           align="end"

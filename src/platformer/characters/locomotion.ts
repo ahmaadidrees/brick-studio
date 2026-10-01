@@ -1,7 +1,7 @@
 import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
 
 type GeneratedId = Exclude<CharacterId, 'classic'>
-type Point = { x: number; y: number }
+export type Point = { x: number; y: number }
 type Rect = readonly [x: number, y: number, width: number, height: number]
 type Part = 'body' | 'arm' | 'thigh' | 'shin' | 'foot'
 
@@ -13,27 +13,47 @@ export interface GaitLeg {
   footAngle: number
 }
 
-/** A foot stays on the floor during stance, then lifts and travels forward during recovery. */
-export function gaitLeg(phase: number, gait: 'walk' | 'run', height: number, hipY: number): GaitLeg {
+const clamp = (n: number) => Math.max(0, Math.min(1, n))
+const mix = (a: number, b: number, t: number) => a + (b - a) * t
+
+/** Grounded feet sweep backwards; a low recovery arc keeps running from looking like pedaling. */
+export function gaitLeg(phase: number, gait: 'walk' | 'run', height: number, hipY: number, blend = gait === 'run' ? 1 : 0, weight = 1, neutralX = height * 0.035, floorY = -height * 0.088): GaitLeg {
   const p = ((phase % 1) + 1) % 1
-  const stance = gait === 'walk' ? 0.62 : 0.38
-  const stride = height * (gait === 'walk' ? 0.12 : 0.23)
+  const run = clamp(blend)
+  const amplitude = clamp(weight)
+  const stance = mix(0.60, 0.44, run)
+  const stride = height * mix(0.17, 0.205, run)
   const planted = p < stance
   const t = planted ? p / stance : (p - stance) / (1 - stance)
   const ankle: Point = {
-    x: planted ? stride * (1 - 2 * t) : -stride * Math.cos(Math.PI * t),
-    y: -height * 0.088 - (planted ? 0 : Math.sin(Math.PI * t) * height * (gait === 'walk' ? 0.045 : 0.26)),
+    x: mix(neutralX, planted ? stride * (1 - 2 * t) : -stride * Math.cos(Math.PI * t), amplitude),
+    y: floorY - (planted ? 0 : Math.sin(Math.PI * t) * height * mix(0.045, 0.11, run) * amplitude),
   }
   const hip = { x: 0, y: hipY }
-  const upper = height * 0.20
-  const lower = height * 0.20
+  const upper = height * 0.215
+  const lower = height * 0.215
   const dx = ankle.x - hip.x
   const dy = ankle.y - hip.y
   const distance = Math.min(upper + lower - 0.0001, Math.max(Math.hypot(dx, dy), 0.0001))
-  // Choose the knee solution on the forward side of the leg, never a backwards-bending knee.
   const angle = Math.atan2(dy, dx) - Math.acos(Math.max(-1, Math.min(1, (upper * upper + distance * distance - lower * lower) / (2 * upper * distance))))
   const knee = { x: hip.x + Math.cos(angle) * upper, y: hip.y + Math.sin(angle) * upper }
-  return { hip, knee, ankle, planted, footAngle: planted ? (t < 0.16 ? -0.16 * (1 - t / 0.16) : t > 0.8 ? (t - 0.8) * 1.7 : 0) : -0.12 }
+  return { hip, knee, ankle, planted, footAngle: planted ? 0 : -0.10 * amplitude }
+}
+
+export interface LocomotionOptions {
+  blend?: number
+  weight?: number
+}
+
+/** Common head/hip anchors for idle, walk and run, with a restrained character-specific bounce. */
+export function locomotionAnchors(id: GeneratedId, phase: number, height: number, blend: number, weight = 1) {
+  const run = clamp(blend)
+  const amplitude = clamp(weight)
+  const bounce = id === 'bolt-bot' ? 0.013 : id === 'brick-fox' ? 0.009 : 0.007
+  const bob = (1 - Math.cos(phase * Math.PI * 4)) * height * mix(0.003, bounce, run) * amplitude
+  const hipY = -height * 0.44 + bob
+  const top = -height + bob
+  return { hipY, top, bodyHeight: (hipY - top) / 0.92, lean: mix(0.018, id === 'brick-fox' ? 0.095 : 0.075, run) * amplitude }
 }
 
 // Source rectangles are measured from the opaque connected part in each generated atlas cell.
@@ -63,15 +83,16 @@ export function warmLocomotion(id: GeneratedId): HTMLImageElement | null {
 
 export function drawLocomotion(
   ctx: CanvasRenderingContext2D, id: GeneratedId, phase: number, gait: 'walk' | 'run',
-  x: number, y: number, facing: 1 | -1, height: number,
+  x: number, y: number, facing: 1 | -1, height: number, options: LocomotionOptions = {},
 ): number | null {
   const image = warmLocomotion(id)
   if (!image) return null
   const cycle = phase * Math.PI * 2
-  const bob = Math.sin(cycle * 2) * height * (gait === 'walk' ? 0.006 : 0.04)
-  const hipY = -height * (gait === 'walk' ? 0.44 : 0.35) + bob
-  const near = gaitLeg(phase, gait, height, hipY)
-  const far = gaitLeg(phase + 0.5, gait, height, hipY)
+  const blend = clamp(options.blend ?? (gait === 'run' ? 1 : 0))
+  const weight = clamp(options.weight ?? 1)
+  const { hipY, top, bodyHeight, lean } = locomotionAnchors(id, phase, height, blend, weight)
+  const near = gaitLeg(phase, gait, height, hipY, blend, weight)
+  const far = gaitLeg(phase + 0.5, gait, height, hipY, blend, weight, -height * 0.035)
   const rects = PARTS[id]
   const part = (name: Part, px: number, py: number, w: number, h: number, anchorX = 0.5, anchorY = 0) => {
     const [sx, sy, sw, sh] = rects[name]
@@ -94,7 +115,7 @@ export function drawLocomotion(
   const arm = (offset: number, back: boolean) => {
     ctx.save()
     ctx.translate(back ? height * 0.06 : -height * 0.055, hipY - height * 0.205)
-    ctx.rotate(Math.cos(cycle + offset) * (gait === 'run' ? 0.85 : 0.45))
+    ctx.rotate(Math.cos(cycle + offset) * mix(0.40, id === 'bolt-bot' ? 0.65 : 0.78, blend) * weight)
     part('arm', 0, 0, height * 0.2, height * 0.30, 0.48, 0.06)
     ctx.restore()
   }
@@ -104,15 +125,18 @@ export function drawLocomotion(
   ctx.imageSmoothingEnabled = true
   ctx.imageSmoothingQuality = 'high'
   ctx.filter = 'brightness(0.78)'
+  ctx.save(); ctx.translate(0, hipY); ctx.rotate(lean); ctx.translate(0, -hipY)
   arm(Math.PI, true)
+  ctx.restore()
   leg(far)
   ctx.filter = 'none'
   leg(near)
-  const bodyHeight = height * 0.67
+  ctx.save(); ctx.translate(0, hipY); ctx.rotate(lean); ctx.translate(0, -hipY)
   const bodyRect = rects.body
   const bodyWidth = bodyHeight * bodyRect[2] / bodyRect[3]
   part('body', 0, hipY, bodyWidth, bodyHeight, id === 'brick-fox' ? 0.69 : 0.5, 0.92)
   arm(0, false)
   ctx.restore()
-  return y + hipY - bodyHeight * 0.92
+  ctx.restore()
+  return y + top
 }

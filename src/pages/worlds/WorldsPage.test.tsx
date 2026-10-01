@@ -1,9 +1,11 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import WorldsPage from './WorldsPage'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
 import { createFakeWorldsClient, fixtureWorld, FIXTURE_CLASS, studentSession, teacherSession } from './worldsFixtures'
-import { SEEN_INVITES_STORAGE_KEY } from '../../classroom/inviteSeen'
+import { markInvitesSeen, seenInviteIds } from '../../classroom/inviteSeen'
+import { inviteStoreFor, type InviteClient } from '../../classroom/inviteStore'
+import type { ClassroomInvite } from '../../classroom/contracts'
 import type { InviteSheetProps } from '../../classroom/InviteSheet'
 import { createWorldsClient, type WorldsClient } from './worldsData'
 import type { ClassroomClient } from '../../classroom/client'
@@ -41,16 +43,42 @@ function captureAssign() {
   return assign
 }
 
-/** Marks these world ids as already answered, the way "Not now" does. */
-const seedSeen = (...ids: string[]) => window.localStorage.setItem(SEEN_INVITES_STORAGE_KEY, JSON.stringify(ids))
-
 const navigate = vi.fn()
 
+/** Test-only endpoint adapter: sharing fixtures seed durable invite records; reads/joins update server fields. */
+function attachInvites(client: WorldsClient, acknowledgements = new Map<string, Partial<ClassroomInvite>>()) {
+  const records = async (): Promise<ClassroomInvite[]> => {
+    const user = client.getSession()?.user
+    if (user?.role !== 'student') return []
+    const worlds = await client.listWorlds()
+    return worlds.filter(world => world.kind === 'personal' && world.visibility === 'members' && world.ownerId !== user.id && !world.hiddenByTeacher).map(world => ({
+      id: `invite-${world.id}`, worldId: world.id, title: world.title, ownerName: world.ownerName ?? '', format: world.format ?? 'brick', canEdit: Boolean(world.canEdit),
+      invitedAt: world.sharedAt ?? world.updatedAt, seenAt: null, joinedAt: null, ...acknowledgements.get(`invite-${world.id}`),
+    }))
+  }
+  const request = vi.fn(async (path: string, method = 'GET', body?: { seen?: true; joined?: true }) => {
+    if (path === '/invites' && method === 'GET') return { invites: await records() }
+    const id = decodeURIComponent(path.slice('/invites/'.length))
+    const record = (await records()).find(invite => invite.id === id)
+    if (!record || method !== 'PATCH') throw new Error(`Unexpected test invite request: ${method} ${path}`)
+    const patch = { seenAt: '2026-10-01T17:00:00Z', ...(body?.joined ? { joinedAt: '2026-10-01T17:00:00Z' } : {}) }
+    acknowledgements.set(id, { ...acknowledgements.get(id), ...patch })
+    return { invite: { ...record, ...patch } }
+  })
+  client.inviteClient = { getSession: client.getSession, subscribe: client.subscribe, request: request as InviteClient['request'] }
+  return { request, acknowledgements }
+}
+
 function draw(client: WorldsClient = createFakeWorldsClient(), extra: Partial<Parameters<typeof WorldsPage>[0]> = {}) {
+  if (!client.inviteClient) attachInvites(client)
   return render(<WorldsPage client={client} navigate={navigate} {...extra} />)
 }
 
-const settled = () => waitFor(() => expect(screen.queryByText(/Loading your worlds/)).not.toBeInTheDocument())
+const settled = () => waitFor(() => {
+  expect(screen.queryByText(/Loading your worlds/)).not.toBeInTheDocument()
+  expect(screen.queryByText('Loading invites…')).not.toBeInTheDocument()
+})
+const inviteCard = (title: string, root: HTMLElement = screen.getByRole('region', { name: 'Shared with you' })) => within(root).getByText(title).closest('li')!
 
 /** A build sitting in this browser, written the way the editor writes it. */
 function seedDraft(bricks = 3) {
@@ -138,8 +166,8 @@ describe('student', () => {
     expect(within(mate).getByText('Ben K.')).toBeInTheDocument()
     expect(within(mate).getByText(/Build together/)).toBeInTheDocument()
     // Joining a classmate's world goes through the live room; the Worker decides viewer or editor there.
-    expect(within(mate).getByRole('link', { name: 'Join and build' })).toHaveAttribute('href', '/live/worldbenskybridge')
-    expect(within(mate).getByRole('link', { name: /Visit/ })).toHaveAttribute('href', '/live/worldbenskybridge')
+    expect(within(mate).getByRole('link', { name: 'Go to world' })).toHaveAttribute('href', '/live/worldbenskybridge')
+    expect(within(mate).getAllByRole('link')).toHaveLength(1)
 
     const lookOnly = within(shared).getByRole('article', { name: 'Crystal Castle' })
     expect(within(lookOnly).getByText(/Look only/)).toBeInTheDocument()
@@ -273,38 +301,31 @@ describe('student', () => {
     expect(within(screen.getByRole('article', { name: 'Lava Maze' })).getByRole('button', { name: 'Invite classmates' })).toBeInTheDocument()
   })
 
-  it('lists a quiet invite under Shared with you, apart from the whole-class worlds', async () => {
+  it('lists quiet invitations on Mine, apart from whole-class worlds, with one clear action', async () => {
     draw()
     await settled()
-
-    const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
-    // The invite counts toward the class section like any shared world.
-    expect(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) })).toHaveTextContent('5')
-    fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-
-    const invited = screen.getByRole('region', { name: 'Shared with you' })
-    const arcade = within(invited).getByRole('article', { name: 'Pixel Arcade' })
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
+    const arcade = inviteCard('Pixel Arcade')
     expect(within(arcade).getByText('Finn O. invited you')).toBeInTheDocument()
-    expect(within(arcade).getByText(/Build together/)).toBeInTheDocument()
-    expect(within(arcade).getByRole('link', { name: 'Join and build' })).toHaveAttribute('href', '/live/worldfinnarcade')
-    expect(within(arcade).getByRole('link', { name: /Visit/ })).toHaveAttribute('href', '/live/worldfinnarcade')
-    expect(within(arcade).getByRole('button', { name: 'Make my own copy' })).toBeInTheDocument()
-    // An invitee never sees who else was invited.
-    expect(within(arcade).queryByText(/classmate/)).not.toBeInTheDocument()
-
+    expect(within(arcade).getByText('3D')).toBeInTheDocument()
+    expect(within(arcade).getByText('You can build')).toBeInTheDocument()
+    expect(within(arcade).getAllByRole('button')).toHaveLength(1)
+    fireEvent.click(within(arcade).getByRole('button', { name: 'Go to Finn’s world' }))
+    expect(navigate).toHaveBeenCalledWith('/live/worldfinnarcade')
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
     const shared = screen.getByRole('region', { name: 'Shared by classmates' })
-    expect(within(shared).queryByRole('article', { name: 'Pixel Arcade' })).not.toBeInTheDocument()
+    expect(within(shared).queryByText('Pixel Arcade')).not.toBeInTheDocument()
     expect(within(shared).getByRole('article', { name: 'Sky Bridge' })).toBeInTheDocument()
-    // Sections keep their order: invites first, then the class, then the teacher.
-    const regions = screen.getAllByRole('region').map(region => region.getAttribute('aria-label'))
-    expect(regions.indexOf('Shared with you')).toBeLessThan(regions.indexOf('Shared by classmates'))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: /^Mine/ }))
+    expect(inviteCard('Pixel Arcade')).toBeInTheDocument()
   })
 
-  it('skips the Shared with you section when nobody invited this student', async () => {
+  it('keeps a discoverable empty Shared with you library when nobody invited this student', async () => {
     draw(createFakeWorldsClient({ worlds: [] }))
     await settled()
+    expect(within(screen.getByRole('region', { name: 'Shared with you' })).getByText('When a classmate invites you, their world will be here.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Invites' })).toBeInTheDocument()
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(screen.queryByRole('region', { name: 'Shared with you' })).not.toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Shared by classmates' })).toBeInTheDocument()
   })
 
@@ -366,92 +387,83 @@ describe('student', () => {
     expect(screen.getByText('Your teacher closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
   })
 
-  it('puts unanswered invites in a banner above My worlds, newest first and at most three', async () => {
-    const invite = (id: string, title: string, owner: string, sharedAt: string, extra: Partial<Parameters<typeof fixtureWorld>[0]> = {}) =>
-      fixtureWorld({ id, title, ownerId: `student-${owner.toLowerCase()}`, ownerName: `${owner} X.`, visibility: 'members', canEdit: true, classCanEdit: true, sharedAt, updatedAt: sharedAt, ...extra })
+  it('keeps all invitations in the default library, newest first, without an initial arrival banner', async () => {
+    const invite = (id: string, title: string, owner: string, sharedAt: string) => fixtureWorld({ id, title, ownerId: `student-${owner.toLowerCase()}`, ownerName: `${owner} X.`, visibility: 'members', canEdit: true, classCanEdit: true, sharedAt, updatedAt: sharedAt })
     draw(createFakeWorldsClient({ worlds: [
       invite('w-a', 'Oldest World', 'Ben', '2026-09-14T10:00:00.000Z'),
       invite('w-b', 'Middle World', 'Chloe', '2026-09-15T10:00:00.000Z'),
       invite('w-c', 'Newer World', 'Diego', '2026-09-16T10:00:00.000Z'),
-      invite('w-d', 'Newest World', 'Finn', '2026-09-17T10:00:00.000Z', { buildingNow: 2, buildingNames: ['Ava P.', 'Ben K.'] }),
+      invite('w-d', 'Newest World', 'Finn', '2026-09-17T10:00:00.000Z'),
     ] }))
     await settled()
-
-    const banner = screen.getByRole('region', { name: 'Invites' })
-    const titles = within(banner).getAllByRole('article').map(card => card.getAttribute('aria-label'))
-    expect(titles).toEqual(['Invite to Newest World', 'Invite to Newer World', 'Invite to Middle World'])
-
-    const newest = within(banner).getByRole('article', { name: 'Invite to Newest World' })
-    expect(within(newest).getByText('Finn X. invited you to build Newest World')).toBeInTheDocument()
-    expect(within(newest).getByText('Ava P. and Ben K. building right now')).toBeInTheDocument()
-    expect(within(newest).getByRole('link', { name: 'Join and build' })).toHaveAttribute('href', '/live/wd')
-    expect(within(newest).getByRole('button', { name: 'Not now' })).toBeInTheDocument()
-    // No live line when nobody is in the room.
-    expect(within(within(banner).getByRole('article', { name: 'Invite to Newer World' })).queryByText(/building right now/)).not.toBeInTheDocument()
-  })
-
-  it('reads a look-only invite differently and sends the student to Visit', async () => {
-    draw(createFakeWorldsClient({ worlds: [fixtureWorld({
-      id: 'w-look', title: 'Glass Tower', ownerId: 'student-ben', ownerName: 'Ben K.',
-      visibility: 'members', canEdit: false, classCanEdit: false, sharedAt: '2026-09-17T10:00:00.000Z',
-    })] }))
-    await settled()
-
-    const card = within(screen.getByRole('region', { name: 'Invites' })).getByRole('article', { name: 'Invite to Glass Tower' })
-    expect(within(card).getByText('Ben K. invited you to look at Glass Tower')).toBeInTheDocument()
-    expect(within(card).getByRole('link', { name: 'Visit' })).toHaveAttribute('href', '/live/wlook')
-    expect(within(card).queryByRole('link', { name: 'Join and build' })).not.toBeInTheDocument()
-  })
-
-  it('drops an invite from the banner on Not now and remembers it', async () => {
-    draw()
-    await settled()
-
-    const banner = screen.getByRole('region', { name: 'Invites' })
-    expect(within(banner).getByText('Finn O. invited you to build Pixel Arcade')).toBeInTheDocument()
-    fireEvent.click(within(banner).getByRole('button', { name: 'Not now' }))
-
+    const library = screen.getByRole('region', { name: 'Shared with you' })
+    expect(within(library).getAllByRole('listitem').map(card => card.querySelector('strong')?.textContent)).toEqual(['Newest World', 'Newer World', 'Middle World', 'Oldest World'])
+    expect(within(inviteCard('Newest World')).getByRole('button', { name: 'Go to Finn’s world' })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Invites' })).not.toBeInTheDocument()
-    expect(window.localStorage.getItem(SEEN_INVITES_STORAGE_KEY)).toContain('world-finn-arcade')
+    expect(screen.queryByLabelText('New invitation')).not.toBeInTheDocument()
   })
 
-  it('remembers the invite when the student joins it', async () => {
-    draw()
+  it('uses the same world action for a look-only 2D invite and describes the actual access', async () => {
+    draw(createFakeWorldsClient({ worlds: [fixtureWorld({ id: 'w-look', title: 'Glass Tower', ownerId: 'student-ben', ownerName: 'Ben K.', format: '2d', visibility: 'members', canEdit: false, classCanEdit: false, sharedAt: '2026-09-17T10:00:00.000Z' })] }))
     await settled()
-
-    fireEvent.click(within(screen.getByRole('region', { name: 'Invites' })).getByRole('link', { name: 'Join and build' }))
-    expect(window.localStorage.getItem(SEEN_INVITES_STORAGE_KEY)).toContain('world-finn-arcade')
-    expect(screen.queryByRole('region', { name: 'Invites' })).not.toBeInTheDocument()
+    const card = inviteCard('Glass Tower')
+    expect(within(card).getByText('Just looking')).toBeInTheDocument()
+    expect(within(card).getByText('2D')).toBeInTheDocument()
+    expect(within(card).getAllByRole('button')).toHaveLength(1)
+    fireEvent.click(within(card).getByRole('button', { name: 'Go to Ben’s world' }))
+    expect(navigate).toHaveBeenCalledWith('/2d/w/wlook')
   })
 
-  it('keeps an already-answered invite out of the banner', async () => {
-    seedSeen('world-finn-arcade')
-    draw()
+  it('dismisses only a new arrival notice on Later and preserves the default library', async () => {
+    const worlds: ReturnType<typeof fixtureWorld>[] = []
+    const client = createFakeWorldsClient({ worlds })
+    draw(client); await settled()
+    worlds.push(fixtureWorld({ id: 'w-new', title: 'New Tree House', ownerId: 'student-finn', ownerName: 'Finn O.', visibility: 'members', canEdit: true }))
+    await act(async () => { await inviteStoreFor(client.inviteClient!).refresh() })
+    const arrival = screen.getByLabelText('New invitation')
+    expect(within(arrival).getByRole('status')).toHaveTextContent('Finn O. invited you to a world.')
+    fireEvent.click(within(arrival).getByRole('button', { name: 'Later' }))
+    expect(screen.queryByLabelText('New invitation')).not.toBeInTheDocument()
+    expect(inviteCard('New Tree House')).toBeInTheDocument()
+    expect(seenInviteIds(studentSession.user.id).has('invite-w-new')).toBe(true)
+    expect(inviteStoreFor(client.inviteClient!).getSnapshot().invites[0].seenAt).toBeNull()
+  })
+
+  it('does not mark an invitation joined merely because its world action was clicked', async () => {
+    const client = createFakeWorldsClient()
+    const { request } = attachInvites(client)
+    draw(client); await settled()
+    fireEvent.click(within(inviteCard('Pixel Arcade')).getByRole('button', { name: 'Go to Finn’s world' }))
+    expect(navigate).toHaveBeenCalledWith('/live/worldfinnarcade')
+    expect(request.mock.calls.some(([, method]) => method === 'PATCH')).toBe(false)
+    expect(inviteStoreFor(client.inviteClient!).getSnapshot().invites[0].joinedAt).toBeNull()
+  })
+
+  it('keeps server-read invitations in the library and shares the same records with the panel', async () => {
+    const client = createFakeWorldsClient()
+    const { request } = attachInvites(client, new Map([['invite-world-finn-arcade', { seenAt: '2026-10-01T17:00:00Z' }]]))
+    markInvitesSeen(['invite-world-finn-arcade'], studentSession.user.id)
+    draw(client); await settled()
+    expect(within(inviteCard('Pixel Arcade')).queryByText('New')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Invites' }))
+    const panel = screen.getByRole('dialog', { name: 'Invites' })
+    expect(inviteCard('Pixel Arcade', panel)).toBeInTheDocument()
+    expect(request.mock.calls.filter(([path]) => path === '/invites')).toHaveLength(1)
+    fireEvent.click(within(panel).getAllByRole('button', { name: 'Close' })[0])
+    expect(inviteCard('Pixel Arcade')).toBeInTheDocument()
+  })
+
+  it('keeps invitation summaries independent of room presence and preserves whole-class presence cards', async () => {
+    const shared = (id: string, title: string, buildingNow: number, visibility: 'class' | 'members') => fixtureWorld({ id, title, ownerId: 'student-ben', ownerName: 'Ben K.', visibility, canEdit: true, classCanEdit: true, sharedAt: '2026-09-17T10:00:00.000Z', buildingNow, buildingNames: [] })
+    draw(createFakeWorldsClient({ worlds: [shared('w-invited', 'Invited Build', 2, 'members'), shared('w-class', 'Class Build', 2, 'class')] }))
     await settled()
-    expect(screen.queryByRole('region', { name: 'Invites' })).not.toBeInTheDocument()
-    // The card itself is still there under the class section.
+    const invited = inviteCard('Invited Build')
+    expect(within(invited).queryByText(/building now/)).not.toBeInTheDocument()
+    expect(within(invited).getByRole('button', { name: 'Go to Ben’s world' })).toBeInTheDocument()
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(within(screen.getByRole('region', { name: 'Shared with you' })).getByRole('article', { name: 'Pixel Arcade' })).toBeInTheDocument()
-  })
-
-  it('puts a green building-now chip on the worlds classmates are in right now', async () => {
-    const shared = (id: string, title: string, buildingNow: number, visibility: 'class' | 'members') => fixtureWorld({
-      id, title, ownerId: 'student-ben', ownerName: 'Ben K.', visibility, canEdit: true, classCanEdit: true,
-      sharedAt: '2026-09-17T10:00:00.000Z', buildingNow, buildingNames: [],
-    })
-    seedSeen('w-invited')
-    draw(createFakeWorldsClient({ worlds: [shared('w-invited', 'Invited Build', 2, 'members'), shared('w-class', 'Class Build', 0, 'class')] }))
-    await settled()
-    fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-
-    const invited = within(screen.getByRole('region', { name: 'Shared with you' })).getByRole('article', { name: 'Invited Build' })
-    expect(within(invited).getByText('2 building now')).toBeInTheDocument()
-    expect(within(invited).getByRole('link', { name: 'Join and build' })).toHaveAttribute('href', '/live/winvited')
-    expect(within(invited).getByRole('link', { name: 'Visit' })).toBeInTheDocument()
-    expect(within(invited).getByRole('button', { name: 'Make my own copy' })).toBeInTheDocument()
-
     const classCard = within(screen.getByRole('region', { name: 'Shared by classmates' })).getByRole('article', { name: 'Class Build' })
-    expect(within(classCard).queryByText(/building now/)).not.toBeInTheDocument()
+    expect(within(classCard).getByText('2 building now')).toBeInTheDocument()
+    expect(within(classCard).getAllByRole('link')).toHaveLength(1)
   })
 
   it('offers an empty state to a brand new account', async () => {
@@ -474,8 +486,8 @@ describe('teacher', () => {
     expect(within(rail).getByRole('button', { name: /^My worlds/ })).toBeInTheDocument()
     expect(within(rail).getByRole('link', { name: /New class/ })).toHaveAttribute('href', '/class')
 
-    // A teacher is never invited to anything, so the banner never shows on their page.
-    expect(screen.queryByRole('region', { name: 'Invites' })).not.toBeInTheDocument()
+    // Teachers have no student invitation entry.
+    expect(screen.queryByRole('button', { name: 'Invites' })).not.toBeInTheDocument()
 
     fireEvent.click(within(rail).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
     fireEvent.change(screen.getByLabelText('Shared world name'), { target: { value: 'Market day' } })

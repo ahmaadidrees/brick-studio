@@ -55,6 +55,8 @@ vi.mock('../game/session', () => ({
       state.characterOption = options.character ?? ''
       state.session = this
     }
+    canEnterPipe() { return false }
+    enterPipe() {}
     setMode() { return true }
     resize() {}
     start() {}

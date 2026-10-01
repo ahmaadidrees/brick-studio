@@ -1,4 +1,5 @@
 import type { BrickStudioDocument } from '@brick-studio/core'
+export type { ClassroomInvite } from '@classroom/identity-contracts'
 
 export type ClassroomSession = { accessToken: string; refreshToken: string; expiresIn: number }
 export type ClassroomUser = { id: string; username: string; rosterName: string; role: 'teacher' | 'student'; resetRequired: boolean }

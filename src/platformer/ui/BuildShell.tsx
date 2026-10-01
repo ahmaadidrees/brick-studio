@@ -5,6 +5,7 @@ import { ALL_CATEGORY, BRICK_DRAWER_LABELS, DrawerFab, DrawerPanel, DrawerSheet,
 import type { Editor } from '../editor/editor'
 import { CATEGORIES, PALETTE } from '../editor/palette'
 import { Art } from './art'
+import { PipePanel } from './PipePanel'
 
 const DRAWER_ID = 'p2d-brick-drawer'
 const DRAWER_CATEGORIES = [{ id: ALL_CATEGORY, label: 'All' }, ...CATEGORIES]
@@ -78,6 +79,7 @@ export function BuildShell({ editor, theme, look, compact, touch, drawerOpen, on
       <div className="brick-history-cluster p2d-history" role="group" aria-label="Build tools">
         <HistoryTools onUndo={() => editor.undo()} onRedo={() => editor.redo()} canUndo={editor.undoStack.length > 0} canRedo={editor.redoStack.length > 0} />
       </div>
+      <PipePanel editor={editor} />
       <PlacingStrip editor={editor} theme={theme} look={look} touch={touch} />
     </div>
   )
@@ -88,7 +90,7 @@ function PlacingStrip({ editor, theme, look, touch }: { editor: Editor; theme: T
   const item = editor.item
   const erasing = editor.erasing
   const flips = !erasing && (item.category === 'enemies' || item.category === 'gizmos')
-  const hint = erasing
+  const hint = editor.linkingPipe ? 'Choose another pipe, or an empty spot for its exit · Esc cancels' : editor.selectedPipe ? 'Pipe selected · choose an exit in Pipe settings' : erasing
     ? `${touch ? 'Tap' : 'Click'} or drag over things to remove them`
     : (item.hint ?? (touch ? 'Tap or drag to place' : 'Click or drag to place · right-click erases'))
   return (

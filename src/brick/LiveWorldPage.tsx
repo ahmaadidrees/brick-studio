@@ -10,6 +10,7 @@ import { LIVE_MAX_PLAYERS, type LivePlayer, type LiveWorldMode } from './livePro
 import { createLiveRoomClient, getLiveWorld, hasSavedLiveRoomIdentity } from './liveRoomClient'
 import { browserClassroomClient, type ClassroomClient, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import { ClassroomPanel } from '../classroom/ClassroomPanel'
+import { markInviteJoinedForWorld } from '../classroom/inviteStore'
 import { InviteSheet, inviteAudienceLabel } from '../classroom/InviteSheet'
 import type { ClassroomClassmate, ClassroomWorldSharing } from '../classroom/contracts'
 import { formatNameList, type LivePresence } from '../shell/livePresence'
@@ -373,6 +374,10 @@ function AuthenticatedLiveWorld({ auth, client, worldId, ...props }: LiveWorldPa
     return () => { active = false; controller.abort(); };
   }, [auth.user.id, client, roomId, props.fetchWorldSummary, retry]);
   const session = useLiveRoomSession({ connectRoom, roomId: ready ? roomId : null, profile: ready ? profile : null });
+  useEffect(() => {
+    if (session.status !== 'active' || !session.snapshot.document) return;
+    void markInviteJoinedForWorld(worldId);
+  }, [session.status, session.status === 'active' ? Boolean(session.snapshot.document) : false, worldId]);
   // The account world behind this room: sharing, members (owner only) and title for invites and presence copy.
   // undefined = not read yet, null = could not be read (the room works without it).
   const [world, setWorld] = useState<ClassroomWorld | null | undefined>(undefined);

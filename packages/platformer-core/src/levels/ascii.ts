@@ -72,7 +72,7 @@ export function levelFromAscii(rows: string[], title = 'Level', theme: Theme = '
       objects.push({ id: nextId++, kind: obj[0], x, y, dir: obj[1], alt: obj[2] })
     }
   }
-  return { title, width, height, theme, style, tiles, contents, objects }
+  return { title, width, height, theme, style, tiles, contents, objects, pipes: [] }
 }
 
 /** Join level screens side by side. Every screen must have the same number of rows. */

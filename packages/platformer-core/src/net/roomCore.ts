@@ -1,7 +1,7 @@
 import { TICK_MS } from '../engine/constants'
 import { editDesign } from '../engine/designEdit'
 import { isValidEvent } from '../engine/events'
-import { levelFromJson, levelToJson, type LevelDesign, type LevelJson } from '../engine/level'
+import { cloneLevel, levelFromJson, levelToJson, type LevelDesign, type LevelJson } from '../engine/level'
 import { deserializeWorld, serializeWorld, type WorldJson } from '../engine/world'
 import {
   DEFAULT_SETTINGS,
@@ -211,6 +211,7 @@ export class RoomCore {
         return this.event(sock, c, msg)
       case 'pose':
         if (++c.poses > POSES_PER_SECOND || !isValidPose(msg.p)) return
+        if (msg.p.pi && (msg.p.pi.x + 1 >= this.design.width || msg.p.pi.y >= this.design.height)) return
         // Broadcast only the protocol fields. In particular, never forward a client-supplied
         // asset URL or an identity outside the fixed character allowlist.
         this.poses.set(c.num, {
@@ -221,6 +222,10 @@ export class RoomCore {
           ...(msg.p.af === undefined ? {} : { af: msg.p.af }),
           ...(msg.p.ga === undefined ? {} : { ga: msg.p.ga }),
           ...(msg.p.gp === undefined ? {} : { gp: msg.p.gp }),
+          ...(msg.p.gb === undefined ? {} : { gb: msg.p.gb }),
+          ...(msg.p.gw === undefined ? {} : { gw: msg.p.gw }),
+          ...(msg.p.lc === undefined ? {} : { lc: msg.p.lc }),
+          ...(msg.p.pi === undefined ? {} : { pi: { x: msg.p.pi.x, y: msg.p.pi.y, phase: msg.p.pi.phase, progress: msg.p.pi.progress } }),
         })
         return
       case 'ping':
@@ -403,6 +408,16 @@ export class RoomCore {
     if (msg.ev.t === 'reset' && !c.host) {
       this.stats.rejected++
       return this.send(sock, { type: 'reject', cid: msg.cid, reason: 'host_only' })
+    }
+    // Links are checked after the complete ordered batch so creating/undoing a pair is atomic.
+    if (msg.ev.t === 'edit' && msg.ev.ops.some((op) => op.o === 'pipe' || op.o === 'pipeDel')) {
+      const candidate = cloneLevel(this.design)
+      for (const op of msg.ev.ops) editDesign(candidate, op)
+      const ids = new Set(candidate.pipes?.map((p) => p.id))
+      if (candidate.pipes?.some((p) => p.exitId !== null && !ids.has(p.exitId))) {
+        this.stats.rejected++
+        return this.send(sock, { type: 'reject', cid: msg.cid, reason: 'invalid' })
+      }
     }
     const st = this.serverTick()
     const lo = Math.max(st - MAX_LATE, (this.base?.tick ?? 0) + 1)

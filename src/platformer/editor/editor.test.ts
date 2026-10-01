@@ -61,6 +61,49 @@ describe('Editor', () => {
     for (let y = 14; y <= 17; y++) expect(h.tile(10, y) + h.tile(11, y)).toBe(0)
   })
 
+
+  it('connects a selected terrain pipe to a new exit as one undo entry', () => {
+    const h = setup()
+    h.editor.select(itemById('pipe')!)
+    h.click(5, 14)
+    expect(h.world.design.pipes).toHaveLength(0)
+    h.click(5, 16)
+    expect(h.editor.selectedPipe).toEqual([5, 14])
+    const before = h.editor.undoStack.length
+    h.editor.startPipeLink()
+    h.click(20, 14)
+    expect(h.editor.undoStack).toHaveLength(before + 1)
+    const source = h.world.design.pipes!.find((p) => p.x === 5)!
+    const exit = h.world.design.pipes!.find((p) => p.x === 20)!
+    expect(source.exitId).toBe(exit.id)
+    expect(exit.exitId).toBeNull()
+    h.editor.undo(); h.tick()
+    expect(h.world.design.pipes).toHaveLength(0)
+    expect(h.tile(5, 14)).toBe(T.PIPE_L)
+    expect(h.tile(20, 14)).toBe(T.EMPTY)
+    h.editor.redo(); h.tick()
+    expect(h.world.design.pipes).toHaveLength(2)
+  })
+
+  it('clears inbound links when erasing an exit and restores the whole connection on undo', () => {
+    const h = setup()
+    h.editor.select(itemById('pipe')!)
+    h.click(5, 14); h.click(20, 14)
+    h.click(5, 14); h.editor.startPipeLink(); h.click(20, 15)
+    const ids = h.world.design.pipes!.map((p) => p.id)
+    h.editor.setPipeBothWays(true); h.tick()
+    expect(h.world.design.pipes!.every((p) => p.exitId !== null)).toBe(true)
+    h.click(21, 16, true)
+    expect(h.world.design.pipes).toHaveLength(1)
+    expect(h.world.design.pipes![0].exitId).toBeNull()
+    h.editor.undo(); h.tick()
+    expect(h.world.design.pipes!.map((p) => p.id).sort()).toEqual(ids.sort())
+    expect(h.world.design.pipes!.every((p) => p.exitId !== null)).toBe(true)
+    expect(h.tile(20, 14)).toBe(T.PIPE_L)
+    h.editor.redo(); h.tick()
+    expect(h.world.design.pipes).toHaveLength(1)
+  })
+
   it('moves the start instead of adding a second one', () => {
     const h = setup()
     h.editor.select(itemById('start')!)

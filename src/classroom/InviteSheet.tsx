@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, LoaderCircle, Users } from 'lucide-react'
 import { Button, Sheet } from '../ui'
 import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from './contracts'
+import { browserClassroomClient } from './client'
 import './invite-sheet.css'
 
 /**
@@ -25,6 +26,8 @@ export type InviteSheetProps = {
    * owner into the live room when `canEdit` is true; the live room just refreshes its roster.
    */
   onInvite: (sharing: ClassroomWorldSharing) => void
+  /** Explicit resend does not rewrite the sharing audience. */
+  onInviteAgain?: (userIds: string[]) => Promise<unknown>
   /** Shown only when the world is already shared. */
   onStopSharing?: () => void
   onClose: () => void
@@ -48,15 +51,19 @@ const classmatesCount = (count: number) => `${count} ${count === 1 ? 'classmate'
  * the picks (pressed, it is the whole audience); tapping a tile turns the chip back off and picks that classmate.
  * The look-only switch starts OFF unless the world is already shared look-only.
  */
-export function InviteSheet({ world, className, classmates, classmatesError, busy, onInvite, onStopSharing, onClose }: InviteSheetProps) {
+export function InviteSheet({ world, className, classmates, classmatesError, busy: externalBusy, onInvite, onInviteAgain, onStopSharing, onClose }: InviteSheetProps) {
   const shared = world.visibility !== 'private'
   const [everyone, setEveryone] = useState(world.visibility === 'class')
   const [picked, setPicked] = useState<string[]>(() => initialPicks(world))
   const [lookOnly, setLookOnly] = useState(shared && !world.classCanEdit)
+  const [resending, setResending] = useState(false)
+  const [resendNotice, setResendNotice] = useState('')
+  const busy = externalBusy || resending
   useEffect(() => {
     setEveryone(world.visibility === 'class')
     setPicked(initialPicks(world))
     setLookOnly(world.visibility !== 'private' && !world.classCanEdit)
+    setResendNotice('')
   }, [world.id, world.visibility, world.members, world.classCanEdit])
 
   const toggleClassmate = (id: string) => {
@@ -69,8 +76,18 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
   }
   const sharing: ClassroomWorldSharing = everyone ? { visibility: 'class', canEdit: !lookOnly } : { visibility: 'members', canEdit: !lookOnly, members: picked }
   const nobody = !everyone && picked.length === 0
-  const label = nobody ? 'Pick someone first' : `Invite ${inviteAudienceLabel(sharing, classmates ?? [])} ${lookOnly ? 'to look' : 'and build'}`
+  const label = nobody ? 'Pick someone first' : shared ? 'Save who can join' : `Invite ${inviteAudienceLabel(sharing, classmates ?? [])} ${lookOnly ? 'to look' : 'and build'}`
   const classLabel = classmates ? `${className} · ${classmatesCount(classmates.length)}` : className
+  const existingIds = new Set(world.members?.map(member => member.id) ?? [])
+  const resendIds = everyone ? [] : picked.filter(id => existingIds.has(id))
+  const resend = async () => {
+    setResending(true); setResendNotice('')
+    try {
+      await (onInviteAgain ? onInviteAgain(resendIds) : browserClassroomClient.inviteAgain(world.id, resendIds))
+      setResendNotice(`Invite sent again to ${resendIds.length === 1 ? 'your classmate' : `${resendIds.length} classmates`}.`)
+    } catch { setResendNotice('Could not send the invite again. Try when you’re connected.') }
+    finally { setResending(false) }
+  }
 
   return <Sheet
     open
@@ -80,16 +97,19 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
     onClose={onClose}
     className="invite-sheet"
     title="Who do you want to build with?"
-    description={`They get a note on their Worlds page and can jump into “${world.title}” with you.`}
+    description={`They get an invite and can jump into “${world.title}” with you.`}
     footer={<>
       <p className="invite-sheet-teacher">Your teacher can see it too.</p>
       <div className="invite-sheet-actions">
         {shared && onStopSharing && <Button variant="quiet" className="invite-sheet-stop" disabled={busy} onClick={onStopSharing}>Stop sharing</Button>}
+        {world.visibility === 'members' && <Button variant="secondary" disabled={busy || resendIds.length === 0} loading={resending} loadingLabel="Sending…" onClick={() => { void resend() }}>Invite again</Button>}
         <Button variant="secondary" disabled={busy} onClick={onClose}>Cancel</Button>
         <Button variant="primary" className="invite-sheet-submit" loading={busy} loadingLabel="Inviting…" disabled={nobody} onClick={() => onInvite(sharing)}>{label}</Button>
       </div>
     </>}
   >
+    {world.visibility === 'members' && <p className="invite-sheet-note">Save changes to who can join, or select existing classmates and choose Invite again to send a new note.</p>}
+    {resendNotice && <p className="invite-sheet-note" role="status">{resendNotice}</p>}
     <div className="invite-sheet-class">
       <span id="invite-sheet-roster-label" className="invite-sheet-class-name">{classLabel}</span>
       <Button variant="secondary" size="sm" className="invite-sheet-everyone" icon={<Users size={16} />} pressed={everyone} disabled={busy} onClick={toggleEveryone}>Everyone in class</Button>

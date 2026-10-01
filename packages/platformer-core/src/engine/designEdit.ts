@@ -20,6 +20,19 @@ export function editDesign(d: LevelDesign, op: EditOp): boolean {
       d.contents[i] = c
       return true
     }
+    case 'pipe': {
+      const pipes = d.pipes ?? []
+      const old = pipes.find((p) => p.id === op.pipe.id)
+      if ((!old && pipes.length >= LEVEL_MAX_OBJECTS) || pipes.some((p) => p.id !== op.pipe.id && p.x === op.pipe.x && p.y === op.pipe.y)) return false
+      if (old && old.x === op.pipe.x && old.y === op.pipe.y && old.exitId === op.pipe.exitId) return false
+      d.pipes = old ? pipes.map((p) => p.id === op.pipe.id ? { ...op.pipe } : p) : [...pipes, { ...op.pipe }]
+      return true
+    }
+    case 'pipeDel': {
+      if (!d.pipes?.some((p) => p.id === op.id)) return false
+      d.pipes = d.pipes.filter((p) => p.id !== op.id).map((p) => p.exitId === op.id ? { ...p, exitId: null } : p)
+      return true
+    }
     case 'add': {
       if (d.objects.length >= LEVEL_MAX_OBJECTS || d.objects.some((o) => o.id === op.obj.id)) return false
       if (SINGLETON_KINDS.has(op.obj.kind)) d.objects = d.objects.filter((o) => o.kind !== op.obj.kind)

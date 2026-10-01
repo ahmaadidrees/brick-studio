@@ -18,13 +18,13 @@ function open(overrides: Partial<InviteSheetProps> = {}) {
   const tile = (name: string) => within(dialog).getByRole('button', { name })
   const everyone = () => within(dialog).getByRole('button', { name: 'Everyone in class' })
   const lookSwitch = () => within(dialog).getByRole('switch', { name: 'Just let them look' })
-  const primary = () => within(dialog).getByRole('button', { name: /^Invite |^Pick someone first$/ })
+  const primary = () => within(dialog).getByRole('button', { name: /^Invite (?!again$)|^Pick someone first$|^Save who can join$/ })
   return { ...view, props, dialog, tile, everyone, lookSwitch, primary }
 }
 
 it('describes the sheet, the class and the defaults: building, nobody picked yet', () => {
   const { dialog, lookSwitch, primary, everyone } = open()
-  expect(dialog).toHaveAccessibleDescription('They get a note on their Worlds page and can jump into “Lava Maze” with you.')
+  expect(dialog).toHaveAccessibleDescription('They get an invite and can jump into “Lava Maze” with you.')
   expect(within(dialog).getByText('Period 3 · 3 classmates')).toBeInTheDocument()
   expect(within(dialog).getByRole('group', { name: 'Period 3 · 3 classmates' }).querySelectorAll('button')).toHaveLength(3)
   expect(lookSwitch()).toHaveAttribute('aria-checked', 'false')
@@ -95,7 +95,7 @@ it('reopened on a members world it preloads the picks, the look-only switch and 
   expect(tile('Maya')).toHaveAttribute('aria-pressed', 'false')
   expect(tile('Zoe')).toHaveAttribute('aria-pressed', 'true')
   expect(lookSwitch()).toHaveAttribute('aria-checked', 'true')
-  expect(primary()).toHaveTextContent('Invite Jayden and Zoe to look')
+  expect(primary()).toHaveTextContent('Save who can join')
   fireEvent.click(within(dialog).getByRole('button', { name: 'Stop sharing' }))
   expect(onStopSharing).toHaveBeenCalledTimes(1)
   fireEvent.click(lookSwitch())
@@ -107,7 +107,7 @@ it('reopened on a class world it preloads the chip, and hides Stop sharing witho
   const { everyone, lookSwitch, primary, dialog } = open({ world: { ...privateWorld, visibility: 'class', classCanEdit: true } })
   expect(everyone()).toHaveAttribute('aria-pressed', 'true')
   expect(lookSwitch()).toHaveAttribute('aria-checked', 'false')
-  expect(primary()).toHaveTextContent('Invite the class and build')
+  expect(primary()).toHaveTextContent('Save who can join')
   expect(within(dialog).queryByRole('button', { name: 'Stop sharing' })).not.toBeInTheDocument()
 })
 
@@ -150,4 +150,15 @@ it('reads the audience back the way the toasts do', () => {
   expect(inviteAudienceLabel({ visibility: 'members', canEdit: true, members: [maya.id] }, classmates)).toBe('Maya')
   expect(inviteAudienceLabel({ visibility: 'members', canEdit: true, members: [maya.id, 'gone'] }, classmates)).toBe('Maya and a classmate')
   expect(inviteAudienceLabel({ visibility: 'members', canEdit: true, members: [jayden.id, maya.id, zoe.id] }, classmates)).toBe('Jayden and 2 more')
+})
+
+
+it('resends only selected existing members without editing sharing', async () => {
+  const onInviteAgain = vi.fn().mockResolvedValue([])
+  const { props, dialog, tile } = open({ world: { ...privateWorld, visibility: 'members', classCanEdit: true, members: [jayden, zoe] }, onInviteAgain })
+  fireEvent.click(tile('Zoe'))
+  fireEvent.click(tile('Maya'))
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Invite again' }))
+  expect(onInviteAgain).toHaveBeenCalledWith([jayden.id])
+  expect(props.onInvite).not.toHaveBeenCalled()
 })

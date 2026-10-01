@@ -4,6 +4,7 @@ import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
 import { browserClassroomClient, type ClassroomClient } from '../../classroom/client'
 import type { ClassroomAuthResult, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../../classroom/contracts'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../../brick/localProjectKeys'
+import type { InviteClient } from '../../classroom/inviteStore'
 
 /**
  * `/worlds` data contract: the shared classroom shapes (docs/flows/CONTRACTS-V2.md → "Client"). `visibility` is
@@ -27,6 +28,9 @@ export type Classmate = ClassroomClassmate
  * the same shapes (W1's `src/classroom/mockClient.ts` drops in here unchanged).
  */
 export type WorldsClient = {
+  /** Same client identity as the shared header store; fixtures may omit it. */
+  inviteClient?: InviteClient
+  inviteAgain?: (worldId: string, userIds: string[]) => Promise<unknown>
   getSession: () => ClassroomAuthResult | null
   subscribe: (listener: () => void) => () => void
   /**
@@ -54,6 +58,8 @@ export type WorldsClient = {
 export function createWorldsClient(client: ClassroomClient = browserClassroomClient): WorldsClient {
   const world = (result: { world: WorldsWorld }) => result.world
   return {
+    inviteClient: client,
+    inviteAgain: (worldId, userIds) => client.inviteAgain(worldId, userIds),
     getSession: client.getSession,
     subscribe: client.subscribe,
     listWorlds: options => client.request<{ worlds: WorldsWorld[] }>(options?.presence ? '/worlds?presence=1' : '/worlds').then(result => result.worlds),

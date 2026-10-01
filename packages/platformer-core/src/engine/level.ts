@@ -42,6 +42,15 @@ export interface LevelObject {
   alt: 0 | 1
 }
 
+/** Upright pipe mouth, linked by stable identity rather than terrain coordinates. */
+export interface PipeEndpoint {
+  id: number
+  /** Top-left mouth tile of a two-column pipe. */
+  x: number
+  y: number
+  exitId: number | null
+}
+
 export interface LevelDesign {
   title: string
   width: number
@@ -53,6 +62,8 @@ export interface LevelDesign {
   /** What each ? block or brick releases, same indexing as tiles. */
   contents: Uint8Array
   objects: LevelObject[]
+  /** Absent in old designs; loaders and constructors normalize to an empty list. */
+  pipes?: PipeEndpoint[]
 }
 
 export const SINGLETON_KINDS: ReadonlySet<ObjKind> = new Set(['start', 'goal'])
@@ -71,6 +82,7 @@ export function createBlankLevel(width = 120, height = 27, title = 'Untitled lev
     style,
     tiles,
     contents: new Uint8Array(width * height),
+    pipes: [],
     objects: [
       { id: 1, kind: 'start', x: 3, y: height - 3, dir: 1, alt: 0 },
       { id: 2, kind: 'goal', x: width - 6, y: height - 3, dir: 1, alt: 0 },
@@ -84,7 +96,19 @@ export function cloneLevel(level: LevelDesign): LevelDesign {
     tiles: level.tiles.slice(),
     contents: level.contents.slice(),
     objects: level.objects.map((o) => ({ ...o })),
+    pipes: (level.pipes ?? []).map((p) => ({ ...p })),
   }
+}
+
+export const findPipeEndpoint = (level: Pick<LevelDesign, 'pipes'>, id: number): PipeEndpoint | undefined => level.pipes?.find((p) => p.id === id)
+export const pipeEndpointAt = (level: Pick<LevelDesign, 'pipes'>, x: number, y: number): PipeEndpoint | undefined => level.pipes?.find((p) => p.x === x && p.y === y)
+
+/** Metadata may outlive edited terrain. A mouth is usable only while the matching top remains. */
+export function isPipeMouth(level: Pick<LevelDesign, 'width' | 'height' | 'tiles'>, x: number, y: number): boolean {
+  if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x + 1 >= level.width || y < 0 || y >= level.height) return false
+  const i = y * level.width + x
+  return level.tiles[i] === T.PIPE_L && level.tiles[i + 1] === T.PIPE_R &&
+    !(y > 0 && level.tiles[i - level.width] === T.PIPE_L && level.tiles[i - level.width + 1] === T.PIPE_R)
 }
 
 export const randomObjectId = (): number => 1 + Math.floor(Math.random() * 0x7ffffffe)
@@ -105,6 +129,8 @@ export interface LevelJson {
   contents: string
   /** [id, kind index, x, y, dir, alt] */
   objects: [number, number, number, number, number, number][]
+  /** [endpoint id, mouth x, mouth y, destination id or null]. Old levels omit this. */
+  pipes?: [number, number, number, number | null][]
 }
 
 /**
@@ -155,6 +181,7 @@ export function levelToJson(level: LevelDesign): LevelJson {
     tiles: encodeRuns(level.tiles),
     contents: encodeRuns(level.contents),
     objects: level.objects.map((o) => [o.id, OBJECT_KINDS.indexOf(o.kind), o.x, o.y, o.dir, o.alt]),
+    pipes: (level.pipes ?? []).map((p) => [p.id, p.x, p.y, p.exitId]),
   }
 }
 
@@ -190,8 +217,25 @@ export function levelFromJson(raw: unknown): LevelDesign {
     seen.add(id)
     objects.push({ id, kind, x, y, dir, alt })
   }
+  const pipes: PipeEndpoint[] = []
+  if (j.pipes !== undefined) {
+    if (!Array.isArray(j.pipes) || j.pipes.length > LEVEL_MAX_OBJECTS) throw new Error('bad pipes')
+    const ids = new Set<number>()
+    const mouths = new Set<string>()
+    for (const row of j.pipes) {
+      if (!Array.isArray(row) || row.length !== 4) throw new Error('bad pipe')
+      const [id, x, y, exitId] = row
+      if (!isInt(id) || id < 1 || id > 0x7fffffff || ids.has(id)) throw new Error('bad pipe id')
+      if (!isInt(x) || !isInt(y) || x < 0 || x + 1 >= w || y < 0 || y >= h || mouths.has(`${x},${y}`)) throw new Error('bad pipe mouth')
+      if (exitId !== null && (!isInt(exitId) || exitId < 1 || exitId > 0x7fffffff || exitId === id)) throw new Error('bad pipe link')
+      ids.add(id)
+      mouths.add(`${x},${y}`)
+      pipes.push({ id, x, y, exitId })
+    }
+    if (pipes.some((p) => p.exitId !== null && !ids.has(p.exitId))) throw new Error('missing pipe exit')
+  }
   const title = typeof j.title === 'string' ? j.title.slice(0, 60) : 'Untitled level'
   const theme: Theme = j.theme === 'underground' ? 'underground' : 'day'
   const style: LevelStyle = j.style === 'cartoon' ? 'cartoon' : 'pixel'
-  return { title, width: w, height: h, theme, style, tiles, contents, objects }
+  return { title, width: w, height: h, theme, style, tiles, contents, objects, pipes }
 }

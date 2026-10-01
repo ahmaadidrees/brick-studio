@@ -1,0 +1,18 @@
+.shell-invites-button { flex: 0 0 auto; min-height: 44px; white-space: nowrap; }
+.shell-invites-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 20px; background: var(--primary-strong); color: var(--primary-contrast); }
+.student-invite-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr)); gap: var(--space-3); padding: 0; margin: 0; list-style: none; }
+.student-invite-card { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); background: var(--surface); min-width: 0; }
+.student-invite-heading { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); width: 100%; overflow-wrap: anywhere; }
+.student-invite-heading strong { font-size: var(--text-md); }
+.student-invite-card p { color: var(--text-muted); font-size: var(--text-sm); margin: 0; }
+.student-invite-card .ui-button { margin-top: auto; white-space: normal; text-align: center; }
+.student-invite-tags { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-2); }
+.student-invite-tags span, .student-invite-new { border-radius: var(--radius-pill); padding: 4px 9px; background: var(--surface-2); font-size: var(--text-xs); font-weight: 700; }
+.student-invite-new { color: var(--primary-strong); background: var(--primary-soft); }
+.student-invite-arrival { position: fixed; z-index: var(--z-toast, 90); top: max(76px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); width: min(340px, calc(100vw - 32px)); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); background: var(--surface); box-shadow: var(--shadow-md); }
+.student-invite-arrival p { margin: 0 0 var(--space-2); font-weight: 700; }
+.student-invite-arrival > div { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+body:has([role="dialog"][aria-modal="true"]) .student-invite-arrival { visibility: hidden; }
+.student-invites-empty, .student-invites-error { color: var(--text-muted); }
+.student-invites-panel .student-invite-list { grid-template-columns: 1fr; }
+@media (max-width: 640px) { .shell-invites-button { padding-inline: 9px; } .shell-invites-button .ui-button-icon { display: none; } }

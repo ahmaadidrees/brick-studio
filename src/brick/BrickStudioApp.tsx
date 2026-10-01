@@ -61,6 +61,7 @@ import { browserClassroomClient, ClassroomError } from '../classroom/client'
 import { useClassroomWorld } from '../classroom/useClassroomWorld'
 import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../classroom/contracts'
 import { InviteSheet, inviteAudienceLabel } from '../classroom/InviteSheet'
+import { InvitesButton } from '../classroom/StudentInvites'
 import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
 import {
   CHARACTER_DESCRIPTORS,
@@ -353,10 +354,12 @@ type ExploreHudProps = {
   onStartLiveWorld?: () => void
   onOpenWorldSetup: (tab?: 'environment' | 'character') => void
   onGoHome: () => void
+  onGoToInviteWorld: (href: string) => void
+  inviteNavigationBlocked: boolean
 }
 
 /** Board 07: the header steps aside in Explore. Back to building leads; People/Character/Settings stay one tap away. */
-function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup, onGoHome }: ExploreHudProps) {
+function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup, onGoHome, onGoToInviteWorld, inviteNavigationBlocked }: ExploreHudProps) {
   const setMode = useBrickStore((state) => state.setMode)
   const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
   const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
@@ -368,6 +371,7 @@ function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup
         <Button variant="secondary" aria-label="Back to building" className="brick-explore-back" icon={<ArrowLeft size={18} />} onClick={requestBuild} disabled={liveModeDisabled}>Back to building<kbd aria-hidden="true">1</kbd></Button>
       </div>
       <div className="brick-explore-hud-end">
+        <InvitesButton onGoToInviteWorld={onGoToInviteWorld} navigationBlocked={inviteNavigationBlocked} />
         <div className="brick-explore-cluster" role="group" aria-label="World tools">
           <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
           <Button variant="quiet" className="brick-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
@@ -1350,6 +1354,15 @@ export default function BrickStudioApp({
     }
     leaveStudioFor('/')
   }
+  const inviteNavigationBlocked = autoSave.status === 'saving' || Boolean(livePolicy && (livePolicy.connection !== 'online' || (livePolicy.pendingOperations ?? 0) > 0))
+  const goToInviteWorld = (href: string) => {
+    if (inviteNavigationBlocked) {
+      useBrickStore.setState({ toast: 'Wait for your current changes to save, then open the invite.' })
+      return
+    }
+    if (livePolicy) window.location.assign(href)
+    else leaveStudioFor(href)
+  }
   // 3D ⇄ 2D from the header pill; a live room is left from its own menu instead.
   const switchDimension = livePolicy || readOnly ? undefined : (target: BuildDimension) => leaveStudioFor(DIMENSION_HREF[target])
   const openWorldSetup = (tab: 'environment' | 'character' = 'environment') => { setWorldSetupTab(tab); setWorldSetupOpen(true) }
@@ -1443,6 +1456,8 @@ export default function BrickStudioApp({
           exploreReason="Place a brick first, then explore."
           onSaveToAccount={cloud.world || livePolicy || autoSave.status === 'saving' ? undefined : () => setClassroomIntent('save')}
           onGoHome={goHome}
+          onGoToInviteWorld={goToInviteWorld}
+          inviteNavigationBlocked={inviteNavigationBlocked}
           onSwitchDimension={switchDimension}
         />
       ) : (
@@ -1452,6 +1467,8 @@ export default function BrickStudioApp({
           onStartLiveWorld={documentCommands.onStartLiveWorld}
           onOpenWorldSetup={openWorldSetup}
           onGoHome={goHome}
+          onGoToInviteWorld={goToInviteWorld}
+          inviteNavigationBlocked={inviteNavigationBlocked}
         />
       )}
       {mode === 'build' ? (

@@ -1,6 +1,6 @@
 import { TILE } from '@brick-studio/platformer-core/engine/constants'
 import type { EditOp } from '@brick-studio/platformer-core/engine/events'
-import { SINGLETON_KINDS, randomObjectId, type LevelObject, type ObjKind } from '@brick-studio/platformer-core/engine/level'
+import { SINGLETON_KINDS, randomObjectId, type LevelObject, type ObjKind, type PipeEndpoint } from '@brick-studio/platformer-core/engine/level'
 import { C, T, holdsContent } from '@brick-studio/platformer-core/engine/tiles'
 import type { World } from '@brick-studio/platformer-core/engine/world'
 import type { SoundName } from '../audio/sound'
@@ -54,6 +54,9 @@ export class Editor {
   hover: [number, number] | null = null
   undoStack: UndoEntry[] = []
   redoStack: UndoEntry[] = []
+  selectedPipe: [number, number] | null = null
+  linkingPipe = false
+  private pipeOverlay = new Map<number, { pipe: PipeEndpoint | null; at: number }>()
   /** Something changed that the UI shows (tool, item, undo availability). */
   onChange: (() => void) | null = null
   private stroke: Stroke | null = null
@@ -67,12 +70,16 @@ export class Editor {
   constructor(private readonly host: EditorHost) {}
 
   select(item: PaletteItem) {
+    this.cancelPipeLink()
+    this.selectedPipe = null
     this.item = item
     this.erasing = false
     this.onChange?.()
   }
 
   setErasing(on: boolean) {
+    this.cancelPipeLink()
+    this.selectedPipe = null
     this.erasing = on
     this.onChange?.()
   }
@@ -86,6 +93,19 @@ export class Editor {
 
   pointerDown(wx: number, wy: number, erase: boolean) {
     const cell = this.cell(wx, wy)
+    if (cell && !erase && !this.erasing) {
+      if (this.linkingPipe) {
+        this.connectPipeAt(cell[0], cell[1])
+        return
+      }
+      const mouth = this.pipeMouthAt(cell[0], cell[1])
+      if (mouth) {
+        this.selectPipe(mouth[0], mouth[1])
+        return
+      }
+    }
+    this.selectedPipe = null
+    this.onChange?.()
     this.stroke = { erase: erase || this.erasing, last: null, redo: [], undo: [] }
     this.redoStack = []
     if (cell) this.applyAt(cell[0], cell[1], true)
@@ -157,7 +177,129 @@ export class Editor {
     for (const [i, [t, c, at]] of this.overlay) {
       if ((w.design.tiles[i] === t && w.design.contents[i] === c) || w.tick - at > 30) this.overlay.delete(i)
     }
+    for (const [id, entry] of this.pipeOverlay) {
+      const actual = w.design.pipes?.find((pipe) => pipe.id === id)
+      if ((!entry.pipe && !actual) || (entry.pipe && actual && entry.pipe.x === actual.x && entry.pipe.y === actual.y && entry.pipe.exitId === actual.exitId) || w.tick - entry.at > 30) this.pipeOverlay.delete(id)
+    }
     return ops
+  }
+
+  /** Connected pipes use the same optimistic view as tiles while an edit awaits its tick. */
+  get pipes(): PipeEndpoint[] {
+    const pipes = new Map((this.host.world().design.pipes ?? []).map((pipe) => [pipe.id, pipe]))
+    for (const [id, entry] of this.pipeOverlay) {
+      if (entry.pipe) pipes.set(id, entry.pipe)
+      else pipes.delete(id)
+    }
+    return [...pipes.values()]
+  }
+
+  get selectedEndpoint(): PipeEndpoint | undefined {
+    return this.selectedPipe ? this.pipes.find((pipe) => pipe.x === this.selectedPipe![0] && pipe.y === this.selectedPipe![1]) : undefined
+  }
+
+  get selectedExit(): PipeEndpoint | undefined {
+    return this.pipes.find((pipe) => pipe.id === this.selectedEndpoint?.exitId)
+  }
+
+  get pipeMouths(): [number, number][] {
+    const w = this.host.world()
+    const mouths: [number, number][] = []
+    for (let y = 0; y < w.height; y++) for (let x = 0; x < w.width - 1; x++) {
+      if (this.tileAt(x, y)[0] === T.PIPE_L && this.tileAt(x + 1, y)[0] === T.PIPE_R && (y === 0 || this.tileAt(x, y - 1)[0] !== T.PIPE_L || this.tileAt(x + 1, y - 1)[0] !== T.PIPE_R)) mouths.push([x, y])
+    }
+    return mouths
+  }
+
+  selectPipe(x: number, y: number) {
+    this.selectedPipe = this.pipeMouthAt(x, y)
+    this.erasing = false
+    this.onChange?.()
+  }
+
+  startPipeLink() {
+    if (!this.selectedPipe) return
+    this.linkingPipe = true
+    this.onChange?.()
+  }
+
+  cancelPipeLink() {
+    this.linkingPipe = false
+    this.onChange?.()
+  }
+
+  closePipeSettings() {
+    this.linkingPipe = false
+    this.selectedPipe = null
+    this.onChange?.()
+  }
+
+  disconnectPipe() {
+    const source = this.selectedEndpoint
+    if (!source || source.exitId === null) return
+    this.pipeCommand(() => {
+      const exit = this.selectedExit
+      if (exit?.exitId === source.id) this.upsertPipe({ ...exit, exitId: null })
+      this.upsertPipe({ ...source, exitId: null })
+    })
+    this.cancelPipeLink()
+  }
+
+  setPipeBothWays(on: boolean) {
+    const source = this.selectedEndpoint
+    const exit = this.selectedExit
+    if (!source || !exit) return
+    this.pipeCommand(() => this.upsertPipe({ ...exit, exitId: on ? source.id : exit.exitId === source.id ? null : exit.exitId }))
+  }
+
+  private pipeCommand(command: () => void) {
+    if (this.stroke) this.pointerUp()
+    this.stroke = { erase: false, last: null, redo: [], undo: [] }
+    this.redoStack = []
+    command()
+    this.pointerUp()
+    this.host.sound('place')
+  }
+
+  private pipeMouthAt(x: number, y: number): [number, number] | null {
+    const t = this.tileAt(x, y)[0]
+    const left = t === T.PIPE_L ? x : t === T.PIPE_R ? x - 1 : -1
+    if (left < 0 || this.tileAt(left, y)[0] !== T.PIPE_L || this.tileAt(left + 1, y)[0] !== T.PIPE_R) return null
+    while (y > 0 && this.tileAt(left, y - 1)[0] === T.PIPE_L && this.tileAt(left + 1, y - 1)[0] === T.PIPE_R) y--
+    return [left, y]
+  }
+
+  private upsertPipe(pipe: PipeEndpoint) {
+    const previous = this.pipes.find((p) => p.id === pipe.id)
+    this.record({ o: 'pipe', pipe }, previous ? [{ o: 'pipe', pipe: { ...previous } }] : [{ o: 'pipeDel', id: pipe.id }])
+  }
+
+  private deletePipeEndpoint(pipe: PipeEndpoint) {
+    const inbound = this.pipes.filter((p) => p.exitId === pipe.id)
+    this.record({ o: 'pipeDel', id: pipe.id }, [{ o: 'pipe', pipe: { ...pipe } }, ...inbound.map((p): EditOp => ({ o: 'pipe', pipe: { ...p } }))])
+  }
+
+  private connectPipeAt(x: number, y: number) {
+    const selected = this.selectedPipe
+    if (!selected || !this.pipeMouthAt(...selected)) { this.closePipeSettings(); return }
+    const mouth = this.pipeMouthAt(x, y)
+    if (mouth?.[0] === selected[0] && mouth[1] === selected[1]) return
+    const w = this.host.world()
+    if (!mouth && (x + 1 >= w.width || this.tileAt(x, y)[0] !== T.EMPTY || this.tileAt(x + 1, y)[0] !== T.EMPTY || y === 0)) return
+    this.pipeCommand(() => {
+      if (!mouth) this.placePipe(x, y)
+      const [ex, ey] = mouth ?? [x, y]
+      let target = this.pipes.find((p) => p.x === ex && p.y === ey)
+      if (!target) {
+        target = { id: randomObjectId(), x: ex, y: ey, exitId: null }
+        this.upsertPipe(target)
+      }
+      const source = this.selectedEndpoint ?? { id: randomObjectId(), x: selected[0], y: selected[1], exitId: null }
+      const oldExit = this.pipes.find((p) => p.id === source.exitId)
+      if (oldExit?.exitId === source.id) this.upsertPipe({ ...oldExit, exitId: null })
+      this.upsertPipe({ ...source, exitId: target.id })
+    })
+    this.cancelPipeLink()
   }
 
   // --- Placement ------------------------------------------------------------------------------
@@ -174,6 +316,11 @@ export class Editor {
     const w = this.host.world()
     for (const op of ops) {
       if (op.o === 'tile') this.overlay.set(op.y * w.width + op.x, [op.t, op.c, w.tick])
+      if (op.o === 'pipe') this.pipeOverlay.set(op.pipe.id, { pipe: { ...op.pipe }, at: w.tick })
+      if (op.o === 'pipeDel') {
+        for (const pipe of this.pipes) if (pipe.exitId === op.id) this.pipeOverlay.set(pipe.id, { pipe: { ...pipe, exitId: null }, at: w.tick })
+        this.pipeOverlay.set(op.id, { pipe: null, at: w.tick })
+      }
       this.pending.push(op)
     }
   }
@@ -243,6 +390,9 @@ export class Editor {
     while (top > 0 && this.tileAt(left, top - 1)[0] === T.PIPE_L) top--
     let bottom = y
     while (bottom < w.height - 1 && this.tileAt(left, bottom + 1)[0] === T.PIPE_L) bottom++
+    const endpoint = this.pipes.find((pipe) => pipe.x === left && pipe.y === top)
+    if (endpoint) this.deletePipeEndpoint(endpoint)
+    if (this.selectedPipe?.[0] === left && this.selectedPipe[1] === top) this.closePipeSettings()
     for (let r = top; r <= bottom; r++) {
       if (this.tileAt(left, r)[0] === T.PIPE_L) this.setTile(left, r, T.EMPTY, 0)
       if (left + 1 < w.width && this.tileAt(left + 1, r)[0] === T.PIPE_R) this.setTile(left + 1, r, T.EMPTY, 0)
@@ -372,12 +522,17 @@ export class Editor {
       }
     }
     ctx.globalAlpha = 1
+    this.drawPipeConnections(ctx, camX, camY)
     // Cursor
     if (this.hover) {
       const [hx, hy] = this.hover
       const sx = hx * TILE - camX
       const sy = hy * TILE - camY
-      if (this.erasing) {
+      if (this.linkingPipe) {
+        ctx.strokeStyle = '#50d6a5'
+        ctx.lineWidth = 2
+        ctx.strokeRect(sx + 1, sy + 1, TILE * 2 - 2, TILE - 2)
+      } else if (this.erasing) {
         ctx.strokeStyle = '#ff5a4a'
         if (skin.style === 'pixel') {
           ctx.lineWidth = 1
@@ -420,6 +575,60 @@ export class Editor {
       }
     }
   }
+
+  private drawPipeConnections(ctx: CanvasRenderingContext2D, camX: number, camY: number) {
+    const pipes = this.pipes.slice().sort((a, b) => a.id - b.id)
+    const labels = new Map<number, string>()
+    const drawn = new Set<string>()
+    let index = 0
+    ctx.save()
+    ctx.font = 'bold 9px sans-serif'
+    ctx.textAlign = 'center'
+    for (const source of pipes) {
+      const exit = pipes.find((p) => p.id === source.exitId)
+      if (!exit) continue
+      const key = [source.id, exit.id].sort((a, b) => a - b).join(':')
+      if (drawn.has(key)) continue
+      drawn.add(key)
+      const label = index < 26 ? String.fromCharCode(65 + index) : String(index + 1)
+      index++
+      labels.set(source.id, `${label} entrance`)
+      labels.set(exit.id, `${label} exit`)
+      const sx = (source.x + 1) * TILE - camX, sy = source.y * TILE - camY - 12
+      const ex = (exit.x + 1) * TILE - camX, ey = exit.y * TILE - camY - 12
+      ctx.strokeStyle = '#147855'
+      ctx.lineWidth = 1.5
+      ctx.setLineDash([4, 3])
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke()
+      ctx.setLineDash([])
+      const angle = Math.atan2(ey - sy, ex - sx)
+      const arrow = (x: number, y: number, direction: number) => {
+        ctx.beginPath(); ctx.moveTo(x - Math.cos(direction - .5) * 7, y - Math.sin(direction - .5) * 7); ctx.lineTo(x, y); ctx.lineTo(x - Math.cos(direction + .5) * 7, y - Math.sin(direction + .5) * 7); ctx.stroke()
+      }
+      arrow(ex, ey, angle)
+      if (exit.exitId === source.id) arrow(sx, sy, angle + Math.PI)
+    }
+    for (const pipe of pipes) {
+      const x = (pipe.x + 1) * TILE - camX, y = pipe.y * TILE - camY - 8
+      const valid = !!this.pipeMouthAt(pipe.x, pipe.y)
+      const text = valid ? labels.get(pipe.id) ?? 'No exit' : 'Pipe missing'
+      const width = ctx.measureText(text).width + 8
+      ctx.fillStyle = valid && labels.has(pipe.id) ? '#147855' : '#755a39'
+      ctx.fillRect(x - width / 2, y - 10, width, 13)
+      ctx.fillStyle = '#fff'; ctx.fillText(text, x, y)
+    }
+    if (this.selectedPipe) {
+      const [x, y] = this.selectedPipe
+      ctx.strokeStyle = '#50d6a5'; ctx.lineWidth = 2
+      ctx.strokeRect(x * TILE - camX - 1, y * TILE - camY - 1, TILE * 2 + 2, TILE + 2)
+    }
+    if (this.linkingPipe && this.selectedPipe && this.hover) {
+      ctx.strokeStyle = '#50d6a5'; ctx.setLineDash([3, 3])
+      ctx.beginPath(); ctx.moveTo((this.selectedPipe[0] + 1) * TILE - camX, this.selectedPipe[1] * TILE - camY); ctx.lineTo((this.hover[0] + 1) * TILE - camX, this.hover[1] * TILE - camY); ctx.stroke()
+    }
+    ctx.restore()
+  }
+
 }
 
 function ghostKey(o: LevelObject): string | null {

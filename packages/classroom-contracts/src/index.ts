@@ -12,6 +12,19 @@ export type ClassroomAccess = {
 
 export type VerifiedIdentity = { provider: string; userId: string }
 
+/** Recipient-scoped summary. Invitation state never grants access to a world. */
+export type ClassroomInvite = {
+  id: string
+  worldId: string
+  title: string
+  ownerName: string
+  format: 'brick' | '2d'
+  canEdit: boolean
+  invitedAt: string
+  seenAt: string | null
+  joinedAt: string | null
+}
+
 function identityMatches(identity: VerifiedIdentity, rowUserId: string) {
   if (!identity.provider || !identity.userId || identity.userId !== rowUserId) {
     throw new Error('Verified identity does not match the product profile')

@@ -2,6 +2,7 @@ import { studentPasswordError, validateBrickStudioDocument, type BrickStudioDocu
 import { PLATFORMER_FORMAT, isPlatformerDocument, validatePlatformerDocument, type PlatformerDocument } from '@brick-studio/platformer-core/document';
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
+import type { ClassroomInvite } from '../../../../packages/classroom-contracts/src/index';
 
 export interface ClassroomEnv {
   SUPABASE_URL?: string;
@@ -362,9 +363,81 @@ export class ClassroomService {
     if (!ids.length) fail(400, 'invalid_input', 'Pick at least one classmate.');
     const found = new Set((await this.rows('students', `class_id=eq.${caller.classId}&user_id=in.(${ids.join(',')})&suspended=eq.false&select=user_id`)).map(row => row.user_id));
     if (ids.some(id => !found.has(id))) fail(400, 'invalid_member', 'Choose active students in your class.');
-    await this.remove('world_members', `world_id=eq.${worldId}`);
-    await this.request('/rest/v1/brick_world_members?on_conflict=world_id,user_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(ids.map(user_id => ({ world_id: worldId, user_id }))) });
+    // Keep unchanged records: editing the set must not resend everyone else's invite or erase their acknowledgements.
+    const current = await this.rows('world_members', `world_id=eq.${worldId}&select=user_id`);
+    const existing = new Set(current.map(row => row.user_id as string));
+    const removed = [...existing].filter(id => !ids.includes(id));
+    const added = ids.filter(id => !existing.has(id));
+    if (removed.length) await this.remove('world_members', `world_id=eq.${worldId}&user_id=in.(${removed.join(',')})`);
+    if (added.length) await this.request('/rest/v1/brick_world_members?on_conflict=world_id,user_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(added.map(user_id => ({ world_id: worldId, user_id, ...newInviteState() }))) });
     return ids;
+  }
+  /** Metadata only, with current membership/class/owner rules rechecked in batches. No documents or room presence. */
+  async listInvites(caller: Caller, inviteId?: string): Promise<ClassroomInvite[]> {
+    if (caller.role !== 'student' || !caller.classId) return [];
+    const cls = await this.classFor(caller, caller.classId);
+    if (!cls.collaboration_open || cls.students_can_share === false) return [];
+    const memberships: Row[] = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await this.rows('world_members', `user_id=eq.${caller.id}${inviteId ? `&invite_id=eq.${inviteId}` : ''}&select=${INVITE_FIELDS}&order=invited_at.desc,invite_id.asc&limit=1000&offset=${offset}`);
+      memberships.push(...page);
+      if (page.length < 1000) break;
+    }
+    const worldIds = [...new Set(memberships.map(row => row.world_id as string))];
+    const worlds: Row[] = [];
+    for (let start = 0; start < worldIds.length; start += 100) {
+      worlds.push(...await this.rows('worlds', `id=in.(${worldIds.slice(start, start + 100).join(',')})&kind=eq.personal&class_visibility=eq.members&hidden_by_teacher=eq.false&select=${WORLD_FIELDS}`));
+    }
+    const ownerIds = [...new Set(worlds.map(row => row.owner_id as string))].filter(id => id !== caller.id);
+    const owners = new Map<string, Row>();
+    for (let start = 0; start < ownerIds.length; start += 100) {
+      for (const owner of await this.rows('students', `user_id=in.(${ownerIds.slice(start, start + 100).join(',')})&class_id=eq.${caller.classId}&suspended=eq.false&select=user_id,roster_name,suspended,class_id`)) owners.set(owner.user_id, owner);
+    }
+    const byWorld = new Map(worlds.map(row => [row.id as string, row]));
+    const invites: ClassroomInvite[] = [];
+    for (const membership of memberships) {
+      const world = byWorld.get(membership.world_id), owner = world && owners.get(world.owner_id);
+      if (world && owner) invites.push(inviteView(membership, world, rosterDisplayName(owner.roster_name), sharedEditAllowed(world, cls, owner)));
+    }
+    return invites.sort((a, b) => b.invitedAt.localeCompare(a.invitedAt) || a.id.localeCompare(b.id));
+  }
+  async acknowledgeInvite(caller: Caller, id: string, input: Row): Promise<ClassroomInvite> {
+    if (!uuid(id)) fail(404, 'not_found', 'Invite not found.');
+    if (Object.keys(input).length !== 1 || (input.seen !== true && input.joined !== true)) fail(400, 'invalid_input', 'Use seen: true or joined: true.');
+    const invite = (await this.listInvites(caller, id))[0];
+    if (!invite) return fail(404, 'not_found', 'Invite not found.');
+    const now = new Date().toISOString(), changes: Row = {};
+    if (!invite.seenAt) changes.seen_at = now;
+    if (input.joined === true && !invite.joinedAt) changes.joined_at = now;
+    if (!Object.keys(changes).length) return invite;
+    const updated = (await this.patch('world_members', `invite_id=eq.${id}&user_id=eq.${caller.id}&select=${INVITE_FIELDS}`, changes))[0];
+    // A concurrent resend has a new id, and removal deletes the row: neither is acknowledged by a stale client.
+    if (!updated) return fail(404, 'not_found', 'Invite not found.');
+    return { ...invite, seenAt: updated.seen_at ?? null, joinedAt: updated.joined_at ?? null };
+  }
+  async resendInvites(caller: Caller, world: Row, input: Row): Promise<ClassroomInvite[]> {
+    if (caller.role !== 'student' || world.owner_id !== caller.id || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can resend invites.');
+    if (world.class_visibility !== 'members') fail(400, 'invalid_input', 'Share this world with classmates before resending invites.');
+    const cls = await this.classFor(caller, caller.classId!);
+    if (!cls.collaboration_open) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.');
+    if (cls.students_can_share === false) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.');
+    if (world.hidden_by_teacher) fail(403, 'world_hidden', 'Your teacher hid this world from the class.');
+    if (!Array.isArray(input.userIds) || input.userIds.some(id => typeof id !== 'string' || !uuid(id))) fail(400, 'invalid_input', 'userIds must be a list of student ids.');
+    const ids = [...new Set(input.userIds as string[])];
+    if (!ids.length || ids.length > WORLD_MEMBER_LIMIT) fail(400, 'invalid_input', `Choose 1–${WORLD_MEMBER_LIMIT} invited classmates.`);
+    const peers = new Set((await this.rows('students', `class_id=eq.${caller.classId}&user_id=in.(${ids.join(',')})&suspended=eq.false&select=user_id`)).map(row => row.user_id));
+    const memberships = await this.rows('world_members', `world_id=eq.${world.id}&user_id=in.(${ids.join(',')})&select=${INVITE_FIELDS}`);
+    const existing = new Map(memberships.map(row => [row.user_id as string, row]));
+    if (ids.some(id => id === caller.id || !peers.has(id) || !existing.has(id))) fail(400, 'invalid_member', 'Choose active classmates who are already invited.');
+    await this.rate(`resend-invites:${caller.id}`, 30, 60);
+    const result: ClassroomInvite[] = [];
+    for (const id of ids) {
+      const row = (await this.patch('world_members', `world_id=eq.${world.id}&user_id=eq.${id}&invite_id=eq.${existing.get(id)!.invite_id}&select=${INVITE_FIELDS}`, newInviteState()))[0];
+      if (!row) fail(409, 'invite_changed', 'The invited classmates changed. Refresh and try again.');
+      result.push(inviteView(row, world, callerDisplayName(caller), sharedEditAllowed(world, cls, undefined)));
+    }
+    await this.audit(caller, 'resend_world_invites', cls.id, world.id);
+    return result;
   }
   async login(email: string, pass: string) { return this.request('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: pass }) }); }
   async registerSession(session: Row, student: Row) {
@@ -453,6 +526,12 @@ async function publicClass(service: ClassroomService, input: Row): Promise<{ ali
 }
 /** Columns the API exposes without the document; the sharing columns come from migration 202609190001. */
 const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at,doc_format:document->>format';
+const INVITE_FIELDS = 'world_id,user_id,invite_id,invited_at,seen_at,joined_at';
+function newInviteState() { return { invite_id: crypto.randomUUID(), invited_at: new Date().toISOString(), seen_at: null, joined_at: null }; }
+function inviteView(row: Row, world: Row, ownerName: string, canEdit: boolean): ClassroomInvite {
+  return { id: row.invite_id, worldId: world.id, title: world.title, ownerName, format: worldFormat(world), canEdit,
+    invitedAt: row.invited_at, seenAt: row.seen_at ?? null, joinedAt: row.joined_at ?? null };
+}
 /**
  * Worlds hold either a 3D brick build or a 2D level; the document's own `format` field says which (brick documents
  * have none). Metadata-only reads select it as `doc_format`; full rows carry the document itself.
@@ -679,6 +758,11 @@ async function route(request: Request, service: ClassroomService, path: string[]
   }
   const caller = await service.authenticate(bearer(request), path[0] === 'me');
   if (path[0] === 'me' && method === 'GET') return json(await service.me(caller));
+  if (path[0] === 'invites') {
+    if (path.length === 1 && method === 'GET') return json({ invites: await service.listInvites(caller) });
+    if (path.length === 2 && method === 'PATCH') return json({ invite: await service.acknowledgeInvite(caller, path[1], await body(request)) });
+    fail(405, 'method_not_allowed', 'Unsupported invite action.');
+  }
   if (path[0] === 'classes') {
     if (path.length === 1 && method === 'GET') return json({ classes: (await service.me(caller, options.liveParticipants)).classes });
     if (path.length === 1 && method === 'POST') {
@@ -768,10 +852,11 @@ async function route(request: Request, service: ClassroomService, path: string[]
       const created = (await service.insert('worlds', { owner_id: caller.id, class_id: kind === 'personal' ? null : input.classId, kind, title: cleanText(input.title || 'My world', 'World title'), document: document(input.document) }))[0];
       return json({ world: worldView(created, ownView(caller)) }, 201);
     }
-    const access = await service.worldAccess(caller, path[1]), { world } = access;
+    const access = await service.worldAccess(caller, path[1], false, path[2] === 'invites'), { world } = access;
     // Personal worlds belong to their owner: classmates and the teacher may look (and edit live when shared with
     // editing), but renaming, restoring and recovery history stay with the owner. Class/group worlds keep teacher control.
     const controls = access.isOwner || (world.kind !== 'personal' && caller.role === 'teacher');
+    if (path[2] === 'invites' && path.length === 3 && method === 'POST') return json({ invites: await service.resendInvites(caller, world, await body(request)) });
     if (path.length === 2 && method === 'GET') return json({ world: accessView(access, caller, true) });
     if (path[2] === 'sharing' && path.length === 3 && method === 'PATCH') {
       if (caller.role !== 'student') fail(403, 'student_required', 'Only students share their own worlds with the class.');

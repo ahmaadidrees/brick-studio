@@ -59,7 +59,7 @@ const normalizeUsername = (value) => {
 }
 const emptyDocument = () => ({ schemaVersion: 2, partLibraryVersion: 1, environmentId: 'classic', customParts: [], bricks: [] })
 const validDocument = (value) => {
-  if (!value || typeof value !== 'object' || !Array.isArray(value.bricks)) fail(400, 'invalid_document', 'The build could not be read.')
+  if (!value || typeof value !== 'object' || (!Array.isArray(value.bricks) && !(value.format === 'brickgineers-2d' && value.version === 1 && value.level && typeof value.level === 'object'))) fail(400, 'invalid_document', 'The build could not be read.')
   return structuredClone(value)
 }
 
@@ -90,7 +90,7 @@ export function createMockClassroom() {
   const studentView = (u) => ({ id: u.id, username: u.username, rosterName: u.rosterName, suspended: u.suspended, resetRequired: u.resetRequired })
   const ownerName = (world) => { const o = userById(world.ownerId); return !o ? 'Builder' : o.role === 'teacher' ? 'Teacher' : displayName(o.rosterName) }
   const worldView = (world, caller, canEdit, full = false) => ({
-    id: world.id, title: world.title, ownerId: world.ownerId, classId: world.classId, kind: world.kind, revision: world.revision, updatedAt: world.updatedAt,
+    id: world.id, title: world.title, ownerId: world.ownerId, classId: world.classId, kind: world.kind, format: world.document.format === 'brickgineers-2d' ? '2d' : 'brick', revision: world.revision, updatedAt: world.updatedAt,
     visibility: world.kind === 'personal' ? world.visibility : 'class', canEdit, classCanEdit: world.kind === 'personal' ? world.classCanEdit : true,
     ownerName: ownerName(world), ownerClassId: world.kind === 'personal' ? (userById(world.ownerId)?.classId ?? null) : world.classId,
     sharedAt: world.kind === 'personal' && world.visibility !== 'private' ? world.sharedAt : null,
@@ -409,7 +409,7 @@ export function createMockClassroom() {
   function control(method, pathname, body) {
     if (pathname === '/__qa/health') return { status: 200, body: { ok: true, users: db.users.length, classes: db.classes.length, worlds: db.worlds.length } }
     if (pathname === '/__qa/reset' && method === 'POST') { db.users = []; db.classes = []; db.worlds = []; db.checkpoints = []; db.sessions.clear(); db.counters.code = 10; return { status: 200, body: { ok: true } } }
-    if (pathname === '/__qa/state' && method === 'GET') return { status: 200, body: { users: db.users.map(({ password: _p, ...u }) => u), classes: db.classes, worlds: db.worlds.map(({ document, ...w }) => ({ ...w, bricks: document.bricks.length })) } }
+    if (pathname === '/__qa/state' && method === 'GET') return { status: 200, body: { users: db.users.map(({ password: _p, ...u }) => u), classes: db.classes, worlds: db.worlds.map(({ document, ...w }) => ({ ...w, bricks: document.bricks?.length ?? 0, format: document.format === 'brickgineers-2d' ? '2d' : 'brick' })) } }
     if (pathname === '/__qa/seed' && method === 'POST') return { status: 200, body: seed(body || {}) }
     if (pathname === '/__qa/session' && method === 'POST') {
       const user = db.users.find((u) => u.username === body?.username || (body?.email && u.email === body.email)) ?? fail(404, 'not_found', 'No such account.')
