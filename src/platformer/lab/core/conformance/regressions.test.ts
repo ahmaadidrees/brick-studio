@@ -80,10 +80,11 @@ describe('wave 3 runtime regressions', () => {
     const rt = makeHarnessRuntime({
       lists: logList,
       scripts: [
-        broadcastScript('go', [stmt('control_forever', {}, {}, [[add('R'), stmt('control_wait', { DURATION: lit(0) })]])], 'R'),
-        keyScript('k', [stmt('control_forever', {}, {}, [[add('K'), stmt('control_wait', { DURATION: lit(0) })]])], 'K'),
+        broadcastScript('go', [stmt('control_forever', {}, {}, [[add('R')]])], 'R'),
+        keyScript('k', [stmt('control_forever', {}, {}, [[add('K')]])], 'K'),
       ],
     })
+    rt.opBudget = 1 // exactly one sweep per tick: each thread logs once
     rt.broadcast('go')
     rt.pressKey('k')
     rt.step()
