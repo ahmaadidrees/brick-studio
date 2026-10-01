@@ -59,6 +59,8 @@ export type HatOpcode =
   | 'event_whenbackdropswitchesto' // fields.BACKDROP
   | 'event_whengreaterthan' // fields.WHENGREATERTHANMENU ('TIMER' | 'LOUDNESS'), inputs.VALUE
   | 'control_start_as_clone'
+  /** Platformer extension (step 3): fields.SIDE ('_any_' | 'top' | 'bottom' | 'left' | 'right'), fields.BRICK ('_any_' | '_edge_' | brick name). */
+  | 'platformer_whenbump'
 
 export interface Script {
   id: string
@@ -216,7 +218,38 @@ export interface Target {
   edgeHatState: Record<string, boolean>
   /** Held by the player's pointer: motion blocks leave it alone and sprite touching skips it (S02). */
   dragging?: boolean
+  /** Platformer extension state (step 3). Absent until a Platformer block touches this target. Clones copy it. */
+  body?: Body
 }
+
+// ---------------------------------------------------------------- Platformer extension (step 3)
+
+/**
+ * A target's platformer body. Only Platformer blocks read or write it; Scratch motion blocks never do (they teleport
+ * and fence, M05). See docs/qa/code-lab-core/STEP3.md for the exact physics step.
+ */
+export interface Body {
+  /** "turn gravity [on]": falls with world.physics.gravity every tick. */
+  gravity: boolean
+  /** "solid [on]": other moving bodies cannot pass through this target's box. */
+  solid: boolean
+  /** Steps per tick, y up. */
+  vx: number
+  vy: number
+  /** True after a tick in which this body was stopped moving down by something solid (or the level floor). */
+  onGround: boolean
+}
+
+export interface PhysicsSettings {
+  /** Steps per tick², pulling down. */
+  gravity: number
+  /** Fastest fall, steps per tick. */
+  maxFall: number
+  /** Level edges that stop bodies (the top is always open). */
+  walls: { left: boolean; right: boolean; bottom: boolean }
+}
+
+export const DEFAULT_PHYSICS: PhysicsSettings = { gravity: 1, maxFall: 16, walls: { left: true, right: true, bottom: true } }
 
 export interface Mouse {
   x: number
@@ -293,6 +326,8 @@ export interface World {
   rngState: number
   /** Runtime clones currently alive. */
   cloneCount: number
+  /** Platformer extension settings (step 3). Missing means DEFAULT_PHYSICS. */
+  physics?: PhysicsSettings
   nextTargetId: number
   /** Ask prompt queue for sensing primitives. */
   askQueue: QueuedAsk[]

@@ -48,6 +48,8 @@ export { toNumber, toBoolean, toString }
 export interface RuntimeLifecycle {
   greenFlag: ((runtime: RuntimeApi) => void)[]
   stopAll: ((runtime: RuntimeApi) => void)[]
+  /** Runs once at the end of every tick, after all script sweeps and before world.tick advances (Platformer physics). */
+  afterTick: ((runtime: RuntimeApi) => void)[]
 }
 
 export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
@@ -98,7 +100,7 @@ export class Runtime implements RuntimeApi {
   constructor(world: World, primitives: PrimitiveTable = {}, lifecycle: Partial<RuntimeLifecycle> = {}) {
     this.world = world
     this.primitives = primitives
-    this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [] }
+    this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [], afterTick: lifecycle.afterTick ?? [] }
     if (this.world.threads && this.world.threads.length > 0) {
       this.restoreThreadsFromWorld()
     } else {
@@ -380,6 +382,7 @@ export class Runtime implements RuntimeApi {
     }
 
     this.cleanDoneThreads()
+    for (const hook of this.lifecycle.afterTick) hook(this)
     this.world.tick++
     this.syncThreadsToWorld()
   }
