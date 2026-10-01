@@ -1,0 +1,378 @@
+/* Stage panel styles */
+.stage-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 380px;
+  background: #14161c;
+  border-radius: 8px;
+  overflow: hidden;
+  user-select: none;
+  border: 1px solid #2a2e38;
+}
+
+/* Controls Toolbar */
+.stage-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #1a1d26;
+  border-bottom: 1px solid #2a2e38;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stage-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stage-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 12px;
+  background: #252a36;
+  border: 1px solid #363c4d;
+  border-radius: 8px;
+  color: #eef0f5;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.stage-ctrl-btn:hover {
+  background: #313747;
+  border-color: #4b536a;
+}
+
+.stage-ctrl-btn:active {
+  transform: translateY(1px);
+}
+
+.stage-flag-btn {
+  background: #1b3d2b;
+  border-color: #276344;
+  color: #52e391;
+  font-size: 18px;
+}
+
+.stage-flag-btn:hover {
+  background: #23523a;
+  border-color: #328157;
+}
+
+.stage-play-btn {
+  background: #1b3d2b;
+  border-color: #276344;
+  color: #52e391;
+}
+
+.stage-play-btn:hover {
+  background: #23523a;
+}
+
+.stage-stop-btn {
+  background: #421c22;
+  border-color: #6b2a34;
+  color: #ff6b7d;
+}
+
+.stage-stop-btn:hover {
+  background: #54242c;
+}
+
+.stage-mode-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.stage-mode-badge.build {
+  background: #273042;
+  color: #79a6f2;
+}
+
+.stage-mode-badge.play {
+  background: #1c3626;
+  color: #56d48e;
+}
+
+.tool-btn.active, .snap-btn.active {
+  background: #2f456c;
+  border-color: #4f78bd;
+  color: #ffffff;
+}
+
+.zoom-btn {
+  padding: 0 10px;
+}
+
+.reset-btn {
+  font-size: 12px;
+}
+
+/* Canvas viewport */
+.stage-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  background: #111319;
+  overflow: hidden;
+  outline: none;
+}
+
+.stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+/* Knob Panel (Overlay inside stage on bottom-right) */
+.stage-knob-panel {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  max-width: 260px;
+  background: rgba(26, 29, 38, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid #363c4d;
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  color: #eef0f5;
+  z-index: 10;
+  font-size: 13px;
+}
+
+.stage-knob-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2f3442;
+}
+
+.stage-knob-title {
+  color: #8bb4ff;
+  font-size: 13px;
+}
+
+.stage-knob-delete-btn {
+  min-width: 40px;
+  min-height: 32px;
+  padding: 4px 8px;
+  background: #3d1c22;
+  border: 1px solid #5a252f;
+  border-radius: 4px;
+  color: #ff7586;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.stage-knob-delete-btn:hover {
+  background: #52242c;
+}
+
+.stage-knob-coords {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #798399;
+  margin-bottom: 8px;
+}
+
+.stage-knob-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage-knob-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stage-knob-label {
+  font-size: 12px;
+  color: #c0c6d4;
+}
+
+.stage-knob-number-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stage-knob-step-btn {
+  min-width: 32px;
+  min-height: 32px;
+  background: #2a303f;
+  border: 1px solid #3c4458;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stage-knob-step-btn:hover {
+  background: #394257;
+}
+
+.stage-knob-val-text {
+  min-width: 28px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.stage-knob-toggle-btn {
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.stage-knob-toggle-btn.on {
+  background: #1b442b;
+  border-color: #276840;
+  color: #55e695;
+}
+
+.stage-knob-toggle-btn.off {
+  background: #383c47;
+  border-color: #4a505e;
+  color: #9ea5b5;
+}
+
+.stage-knob-input {
+  max-width: 80px;
+  min-height: 32px;
+  background: #14161f;
+  border: 1px solid #363c4d;
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.stage-knob-empty {
+  font-size: 11px;
+  color: #798399;
+  font-style: italic;
+}
+
+/* Ask Dialog */
+.stage-ask-dialog {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(22, 25, 34, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid #3c4458;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+
+.stage-ask-bubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f0f2f7;
+}
+
+.stage-ask-icon {
+  font-size: 18px;
+}
+
+.stage-ask-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 90px;
+  overflow-y: auto;
+}
+
+.stage-ask-chip {
+  min-height: 36px;
+  padding: 0 12px;
+  background: #252a36;
+  border: 1px solid #3b4254;
+  border-radius: 18px;
+  color: #dbe0eb;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stage-ask-chip:hover {
+  background: #333a4c;
+  border-color: #55607a;
+}
+
+.stage-ask-chip.selected {
+  background: #2a4c7e;
+  border-color: #4b7bc0;
+  color: #fff;
+}
+
+.stage-ask-form {
+  display: flex;
+  gap: 6px;
+}
+
+.stage-ask-input {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 12px;
+  background: #14161f;
+  border: 1px solid #3c4458;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.stage-ask-submit-btn {
+  min-width: 44px;
+  min-height: 40px;
+  background: #1e5233;
+  border: 1px solid #2d7d4e;
+  border-radius: 8px;
+  color: #58ee9a;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stage-ask-submit-btn:hover {
+  background: #276b42;
+}
