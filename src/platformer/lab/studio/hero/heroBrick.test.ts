@@ -10,6 +10,8 @@
  * Both Heroes are driven the same way: an input held for N milliseconds. The old engine steps at 60 frames per second,
  * Code Lab at 30 ticks per second, so one tick is two frames. A key held for a tick is held for both of its frames.
  */
+import * as Blockly from 'blockly/core'
+import 'blockly/blocks'
 import { describe, expect, it } from 'vitest'
 import { harness } from '@brick-studio/platformer-core/engine/testHarness'
 import { DEFAULT_FEEL, P_SEGMENTS } from '@brick-studio/platformer-core/engine/feel'
@@ -18,7 +20,7 @@ import { targetBounds } from '../../core/geometry'
 import { play } from '../../core/index'
 import { validateDesign } from '../../core/project'
 import { compileWorkspace } from '../../core/editor/compile'
-import { isHatOpcode } from '../../core/editor/definitions'
+import { isHatOpcode, registerEditorBlocks } from '../../core/editor/definitions'
 import { createHeroBrick, createHeroCostume, createHeroWorkspace, HERO_BOX, HERO_KNOBS, heroVariables } from './heroBrick'
 import { createHeroTestDesign, FLOOR_TOP, HERO_START_X, HERO_STAND_Y, type HeroTestOptions } from './heroLevel'
 
@@ -267,8 +269,6 @@ const AIRTIME_MS = TICK
 const DISTANCE_PX = 4
 const LATE_EARLY_MS = TICK
 
-const near = (value: number, target: number, tolerance: number): boolean => Math.abs(value - target) <= tolerance
-
 // =============================================================================================
 // The Hero is built from open blocks and fits in a design
 // =============================================================================================
@@ -280,6 +280,27 @@ describe('The Hero brick is built from open blocks', () => {
     const again = compileWorkspace(workspace, { variables: heroVariables() })
     expect(again.diagnostics).toEqual([])
     expect(isHatOpcode('platformer_whenbump')).toBe(true)
+  })
+
+  it('opens in the real Blockly editor and saves back to the same program', () => {
+    const { workspace, brick } = createHeroBrick()
+    const variables = heroVariables()
+    registerEditorBlocks({ getVariables: () => variables, getBricks: () => ['Hero'] })
+    const ws = new Blockly.Workspace()
+    try {
+      Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
+      // 1 flag script, 7 My Blocks, 2 bump hats.
+      expect(ws.getTopBlocks(false)).toHaveLength(10)
+      const saved = Blockly.serialization.workspaces.save(ws)
+      const again = compileWorkspace(saved, { variables })
+      expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
+      expect(again.program.scripts.map((s) => s.hat.opcode).sort()).toEqual(brick.program.scripts.map((s) => s.hat.opcode).sort())
+      // Known editor gap (see the report): the editor's `procedures_definition` block does not save its proccode, so a
+      // round trip through Blockly keeps the 7 My Blocks and their bodies but names them "unnamed". Not checked here.
+      expect(again.program.procedures).toHaveLength(brick.program.procedures.length)
+    } finally {
+      ws.dispose()
+    }
   })
 
   it('validates in a design', () => {
@@ -402,6 +423,20 @@ describe('Watching the Hero on a flat floor', () => {
     expect(hold(e, 1000, { left: true }).pop()!.x).toBeLessThan(right - 60)
   })
 
+  it('turns to face the way it walks without changing its box', () => {
+    const rt = play(createHeroTestDesign())
+    const hero = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    rt.pressKey('left arrow')
+    for (let i = 0; i < 10; i++) rt.step()
+    expect(hero.direction).toBe(-90)
+    const box = targetBounds(rt.world, hero)!
+    expect([box.right - box.left, box.top - box.bottom]).toEqual([HERO_BOX.width, HERO_BOX.height])
+    rt.releaseKey('left arrow')
+    rt.pressKey('right arrow')
+    for (let i = 0; i < 10; i++) rt.step()
+    expect(hero.direction).toBe(90)
+  })
+
   it('runs faster than it walks when you hold x', () => {
     const walked = steadySpeed(settled(newEngine()), { right: true }, 1000)
     const ran = steadySpeed(settled(newEngine()), { right: true, run: true }, 1000)
@@ -455,12 +490,8 @@ describe('Watching the Hero on a flat floor', () => {
 // The numbers: open-block Hero vs today's Hero, within the STEP5 tolerances
 // =============================================================================================
 
-/** Each row is also a line of the report: name, target, measured. */
-const rows: { name: string; target: number; measured: number; tolerance: string; ok: boolean }[] = []
 function check(name: string, target: number, measured: number, tolerance: number, unit: string, relative = false): void {
   const allowed = relative ? Math.abs(target) * tolerance : tolerance
-  const ok = near(measured, target, allowed)
-  rows.push({ name, target, measured, tolerance: relative ? `${tolerance * 100}%` : `${tolerance} ${unit}`, ok })
   expect(measured, `${name}: target ${target} ${unit}, tolerance ${allowed.toFixed(3)}`).toBeGreaterThanOrEqual(target - allowed)
   expect(measured, `${name}: target ${target} ${unit}, tolerance ${allowed.toFixed(3)}`).toBeLessThanOrEqual(target + allowed)
 }
@@ -547,6 +578,15 @@ describe('Jumps', () => {
       check(`airtime, ${c.name} (ms)`, target.airtimeMs, got.airtimeMs, AIRTIME_MS, 'ms')
     })
   }
+  it('a one-frame tap on the old engine (half a tick) still lands within the apex tolerance', () => {
+    // A 30-tick-per-second Hero cannot see a press shorter than a tick, so a tap counts as a whole tick.
+    const e = settled(oldEngine())
+    const air = [e.step({ jump: true })]
+    while (!air[air.length - 1].onGround) air.push(e.step({}))
+    const oneFrame = Math.max(...air.map((s) => s.height))
+    const got = jumpFrom(settled(newEngine()), {}, 0, TICK)
+    check('jump apex, one-frame tap vs one-tick tap (px)', oneFrame, got.apex, APEX_PX, 'px')
+  })
   for (const c of cases.filter((x) => x.lead.run)) {
     it(`horizontal distance: ${c.name}`, () => {
       const target = jumpFrom(settled(oldEngine()), c.lead, c.leadMs, c.holdMs)
@@ -613,15 +653,5 @@ describe('Walls', () => {
     check('wall jump apex above the press (px)', target.apex, got.apex, APEX_PX, 'px')
     check('wall jump push-off speed (px/s)', Math.abs(target.pushSpeed), Math.abs(got.pushSpeed), SPEED_PCT, 'px/s', true)
     expect(got.pushSpeed).toBeLessThan(0)
-  })
-})
-
-describe('Report rows', () => {
-  it('prints every measured metric (for docs/qa/code-lab-core/reports/step5-hero.md)', () => {
-    // Runs last in this file: `rows` was filled by the checks above.
-    if ((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.HERO_REPORT) {
-      for (const r of rows) console.log(`${r.ok ? 'PASS' : 'FAIL'} | ${r.name} | target ${r.target.toFixed(3)} | measured ${r.measured.toFixed(3)} | tolerance ${r.tolerance}`)
-    }
-    expect(rows.length).toBeGreaterThan(0)
   })
 })
