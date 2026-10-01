@@ -50,6 +50,8 @@ export function makeClone(world: World, source: Target): Target {
     lists,
     bubble: null,
     edgeHatState: { ...source.edgeHatState },
+    // Platformer body (step 3): a clone keeps the source's gravity, solid, speeds and onGround.
+    ...(source.body ? { body: { ...source.body } } : {}),
   }
 }
 
