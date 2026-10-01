@@ -201,9 +201,9 @@ describe('§1.5 Looks, size, effects, layers, and timed bubbles', () => {
     expect(rt.world.targets[0].variables.touchHidden).toBe(false)
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 3 / stage-camera lane, H04/L06): the normal picker skips only
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 3 / stage-camera lane, H04/L06): the normal picker skips only
   // hidden sprites, so a ghost = 100 sprite is still clickable. Scratch's mouse picking excludes it.
-  it.fails('L06 · a fully ghosted sprite is not clickable through the normal picker', () => {
+  it('L06 · a fully ghosted sprite is not clickable through the normal picker', () => {
     const rt = makeHarnessRuntime({ extraBricks: [extraBrick('b', 'B')], extraCopies: [{ id: 'copyB', brickId: 'b', x: 0, y: 0 }] })
     const [back, front] = rt.world.targets
     front.effects.ghost = 100

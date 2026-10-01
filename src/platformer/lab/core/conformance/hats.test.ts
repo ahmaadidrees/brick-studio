@@ -181,10 +181,10 @@ describe('§1.2 Hats, retriggers, and broadcasts', () => {
     expect(pickTarget(rt.world, 0, 0)).toBe(back)
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 3 / stage-camera lane, H04/L06): studio/stage/picking.ts
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 3 / stage-camera lane, H04/L06): studio/stage/picking.ts
   // skips only hidden targets, so a fully ghosted sprite (ghost = 100) is still picked. Scratch
   // does not let you click a fully transparent sprite.
-  it.fails('H04 · picking: a fully ghosted front sprite is not picked', () => {
+  it('H04 · picking: a fully ghosted front sprite is not picked', () => {
     const rt = pickingRuntime()
     const [back, front] = rt.world.targets
     front.effects.ghost = 100
@@ -216,10 +216,10 @@ describe('§1.2 Hats, retriggers, and broadcasts', () => {
     expect(rt.world.targets[0].lists.trace).toEqual(['sender-continued', 'start', 'start', 'end'])
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 2, H05/F14): a restarted receiver is removed and pushed to
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 2, H05/F14): a restarted receiver is removed and pushed to
   // the END of the thread queue. Scratch's _restartThread replaces it at the same index, so the
   // restarted receiver still runs before the key thread that was started after it.
-  it.fails('H05 · a restarted receiver keeps its place in the thread order', () => {
+  it('H05 · a restarted receiver keeps its place in the thread order', () => {
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       scripts: [

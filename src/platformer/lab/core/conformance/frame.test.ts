@@ -68,11 +68,11 @@ describe('§1.1 Frame loop, work budget, yielding, and ordering', () => {
     expect(target.variables.v1).toBeGreaterThan(0)
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 1, warp starvation): the budget is checked mid-sweep, so a
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 1, warp starvation): the budget is checked mid-sweep, so a
   // thread that overruns it keeps the later threads from taking their turn in that sweep. Scratch
   // checks the budget only between sweeps: "a slow primitive can overrun the budget" and everyone
   // still gets a turn.
-  it.fails('F02 · an overrun thread does not starve later threads in the same sweep', () => {
+  it('F02 · an overrun thread does not starve later threads in the same sweep', () => {
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       procedures: [warpProc('render', 25_000)], // far more than DEFAULT_TICK_OP_BUDGET
@@ -149,9 +149,9 @@ describe('§1.1 Frame loop, work budget, yielding, and ordering', () => {
     expect(target.variables.vb).toBe(2)
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 1, warp starvation): A redraws (visible move) and burns the
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 1, warp starvation): A redraws (visible move) and burns the
   // whole tick budget in a warp call; B must still get its turn in that sweep.
-  it.fails('F05 · a heavy redrawing thread still lets the next thread take its turn', () => {
+  it('F05 · a heavy redrawing thread still lets the next thread take its turn', () => {
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       procedures: [warpProc('render', 25_000)],
@@ -250,10 +250,10 @@ describe('§1.1 Frame loop, work budget, yielding, and ordering', () => {
     expect(rt.world.targets[0].lists.trace).toEqual(['A1', 'B', 'A2'])
   })
 
-  // FAILS-PENDING-FIX / KNOWN-DIFF (audit item 4): inside a warp procedure Scratch revisits an
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) / KNOWN-DIFF (audit item 4): inside a warp procedure Scratch revisits an
   // ordinary yield (wait 0) at once, within the same step; Code Lab's wait always yields to the next
   // tick. The runtime-fixes lane either fixes it (flip this test) or records it as a known difference.
-  it.fails('F08 · wait zero inside a warp procedure is revisited in the same tick', () => {
+  it('F08 · wait zero inside a warp procedure is revisited in the same tick', () => {
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       procedures: [{ proccode: 'w', argumentNames: [], warp: true, body: [addLog('A1'), stmt('control_wait', { DURATION: lit(0) }), addLog('A2')] }],
@@ -368,9 +368,9 @@ describe('§1.1 Frame loop, work budget, yielding, and ordering', () => {
     expect(rt.world.targets[0].variables.status).toBe('done')
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 1, warp starvation): the audit's example. A render loop
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 1, warp starvation): the audit's example. A render loop
   // that calls a 25,000-op warp procedure every iteration must not starve a sibling script.
-  it.fails('F11 · a heavy warp render loop does not starve a sibling script', () => {
+  it('F11 · a heavy warp render loop does not starve a sibling script', () => {
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       procedures: [warpProc('render', 25_000)],
@@ -466,10 +466,10 @@ describe('§1.1 Frame loop, work budget, yielding, and ordering', () => {
     expect(rt.world.stage.lists.trace).toEqual(['freshA', 'freshB'])
   })
 
-  // FAILS-PENDING-FIX (runtime-fixes bug 2, H05/F14): restarting a hat (here a sprite click) removes
+  // FIXED in wave 3 (was FAILS-PENDING-FIX) (runtime-fixes bug 2, H05/F14): restarting a hat (here a sprite click) removes
   // the old thread and pushes the new one at the END of the queue. Scratch's _restartThread replaces
   // it at the same index, so the order stays [click, key].
-  it.fails('F14 · a restarted hat thread keeps its place in the queue', () => {
+  it('F14 · a restarted hat thread keeps its place in the queue', () => {
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       scripts: [

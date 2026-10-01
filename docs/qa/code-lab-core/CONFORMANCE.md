@@ -14,12 +14,12 @@ All tests run the fixture recipe through the real runtime (`createRuntime` with 
 
 | Status | Count |
 |:---|---:|
-| VERIFIED | 97 |
+| VERIFIED | 105 |
 | KNOWN-DIFF | 3 |
-| FAILS-PENDING-FIX | 8 |
+| FAILS-PENDING-FIX | 0 |
 | **Total fixtures** | **108** |
 
-FAILS-PENDING-FIX: F02, F05, F08, F11, F14, H04, H05, L06. Each of these also has passing tests for the parts of the fixture that work today.
+Wave 3 fixed the eight fixtures that were FAILS-PENDING-FIX (F02, F05, F08, F11, F14, H04, H05, L06): their `it.fails` tests now pass as ordinary tests. The runtime-fixes lane's regression tests are in `core/conformance/regressions.test.ts`. F08 covers `wait 0` inside warp; a positive `wait` inside warp still yields to the next tick (documented in `reports/wave3-runtime-fixes.md`).
 
 Wave 1 unit tests (`core/*.test.ts`) exist for many of these fixtures too. They are not cited here; only the conformance suite backs a row.
 
@@ -30,19 +30,19 @@ Wave 1 unit tests (`core/*.test.ts`) exist for many of these fixtures too. They 
 | ID | Topic | Status | Tests | Notes |
 |:---|:---|:---:|:---|:---|
 | F01 | 30 vs 60 | **VERIFIED** | `frame.test.ts` "F01 · 30 vs 60" | 30 ticks per second only; Scratch's 60 default interval is not modeled (by design). |
-| F02 | Work budget | **FAILS-PENDING-FIX** | `frame.test.ts` "F02 · Work budget (KNOWN-DIFF: an op-count budget, not 75% of step time)"<br>`frame.test.ts` "F02 · an overrun thread does not starve later threads in the same sweep" (`it.fails`) | Also a KNOWN-DIFF: the budget is an op count (`DEFAULT_TICK_OP_BUDGET`), not 75% of step time. The it.fails test is runtime-fixes bug 1 (budget checked mid-sweep starves later threads). |
+| F02 | Work budget | **VERIFIED** | `frame.test.ts` "F02 · Work budget (KNOWN-DIFF: an op-count budget, not 75% of step time)"<br>`frame.test.ts` "F02 · an overrun thread does not starve later threads in the same sweep" (`it.fails`) | Also a KNOWN-DIFF: the budget is an op count (`DEFAULT_TICK_OP_BUDGET`), not 75% of step time. The it.fails test is runtime-fixes bug 1 (budget checked mid-sweep starves later threads). |
 | F03 | Straight-line scripts | **VERIFIED** | `frame.test.ts` "F03 · Straight-line scripts" |  |
 | F04 | Loop iteration yields | **VERIFIED** | `frame.test.ts` "F04 · Loop iteration yields" |  |
-| F05 | Redraw | **FAILS-PENDING-FIX** | `frame.test.ts` "F05 · Redraw"<br>`frame.test.ts` "F05 · a heavy redrawing thread still lets the next thread take its turn" (`it.fails`) | it.fails: runtime-fixes bug 1 (a heavy thread that burns the tick budget starves the next thread in the sweep). |
+| F05 | Redraw | **VERIFIED** | `frame.test.ts` "F05 · Redraw"<br>`frame.test.ts` "F05 · a heavy redrawing thread still lets the next thread take its turn" (`it.fails`) | it.fails: runtime-fixes bug 1 (a heavy thread that burns the tick budget starves the next thread in the sweep). |
 | F06 | Hidden motion | **VERIFIED** | `frame.test.ts` "F06 · Hidden motion" |  |
 | F07 | Ordinary yield vs yield-tick | **VERIFIED** | `frame.test.ts` "F07 · Ordinary yield vs yield-tick" |  |
-| F08 | Wait zero | **FAILS-PENDING-FIX** | `frame.test.ts` "F08 · Wait zero"<br>`frame.test.ts` "F08 · wait zero inside a warp procedure is revisited in the same tick" (`it.fails`)<br>`frame.test.ts` "F08 · wait zero inside a warp procedure still completes, in order, within two ticks" | The non-warp case is verified. it.fails (audit item 4): inside a warp procedure Scratch revisits `wait 0` in the same tick, Code Lab yields to the next tick. If runtime-fixes keeps this, flip the status to KNOWN-DIFF. |
+| F08 | Wait zero | **VERIFIED** | `frame.test.ts` "F08 · Wait zero"<br>`frame.test.ts` "F08 · wait zero inside a warp procedure is revisited in the same tick" (`it.fails`)<br>`frame.test.ts` "F08 · wait zero inside a warp procedure still completes, in order, within two ticks" | The non-warp case is verified. it.fails (audit item 4): inside a warp procedure Scratch revisits `wait 0` in the same tick, Code Lab yields to the next tick. If runtime-fixes keeps this, flip the status to KNOWN-DIFF. |
 | F09 | Wait-until | **VERIFIED** | `frame.test.ts` "F09 · Wait-until" |  |
 | F10 | Warp | **VERIFIED** | `frame.test.ts` "F10 · Warp"<br>`frame.test.ts` "F10 · Warp ask-and-wait stays suspended until an answer" |  |
-| F11 | Warp safety | **FAILS-PENDING-FIX** | `frame.test.ts` "F11 · Warp safety (KNOWN-DIFF: an op limit, not 500 ms)"<br>`frame.test.ts` "F11 · a heavy warp render loop does not starve a sibling script" (`it.fails`) | Also a KNOWN-DIFF: the cutoff is `WARP_OP_LIMIT` ops, not 500 ms. it.fails: runtime-fixes bug 1 (the audit's `forever { call render }` starves a sibling script). |
+| F11 | Warp safety | **VERIFIED** | `frame.test.ts` "F11 · Warp safety (KNOWN-DIFF: an op limit, not 500 ms)"<br>`frame.test.ts` "F11 · a heavy warp render loop does not starve a sibling script" (`it.fails`) | Also a KNOWN-DIFF: the cutoff is `WARP_OP_LIMIT` ops, not 500 ms. it.fails: runtime-fixes bug 1 (the audit's `forever { call render }` starves a sibling script). |
 | F12 | Turbo | **VERIFIED** | `frame.test.ts` "F12 · Turbo" |  |
 | F13 | Hat launch order | **VERIFIED** | `frame.test.ts` "F13 · Hat launch order" |  |
-| F14 | Running thread order | **FAILS-PENDING-FIX** | `frame.test.ts` "F14 · Running thread order"<br>`frame.test.ts` "F14 · a restarted hat thread keeps its place in the queue" (`it.fails`) | The layer-change half is verified. it.fails: runtime-fixes bug 2 (a restarted hat is moved to the end of the thread queue). |
+| F14 | Running thread order | **VERIFIED** | `frame.test.ts` "F14 · Running thread order"<br>`frame.test.ts` "F14 · a restarted hat thread keeps its place in the queue" (`it.fails`) | The layer-change half is verified. it.fails: runtime-fixes bug 2 (a restarted hat is moved to the end of the thread queue). |
 | F15 | Same-frame new work | **VERIFIED** | `frame.test.ts` "F15 · Same-frame new work" |  |
 | F16 | Reporter evaluation | **VERIFIED** | `frame.test.ts` "F16 · Reporter evaluation" |  |
 
@@ -53,8 +53,8 @@ Wave 1 unit tests (`core/*.test.ts`) exist for many of these fixtures too. They 
 | H01 | Green flag | **VERIFIED** | `hats.test.ts` "H01 · Green flag" |  |
 | H02 | Key pressed | **VERIFIED** | `hats.test.ts` "H02 · Key pressed" |  |
 | H03 | Sprite clicked | **VERIFIED** | `hats.test.ts` "H03 · Sprite clicked" |  |
-| H04 | Stage clicked | **FAILS-PENDING-FIX** | `hats.test.ts` "H04 · Stage clicked (hat restart)"<br>`hats.test.ts` "H04 · picking: the front-most opaque sprite is picked, and only it"<br>`hats.test.ts` "H04 · picking: a hidden front sprite is not picked"<br>`hats.test.ts` "H04 · picking: a fully ghosted front sprite is not picked" (`it.fails`) | Hat restart and picking (front-most opaque, hidden skipped) are verified; the picking tests call `studio/stage/picking.ts` `pickTarget`. it.fails: a fully ghosted sprite is still picked (runtime-fixes bug 3 / stage-camera lane). |
-| H05 | Broadcast | **FAILS-PENDING-FIX** | `hats.test.ts` "H05 · Broadcast"<br>`hats.test.ts` "H05 · a restarted receiver keeps its place in the thread order" (`it.fails`) | it.fails: runtime-fixes bug 2 (a restarted receiver is moved to the end of the thread queue). |
+| H04 | Stage clicked | **VERIFIED** | `hats.test.ts` "H04 · Stage clicked (hat restart)"<br>`hats.test.ts` "H04 · picking: the front-most opaque sprite is picked, and only it"<br>`hats.test.ts` "H04 · picking: a hidden front sprite is not picked"<br>`hats.test.ts` "H04 · picking: a fully ghosted front sprite is not picked" (`it.fails`) | Hat restart and picking (front-most opaque, hidden skipped) are verified; the picking tests call `studio/stage/picking.ts` `pickTarget`. it.fails: a fully ghosted sprite is still picked (runtime-fixes bug 3 / stage-camera lane). |
+| H05 | Broadcast | **VERIFIED** | `hats.test.ts` "H05 · Broadcast"<br>`hats.test.ts` "H05 · a restarted receiver keeps its place in the thread order" (`it.fails`) | it.fails: runtime-fixes bug 2 (a restarted receiver is moved to the end of the thread queue). |
 | H06 | Broadcast-and-wait | **VERIFIED** | `hats.test.ts` "H06 · Broadcast-and-wait" |  |
 | H07 | Clone-start | **VERIFIED** | `hats.test.ts` "H07 · Clone-start" |  |
 | H08 | Timer/loudness threshold | **VERIFIED** | `hats.test.ts` "H08 · Timer/loudness threshold" | Not asserted: a re-trigger while the handler is still running (research lists it as unresolved). |
@@ -106,7 +106,7 @@ Wave 1 unit tests (`core/*.test.ts`) exist for many of these fixtures too. They 
 | L03 | Rotation center | **VERIFIED** | `looks.test.ts` "L03 · Rotation center" |  |
 | L04 | Size min/max | **VERIFIED** | `looks.test.ts` "L04 · Size min/max" |  |
 | L05 | Effects | **VERIFIED** | `looks.test.ts` "L05 · Effects" | Not asserted: an unknown effect name is ignored. |
-| L06 | Ghost vs hide | **FAILS-PENDING-FIX** | `looks.test.ts` "L06 · Ghost vs hide"<br>`looks.test.ts` "L06 · a fully ghosted sprite is not clickable through the normal picker" (`it.fails`) | The touching half is verified. it.fails: a ghost = 100 sprite is still clickable (runtime-fixes bug 3 / stage-camera lane). |
+| L06 | Ghost vs hide | **VERIFIED** | `looks.test.ts` "L06 · Ghost vs hide"<br>`looks.test.ts` "L06 · a fully ghosted sprite is not clickable through the normal picker" (`it.fails`) | The touching half is verified. it.fails: a ghost = 100 sprite is still clickable (runtime-fixes bug 3 / stage-camera lane). |
 | L07 | Show/hide | **VERIFIED** | `looks.test.ts` "L07 · Show/hide" |  |
 | L08 | Layer operations | **VERIFIED** | `looks.test.ts` "L08 · Layer operations" |  |
 | L09 | Say/think plain | **VERIFIED** | `looks.test.ts` "L09 · Say/think plain" |  |
