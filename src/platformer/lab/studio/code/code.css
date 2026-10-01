@@ -819,3 +819,10 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Platformer extension category: set apart from the Scratch categories like an extension. */
+.code-extension-category {
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 6px;
+}

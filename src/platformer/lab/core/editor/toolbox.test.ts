@@ -8,10 +8,10 @@ import {
 } from './toolbox'
 
 describe('Continuous Toolbox configuration', () => {
-  it('contains exactly the 9 Scratch categories in order', () => {
+  it('contains the 9 Scratch categories in order, then Platformer', () => {
     const toolbox = createContinuousToolbox()
     expect(toolbox.kind).toBe('categoryToolbox')
-    expect(toolbox.contents).toHaveLength(9)
+    expect(toolbox.contents).toHaveLength(10)
 
     const expectedCategories = [
       { name: 'Motion', colour: CATEGORY_COLORS.motion },
@@ -23,6 +23,7 @@ describe('Continuous Toolbox configuration', () => {
       { name: 'Operators', colour: CATEGORY_COLORS.operators },
       { name: 'Variables', colour: CATEGORY_COLORS.variables },
       { name: 'My Blocks', colour: CATEGORY_COLORS.procedures },
+      { name: 'Platformer', colour: CATEGORY_COLORS.platformer },
     ]
 
     for (let i = 0; i < expectedCategories.length; i++) {

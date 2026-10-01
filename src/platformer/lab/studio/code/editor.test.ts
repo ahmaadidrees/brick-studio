@@ -185,15 +185,16 @@ describe('Code Editor: Message and Context Extraction', () => {
 })
 
 describe('Code Editor: Stage-specific toolbox filtering', () => {
-  it('omits Motion category when isStage is true', () => {
+  it('omits Motion and Platformer categories when isStage is true', () => {
     const brickToolbox = createContinuousToolbox(undefined, { isStage: false })
     const stageToolbox = createContinuousToolbox(undefined, { isStage: true })
 
-    expect(brickToolbox.contents).toHaveLength(9)
+    expect(brickToolbox.contents).toHaveLength(10)
     expect(brickToolbox.contents.some((c) => c.name === 'Motion')).toBe(true)
 
     expect(stageToolbox.contents).toHaveLength(8)
     expect(stageToolbox.contents.some((c) => c.name === 'Motion')).toBe(false)
+    expect(stageToolbox.contents.some((c) => c.name === 'Platformer')).toBe(false)
   })
 
   it('includes buttons for Make a Variable and Make a List', () => {

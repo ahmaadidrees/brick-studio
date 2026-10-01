@@ -13,8 +13,10 @@ import {
   getMessageOptions,
   getSoundOptions,
   getTargetOptions,
+  getEditorContext,
   getVariableOptions,
   type EditorContext,
+  type MenuOption,
 } from './context'
 
 /** Scratch 3 category colors. */
@@ -29,6 +31,8 @@ export const CATEGORY_COLORS = {
   variables: '#FF8C1A',
   lists: '#FF661A',
   procedures: '#FF6680',
+  /** Platformer extension (step 3): its own color, not shared with any Scratch category. */
+  platformer: '#2BB3A3',
 } as const
 
 export const HAT_OPCODES: readonly HatOpcode[] = [
@@ -40,6 +44,7 @@ export const HAT_OPCODES: readonly HatOpcode[] = [
   'event_whenbackdropswitchesto',
   'event_whengreaterthan',
   'control_start_as_clone',
+  'platformer_whenbump',
 ]
 
 export function isHatOpcode(opcode: string): opcode is HatOpcode {
@@ -83,6 +88,27 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
 
   const sensingOfObjects = () =>
     getTargetOptions(context, [{ label: 'Stage', value: '_stage_' }])
+
+  const onOff: MenuOption[] = [
+    ['on', 'on'],
+    ['off', 'off'],
+  ]
+  const axisOptions: MenuOption[] = [
+    ['x', 'x'],
+    ['y', 'y'],
+  ]
+  const bumpSideOptions: MenuOption[] = [
+    ['any side', '_any_'],
+    ['top', 'top'],
+    ['bottom', 'bottom'],
+    ['left', 'left'],
+    ['right', 'right'],
+  ]
+  const bumpBrickOptions = (): MenuOption[] => [
+    ['anything', '_any_'],
+    ['edge', '_edge_'],
+    ...(context?.getBricks?.() ?? getEditorContext().getBricks?.() ?? []).map((b): MenuOption => [b, b]),
+  ]
 
   return [
     // =========================================================================
@@ -1498,6 +1524,85 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       category: 'procedures',
       colour: CATEGORY_COLORS.procedures,
       output: 'Boolean',
+      tooltip: '',
+    },
+    // =========================================================================
+    // PLATFORMER (extension, step 3). Wording is fixed by docs/qa/code-lab-core/STEP3.md.
+    // =========================================================================
+    {
+      type: 'platformer_setgravity',
+      message0: 'turn gravity %1',
+      args0: [{ type: 'field_dropdown', name: 'GRAVITY', options: onOff }],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: '',
+    },
+    {
+      type: 'platformer_setsolid',
+      message0: 'solid %1',
+      args0: [{ type: 'field_dropdown', name: 'SOLID', options: onOff }],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: '',
+    },
+    {
+      type: 'platformer_setspeed',
+      message0: 'set %1 speed to %2',
+      args0: [
+        { type: 'field_dropdown', name: 'AXIS', options: axisOptions },
+        { type: 'input_value', name: 'SPEED' },
+      ],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: '',
+    },
+    {
+      type: 'platformer_changespeed',
+      message0: 'change %1 speed by %2',
+      args0: [
+        { type: 'field_dropdown', name: 'AXIS', options: axisOptions },
+        { type: 'input_value', name: 'SPEED' },
+      ],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: '',
+    },
+    {
+      type: 'platformer_speed',
+      message0: '%1 speed',
+      args0: [{ type: 'field_dropdown', name: 'AXIS', options: axisOptions }],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      output: 'Number',
+      tooltip: '',
+    },
+    {
+      type: 'platformer_onground',
+      message0: 'on ground?',
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      output: 'Boolean',
+      tooltip: '',
+    },
+    {
+      type: 'platformer_whenbump',
+      message0: 'when I bump %1 of %2',
+      args0: [
+        { type: 'field_dropdown', name: 'SIDE', options: bumpSideOptions },
+        { type: 'field_dropdown', name: 'BRICK', options: bumpBrickOptions },
+      ],
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      nextStatement: null,
+      hat: 'cap',
       tooltip: '',
     },
   ]

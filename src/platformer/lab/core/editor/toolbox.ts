@@ -27,7 +27,12 @@ export interface ToolboxSep {
   kind: 'sep'
 }
 
-export type ToolboxCategoryItem = ToolboxBlock | ToolboxButton | ToolboxSep
+export interface ToolboxLabel {
+  kind: 'label'
+  text: string
+}
+
+export type ToolboxCategoryItem = ToolboxBlock | ToolboxButton | ToolboxSep | ToolboxLabel
 
 export interface ToolboxCategory {
   kind: 'category'
@@ -35,6 +40,8 @@ export interface ToolboxCategory {
   colour: string
   contents?: ToolboxCategoryItem[]
   custom?: string
+  /** Blockly category CSS classes (e.g. the extension-style header). */
+  cssConfig?: { container?: string; row?: string; label?: string }
 }
 
 export interface ContinuousToolboxDefinition {
@@ -352,10 +359,32 @@ export function createContinuousToolbox(
         },
       ],
     },
+
+    // 10. Platformer (extension, step 3): box-based physics, separate from Scratch's pixel touching.
+    {
+      kind: 'category',
+      name: 'Platformer',
+      colour: CATEGORY_COLORS.platformer,
+      cssConfig: { container: 'code-extension-category' },
+      contents: [
+        { kind: 'label', text: 'Platformer extension' },
+        { kind: 'block', type: 'platformer_whenbump' },
+        { kind: 'sep' },
+        { kind: 'block', type: 'platformer_setgravity' },
+        { kind: 'block', type: 'platformer_setsolid' },
+        { kind: 'sep' },
+        { kind: 'block', type: 'platformer_setspeed', inputs: { SPEED: numShadow(5) } },
+        { kind: 'block', type: 'platformer_changespeed', inputs: { SPEED: numShadow(1) } },
+        { kind: 'block', type: 'platformer_speed' },
+        { kind: 'sep' },
+        { kind: 'block', type: 'platformer_onground' },
+      ],
+    },
   ]
 
+  // Motion and Platformer both act on a brick's body; the Stage has neither.
   const contents = isStage
-    ? allCategories.filter((cat) => cat.name !== 'Motion')
+    ? allCategories.filter((cat) => cat.name !== 'Motion' && cat.name !== 'Platformer')
     : allCategories
 
   return {
