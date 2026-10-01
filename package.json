@@ -23,6 +23,8 @@
     "typecheck:platformer-core": "tsc -p packages/platformer-core/tsconfig.json"
   },
   "dependencies": {
+    "@blockly/block-shareable-procedures": "13.3.0",
+    "@blockly/continuous-toolbox": "13.3.0",
     "@react-three/drei": "10.7.7",
     "@react-three/fiber": "9.6.1",
     "@react-three/rapier": "2.2.0",
