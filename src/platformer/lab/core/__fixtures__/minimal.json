@@ -1,0 +1,73 @@
+{
+  "design": {
+    "bounds": {
+      "bottom": 0,
+      "left": 0,
+      "right": 480,
+      "top": 360
+    },
+    "bricks": [
+      {
+        "costumes": [
+          {
+            "height": 16,
+            "name": "dot",
+            "rotationCenterX": 8,
+            "rotationCenterY": 8,
+            "width": 16
+          }
+        ],
+        "id": "dot",
+        "name": "Dot",
+        "program": {
+          "lists": [],
+          "procedures": [],
+          "scripts": [],
+          "variables": []
+        },
+        "sounds": []
+      }
+    ],
+    "copies": [
+      {
+        "brickId": "dot",
+        "id": "copy-1",
+        "x": 100,
+        "y": 100
+      }
+    ],
+    "id": "min-lvl",
+    "name": "Minimal Level",
+    "seed": 0,
+    "stage": {
+      "costumes": [
+        {
+          "height": 360,
+          "name": "backdrop",
+          "rotationCenterX": 240,
+          "rotationCenterY": 180,
+          "width": 480
+        }
+      ],
+      "id": "stage",
+      "isStage": true,
+      "name": "Stage",
+      "program": {
+        "lists": [],
+        "procedures": [],
+        "scripts": [],
+        "variables": []
+      },
+      "sounds": []
+    }
+  },
+  "editorVersion": "13.3.0",
+  "engineSemanticsVersion": 1,
+  "ir": {},
+  "pluginVersions": {
+    "@blockly/block-shareable-procedures": "13.3.0",
+    "@blockly/continuous-toolbox": "13.3.0"
+  },
+  "schemaVersion": 1,
+  "workspaces": {}
+}
