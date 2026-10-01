@@ -1,0 +1,358 @@
+import * as ShareableProcedures from '@blockly/block-shareable-procedures'
+import { registerContinuousToolbox } from '@blockly/continuous-toolbox'
+import { CATEGORY_COLORS } from './definitions'
+import type { EditorContext } from './context'
+
+export interface ToolboxShadow {
+  type: string
+  fields?: Record<string, unknown>
+}
+
+export interface ToolboxBlock {
+  kind: 'block'
+  type: string
+  inputs?: Record<string, { shadow?: ToolboxShadow }>
+  fields?: Record<string, unknown>
+}
+
+export interface ToolboxButton {
+  kind: 'button'
+  text: string
+  callbackKey: string
+}
+
+export interface ToolboxSeparator {
+  kind: 'sep'
+}
+
+export type ToolboxItem = ToolboxBlock | ToolboxButton | ToolboxSeparator
+
+export interface ToolboxCategory {
+  kind: 'category'
+  name: string
+  colour: string
+  contents?: ToolboxItem[]
+  custom?: string
+}
+
+export interface ContinuousToolboxDefinition {
+  kind: 'categoryToolbox'
+  contents: ToolboxCategory[]
+}
+
+const numShadow = (num: number): { shadow: ToolboxShadow } => ({
+  shadow: { type: 'math_number', fields: { NUM: num } },
+})
+
+const textShadow = (text: string): { shadow: ToolboxShadow } => ({
+  shadow: { type: 'text', fields: { TEXT: text } },
+})
+
+/**
+ * Creates the complete continuous-category toolbox specification for Scratch 3 opcodes.
+ */
+export function createContinuousToolbox(_context?: EditorContext): ContinuousToolboxDefinition {
+  return {
+    kind: 'categoryToolbox',
+    contents: [
+      // 1. Motion
+      {
+        kind: 'category',
+        name: 'Motion',
+        colour: CATEGORY_COLORS.motion,
+        contents: [
+          { kind: 'block', type: 'motion_movesteps', inputs: { STEPS: numShadow(10) } },
+          { kind: 'block', type: 'motion_turnright', inputs: { DEGREES: numShadow(15) } },
+          { kind: 'block', type: 'motion_turnleft', inputs: { DEGREES: numShadow(15) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'motion_pointindirection', inputs: { DIRECTION: numShadow(90) } },
+          { kind: 'block', type: 'motion_pointtowards' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'motion_gotoxy', inputs: { X: numShadow(0), Y: numShadow(0) } },
+          { kind: 'block', type: 'motion_goto' },
+          {
+            kind: 'block',
+            type: 'motion_glidesecstoxy',
+            inputs: { SECS: numShadow(1), X: numShadow(0), Y: numShadow(0) },
+          },
+          { kind: 'block', type: 'motion_glideto', inputs: { SECS: numShadow(1) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'motion_changexby', inputs: { DX: numShadow(10) } },
+          { kind: 'block', type: 'motion_setx', inputs: { X: numShadow(0) } },
+          { kind: 'block', type: 'motion_changeyby', inputs: { DY: numShadow(10) } },
+          { kind: 'block', type: 'motion_sety', inputs: { Y: numShadow(0) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'motion_ifonedgebounce' },
+          { kind: 'block', type: 'motion_setrotationstyle' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'motion_xposition' },
+          { kind: 'block', type: 'motion_yposition' },
+          { kind: 'block', type: 'motion_direction' },
+        ],
+      },
+
+      // 2. Looks
+      {
+        kind: 'category',
+        name: 'Looks',
+        colour: CATEGORY_COLORS.looks,
+        contents: [
+          {
+            kind: 'block',
+            type: 'looks_sayforsecs',
+            inputs: { MESSAGE: textShadow('Hello!'), SECS: numShadow(2) },
+          },
+          { kind: 'block', type: 'looks_say', inputs: { MESSAGE: textShadow('Hello!') } },
+          {
+            kind: 'block',
+            type: 'looks_thinkforsecs',
+            inputs: { MESSAGE: textShadow('Hmm...'), SECS: numShadow(2) },
+          },
+          { kind: 'block', type: 'looks_think', inputs: { MESSAGE: textShadow('Hmm...') } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'looks_switchcostumeto' },
+          { kind: 'block', type: 'looks_nextcostume' },
+          { kind: 'block', type: 'looks_switchbackdropto' },
+          { kind: 'block', type: 'looks_nextbackdrop' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'looks_changesizeby', inputs: { CHANGE: numShadow(10) } },
+          { kind: 'block', type: 'looks_setsizeto', inputs: { SIZE: numShadow(100) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'looks_changeeffectby', inputs: { CHANGE: numShadow(25) } },
+          { kind: 'block', type: 'looks_seteffectto', inputs: { VALUE: numShadow(0) } },
+          { kind: 'block', type: 'looks_cleargraphiceffects' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'looks_show' },
+          { kind: 'block', type: 'looks_hide' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'looks_gotofrontback' },
+          { kind: 'block', type: 'looks_goforwardbackwardlayers', inputs: { NUM: numShadow(1) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'looks_costumenumbername' },
+          { kind: 'block', type: 'looks_backdropnumbername' },
+          { kind: 'block', type: 'looks_size' },
+        ],
+      },
+
+      // 3. Sound
+      {
+        kind: 'category',
+        name: 'Sound',
+        colour: CATEGORY_COLORS.sound,
+        contents: [
+          { kind: 'block', type: 'sound_playuntildone' },
+          { kind: 'block', type: 'sound_play' },
+          { kind: 'block', type: 'sound_stopallsounds' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'sound_changeeffectby', inputs: { VALUE: numShadow(10) } },
+          { kind: 'block', type: 'sound_seteffectto', inputs: { VALUE: numShadow(100) } },
+          { kind: 'block', type: 'sound_cleareffects' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'sound_changevolumeby', inputs: { VOLUME: numShadow(-10) } },
+          { kind: 'block', type: 'sound_setvolumeto', inputs: { VOLUME: numShadow(100) } },
+          { kind: 'block', type: 'sound_volume' },
+        ],
+      },
+
+      // 4. Events
+      {
+        kind: 'category',
+        name: 'Events',
+        colour: CATEGORY_COLORS.events,
+        contents: [
+          { kind: 'block', type: 'event_whenflagclicked' },
+          { kind: 'block', type: 'event_whenkeypressed' },
+          { kind: 'block', type: 'event_whenthisspriteclicked' },
+          { kind: 'block', type: 'event_whenstageclicked' },
+          { kind: 'block', type: 'event_whenbackdropswitchesto' },
+          { kind: 'block', type: 'event_whengreaterthan', inputs: { VALUE: numShadow(10) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'event_whenbroadcastreceived' },
+          {
+            kind: 'block',
+            type: 'event_broadcast',
+            inputs: { BROADCAST_INPUT: textShadow('message1') },
+          },
+          {
+            kind: 'block',
+            type: 'event_broadcastandwait',
+            inputs: { BROADCAST_INPUT: textShadow('message1') },
+          },
+        ],
+      },
+
+      // 5. Control
+      {
+        kind: 'category',
+        name: 'Control',
+        colour: CATEGORY_COLORS.control,
+        contents: [
+          { kind: 'block', type: 'control_wait', inputs: { DURATION: numShadow(1) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'control_repeat', inputs: { TIMES: numShadow(10) } },
+          { kind: 'block', type: 'control_forever' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'control_if' },
+          { kind: 'block', type: 'control_if_else' },
+          { kind: 'block', type: 'control_wait_until' },
+          { kind: 'block', type: 'control_repeat_until' },
+          { kind: 'block', type: 'control_while' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'control_stop' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'control_start_as_clone' },
+          { kind: 'block', type: 'control_create_clone_of' },
+          { kind: 'block', type: 'control_delete_this_clone' },
+        ],
+      },
+
+      // 6. Sensing
+      {
+        kind: 'category',
+        name: 'Sensing',
+        colour: CATEGORY_COLORS.sensing,
+        contents: [
+          { kind: 'block', type: 'sensing_touchingobject' },
+          { kind: 'block', type: 'sensing_touchingcolor' },
+          { kind: 'block', type: 'sensing_coloristouchingcolor' },
+          { kind: 'block', type: 'sensing_distanceto' },
+          { kind: 'sep' },
+          {
+            kind: 'block',
+            type: 'sensing_askandwait',
+            inputs: { QUESTION: textShadow("What's your name?") },
+          },
+          { kind: 'block', type: 'sensing_answer' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'sensing_keypressed' },
+          { kind: 'block', type: 'sensing_mousedown' },
+          { kind: 'block', type: 'sensing_mousex' },
+          { kind: 'block', type: 'sensing_mousey' },
+          { kind: 'block', type: 'sensing_loudness' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'sensing_timer' },
+          { kind: 'block', type: 'sensing_resettimer' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'sensing_of' },
+          { kind: 'block', type: 'sensing_current' },
+          { kind: 'block', type: 'sensing_dayssince2000' },
+          { kind: 'block', type: 'sensing_username' },
+        ],
+      },
+
+      // 7. Operators
+      {
+        kind: 'category',
+        name: 'Operators',
+        colour: CATEGORY_COLORS.operators,
+        contents: [
+          { kind: 'block', type: 'operator_add', inputs: { NUM1: numShadow(0), NUM2: numShadow(0) } },
+          { kind: 'block', type: 'operator_subtract', inputs: { NUM1: numShadow(0), NUM2: numShadow(0) } },
+          { kind: 'block', type: 'operator_multiply', inputs: { NUM1: numShadow(0), NUM2: numShadow(0) } },
+          { kind: 'block', type: 'operator_divide', inputs: { NUM1: numShadow(0), NUM2: numShadow(0) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'operator_random', inputs: { FROM: numShadow(1), TO: numShadow(10) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'operator_gt', inputs: { OPERAND1: textShadow(''), OPERAND2: numShadow(50) } },
+          { kind: 'block', type: 'operator_lt', inputs: { OPERAND1: textShadow(''), OPERAND2: numShadow(50) } },
+          { kind: 'block', type: 'operator_equals', inputs: { OPERAND1: textShadow(''), OPERAND2: numShadow(50) } },
+          { kind: 'sep' },
+          { kind: 'block', type: 'operator_and' },
+          { kind: 'block', type: 'operator_or' },
+          { kind: 'block', type: 'operator_not' },
+          { kind: 'sep' },
+          {
+            kind: 'block',
+            type: 'operator_join',
+            inputs: { STRING1: textShadow('apple '), STRING2: textShadow('banana') },
+          },
+          {
+            kind: 'block',
+            type: 'operator_letter_of',
+            inputs: { LETTER: numShadow(1), STRING: textShadow('apple') },
+          },
+          { kind: 'block', type: 'operator_length', inputs: { STRING: textShadow('apple') } },
+          {
+            kind: 'block',
+            type: 'operator_contains',
+            inputs: { STRING1: textShadow('apple'), STRING2: textShadow('a') },
+          },
+          { kind: 'sep' },
+          { kind: 'block', type: 'operator_mod', inputs: { NUM1: numShadow(0), NUM2: numShadow(0) } },
+          { kind: 'block', type: 'operator_round', inputs: { NUM: numShadow(0) } },
+          { kind: 'block', type: 'operator_mathop', inputs: { NUM: numShadow(0) } },
+        ],
+      },
+
+      // 8. Variables & Lists
+      {
+        kind: 'category',
+        name: 'Variables',
+        colour: CATEGORY_COLORS.variables,
+        contents: [
+          { kind: 'block', type: 'data_variable' },
+          { kind: 'block', type: 'data_setvariableto', inputs: { VALUE: numShadow(0) } },
+          { kind: 'block', type: 'data_changevariableby', inputs: { VALUE: numShadow(1) } },
+          { kind: 'block', type: 'data_showvariable' },
+          { kind: 'block', type: 'data_hidevariable' },
+          { kind: 'sep' },
+          { kind: 'block', type: 'data_listcontents' },
+          { kind: 'block', type: 'data_addtolist', inputs: { ITEM: textShadow('thing') } },
+          { kind: 'block', type: 'data_deleteoflist', inputs: { INDEX: numShadow(1) } },
+          { kind: 'block', type: 'data_deletealloflist' },
+          {
+            kind: 'block',
+            type: 'data_insertatlist',
+            inputs: { ITEM: textShadow('thing'), INDEX: numShadow(1) },
+          },
+          {
+            kind: 'block',
+            type: 'data_replaceitemoflist',
+            inputs: { INDEX: numShadow(1), ITEM: textShadow('thing') },
+          },
+          { kind: 'block', type: 'data_itemoflist', inputs: { INDEX: numShadow(1) } },
+          { kind: 'block', type: 'data_itemnumoflist', inputs: { ITEM: textShadow('thing') } },
+          { kind: 'block', type: 'data_lengthoflist' },
+          { kind: 'block', type: 'data_listcontainsitem', inputs: { ITEM: textShadow('thing') } },
+          { kind: 'block', type: 'data_showlist' },
+          { kind: 'block', type: 'data_hidelist' },
+        ],
+      },
+
+      // 9. My Blocks (Procedures)
+      {
+        kind: 'category',
+        name: 'My Blocks',
+        colour: CATEGORY_COLORS.procedures,
+        custom: 'PROCEDURE',
+        contents: [
+          {
+            kind: 'button',
+            text: 'Make a Block',
+            callbackKey: 'MAKE_A_PROCEDURE',
+          },
+        ],
+      },
+    ],
+  }
+}
+
+/** Pre-built continuous toolbox configuration. */
+export const CONTINUOUS_TOOLBOX = createContinuousToolbox()
+
+let pluginsRegistered = false
+
+/**
+ * Registers @blockly/continuous-toolbox and @blockly/block-shareable-procedures plugins.
+ * Safe to invoke multiple times.
+ */
+export function registerToolboxPlugins(): void {
+  if (pluginsRegistered) return
+  registerContinuousToolbox()
+  try {
+    ShareableProcedures.registerProcedureSerializer()
+  } catch {
+    // Already registered or serializer replaced
+  }
+  pluginsRegistered = true
+}
