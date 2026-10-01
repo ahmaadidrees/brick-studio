@@ -1,0 +1,156 @@
+.project-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  font-family: inherit;
+}
+
+.project-menu-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.project-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(30, 41, 59, 0.85);
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  user-select: none;
+}
+
+.project-menu-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.project-menu-btn:active {
+  transform: translateY(1px);
+}
+
+.project-menu-btn:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+.project-menu-btn-danger {
+  color: #fca5a5;
+}
+
+.project-menu-btn-danger:hover {
+  background: rgba(153, 27, 27, 0.4);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+
+.project-menu-hidden-input {
+  display: none;
+}
+
+.project-menu-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 6px;
+  animation: projectMenuFadeIn 0.2s ease-out;
+}
+
+.project-menu-banner.banner-info,
+.project-menu-banner.banner-success {
+  background: rgba(12, 74, 110, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #e0f2fe;
+}
+
+.project-menu-banner.banner-warning,
+.project-menu-banner.banner-corrupt,
+.project-menu-banner.banner-newer-version,
+.project-menu-banner.banner-quota-error {
+  background: rgba(120, 53, 15, 0.9);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fef3c7;
+}
+
+.project-menu-banner.banner-error {
+  background: rgba(127, 29, 29, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fee2e2;
+}
+
+.project-menu-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.project-menu-banner-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.project-menu-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.project-menu-confirm-dialog {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  padding: 12px;
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 260px;
+}
+
+.project-menu-confirm-text {
+  font-size: 13px;
+  color: #e2e8f0;
+}
+
+.project-menu-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@keyframes projectMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
