@@ -18,6 +18,9 @@ import {
 } from './contracts'
 import type {
   BrickDef,
+  ExecutionFrame,
+  SerializedThread,
+  ThreadStatus,
   Expr,
   Fields,
   HatOpcode,
@@ -47,21 +50,7 @@ export interface RuntimeLifecycle {
   stopAll: ((runtime: RuntimeApi) => void)[]
 }
 
-export type ThreadStatus = 'running' | 'yield' | 'yield_tick' | 'done'
-
-interface ExecutionFrame {
-  statements: Stmt[]
-  pc: number
-  isProcedure?: boolean
-  proccode?: string
-  params?: Record<string, Value>
-  warp?: boolean
-  isLoop?: boolean
-  loopType?: 'repeat' | 'forever' | 'repeat_until' | 'while'
-  loopTimesRemaining?: number
-  loopCondition?: Expr
-  stmtMemory?: Record<string, unknown>
-}
+export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
 
 export class Thread implements ThreadHandle {
   readonly id: number
@@ -110,6 +99,75 @@ export class Runtime implements RuntimeApi {
     this.world = world
     this.primitives = primitives
     this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [] }
+    if (this.world.threads && this.world.threads.length > 0) {
+      this.restoreThreadsFromWorld()
+    } else {
+      this.syncThreadsToWorld()
+    }
+  }
+
+  syncThreadsToWorld(): void {
+    this.world.threads = this._threads.map((t) => ({
+      id: t.id,
+      targetId: t.target.id,
+      scriptId: t.script?.id,
+      done: t.done,
+      status: t.status,
+      stack: t.stack.map((frame) => ({
+        statements: [...frame.statements],
+        pc: frame.pc,
+        isProcedure: frame.isProcedure,
+        proccode: frame.proccode,
+        params: frame.params ? { ...frame.params } : undefined,
+        warp: frame.warp,
+        isLoop: frame.isLoop,
+        loopType: frame.loopType,
+        loopTimesRemaining: frame.loopTimesRemaining,
+        loopCondition: frame.loopCondition,
+        stmtMemory: frame.stmtMemory ? { ...frame.stmtMemory } : undefined,
+      })),
+      warpOpCount: t.warpOpCount,
+      isStackClick: t.isStackClick,
+    }))
+  }
+
+  restoreThreadsFromWorld(): void {
+    if (!this.world.threads) return
+    const allTargets = [this.world.stage, ...this.world.targets]
+    const targetMap = new Map<string, Target>(allTargets.map((t) => [t.id, t]))
+    this._threads = []
+    let maxId = 0
+    for (const st of this.world.threads) {
+      if (st.id > maxId) maxId = st.id
+      const target = targetMap.get(st.targetId)
+      if (!target) continue
+      const brick = this.world.bricks[target.brickId]
+      const script = brick?.program.scripts.find((s) => s.id === st.scriptId)
+      const thread = new Thread(st.id, target, script, st.isStackClick)
+      thread.done = st.done
+      thread.status = st.status
+      thread.stack = st.stack.map((frame) => ({
+        statements: [...frame.statements],
+        pc: frame.pc,
+        isProcedure: frame.isProcedure,
+        proccode: frame.proccode,
+        params: frame.params ? { ...frame.params } : undefined,
+        warp: frame.warp,
+        isLoop: frame.isLoop,
+        loopType: frame.loopType,
+        loopTimesRemaining: frame.loopTimesRemaining,
+        loopCondition: frame.loopCondition,
+        stmtMemory: frame.stmtMemory ? { ...frame.stmtMemory } : undefined,
+      }))
+      thread.warpOpCount = st.warpOpCount
+      this._threads.push(thread)
+    }
+    this._nextThreadId = Math.max(this._nextThreadId, maxId + 1)
+  }
+
+  restoreWorld(world: World): void {
+    (this as { world: World }).world = world
+    this.restoreThreadsFromWorld()
   }
 
   nowMs(): number {
@@ -164,6 +222,7 @@ export class Runtime implements RuntimeApi {
         thread.status = 'done'
       }
     }
+    this.syncThreadsToWorld()
   }
 
   stopAll(): void {
@@ -179,6 +238,7 @@ export class Runtime implements RuntimeApi {
     }
     this.emit({ kind: 'stopSounds' })
     for (const hook of this.lifecycle.stopAll) hook(this)
+    this.syncThreadsToWorld()
   }
 
   stop(): void {
@@ -223,6 +283,7 @@ export class Runtime implements RuntimeApi {
   startStack(target: Target, script: Script): ThreadHandle {
     const thread = new Thread(this._nextThreadId++, target, script, true)
     this._threads.push(thread)
+    this.syncThreadsToWorld()
     return thread
   }
 
@@ -317,6 +378,7 @@ export class Runtime implements RuntimeApi {
 
     this.cleanDoneThreads()
     this.world.tick++
+    this.syncThreadsToWorld()
   }
 
   private hasRunnableThreads(): boolean {
@@ -863,7 +925,7 @@ export class Runtime implements RuntimeApi {
 
       if (stmt.opcode === 'event_broadcastandwait') {
         frame.stmtMemory = frame.stmtMemory ?? {}
-        if (!frame.stmtMemory.waitingThreads) {
+        if (!frame.stmtMemory.waitingThreadIds && !frame.stmtMemory.waitingThreads) {
           let msg = ''
           if (stmt.inputs?.BROADCAST_INPUT) {
             msg = toString(
@@ -881,13 +943,15 @@ export class Runtime implements RuntimeApi {
             frame.pc++
             continue
           }
-          frame.stmtMemory.waitingThreads = receivers
+          frame.stmtMemory.waitingThreadIds = receivers.map((r) => r.id)
           thread.status = 'yield'
           return
         }
 
-        const waiting = frame.stmtMemory.waitingThreads as ThreadHandle[]
-        const stillActive = waiting.some((t) => !t.done && this._threads.includes(t as Thread))
+        const waitingIds = (frame.stmtMemory.waitingThreadIds ??
+          (frame.stmtMemory.waitingThreads as ThreadHandle[] | undefined)?.map((t) => t.id) ??
+          []) as number[]
+        const stillActive = this._threads.some((t) => waitingIds.includes(t.id) && !t.done)
         if (stillActive) {
           thread.status = 'yield'
           return
