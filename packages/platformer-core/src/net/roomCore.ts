@@ -141,6 +141,14 @@ export class RoomCore {
     return { settings: { ...this.settings }, savedLevel: this.savedLevel, banned: [...this.banned] }
   }
 
+  /** Server-only: a verified explicit invitation restores this identity alone. Never called by a client message. */
+  allowIdentity(key: string): boolean {
+    if (!key || !this.banned.delete(key)) return false
+    this.metaDirty = true
+    this.broadcastSettings()
+    return true
+  }
+
   get playerCount(): number {
     let n = 0
     for (const c of this.clients.values()) if (c.hello) n++

@@ -21,8 +21,10 @@ export interface ClassroomEnv {
  *   now denied; an unavailable permission check closes them (fail closed).
  * - `revocation`: the named session(s) lost access (logout, password change or
  *   reset, suspension, member removal). Rooms close those sockets immediately.
+ * - `invitation`: an explicit resend or newly added membership restores just the
+ *   named student's room admission, after the room rechecks current membership.
  */
-export type ClassroomAccessChangeKind = 'metadata' | 'membership' | 'revocation';
+export type ClassroomAccessChangeKind = 'metadata' | 'membership' | 'revocation' | 'invitation';
 export type ClassroomAccessChange = { classId?: string; worldId?: string; userId?: string; reason: string; change: ClassroomAccessChangeKind };
 export type ClassroomHandlerOptions = {
   onAccessChanged?: (event: ClassroomAccessChange) => Promise<void>;
@@ -353,9 +355,9 @@ export class ClassroomService {
   /**
    * Replaces the invitees of the caller's members-only world. Every id must be an active student of the owner's
    * class other than the owner; one to WORLD_MEMBER_LIMIT of them. Validation completes before the set is touched,
-   * so a refused list changes nothing. Returns the resulting member ids.
+   * so a refused list changes nothing. Returns the resulting ids and the newly added invitees.
    */
-  async replaceMembers(caller: Caller, worldId: string, members: unknown): Promise<string[]> {
+  async replaceMembers(caller: Caller, worldId: string, members: unknown): Promise<{ ids: string[]; added: string[] }> {
     if (!Array.isArray(members) || members.some(id => typeof id !== 'string' || !uuid(id))) fail(400, 'invalid_input', 'members must be a list of student ids.');
     const ids = [...new Set(members as string[])];
     if (ids.includes(caller.id)) fail(400, 'invalid_member', 'You already own this world.');
@@ -370,7 +372,7 @@ export class ClassroomService {
     const added = ids.filter(id => !existing.has(id));
     if (removed.length) await this.remove('world_members', `world_id=eq.${worldId}&user_id=in.(${removed.join(',')})`);
     if (added.length) await this.request('/rest/v1/brick_world_members?on_conflict=world_id,user_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(added.map(user_id => ({ world_id: worldId, user_id, ...newInviteState() }))) });
-    return ids;
+    return { ids, added };
   }
   /** Metadata only, with current membership/class/owner rules rechecked in batches. No documents or room presence. */
   async listInvites(caller: Caller, inviteId?: string): Promise<ClassroomInvite[]> {
@@ -856,7 +858,12 @@ async function route(request: Request, service: ClassroomService, path: string[]
     // Personal worlds belong to their owner: classmates and the teacher may look (and edit live when shared with
     // editing), but renaming, restoring and recovery history stay with the owner. Class/group worlds keep teacher control.
     const controls = access.isOwner || (world.kind !== 'personal' && caller.role === 'teacher');
-    if (path[2] === 'invites' && path.length === 3 && method === 'POST') return json({ invites: await service.resendInvites(caller, world, await body(request)) });
+    if (path[2] === 'invites' && path.length === 3 && method === 'POST') {
+      const input = await body(request);
+      const invites = await service.resendInvites(caller, world, input);
+      for (const userId of new Set(input.userIds as string[])) await options.onAccessChanged?.({ worldId: world.id, userId, reason: 'invite_resent', change: 'invitation' });
+      return json({ invites });
+    }
     if (path.length === 2 && method === 'GET') return json({ world: accessView(access, caller, true) });
     if (path[2] === 'sharing' && path.length === 3 && method === 'PATCH') {
       if (caller.role !== 'student') fail(403, 'student_required', 'Only students share their own worlds with the class.');
@@ -870,8 +877,11 @@ async function route(request: Request, service: ClassroomService, path: string[]
       // Invitees exist only while the world is members-only: a given list replaces the set (validated first, so a
       // refused list changes nothing); an omitted list keeps the current invitees; other visibilities clear them.
       let members: WorldMemberSummary[] | undefined;
+      let added: string[] = [];
       if (input.visibility === 'members') {
-        const ids = input.members === undefined ? (await service.membersOf([world.id])).get(world.id)!.map(member => member.id) : await service.replaceMembers(caller, world.id, input.members);
+        const replacement = input.members === undefined ? { ids: (await service.membersOf([world.id])).get(world.id)!.map(member => member.id), added: [] } : await service.replaceMembers(caller, world.id, input.members);
+        const { ids } = replacement;
+        added = replacement.added;
         if (!ids.length) fail(400, 'invalid_input', 'Pick at least one classmate.');
       }
       const updated = (await service.patch('worlds', `id=eq.${world.id}&owner_id=eq.${caller.id}&select=${WORLD_FIELDS}`, {
@@ -883,6 +893,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       await service.audit(caller, sharing ? 'share_world' : 'unshare_world', cls.id, world.id);
       // Live sockets re-authorize in place: unsharing, removing editing or dropping an invitee closes them (the owner stays).
       await options.onAccessChanged?.({ worldId: world.id, reason: 'sharing_updated', change: 'membership' });
+      for (const userId of added) await options.onAccessChanged?.({ worldId: world.id, userId, reason: 'invite_added', change: 'invitation' });
       return json({ world: worldView(updated, { ...ownView(caller, false), members }) });
     }
     if (path[2] === 'visibility' && path.length === 3 && method === 'PATCH') {
@@ -942,6 +953,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     if (path[2] === 'checkpoints' && method === 'GET') return json({ checkpoints: (await service.rows('checkpoints', `world_id=eq.${world.id}&select=id,revision,created_at,reason&order=created_at.desc&limit=30`)).map(cp => ({ id: cp.id, revision: cp.revision, createdAt: cp.created_at, reason: cp.reason })) });
     if (path[2] === 'members') {
       if (world.kind === 'personal') fail(400, 'private_world', 'Personal worlds do not have group members.');
+      let addedUserId: string | undefined;
       if (method !== 'GET') {
         await service.classFor(caller, world.class_id, true);
         if (world.kind !== 'group') fail(400, 'class_world', 'Class worlds include the entire class. Use a group world for selected members.');
@@ -950,6 +962,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
           if (!uuid(input.userId)) fail(400, 'invalid_input', 'Choose a student.');
           const student = (await service.rows('students', `user_id=eq.${input.userId}&class_id=eq.${world.class_id}&limit=1`))[0];
           if (!student || student.suspended) fail(400, 'invalid_member', 'Choose an active student in this class.');
+          if (!(await service.rows('world_members', `world_id=eq.${world.id}&user_id=eq.${student.user_id}&limit=1`)).length) addedUserId = student.user_id;
           await service.request('/rest/v1/brick_world_members?on_conflict=world_id,user_id', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ world_id: world.id, user_id: student.user_id }) });
         } else if (method === 'DELETE' && uuid(path[3])) {
           await service.remove('world_members', `world_id=eq.${world.id}&user_id=eq.${path[3]}`);
@@ -957,6 +970,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
         } else fail(405, 'method_not_allowed', 'Unsupported member action.');
       }
       if (method !== 'GET') await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id, userId: method === 'DELETE' ? path[3] : undefined, reason: 'members_updated', change: method === 'DELETE' ? 'revocation' : 'membership' });
+      if (addedUserId) await options.onAccessChanged?.({ worldId: world.id, classId: world.class_id, userId: addedUserId, reason: 'invite_added', change: 'invitation' });
       const students = await service.rows('students', `class_id=eq.${world.class_id}&order=username.asc`);
       const members = world.kind === 'group' ? await service.rows('world_members', `world_id=eq.${world.id}`) : students.map(s => ({ user_id: s.user_id }));
       return json({ members: students.filter(s => members.some(m => m.user_id === s.user_id)).map(s => ({ id: s.user_id, username: s.username, ...(caller.role === 'teacher' ? { rosterName: s.roster_name } : {}) })) });
@@ -1005,6 +1019,23 @@ export async function revalidateClassroomWorldAccessBatch(env: ClassroomEnv, ide
 }
 export async function reauthorizeClassroomSocket(env: ClassroomEnv, access: ClassroomSessionIdentity & { worldId: string }) {
   return revalidateClassroomWorldAccess(env, access, access.worldId);
+}
+
+/** Internal invitation processing only. This removes a room-local ban; connect still authenticates the session. */
+export async function hasCurrentClassroomMembership(env: ClassroomEnv, worldId: string, userId: string): Promise<boolean> {
+  if (!uuid(worldId) || !uuid(userId)) return false;
+  const service = new ClassroomService(env);
+  const student = (await service.rows('students', `user_id=eq.${userId}&limit=1`))[0];
+  if (!student || student.suspended || student.reset_required) return false;
+  const caller: Caller = { id: userId, username: student.username, rosterName: student.roster_name, role: 'student',
+    classId: student.class_id, resetRequired: false, authVersion: student.auth_version, sessionId: '', token: '' };
+  try {
+    const { world, isOwner } = await service.worldAccess(caller, worldId, false, true);
+    return !isOwner && (world.kind === 'group' || world.kind === 'personal' && world.class_visibility === 'members');
+  } catch (error) {
+    if (error instanceof ClassroomHttpError && error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429) return false;
+    throw error;
+  }
 }
 
 /** A stored world as trusted DOs consume it; every stored document was validated on write. */

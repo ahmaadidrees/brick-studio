@@ -147,18 +147,22 @@ describe('live access-change kinds', () => {
   const teacher: Caller = { id: teacherId, username: 'Teacher', rosterName: 'Teacher', role: 'teacher', resetRequired: false, authVersion: 0, sessionId: sid, token };
   function routesAs(role: Caller) {
     const events: ClassroomAccessChange[] = [];
+    let hasMember = false;
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(role);
     vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
     vi.spyOn(ClassroomService.prototype, 'rows').mockImplementation(async table =>
       table === 'worlds' ? [world] : table === 'classes' ? [cls] : table === 'students' ? [student]
-        : table === 'checkpoints' ? [{ id: checkpointId, world_id: worldId, document: world.document, title: 'Bridge v1' }] : []);
+        : table === 'checkpoints' ? [{ id: checkpointId, world_id: worldId, document: world.document, title: 'Bridge v1' }]
+          : table === 'world_members' && hasMember ? [{ world_id: worldId, user_id: studentId }] : []);
     vi.spyOn(ClassroomService.prototype, 'rpc').mockImplementation(async (name, input) =>
       name === 'commit_world' ? { ...world, revision: world.revision + 1, title: input.p_title ?? world.title } : true);
     vi.spyOn(ClassroomService.prototype, 'patch').mockImplementation(async (table, _filter, data) => [{ ...(table === 'classes' ? cls : student), ...data }]);
     vi.spyOn(ClassroomService.prototype, 'insert').mockResolvedValue([]);
-    vi.spyOn(ClassroomService.prototype, 'remove').mockResolvedValue(null);
-    vi.spyOn(ClassroomService.prototype, 'request').mockImplementation(async path =>
-      path.startsWith('/auth/v1/token') ? { access_token: token, refresh_token: 'refresh', expires_in: 3600 } : path === '/auth/v1/user' ? { id: role.id } : {});
+    vi.spyOn(ClassroomService.prototype, 'remove').mockImplementation(async table => { if (table === 'world_members') hasMember = false; return null; });
+    vi.spyOn(ClassroomService.prototype, 'request').mockImplementation(async path => {
+      if (path.startsWith('/rest/v1/brick_world_members')) hasMember = true;
+      return path.startsWith('/auth/v1/token') ? { access_token: token, refresh_token: 'refresh', expires_in: 3600 } : path === '/auth/v1/user' ? { id: role.id } : {};
+    });
     const call = async (method: string, path: string, body?: unknown) => {
       const response = await handleClassroomRequest(new Request(`https://worker.test/classroom/${path}`, {
         method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body),
@@ -174,8 +178,10 @@ describe('live access-change kinds', () => {
     expect(await call('PUT', `worlds/${worldId}`, { expectedRevision: 4, document: world.document })).toEqual({ worldId, classId, reason: 'world_saved', change: 'metadata' });
     expect(await call('POST', `worlds/${worldId}/restore`, { checkpointId, expectedRevision: 4 })).toEqual({ worldId, classId, reason: 'world_restored', change: 'metadata' });
     expect(await call('PATCH', `classes/${classId}`, { collaborationOpen: false })).toEqual({ classId, reason: 'class_updated', change: 'membership' });
+    expect(await call('POST', `worlds/${worldId}/members`, { userId: studentId })).toEqual({ worldId, classId, userId: studentId, reason: 'invite_added', change: 'invitation' });
     expect(await call('POST', `worlds/${worldId}/members`, { userId: studentId })).toEqual({ worldId, classId, userId: undefined, reason: 'members_updated', change: 'membership' });
     expect(await call('DELETE', `worlds/${worldId}/members/${studentId}`)).toEqual({ worldId, classId, userId: studentId, reason: 'members_updated', change: 'revocation' });
+    expect(await call('POST', `worlds/${worldId}/members`, { userId: studentId })).toEqual({ worldId, classId, userId: studentId, reason: 'invite_added', change: 'invitation' });
     expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { rosterName: 'Sam R.' })).toEqual({ classId, userId: studentId, reason: 'student_updated', change: 'membership' });
     expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { suspended: true })).toEqual({ classId, userId: studentId, reason: 'student_updated', change: 'revocation' });
     expect(await call('PATCH', `classes/${classId}/students/${studentId}`, { temporaryPassword: 'temporary-pass' })).toEqual({ classId, userId: studentId, reason: 'password_reset', change: 'revocation' });

@@ -1208,6 +1208,12 @@ describe("classroom invalidation", () => {
     await applied(second.edit("after-removal", 4), 3, second, third);
     expect((await room.state(second.access)).players.map((player) => player.playerId).sort())
       .toEqual([second.access.userId, third.access.userId].sort());
+    // A valid explicit re-add admits the removed account again; 3D has no persistent room-local ban.
+    db.members.push({ world_id: world.id, user_id: first.access.userId });
+    expect((await room.invalidate({ reason: "invite_added", change: "invitation", userId: first.access.userId })).status).toBe(200);
+    const invitedAgain = await join(room, studentAccess(0, world.id));
+    expect(invitedAgain.welcome).toMatchObject({ revision: 3 });
+    await saveNow(invitedAgain, db);
   });
 
   it("a password or session revocation closes only that user's sockets", async () => {

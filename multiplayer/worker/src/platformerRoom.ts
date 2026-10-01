@@ -9,6 +9,7 @@ import {
   ClassroomHttpError,
   commitClassroomWorld,
   loadClassroomLevel,
+  hasCurrentClassroomMembership,
   revalidateClassroomWorldAccess,
   type ClassroomEnv,
   type ClassroomSessionIdentity,
@@ -528,7 +529,7 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
     let input: { userId?: unknown; change?: unknown } = {};
     try { input = await request.json() as typeof input; } catch { /* a missing kind revokes, below */ }
     const userId = typeof input.userId === "string" ? input.userId : undefined;
-    const change = input.change === "metadata" || input.change === "membership" ? input.change : "revocation";
+    const change = input.change === "metadata" || input.change === "membership" || input.change === "invitation" ? input.change : "revocation";
     if (change === "metadata") {
       // Saved outside this room (the 2D builder, a restore, a rename): take the newer copy unless edits here wait.
       if (!this.core?.dirty && !record.unsaved && !this.commitInFlight) {
@@ -539,10 +540,19 @@ export class PlatformerRoom extends DurableObject<PlatformerRoomEnv> {
       }
       return json({ ok: true });
     }
+    if (change === "invitation") {
+      if (!userId) return json({ error: "invalid_invitation" }, 400);
+      try {
+        if (await hasCurrentClassroomMembership(this.env, record.classroomWorldId!, userId)) {
+          this.ensureCore().allowIdentity(userId);
+          await this.afterChange();
+        }
+      } catch { return json({ error: "reauthorization_failed" }, 503); }
+    }
     for (const socket of this.openSockets()) {
       const attachment = this.attachment(socket);
       if (!attachment?.access || (userId && attachment.access.userId !== userId)) continue;
-      if (change === "membership") await this.reauthorize(socket, attachment, false);
+      if (change === "membership" || change === "invitation") await this.reauthorize(socket, attachment, false);
       else this.ensureCore().refuse(socket as unknown as RoomSocket, "access", "Your classroom access changed.");
     }
     return json({ ok: true });

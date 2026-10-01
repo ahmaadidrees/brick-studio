@@ -92,7 +92,8 @@ describe('quiet invites: sharing a personal world with chosen classmates', () =>
     expect(kept.body.world).toMatchObject({ classCanEdit: false, members: [{ id: benId, displayName: 'Ben K.' }] });
     expect(members()).toEqual([benId]);
     expect(db.audit_events.map(row => row.action)).toEqual(['share_world', 'share_world', 'share_world']);
-    expect(events).toEqual(Array(3).fill({ worldId: treehouse, reason: 'sharing_updated', change: 'membership' }));
+    expect(events.filter(event => event.change === 'membership')).toEqual(Array(3).fill({ worldId: treehouse, reason: 'sharing_updated', change: 'membership' }));
+    expect(events.filter(event => event.change === 'invitation')).toEqual([chloeId, benId].map(userId => ({ worldId: treehouse, userId, reason: 'invite_added', change: 'invitation' })));
   });
   it('unsharing, or widening to the whole class, removes the invitees', async () => {
     const unshared = backend(ava, { worlds: [invited()], members: benInvited() });
@@ -214,8 +215,8 @@ describe('durable recipient invitation state', () => {
     expect(db.world_members.find(row => row.user_id === benId)).toMatchObject({ seen_at: null, joined_at: null });
     expect(db.world_members.find(row => row.user_id === benId)!.invite_id).not.toBe(original.invite_id);
     expect(db.world_members.find(row => row.user_id === chloeId)).toEqual(added);
-    expect(events).toHaveLength(3);
-    expect(events.every(event => event.change === 'membership')).toBe(true);
+    expect(events.filter(event => event.change === 'membership')).toHaveLength(3);
+    expect(events.filter(event => event.change === 'invitation')).toEqual([chloeId, benId].map(userId => ({ worldId: treehouse, userId, reason: 'invite_added', change: 'invitation' })));
   });
   it('lists only the current recipient with current access and format using batched metadata reads', async () => {
     const second = '44444444-4444-4444-8444-00000000000b';
@@ -273,7 +274,7 @@ describe('durable recipient invitation state', () => {
     expect(result.body.invites[0].invitedAt).not.toBe(arrival);
     expect(db.world_members[1]).toEqual(untouched);
     expect(db.world_members).toHaveLength(2);
-    expect(events).toEqual([]); // resend does not change the access grant
+    expect(events).toEqual([{ worldId: treehouse, userId: benId, reason: 'invite_resent', change: 'invitation' }]);
     expect(db.audit_events.map(row => row.action)).toEqual(['resend_world_invites']);
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
     expect((await call('PATCH', `invites/${old.invite_id}`, { joined: true })).status).toBe(404);

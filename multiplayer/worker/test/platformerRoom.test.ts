@@ -216,6 +216,67 @@ describe("2D class levels", () => {
     expect(await teacher.inbox.next("error")).toMatchObject({ code: "access" });
   });
 
+  it("keeps persisted kicks until a valid targeted invitation, then admits only that student", async () => {
+    const { db, worldId, studentAccess } = classLevel();
+    const ticket = await (await request(`/classroom/worlds/${worldId}/platformer-ticket`, { method: "POST", headers: { authorization: "Bearer teacher" } })).json<{ ticket: string }>();
+    const stub = await patchRoomEnv(worldId);
+    const host = await connect(`/platformer/worlds/${worldId}/connect?ticket=${encodeURIComponent(ticket.ticket)}`);
+    await hello(host, "Teacher", "ignored");
+    const student = async (index: number) => {
+      const response = await stub.fetch("https://platformer.internal/connect", { headers: { Upgrade: "websocket", "x-platformer-access": JSON.stringify({ kind: "classroom", access: studentAccess(index, worldId) }) } });
+      expect(response.status).toBe(101);
+      const socket = response.webSocket!;
+      sockets.push(socket);
+      const inbox = new Inbox(socket);
+      socket.accept();
+      return { socket, inbox };
+    };
+    const first = await student(0), second = await student(1);
+    const firstWelcome = await hello(first, "First", "forged"), secondWelcome = await hello(second, "Second", "forged");
+    send(host.socket, { type: "settings", buildLocked: true });
+    await first.inbox.next("settings");
+    send(host.socket, { type: "kick", num: firstWelcome.you });
+    expect(await first.inbox.next("error")).toMatchObject({ code: "kicked" });
+    send(host.socket, { type: "kick", num: secondWelcome.you });
+    expect(await second.inbox.next("error")).toMatchObject({ code: "kicked" });
+    const firstId = db.students[0].user_id, secondId = db.students[1].user_id;
+    type Stored = { meta: { banned: string[]; settings: { buildLocked: boolean; closed: boolean } } };
+    await vi.waitFor(async () => {
+      const stored = await runInDurableObject(stub, async (_room: PlatformerRoom, state: DurableObjectState) => state.storage.get<Stored>("room"));
+      expect(stored!.meta.banned.sort()).toEqual([firstId, secondId].sort());
+    });
+    // Rebuild from durable room metadata, just as a hibernated room does.
+    await runInDurableObject(stub, async (instance: PlatformerRoom, state: DurableObjectState) => {
+      const internal = instance as unknown as { record: unknown; core: unknown };
+      internal.record = await state.storage.get("room");
+      internal.core = null;
+    });
+    const denied = await student(0);
+    send(denied.socket, { type: "hello", v: PROTOCOL, name: "First", key: "new-forged-key" });
+    expect(await denied.inbox.next("error")).toMatchObject({ code: "kicked" });
+    const pushed = (change: string) => stub.fetch("https://platformer.internal/internal/classroom-invalidate", { method: "POST", body: JSON.stringify({ change, userId: firstId }) });
+    // Ordinary changes and stale invitations never undo moderation or grant membership.
+    db.members = db.members.filter(member => member.user_id !== firstId);
+    expect((await pushed("membership")).status).toBe(200);
+    expect((await pushed("invitation")).status).toBe(200);
+    db.members.push({ world_id: worldId, user_id: firstId });
+    db.students[0].suspended = true;
+    expect((await pushed("invitation")).status).toBe(200);
+    let stored = await runInDurableObject(stub, async (_room: PlatformerRoom, state: DurableObjectState) => state.storage.get<Stored>("room"));
+    expect(stored!.meta.banned.sort()).toEqual([firstId, secondId].sort());
+    db.students[0].suspended = false;
+    expect((await pushed("invitation")).status).toBe(200);
+    stored = await runInDurableObject(stub, async (_room: PlatformerRoom, state: DurableObjectState) => state.storage.get<Stored>("room"));
+    expect(stored!.meta).toMatchObject({ banned: [secondId], settings: { buildLocked: true, closed: false } });
+    const invited = await student(0);
+    expect(await hello(invited, "First", "ignored")).toMatchObject({ host: false });
+    const stillRemoved = await student(1);
+    send(stillRemoved.socket, { type: "hello", v: PROTOCOL, name: "Second", key: "ignored" });
+    expect(await stillRemoved.inbox.next("error")).toMatchObject({ code: "kicked" });
+    send(invited.socket, edit("restored-but-locked"));
+    expect(await invited.inbox.next("reject")).toMatchObject({ reason: "locked" });
+  });
+
   it("keep 2D levels and 3D worlds apart", async () => {
     const { worldId } = classLevel();
     // A 3D live ticket for a 2D level is refused.

@@ -504,9 +504,9 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
         const userId = typeof input.userId === "string" ? input.userId : undefined;
         // A missing or unknown kind revokes: a caller that predates `change`
         // must never keep a revoked session alive.
-        const change = input.change === "metadata" || input.change === "membership" ? input.change : "revocation";
+        const change = input.change === "metadata" || input.change === "membership" || input.change === "invitation" ? input.change : "revocation";
         if (change === "metadata") return this.refreshClassroomWorld(input);
-        if (change === "membership") {
+        if (change === "membership" || change === "invitation") {
           const checked = await this.reauthorizeClassroomSockets(userId);
           await this.persist();
           this.broadcastPlayers();

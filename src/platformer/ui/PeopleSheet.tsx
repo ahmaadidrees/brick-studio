@@ -32,7 +32,10 @@ function RoomSection({ session, onInvite, inviteLink, onInviteMore }: { session:
   const host = session.isHost
   const settings = session.settings
   const kick = (pl: PlayerInfo) => {
-    if (confirm(`Remove ${pl.name} from the room? They can’t come back unless you let removed players back in.`)) room.kick(pl.num)
+    const message = session.classroomRoom
+      ? `Remove ${pl.name} from the room? They can come back after you send them a new invite or let removed players back in.`
+      : `Remove ${pl.name} from the room? They can’t come back unless you let removed players back in.`
+    if (confirm(message)) room.kick(pl.num)
   }
   return (
     <section className="p2d-menu-section" aria-label="Room">
@@ -108,6 +111,7 @@ function RoomSection({ session, onInvite, inviteLink, onInviteMore }: { session:
               Let removed players back in ({session.bannedCount})
             </Button>
           )}
+          {session.classroomRoom && session.bannedCount > 0 && onInviteMore && <p className="p2d-note">To bring back one classmate, open Invite more and choose Invite again for them.</p>}
           {session.classroomRoom && <p className="p2d-note">This class world saves by itself; restore earlier versions from My worlds.</p>}
         </>
       ) : !session.roomCanBuild ? (

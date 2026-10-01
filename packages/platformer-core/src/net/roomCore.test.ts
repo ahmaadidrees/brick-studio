@@ -222,6 +222,29 @@ describe('RoomCore', () => {
     expect(r.core.meta().banned).toEqual([])
   })
 
+  it('restores just the explicitly invited identity after reconstructing persisted bans, keeping room settings', () => {
+    const r = room();
+    const host = r.join('Host', { host: true });
+    const first = r.join('First', { key: 'first' });
+    const second = r.join('Second', { key: 'second' });
+    r.send(host, { type: 'settings', buildLocked: true });
+    r.send(host, { type: 'kick', num: first.last('welcome')!.you });
+    r.send(host, { type: 'kick', num: second.last('welcome')!.you });
+    const stored = r.core.meta();
+    const restarted = room(stored);
+    expect(restarted.join('First', { key: 'first' }).last('error')?.code).toBe('kicked');
+    expect(restarted.core.allowIdentity('first')).toBe(true);
+    expect(restarted.core.allowIdentity('first')).toBe(false);
+    expect(restarted.core.meta()).toEqual({ ...stored, banned: ['second'] });
+    expect(restarted.core.metaDirty).toBe(true);
+    expect(restarted.join('First', { key: 'first' }).last('welcome')).toBeDefined();
+    expect(restarted.join('Second', { key: 'second' }).last('error')?.code).toBe('kicked');
+    const closed = room({ ...stored, settings: { ...stored.settings, closed: true } });
+    closed.core.allowIdentity('first');
+    expect(closed.core.isClosed).toBe(true);
+    expect(closed.join('First', { key: 'first' }).last('error')?.code).toBe('closed');
+  });
+
   it('saves the level and restores it for everyone', () => {
     const r = room()
     const teacher = r.join('Teacher', { host: true })
