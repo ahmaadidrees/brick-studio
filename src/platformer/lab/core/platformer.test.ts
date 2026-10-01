@@ -461,3 +461,13 @@ describe('replay', () => {
     expect(Math.max(...a.map((p) => p[1]))).toBeGreaterThan(70)
   })
 })
+
+describe('pacing', () => {
+  it('a forever loop of Platformer blocks runs once per tick, like Scratch motion blocks', () => {
+    // No gravity, no solids: the script alone changes y speed, so after N ticks y speed is exactly -N.
+    const pacer = brick('p', 'Pacer', 20, 20, [onFlag(stmt('control_forever', {}, {}, [[stmt('platformer_changespeed', { AXIS: 'y' }, { SPEED: lit(-1) })]]))])
+    const rt = play(level([pacer], [{ id: 'p1', brickId: 'p', x: 100, y: 300 }]))
+    run(rt, 5)
+    expect(copyOf(rt, 'p1').body!.vy).toBe(-5)
+  })
+})

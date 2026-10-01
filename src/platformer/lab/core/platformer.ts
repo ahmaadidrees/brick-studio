@@ -44,16 +44,27 @@ function setSpeed(ctx: PrimitiveCtx, relative: boolean): void {
   const key = axis === 'x' ? 'vx' : 'vy'
   const next = relative ? body[key] + n : n
   if (Number.isFinite(next)) body[key] = next
+  paceLikeMotion(ctx)
+}
+
+/**
+ * Platformer blocks change how a visible brick moves, so they count as a visible change, like Scratch motion blocks:
+ * a non-warp `forever { change y speed by -1 }` then runs once per tick instead of until the op budget runs out (F04).
+ */
+function paceLikeMotion(ctx: PrimitiveCtx): void {
+  if (ctx.target.visible) ctx.runtime.requestRedraw()
 }
 
 export const platformerPrimitives: PrimitiveTable = {
   platformer_setgravity(ctx) {
     if (ctx.target.isStage) return
     bodyOf(ctx.target).gravity = ctx.field('GRAVITY') !== 'off'
+    paceLikeMotion(ctx)
   },
   platformer_setsolid(ctx) {
     if (ctx.target.isStage) return
     bodyOf(ctx.target).solid = ctx.field('SOLID') !== 'off'
+    paceLikeMotion(ctx)
   },
   platformer_setspeed: (ctx) => setSpeed(ctx, false),
   platformer_changespeed: (ctx) => setSpeed(ctx, true),
