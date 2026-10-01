@@ -29,6 +29,7 @@ export interface EditorContext {
   getSounds?: () => string[]
   getBackdrops?: () => string[]
   getKeys?: () => MenuOption[]
+  isStage?: boolean
 }
 
 export const DEFAULT_KEYS: readonly MenuOption[] = [
