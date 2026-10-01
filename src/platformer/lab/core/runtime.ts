@@ -317,7 +317,11 @@ export class Runtime implements RuntimeApi {
             const existing = this._threads[existingIndex]
             existing.done = true
             existing.status = 'done'
-            this._threads.splice(existingIndex, 1)
+            // H05/F14: the restarted thread takes the old thread's slot in the order.
+            const replacement = new Thread(this._nextThreadId++, target, script, false)
+            this._threads[existingIndex] = replacement
+            started.push(replacement)
+            continue
           } else {
             // H02, H07: do not restart existing running thread
             continue
@@ -361,11 +365,9 @@ export class Runtime implements RuntimeApi {
         if (thread.done || thread.status !== 'running') continue
 
         this.stepThread(thread)
-
-        if (this._tickOps >= this.opBudget) {
-          break
-        }
       }
+      // The op budget is checked only here, between sweeps (F02): every runnable thread
+      // gets a turn in each sweep, so a heavy warp thread cannot starve its siblings.
 
       this.cleanDoneThreads()
 
@@ -462,6 +464,10 @@ export class Runtime implements RuntimeApi {
       for (const script of brick.program.scripts) {
         if (script.hat.opcode !== 'event_whengreaterthan') continue
 
+        // H08: Scratch does not evaluate an edge hat while its handler is still running, so
+        // the stored edge state stays as it was when the handler started.
+        if (this._threads.some((t) => t.target === target && t.script === script && !t.done)) continue
+
         const menu = script.hat.fields?.WHENGREATERTHANMENU ?? 'TIMER'
         let currentVal = 0
         if (menu === 'TIMER') {
@@ -478,11 +484,8 @@ export class Runtime implements RuntimeApi {
 
         if (!wasTrue && isTrue) {
           // Edge transition false -> true!
-          const existing = this._threads.find((t) => t.target === target && t.script === script && !t.done)
-          if (!existing) {
-            const thread = new Thread(this._nextThreadId++, target, script, false)
-            this._threads.push(thread)
-          }
+          const thread = new Thread(this._nextThreadId++, target, script, false)
+          this._threads.push(thread)
         }
       }
     }
@@ -791,8 +794,13 @@ export class Runtime implements RuntimeApi {
           )
           frame.stmtMemory.targetTime = this.nowMs() + duration * 1000
           this.requestRedraw()
-          thread.status = 'yield'
-          return
+          // F08/F11: in warp, Scratch revisits an ordinary yield at once, so a wait whose
+          // time is already up (wait 0) continues in the same turn. The sim clock is frozen
+          // inside a tick, so a positive wait still has to yield to the next tick.
+          if (!(thread.isWarp() && this.nowMs() >= (frame.stmtMemory.targetTime as number))) {
+            thread.status = 'yield'
+            return
+          }
         }
 
         if (this.nowMs() >= (frame.stmtMemory.targetTime as number)) {

@@ -31,7 +31,7 @@ describe('wave 3 runtime regressions', () => {
       procedures: [render],
       scripts: [
         flagScript([stmt('control_forever', {}, {}, [[stmt('procedures_call', {}, {}, undefined, { proccode: 'render' })]])], 'A'),
-        flagScript([stmt('control_forever', {}, {}, [[add('B'), stmt('control_wait', { DURATION: lit(0) })]])], 'B'),
+        flagScript([stmt('control_forever', {}, {}, [[add('B')]])], 'B'),
       ],
     })
     rt.greenFlag()
@@ -51,7 +51,7 @@ describe('wave 3 runtime regressions', () => {
       procedures: [spin],
       scripts: [
         flagScript([stmt('procedures_call', {}, {}, undefined, { proccode: 'spin' })], 'A'),
-        flagScript([stmt('control_forever', {}, {}, [[add('B'), stmt('control_wait', { DURATION: lit(0) })]])], 'B'),
+        flagScript([stmt('control_forever', {}, {}, [[add('B')]])], 'B'),
       ],
     })
     rt.greenFlag()
