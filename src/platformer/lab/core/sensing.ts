@@ -14,7 +14,7 @@
  * Loudness is 0. Username is ''. There is no `Date` and no microphone in core.
  */
 import { TICKS_PER_SECOND, TICK_MS, YIELD } from './contracts'
-import type { Primitive, PrimitiveCtx, PrimitiveTable, RuntimeApi, Target, Value, World } from './contracts'
+import type { BrickDef, Primitive, PrimitiveCtx, PrimitiveTable, RuntimeApi, Target, Value, World } from './contracts'
 import { costumeOf } from './geometry'
 import { targetsTouch, touchingEdge, touchingPoint } from './touching'
 
@@ -61,7 +61,14 @@ interface QueuedAsk extends AskPrompt {
   state: 'waiting' | 'answered'
 }
 
-let nextAskId = 1
+const askIdCounters = new WeakMap<World, number>()
+
+function getNextAskId(world: World): number {
+  const current = askIdCounters.get(world) ?? 1
+  askIdCounters.set(world, current + 1)
+  return current
+}
+
 const questions = new WeakMap<World, QueuedAsk[]>()
 
 function asks(world: World): QueuedAsk[] {
@@ -172,16 +179,23 @@ export function clearTargetQuestions(runtime: RuntimeApi, target: Target): void 
   if (next) emitAsk(runtime, next)
 }
 
+function brickNamed(world: World, name: string): BrickDef | undefined {
+  for (const brick of Object.values(world.bricks)) {
+    if (!brick.isStage && brick.name === name) return brick
+  }
+  return undefined
+}
+
 const touchingObject: Primitive = (ctx) => {
   const menu = menuString(ctx, 'TOUCHINGOBJECTMENU')
   const world = ctx.runtime.world
   if (menu === '_mouse_') return touchingPoint(world, ctx.target, world.mouse.x, world.mouse.y)
   if (menu === '_edge_') return touchingEdge(world, ctx.target)
   if (!ctx.target.visible) return false
-  const original = ctx.runtime.findOriginal(menu)
-  if (!original) return false
+  const brick = brickNamed(world, menu)
+  if (!brick) return false
   for (const other of world.targets) {
-    if (other.brickId !== original.brickId || other === ctx.target) continue
+    if (other.brickId !== brick.id || other === ctx.target) continue
     if (!other.visible || isDragged(other)) continue
     if (targetsTouch(world, ctx.target, other)) return true
   }
@@ -280,7 +294,7 @@ const askAndWait: Primitive = (ctx) => {
   if (frame.askId === undefined) {
     const showNow = !asks(world).some((item) => item.state === 'waiting')
     const item: QueuedAsk = {
-      id: nextAskId++,
+      id: getNextAskId(world),
       targetId: ctx.target.id,
       question: asText(ctx.arg('QUESTION')),
       visible: ctx.target.visible,
@@ -338,4 +352,9 @@ export const sensingPrimitives: PrimitiveTable = {
   sensing_dayssince2000: () => 0,
   sensing_username: () => '',
   sensing_userid: () => '',
+  sensing_touchingobjectmenu: (ctx) => ctx.field('TOUCHINGOBJECTMENU') || ctx.arg('TOUCHINGOBJECTMENU') || '',
+  sensing_distancetomenu: (ctx) => ctx.field('DISTANCETOMENU') || ctx.arg('DISTANCETOMENU') || '',
+  sensing_keyoptions: (ctx) => ctx.field('KEY_OPTION') || ctx.arg('KEY_OPTION') || '',
+  sensing_of_object_menu: (ctx) => ctx.field('OBJECT') || ctx.arg('OBJECT') || '',
+  sensing_currentmenu: (ctx) => ctx.field('CURRENTMENU') || ctx.arg('CURRENTMENU') || '',
 }

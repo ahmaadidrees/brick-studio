@@ -113,6 +113,21 @@ describe('sensing', () => {
     expect(run(P.sensing_touchingobject, rt, { target: a, args: { TOUCHINGOBJECTMENU: 'Missing' } })).toBe(false)
   })
 
+  it('3a · touching finds clones of a brick even without a painted original', () => {
+    const brickA = boxBrick('a', 'A', 10, 10)
+    const ghost = boxBrick('g', 'Ghost', 10, 10)
+    const a = makeTarget({ id: 'a', brickId: 'a', x: 0, y: 0 })
+    // No painted copy of Ghost in targets, only a clone
+    const world = makeWorld({ bricks: [brickA, ghost], targets: [a] })
+    const ghostClone = makeTarget({ id: 'g_clone', brickId: 'g', isClone: true, x: 0, y: 0 })
+    world.targets.push(ghostClone)
+    world.cloneCount = 1
+    const rt = fakeRuntime(world)
+    expect(run(P.sensing_touchingobject, rt, { target: a, fields: { TOUCHINGOBJECTMENU: 'Ghost' } })).toBe(true)
+    ghostClone.x = 100
+    expect(run(P.sensing_touchingobject, rt, { target: a, fields: { TOUCHINGOBJECTMENU: 'Ghost' } })).toBe(false)
+  })
+
   it('S03 · hidden asymmetry', () => {
     const brickA = boxBrick('a', 'A', 10, 10)
     const brickB = boxBrick('b', 'B', 10, 10)
@@ -424,5 +439,34 @@ describe('sensing', () => {
       warp: false,
     })
     expect(rt.notes.at(-1)).toEqual({ kind: 'ask', targetId: world.targets[0]!.id, question: '12' })
+  })
+
+  it('shadow menu primitives return field or arg string', () => {
+    const world = makeWorld()
+    const rt = fakeRuntime(world)
+    expect(run(P.sensing_touchingobjectmenu, rt, { fields: { TOUCHINGOBJECTMENU: '_mouse_' } })).toBe('_mouse_')
+    expect(run(P.sensing_touchingobjectmenu, rt, { args: { TOUCHINGOBJECTMENU: 'Sprite1' } })).toBe('Sprite1')
+    expect(run(P.sensing_distancetomenu, rt, { fields: { DISTANCETOMENU: '_mouse_' } })).toBe('_mouse_')
+    expect(run(P.sensing_distancetomenu, rt, { args: { DISTANCETOMENU: 'Sprite2' } })).toBe('Sprite2')
+    expect(run(P.sensing_keyoptions, rt, { fields: { KEY_OPTION: 'space' } })).toBe('space')
+    expect(run(P.sensing_keyoptions, rt, { args: { KEY_OPTION: 'a' } })).toBe('a')
+    expect(run(P.sensing_of_object_menu, rt, { fields: { OBJECT: '_stage_' } })).toBe('_stage_')
+    expect(run(P.sensing_of_object_menu, rt, { args: { OBJECT: 'Cat' } })).toBe('Cat')
+    expect(run(P.sensing_currentmenu, rt, { fields: { CURRENTMENU: 'YEAR' } })).toBe('YEAR')
+    expect(run(P.sensing_currentmenu, rt, { args: { CURRENTMENU: 'month' } })).toBe('month')
+  })
+
+  it('ask IDs are isolated across multiple worlds', () => {
+    const world1 = makeWorld()
+    const rt1 = fakeRuntime(world1)
+    const frame1: Record<string, unknown> = {}
+    ask(rt1, world1.targets[0]!, frame1, 'q1')
+    expect(frame1.askId).toBe(1)
+
+    const world2 = makeWorld()
+    const rt2 = fakeRuntime(world2)
+    const frame2: Record<string, unknown> = {}
+    ask(rt2, world2.targets[0]!, frame2, 'q2')
+    expect(frame2.askId).toBe(1)
   })
 })

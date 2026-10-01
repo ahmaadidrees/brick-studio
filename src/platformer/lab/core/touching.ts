@@ -10,7 +10,7 @@
  * rectangle's corners, which can be a little larger than a convex hull once rotated).
  */
 import type { Costume, StageBounds, Target, World } from './contracts'
-import { costumeOf, opaqueRect, targetBounds, transformOf, worldToCostume } from './geometry'
+import { boundsFor, costumeOf, opaqueRect, targetBounds, transformOf, worldToCostume } from './geometry'
 
 /** Integer indexes `i` whose step center `i + 0.5` lies in the closed interval [lo, hi]. */
 function centerRange(lo: number, hi: number): [number, number] {
@@ -51,9 +51,13 @@ export function opaqueAt(world: World, target: Target, wx: number, wy: number): 
  */
 export function targetsTouch(world: World, a: Target, b: Target): boolean {
   if (!a.visible || !b.visible) return false
-  const boundsA = targetBounds(world, a)
-  const boundsB = targetBounds(world, b)
-  if (!boundsA || !boundsB) return false
+  const costumeA = costumeOf(world, a)
+  const costumeB = costumeOf(world, b)
+  if (!costumeA || !costumeB) return false
+  const transformA = transformOf(a)
+  const transformB = transformOf(b)
+  const boundsA = boundsFor(transformA, costumeA)
+  const boundsB = boundsFor(transformB, costumeB)
   const overlap = intersect(boundsA, boundsB)
   if (!overlap) return false
   const [x0, x1] = centerRange(overlap.left, overlap.right)
@@ -62,7 +66,13 @@ export function targetsTouch(world: World, a: Target, b: Target): boolean {
     const x = ix + 0.5
     for (let iy = y0; iy <= y1; iy++) {
       const y = iy + 0.5
-      if (opaqueAt(world, a, x, y) && opaqueAt(world, b, x, y)) return true
+      const [cxA, cyA] = worldToCostume(transformA, costumeA, x, y)
+      if (!Number.isFinite(cxA) || !Number.isFinite(cyA)) continue
+      if (!maskHit(costumeA, Math.floor(cxA), Math.floor(cyA))) continue
+
+      const [cxB, cyB] = worldToCostume(transformB, costumeB, x, y)
+      if (!Number.isFinite(cxB) || !Number.isFinite(cyB)) continue
+      if (maskHit(costumeB, Math.floor(cxB), Math.floor(cyB))) return true
     }
   }
   return false

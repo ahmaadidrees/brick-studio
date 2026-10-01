@@ -291,4 +291,21 @@ describe('clones', () => {
     expect(rt.redraws).toBe(0)
     expect(rt.hatsStarted).toHaveLength(1)
   })
+
+  it('control_create_clone_of_menu returns the dropdown field or arg', () => {
+    const world = makeWorld()
+    const rt = fakeRuntime(world)
+    expect(
+      callPrimitive(clonePrimitives.control_create_clone_of_menu, {
+        runtime: rt,
+        fields: { CLONE_OPTION: 'Sprite1' },
+      }).result,
+    ).toBe('Sprite1')
+    expect(
+      callPrimitive(clonePrimitives.control_create_clone_of_menu, {
+        runtime: rt,
+        args: { CLONE_OPTION: 'Sprite2' },
+      }).result,
+    ).toBe('Sprite2')
+  })
 })

@@ -130,5 +130,6 @@ const deleteThisClone: Primitive = (ctx) => {
 
 export const clonePrimitives: PrimitiveTable = {
   control_create_clone_of: createCloneOf,
+  control_create_clone_of_menu: (ctx) => ctx.field('CLONE_OPTION') || ctx.arg('CLONE_OPTION') || '',
   control_delete_this_clone: deleteThisClone,
 }
