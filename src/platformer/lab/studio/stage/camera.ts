@@ -115,3 +115,58 @@ export function clampCamera(camera: Camera, bounds: StageBounds, margin = 200): 
 export function snapToGrid(value: number, step = 8): number {
   return Math.round(value / step) * step
 }
+
+/** Smallest pixels-per-step at which the whole level still counts as readable (a 960-step level needs 480 px). */
+export const READABLE_MIN_ZOOM = 0.5
+
+/** Pixels per step when the whole level fits the viewport (letterboxed: the tighter axis wins). */
+export function fitZoom(bounds: StageBounds, viewport: Viewport): number {
+  const levelW = bounds.right - bounds.left
+  const levelH = bounds.top - bounds.bottom
+  if (levelW <= 0 || levelH <= 0 || viewport.width <= 0 || viewport.height <= 0) return 1
+  return Math.min(viewport.width / levelW, viewport.height / levelH)
+}
+
+/** Camera that shows the whole level, centered, with letterbox bars on the looser axis. */
+export function fitCamera(bounds: StageBounds, viewport: Viewport): Camera {
+  const zoom = fitZoom(bounds, viewport)
+  return {
+    x: (bounds.left + bounds.right) / 2,
+    y: (bounds.bottom + bounds.top) / 2,
+    viewWidth: viewport.width > 0 ? viewport.width / zoom : DEFAULT_VIEW_WIDTH,
+  }
+}
+
+/** Whether the whole level fits at a readable scale. */
+export function wholeLevelReadable(bounds: StageBounds, viewport: Viewport): boolean {
+  return fitZoom(bounds, viewport) >= READABLE_MIN_ZOOM
+}
+
+export type PlayCameraMode = 'whole' | 'follow'
+
+/** Play default: the whole level when readable, otherwise follow the action. */
+export function defaultPlayCameraMode(bounds: StageBounds, viewport: Viewport): PlayCameraMode {
+  return wholeLevelReadable(bounds, viewport) ? 'whole' : 'follow'
+}
+
+/**
+ * Camera centered on a world point at the given view width, clamped so the view never shows beyond the level edges.
+ * On an axis where the view is larger than the level, the level is centered instead.
+ */
+export function followCamera(
+  bounds: StageBounds,
+  viewport: Viewport,
+  point: { x: number; y: number },
+  viewWidth = DEFAULT_VIEW_WIDTH,
+): Camera {
+  const zoom = viewport.width > 0 && viewWidth > 0 ? viewport.width / viewWidth : 1
+  const halfW = viewport.width / 2 / zoom
+  const halfH = viewport.height / 2 / zoom
+  const axis = (p: number, lo: number, hi: number, half: number) =>
+    hi - lo <= half * 2 ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, p))
+  return {
+    x: axis(point.x, bounds.left, bounds.right, halfW),
+    y: axis(point.y, bounds.bottom, bounds.top, halfH),
+    viewWidth,
+  }
+}

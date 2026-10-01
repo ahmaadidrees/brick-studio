@@ -70,7 +70,8 @@ export function pickCopy(design: LevelDesign, wx: number, wy: number): CopyPlace
 export function pickTarget(world: World, wx: number, wy: number): Target {
   for (let i = world.targets.length - 1; i >= 0; i--) {
     const target = world.targets[i]
-    if (!target.visible) continue
+    // Scratch: a fully transparent (ghost 100) sprite can't be clicked.
+    if (!target.visible || target.effects.ghost >= 100) continue
     if (touchingPoint(world, target, wx, wy)) {
       return target
     }
