@@ -388,7 +388,7 @@ export class ClassroomService {
     const worldIds = [...new Set(memberships.map(row => row.world_id as string))];
     const worlds: Row[] = [];
     for (let start = 0; start < worldIds.length; start += 100) {
-      worlds.push(...await this.rows('worlds', `id=in.(${worldIds.slice(start, start + 100).join(',')})&kind=eq.personal&class_visibility=eq.members&hidden_by_teacher=eq.false&select=${WORLD_FIELDS}`));
+      worlds.push(...await this.rows('worlds', `id=in.(${worldIds.slice(start, start + 100).join(',')})&kind=eq.personal&class_visibility=in.(members,class)&hidden_by_teacher=eq.false&select=${WORLD_FIELDS}`));
     }
     const ownerIds = [...new Set(worlds.map(row => row.owner_id as string))].filter(id => id !== caller.id);
     const owners = new Map<string, Row>();
@@ -419,7 +419,7 @@ export class ClassroomService {
   }
   async resendInvites(caller: Caller, world: Row, input: Row): Promise<ClassroomInvite[]> {
     if (caller.role !== 'student' || world.owner_id !== caller.id || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can resend invites.');
-    if (world.class_visibility !== 'members') fail(400, 'invalid_input', 'Share this world with classmates before resending invites.');
+    if (!isSharedVisibility(world.class_visibility)) fail(400, 'invalid_input', 'Share this world with classmates before resending invites.');
     const cls = await this.classFor(caller, caller.classId!);
     if (!cls.collaboration_open) fail(403, 'class_closed', 'Your teacher has closed classroom collaboration.');
     if (cls.students_can_share === false) fail(403, 'sharing_disabled', 'Your teacher has turned off sharing between students.');
@@ -430,11 +430,16 @@ export class ClassroomService {
     const peers = new Set((await this.rows('students', `class_id=eq.${caller.classId}&user_id=in.(${ids.join(',')})&suspended=eq.false&select=user_id`)).map(row => row.user_id));
     const memberships = await this.rows('world_members', `world_id=eq.${world.id}&user_id=in.(${ids.join(',')})&select=${INVITE_FIELDS}`);
     const existing = new Map(memberships.map(row => [row.user_id as string, row]));
-    if (ids.some(id => id === caller.id || !peers.has(id) || !existing.has(id))) fail(400, 'invalid_member', 'Choose active classmates who are already invited.');
+    // Class visibility already gives active classmates access. Recording an explicit invitation here
+    // carries its notification/read state only; membership records never widen that audience.
+    if (ids.some(id => id === caller.id || !peers.has(id) || world.class_visibility === 'members' && !existing.has(id))) fail(400, 'invalid_member', 'Choose active classmates who can already open this world.');
     await this.rate(`resend-invites:${caller.id}`, 30, 60);
     const result: ClassroomInvite[] = [];
     for (const id of ids) {
-      const row = (await this.patch('world_members', `world_id=eq.${world.id}&user_id=eq.${id}&invite_id=eq.${existing.get(id)!.invite_id}&select=${INVITE_FIELDS}`, newInviteState()))[0];
+      const previous = existing.get(id);
+      const row = previous
+        ? (await this.patch('world_members', `world_id=eq.${world.id}&user_id=eq.${id}&invite_id=eq.${previous.invite_id}&select=${INVITE_FIELDS}`, newInviteState()))[0]
+        : (await this.insert('world_members', { world_id: world.id, user_id: id, ...newInviteState() }))[0];
       if (!row) fail(409, 'invite_changed', 'The invited classmates changed. Refresh and try again.');
       result.push(inviteView(row, world, callerDisplayName(caller), sharedEditAllowed(world, cls, undefined)));
     }
@@ -889,7 +894,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
       }))[0];
       if (!updated) fail(404, 'not_found', 'World not found.');
       if (input.visibility === 'members') members = (await service.membersOf([world.id])).get(world.id);
-      else if (world.class_visibility === 'members') await service.remove('world_members', `world_id=eq.${world.id}`);
+      else if (input.visibility === 'private' || world.class_visibility === 'members') await service.remove('world_members', `world_id=eq.${world.id}`);
       await service.audit(caller, sharing ? 'share_world' : 'unshare_world', cls.id, world.id);
       // Live sockets re-authorize in place: unsharing, removing editing or dropping an invitee closes them (the owner stays).
       await options.onAccessChanged?.({ worldId: world.id, reason: 'sharing_updated', change: 'membership' });
@@ -1031,7 +1036,12 @@ export async function hasCurrentClassroomMembership(env: ClassroomEnv, worldId: 
     classId: student.class_id, resetRequired: false, authVersion: student.auth_version, sessionId: '', token: '' };
   try {
     const { world, isOwner } = await service.worldAccess(caller, worldId, false, true);
-    return !isOwner && (world.kind === 'group' || world.kind === 'personal' && world.class_visibility === 'members');
+    if (isOwner) return false;
+    if (world.kind === 'personal' && world.class_visibility === 'class') {
+      // The owner explicitly recorded this recipient's invitation; class-wide visibility alone is not a resend.
+      return (await service.rows('world_members', `world_id=eq.${worldId}&user_id=eq.${userId}&limit=1`)).length > 0;
+    }
+    return world.kind === 'group' || world.kind === 'personal' && world.class_visibility === 'members';
   } catch (error) {
     if (error instanceof ClassroomHttpError && error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429) return false;
     throw error;

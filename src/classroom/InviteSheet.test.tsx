@@ -162,3 +162,16 @@ it('resends only selected existing members without editing sharing', async () =>
   expect(onInviteAgain).toHaveBeenCalledWith([jayden.id])
   expect(props.onInvite).not.toHaveBeenCalled()
 })
+
+it('offers targeted reinvite for whole-class sharing without narrowing access or selecting everybody implicitly', async () => {
+  const onInviteAgain = vi.fn().mockResolvedValue([])
+  const { props, dialog, tile, everyone } = open({ world: { ...privateWorld, visibility: 'class', classCanEdit: true }, onInviteAgain })
+  const resend = () => within(dialog).getByRole('button', { name: 'Invite again' })
+  expect(everyone()).toHaveAttribute('aria-pressed', 'true')
+  expect(resend()).toBeDisabled()
+  expect(within(dialog).getByText(/To let a removed classmate back in/)).toBeInTheDocument()
+  fireEvent.click(tile('Jayden'))
+  fireEvent.click(resend())
+  expect(onInviteAgain).toHaveBeenCalledWith([jayden.id])
+  expect(props.onInvite).not.toHaveBeenCalled()
+})

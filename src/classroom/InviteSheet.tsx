@@ -78,13 +78,14 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
   const nobody = !everyone && picked.length === 0
   const label = nobody ? 'Pick someone first' : shared ? 'Save who can join' : `Invite ${inviteAudienceLabel(sharing, classmates ?? [])} ${lookOnly ? 'to look' : 'and build'}`
   const classLabel = classmates ? `${className} · ${classmatesCount(classmates.length)}` : className
-  const existingIds = new Set(world.members?.map(member => member.id) ?? [])
+  // Whole-class access is already granted to the active roster. A selected reinvite does not narrow that audience.
+  const existingIds = new Set(world.visibility === 'class' ? classmates?.map(member => member.id) ?? [] : world.members?.map(member => member.id) ?? [])
   const resendIds = everyone ? [] : picked.filter(id => existingIds.has(id))
   const resend = async () => {
     setResending(true); setResendNotice('')
     try {
       await (onInviteAgain ? onInviteAgain(resendIds) : browserClassroomClient.inviteAgain(world.id, resendIds))
-      setResendNotice(`Invite sent again to ${resendIds.length === 1 ? 'your classmate' : `${resendIds.length} classmates`}.`)
+      setResendNotice(`Invite sent again to ${resendIds.length === 1 ? 'your classmate' : `${resendIds.length} classmates`}. They can rejoin if you removed them.`)
     } catch { setResendNotice('Could not send the invite again. Try when you’re connected.') }
     finally { setResending(false) }
   }
@@ -102,13 +103,13 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
       <p className="invite-sheet-teacher">Your teacher can see it too.</p>
       <div className="invite-sheet-actions">
         {shared && onStopSharing && <Button variant="quiet" className="invite-sheet-stop" disabled={busy} onClick={onStopSharing}>Stop sharing</Button>}
-        {world.visibility === 'members' && <Button variant="secondary" disabled={busy || resendIds.length === 0} loading={resending} loadingLabel="Sending…" onClick={() => { void resend() }}>Invite again</Button>}
+        {shared && <Button variant="secondary" disabled={busy || resendIds.length === 0} loading={resending} loadingLabel="Sending…" onClick={() => { void resend() }}>Invite again</Button>}
         <Button variant="secondary" disabled={busy} onClick={onClose}>Cancel</Button>
         <Button variant="primary" className="invite-sheet-submit" loading={busy} loadingLabel="Inviting…" disabled={nobody} onClick={() => onInvite(sharing)}>{label}</Button>
       </div>
     </>}
   >
-    {world.visibility === 'members' && <p className="invite-sheet-note">Save changes to who can join, or select existing classmates and choose Invite again to send a new note.</p>}
+    {shared && <p className="invite-sheet-note">To let a removed classmate back in, select their name and choose Invite again. This sends a new note and keeps who can join unchanged. Save who can join only changes sharing.</p>}
     {resendNotice && <p className="invite-sheet-note" role="status">{resendNotice}</p>}
     <div className="invite-sheet-class">
       <span id="invite-sheet-roster-label" className="invite-sheet-class-name">{classLabel}</span>

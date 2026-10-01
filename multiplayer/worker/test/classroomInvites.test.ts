@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createBrickStudioDocument } from '@brick-studio/core';
-import { PLATFORMER_FORMAT } from '@brick-studio/platformer-core/document';
+import { PLATFORMER_FORMAT, createPlatformerDocument } from '@brick-studio/platformer-core/document';
+import { createBlankLevel } from '@brick-studio/platformer-core/engine/level';
+import { PROTOCOL } from '@brick-studio/platformer-core/net/protocol';
+import { runInDurableObject } from 'cloudflare:test';
+import { handleReleaseRequest } from '../src/classroomRoutes';
+import type { Env } from '../src/index';
+import type { PlatformerRoom } from '../src/platformerRoom';
+import { Inbox, send, sockets, workerEnv } from './classroomFixture';
 import { ClassroomService, WORLD_MEMBER_LIMIT, handleClassroomRequest, type Caller, type ClassroomAccessChange, type ClassroomEnv } from '../src/classroom';
 type Row = Record<string, any>;
 
@@ -51,6 +58,14 @@ function backend(as: Caller, tables: Tables) {
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const name = url.pathname.replace('/rest/v1/rpc/brick_', ''), body = JSON.parse(String(init?.body));
       if (name === 'take_rate_limit') return Response.json(true);
+      if (name === 'authorize_world') {
+        const row = db.worlds.find(item => item.id === body.p_world_id), student = db.students.find(item => item.user_id === body.p_user_id);
+        const owner = row && db.students.find(item => item.user_id === row.owner_id), cls = owner && db.classes.find(item => item.id === owner.class_id);
+        if (!row || !student || !owner || student.suspended || owner.suspended || student.class_id !== owner.class_id || !cls?.collaboration_open || cls.students_can_share === false || row.hidden_by_teacher) return Response.json({ error: 'not_found' });
+        const isOwner = row.owner_id === student.user_id;
+        if (!isOwner && (row.class_visibility === 'private' || row.class_visibility === 'members' && !db.world_members.some(member => member.world_id === row.id && member.user_id === student.user_id))) return Response.json({ error: 'not_found' });
+        return Response.json({ userId: student.user_id, username: student.username, role: 'student', worldId: row.id, classId: null, canEdit: isOwner || row.class_can_edit, isTeacher: false, isOwner, authVersion: body.p_auth_version, sessionId: body.p_session_id });
+      }
       if (name === 'commit_world') { const row = db.worlds.find(item => item.id === body.p_world_id)!; return Response.json({ ...row, revision: row.revision + 1, document: body.p_document }); }
       throw new Error(`Unexpected rpc ${name}`);
     }
@@ -74,7 +89,10 @@ function backend(as: Caller, tables: Tables) {
   const members = () => db.world_members.filter(row => row.world_id === treehouse).map(row => row.user_id).sort();
   return { call, events, db, service, members, fetcher };
 }
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  for (const socket of sockets.splice(0)) try { socket.close(); } catch { /* already closed */ }
+  vi.restoreAllMocks();
+});
 
 describe('quiet invites: sharing a personal world with chosen classmates', () => {
   it('the owner invites classmates, sees them by display name, and replaces the set on the next save', async () => {
@@ -202,6 +220,57 @@ describe('quiet invites: sharing a personal world with chosen classmates', () =>
 });
 
 describe('durable recipient invitation state', () => {
+  it.each(['members', 'class'] as const)('routes a %s personal-world resend to a kicked 2D account and admits only that recipient', async visibility => {
+    const id = crypto.randomUUID();
+    const { db } = backend(ava, { worlds: [invited({ id, class_visibility: visibility, class_can_edit: true, document: createPlatformerDocument(createBlankLevel(40, 20, 'Reinvite route')) })], members: visibility === 'members' ? [{ world_id: id, user_id: benId }, { world_id: id, user_id: chloeId }] : [] });
+    const routedEnv = { ...workerEnv, ...env, CLASSROOM_TICKET_SECRET: 'synthetic-reinvite-secret-'.repeat(3) } as Env;
+    const route = (method: string, path: string, input?: unknown) => handleReleaseRequest(new Request(`https://worker.test${path}`, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: input === undefined ? undefined : JSON.stringify(input) }), routedEnv);
+    const open = async (caller: Caller) => {
+      vi.mocked(ClassroomService.prototype.authenticate).mockResolvedValue(caller);
+      const ticketResponse = await route('POST', `/classroom/worlds/${id}/platformer-ticket`);
+      expect(ticketResponse.status).toBe(200);
+      const { ticket } = await ticketResponse.json<{ ticket: string }>();
+      const stub = routedEnv.PLATFORMER_ROOMS.get(routedEnv.PLATFORMER_ROOMS.idFromName(id.replaceAll('-', '')));
+      await runInDurableObject(stub, async (instance: PlatformerRoom) => { Object.assign((instance as unknown as { env: object }).env, env); });
+      const response = await handleReleaseRequest(new Request(`https://worker.test/platformer/worlds/${id}/connect?ticket=${encodeURIComponent(ticket)}`, { headers: { Upgrade: 'websocket' } }), routedEnv);
+      expect(response.status).toBe(101);
+      const socket = response.webSocket!;
+      sockets.push(socket);
+      const inbox = new Inbox(socket);
+      socket.accept();
+      send(socket, { type: 'hello', v: PROTOCOL, name: 'Untrusted', key: 'untrusted' });
+      return { socket, inbox };
+    };
+    const owner = await open(ava); await owner.inbox.next('welcome');
+    const benJoined = await open(ben), chloeJoined = await open(chloe);
+    const benWelcome = await benJoined.inbox.next('welcome'), chloeWelcome = await chloeJoined.inbox.next('welcome');
+    send(owner.socket, { type: 'settings', buildLocked: true });
+    send(owner.socket, { type: 'kick', num: benWelcome.you });
+    expect(await benJoined.inbox.next('error')).toMatchObject({ code: 'kicked' });
+    send(owner.socket, { type: 'kick', num: chloeWelcome.you });
+    expect(await chloeJoined.inbox.next('error')).toMatchObject({ code: 'kicked' });
+    expect(await (await open(ben)).inbox.next('error')).toMatchObject({ code: 'kicked' });
+    vi.mocked(ClassroomService.prototype.authenticate).mockResolvedValue(ava);
+    expect((await route('PATCH', `/classroom/worlds/${id}/sharing`, { visibility, canEdit: true, ...(visibility === 'members' ? { members: [benId, chloeId] } : {}) })).status).toBe(200);
+    expect(await (await open(ben)).inbox.next('error')).toMatchObject({ code: 'kicked' });
+    vi.mocked(ClassroomService.prototype.authenticate).mockResolvedValue(ava);
+    for (const userIds of [[benId, cyId], [pausedId], [avaId]]) expect((await route('POST', `/classroom/worlds/${id}/invites`, { userIds })).status).toBe(400);
+    const resent = await route('POST', `/classroom/worlds/${id}/invites`, { userIds: [benId] });
+    expect(resent.status).toBe(200);
+    const restored = await open(ben);
+    expect(await restored.inbox.next('welcome')).toMatchObject({ host: false });
+    send(restored.socket, { type: 'ev', cid: 'restored-locked', tick: 5, ev: { t: 'edit', ops: [{ o: 'tile', x: 2, y: 2, t: 3, c: 0 }] } });
+    expect(await restored.inbox.next('reject')).toMatchObject({ reason: 'locked' });
+    expect(await (await open(chloe)).inbox.next('error')).toMatchObject({ code: 'kicked' });
+    expect(db.world_members).toHaveLength(visibility === 'members' ? 2 : 1);
+    expect(db.worlds[0].class_visibility).toBe(visibility);
+    vi.mocked(ClassroomService.prototype.authenticate).mockResolvedValue(ben);
+    const recipient = await (await route('GET', '/classroom/invites')).json<{ invites: Array<{ id: string }> }>();
+    expect(recipient).toMatchObject({ invites: [{ worldId: id, seenAt: null, joinedAt: null }] });
+    const acknowledged = await route('PATCH', `/classroom/invites/${recipient.invites[0].id}`, { joined: true });
+    expect(acknowledged.status).toBe(200);
+    expect(await acknowledged.json()).toMatchObject({ invite: { worldId: id, seenAt: expect.any(String), joinedAt: expect.any(String) } });
+  });
   it('preserves unchanged IDs, timestamps and acknowledgements; removed and re-added members get a new invite', async () => {
     const { call, db, events } = backend(ava, { worlds: [invited()], members: [{ ...benInvited()[0], seen_at: arrival, joined_at: arrival }] });
     const original = { ...db.world_members[0] };
@@ -233,12 +302,15 @@ describe('durable recipient invitation state', () => {
     expect(reads.find(url => url.pathname.endsWith('brick_worlds'))!.searchParams.get('select')!.split(',')).not.toContain('document');
     expect(JSON.stringify(result.body)).not.toContain('document');
   });
-  it('omits hidden, private, class-wide, group, suspended-owner and other-class worlds, and closed/disabled sharing', async () => {
-    for (const changes of [{ hidden_by_teacher: true }, { class_visibility: 'private' }, { class_visibility: 'class' }, { kind: 'group', class_id: classId }, { owner_id: pausedId }, { owner_id: cyId }]) {
+  it('omits hidden, private, group, suspended-owner and other-class worlds, and closed/disabled sharing', async () => {
+    for (const changes of [{ hidden_by_teacher: true }, { class_visibility: 'private' }, { kind: 'group', class_id: classId }, { owner_id: pausedId }, { owner_id: cyId }]) {
       const { call } = backend(ben, { worlds: [invited(changes)], members: benInvited() });
       expect((await call('GET', 'invites')).body.invites).toEqual([]);
       vi.restoreAllMocks();
     }
+    const classWide = backend(ben, { worlds: [invited({ class_visibility: 'class' })] });
+    expect((await classWide.call('GET', 'invites')).body.invites).toEqual([]); // class access does not invent invitations
+    vi.restoreAllMocks();
     for (const changes of [{ collaboration_open: false }, { students_can_share: false }]) {
       const { call } = backend(ben, { classes: [{ ...period3(), ...changes }], worlds: [invited()], members: benInvited() });
       expect((await call('GET', 'invites')).body.invites).toEqual([]);
