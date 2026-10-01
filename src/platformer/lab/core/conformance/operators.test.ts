@@ -394,4 +394,52 @@ describe('§1.7 Operators, coercion, string behavior, and random', () => {
     expect(rt.world.targets[0].variables.lnZero).toBe(-Infinity)
     expect(rt.world.targets[0].variables.addCast).toBe(1)
   })
+
+  it('O01 · Numeric cast (a NaN reporter + 1)', () => {
+    // 0/0 reports NaN; adding 1 casts the NaN to 0 first, giving 1.
+    const rt = makeHarnessRuntime({
+      variables: [{ id: 'nan', name: 'nan', value: 0 }, { id: 'res', name: 'res', value: 0 }],
+      scripts: [
+        flagScript([
+          stmt('data_setvariableto', { VALUE: block('operator_divide', { NUM1: lit(0), NUM2: lit(0) }) }, { VARIABLE: 'nan' }),
+          stmt('data_setvariableto', { VALUE: block('operator_add', { NUM1: block('data_variable', {}, { VARIABLE: 'nan' }), NUM2: lit(1) }) }, { VARIABLE: 'res' }),
+        ]),
+      ],
+    })
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].variables.nan).toBeNaN()
+    expect(rt.world.targets[0].variables.res).toBe(1)
+  })
+
+  it('O06 · Round (round -0.5 is negative zero)', () => {
+    const rt = makeHarnessRuntime({
+      variables: [{ id: 'res', name: 'res', value: 1 }],
+      scripts: [flagScript([stmt('data_setvariableto', { VALUE: block('operator_round', { NUM: lit(-0.5) }) }, { VARIABLE: 'res' })])],
+    })
+    rt.greenFlag()
+    rt.step()
+    expect(Object.is(rt.world.targets[0].variables.res, -0)).toBe(true)
+  })
+
+  it('O08 · Random bounds (RNG near 1 gives the inclusive upper integer)', () => {
+    const rt = makeHarnessRuntime({
+      variables: [{ id: 'res', name: 'res', value: 0 }],
+      scripts: [flagScript([stmt('data_setvariableto', { VALUE: block('operator_random', { FROM: lit(1), TO: lit(3) }) }, { VARIABLE: 'res' })])],
+    })
+    rt.random = () => 0.999999
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].variables.res).toBe(3)
+  })
+
+  it('O09 · Join (a boolean joins as its text)', () => {
+    const rt = makeHarnessRuntime({
+      variables: [{ id: 'res', name: 'res', value: '' }],
+      scripts: [flagScript([stmt('data_setvariableto', { VALUE: block('operator_join', { STRING1: lit(true), STRING2: lit('!') }) }, { VARIABLE: 'res' })])],
+    })
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].variables.res).toBe('true!')
+  })
 })

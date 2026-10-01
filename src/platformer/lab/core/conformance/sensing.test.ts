@@ -141,7 +141,7 @@ describe('§1.6 Sensing, keyboard, timer, and ask/answer', () => {
     expect(rt.world.targets[0].variables.touchMouse).toBe(true)
   })
 
-  it('S04 · Color target tolerance', () => {
+  it('S04 · Color target tolerance (KNOWN-DIFF: headless stub always false)', () => {
     // Conformance note: Color sensing requires a composited canvas/WebGL rasterizer.
     // Core engine provides headless semantics with safe stubs returning false.
     const rt = makeHarnessRuntime({
@@ -159,7 +159,7 @@ describe('§1.6 Sensing, keyboard, timer, and ask/answer', () => {
     expect(rt.world.targets[0].variables.res).toBe(false)
   })
 
-  it('S05 · Color source mask', () => {
+  it('S05 · Color source mask (KNOWN-DIFF: headless stub always false)', () => {
     // Headless core stub test for coloristouchingcolor
     const rt = makeHarnessRuntime({
       variables: [{ id: 'res', name: 'res', value: true }],
@@ -176,7 +176,7 @@ describe('§1.6 Sensing, keyboard, timer, and ask/answer', () => {
     expect(rt.world.targets[0].variables.res).toBe(false)
   })
 
-  it('S06 · CPU/GPU threshold', () => {
+  it('S06 · CPU/GPU threshold (KNOWN-DIFF: no renderer, primitives only defined)', () => {
     // In headless runtime, color queries are consistently handled without WebGL crashes
     const rt = makeHarnessRuntime()
     expect(rt.primitives['sensing_touchingcolor']).toBeDefined()

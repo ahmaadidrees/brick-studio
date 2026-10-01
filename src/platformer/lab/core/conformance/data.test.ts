@@ -275,4 +275,47 @@ describe('§1.8 Variables and list boundaries', () => {
     expect(rt.world.targets[0].variables.v).toBe(999)
     expect(rt.world.targets[0].lists.L).toEqual(['x', 'y'])
   })
+
+  it('D04 · Special index names (item "all" reads as empty)', () => {
+    const rt = makeHarnessRuntime({
+      lists: [{ id: 'L', name: 'L', value: ['a', 'b'] }],
+      variables: [{ id: 'res', name: 'res', value: 'x' }],
+      scripts: [flagScript([stmt('data_setvariableto', { VALUE: block('data_itemoflist', { INDEX: lit('all') }, { LIST: 'L' }) }, { VARIABLE: 'res' })])],
+    })
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].variables.res).toBe('')
+  })
+
+  it('D09 · Insert at capacity (insert at limit + 1 is refused)', () => {
+    const rt = makeHarnessRuntime({
+      lists: [{ id: 'L', name: 'L', value: [] }],
+      scripts: [flagScript([stmt('data_insertatlist', { INDEX: lit(LIST_ITEM_LIMIT + 1), ITEM: lit('x') }, { LIST: 'L' })])],
+    })
+    const list = rt.world.targets[0].lists.L
+    for (let i = 0; i < LIST_ITEM_LIMIT; i++) list.push(i)
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].lists.L.length).toBe(LIST_ITEM_LIMIT)
+    expect(rt.world.targets[0].lists.L[LIST_ITEM_LIMIT - 1]).toBe(LIST_ITEM_LIMIT - 1)
+    expect(rt.world.targets[0].lists.L.includes('x')).toBe(false)
+  })
+
+  it('D10 · Mutations do not reset on flag (a clone-local list disappears with the clone)', () => {
+    const rt = makeHarnessRuntime({
+      lists: [{ id: 'L', name: 'L', value: [] }],
+      scripts: [
+        flagScript([stmt('control_create_clone_of', {}, { CLONE_OPTION: '_myself_' })]),
+        { id: 'cl', hat: { opcode: 'control_start_as_clone', fields: {}, inputs: {} }, body: [stmt('data_addtolist', { ITEM: lit('c') }, { LIST: 'L' })] },
+      ],
+    })
+    rt.greenFlag()
+    rt.step()
+    const clone = rt.world.targets.find((t) => t.isClone)!
+    expect(clone.lists.L).toEqual(['c'])
+    expect(rt.world.targets.find((t) => !t.isClone)!.lists.L).toEqual([])
+    rt.greenFlag() // removes the clone; the original's list is untouched
+    expect(rt.world.targets.length).toBe(1)
+    expect(rt.world.targets.includes(clone)).toBe(false)
+  })
 })

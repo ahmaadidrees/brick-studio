@@ -371,4 +371,28 @@ describe('§1.4 Motion, coordinates, fencing, and bouncing', () => {
     expect(rt.world.targets[0].x).toBeCloseTo(0, 3)
     expect(rt.world.targets[0].y).toBeCloseTo(10, 3)
   })
+
+  it('M03 · Direction wrapping (Infinity keeps the prior direction)', () => {
+    const rt = makeHarnessRuntime({
+      direction: 45,
+      scripts: [flagScript([stmt('motion_pointindirection', { DIRECTION: lit(Infinity) })])],
+    })
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].direction).toBe(45)
+  })
+
+  it('M09 · Point towards (towards the same point gives 90)', () => {
+    const rt = makeHarnessRuntime({
+      x: 5,
+      y: 5,
+      direction: 0,
+      scripts: [flagScript([stmt('motion_pointtowards', {}, { TOWARDS: '_mouse_' })])],
+    })
+    rt.world.mouse.x = 5
+    rt.world.mouse.y = 5
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].direction).toBe(90)
+  })
 })
