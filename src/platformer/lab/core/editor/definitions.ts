@@ -1481,32 +1481,38 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     // =========================================================================
     {
       type: 'procedures_definition',
-      message0: 'define %1',
-      args0: [{ type: 'input_value', name: 'custom_block' }],
+      message0: 'define %1 %2',
+      args0: [
+        { type: 'field_label', name: 'LABEL', text: '' },
+        { type: 'input_value', name: 'custom_block' },
+      ],
       category: 'procedures',
       colour: CATEGORY_COLORS.procedures,
       nextStatement: null,
       hat: 'cap',
       tooltip: '',
+      mutator: PROCEDURE_STATE_MUTATOR,
     },
     {
       type: 'procedures_prototype',
       message0: '%1',
-      args0: [{ type: 'field_label', name: 'PROCCODE', text: '' }],
+      args0: [{ type: 'field_label', name: 'LABEL', text: '' }],
       category: 'procedures',
       colour: CATEGORY_COLORS.procedures,
       output: null,
       tooltip: '',
+      mutator: PROCEDURE_STATE_MUTATOR,
     },
     {
       type: 'procedures_call',
       message0: '%1',
-      args0: [{ type: 'field_label', name: 'PROCCODE', text: '' }],
+      args0: [{ type: 'field_label', name: 'LABEL', text: '' }],
       category: 'procedures',
       colour: CATEGORY_COLORS.procedures,
       previousStatement: null,
       nextStatement: null,
       tooltip: '',
+      mutator: PROCEDURE_STATE_MUTATOR,
     },
     {
       type: 'argument_reporter_string_number',
@@ -1611,7 +1617,45 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
 /**
  * Registers all block definitions with Blockly. Safe to call multiple times.
  */
+/**
+ * My Blocks keep their proccode, argument names and warp flag in Blockly extraState, so a custom block's name, inputs
+ * and "run without screen refresh" survive save/load. The compiler reads the same state (compile.ts parseProcedureDef).
+ */
+export const PROCEDURE_STATE_MUTATOR = 'code_lab_procedure_state'
+
+export interface ProcedureState {
+  proccode: string
+  argumentNames: string[]
+  warp?: boolean
+}
+
+/** "jump %s times %b" → "jump ( ) times < >" */
+export function procedureLabel(proccode: string): string {
+  return proccode.replace(/%s/g, '( )').replace(/%b/g, '< >').replace(/%n/g, '( )')
+}
+
+type ProcedureBlock = Blockly.Block & { extraState_?: ProcedureState }
+
+const procedureStateMixin = {
+  saveExtraState(this: ProcedureBlock): ProcedureState | null {
+    return this.extraState_ ? { ...this.extraState_, argumentNames: [...this.extraState_.argumentNames] } : null
+  },
+  loadExtraState(this: ProcedureBlock, state: Partial<ProcedureState> | null) {
+    const proccode = typeof state?.proccode === 'string' ? state.proccode : ''
+    const argumentNames = Array.isArray(state?.argumentNames) ? state!.argumentNames.map((a) => String(a)) : []
+    this.extraState_ = { proccode, argumentNames, ...(typeof state?.warp === 'boolean' ? { warp: state.warp } : {}) }
+    this.getField('LABEL')?.setValue(procedureLabel(proccode))
+    // A call takes one value input per argument, keyed by argument name (compile.ts reads inputs by name).
+    if (this.type === 'procedures_call') {
+      for (const name of argumentNames) if (!this.getInput(name)) this.appendValueInput(name)
+    }
+  },
+}
+
 export function registerEditorBlocks(context?: EditorContext): void {
+  if (!Blockly.Extensions.isRegistered(PROCEDURE_STATE_MUTATOR)) {
+    Blockly.Extensions.registerMutator(PROCEDURE_STATE_MUTATOR, procedureStateMixin)
+  }
   const definitions = createBlockDefinitions(context)
   for (const def of definitions) {
     const type = def.type as string

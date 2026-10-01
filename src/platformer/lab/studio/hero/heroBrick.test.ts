@@ -295,9 +295,10 @@ describe('The Hero brick is built from open blocks', () => {
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
       expect(again.program.scripts.map((s) => s.hat.opcode).sort()).toEqual(brick.program.scripts.map((s) => s.hat.opcode).sort())
-      // Known editor gap (see the report): the editor's `procedures_definition` block does not save its proccode, so a
-      // round trip through Blockly keeps the 7 My Blocks and their bodies but names them "unnamed". Not checked here.
-      expect(again.program.procedures).toHaveLength(brick.program.procedures.length)
+      // My Blocks keep their names, inputs and warp flag through a Blockly round trip (PROCEDURE_STATE_MUTATOR).
+      const shape = (ps: typeof brick.program.procedures) => ps.map((p) => [p.proccode, p.argumentNames, p.warp]).sort()
+      expect(shape(again.program.procedures)).toEqual(shape(brick.program.procedures))
+      expect(again.program.procedures.every((p) => p.body.length > 0)).toBe(true)
     } finally {
       ws.dispose()
     }
