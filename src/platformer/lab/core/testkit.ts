@@ -77,6 +77,9 @@ export function makeWorld(opts: { bounds?: StageBounds; bricks?: BrickDef[]; tar
     rngState: seedState(opts.seed ?? 1),
     cloneCount: 0,
     nextTargetId: 100,
+    askQueue: [],
+    nextAskId: 1,
+    hostClock: null,
   }
 }
 

@@ -1670,4 +1670,72 @@ describe('scheduler — runtime and execution loop', () => {
     expect(toString(true)).toBe('true')
     expect(toString(false)).toBe('false')
   })
-})
+
+  it("structuredClone snapshot and resume produces identical run state", () => {
+    const primitives: PrimitiveTable = {
+      test_move: (ctx) => {
+        ctx.target.x += 2
+        ctx.target.y += 3
+      },
+    }
+
+    const script1: Script = {
+      id: "s1",
+      hat: { opcode: "event_whenflagclicked", fields: {}, inputs: {} },
+      body: [
+        {
+          opcode: "control_repeat",
+          fields: {},
+          inputs: { TIMES: { kind: "lit", value: 20 } },
+          branches: [
+            [
+              { opcode: "test_move", fields: {}, inputs: {} },
+              { opcode: "data_changevariableby", fields: { VARIABLE: "v1" }, inputs: { VALUE: { kind: "lit", value: 1 } } },
+            ],
+          ],
+        },
+      ],
+    }
+
+    const { runtime: rt1 } = createTestSetup({
+      scripts: [script1],
+      primitives,
+    })
+
+    rt1.greenFlag()
+
+    // Step 5 ticks
+    for (let i = 0; i < 5; i++) {
+      rt1.step()
+    }
+
+    // Take snapshot of world state
+    const snapshot = structuredClone(rt1.world)
+
+    // Run rt1 for 10 more ticks
+    for (let i = 0; i < 10; i++) {
+      rt1.step()
+    }
+
+    // Resume from snapshot in rt2
+    const rt2 = new Runtime(structuredClone(snapshot), primitives)
+    for (let i = 0; i < 10; i++) {
+      rt2.step()
+    }
+
+    // Verify both worlds reached the exact same state
+    expect(rt2.world.tick).toBe(rt1.world.tick)
+    expect(rt2.world.stage.x).toBe(rt1.world.stage.x)
+    expect(rt2.world.targets[0].x).toBe(rt1.world.targets[0].x)
+    expect(rt2.world.targets[0].y).toBe(rt1.world.targets[0].y)
+    expect(rt2.world.targets[0].variables.v1).toBe(rt1.world.targets[0].variables.v1)
+    expect(rt2.world).toEqual(rt1.world)
+
+    // Test rt1.restoreWorld as well
+    rt1.restoreWorld(structuredClone(snapshot))
+    for (let i = 0; i < 10; i++) {
+      rt1.step()
+    }
+    expect(rt1.world).toEqual(rt2.world)
+  })
+});

@@ -224,6 +224,57 @@ export interface Mouse {
   down: boolean
 }
 
+export interface HostClock {
+  year: number
+  month: number
+  date: number
+  /** 1 = Sunday … 7 = Saturday. */
+  dayOfWeek: number
+  hour: number
+  minute: number
+  second: number
+}
+
+export interface AskPrompt {
+  targetId: string
+  question: string
+  /** Visibility of the asker when the question was enqueued, not when it is shown. */
+  visible: boolean
+  isStage: boolean
+}
+
+export interface QueuedAsk extends AskPrompt {
+  id: number
+  state: 'waiting' | 'answered'
+}
+
+export type ThreadStatus = 'running' | 'yield' | 'yield_tick' | 'done'
+
+export interface ExecutionFrame {
+  statements: Stmt[]
+  pc: number
+  isProcedure?: boolean
+  proccode?: string
+  params?: Record<string, Value>
+  warp?: boolean
+  isLoop?: boolean
+  loopType?: 'repeat' | 'forever' | 'repeat_until' | 'while'
+  loopTimesRemaining?: number
+  loopCondition?: Expr
+  stmtMemory?: Record<string, unknown>
+}
+
+export interface SerializedThread {
+  id: number
+  targetId: string
+  scriptId?: string
+  done: boolean
+  status: ThreadStatus
+  stack: ExecutionFrame[]
+  warpOpCount: number
+  isStackClick: boolean
+}
+
 export interface World {
   /** Ticks since Play. */
   tick: number
@@ -243,6 +294,14 @@ export interface World {
   /** Runtime clones currently alive. */
   cloneCount: number
   nextTargetId: number
+  /** Ask prompt queue for sensing primitives. */
+  askQueue: QueuedAsk[]
+  /** Next integer id for queued questions. */
+  nextAskId: number
+  /** Deterministic injected host clock, or null. */
+  hostClock: HostClock | null
+  /** Serialized interpreter threads (optional snapshot representation). */
+  threads?: SerializedThread[]
 }
 
 // ---------------------------------------------------------------- runtime surface for primitives

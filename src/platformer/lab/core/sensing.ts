@@ -14,7 +14,9 @@
  * Loudness is 0. Username is ''. There is no `Date` and no microphone in core.
  */
 import { TICKS_PER_SECOND, TICK_MS, YIELD } from './contracts'
-import type { BrickDef, Primitive, PrimitiveCtx, PrimitiveTable, RuntimeApi, Target, Value, World } from './contracts'
+import type { AskPrompt, BrickDef, HostClock, Primitive, PrimitiveCtx, PrimitiveTable, QueuedAsk, RuntimeApi, Target, Value, World } from './contracts'
+
+export type { AskPrompt, HostClock, QueuedAsk }
 import { costumeOf } from './geometry'
 import { targetsTouch, touchingEdge, touchingPoint } from './touching'
 
@@ -27,54 +29,21 @@ export function isDragged(target: Target): boolean {
   return target.dragging === true
 }
 
-export interface HostClock {
-  year: number
-  month: number
-  date: number
-  /** 1 = Sunday … 7 = Saturday. */
-  dayOfWeek: number
-  hour: number
-  minute: number
-  second: number
-}
-
-const clocks = new WeakMap<World, HostClock>()
-
 export function setHostClock(world: World, clock: HostClock | null): void {
-  if (clock) clocks.set(world, clock)
-  else clocks.delete(world)
+  world.hostClock = clock
 }
-
-export interface AskPrompt {
-  targetId: string
-  question: string
-  /** Visibility of the asker when the question was enqueued, not when it is shown. */
-  visible: boolean
-  isStage: boolean
-}
-
-interface QueuedAsk extends AskPrompt {
-  id: number
-  state: 'waiting' | 'answered'
-}
-
-const askIdCounters = new WeakMap<World, number>()
 
 function getNextAskId(world: World): number {
-  const current = askIdCounters.get(world) ?? 1
-  askIdCounters.set(world, current + 1)
+  const current = world.nextAskId ?? 1
+  world.nextAskId = current + 1
   return current
 }
 
-const questions = new WeakMap<World, QueuedAsk[]>()
-
 function asks(world: World): QueuedAsk[] {
-  let queue = questions.get(world)
-  if (!queue) {
-    queue = []
-    questions.set(world, queue)
+  if (!world.askQueue) {
+    world.askQueue = []
   }
-  return queue
+  return world.askQueue
 }
 
 function asText(value: Value): string {
@@ -157,7 +126,7 @@ export function resetAnswer(world: World): void {
 
 /** Stop-all: drop every queued question. Does not change `world.answer`. */
 export function clearQuestions(runtime: RuntimeApi): void {
-  questions.set(runtime.world, [])
+  runtime.world.askQueue = []
 }
 
 /**
@@ -170,7 +139,7 @@ export function clearTargetQuestions(runtime: RuntimeApi, target: Target): void 
   const displayed = queue.find((item) => item.state === 'waiting')
   const removedDisplayed = displayed?.targetId === target.id
   const kept = queue.filter((item) => item.targetId !== target.id)
-  questions.set(world, kept)
+  world.askQueue = kept
   if (!removedDisplayed) return
   const next = kept.find((item) => item.state === 'waiting')
   if (next) emitAsk(runtime, next)
@@ -263,7 +232,7 @@ const attributeOf: Primitive = (ctx) => {
 }
 
 const current: Primitive = (ctx) => {
-  const clock = clocks.get(ctx.runtime.world)
+  const clock = ctx.runtime.world.hostClock
   if (!clock) return 0
   switch (menuString(ctx, 'CURRENTMENU').toLowerCase()) {
     case 'year':

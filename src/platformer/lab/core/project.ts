@@ -39,6 +39,7 @@ import type {
   World,
 } from './contracts'
 import { seedState } from './rng'
+import { wrapDirection } from './motion'
 
 export const DESIGN_LIMITS = {
   maxBricks: 400,
@@ -746,6 +747,9 @@ export function instantiate(design: LevelDesign): World {
     rngState: seedState(typeof design.seed === 'number' ? design.seed : 0),
     cloneCount: 0,
     nextTargetId,
+    askQueue: [],
+    nextAskId: 1,
+    hostClock: null,
   }
 }
 
@@ -835,13 +839,6 @@ function zeroEffects(): Record<EffectName, number> {
   return effects
 }
 
-/** Scratch keeps direction in (-180, 180], and -180 is stored as 180 (M03). */
-function wrapDirection(d: number): number {
-  let r = d % 360
-  if (r > 180) r -= 360
-  if (r <= -180) r += 360
-  return r + 0
-}
 
 function finite(n: unknown, fallback: number): number {
   return typeof n === 'number' && Number.isFinite(n) ? n : fallback
