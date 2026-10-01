@@ -79,8 +79,12 @@ describe('motion', () => {
     run(motionPrimitives.motion_pointindirection, rt, target, { DIRECTION: -Infinity })
     expect(target.direction).toBe(180)
     expect(wrapDirection(180)).toBe(180)
+    expect(wrapDirection(-180)).toBe(180)
     expect(wrapDirection(-179)).toBe(-179)
     expect(wrapDirection(181)).toBe(-179)
+    expect(wrapDirection(180.5)).toBe(-179.5)
+    expect(wrapDirection(-179.5)).toBe(-179.5)
+    expect(wrapDirection(-180.5)).toBe(179.5)
     run(motionPrimitives.motion_turnright, rt, target, { DEGREES: 270 })
     expect(target.direction).toBe(90)
     run(motionPrimitives.motion_turnleft, rt, target, { DEGREES: 180 })
@@ -111,6 +115,23 @@ describe('motion', () => {
     expect(target.y).toBe(215)
     run(motionPrimitives.motion_sety, rt, target, { Y: -1000 })
     expect(target.y).toBe(-215)
+  })
+
+  it('M05 · fencing on bottom-left origin level (T1)', () => {
+    const brick = boxBrick('b1', 'Brick', 100, 100)
+    const target = makeTarget({ x: 0, y: 0 })
+    const world = makeWorld({
+      bounds: { left: 0, right: 480, bottom: 0, top: 360 },
+      bricks: [brick],
+      targets: [target],
+    })
+    const rt = fakeRuntime(world)
+    run(motionPrimitives.motion_setx, rt, target, { X: 1000 })
+    expect(target.x).toBe(515)
+    run(motionPrimitives.motion_setx, rt, target, { X: -1000 })
+    expect(target.x).toBe(-35)
+    run(motionPrimitives.motion_sety, rt, target, { Y: 1000 })
+    expect(target.y).toBe(395)
   })
 
   it('M06 · small-costume fence and ceil/floor corrections', () => {
@@ -144,6 +165,14 @@ describe('motion', () => {
     run(motionPrimitives.motion_gotoxy, rt, target, { X: 3, Y: 4 })
     expect(target.x).toBe(3)
     expect(target.y).toBe(4)
+  })
+
+  it('M07 · glide while dragged leaves position untouched (T2)', () => {
+    const { target, rt } = worldAt(20, 20, { x: 10, y: 10 })
+    setDragging(target, true)
+    run(motionPrimitives.motion_glidesecstoxy, rt, target, { SECS: 1, X: 100, Y: 100 })
+    expect(target.x).toBe(10)
+    expect(target.y).toBe(10)
   })
 
   it('M08 · go to mouse, original sprite, missing sprite, and random', () => {
@@ -347,7 +376,7 @@ describe('motion', () => {
     expect(flip.target.rotationStyle).toBe('left-right')
   })
 
-  it('visible motion asks for a redraw and hidden motion does not', () => {
+  it('visible motion asks for a redraw and hidden motion does not (T2)', () => {
     const shown = worldAt(20, 20)
     run(motionPrimitives.motion_changexby, shown.rt, shown.target, { DX: 1 })
     expect(shown.rt.redraws).toBe(1)
@@ -355,6 +384,22 @@ describe('motion', () => {
     run(motionPrimitives.motion_changexby, shown.rt, shown.target, { DX: 1 })
     expect(shown.target.x).toBe(2)
     expect(shown.rt.redraws).toBe(1)
+
+    // Hidden point in direction
+    run(motionPrimitives.motion_pointindirection, shown.rt, shown.target, { DIRECTION: 0 })
+    expect(shown.rt.redraws).toBe(1)
+
+    // Hidden bounce
+    shown.target.x = 230
+    shown.target.direction = 90
+    run(motionPrimitives.motion_ifonedgebounce, shown.rt, shown.target)
+    expect(shown.rt.redraws).toBe(1)
+    expect(shown.target.direction).toBe(-90)
+
+    // Hidden glide
+    run(motionPrimitives.motion_glidesecstoxy, shown.rt, shown.target, { SECS: 0, X: 0, Y: 0 })
+    expect(shown.rt.redraws).toBe(1)
+    expect(shown.target.x).toBe(0)
   })
 
   it('the stage ignores motion that would move a sprite', () => {

@@ -14,10 +14,8 @@ const FENCE_MARGIN = 15
 
 /** Directions wrap into (-180, 180], with -180 landing on 180. Non-finite values are rejected by the caller. */
 export function wrapDirection(direction: number): number {
-  const min = -179
-  const max = 180
-  const range = max - min + 1
-  return direction - Math.floor((direction - min) / range) * range
+  const wrapped = direction - 360 * Math.ceil((direction - 180) / 360)
+  return wrapped + 0
 }
 
 /** Own x/y reporters snap a value that is already within 1e-9 of an integer. The stored coordinate is left alone. */
@@ -201,16 +199,15 @@ function nearestEdge(world: World, target: Target): Edge | undefined {
 function bounce(ctx: PrimitiveCtx): void {
   const edge = nearestEdge(ctx.runtime.world, ctx.target)
   if (!edge) return
-  // Unit step of `move`, with y flipped. The edge response and the direction
-  // reconstruction are both defined on that flipped vector.
-  const [stepY, stepX] = sinCosDeg(90 - ctx.target.direction)
-  let dx = stepX
-  let dy = -stepY
-  if (edge === 'left') dx = Math.max(0.2, Math.abs(dx))
-  else if (edge === 'top') dy = Math.max(0.2, Math.abs(dy))
-  else if (edge === 'right') dx = -Math.max(0.2, Math.abs(dx))
-  else dy = -Math.max(0.2, Math.abs(dy))
-  setDirection(ctx.runtime, ctx.target, atan2Deg(dy, dx) + 90)
+  // In Scratch's y-up frame (0 up, 90 right): vx = sin(direction), vy = cos(direction).
+  const [sinD, cosD] = sinCosDeg(ctx.target.direction)
+  let vx = sinD
+  let vy = cosD
+  if (edge === 'left') vx = Math.max(0.2, Math.abs(vx))
+  else if (edge === 'right') vx = -Math.max(0.2, Math.abs(vx))
+  else if (edge === 'bottom') vy = Math.max(0.2, Math.abs(vy))
+  else if (edge === 'top') vy = -Math.max(0.2, Math.abs(vy))
+  setDirection(ctx.runtime, ctx.target, atan2Deg(vx, vy))
   const [x, y] = keepInside(ctx.runtime.world, ctx.target, ctx.target.x, ctx.target.y)
   placeTarget(ctx.runtime, ctx.target, x, y)
 }

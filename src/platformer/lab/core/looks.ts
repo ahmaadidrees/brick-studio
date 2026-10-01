@@ -46,7 +46,7 @@ function redraw(runtime: RuntimeApi, target: Target): void {
 }
 
 /** 0-based costume index wrapped into the costume list. Non-finite indexes become 0. */
-function wrapCostumeIndex(index: number, length: number): number {
+export function wrapCostumeIndex(index: number, length: number): number {
   if (!(length > 0)) return 0
   const rounded = Math.round(index)
   if (!Number.isFinite(rounded)) return 0
@@ -67,72 +67,106 @@ function setCostumeIndex(runtime: RuntimeApi, target: Target, index: number): vo
   redraw(runtime, target)
 }
 
+function pickRandomExcept(runtime: RuntimeApi, count: number, excluded: number): number {
+  if (count <= 1) return 0
+  const pick = Math.floor(runtime.random() * (count - 1))
+  return pick >= excluded ? pick + 1 : pick
+}
+
+interface RelativeOptions {
+  next?: string
+  previous?: string
+  random?: string
+}
+
 /**
- * Resolve a costume or backdrop request.
- * Numbers are 1-based indexes unless `zeroIndex` is set (next/previous blocks).
- * Strings try an exact name, then the words in `relative`, then a numeric index.
- * Returns false when the request does not name a costume.
+ * Resolve and apply a costume or backdrop change request according to L01 semantics:
+ * 1. Numbers are 1-based indexes (or 0-based relative deltas when zeroIndex is true).
+ * 2. String inputs try:
+ *    a. Exact case-sensitive costume name
+ *    b. Relative keywords (next / previous / random)
+ *    c. Non-whitespace numeric string conversion (1-based)
+ * Returns true if a valid costume was identified and applied.
  */
 function resolveCostume(
   runtime: RuntimeApi,
   target: Target,
   requested: unknown,
-  relative: { next: string; previous: string },
+  relative: RelativeOptions,
   zeroIndex: boolean,
 ): boolean {
   const costumes = costumesOf(runtime.world, target)
   if (costumes.length === 0) return false
+
   if (typeof requested === 'number') {
     setCostumeIndex(runtime, target, zeroIndex ? requested : requested - 1)
     return true
   }
+
   const name = String(requested)
-  const named = indexByName(costumes, name)
-  if (named !== -1) {
-    setCostumeIndex(runtime, target, named)
+
+  // 1. Exact match by name
+  const exactIndex = indexByName(costumes, name)
+  if (exactIndex !== -1) {
+    setCostumeIndex(runtime, target, exactIndex)
     return true
   }
-  if (name === relative.next) {
+
+  // 2. Relative keywords
+  if (relative.next && name === relative.next) {
     setCostumeIndex(runtime, target, target.costumeIndex + 1)
     return true
   }
-  if (name === relative.previous) {
+  if (relative.previous && name === relative.previous) {
     setCostumeIndex(runtime, target, target.costumeIndex - 1)
     return true
   }
-  if (!(Number.isNaN(Number(name)) || isWhiteSpace(name))) {
-    const n = Number(name)
-    setCostumeIndex(runtime, target, zeroIndex ? n : n - 1)
+  if (relative.random && name === relative.random) {
+    setCostumeIndex(runtime, target, pickRandomExcept(runtime, costumes.length, target.costumeIndex))
     return true
   }
+
+  // 3. Numeric string
+  if (!isWhiteSpace(name)) {
+    const parsed = Number(name)
+    if (!Number.isNaN(parsed)) {
+      setCostumeIndex(runtime, target, zeroIndex ? parsed : parsed - 1)
+      return true
+    }
+  }
+
   return false
 }
 
-function randomExcept(runtime: RuntimeApi, upper: number, excluded: number): number {
-  const pick = Math.floor(runtime.random() * upper)
-  return pick >= excluded ? pick + 1 : pick
-}
-
-/** Switch the stage backdrop and start the matching hats. Returns the hat threads. */
+/** Switch the stage backdrop and start matching hats if the backdrop changed/matched. */
 function switchBackdrop(ctx: PrimitiveCtx, requested: unknown, zeroIndex = false): ThreadHandle[] {
   const runtime = ctx.runtime
   const stage = runtime.world.stage
   const costumes = costumesOf(runtime.world, stage)
   if (costumes.length === 0) return []
-  if (requested === 'random backdrop' && costumes.length > 1) {
-    setCostumeIndex(runtime, stage, randomExcept(runtime, costumes.length - 1, stage.costumeIndex))
-  } else if (requested !== 'random backdrop') {
-    resolveCostume(runtime, stage, requested, { next: 'next backdrop', previous: 'previous backdrop' }, zeroIndex)
-  }
+
+  const matched = resolveCostume(
+    runtime,
+    stage,
+    requested,
+    { next: 'next backdrop', previous: 'previous backdrop', random: 'random backdrop' },
+    zeroIndex,
+  )
+  if (!matched) return []
+
   const name = costumes[stage.costumeIndex]?.name ?? ''
   runtime.emit({ kind: 'backdrop', name })
   return runtime.startHats('event_whenbackdropswitchesto', { fields: { BACKDROP: name } })
 }
 
-function formatBubble(text: unknown): string {
+export function formatBubble(text: unknown): string {
   if (text === '') return ''
-  const shown =
-    typeof text === 'number' && Math.abs(text) >= 0.01 && text % 1 !== 0 ? text.toFixed(2) : String(text)
+  let shown: string
+  if (typeof text === 'number') {
+    shown = Number.isFinite(text) ? String(parseFloat(text.toFixed(2))) : String(text)
+  } else {
+    shown = String(text)
+  }
   return shown.slice(0, BUBBLE_LIMIT)
 }
 
@@ -143,6 +177,7 @@ function nextBubbleId(target: Target): number {
 }
 
 function showBubble(runtime: RuntimeApi, target: Target, kind: 'say' | 'think', text: unknown): number {
+  if (target.isStage) return 0
   const id = nextBubbleId(target)
   const shown = formatBubble(text)
   target.bubble = shown === '' ? null : { kind, text: shown }
@@ -158,6 +193,7 @@ function clearBubble(runtime: RuntimeApi, target: Target): void {
 }
 
 function sayFor(ctx: PrimitiveCtx, kind: 'say' | 'think') {
+  if (ctx.target.isStage) return
   if (ctx.frame.bubbleId === undefined) {
     const raw = Number(read(ctx, 'SECS'))
     const ms = Number.isFinite(raw) && raw > 0 ? raw * 1000 : 0
@@ -174,11 +210,14 @@ export function clampSize(world: World, target: Target, percent: number): number
   const costume = costumeOf(world, target)
   const w = costume?.width ?? 0
   const h = costume?.height ?? 0
+  if (!(w > 0 && h > 0)) return percent
   const stageW = world.bounds.right - world.bounds.left
   const stageH = world.bounds.top - world.bounds.bottom
   const minScale = Math.min(1, Math.max(5 / w, 5 / h))
   const maxScale = Math.min((1.5 * stageW) / w, (1.5 * stageH) / h)
-  return Math.min(Math.max(percent / 100, minScale), maxScale) * 100
+  const minPercent = minScale * 100
+  const maxPercent = maxScale * 100
+  return Math.min(Math.max(percent, minPercent), maxPercent)
 }
 
 function setSize(runtime: RuntimeApi, target: Target, percent: number): void {
@@ -206,7 +245,7 @@ export function clearGraphicEffects(target: Target): void {
   for (const name of EFFECT_NAMES) target.effects[name] = 0
 }
 
-/** Green flag clears graphic effects only. Bubbles, size, costume, and position stay. */
+/** Green flag clears graphic effects only. Bubbles are cleared if the scheduler invokes onStopAllLooks prior to onGreenFlagLooks. */
 export function onGreenFlagLooks(runtime: RuntimeApi): void {
   for (const target of [runtime.world.stage, ...runtime.world.targets]) {
     clearGraphicEffects(target)
@@ -261,10 +300,12 @@ export const looksPrimitives: PrimitiveTable = {
   },
 
   looks_switchcostumeto(ctx) {
+    if (ctx.target.isStage) return
     resolveCostume(ctx.runtime, ctx.target, read(ctx, 'COSTUME'), { next: 'next costume', previous: 'previous costume' }, false)
   },
 
   looks_nextcostume(ctx) {
+    if (ctx.target.isStage) return
     resolveCostume(ctx.runtime, ctx.target, ctx.target.costumeIndex + 1, { next: 'next costume', previous: 'previous costume' }, true)
   },
 
@@ -340,6 +381,7 @@ export const looksPrimitives: PrimitiveTable = {
   },
 
   looks_costumenumbername(ctx) {
+    if (ctx.target.isStage) return read(ctx, 'NUMBER_NAME') === 'number' ? 0 : ''
     return costumeLabel(ctx.runtime.world, ctx.target, read(ctx, 'NUMBER_NAME'))
   },
 
