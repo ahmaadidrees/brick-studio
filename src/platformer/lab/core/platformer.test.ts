@@ -357,7 +357,7 @@ describe('bump hats', () => {
     expect(copyOf(rt, 'f').variables.plat).toBe(0)
   })
 
-  it('running into a solid fires its left side once, then the body keeps pushing without a repeat storm only if it moves', () => {
+  it('running into a solid fires its left side once (the bump zeroes the speed, so there is no repeat)', () => {
     const wall = brick('w', 'Wall', 20, 100, [onFlag(solidOn)])
     const runner = brick('r', 'Runner', 20, 20, [onFlag(setSpeed('x', 7)), whenBump('left', 'Wall', inc('hits')), whenBump('right', 'Wall', inc('wrong'))], [counter('hits'), counter('wrong')])
     const rt = play(level([wall, runner], [{ id: 'w', brickId: 'w', x: 200, y: 150 }, { id: 'r', brickId: 'r', x: 100, y: 150 }]))
