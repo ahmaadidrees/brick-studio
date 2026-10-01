@@ -70,7 +70,7 @@ describe('Storage & Autosave (storage.ts)', () => {
   it('returns starter project when storage is empty', () => {
     const project = loadProject(memoryStorage)
     expect(project.design.id).toBe('starter_level')
-    expect(project.design.bricks).toHaveLength(3)
+    expect(project.design.bricks).toHaveLength(5)
     expect(getStorageNotice()).toBeNull()
   })
 
