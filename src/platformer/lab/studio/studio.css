@@ -4,6 +4,7 @@
 .studio-left { border-right: 1px solid #2a2e38; }
 .studio-tabs { display: flex; gap: 4px; padding: 8px 8px 0; }
 .studio-tabs button { background: none; border: 0; color: #a9afbd; padding: 8px 14px; border-radius: 8px 8px 0 0; font: inherit; cursor: pointer; }
+.studio-project-menu { margin-left: auto; }
 .studio-tabs button.on { background: #1d2029; color: #fff; }
 .studio-editor { flex: 1; min-height: 0; background: #1d2029; }
 .studio-right { gap: 8px; padding: 8px; }

@@ -4,6 +4,7 @@ import { CodeEditor } from './CodeEditor'
 import { CostumeEditor } from './CostumeEditor'
 import { SoundPanel } from './SoundPanel'
 import { Stage } from './Stage'
+import { ProjectMenu } from './persist/ProjectMenu'
 import { loadProject, watchAndSave } from './storage'
 import { StudioStore, useStudio, type EditorTab } from './store'
 import './studio.css'
@@ -32,6 +33,7 @@ export default function StudioApp() {
               {t.label}
             </button>
           ))}
+          <ProjectMenu store={store} className="studio-project-menu" />
         </nav>
         <div className="studio-editor">
           {tab === 'code' && <CodeEditor store={store} />}

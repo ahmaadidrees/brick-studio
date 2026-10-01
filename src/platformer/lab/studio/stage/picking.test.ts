@@ -117,6 +117,9 @@ describe('hit-picking order', () => {
       rngState: 1,
       cloneCount: 0,
       nextTargetId: 10,
+      askQueue: [],
+      nextAskId: 1,
+      hostClock: null,
     }
 
     // Click in center of both sprites (100, 100)
@@ -141,6 +144,9 @@ describe('hit-picking order', () => {
       rngState: 1,
       cloneCount: 0,
       nextTargetId: 10,
+      askQueue: [],
+      nextAskId: 1,
+      hostClock: null,
     }
 
     const picked = pickTarget(world, 100, 100)
@@ -166,6 +172,9 @@ describe('hit-picking order', () => {
       rngState: 1,
       cloneCount: 0,
       nextTargetId: 10,
+      askQueue: [],
+      nextAskId: 1,
+      hostClock: null,
     }
 
     // Center (100, 100) is in the donut hole (transparent), so bottomTarget is hit!
@@ -192,6 +201,9 @@ describe('hit-picking order', () => {
       rngState: 1,
       cloneCount: 0,
       nextTargetId: 10,
+      askQueue: [],
+      nextAskId: 1,
+      hostClock: null,
     }
 
     const picked = pickTarget(world, 800, 200)

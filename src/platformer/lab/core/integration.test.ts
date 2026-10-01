@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import type { LevelDesign } from './contracts'
 import { compileWorkspace } from './editor/compile'
 import { play } from './index'
+import { CURRENT_EDITOR_VERSION, CURRENT_ENGINE_SEMANTICS_VERSION, CURRENT_SCHEMA_VERSION, DEFAULT_PLUGIN_VERSIONS, parse, serialize } from './save'
 
 const num = (n: number) => ({ shadow: { type: 'math_number', fields: { NUM: n } } })
 
@@ -117,5 +118,28 @@ describe('Code Lab core integration', () => {
       return JSON.stringify(rt.world.targets.map((t) => [t.copyId, t.isClone, t.x, t.y]))
     }
     expect(run()).toBe(run())
+  })
+
+  it('saves and reloads code whose ids come from Blockly (punctuation in block and variable ids)', () => {
+    const blocklyIds = JSON.parse(
+      JSON.stringify(walkerWorkspace)
+        .replaceAll('"flag"', '"]4inN;!9sbH@RLzk#o$P"')
+        .replaceAll('"cx"', '"7jo)a4Y[;[T8^vYp+-=X"')
+        .replaceAll('v_speed', 'q(4`Zr|k~H/2,a.Bm{x}'),
+    )
+    const { program } = compileWorkspace(blocklyIds, { variables: [{ id: 'q(4`Zr|k~H/2,a.Bm{x}', name: 'speed', value: 2, showInBuild: true }] })
+    const d = design()
+    d.bricks[0].program = program
+    d.copies[0].knobs = { 'q(4`Zr|k~H/2,a.Bm{x}': 5 }
+    const text = serialize({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      engineSemanticsVersion: CURRENT_ENGINE_SEMANTICS_VERSION,
+      editorVersion: CURRENT_EDITOR_VERSION,
+      pluginVersions: { ...DEFAULT_PLUGIN_VERSIONS },
+      design: d,
+      workspaces: { walker: blocklyIds },
+    })
+    const result = parse(text)
+    expect(result.ok ? [] : result.problems).toEqual([])
   })
 })

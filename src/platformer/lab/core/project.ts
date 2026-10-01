@@ -192,6 +192,18 @@ function checkId(id: unknown, path: string, push: Push) {
   if (!isSafeId(id)) push('unsafe-id', path, 'Id must be 1–64 letters, digits, "_" or "-", and not a reserved key.')
 }
 
+/**
+ * Ids that Blockly generates (blocks, variables, lists) use punctuation such as `)`, `[`, `;`. They are only ever
+ * used as opaque keys, so they need a length cap, no control characters, and no reserved object keys.
+ */
+export function isEditorId(id: unknown): id is string {
+  return typeof id === 'string' && id.length >= 1 && id.length <= DESIGN_LIMITS.maxId && !/[\u0000-\u001f\u007f]/.test(id) && !FORBIDDEN_KEYS.includes(id)
+}
+
+function checkEditorId(id: unknown, path: string, push: Push) {
+  if (!isEditorId(id)) push('unsafe-id', path, 'Id must be 1–64 characters with no control characters, and not a reserved key.')
+}
+
 function checkName(name: unknown, path: string, push: Push, max: number = DESIGN_LIMITS.maxName) {
   if (!isSafeName(name, max)) push('unsafe-name', path, 'Name is empty, too long, or has control characters or a reserved key.')
 }
@@ -401,7 +413,7 @@ function checkVariable(decl: VariableDecl, path: string, scope: Set<string>, nam
     push('bad-value', path, 'A variable must be an object.')
     return
   }
-  checkId(decl.id, `${path}.id`, push)
+  checkEditorId(decl.id, `${path}.id`, push)
   checkName(decl.name, `${path}.name`, push)
   if (typeof decl.id === 'string') {
     if (scope.has(decl.id)) push('duplicate-id', `${path}.id`, `Duplicate variable or list id "${decl.id}".`)
@@ -425,7 +437,7 @@ function checkList(decl: ListDecl, path: string, scope: Set<string>, names: Set<
     push('bad-value', path, 'A list must be an object.')
     return
   }
-  checkId(decl.id, `${path}.id`, push)
+  checkEditorId(decl.id, `${path}.id`, push)
   checkName(decl.name, `${path}.name`, push)
   if (typeof decl.id === 'string') {
     if (scope.has(decl.id)) push('duplicate-id', `${path}.id`, `Duplicate variable or list id "${decl.id}".`)
@@ -452,7 +464,7 @@ function checkScript(script: Script, path: string, ids: Set<string>, push: Push,
     push('bad-value', path, 'A script must be an object.')
     return
   }
-  checkId(script.id, `${path}.id`, push)
+  checkEditorId(script.id, `${path}.id`, push)
   if (typeof script.id === 'string') {
     if (ids.has(script.id)) push('duplicate-id', `${path}.id`, `Duplicate script id "${script.id}".`)
     else ids.add(script.id)
@@ -508,7 +520,7 @@ function checkStmt(stmt: Stmt, path: string, push: Push, count: (subPath: string
   }
   checkFields(stmt.fields, `${path}.fields`, push)
   checkInputs(stmt.inputs, `${path}.inputs`, push, count, depth + 1)
-  if (stmt.id !== undefined) checkId(stmt.id, `${path}.id`, push)
+  if (stmt.id !== undefined) checkEditorId(stmt.id, `${path}.id`, push)
   if (stmt.call !== undefined) {
     if (!stmt.call || typeof stmt.call !== 'object' || !isSafeName(stmt.call.proccode, DESIGN_LIMITS.maxProccode)) {
       push('bad-value', `${path}.call`, 'A procedure call needs a safe proccode.')
@@ -581,7 +593,7 @@ function checkExpr(expr: Expr, path: string, push: Push, count: (subPath: string
     }
     checkFields(expr.fields, `${path}.fields`, push)
     checkInputs(expr.inputs, `${path}.inputs`, push, count, depth + 1)
-    if (expr.id !== undefined) checkId(expr.id, `${path}.id`, push)
+    if (expr.id !== undefined) checkEditorId(expr.id, `${path}.id`, push)
     return
   }
   push('bad-value', path, 'Unknown input kind.')
