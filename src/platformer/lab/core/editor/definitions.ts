@@ -986,6 +986,25 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       tooltip: '',
     },
     {
+      type: 'sensing_setdragmode',
+      message0: 'set drag mode %1',
+      args0: [
+        {
+          type: 'field_dropdown',
+          name: 'DRAG_MODE',
+          options: [
+            ['draggable', 'draggable'],
+            ['not draggable', 'not draggable'],
+          ],
+        },
+      ],
+      category: 'sensing',
+      colour: CATEGORY_COLORS.sensing,
+      previousStatement: null,
+      nextStatement: null,
+      tooltip: '',
+    },
+    {
       type: 'sensing_of',
       message0: '%1 of %2',
       args0: [

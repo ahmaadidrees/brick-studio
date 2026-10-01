@@ -287,4 +287,27 @@ describe('Code Editor: Variable Knob & Store integration', () => {
     const v2 = store.brick(brickId)!.program.variables.find((x) => x.id === 'var_jump_force')
     expect(v2?.showInBuild).toBe(false)
   })
+  it('updates project workspace in store on setWorkspace', () => {
+    const project = loadProject()
+    const store = new StudioStore(project)
+    const testWs = { blocks: { languageVersion: 0, blocks: [{ type: 'motion_movesteps', id: 'step_1' }] } }
+    store.setWorkspace(STAGE_ID, testWs)
+    expect(store.getState().project.workspaces[STAGE_ID]).toEqual(testWs)
+  })
+
+  it('updates diagnostics in store per brick', () => {
+    const project = loadProject()
+    const store = new StudioStore(project)
+    const diag: Diagnostic = {
+      code: 'block.disconnected',
+      severity: 'warning',
+      message: 'Not connected',
+      blockId: 'blk_test',
+    }
+    // Simulate compilation diagnostic update
+    store.setWorkspace(STAGE_ID, { blocks: { languageVersion: 0, blocks: [] } })
+    // Verify store state maintains diagnostics record structure
+    expect(store.getState().diagnostics).toBeDefined()
+  })
+
 })

@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import * as Blockly from 'blockly/core'
+import 'blockly/blocks'
+import * as En from 'blockly/msg/en'
+
+Blockly.setLocale(En as unknown as Record<string, string>)
 import type { StudioStore } from './store'
 import { STAGE_ID } from './store'
 import type { Diagnostic } from '../core/editor/compile'
