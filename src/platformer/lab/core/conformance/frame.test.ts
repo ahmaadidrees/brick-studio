@@ -487,25 +487,15 @@ describe('§1.1 Frame loop, work budget, yielding, and ordering', () => {
   })
 
   it('F15 · Same-frame new work', () => {
-    // Broadcast receivers can execute within the same tick sweep if reached
+    // A broadcasts during its turn: the receiver is appended to the live thread list and runs in the
+    // same tick (not obligatorily the next one).
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       scripts: [
-        flagScript([
-          stmt('data_addtolist', { ITEM: lit('start') }, { LIST: 'trace' }),
-          stmt('event_broadcast', {}, { BROADCAST_OPTION: 'ping' }),
-          stmt('data_addtolist', { ITEM: lit('end') }, { LIST: 'trace' }),
-        ]),
-        stmt('event_whenbroadcastreceived', {}, { BROADCAST_OPTION: 'ping' }) as unknown as Script,
+        flagScript([addLog('start'), stmt('event_broadcast', {}, { BROADCAST_OPTION: 'ping' }), addLog('end')]),
+        broadcastScript('ping', [addLog('received')]),
       ],
     })
-    // Replace script 2 properly with broadcast hat
-    rt.world.bricks['sprite1'].program.scripts[1] = {
-      id: 'recv',
-      hat: { opcode: 'event_whenbroadcastreceived', fields: { BROADCAST_OPTION: 'ping' }, inputs: {} },
-      body: [stmt('data_addtolist', { ITEM: lit('received') }, { LIST: 'trace' })],
-    }
-
     rt.greenFlag()
     rt.step()
     expect(rt.world.targets[0].lists.trace).toEqual(['start', 'end', 'received'])

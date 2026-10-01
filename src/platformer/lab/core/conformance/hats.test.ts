@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Script, Stmt } from '../contracts'
+import { pickTarget } from '../../studio/stage/picking'
 import {
   backdropScript,
   block,
@@ -11,11 +11,14 @@ import {
   greaterThanScript,
   keyScript,
   lit,
-  makeHarnessDesign,
+  extraBrick,
   makeHarnessRuntime,
   stageClickScript,
+  stepN,
   stmt,
 } from './harness'
+
+const addLog = (item: string, list = 'trace') => stmt('data_addtolist', { ITEM: lit(item) }, { LIST: list })
 
 describe('§1.2 Hats, retriggers, and broadcasts', () => {
   it('H01 · Green flag', () => {
@@ -61,6 +64,14 @@ describe('§1.2 Hats, retriggers, and broadcasts', () => {
     // Step once to let flag script run
     rt.step()
     expect(rt.world.targets[0].variables.v).toBe(8)
+
+    // 5. Timer restarted by a later flag; the value (not reset by the flag) carries on: 8 -> 9.
+    stepN(rt, 5)
+    expect(rt.world.timerStartTick).not.toBe(rt.world.tick)
+    rt.greenFlag()
+    expect(rt.world.timerStartTick).toBe(rt.world.tick)
+    rt.step()
+    expect(rt.world.targets[0].variables.v).toBe(9)
   })
 
   it('H02 · Key pressed', () => {
@@ -125,20 +136,15 @@ describe('§1.2 Hats, retriggers, and broadcasts', () => {
     expect(target.lists.trace).toEqual(['start', 'start', 'end'])
   })
 
-  it('H04 · Stage clicked', () => {
-    // Stage-click hats restart like sprite-click hats
+  it('H04 · Stage clicked (hat restart)', () => {
+    // Stage-click hats restart like sprite-click hats; a click that hits no sprite clicks the Stage.
     const rt = makeHarnessRuntime({
       stageLists: [{ id: 'trace', name: 'trace', value: [] }],
-      stageScripts: [
-        stageClickScript([
-          stmt('data_addtolist', { ITEM: lit('start') }, { LIST: 'trace' }),
-          stmt('control_wait', { DURATION: lit(1) }),
-          stmt('data_addtolist', { ITEM: lit('end') }, { LIST: 'trace' }),
-        ]),
-      ],
+      stageScripts: [stageClickScript([addLog('start'), stmt('control_wait', { DURATION: lit(1) }), addLog('end')])],
     })
-
-    rt.clickTarget(rt.world.stage)
+    // Sprite1 sits at (0,0), 32x32; (200,100) is empty stage.
+    expect(pickTarget(rt.world, 200, 100)).toBe(rt.world.stage)
+    rt.clickTarget(pickTarget(rt.world, 200, 100))
     rt.step()
     expect(rt.world.stage.lists.trace).toEqual(['start'])
 
@@ -146,73 +152,112 @@ describe('§1.2 Hats, retriggers, and broadcasts', () => {
     rt.step()
     expect(rt.world.stage.lists.trace).toEqual(['start', 'start'])
 
-    for (let i = 0; i < 35; i++) rt.step()
+    stepN(rt, 35)
     expect(rt.world.stage.lists.trace).toEqual(['start', 'start', 'end'])
   })
 
+  function pickingRuntime() {
+    // B (back, sprite1) and A (front, brick 'a') overlap at the origin; both opaque 32x32.
+    return makeHarnessRuntime({
+      extraBricks: [extraBrick('a', 'A')],
+      extraCopies: [{ id: 'copyA', brickId: 'a', x: 0, y: 0 }],
+    })
+  }
+
+  it('H04 · picking: the front-most opaque sprite is picked, and only it', () => {
+    const rt = pickingRuntime()
+    const [back, front] = rt.world.targets
+    expect(front.brickId).toBe('a')
+    expect(pickTarget(rt.world, 0, 0)).toBe(front)
+    expect(pickTarget(rt.world, 0, 0)).not.toBe(back)
+    // Click-through onto the Stage where nothing overlaps.
+    expect(pickTarget(rt.world, 100, 100)).toBe(rt.world.stage)
+  })
+
+  it('H04 · picking: a hidden front sprite is not picked', () => {
+    const rt = pickingRuntime()
+    const [back, front] = rt.world.targets
+    front.visible = false
+    expect(pickTarget(rt.world, 0, 0)).toBe(back)
+  })
+
+  // FAILS-PENDING-FIX (runtime-fixes bug 3 / stage-camera lane, H04/L06): studio/stage/picking.ts
+  // skips only hidden targets, so a fully ghosted sprite (ghost = 100) is still picked. Scratch
+  // does not let you click a fully transparent sprite.
+  it.fails('H04 · picking: a fully ghosted front sprite is not picked', () => {
+    const rt = pickingRuntime()
+    const [back, front] = rt.world.targets
+    front.effects.ghost = 100
+    expect(pickTarget(rt.world, 0, 0)).toBe(back)
+  })
+
   it('H05 · Broadcast', () => {
-    // Receivers restart existing matching hats; case-insensitive match
+    // Receivers restart existing matching hats; matching is case-insensitive. The sender continues
+    // immediately after an ordinary broadcast.
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       scripts: [
-        broadcastScript('MsgA', [
-          stmt('data_addtolist', { ITEM: lit('start') }, { LIST: 'trace' }),
-          stmt('control_wait', { DURATION: lit(1) }),
-          stmt('data_addtolist', { ITEM: lit('end') }, { LIST: 'trace' }),
-        ]),
+        broadcastScript('MsgA', [addLog('start'), stmt('control_wait', { DURATION: lit(1) }), addLog('end')]),
+        flagScript([stmt('event_broadcast', {}, { BROADCAST_OPTION: 'msga' }), addLog('sender-continued')], 'sender'),
       ],
     })
 
-    // Broadcast lowercase 'msga'
-    rt.broadcast('msga')
+    // The sender continues in the same turn, before the receiver's wait could possibly finish.
+    rt.greenFlag()
     rt.step()
-    expect(rt.world.targets[0].lists.trace).toEqual(['start'])
+    expect(rt.world.targets[0].lists.trace).toEqual(['sender-continued', 'start'])
 
-    // Broadcast uppercase 'MSGA' -> restarts
+    // Broadcast uppercase 'MSGA' -> the receiver restarts.
     rt.broadcast('MSGA')
     rt.step()
-    expect(rt.world.targets[0].lists.trace).toEqual(['start', 'start'])
+    expect(rt.world.targets[0].lists.trace).toEqual(['sender-continued', 'start', 'start'])
 
-    for (let i = 0; i < 35; i++) rt.step()
-    expect(rt.world.targets[0].lists.trace).toEqual(['start', 'start', 'end'])
+    stepN(rt, 35)
+    expect(rt.world.targets[0].lists.trace).toEqual(['sender-continued', 'start', 'start', 'end'])
+  })
+
+  // FAILS-PENDING-FIX (runtime-fixes bug 2, H05/F14): a restarted receiver is removed and pushed to
+  // the END of the thread queue. Scratch's _restartThread replaces it at the same index, so the
+  // restarted receiver still runs before the key thread that was started after it.
+  it.fails('H05 · a restarted receiver keeps its place in the thread order', () => {
+    const rt = makeHarnessRuntime({
+      lists: [{ id: 'trace', name: 'trace', value: [] }],
+      scripts: [
+        broadcastScript('M', [addLog('R1'), stmt('control_wait', { DURATION: lit(0) }), addLog('R2')], 'recv'),
+        keyScript('k', [addLog('K1'), stmt('control_wait', { DURATION: lit(0) }), addLog('K2')], 'key'),
+      ],
+    })
+    rt.broadcast('M')
+    rt.pressKey('k')
+    rt.step() // R1, K1
+    rt.broadcast('M') // restart the receiver
+    rt.step() // Scratch: R1 (restarted thread keeps index 0), then K2
+    expect(rt.world.targets[0].lists.trace).toEqual(['R1', 'K1', 'R1', 'K2'])
   })
 
   it('H06 · Broadcast-and-wait', () => {
-    // Waits on receivers; returns immediately if zero receivers
+    // Receivers waiting 0.2 s and 0.4 s: the sender continues only after both have finished.
+    // 0.2 s = 6 ticks, 0.4 s = 12 ticks at 30 TPS.
     const rt = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
       scripts: [
-        flagScript([
-          stmt('data_addtolist', { ITEM: lit('sender_start') }, { LIST: 'trace' }),
-          stmt('event_broadcastandwait', {}, { BROADCAST_OPTION: 'compute' }),
-          stmt('data_addtolist', { ITEM: lit('sender_end') }, { LIST: 'trace' }),
-        ], 'sSender'),
-        broadcastScript('compute', [
-          stmt('data_addtolist', { ITEM: lit('recv_start') }, { LIST: 'trace' }),
-          stmt('control_wait', { DURATION: lit(0.1) }),
-          stmt('data_addtolist', { ITEM: lit('recv_end') }, { LIST: 'trace' }),
-        ], 'sRecv'),
+        flagScript([addLog('sender_start'), stmt('event_broadcastandwait', {}, { BROADCAST_OPTION: 'compute' }), addLog('sender_end')], 'sSender'),
+        broadcastScript('compute', [stmt('control_wait', { DURATION: lit(0.2) }), addLog('recv_fast')], 'fast'),
+        broadcastScript('compute', [stmt('control_wait', { DURATION: lit(0.4) }), addLog('recv_slow')], 'slow'),
       ],
     })
-
     rt.greenFlag()
     rt.step()
-    expect(rt.world.targets[0].lists.trace).toEqual(['sender_start', 'recv_start'])
-
-    // Advance 5 ticks
-    for (let i = 0; i < 5; i++) rt.step()
-    expect(rt.world.targets[0].lists.trace).toEqual(['sender_start', 'recv_start', 'recv_end', 'sender_end'])
+    expect(rt.world.targets[0].lists.trace).toEqual(['sender_start'])
+    stepN(rt, 8) // past 0.2 s, before 0.4 s
+    expect(rt.world.targets[0].lists.trace).toEqual(['sender_start', 'recv_fast'])
+    stepN(rt, 12) // past 0.4 s
+    expect(rt.world.targets[0].lists.trace).toEqual(['sender_start', 'recv_fast', 'recv_slow', 'sender_end'])
 
     // Broadcast-and-wait with zero receivers completes immediately
     const rtEmpty = makeHarnessRuntime({
       lists: [{ id: 'trace', name: 'trace', value: [] }],
-      scripts: [
-        flagScript([
-          stmt('data_addtolist', { ITEM: lit('a') }, { LIST: 'trace' }),
-          stmt('event_broadcastandwait', {}, { BROADCAST_OPTION: 'nobody' }),
-          stmt('data_addtolist', { ITEM: lit('b') }, { LIST: 'trace' }),
-        ]),
-      ],
+      scripts: [flagScript([addLog('a'), stmt('event_broadcastandwait', {}, { BROADCAST_OPTION: 'nobody' }), addLog('b')])],
     })
     rtEmpty.greenFlag()
     rtEmpty.step()
@@ -243,55 +288,61 @@ describe('§1.2 Hats, retriggers, and broadcasts', () => {
   })
 
   it('H08 · Timer/loudness threshold', () => {
-    // Strictly >, edge-activated (only triggers when crossing from <= to >)
+    // Threshold 1: timer samples 0.9, 1.0, 1.1, 1.2 -> the first trigger is only at 1.1 (strictly >).
+    // Persistently true does not run again each tick. Drop below, then cross again after the first
+    // handler finished -> a second trigger.
     const rt = makeHarnessRuntime({
       stageLists: [{ id: 'trace', name: 'trace', value: [] }],
-      stageScripts: [
-        greaterThanScript('TIMER', lit(0.5), [
-          stmt('data_addtolist', { ITEM: lit('triggered') }, { LIST: 'trace' }),
-        ]),
-      ],
+      stageScripts: [greaterThanScript('TIMER', lit(1), [addLog('triggered', 'trace')])],
     })
-
     rt.greenFlag()
-    rt.step()
-    // Timer starts at 0 -> <= 0.5 -> not triggered
-    expect(rt.world.stage.lists.trace).toEqual([])
-
-    // Advance 10 ticks = ~0.33s -> still <= 0.5
-    for (let i = 0; i < 10; i++) rt.step()
-    expect(rt.world.stage.lists.trace).toEqual([])
-
-    // Advance 10 more ticks = ~0.66s -> crossed > 0.5!
-    for (let i = 0; i < 10; i++) rt.step()
-    expect(rt.world.stage.lists.trace).toEqual(['triggered'])
-
-    // Advance more ticks: persistently > 0.5 does NOT re-trigger every tick!
-    for (let i = 0; i < 10; i++) rt.step()
-    expect(rt.world.stage.lists.trace).toEqual(['triggered'])
+    const sampleAt = (seconds: number) => {
+      rt.world.tick = Math.round(seconds * 30) + rt.world.timerStartTick // timer = (tick - start) / 30
+      rt.step()
+      return rt.world.stage.lists.trace.length
+    }
+    expect(sampleAt(0.9)).toBe(0)
+    expect(sampleAt(1.0)).toBe(0) // equality must not fire
+    expect(sampleAt(1.1)).toBe(1)
+    expect(sampleAt(1.2)).toBe(1) // still true: no re-trigger
+    expect(sampleAt(0.5)).toBe(1) // re-arm: below the threshold
+    expect(sampleAt(1.5)).toBe(2) // crossing again
   })
 
   it('H09 · Backdrop changes', () => {
-    // Backdrop-switch hats restart; switching backdrop starts matching hats
+    // Switching the Stage backdrop (through the real block) starts the matching backdrop hats,
+    // including switching to the backdrop that is already current. Switching a sprite costume starts none.
     const rt = makeHarnessRuntime({
       stageCostumes: [defaultCostume('bg1', 480, 360), defaultCostume('bg2', 480, 360)],
+      costumes: [defaultCostume('c1'), defaultCostume('c2')],
       stageLists: [{ id: 'trace', name: 'trace', value: [] }],
       scripts: [
-        backdropScript('bg2', [
-          stmt('data_addtolist', { ITEM: lit('backdrop_switched') }, { LIST: 'trace' }),
-        ]),
+        backdropScript('bg2', [addLog('bg2-hat')], 'hat_bg2'),
+        broadcastScript('sprite-costume', [stmt('looks_switchcostumeto', { COSTUME: lit('c2') })], 'costumeSwitch'),
+      ],
+      stageScripts: [
+        broadcastScript('to-bg2', [stmt('looks_switchbackdropto', { BACKDROP: lit('bg2') })], 'stageSwitch'),
       ],
     })
-
     rt.greenFlag()
-    rt.step()
+    stepN(rt, 2)
     expect(rt.world.stage.lists.trace).toEqual([])
 
-    // Switch backdrop to bg2
-    rt.world.stage.costumeIndex = 1
-    rt.startHats('event_whenbackdropswitchesto', { fields: { BACKDROP: 'bg2' } })
-    rt.step()
-    expect(rt.world.stage.lists.trace).toEqual(['backdrop_switched'])
+    rt.broadcast('to-bg2')
+    stepN(rt, 2)
+    expect(rt.world.stage.costumeIndex).toBe(1)
+    expect(rt.world.stage.lists.trace).toEqual(['bg2-hat'])
+
+    // Already on bg2: switching to it again still fires the hat.
+    rt.broadcast('to-bg2')
+    stepN(rt, 2)
+    expect(rt.world.stage.lists.trace).toEqual(['bg2-hat', 'bg2-hat'])
+
+    // A sprite costume switch is not a backdrop switch.
+    rt.broadcast('sprite-costume')
+    stepN(rt, 2)
+    expect(rt.world.targets[0].costumeIndex).toBe(1)
+    expect(rt.world.stage.lists.trace).toEqual(['bg2-hat', 'bg2-hat'])
   })
 
   it('H10 · Stack clicks', () => {
