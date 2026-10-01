@@ -4,7 +4,10 @@ import {
   defaultCostume,
   flagScript,
   lit,
+  extraBrick,
   makeHarnessRuntime,
+  stepN,
+  broadcastScript,
   stmt,
 } from './harness'
 
@@ -121,23 +124,31 @@ describe('§1.4 Motion, coordinates, fencing, and bouncing', () => {
   })
 
   it('M05 · Ordinary fencing', () => {
-    // setXY clamps center position so costume remains partially on stage
-    // With 32x32 costume at (0,0), half width = 16. Bounds = [-240, 240, -180, 180].
-    // Clamped so center is at least 15px from leaving boundary.
+    // A 100x100 costume (fence AABB [-50,50]^2 around its center): inset = min(15, floor(100/2)) = 15,
+    // so the center can reach 240 + 50 - 15 = 275 horizontally and 180 + 50 - 15 = 215 vertically.
     const rt = makeHarnessRuntime({
       costumes: [defaultCostume('c1', 100, 100)],
       scripts: [
         flagScript([
           stmt('motion_setx', { X: lit(1000) }),
+          stmt('data_setvariableto', { VALUE: block('motion_xposition') }, { VARIABLE: 'xr' }),
+          stmt('motion_setx', { X: lit(-1000) }),
+          stmt('data_setvariableto', { VALUE: block('motion_xposition') }, { VARIABLE: 'xl' }),
+          stmt('motion_sety', { Y: lit(1000) }),
+          stmt('data_setvariableto', { VALUE: block('motion_yposition') }, { VARIABLE: 'yt' }),
+          stmt('motion_sety', { Y: lit(-1000) }),
+          stmt('data_setvariableto', { VALUE: block('motion_yposition') }, { VARIABLE: 'yb' }),
         ]),
       ],
+      variables: ['xr', 'xl', 'yt', 'yb'].map((id) => ({ id, name: id, value: 0 })),
     })
     rt.greenFlag()
     rt.step()
-
-    // Center is fenced, not at 1000
-    expect(rt.world.targets[0].x).toBeLessThan(1000)
-    expect(rt.world.targets[0].x).toBeGreaterThan(240)
+    const v = rt.world.targets[0].variables
+    expect(v.xr).toBe(275)
+    expect(v.xl).toBe(-275)
+    expect(v.yt).toBe(215)
+    expect(v.yb).toBe(-215)
   })
 
   it('M06 · Small-costume fence', () => {
@@ -179,23 +190,47 @@ describe('§1.4 Motion, coordinates, fencing, and bouncing', () => {
   })
 
   it('M08 · Go to', () => {
-    // Go to '_mouse_' uses mouse coordinates; named sprite goes to first painted original
+    // Named target: the first original, not the nearest clone. Mouse uses mouse coordinates.
+    // A missing target is a no-op. Random with a stub of 0.5 gives (0, 0).
     const rt = makeHarnessRuntime({
-      extraCopies: [{ id: 'copy2', brickId: 'sprite1', x: 50, y: 50 }],
+      x: 90,
+      y: 90,
       scripts: [
-        flagScript([
-          stmt('motion_goto', {}, { TO: '_mouse_' }),
-        ], 'sMouse'),
+        broadcastScript('named', [stmt('motion_goto', {}, { TO: 'Bee' })], 'toNamed'),
+        broadcastScript('missing', [stmt('motion_goto', {}, { TO: 'Nobody' })], 'toMissing'),
+        broadcastScript('mouse', [stmt('motion_goto', {}, { TO: '_mouse_' })], 'toMouse'),
+        broadcastScript('random', [stmt('motion_goto', {}, { TO: '_random_' })], 'toRandom'),
       ],
+      extraBricks: [extraBrick('bee', 'Bee')],
+      extraCopies: [{ id: 'bee1', brickId: 'bee', x: 10, y: 10 }],
     })
-    rt.world.mouse.x = 77
-    rt.world.mouse.y = 88
-
+    const mover = rt.world.targets[0]
+    const bee = rt.world.targets.find((t) => t.brickId === 'bee')!
     rt.greenFlag()
+    rt.startStack(bee, { id: 'mk', hat: { opcode: 'control_start_as_clone', fields: {}, inputs: {} }, body: [stmt('control_create_clone_of', {}, { CLONE_OPTION: '_myself_' })] })
     rt.step()
+    const beeClone = rt.world.targets.find((t) => t.isClone)!
+    beeClone.x = 99
+    beeClone.y = 99 // the clone is right next to the mover at (90, 90)
 
-    expect(rt.world.targets[0].x).toBe(77)
-    expect(rt.world.targets[0].y).toBe(88)
+    rt.broadcast('named')
+    rt.step()
+    expect([mover.x, mover.y]).toEqual([10, 10])
+
+    rt.broadcast('missing')
+    rt.step()
+    expect([mover.x, mover.y]).toEqual([10, 10])
+
+    rt.world.mouse.x = 77
+    rt.world.mouse.y = -88
+    rt.broadcast('mouse')
+    rt.step()
+    expect([mover.x, mover.y]).toEqual([77, -88])
+
+    rt.random = () => 0.5
+    rt.broadcast('random')
+    rt.step()
+    expect([mover.x, mover.y]).toEqual([0, 0])
   })
 
   it('M09 · Point towards', () => {
@@ -290,30 +325,27 @@ describe('§1.4 Motion, coordinates, fencing, and bouncing', () => {
   })
 
   it('M13 · Edge predicate boundary', () => {
-    // touching edge checks bounds strictly beyond stage
+    // touching edge is strict: bounds.right = 240 -> false; 240.1 -> true. (100x100 costume centered
+    // on its position, so bounds.right = x + 50.)
     const rt = makeHarnessRuntime({
-      x: 0,
-      y: 0,
+      costumes: [defaultCostume('c1', 100, 100)],
       variables: [
-        { id: 'touch1', name: 'touch1', value: false },
-        { id: 'touch2', name: 'touch2', value: false },
+        { id: 'flush', name: 'flush', value: true },
+        { id: 'beyond', name: 'beyond', value: false },
       ],
       scripts: [
         flagScript([
-          stmt('data_setvariableto', {
-            VALUE: block('sensing_touchingobject', {}, { TOUCHINGOBJECTMENU: '_edge_' }),
-          }, { VARIABLE: 'touch1' }),
-          stmt('motion_setx', { X: lit(1000) }),
-          stmt('data_setvariableto', {
-            VALUE: block('sensing_touchingobject', {}, { TOUCHINGOBJECTMENU: '_edge_' }),
-          }, { VARIABLE: 'touch2' }),
+          stmt('motion_setx', { X: lit(190) }),
+          stmt('data_setvariableto', { VALUE: block('sensing_touchingobject', {}, { TOUCHINGOBJECTMENU: '_edge_' }) }, { VARIABLE: 'flush' }),
+          stmt('motion_setx', { X: lit(190.1) }),
+          stmt('data_setvariableto', { VALUE: block('sensing_touchingobject', {}, { TOUCHINGOBJECTMENU: '_edge_' }) }, { VARIABLE: 'beyond' }),
         ]),
       ],
     })
     rt.greenFlag()
     rt.step()
-    expect(rt.world.targets[0].variables.touch1).toBe(false)
-    expect(rt.world.targets[0].variables.touch2).toBe(true)
+    expect(rt.world.targets[0].variables.flush).toBe(false)
+    expect(rt.world.targets[0].variables.beyond).toBe(true)
   })
 
   it('M14 · Rotation styles', () => {

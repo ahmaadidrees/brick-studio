@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { pickTarget } from '../../studio/stage/picking'
 import {
   block,
+  broadcastScript,
   defaultCostume,
+  extraBrick,
   flagScript,
   lit,
   makeHarnessRuntime,
@@ -198,6 +201,15 @@ describe('§1.5 Looks, size, effects, layers, and timed bubbles', () => {
     expect(rt.world.targets[0].variables.touchHidden).toBe(false)
   })
 
+  // FAILS-PENDING-FIX (runtime-fixes bug 3 / stage-camera lane, H04/L06): the normal picker skips only
+  // hidden sprites, so a ghost = 100 sprite is still clickable. Scratch's mouse picking excludes it.
+  it.fails('L06 · a fully ghosted sprite is not clickable through the normal picker', () => {
+    const rt = makeHarnessRuntime({ extraBricks: [extraBrick('b', 'B')], extraCopies: [{ id: 'copyB', brickId: 'b', x: 0, y: 0 }] })
+    const [back, front] = rt.world.targets
+    front.effects.ghost = 100
+    expect(pickTarget(rt.world, 0, 0)).toBe(back)
+  })
+
   it('L07 · Show/hide', () => {
     // Hidden target continues executing scripts and can sense mouse pointer
     const rt = makeHarnessRuntime({
@@ -225,59 +237,61 @@ describe('§1.5 Looks, size, effects, layers, and timed bubbles', () => {
   })
 
   it('L08 · Layer operations', () => {
-    // gotofront / gobackwards alters target draw order
+    // A (back) and B (front) overlap. A goes to the front: A now wins picking at the overlap, both
+    // still touch, and the next broadcast starts hats in the updated layer order.
+    const ping = (name: string) => broadcastScript('ping', [stmt('data_addtolist', { ITEM: lit(name) }, { LIST: 'order' })], `ping${name}`)
     const rt = makeHarnessRuntime({
-      extraBricks: [
-        {
-          id: 'other',
-          name: 'Other',
-          costumes: [defaultCostume('c1')],
-          sounds: [],
-          program: { scripts: [], procedures: [], variables: [], lists: [] },
-        },
-      ],
-      extraCopies: [
-        { id: 'copy2', brickId: 'other', x: 0, y: 0 },
-        { id: 'copy3', brickId: 'other', x: 0, y: 0 },
-      ],
+      stageLists: [{ id: 'order', name: 'order', value: [] }],
+      variables: [{ id: 'touchB', name: 'touchB', value: false }],
       scripts: [
-        flagScript([
+        broadcastScript('lift', [
           stmt('looks_gotofrontback', {}, { FRONT_BACK: 'front' }),
-        ]),
+          stmt('data_setvariableto', { VALUE: block('sensing_touchingobject', {}, { TOUCHINGOBJECTMENU: 'B' }) }, { VARIABLE: 'touchB' }),
+        ], 'lift'),
+        ping('A'),
       ],
+      extraBricks: [extraBrick('b', 'B', [ping('B')])],
+      extraCopies: [{ id: 'copyB', brickId: 'b', x: 0, y: 0 }],
     })
-
-    // targets initially: [copy1, copy2, copy3]
-    expect(rt.world.targets.map((t) => t.id)).toEqual(['copy1', 'copy2', 'copy3'])
-
-    rt.greenFlag()
+    const [a, b] = rt.world.targets
+    expect(a.brickId).toBe('sprite1')
+    expect(pickTarget(rt.world, 0, 0)).toBe(b) // B is in front before the change
+    rt.broadcast('ping')
     rt.step()
+    expect(rt.world.stage.lists.order).toEqual(['B', 'A']) // front-most hat starts first
 
-    // copy1 went to front: [copy2, copy3, copy1]
-    expect(rt.world.targets.map((t) => t.id)).toEqual(['copy2', 'copy3', 'copy1'])
+    rt.broadcast('lift')
+    rt.step()
+    expect(rt.world.targets.map((t) => t.brickId)).toEqual(['b', 'sprite1'])
+    expect(pickTarget(rt.world, 0, 0)).toBe(a) // A wins picking now
+    expect(a.variables.touchB).toBe(true) // layers do not change touching
+
+    rt.world.stage.lists.order = []
+    rt.broadcast('ping')
+    rt.step()
+    expect(rt.world.stage.lists.order).toEqual(['A', 'B']) // launch order follows the new layers
   })
 
   it('L09 · Say/think plain', () => {
-    // Say plain sets bubble; empty string clears it
+    // say 1.234 -> bubble "1.23"; say the string "1.234" -> exact string; say "" -> no bubble.
     const rt = makeHarnessRuntime({
       scripts: [
-        flagScript([
-          stmt('looks_say', { MESSAGE: lit('Hello World') }),
-        ]),
+        broadcastScript('num', [stmt('looks_say', { MESSAGE: lit(1.234) })], 'num'),
+        broadcastScript('str', [stmt('looks_say', { MESSAGE: lit('1.234') })], 'str'),
+        broadcastScript('empty', [stmt('looks_say', { MESSAGE: lit('') })], 'empty'),
+        broadcastScript('think', [stmt('looks_think', { MESSAGE: lit('hmm') })], 'think'),
       ],
     })
-
-    rt.greenFlag()
-    rt.step()
-    expect(rt.world.targets[0].bubble).toEqual({ kind: 'say', text: 'Hello World' })
-
-    // Say empty string clears bubble
-    rt.world.bricks['sprite1'].program.scripts[0] = flagScript([
-      stmt('looks_say', { MESSAGE: lit('') }),
-    ])
-    rt.greenFlag()
-    rt.step()
-    expect(rt.world.targets[0].bubble).toBeNull()
+    const t = rt.world.targets[0]
+    const run = (msg: string) => {
+      rt.broadcast(msg)
+      rt.step()
+      return t.bubble
+    }
+    expect(run('num')).toEqual({ kind: 'say', text: '1.23' })
+    expect(run('str')).toEqual({ kind: 'say', text: '1.234' })
+    expect(run('think')).toEqual({ kind: 'think', text: 'hmm' })
+    expect(run('empty')).toBeNull()
   })
 
   it('L10 · Say/think for seconds', () => {
