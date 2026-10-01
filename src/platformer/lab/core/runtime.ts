@@ -13,6 +13,8 @@ import {
   TICKS_PER_SECOND,
   WARP_OP_LIMIT,
   YIELD,
+  YIELD_TICK,
+  zeroEffects,
 } from './contracts'
 import type {
   BrickDef,
@@ -34,57 +36,18 @@ import type {
   Value,
   World,
 } from './contracts'
+import { toBoolean, toNumber, toString } from './values'
 import { nextFloat } from './rng'
-import { zeroEffects } from './testkit'
 
-/** Yield for the rest of the tick (F07). Resumed on the first sweep of the next tick. */
-export const YIELD_TICK: unique symbol = Symbol('core.yieldTick')
+export { YIELD_TICK }
+export { toNumber, toBoolean, toString }
+
+export interface RuntimeLifecycle {
+  greenFlag: ((runtime: RuntimeApi) => void)[]
+  stopAll: ((runtime: RuntimeApi) => void)[]
+}
 
 export type ThreadStatus = 'running' | 'yield' | 'yield_tick' | 'done'
-
-export function toNumber(value: unknown): number {
-  if (typeof value === 'number') {
-    return Number.isNaN(value) ? 0 : value
-  }
-  if (typeof value === 'boolean') {
-    return value ? 1 : 0
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (trimmed === '') return 0
-    const n = Number(trimmed)
-    return Number.isNaN(n) ? 0 : n
-  }
-  return 0
-}
-
-export function toBoolean(value: unknown): boolean {
-  if (typeof value === 'boolean') {
-    return value
-  }
-  if (typeof value === 'number') {
-    return value !== 0 && !Number.isNaN(value)
-  }
-  if (typeof value === 'string') {
-    const lower = value.trim().toLowerCase()
-    if (lower === '' || lower === '0' || lower === 'false') {
-      return false
-    }
-    return true
-  }
-  return Boolean(value)
-}
-
-export function toString(value: unknown): string {
-  if (typeof value === 'string') return value
-  if (typeof value === 'number') {
-    if (Object.is(value, -0)) return '0'
-    return String(value)
-  }
-  if (typeof value === 'boolean') return value ? 'true' : 'false'
-  if (value === undefined || value === null) return ''
-  return String(value)
-}
 
 interface ExecutionFrame {
   statements: Stmt[]
@@ -140,9 +103,13 @@ export class Runtime implements RuntimeApi {
   private _redrawRequested = false
   private _tickOps = 0
 
-  constructor(world: World, primitives: PrimitiveTable = {}) {
+  /** Lane cleanup that must run on green flag / stop (looks bubbles, sound effects, ask queue). */
+  readonly lifecycle: RuntimeLifecycle
+
+  constructor(world: World, primitives: PrimitiveTable = {}, lifecycle: Partial<RuntimeLifecycle> = {}) {
     this.world = world
     this.primitives = primitives
+    this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [] }
   }
 
   nowMs(): number {
@@ -211,6 +178,7 @@ export class Runtime implements RuntimeApi {
       target.effects = zeroEffects()
     }
     this.emit({ kind: 'stopSounds' })
+    for (const hook of this.lifecycle.stopAll) hook(this)
   }
 
   stop(): void {
@@ -224,6 +192,7 @@ export class Runtime implements RuntimeApi {
       target.edgeHatState = {}
       target.effects = zeroEffects()
     }
+    for (const hook of this.lifecycle.greenFlag) hook(this)
     this.startHats('event_whenflagclicked')
   }
 

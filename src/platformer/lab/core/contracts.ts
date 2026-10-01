@@ -214,6 +214,8 @@ export interface Target {
   bubble: Bubble | null
   /** Edge-triggered hat memory (event_whengreaterthan), copied to clones (C01). */
   edgeHatState: Record<string, boolean>
+  /** Held by the player's pointer: motion blocks leave it alone and sprite touching skips it (S02). */
+  dragging?: boolean
 }
 
 export interface Mouse {
@@ -284,7 +286,9 @@ export interface RuntimeApi {
 
 /** Return this from a primitive to yield; the same block runs again when the thread next runs (Scratch util.yield). */
 export const YIELD: unique symbol = Symbol('core.yield')
-export type PrimitiveResult = Value | void | typeof YIELD
+/** Return this to sleep until the next tick even if the scheduler would sweep again (F07, Scratch's yield-tick). */
+export const YIELD_TICK: unique symbol = Symbol('core.yieldTick')
+export type PrimitiveResult = Value | void | typeof YIELD | typeof YIELD_TICK
 
 export interface PrimitiveCtx {
   readonly target: Target
@@ -301,3 +305,7 @@ export interface PrimitiveCtx {
 
 export type Primitive = (ctx: PrimitiveCtx) => PrimitiveResult
 export type PrimitiveTable = Record<string, Primitive>
+
+/** Fresh graphic effects, all zero. */
+export const zeroEffects = (): Record<EffectName, number> =>
+  Object.fromEntries(EFFECT_NAMES.map((n) => [n, 0])) as Record<EffectName, number>

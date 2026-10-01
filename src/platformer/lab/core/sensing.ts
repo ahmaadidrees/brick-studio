@@ -18,16 +18,13 @@ import type { BrickDef, Primitive, PrimitiveCtx, PrimitiveTable, RuntimeApi, Tar
 import { costumeOf } from './geometry'
 import { targetsTouch, touchingEdge, touchingPoint } from './touching'
 
-const dragged = new WeakSet<Target>()
-
-/** Transient "being dragged" flag. Dragged sprites are not touching candidates; they can still sense others (S02). */
+/** Target.dragging: dragged sprites are not touching candidates; they can still sense others (S02). */
 export function setDragged(target: Target, dragging: boolean): void {
-  if (dragging) dragged.add(target)
-  else dragged.delete(target)
+  target.dragging = dragging
 }
 
 export function isDragged(target: Target): boolean {
-  return dragged.has(target)
+  return target.dragging === true
 }
 
 export interface HostClock {

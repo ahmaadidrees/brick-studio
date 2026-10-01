@@ -3,7 +3,7 @@
  * primitives ask for; `callPrimitive` re-runs a primitive on YIELD and advances one tick each time.
  * The real runtime (scheduler lane) replaces this in integration fixtures.
  */
-import { EFFECT_NAMES, YIELD } from './contracts'
+import { YIELD, zeroEffects } from './contracts'
 import type {
   BrickDef,
   EffectName,
@@ -22,8 +22,7 @@ import type {
 import { TICK_MS } from './contracts'
 import { nextFloat, seedState } from './rng'
 
-export const zeroEffects = (): Record<EffectName, number> =>
-  Object.fromEntries(EFFECT_NAMES.map((n) => [n, 0])) as Record<EffectName, number>
+export { zeroEffects }
 
 export function makeTarget(over: Partial<Target> = {}): Target {
   return {

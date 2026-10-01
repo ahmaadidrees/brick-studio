@@ -35,16 +35,13 @@ export function isPastEdge(world: World, target: Target): boolean {
   return bounds.left < stage.left || bounds.right > stage.right || bounds.bottom < stage.bottom || bounds.top > stage.top
 }
 
-const dragging = new WeakSet<Target>()
-
-/** Editor drag lock. Block motion ignores a locked sprite unless `placeTarget` is forced. */
+/** Editor drag lock (Target.dragging). Block motion ignores a locked sprite unless `placeTarget` is forced. */
 export function setDragging(target: Target, locked: boolean): void {
-  if (locked) dragging.add(target)
-  else dragging.delete(target)
+  target.dragging = locked
 }
 
 export function isDragging(target: Target): boolean {
-  return dragging.has(target)
+  return target.dragging === true
 }
 
 /**
@@ -95,7 +92,7 @@ function keepInside(world: World, target: Target, x: number, y: number): [number
 /** Move a sprite, fencing unless it is the stage or an editor drag is in progress. `force` bypasses the drag lock. */
 export function placeTarget(runtime: RuntimeApi, target: Target, x: number, y: number, force = false): void {
   if (target.isStage) return
-  if (dragging.has(target) && !force) return
+  if (isDragging(target) && !force) return
   const [fx, fy] = fencePosition(runtime.world, target, x, y)
   target.x = fx
   target.y = fy
