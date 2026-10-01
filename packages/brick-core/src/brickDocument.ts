@@ -9,8 +9,8 @@ export const BRICK_STUDIO_EXPANDED_SCHEMA_VERSION = 3
 export const BRICK_STUDIO_PART_LIBRARY_VERSION = 1
 export const BRICK_STUDIO_FILE_EXTENSION = '.brickstudio.json'
 /** Shared document/live-world capacity. Rendering quality may adapt by device. */
-export const BRICK_STUDIO_MAX_BRICKS = 1_000
-export const BRICK_STUDIO_MAX_CUSTOM_PARTS = 24
+export const BRICK_STUDIO_MAX_BRICKS = 2_000
+export const BRICK_STUDIO_MAX_CUSTOM_PARTS = 64
 export const CUSTOM_BRICK_MAX_WIDTH = 64
 export const CUSTOM_BRICK_MAX_DEPTH = 64
 export const CUSTOM_BRICK_MAX_HEIGHT = 192

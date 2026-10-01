@@ -21,8 +21,8 @@ function stackedWorld(count: number): BrickInstance[] {
   return Array.from({ length: count }, (_, index) => ({
     id: `large-${index}`,
     partId: 'brick_1x1',
-    x: index % 4,
-    y: Math.floor(index / 4) * 3,
+    x: index % 8,
+    y: Math.floor(index / 8) * 3,
     z: 0,
     rotation: 0,
     color: '#3e83d7',
@@ -77,6 +77,16 @@ describe('Brick Studio document schema', () => {
     for (const oversized of [{ width: 65 }, { depth: 65 }, { height: 193 }]) {
       expect(validateBrickStudioDocument({ ...document, customParts: [{ ...part, ...oversized }] }).ok).toBe(false)
     }
+  })
+
+  it('round-trips 64 custom designs and rejects a 65th', () => {
+    const customParts = Array.from({ length: 64 }, (_, index) => ({
+      id: `custom_capacity_${index}`, name: `Design ${index}`, template: 'solid' as const,
+      width: 1, depth: 1, height: 3, studs: 'auto' as const,
+    }))
+    const document = createBrickStudioDocument([], { customParts })
+    expect(parseBrickStudioDocument(serializeBrickStudioDocument(document))).toMatchObject({ ok: true, document })
+    expect(validateBrickStudioDocument({ ...document, customParts: [...customParts, { ...customParts[0], id: 'custom_overflow' }] })).toMatchObject({ ok: false, error: { code: 'custom-part-limit' } })
   })
 
   it('validates custom definitions and permits bricks to reference them', () => {
@@ -137,7 +147,7 @@ describe('Brick Studio document schema', () => {
     expect(overBudget.ok ? null : overBudget.error.code).toBe('brick-limit')
   })
 
-  it('validates a heavily stacked 1,000-brick world with spatial collision indexing', () => {
+  it('validates a heavily stacked 2,000-brick world with spatial collision indexing', () => {
     const document = createBrickStudioDocument(stackedWorld(BRICK_STUDIO_MAX_BRICKS))
     const startedAt = performance.now()
     const result = validateBrickStudioDocument(document)
@@ -147,7 +157,7 @@ describe('Brick Studio document schema', () => {
     expect(elapsedMs).toBeLessThan(500)
   })
 
-  it('retains an absolute 1,000-brick boundary even when callers request more', () => {
+  it('retains an absolute 2,000-brick boundary even when callers request more', () => {
     const result = validateBrickStudioDocument(
       createBrickStudioDocument(stackedWorld(BRICK_STUDIO_MAX_BRICKS + 1)),
       { maxBricks: BRICK_STUDIO_MAX_BRICKS + 500 },
