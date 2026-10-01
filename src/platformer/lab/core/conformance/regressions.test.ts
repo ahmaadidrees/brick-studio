@@ -80,8 +80,8 @@ describe('wave 3 runtime regressions', () => {
     const rt = makeHarnessRuntime({
       lists: logList,
       scripts: [
-        broadcastScript('go', [stmt('control_forever', {}, {}, [[add('R')]])], 'R'),
-        keyScript('k', [stmt('control_forever', {}, {}, [[add('K')]])], 'K'),
+        broadcastScript('go', [stmt('control_forever', {}, {}, [[add('R'), stmt('control_wait', { DURATION: lit(0) })]])], 'R'),
+        keyScript('k', [stmt('control_forever', {}, {}, [[add('K'), stmt('control_wait', { DURATION: lit(0) })]])], 'K'),
       ],
     })
     rt.broadcast('go')
