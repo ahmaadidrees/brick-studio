@@ -5,6 +5,8 @@
  * target per painted copy, knob overrides, seeded RNG. It deep-copies, so a session
  * cannot mutate the design. Calling it again is a new Play. It does not fire hats.
  *
+ * Assumes `validateDesign(design)` returned `[]` (or that `save.parse` already ran it).
+ *
  * Green flag is different (H01, scheduler lane): inside a session the flag keeps
  * positions and variable values. Play is the reload that flag deliberately is not.
  * Painted copies get their own local variables and list arrays (C11, D02). They do
@@ -58,6 +60,7 @@ export const DESIGN_LIMITS = {
   maxMaskPixels: 1_000_000,
   maxSeed: 0x1_0000_0000 - 1,
   maxProblems: 200,
+  maxExprDepth: 64,
 } as const
 
 /** JSON keys that must never be copied onto an object map. */
@@ -103,15 +106,11 @@ export function isSafeId(id: unknown): id is string {
 }
 
 /** Kid-facing name: letters, spaces, and other visible characters. No control characters. */
-export function isSafeName(name: unknown, max = DESIGN_LIMITS.maxName): name is string {
+export function isSafeName(name: unknown, max: number = DESIGN_LIMITS.maxName): name is string {
   if (typeof name !== 'string' || name.length < 1 || name.length > max) return false
   if (name !== name.trim()) return false
   if (FORBIDDEN_KEYS.includes(name)) return false
-  for (let i = 0; i < name.length; i++) {
-    const c = name.charCodeAt(i)
-    if (c < 32 || c === 127) return false
-  }
-  return true
+  return !hasControlChar(name)
 }
 
 export function validateDesign(design: LevelDesign): DesignProblem[] {
@@ -192,7 +191,7 @@ function checkId(id: unknown, path: string, push: Push) {
   if (!isSafeId(id)) push('unsafe-id', path, 'Id must be 1–64 letters, digits, "_" or "-", and not a reserved key.')
 }
 
-function checkName(name: unknown, path: string, push: Push, max = DESIGN_LIMITS.maxName) {
+function checkName(name: unknown, path: string, push: Push, max: number = DESIGN_LIMITS.maxName) {
   if (!isSafeName(name, max)) push('unsafe-name', path, 'Name is empty, too long, or has control characters or a reserved key.')
 }
 
@@ -359,22 +358,30 @@ function checkProgram(program: BrickProgram, path: string, push: Push, isStage: 
     const names = new Set<string>()
     program.lists.forEach((decl, i) => checkList(decl, `${path}.lists[${i}]`, dataIds, names, push))
   }
+
+  let statements = 0
+  let limitReported = false
+  const countBlock = (subPath: string): boolean => {
+    statements++
+    if (statements > DESIGN_LIMITS.maxStatements) {
+      if (!limitReported) {
+        limitReported = true
+        push('limit', subPath, `A brick can hold ${DESIGN_LIMITS.maxStatements} blocks.`)
+      }
+      return true
+    }
+    return false
+  }
+
   if (!Array.isArray(program.scripts)) push('bad-value', `${path}.scripts`, 'Scripts must be an array.')
   else {
     if (program.scripts.length > DESIGN_LIMITS.maxScripts) {
       push('limit', `${path}.scripts`, `A brick can hold ${DESIGN_LIMITS.maxScripts} scripts.`)
     }
     const scriptIds = new Set<string>()
-    let statements = 0
     program.scripts.forEach((script, i) => {
-      checkScript(script, `${path}.scripts[${i}]`, scriptIds, push, () => {
-        statements++
-        return statements > DESIGN_LIMITS.maxStatements
-      })
+      checkScript(script, `${path}.scripts[${i}]`, scriptIds, push, countBlock)
     })
-    if (statements > DESIGN_LIMITS.maxStatements) {
-      push('limit', `${path}.scripts`, `A brick can hold ${DESIGN_LIMITS.maxStatements} blocks.`)
-    }
   }
   if (!Array.isArray(program.procedures)) push('bad-value', `${path}.procedures`, 'Procedures must be an array.')
   else {
@@ -382,12 +389,8 @@ function checkProgram(program: BrickProgram, path: string, push: Push, isStage: 
       push('limit', `${path}.procedures`, `A brick can hold ${DESIGN_LIMITS.maxProcedures} custom blocks.`)
     }
     const procodes = new Set<string>()
-    let statements = 0
     program.procedures.forEach((proc, i) => {
-      checkProcedure(proc, `${path}.procedures[${i}]`, procodes, push, () => {
-        statements++
-        return statements > DESIGN_LIMITS.maxStatements
-      })
+      checkProcedure(proc, `${path}.procedures[${i}]`, procodes, push, countBlock)
     })
   }
 }
@@ -443,7 +446,7 @@ function checkList(decl: ListDecl, path: string, scope: Set<string>, names: Set<
   })
 }
 
-function checkScript(script: Script, path: string, ids: Set<string>, push: Push, count: () => boolean) {
+function checkScript(script: Script, path: string, ids: Set<string>, push: Push, count: (subPath: string) => boolean) {
   if (!script || typeof script !== 'object') {
     push('bad-value', path, 'A script must be an object.')
     return
@@ -461,13 +464,13 @@ function checkScript(script: Script, path: string, ids: Set<string>, push: Push,
       push('bad-value', `${path}.hat.opcode`, 'Unknown hat.')
     }
     checkFields(hat.fields, `${path}.hat.fields`, push)
-    checkInputs(hat.inputs, `${path}.hat.inputs`, push)
+    checkInputs(hat.inputs, `${path}.hat.inputs`, push, count, 0)
   }
   if (!Array.isArray(script.body)) push('bad-value', `${path}.body`, 'Script body must be an array.')
-  else script.body.forEach((stmt, i) => checkStmt(stmt, `${path}.body[${i}]`, push, count))
+  else script.body.forEach((stmt, i) => checkStmt(stmt, `${path}.body[${i}]`, push, count, 0))
 }
 
-function checkProcedure(proc: Procedure, path: string, procodes: Set<string>, push: Push, count: () => boolean) {
+function checkProcedure(proc: Procedure, path: string, procodes: Set<string>, push: Push, count: (subPath: string) => boolean) {
   if (!proc || typeof proc !== 'object') {
     push('bad-value', path, 'A procedure must be an object.')
     return
@@ -490,11 +493,11 @@ function checkProcedure(proc: Procedure, path: string, procodes: Set<string>, pu
   }
   if (typeof proc.warp !== 'boolean') push('bad-value', `${path}.warp`, 'Warp must be a boolean.')
   if (!Array.isArray(proc.body)) push('bad-value', `${path}.body`, 'Procedure body must be an array.')
-  else proc.body.forEach((stmt, i) => checkStmt(stmt, `${path}.body[${i}]`, push, count))
+  else proc.body.forEach((stmt, i) => checkStmt(stmt, `${path}.body[${i}]`, push, count, 0))
 }
 
-function checkStmt(stmt: Stmt, path: string, push: Push, count: () => boolean) {
-  if (count()) return
+function checkStmt(stmt: Stmt, path: string, push: Push, count: (subPath: string) => boolean, depth: number) {
+  if (count(path)) return
   if (!stmt || typeof stmt !== 'object') {
     push('bad-value', path, 'A block must be an object.')
     return
@@ -503,7 +506,7 @@ function checkStmt(stmt: Stmt, path: string, push: Push, count: () => boolean) {
     push('bad-value', `${path}.opcode`, 'Block opcode is not a safe token.')
   }
   checkFields(stmt.fields, `${path}.fields`, push)
-  checkInputs(stmt.inputs, `${path}.inputs`, push)
+  checkInputs(stmt.inputs, `${path}.inputs`, push, count, depth + 1)
   if (stmt.id !== undefined) checkId(stmt.id, `${path}.id`, push)
   if (stmt.call !== undefined) {
     if (!stmt.call || typeof stmt.call !== 'object' || !isSafeName(stmt.call.proccode, DESIGN_LIMITS.maxProccode)) {
@@ -520,7 +523,7 @@ function checkStmt(stmt: Stmt, path: string, push: Push, count: () => boolean) {
         push('bad-value', `${path}.branches[${i}]`, 'A branch must be an array of blocks.')
         return
       }
-      branch.forEach((child, j) => checkStmt(child, `${path}.branches[${i}][${j}]`, push, count))
+      branch.forEach((child, j) => checkStmt(child, `${path}.branches[${i}][${j}]`, push, count, depth + 1))
     })
   }
 }
@@ -539,18 +542,22 @@ function checkFields(fields: Fields, path: string, push: Push) {
   }
 }
 
-function checkInputs(inputs: Inputs, path: string, push: Push) {
+function checkInputs(inputs: Inputs, path: string, push: Push, count: (subPath: string) => boolean, depth: number) {
   if (!inputs || typeof inputs !== 'object' || Array.isArray(inputs)) {
     push('bad-value', path, 'Inputs must be an object.')
     return
   }
   for (const key of Object.keys(inputs)) {
     if (!FIELD_RE.test(key) || FORBIDDEN_KEYS.includes(key)) push('unsafe-id', `${path}.${key}`, 'Input name is not a safe token.')
-    checkExpr(inputs[key], `${path}.${key}`, push)
+    checkExpr(inputs[key], `${path}.${key}`, push, count, depth)
   }
 }
 
-function checkExpr(expr: Expr, path: string, push: Push) {
+function checkExpr(expr: Expr, path: string, push: Push, count: (subPath: string) => boolean, depth: number) {
+  if (depth > DESIGN_LIMITS.maxExprDepth) {
+    push('limit', path, `Expression nesting exceeds ${DESIGN_LIMITS.maxExprDepth} levels.`)
+    return
+  }
   if (!expr || typeof expr !== 'object') {
     push('bad-value', path, 'An input must be a literal, reporter, or parameter.')
     return
@@ -567,11 +574,12 @@ function checkExpr(expr: Expr, path: string, push: Push) {
     return
   }
   if (expr.kind === 'block') {
+    if (count(path)) return
     if (typeof expr.opcode !== 'string' || !OPCODE_RE.test(expr.opcode)) {
       push('bad-value', `${path}.opcode`, 'Reporter opcode is not a safe token.')
     }
     checkFields(expr.fields, `${path}.fields`, push)
-    checkInputs(expr.inputs, `${path}.inputs`, push)
+    checkInputs(expr.inputs, `${path}.inputs`, push, count, depth + 1)
     if (expr.id !== undefined) checkId(expr.id, `${path}.id`, push)
     return
   }
@@ -675,26 +683,40 @@ function hasControlChar(text: string): boolean {
 
 /**
  * Build a fresh world from the saved design. Does not mutate `design`.
- * Soft problems (unknown brick, bad costume index) still produce a world:
- * the copy is kept, the costume falls back to 0, and locals are empty when
- * the brick is missing. Call `validateDesign` before Play and refuse a
- * non-empty problem list. Throws only when the design has no stage, bounds,
- * bricks array, or copies array.
+ * Assumes `validateDesign(design)` returned `[]` (or that `save.parse` already ran it).
+ * Throws only when the design has no stage, bounds, bricks array, or copies array.
  */
 export function instantiate(design: LevelDesign): World {
   if (!design?.stage || !design.bounds || !Array.isArray(design.bricks) || !Array.isArray(design.copies)) {
     throw new Error('instantiate: design is missing stage, bounds, bricks, or copies')
   }
 
-  const stageBrick = copyBrick(design.stage, true)
-  const bricks: Record<string, BrickDef> = Object.create(null) as Record<string, BrickDef>
+  const stageBrick: BrickDef = structuredClone(design.stage)
+  stageBrick.isStage = true
+
+  const bricks: Record<string, BrickDef> = Object.create(null)
   bricks[stageBrick.id] = stageBrick
   for (const brick of design.bricks) {
-    const copy = copyBrick(brick, false)
-    bricks[copy.id] = copy
+    const cloned = structuredClone(brick)
+    cloned.isStage = false
+    bricks[cloned.id] = cloned
   }
 
-  const stage = targetFromBrick(stageBrick, stageLocals(stageBrick))
+  const stageLocals = localsFrom(stageBrick.program, undefined)
+  const stage = newTarget({
+    id: stageBrick.id,
+    brickId: stageBrick.id,
+    isStage: true,
+    x: 0,
+    y: 0,
+    direction: 90,
+    size: 100,
+    visible: true,
+    costumeIndex: 0,
+    variables: stageLocals.variables,
+    lists: stageLocals.lists,
+  })
+
   const targets = design.copies.map((placement, index) => copyTarget(placement, index, bricks[placement.brickId]))
 
   let nextTargetId = 1
@@ -704,7 +726,6 @@ export function instantiate(design: LevelDesign): World {
     if (Number.isSafeInteger(n) && n >= nextTargetId) nextTargetId = n + 1
   }
   consider(stage.id)
-  for (const id of Object.keys(bricks)) consider(id)
   for (const target of targets) consider(target.id)
 
   return {
@@ -728,17 +749,13 @@ export function instantiate(design: LevelDesign): World {
   }
 }
 
-function stageLocals(brick: BrickDef): { variables: Record<string, Value>; lists: Record<string, Value[]> } {
-  return localsFrom(brick.program, undefined)
-}
-
 function copyTarget(placement: CopyPlacement, index: number, brick: BrickDef | undefined): Target {
   const locals = brick ? localsFrom(brick.program, placement.knobs) : { variables: {}, lists: {} }
-  const costumeCount = brick?.costumes.length ?? 0
+  const costumeCount = brick?.costumes?.length ?? 0
   const requested = placement.costume
   const costumeIndex =
     typeof requested === 'number' && Number.isInteger(requested) && requested >= 0 && requested < costumeCount ? requested : 0
-  const target = baseTarget({
+  const target = newTarget({
     id: typeof placement.id === 'string' ? placement.id : `copy-${index}`,
     brickId: typeof placement.brickId === 'string' ? placement.brickId : '',
     isStage: false,
@@ -755,23 +772,7 @@ function copyTarget(placement: CopyPlacement, index: number, brick: BrickDef | u
   return target
 }
 
-function targetFromBrick(brick: BrickDef, locals: { variables: Record<string, Value>; lists: Record<string, Value[]> }): Target {
-  return baseTarget({
-    id: brick.id,
-    brickId: brick.id,
-    isStage: true,
-    x: 0,
-    y: 0,
-    direction: 90,
-    size: 100,
-    visible: true,
-    costumeIndex: 0,
-    variables: locals.variables,
-    lists: locals.lists,
-  })
-}
-
-function baseTarget(over: {
+function newTarget(over: {
   id: string
   brickId: string
   isStage: boolean
@@ -844,141 +845,4 @@ function wrapDirection(d: number): number {
 
 function finite(n: unknown, fallback: number): number {
   return typeof n === 'number' && Number.isFinite(n) ? n : fallback
-}
-
-function copyBrick(brick: BrickDef, isStage: boolean): BrickDef {
-  const copy: BrickDef = {
-    id: brick.id,
-    name: brick.name,
-    costumes: Array.isArray(brick.costumes) ? brick.costumes.map(copyCostume) : [],
-    sounds: Array.isArray(brick.sounds) ? brick.sounds.map(copySound) : [],
-    program: copyProgram(brick.program),
-  }
-  if (isStage) copy.isStage = true
-  return copy
-}
-
-function copyCostume(costume: Costume): Costume {
-  const copy: Costume = {
-    name: costume.name,
-    width: costume.width,
-    height: costume.height,
-    rotationCenterX: costume.rotationCenterX,
-    rotationCenterY: costume.rotationCenterY,
-  }
-  if (costume.opaque) {
-    copy.opaque = {
-      left: costume.opaque.left,
-      top: costume.opaque.top,
-      right: costume.opaque.right,
-      bottom: costume.opaque.bottom,
-    }
-  }
-  if (costume.mask) {
-    copy.mask = {
-      width: costume.mask.width,
-      height: costume.mask.height,
-      data: new Uint8Array(costume.mask.data),
-    }
-  }
-  if (costume.asset !== undefined) copy.asset = costume.asset
-  return copy
-}
-
-function copySound(sound: Sound): Sound {
-  const copy: Sound = { name: sound.name, durationMs: sound.durationMs }
-  if (sound.asset !== undefined) copy.asset = sound.asset
-  return copy
-}
-
-function copyProgram(program: BrickProgram): BrickProgram {
-  return {
-    scripts: (program?.scripts ?? []).map(copyScript),
-    procedures: (program?.procedures ?? []).map(copyProcedure),
-    variables: (program?.variables ?? []).map(copyVariable),
-    lists: (program?.lists ?? []).map(copyList),
-  }
-}
-
-function copyVariable(decl: VariableDecl): VariableDecl {
-  const copy: VariableDecl = { id: decl.id, name: decl.name, value: decl.value }
-  if (decl.showInBuild === true) copy.showInBuild = true
-  return copy
-}
-
-function copyList(decl: ListDecl): ListDecl {
-  return { id: decl.id, name: decl.name, value: Array.isArray(decl.value) ? decl.value.slice() : [] }
-}
-
-function copyScript(script: Script): Script {
-  return {
-    id: script.id,
-    hat: {
-      opcode: script.hat.opcode,
-      fields: copyFields(script.hat.fields),
-      inputs: copyInputs(script.hat.inputs),
-    },
-    body: (script.body ?? []).map(copyStmt),
-  }
-}
-
-function copyProcedure(proc: Procedure): Procedure {
-  return {
-    proccode: proc.proccode,
-    argumentNames: proc.argumentNames.slice(),
-    warp: proc.warp,
-    body: (proc.body ?? []).map(copyStmt),
-  }
-}
-
-function copyStmt(stmt: Stmt): Stmt {
-  const copy: Stmt = {
-    opcode: stmt.opcode,
-    inputs: copyInputs(stmt.inputs),
-    fields: copyFields(stmt.fields),
-  }
-  if (stmt.branches) copy.branches = stmt.branches.map((branch) => branch.map(copyStmt))
-  if (stmt.call) copy.call = { proccode: stmt.call.proccode }
-  if (stmt.id !== undefined) copy.id = stmt.id
-  return copy
-}
-
-function copyInputs(inputs: Inputs | undefined): Inputs {
-  const out: Inputs = {}
-  if (!inputs) return out
-  for (const key of Object.keys(inputs)) {
-    if (FORBIDDEN_KEYS.includes(key)) continue
-    out[key] = copyExpr(inputs[key])
-  }
-  return out
-}
-
-function copyFields(fields: Fields | undefined): Fields {
-  const out: Fields = {}
-  if (!fields) return out
-  for (const key of Object.keys(fields)) {
-    if (FORBIDDEN_KEYS.includes(key)) continue
-    out[key] = fields[key]
-  }
-  return out
-}
-
-function copyExpr(expr: Expr): Expr {
-  if (expr.kind === 'lit') return { kind: 'lit', value: expr.value }
-  if (expr.kind === 'param') {
-    const copy: Expr = { kind: 'param', name: expr.name }
-    if (expr.boolean) copy.boolean = true
-    return copy
-  }
-  if (expr.kind === 'block') {
-    const copy: Expr = {
-      kind: 'block',
-      opcode: expr.opcode,
-      inputs: copyInputs(expr.inputs),
-      fields: copyFields(expr.fields),
-    }
-    if (expr.id !== undefined) copy.id = expr.id
-    return copy
-  }
-  throw new Error('instantiate: unknown input kind')
 }

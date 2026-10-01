@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CLONE_LIMIT } from './contracts'
-import type { BrickDef, BrickProgram, Costume, LevelDesign, Script, Value } from './contracts'
-import { instantiate, validateDesign } from './project'
+import type { BrickDef, BrickProgram, Costume, Expr, LevelDesign, Script, Stmt, Value } from './contracts'
+import { DESIGN_LIMITS, instantiate, validateDesign } from './project'
 import { nextFloat, seedState } from './rng'
 import { makeTarget } from './testkit'
 
@@ -260,8 +260,8 @@ describe('instantiate', () => {
 
 describe('H01 · Play reloads the saved design', () => {
   it('H01 · Play reloads the saved design', () => {
-    // Decision 1. Inside a session, green flag keeps x and v (scheduler H01).
-    // Play discards that session and builds from the design again.
+    // Decision 1. Inside a session, green flag keeps x and v (scheduler lane tests the green flag half of H01).
+    // Play discards that session and rebuilds a fresh world from the design.
     const design = level({
       stage: stageBrick({ program: program({ variables: [{ id: 'g', name: 'g', value: 0 }], lists: [] }) }),
       bricks: [
@@ -515,6 +515,86 @@ describe('validateDesign', () => {
     const problems = validateDesign(design)
     expect(problems.some((p) => p.code === 'limit' && p.path.includes('value'))).toBe(true)
     expect(problems.some((p) => p.code === 'limit' && p.path === 'copies')).toBe(true)
+  })
+
+  it('rejects procedures that exceed the statement budget', () => {
+    const stmts: Stmt[] = Array.from({ length: DESIGN_LIMITS.maxStatements + 1 }, () => ({
+      opcode: 'motion_movesteps',
+      inputs: {},
+      fields: {},
+    }))
+    const design = level({
+      bricks: [
+        walkerBrick({
+          program: program({
+            procedures: [{ proccode: 'long_proc', argumentNames: [], warp: false, body: stmts }],
+          }),
+        }),
+      ],
+    })
+    const problems = validateDesign(design)
+    expect(problems.some((p) => p.code === 'limit' && p.message.includes('blocks'))).toBe(true)
+  })
+
+  it('rejects expressions that exceed the nesting depth limit', () => {
+    let deepExpr: Expr = { kind: 'lit', value: 1 }
+    for (let i = 0; i < DESIGN_LIMITS.maxExprDepth + 5; i++) {
+      deepExpr = {
+        kind: 'block',
+        opcode: 'operator_add',
+        inputs: { NUM1: deepExpr, NUM2: { kind: 'lit', value: 1 } },
+        fields: {},
+      }
+    }
+    const design = level({
+      bricks: [
+        walkerBrick({
+          program: program({
+            scripts: [
+              {
+                id: 's1',
+                hat: { opcode: 'event_whenflagclicked', fields: {}, inputs: {} },
+                body: [{ opcode: 'motion_movesteps', inputs: { STEPS: deepExpr }, fields: {} }],
+              },
+            ],
+          }),
+        }),
+      ],
+    })
+    const problems = validateDesign(design)
+    expect(problems.some((p) => p.code === 'limit' && p.message.includes('Expression nesting'))).toBe(true)
+  })
+
+  it('counts reporter blocks in the total statement/block budget', () => {
+    const stmts: Stmt[] = Array.from({ length: Math.floor(DESIGN_LIMITS.maxStatements / 2) + 10 }, () => ({
+      opcode: 'motion_movesteps',
+      inputs: {
+        STEPS: {
+          kind: 'block',
+          opcode: 'operator_add',
+          inputs: { NUM1: { kind: 'lit', value: 1 }, NUM2: { kind: 'lit', value: 2 } },
+          fields: {},
+        },
+      },
+      fields: {},
+    }))
+    const design = level({
+      bricks: [
+        walkerBrick({
+          program: program({
+            scripts: [
+              {
+                id: 's1',
+                hat: { opcode: 'event_whenflagclicked', fields: {}, inputs: {} },
+                body: stmts,
+              },
+            ],
+          }),
+        }),
+      ],
+    })
+    const problems = validateDesign(design)
+    expect(problems.some((p) => p.code === 'limit' && p.message.includes('blocks'))).toBe(true)
   })
 
   it('rejects a mask that is not 0/1 occupancy of the costume', () => {
