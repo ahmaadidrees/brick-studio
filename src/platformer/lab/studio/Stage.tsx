@@ -172,6 +172,32 @@ export function Stage({ store }: { store: StudioStore }) {
     }
   }, [mode, audioManager])
 
+  // Play keys reach the game wherever focus is (the Play button, the code editor), not only when the stage is focused:
+  // a kid presses Play and then the arrows. Text fields keep their keys; events inside the stage use its own handlers.
+  useEffect(() => {
+    if (mode !== 'play' || !runtime) return
+    wrapRef.current?.focus()
+    const editable = (el: EventTarget | null) =>
+      el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+    const inStage = (el: EventTarget | null) => el instanceof Node && !!wrapRef.current?.contains(el)
+    const onDown = (e: KeyboardEvent) => {
+      if (inStage(e.target) || editable(e.target)) return
+      const key = browserKeyToScratchKey(e)
+      if (key) runtime.pressKey(key)
+    }
+    const onUp = (e: KeyboardEvent) => {
+      if (inStage(e.target)) return
+      const key = browserKeyToScratchKey(e)
+      if (key) runtime.releaseKey(key)
+    }
+    window.addEventListener('keydown', onDown)
+    window.addEventListener('keyup', onUp)
+    return () => {
+      window.removeEventListener('keydown', onDown)
+      window.removeEventListener('keyup', onUp)
+    }
+  }, [mode, runtime])
+
   // Play loop
   useEffect(() => {
     if (mode !== 'play' || !runtime) return

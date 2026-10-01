@@ -37,9 +37,9 @@ describe('Starter platformer level (starter.ts)', () => {
     }
   })
 
-  it('has Ground, Platform, Jumper, Walker and Coin with pixel-art costumes', () => {
+  it('has Ground, Platform, Hero, Walker and Coin with pixel-art costumes', () => {
     const project = createStarterProject()
-    expect(project.design.bricks.map((b) => b.name)).toEqual(['Ground', 'Platform', 'Jumper', 'Walker', 'Coin'])
+    expect(project.design.bricks.map((b) => b.name)).toEqual(['Ground', 'Platform', 'Hero', 'Walker', 'Coin'])
     expect(project.design.bounds).toEqual({ left: 0, right: 960, bottom: 0, top: 360 })
     for (const brick of project.design.bricks) {
       expect(brick.costumes.length).toBeGreaterThan(0)
@@ -47,7 +47,7 @@ describe('Starter platformer level (starter.ts)', () => {
     }
     expect(brickOf(project, 'brick_ground').costumes[0]).toMatchObject({ width: 128, height: 16 })
     expect(brickOf(project, 'brick_platform').costumes[0]).toMatchObject({ width: 64, height: 16 })
-    expect(brickOf(project, 'brick_jumper').costumes[0]).toMatchObject({ width: 16, height: 16 })
+    expect(brickOf(project, 'brick_hero').costumes.length).toBeGreaterThan(0)
   })
 
   it('uses the Platformer blocks as real workspace JSON (opcodes and fields from the block table)', () => {
@@ -66,15 +66,16 @@ describe('Starter platformer level (starter.ts)', () => {
     }
     expect(opcodes('brick_ground').get('platformer_setsolid')).toEqual({ SOLID: 'on' })
     expect(opcodes('brick_platform').get('platformer_setsolid')).toEqual({ SOLID: 'on' })
-    const jumper = opcodes('brick_jumper')
-    expect(jumper.get('platformer_setgravity')).toEqual({ GRAVITY: 'on' })
-    expect(jumper.get('platformer_setspeed')).toBeDefined()
-    expect(jumper.has('platformer_onground')).toBe(true)
-    expect(jumper.get('sensing_keypressed')).toBeDefined()
+    // The Hero does its own y-speed math, so it turns platformer gravity off (studio/hero, STEP5.md).
+    const hero = opcodes('brick_hero')
+    expect(hero.get('platformer_setgravity')).toEqual({ GRAVITY: 'off' })
+    expect(hero.get('platformer_setspeed')).toBeDefined()
+    expect(hero.has('platformer_onground')).toBe(true)
+    expect(hero.get('sensing_keypressed')).toBeDefined()
     const walker = opcodes('brick_walker')
     expect(walker.get('platformer_setgravity')).toEqual({ GRAVITY: 'on' })
     expect(walker.get('platformer_whenbump')).toEqual({ SIDE: 'right', BRICK: '_any_' })
-    expect(opcodes('brick_coin').get('sensing_touchingobject')).toEqual({ TOUCHINGOBJECTMENU: 'Jumper' })
+    expect(opcodes('brick_coin').get('sensing_touchingobject')).toEqual({ TOUCHINGOBJECTMENU: 'Hero' })
     // Scratch blocks keep their Scratch names: no Platformer block stands in for move/touching.
     expect(opcodes('brick_coin').has('platformer_touching')).toBe(false)
   })
@@ -94,15 +95,15 @@ describe('Starter platformer level (starter.ts)', () => {
   it('paints the Walker twice with different speed knob values', () => {
     const project = createStarterProject()
     const walker = brickOf(project, 'brick_walker')
-    expect(walker.program.variables.find((v) => v.id === 'speed')).toMatchObject({ name: 'speed', showInBuild: true })
+    expect(walker.program.variables.find((v) => v.id === 'walker_speed')).toMatchObject({ name: 'speed', showInBuild: true })
     const copies = project.design.copies.filter((c) => c.brickId === 'brick_walker')
-    expect(copies.map((c) => c.knobs)).toEqual([{ speed: 2 }, { speed: 4 }])
+    expect(copies.map((c) => c.knobs)).toEqual([{ walker_speed: 2 }, { walker_speed: 4 }])
     const world = instantiate(project.design)
-    const speeds = world.targets.filter((t) => t.brickId === 'brick_walker').map((t) => t.variables.speed)
+    const speeds = world.targets.filter((t) => t.brickId === 'brick_walker').map((t) => t.variables.walker_speed)
     expect(speeds.sort()).toEqual([2, 4])
   })
 
-  it('lays the level out inside the bounds, with the Jumper above the Ground', () => {
+  it('lays the level out inside the bounds, with the Hero above the Ground', () => {
     const project = createStarterProject()
     const { copies, bounds } = project.design
     for (const copy of copies) {
@@ -116,8 +117,8 @@ describe('Starter platformer level (starter.ts)', () => {
     expect(spans[0]![0]).toBe(0)
     expect(spans[spans.length - 1]![1]).toBe(960)
     for (let i = 1; i < spans.length; i++) expect(spans[i]![0]).toBeLessThanOrEqual(spans[i - 1]![1]!)
-    const jumper = copies.find((c) => c.brickId === 'brick_jumper')!
-    expect(jumper.y - 8).toBeGreaterThan(GROUND_TOP)
+    const hero = copies.find((c) => c.id === 'copy_hero')!
+    expect(hero.y - 8).toBeGreaterThan(GROUND_TOP)
     expect(copies.filter((c) => c.brickId === 'brick_coin')).toHaveLength(STARTER_COINS.length)
     // Each raised platform top is at most 48 above the last, so a jump (about 66 high) reaches it.
     const tops = STARTER_PLATFORMS.slice(0, 4).map((p) => p.y + 8)
@@ -140,53 +141,59 @@ describe('Starter platformer level (starter.ts)', () => {
     return { rt, of }
   }
 
-  it('Jumper lands on the Ground: from y 40 it rests at y 24 (ground top 16 + 8), onGround stays true for 30 ticks', () => {
+  it('Hero lands on the Ground: its box bottom rests exactly on the ground top, onGround stays true for 30 ticks', () => {
     const { rt, of } = run()
-    for (let i = 0; i < 10; i++) rt.step()
-    const j = of('copy_jumper')
-    expect(j.y).toBe(24)
+    for (let i = 0; i < 20; i++) rt.step()
+    const h = of('copy_hero')
     for (let i = 0; i < 30; i++) {
       rt.step()
-      expect([j.y, j.body?.onGround]).toEqual([24, true])
+      expect([targetBounds(rt.world, h)!.bottom, h.body?.onGround]).toEqual([GROUND_TOP, true])
     }
   })
 
-  it('Jumper walks: holding "right arrow" for 10 ticks moves it right by exactly 40 steps; releasing stops it', () => {
+  it('Hero walks with momentum: speeds up while "right arrow" is held, then slides to a stop after release', () => {
     const { rt, of } = run()
-    for (let i = 0; i < 15; i++) rt.step()
-    const j = of('copy_jumper')
-    const x0 = j.x
+    for (let i = 0; i < 20; i++) rt.step()
+    const h = of('copy_hero')
+    const x0 = h.x
     rt.pressKey('right arrow')
-    for (let i = 0; i < 10; i++) rt.step()
+    rt.step()
+    const firstTick = h.x - x0
+    for (let i = 0; i < 29; i++) rt.step()
+    const lastTick = h.body!.vx
+    expect(firstTick).toBeLessThan(lastTick)
     rt.releaseKey('right arrow')
     rt.step()
-    expect(j.x - x0).toBe(40)
-    const x1 = j.x
-    for (let i = 0; i < 5; i++) rt.step()
-    expect(j.x).toBe(x1)
+    const released = h.x
+    for (let i = 0; i < 30; i++) rt.step()
+    expect(h.x).toBeGreaterThan(released)
+    const stopped = h.x
+    rt.step()
+    expect(h.x).toBe(stopped)
   })
 
-  it('Jumper jumps: "space" while resting rises to a peak of 24 + 66 = 90 and returns to exactly y 24', () => {
+  it('Hero jumps like the main game: holding "space" from standing peaks exactly 62 above the ground (FEEL.md), then lands', () => {
     const { rt, of } = run()
-    for (let i = 0; i < 15; i++) rt.step()
-    const j = of('copy_jumper')
+    for (let i = 0; i < 20; i++) rt.step()
+    const h = of('copy_hero')
+    const y0 = h.y
     rt.pressKey('space')
-    rt.step()
-    rt.releaseKey('space')
-    let peak = j.y
+    let peak = y0
     for (let i = 0; i < 40; i++) {
       rt.step()
-      peak = Math.max(peak, j.y)
+      peak = Math.max(peak, h.y)
     }
-    expect(peak).toBe(90)
-    expect([j.y, j.body?.onGround]).toEqual([24, true])
+    rt.releaseKey('space')
+    for (let i = 0; i < 20; i++) rt.step()
+    expect(peak - y0).toBe(62)
+    expect([h.y, h.body?.onGround]).toEqual([y0, true])
   })
 
-  it('Jumper stops at the left wall: holding "left arrow" its visible left edge rests exactly at x 0', () => {
+  it('Hero stops at the left wall: holding "left arrow" its visible left edge rests exactly at x 0', () => {
     const { rt, of } = run()
     rt.pressKey('left arrow')
-    for (let i = 0; i < 60; i++) rt.step()
-    expect(targetBounds(rt.world, of('copy_jumper'))!.left).toBe(0)
+    for (let i = 0; i < 150; i++) rt.step()
+    expect(targetBounds(rt.world, of('copy_hero'))!.left).toBe(0)
   })
 
   it('Walkers turn around when they bump something and never leave y 24', () => {
@@ -218,10 +225,10 @@ describe('Starter platformer level (starter.ts)', () => {
     expect([Math.abs(fast.x - f0), Math.abs(slow.x - s0)]).toEqual([4, 2])
   })
 
-  it('Coin hides when the Jumper touches it; the other Coins stay visible', () => {
+  it('Coin hides when the Hero touches it; the other Coins stay visible', () => {
     const { rt, of } = run()
     for (let i = 0; i < 15; i++) rt.step()
-    const j = of('copy_jumper')
+    const j = of('copy_hero')
     const coin = of('copy_coin_1')
     j.x = coin.x
     j.y = coin.y

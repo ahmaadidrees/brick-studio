@@ -41,6 +41,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
   const isDisposedRef = useRef<boolean>(true)
   const brickIdRef = useRef<string>(selectedBrickId)
   brickIdRef.current = selectedBrickId
+  // The brick the mounted workspace belongs to. Saves must go here, never to the current selection: when the kid opens
+  // another brick, the selection changes before the old workspace is flushed and disposed, and saving by selection wrote
+  // the old brick's code over the new brick's.
+  const workspaceBrickIdRef = useRef<string>(selectedBrickId)
 
   // Debounced save timer
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -66,7 +70,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       const ws = workspaceRef.current
       if (ws && !isDisposedRef.current) {
         const json = Blockly.serialization.workspaces.save(ws)
-        store.setWorkspace(brickIdRef.current, json)
+        store.setWorkspace(workspaceBrickIdRef.current, json)
       }
     }
   }
@@ -78,7 +82,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       saveTimeoutRef.current = null
     }
     const json = Blockly.serialization.workspaces.save(ws)
-    store.setWorkspace(brickIdRef.current, json)
+    store.setWorkspace(workspaceBrickIdRef.current, json)
   }
 
   // Mount Blockly workspace whenever selectedBrickId changes
@@ -139,6 +143,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       },
     })
     workspaceRef.current = ws
+    workspaceBrickIdRef.current = selectedBrickId
     isDisposedRef.current = false
 
     // 6. Register toolbox button callbacks
@@ -258,7 +263,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
         saveTimeoutRef.current = null
         if (!isDisposedRef.current) {
           const json = Blockly.serialization.workspaces.save(ws)
-          store.setWorkspace(brickIdRef.current, json)
+          store.setWorkspace(workspaceBrickIdRef.current, json)
         }
       }, 300)
     }

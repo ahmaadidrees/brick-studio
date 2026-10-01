@@ -1,5 +1,5 @@
 import * as Blockly from 'blockly/core'
-import { registerContinuousToolbox } from '@blockly/continuous-toolbox'
+import { RecyclableBlockFlyoutInflater, registerContinuousToolbox } from '@blockly/continuous-toolbox'
 import * as ShareableProcedures from '@blockly/block-shareable-procedures'
 import type { EditorContext } from './context'
 import { CATEGORY_COLORS } from './definitions'
@@ -402,10 +402,32 @@ let pluginsRegistered = false
  * Registers the continuous-toolbox and shareable-procedures plugins with Blockly.
  * Idempotent: safe to call multiple times.
  */
+/**
+ * The studio disposes and re-injects the workspace whenever a different brick is opened. Two things then broke the
+ * flyout and left the previous brick's code on screen:
+ *  - recycled palette blocks from the disposed workspace were reused ("Workspace is null");
+ *  - a palette refresh could dispose a block that was already disposed (tooltip unbind on an emptied wrapper).
+ * The palette is small, so recycling stays off, and disposing a dead block is skipped.
+ */
+export class StudioBlockFlyoutInflater extends RecyclableBlockFlyoutInflater {
+  override recyclingEnabled = false
+
+  protected override blockIsRecyclable(): boolean {
+    return false
+  }
+
+  override disposeItem(item: Blockly.FlyoutItem): void {
+    const element = item.getElement()
+    if (element instanceof Blockly.BlockSvg && (element.isDeadOrDying() || element.disposed)) return
+    super.disposeItem(item)
+  }
+}
+
 export function registerToolboxPlugins(): void {
   if (pluginsRegistered) return
 
   registerContinuousToolbox()
+  Blockly.registry.register(Blockly.registry.Type.FLYOUT_INFLATER, 'block', StudioBlockFlyoutInflater, true)
 
   try {
     ShareableProcedures.registerProcedureSerializer()

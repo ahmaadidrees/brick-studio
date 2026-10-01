@@ -3,10 +3,10 @@
  *
  * A small platformer, built only from Scratch blocks plus the Platformer blocks:
  * - Ground and Platform: solid bricks that never move.
- * - Jumper: gravity on; arrow keys set the x speed; space jumps when on the ground.
+ * - Hero: the open-block Hero (studio/hero): arrows walk, x runs, space jumps; it feels like the main 2D game (FEEL.md).
  * - Walker: walks back and forth, turns around when it bumps a side. It has a "speed" knob
  *   (a showInBuild variable) painted twice with different values.
- * - Coin: hides when the Jumper touches it (Scratch `touching`, which is pixel-based).
+ * - Coin: hides when the Hero touches it (Scratch `touching`, which is pixel-based).
  *
  * Level is 960 x 360 steps, y-up, (0, 0) at the bottom-left. Every costume is pixel art built with
  * `imageFromRows`; every brick's blocks are real Blockly workspace JSON, so they open in the editor.
@@ -17,6 +17,7 @@
 
 import type { BrickDef, Costume, LevelDesign, VariableDecl } from '../core/contracts'
 import { compileWorkspace, type WorkspaceJson } from '../core/editor/compile'
+import { createHeroBrick } from './hero/heroBrick'
 import { costumeFromImage, imageFromRows } from './pixels'
 import { STAGE_ID, type StudioProject } from './store'
 
@@ -276,7 +277,7 @@ export function createJumperWorkspace(): WorkspaceJson {
  */
 export function createWalkerWorkspace(): WorkspaceJson {
   const speedVar = (id: string): { block: BlockJson } => ({
-    block: { type: 'data_variable', id, fields: { VARIABLE: 'speed' } },
+    block: { type: 'data_variable', id, fields: { VARIABLE: 'walker_speed' } },
   })
   const bumpHat = (id: string, side: string, body: BlockJson[]): BlockJson => ({
     type: 'platformer_whenbump',
@@ -285,7 +286,7 @@ export function createWalkerWorkspace(): WorkspaceJson {
     next: { block: chain(body) },
   })
   return {
-    variables: [{ id: 'speed', name: 'speed' }],
+    variables: [{ id: 'walker_speed', name: 'speed' }],
     blocks: {
       blocks: [
         flagHat('walker_flag', [gravityOn('walker_gravity'), setSpeed('walker_start', 'x', speedVar('walker_start_speed'))]),
@@ -304,13 +305,13 @@ export function createWalkerWorkspace(): WorkspaceJson {
   }
 }
 
-/** Coin: "when flag clicked, show; forever: if touching Jumper, hide". */
+/** Coin: "when flag clicked, show; forever: if touching Hero, hide". */
 export function createCoinWorkspace(): WorkspaceJson {
   const check: BlockJson = {
     type: 'control_if',
     id: 'coin_if',
     inputs: {
-      CONDITION: { block: { type: 'sensing_touchingobject', id: 'coin_touching', fields: { TOUCHINGOBJECTMENU: 'Jumper' } } },
+      CONDITION: { block: { type: 'sensing_touchingobject', id: 'coin_touching', fields: { TOUCHINGOBJECTMENU: 'Hero' } } },
       SUBSTACK: { block: { type: 'looks_hide', id: 'coin_hide' } },
     },
   }
@@ -354,12 +355,12 @@ export function createStarterProject(): StudioProject {
 
   const groundWs = createGroundWorkspace()
   const platformWs = createPlatformWorkspace()
-  const jumperWs = createJumperWorkspace()
+  const hero = createHeroBrick()
   const walkerWs = createWalkerWorkspace()
   const coinWs = createCoinWorkspace()
   const stageWs = createStageWorkspace()
 
-  const walkerSpeed: VariableDecl = { id: 'speed', name: 'speed', value: 3, showInBuild: true }
+  const walkerSpeed: VariableDecl = { id: 'walker_speed', name: 'speed', value: 3, showInBuild: true }
 
   const stageBrick: BrickDef = {
     id: STAGE_ID,
@@ -387,18 +388,18 @@ export function createStarterProject(): StudioProject {
     bricks: [
       brick('brick_ground', 'Ground', [c.groundCostume], groundWs),
       brick('brick_platform', 'Platform', [c.platformCostume], platformWs),
-      brick('brick_jumper', 'Jumper', [c.jumperCostume], jumperWs),
+      hero.brick,
       brick('brick_walker', 'Walker', [c.walkerCostume], walkerWs, [walkerSpeed]),
       brick('brick_coin', 'Coin', [c.coinCostume], coinWs),
     ],
     copies: [
       ...STARTER_GROUND_XS.map((x, i) => ({ id: `copy_ground_${i + 1}`, brickId: 'brick_ground', x, y: GROUND_Y })),
       ...STARTER_PLATFORMS.map((p, i) => ({ id: `copy_platform_${i + 1}`, brickId: 'brick_platform', x: p.x, y: p.y })),
-      // Starts above the ground so you can watch gravity pull it down: it lands at y = 24.
-      { id: 'copy_jumper', brickId: 'brick_jumper', x: 60, y: 40 },
+      // Starts above the ground so you can watch it fall and land on the Ground.
+      { id: 'copy_hero', brickId: hero.brick.id, x: 60, y: 40 },
       // One Walker brick painted twice with different knob values: slow (2) and fast (4).
-      { id: 'copy_walker_slow', brickId: 'brick_walker', x: 560, y: 24, knobs: { speed: 2 } },
-      { id: 'copy_walker_fast', brickId: 'brick_walker', x: 150, y: 24, knobs: { speed: 4 } },
+      { id: 'copy_walker_slow', brickId: 'brick_walker', x: 560, y: 24, knobs: { walker_speed: 2 } },
+      { id: 'copy_walker_fast', brickId: 'brick_walker', x: 150, y: 24, knobs: { walker_speed: 4 } },
       ...STARTER_COINS.map((p, i) => ({ id: `copy_coin_${i + 1}`, brickId: 'brick_coin', x: p.x, y: p.y })),
     ],
   }
@@ -407,7 +408,7 @@ export function createStarterProject(): StudioProject {
     [STAGE_ID]: stageWs,
     brick_ground: groundWs,
     brick_platform: platformWs,
-    brick_jumper: jumperWs,
+    [hero.brick.id]: hero.workspace,
     brick_walker: walkerWs,
     brick_coin: coinWs,
   }
