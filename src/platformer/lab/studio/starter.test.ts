@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { play } from '../core/index'
+import { targetBounds } from '../core/geometry'
 import { instantiate, validateDesign } from '../core/project'
 import { compileWorkspace } from '../core/editor/compile'
 import { isHatOpcode } from '../core/editor/definitions'
@@ -131,11 +133,102 @@ describe('Starter platformer level (starter.ts)', () => {
 
   // Play expectations for the integrator. Turn these into real tests once the physics lane is merged:
   // play(createStarterProject().design, ...) with the green flag, then step N ticks.
-  it.todo('Jumper lands on the Ground: starting at y 40, within 10 ticks it rests at y = 24 (ground top 16 + 8), onGround stays true for 30 ticks')
-  it.todo('Jumper walks: holding "right arrow" for 10 ticks moves it right by exactly 40 steps; releasing stops it the next tick')
-  it.todo('Jumper jumps: with "space" pressed while resting on the Ground, y rises to a peak of 24 + 66 = 90 and returns to exactly y = 24')
-  it.todo('Jumper stops at the left wall: holding "left arrow" it rests with its left edge at x = 0 (x = 8)')
-  it.todo('Walker (speed 4, from x 150) turns around: it walks right, bumps the left face of the Platform block at x 300 (stops with right edge at x 268, x = 260), then walks left to the level wall and turns again; it never leaves y = 24')
-  it.todo('Walker (speed 2, from x 560) moves exactly 2 steps per tick, and is slower than the speed 4 Walker over the same ticks')
-  it.todo('Coin hides when touched: with the Jumper standing at the Coin (200, 80), that Coin is hidden after the next tick and the other Coins stay visible')
+  const run = () => {
+    const d = createStarterProject().design
+    const rt = play(d)
+    const of = (copyId: string) => rt.world.targets.find((t) => t.copyId === copyId)!
+    return { rt, of }
+  }
+
+  it('Jumper lands on the Ground: from y 40 it rests at y 24 (ground top 16 + 8), onGround stays true for 30 ticks', () => {
+    const { rt, of } = run()
+    for (let i = 0; i < 10; i++) rt.step()
+    const j = of('copy_jumper')
+    expect(j.y).toBe(24)
+    for (let i = 0; i < 30; i++) {
+      rt.step()
+      expect([j.y, j.body?.onGround]).toEqual([24, true])
+    }
+  })
+
+  it('Jumper walks: holding "right arrow" for 10 ticks moves it right by exactly 40 steps; releasing stops it', () => {
+    const { rt, of } = run()
+    for (let i = 0; i < 15; i++) rt.step()
+    const j = of('copy_jumper')
+    const x0 = j.x
+    rt.pressKey('right arrow')
+    for (let i = 0; i < 10; i++) rt.step()
+    rt.releaseKey('right arrow')
+    rt.step()
+    expect(j.x - x0).toBe(40)
+    const x1 = j.x
+    for (let i = 0; i < 5; i++) rt.step()
+    expect(j.x).toBe(x1)
+  })
+
+  it('Jumper jumps: "space" while resting rises to a peak of 24 + 66 = 90 and returns to exactly y 24', () => {
+    const { rt, of } = run()
+    for (let i = 0; i < 15; i++) rt.step()
+    const j = of('copy_jumper')
+    rt.pressKey('space')
+    rt.step()
+    rt.releaseKey('space')
+    let peak = j.y
+    for (let i = 0; i < 40; i++) {
+      rt.step()
+      peak = Math.max(peak, j.y)
+    }
+    expect(peak).toBe(90)
+    expect([j.y, j.body?.onGround]).toEqual([24, true])
+  })
+
+  it('Jumper stops at the left wall: holding "left arrow" its visible left edge rests exactly at x 0', () => {
+    const { rt, of } = run()
+    rt.pressKey('left arrow')
+    for (let i = 0; i < 60; i++) rt.step()
+    expect(targetBounds(rt.world, of('copy_jumper'))!.left).toBe(0)
+  })
+
+  it('Walkers turn around when they bump something and never leave y 24', () => {
+    const { rt, of } = run()
+    const fast = of('copy_walker_fast')
+    const slow = of('copy_walker_slow')
+    const fastSigns = new Set<number>()
+    const slowSigns = new Set<number>()
+    for (let i = 0; i < 400; i++) {
+      rt.step()
+      if (i > 10) {
+        expect([fast.y, slow.y]).toEqual([24, 24])
+        // A bump zeroes vx; the bump hat sets the new speed on the next tick (STEP3.md step 7), so skip that tick.
+        if (fast.body!.vx !== 0) fastSigns.add(Math.sign(fast.body!.vx))
+        if (slow.body!.vx !== 0) slowSigns.add(Math.sign(slow.body!.vx))
+      }
+    }
+    expect([...fastSigns].sort()).toEqual([-1, 1])
+    expect([...slowSigns].sort()).toEqual([-1, 1])
+  })
+
+  it('Walker knobs: the speed 2 Walker moves exactly 2 steps per tick, the speed 4 Walker exactly 4', () => {
+    const { rt, of } = run()
+    for (let i = 0; i < 15; i++) rt.step()
+    const fast = of('copy_walker_fast')
+    const slow = of('copy_walker_slow')
+    const [f0, s0] = [fast.x, slow.x]
+    rt.step()
+    expect([Math.abs(fast.x - f0), Math.abs(slow.x - s0)]).toEqual([4, 2])
+  })
+
+  it('Coin hides when the Jumper touches it; the other Coins stay visible', () => {
+    const { rt, of } = run()
+    for (let i = 0; i < 15; i++) rt.step()
+    const j = of('copy_jumper')
+    const coin = of('copy_coin_1')
+    j.x = coin.x
+    j.y = coin.y
+    j.body!.gravity = false
+    rt.step()
+    rt.step()
+    expect(coin.visible).toBe(false)
+    expect(['copy_coin_2', 'copy_coin_3', 'copy_coin_4', 'copy_coin_5'].map((id) => of(id).visible)).toEqual([true, true, true, true])
+  })
 })
