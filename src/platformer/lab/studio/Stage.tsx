@@ -7,12 +7,15 @@ import { AskDialog } from './stage/AskDialog'
 import { AudioManager } from './stage/audio'
 import {
   clampCamera,
-  createDefaultCamera,
+  defaultPlayCameraMode,
+  fitCamera,
+  followCamera,
   panCamera,
   screenToWorld,
   snapToGrid,
   zoomCameraAt,
   type Camera,
+  type PlayCameraMode,
   type Viewport,
 } from './stage/camera'
 import { browserKeyToScratchKey } from './stage/keys'
@@ -34,13 +37,22 @@ export function Stage({ store }: { store: StudioStore }) {
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const revision = useStudio(store, (s) => s.revision)
+  const selectedBrickId = useStudio(store, (s) => s.selectedBrickId)
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
 
   // Camera and Viewport
   const [viewport, setViewport] = useState<Viewport>({ width: 480, height: 360 })
-  const [camera, setCamera] = useState<Camera>(() => createDefaultCamera(design.bounds))
+  const [camera, setCamera] = useState<Camera>(() => fitCamera(design.bounds, { width: 480, height: 360 }))
+  // View state lives here in the UI, never in World. `viewDirty`: the kid moved or zoomed the view, so don't auto-fit.
+  const viewDirty = useRef(false)
+  // Play camera: 'whole' / 'follow' picked from the controls (null = default for this level and stage size),
+  // or free (kid dragged/zoomed), in which case `camera` is used as-is.
+  const [playChoice, setPlayChoice] = useState<PlayCameraMode | null>(null)
+  const [playFree, setPlayFree] = useState(false)
+  // The camera actually used for the last Play frame, so pointer maths matches what is on screen.
+  const playCamRef = useRef<Camera>(camera)
 
   // Build tools
   const [activeTool, setActiveTool] = useState<'select' | 'brush'>('brush')
@@ -50,7 +62,8 @@ export function Stage({ store }: { store: StudioStore }) {
 
   // Dragging state
   const dragRef = useRef<{
-    mode: 'none' | 'pan' | 'moveCopy'
+    mode: 'none' | 'pan' | 'panPending' | 'moveCopy'
+    moved: boolean
     startScreenX: number
     startScreenY: number
     startWorldX: number
@@ -59,6 +72,7 @@ export function Stage({ store }: { store: StudioStore }) {
     startCopyY: number
   }>({
     mode: 'none',
+    moved: false,
     startScreenX: 0,
     startScreenY: 0,
     startWorldX: 0,
@@ -76,9 +90,44 @@ export function Stage({ store }: { store: StudioStore }) {
   // Re-fit camera when design bounds change initially if needed
   const boundsKey = `${design.bounds.left},${design.bounds.right},${design.bounds.bottom},${design.bounds.top}`
   useEffect(() => {
-    // Keep camera within bounds
-    setCamera((cam) => clampCamera(cam, design.bounds))
-  }, [boundsKey, design.bounds])
+    // Until the kid moves the view, keep the whole level in view (letterboxed) as the stage or level changes size.
+    if (!viewDirty.current) setCamera(fitCamera(design.bounds, viewport))
+    else setCamera((cam) => clampCamera(cam, design.bounds))
+  }, [boundsKey, design.bounds, viewport])
+
+  // Each Play starts from the default camera.
+  useEffect(() => {
+    setPlayChoice(null)
+    setPlayFree(false)
+  }, [mode])
+
+  const playCameraMode: PlayCameraMode = playChoice ?? defaultPlayCameraMode(design.bounds, viewport)
+
+  /** The camera for this moment: Build uses the free camera; Play follows its mode unless the kid took over. */
+  const computePlayCamera = useCallback(
+    (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
+      if (playFree) return camera
+      if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
+      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === selectedBrickId)
+      const point = first ?? {
+        x: (world.bounds.left + world.bounds.right) / 2,
+        y: (world.bounds.bottom + world.bounds.top) / 2,
+      }
+      return followCamera(world.bounds, viewport, point)
+    },
+    [playFree, camera, playCameraMode, viewport, selectedBrickId],
+  )
+
+  /** Camera used for pointer maths. */
+  const activeCamera = (): Camera => (mode === 'play' ? playCamRef.current : camera)
+
+  /** Move or zoom the view from whatever is on screen now. Marks the view as the kid's own. */
+  const updateView = (fn: (c: Camera) => Camera) => {
+    const base = activeCamera()
+    viewDirty.current = true
+    if (mode === 'play') setPlayFree(true)
+    setCamera(clampCamera(fn(base), design.bounds))
+  }
 
   // ResizeObserver on wrapper
   useEffect(() => {
@@ -167,8 +216,10 @@ export function Stage({ store }: { store: StudioStore }) {
       if (canvas) {
         const ctx = canvas.getContext('2d')
         if (ctx) {
+          const playCamera = computePlayCamera(runtime.world)
+          playCamRef.current = playCamera
           renderPlayMode(ctx, runtime.world, {
-            camera,
+            camera: playCamera,
             viewport,
             prevPoses: prevPosesRef.current,
             interpAlpha: alpha,
@@ -181,7 +232,7 @@ export function Stage({ store }: { store: StudioStore }) {
 
     animId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animId)
-  }, [mode, runtime, camera, viewport, accumulator, audioManager])
+  }, [mode, runtime, computePlayCamera, viewport, accumulator, audioManager])
 
   // Render in Build mode whenever design, camera, viewport, selection or brush changes
   useEffect(() => {
@@ -238,12 +289,14 @@ export function Stage({ store }: { store: StudioStore }) {
     // Canvas takes focus for keyboard events
     wrapRef.current?.focus()
     const [sx, sy] = getCanvasCoords(e)
-    const [wx, wy] = screenToWorld(camera, viewport, sx, sy)
+    const cam = activeCamera()
+    const [wx, wy] = screenToWorld(cam, viewport, sx, sy)
 
     // Middle button or Alt key drags camera in any mode
     if (e.button === 1 || e.altKey) {
       dragRef.current = {
         mode: 'pan',
+        moved: false,
         startScreenX: sx,
         startScreenY: sy,
         startWorldX: wx,
@@ -261,6 +314,20 @@ export function Stage({ store }: { store: StudioStore }) {
       runtime.world.mouse.down = true
 
       const target = pickTarget(runtime.world, wx, wy)
+      if (target.isStage) {
+        // Empty space: a drag scrolls the view; a plain click (no drag) clicks the stage on release.
+        dragRef.current = {
+          mode: 'panPending',
+          moved: false,
+          startScreenX: sx,
+          startScreenY: sy,
+          startWorldX: wx,
+          startWorldY: wy,
+          startCopyX: 0,
+          startCopyY: 0,
+        }
+        return
+      }
       runtime.clickTarget(target)
       return
     }
@@ -279,6 +346,7 @@ export function Stage({ store }: { store: StudioStore }) {
           store.selectCopy(hit.id)
           dragRef.current = {
             mode: 'moveCopy',
+            moved: false,
             startScreenX: sx,
             startScreenY: sy,
             startWorldX: wx,
@@ -292,6 +360,7 @@ export function Stage({ store }: { store: StudioStore }) {
           // Start pan on empty space drag
           dragRef.current = {
             mode: 'pan',
+            moved: false,
             startScreenX: sx,
             startScreenY: sy,
             startWorldX: wx,
@@ -306,7 +375,23 @@ export function Stage({ store }: { store: StudioStore }) {
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const [sx, sy] = getCanvasCoords(e)
-    const [wx, wy] = screenToWorld(camera, viewport, sx, sy)
+    const [wx, wy] = screenToWorld(activeCamera(), viewport, sx, sy)
+    const drag = dragRef.current
+
+    // Drag-to-scroll, in Build and Play.
+    if (drag.mode === 'panPending' || drag.mode === 'pan') {
+      const dx = sx - drag.startScreenX
+      const dy = sy - drag.startScreenY
+      if (drag.mode === 'panPending') {
+        if (Math.hypot(dx, dy) < 4) return
+        drag.mode = 'pan'
+      }
+      drag.moved = true
+      drag.startScreenX = sx
+      drag.startScreenY = sy
+      updateView((c) => panCamera(c, viewport, dx, dy))
+      return
+    }
 
     if (mode === 'play' && runtime) {
       runtime.world.mouse.x = wx
@@ -315,7 +400,6 @@ export function Stage({ store }: { store: StudioStore }) {
     }
 
     if (mode === 'build') {
-      const drag = dragRef.current
       if (drag.mode === 'moveCopy' && selectedCopyId) {
         const dx = wx - drag.startWorldX
         const dy = wy - drag.startWorldY
@@ -326,12 +410,6 @@ export function Stage({ store }: { store: StudioStore }) {
           targetY = snapToGrid(targetY, 8)
         }
         store.updateCopy(selectedCopyId, { x: targetX, y: targetY })
-      } else if (drag.mode === 'pan') {
-        const dx = sx - drag.startScreenX
-        const dy = sy - drag.startScreenY
-        drag.startScreenX = sx
-        drag.startScreenY = sy
-        setCamera((c) => panCamera(c, viewport, dx, dy))
       } else {
         // Idle move: update brush preview or hover highlight
         if (activeTool === 'brush') {
@@ -346,7 +424,11 @@ export function Stage({ store }: { store: StudioStore }) {
   }
 
   const handlePointerUp = () => {
-    dragRef.current.mode = 'none'
+    const drag = dragRef.current
+    if (drag.mode === 'panPending' && mode === 'play' && runtime) {
+      runtime.clickTarget(runtime.world.stage)
+    }
+    drag.mode = 'none'
     if (mode === 'play' && runtime) {
       runtime.world.mouse.down = false
     }
@@ -367,10 +449,10 @@ export function Stage({ store }: { store: StudioStore }) {
     if (e.ctrlKey || e.metaKey) {
       // Zoom
       const factor = e.deltaY < 0 ? 1.15 : 0.87
-      setCamera((c) => zoomCameraAt(c, viewport, factor, [sx, sy]))
+      updateView((c) => zoomCameraAt(c, viewport, factor, [sx, sy]))
     } else {
       // Pan
-      setCamera((c) => panCamera(c, viewport, -e.deltaX, -e.deltaY))
+      updateView((c) => panCamera(c, viewport, -e.deltaX, -e.deltaY))
     }
   }
 
@@ -443,16 +525,23 @@ export function Stage({ store }: { store: StudioStore }) {
     }
   }
 
-  const handleZoomIn = () => {
-    setCamera((c) => zoomCameraAt(c, viewport, 1.25))
-  }
+  // Zoom around the view center, so what the kid is looking at stays put.
+  const handleZoomIn = () => updateView((c) => zoomCameraAt(c, viewport, 1.25))
+  const handleZoomOut = () => updateView((c) => zoomCameraAt(c, viewport, 0.8))
 
-  const handleZoomOut = () => {
-    setCamera((c) => zoomCameraAt(c, viewport, 0.8))
-  }
-
+  // Fit: the whole level, letterboxed.
   const handleResetView = () => {
-    setCamera(createDefaultCamera(design.bounds))
+    viewDirty.current = false
+    setCamera(fitCamera(design.bounds, viewport))
+    if (mode === 'play') {
+      setPlayChoice('whole')
+      setPlayFree(false)
+    }
+  }
+
+  const handlePlayCameraChoice = (choice: PlayCameraMode) => {
+    setPlayChoice(choice)
+    setPlayFree(false)
   }
 
   // Selected copy info for KnobPanel
@@ -480,6 +569,8 @@ export function Stage({ store }: { store: StudioStore }) {
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetView={handleResetView}
+        playCamera={playFree ? null : playCameraMode}
+        onPlayCameraChoice={handlePlayCameraChoice}
       />
 
       <div className="stage-canvas-wrap">

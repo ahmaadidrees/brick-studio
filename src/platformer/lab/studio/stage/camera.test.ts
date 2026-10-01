@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   clampCamera,
+  defaultPlayCameraMode,
+  fitCamera,
+  fitZoom,
+  followCamera,
+  wholeLevelReadable,
   createDefaultCamera,
   getCameraZoom,
   panCamera,
@@ -117,5 +122,114 @@ describe('camera math', () => {
     expect(defaultCam.x).toBe(240)
     expect(defaultCam.y).toBe(180)
     expect(defaultCam.viewWidth).toBe(480)
+  })
+})
+
+describe('fit and follow camera', () => {
+  const level = { left: 0, right: 960, bottom: 0, top: 360 }
+  const sizes: Array<[string, { left: number; right: number; bottom: number; top: number }]> = [
+    ['default 960x360', level],
+    ['tall 200x800', { left: 0, right: 200, bottom: 0, top: 800 }],
+    ['small 100x100', { left: 0, right: 100, bottom: 0, top: 100 }],
+    ['offset origin', { left: -480, right: 480, bottom: -100, top: 260 }],
+  ]
+  const viewports: Viewport[] = [
+    { width: 570, height: 723 },
+    { width: 1366, height: 400 },
+    { width: 500, height: 500 },
+    { width: 960, height: 540 },
+    { width: 300, height: 1000 },
+  ]
+
+  for (const [name, b] of sizes) {
+    for (const vp of viewports) {
+      it(`fit shows the whole level inside ${vp.width}x${vp.height} for ${name}`, () => {
+        const cam = fitCamera(b, vp)
+        const [l, t] = worldToScreen(cam, vp, b.left, b.top)
+        const [r, bt] = worldToScreen(cam, vp, b.right, b.bottom)
+        const eps = 1e-6
+        expect(l).toBeGreaterThanOrEqual(-eps)
+        expect(t).toBeGreaterThanOrEqual(-eps)
+        expect(r).toBeLessThanOrEqual(vp.width + eps)
+        expect(bt).toBeLessThanOrEqual(vp.height + eps)
+        // Letterboxed: the tighter axis touches both edges, and the level is centered.
+        const touchesX = Math.abs(l) < 1e-6 && Math.abs(r - vp.width) < 1e-6
+        const touchesY = Math.abs(t) < 1e-6 && Math.abs(bt - vp.height) < 1e-6
+        expect(touchesX || touchesY).toBe(true)
+        expect((l + r) / 2).toBeCloseTo(vp.width / 2, 6)
+        expect((t + bt) / 2).toBeCloseTo(vp.height / 2, 6)
+      })
+    }
+  }
+
+  it('fit on the default level in a wide stage shows all 960 steps (x = 480..960 visible)', () => {
+    const vp = { width: 1366, height: 768 }
+    const cam = fitCamera(level, vp)
+    const [sx] = worldToScreen(cam, vp, 900, 100)
+    expect(sx).toBeGreaterThan(0)
+    expect(sx).toBeLessThan(vp.width)
+    expect(fitZoom(level, vp)).toBeCloseTo(1366 / 960, 6)
+  })
+
+  it('readable threshold: whole level at 570 px wide (0.59 px/step) is readable, 300 px is not', () => {
+    expect(wholeLevelReadable(level, { width: 570, height: 723 })).toBe(true)
+    expect(defaultPlayCameraMode(level, { width: 570, height: 723 })).toBe('whole')
+    expect(wholeLevelReadable(level, { width: 300, height: 400 })).toBe(false)
+    expect(defaultPlayCameraMode(level, { width: 300, height: 400 })).toBe('follow')
+  })
+
+  it('zoom around the view center keeps the center world point steady (in and out, from a fit camera)', () => {
+    const vp = { width: 700, height: 500 }
+    const cam = fitCamera(level, vp)
+    const [cx, cy] = screenToWorld(cam, vp, vp.width / 2, vp.height / 2)
+    for (const f of [1.25, 0.8, 1.25, 1.25]) {
+      const z = zoomCameraAt(cam, vp, f)
+      const [zx, zy] = screenToWorld(z, vp, vp.width / 2, vp.height / 2)
+      expect(zx).toBeCloseTo(cx, 6)
+      expect(zy).toBeCloseTo(cy, 6)
+      expect(z.x).toBeCloseTo(cam.x, 6)
+      expect(z.y).toBeCloseTo(cam.y, 6)
+    }
+  })
+
+  it('zoom around center is steady for an off-center camera too', () => {
+    const vp = { width: 700, height: 500 }
+    const cam: Camera = { x: 333, y: 77, viewWidth: 480 }
+    const z = zoomCameraAt(zoomCameraAt(cam, vp, 1.25), vp, 0.8)
+    expect(z.x).toBeCloseTo(333, 6)
+    expect(z.y).toBeCloseTo(77, 6)
+  })
+
+  describe('follow clamping', () => {
+    const vp = { width: 480, height: 360 } // 1 px per step at viewWidth 480: half view = 240 x 180
+    it('follows a point in the middle of the level exactly', () => {
+      const c = followCamera(level, vp, { x: 500, y: 180 })
+      expect(c.x).toBe(500)
+      expect(c.y).toBe(180)
+      expect(c.viewWidth).toBe(480)
+    })
+    it('clamps at the left edge so the view starts at the level left', () => {
+      const c = followCamera(level, vp, { x: 10, y: 180 })
+      expect(c.x).toBe(240)
+      const [l] = worldToScreen(c, vp, 0, 0)
+      expect(l).toBeCloseTo(0)
+    })
+    it('clamps at the right edge so the view ends at the level right', () => {
+      const c = followCamera(level, vp, { x: 950, y: 180 })
+      expect(c.x).toBe(720)
+      const [r] = worldToScreen(c, vp, 960, 0)
+      expect(r).toBeCloseTo(vp.width)
+    })
+    it('clamps vertically when the view is shorter than the level', () => {
+      const c = followCamera(level, { width: 480, height: 200 }, { x: 500, y: 0 })
+      expect(c.y).toBe(100)
+      expect(followCamera(level, { width: 480, height: 200 }, { x: 500, y: 400 }).y).toBe(260)
+    })
+    it('centers the level on an axis where the view is larger than the level', () => {
+      const c = followCamera(level, { width: 480, height: 600 }, { x: 500, y: 20 })
+      expect(c.y).toBe(180)
+      const wide = followCamera({ left: 0, right: 200, bottom: 0, top: 360 }, vp, { x: 190, y: 180 })
+      expect(wide.x).toBe(100)
+    })
   })
 })

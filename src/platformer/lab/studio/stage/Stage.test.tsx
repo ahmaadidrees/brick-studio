@@ -106,4 +106,20 @@ describe('Stage Component', () => {
     expect(store.getState().project.design.copies.length).toBe(0)
     expect(store.getState().selectedCopyId).toBeNull()
   })
+
+  it('Play shows a "camera follows" choice: whole level by default, switchable to follow brick', () => {
+    const store = new StudioStore({ design: makeTestDesign(), workspaces: {} })
+    render(<Stage store={store} />)
+    expect(screen.queryByRole('group', { name: 'Camera follows' })).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Play simulation' }))
+    const whole = screen.getByRole('button', { name: 'Camera shows the whole level' })
+    const follow = screen.getByRole('button', { name: 'Camera follows the selected brick' })
+    expect(whole.getAttribute('aria-pressed')).toBe('true')
+    expect(follow.getAttribute('aria-pressed')).toBe('false')
+
+    fireEvent.click(follow)
+    expect(follow.getAttribute('aria-pressed')).toBe('true')
+    expect(whole.getAttribute('aria-pressed')).toBe('false')
+  })
 })

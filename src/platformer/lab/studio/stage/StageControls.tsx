@@ -1,5 +1,6 @@
 import React from 'react'
 import type { StudioMode } from '../store'
+import type { PlayCameraMode } from './camera'
 
 export interface StageControlsProps {
   mode: StudioMode
@@ -12,6 +13,9 @@ export interface StageControlsProps {
   onZoomIn: () => void
   onZoomOut: () => void
   onResetView: () => void
+  /** Current Play camera choice; null when the kid has scrolled/zoomed the view by hand. */
+  playCamera?: PlayCameraMode | null
+  onPlayCameraChoice?: (choice: PlayCameraMode) => void
 }
 
 export function StageControls({
@@ -25,6 +29,8 @@ export function StageControls({
   onZoomIn,
   onZoomOut,
   onResetView,
+  playCamera = null,
+  onPlayCameraChoice,
 }: StageControlsProps) {
   const isPlay = mode === 'play'
 
@@ -92,6 +98,29 @@ export function StageControls({
             onClick={onToggleGridSnap}
           >
             ▦ Snap 8
+          </button>
+        </div>
+      )}
+
+      {isPlay && onPlayCameraChoice && (
+        <div className="stage-controls-group" role="group" aria-label="Camera follows">
+          <button
+            className={`stage-ctrl-btn tool-btn ${playCamera === 'whole' ? 'active' : ''}`}
+            aria-label="Camera shows the whole level"
+            aria-pressed={playCamera === 'whole'}
+            title="Camera: whole level"
+            onClick={() => onPlayCameraChoice('whole')}
+          >
+            Whole level
+          </button>
+          <button
+            className={`stage-ctrl-btn tool-btn ${playCamera === 'follow' ? 'active' : ''}`}
+            aria-label="Camera follows the selected brick"
+            aria-pressed={playCamera === 'follow'}
+            title="Camera follows the selected brick"
+            onClick={() => onPlayCameraChoice('follow')}
+          >
+            Follow brick
           </button>
         </div>
       )}
