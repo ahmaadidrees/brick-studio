@@ -1,183 +1,179 @@
 # Scratch Conformance Matrix
 
-This matrix documents the conformance of Code Lab's core runtime against the 108 Scratch 3 runtime semantic fixtures specified in `research/code-lab/01-scratch-runtime-semantics.md`.
+Generated from the tests in `src/platformer/lab/core/conformance/` after the wave 3 conformance-honesty pass. It replaces the wave 2 table, which overstated coverage (see [`CONFORMANCE-AUDIT.md`](CONFORMANCE-AUDIT.md)). Fixture IDs, topics and section headings are copied from `research/code-lab/01-scratch-runtime-semantics.md`. Every row names the tests that back it; a row with no test would not appear.
 
-All tests run end-to-end against `createRuntime(design, { primitives: ALL_PRIMITIVES })` in `src/platformer/lab/core/conformance/`.
+All tests run the fixture recipe through the real runtime (`createRuntime` with `ALL_PRIMITIVES`, via `conformance/harness.ts`), not through the fake testkit. Time is the injected tick clock and the RNG is stubbed where a fixture needs it (no wall clock, no `Math.random`).
+
+## Status key
+
+- **VERIFIED**: every listed test passes and asserts the fixture's expected result. Sub-cases the tests do not cover are listed under Notes as "Not asserted".
+- **KNOWN-DIFF**: Code Lab deliberately differs from Scratch (reason in Notes); the test asserts Code Lab's actual behavior.
+- **FAILS-PENDING-FIX**: the correct Scratch behavior is written as an `it.fails(...)` test that currently fails because of a runtime bug the runtime-fixes lane is fixing (or, for the picker, the stage-camera lane). The integrator flips each `it.fails` to `it` after the merge; the row's other tests pass today.
 
 ## Summary
 
-- **Total Fixtures**: 108
-- **Pass**: 105
-- **Known Differences**: 3 (S04, S05, S06: color sensing in headless core without WebGL)
-- **Not Applicable**: 0
+| Status | Count |
+|:---|---:|
+| VERIFIED | 97 |
+| KNOWN-DIFF | 3 |
+| FAILS-PENDING-FIX | 8 |
+| **Total fixtures** | **108** |
+
+FAILS-PENDING-FIX: F02, F05, F08, F11, F14, H04, H05, L06. Each of these also has passing tests for the parts of the fixture that work today.
+
+Wave 1 unit tests (`core/*.test.ts`) exist for many of these fixtures too. They are not cited here; only the conformance suite backs a row.
 
 ---
 
-## §1.1 Frame & Scheduling (F01–F16)
+## §1.1 · Frame loop, work budget, yielding, and ordering (F01–F16)
 
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| F01 | Frame rate / clock | **PASS** | Default tick interval is 1/30s (33.3ms), discrete deterministic stepping. |
-| F02 | Step budget / loop yield | **PASS** | Loop boundaries (`control_repeat`, `control_forever`, etc.) yield after backward branch unless inside warp. |
-| F03 | Warp budget | **PASS** | Warp procedures execute until completion or timeout (500ms wall-clock guard). |
-| F04 | Redraw request | **PASS** | Motion, visibility changes, costume changes request redraw. |
-| F05 | Wait 0 seconds | **PASS** | `wait 0` yields to the next tick frame. |
-| F06 | Timer comparison | **PASS** | `wait N` yields until wall-clock/tick delta meets or exceeds duration. |
-| F07 | Edge-triggered hats | **PASS** | Edge-triggered hats (e.g. `greater_than`) retrigger on false-to-true edge transitions. |
-| F08 | Stop other scripts | **PASS** | `stop other scripts in sprite` cancels peer threads on the same target while preserving self. |
-| F09 | Stop all | **PASS** | `stopAll` cancels all running threads across all targets and clears edge hat states. |
-| F10 | Broadcast and wait | **PASS** | Sender pauses execution until all triggered broadcast handler threads terminate. |
-| F11 | Broadcast restart | **PASS** | Standard broadcast restarts identical broadcast hats on recipient targets. |
-| F12 | Target execution order | **PASS** | Targets step in reverse draw order (front-to-back), stage first. |
-| F13 | Nested repeat | **PASS** | Inner loops step per frame and yield properly to outer loop iterations. |
-| F14 | If/else branches | **PASS** | Conditional branches evaluate condition and step active branch in single frame. |
-| F15 | Repeat until | **PASS** | Tests condition before each iteration; halts when condition evaluates truthy. |
-| F16 | Wait until | **PASS** | Suspends thread execution each tick until condition tests truthy. |
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| F01 | 30 vs 60 | **VERIFIED** | `frame.test.ts` "F01 · 30 vs 60" | 30 ticks per second only; Scratch's 60 default interval is not modeled (by design). |
+| F02 | Work budget | **FAILS-PENDING-FIX** | `frame.test.ts` "F02 · Work budget (KNOWN-DIFF: an op-count budget, not 75% of step time)"<br>`frame.test.ts` "F02 · an overrun thread does not starve later threads in the same sweep" (`it.fails`) | Also a KNOWN-DIFF: the budget is an op count (`DEFAULT_TICK_OP_BUDGET`), not 75% of step time. The it.fails test is runtime-fixes bug 1 (budget checked mid-sweep starves later threads). |
+| F03 | Straight-line scripts | **VERIFIED** | `frame.test.ts` "F03 · Straight-line scripts" |  |
+| F04 | Loop iteration yields | **VERIFIED** | `frame.test.ts` "F04 · Loop iteration yields" |  |
+| F05 | Redraw | **FAILS-PENDING-FIX** | `frame.test.ts` "F05 · Redraw"<br>`frame.test.ts` "F05 · a heavy redrawing thread still lets the next thread take its turn" (`it.fails`) | it.fails: runtime-fixes bug 1 (a heavy thread that burns the tick budget starves the next thread in the sweep). |
+| F06 | Hidden motion | **VERIFIED** | `frame.test.ts` "F06 · Hidden motion" |  |
+| F07 | Ordinary yield vs yield-tick | **VERIFIED** | `frame.test.ts` "F07 · Ordinary yield vs yield-tick" |  |
+| F08 | Wait zero | **FAILS-PENDING-FIX** | `frame.test.ts` "F08 · Wait zero"<br>`frame.test.ts` "F08 · wait zero inside a warp procedure is revisited in the same tick" (`it.fails`)<br>`frame.test.ts` "F08 · wait zero inside a warp procedure still completes, in order, within two ticks" | The non-warp case is verified. it.fails (audit item 4): inside a warp procedure Scratch revisits `wait 0` in the same tick, Code Lab yields to the next tick. If runtime-fixes keeps this, flip the status to KNOWN-DIFF. |
+| F09 | Wait-until | **VERIFIED** | `frame.test.ts` "F09 · Wait-until" |  |
+| F10 | Warp | **VERIFIED** | `frame.test.ts` "F10 · Warp"<br>`frame.test.ts` "F10 · Warp ask-and-wait stays suspended until an answer" |  |
+| F11 | Warp safety | **FAILS-PENDING-FIX** | `frame.test.ts` "F11 · Warp safety (KNOWN-DIFF: an op limit, not 500 ms)"<br>`frame.test.ts` "F11 · a heavy warp render loop does not starve a sibling script" (`it.fails`) | Also a KNOWN-DIFF: the cutoff is `WARP_OP_LIMIT` ops, not 500 ms. it.fails: runtime-fixes bug 1 (the audit's `forever { call render }` starves a sibling script). |
+| F12 | Turbo | **VERIFIED** | `frame.test.ts` "F12 · Turbo" |  |
+| F13 | Hat launch order | **VERIFIED** | `frame.test.ts` "F13 · Hat launch order" |  |
+| F14 | Running thread order | **FAILS-PENDING-FIX** | `frame.test.ts` "F14 · Running thread order"<br>`frame.test.ts` "F14 · a restarted hat thread keeps its place in the queue" (`it.fails`) | The layer-change half is verified. it.fails: runtime-fixes bug 2 (a restarted hat is moved to the end of the thread queue). |
+| F15 | Same-frame new work | **VERIFIED** | `frame.test.ts` "F15 · Same-frame new work" |  |
+| F16 | Reporter evaluation | **VERIFIED** | `frame.test.ts` "F16 · Reporter evaluation" |  |
 
----
+## §1.2 · Hats, retriggers, and broadcasts (H01–H10)
 
-## §1.2 Hats and Event Triggers (H01–H10)
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| H01 | Green flag | **VERIFIED** | `hats.test.ts` "H01 · Green flag" |  |
+| H02 | Key pressed | **VERIFIED** | `hats.test.ts` "H02 · Key pressed" |  |
+| H03 | Sprite clicked | **VERIFIED** | `hats.test.ts` "H03 · Sprite clicked" |  |
+| H04 | Stage clicked | **FAILS-PENDING-FIX** | `hats.test.ts` "H04 · Stage clicked (hat restart)"<br>`hats.test.ts` "H04 · picking: the front-most opaque sprite is picked, and only it"<br>`hats.test.ts` "H04 · picking: a hidden front sprite is not picked"<br>`hats.test.ts` "H04 · picking: a fully ghosted front sprite is not picked" (`it.fails`) | Hat restart and picking (front-most opaque, hidden skipped) are verified; the picking tests call `studio/stage/picking.ts` `pickTarget`. it.fails: a fully ghosted sprite is still picked (runtime-fixes bug 3 / stage-camera lane). |
+| H05 | Broadcast | **FAILS-PENDING-FIX** | `hats.test.ts` "H05 · Broadcast"<br>`hats.test.ts` "H05 · a restarted receiver keeps its place in the thread order" (`it.fails`) | it.fails: runtime-fixes bug 2 (a restarted receiver is moved to the end of the thread queue). |
+| H06 | Broadcast-and-wait | **VERIFIED** | `hats.test.ts` "H06 · Broadcast-and-wait" |  |
+| H07 | Clone-start | **VERIFIED** | `hats.test.ts` "H07 · Clone-start" |  |
+| H08 | Timer/loudness threshold | **VERIFIED** | `hats.test.ts` "H08 · Timer/loudness threshold" | Not asserted: a re-trigger while the handler is still running (research lists it as unresolved). |
+| H09 | Backdrop changes | **VERIFIED** | `hats.test.ts` "H09 · Backdrop changes" |  |
+| H10 | Stack clicks | **VERIFIED** | `hats.test.ts` "H10 · Stack clicks" |  |
 
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| H01 | Flag clicked | **PASS** | Triggers all `event_whenflagclicked` scripts across stage and sprites. |
-| H02 | Key pressed | **PASS** | Triggers matching `event_whenkeypressed` scripts; ignores if thread is already active. |
-| H03 | Sprite clicked | **PASS** | Triggers `event_whenthisspriteclicked` for clicked sprite target. |
-| H04 | Stage clicked | **PASS** | Triggers `event_whenstageclicked` when stage is clicked. |
-| H05 | Backdrop switches | **PASS** | `event_whenbackdropswitchesto` fires when stage changes costume. |
-| H06 | Greater than hat | **PASS** | Edge-triggered numeric comparison (> threshold) fires on rising edge only. |
-| H07 | Broadcast received | **PASS** | Fires `event_whenbroadcastreceived` for matching broadcast message. |
-| H08 | Clone hat | **PASS** | Fires `control_start_as_clone` only on newly created clone instance. |
-| H09 | Hat restart on repeat | **PASS** | Key and click hats ignore duplicate triggers while running; broadcast hats restart. |
-| H10 | Hat launch ordering | **PASS** | Hats launch in target order (front-to-back), scripts in program definition order. |
+## §1.3 · Clone inheritance and lifecycle (C01–C12)
 
----
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| C01 | State snapshot | **VERIFIED** | `clones.test.ts` "C01 · State snapshot" |  |
+| C02 | Shared definition, separate execution | **VERIFIED** | `clones.test.ts` "C02 · Shared definition, separate execution" |  |
+| C03 | Which hats run | **VERIFIED** | `clones.test.ts` "C03 · Which hats run" |  |
+| C04 | Layer | **VERIFIED** | `clones.test.ts` "C04 · Layer" |  |
+| C05 | Global limit | **VERIFIED** | `clones.test.ts` "C05 · Global limit" |  |
+| C06 | Delete original | **VERIFIED** | `clones.test.ts` "C06 · Delete original" |  |
+| C07 | Delete runtime clone | **VERIFIED** | `clones.test.ts` "C07 · Delete runtime clone" |  |
+| C08 | Stop all | **VERIFIED** | `clones.test.ts` "C08 · Stop all" |  |
+| C09 | Clone of clone | **VERIFIED** | `clones.test.ts` "C09 · Clone of clone" |  |
+| C10 | Other scripts in sprite | **VERIFIED** | `clones.test.ts` "C10 · Other scripts in sprite" |  |
+| C11 | Local lists | **VERIFIED** | `clones.test.ts` "C11 · Local lists" |  |
+| C12 | Uninherited assumptions | **VERIFIED** | `clones.test.ts` "C12 · Uninherited assumptions" |  |
 
-## §1.3 Clones and Lifecycle (C01–C12)
+## §1.4 · Motion, coordinates, fencing, and bounce (M01–M14)
 
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| C01 | Clone count limit | **PASS** | Maximum 300 clones enforced; further clone creations are ignored. |
-| C02 | Clone property inheritance | **PASS** | Clones inherit parent coordinates, direction, size, costumes, effects, and visibility. |
-| C03 | Clone variable isolation | **PASS** | Sprite-local variables and lists are copied on clone creation; stage globals remain shared. |
-| C04 | Delete clone | **PASS** | `delete this clone` removes the target from world and aborts its threads. Original cannot be deleted. |
-| C05 | Clone of clone | **PASS** | Clones can spawn further clones with their own current transforms and variables. |
-| C06 | Clone broadcast receive | **PASS** | Clones receive broadcast events matching their parent brick's program. |
-| C07 | Clone stop all | **PASS** | `stopAll` stops clone threads; green flag cleans up all clone instances. |
-| C08 | Clone layers | **PASS** | New clone is inserted directly above its progenitor in the target draw stack. |
-| C09 | Clone edge hats | **PASS** | Clone instance evaluates edge-triggered hats independently of original. |
-| C10 | Clone touching original | **PASS** | Clones can touch and sense their original parent sprite and sibling clones. |
-| C11 | Clone name resolution | **PASS** | Menu references to named sprite resolve any matching clone in sensing tests. |
-| C12 | Memory reclamation | **PASS** | Deleted clone references are released from world target array. |
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| M01 | Coordinates/direction | **VERIFIED** | `motion.test.ts` "M01 · Coordinates/direction" |  |
+| M02 | Negative/fractional steps | **VERIFIED** | `motion.test.ts` "M02 · Negative/fractional steps" |  |
+| M03 | Direction wrapping | **VERIFIED** | `motion.test.ts` "M03 · Direction wrapping"<br>`motion.test.ts` "M03 · Direction wrapping (Infinity keeps the prior direction)" |  |
+| M04 | Position reporters | **VERIFIED** | `motion.test.ts` "M04 · Position reporters" | Not asserted: the `x position of` (sensing_of) reporter returning the raw number. |
+| M05 | Ordinary fencing | **VERIFIED** | `motion.test.ts` "M05 · Ordinary fencing" |  |
+| M06 | Small-costume fence | **VERIFIED** | `motion.test.ts` "M06 · Small-costume fence" |  |
+| M07 | Dragging | **VERIFIED** | `motion.test.ts` "M07 · Dragging" | Not asserted: a forced editor move while dragging. |
+| M08 | Go to | **VERIFIED** | `motion.test.ts` "M08 · Go to" |  |
+| M09 | Point towards | **VERIFIED** | `motion.test.ts` "M09 · Point towards"<br>`motion.test.ts` "M09 · Point towards (towards the same point gives 90)" |  |
+| M10 | Glide snapshot | **VERIFIED** | `motion.test.ts` "M10 · Glide snapshot" | Not asserted: the glide endpoint is not retargeted when the destination sprite moves. |
+| M11 | Glide zero | **VERIFIED** | `motion.test.ts` "M11 · Glide zero" |  |
+| M12 | Bounce | **VERIFIED** | `motion.test.ts` "M12 · Bounce" | Not asserted here: the left/top tie and near-tangent cases. |
+| M13 | Edge predicate boundary | **VERIFIED** | `motion.test.ts` "M13 · Edge predicate boundary" |  |
+| M14 | Rotation styles | **VERIFIED** | `motion.test.ts` "M14 · Rotation styles" | Not asserted: the left-right image flip (renderer concern); only direction, rotation style and movement are checked. |
 
----
+## §1.5 · Looks, size, effects, layers, and timed bubbles (L01–L12)
 
-## §1.4 Motion, Coordinates, and Fencing (M01–M14)
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| L01 | Costume names/numbers | **VERIFIED** | `looks.test.ts` "L01 · Costume names/numbers" | Not asserted: a missing costume name leaves the costume unchanged. |
+| L02 | Costume wrap | **VERIFIED** | `looks.test.ts` "L02 · Costume wrap" |  |
+| L03 | Rotation center | **VERIFIED** | `looks.test.ts` "L03 · Rotation center" |  |
+| L04 | Size min/max | **VERIFIED** | `looks.test.ts` "L04 · Size min/max" |  |
+| L05 | Effects | **VERIFIED** | `looks.test.ts` "L05 · Effects" | Not asserted: an unknown effect name is ignored. |
+| L06 | Ghost vs hide | **FAILS-PENDING-FIX** | `looks.test.ts` "L06 · Ghost vs hide"<br>`looks.test.ts` "L06 · a fully ghosted sprite is not clickable through the normal picker" (`it.fails`) | The touching half is verified. it.fails: a ghost = 100 sprite is still clickable (runtime-fixes bug 3 / stage-camera lane). |
+| L07 | Show/hide | **VERIFIED** | `looks.test.ts` "L07 · Show/hide" |  |
+| L08 | Layer operations | **VERIFIED** | `looks.test.ts` "L08 · Layer operations" |  |
+| L09 | Say/think plain | **VERIFIED** | `looks.test.ts` "L09 · Say/think plain" |  |
+| L10 | Say/think for seconds | **VERIFIED** | `looks.test.ts` "L10 · Say/think for seconds" |  |
+| L11 | Bubble overwrite race | **VERIFIED** | `looks.test.ts` "L11 · Bubble overwrite race" |  |
+| L12 | Flag/stop effects | **VERIFIED** | `looks.test.ts` "L12 · Flag/stop effects" |  |
 
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| M01 | Coordinates / direction | **PASS** | Scratch coordinate system (y-up, 0° up, 90° right); move steps uses sin/cos degrees. |
-| M02 | Negative / fractional steps | **PASS** | Fractional and negative step counts correctly translated along direction vector. |
-| M03 | Direction wrapping | **PASS** | Angles wrap strictly to (-180, 180], with -180 wrapping to 180. |
-| M04 | Position reporters | **PASS** | Coordinates within 1e-9 of integer snap to rounded integer in reporters. |
-| M05 | Ordinary fencing | **PASS** | Partial-costume fencing keeps at least 15px (or half costume dimension) on screen. |
-| M06 | Small-costume fence | **PASS** | Costumes smaller than fence margin are clamped to prevent exiting the stage. |
-| M07 | Dragging lock | **PASS** | When `target.dragging` is true, block motion commands are ignored. |
-| M08 | Go to | **PASS** | `motion_goto` supports mouse pointer, random position, or named sprite. |
-| M09 | Point towards | **PASS** | Calculates correct arctangent direction towards mouse, sprite, or random point. |
-| M10 | Glide snapshot | **PASS** | Glides capture start and end coordinates at inception and interpolate smoothly over time. |
-| M11 | Glide zero duration | **PASS** | Glides with duration <= 0 teleport immediately to target coordinate without yielding. |
-| M12 | If on edge, bounce | **PASS** | Detects nearest edge contact, reflects velocity vector, and pulls sprite inside level. |
-| M13 | Edge predicate boundary | **PASS** | Strict past-edge boundary check (`isPastEdge`), flush contact is not outside edge. |
-| M14 | Rotation styles | **PASS** | Supports `'all around'`, `'left-right'` (horizontal mirroring), and `\"don't rotate\"`. |
+## §1.6 · Sensing, keyboard, timer, and ask/answer (S01–S13)
 
----
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| S01 | Sprite touching | **VERIFIED** | `sensing.test.ts` "S01 · Sprite touching" |  |
+| S02 | Named sprite includes clones | **VERIFIED** | `sensing.test.ts` "S02 · Named sprite includes clones" |  |
+| S03 | Hidden asymmetry | **VERIFIED** | `sensing.test.ts` "S03 · Hidden asymmetry" | The touching-color half is not applicable (no renderer). |
+| S04 | Color target tolerance | **KNOWN-DIFF** | `sensing.test.ts` "S04 · Color target tolerance (KNOWN-DIFF: headless stub always false)" | KNOWN-DIFF: the headless core has no compositor, so `sensing_touchingcolor` is a stub that returns false. |
+| S05 | Color source mask | **KNOWN-DIFF** | `sensing.test.ts` "S05 · Color source mask (KNOWN-DIFF: headless stub always false)" | KNOWN-DIFF: `sensing_coloristouchingcolor` is a stub that returns false. |
+| S06 | CPU/GPU threshold | **KNOWN-DIFF** | `sensing.test.ts` "S06 · CPU/GPU threshold (KNOWN-DIFF: no renderer, primitives only defined)" | KNOWN-DIFF: there is no CPU/GPU split; the test only asserts the primitives exist. |
+| S07 | Distance | **VERIFIED** | `sensing.test.ts` "S07 · Distance" |  |
+| S08 | Attribute of | **VERIFIED** | `sensing.test.ts` "S08 · Attribute of" | Not asserted: a clone's HP change leaving the named original's reading alone. |
+| S09 | Timer | **VERIFIED** | `sensing.test.ts` "S09 · Timer" | Not asserted: "advance 1000 ms after reset reads exactly 1" (checked only as > 0). |
+| S10 | Key names | **VERIFIED** | `sensing.test.ts` "S10 · Key names" | A modifier event such as Shift being ignored is a host concern, covered in `studio/stage/keys.test.ts` ("returns null for unhandled keys"), not here. |
+| S11 | Key repeat | **VERIFIED** | `sensing.test.ts` "S11 · Key repeat" |  |
+| S12 | Ask queue | **VERIFIED** | `sensing.test.ts` "S12 · Ask queue" |  |
+| S13 | Shared answer/reset | **VERIFIED** | `sensing.test.ts` "S13 · Shared answer/reset" |  |
 
-## §1.5 Looks, Size, Effects, and Bubbles (L01–L12)
+## §1.7 · Operators, coercion, string behavior, and random (O01–O14)
 
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| L01 | Costume names / numbers | **PASS** | Numeric inputs use 1-based index; string inputs match exact name before number. |
-| L02 | Costume wrap | **PASS** | Out-of-bounds indices wrap modulo costume count; next costume wraps circularly. |
-| L03 | Rotation center | **PASS** | Rotation center shifts rendered visual offset without altering target's x/y world coordinates. |
-| L04 | Size min / max | **PASS** | Size clamps dynamically based on costume dimensions and stage bounds (e.g. 5%..540% for 100x100). |
-| L05 | Effects | **PASS** | Ghost effect clamps to [0, 100]; brightness clamps to [-100, 100]; unknown effects ignored. |
-| L06 | Ghost vs hide | **PASS** | 100% ghosted sprites remain touchable in `touchingObject`; hidden sprites do not touch. |
-| L07 | Show / hide | **PASS** | Hidden sprites continue executing scripts and can sense the mouse pointer. |
-| L08 | Layer operations | **PASS** | `looks_gotofrontback` and layer shifts modify target drawing and picking order. |
-| L09 | Say / think plain | **PASS** | Sets speech/thought bubble text; empty string clears active bubble. |
-| L10 | Say / think for seconds | **PASS** | Displays bubble, yields until time expires, then clears bubble. |
-| L11 | Bubble overwrite race | **PASS** | Newer bubble replaces old bubble and invalidates prior timer's clear operation. |
-| L12 | Flag / stop effects | **PASS** | Green flag and stopAll clear graphic effects to 0 while preserving size, costume, and coordinates. |
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| O01 | Numeric cast | **VERIFIED** | `operators.test.ts` "O01 · Numeric cast"<br>`operators.test.ts` "O01 · Numeric cast (a NaN reporter + 1)" |  |
+| O02 | Boolean cast | **VERIFIED** | `operators.test.ts` "O02 · Boolean cast" |  |
+| O03 | Numeric comparison | **VERIFIED** | `operators.test.ts` "O03 · Numeric comparison" |  |
+| O04 | Infinity/NaN | **VERIFIED** | `operators.test.ts` "O04 · Infinity/NaN" |  |
+| O05 | Negative mod | **VERIFIED** | `operators.test.ts` "O05 · Negative mod" |  |
+| O06 | Round | **VERIFIED** | `operators.test.ts` "O06 · Round"<br>`operators.test.ts` "O06 · Round (round -0.5 is negative zero)" |  |
+| O07 | Random integer rule | **VERIFIED** | `operators.test.ts` "O07 · Random integer rule" |  |
+| O08 | Random bounds | **VERIFIED** | `operators.test.ts` "O08 · Random bounds"<br>`operators.test.ts` "O08 · Random bounds (RNG near 1 gives the inclusive upper integer)" |  |
+| O09 | Join | **VERIFIED** | `operators.test.ts` "O09 · Join"<br>`operators.test.ts` "O09 · Join (a boolean joins as its text)" |  |
+| O10 | Letter | **VERIFIED** | `operators.test.ts` "O10 · Letter" |  |
+| O11 | Length/Unicode | **VERIFIED** | `operators.test.ts` "O11 · Length/Unicode" |  |
+| O12 | Contains | **VERIFIED** | `operators.test.ts` "O12 · Contains" |  |
+| O13 | Trig | **VERIFIED** | `operators.test.ts` "O13 · Trig" |  |
+| O14 | Math operations | **VERIFIED** | `operators.test.ts` "O14 · Math operations" |  |
 
----
+## §1.8 · Variables and list boundaries (D01–D10)
 
-## §1.6 Sensing, Keyboard, Timer, and Ask/Answer (S01–S13)
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| D01 | Set vs change | **VERIFIED** | `data.test.ts` "D01 · Set vs change" |  |
+| D02 | Scope | **VERIFIED** | `data.test.ts` "D02 · Scope" | Not asserted: same-name variables with distinct IDs. |
+| D03 | Indexing | **VERIFIED** | `data.test.ts` "D03 · Indexing" |  |
+| D04 | Special index names | **VERIFIED** | `data.test.ts` "D04 · Special index names"<br>`data.test.ts` "D04 · Special index names (item "all" reads as empty)" |  |
+| D05 | Empty list | **VERIFIED** | `data.test.ts` "D05 · Empty list" |  |
+| D06 | Search/coercion | **VERIFIED** | `data.test.ts` "D06 · Search/coercion" |  |
+| D07 | List reporter | **VERIFIED** | `data.test.ts` "D07 · List reporter" |  |
+| D08 | Capacity | **VERIFIED** | `data.test.ts` "D08 · Capacity" |  |
+| D09 | Insert at capacity | **VERIFIED** | `data.test.ts` "D09 · Insert at capacity"<br>`data.test.ts` "D09 · Insert at capacity (insert at limit + 1 is refused)" |  |
+| D10 | Mutations do not reset on flag | **VERIFIED** | `data.test.ts` "D10 · Mutations do not reset on flag"<br>`data.test.ts` "D10 · Mutations do not reset on flag (a clone-local list disappears with the clone)" |  |
 
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| S01 | Sprite touching | **PASS** | Pixel-accurate bitmap narrow phase within overlapping bounding box. |
-| S02 | Named sprite includes clones | **PASS** | Touching a named sprite checks original and all clones; excludes dragged instances. |
-| S03 | Hidden asymmetry | **PASS** | Hidden sprite cannot be touched by other sprites, but can sense mouse pointer and level. |
-| S04 | Color target tolerance | **Known Diff** | Headless core does not run WebGL/Canvas rasterizer; stubs return false safely. Full color rasterizer belongs in stage layer. |
-| S05 | Color source mask | **Known Diff** | Headless core stubs `sensing_coloristouchingcolor` safely. |
-| S06 | CPU / GPU threshold | **Known Diff** | WebGL shader switching is stage renderer responsibility, not headless core. |
-| S07 | Distance | **PASS** | Euclidean distance between target centroids; missing target or stage returns 10000. |
-| S08 | Attribute of | **PASS** | Reads property or variable of named target; missing returns 0. |
-| S09 | Timer | **PASS** | Reports seconds elapsed since `timerStartTick`; resets on green flag or `resetTimer`. |
-| S10 | Key names | **PASS** | Case-insensitive single letters, digits, and special keys (`space`, `enter`, arrows). |
-| S11 | Key repeat | **PASS** | Repeated key events maintain pressed state without retriggering active key hat. |
-| S12 | Ask queue | **PASS** | Global FIFO queue in `world.askQueue`; asking thread suspends until answered. |
-| S13 | Shared answer / reset | **PASS** | Global `world.answer` shared across all targets; green flag resets answer to `''`. |
+## §1.9 · My Blocks, parameter scope, recursion, and stop (P01–P07)
 
----
-
-## §1.7 Operators and Coercion (O01–O14)
-
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| O01 | Numeric cast | **PASS** | Converts strings to numbers; NaN becomes 0; Infinity preserved. |
-| O02 | Boolean cast | **PASS** | Falsy strings are only `''`, `'0'`, and case-insensitive `'false'`; whitespace strings are truthy. |
-| O03 | Numeric comparison | **PASS** | Numeric comparison when both operands are parseable numbers; otherwise lowercase lexicographic. |
-| O04 | Infinity / NaN | **PASS** | Math operations handle Infinity and NaN correctly; division by zero produces Infinity. |
-| O05 | Negative mod | **PASS** | Floored division modulo (`((n % d) + d) % d`). |
-| O06 | Round | **PASS** | Halfway values round towards +Infinity (Scratch Math.round convention). |
-| O07 | Random integer rule | **PASS** | Decimal strings parsed as floating range; numeric integers use integer random range. |
-| O08 | Random bounds | **PASS** | Automatically swaps inverted bounds (e.g. 3 to 1); equal bounds return value directly. |
-| O09 | Join | **PASS** | String concatenation of values without delimiter. |
-| O10 | Letter of | **PASS** | 1-based string indexing; fractional indices truncated; out of bounds returns `''`. |
-| O11 | Length / Unicode | **PASS** | Evaluates UTF-16 code units length (matches Scratch 3 specification). |
-| O12 | Contains | **PASS** | Case-insensitive substring search; empty string is always contained. |
-| O13 | Trig | **PASS** | Degree-based sin/cos rounded to 10 decimal digits; unrounded internal motion math. |
-| O14 | Math operations | **PASS** | Mathematical functions (`sqrt`, `ln`, `log`, `exp`, `sin`, `cos`, `tan`, `asin`, `acos`, `atan`). |
-
----
-
-## §1.8 Variables and Lists (D01–D10)
-
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| D01 | Set vs change | **PASS** | Set preserves exact value/type; change coerces target and delta to numbers. |
-| D02 | Scope | **PASS** | Resolves sprite-local first, then stage-global; clones isolate local variables. |
-| D03 | Indexing | **PASS** | 1-based and floored indices; out of bounds reads return `''`; invalid writes no-op. |
-| D04 | Special index names | **PASS** | Supports lowercase `'last'`, `'random'`, `'any'`; `'all'` for `deleteall`. |
-| D05 | Empty list | **PASS** | Reading `'last'` on empty list returns `''`; inserting at `'last'` on empty list inserts item. |
-| D06 | Search / coercion | **PASS** | `itemnumoflist` finds first match via Scratch equality; `listcontains` is case-insensitive. |
-| D07 | List reporter | **PASS** | Concatenates without spaces if all elements are 1-char strings; otherwise space-separated. |
-| D08 | Capacity | **PASS** | Enforces `LIST_ITEM_LIMIT = 200_000`; appends beyond limit are ignored. |
-| D09 | Insert at capacity | **PASS** | Insertion at index <= limit pops last element; insert at limit + 1 is refused. |
-| D10 | Mutations do not reset on flag | **PASS** | Variable and list values persist across green flag unless user scripts reset them. |
-
----
-
-## §1.9 My Blocks and Procedures (P01–P07)
-
-| ID | Topic | Status | Notes |
-|:---|:---|:---:|:---|
-| P01 | Arguments | **PASS** | Procedure arguments are value snapshots in call frame, not variable aliases. |
-| P02 | Nearest call only | **PASS** | Unmatched argument reporter in inner procedure returns 0, never outer caller's param. |
-| P03 | Defaults / missing define | **PASS** | Missing arguments use defaults; calling undefined procedure is a safe no-op. |
-| P04 | Recursion | **PASS** | Stack frame isolation per recursive invocation; normal mode yields on loop/recursion. |
-| P05 | Warp inheritance | **PASS** | Warp execution mode propagates to all downstream procedure calls in the call tree. |
-| P06 | Stop inside define | **PASS** | `stop this script` inside a procedure acts as `return` to the calling site. |
-| P07 | Stop at top level | **PASS** | `stop this script` at top level halts the thread and clears its execution stack. |
+| ID | Topic | Status | Tests | Notes |
+|:---|:---|:---:|:---|:---|
+| P01 | Arguments | **VERIFIED** | `procedures.test.ts` "P01 · Arguments" |  |
+| P02 | Nearest call only | **VERIFIED** | `procedures.test.ts` "P02 · Nearest call only" |  |
+| P03 | Defaults/missing define | **VERIFIED** | `procedures.test.ts` "P03 · Defaults/missing define"<br>`procedures.test.ts` "P03 · Defaults/missing define (a free argument reporter reports 0)" |  |
+| P04 | Recursion | **VERIFIED** | `procedures.test.ts` "P04 · Recursion" | Not asserted: mutual recursion. |
+| P05 | Warp inheritance | **VERIFIED** | `procedures.test.ts` "P05 · Warp inheritance" |  |
+| P06 | Stop inside define | **VERIFIED** | `procedures.test.ts` "P06 · Stop inside define" |  |
+| P07 | Stop at top level | **VERIFIED** | `procedures.test.ts` "P07 · Stop at top level"<br>`procedures.test.ts` "P07 · Stop at top level (a nested f -> g stop returns to f, not to the flag script)" |  |

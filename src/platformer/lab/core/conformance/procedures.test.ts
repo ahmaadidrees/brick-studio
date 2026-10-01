@@ -6,6 +6,7 @@ import {
   lit,
   makeHarnessRuntime,
   param,
+  stepN,
   stmt,
 } from './harness'
 
@@ -227,5 +228,29 @@ describe('§1.9 My Blocks, parameter scope, recursion, and stop', () => {
     rt.step()
 
     expect(rt.world.targets[0].lists.log).toEqual(['A'])
+  })
+
+  it('P03 · Defaults/missing define (a free argument reporter reports 0)', () => {
+    const rt = makeHarnessRuntime({
+      variables: [{ id: 'res', name: 'res', value: 'unset' }],
+      scripts: [flagScript([stmt('data_setvariableto', { VALUE: { kind: 'param', name: 'x' } }, { VARIABLE: 'res' })])],
+    })
+    rt.greenFlag()
+    rt.step()
+    expect(rt.world.targets[0].variables.res).toBe(0)
+  })
+
+  it('P07 · Stop at top level (a nested f -> g stop returns to f, not to the flag script)', () => {
+    const rt = makeHarnessRuntime({
+      lists: [{ id: 'log', name: 'log', value: [] }],
+      procedures: [
+        { proccode: 'g', argumentNames: [], warp: false, body: [stmt('data_addtolist', { ITEM: lit('g') }, { LIST: 'log' }), stmt('control_stop', {}, { STOP_OPTION: 'this script' }), stmt('data_addtolist', { ITEM: lit('g-never') }, { LIST: 'log' })] },
+        { proccode: 'f', argumentNames: [], warp: false, body: [stmt('procedures_call', {}, {}, undefined, { proccode: 'g' }), stmt('data_addtolist', { ITEM: lit('f-after') }, { LIST: 'log' })] },
+      ],
+      scripts: [flagScript([stmt('procedures_call', {}, {}, undefined, { proccode: 'f' }), stmt('data_addtolist', { ITEM: lit('main-after') }, { LIST: 'log' })])],
+    })
+    rt.greenFlag()
+    stepN(rt, 3)
+    expect(rt.world.targets[0].lists.log).toEqual(['g', 'f-after', 'main-after'])
   })
 })

@@ -131,12 +131,14 @@ export function stmt(
   return { opcode, inputs, fields, branches, call }
 }
 
+let scriptCounter = 0
+
 export function script(
   opcode: HatOpcode,
   body: Stmt[],
   fields: Fields = {},
   inputs: Inputs = {},
-  id = `script_${opcode}_${Math.random().toString(36).slice(2, 7)}`,
+  id = `script_${opcode}_${++scriptCounter}`,
 ): Script {
   return {
     id,
@@ -175,4 +177,20 @@ export function backdropScript(backdrop: string, body: Stmt[], id = `bd_${backdr
 
 export function greaterThanScript(menu: 'TIMER' | 'LOUDNESS', value: Expr, body: Stmt[], id = 'gt_script'): Script {
   return script('event_whengreaterthan', body, { WHENGREATERTHANMENU: menu }, { VALUE: value }, id)
+}
+
+/** A sprite brick with no scripts of its own beyond `scripts`, for multi-brick fixtures. */
+export function extraBrick(id: string, name: string, scripts: Script[] = [], opts: { variables?: VariableDecl[]; lists?: ListDecl[]; costumes?: Costume[] } = {}): BrickDef {
+  return {
+    id,
+    name,
+    costumes: opts.costumes ?? [defaultCostume('costume1')],
+    sounds: [],
+    program: { scripts, procedures: [], variables: opts.variables ?? [], lists: opts.lists ?? [] },
+  }
+}
+
+/** Run `n` ticks. */
+export function stepN(rt: Runtime, n: number): void {
+  for (let i = 0; i < n; i++) rt.step()
 }
