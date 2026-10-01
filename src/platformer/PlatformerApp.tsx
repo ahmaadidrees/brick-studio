@@ -19,6 +19,7 @@ import './ui/platformer.css'
 
 /** The code lab (/2d/lab) is its own chunk: Blockly loads only there. */
 const LabApp = lazy(() => import('./lab/LabApp'))
+const StudioApp = lazy(() => import('./lab/studio/StudioApp'))
 
 /** The /2d chunk: one page per load, like the rest of the app (every navigation is a full page load). */
 export default function PlatformerApp() {
@@ -40,6 +41,12 @@ export default function PlatformerApp() {
       return (
         <Suspense fallback={<Notice title="Opening the code lab…" busy />}>
           <LabApp />
+        </Suspense>
+      )
+    case 'studio':
+      return (
+        <Suspense fallback={<Notice title="Opening Code Lab…" busy />}>
+          <StudioApp />
         </Suspense>
       )
     default:
