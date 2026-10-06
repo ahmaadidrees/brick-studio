@@ -14,7 +14,7 @@
  *
  * y up, (0, 0) = bottom-left of the level, direction 90 = right.
  */
-import { EFFECT_NAMES } from './contracts'
+import { EFFECT_NAMES, TILE_CHAR } from './contracts'
 import type {
   BrickDef,
   BrickProgram,
@@ -61,6 +61,8 @@ export const DESIGN_LIMITS = {
   maxMaskPixels: 1_000_000,
   maxSeed: 0x1_0000_0000 - 1,
   maxProblems: 200,
+  maxTileCols: 400,
+  maxTileRows: 60,
   maxExprDepth: 64,
 } as const
 
@@ -184,7 +186,46 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
     copies.forEach((copy, i) => checkCopy(copy, i, brickIds, ids, copyIds, bricks ?? [], push))
   }
 
+  if (design.tiles !== undefined) checkTiles(design.tiles, push)
+
   return problems
+}
+
+const TILE_CHARS = new Set(['.', ...Object.values(TILE_CHAR)])
+
+/** Tiles (step 6): `rows` strings of exactly `cols` characters, row 0 at the bottom, only '.' or a TILE_CHAR. */
+function checkTiles(tiles: unknown, push: Push) {
+  if (!tiles || typeof tiles !== 'object') {
+    push('bad-value', 'tiles', 'Tiles must be an object.')
+    return
+  }
+  const t = tiles as { cols?: unknown; rows?: unknown; data?: unknown }
+  const { cols, rows, data } = t
+  if (typeof cols !== 'number' || !Number.isInteger(cols) || cols < 1 || cols > DESIGN_LIMITS.maxTileCols) {
+    push('limit', 'tiles.cols', `Tiles can be 1 to ${DESIGN_LIMITS.maxTileCols} columns wide.`)
+    return
+  }
+  if (typeof rows !== 'number' || !Number.isInteger(rows) || rows < 1 || rows > DESIGN_LIMITS.maxTileRows) {
+    push('limit', 'tiles.rows', `Tiles can be 1 to ${DESIGN_LIMITS.maxTileRows} rows tall.`)
+    return
+  }
+  if (!Array.isArray(data) || data.length !== rows) {
+    push('bad-value', 'tiles.data', `Tiles need exactly ${rows} rows of data.`)
+    return
+  }
+  for (let r = 0; r < rows; r++) {
+    const row: unknown = data[r]
+    if (typeof row !== 'string' || row.length !== cols) {
+      push('bad-value', `tiles.data[${r}]`, `Tile row ${r} must be a string of exactly ${cols} characters.`)
+      continue
+    }
+    for (let c = 0; c < cols; c++) {
+      if (!TILE_CHARS.has(row[c])) {
+        push('bad-value', `tiles.data[${r}]`, `Tile row ${r} has an unknown tile character at column ${c}.`)
+        break
+      }
+    }
+  }
 }
 
 type Push = (code: DesignProblemCode, path: string, message: string) => void
@@ -763,6 +804,7 @@ export function instantiate(design: LevelDesign): World {
     askQueue: [],
     nextAskId: 1,
     hostClock: null,
+    ...(design.tiles ? { tiles: structuredClone(design.tiles) } : {}),
   }
 }
 
