@@ -150,11 +150,113 @@ describe('See inside card', () => {
     fireEvent.change(slider, { target: { value: '1' } })
     const speedId = store.getState().project.design.bricks.find((b) => b.id === 'brick_walker')!.program.variables.find((v) => v.name === 'speed')!.id
     expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]).toBe(1)
+    // the slider edit is on the undo history
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]).toBe(copy.knobs?.[speedId])
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+    expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]).toBe(1)
     fireEvent.click(screen.getByRole('button', { name: 'Remove this Walker' }))
     expect(store.getState().project.design.copies.some((c) => c.id === copy.id)).toBe(false)
     expect(store.getState().selectedCopyId).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(store.getState().project.design.copies.some((c) => c.brickId === 'brick_walker' && c.x === copy.x && c.y === copy.y)).toBe(true)
+  })
+})
+
+describe('one Hero, one Goal (limit 1)', () => {
+  const heroOf = (store: StudioStore) => store.getState().project.design.copies.filter((c) => c.brickId === 'brick_hero')
+
+  it('clicking the Hero in the starter selects it and shows See inside, with no per-copy knobs', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<Builder store={store} templates={[]} />)
+    expect(screen.queryByRole('region', { name: 'Hero copy' })).toBeNull()
+    const canvas = document.querySelector('canvas.stage-canvas') as HTMLCanvasElement
+    // the Hero's copy sits at (60, 40): with the Brush on any brick, the press must select it, not place or paint
+    fireEvent.pointerDown(canvas, { button: 0, ...screenOf(store, 60, 40) })
+    fireEvent.pointerUp(canvas, { button: 0 })
+    expect(store.getState().selectedCopyId).toBe('copy_hero')
+    const card = screen.getByRole('region', { name: 'Hero copy' })
+    expect(within(card).getByText('One per level')).toBeTruthy()
+    expect(within(card).queryByRole('slider')).toBeNull()
+    expect(within(card).queryByRole('group', { name: /knobs/ })).toBeNull()
+    fireEvent.click(within(card).getByRole('button', { name: /See inside/ }))
+    expect(store.getState().workshopBrickId).toBe('brick_hero')
+  })
+
+  it('the Hero card stays small: it is not a wall of sliders (the Walker still has its speed knob)', () => {
+    const store = new StudioStore(createStarterProject())
+    store.selectCopy('copy_hero')
+    render(<Builder store={store} templates={[]} />)
+    expect(screen.queryAllByRole('slider')).toHaveLength(0)
+    act(() => store.selectCopy('copy_walker_fast'))
+    expect(screen.getAllByRole('slider')).toHaveLength(1)
+  })
+
+  it('the Bricks drawer calls it Hero, not Start', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<Builder store={store} templates={[]} />)
+    const grid = screen.getByLabelText('Brick shapes')
+    expect(within(grid).getByRole('button', { name: 'Hero' })).toBeTruthy()
+    expect(within(grid).queryByRole('button', { name: 'Start' })).toBeNull()
+  })
+
+  it('placing the Hero again moves the one you have; the strip says so; Undo moves it back', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<Builder store={store} templates={[]} />)
+    fireEvent.click(within(screen.getByLabelText('Brick shapes')).getByRole('button', { name: 'Hero' }))
+    expect(within(screen.getByRole('group', { name: 'Placing' })).getByText(/Moves your Hero/)).toBeTruthy()
+    const canvas = document.querySelector('canvas.stage-canvas') as HTMLCanvasElement
+    const before = store.getState().project.design.copies.length
+    fireEvent.pointerDown(canvas, { button: 0, ...screenOf(store, 405, 200) })
+    fireEvent.pointerUp(canvas, { button: 0 })
+    expect(store.getState().project.design.copies).toHaveLength(before)
+    expect(heroOf(store)).toHaveLength(1)
+    expect(heroOf(store)[0]).toMatchObject({ id: 'copy_hero', x: 408, y: 200 })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(heroOf(store)).toHaveLength(1)
+    expect(heroOf(store)[0]).toMatchObject({ id: 'copy_hero', x: 60, y: 40 })
+    fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
+    expect(heroOf(store)[0]).toMatchObject({ x: 408, y: 200 })
+  })
+
+  it('the Goal is one per level too, but the Walker is not', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<Builder store={store} templates={[]} />)
+    const grid = screen.getByLabelText('Brick shapes')
+    const canvas = document.querySelector('canvas.stage-canvas') as HTMLCanvasElement
+    const place = (name: string, wx: number, wy: number) => {
+      fireEvent.click(within(grid).getByRole('button', { name }))
+      fireEvent.pointerDown(canvas, { button: 0, ...screenOf(store, wx, wy) })
+      fireEvent.pointerUp(canvas, { button: 0 })
+    }
+    place('Goal', 300, 200)
+    place('Walker', 400, 200)
+    const copies = store.getState().project.design.copies
+    expect(copies.filter((c) => c.brickId === 'brick_goal')).toHaveLength(1)
+    expect(copies.filter((c) => c.brickId === 'brick_goal')[0]).toMatchObject({ x: 304, y: 200 })
+    expect(copies.filter((c) => c.brickId === 'brick_walker')).toHaveLength(3)
+  })
+
+  it('Undo of a removed Hero does not bring back a second one when another was placed since', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<Builder store={store} templates={[]} />)
+    act(() => store.selectCopy('copy_hero'))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this Hero' }))
+    expect(heroOf(store)).toHaveLength(0)
+    act(() => {
+      store.addCopy('brick_hero', 200, 100)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(heroOf(store)).toHaveLength(1)
+  })
+
+  it('keeps the stage clear of the Bricks drawer, so a Hero at the far left is never under it', () => {
+    const store = new StudioStore(createStarterProject())
+    const { container } = render(<Builder store={store} templates={[]} />)
+    const root = container.querySelector('.builder')!
+    expect(root.classList.contains('builder-drawer-open')).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: /Collapse|Hide/ }))
+    expect(root.classList.contains('builder-drawer-open')).toBe(false)
   })
 })
 

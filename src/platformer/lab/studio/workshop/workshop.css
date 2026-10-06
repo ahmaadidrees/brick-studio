@@ -36,3 +36,9 @@
 .ws-knob input[type='range'] { width: 100%; min-height: 28px; accent-color: #2f9e44; }
 .ws-knob output { font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; }
 @media (max-width: 900px) { .ws-body { grid-template-columns: 1fr; overflow: auto; } }
+.ws-more { margin-top: 10px; border-top: 1px solid #E9E2D2; padding-top: 8px; }
+.ws-more-toggle { min-height: 40px; width: 100%; padding: 0 8px; border: 0; border-radius: 10px; background: #F3EEDF; color: #263C51; font: inherit; font-weight: 800; font-size: 14px; text-align: left; cursor: pointer; }
+.ws-more-toggle:hover { background: #E9E2D2; }
+.ws-more-toggle:focus-visible { outline: 3px solid #4dabf7; outline-offset: 1px; }
+.ws-more-body { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.ws-knob-group h3 { margin: 0 0 4px; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: #5b6b7b; }
