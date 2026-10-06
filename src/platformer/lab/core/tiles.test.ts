@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import type { BrickDef, CopyPlacement, Expr, LevelDesign, Script, Stmt, Target, TileLayer } from './contracts'
 import { TILE_SIZE } from './contracts'
 import { play } from './index'
+import { BOUNCE_HEAD_PUSH, BOUNCE_HIGH, BOUNCE_LOW } from './platformer'
 import { DESIGN_LIMITS, instantiate, validateDesign } from './project'
 import type { Runtime } from './runtime'
 import { parse, serialize } from './save'
@@ -420,5 +421,268 @@ describe('tiles are fast and deterministic', () => {
     }
     expect(positions(a)).toEqual(positions(b))
     expect(trace).toEqual(traceB)
+  })
+})
+
+// ---------------------------------------------------------------- step 6b: one-way, ? block, bounce, brick, lava
+// 30 columns x 8 rows. The rows are written top first: row 7 ... row 0 (ground). Each cell is 16 steps.
+const EMPTY_ROW = '.'.repeat(30)
+const cellRow = (ch: string, col: number) => EMPTY_ROW.slice(0, col) + ch + EMPTY_ROW.slice(col + 1)
+/** The 20 x 20 body's x for column 5 (cells 80..96): its middle is x = 88. */
+const X5 = 88
+const counters2: BrickDef['program']['variables'] = ['qblock', 'used', 'bounceTop', 'bounceBottom', 'brickBottom', 'semiTop', 'hits'].map((id) => ({ id, name: id, value: 0 }))
+const vars = (rt: Runtime, id: string) => copyOf(rt, id).variables as Record<string, number>
+const envelope2 = (d: LevelDesign) => ({ schemaVersion: 1, engineSemanticsVersion: 1, editorVersion: '13.3.0', pluginVersions: {}, design: d })
+const holdSpace = (rt: Runtime) => rt.pressKey('space')
+
+describe('one-way platforms (semi)', () => {
+  // A one-way platform in row 3 (y 48 to 64) over the ground.
+  const layer = () => tiles(EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, cellRow('-', 5), EMPTY_ROW, EMPTY_ROW, GROUND)
+
+  it('jumps up through it from below, then lands on top of it with onGround true', () => {
+    // Rows from the top: row 7 first. Here row index 4 from the top is row 3 from the bottom.
+    const jumper = brick('f', 'Faller', 20, 20, [onFlag(gravityOn, setSpeed('y', 12))], counters2)
+    const rt = play(level([jumper], [{ id: 'f', brickId: 'f', x: X5, y: 26 }], layer()))
+    const f = copyOf(rt, 'f')
+    let peak = 0
+    for (let i = 0; i < 60; i++) {
+      rt.step()
+      peak = Math.max(peak, f.y)
+    }
+    // It rose past the platform's top (64): the box bottom was above 64 at the peak.
+    expect(peak - 10).toBeGreaterThan(64)
+    // It came down onto the platform's top face, not the ground.
+    expect(f.y).toBe(64 + 10)
+    expect(f.body!.onGround).toBe(true)
+    expect(f.body!.vy).toBe(0)
+  })
+
+  it('is not a wall: a body walking into it from the side passes through', () => {
+    // The body stands at the platform's height (box 48 to 68 overlaps the cell row) and walks right.
+    const walker = brick('f', 'Faller', 20, 20, [onFlag(setSpeed('x', 4))], counters2)
+    const rt = play(level([walker], [{ id: 'f', brickId: 'f', x: 40, y: 58 }], layer()))
+    run(rt, 30)
+    expect(copyOf(rt, 'f').x).toBe(160)
+  })
+
+  it('stops a body falling onto it from above, and it fires bump top of tile:semi', () => {
+    const faller2 = brick('f', 'Faller', 20, 20, [onFlag(gravityOn), whenBump('top', 'tile:semi', inc('semiTop'))], counters2)
+    const rt = play(level([faller2], [{ id: 'f', brickId: 'f', x: X5, y: 120 }], layer()))
+    run(rt, 40)
+    expect(copyOf(rt, 'f').y).toBe(74)
+    expect(vars(rt, 'f').semiTop).toBeGreaterThan(0)
+  })
+})
+
+describe('? blocks (qblock)', () => {
+  // A ? block in row 3 (y 48 to 64) above the ground. A 20-tall body on the ground has its top at 36.
+  const layer = () => tiles(EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, cellRow('Q', 5), EMPTY_ROW, EMPTY_ROW, GROUND)
+  const hitter = () =>
+    brick(
+      'f',
+      'Faller',
+      20,
+      20,
+      [onFlag(gravityOn, setSpeed('y', 12)), whenBump('bottom', 'tile:qblock', inc('qblock')), whenBump('bottom', 'tile:used', inc('used')), whenBump('bottom', '_tiles_', inc('hits'))],
+      counters2,
+    )
+
+  it('hit from below it turns into a used block in the world, once, and the saved design is unchanged', () => {
+    const d = level([hitter()], [{ id: 'f', brickId: 'f', x: X5, y: 26 }], layer())
+    const before = JSON.stringify(d.tiles)
+    const rt = play(d)
+    expect(rt.world.tiles!.data[3][5]).toBe('Q')
+    run(rt, 60)
+    expect(rt.world.tiles!.data[3][5]).toBe('U')
+    // The bump with tile:qblock fired exactly once.
+    expect(vars(rt, 'f').qblock).toBe(1)
+    expect(vars(rt, 'f').used).toBe(0)
+    expect(JSON.stringify(d.tiles)).toBe(before)
+  })
+
+  it('a used block is still solid, and bumping it again fires tile:used (not tile:qblock)', () => {
+    const hop = brick(
+      'f',
+      'Faller',
+      20,
+      20,
+      [
+        onFlag(
+          gravityOn,
+          stmt('control_forever', {}, {}, [[stmt('control_if', {}, { CONDITION: block('platformer_onground') }, [[setSpeed('y', 12)]])]]),
+        ),
+        whenBump('bottom', 'tile:qblock', inc('qblock')),
+        whenBump('bottom', 'tile:used', inc('used')),
+      ],
+      counters2,
+    )
+    const rt = play(level([hop], [{ id: 'f', brickId: 'f', x: X5, y: 26 }], layer()))
+    run(rt, 120)
+    expect(vars(rt, 'f').qblock).toBe(1)
+    expect(vars(rt, 'f').used).toBeGreaterThan(0)
+    expect(copyOf(rt, 'f').y).toBeLessThan(48 - 10 + 1) // never got above the block
+  })
+
+  it('is a plain solid from above, like the other solid tiles', () => {
+    const f = brick('f', 'Faller', 20, 20, [onFlag(gravityOn)], counters2)
+    const rt = play(level([f], [{ id: 'f', brickId: 'f', x: X5, y: 120 }], layer()))
+    run(rt, 40)
+    expect(copyOf(rt, 'f').y).toBe(64 + 10)
+    expect(rt.world.tiles!.data[3][5]).toBe('Q')
+  })
+})
+
+describe('brick tiles are plain solids', () => {
+  // The old game's bricks break only when the player is big. There is no "big" here, so a brick stays put and just
+  // reports tile:brick when bumped.
+  it('bumping a brick from below leaves it in place and fires bottom of tile:brick', () => {
+    const layer = tiles(EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, cellRow('B', 5), EMPTY_ROW, EMPTY_ROW, GROUND)
+    const f = brick('f', 'Faller', 20, 20, [onFlag(gravityOn, setSpeed('y', 12)), whenBump('bottom', 'tile:brick', inc('brickBottom'))], counters2)
+    const rt = play(level([f], [{ id: 'f', brickId: 'f', x: X5, y: 26 }], layer))
+    run(rt, 60)
+    expect(rt.world.tiles!.data[3][5]).toBe('B')
+    expect(vars(rt, 'f').brickBottom).toBe(1)
+  })
+})
+
+describe('bounce blocks', () => {
+  // A bounce block in the ground row (top face at y = 16).
+  const layer = () => tiles(EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, cellRow('O', 5))
+  const dropper = (extra: Script[] = []) => brick('f', 'Faller', 20, 20, [onFlag(gravityOn), whenBump('top', 'tile:bounce', inc('bounceTop')), ...extra], counters2)
+  /** Fall until the tick the body is launched; return the speed it was launched with. */
+  const launchSpeed = (rt: Runtime): number => {
+    const f = copyOf(rt, 'f')
+    for (let i = 0; i < 60; i++) {
+      rt.step()
+      if (f.body!.vy > 0) return f.body!.vy
+    }
+    return NaN
+  }
+
+  it('the old numbers, converted: 60 Hz px/frame to 30 Hz steps/tick is x 2 (bounceLow 3.25, bounceHigh 5.5)', () => {
+    expect(BOUNCE_LOW).toBe(6.5)
+    expect(BOUNCE_HIGH).toBe(11)
+    // Hitting a bounce block's underside pushes you down at 2 px/frame = 4 steps/tick.
+    expect(BOUNCE_HEAD_PUSH).toBe(4)
+  })
+
+  it('landing launches at the low speed (6.5 steps/tick), not on the ground, and fires bump top of tile:bounce', () => {
+    const rt = play(level([dropper()], [{ id: 'f', brickId: 'f', x: X5, y: 80 }], layer()))
+    expect(launchSpeed(rt)).toBe(6.5)
+    expect(copyOf(rt, 'f').body!.onGround).toBe(false)
+    run(rt, 2) // the bump hat runs during the next tick's sweeps
+    expect(vars(rt, 'f').bounceTop).toBeGreaterThan(0)
+  })
+
+  it('holding space on the landing launches at the high speed (11 steps/tick)', () => {
+    const rt = play(level([dropper()], [{ id: 'f', brickId: 'f', x: X5, y: 80 }], layer()))
+    holdSpace(rt)
+    expect(launchSpeed(rt)).toBe(11)
+  })
+
+  it('the low bounce rises 18 steps above the landing height; the high one rises 55 (peak heights)', () => {
+    const peakAfterLanding = (hold: boolean) => {
+      const rt = play(level([dropper()], [{ id: 'f', brickId: 'f', x: X5, y: 80 }], layer()))
+      if (hold) holdSpace(rt)
+      const f = copyOf(rt, 'f')
+      let landed = NaN
+      let peak = 0
+      for (let i = 0; i < 40; i++) {
+        rt.step()
+        if (Number.isNaN(landed) && f.body!.vy > 0) landed = f.y
+        if (!Number.isNaN(landed)) peak = Math.max(peak, f.y)
+        if (!Number.isNaN(landed) && f.body!.vy < 0) break
+      }
+      return peak - landed
+    }
+    // Next tick: gravity 1 first, so 5.5 + 4.5 + ... + 0.5 = 18 for the low launch; 10 + 9 + ... + 1 = 55 for the high one (launch speed 11, then gravity 1 first).
+    expect(peakAfterLanding(false)).toBe(18)
+    expect(peakAfterLanding(true)).toBe(55)
+  })
+
+  it('hitting its underside from below pushes you back down at 4 steps/tick and fires bump bottom of tile:bounce', () => {
+    const l = tiles(EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, cellRow('O', 5), EMPTY_ROW, EMPTY_ROW, GROUND)
+    const f = brick('f', 'Faller', 20, 20, [onFlag(gravityOn, setSpeed('y', 12)), whenBump('bottom', 'tile:bounce', inc('bounceBottom'))], counters2)
+    const rt = play(level([f], [{ id: 'f', brickId: 'f', x: X5, y: 26 }], l))
+    const t = copyOf(rt, 'f')
+    let pushed = NaN
+    for (let i = 0; i < 20 && Number.isNaN(pushed); i++) {
+      rt.step()
+      if (t.y === 48 - 10) pushed = t.body!.vy
+    }
+    expect(pushed).toBe(-4)
+    run(rt, 40)
+    expect(vars(rt, 'f').bounceBottom).toBeGreaterThan(0)
+    expect(rt.world.tiles!.data[3][5]).toBe('O')
+  })
+})
+
+describe('lava is sensed, not solid', () => {
+  it('a body falls through lava, and touching tile [lava]? is true while inside it', () => {
+    const layer = tiles(EMPTY_ROW, EMPTY_ROW, cellRow('L', 5), GROUND)
+    const f = brick(
+      'f',
+      'Faller',
+      20,
+      20,
+      [onFlag(gravityOn, stmt('control_forever', {}, {}, [[stmt('control_if', {}, { CONDITION: block('platformer_touchingtile', { TILE: 'lava' }) }, [[inc('hits')]])]]))],
+      counters2,
+    )
+    const rt = play(level([f], [{ id: 'f', brickId: 'f', x: X5, y: 80 }], layer))
+    run(rt, 40)
+    expect(copyOf(rt, 'f').y).toBe(26) // through the lava cell, onto the ground
+    expect(vars(rt, 'f').hits).toBeGreaterThan(0)
+  })
+})
+
+describe('the new tile kinds in a level', () => {
+  it('semi, bounce and used characters validate and round-trip through save', () => {
+    const layer = tiles('-O' + '.'.repeat(28), 'UQ' + '.'.repeat(28))
+    const d = level([faller()], [], layer)
+    expect(validateDesign(d)).toEqual([])
+    const result = parse(serialize(envelope2(d)))
+    if (!result.ok) throw new Error(JSON.stringify(result.problems))
+    expect(result.save.design.tiles).toEqual(layer)
+  })
+
+  it('a ? block hit in play never changes the saved world: serialize of the design after play is the same', () => {
+    const d = level([faller()], [{ id: 'f', brickId: 'f', x: X5, y: 26 }], tiles(EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, EMPTY_ROW, cellRow('Q', 5), EMPTY_ROW, EMPTY_ROW, GROUND))
+    const before = serialize(envelope2(d))
+    run(play(d), 20)
+    expect(serialize(envelope2(d))).toBe(before)
+  })
+
+  it('replays identically: ? block, bounce and one-way together over 300 ticks with the same key presses', () => {
+    const l = () =>
+      level(
+        [
+          brick(
+            'f',
+            'Faller',
+            20,
+            20,
+            [
+              onFlag(gravityOn, stmt('control_forever', {}, {}, [[stmt('control_if', {}, { CONDITION: block('platformer_onground') }, [[setSpeed('y', 12)]])]]), ),
+              whenBump('_any_', '_tiles_', inc('hits')),
+            ],
+            counters2,
+          ),
+        ],
+        [{ id: 'f', brickId: 'f', x: X5, y: 26 }],
+        tiles(EMPTY_ROW, EMPTY_ROW, cellRow('-', 5), EMPTY_ROW, cellRow('Q', 5), cellRow('O', 9), EMPTY_ROW, GROUND),
+      )
+    const trace = (): unknown[] => {
+      const rt = play(l())
+      const out: unknown[] = []
+      for (let i = 0; i < 300; i++) {
+        if (i === 100) rt.pressKey('space')
+        if (i === 200) rt.releaseKey('space')
+        rt.step()
+        const t = copyOf(rt, 'f')
+        out.push([t.x, t.y, t.body!.vx, t.body!.vy, t.variables.hits, rt.world.tiles!.data.join('|')])
+      }
+      return out
+    }
+    expect(trace()).toEqual(trace())
   })
 })

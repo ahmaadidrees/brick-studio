@@ -20,8 +20,39 @@ interface Bump {
   side: Side
   /** The solid target, or null for a level wall, the floor or a tile. */
   other: Target | null
-  /** True when the thing bumped is a solid tile (reported as BRICK `_tiles_`). */
+  /** True when the thing bumped is a tile (reported as BRICK `_tiles_` and `tile:<kind>`). */
   tile?: boolean
+  /** The kind of the tile bumped, read before a ? block turns into `used`. */
+  kind?: TileKind
+  col?: number
+  row?: number
+}
+
+// ---- Tile behaviors, copied from the old game's engine (packages/platformer-core/src/engine/tiles.ts, player.ts).
+// The old game runs at 60 frames/s in px/frame; the Platformer runs at 30 ticks/s in steps/tick. One old pixel is one
+// step (both tiles are 16 wide), so:
+//   speed  (px/frame)   x 2  -> steps/tick   (twice the distance per tick, one tick is two frames)
+//   accel  (px/frame^2) x 4  -> steps/tick^2
+// feel.ts bounceLow 3.25 px/frame (landing with jump not held) -> 6.5 steps/tick.
+// feel.ts bounceHigh 5.5 px/frame (landing with jump held)     -> 11 steps/tick.
+// player.ts: bumping a bounce block from below pushes you down at 2 px/frame -> 4 steps/tick (vy = -4, y is up).
+// "Jump held" is the space key (the Hero's jump key) or the up arrow, read from world.keysDown.
+// Known gap: the old player also starts its float-jump gravity after a bounce; here the Hero's own code decides how
+// it falls, so a bounce is a plain launch.
+export const BOUNCE_LOW = 3.25 * 2
+export const BOUNCE_HIGH = 5.5 * 2
+export const BOUNCE_HEAD_PUSH = 2 * 2
+
+const KIND_OF_CHAR: Record<string, TileKind> = Object.fromEntries((Object.keys(TILE_CHAR) as TileKind[]).map((k) => [TILE_CHAR[k], k]))
+const kindAt = (tiles: TileLayer, col: number, row: number): TileKind | undefined => KIND_OF_CHAR[tiles.data[row]?.[col] ?? '.']
+
+/** Of several candidate columns the body touches, the old engine prefers the one under the body's centre. */
+function pickCol(cands: number[], centre: number): number {
+  return cands.includes(centre) ? centre : cands[0]
+}
+
+function tileBump(side: Side, tiles: TileLayer, col: number, row: number): Bump {
+  return { side, other: null, tile: true, kind: kindAt(tiles, col, row), col, row }
 }
 
 export function bodyOf(target: Target): Body {
@@ -149,7 +180,7 @@ function moveX(world: World, mover: Target, body: Body, P: PhysicsSettings): Bum
       for (let c = Math.max(0, Math.ceil(old.right / TILE_SIZE)); c <= cEnd; c++) {
         const edge = c * TILE_SIZE
         if (!(old.right <= edge && now.right > edge) || !better(edge)) continue
-        for (let r = r0; r <= r1; r++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c - 1, r)) { stop = { edge, bump: { side: 'left', other: null, tile: true } }; break }
+        for (let r = r0; r <= r1; r++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c - 1, r)) { stop = { edge, bump: tileBump('left', tiles, c, r) }; break }
         if (stop && stop.edge === edge) break
       }
     } else {
@@ -157,7 +188,7 @@ function moveX(world: World, mover: Target, body: Body, P: PhysicsSettings): Bum
       for (let c = Math.min(tiles.cols - 1, Math.floor(old.left / TILE_SIZE) - 1); c >= cStart; c--) {
         const edge = (c + 1) * TILE_SIZE
         if (!(old.left >= edge && now.left < edge) || !better(edge)) continue
-        for (let r = r0; r <= r1; r++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c + 1, r)) { stop = { edge, bump: { side: 'right', other: null, tile: true } }; break }
+        for (let r = r0; r <= r1; r++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c + 1, r)) { stop = { edge, bump: tileBump('right', tiles, c, r) }; break }
         if (stop && stop.edge === edge) break
       }
     }
@@ -190,21 +221,25 @@ function moveY(world: World, mover: Target, body: Body, P: PhysicsSettings): Bum
   if (tiles) {
     const c0 = Math.max(0, Math.floor(now.left / TILE_SIZE))
     const c1 = Math.min(tiles.cols - 1, Math.ceil(now.right / TILE_SIZE) - 1)
+    const centre = Math.floor((now.left + now.right) / 2 / TILE_SIZE)
     if (dy < 0) {
       const rStart = Math.max(0, Math.floor(now.bottom / TILE_SIZE))
       for (let r = Math.min(tiles.rows - 1, Math.floor(old.bottom / TILE_SIZE) - 1); r >= rStart; r--) {
         const edge = (r + 1) * TILE_SIZE
         if (!(old.bottom >= edge && now.bottom < edge) || !better(edge)) continue
-        for (let c = c0; c <= c1; c++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c, r + 1)) { stop = { edge, bump: { side: 'top', other: null, tile: true } }; break }
-        if (stop && stop.edge === edge) break
+        // A floor: the top of a solid tile, or a one-way platform (it only stops a body coming down onto it).
+        const cands: number[] = []
+        for (let c = c0; c <= c1; c++) if ((isSolidCell(tiles, c, r) && !isSolidCell(tiles, c, r + 1)) || kindAt(tiles, c, r) === 'semi') cands.push(c)
+        if (cands.length) { stop = { edge, bump: tileBump('top', tiles, pickCol(cands, centre), r) }; break }
       }
     } else {
       const rEnd = Math.min(tiles.rows - 1, Math.ceil(now.top / TILE_SIZE) - 1)
       for (let r = Math.max(0, Math.ceil(old.top / TILE_SIZE)); r <= rEnd; r++) {
         const edge = r * TILE_SIZE
         if (!(old.top <= edge && now.top > edge) || !better(edge)) continue
-        for (let c = c0; c <= c1; c++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c, r - 1)) { stop = { edge, bump: { side: 'bottom', other: null, tile: true } }; break }
-        if (stop && stop.edge === edge) break
+        const cands: number[] = []
+        for (let c = c0; c <= c1; c++) if (isSolidCell(tiles, c, r) && !isSolidCell(tiles, c, r - 1)) cands.push(c)
+        if (cands.length) { stop = { edge, bump: tileBump('bottom', tiles, pickCol(cands, centre), r) }; break }
       }
     }
   }
@@ -215,7 +250,22 @@ function moveY(world: World, mover: Target, body: Body, P: PhysicsSettings): Bum
   mover.y += stop.edge - (dy < 0 ? now.bottom : now.top)
   body.vy = 0
   if (dy < 0) body.onGround = true
-  return stop.bump
+  const hit = stop.bump
+  if (hit.tile && tiles && hit.col !== undefined && hit.row !== undefined) {
+    if (hit.kind === 'qblock' && hit.side === 'bottom') {
+      // A ? block hit from below becomes a used block. This changes the running world only, never the design.
+      const row = tiles.data[hit.row]
+      tiles.data[hit.row] = row.slice(0, hit.col) + TILE_CHAR.used + row.slice(hit.col + 1)
+    } else if (hit.kind === 'bounce') {
+      if (hit.side === 'top') {
+        // Landing on a bounce block launches you again (higher when jump is held).
+        const held = world.keysDown.has('space') || world.keysDown.has('up arrow')
+        body.vy = held ? BOUNCE_HIGH : BOUNCE_LOW
+        body.onGround = false
+      } else if (hit.side === 'bottom') body.vy = -BOUNCE_HEAD_PUSH
+    }
+  }
+  return hit
 }
 
 /**
@@ -239,7 +289,7 @@ export function physicsStep(runtime: RuntimeApi): void {
     const seen = new Set<string>()
     for (const bump of [moveX(world, mover, body, P), moveY(world, mover, body, P)]) {
       if (!bump) continue
-      const key = `${bump.side}|${bump.tile ? 'tiles' : bump.other ? bump.other.id : 'edge'}`
+      const key = `${bump.side}|${bump.tile ? `tile:${bump.kind}` : bump.other ? bump.other.id : 'edge'}`
       if (seen.has(key)) continue
       seen.add(key)
       bumps.push({ mover, bump })
@@ -253,7 +303,7 @@ export function physicsStep(runtime: RuntimeApi): void {
 function startBumpHats(runtime: RuntimeApi, mover: Target, bump: Bump): void {
   const sides = ['_any_', bump.side]
   const bricks = ['_any_']
-  if (bump.tile) bricks.push('_tiles_')
+  if (bump.tile) bricks.push('_tiles_', `tile:${bump.kind ?? ''}`)
   else if (bump.other === null) bricks.push('_edge_')
   else {
     const name = runtime.world.bricks[bump.other.brickId]?.name

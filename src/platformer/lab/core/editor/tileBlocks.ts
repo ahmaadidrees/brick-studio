@@ -27,6 +27,15 @@ export const TILE_KIND_OPTIONS: [string, TileKind][] = TILE_KINDS.map((k): [stri
 /** The extra `BRICK` menu option for `platformer_whenbump`: bumping any tile. */
 export const TILE_BRICK_OPTION: [string, string] = ['a tile', '_tiles_']
 
+/**
+ * Bump menu entries for one kind of tile: `BRICK = "tile:<kind>"`. Every tile bump matches its own `tile:<kind>`, along
+ * with `_tiles_` and `_any_`. Spikes and lava are not solid, so they are never bumped (sense them with `touching tile`).
+ */
+export const TILE_BUMP_OPTIONS: [string, string][] = TILE_KINDS.filter((k) => k !== 'spikes' && k !== 'lava').map((k): [string, string] => [
+  TILE_LABELS[k],
+  `tile:${k}`,
+])
+
 /** `touching tile [spikes ▾]?` a boolean that is true when this brick's box overlaps a tile of that kind. */
 export const TILE_BLOCK_DEFINITIONS = [
   {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { TILE_KINDS } from './contracts'
 import { compileWorkspace } from './editor/compile'
 import { CATEGORY_COLORS } from './editor/definitions'
-import { TILE_BLOCK_DEFINITIONS, TILE_BRICK_OPTION, TILE_KIND_OPTIONS, TILE_TOOLBOX_ENTRY } from './editor/tileBlocks'
+import { TILE_BLOCK_DEFINITIONS, TILE_BRICK_OPTION, TILE_BUMP_OPTIONS, TILE_KIND_OPTIONS, TILE_TOOLBOX_ENTRY } from './editor/tileBlocks'
 
 describe('tile block definition (for the integrator to wire in)', () => {
   const def = TILE_BLOCK_DEFINITIONS[0]
@@ -44,5 +44,11 @@ describe('tile block definition (for the integrator to wire in)', () => {
     expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
     const cond = result.program.scripts[0].body[0].inputs.CONDITION
     expect(cond).toMatchObject({ kind: 'block', opcode: 'platformer_touchingtile', fields: { TILE: 'lava' } })
+  })
+
+  it('TILE_BUMP_OPTIONS offers tile:<kind> for every bumpable tile (not spikes or lava), with a label', () => {
+    expect(TILE_BUMP_OPTIONS).toContainEqual(['? block', 'tile:qblock'])
+    expect(TILE_BUMP_OPTIONS).toContainEqual(['bounce block', 'tile:bounce'])
+    expect(TILE_BUMP_OPTIONS.map(([, v]) => v)).toEqual(['tile:ground', 'tile:brick', 'tile:hard', 'tile:qblock', 'tile:semi', 'tile:bounce', 'tile:used'])
   })
 })
