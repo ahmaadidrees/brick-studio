@@ -130,6 +130,9 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'wall_late_ticks', name: 'wall late ticks', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
 ]
 
+/** Where "hero hurt" sends the Hero: the level start (copy center; the 16 x 16 costume stands on the ground at y 24). */
+export const HERO_START = { x: 60, y: 24 } as const
+
 /** The Hero's own working memory. Not Build knobs: they change every tick. */
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'steer', name: 'steer' }, // -1 left, 0 none, 1 right (with the wall-jump lock applied)
@@ -178,6 +181,12 @@ interface Ids {
 function makeIds(): Ids {
   let n = 0
   return { next: () => `hero_${++n}` }
+}
+
+/** A Blockly 13 block comment, used as the one-line label on a top script's hat (STEP6.md). */
+export function withLabel<T extends Json>(block: T, text: string): T {
+  ;(block as Json).icons = { comment: { text, pinned: false, height: 60, width: 200 } }
+  return block
 }
 
 export function createHeroWorkspace(): WorkspaceJson {
@@ -459,13 +468,60 @@ export function createHeroWorkspace(): WorkspaceJson {
     blk('platformer_whenbump', { fields: { SIDE: 'right', BRICK: '_any_' }, next: { block: chain([set('wall_hit', -1), call('hit a wall')])! } }),
   )
 
+  // Step 6: how the Hero answers the rest of the level. Messages come from the Spring, Walkers and the spike tiles.
+  const bc = (message: string): Json => blk('event_broadcast', { inputs: { BROADCAST_INPUT: { shadow: { type: 'text', id: ids.next(), fields: { TEXT: message } } } } })
+  const goTo = (x: number, y: number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
+  const receive = (message: string, body: Json[]): Json =>
+    place(blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message }, next: { block: chain(body)! } }))
+  // The Spring: one big upward speed (the Hero's own fall script keeps pulling it down).
+  const onBoing = receive('boing', [setY(14)])
+  // A stomped Walker: a small bounce.
+  const onStomped = receive('stomped', [setY(8)])
+  // Hurt (by a Walker, or by spikes): back to the start, standing still.
+  const onHurt = receive('hero hurt', [goTo(HERO_START.x, HERO_START.y), setX(0), setY(0)])
+  // The spikes are a tile, not a brick: ask the tile layer every tick. (platformer_touchingtile comes from the tiles lane.)
+  const spikeWatch = place(
+    blk('event_whenflagclicked', {
+      next: {
+        block: chain([
+          blk('control_forever', {
+            inputs: {
+              SUBSTACK: sub1([when({ block: blk('platformer_touchingtile', { fields: { TILE: 'spikes' } }) }, [bc('hero hurt')])]),
+            },
+          }),
+        ])!,
+      },
+    }),
+  )
+
+  const labels: Array<[Json, string]> = [
+    [start, 'When the level starts: turn gravity off, then do these every tick'],
+    [readKeys, 'Read the arrow keys, x and space'],
+    [feelWall, 'Notice a wall beside me'],
+    [walk, 'Speed up, slow down, skid'],
+    [runMeter, 'Fill the run meter while running'],
+    [jump, 'Jump: late, early and off a wall'],
+    [fall, 'Gravity: light while holding space'],
+    [hitWall, 'Lose run meter when I hit a wall'],
+    [bumpLeft, 'When I run into something on my right'],
+    [bumpRight, 'When I run into something on my left'],
+    [onBoing, 'When a Spring says boing: fly up'],
+    [onStomped, 'When I stomp a Walker: bounce'],
+    [onHurt, 'When I get hurt: go back to the start'],
+    [spikeWatch, 'When the level starts: spikes hurt'],
+  ]
+  for (const [block, text] of labels) withLabel(block, text)
+
   return {
     variables: heroVariables().map((d) => ({ id: d.id, name: d.name })),
-    blocks: { blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight] as never },
+    blocks: {
+      blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, spikeWatch] as never,
+    },
   }
 }
 
 export const HERO_BRICK_ID = 'brick_hero'
+
 
 /** The Hero brick and the workspace it was compiled from (so the editor opens the very same blocks). */
 export function createHeroBrick(): { brick: BrickDef; workspace: WorkspaceJson; diagnostics: ReturnType<typeof compileWorkspace>['diagnostics'] } {
