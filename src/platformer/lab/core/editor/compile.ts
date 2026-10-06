@@ -42,6 +42,8 @@ export interface WorkspaceBlockJson {
   enabled?: unknown
   disabledReasons?: unknown
   extraState?: unknown
+  /** Studio-only note on a block (the layered editor keeps a script's one-line label here as `label:<text>`). The compiler ignores it. */
+  data?: unknown
   fields?: Record<string, unknown>
   inputs?: Record<string, WorkspaceConnectionJson | undefined>
   next?: WorkspaceConnectionJson

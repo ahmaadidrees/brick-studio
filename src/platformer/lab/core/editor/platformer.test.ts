@@ -173,10 +173,11 @@ describe('Platformer blocks: workspace JSON compiles to IR', () => {
 })
 
 describe('Platformer toolbox category', () => {
-  it('appears after My Blocks, last, with an extension header and all seven blocks', () => {
+  it('is the last category (My Blocks is first), with an extension header and all seven blocks', () => {
     const t = createContinuousToolbox()
     const names = t.contents.map((c) => c.name)
-    expect(names.indexOf('Platformer')).toBe(names.indexOf('My Blocks') + 1)
+    expect(names[0]).toBe('My Blocks')
+    expect(names[names.length - 1]).toBe('Platformer')
     const cat = t.contents.find((c) => c.name === 'Platformer')!
     expect(cat.colour).toBe(CATEGORY_COLORS.platformer)
     expect(cat.cssConfig?.container).toBe('code-extension-category')
