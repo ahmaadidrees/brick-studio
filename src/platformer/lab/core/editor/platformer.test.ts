@@ -15,13 +15,15 @@ const PLATFORMER_TEXT: Record<string, string> = {
   platformer_speed: '%1 speed',
   platformer_onground: 'on ground?',
   platformer_whenbump: 'when I bump %1 of %2',
+  /** Step 6 (tiles lane, core/editor/tileBlocks.ts). */
+  platformer_touchingtile: 'touching tile %1?',
 }
 
 describe('Platformer blocks: wording', () => {
   const defs = createBlockDefinitions()
   const platformerDefs = defs.filter((d) => (d.type as string).startsWith('platformer_'))
 
-  it('has exactly the seven Platformer blocks, worded as the STEP3 table', () => {
+  it('has exactly the eight Platformer blocks, worded as the STEP3 table plus touching tile', () => {
     expect(platformerDefs.map((d) => d.type).sort()).toEqual(Object.keys(PLATFORMER_TEXT).sort())
     for (const d of platformerDefs) {
       expect(d.message0).toBe(PLATFORMER_TEXT[d.type as string])
@@ -76,6 +78,7 @@ describe('Platformer blocks: menus', () => {
     expect(opts).toEqual([
       ['anything', '_any_'],
       ['edge', '_edge_'],
+      ['a tile', '_tiles_'],
       ['Ground', 'Ground'],
       ['Coin', 'Coin'],
     ])
@@ -173,7 +176,7 @@ describe('Platformer blocks: workspace JSON compiles to IR', () => {
 })
 
 describe('Platformer toolbox category', () => {
-  it('is the last category (My Blocks is first), with an extension header and all seven blocks', () => {
+  it('is the last category (My Blocks is first), with an extension header and all eight blocks', () => {
     const t = createContinuousToolbox()
     const names = t.contents.map((c) => c.name)
     expect(names[0]).toBe('My Blocks')

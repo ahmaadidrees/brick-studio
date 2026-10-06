@@ -18,22 +18,11 @@ import {
   type EditorContext,
   type MenuOption,
 } from './context'
+import { CATEGORY_COLORS } from './colors'
+import { TILE_BLOCK_DEFINITIONS, TILE_BRICK_OPTION } from './tileBlocks'
 
 /** Scratch 3 category colors. */
-export const CATEGORY_COLORS = {
-  motion: '#4C97FF',
-  looks: '#9966FF',
-  sound: '#CF63CF',
-  events: '#FFBF00',
-  control: '#FFAB19',
-  sensing: '#4CBFE6',
-  operators: '#59C059',
-  variables: '#FF8C1A',
-  lists: '#FF661A',
-  procedures: '#FF6680',
-  /** Platformer extension (step 3): its own color, not shared with any Scratch category. */
-  platformer: '#2BB3A3',
-} as const
+export { CATEGORY_COLORS }
 
 export const HAT_OPCODES: readonly HatOpcode[] = [
   'event_whenflagclicked',
@@ -107,6 +96,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
   const bumpBrickOptions = (): MenuOption[] => [
     ['anything', '_any_'],
     ['edge', '_edge_'],
+    TILE_BRICK_OPTION,
     ...(context?.getBricks?.() ?? getEditorContext().getBricks?.() ?? []).map((b): MenuOption => [b, b]),
   ]
 
@@ -1598,6 +1588,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       output: 'Boolean',
       tooltip: '',
     },
+    ...TILE_BLOCK_DEFINITIONS,
     {
       type: 'platformer_whenbump',
       message0: 'when I bump %1 of %2',

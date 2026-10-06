@@ -148,7 +148,8 @@ describe('See inside card', () => {
     render(<Builder store={store} templates={[]} />)
     const slider = screen.getByRole('slider', { name: 'speed' })
     fireEvent.change(slider, { target: { value: '1' } })
-    expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.walker_speed).toBe(1)
+    const speedId = store.getState().project.design.bricks.find((b) => b.id === 'brick_walker')!.program.variables.find((v) => v.name === 'speed')!.id
+    expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]).toBe(1)
     fireEvent.click(screen.getByRole('button', { name: 'Remove this Walker' }))
     expect(store.getState().project.design.copies.some((c) => c.id === copy.id)).toBe(false)
     expect(store.getState().selectedCopyId).toBeNull()

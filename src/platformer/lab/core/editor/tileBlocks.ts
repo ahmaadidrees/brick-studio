@@ -6,7 +6,7 @@
  */
 import { TILE_KINDS } from '../contracts'
 import type { TileKind } from '../contracts'
-import { CATEGORY_COLORS } from './definitions'
+import { CATEGORY_COLORS } from './colors'
 
 
 const TILE_LABELS: Record<TileKind, string> = {

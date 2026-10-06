@@ -25,6 +25,7 @@
 import type { BrickDef, VariableDecl } from '../../core/contracts'
 import { compileWorkspace, type WorkspaceJson } from '../../core/editor/compile'
 import { costumeFromImage, imageFromRows } from '../pixels'
+import { labelData } from '../code/layers'
 
 // -----------------------------------------------------------------------------
 // Art: a 16 x 16 hero whose opaque box is 12 wide x 14 tall, bottom aligned (the old player's collision box)
@@ -183,9 +184,9 @@ function makeIds(): Ids {
   return { next: () => `hero_${++n}` }
 }
 
-/** A Blockly 13 block comment, used as the one-line label on a top script's hat (STEP6.md). */
+/** A script's one-line label, in the format the editor reads (studio/code/layers.ts: block `data` = "label:<text>"). */
 export function withLabel<T extends Json>(block: T, text: string): T {
-  ;(block as Json).icons = { comment: { text, pinned: false, height: 60, width: 200 } }
+  ;(block as Json).data = labelData(text)
   return block
 }
 

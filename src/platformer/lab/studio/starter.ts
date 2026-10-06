@@ -13,7 +13,7 @@
  * Level is 960 x 360 steps, y-up, (0, 0) at the bottom-left; tiles are 16 x 16 (60 columns by 22 rows, row 0 at the bottom).
  * Every costume is pixel art built with `imageFromRows`; every brick's blocks are real Blockly workspace JSON.
  *
- * Labels: each top script's hat carries a Blockly 13 block comment (`icons.comment`), see `withLabel` in hero/heroBrick.ts.
+ * Labels: each top script's hat carries `data: "label:<text>"` (studio/code/layers.ts), see `withLabel` in hero/heroBrick.ts.
  *
  * Note: `platformer_touchingtile` (the Hero's spike check) only runs once the tiles lane is merged. The compiler doesn't
  * warn about unknown opcodes, so the starter compiles with zero diagnostics either way.

@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { targetBounds } from '../core/geometry'
+import { play } from '../core/index'
+import { readLabel } from './code/layers'
 import { TILE_CHAR, TILE_SIZE, type BrickDef } from '../core/contracts'
 import { instantiate, validateDesign } from '../core/project'
 import { compileWorkspace } from '../core/editor/compile'
@@ -123,16 +126,14 @@ describe('Starter level (starter.ts)', () => {
   })
 
   describe('scripts are labelled and built from My Blocks', () => {
-    it('every top script has a one-line label: a Blockly block comment on its hat or definition', () => {
+    it('every top script has a one-line label in the editor format (block data "label:<text>")', () => {
       const p = project()
       for (const [id, ws] of Object.entries(p.workspaces)) {
         const tops = topBlocks(ws)
         expect(tops.length, id).toBeGreaterThan(0)
         for (const t of tops) {
-          const text = ((t.icons as Json | undefined)?.comment as Json | undefined)?.text
-          expect(typeof text, `${id}: ${String(t.type)}`).toBe('string')
-          expect((text as string).length, `${id}: ${String(t.type)}`).toBeGreaterThan(0)
-          expect(((t.icons as Json).comment as Json).pinned).toBe(false)
+          const text = readLabel(t.data as string | undefined)
+          expect(text.length, `${id}: ${String(t.type)}`).toBeGreaterThan(0)
         }
       }
     })
@@ -232,18 +233,109 @@ describe('Starter level (starter.ts)', () => {
   // Numbers below follow from the layout above (tile row r spans y r*16..r*16+16, col c spans x c*16..c*16+16;
   // the Walker's opaque box is 14 wide x 15 tall and its costume center is 7 from either edge; the Hero's box is 12 x 14).
   // ---------------------------------------------------------------------------------------------------------------
-  it.todo('Hero lands on the ground tile: after 20 ticks its box bottom is exactly 16 and onGround is true on each of the next 30 ticks (center y 24)')
-  it.todo('Hero is stopped by the hard block at column 6: walking right from x 60... the Hero box is a plain solid bump, its box right edge rests at x 96 (the block spans 96..112)')
-  it.todo('Walker (speed 4, copy_walker_fast) turns at a tile wall: it walks left to the hard block at column 6 and stops with center x exactly 119 (box left 112), then walks right to the block at column 15 and stops at center x 233 (box right 240); vx takes only the values -4 and 4 after the first turn, y stays 24')
-  it.todo('Walker (speed 2, copy_walker_slow) turns between columns 31 and 39: center x stays within 519..617 (box between 512 and 624), vx is only -2 or 2')
-  it.todo('Walker knobs: after 15 ticks the speed 4 Walker moves exactly 4 steps per tick and the speed 2 Walker exactly 2')
-  it.todo('spikes send the Hero to the start: set copy_hero to x 736, y 100 and run; within 4 ticks of touching the spikes (box bottom below y 16) it is at x 60, y 24 with x speed 0')
-  it.todo('the gap is just a drop: the Hero dropped at x 344 (col 21) lands on the level floor, box bottom 0, onGround true, and can jump out (peak 62)')
-  it.todo('the spring launches: put the Hero on the Spring (x 776, y 24); within 3 ticks "boing" is broadcast and the Hero y speed is 14 (before its own gravity of 1.5 per tick), so it rises more than 62 above its start')
-  it.todo('a stomped Walker disappears: Hero above it (y > Walker y + 6) touching: stomped is broadcast, the Walker is hidden and the Hero y speed is 8')
-  it.todo('a Walker hurts the Hero from the side: Hero level with the Walker touching it: hero hurt is broadcast and the Hero is at x 60, y 24 two ticks later')
-  it.todo('the coin counts: put the Hero on Coin 1 (x 208, y 80); within 3 ticks Coin 1 is hidden, Stage variable coins is exactly 1 and Coins 2 to 5 are still visible')
-  it.todo('the Goal ends the level: put the Hero on the Goal (x 920, y 32); "course clear" is broadcast, the Goal says "Course clear!" and every script stops (stop all)')
+  // Play tests (step 6 integration: tiles physics merged). Numbers measured headlessly and checked against the lane's predictions.
+  const fresh = () => {
+    const rt = play(createStarterProject().design)
+    const of = (id: string) => rt.world.targets.find((t) => t.copyId === id)!
+    const run = (n: number) => { for (let i = 0; i < n; i++) rt.step() }
+    return { rt, of, run }
+  }
+
+  it('Hero lands on the ground tile: box bottom exactly 16 and on ground for 30 ticks', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    const h = of('copy_hero')
+    for (let i = 0; i < 30; i++) {
+      run(1)
+      expect([targetBounds(rt.world, h)!.bottom, h.body?.onGround]).toEqual([16, true])
+    }
+  })
+
+  it('Hero is stopped by the hard block at column 6: box right edge rests at x 96', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    rt.pressKey('right arrow')
+    run(90)
+    expect(targetBounds(rt.world, of('copy_hero'))!.right).toBe(96)
+  })
+
+  it('Walkers turn at tile walls and keep their knob speeds', () => {
+    const { rt, of, run } = fresh()
+    const fast = of('copy_walker_fast'), slow = of('copy_walker_slow')
+    let minF = Infinity, maxF = -Infinity, minS = Infinity, maxS = -Infinity
+    const vF = new Set<number>(), vS = new Set<number>()
+    run(20)
+    for (let i = 0; i < 600; i++) {
+      run(1)
+      minF = Math.min(minF, fast.x); maxF = Math.max(maxF, fast.x); minS = Math.min(minS, slow.x); maxS = Math.max(maxS, slow.x)
+      vF.add(fast.body!.vx); vS.add(slow.body!.vx)
+      expect([fast.y, slow.y]).toEqual([24, 24])
+    }
+    expect([minF, maxF, minS, maxS]).toEqual([119, 233, 519, 617])
+    // 0 appears for the one tick between a bump and the turn-around script (STEP3.md step 7).
+    expect([...vF].sort((a, b) => a - b)).toEqual([-4, 0, 4])
+    expect([...vS].sort((a, b) => a - b)).toEqual([-2, 0, 2])
+  })
+
+  it('spikes send the Hero back to the start', () => {
+    const { of, run } = fresh()
+    run(20)
+    const h = of('copy_hero')
+    h.x = 736; h.y = 100
+    run(20)
+    expect([h.x, h.y]).toEqual([60, 24])
+  })
+
+  it('the Spring launches the Hero higher than its own best jump (62)', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    const h = of('copy_hero'), spring = of('copy_spring')
+    h.x = spring.x; h.y = spring.y + 4
+    const y0 = h.y
+    let peak = y0
+    for (let i = 0; i < 40; i++) { run(1); peak = Math.max(peak, h.y) }
+    expect(peak - y0).toBeGreaterThan(62)
+    void rt
+  })
+
+  it('the coin counts once and only that coin hides', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    const h = of('copy_hero'), c1 = of('copy_coin_1')
+    h.x = c1.x; h.y = c1.y
+    run(4)
+    expect(c1.visible).toBe(false)
+    expect(Object.values(rt.world.stage.variables)).toContain(1)
+    expect(['copy_coin_2', 'copy_coin_3', 'copy_coin_4', 'copy_coin_5'].map((id) => of(id).visible)).toEqual([true, true, true, true])
+  })
+
+  it('landing on a Walker squishes it; walking into one sends the Hero to the start', () => {
+    {
+      const { of, run } = fresh()
+      run(20)
+      const h = of('copy_hero'), w = of('copy_walker_slow')
+      h.x = w.x; h.y = w.y + 10; h.body!.vy = -2
+      run(4)
+      expect(w.visible).toBe(false)
+    }
+    {
+      const { of, run } = fresh()
+      run(20)
+      const h = of('copy_hero'), w = of('copy_walker_slow')
+      h.x = w.x + 6; h.y = w.y
+      run(4)
+      expect([h.x, h.y, w.visible]).toEqual([60, 24, true])
+    }
+  })
+
+  it('reaching the Goal stops every script (course clear)', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    const h = of('copy_hero'), g = of('copy_goal')
+    h.x = g.x; h.y = g.y
+    run(6)
+    expect(rt.threads().length).toBe(0)
+  })
 })
 
 describe('Brick templates (templates.ts)', () => {

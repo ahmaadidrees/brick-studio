@@ -3,6 +3,7 @@ import { RecyclableBlockFlyoutInflater, registerContinuousToolbox } from '@block
 import * as ShareableProcedures from '@blockly/block-shareable-procedures'
 import type { EditorContext } from './context'
 import { CATEGORY_COLORS } from './definitions'
+import { TILE_TOOLBOX_ENTRY } from './tileBlocks'
 
 export interface ToolboxShadow {
   type: string
@@ -378,6 +379,7 @@ export function createContinuousToolbox(
         { kind: 'block', type: 'platformer_speed' },
         { kind: 'sep' },
         { kind: 'block', type: 'platformer_onground' },
+        TILE_TOOLBOX_ENTRY,
       ],
     },
   ]
