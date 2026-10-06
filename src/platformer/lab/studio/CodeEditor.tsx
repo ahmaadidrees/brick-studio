@@ -10,7 +10,7 @@ import type { Diagnostic } from '../core/editor/compile'
 import type { Thread } from '../core/runtime'
 import { registerEditorBlocks } from '../core/editor/definitions'
 import { setEditorContext } from '../core/editor/context'
-import { createContinuousToolbox, registerToolboxPlugins } from '../core/editor/toolbox'
+import { createContinuousToolbox, myBlocksFlyout, registerToolboxPlugins } from '../core/editor/toolbox'
 import { buildEditorContext } from './code/context'
 import { CODE_DARK_THEME } from './code/codeTheme'
 import { VariableModal } from './code/VariableModal'
@@ -28,6 +28,8 @@ import {
   listDefinitions,
   renderLabels,
   setWorkspaceHandlers,
+  tidyIfOverlapping,
+  undoState,
 } from './code/affordances'
 import { back, drillInto, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
 import './code/code.css'
@@ -71,6 +73,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
   const [view, setView] = useState<LayerState>(TOP_VIEW)
   const viewRef = useRef<LayerState>(TOP_VIEW)
   const [definitions, setDefinitions] = useState<string[]>([])
+  const [undoable, setUndoable] = useState({ canUndo: false, canRedo: false })
   const [card, setCard] = useState<{ opcode: string; blockText: string } | null>(null)
 
   // Diagnostics for current brick
@@ -193,63 +196,13 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
 
     // 7. Register dynamic flyout category callback for My Blocks (PROCEDURE)
     ws.registerToolboxCategoryCallback('PROCEDURE', (targetWs: Blockly.WorkspaceSvg) => {
-      const items: Array<Record<string, unknown>> = [
-        {
-          kind: 'button',
-          text: 'Make a Block',
-          callbackKey: 'MAKE_A_PROCEDURE',
-        },
-      ]
-
-      // Shareable procedures callers
-      try {
-        const shareableItems = Blockly.Procedures.flyoutCategory(targetWs)
-        if (Array.isArray(shareableItems)) {
-          for (const item of shareableItems) {
-            items.push(item as unknown as Record<string, unknown>)
-          }
-        }
-      } catch {
-        // Shareable procedures callback fallback
-      }
-
-      // Scratch-style procedure definitions
-      const topBlocks = targetWs.getTopBlocks(false)
-      const seenProccodes = new Set<string>()
-
-      for (const block of topBlocks) {
-        if (block.type === 'procedures_definition') {
-          const extra = (block as unknown as { extraState_?: { proccode?: string; argumentNames?: string[] } }).extraState_
-          const proccode = extra?.proccode || 'my block'
-          if (!seenProccodes.has(proccode)) {
-            seenProccodes.add(proccode)
-            const argumentNames = extra?.argumentNames ?? []
-
-            // Caller block
-            items.push({
-              kind: 'block',
-              type: 'procedures_call',
-              extraState: {
-                proccode,
-                argumentNames,
-              },
-            })
-
-            // Parameter reporter pills
-            for (const arg of argumentNames) {
-              const isBool = arg.endsWith('?')
-              items.push({
-                kind: 'block',
-                type: isBool ? 'argument_reporter_boolean' : 'argument_reporter_string_number',
-                fields: { VALUE: arg },
-              })
-            }
-          }
-        }
-      }
-
+      const items = myBlocksFlyout(targetWs)
       return items as unknown as Blockly.utils.toolbox.FlyoutDefinition
     })
+
+    // The toolbox draws its first category as soon as it is injected, before the callback above exists: that first
+    // draw would list Blockly's own My Blocks (the plugin's "to do something"). Draw it again with ours.
+    ws.getToolbox()?.refreshSelection()
 
     // 8. Load workspace for this brick
     const savedWorkspace = store.getState().project.workspaces[selectedBrickId]
@@ -280,6 +233,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       }
     }
 
+    ws.getToolbox()?.refreshSelection() // calls for the definitions that just loaded
+
     // 8b. Layered view: scripts on top, My Block definitions out of the way; magnifiers open definitions and cards
     viewRef.current = TOP_VIEW
     setView(TOP_VIEW)
@@ -294,11 +249,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     }
     const showTopView = () => {
       if (isDisposedRef.current || workspaceRef.current !== ws) return
+      // Rendered sizes are known now: if scripts or labels overlap, arrange them like Scratch's "Clean up".
+      if (tidyIfOverlapping(ws)) saveWorkspaceNow(ws)
       renderLabels(ws)
       syncDefinitions()
       applyView(ws, viewRef.current)
       focusView(ws, viewRef.current)
     }
+    setUndoable({ canUndo: false, canRedo: false })
     syncDefinitions()
     applyView(ws, TOP_VIEW)
     renderLabels(ws)
@@ -319,6 +277,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
           if (kept !== viewRef.current) queueMicrotask(() => navigateRef.current(kept))
         }
       }
+      const u = undoState(ws)
+      setUndoable((prev) => (prev.canUndo === u.canUndo && prev.canRedo === u.canRedo ? prev : u))
       // Skip UI events
       if (event.isUiEvent) return
       if (event.type === Blockly.Events.FINISHED_LOADING) return
@@ -598,6 +558,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     if (ws && !isDisposedRef.current) ws.cleanUp()
   }
 
+  const handleUndo = () => {
+    const ws = workspaceRef.current
+    if (ws && !isDisposedRef.current) ws.undo(false)
+  }
+
+  const handleRedo = () => {
+    const ws = workspaceRef.current
+    if (ws && !isDisposedRef.current) ws.undo(true)
+  }
+
   const handleZoomIn = () => {
     const ws = workspaceRef.current
     if (ws && !isDisposedRef.current) ws.zoomCenter(1)
@@ -628,6 +598,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
         onOpenVariableModal={(mode) => setVarModalMode(mode)}
         onOpenProcedureModal={() => setProcModalOpen(true)}
         onToggleDiagnostics={() => setShowDiagnostics((prev) => !prev)}
+        canUndo={undoable.canUndo}
+        canRedo={undoable.canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
         onCleanUp={handleCleanUp}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}

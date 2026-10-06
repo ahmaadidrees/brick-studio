@@ -187,3 +187,83 @@ export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
 }
 
 export { LABEL_PREFIX }
+
+// ---------------------------------------------------------------- tidy on open
+
+export interface PlacedStack {
+  id: string
+  left: number
+  top: number
+  right: number
+  bottom: number
+  /** Does the stack have a one-line label drawn above its hat? */
+  labelled: boolean
+}
+
+/** Room a label takes above its hat, in workspace units (LABEL_RISE plus the text height). */
+export const LABEL_BAND = 34
+/** Space left between stacks in a column. */
+export const STACK_GAP = 24
+
+function reach(s: PlacedStack): { left: number; top: number; right: number; bottom: number } {
+  return { left: s.left, right: s.right, bottom: s.bottom, top: s.labelled ? s.top - LABEL_BAND : s.top }
+}
+
+/** Do any two stacks (counting the label above each hat) overlap? Touching edges don't count. */
+export function anyOverlap(stacks: PlacedStack[]): boolean {
+  for (let i = 0; i < stacks.length; i++) {
+    const a = reach(stacks[i])
+    for (let j = i + 1; j < stacks.length; j++) {
+      const b = reach(stacks[j])
+      if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) return true
+    }
+  }
+  return false
+}
+
+/** Scratch's "Clean up": one column, in reading order, each stack under the last with room for its label. */
+export function columnLayout(stacks: PlacedStack[]): Map<string, { x: number; y: number }> {
+  const sorted = [...stacks].sort((a, b) => a.top - b.top || a.left - b.left)
+  const x = sorted.length ? Math.min(...sorted.map((s) => s.left)) : 0
+  const out = new Map<string, { x: number; y: number }>()
+  let y = sorted.length ? sorted[0].top - (sorted[0].labelled ? LABEL_BAND : 0) : 0
+  for (const s of sorted) {
+    const top = s.labelled ? y + LABEL_BAND : y
+    out.set(s.id, { x, y: top })
+    y = top + (s.bottom - s.top) + STACK_GAP
+  }
+  return out
+}
+
+/**
+ * When scripts (or their labels) overlap, arrange them in a column. A layout that doesn't overlap is left exactly as the
+ * kid made it. Definitions are never on screen together with scripts, so they don't take part. Returns whether it moved.
+ */
+export function tidyIfOverlapping(ws: Blockly.WorkspaceSvg): boolean {
+  const tops = ws.getTopBlocks(false).filter((b) => b.type !== 'procedures_definition')
+  const stacks: PlacedStack[] = tops.map((b) => {
+    const r = b.getBoundingRectangle()
+    return { id: b.id, left: r.left, top: r.top, right: r.right, bottom: r.bottom, labelled: takesLabel(b) && !!getLabel(b) }
+  })
+  if (!anyOverlap(stacks)) return false
+  const target = columnLayout(stacks)
+  Blockly.Events.disable()
+  try {
+    for (const b of tops) {
+      const to = target.get(b.id)
+      if (!to) continue
+      const at = b.getBoundingRectangle()
+      b.moveBy(to.x - at.left, to.y - at.top)
+    }
+  } finally {
+    Blockly.Events.enable()
+  }
+  ws.clearUndo()
+  return true
+}
+
+/** Can the workspace undo / redo right now? (Blockly keeps its stacks private, so read them defensively.) */
+export function undoState(ws: Blockly.Workspace): { canUndo: boolean; canRedo: boolean } {
+  const w = ws as unknown as { undoStack_?: unknown[]; redoStack_?: unknown[] }
+  return { canUndo: (w.undoStack_?.length ?? 0) > 0, canRedo: (w.redoStack_?.length ?? 0) > 0 }
+}
