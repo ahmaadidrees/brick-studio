@@ -82,6 +82,21 @@ describe('test room design', () => {
   })
 })
 
+describe('Hero in the test room (keyboard)', () => {
+  it('stays in the room, and holding right arrow moves the Hero right', () => {
+    const rt = play(buildTestRoom(hero, stage))
+    for (let i = 0; i < 20; i++) rt.step()
+    const x0 = rt.world.targets.find((t) => t.brickId === HERO_BRICK_ID)!.x
+    rt.pressKey('right arrow')
+    for (let i = 0; i < 30; i++) rt.step()
+    rt.releaseKey('right arrow')
+    const t = rt.world.targets.find((x) => x.brickId === HERO_BRICK_ID)!
+    expect(t.x).toBeGreaterThan(x0 + 5)
+    expect(t.x).toBeLessThan(ROOM_WIDTH)
+    expect(t.y).toBeGreaterThanOrEqual(0)
+  })
+})
+
 describe('knob slider range rule', () => {
   it('whole numbers: 0 to 2x, step 1', () => {
     expect(knobRange(7)).toEqual({ min: 0, max: 14, step: 1 })
