@@ -89,7 +89,7 @@ export interface HeroKnob {
   from: string
 }
 
-/** Every tunable number as a named local variable shown in Build (`showInBuild`). */
+/** Every tunable number, as a named local variable. Only HERO_BUILD_KNOB_IDS are shown in Build (`showInBuild`). */
 export const HERO_KNOBS: readonly HeroKnob[] = [
   // Running
   { id: 'walk_top', name: 'walk top speed', value: 1.5 * SPEED, from: 'walkMax 1.5 px/frame x 2' },
@@ -131,10 +131,33 @@ export const HERO_KNOBS: readonly HeroKnob[] = [
   { id: 'wall_late_ticks', name: 'wall late ticks', value: 2, from: 'WALL_COYOTE 5 frames / 2 = 2.5, rounded down' },
 ]
 
+/**
+ * The only Hero knobs shown in Build and on top of the workshop's Knobs card: walk speed, run speed, jump power,
+ * gravity. Every other tuning number stays a normal variable in the code, grouped under "More tuning".
+ * ("jump power" is the standing jump; the walking, running and p-speed jumps are under Jumping.)
+ */
+export const HERO_BUILD_KNOB_IDS: readonly string[] = ['walk_top', 'run_top', 'jump_stand', 'fall_gravity']
+
+/** The rest of the tuning numbers, in the groups the workshop's "More tuning" section shows. Every non-build knob appears once. */
+export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobIds: readonly string[] }> = [
+  { id: 'walking', label: 'Walking', knobIds: ['walk_push', 'friction', 'skid', 'air_push', 'air_turn'] },
+  { id: 'running', label: 'Running', knobIds: ['p_top', 'run_push', 'meter_slack', 'meter_fill', 'meter_drain', 'meter_full'] },
+  {
+    id: 'jumping',
+    label: 'Jumping',
+    knobIds: ['jump_walk', 'jump_run', 'jump_p', 'walk_jump_from', 'run_jump_from', 'p_jump_from', 'hold_slow', 'hold_fast', 'late_ticks', 'early_ticks'],
+  },
+  { id: 'falling', label: 'Falling', knobIds: ['max_fall'] },
+  { id: 'walls', label: 'Walls', knobIds: ['wall_slide', 'wall_shed', 'wall_push', 'wall_up', 'wall_lock_ticks', 'wall_late_ticks'] },
+]
+
+/** How many tuning numbers are tucked under "More tuning". */
+export const HERO_MORE_TUNING_COUNT = HERO_KNOB_GROUPS.reduce((n, g) => n + g.knobIds.length, 0)
+
 /** Where "hero hurt" sends the Hero: the level start (copy center; the 16 x 16 costume stands on the ground at y 24). */
 export const HERO_START = { x: 60, y: 24 } as const
 
-/** The Hero's own working memory. Not Build knobs: they change every tick. */
+/** The Hero's own working memory. Not knobs: they change every tick. */
 const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'steer', name: 'steer' }, // -1 left, 0 none, 1 right (with the wall-jump lock applied)
   { id: 'raw_steer', name: 'arrow' }, // -1 left, 0 none, 1 right (just the arrow keys)
@@ -163,7 +186,7 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
 
 export function heroVariables(): VariableDecl[] {
   return [
-    ...HERO_KNOBS.map((k): VariableDecl => ({ id: k.id, name: k.name, value: k.value, showInBuild: true })),
+    ...HERO_KNOBS.map((k): VariableDecl => ({ id: k.id, name: k.name, value: k.value, ...(HERO_BUILD_KNOB_IDS.includes(k.id) ? { showInBuild: true } : {}) })),
     ...STATE_VARIABLES.map((v): VariableDecl => ({ id: v.id, name: v.name, value: 0 })),
   ]
 }
@@ -480,19 +503,32 @@ export function createHeroWorkspace(): WorkspaceJson {
   const onStomped = receive('stomped', [setY(8)])
   // Hurt (by a Walker, or by spikes): back to the start, standing still.
   const onHurt = receive('hero hurt', [goTo(HERO_START.x, HERO_START.y), setX(0), setY(0)])
-  // The spikes are a tile, not a brick: ask the tile layer every tick. (platformer_touchingtile comes from the tiles lane.)
+  // Spikes and lava are tiles, not bricks: ask the tile layer every tick, the same for both.
   const spikeWatch = place(
     blk('event_whenflagclicked', {
       next: {
         block: chain([
           blk('control_forever', {
             inputs: {
-              SUBSTACK: sub1([when({ block: blk('platformer_touchingtile', { fields: { TILE: 'spikes' } }) }, [bc('hero hurt')])]),
+              SUBSTACK: sub1([
+                when(
+                  or(
+                    { block: blk('platformer_touchingtile', { fields: { TILE: 'spikes' } }) },
+                    { block: blk('platformer_touchingtile', { fields: { TILE: 'lava' } }) },
+                  ),
+                  [bc('hero hurt')],
+                ),
+              ]),
             },
           }),
         ])!,
       },
     }),
+  )
+
+  // A ? block hit from below: the Hero counts the coin. (The engine has no hidden score; the tile only reports the bump.)
+  const onQBlock = place(
+    blk('platformer_whenbump', { fields: { SIDE: 'bottom', BRICK: 'tile:qblock' }, next: { block: change('coins', 1) } }),
   )
 
   const labels: Array<[Json, string]> = [
@@ -509,14 +545,15 @@ export function createHeroWorkspace(): WorkspaceJson {
     [onBoing, 'When a Spring says boing: fly up'],
     [onStomped, 'When I stomp a Walker: bounce'],
     [onHurt, 'When I get hurt: go back to the start'],
-    [spikeWatch, 'When the level starts: spikes hurt'],
+    [spikeWatch, 'When the level starts: spikes and lava hurt'],
+    [onQBlock, 'When I hit a ? block from below: count a coin'],
   ]
   for (const [block, text] of labels) withLabel(block, text)
 
   return {
     variables: heroVariables().map((d) => ({ id: d.id, name: d.name })),
     blocks: {
-      blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, spikeWatch] as never,
+      blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, spikeWatch, onQBlock] as never,
     },
   }
 }
@@ -530,7 +567,7 @@ export function createHeroBrick(): { brick: BrickDef; workspace: WorkspaceJson; 
   const variables = heroVariables()
   const { program, diagnostics } = compileWorkspace(workspace, { variables })
   return {
-    brick: { id: HERO_BRICK_ID, name: 'Hero', costumes: [createHeroCostume()], sounds: [], program },
+    brick: { id: HERO_BRICK_ID, name: 'Hero', costumes: [createHeroCostume()], sounds: [], program, limit: 1 },
     workspace,
     diagnostics,
   }
