@@ -175,6 +175,31 @@ export interface LevelDesign {
   copies: CopyPlacement[]
   /** Seed for the world RNG, so a Play is replayable. */
   seed: number
+  /** Painted tiles (step 6): ground, blocks, spikes. No code; fast; thousands per level. Missing means no tiles. */
+  tiles?: TileLayer
+}
+
+// ---------------------------------------------------------------- tiles (step 6, docs/qa/code-lab-core/STEP6.md)
+
+/** Tile kinds. '.' is empty. Solid kinds stop Platformer bodies; spikes and lava are not solid but can be sensed. */
+export type TileKind = 'ground' | 'brick' | 'hard' | 'qblock' | 'spikes' | 'lava'
+export const TILE_KINDS: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock', 'spikes', 'lava']
+export const SOLID_TILES: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock']
+/** One character per tile in saved rows. */
+export const TILE_CHAR: Record<TileKind, string> = { ground: 'G', brick: 'B', hard: 'H', qblock: 'Q', spikes: 'S', lava: 'L' }
+/** Tiles are TILE_SIZE steps square. */
+export const TILE_SIZE = 16
+
+/**
+ * A grid of tiles laid over the level. Cell (col, row) covers x in [col*16, col*16+16) and y in [row*16, row*16+16):
+ * row 0 is the BOTTOM row (y up, like everything else in Code Lab). rows[r] is a string of `cols` characters
+ * from TILE_CHAR, '.' for empty.
+ */
+export interface TileLayer {
+  cols: number
+  rows: number
+  /** rows[0] is the bottom row. */
+  data: string[]
 }
 
 // ---------------------------------------------------------------- live state
@@ -328,6 +353,8 @@ export interface World {
   cloneCount: number
   /** Platformer extension settings (step 3). Missing means DEFAULT_PHYSICS. */
   physics?: PhysicsSettings
+  /** The level's tiles (step 6), copied from the design on Play. Missing means no tiles. */
+  tiles?: TileLayer
   nextTargetId: number
   /** Ask prompt queue for sensing primitives. */
   askQueue: QueuedAsk[]

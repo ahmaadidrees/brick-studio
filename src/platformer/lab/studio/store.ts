@@ -27,6 +27,8 @@ export interface StudioState {
   selectedCopyId: string | null
   /** Brick the Build brush paints. */
   brushBrickId: string | null
+  /** Step 6: tile character the Build brush paints (TILE_CHAR value, '.' erases), or null when painting bricks. */
+  brushTile: string | null
   mode: StudioMode
   editorTab: EditorTab
   diagnostics: Record<string, Diagnostic[]>
@@ -34,6 +36,8 @@ export interface StudioState {
   runtime: Runtime | null
   /** Bumps on every change; persistence and renderers can watch it. */
   revision: number
+  /** Step 6: the brick open in the full-screen Brick Workshop, or null when the builder is showing. */
+  workshopBrickId: string | null
 }
 
 type Listener = () => void
@@ -49,11 +53,13 @@ export class StudioStore {
       selectedBrickId: first,
       selectedCopyId: null,
       brushBrickId: project.design.bricks[0]?.id ?? null,
+      brushTile: null,
       mode: 'build',
       editorTab: 'code',
       diagnostics: {},
       runtime: null,
       revision: 0,
+      workshopBrickId: null,
     }
   }
 
@@ -84,7 +90,12 @@ export class StudioStore {
   }
 
   setBrush(brickId: string | null) {
-    this.set({ brushBrickId: brickId })
+    this.set({ brushBrickId: brickId, brushTile: null })
+  }
+
+  /** Step 6: paint tiles instead of bricks. */
+  setTileBrush(ch: string | null) {
+    this.set({ brushTile: ch, brushBrickId: ch ? null : this.state.brushBrickId })
   }
 
   setEditorTab(tab: EditorTab) {
@@ -102,6 +113,32 @@ export class StudioStore {
     this.set({ mode: 'build', runtime: null })
   }
 
+  // ------------------------------------------------------------ Brick Workshop (step 6)
+
+  /** Open the full-screen workshop on a brick ("See inside" or "+ New brick"). Leaves Play first. */
+  openWorkshop(brickId: string) {
+    if (this.state.mode === 'play') this.stop()
+    this.set({ workshopBrickId: brickId, selectedBrickId: brickId })
+  }
+
+  /** "Done": back to the builder, exactly where the kid was. */
+  closeWorkshop() {
+    this.set({ workshopBrickId: null })
+  }
+
+  // ------------------------------------------------------------ tiles (step 6)
+
+  /** Set one tile cell (row 0 = bottom). Grows nothing: cells outside the layer are ignored. */
+  setTile(col: number, row: number, ch: string) {
+    const d = this.state.project.design
+    const layer = d.tiles
+    if (!layer || col < 0 || row < 0 || col >= layer.cols || row >= layer.rows || ch.length !== 1) return
+    if (layer.data[row][col] === ch) return
+    const data = layer.data.slice()
+    data[row] = data[row].slice(0, col) + ch + data[row].slice(col + 1)
+    this.setDesign({ ...d, tiles: { ...layer, data } })
+  }
+
   // ------------------------------------------------------------ bricks
 
   brick(brickId: string): BrickDef | undefined {
@@ -116,6 +153,16 @@ export class StudioStore {
     const d = this.state.project.design
     this.setDesign({ ...d, bricks: [...d.bricks, brick] })
     this.set({ selectedBrickId: id, brushBrickId: id, editorTab: 'code' })
+    return id
+  }
+
+  /** Step 6: add a whole brick (from a template) with its workspace, select it and return its id. */
+  addBrickFrom(brick: Omit<BrickDef, 'id'>, workspace: unknown): string {
+    const d = this.state.project.design
+    const id = uniqueId('brick', new Set(d.bricks.map((b) => b.id)))
+    this.setDesign({ ...d, bricks: [...d.bricks, { ...brick, id }] }, { ...this.state.project.workspaces, [id]: workspace })
+    this.setWorkspace(id, workspace)
+    this.set({ selectedBrickId: id, brushBrickId: id, brushTile: null })
     return id
   }
 
@@ -238,6 +285,7 @@ export function emptyProject(): StudioProject {
       stage: { id: STAGE_ID, name: 'Stage', isStage: true, costumes: [], sounds: [], program: { scripts: [], procedures: [], variables: [], lists: [] } },
       bricks: [],
       copies: [],
+      tiles: { cols: 60, rows: 22, data: Array.from({ length: 22 }, () => '.'.repeat(60)) },
     },
     workspaces: {},
   }

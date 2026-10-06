@@ -10,3 +10,5 @@
 .studio-right { gap: 8px; padding: 8px; }
 .studio-stub { padding: 16px; color: #7d8494; }
 @media (max-width: 800px) { .studio { grid-template-columns: 1fr; height: auto; } }
+/* Step 6 shell: one full-screen view at a time (builder or workshop). */
+.studio-screen { height: 100vh; background: #F8F4EB; color: #263C51; font-family: 'Nunito', ui-rounded, system-ui, sans-serif; overflow: hidden; }
