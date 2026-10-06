@@ -99,7 +99,8 @@ const KNOWN_RUNTIME_PROBLEMS: Record<string, string> = {}
  * no redraw, so neither the op budget nor the redraw check ever stops it: the page freezes. A kid dragging out
  * `when flag clicked > forever` hits this. These blocks are compiled but not run until it is fixed.
  */
-const FREEZES_WHEN_RUN_EMPTY = new Set(['control_forever'])
+/** Fixed by the integrator (loop back-edges now cost an op); kept empty so a future freeze can be listed here. */
+const FREEZES_WHEN_RUN_EMPTY = new Set<string>()
 
 describe('every toolbox block compiles and runs in a when-flag script', () => {
   it('covers the whole toolbox', () => {
@@ -155,7 +156,15 @@ describe('every toolbox block compiles and runs in a when-flag script', () => {
   }
 })
 
-describe('findings for the integrator (core/**, not fixed here)', () => {
+describe('step 6b findings, fixed by the integrator in core/runtime.ts', () => {
+  it('an empty forever loop finishes every tick (it used to freeze the page)', () => {
+    const design = makeHarnessDesign({ scripts: [{ id: 's', hat: { opcode: 'event_whenflagclicked', fields: {}, inputs: {} }, body: [{ opcode: 'control_forever', inputs: {}, fields: {}, branches: [[]] }] }] })
+    const rt = createRuntime(design)
+    rt.greenFlag()
+    for (let i = 0; i < 60; i++) rt.step()
+    expect(rt.world.tick).toBe(60)
+  })
+
   it('control_forever with nothing inside freezes a tick (see FREEZES_WHEN_RUN_EMPTY): run it with a block inside instead', () => {
     const forever: Stmt = { opcode: 'control_forever', inputs: {}, fields: {}, branches: [[{ opcode: 'motion_changexby', inputs: { DX: { kind: 'lit', value: 1 } }, fields: {} }]] }
     const design = makeHarnessDesign({
@@ -169,7 +178,7 @@ describe('findings for the integrator (core/**, not fixed here)', () => {
 
   // FINDING: `repeat until <cond>` with an empty body evaluates the condition once and moves on (runtime.ts pushes a loop
   // frame only when the body has blocks). Scratch waits, one tick per check, until the condition is true.
-  it.fails('repeat until <cond> with an empty body keeps waiting until the condition is true', () => {
+  it('repeat until <cond> with an empty body keeps waiting until the condition is true', () => {
     const script: Stmt[] = [
       {
         opcode: 'control_repeat_until',
@@ -184,5 +193,7 @@ describe('findings for the integrator (core/**, not fixed here)', () => {
     rt.greenFlag()
     for (let i = 0; i < 5; i++) rt.step()
     expect(rt.world.targets[0].x).toBe(0) // still waiting after 5 of the 150 ticks the 5 seconds take
+    for (let i = 0; i < 160; i++) rt.step()
+    expect(rt.world.targets[0].x).toBe(100) // and moves on once the timer passes 5
   })
 })

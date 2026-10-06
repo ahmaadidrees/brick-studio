@@ -19,7 +19,7 @@ import {
   type MenuOption,
 } from './context'
 import { CATEGORY_COLORS } from './colors'
-import { TILE_BLOCK_DEFINITIONS, TILE_BRICK_OPTION } from './tileBlocks'
+import { TILE_BLOCK_DEFINITIONS, TILE_BRICK_OPTION, TILE_BUMP_OPTIONS } from './tileBlocks'
 
 /** Scratch 3 category colors. */
 export { CATEGORY_COLORS }
@@ -97,6 +97,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     ['anything', '_any_'],
     ['edge', '_edge_'],
     TILE_BRICK_OPTION,
+    ...TILE_BUMP_OPTIONS,
     ...(context?.getBricks?.() ?? getEditorContext().getBricks?.() ?? []).map((b): MenuOption => [b, b]),
   ]
 

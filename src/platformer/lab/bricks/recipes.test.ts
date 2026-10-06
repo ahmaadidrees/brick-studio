@@ -39,7 +39,7 @@ describe('1 · double jump', () => {
     const wins: number[] = []
     for (const f of jumpFrames) for (const again of [12, 18, 24, 30]) if (tryGap(doc, f, again)) wins.push(f)
     expect(wins.length).toBeGreaterThan(5)
-  })
+  }, 30_000) // the old /2d/lab sim needs ~9 s when the whole suite runs in parallel
 
   it('gives exactly one extra jump, back again after landing', () => {
     const h = labHarness(applyRecipe(starterDoc(), 'double-jump').doc, flatLevel(60))

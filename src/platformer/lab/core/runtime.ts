@@ -45,6 +45,9 @@ import { nextFloat } from './rng'
 export { YIELD_TICK }
 export { toNumber, toBoolean, toString }
 
+/** Upper bound on sweeps in one tick; normally the op budget or a redraw ends the tick long before. */
+const MAX_SWEEPS_PER_TICK = 10_000
+
 export interface RuntimeLifecycle {
   greenFlag: ((runtime: RuntimeApi) => void)[]
   stopAll: ((runtime: RuntimeApi) => void)[]
@@ -359,6 +362,8 @@ export class Runtime implements RuntimeApi {
       if (sweep > 0 && this._redrawRequested && !this.turbo) {
         break
       }
+      // Safety net: never let one tick spin forever, whatever the scripts do.
+      if (sweep >= MAX_SWEEPS_PER_TICK) break
       sweep++
 
       // F15: sequencer iterates the live threads array so newly appended threads get a turn
@@ -565,6 +570,10 @@ export class Runtime implements RuntimeApi {
 
       if (frame.pc >= frame.statements.length) {
         if (frame.isLoop) {
+          // Jumping back to the top of a loop costs one op, like a block. Without it an empty `forever` re-ran in
+          // the same tick for free and the tick never ended (step 6b smoke test).
+          this._tickOps++
+          if (thread.isWarp()) thread.warpOpCount++
           if (frame.loopType === 'repeat') {
             frame.loopTimesRemaining!--
             if (frame.loopTimesRemaining! > 0) {
@@ -707,9 +716,9 @@ export class Runtime implements RuntimeApi {
           ),
         )
         frame.pc++
-        if (times > 0 && stmt.branches?.[0]?.length) {
+        if (times > 0) {
           thread.stack.push({
-            statements: stmt.branches[0],
+            statements: stmt.branches?.[0] ?? [],
             pc: 0,
             isLoop: true,
             loopType: 'repeat',
@@ -749,9 +758,10 @@ export class Runtime implements RuntimeApi {
             warp: thread.isWarp(),
           }),
         )
-        if (!cond && stmt.branches?.[0]?.length) {
+        // An empty body still loops: `repeat until <x>` with nothing inside waits until x (Scratch).
+        if (!cond) {
           thread.stack.push({
-            statements: stmt.branches[0],
+            statements: stmt.branches?.[0] ?? [],
             pc: 0,
             isLoop: true,
             loopType: 'repeat_until',
@@ -770,9 +780,9 @@ export class Runtime implements RuntimeApi {
             warp: thread.isWarp(),
           }),
         )
-        if (cond && stmt.branches?.[0]?.length) {
+        if (cond) {
           thread.stack.push({
-            statements: stmt.branches[0],
+            statements: stmt.branches?.[0] ?? [],
             pc: 0,
             isLoop: true,
             loopType: 'while',

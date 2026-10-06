@@ -335,9 +335,50 @@ describe('Starter level (starter.ts)', () => {
 
   // The three below need the tiles lane's step 6b physics (one-way, ? block hit, bounce). The integrator flips them.
   // Layout: one-way platform cols 33-36 row 3 (x 528..592, top y 64); ? blocks at the platforms listed above; bounce block col 18 row 1.
-  it.todo('one-way platform: a Hero jumping up from the ground at x 560 passes through it, then lands on top: box bottom exactly 64 and onGround true')
-  it.todo('? block: the Hero jumping up into the ? block at col 12 row 3 (x 192..208, y 48..64) from below turns it into a used block (tile U) once and the stage variable coins becomes 1; a second jump gives no coin')
-  it.todo('bounce block: the Hero landing on the bounce block at col 18 row 1 (top y 32) is thrown to the converted old bounceHigh apex (core tile test pins the number); walking onto it without falling gives the low bounce')
+  it('one-way platform: the Hero jumps up through it, then lands on top (box bottom 64, on ground)', () => {
+    const rt = play(createStarterProject().design)
+    const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    for (let i = 0; i < 20; i++) rt.step()
+    h.x = 560; h.y = 24
+    rt.pressKey('space')
+    let highest = 0
+    for (let i = 0; i < 40; i++) { rt.step(); highest = Math.max(highest, targetBounds(rt.world, h)!.bottom) }
+    rt.releaseKey('space')
+    for (let i = 0; i < 20; i++) rt.step()
+    expect(highest).toBeGreaterThan(64)
+    expect([targetBounds(rt.world, h)!.bottom, h.body!.onGround]).toEqual([64, true])
+  })
+
+  it('? block: hitting it from below turns it into a used block and counts one coin; hitting it again gives none', () => {
+    const rt = play(createStarterProject().design)
+    const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    const jump = () => { rt.pressKey('space'); for (let i = 0; i < 30; i++) rt.step(); rt.releaseKey('space'); for (let i = 0; i < 30; i++) rt.step() }
+    for (let i = 0; i < 20; i++) rt.step()
+    h.x = 200; h.y = 24
+    jump()
+    expect(rt.world.tiles!.data[3][12]).toBe('U')
+    expect(Object.values(rt.world.stage.variables)).toEqual([1])
+    jump()
+    expect(Object.values(rt.world.stage.variables)).toEqual([1])
+    expect(createStarterProject().design.tiles!.data[3][12]).toBe('Q') // the saved design is unchanged
+  })
+
+  it('bounce block: a Hero dropped onto it gets the low bounce (6.5 per tick, the old bounceLow) and keeps bouncing', () => {
+    const rt = play(createStarterProject().design)
+    const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    for (let i = 0; i < 20; i++) rt.step()
+    h.x = 296; h.y = 120
+    const launches: number[] = []
+    let prev = h.body!.vy
+    for (let i = 0; i < 60; i++) {
+      rt.step()
+      if (prev < 0 && h.body!.vy > 0) launches.push(h.body!.vy)
+      prev = h.body!.vy
+    }
+    expect(launches.length).toBeGreaterThan(3)
+    expect(new Set(launches)).toEqual(new Set([6.5]))
+  })
+
 
   it('the Spring launches the Hero higher than its own best jump (62)', () => {
     const { rt, of, run } = fresh()

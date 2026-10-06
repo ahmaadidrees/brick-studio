@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { compileWorkspace, type WorkspaceBlockJson } from './compile'
 import { createBlockDefinitions, registerEditorBlocks, HAT_OPCODES, CATEGORY_COLORS } from './definitions'
 import { createContinuousToolbox } from './toolbox'
+import { TILE_BUMP_OPTIONS } from './tileBlocks'
 
 const num = (n: number) => ({ shadow: { type: 'math_number', fields: { NUM: n } } })
 const ws = (...blocks: WorkspaceBlockJson[]) => ({ blocks: { languageVersion: 0, blocks } })
@@ -73,12 +74,13 @@ describe('Platformer blocks: menus', () => {
     ])
   })
 
-  it('BRICK menu: anything, edge, then every brick name from the context', () => {
+  it('BRICK menu: anything, edge, a tile, each tile kind, then every brick name from the context', () => {
     const opts = dropdownOptions('platformer_whenbump', 'BRICK', { getBricks: () => ['Ground', 'Coin'] })
     expect(opts).toEqual([
       ['anything', '_any_'],
       ['edge', '_edge_'],
       ['a tile', '_tiles_'],
+      ...TILE_BUMP_OPTIONS,
       ['Ground', 'Ground'],
       ['Coin', 'Coin'],
     ])
