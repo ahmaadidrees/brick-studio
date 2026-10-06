@@ -319,7 +319,6 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     draw()
     return globalImageCache.onImageLoaded(draw)
     // hoverInfo is derived from tileHover, brushTile and erasing; revision covers design changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushTile, erasing, revision])
 
   // Helper to get canvas-relative coordinates
