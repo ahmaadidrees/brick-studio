@@ -170,7 +170,7 @@ describe('Play draws cells as ordinary targets (2,000+ sprites)', () => {
     const t0 = performance.now()
     for (let i = 0; i < 20; i++) renderPlayMode(ctx, w, { camera, viewport: vp }, cache)
     const perFrame = (performance.now() - t0) / 20
-    process.stderr.write(`renderPlayMode: 4,000 sprites, all on screen: ${perFrame.toFixed(2)} ms per frame (fake canvas)\n`)
+    console.info(`renderPlayMode: 4,000 sprites, all on screen: ${perFrame.toFixed(2)} ms per frame (fake canvas)`)
     expect(perFrame).toBeLessThan(16)
   })
 })
