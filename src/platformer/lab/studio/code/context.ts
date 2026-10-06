@@ -83,6 +83,28 @@ export function extractBroadcastMessages(workspaces: Record<string, unknown>): s
 }
 
 /**
+ * Extra dropdown choices that exist only while a "how it works" card loads its read-only blocks: the card's variables
+ * ("x speed"), a brick ("Platform") and a message. Blockly checks a dropdown's value against its options when it loads,
+ * so the card's own names must be on offer for that moment. They are never offered to the real editor.
+ */
+interface CardExtras {
+  variables: VariableItem[]
+  bricks: string[]
+  messages: string[]
+}
+let cardExtras: CardExtras | null = null
+
+export function withCardContext<T>(extras: CardExtras, fn: () => T): T {
+  const previous = cardExtras
+  cardExtras = extras
+  try {
+    return fn()
+  } finally {
+    cardExtras = previous
+  }
+}
+
+/**
  * Builds an EditorContext instance for Blockly block definitions and dropdowns
  * based on the current StudioStore state.
  */
@@ -144,10 +166,10 @@ export function buildEditorContext(store: StudioStore): EditorContext {
   const backdrops = (stage?.costumes ?? []).map((c) => c.name)
 
   return {
-    getVariables: () => variables,
+    getVariables: () => (cardExtras ? [...variables, ...cardExtras.variables] : variables),
     getLists: () => lists,
-    getMessages: () => messages,
-    getBricks: () => brickNames,
+    getMessages: () => (cardExtras ? [...messages, ...cardExtras.messages] : messages),
+    getBricks: () => (cardExtras ? [...brickNames, ...cardExtras.bricks] : brickNames),
     getCostumes: () => costumes,
     getSounds: () => sounds,
     getBackdrops: () => backdrops,

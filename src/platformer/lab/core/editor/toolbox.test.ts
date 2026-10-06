@@ -8,12 +8,13 @@ import {
 } from './toolbox'
 
 describe('Continuous Toolbox configuration', () => {
-  it('contains the 9 Scratch categories in order, then Platformer', () => {
+  it('lists My Blocks first, then the Scratch categories in order, then Platformer', () => {
     const toolbox = createContinuousToolbox()
     expect(toolbox.kind).toBe('categoryToolbox')
     expect(toolbox.contents).toHaveLength(10)
 
     const expectedCategories = [
+      { name: 'My Blocks', colour: CATEGORY_COLORS.procedures },
       { name: 'Motion', colour: CATEGORY_COLORS.motion },
       { name: 'Looks', colour: CATEGORY_COLORS.looks },
       { name: 'Sound', colour: CATEGORY_COLORS.sound },
@@ -22,7 +23,6 @@ describe('Continuous Toolbox configuration', () => {
       { name: 'Sensing', colour: CATEGORY_COLORS.sensing },
       { name: 'Operators', colour: CATEGORY_COLORS.operators },
       { name: 'Variables', colour: CATEGORY_COLORS.variables },
-      { name: 'My Blocks', colour: CATEGORY_COLORS.procedures },
       { name: 'Platformer', colour: CATEGORY_COLORS.platformer },
     ]
 
@@ -33,7 +33,7 @@ describe('Continuous Toolbox configuration', () => {
   })
 
   it('configures shadow blocks for inputs', () => {
-    const motion = CONTINUOUS_TOOLBOX.contents[0]
+    const motion = CONTINUOUS_TOOLBOX.contents.find((c) => c.name === 'Motion')!
     const moveBlock = motion.contents?.find(
       (item): item is ToolboxBlock => item.kind === 'block' && item.type === 'motion_movesteps',
     )
@@ -43,7 +43,7 @@ describe('Continuous Toolbox configuration', () => {
   })
 
   it('configures custom procedure category for My Blocks', () => {
-    const myBlocks = CONTINUOUS_TOOLBOX.contents[8]
+    const myBlocks = CONTINUOUS_TOOLBOX.contents[0]
     expect(myBlocks.name).toBe('My Blocks')
     expect(myBlocks.custom).toBe('PROCEDURE')
   })

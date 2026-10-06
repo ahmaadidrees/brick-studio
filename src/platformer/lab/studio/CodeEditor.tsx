@@ -17,6 +17,19 @@ import { VariableModal } from './code/VariableModal'
 import { ProcedureModal, type ProcedureData } from './code/ProcedureModal'
 import { DiagnosticsList, formatKidDiagnostic } from './code/DiagnosticsList'
 import { EditorToolbar } from './code/EditorToolbar'
+import { LayerBar } from './code/LayerBar'
+import { PlainScratchCard } from './code/PlainScratchCard'
+import {
+  applyView,
+  attachAffordances,
+  focusView,
+  hasDefinition,
+  isShownIn,
+  listDefinitions,
+  renderLabels,
+  setWorkspaceHandlers,
+} from './code/affordances'
+import { back, drillInto, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
 import './code/code.css'
 
 export interface CodeEditorProps {
@@ -54,6 +67,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
   const [procModalOpen, setProcModalOpen] = useState<boolean>(false)
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true)
 
+  // Layered view: top scripts, or drilled into a My Block definition. And the open "plain Scratch" card.
+  const [view, setView] = useState<LayerState>(TOP_VIEW)
+  const viewRef = useRef<LayerState>(TOP_VIEW)
+  const [definitions, setDefinitions] = useState<string[]>([])
+  const [card, setCard] = useState<{ opcode: string; blockText: string } | null>(null)
+
   // Diagnostics for current brick
   const diagnostics: Diagnostic[] = state.diagnostics[selectedBrickId] ?? []
 
@@ -85,6 +104,20 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     store.setWorkspace(workspaceBrickIdRef.current, json)
   }
 
+  // Show a layer: drill into a definition, go back, or return to the top. Nothing here changes the saved code.
+  const navigate = (next: LayerState) => {
+    const ws = workspaceRef.current
+    if (!ws || isDisposedRef.current) return
+    const valid = pruneMissing(next, (code) => hasDefinition(ws, code))
+    viewRef.current = valid
+    setView(valid)
+    Blockly.hideChaff()
+    applyView(ws, valid)
+    focusView(ws, valid)
+  }
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
+
   // Mount Blockly workspace whenever selectedBrickId changes
   useEffect(() => {
     const container = hostRef.current
@@ -106,6 +139,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     const ctx = buildEditorContext(store)
     setEditorContext(ctx)
     registerEditorBlocks(ctx)
+    attachAffordances()
 
     // 4. Configure continuous toolbox (filter Motion if stage selected)
     const toolboxDef = createContinuousToolbox(ctx, { isStage })
@@ -246,8 +280,45 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       }
     }
 
+    // 8b. Layered view: scripts on top, My Block definitions out of the way; magnifiers open definitions and cards
+    viewRef.current = TOP_VIEW
+    setView(TOP_VIEW)
+    setCard(null)
+    setWorkspaceHandlers(ws, {
+      drill: (code) => navigateRef.current(drillInto(viewRef.current, code)),
+      explain: (opcode, blockText) => setCard({ opcode, blockText }),
+    })
+    const syncDefinitions = () => {
+      const codes = listDefinitions(ws).map((d) => d.proccode)
+      setDefinitions((prev) => (prev.join('\n') === codes.join('\n') ? prev : codes))
+    }
+    const showTopView = () => {
+      if (isDisposedRef.current || workspaceRef.current !== ws) return
+      renderLabels(ws)
+      syncDefinitions()
+      applyView(ws, viewRef.current)
+      focusView(ws, viewRef.current)
+    }
+    syncDefinitions()
+    applyView(ws, TOP_VIEW)
+    renderLabels(ws)
+    Promise.resolve(Blockly.renderManagement.finishQueuedRenders()).then(showTopView, showTopView)
+
     // 9. Change listener with debounced save (~300ms), skipping UI-only events
     const changeListener = (event: Blockly.Events.Abstract) => {
+      // Layered view upkeep (labels, the My Blocks shelf, a definition deleted while drilled in)
+      if (!event.isUiEvent && event.type !== Blockly.Events.FINISHED_LOADING) {
+        renderLabels(ws)
+        syncDefinitions()
+        if (event.type === Blockly.Events.BLOCK_CREATE && (event as Blockly.Events.BlockCreate).ids?.length) {
+          const created = ws.getBlockById((event as Blockly.Events.BlockCreate).blockId ?? '')
+          if (created?.type === 'procedures_definition') applyView(ws, viewRef.current)
+        }
+        if (event.type === Blockly.Events.BLOCK_DELETE && viewRef.current.stack.length) {
+          const kept = pruneMissing(viewRef.current, (code) => hasDefinition(ws, code))
+          if (kept !== viewRef.current) queueMicrotask(() => navigateRef.current(kept))
+        }
+      }
       // Skip UI events
       if (event.isUiEvent) return
       if (event.type === Blockly.Events.FINISHED_LOADING) return
@@ -275,6 +346,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
 
     return () => {
       flushSave()
+      setWorkspaceHandlers(ws, null)
       ws.removeChangeListener(changeListener)
       isDisposedRef.current = true
       ws.dispose()
@@ -387,6 +459,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     const block = ws.getBlockById(blockId)
     if (!block) return
 
+    // The block may sit in a definition that is out of the way: show the layer it lives in first.
+    const root = block.getRootBlock()
+    if (!isShownIn(root, viewRef.current)) {
+      navigate(root.type === 'procedures_definition' ? drillInto(TOP_VIEW, (root as unknown as { extraState_?: { proccode?: string } }).extraState_?.proccode ?? '') : TOP_VIEW)
+    }
     block.select()
     if ('scrollBoundsIntoView' in ws) {
       const root = block.getRootBlock()
@@ -506,6 +583,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     try {
       Blockly.serialization.blocks.append(blockJson, ws, { recordUndo: true })
       saveWorkspaceNow(ws)
+      // Open the new block so the kid can fill it in.
+      navigate(drillInto(TOP_VIEW, data.proccode))
       // Refresh continuous toolbox to include callers in flyout
       ws.getToolbox()?.refreshSelection()
     } catch (err) {
@@ -555,6 +634,16 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
         onResetZoom={handleResetZoom}
       />
 
+      {/* My Blocks shelf (top view) or breadcrumb + Back (inside a My Block) */}
+      <LayerBar
+        brickName={targetName}
+        state={view}
+        definitions={definitions}
+        onChange={navigate}
+        onBack={() => navigate(back(viewRef.current))}
+        onOpen={(code) => navigate(drillInto(viewRef.current, code))}
+      />
+
       {/* Main Workspace Injection Container */}
       <div className="code-workspace-container">
         <div ref={hostRef} className="code-blockly-host" />
@@ -568,6 +657,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
           />
         )}
       </div>
+
+      {card && <PlainScratchCard opcode={card.opcode} blockText={card.blockText} onClose={() => setCard(null)} />}
 
       {/* Make a Variable / Make a List Dialog */}
       <VariableModal

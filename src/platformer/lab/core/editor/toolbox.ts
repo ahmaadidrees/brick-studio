@@ -68,6 +68,21 @@ export function createContinuousToolbox(
   const isStage = options?.isStage ?? context?.isStage ?? false
 
   const allCategories: ToolboxCategory[] = [
+    // 0. My Blocks (Procedures): first, so the kid's own blocks are the first thing in the palette
+    {
+      kind: 'category',
+      name: 'My Blocks',
+      colour: CATEGORY_COLORS.procedures,
+      custom: 'PROCEDURE',
+      contents: [
+        {
+          kind: 'button',
+          text: 'Make a Block',
+          callbackKey: 'MAKE_A_PROCEDURE',
+        },
+      ],
+    },
+
     // 1. Motion
     {
       kind: 'category',
@@ -342,21 +357,6 @@ export function createContinuousToolbox(
         { kind: 'block', type: 'data_listcontainsitem', inputs: { ITEM: textShadow('thing') } },
         { kind: 'block', type: 'data_showlist' },
         { kind: 'block', type: 'data_hidelist' },
-      ],
-    },
-
-    // 9. My Blocks (Procedures)
-    {
-      kind: 'category',
-      name: 'My Blocks',
-      colour: CATEGORY_COLORS.procedures,
-      custom: 'PROCEDURE',
-      contents: [
-        {
-          kind: 'button',
-          text: 'Make a Block',
-          callbackKey: 'MAKE_A_PROCEDURE',
-        },
       ],
     },
 
