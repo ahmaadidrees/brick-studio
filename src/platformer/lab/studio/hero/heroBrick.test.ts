@@ -289,22 +289,11 @@ describe('The Hero brick is built from open blocks', () => {
     const variables = heroVariables()
     // `coins` is the Stage's global: the editor offers the Stage's variables in every brick's variable menu.
     registerEditorBlocks({ getVariables: () => [...variables, { id: 'coins', name: 'coins', value: 0 }], getBricks: () => ['Hero'] })
-    // `platformer_touchingtile` comes from the tiles lane (core/editor/tileBlocks.ts, wired in by the integrator). Until
-    // then register a stand-in with the same shape (a Boolean with fields.TILE) so the Hero's spike check can load.
-    const stubbed = !Blockly.Blocks['platformer_touchingtile']
-    if (stubbed) {
-      Blockly.Blocks['platformer_touchingtile'] = {
-        init(this: Blockly.Block) {
-          this.appendDummyInput().appendField('touching tile').appendField(new Blockly.FieldDropdown([['spikes', 'spikes']]), 'TILE')
-          this.setOutput(true, 'Boolean')
-        },
-      }
-    }
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 2 flag scripts (feel, spikes and lava), 7 My Blocks, 3 bump hats (left, right, ? block), 3 broadcast hats (boing, stomped, hero hurt).
-      expect(ws.getTopBlocks(false)).toHaveLength(15)
+      // 1 flag script (feel), 7 My Blocks, 2 bump hats (left, right), 4 broadcast hats (boing, stomped, hero hurt, bounce).
+      expect(ws.getTopBlocks(false)).toHaveLength(14)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -315,7 +304,6 @@ describe('The Hero brick is built from open blocks', () => {
       expect(again.program.procedures.every((p) => p.body.length > 0)).toBe(true)
     } finally {
       ws.dispose()
-      if (stubbed) delete Blockly.Blocks['platformer_touchingtile']
     }
   })
 
@@ -343,7 +331,7 @@ describe('The Hero brick is built from open blocks', () => {
       'operator_divide', 'operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or', 'operator_not',
       'operator_mathop', 'math_number',
       // step 6: the Hero answers boing, stomped, hero hurt and the spike tiles
-      'event_whenbroadcastreceived', 'event_broadcast', 'motion_gotoxy', 'platformer_touchingtile', 'text',
+      'event_whenbroadcastreceived', 'event_broadcast', 'motion_gotoxy', 'text',
     ])
     expect([...opcodes].filter((o) => !known.has(o))).toEqual([])
     expect(JSON.stringify(workspace)).toContain('"GRAVITY":"off"')
@@ -358,7 +346,7 @@ describe('The Hero brick is built from open blocks', () => {
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
     const forever = flag.body.find((s) => s.opcode === 'control_forever')!
     expect(forever.branches![0].map((s) => s.call?.proccode)).toEqual(['read keys', 'feel the wall', 'walk', 'run meter', 'jump', 'fall'])
-    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right', 'bottom'])
+    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right'])
   })
 
   it('shows only four Hero knobs in Build; every other tuning number is a plain variable in the groups of "More tuning"', () => {
@@ -386,14 +374,31 @@ describe('The Hero brick is built from open blocks', () => {
     expect(createHeroBrick().brick.limit).toBe(1)
   })
 
-  it('counts a coin when it bumps a ? block from below, and treats lava like spikes', () => {
+  it('has no lava, spikes or ? block code of its own any more (those bricks run their own code), and answers bounce: y speed 11 with jump held, else 6.5', () => {
     const { brick, workspace } = createHeroBrick()
-    const bump = brick.program.scripts.find((s) => s.hat.opcode === 'platformer_whenbump' && s.hat.fields.BRICK === 'tile:qblock')!
-    expect(bump.hat.fields).toEqual({ SIDE: 'bottom', BRICK: 'tile:qblock' })
-    expect(bump.body.map((b) => [b.opcode, b.fields.VARIABLE])).toEqual([['data_changevariableby', 'coins']])
     const text = JSON.stringify(workspace)
-    expect(text).toContain('"TILE":"spikes"')
-    expect(text).toContain('"TILE":"lava"')
+    expect(text).not.toContain('platformer_touchingtile')
+    expect(text).not.toContain('tile:')
+    expect(brick.program.scripts.some((s) => s.hat.opcode === 'platformer_whenbump' && String(s.hat.fields.BRICK).startsWith('tile:'))).toBe(false)
+    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'event_whenbroadcastreceived').map((s) => s.hat.fields.BROADCAST_OPTION)).toEqual(['boing', 'stomped', 'hero hurt', 'bounce'])
+    const bounce = brick.program.scripts.find((s) => s.hat.fields.BROADCAST_OPTION === 'bounce')!
+    const branch = bounce.body[0]!
+    expect(branch.opcode).toBe('control_if_else')
+    expect(JSON.stringify(branch)).toContain('"KEY_OPTION":"space"')
+    expect(JSON.stringify(branch.branches)).toMatch(/11.*6\.5/)
+  })
+
+  it('on bounce the Hero is launched: y speed 11 with space held, 6.5 without (the old bounceHigh and bounceLow), read right after the launch', () => {
+    const launch = (hold: boolean): number => {
+      const rt = play(createHeroTestDesign())
+      const hero = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+      for (let i = 0; i < 10; i++) rt.step()
+      if (hold) rt.pressKey('space')
+      rt.broadcast('bounce')
+      rt.step()
+      return hero.body!.vy
+    }
+    expect([launch(true), launch(false)]).toEqual([11, 6.5])
   })
 
   it('has a 16 x 16 costume whose opaque box is the old player: 12 wide, 14 tall, standing on the floor', () => {

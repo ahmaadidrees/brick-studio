@@ -2,9 +2,9 @@
  * Starter level for Code Lab (steps 3, 5 and 6).
  *
  * A small platformer made of tiles and bricks:
- * - Tiles (STARTER_TILES): the ground, a few floating brick and ? platforms, a one-way platform, a bounce block, walls for the Walkers, a gap and a spike pit.
- *   They are painted on the level's tile layer, not placed as bricks.
- * - Hero: the open-block Hero (studio/hero), with labels and handlers for boing, hero hurt, stomped, spikes, lava and ? blocks.
+ * - Grid cells (createStarterTiles): the ground, a few floating Brick and ? block platforms, a one-way platform, a Bounce block, hard-block walls for the Walkers, a gap and a Spikes pit.
+ *   They are painted on the level's grid, one char per cell, and each char is one of the standard grid bricks (gridBricks.ts) with its own code.
+ * - Hero: the open-block Hero (studio/hero), with labels and handlers for boing, hero hurt, stomped and bounce. Spikes, lava and ? blocks are bricks that run their own code.
  * - Walker (two copies, different "speed" knobs), Coin, Spring and Goal: each is a few short labelled scripts
  *   made of My Blocks (real procedures_definition / procedures_call), so the top view reads like a sentence and a kid
  *   can drill into any My Block to see how it works.
@@ -14,14 +14,13 @@
  * Every costume is pixel art built with `imageFromRows`; every brick's blocks are real Blockly workspace JSON.
  *
  * Labels: each top script's hat carries `data: "label:<text>"` (studio/code/layers.ts), see `withLabel` in hero/heroBrick.ts.
- *
- * Note: `platformer_touchingtile` (the Hero's spike check) only runs once the tiles lane is merged. The compiler doesn't
- * warn about unknown opcodes, so the starter compiles with zero diagnostics either way.
  */
 
-import { TILE_CHAR, TILE_SIZE, type BrickDef, type Costume, type LevelDesign, type TileKind, type TileLayer, type VariableDecl } from '../core/contracts'
+import { TILE_SIZE, type BrickDef, type Costume, type LevelDesign, type TileLayer, type VariableDecl } from '../core/contracts'
 import { compileWorkspace, type WorkspaceJson } from '../core/editor/compile'
-import { createHeroBrick, HERO_START, withLabel } from './hero/heroBrick'
+import { createHeroBrick, HERO_START } from './hero/heroBrick'
+import { GRID_BRICK_KEYS, gridBrickTemplate, type GridBrickKey } from './gridBricks'
+import { Blocks, chain, type BlockJson, type MyBlock } from './blockBuilder'
 import { costumeFromImage, imageFromRows } from './pixels'
 import { STAGE_ID, type StudioProject } from './store'
 
@@ -203,175 +202,6 @@ export function createCostumes(): {
 // Blockly workspace JSON helpers
 // -----------------------------------------------------------------------------
 
-type BlockJson = Record<string, unknown>
-type Conn = { block: BlockJson } | { shadow: BlockJson }
-
-/** A My Block: its definition and calls share this. `proccode` uses %s for each number input, as in Scratch. */
-interface MyBlock {
-  proccode: string
-  argumentNames: string[]
-}
-
-/** Builds one brick's workspace JSON. Block ids are `<prefix>_<n>`, so they never repeat inside a brick. */
-class Blocks {
-  private n = 0
-  private row = 0
-  readonly scripts: BlockJson[] = []
-  constructor(private readonly prefix: string) {}
-
-  id(): string {
-    return `${this.prefix}_${++this.n}`
-  }
-  blk(type: string, extra: BlockJson = {}): BlockJson {
-    return { type, id: this.id(), ...extra }
-  }
-  num(value: number): Conn {
-    return { shadow: { type: 'math_number', id: this.id(), fields: { NUM: value } } }
-  }
-  text(value: string): Conn {
-    return { shadow: { type: 'text', id: this.id(), fields: { TEXT: value } } }
-  }
-  as(c: Conn | number): Conn {
-    return typeof c === 'number' ? this.num(c) : c
-  }
-  v(variableId: string): Conn {
-    return { block: this.blk('data_variable', { fields: { VARIABLE: variableId } }) }
-  }
-  arg(name: string): Conn {
-    return { block: this.blk('argument_reporter_string_number', { fields: { VALUE: name } }) }
-  }
-  sub(a: Conn | number, b: Conn | number): Conn {
-    return { block: this.blk('operator_subtract', { inputs: { NUM1: this.as(a), NUM2: this.as(b) } }) }
-  }
-  mul(a: Conn | number, b: Conn | number): Conn {
-    return { block: this.blk('operator_multiply', { inputs: { NUM1: this.as(a), NUM2: this.as(b) } }) }
-  }
-  gt(a: Conn | number, b: Conn | number): Conn {
-    return { block: this.blk('operator_gt', { inputs: { OPERAND1: this.as(a), OPERAND2: this.as(b) } }) }
-  }
-  add(a: Conn | number, b: Conn | number): Conn {
-    return { block: this.blk('operator_add', { inputs: { NUM1: this.as(a), NUM2: this.as(b) } }) }
-  }
-  touchingHero(): Conn {
-    return { block: this.blk('sensing_touchingobject', { fields: { TOUCHINGOBJECTMENU: 'Hero' } }) }
-  }
-  /** The Hero's y position (sensing "y position of Hero"). */
-  heroY(): Conn {
-    return { block: this.blk('sensing_of', { fields: { PROPERTY: 'y position', OBJECT: 'Hero' } }) }
-  }
-  myY(): Conn {
-    return { block: this.blk('motion_yposition') }
-  }
-  xSpeed(): Conn {
-    return { block: this.blk('platformer_speed', { fields: { AXIS: 'x' } }) }
-  }
-  direction(): Conn {
-    return { block: this.blk('motion_direction') }
-  }
-
-  set(variableId: string, value: Conn | number): BlockJson {
-    return this.blk('data_setvariableto', { fields: { VARIABLE: variableId }, inputs: { VALUE: this.as(value) } })
-  }
-  change(variableId: string, value: Conn | number): BlockJson {
-    return this.blk('data_changevariableby', { fields: { VARIABLE: variableId }, inputs: { VALUE: this.as(value) } })
-  }
-  setSpeed(axis: 'x' | 'y', value: Conn | number): BlockJson {
-    return this.blk('platformer_setspeed', { fields: { AXIS: axis }, inputs: { SPEED: this.as(value) } })
-  }
-  gravityOn(): BlockJson {
-    return this.blk('platformer_setgravity', { fields: { GRAVITY: 'on' } })
-  }
-  broadcast(message: string): BlockJson {
-    return this.blk('event_broadcast', { inputs: { BROADCAST_INPUT: this.text(message) } })
-  }
-  hide(): BlockJson {
-    return this.blk('looks_hide')
-  }
-  show(): BlockJson {
-    return this.blk('looks_show')
-  }
-  stopAll(): BlockJson {
-    return this.blk('control_stop', { fields: { STOP_OPTION: 'all' } })
-  }
-  pointInDirection(d: Conn | number): BlockJson {
-    return this.blk('motion_pointindirection', { inputs: { DIRECTION: this.as(d) } })
-  }
-  say(message: string): BlockJson {
-    return this.blk('looks_say', { inputs: { MESSAGE: this.text(message) } })
-  }
-  turnRight(degrees: number): BlockJson {
-    return this.blk('motion_turnright', { inputs: { DEGREES: this.num(degrees) } })
-  }
-  rotationStyle(style: string): BlockJson {
-    return this.blk('motion_setrotationstyle', { fields: { STYLE: style } })
-  }
-  when(cond: Conn, then: BlockJson[]): BlockJson {
-    return this.blk('control_if', { inputs: { CONDITION: cond, SUBSTACK: { block: chain(then) } } })
-  }
-  either(cond: Conn, then: BlockJson[], otherwise: BlockJson[]): BlockJson {
-    return this.blk('control_if_else', {
-      inputs: { CONDITION: cond, SUBSTACK: { block: chain(then) }, SUBSTACK2: { block: chain(otherwise) } },
-    })
-  }
-  forever(body: BlockJson[]): BlockJson {
-    return this.blk('control_forever', { inputs: { SUBSTACK: { block: chain(body) } } })
-  }
-  /** A call to a My Block. `args` are the input values in the order of `argumentNames`. */
-  call(proc: MyBlock, ...args: Array<Conn | number>): BlockJson {
-    const inputs: Record<string, Conn> = {}
-    proc.argumentNames.forEach((name, i) => {
-      inputs[name] = this.as(args[i] ?? 0)
-    })
-    return this.blk('procedures_call', {
-      extraState: { proccode: proc.proccode, argumentNames: proc.argumentNames, warp: false },
-      ...(proc.argumentNames.length > 0 ? { inputs } : {}),
-    })
-  }
-
-  /** Adds a labelled top script: the hat comes first, the body follows. Scripts lay out down the left side. */
-  script(label: string, hat: BlockJson, body: BlockJson[]): BlockJson {
-    hat.next = { block: chain(body) }
-    return this.place(withLabel(hat, label), 20)
-  }
-  flag(label: string, body: BlockJson[]): BlockJson {
-    return this.script(label, this.blk('event_whenflagclicked'), body)
-  }
-  receive(label: string, message: string, body: BlockJson[]): BlockJson {
-    return this.script(label, this.blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message } }), body)
-  }
-  bump(label: string, side: string, body: BlockJson[]): BlockJson {
-    return this.script(label, this.blk('platformer_whenbump', { fields: { SIDE: side, BRICK: '_any_' } }), body)
-  }
-  /** A My Block definition (kept in the right-hand column, out of the way of the scripts). */
-  define(proc: MyBlock, label: string, body: BlockJson[], warp = false): BlockJson {
-    const def = this.blk('procedures_definition', { extraState: { proccode: proc.proccode, argumentNames: proc.argumentNames, warp }, next: { block: chain(body) } })
-    return this.place(withLabel(def, label), 520)
-  }
-  private place(top: BlockJson, x: number): BlockJson {
-    top.x = x
-    top.y = 20 + (x === 20 ? this.scriptRows++ : this.defRows++) * 240
-    this.scripts.push(top)
-    return top
-  }
-  private scriptRows = 0
-  private defRows = 0
-
-  workspace(variables: Array<{ id: string; name: string }> = []): WorkspaceJson {
-    return { ...(variables.length > 0 ? { variables } : {}), blocks: { blocks: this.scripts as never } }
-  }
-}
-
-/** Chains blocks with `next`, first to last. */
-function chain(blocks: BlockJson[]): BlockJson {
-  const [first, ...rest] = blocks
-  if (!first) throw new Error('chain needs at least one block')
-  let tail = first
-  for (const block of rest) {
-    tail.next = { block }
-    tail = block
-  }
-  return first
-}
 
 // -----------------------------------------------------------------------------
 // The bricks. Each `create...Brick(id, name)` returns a fresh brick, so templates reuse them.
@@ -626,16 +456,19 @@ export const STARTER_WALLS: ReadonlyArray<{ col: number; row: number }> = [
   { col: 39, row: 1 },
 ]
 
+/** Each standard grid brick's `grid.char`, read from the brick itself (G H S L - B Q O). */
+export const STARTER_CHAR = Object.fromEntries(GRID_BRICK_KEYS.map((k) => [k, gridBrickTemplate(k).brick.grid!.char])) as Record<GridBrickKey, string>
+
 export function createStarterTiles(): TileLayer {
   const grid: string[][] = Array.from({ length: STARTER_ROWS }, () => Array.from({ length: STARTER_COLS }, () => '.'))
-  const put = (col: number, row: number, tile: TileKind | '.' | 'B' | 'Q'): void => {
-    grid[row]![col] = tile in TILE_CHAR ? TILE_CHAR[tile as TileKind] : tile
+  const put = (col: number, row: number, tile: GridBrickKey): void => {
+    grid[row]![col] = STARTER_CHAR[tile]
   }
   for (let col = 0; col < STARTER_COLS; col++) {
     if (STARTER_GAP_COLS.includes(col)) continue
     put(col, 0, STARTER_PIT_COLS.includes(col) ? 'spikes' : 'ground')
   }
-  for (const p of STARTER_PLATFORMS) [...p.tiles].forEach((ch, i) => put(p.col + i, p.row, ch as 'B' | 'Q'))
+  for (const p of STARTER_PLATFORMS) [...p.tiles].forEach((ch, i) => put(p.col + i, p.row, ch === 'Q' ? 'qblock' : 'brick'))
   for (const w of STARTER_WALLS) put(w.col, w.row, 'hard')
   for (let i = 0; i < STARTER_ONE_WAY.length; i++) put(STARTER_ONE_WAY.col + i, STARTER_ONE_WAY.row, 'semi')
   put(STARTER_BOUNCE.col, STARTER_BOUNCE.row, 'bounce')
@@ -670,6 +503,12 @@ export function createStarterProject(): StudioProject {
   const spring = createSpringBrick('brick_spring', 'Spring')
   const goal = createGoalBrick('brick_goal', 'Goal')
 
+  // The standard grid bricks: ids brick_ground, brick_hard, ... Their cells are the tiles layer (grid.char).
+  const gridBricks = GRID_BRICK_KEYS.map((key) => {
+    const t = gridBrickTemplate(key)
+    return { key, brick: { ...t.brick, id: `brick_${key}` } as BrickDef, workspace: t.workspace }
+  })
+
   const stageWs = createStageWorkspace()
   const coinsVar: VariableDecl = { id: 'coins', name: 'coins', value: 0 }
   const stageBrick: BrickDef = {
@@ -689,7 +528,7 @@ export function createStarterProject(): StudioProject {
     bounds: { left: 0, right: 960, bottom: 0, top: 360 },
     stage: stageBrick,
     tiles: createStarterTiles(),
-    bricks: [hero.brick, walker.brick, coin.brick, spring.brick, goal.brick],
+    bricks: [hero.brick, walker.brick, coin.brick, spring.brick, goal.brick, ...gridBricks.map((g) => g.brick)],
     copies: [
       // Starts above the ground so you can watch it fall and land on the ground tiles.
       { id: 'copy_hero', brickId: hero.brick.id, x: HERO_START.x, y: 40 },
@@ -708,6 +547,7 @@ export function createStarterProject(): StudioProject {
     brick_coin: coin.workspace,
     brick_spring: spring.workspace,
     brick_goal: goal.workspace,
+    ...Object.fromEntries(gridBricks.map((g) => [g.brick.id, g.workspace])),
   }
 
   return { design, workspaces }
