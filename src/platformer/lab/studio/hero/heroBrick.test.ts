@@ -286,11 +286,22 @@ describe('The Hero brick is built from open blocks', () => {
     const { workspace, brick } = createHeroBrick()
     const variables = heroVariables()
     registerEditorBlocks({ getVariables: () => variables, getBricks: () => ['Hero'] })
+    // `platformer_touchingtile` comes from the tiles lane (core/editor/tileBlocks.ts, wired in by the integrator). Until
+    // then register a stand-in with the same shape (a Boolean with fields.TILE) so the Hero's spike check can load.
+    const stubbed = !Blockly.Blocks['platformer_touchingtile']
+    if (stubbed) {
+      Blockly.Blocks['platformer_touchingtile'] = {
+        init(this: Blockly.Block) {
+          this.appendDummyInput().appendField('touching tile').appendField(new Blockly.FieldDropdown([['spikes', 'spikes']]), 'TILE')
+          this.setOutput(true, 'Boolean')
+        },
+      }
+    }
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 1 flag script, 7 My Blocks, 2 bump hats.
-      expect(ws.getTopBlocks(false)).toHaveLength(10)
+      // 2 flag scripts (feel, spikes), 7 My Blocks, 2 bump hats, 3 broadcast hats (boing, stomped, hero hurt).
+      expect(ws.getTopBlocks(false)).toHaveLength(14)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -301,6 +312,7 @@ describe('The Hero brick is built from open blocks', () => {
       expect(again.program.procedures.every((p) => p.body.length > 0)).toBe(true)
     } finally {
       ws.dispose()
+      if (stubbed) delete Blockly.Blocks['platformer_touchingtile']
     }
   })
 
@@ -327,6 +339,8 @@ describe('The Hero brick is built from open blocks', () => {
       'data_changevariableby', 'sensing_keypressed', 'operator_add', 'operator_subtract', 'operator_multiply',
       'operator_divide', 'operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or', 'operator_not',
       'operator_mathop', 'math_number',
+      // step 6: the Hero answers boing, stomped, hero hurt and the spike tiles
+      'event_whenbroadcastreceived', 'event_broadcast', 'motion_gotoxy', 'platformer_touchingtile', 'text',
     ])
     expect([...opcodes].filter((o) => !known.has(o))).toEqual([])
     expect(JSON.stringify(workspace)).toContain('"GRAVITY":"off"')

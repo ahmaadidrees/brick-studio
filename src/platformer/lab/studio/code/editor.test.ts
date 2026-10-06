@@ -146,11 +146,11 @@ describe('Code Editor: Message and Context Extraction', () => {
     const store = new StudioStore(project)
     const brick1Id = store.getState().selectedBrickId
 
-    // Add local variable to brick
+    // Add local variable to brick (not 'speed': the starter Hero already has one)
     const brick = store.brick(brick1Id)!
     brick.program.variables.push({
-      id: 'var_speed',
-      name: 'speed',
+      id: 'var_bounce',
+      name: 'bounce',
       value: 5,
       showInBuild: true,
     })
@@ -167,12 +167,12 @@ describe('Code Editor: Message and Context Extraction', () => {
     const vars = ctx.getVariables?.() ?? []
 
     // Both local and global variables are available
-    expect(vars.some((v) => v.name === 'speed')).toBe(true)
+    expect(vars.some((v) => v.name === 'bounce')).toBe(true)
     expect(vars.some((v) => v.name === 'score')).toBe(true)
 
     // Build knob is preserved
-    const speedVar = vars.find((v) => v.name === 'speed')
-    expect(speedVar?.showInBuild).toBe(true)
+    const bounceVar = vars.find((v) => v.name === 'bounce')
+    expect(bounceVar?.showInBuild).toBe(true)
 
     // Stage detection
     expect(ctx.isStage).toBe(false)
