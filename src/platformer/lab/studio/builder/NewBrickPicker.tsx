@@ -48,9 +48,9 @@ export function NewBrickPicker({ store, templates = BRICK_TEMPLATES, onClose }: 
             </button>
           </div>
         ) : (
-          <div className="builder-template-grid" role="list" aria-label="Brick templates">
+          <div className="builder-template-grid" role="group" aria-label="Brick templates">
             {templates.map((t) => (
-              <button key={t.id} type="button" role="listitem" className="builder-template" onClick={() => setChosen(t)}>
+              <button key={t.id} type="button" className="builder-template" onClick={() => setChosen(t)}>
                 <strong>{t.label}</strong>
                 <span>{t.blurb}</span>
               </button>

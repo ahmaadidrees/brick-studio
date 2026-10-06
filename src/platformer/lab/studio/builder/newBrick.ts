@@ -4,6 +4,9 @@ import { chooseUniqueName } from '../assets/words'
 import type { StudioStore } from '../store'
 import type { BrickTemplate } from '../templates'
 
+/** Counts the bricks made from templates in this project, so each make() gets ids it has not used before. */
+const serials = new WeakMap<StudioStore, number>()
+
 /**
  * Make a brick from a template and open the workshop on it. Returns the new brick's id.
  * `word` is the name the kid picked; it is made unique among the level's bricks ("Robot 2").
@@ -11,9 +14,8 @@ import type { BrickTemplate } from '../templates'
 export function createBrickFromTemplate(store: StudioStore, template: BrickTemplate, word: string): string {
   const design = store.getState().project.design
   const name = chooseUniqueName(word, design.bricks.map((b) => b.name))
-  const taken = new Set(design.bricks.map((b) => b.id))
-  let n = 1
-  while (taken.has(`${template.id}_${n}`)) n++
+  const n = (serials.get(store) ?? 0) + 1
+  serials.set(store, n)
   const { brick, workspace } = template.make(`${template.id}_${n}`, name)
   const { id: _id, ...rest } = brick
   const id = store.addBrickFrom({ ...rest, name }, workspace)

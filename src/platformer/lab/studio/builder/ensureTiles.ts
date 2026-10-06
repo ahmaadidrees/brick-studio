@@ -18,5 +18,11 @@ export function withTiles(project: StudioProject): StudioProject {
 export function ensureTiles(store: StudioStore): void {
   const project = store.getState().project
   if (project.design.tiles) return
+  // load() resets the selection; put back what the kid had armed and selected.
+  const { selectedBrickId, selectedCopyId, brushBrickId, brushTile } = store.getState()
   store.load(withTiles(project))
+  store.selectBrick(selectedBrickId)
+  store.selectCopy(selectedCopyId)
+  if (brushTile) store.setTileBrush(brushTile)
+  else store.setBrush(brushBrickId)
 }
