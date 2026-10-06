@@ -492,7 +492,7 @@ export function createHeroWorkspace(): WorkspaceJson {
     blk('platformer_whenbump', { fields: { SIDE: 'right', BRICK: '_any_' }, next: { block: chain([set('wall_hit', -1), call('hit a wall')])! } }),
   )
 
-  // Step 6: how the Hero answers the rest of the level. Messages come from the Spring, Walkers and the spike tiles.
+  // Step 6: how the Hero answers the rest of the level. Messages come from the Spring, Walkers, Spikes, Lava and Bounce blocks.
   const bc = (message: string): Json => blk('event_broadcast', { inputs: { BROADCAST_INPUT: { shadow: { type: 'text', id: ids.next(), fields: { TEXT: message } } } } })
   const goTo = (x: number, y: number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
   const receive = (message: string, body: Json[]): Json =>
@@ -501,35 +501,11 @@ export function createHeroWorkspace(): WorkspaceJson {
   const onBoing = receive('boing', [setY(14)])
   // A stomped Walker: a small bounce.
   const onStomped = receive('stomped', [setY(8)])
-  // Hurt (by a Walker, or by spikes): back to the start, standing still.
+  // Hurt (by a Walker, Spikes or Lava): back to the start, standing still.
   const onHurt = receive('hero hurt', [goTo(HERO_START.x, HERO_START.y), setX(0), setY(0)])
-  // Spikes and lava are tiles, not bricks: ask the tile layer every tick, the same for both.
-  const spikeWatch = place(
-    blk('event_whenflagclicked', {
-      next: {
-        block: chain([
-          blk('control_forever', {
-            inputs: {
-              SUBSTACK: sub1([
-                when(
-                  or(
-                    { block: blk('platformer_touchingtile', { fields: { TILE: 'spikes' } }) },
-                    { block: blk('platformer_touchingtile', { fields: { TILE: 'lava' } }) },
-                  ),
-                  [bc('hero hurt')],
-                ),
-              ]),
-            },
-          }),
-        ])!,
-      },
-    }),
-  )
-
-  // A ? block hit from below: the Hero counts the coin. (The engine has no hidden score; the tile only reports the bump.)
-  const onQBlock = place(
-    blk('platformer_whenbump', { fields: { SIDE: 'bottom', BRICK: 'tile:qblock' }, next: { block: change('coins', 1) } }),
-  )
+  // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
+  // px/frame, times 2 for ticks: 11 and 6.5).
+  const onBounce = receive('bounce', [either(key('space'), [setY(11)], [setY(6.5)])])
 
   const labels: Array<[Json, string]> = [
     [start, 'When the level starts: turn gravity off, then do these every tick'],
@@ -545,15 +521,14 @@ export function createHeroWorkspace(): WorkspaceJson {
     [onBoing, 'When a Spring says boing: fly up'],
     [onStomped, 'When I stomp a Walker: bounce'],
     [onHurt, 'When I get hurt: go back to the start'],
-    [spikeWatch, 'When the level starts: spikes and lava hurt'],
-    [onQBlock, 'When I hit a ? block from below: count a coin'],
+    [onBounce, 'When a Bounce block says bounce: launch again, higher if I hold jump'],
   ]
   for (const [block, text] of labels) withLabel(block, text)
 
   return {
     variables: heroVariables().map((d) => ({ id: d.id, name: d.name })),
     blocks: {
-      blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, spikeWatch, onQBlock] as never,
+      blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, onBounce] as never,
     },
   }
 }
