@@ -1,7 +1,7 @@
 import type { CharacterId } from '@brick-studio/platformer-core/net/protocol'
 import type { LevelStyle } from '@brick-studio/platformer-core/engine/level'
 import type { PlayerPose } from '../render/art/characters'
-import { drawLocomotion, warmLocomotion } from './locomotion'
+import { drawApprovedMotion, warmApprovedMotion } from './approvedMotion'
 
 const CELL = 256
 const SHEET_WIDTH = CELL * 6
@@ -140,10 +140,10 @@ export function drawGeneratedCharacter(
   camY: number,
 ): number | null {
   if (!generated(look.character)) return null
-  // Warm the selected character's jointed artwork during idle, before its first step.
-  warmLocomotion(look.character)
+  // Warm the selected character's complete pose loops during idle, before its first step.
+  warmApprovedMotion(look.character)
   const normalHeight = style === 'cartoon' ? (look.size === 'big' ? 34 : 23) : (look.size === 'big' ? 31 : 17)
-  if (look.gait && look.gaitPhase !== undefined) {
+  if (look.gait && look.gaitPhase !== undefined && (look.gaitWeight ?? 1) > 0.05) {
     const cx = snap(look.x) - camX
     const feet = snap(look.y) - camY
     const squash = look.squash ? 0.6 : 1 - 0.10 * Math.max(0, Math.min(1, look.landingCompression ?? 0))
@@ -153,7 +153,7 @@ export function drawGeneratedCharacter(
       ctx.scale(1, squash)
       ctx.translate(0, -feet)
     }
-    const drawnTop = drawLocomotion(ctx, look.character, look.gaitPhase, look.gait, cx, feet, look.facing, normalHeight, { blend: look.gaitBlend, weight: look.gaitWeight ?? (look.pose === 'stand' ? 0 : 1) })
+    const drawnTop = drawApprovedMotion(ctx, look.character, look.gaitPhase, look.gait, cx, feet, look.facing, normalHeight)
     ctx.restore()
     const top = drawnTop === null ? null : feet + (drawnTop - feet) * squash
     if (top !== null) {

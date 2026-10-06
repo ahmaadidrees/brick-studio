@@ -1,0 +1,1443 @@
+{
+  "walk-individual-v8": {
+    "frameCount": 8,
+    "sourceReferenceHeight": 1010,
+    "frames": [
+      {
+        "index": 0,
+        "loop": "walk",
+        "image": "frames/frame01.png",
+        "phase": "Contact A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 626,
+        "referenceRowY": 0,
+        "baseline": 1182,
+        "scaleMultiplier": 0.993255
+      },
+      {
+        "index": 1,
+        "loop": "walk",
+        "image": "frames/frame02.png",
+        "phase": "Down A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 642,
+        "referenceRowY": 0,
+        "baseline": 1181,
+        "scaleMultiplier": 1.0
+      },
+      {
+        "index": 2,
+        "loop": "walk",
+        "image": "frames/frame03.png",
+        "phase": "Passing A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 659,
+        "referenceRowY": 0,
+        "baseline": 1180,
+        "scaleMultiplier": 0.973554
+      },
+      {
+        "index": 3,
+        "loop": "walk",
+        "image": "frames/frame04.png",
+        "phase": "Up A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 622,
+        "referenceRowY": 0,
+        "baseline": 1159,
+        "scaleMultiplier": 1.024348
+      },
+      {
+        "index": 4,
+        "loop": "walk",
+        "image": "frames/frame05.png",
+        "phase": "Contact B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 650,
+        "referenceRowY": 0,
+        "baseline": 1170,
+        "scaleMultiplier": 0.957724
+      },
+      {
+        "index": 5,
+        "loop": "walk",
+        "image": "frames/frame06.png",
+        "phase": "Down B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 628,
+        "referenceRowY": 0,
+        "baseline": 1154,
+        "scaleMultiplier": 1.008562
+      },
+      {
+        "index": 6,
+        "loop": "walk",
+        "image": "frames/frame07.png",
+        "phase": "Passing B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 626,
+        "referenceRowY": 0,
+        "baseline": 1154,
+        "scaleMultiplier": 0.976783
+      },
+      {
+        "index": 7,
+        "loop": "walk",
+        "image": "frames/frame08.png",
+        "phase": "Up B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 638,
+        "referenceRowY": 0,
+        "baseline": 1184,
+        "scaleMultiplier": 0.957724
+      }
+    ],
+    "notes": [
+      "Eight individually generated whole poses; repaired passing A leg identity and contact B arm swing.",
+      "Whole-pose alignment only. Up poses are closer to pre-contact than pronounced heel-rise. Browser motion review remains manual."
+    ]
+  },
+  "run-claude-v7": {
+    "frameCount": 6,
+    "sourceReferenceHeight": 1010,
+    "referenceCapWidth": 589,
+    "notes": [
+      "Six individually generated full-body PNGs, contact/passing/push-off repeated for opposing leg identities.",
+      "Pelvis anchors estimated from waist/crotch position; contact baseline is lowest solid sole pixel (alpha>=220). No added flight lift.",
+      "Each complete image is uniformly scaled to match a589-source-pixel cap width as a head-size proxy. This calibrates differing generated source sizes, not crop-height normalization or limb deformation.",
+      "Passing B lacks the same strong far-leg shading as the other poses. Push-off shoes do not form a precise toe-contact silhouette. Head shapes and body proportions still vary slightly."
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "image": "frames/frame01.png",
+        "phase": "Contact A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "anchorX": 630,
+        "referenceRowY": 0,
+        "baseline": 1160,
+        "scaleMultiplier": 1.0,
+        "measuredCapWidth": 589,
+        "opaqueBounds": [
+          237,
+          123,
+          1071,
+          1161
+        ],
+        "sha256": "e72c04d6b02515e39b238e3b2e638d7c07edccf094bfb226fb0d85da489715cf"
+      },
+      {
+        "index": 1,
+        "image": "frames/frame02.png",
+        "phase": "Passing A",
+        "rect": [
+          0,
+          0,
+          1243,
+          1265
+        ],
+        "anchorX": 625,
+        "referenceRowY": 0,
+        "baseline": 1158,
+        "scaleMultiplier": 1.0,
+        "measuredCapWidth": 589,
+        "opaqueBounds": [
+          398,
+          120,
+          1044,
+          1159
+        ],
+        "sha256": "f9ab856df7be7ed1cfb254315b034b542123ecb58949bb18a3c26fbec5d02f1c"
+      },
+      {
+        "index": 2,
+        "image": "frames/frame03.png",
+        "phase": "Push-off A",
+        "rect": [
+          0,
+          0,
+          1243,
+          1266
+        ],
+        "anchorX": 655,
+        "referenceRowY": 0,
+        "baseline": 1191,
+        "scaleMultiplier": 0.963993,
+        "measuredCapWidth": 611,
+        "opaqueBounds": [
+          245,
+          89,
+          1100,
+          1192
+        ],
+        "sha256": "4febc1ca54350d53a85f96ca503dbb5a351627f87772827c751a1224af611196"
+      },
+      {
+        "index": 3,
+        "image": "frames/frame04.png",
+        "phase": "Contact B",
+        "rect": [
+          0,
+          0,
+          1246,
+          1263
+        ],
+        "anchorX": 630,
+        "referenceRowY": 0,
+        "baseline": 1176,
+        "scaleMultiplier": 0.936407,
+        "measuredCapWidth": 629,
+        "opaqueBounds": [
+          235,
+          92,
+          1094,
+          1177
+        ],
+        "sha256": "aae8056354120bc7f4c34927efcf9da9b64dc1e2cf83851a3b32ef056fdb3c91"
+      },
+      {
+        "index": 4,
+        "image": "frames/frame05.png",
+        "phase": "Passing B",
+        "rect": [
+          0,
+          0,
+          1246,
+          1263
+        ],
+        "anchorX": 625,
+        "referenceRowY": 0,
+        "baseline": 1160,
+        "scaleMultiplier": 0.994932,
+        "measuredCapWidth": 592,
+        "opaqueBounds": [
+          342,
+          121,
+          1051,
+          1161
+        ],
+        "sha256": "1ebe09da16e854803010bf19f568f55ad76e706c85f495e33aa172d499a64a22"
+      },
+      {
+        "index": 5,
+        "image": "frames/frame06.png",
+        "phase": "Push-off B",
+        "rect": [
+          0,
+          0,
+          1246,
+          1263
+        ],
+        "anchorX": 655,
+        "referenceRowY": 0,
+        "baseline": 1183,
+        "scaleMultiplier": 0.903374,
+        "measuredCapWidth": 652,
+        "opaqueBounds": [
+          221,
+          86,
+          1142,
+          1184
+        ],
+        "sha256": "044e9222e318207eb3de92afb55fbed3d996477a10901ebfbedc333ee0441390"
+      }
+    ]
+  },
+  "bolt-bot-walk-v2": {
+    "character": "bolt-bot",
+    "gait": "walk",
+    "frameCount": 8,
+    "sourceReferenceHeight": 1021,
+    "referenceHeadWidth": 605,
+    "notes": [
+      "Full unchanged generated poses; scale measured from head geometry, never moving legs.",
+      "Fixed physical reference height and head width shared between both character gaits.",
+      "Torso anchor and lowest solid sole baseline; no synthetic limbs, artificial bob, or flight lift.",
+      "Phase names identify intended ordering; generated pose/compression and head/body proportions remain approximate."
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "image": "frames/frame01.png",
+        "phase": "Contact A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          333,
+          145,
+          942,
+          613
+        ],
+        "torsoBounds": [
+          500,
+          574,
+          790,
+          806
+        ],
+        "measuredHeadWidth": 609,
+        "anchorX": 645.0,
+        "referenceRowY": 0,
+        "baseline": 1164,
+        "opaqueBounds": [
+          269,
+          135,
+          986,
+          1165
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "45d3df8cb29acc6ab5b0dd44220d1f16fb40e89df7fdd77c8b0e2bcaf3285839",
+        "scaleMultiplier": 0.993432
+      },
+      {
+        "index": 1,
+        "image": "frames/frame02.png",
+        "phase": "Down A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          333,
+          144,
+          939,
+          613
+        ],
+        "torsoBounds": [
+          493,
+          574,
+          790,
+          808
+        ],
+        "measuredHeadWidth": 606,
+        "anchorX": 641.5,
+        "referenceRowY": 0,
+        "baseline": 1153,
+        "opaqueBounds": [
+          323,
+          135,
+          1019,
+          1154
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "7da09a24ccb3e0cc38ab2bcc9336ab974b5389a096965f3ea5de5bb8777fc6ea",
+        "scaleMultiplier": 0.99835
+      },
+      {
+        "index": 2,
+        "image": "frames/frame03.png",
+        "phase": "Passing A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          329,
+          143,
+          941,
+          613
+        ],
+        "torsoBounds": [
+          494,
+          572,
+          788,
+          804
+        ],
+        "measuredHeadWidth": 612,
+        "anchorX": 641.0,
+        "referenceRowY": 0,
+        "baseline": 1168,
+        "opaqueBounds": [
+          319,
+          133,
+          952,
+          1169
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "5bbe845e0b51a70afb8ae8b2ebea4f6a0c224c8c06a100931fd6e68b2aa25dd5",
+        "scaleMultiplier": 0.988562
+      },
+      {
+        "index": 3,
+        "image": "frames/frame04.png",
+        "phase": "Up A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          332,
+          144,
+          940,
+          613
+        ],
+        "torsoBounds": [
+          492,
+          573,
+          780,
+          804
+        ],
+        "measuredHeadWidth": 608,
+        "anchorX": 636.0,
+        "referenceRowY": 0,
+        "baseline": 1143,
+        "opaqueBounds": [
+          289,
+          134,
+          1017,
+          1144
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "19fa733c7eba28b279343aa755512021f28fae76a2ac59c2ba1a7ab7f0120c94",
+        "scaleMultiplier": 0.995066
+      },
+      {
+        "index": 4,
+        "image": "frames/frame05.png",
+        "phase": "Contact B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          334,
+          144,
+          940,
+          613
+        ],
+        "torsoBounds": [
+          486,
+          574,
+          774,
+          751
+        ],
+        "measuredHeadWidth": 606,
+        "anchorX": 630.0,
+        "referenceRowY": 0,
+        "baseline": 1163,
+        "opaqueBounds": [
+          324,
+          135,
+          979,
+          1164
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "bde48092522173a2709ead87541eccce205be2782921dc6986960c5f63836d3f",
+        "scaleMultiplier": 0.99835
+      },
+      {
+        "index": 5,
+        "image": "frames/frame06.png",
+        "phase": "Down B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          330,
+          141,
+          941,
+          613
+        ],
+        "torsoBounds": [
+          493,
+          571,
+          789,
+          751
+        ],
+        "measuredHeadWidth": 611,
+        "anchorX": 641.0,
+        "referenceRowY": 0,
+        "baseline": 1153,
+        "opaqueBounds": [
+          299,
+          131,
+          952,
+          1154
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "b546342b4bfedd8267ffd0952ef7ad908256a61efcdcbe91fe83b4ad2f536719",
+        "scaleMultiplier": 0.99018
+      },
+      {
+        "index": 6,
+        "image": "frames/frame07.png",
+        "phase": "Passing B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          333,
+          146,
+          940,
+          613
+        ],
+        "torsoBounds": [
+          498,
+          573,
+          785,
+          800
+        ],
+        "measuredHeadWidth": 607,
+        "anchorX": 641.5,
+        "referenceRowY": 0,
+        "baseline": 1162,
+        "opaqueBounds": [
+          323,
+          136,
+          950,
+          1163
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "595cedd9227c9ad7c8850eb4cc69d37439f4236ce312179fd3616c78d6ef5d44",
+        "scaleMultiplier": 0.996705
+      },
+      {
+        "index": 7,
+        "image": "frames/frame08.png",
+        "phase": "Up B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          331,
+          145,
+          938,
+          613
+        ],
+        "torsoBounds": [
+          494,
+          574,
+          788,
+          805
+        ],
+        "measuredHeadWidth": 607,
+        "anchorX": 641.0,
+        "referenceRowY": 0,
+        "baseline": 1143,
+        "opaqueBounds": [
+          292,
+          135,
+          994,
+          1144
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "818c9f777d5b1402d3f440db03102e79ee49298a3965fc101f2f593a4725d2c6",
+        "scaleMultiplier": 0.996705
+      }
+    ]
+  },
+  "bolt-bot-run-v1": {
+    "character": "bolt-bot",
+    "gait": "run",
+    "frameCount": 6,
+    "sourceReferenceHeight": 1021,
+    "referenceHeadWidth": 605,
+    "notes": [
+      "Full unchanged generated poses; scale measured from head geometry, never moving legs.",
+      "Fixed physical reference height and head width shared between both character gaits.",
+      "Torso anchor and lowest solid sole baseline; no synthetic limbs, artificial bob, or flight lift.",
+      "Phase names identify intended ordering; generated pose/compression and head/body proportions remain approximate."
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "image": "frames/frame01.png",
+        "phase": "Contact A",
+        "rect": [
+          0,
+          0,
+          1313,
+          1198
+        ],
+        "headBounds": [
+          449,
+          99,
+          1007,
+          576
+        ],
+        "torsoBounds": [
+          561,
+          523,
+          850,
+          745
+        ],
+        "measuredHeadWidth": 558,
+        "anchorX": 705.5,
+        "referenceRowY": 0,
+        "baseline": 1108,
+        "opaqueBounds": [
+          274,
+          89,
+          1064,
+          1109
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "21fa8725d2179d141016fcdf409fedd69422eab08dcee2c3808c93a92c20143a",
+        "scaleMultiplier": 1.084229
+      },
+      {
+        "index": 1,
+        "image": "frames/frame02.png",
+        "phase": "Passing A",
+        "rect": [
+          0,
+          0,
+          1243,
+          1265
+        ],
+        "headBounds": [
+          414,
+          182,
+          929,
+          608
+        ],
+        "torsoBounds": [
+          512,
+          566,
+          766,
+          729
+        ],
+        "measuredHeadWidth": 515,
+        "anchorX": 639.0,
+        "referenceRowY": 0,
+        "baseline": 1109,
+        "opaqueBounds": [
+          267,
+          172,
+          1033,
+          1110
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "e7524d9a1354d93760d9c22fbf644eb6ba92421d31d4fe3be12d02e6d1740343",
+        "scaleMultiplier": 1.174757
+      },
+      {
+        "index": 2,
+        "image": "frames/frame03.png",
+        "phase": "Push-off A",
+        "rect": [
+          0,
+          0,
+          1374,
+          1145
+        ],
+        "headBounds": [
+          512,
+          103,
+          1080,
+          550
+        ],
+        "torsoBounds": [
+          607,
+          493,
+          876,
+          662
+        ],
+        "measuredHeadWidth": 568,
+        "anchorX": 741.5,
+        "referenceRowY": 0,
+        "baseline": 1081,
+        "opaqueBounds": [
+          261,
+          93,
+          1102,
+          1082
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "bd7930ec0031c7e5bf536ed158ed559df69dd8b49a2897e4a4c26f9a32f09d52",
+        "scaleMultiplier": 1.065141
+      },
+      {
+        "index": 3,
+        "image": "frames/frame04.png",
+        "phase": "Contact B",
+        "rect": [
+          0,
+          0,
+          1374,
+          1145
+        ],
+        "headBounds": [
+          493,
+          112,
+          1075,
+          528
+        ],
+        "torsoBounds": [
+          614,
+          530,
+          864,
+          764
+        ],
+        "measuredHeadWidth": 582,
+        "anchorX": 739.0,
+        "referenceRowY": 0,
+        "baseline": 1077,
+        "opaqueBounds": [
+          309,
+          101,
+          1136,
+          1078
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "27517e0bb9fa18d3ecae839ce546c1dce1a4139329d7117a3965cf03a8b12286",
+        "scaleMultiplier": 1.039519
+      },
+      {
+        "index": 4,
+        "image": "frames/frame05.png",
+        "phase": "Passing B",
+        "rect": [
+          0,
+          0,
+          1246,
+          1263
+        ],
+        "headBounds": [
+          368,
+          135,
+          950,
+          606
+        ],
+        "torsoBounds": [
+          514,
+          555,
+          755,
+          781
+        ],
+        "measuredHeadWidth": 582,
+        "anchorX": 634.5,
+        "referenceRowY": 0,
+        "baseline": 1117,
+        "opaqueBounds": [
+          245,
+          124,
+          961,
+          1118
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "c62a000ef22b241bea3f225e4318b90ebbf22564c1d7fc8c67160e5209702cc3",
+        "scaleMultiplier": 1.039519
+      },
+      {
+        "index": 5,
+        "image": "frames/frame06.png",
+        "phase": "Push-off B",
+        "rect": [
+          0,
+          0,
+          1376,
+          1143
+        ],
+        "headBounds": [
+          492,
+          111,
+          1041,
+          540
+        ],
+        "torsoBounds": [
+          614,
+          495,
+          863,
+          736
+        ],
+        "measuredHeadWidth": 549,
+        "anchorX": 738.5,
+        "referenceRowY": 0,
+        "baseline": 1086,
+        "opaqueBounds": [
+          327,
+          102,
+          1050,
+          1087
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "7978f9cb59b4761de356fba98bf501a00215116f5a9fe36de84c749482f6a38d",
+        "scaleMultiplier": 1.102004
+      }
+    ]
+  },
+  "brick-fox-walk-v2": {
+    "character": "brick-fox",
+    "gait": "walk",
+    "frameCount": 8,
+    "sourceReferenceHeight": 1005,
+    "referenceHeadWidth": 478,
+    "notes": [
+      "Full unchanged generated poses; scale measured from head geometry, never moving legs.",
+      "Fixed physical reference height and head width shared between both character gaits.",
+      "Torso anchor and lowest solid sole baseline; no synthetic limbs, artificial bob, or flight lift.",
+      "Phase names identify intended ordering; generated pose/compression and head/body proportions remain approximate."
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "image": "frames/frame01.png",
+        "phase": "Contact A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          461,
+          422,
+          947,
+          503
+        ],
+        "torsoBounds": [
+          528,
+          575,
+          816,
+          802
+        ],
+        "measuredHeadWidth": 486,
+        "anchorX": 672.0,
+        "referenceRowY": 0,
+        "baseline": 1133,
+        "opaqueBounds": [
+          144,
+          117,
+          959,
+          1134
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "0c55d42a8321a24746d6fcce0717de009780f1105ef1ef6f8a12c9a5cb9018b3",
+        "scaleMultiplier": 0.983539
+      },
+      {
+        "index": 1,
+        "image": "frames/frame02.png",
+        "phase": "Down A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          465,
+          418,
+          946,
+          498
+        ],
+        "torsoBounds": [
+          529,
+          569,
+          818,
+          803
+        ],
+        "measuredHeadWidth": 481,
+        "anchorX": 673.5,
+        "referenceRowY": 0,
+        "baseline": 1119,
+        "opaqueBounds": [
+          144,
+          118,
+          960,
+          1120
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "e99c1941bb6b05b83e72b0d151af54a1397ce4486a2cb22e197ac6ed0fa655e7",
+        "scaleMultiplier": 0.993763
+      },
+      {
+        "index": 2,
+        "image": "frames/frame03.png",
+        "phase": "Passing A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          460,
+          426,
+          948,
+          508
+        ],
+        "torsoBounds": [
+          512,
+          582,
+          810,
+          799
+        ],
+        "measuredHeadWidth": 488,
+        "anchorX": 661.0,
+        "referenceRowY": 0,
+        "baseline": 1149,
+        "opaqueBounds": [
+          145,
+          116,
+          948,
+          1150
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "72a162c5b305685e415929aecd376ee416945407c5b962cc6dda4c7226a1b088",
+        "scaleMultiplier": 0.979508
+      },
+      {
+        "index": 3,
+        "image": "frames/frame04.png",
+        "phase": "Up A",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          464,
+          421,
+          949,
+          502
+        ],
+        "torsoBounds": [
+          538,
+          574,
+          793,
+          794
+        ],
+        "measuredHeadWidth": 485,
+        "anchorX": 665.5,
+        "referenceRowY": 0,
+        "baseline": 1130,
+        "opaqueBounds": [
+          145,
+          117,
+          1001,
+          1131
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "73f484b405934846645671020113f50a43abb348c816950b1fd2f8ff3c5604d7",
+        "scaleMultiplier": 0.985567
+      },
+      {
+        "index": 4,
+        "image": "frames/frame05.png",
+        "phase": "Contact B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          462,
+          419,
+          959,
+          500
+        ],
+        "torsoBounds": [
+          532,
+          573,
+          798,
+          801
+        ],
+        "measuredHeadWidth": 497,
+        "anchorX": 665.0,
+        "referenceRowY": 0,
+        "baseline": 1128,
+        "opaqueBounds": [
+          133,
+          115,
+          959,
+          1129
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "99a09fee9fd844532ec4737084b4d2c27a4a595c3ad217c7870ca1dce201edcf",
+        "scaleMultiplier": 0.961771
+      },
+      {
+        "index": 5,
+        "image": "frames/frame06.png",
+        "phase": "Down B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          455,
+          421,
+          946,
+          503
+        ],
+        "torsoBounds": [
+          532,
+          576,
+          798,
+          804
+        ],
+        "measuredHeadWidth": 491,
+        "anchorX": 665.0,
+        "referenceRowY": 0,
+        "baseline": 1137,
+        "opaqueBounds": [
+          144,
+          115,
+          946,
+          1138
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "ca29169280dbde9386051999f57e9d14235f9c2912abc8085ddfbcdf3628ba73",
+        "scaleMultiplier": 0.973523
+      },
+      {
+        "index": 6,
+        "image": "frames/frame07.png",
+        "phase": "Passing B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          463,
+          420,
+          943,
+          501
+        ],
+        "torsoBounds": [
+          489,
+          573,
+          815,
+          799
+        ],
+        "measuredHeadWidth": 480,
+        "anchorX": 652.0,
+        "referenceRowY": 0,
+        "baseline": 1128,
+        "opaqueBounds": [
+          146,
+          117,
+          943,
+          1129
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "bcda00af3698e0c719000b0bae79c58ec3cf1c23b595479db56b216aabff4756",
+        "scaleMultiplier": 0.995833
+      },
+      {
+        "index": 7,
+        "image": "frames/frame08.png",
+        "phase": "Up B",
+        "rect": [
+          0,
+          0,
+          1231,
+          1277
+        ],
+        "headBounds": [
+          464,
+          417,
+          946,
+          497
+        ],
+        "torsoBounds": [
+          536,
+          568,
+          821,
+          799
+        ],
+        "measuredHeadWidth": 482,
+        "anchorX": 678.5,
+        "referenceRowY": 0,
+        "baseline": 1118,
+        "opaqueBounds": [
+          145,
+          117,
+          969,
+          1119
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "96a2d12fc722a69846fe3c3d651e55f1813e86e250476a3c2753393e06b8a37f",
+        "scaleMultiplier": 0.991701
+      }
+    ]
+  },
+  "brick-fox-run-v1": {
+    "character": "brick-fox",
+    "gait": "run",
+    "frameCount": 6,
+    "sourceReferenceHeight": 1005,
+    "referenceHeadWidth": 478,
+    "notes": [
+      "Full unchanged generated poses; scale measured from head geometry, never moving legs.",
+      "Fixed physical reference height and head width shared between both character gaits.",
+      "Torso anchor and lowest solid sole baseline; no synthetic limbs, artificial bob, or flight lift.",
+      "Phase names identify intended ordering; generated pose/compression and head/body proportions remain approximate."
+    ],
+    "frames": [
+      {
+        "index": 0,
+        "image": "frames/frame01.png",
+        "phase": "Contact A",
+        "rect": [
+          0,
+          0,
+          1374,
+          1145
+        ],
+        "headBounds": [
+          593,
+          387,
+          1072,
+          462
+        ],
+        "torsoBounds": [
+          618,
+          533,
+          893,
+          770
+        ],
+        "measuredHeadWidth": 479,
+        "anchorX": 755.5,
+        "referenceRowY": 0,
+        "baseline": 1044,
+        "opaqueBounds": [
+          244,
+          106,
+          1086,
+          1045
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "61cc4d692d53397dcc5c2612186bd921f17bf4ec16f8d89d5f7732676c1958d0",
+        "scaleMultiplier": 0.997912
+      },
+      {
+        "index": 1,
+        "image": "frames/frame02.png",
+        "phase": "Passing A",
+        "rect": [
+          0,
+          0,
+          1243,
+          1265
+        ],
+        "headBounds": [
+          462,
+          397,
+          1021,
+          486
+        ],
+        "torsoBounds": [
+          538,
+          593,
+          882,
+          844
+        ],
+        "measuredHeadWidth": 559,
+        "anchorX": 710.0,
+        "referenceRowY": 0,
+        "baseline": 1175,
+        "opaqueBounds": [
+          73,
+          64,
+          1106,
+          1176
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "5970f904c1ef9448ca2d800af96416afa1154c1bddcde85bbc8a3f3ffa4fbcfe",
+        "scaleMultiplier": 0.855098
+      },
+      {
+        "index": 2,
+        "image": "frames/frame03.png",
+        "phase": "Push-off A",
+        "rect": [
+          0,
+          0,
+          1374,
+          1145
+        ],
+        "headBounds": [
+          628,
+          357,
+          1133,
+          440
+        ],
+        "torsoBounds": [
+          626,
+          514,
+          959,
+          695
+        ],
+        "measuredHeadWidth": 505,
+        "anchorX": 792.5,
+        "referenceRowY": 0,
+        "baseline": 1085,
+        "opaqueBounds": [
+          223,
+          45,
+          1163,
+          1086
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "71634818983d89a077627014ac0c1bf2b9f351d5235fbbde9129c8f09a191dff",
+        "scaleMultiplier": 0.946535
+      },
+      {
+        "index": 3,
+        "image": "frames/frame04.png",
+        "phase": "Contact B",
+        "rect": [
+          0,
+          0,
+          1374,
+          1145
+        ],
+        "headBounds": [
+          596,
+          368,
+          1093,
+          447
+        ],
+        "torsoBounds": [
+          607,
+          524,
+          885,
+          745
+        ],
+        "measuredHeadWidth": 497,
+        "anchorX": 746.0,
+        "referenceRowY": 0,
+        "baseline": 1058,
+        "opaqueBounds": [
+          220,
+          72,
+          1103,
+          1059
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "a13ca0aefa1fe97f4f49731c4decee35e44852b9ea7734e05e827ff399867ce6",
+        "scaleMultiplier": 0.961771
+      },
+      {
+        "index": 4,
+        "image": "frames/frame05.png",
+        "phase": "Passing B",
+        "rect": [
+          0,
+          0,
+          1243,
+          1265
+        ],
+        "headBounds": [
+          497,
+          410,
+          1068,
+          496
+        ],
+        "torsoBounds": [
+          558,
+          587,
+          841,
+          826
+        ],
+        "measuredHeadWidth": 571,
+        "anchorX": 699.5,
+        "referenceRowY": 0,
+        "baseline": 1166,
+        "opaqueBounds": [
+          88,
+          86,
+          1069,
+          1167
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "0dcca366a7256e19a9e286bb5c96b7406e23bd4f11a629ed5261e3554bc793c8",
+        "scaleMultiplier": 0.837128
+      },
+      {
+        "index": 5,
+        "image": "frames/frame06.png",
+        "phase": "Push-off B",
+        "rect": [
+          0,
+          0,
+          1312,
+          1199
+        ],
+        "headBounds": [
+          572,
+          401,
+          1098,
+          485
+        ],
+        "torsoBounds": [
+          583,
+          560,
+          860,
+          781
+        ],
+        "measuredHeadWidth": 526,
+        "anchorX": 721.5,
+        "referenceRowY": 0,
+        "baseline": 1137,
+        "opaqueBounds": [
+          139,
+          86,
+          1098,
+          1138
+        ],
+        "alphaRange": [
+          0,
+          255
+        ],
+        "sha256": "bfb05da89565340e4c7d801f7045bcbe3b52430d35f19aff12d9f42e66265c86",
+        "scaleMultiplier": 0.908745
+      }
+    ]
+  }
+}

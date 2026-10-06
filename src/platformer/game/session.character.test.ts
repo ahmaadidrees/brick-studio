@@ -27,39 +27,35 @@ describe('GameSession character identity', () => {
     expect(sendPose).toHaveBeenCalledTimes(1)
   })
 
-  it('keeps a full left/right stride at one distance across walk and run, and freezes while stopped', () => {
+  it('advances a full distance-based stride and freezes while stopped', () => {
     const player = createPlayer(1)
     player.onGround = true
     player.vx = SUB
-    const phases = [0, 16, 32, 48, 64].map((pixels) => {
-      player.anim = pixels * SUB
-      const look = playerLook(player, pixels, 'builder')
-      expect(look.gait).toBe('walk')
-      expect(look.pose).toMatch(/^walk/)
-      return look.gaitPhase
+    const cycle = 23 * 1.05
+    const phases = [0, 1, 2, 3, 4].map((quarter) => {
+      player.anim = quarter * cycle / 4 * SUB
+      return playerLook(player, quarter * 6, 'builder', 100).gaitPhase
     })
-    expect(phases).toEqual([0, 0.25, 0.5, 0.75, 0])
-
-    player.anim = 20 * SUB
-    player.vx = 2 * SUB
-    const running = playerLook(player, 30, 'builder')
-    expect(running).toMatchObject({ gait: 'run', gaitPhase: 20 / 64 })
-    expect(playerLook(player, 30, 'builder', 2)).toMatchObject({ gait: 'walk', gaitPhase: 20 / 64 })
+    phases.forEach((phase, i) => expect(phase).toBeCloseTo((i / 4) % 1))
     player.vx = 0
-    expect(playerLook(player, 90, 'builder')).toMatchObject({ pose: 'stand', gaitPhase: 20 / 64 })
-    expect(playerLook(player, 90, 'builder').gait).toBeUndefined()
+    const stopped = playerLook(player, 25, 'builder', 100)
+    expect(stopped.pose).toBe('stand')
+    expect(stopped.gaitPhase).toBeCloseTo(phases[4]!)
+    expect(playerLook(player, 26, 'builder', 100).gaitPhase).toBeCloseTo(phases[4]!)
   })
 
   it('sends quantized cosmetic gait fields without changing the legacy pose', () => {
     const player = createPlayer(1)
     player.onGround = true
     player.vx = 2 * SUB
+    player.anim = 13 * SUB
+    playerLook(player, 19, 'builder')
     player.anim = 17 * SUB
     const fake = {
       mode: 'play', timeline: { tick: 10 }, player, character: 'builder', frameCount: 20,
       lookOf: () => playerLook(player, 20, 'builder'),
     }
     const pose = (GameSession.prototype as unknown as { pose: (this: GameSession) => { a: string; ga?: number; gp?: number } }).pose.call(fake as unknown as GameSession)
-    expect(pose).toMatchObject({ a: expect.stringMatching(/^walk/), ga: 1, gp: 68 })
+    expect(pose).toMatchObject({ a: expect.stringMatching(/^walk/), ga: 1, gp: Math.floor((4 / (23 * 1.28)) * 256) })
   })
 })

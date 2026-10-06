@@ -67,7 +67,7 @@ describe('generated character frames', () => {
     }
   })
 
-  it('loads the separate parts and mirrors the complete jointed character', () => {
+  it('waits for the complete approved loop and mirrors whole poses', () => {
     class MotionImage {
       decoding = ''
       src = ''
@@ -85,12 +85,15 @@ describe('generated character frames', () => {
     } as unknown as CanvasRenderingContext2D
     const look = { character: 'bolt-bot' as const, x: 80, y: 120, facing: 1 as const, size: 'small' as const, pose: 'walk1' as const, spark: false, gait: 'walk' as const, gaitPhase: 0 }
     expect(drawGeneratedCharacter(ctx, look, 'cartoon', (n) => n, 0, 0)).toBeNull()
-    const sheet = MotionImage.images.find(image => image.src.endsWith('bolt-bot-rig-v1.png'))!
-    sheet.onload?.()
+    const frames = MotionImage.images.filter(image => image.src.includes('/motion-v2/bolt-bot/walk/'))
+    expect(frames).toHaveLength(8)
+    frames.slice(0, 7).forEach(image => image.onload?.())
+    expect(drawGeneratedCharacter(ctx, look, 'cartoon', (n) => n, 0, 0)).toBeNull()
+    frames[7].onload?.()
     for (let i = 0; i < 8; i++) drawGeneratedCharacter(ctx, { ...look, gaitPhase: i / 8 }, 'cartoon', (n) => n, 0, 0)
     const calls = vi.mocked(ctx.drawImage).mock.calls
-    expect(calls.length).toBe(8 * 9) // two arms, two three-part legs, one body
-    expect(new Set(calls.map(call => `${call[1]},${call[2]}`)).size).toBe(5)
+    expect(calls.length).toBe(8) // one complete pose per frame
+    expect(new Set(calls.map(call => call[0])).size).toBe(8)
     expect(ctx.translate).toHaveBeenCalledWith(80, 120)
     drawGeneratedCharacter(ctx, { ...look, facing: -1 }, 'cartoon', (n) => n, 0, 0)
     expect(ctx.scale).toHaveBeenCalledWith(-1, 1)
