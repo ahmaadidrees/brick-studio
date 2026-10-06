@@ -329,12 +329,128 @@ describe('Starter level (starter.ts)', () => {
   // bricks' scripts, `set solid [top]` = only on top, reciprocal bump hats). Until it merges the old tile rules still run
   // underneath, so these are todo with the exact expectations; the integrator turns them into real tests (see the
   // report docs/qa/code-lab-core/reports/step7-bricks.md for the step-by-step).
-  it.todo('spikes (Spikes brick: when I bump [any] of [Hero] -> broadcast hero hurt): Hero set to x 736, y 100 over the pit falls on the Spikes and is back at [60, 24] after 20 more ticks')
-  it.todo('lava (Lava brick: forever, if touching Hero -> broadcast hero hurt): lava painted at col 10 row 5, Hero set to x 168, y 88, 20 ticks later it is at [60, 24] (not solid: it sank in)')
-  it.todo('? block: Hero at x 200 jumps (space 30 ticks) into cell:12:3: its costumeIndex is 1 (used), stage coins is 1, a second jump leaves coins at 1 and costumeIndex 1, and 30 ticks after the first hit no target with brickId brick_qblock is a clone (only the 7 painted cells remain)')
-  it.todo('Brick hop: Hero at x 184 jumps into cell:11:3 (y 56): the cell reaches y 60 during its hop and is back at y 56 exactly after 10 ticks; the Hero is stopped under it (bump [bottom] of [Brick])')
-  it.todo('Bounce block with space held: Hero dropped on cell:18:1 gets vy 11 each landing, with space released 6.5; the block shows costume "squashed" for 3 ticks (wait 0.1 s) then "bounce"')
-  it.todo('Ground cells: instantiate gives one target per non-"." char of the tiles layer, copyId cell:<col>:<row>, brickId brick_ground for G, costumeIndex 0 (grass top) because nothing is stacked above; all are solid after tick 1')
+  const cell = (rt: ReturnType<typeof play>, col: number, row: number) => rt.world.targets.find((t) => t.copyId === `cell:${col}:${row}` && !t.isClone)!
+
+  it('spikes (Spikes brick: when I bump [any] of [Hero] -> broadcast hero hurt): Hero over the pit falls on the Spikes and is back at the start', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    const h = of('copy_hero')
+    h.x = 736; h.y = 100
+    run(20 + 60)
+    expect([h.x, h.y]).toEqual([60, 24])
+    void rt
+  })
+
+  it('lava (Lava brick: forever, if touching Hero -> broadcast hero hurt): the Hero set into lava is back at the start 20 ticks later (lava is not solid)', () => {
+    const rt = play((() => {
+      const p = createStarterProject()
+      const rows = p.design.tiles!.data.slice()
+      rows[5] = rows[5]!.slice(0, 10) + STARTER_CHAR.lava + rows[5]!.slice(11)
+      return { ...p.design, tiles: { ...p.design.tiles!, data: rows } }
+    })())
+    for (let i = 0; i < 20; i++) rt.step()
+    const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    h.x = 168; h.y = 88
+    for (let i = 0; i < 20; i++) rt.step()
+    expect([h.x, h.y]).toEqual([60, 24])
+  })
+
+  // The fast Walker patrols x 119..233 on the ground, right under these two blocks, and hurts the Hero if they touch; take it out of the test.
+  const withoutWalkers = (rt: ReturnType<typeof play>) => { rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker') }
+
+  it('? block: the Hero jumping into cell:12:3 makes it used and counts one coin; a second jump gives nothing; the coin clone is deleted', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    withoutWalkers(rt)
+    const h = of('copy_hero')
+    const qs = () => rt.world.targets.filter((t) => t.brickId === 'brick_qblock')
+    expect(qs()).toHaveLength(7)
+    const jump = () => {
+      h.x = 200; h.y = 24; h.body!.vy = 0
+      run(2)
+      rt.pressKey('space'); run(30); rt.releaseKey('space')
+    }
+    jump()
+    expect([cell(rt, 12, 3).costumeIndex, rt.world.stage.variables.coins]).toEqual([1, 1])
+    run(30)
+    expect(qs().filter((t) => t.isClone)).toHaveLength(0)
+    expect(qs()).toHaveLength(7)
+    run(30)
+    jump()
+    expect([cell(rt, 12, 3).costumeIndex, rt.world.stage.variables.coins]).toEqual([1, 1])
+  })
+
+  it('Brick hop: the Hero jumping into cell:11:3 (y 56) makes it hop to y 60 and be back at y 56 after 10 ticks; the Hero is stopped under it', () => {
+    const { rt, of, run } = fresh()
+    run(20)
+    const h = of('copy_hero')
+    withoutWalkers(rt)
+    h.x = 184; h.y = 24
+    run(2)
+    const b = cell(rt, 11, 3)
+    expect(b.y).toBe(56)
+    rt.pressKey('space')
+    let peak = 56, hitAt = -1
+    for (let i = 0; i < 40; i++) {
+      rt.step()
+      peak = Math.max(peak, b.y)
+      if (hitAt < 0 && b.y > 56) hitAt = i
+    }
+    rt.releaseKey('space')
+    expect(hitAt).toBeGreaterThanOrEqual(0)
+    expect(peak).toBe(60)
+    expect(b.y).toBe(56)
+    // the Hero was stopped by the underside (its box top never passed the Brick's bottom, y 48)
+    expect(targetBounds(rt.world, h)!.top).toBeLessThanOrEqual(48)
+  })
+
+  it('Bounce block with space held: a Hero dropped on cell:18:1 gets vy 11 each landing, 6.5 with space released; the block shows "squashed" for 3 ticks then "bounce"', () => {
+    for (const [held, vy] of [[true, 11], [false, 6.5]] as const) {
+      const { rt, of, run } = fresh()
+      run(20)
+      const h = of('copy_hero')
+      h.x = 296; h.y = 120
+      if (held) rt.pressKey('space')
+      const o = cell(rt, 18, 1)
+      const launches: number[] = []
+      const costumes: number[] = []
+      let prev = h.body!.vy
+      let landed = false
+      for (let i = 0; i < 80; i++) {
+        rt.step()
+        if (h.body!.onGround) landed = true
+        // The bounce is the brick's code: the Hero rests one tick on it, then launches (step 7). Ignore the stale onGround jump on tick 0 when space is held.
+        if (landed && prev <= 0 && h.body!.vy > 0) launches.push(h.body!.vy)
+        prev = h.body!.vy
+        costumes.push(o.costumeIndex)
+      }
+      expect(launches.length).toBeGreaterThan(2)
+      expect(new Set(launches), String(held)).toEqual(new Set([vy]))
+      // costumes: [bounce, squashed]; squashed runs for a short stretch, then it springs back
+      expect(costumes).toContain(1)
+      const first = costumes.indexOf(1)
+      const len = costumes.slice(first).findIndex((c) => c === 0)
+      expect(len).toBe(3)
+    }
+  })
+
+  it('Ground cells: one target per non-"." char of the tiles layer, copyId cell:<col>:<row>, brick_ground for G, costume 0 (grass top); all solid after tick 1', () => {
+    const design = createStarterProject().design
+    const tiles = design.tiles!
+    const world = instantiate(design)
+    const cells = world.targets.filter((t) => t.copyId?.startsWith('cell:'))
+    let expected = 0
+    for (let r = 0; r < tiles.rows; r++) for (let c = 0; c < tiles.cols; c++) if (tiles.data[r]![c] !== '.') expected++
+    expect(cells).toHaveLength(expected)
+    const g = cells.find((t) => t.copyId === 'cell:0:0')!
+    expect([g.brickId, g.costumeIndex, g.x, g.y]).toEqual(['brick_ground', 0, 8, 8])
+    const rt = play(design)
+    rt.step()
+    const ground = rt.world.targets.filter((t) => t.brickId === 'brick_ground')
+    expect(ground.length).toBeGreaterThan(0)
+    expect(ground.every((t) => t.body?.solid === true)).toBe(true)
+  })
+
 
   // These two (one-way, bounce) pass today on the old tile rules and must keep passing on the bricks' own code.
   // Layout: one-way platform cols 33-36 row 3 (x 528..592, top y 64); ? blocks at the platforms listed above; bounce block col 18 row 1.
@@ -361,7 +477,8 @@ describe('Starter level (starter.ts)', () => {
     let prev = h.body!.vy
     for (let i = 0; i < 60; i++) {
       rt.step()
-      if (prev < 0 && h.body!.vy > 0) launches.push(h.body!.vy)
+      // The bounce is the brick's code now: the Hero rests one tick on it, then launches (step 7).
+      if (prev <= 0 && h.body!.vy > 0) launches.push(h.body!.vy)
       prev = h.body!.vy
     }
     expect(launches.length).toBeGreaterThan(3)

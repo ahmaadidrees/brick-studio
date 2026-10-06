@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { play } from '../core/index'
+import { targetBounds } from '../core/geometry'
+import { createStarterProject, STARTER_CHAR } from './starter'
 import { validateDesign } from '../core/project'
 import { compileWorkspace } from '../core/editor/compile'
 import type { BrickDef, LevelDesign, VariableDecl } from '../core/contracts'
@@ -262,7 +264,7 @@ describe('gridBrickTemplate: the eight standard grid bricks', () => {
 // -----------------------------------------------------------------------------------------------------------------
 // The scripts really run. The engine lane (cells as targets, reciprocal bumps) is not merged here, so each brick is
 // placed as an ordinary painted copy and its bump hat is swapped for `when I receive [poke]`: that tests everything
-// the brick does once the bump arrives, not the arrival. The two-sided bump itself is the it.todo below.
+// the brick does once the bump arrives, not the arrival. The two-sided bump itself is tested on the starter level further down.
 // -----------------------------------------------------------------------------------------------------------------
 
 const heroStandIn = (): BrickDef => ({ id: 'brick_hero', name: 'Hero', costumes: [createHeroCostume()], sounds: [], program: { scripts: [], procedures: [], variables: [], lists: [] } })
@@ -367,17 +369,21 @@ describe('the bricks run their own code (bump hat swapped for broadcast poke)', 
     expect(globals().coins).toBe(1)
   })
 
-  it('Brick: poke hops it up 4 and back to exactly its own height, even when poked again mid-hop', () => {
+  it('Brick: one poke shows the top of the hop (up 4) for a frame, then it comes back to exactly its own height', () => {
     const { rt, of, run } = start(levelWith(['brick'], [{ id: 'b', key: 'brick', x: 100, y: 100 }]))
     run(2)
     rt.broadcast('poke')
     let peak = 100
-    for (let i = 0; i < 10; i++) {
-      if (i === 1) rt.broadcast('poke')
-      run(1)
-      peak = Math.max(peak, of('b').y)
-    }
+    for (let i = 0; i < 10; i++) { run(1); peak = Math.max(peak, of('b').y) }
     expect(peak).toBe(104)
+    expect([of('b').x, of('b').y]).toEqual([100, 100])
+  })
+
+  it('Brick: poked again mid-hop, it still ends at exactly its own height', () => {
+    const { rt, of, run } = start(levelWith(['brick'], [{ id: 'b', key: 'brick', x: 100, y: 100 }]))
+    run(2)
+    rt.broadcast('poke')
+    for (let i = 0; i < 10; i++) { if (i === 1) rt.broadcast('poke'); run(1) }
     expect([of('b').x, of('b').y]).toEqual([100, 100])
   })
 
@@ -432,10 +438,94 @@ describe('Block (snaps to grid)', () => {
 // Needs the engine lane (cells as targets, set solid [top], reciprocal bumps). The integrator turns each into a test.
 // Layout of the starter: ? block cell:12:3 at x 200, Brick cell:11:3 at x 184, One-way cells cols 33-36 row 3, Bounce cell:18:1.
 // -----------------------------------------------------------------------------------------------------------------
-describe('after the engine merges (todo)', () => {
-  it.todo('two-sided bump: the Hero jumping up into cell:12:3 gets bump [bottom] of [? block] and the ? block gets bump [top] of [Hero] (starter: coins 1 after the jump)')
-  it.todo('One-way platform with set solid [top]: body.oneWay is true, the Hero jumps up through cols 33-36 row 3 from x 560 and lands with box bottom 64, onGround')
-  it.todo('Ground autotile: with a G cell above another G cell the lower cell starts on costumeIndex 1 (dirt); the top cell on 0 (grass)')
-  it.todo('Bounce block, Hero landing from y 120 at x 296 with space held: the Hero launches at y speed 11 on every landing; with space released, 6.5')
-  it.todo('Spikes: the Hero walking into a Spikes cell from the side (any side) is back at the start [60, 24]')
+describe('on the starter level, through the engine (cells are targets, bumps arrive on both sides)', () => {
+  const fresh = (design: LevelDesign = createStarterProject().design) => {
+    const rt = play(design)
+    const of = (id: string) => rt.world.targets.find((t) => t.copyId === id && !t.isClone)!
+    const run = (n: number) => { for (let i = 0; i < n; i++) rt.step() }
+    run(20)
+    // The Walkers patrol the ground under several of these spots and would hurt the Hero; take them out of these tests.
+    rt.world.targets = rt.world.targets.filter((t) => t.brickId !== 'brick_walker')
+    return { rt, of, run }
+  }
+
+  it('two-sided bump: the Hero jumping up into cell:12:3 gets bump [bottom] of [? block] and the ? block gets bump [top] of [Hero] (coins 1 after the jump)', () => {
+    const design = createStarterProject().design
+    const b = new Blocks('probe')
+    b.bump('Hero heard it', 'bottom', [b.change('heard', 1)], '? block')
+    const variables: VariableDecl[] = [{ id: 'heard', name: 'heard', value: 0 }]
+    const probe = compileWorkspace(b.workspace([{ id: 'heard', name: 'heard' }]), { variables }).program.scripts
+    const withProbe: LevelDesign = {
+      ...design,
+      stage: { ...design.stage, program: { ...design.stage.program, variables: [...design.stage.program.variables, ...variables] } },
+      bricks: design.bricks.map((x) => (x.id === 'brick_hero' ? { ...x, program: { ...x.program, scripts: [...x.program.scripts, ...probe] } } : x)),
+    }
+    const { rt, of, run } = fresh(withProbe)
+    const h = of('copy_hero')
+    h.x = 200; h.y = 24
+    run(2)
+    rt.pressKey('space'); run(30); rt.releaseKey('space')
+    expect(rt.world.stage.variables.heard).toBe(1) // the Hero's side
+    expect([of('cell:12:3').costumeIndex, rt.world.stage.variables.coins]).toEqual([1, 1]) // the ? block's side (bump [top] of [Hero])
+  })
+
+  it('One-way platform with set solid [top]: body.oneWay is true, the Hero jumps up through cols 33-36 row 3 from x 560 and lands with box bottom 64, onGround', () => {
+    const { rt, of, run } = fresh()
+    for (let c = 33; c <= 36; c++) expect(of(`cell:${c}:3`).body).toMatchObject({ solid: true, oneWay: true })
+    const h = of('copy_hero')
+    h.x = 560; h.y = 24
+    rt.pressKey('space')
+    let highest = 0
+    for (let i = 0; i < 40; i++) { run(1); highest = Math.max(highest, targetBounds(rt.world, h)!.bottom) }
+    rt.releaseKey('space')
+    expect(highest).toBeGreaterThan(64)
+    run(20)
+    expect([targetBounds(rt.world, h)!.bottom, h.body!.onGround]).toEqual([64, true])
+  })
+
+  it('Ground autotile: with a G cell above another G cell the lower cell starts on costumeIndex 1 (dirt); the top cell on 0 (grass)', () => {
+    const design = createStarterProject().design
+    const rows = design.tiles!.data.slice()
+    rows[1] = rows[1]!.slice(0, 2) + STARTER_CHAR.ground + rows[1]!.slice(3)
+    const { of } = fresh({ ...design, tiles: { ...design.tiles!, data: rows } })
+    expect([of('cell:2:0').costumeIndex, of('cell:2:1').costumeIndex]).toEqual([1, 0])
+    expect(of('cell:4:0').costumeIndex).toBe(0)
+  })
+
+  it('Bounce block, Hero landing from y 120 at x 296 with space held: the Hero launches at y speed 11 on every landing; with space released, 6.5', () => {
+    for (const [held, vy] of [[true, 11], [false, 6.5]] as const) {
+      const { rt, of, run } = fresh()
+      const h = of('copy_hero')
+      h.x = 296; h.y = 120
+      if (held) rt.pressKey('space')
+      const launches: number[] = []
+      let prev = h.body!.vy, landed = false
+      for (let i = 0; i < 80; i++) {
+        run(1)
+        if (h.body!.onGround) landed = true
+        // Ignore the stale onGround jump on tick 0 when space is held. The bounce is the brick's code, one tick after the landing.
+        if (landed && prev <= 0 && h.body!.vy > 0) launches.push(h.body!.vy)
+        prev = h.body!.vy
+      }
+      expect(launches.length, String(held)).toBeGreaterThan(2)
+      expect(new Set(launches), String(held)).toEqual(new Set([vy]))
+    }
+  })
+
+  it('Spikes: the Hero walking into a Spikes cell from the side (any side) is back at the start [60, 24]', () => {
+    const design = createStarterProject().design
+    const rows = design.tiles!.data.slice()
+    rows[1] = rows[1]!.slice(0, 10) + STARTER_CHAR.spikes + rows[1]!.slice(11)
+    const { rt, of, run } = fresh({ ...design, tiles: { ...design.tiles!, data: rows } })
+    const h = of('copy_hero')
+    h.x = 120; h.y = 24
+    run(2)
+    rt.pressKey('right arrow')
+    // Walk until the Hero is sent back (x jumps left of where it was); stop walking in that same tick.
+    let sentBack = false
+    for (let i = 0; i < 60 && !sentBack; i++) { const before = h.x; run(1); sentBack = h.x < before - 10 }
+    rt.releaseKey('right arrow')
+    expect(sentBack).toBe(true)
+    expect([h.x, h.y]).toEqual([60, 24])
+  })
 })

@@ -212,8 +212,10 @@ function brick(): GridBrickTemplate {
   const hop: MyBlock = { proccode: 'hop', argumentNames: [] }
   b.flag('When the level starts: be solid, and remember where I stand', [b.setSolid('on'), b.set(home, b.myY())])
   b.bump('When the Hero bumps me from below: hop', 'top', [b.call(hop)], 'Hero')
-  // Ends with "set y to home", so a second bump in the middle of a hop can't leave the block out of place.
-  b.define(hop, 'Up 4 steps, then back down', [b.repeat(2, [b.changeY(2)]), b.repeat(2, [b.changeY(-2)]), b.setYTo(b.v(home))])
+  // "wait 0" shows the top of the hop for a frame: like Scratch, a loop doesn't pause after its last pass, so without it
+  // the first step down would run in the same frame. Ends with "set y to home", so a second bump mid-hop can't leave
+  // the block out of place.
+  b.define(hop, 'Up 4 steps, then back down', [b.repeat(2, [b.changeY(2)]), b.wait(0), b.repeat(2, [b.changeY(-2)]), b.setYTo(b.v(home))])
   const variables: VariableDecl[] = [{ id: home, name: 'home', value: 0 }]
   return assemble({
     key: 'brick', name: 'Brick', char: 'B', category: 'blocks',

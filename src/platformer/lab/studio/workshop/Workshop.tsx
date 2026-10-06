@@ -5,6 +5,7 @@ import { STAGE_ID, useStudio, type EditorTab, type StudioStore } from '../store'
 import { KnobsCard } from './KnobsCard'
 import { TestRoom } from './TestRoom'
 import './workshop.css'
+import { cellCount } from '../builder/cells'
 
 const TABS: ReadonlyArray<{ id: EditorTab; label: string }> = [
   { id: 'code', label: 'Code' },
@@ -17,7 +18,12 @@ export function Workshop({ store }: { store: StudioStore }) {
   const brickId = useStudio(store, (s) => s.workshopBrickId ?? s.selectedBrickId)
   const tab = useStudio(store, (s) => s.editorTab)
   const brick = useStudio(store, (s) => (brickId === STAGE_ID ? s.project.design.stage : s.project.design.bricks.find((b) => b.id === brickId)))
-  const copies = useStudio(store, (s) => s.project.design.copies.filter((c) => c.brickId === brickId).length)
+  // Grid bricks (step 7) live as cells, not copies.
+  const copies = useStudio(store, (s) => {
+    const d = s.project.design
+    const grid = d.bricks.find((b) => b.id === brickId)?.grid
+    return grid ? cellCount(d, grid.char) : d.copies.filter((c) => c.brickId === brickId).length
+  })
   const icon = brick?.costumes[0]?.asset
 
   return (

@@ -9,6 +9,7 @@ import {
   type SavedProjectEnvelope,
 } from '../../core/save'
 import type { StudioProject } from '../store'
+import { upgradeLegacySaveText } from '../legacySave'
 
 export function createProjectEnvelope(project: StudioProject): SavedProjectEnvelope {
   return {
@@ -65,7 +66,8 @@ export type ImportResult =
  * Parses and validates an untrusted JSON string into a StudioProject.
  */
 export function importProjectJson(text: string): ImportResult {
-  const result = parse(text)
+  // Step 6/6b files painted engine tiles; give them the standard grid bricks first (step 7).
+  const result = parse(upgradeLegacySaveText(text))
   if (!result.ok) {
     const errorMsg =
       result.problems.length > 0

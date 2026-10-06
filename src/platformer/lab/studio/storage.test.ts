@@ -70,7 +70,8 @@ describe('Storage & Autosave (storage.ts)', () => {
   it('returns starter project when storage is empty', () => {
     const project = loadProject(memoryStorage)
     expect(project.design.id).toBe('starter_level')
-    expect(project.design.bricks).toHaveLength(5)
+    // Hero, Walker, Coin, Spring, Goal + the 8 standard grid bricks (step 7)
+    expect(project.design.bricks).toHaveLength(13)
     expect(getStorageNotice()).toBeNull()
   })
 
