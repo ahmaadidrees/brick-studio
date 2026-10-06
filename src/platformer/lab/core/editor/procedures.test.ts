@@ -33,7 +33,7 @@ describe('My Blocks survive a Blockly round trip', () => {
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(json, ws)
-      expect(ws.getBlockById('def')!.getFieldValue('LABEL')).toBe('jump ( ) times < >')
+      expect(ws.getBlockById('def')!.getFieldValue('LABEL')).toBe('jump (height) times <fast?>')
       const saved = Blockly.serialization.workspaces.save(ws)
       const { program, diagnostics } = compileWorkspace(saved)
       expect(diagnostics.filter((d) => d.severity === 'error')).toEqual([])

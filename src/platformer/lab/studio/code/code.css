@@ -132,6 +132,11 @@
   color: #ffffff;
 }
 
+.code-toolbar-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .code-toolbar-status-group {
   display: flex;
   align-items: center;

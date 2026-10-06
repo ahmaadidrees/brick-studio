@@ -9,6 +9,10 @@ export interface EditorToolbarProps {
   onOpenVariableModal: (mode: 'variable' | 'list') => void
   onOpenProcedureModal: () => void
   onToggleDiagnostics: () => void
+  canUndo?: boolean
+  canRedo?: boolean
+  onUndo?: () => void
+  onRedo?: () => void
   onCleanUp: () => void
   onZoomIn: () => void
   onZoomOut: () => void
@@ -24,6 +28,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
   onOpenVariableModal,
   onOpenProcedureModal,
   onToggleDiagnostics,
+  canUndo = true,
+  canRedo = true,
+  onUndo,
+  onRedo,
   onCleanUp,
   onZoomIn,
   onZoomOut,
@@ -75,6 +83,26 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
       {/* Workspace View Controls */}
       <div className="code-toolbar-group code-toolbar-view-controls">
+        <button
+          type="button"
+          className="code-toolbar-icon-btn"
+          onClick={onUndo}
+          disabled={!canUndo}
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo"
+        >
+          ↩ Undo
+        </button>
+        <button
+          type="button"
+          className="code-toolbar-icon-btn"
+          onClick={onRedo}
+          disabled={!canRedo}
+          title="Redo (Ctrl+Shift+Z)"
+          aria-label="Redo"
+        >
+          ↪ Redo
+        </button>
         <button
           type="button"
           className="code-toolbar-icon-btn"

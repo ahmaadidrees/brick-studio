@@ -2,7 +2,7 @@ import * as Blockly from 'blockly/core'
 import { RecyclableBlockFlyoutInflater, registerContinuousToolbox } from '@blockly/continuous-toolbox'
 import * as ShareableProcedures from '@blockly/block-shareable-procedures'
 import type { EditorContext } from './context'
-import { CATEGORY_COLORS } from './definitions'
+import { CATEGORY_COLORS, parseProccode } from './definitions'
 import { TILE_TOOLBOX_ENTRY } from './tileBlocks'
 
 export interface ToolboxShadow {
@@ -398,11 +398,43 @@ export function createContinuousToolbox(
 /** Pre-built continuous toolbox configuration. */
 export const CONTINUOUS_TOOLBOX = createContinuousToolbox()
 
+/**
+ * The My Blocks palette: Make a Block, then one call per definition in the workspace with the definition's argument
+ * reporters under it, as Scratch. Nothing from @blockly/block-shareable-procedures ("to do something", "return") is
+ * listed: those blocks only stay defined so an old save that contains them still loads.
+ */
+export function myBlocksFlyout(ws: Blockly.Workspace): Array<Record<string, unknown>> {
+  const items: Array<Record<string, unknown>> = [{ kind: 'button', text: 'Make a Block', callbackKey: 'MAKE_A_PROCEDURE' }]
+  const seen = new Set<string>()
+  for (const block of ws.getTopBlocks(true)) {
+    if (block.type !== 'procedures_definition') continue
+    const extra = (block as unknown as { extraState_?: { proccode?: string; argumentNames?: string[] } }).extraState_
+    const proccode = extra?.proccode || 'my block'
+    if (seen.has(proccode)) continue
+    seen.add(proccode)
+    const argumentNames = extra?.argumentNames ?? []
+    const inputs: Record<string, { shadow: ToolboxShadow }> = {}
+    parseProccode(proccode, argumentNames).forEach((part) => {
+      // Number and text slots start with an empty text shadow, like Scratch; boolean slots start empty.
+      if (part.kind === 'arg' && !part.boolean) inputs[part.name] = textShadow('')
+    })
+    items.push({ kind: 'block', type: 'procedures_call', extraState: { proccode, argumentNames }, inputs })
+    for (const arg of argumentNames) {
+      items.push({
+        kind: 'block',
+        type: arg.endsWith('?') ? 'argument_reporter_boolean' : 'argument_reporter_string_number',
+        fields: { VALUE: arg },
+      })
+    }
+  }
+  return items
+}
+
 let pluginsRegistered = false
 
 /**
- * Registers the continuous-toolbox and shareable-procedures plugins with Blockly.
- * Idempotent: safe to call multiple times.
+ * Registers the continuous-toolbox plugin, and keeps the shareable-procedures serializer and blocks defined so saves
+ * that still hold them load. Idempotent: safe to call multiple times.
  */
 /**
  * The studio disposes and re-injects the workspace whenever a different brick is opened. Two things then broke the

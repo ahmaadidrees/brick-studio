@@ -1625,7 +1625,69 @@ export function procedureLabel(proccode: string): string {
   return proccode.replace(/%s/g, '( )').replace(/%b/g, '< >').replace(/%n/g, '( )')
 }
 
+/** One piece of a proccode, in order: a word, or an argument slot (`boolean` for %b). */
+export type ProccodePart = { kind: 'word'; text: string } | { kind: 'arg'; name: string; boolean: boolean }
+
+/** Split "jump %s times %b" with names ['height', 'fast?'] into words and argument slots, as Scratch lays them out. */
+export function parseProccode(proccode: string, argumentNames: string[]): ProccodePart[] {
+  const parts: ProccodePart[] = []
+  let argIndex = 0
+  for (const piece of proccode.split(/(%[sbn])/)) {
+    if (!piece) continue
+    if (/^%[sbn]$/.test(piece)) {
+      parts.push({ kind: 'arg', name: argumentNames[argIndex] ?? `input${argIndex + 1}`, boolean: piece === '%b' })
+      argIndex++
+    } else {
+      const text = piece.trim()
+      if (text) parts.push({ kind: 'word', text })
+    }
+  }
+  return parts
+}
+
+/** "jump %s times %b" with ['height', 'fast?'] → "jump (height) times <fast?>": how a definition's prototype reads. */
+export function prototypeLabel(proccode: string, argumentNames: string[]): string {
+  return parseProccode(proccode, argumentNames)
+    .map((p) => (p.kind === 'word' ? p.text : p.boolean ? `<${p.name}>` : `(${p.name})`))
+    .join(' ')
+}
+
 type ProcedureBlock = Blockly.Block & { extraState_?: ProcedureState }
+
+/**
+ * A My Block call reads like Scratch: its words and its inputs sit in one row ("walk at ( )", "jump ( ) times < >"). The
+ * first input is a dummy that keeps the leading words (and the magnifier, which attachAffordances adds there); each
+ * argument is a value input named after the argument, with the words that follow the previous argument in front of it.
+ */
+function rebuildCall(block: ProcedureBlock, state: ProcedureState): void {
+  const [first, ...rest] = block.inputList
+  for (const input of rest) block.removeInput(input.name, true)
+  if (first) for (const field of [...first.fieldRow]) if (field.name !== 'MAGNIFIER') first.removeField(field.name ?? '', true)
+  const head = first ?? block.appendDummyInput()
+  const parts = parseProccode(state.proccode, state.argumentNames)
+  const used = new Set<string>()
+  let pending: string[] = []
+  let words = 0
+  const flush = (input: Blockly.Input) => {
+    for (const text of pending) input.appendField(new Blockly.FieldLabel(text), `WORD_${words++}`)
+    pending = []
+  }
+  for (const part of parts) {
+    if (part.kind === 'word') {
+      pending.push(part.text)
+      continue
+    }
+    used.add(part.name)
+    const input = block.appendValueInput(part.name)
+    if (part.boolean) input.setCheck('Boolean')
+    flush(input) // the words before an argument sit left of its socket
+  }
+  // Words after the last argument (or all of them, with no arguments) go on a dummy at the end of the row.
+  if (pending.length) flush(used.size === 0 ? head : block.appendDummyInput())
+  // Arguments the proccode doesn't mention still get an input, so compiled calls keep reading them by name.
+  for (const name of state.argumentNames) if (!used.has(name) && !block.getInput(name)) block.appendValueInput(name)
+  block.setInputsInline(true)
+}
 
 const procedureStateMixin = {
   saveExtraState(this: ProcedureBlock): ProcedureState | null {
@@ -1635,10 +1697,11 @@ const procedureStateMixin = {
     const proccode = typeof state?.proccode === 'string' ? state.proccode : ''
     const argumentNames = Array.isArray(state?.argumentNames) ? state!.argumentNames.map((a) => String(a)) : []
     this.extraState_ = { proccode, argumentNames, ...(typeof state?.warp === 'boolean' ? { warp: state.warp } : {}) }
-    this.getField('LABEL')?.setValue(procedureLabel(proccode))
-    // A call takes one value input per argument, keyed by argument name (compile.ts reads inputs by name).
     if (this.type === 'procedures_call') {
-      for (const name of argumentNames) if (!this.getInput(name)) this.appendValueInput(name)
+      rebuildCall(this, this.extraState_)
+    } else {
+      // The definition and its prototype show the argument names where the call has inputs: "define walk at (speed)".
+      this.getField('LABEL')?.setValue(prototypeLabel(proccode, argumentNames))
     }
   },
 }
