@@ -200,6 +200,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       return items as unknown as Blockly.utils.toolbox.FlyoutDefinition
     })
 
+    // The toolbox draws its first category as soon as it is injected, before the callback above exists: that first
+    // draw would list Blockly's own My Blocks (the plugin's "to do something"). Draw it again with ours.
+    ws.getToolbox()?.refreshSelection()
+
     // 8. Load workspace for this brick
     const savedWorkspace = store.getState().project.workspaces[selectedBrickId]
     if (savedWorkspace) {
@@ -228,6 +232,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
         }
       }
     }
+
+    ws.getToolbox()?.refreshSelection() // calls for the definitions that just loaded
 
     // 8b. Layered view: scripts on top, My Block definitions out of the way; magnifiers open definitions and cards
     viewRef.current = TOP_VIEW

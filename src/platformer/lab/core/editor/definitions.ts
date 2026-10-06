@@ -1701,6 +1701,13 @@ const procedureStateMixin = {
       rebuildCall(this, this.extraState_)
     } else {
       // The definition and its prototype show the argument names where the call has inputs: "define walk at (speed)".
+      // The definition's own `custom_block` socket stays empty (the label is its prototype): swap it for a plain row so
+      // there is no empty pill after the words.
+      const socket = this.type === 'procedures_definition' ? this.getInput('custom_block') : null
+      if (socket) {
+        this.removeInput('custom_block', true)
+        this.appendDummyInput('prototype').appendField(new Blockly.FieldLabel('define'), 'DEFINE').appendField(new Blockly.FieldLabel(''), 'LABEL')
+      }
       this.getField('LABEL')?.setValue(prototypeLabel(proccode, argumentNames))
     }
   },
