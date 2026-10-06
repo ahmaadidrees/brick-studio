@@ -168,19 +168,20 @@ export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
   for (const block of ws.getTopBlocks(false)) setShown(block as Blockly.BlockSvg, isShownIn(block, state))
 }
 
-/** Scroll so the stacks of the current view are in sight: a drilled definition is centred, the top view starts at its first script. */
+/** Scroll so the stacks of the current view are in sight: a short drilled definition is centred, otherwise the view starts at the first stack. */
 export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
   const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state))
   if (shown.length === 0) return
-  if (currentProccode(state) !== null) {
+  const first = shown[0].getBoundingRectangle()
+  const metrics = ws.getMetrics()
+  const w = metrics.viewWidth / ws.scale
+  const h = metrics.viewHeight / ws.scale
+  // A short definition sits in the middle of the view; anything taller than the view starts at its top.
+  if (currentProccode(state) !== null && first.bottom - first.top < h) {
     ws.centerOnBlock(shown[0].id)
     return
   }
-  const first = shown[0].getBoundingRectangle()
-  const metrics = ws.getMetrics()
   const pad = 40
-  const w = metrics.viewWidth / ws.scale
-  const h = metrics.viewHeight / ws.scale
   // The continuous toolbox flyout covers the left of the view; scrollBoundsIntoView accounts for it.
   ws.scrollBoundsIntoView(new Blockly.utils.Rect(first.top - pad, first.top + h, first.left - pad, first.left + w), 0)
 }

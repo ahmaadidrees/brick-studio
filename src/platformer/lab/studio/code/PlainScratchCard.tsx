@@ -41,6 +41,10 @@ export const PlainScratchCard: React.FC<Props> = ({ opcode, blockText, onClose }
       }
     })
     Blockly.svgResize(ws)
+    // Shrink to fit so the whole recipe shows at once (never bigger than the editor's own size), then centre it.
+    const m = ws.getMetrics()
+    const fit = Math.min(1, (m.viewWidth - 24) / Math.max(1, m.contentWidth), (m.viewHeight - 24) / Math.max(1, m.contentHeight))
+    if (fit < 1) ws.setScale(Math.max(0.35, ws.scale * fit))
     ws.scrollCenter()
     return () => ws.dispose()
   }, [card])
