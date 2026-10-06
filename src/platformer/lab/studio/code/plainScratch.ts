@@ -131,14 +131,23 @@ function solidCard(): PlainScratchCard {
   const mover = b.flag([
     b.forever([b.changeX(b.v(V.xSpeed)), b.sCond(b.touching('Platform'), [b.changeX(b.minus(0, b.v(V.xSpeed))), b.set(V.xSpeed, 0)])]),
   ])
+  // "only on top" (a one-way platform): the mover only steps back when it is falling, so jumping up through it is fine.
+  const oneWay = b.flag([
+    b.forever([
+      b.changeY(b.v(V.ySpeed)),
+      b.sCond(b.touching('Platform'), [b.sCond(b.lt(b.v(V.ySpeed), 0), [b.changeY(b.minus(0, b.v(V.ySpeed))), b.set(V.ySpeed, 0)])]),
+    ]),
+  ])
   return {
     opcode: 'platformer_setsolid',
     name: 'solid',
     explanation:
       'A solid brick is one that other bricks cannot walk through. Scratch has no solid, so the brick you want to be solid keeps a "solid" note, ' +
-      'and every mover checks "touching" and steps back out each tick. In Scratch that touching is by pixels; the Platformer blocks use the brick\'s box, so landing and wall stops are exact.',
-    workspace: workspace([place(mark, 20, 20), place(mover, 20, 120)], [V.solid, V.xSpeed]),
-    extras: { ...NO_EXTRAS, variables: [V.solid, V.xSpeed], bricks: ['Platform'] },
+      'and every mover checks "touching" and steps back out each tick. In Scratch that touching is by pixels; the Platformer blocks use the brick\'s box, so landing and wall stops are exact. ' +
+      '"solid [only on top]" makes a one-way platform: bricks land on it when they fall onto it, but jump up through it or walk through its side. ' +
+      'In plain Scratch the mover only steps back when its y speed is below 0, which is the second script.',
+    workspace: workspace([place(mark, 20, 20), place(mover, 20, 120), place(oneWay, 20, 280)], [V.solid, V.xSpeed, V.ySpeed]),
+    extras: { ...NO_EXTRAS, variables: [V.solid, V.xSpeed, V.ySpeed], bricks: ['Platform'] },
   }
 }
 
@@ -223,30 +232,10 @@ function whenBumpCard(): PlainScratchCard {
     name: 'when I bump',
     explanation:
       'This hat runs its blocks when the brick runs into something. In plain Scratch you watch for it yourself: a forever loop checks "touching", and when it is true you broadcast a message, with a hat that listens for it. ' +
-      'The Platformer hat also tells you which side was hit and by what, once per tick, without the loop.',
+      'The Platformer hat also tells you which side was hit and by what, once per tick, without the loop. ' +
+      'Both bricks hear about it: when the Hero jumps into a ? block from below, the Hero gets "bump [bottom] of [? block]" and the ? block gets "bump [top] of [Hero]". In plain Scratch each one would need its own forever loop with "touching".',
     workspace: workspace([place(watch, 20, 20), place(hat, 20, 190)], []),
     extras: { ...NO_EXTRAS, bricks: ['Wall'], messages: ['bumped'] },
-  }
-}
-
-function touchingTileCard(): PlainScratchCard {
-  const b = builder('tile')
-  const color: Conn = b.text('#d9423a')
-  const watch = b.flag([
-    b.forever([
-      b.sCond({ block: b.blk('sensing_touchingcolor', { inputs: { COLOR: color } }) }, [
-        b.blk('motion_gotoxy', { inputs: { X: b.num(0), Y: b.num(0) } }),
-      ]),
-    ]),
-  ])
-  return {
-    opcode: 'platformer_touchingtile',
-    name: 'touching tile',
-    explanation:
-      'Tiles are painted squares, not bricks, so Scratch cannot name them. The usual Scratch trick is a colour: paint spikes red and ask "touching color red?". ' +
-      'The Platformer block asks the level\'s tile layer directly, so it works by the brick\'s box, not by pixels.',
-    workspace: workspace([place(watch, 20, 20)], []),
-    extras: { ...NO_EXTRAS },
   }
 }
 
@@ -260,7 +249,6 @@ export const PLAIN_SCRATCH: Readonly<Record<string, PlainScratchCard>> = Object.
     speedCard(),
     onGroundCard(),
     whenBumpCard(),
-    touchingTileCard(),
   ].map((c) => [c.opcode, c]),
 )
 

@@ -17,7 +17,7 @@ import { TICKS_PER_SECOND, TICK_MS, YIELD } from './contracts'
 import type { AskPrompt, BrickDef, HostClock, Primitive, PrimitiveCtx, PrimitiveTable, QueuedAsk, RuntimeApi, Target, Value, World } from './contracts'
 
 export type { AskPrompt, HostClock, QueuedAsk }
-import { costumeOf } from './geometry'
+import { costumeOf, radiusOf, targetBounds } from './geometry'
 import { targetsTouch, touchingEdge, touchingPoint } from './touching'
 
 /** Target.dragging: dragged sprites are not touching candidates; they can still sense others (S02). */
@@ -160,9 +160,16 @@ const touchingObject: Primitive = (ctx) => {
   if (!ctx.target.visible) return false
   const brick = brickNamed(world, menu)
   if (!brick) return false
+  // Prefilter: a level can hold thousands of copies of one brick (every painted cell is one), so first skip every copy
+  // whose position is too far from this target's box to reach it, whatever its size or rotation.
+  const mine = targetBounds(world, ctx.target)
+  if (!mine) return false
+  const costumeRadius = brick.costumes.reduce((r, c) => Math.max(r, radiusOf(c)), 0)
   for (const other of world.targets) {
     if (other.brickId !== brick.id || other === ctx.target) continue
     if (!other.visible || isDragged(other)) continue
+    const reach = (costumeRadius * Math.abs(other.size)) / 100 + 1
+    if (other.x < mine.left - reach || other.x > mine.right + reach || other.y < mine.bottom - reach || other.y > mine.top + reach) continue
     if (targetsTouch(world, ctx.target, other)) return true
   }
   return false

@@ -103,6 +103,21 @@ function resolveConnectedBlock(conn?: WorkspaceConnectionJson): WorkspaceBlockJs
   return undefined
 }
 
+/**
+ * Blocks that used to exist and no longer do. A saved workspace that still holds one compiles (the block does nothing,
+ * a reporter answers false) and gets a clear warning, so an old project never crashes.
+ */
+const REMOVED_BLOCKS: Readonly<Record<string, string>> = {
+  platformer_touchingtile:
+    'The "touching tile" block is gone: every painted block is a brick now. Use "touching [brick]?" from Sensing instead.',
+}
+
+function noteRemovedBlock(type: string, block: WorkspaceBlockJson, diagnostics: Diagnostic[]): void {
+  const message = Object.hasOwn(REMOVED_BLOCKS, type) ? REMOVED_BLOCKS[type] : undefined
+  if (message === undefined) return
+  diagnostics.push({ message, severity: 'warning', code: 'block.unknown', blockId: typeof block.id === 'string' ? block.id : undefined })
+}
+
 function compileExpr(
   conn: WorkspaceConnectionJson | undefined,
   diagnostics: Diagnostic[],
@@ -147,6 +162,7 @@ function compileExpr(
   }
 
   // 3. Reporter / Boolean blocks
+  noteRemovedBlock(type, target, diagnostics)
   const inputs: Inputs = {}
   if (isRecord(target.inputs)) {
     for (const [name, inputConn] of Object.entries(target.inputs)) {
@@ -191,6 +207,7 @@ function compileStmt(
   const type = block.type
   if (typeof type !== 'string') return null
 
+  noteRemovedBlock(type, block, diagnostics)
   const fields = extractFields(block)
   const inputs: Inputs = {}
   let branches: Stmt[][] | undefined

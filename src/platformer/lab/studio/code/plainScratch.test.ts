@@ -7,10 +7,10 @@ import { buildEditorContext, withCardContext } from './context'
 import { StudioStore } from '../store'
 import { loadProject } from '../storage'
 
-/** The Platformer opcodes the editor defines, plus `platformer_touchingtile` (the tiles lane adds that block). */
+/** The Platformer opcodes the editor defines. `platformer_touchingtile` is gone since step 7 (a card for it must not return). */
 function platformerOpcodes(): string[] {
   const defined = createBlockDefinitions().map((d) => d.type as string).filter((t) => t.startsWith('platformer_'))
-  return Array.from(new Set([...defined, 'platformer_touchingtile'])).sort()
+  return Array.from(new Set(defined)).sort()
 }
 
 function walk(node: unknown, visit: (block: Record<string, unknown>) => void): void {
@@ -30,6 +30,12 @@ describe('plain Scratch cards', () => {
       expect(card!.name.length, opcode).toBeGreaterThan(0)
     }
     expect(Object.keys(PLAIN_SCRATCH).sort()).toEqual(platformerOpcodes())
+  })
+
+  it('step 7: no touching tile card, solid explains "only on top", and bump explains both sides hear it', () => {
+    expect(plainScratchFor('platformer_touchingtile')).toBeUndefined()
+    expect(plainScratchFor('platformer_setsolid')!.explanation).toContain('only on top')
+    expect(plainScratchFor('platformer_whenbump')!.explanation).toMatch(/Both bricks hear about it/)
   })
 
   it('uses only Scratch blocks (no Platformer block inside a card)', () => {
