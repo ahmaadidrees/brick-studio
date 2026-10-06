@@ -10,6 +10,11 @@ import type {
 } from '../../core/contracts'
 import { boundsFor, opaqueRect, transformOf } from '../../core/geometry'
 import { getCameraZoom, snapToGrid, worldToScreen, type Camera, type Viewport } from './camera'
+import { drawTileHover, drawTiles } from './tiles'
+
+/** The Brickgineers look: cream outside the level, a sky-blue level. */
+const OUTSIDE = '#efe9da'
+const SKY = '#cfe8f7'
 
 export class ImageCache {
   private cache = new Map<string, HTMLImageElement>()
@@ -54,6 +59,8 @@ export interface RenderOptions {
   brushBrickId?: string | null
   brushPreviewPos?: { x: number; y: number } | null
   tool?: 'select' | 'brush'
+  /** The tile cell under the pointer with the armed tile (or the eraser). */
+  tileHover?: { col: number; row: number; ch: string; erase: boolean } | null
   /** Previous tick positions for interpolation during Play. Keyed by target ID. */
   prevPoses?: Map<string, TargetPose>
   /** Interpolation weight in [0, 1). */
@@ -73,7 +80,7 @@ export function renderBuildMode(
   const zoom = getCameraZoom(camera, viewport)
 
   // 1. Clear background
-  ctx.fillStyle = '#14161f'
+  ctx.fillStyle = OUTSIDE
   ctx.fillRect(0, 0, viewport.width, viewport.height)
 
   // 2. Render level bounds & background
@@ -84,7 +91,7 @@ export function renderBuildMode(
   const lvlH = bY - tY
 
   // Level area
-  ctx.fillStyle = '#1b1e2b'
+  ctx.fillStyle = SKY
   ctx.fillRect(lX, tY, lvlW, lvlH)
 
   // Stage backdrop if present
@@ -105,17 +112,20 @@ export function renderBuildMode(
 
   // Level boundary stroke & outside dimming
   ctx.save()
-  ctx.strokeStyle = '#43516c'
+  ctx.strokeStyle = '#8aa3bb'
   ctx.lineWidth = 2
   ctx.strokeRect(lX, tY, lvlW, lvlH)
 
   // Corner labels
   ctx.font = '11px system-ui, sans-serif'
-  ctx.fillStyle = '#6f7e9c'
+  ctx.fillStyle = '#5b7287'
   ctx.fillText(`(0, 0)`, lX + 6, bY - 6)
   const dimText = `${bounds.right - bounds.left} × ${bounds.top - bounds.bottom}`
   ctx.fillText(dimText, rX - ctx.measureText(dimText).width - 6, tY + 14)
   ctx.restore()
+
+  // Tiles sit behind the copies
+  drawTiles(ctx, design.tiles, camera, viewport)
 
   // 3. Render painted copies in design.copies order
   for (const copy of design.copies) {
@@ -144,6 +154,7 @@ export function renderBuildMode(
   }
 
   // 4. Brush preview
+  if (opts.tileHover) drawTileHover(ctx, camera, viewport, opts.tileHover)
   if (opts.tool === 'brush' && opts.brushBrickId && opts.brushPreviewPos) {
     const brick = design.bricks.find((b) => b.id === opts.brushBrickId)
     const costume = brick?.costumes[0]
@@ -182,7 +193,7 @@ export function renderPlayMode(
   const { camera, viewport, interpAlpha = 0, prevPoses } = opts
 
   // 1. Clear background
-  ctx.fillStyle = '#14161f'
+  ctx.fillStyle = OUTSIDE
   ctx.fillRect(0, 0, viewport.width, viewport.height)
 
   // 2. Stage backdrop
@@ -192,7 +203,7 @@ export function renderPlayMode(
   const lvlW = rX - lX
   const lvlH = bY - tY
 
-  ctx.fillStyle = '#1b1e2b'
+  ctx.fillStyle = SKY
   ctx.fillRect(lX, tY, lvlW, lvlH)
 
   const stageBrick = world.bricks[world.stage.brickId]
@@ -203,6 +214,9 @@ export function renderPlayMode(
       ctx.drawImage(img, lX, tY, lvlW, lvlH)
     }
   }
+
+  // Tiles sit behind the targets
+  drawTiles(ctx, world.tiles, camera, viewport)
 
   // 3. Targets in draw order (world.targets)
   for (const target of world.targets) {
@@ -282,6 +296,7 @@ function drawSprite(
   const brightness = effects?.brightness ?? 0
 
   ctx.save()
+  ctx.imageSmoothingEnabled = false
   ctx.translate(screenX, screenY)
 
   if (angle !== 0) {

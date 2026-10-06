@@ -1,125 +1,15 @@
-/* Stage panel styles */
+/* Stage panel styles (step 6: the stage fills the builder; its chrome is the builder's, not its own). */
 .stage-container {
   display: flex;
   flex-direction: column;
   position: relative;
   width: 100%;
   height: 100%;
-  min-height: 380px;
-  background: #14161c;
-  border-radius: 8px;
+  min-height: 0;
+  background: #efe9da;
   overflow: hidden;
   user-select: none;
-  border: 1px solid #2a2e38;
-}
-
-/* Controls Toolbar */
-.stage-controls-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  background: #1a1d26;
-  border-bottom: 1px solid #2a2e38;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.stage-controls-group {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.stage-ctrl-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0 12px;
-  background: #252a36;
-  border: 1px solid #363c4d;
-  border-radius: 8px;
-  color: #eef0f5;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.stage-ctrl-btn:hover {
-  background: #313747;
-  border-color: #4b536a;
-}
-
-.stage-ctrl-btn:active {
-  transform: translateY(1px);
-}
-
-.stage-flag-btn {
-  background: #1b3d2b;
-  border-color: #276344;
-  color: #52e391;
-  font-size: 18px;
-}
-
-.stage-flag-btn:hover {
-  background: #23523a;
-  border-color: #328157;
-}
-
-.stage-play-btn {
-  background: #1b3d2b;
-  border-color: #276344;
-  color: #52e391;
-}
-
-.stage-play-btn:hover {
-  background: #23523a;
-}
-
-.stage-stop-btn {
-  background: #421c22;
-  border-color: #6b2a34;
-  color: #ff6b7d;
-}
-
-.stage-stop-btn:hover {
-  background: #54242c;
-}
-
-.stage-mode-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.stage-mode-badge.build {
-  background: #273042;
-  color: #79a6f2;
-}
-
-.stage-mode-badge.play {
-  background: #1c3626;
-  color: #56d48e;
-}
-
-.tool-btn.active, .snap-btn.active {
-  background: #2f456c;
-  border-color: #4f78bd;
-  color: #ffffff;
-}
-
-.zoom-btn {
-  padding: 0 10px;
-}
-
-.reset-btn {
-  font-size: 12px;
+  outline: none;
 }
 
 /* Canvas viewport */
@@ -129,7 +19,7 @@
   min-height: 0;
   width: 100%;
   height: 100%;
-  background: #111319;
+  background: #efe9da;
   overflow: hidden;
   outline: none;
 }
@@ -139,147 +29,66 @@
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
+  touch-action: none;
 }
 
-/* Knob Panel (Overlay inside stage on bottom-right) */
-.stage-knob-panel {
+/* View tools: zoom, fit, and in Play the flag and camera choice. Top right, in the builder's panel look. */
+.stage-view-tools {
   position: absolute;
-  bottom: 12px;
+  z-index: 11;
+  top: 12px;
   right: 12px;
-  max-width: 260px;
-  background: rgba(26, 29, 38, 0.95);
-  backdrop-filter: blur(8px);
-  border: 1px solid #363c4d;
-  border-radius: 8px;
-  padding: 10px 12px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  color: #eef0f5;
-  z-index: 10;
-  font-size: 13px;
-}
-
-.stage-knob-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #2f3442;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--studio-panel-border, #d9dee8);
+  border-radius: 14px;
+  background: var(--studio-panel, #fff);
+  box-shadow: var(--studio-panel-shadow, 0 6px 18px rgba(38, 60, 81, 0.12));
 }
 
-.stage-knob-title {
-  color: #8bb4ff;
-  font-size: 13px;
+.stage-view-group {
+  display: flex;
+  gap: 0;
+  padding: 0 3px;
+  border-radius: 10px;
+  background: var(--studio-panel-soft, #f3f5f9);
 }
 
-.stage-knob-delete-btn {
-  min-width: 40px;
-  min-height: 32px;
-  padding: 4px 8px;
-  background: #3d1c22;
-  border: 1px solid #5a252f;
-  border-radius: 4px;
-  color: #ff7586;
-  font-size: 11px;
-  font-weight: 600;
+.stage-view-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--studio-ink, #263c51);
+  background: transparent;
+  font: 800 12px/1 inherit;
   cursor: pointer;
 }
 
-.stage-knob-delete-btn:hover {
-  background: #52242c;
+.stage-view-btn:hover {
+  color: var(--studio-blue-dark, #2f5fb3);
+  background: rgba(88, 136, 218, 0.1);
 }
 
-.stage-knob-coords {
-  display: flex;
-  gap: 12px;
-  font-size: 11px;
-  color: #798399;
-  margin-bottom: 8px;
+.stage-view-btn:focus-visible {
+  outline: 3px solid var(--studio-focus, #3565bf);
+  outline-offset: 1px;
 }
 
-.stage-knob-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stage-knob-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.stage-knob-label {
-  font-size: 12px;
-  color: #c0c6d4;
-}
-
-.stage-knob-number-stepper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stage-knob-step-btn {
-  min-width: 32px;
-  min-height: 32px;
-  background: #2a303f;
-  border: 1px solid #3c4458;
-  border-radius: 4px;
+.stage-view-btn.active {
   color: #fff;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
+  background: var(--studio-blue, #5888da);
 }
 
-.stage-knob-step-btn:hover {
-  background: #394257;
-}
-
-.stage-knob-val-text {
-  min-width: 28px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.stage-knob-toggle-btn {
-  min-height: 32px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-}
-
-.stage-knob-toggle-btn.on {
-  background: #1b442b;
-  border-color: #276840;
-  color: #55e695;
-}
-
-.stage-knob-toggle-btn.off {
-  background: #383c47;
-  border-color: #4a505e;
-  color: #9ea5b5;
-}
-
-.stage-knob-input {
-  max-width: 80px;
-  min-height: 32px;
-  background: #14161f;
-  border: 1px solid #363c4d;
-  border-radius: 4px;
-  padding: 4px 6px;
-  color: #fff;
-  font-size: 12px;
-}
-
-.stage-knob-empty {
-  font-size: 11px;
-  color: #798399;
-  font-style: italic;
+.stage-view-flag {
+  min-width: 44px;
+  padding: 0;
+  color: #1c8a4e;
+  background: rgba(46, 170, 96, 0.14);
+  font-size: 20px;
 }
 
 /* Ask Dialog */
