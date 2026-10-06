@@ -131,6 +131,8 @@ export interface Sound {
 }
 
 export interface BrickDef {
+  /** Step 6b: how many copies a level may hold (1 for the Hero and the Goal). Missing means no limit. */
+  limit?: number
   id: string
   /** Kid-facing name; also what "create clone of" and sensing menus show. */
   name: string
@@ -182,11 +184,12 @@ export interface LevelDesign {
 // ---------------------------------------------------------------- tiles (step 6, docs/qa/code-lab-core/STEP6.md)
 
 /** Tile kinds. '.' is empty. Solid kinds stop Platformer bodies; spikes and lava are not solid but can be sensed. */
-export type TileKind = 'ground' | 'brick' | 'hard' | 'qblock' | 'spikes' | 'lava'
-export const TILE_KINDS: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock', 'spikes', 'lava']
-export const SOLID_TILES: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock']
-/** One character per tile in saved rows. */
-export const TILE_CHAR: Record<TileKind, string> = { ground: 'G', brick: 'B', hard: 'H', qblock: 'Q', spikes: 'S', lava: 'L' }
+export type TileKind = 'ground' | 'brick' | 'hard' | 'qblock' | 'spikes' | 'lava' | 'semi' | 'bounce' | 'used'
+export const TILE_KINDS: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock', 'spikes', 'lava', 'semi', 'bounce', 'used']
+/** Stop bodies from every side. `semi` (one-way platform) only stops a body falling onto its top: see STEP6B.md. */
+export const SOLID_TILES: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock', 'bounce', 'used']
+/** One character per tile in saved rows. `used` is what a ? block becomes after it is hit from below. */
+export const TILE_CHAR: Record<TileKind, string> = { ground: 'G', brick: 'B', hard: 'H', qblock: 'Q', spikes: 'S', lava: 'L', semi: '-', bounce: 'O', used: 'U' }
 /** Tiles are TILE_SIZE steps square. */
 export const TILE_SIZE = 16
 

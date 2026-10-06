@@ -16,6 +16,9 @@ const TILE_LABELS: Record<TileKind, string> = {
   qblock: '? block',
   spikes: 'spikes',
   lava: 'lava',
+  semi: 'one-way platform',
+  bounce: 'bounce block',
+  used: 'used block',
 }
 
 /** Menu for `fields.TILE`: [label, value] with the value a TileKind. */
