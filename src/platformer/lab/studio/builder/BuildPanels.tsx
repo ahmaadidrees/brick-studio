@@ -5,20 +5,20 @@ import { useStudio, type StudioStore } from '../store'
 import {
   CATALOG_CATEGORIES,
   NEW_BRICK_ID,
-  TILE_ENTRIES,
   activeEntryId,
-  brickEntryId,
   brickIdOf,
-  categoryForBrick,
+  drawerEntries,
+  gridKeyOf,
   isBrickEntry,
-  placeableBricks,
-  tileEntryById,
+  isGridEntry,
+  standardKeyOf,
+  standardTemplate,
 } from './catalog'
 import type { History } from './history'
 import { copyToMove, limitOf } from './limits'
 import { NewBrickPicker } from './NewBrickPicker'
 import { SeeInsideCard } from './SeeInsideCard'
-import { CostumeThumb, TileArt } from './tileArt'
+import { CostumeThumb } from './tileArt'
 
 const DRAWER_ID = 'p2d-brick-drawer'
 const DRAWER_CATEGORIES = [{ id: ALL_CATEGORY, label: 'All' }, ...CATALOG_CATEGORIES]
@@ -43,26 +43,20 @@ interface Props {
  */
 export function BuildPanels({ store, history, erasing, onErasing, compact, drawerOpen, onDrawerOpen, templates }: Props) {
   const bricks = useStudio(store, (s) => s.project.design.bricks)
-  const brushTile = useStudio(store, (s) => s.brushTile)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [picking, setPicking] = useState(false)
   const closeSheet = useCallback(() => setSheetOpen(false), [])
 
+  const entries = useMemo(() => drawerEntries(bricks), [bricks])
   const items = useMemo<DrawerItem[]>(() => {
-    const tiles = TILE_ENTRIES.map<DrawerItem>((t) => ({ id: t.id, name: t.label, category: t.category, thumbnail: <TileArt k={t.art} box={40} /> }))
-    const mine = placeableBricks(bricks).map<DrawerItem>((b) => ({
-      id: brickEntryId(b.id),
-      name: b.name,
-      category: categoryForBrick(b),
-      thumbnail: <CostumeThumb asset={b.costumes[0]?.asset} box={40} />,
-    }))
+    const list = entries.map<DrawerItem>((e) => ({ id: e.id, name: e.name, category: e.category, thumbnail: <CostumeThumb asset={e.asset} box={40} /> }))
     const fresh: DrawerItem = { id: NEW_BRICK_ID, name: '+ New brick', category: 'mine', thumbnail: <Plus size={30} aria-hidden="true" className="builder-new-icon" /> }
-    return [...tiles, ...mine, fresh]
-  }, [bricks])
+    return [...list, fresh]
+  }, [entries])
 
   const searchText = useCallback((item: DrawerItem) => `${item.id} ${CATEGORY_LABEL.get(item.category) ?? ''}`, [])
-  const active = erasing ? null : activeEntryId(brushTile, brushBrickId)
+  const active = erasing ? null : activeEntryId(brushBrickId, bricks)
 
   const choose = (id: string) => {
     if (id === NEW_BRICK_ID) {
@@ -73,9 +67,16 @@ export function BuildPanels({ store, history, erasing, onErasing, compact, drawe
     if (isBrickEntry(id)) {
       store.setBrush(brickIdOf(id))
       store.selectBrick(brickIdOf(id))
-    } else {
-      const tile = tileEntryById(id)
-      if (tile) store.setTileBrush(tile.ch)
+    } else if (isGridEntry(id)) {
+      // A standard grid brick the level already has is armed; one it does not have yet is added first (it paints by its char).
+      const entry = entries.find((e) => e.id === id)
+      if (entry?.brick) {
+        store.setBrush(entry.brick.id)
+        store.selectBrick(entry.brick.id)
+      } else {
+        const template = standardTemplate(gridKeyOf(id))
+        if (template) store.addBrickFrom(template.brick, template.workspace)
+      }
     }
   }
 
@@ -127,18 +128,18 @@ export function BuildPanels({ store, history, erasing, onErasing, compact, drawe
 
 /** What a click places right now, and the Erase tool. */
 function PlacingStrip({ store, erasing, onErasing }: { store: StudioStore; erasing: boolean; onErasing: (on: boolean) => void }) {
-  const bricks = useStudio(store, (s) => s.project.design.bricks)
-  const brushTile = useStudio(store, (s) => s.brushTile)
-  const brushBrickId = useStudio(store, (s) => s.brushBrickId)
-  const tile = brushTile ? TILE_ENTRIES.find((t) => t.ch === brushTile) : undefined
-  const brick = !brushTile && brushBrickId ? bricks.find((b) => b.id === brushBrickId) : undefined
-  const label = tile?.label ?? brick?.name ?? 'Nothing'
   const design = useStudio(store, (s) => s.project.design)
-  const moves = brick && !brushTile && copyToMove(design, brick.id)
+  const brushBrickId = useStudio(store, (s) => s.brushBrickId)
+  const brick = brushBrickId ? design.bricks.find((b) => b.id === brushBrickId) : undefined
+  const grid = !!brick?.grid
+  const label = brick?.name ?? 'Nothing'
+  const moves = brick && !grid && copyToMove(design, brick.id)
+  const stdKey = brick?.grid ? standardKeyOf(brick) : undefined
+  const gridHint = stdKey ? standardTemplate(stdKey)?.hint : undefined
   const hint = erasing
     ? 'Click or drag over things to remove them'
-    : tile
-      ? 'Click or drag to paint · right-click erases'
+    : grid
+      ? `${gridHint ? `${gridHint} · ` : ''}Click or drag to paint · right-click erases`
       : brick
         ? moves
           ? `Moves your ${brick.name} · only one per level`
@@ -150,7 +151,7 @@ function PlacingStrip({ store, erasing, onErasing }: { store: StudioStore; erasi
     <div className="p2d-strip" role="group" aria-label="Placing">
       <div className="p2d-strip-chip" aria-live="polite">
         <span className="p2d-strip-swatch" aria-hidden="true">
-          {erasing ? <Eraser size={20} /> : tile ? <TileArt k={tile.art} box={30} /> : <CostumeThumb asset={brick?.costumes[0]?.asset} box={30} />}
+          {erasing ? <Eraser size={20} /> : <CostumeThumb asset={brick?.costumes[0]?.asset} box={30} />}
         </span>
         <span className="p2d-strip-text">
           <span className="p2d-strip-kicker">{erasing ? 'Erasing' : 'Placing'}</span>

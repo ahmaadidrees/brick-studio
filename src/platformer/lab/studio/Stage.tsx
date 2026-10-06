@@ -20,6 +20,8 @@ import {
 } from './stage/camera'
 import { browserKeyToScratchKey } from './stage/keys'
 import { pickCopy, pickTarget } from './stage/picking'
+import { removeCell, selectedCell } from './builder/cells'
+import { gridCopyId } from '../core/contracts'
 import { builderSession } from './builder/session'
 import { addCopyEdit, moveCopyEdit, removeCopyEdit, tileStrokeEdit, type History, type TileChange } from './builder/history'
 import { cellsOnLine, decidePress, tileCharAt, worldToCell, type BuildTool, type Cell } from './builder/tilePaint'
@@ -47,7 +49,6 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
   const design = useStudio(store, (s) => s.project.design)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
-  const brushTile = useStudio(store, (s) => s.brushTile)
   const erasing = tools?.erasing ?? false
   const history = tools?.history
   const revision = useStudio(store, (s) => s.revision)
@@ -79,8 +80,10 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
   const [hoverCopyId, setHoverCopyId] = useState<string | null>(null)
   const [brushPreviewPos, setBrushPreviewPos] = useState<{ x: number; y: number } | null>(null)
   const [tileHover, setTileHover] = useState<Cell | null>(null)
-  /** The armed brush, as the pure press logic wants it. */
-  const buildTool: BuildTool = { brushTile, brushBrickId, erasing }
+  /** The armed brush, as the pure press logic wants it: a grid brick paints its character, any other brick is placed. */
+  const brushBrick = brushBrickId ? design.bricks.find((b) => b.id === brushBrickId) : undefined
+  const brushTile = brushBrick?.grid?.char ?? null
+  const buildTool: BuildTool = { brushTile, brushBrickId: brushTile ? null : brushBrickId, erasing }
 
   // Dragging state
   const dragRef = useRef<{
@@ -290,12 +293,12 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     return () => cancelAnimationFrame(animId)
   }, [mode, runtime, computePlayCamera, viewport, accumulator, audioManager])
 
-  // The brush preview is the armed brick (not while a tile or the eraser is armed).
+  // The brush preview is the armed brick (not while a grid brick or the eraser is armed: those preview on the cell).
   const previewBrickId = brushTile || erasing ? null : brushBrickId
   const tileLayer = design.tiles
   const hoverInfo =
     tileHover && tileLayer && (brushTile || erasing)
-      ? { col: tileHover.col, row: tileHover.row, ch: erasing ? '.' : (brushTile ?? '.'), erase: erasing }
+      ? { col: tileHover.col, row: tileHover.row, costume: erasing ? null : (brushBrick?.costumes[0] ?? null), erase: erasing }
       : null
 
   // Render in Build mode whenever design, camera, viewport, selection or brush changes; and when a costume finishes loading.
@@ -318,8 +321,8 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     }
     draw()
     return globalImageCache.onImageLoaded(draw)
-    // hoverInfo is derived from tileHover, brushTile and erasing; revision covers design changes.
-  }, [mode, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushTile, erasing, revision])
+    // hoverInfo is derived from tileHover, the brush brick and erasing; revision covers design changes.
+  }, [mode, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
 
   // Helper to get canvas-relative coordinates
   const getCanvasCoords = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
@@ -330,7 +333,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
   }, [])
 
   // Pointer interactions
-  const newDrag = (mode: 'pan' | 'panPending' | 'moveCopy' | 'paint', sx: number, sy: number, wx: number, wy: number, extra: Partial<typeof dragRef.current> = {}) => {
+  const newDrag = (mode: 'none' | 'pan' | 'panPending' | 'moveCopy' | 'paint', sx: number, sy: number, wx: number, wy: number, extra: Partial<typeof dragRef.current> = {}) => {
     dragRef.current = {
       mode,
       moved: false,
@@ -415,6 +418,15 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
         case 'paint-tile': {
           newDrag('paint', sx, sy, wx, wy, { paintChar: decision.ch, paintLast: decision.cell })
           paintCell(decision.cell, decision.ch)
+          // Erasing the selected cell deselects it.
+          if (decision.ch === '.' && store.getState().selectedCopyId === gridCopyId(decision.cell.col, decision.cell.row)) store.selectCopy(null)
+          break
+        }
+        case 'select-cell': {
+          // A painted cell: select it (the card shows See inside). With a grid brick armed, a drag keeps painting.
+          store.selectCopy(gridCopyId(decision.cell.col, decision.cell.row))
+          if (brushTile) newDrag('paint', sx, sy, wx, wy, { paintChar: brushTile, paintLast: decision.cell })
+          else newDrag('none', sx, sy, wx, wy)
           break
         }
         case 'place-copy': {
@@ -477,9 +489,11 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       } else {
         // Idle move: hover highlight, tile cell and brick preview
         const hit = pickCopy(store.getState().project.design, wx, wy)
-        setHoverCopyId(hit?.id ?? null)
+        const hoverCell = !hit && layer ? worldToCell(layer, wx, wy) : null
+        const overCell = hoverCell && tileCharAt(layer!, hoverCell.col, hoverCell.row) !== '.' ? hoverCell : null
+        setHoverCopyId(hit?.id ?? (overCell ? gridCopyId(overCell.col, overCell.row) : null))
         setTileHover(!hit && layer && (brushTile || erasing) ? worldToCell(layer, wx, wy) : null)
-        setBrushPreviewPos(!hit && !brushTile && !erasing ? { x: wx, y: wy } : null)
+        setBrushPreviewPos(!hit && !overCell && !brushTile && !erasing ? { x: wx, y: wy } : null)
       }
     }
   }
@@ -538,6 +552,15 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     }
 
     if (mode === 'build') {
+      const cell = selectedCell(design, selectedCopyId)
+      if (cell) {
+        // A selected grid cell: Delete clears it (one undo step); cells do not nudge.
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault()
+          removeCell(store, history, cell.col, cell.row)
+        }
+        return
+      }
       if (selectedCopyId) {
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault()

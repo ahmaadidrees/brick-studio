@@ -1,11 +1,14 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createStarterProject } from '../starter'
 import { fitCamera, worldToScreen } from '../stage/camera'
 import { StudioStore, emptyProject } from '../store'
 import { Builder } from './Builder'
 import { fakeTemplate } from './testTemplates'
 import { costumeFromImage, imageFromRows } from '../pixels'
+
+// gridBrickTemplate is a stub until the step 7 bricks lane merges: these tests use the builder's test double.
+vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gridBricks')>()), gridBrickTemplate: (await import('./testGridBricks')).fakeGridTemplate }))
 
 afterEach(cleanup)
 
@@ -37,27 +40,34 @@ describe('Builder chrome', () => {
     expect(screen.queryByRole('button', { name: /Select tool/ })).toBeNull()
   })
 
-  it('lists the tiles and the level\'s bricks, and categories filter them', () => {
+  it('lists the standard grid bricks (even before the level has them) and the level\'s bricks, and categories filter them', () => {
     const { store } = storeWithBrick()
     render(<Builder store={store} templates={[]} />)
     const grid = screen.getByLabelText('Brick shapes')
-    for (const name of ['Ground', 'Hard block', 'Spikes', 'Lava', 'Brick', '? block', 'Walker', '+ New brick']) {
+    for (const name of ['Ground', 'Hard block', 'Spikes', 'Lava', 'One-way platform', 'Brick', '? block', 'Bounce block', 'Walker', '+ New brick']) {
       expect(within(grid).getByRole('button', { name })).toBeTruthy()
     }
+    // none of them is in the level yet: only Walker is
+    expect(store.getState().project.design.bricks.map((b) => b.name)).toEqual(['Walker'])
     fireEvent.change(screen.getByLabelText('Brick category'), { target: { value: 'terrain' } })
     expect(within(screen.getByLabelText('Brick shapes')).queryByRole('button', { name: 'Walker' })).toBeNull()
     expect(within(screen.getByLabelText('Brick shapes')).getByRole('button', { name: 'Spikes' })).toBeTruthy()
   })
 
-  it('choosing a tile arms it for painting; choosing a brick arms it for placing', () => {
+  it('choosing a grid brick the level lacks adds it (addBrickFrom) and arms it to paint; choosing it again adds nothing', () => {
     const { store, id } = storeWithBrick()
     render(<Builder store={store} templates={[]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Spikes' }))
-    expect(store.getState().brushTile).toBe('S')
+    const spikes = store.getState().project.design.bricks.find((b) => b.name === 'Spikes')!
+    expect(spikes.grid?.char).toBe('S')
+    expect(store.getState().brushBrickId).toBe(spikes.id)
+    expect(store.getState().project.workspaces[spikes.id]).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Walker' }))
-    expect(store.getState().brushTile).toBeNull()
     expect(store.getState().brushBrickId).toBe(id)
-    expect(within(screen.getByRole('group', { name: 'Placing' })).getByText('Walker')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Spikes' }))
+    expect(store.getState().brushBrickId).toBe(spikes.id)
+    expect(store.getState().project.design.bricks.filter((b) => b.name === 'Spikes')).toHaveLength(1)
+    expect(within(screen.getByRole('group', { name: 'Placing' })).getByText('Spikes')).toBeTruthy()
   })
 
   it('upgrades a save without tiles so painting works', () => {
@@ -124,6 +134,115 @@ describe('painting and selecting on the canvas', () => {
     const copies = store.getState().project.design.copies
     expect(copies).toHaveLength(1)
     expect(copies[0]).toMatchObject({ brickId: id, x: 408, y: 80 })
+    expect(store.getState().selectedCopyId).toBeNull()
+  })
+})
+
+describe('grid bricks: paint, select a cell, See inside, Remove', () => {
+  const canvasOf = () => document.querySelector('canvas.stage-canvas') as HTMLCanvasElement
+  const row = (store: StudioStore, r: number) => store.getState().project.design.tiles!.data[r]
+
+  /** Arm ? block and drag across five cells of row 2 (world y 40). */
+  function paintRowOfQ() {
+    const { store } = storeWithBrick()
+    render(<Builder store={store} templates={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: '? block' }))
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 2, 40) })
+    fireEvent.pointerMove(canvasOf(), { ...screenOf(store, 8 + 16 * 6, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    return store
+  }
+
+  it('dragging with ? block armed paints a row of its character, as one undo step', () => {
+    const store = paintRowOfQ()
+    expect(row(store, 2).slice(0, 8)).toBe('..QQQQQ.')
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(row(store, 2).slice(0, 8)).toBe('........')
+  })
+
+  it('clicking a painted cell selects it as cell:<col>:<row>; the card shows its icon, name and "N in this level", with no knobs', () => {
+    const store = paintRowOfQ()
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 4, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    expect(store.getState().selectedCopyId).toBe('cell:4:2')
+    // the press did not change the cells
+    expect(row(store, 2).slice(0, 8)).toBe('..QQQQQ.')
+    const card = screen.getByRole('region', { name: '? block copy' })
+    expect(within(card).getByText('5 in this level')).toBeTruthy()
+    expect(within(card).getByText('? block')).toBeTruthy()
+    expect(card.querySelector('img')).toBeTruthy()
+    expect(within(card).queryByRole('slider')).toBeNull()
+    expect(within(card).queryByRole('group', { name: /knobs/ })).toBeNull()
+  })
+
+  it('See inside opens the workshop on the ? block brick, and Done brings the builder back with the cell still selected', () => {
+    const store = paintRowOfQ()
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 4, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    fireEvent.click(within(screen.getByRole('region', { name: '? block copy' })).getByRole('button', { name: /See inside/ }))
+    const q = store.getState().project.design.bricks.find((b) => b.name === '? block')!
+    expect(store.getState().workshopBrickId).toBe(q.id)
+    act(() => store.closeWorkshop())
+    expect(store.getState().selectedCopyId).toBe('cell:4:2')
+    expect(screen.getByRole('region', { name: '? block copy' })).toBeTruthy()
+  })
+
+  it('Remove clears just that cell (one undo step, and Undo puts it back)', () => {
+    const store = paintRowOfQ()
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 4, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this ? block' }))
+    expect(row(store, 2).slice(0, 8)).toBe('..QQ.QQ.')
+    expect(store.getState().selectedCopyId).toBeNull()
+    expect(screen.queryByRole('region', { name: '? block copy' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(row(store, 2).slice(0, 8)).toBe('..QQQQQ.')
+  })
+
+  it('the Delete key removes the selected cell too, and a deleteCopy-style path never throws on a cell id', () => {
+    const store = paintRowOfQ()
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 3, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    fireEvent.keyDown(screen.getByLabelText('Level Stage'), { key: 'Delete' })
+    expect(row(store, 2).slice(0, 8)).toBe('..Q.QQQ.')
+    // arrows do not nudge a cell
+    act(() => store.selectCopy('cell:2:2'))
+    fireEvent.keyDown(screen.getByLabelText('Level Stage'), { key: 'ArrowRight' })
+    expect(row(store, 2).slice(0, 8)).toBe('..Q.QQQ.')
+    expect(() => act(() => store.deleteCopy('cell:2:2'))).not.toThrow()
+  })
+
+  it('with a normal brick armed (or the eraser off and nothing armed), a press on a painted cell selects it; right-click still erases it', () => {
+    const store = paintRowOfQ()
+    fireEvent.click(screen.getByRole('button', { name: 'Walker' }))
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 3, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    expect(store.getState().selectedCopyId).toBe('cell:3:2')
+    expect(store.getState().project.design.copies).toHaveLength(0)
+    fireEvent.pointerDown(canvasOf(), { button: 2, ...screenOf(store, 8 + 16 * 3, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 2 })
+    expect(row(store, 2).slice(0, 8)).toBe('..Q.QQQ.')
+    expect(store.getState().selectedCopyId).toBeNull()
+  })
+
+  it('a Hero standing in front of a cell still wins the click', () => {
+    const { store, id } = storeWithBrick()
+    store.setTile(5, 2, 'Q')
+    const hero = store.addCopy(id, 5 * 16 + 8, 2 * 16 + 8)
+    store.selectCopy(null)
+    render(<Builder store={store} templates={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: '? block' }))
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 5 * 16 + 8, 2 * 16 + 8) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    expect(store.getState().selectedCopyId).toBe(hero)
+  })
+
+  it('painting a different grid brick over a cell replaces it; clicking elsewhere deselects', () => {
+    const store = paintRowOfQ()
+    fireEvent.click(screen.getByRole('button', { name: 'Hard block' }))
+    fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 2, 40) })
+    fireEvent.pointerUp(canvasOf(), { button: 0 })
+    expect(row(store, 2).slice(0, 8)).toBe('..HQQQQ.')
     expect(store.getState().selectedCopyId).toBeNull()
   })
 })

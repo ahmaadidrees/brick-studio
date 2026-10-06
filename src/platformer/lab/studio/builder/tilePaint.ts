@@ -56,9 +56,12 @@ export function cellsOnLine(a: Cell, b: Cell): Cell[] {
   return cells
 }
 
-/** What the kid has armed: a tile to paint, a brick to place, or the eraser. */
+/**
+ * What the kid has armed: a grid brick to paint, a brick to place, or the eraser. `brushTile` is the armed grid brick's
+ * character (null for any other brick); the Stage derives it from the brush brick's `grid.char`.
+ */
 export interface BuildTool {
-  /** TILE_CHAR value to paint; null when painting bricks. */
+  /** The armed grid brick's character to paint; null when placing a normal brick. */
   brushTile: string | null
   brushBrickId: string | null
   erasing: boolean
@@ -69,6 +72,8 @@ export type PressDecision =
   | { kind: 'select-copy'; copy: CopyPlacement }
   /** Paint one cell; '.' erases it. A drag keeps painting. */
   | { kind: 'paint-tile'; cell: Cell; ch: string }
+  /** A painted cell was pressed: select it (`selectCopy(gridCopyId)`). A grid brush keeps painting on a drag. */
+  | { kind: 'select-cell'; cell: Cell; ch: string }
   | { kind: 'erase-copy'; copy: CopyPlacement }
   | { kind: 'place-copy'; brickId: string; x: number; y: number }
   /** Empty space and nothing armed. */
@@ -76,7 +81,8 @@ export type PressDecision =
 
 /**
  * Press on the level in Build. Right-click (or the Erase tool) removes whatever is there. Otherwise an existing copy is
- * selected instead of painted over, then the armed tile or brick goes down.
+ * selected instead of painted over (a Hero standing in front of a cell wins), then a painted cell is selected when
+ * nothing paints over it (no grid brick armed, or the armed brick is the cell's own), then the armed brick goes down.
  */
 export function decidePress(
   design: LevelDesign,
@@ -93,6 +99,8 @@ export function decidePress(
     return cell ? { kind: 'paint-tile', cell, ch: '.' } : { kind: 'nothing' }
   }
   if (copy) return { kind: 'select-copy', copy }
+  const here = design.tiles && cell ? tileCharAt(design.tiles, cell.col, cell.row) : '.'
+  if (cell && here !== '.' && (!tool.brushTile || tool.brushTile === here)) return { kind: 'select-cell', cell, ch: here }
   if (tool.brushTile && cell) return { kind: 'paint-tile', cell, ch: tool.brushTile }
   if (!tool.brushTile && tool.brushBrickId) {
     const snap = opts.snap ?? 0

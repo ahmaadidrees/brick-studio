@@ -1,10 +1,12 @@
 /**
  * The Workshop's test room: a tiny sandbox LevelDesign built around one brick. Pure and deterministic (no UI), so it
- * can be tested headlessly. About 320 x 160 steps, a tile floor and tile walls, plus the level's own walls (the core
- * stops bodies at the level edges, so the room works even before tiles are simulated).
+ * can be tested headlessly. About 320 x 160 steps, a floor and walls of Ground cells (the standard Ground grid brick is
+ * added to the room, step 7), plus the level's own walls. A grid brick's room has a few of its own cells painted where
+ * the helper Hero will touch them (see `roomCells`).
  */
 import type { BrickDef, LevelDesign, TileLayer, Value } from '../../core/contracts'
-import { TILE_CHAR, TILE_SIZE } from '../../core/contracts'
+import { TILE_SIZE } from '../../core/contracts'
+import { gridBrickTemplate } from '../gridBricks'
 import { createHeroBrick, HERO_BRICK_ID } from '../hero/heroBrick'
 
 export const ROOM_WIDTH = 320
@@ -27,15 +29,34 @@ export function isHeroBrick(brick: BrickDef): boolean {
   return brick.id === HERO_BRICK_ID
 }
 
-/** Tile floor along the bottom row and a wall column on each side, all ground. */
-export function roomTiles(): TileLayer {
-  const G = TILE_CHAR.ground
-  const data = Array.from({ length: ROOM_ROWS }, (_, r) => {
-    if (r === 0) return G.repeat(ROOM_COLS)
-    return G + '.'.repeat(ROOM_COLS - 2) + G
+/** The room's brick id for the standard Ground (a room never shares ids with the project). */
+export const ROOM_GROUND_ID = 'room_ground'
+
+/**
+ * Floor along the bottom row and a wall column on each side, all `ground` (the Ground brick's character), plus, for a
+ * grid brick, `cells` (its character): a run on the floor the Hero walks into (spikes, lava, bounce, walls) and a run
+ * floating above it the Hero can jump up into from below (? block, brick) or land on top of (one-way, bounce).
+ */
+export function roomTiles(ground = 'G', cells?: string): TileLayer {
+  const rows = Array.from({ length: ROOM_ROWS }, (_, r) => {
+    if (r === 0) return (ground.repeat(ROOM_COLS)).split('')
+    const row = Array.from({ length: ROOM_COLS }, () => '.')
+    row[0] = ground
+    row[ROOM_COLS - 1] = ground
+    return row
   })
-  return { cols: ROOM_COLS, rows: ROOM_ROWS, data }
+  if (cells) {
+    for (const col of ROOM_FLOOR_RUN) rows[1][col] = cells
+    for (const col of ROOM_AIR_RUN) rows[ROOM_AIR_ROW][col] = cells
+  }
+  return { cols: ROOM_COLS, rows: ROOM_ROWS, data: rows.map((r) => r.join('')) }
 }
+
+/** Columns of the cells on the floor (x 128 to 176, in the helper's path), and of the cells floating above it. */
+export const ROOM_FLOOR_RUN = [8, 9, 10]
+export const ROOM_AIR_RUN = [12, 13, 14]
+/** Bottom of the floating run is two tiles over the floor: a jump from the floor bumps it from below. */
+export const ROOM_AIR_ROW = 3
 
 function copyY(brick: BrickDef): number {
   const h = brick.costumes[0]?.height ?? TILE_SIZE
@@ -51,11 +72,18 @@ function copyY(brick: BrickDef): number {
 export function buildTestRoom(brick: BrickDef, stage: BrickDef, opts: TestRoomOptions = {}): LevelDesign {
   const hero = isHeroBrick(brick)
   const helper = hero ? undefined : (opts.hero ?? createHeroBrick().brick)
-  const bricks = helper ? [brick, helper] : [brick]
+  // Grid cells need their bricks: the room always has the standard Ground (its floor), or the brick itself if it is Ground.
+  const groundTemplate = gridBrickTemplate('ground')
+  const groundChar = groundTemplate.brick.grid?.char ?? 'G'
+  const isGround = brick.grid?.char === groundChar
+  const ground: BrickDef | undefined = isGround ? undefined : { ...groundTemplate.brick, id: ROOM_GROUND_ID }
+  const floorChar = isGround ? groundChar : ground!.grid!.char
+  const bricks = [brick, ...(helper ? [helper] : []), ...(ground ? [ground] : [])]
   const knobs = opts.knobs && Object.keys(opts.knobs).length > 0 ? { ...opts.knobs } : undefined
+  // A grid brick is the cells, not a copy; any other brick is one copy.
   const copies = [
     ...(helper ? [{ id: 'room_helper', brickId: helper.id, x: HELPER_X, y: copyY(helper) }] : []),
-    { id: 'room_brick', brickId: brick.id, x: hero ? HELPER_X : BRICK_X, y: copyY(brick), ...(knobs ? { knobs } : {}) },
+    ...(brick.grid ? [] : [{ id: 'room_brick', brickId: brick.id, x: hero ? HELPER_X : BRICK_X, y: copyY(brick), ...(knobs ? { knobs } : {}) }]),
   ]
   return {
     id: 'workshop_room',
@@ -65,6 +93,6 @@ export function buildTestRoom(brick: BrickDef, stage: BrickDef, opts: TestRoomOp
     stage: { ...stage, costumes: [], sounds: [], program: { scripts: [], procedures: [], variables: stage.program.variables, lists: stage.program.lists } },
     bricks,
     copies,
-    tiles: roomTiles(),
+    tiles: roomTiles(floorChar, brick.grid?.char),
   }
 }
