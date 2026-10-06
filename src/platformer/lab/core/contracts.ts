@@ -133,6 +133,8 @@ export interface Sound {
 export interface BrickDef {
   /** Step 6b: how many copies a level may hold (1 for the Hero and the Goal). Missing means no limit. */
   limit?: number
+  /** Step 7: a grid brick (Ground, ? block, Spikes...). Its copies are painted cells of LevelDesign.tiles. See GridSpec. */
+  grid?: GridSpec
   id: string
   /** Kid-facing name; also what "create clone of" and sensing menus show. */
   name: string
@@ -177,13 +179,47 @@ export interface LevelDesign {
   copies: CopyPlacement[]
   /** Seed for the world RNG, so a Play is replayable. */
   seed: number
-  /** Painted tiles (step 6): ground, blocks, spikes. No code; fast; thousands per level. Missing means no tiles. */
+  /**
+   * The grid (step 7): cells painted with grid bricks. Each character names the brick whose `grid.char` it is; on
+   * Play every filled cell becomes a painted-copy target of that brick (see GridSpec). Missing means no grid.
+   */
   tiles?: TileLayer
+}
+
+// ---------------------------------------------------------------- grid bricks (step 7, docs/qa/code-lab-core/STEP7.md)
+
+/**
+ * A grid brick is an ordinary brick (costumes, sounds, real Scratch code) whose copies snap to TILE_SIZE cells and are
+ * stored compactly as one character per cell in LevelDesign.tiles, so a level can hold thousands of them.
+ *
+ * On Play, instantiate turns every filled cell (col, row) into a normal painted-copy Target of that brick:
+ * - x = left + col*TILE_SIZE + TILE_SIZE/2, y = bottom + row*TILE_SIZE + TILE_SIZE/2 (the cell centre);
+ * - copyId = gridCopyId(col, row), i.e. `cell:<col>:<row>`;
+ * - starting costume: costume 1, or with `autotile`, costume 2 when the cell directly above holds the same char;
+ * - the brick's variable defaults (cells have no per-copy knobs).
+ * After that the engine has NO rule for any particular brick: solidity, hurting, bouncing and ? blocks all come from
+ * the brick's own scripts (Platformer blocks plus Scratch). The builder draws Build mode with the same costume rule.
+ */
+export interface GridSpec {
+  /** One character, unique among the level's grid bricks, never '.'. */
+  char: string
+  /** Pick the starting costume from the cell above (costume 2 when covered by the same brick: grass top vs dirt). */
+  autotile?: boolean
+}
+
+export const gridCopyId = (col: number, row: number): string => `cell:${col}:${row}`
+export function parseGridCopyId(copyId: string): { col: number; row: number } | null {
+  const m = /^cell:(\d+):(\d+)$/.exec(copyId)
+  return m ? { col: Number(m[1]), row: Number(m[2]) } : null
 }
 
 // ---------------------------------------------------------------- tiles (step 6, docs/qa/code-lab-core/STEP6.md)
 
-/** Tile kinds. '.' is empty. Solid kinds stop Platformer bodies; spikes and lava are not solid but can be sensed. */
+/**
+ * LEGACY (step 6/6b saves only). Before step 7 these characters were engine tile kinds with built-in rules. Step 7
+ * removes every such rule: old saves are converted by mapping each character to a standard grid brick
+ * (studio/gridBricks.ts LEGACY_TILE_BRICKS). Nothing in core may give these kinds behavior any more.
+ */
 export type TileKind = 'ground' | 'brick' | 'hard' | 'qblock' | 'spikes' | 'lava' | 'semi' | 'bounce' | 'used'
 export const TILE_KINDS: readonly TileKind[] = ['ground', 'brick', 'hard', 'qblock', 'spikes', 'lava', 'semi', 'bounce', 'used']
 /** Stop bodies from every side. `semi` (one-way platform) only stops a body falling onto its top: see STEP6B.md. */
@@ -261,6 +297,8 @@ export interface Body {
   gravity: boolean
   /** "solid [on]": other moving bodies cannot pass through this target's box. */
   solid: boolean
+  /** Step 7, "solid [only on top]": while solid, stops only a body falling onto its top (one-way platform). */
+  oneWay?: boolean
   /** Steps per tick, y up. */
   vx: number
   vy: number
@@ -356,7 +394,7 @@ export interface World {
   cloneCount: number
   /** Platformer extension settings (step 3). Missing means DEFAULT_PHYSICS. */
   physics?: PhysicsSettings
-  /** The level's tiles (step 6), copied from the design on Play. Missing means no tiles. */
+  /** The level's grid (step 7: for reference only, cells are already targets). Missing means no grid. */
   tiles?: TileLayer
   nextTargetId: number
   /** Ask prompt queue for sensing primitives. */
