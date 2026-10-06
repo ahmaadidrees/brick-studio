@@ -2,13 +2,13 @@
  * Starter level for Code Lab (steps 3, 5 and 6).
  *
  * A small platformer made of tiles and bricks:
- * - Tiles (STARTER_TILES): the ground, a few floating brick and ? platforms, walls for the Walkers, a gap and a spike pit.
+ * - Tiles (STARTER_TILES): the ground, a few floating brick and ? platforms, a one-way platform, a bounce block, walls for the Walkers, a gap and a spike pit.
  *   They are painted on the level's tile layer, not placed as bricks.
- * - Hero: the open-block Hero (studio/hero), with labels and handlers for boing, hero hurt, stomped and the spikes.
+ * - Hero: the open-block Hero (studio/hero), with labels and handlers for boing, hero hurt, stomped, spikes, lava and ? blocks.
  * - Walker (two copies, different "speed" knobs), Coin, Spring and Goal: each is a few short labelled scripts
  *   made of My Blocks (real procedures_definition / procedures_call), so the top view reads like a sentence and a kid
  *   can drill into any My Block to see how it works.
- * - Stage: counts the coins.
+ * - Stage: counts the coins. It has no backdrop costume, so the stage draws the Brickgineers day sky.
  *
  * Level is 960 x 360 steps, y-up, (0, 0) at the bottom-left; tiles are 16 x 16 (60 columns by 22 rows, row 0 at the bottom).
  * Every costume is pixel art built with `imageFromRows`; every brick's blocks are real Blockly workspace JSON.
@@ -175,26 +175,6 @@ const GOAL_ROWS = [
   '################',
 ]
 
-/** Stage backdrop: 32 x 16, a dusk sky with stars. */
-const STAGE_ROWS = [
-  'KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK',
-  'KKKKKKKKKK.WKKKKKKKKKKKKKKKKKKKK',
-  'KKKKKKKKKKKKKKKKKKKKKKKKKKWKKKKK',
-  'KKKKKWKKKKKKKKKKKKKKKKKKKKKKKKKK',
-  'KKKKKKKKKKKKKKKKK.WKKKKKKKKKKKKK',
-  'pppppppppppppppppppppppppppppppp',
-  'pppppppppppppppppppppppppppppppp',
-  'pppppppppppppppppppppppppppppppp',
-  'PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP',
-  'PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP',
-  'OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO',
-  'OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO',
-  'YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY',
-  'SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS',
-  '################################',
-  '################################',
-]
-
 function costume(name: string, rows: string[]): Costume {
   const width = rows[0]!.length
   const height = rows.length
@@ -208,7 +188,6 @@ export function createCostumes(): {
   coinCostume: Costume
   springCostume: Costume
   goalCostume: Costume
-  stageCostume: Costume
 } {
   return {
     groundCostume: costume('Grass', GROUND_ROWS),
@@ -217,7 +196,6 @@ export function createCostumes(): {
     coinCostume: costume('Gold', COIN_ROWS),
     springCostume: costume('Coil', SPRING_ROWS),
     goalCostume: costume('Flag', GOAL_ROWS),
-    stageCostume: costume('Sunset', STAGE_ROWS),
   }
 }
 
@@ -508,7 +486,9 @@ export function createGoalBrick(id: string, name: string): MadeBrick {
   b.define(check, 'The Hero reached me: course clear', [
     b.when(b.touchingHero(), [b.say('Course clear!'), b.broadcast('course clear'), b.stopAll()]),
   ])
-  return compiled(id, name, [costume('Flag', GOAL_ROWS)], b.workspace())
+  // One goal per level: the builder moves the existing Goal instead of adding another.
+  const made = compiled(id, name, [costume('Flag', GOAL_ROWS)], b.workspace())
+  return { ...made, brick: { ...made.brick, limit: 1 } }
 }
 
 /** Empty: a costume and no scripts. */
@@ -634,6 +614,10 @@ export const STARTER_PLATFORMS: ReadonlyArray<{ col: number; row: number; tiles:
   { col: 40, row: 6, tiles: 'BQBB' }, // top y 112, x 640..704, just before the pit
   { col: 50, row: 4, tiles: 'BQQB' }, // top y 80, x 800..864, where the Spring throws you
 ]
+/** A one-way platform: you jump up through it from below and land on top ('-', TILE_CHAR.semi). Top y 64, x 528..592, over the slow Walker's lane. */
+export const STARTER_ONE_WAY = { col: 33, row: 3, length: 4 } as const
+/** A bounce block ('O', TILE_CHAR.bounce) on the ground just before the gap: land on it to be thrown high. x 288..304, top y 32. */
+export const STARTER_BOUNCE = { col: 18, row: 1 } as const
 /** One-tile-high hard blocks standing on the ground: the Walkers turn around when they bump them. */
 export const STARTER_WALLS: ReadonlyArray<{ col: number; row: number }> = [
   { col: 6, row: 1 },
@@ -653,6 +637,8 @@ export function createStarterTiles(): TileLayer {
   }
   for (const p of STARTER_PLATFORMS) [...p.tiles].forEach((ch, i) => put(p.col + i, p.row, ch as 'B' | 'Q'))
   for (const w of STARTER_WALLS) put(w.col, w.row, 'hard')
+  for (let i = 0; i < STARTER_ONE_WAY.length; i++) put(STARTER_ONE_WAY.col + i, STARTER_ONE_WAY.row, 'semi')
+  put(STARTER_BOUNCE.col, STARTER_BOUNCE.row, 'bounce')
   return { cols: STARTER_COLS, rows: STARTER_ROWS, data: grid.map((r) => r.join('')) }
 }
 
@@ -690,7 +676,8 @@ export function createStarterProject(): StudioProject {
     id: STAGE_ID,
     name: 'Stage',
     isStage: true,
-    costumes: [c.stageCostume],
+    // No backdrop costume: the stage draws the Brickgineers day sky.
+    costumes: [],
     sounds: [],
     program: compileWorkspace(stageWs, { variables: [coinsVar] }).program,
   }
