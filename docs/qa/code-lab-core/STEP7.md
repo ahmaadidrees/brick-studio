@@ -37,8 +37,8 @@ commit. The rules in [`STEP6.md`](STEP6.md) and [`WAVE2.md`](WAVE2.md) still app
 ### engine: grid cells as targets, no built-in tile rules
 **Files:** `core/**` (including `core/editor/**`), `studio/code/plainScratch.ts` and its test.
 
-- **`instantiate`** turns grid cells into targets exactly as GridSpec says. They come after `design.copies` in draw
-  order, row by row from the bottom.
+- **`instantiate`** turns grid cells into targets exactly as GridSpec says. They come **before** `design.copies` in draw
+  order (behind every copy), row by row from the bottom.
 - **`validateDesign`:**
   - `grid.char` is one character, not '.', and unique;
   - every non-'.' tiles character must belong to a grid brick;
