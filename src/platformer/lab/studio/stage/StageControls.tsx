@@ -1,15 +1,9 @@
-import React from 'react'
 import type { StudioMode } from '../store'
 import type { PlayCameraMode } from './camera'
 
 export interface StageControlsProps {
   mode: StudioMode
-  activeTool: 'select' | 'brush'
-  gridSnap: boolean
-  onTogglePlay: () => void
   onGreenFlag: () => void
-  onSelectTool: (tool: 'select' | 'brush') => void
-  onToggleGridSnap: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onResetView: () => void
@@ -18,94 +12,24 @@ export interface StageControlsProps {
   onPlayCameraChoice?: (choice: PlayCameraMode) => void
 }
 
-export function StageControls({
-  mode,
-  activeTool,
-  gridSnap,
-  onTogglePlay,
-  onGreenFlag,
-  onSelectTool,
-  onToggleGridSnap,
-  onZoomIn,
-  onZoomOut,
-  onResetView,
-  playCamera = null,
-  onPlayCameraChoice,
-}: StageControlsProps) {
+/**
+ * The stage's small floating view tools (top right of the level): zoom and fit, and in Play the green flag and the
+ * camera choice. Build or Play, and everything about placing, lives in the builder's own chrome, not here.
+ */
+export function StageControls({ mode, onGreenFlag, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice }: StageControlsProps) {
   const isPlay = mode === 'play'
-
   return (
-    <div className="stage-controls-bar" role="toolbar" aria-label="Stage controls">
-      <div className="stage-controls-group">
-        <button
-          className="stage-ctrl-btn stage-flag-btn"
-          aria-label="Green flag (start scripts)"
-          title="Green Flag"
-          onClick={onGreenFlag}
-        >
-          <span className="stage-flag-icon">⚑</span>
+    <div className="stage-view-tools" role="toolbar" aria-label="Stage view">
+      {isPlay && (
+        <button type="button" className="stage-view-btn stage-view-flag" aria-label="Green flag (start scripts)" title="Green flag" onClick={onGreenFlag}>
+          <span aria-hidden="true">⚑</span>
         </button>
-
-        {isPlay ? (
-          <button
-            className="stage-ctrl-btn stage-stop-btn"
-            aria-label="Stop simulation"
-            title="Stop"
-            onClick={onTogglePlay}
-          >
-            <span className="stage-stop-icon">⏹</span>
-            <span>Stop</span>
-          </button>
-        ) : (
-          <button
-            className="stage-ctrl-btn stage-play-btn"
-            aria-label="Play simulation"
-            title="Play"
-            onClick={onTogglePlay}
-          >
-            <span className="stage-play-icon">▶</span>
-            <span>Play</span>
-          </button>
-        )}
-
-        <div className={`stage-mode-badge ${mode}`} aria-label={`Current mode: ${mode}`}>
-          {mode.toUpperCase()}
-        </div>
-      </div>
-
-      {!isPlay && (
-        <div className="stage-controls-group">
-          <button
-            className={`stage-ctrl-btn tool-btn ${activeTool === 'brush' ? 'active' : ''}`}
-            aria-label="Brush tool (paint copy)"
-            title="Brush (paint copy)"
-            onClick={() => onSelectTool('brush')}
-          >
-            🖌️ Brush
-          </button>
-          <button
-            className={`stage-ctrl-btn tool-btn ${activeTool === 'select' ? 'active' : ''}`}
-            aria-label="Select tool (move and delete)"
-            title="Select & Move"
-            onClick={() => onSelectTool('select')}
-          >
-            ↖ Select
-          </button>
-          <button
-            className={`stage-ctrl-btn snap-btn ${gridSnap ? 'active' : ''}`}
-            aria-label={`Toggle 8-step grid snap (currently ${gridSnap ? 'on' : 'off'})`}
-            title="Toggle 8-step Grid Snap"
-            onClick={onToggleGridSnap}
-          >
-            ▦ Snap 8
-          </button>
-        </div>
       )}
-
       {isPlay && onPlayCameraChoice && (
-        <div className="stage-controls-group" role="group" aria-label="Camera follows">
+        <div className="stage-view-group" role="group" aria-label="Camera follows">
           <button
-            className={`stage-ctrl-btn tool-btn ${playCamera === 'whole' ? 'active' : ''}`}
+            type="button"
+            className={`stage-view-btn${playCamera === 'whole' ? ' active' : ''}`}
             aria-label="Camera shows the whole level"
             aria-pressed={playCamera === 'whole'}
             title="Camera: whole level"
@@ -114,7 +38,8 @@ export function StageControls({
             Whole level
           </button>
           <button
-            className={`stage-ctrl-btn tool-btn ${playCamera === 'follow' ? 'active' : ''}`}
+            type="button"
+            className={`stage-view-btn${playCamera === 'follow' ? ' active' : ''}`}
             aria-label="Camera follows the selected brick"
             aria-pressed={playCamera === 'follow'}
             title="Camera follows the selected brick"
@@ -124,30 +49,14 @@ export function StageControls({
           </button>
         </div>
       )}
-
-      <div className="stage-controls-group zoom-group">
-        <button
-          className="stage-ctrl-btn zoom-btn"
-          aria-label="Zoom in"
-          title="Zoom in"
-          onClick={onZoomIn}
-        >
+      <div className="stage-view-group" role="group" aria-label="Zoom">
+        <button type="button" className="stage-view-btn" aria-label="Zoom in" title="Zoom in" onClick={onZoomIn}>
           +
         </button>
-        <button
-          className="stage-ctrl-btn zoom-btn"
-          aria-label="Zoom out"
-          title="Zoom out"
-          onClick={onZoomOut}
-        >
+        <button type="button" className="stage-view-btn" aria-label="Zoom out" title="Zoom out" onClick={onZoomOut}>
           −
         </button>
-        <button
-          className="stage-ctrl-btn zoom-btn reset-btn"
-          aria-label="Reset view to fit"
-          title="Reset View"
-          onClick={onResetView}
-        >
+        <button type="button" className="stage-view-btn" aria-label="Reset view to fit" title="Fit the whole level" onClick={onResetView}>
           Fit
         </button>
       </div>

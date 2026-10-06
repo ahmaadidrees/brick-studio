@@ -19,8 +19,10 @@ import {
   type Viewport,
 } from './stage/camera'
 import { browserKeyToScratchKey } from './stage/keys'
-import { KnobPanel } from './stage/KnobPanel'
 import { pickCopy, pickTarget } from './stage/picking'
+import { builderSession } from './builder/session'
+import { addCopyEdit, moveCopyEdit, removeCopyEdit, tileStrokeEdit, type History, type TileChange } from './builder/history'
+import { cellsOnLine, decidePress, tileCharAt, worldToCell, type BuildTool, type Cell } from './builder/tilePaint'
 import {
   globalImageCache,
   renderBuildMode,
@@ -30,12 +32,24 @@ import {
 import { StageControls } from './stage/StageControls'
 import './stage/stage.css'
 
-export function Stage({ store }: { store: StudioStore }) {
+/** What the builder chrome hands the stage: the undo history and whether the Erase tool is armed. */
+export interface BuildTools {
+  history: History
+  erasing: boolean
+}
+
+/** Bricks snap to an 8-step grid, like the old stage's default. */
+const GRID = 8
+
+export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools }) {
   const mode = useStudio(store, (s) => s.mode)
   const runtime = useStudio(store, (s) => s.runtime)
   const design = useStudio(store, (s) => s.project.design)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
+  const brushTile = useStudio(store, (s) => s.brushTile)
+  const erasing = tools?.erasing ?? false
+  const history = tools?.history
   const revision = useStudio(store, (s) => s.revision)
   const selectedBrickId = useStudio(store, (s) => s.selectedBrickId)
 
@@ -44,9 +58,16 @@ export function Stage({ store }: { store: StudioStore }) {
 
   // Camera and Viewport
   const [viewport, setViewport] = useState<Viewport>({ width: 480, height: 360 })
-  const [camera, setCamera] = useState<Camera>(() => fitCamera(design.bounds, { width: 480, height: 360 }))
+  const session = builderSession(store)
+  const [camera, setCameraState] = useState<Camera>(() => session.camera ?? fitCamera(design.bounds, { width: 480, height: 360 }))
+  const setCamera = (next: Camera | ((c: Camera) => Camera)) =>
+    setCameraState((prev) => {
+      const value = typeof next === 'function' ? next(prev) : next
+      session.camera = value
+      return value
+    })
   // View state lives here in the UI, never in World. `viewDirty`: the kid moved or zoomed the view, so don't auto-fit.
-  const viewDirty = useRef(false)
+  const viewDirty = useRef(session.viewDirty)
   // Play camera: 'whole' / 'follow' picked from the controls (null = default for this level and stage size),
   // or free (kid dragged/zoomed), in which case `camera` is used as-is.
   const [playChoice, setPlayChoice] = useState<PlayCameraMode | null>(null)
@@ -54,15 +75,16 @@ export function Stage({ store }: { store: StudioStore }) {
   // The camera actually used for the last Play frame, so pointer maths matches what is on screen.
   const playCamRef = useRef<Camera>(camera)
 
-  // Build tools
-  const [activeTool, setActiveTool] = useState<'select' | 'brush'>('brush')
-  const [gridSnap, setGridSnap] = useState(true)
+  // Build view state (hover only; what is armed lives in the store and the builder chrome)
   const [hoverCopyId, setHoverCopyId] = useState<string | null>(null)
   const [brushPreviewPos, setBrushPreviewPos] = useState<{ x: number; y: number } | null>(null)
+  const [tileHover, setTileHover] = useState<Cell | null>(null)
+  /** The armed brush, as the pure press logic wants it. */
+  const buildTool: BuildTool = { brushTile, brushBrickId, erasing }
 
   // Dragging state
   const dragRef = useRef<{
-    mode: 'none' | 'pan' | 'panPending' | 'moveCopy'
+    mode: 'none' | 'pan' | 'panPending' | 'moveCopy' | 'paint'
     moved: boolean
     startScreenX: number
     startScreenY: number
@@ -70,6 +92,10 @@ export function Stage({ store }: { store: StudioStore }) {
     startWorldY: number
     startCopyX: number
     startCopyY: number
+    /** paint: the tile being painted and the cells changed so far (one undo step). */
+    paintChar: string
+    paintLast: Cell | null
+    changes: TileChange[]
   }>({
     mode: 'none',
     moved: false,
@@ -79,6 +105,9 @@ export function Stage({ store }: { store: StudioStore }) {
     startWorldY: 0,
     startCopyX: 0,
     startCopyY: 0,
+    paintChar: '.',
+    paintLast: null,
+    changes: [],
   })
 
   // Play animation & interpolation
@@ -125,6 +154,7 @@ export function Stage({ store }: { store: StudioStore }) {
   const updateView = (fn: (c: Camera) => Camera) => {
     const base = activeCamera()
     viewDirty.current = true
+    session.viewDirty = true
     if (mode === 'play') setPlayFree(true)
     setCamera(clampCamera(fn(base), design.bounds))
   }
@@ -260,47 +290,36 @@ export function Stage({ store }: { store: StudioStore }) {
     return () => cancelAnimationFrame(animId)
   }, [mode, runtime, computePlayCamera, viewport, accumulator, audioManager])
 
-  // Render in Build mode whenever design, camera, viewport, selection or brush changes
+  // The brush preview is the armed brick (not while a tile or the eraser is armed).
+  const previewBrickId = brushTile || erasing ? null : brushBrickId
+  const tileLayer = design.tiles
+  const hoverInfo =
+    tileHover && tileLayer && (brushTile || erasing)
+      ? { col: tileHover.col, row: tileHover.row, ch: erasing ? '.' : (brushTile ?? '.'), erase: erasing }
+      : null
+
+  // Render in Build mode whenever design, camera, viewport, selection or brush changes; and when a costume finishes loading.
   useEffect(() => {
     if (mode !== 'build') return
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    renderBuildMode(ctx, design, {
-      camera,
-      viewport,
-      gridSnap,
-      selectedCopyId,
-      hoverCopyId,
-      brushBrickId,
-      brushPreviewPos,
-      tool: activeTool,
-    })
-  }, [mode, design, camera, viewport, gridSnap, selectedCopyId, hoverCopyId, brushBrickId, brushPreviewPos, activeTool, revision])
-
-  // Listen to image loading to redraw canvas
-  useEffect(() => {
-    return globalImageCache.onImageLoaded(() => {
-      if (mode === 'build') {
-        const canvas = canvasRef.current
-        if (!canvas) return
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        renderBuildMode(ctx, design, {
-          camera,
-          viewport,
-          gridSnap,
-          selectedCopyId,
-          hoverCopyId,
-          brushBrickId,
-          brushPreviewPos,
-          tool: activeTool,
-        })
-      }
-    })
-  }, [mode, design, camera, viewport, gridSnap, selectedCopyId, hoverCopyId, brushBrickId, brushPreviewPos, activeTool])
+    const draw = () => {
+      const ctx = canvasRef.current?.getContext('2d')
+      if (!ctx) return
+      renderBuildMode(ctx, design, {
+        camera,
+        viewport,
+        gridSnap: true,
+        selectedCopyId,
+        hoverCopyId,
+        brushBrickId: previewBrickId,
+        brushPreviewPos,
+        tool: 'brush',
+        tileHover: hoverInfo,
+      })
+    }
+    draw()
+    return globalImageCache.onImageLoaded(draw)
+    // hoverInfo is derived from tileHover, brushTile and erasing; revision covers design changes.
+  }, [mode, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushTile, erasing, revision])
 
   // Helper to get canvas-relative coordinates
   const getCanvasCoords = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
@@ -311,6 +330,44 @@ export function Stage({ store }: { store: StudioStore }) {
   }, [])
 
   // Pointer interactions
+  const newDrag = (mode: 'pan' | 'panPending' | 'moveCopy' | 'paint', sx: number, sy: number, wx: number, wy: number, extra: Partial<typeof dragRef.current> = {}) => {
+    dragRef.current = {
+      mode,
+      moved: false,
+      startScreenX: sx,
+      startScreenY: sy,
+      startWorldX: wx,
+      startWorldY: wy,
+      startCopyX: 0,
+      startCopyY: 0,
+      paintChar: '.',
+      paintLast: null,
+      changes: [],
+      ...extra,
+    }
+  }
+
+  /** Paint (or erase with '.') one cell of the tile layer, remembering what was there for undo. */
+  const paintCell = (cell: Cell, ch: string) => {
+    const layer = store.getState().project.design.tiles
+    if (!layer) return
+    const from = tileCharAt(layer, cell.col, cell.row)
+    if (from === ch) return
+    store.setTile(cell.col, cell.row, ch)
+    dragRef.current.changes.push({ col: cell.col, row: cell.row, from, to: ch })
+  }
+
+  const finishStroke = () => {
+    const drag = dragRef.current
+    if (drag.mode === 'paint' && drag.changes.length > 0) history?.push(tileStrokeEdit(store, drag.changes))
+    if (drag.mode === 'moveCopy' && drag.moved && selectedCopyId) {
+      const copy = store.getState().project.design.copies.find((c) => c.id === selectedCopyId)
+      if (copy && history && (copy.x !== drag.startCopyX || copy.y !== drag.startCopyY)) {
+        history.push(moveCopyEdit(history, copy.id, { x: drag.startCopyX, y: drag.startCopyY }, { x: copy.x, y: copy.y }))
+      }
+    }
+  }
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     // Canvas takes focus for keyboard events
     wrapRef.current?.focus()
@@ -320,16 +377,7 @@ export function Stage({ store }: { store: StudioStore }) {
 
     // Middle button or Alt key drags camera in any mode
     if (e.button === 1 || e.altKey) {
-      dragRef.current = {
-        mode: 'pan',
-        moved: false,
-        startScreenX: sx,
-        startScreenY: sy,
-        startWorldX: wx,
-        startWorldY: wy,
-        startCopyX: 0,
-        startCopyY: 0,
-      }
+      newDrag('pan', sx, sy, wx, wy)
       return
     }
 
@@ -342,16 +390,7 @@ export function Stage({ store }: { store: StudioStore }) {
       const target = pickTarget(runtime.world, wx, wy)
       if (target.isStage) {
         // Empty space: a drag scrolls the view; a plain click (no drag) clicks the stage on release.
-        dragRef.current = {
-          mode: 'panPending',
-          moved: false,
-          startScreenX: sx,
-          startScreenY: sy,
-          startWorldX: wx,
-          startWorldY: wy,
-          startCopyX: 0,
-          startCopyY: 0,
-        }
+        newDrag('panPending', sx, sy, wx, wy)
         return
       }
       runtime.clickTarget(target)
@@ -359,41 +398,36 @@ export function Stage({ store }: { store: StudioStore }) {
     }
 
     if (mode === 'build') {
-      if (activeTool === 'brush') {
-        if (brushBrickId) {
-          const finalX = gridSnap ? snapToGrid(wx, 8) : wx
-          const finalY = gridSnap ? snapToGrid(wy, 8) : wy
-          const newId = store.addCopy(brushBrickId, finalX, finalY)
-          store.selectCopy(newId)
+      const design = store.getState().project.design
+      // Right-click erases whatever is under the pointer; the Erase tool does the same for the left button.
+      const decision = decidePress(design, buildTool, wx, wy, { erase: e.button === 2, snap: GRID })
+      switch (decision.kind) {
+        case 'select-copy': {
+          store.selectCopy(decision.copy.id)
+          newDrag('moveCopy', sx, sy, wx, wy, { startCopyX: decision.copy.x, startCopyY: decision.copy.y })
+          break
         }
-      } else if (activeTool === 'select') {
-        const hit = pickCopy(design, wx, wy)
-        if (hit) {
-          store.selectCopy(hit.id)
-          dragRef.current = {
-            mode: 'moveCopy',
-            moved: false,
-            startScreenX: sx,
-            startScreenY: sy,
-            startWorldX: wx,
-            startWorldY: wy,
-            startCopyX: hit.x,
-            startCopyY: hit.y,
-          }
-        } else {
-          // Clicked empty space
+        case 'erase-copy': {
+          history?.push(removeCopyEdit(history, decision.copy))
+          store.deleteCopy(decision.copy.id)
+          break
+        }
+        case 'paint-tile': {
+          newDrag('paint', sx, sy, wx, wy, { paintChar: decision.ch, paintLast: decision.cell })
+          paintCell(decision.cell, decision.ch)
+          break
+        }
+        case 'place-copy': {
+          const id = store.addCopy(decision.brickId, decision.x, decision.y)
+          const copy = store.getState().project.design.copies.find((c) => c.id === id)
+          if (copy && history) history.push(addCopyEdit(history, copy))
+          break
+        }
+        case 'nothing': {
+          // Empty space with nothing armed: deselect, and a drag scrolls the view.
           store.selectCopy(null)
-          // Start pan on empty space drag
-          dragRef.current = {
-            mode: 'pan',
-            moved: false,
-            startScreenX: sx,
-            startScreenY: sy,
-            startWorldX: wx,
-            startWorldY: wy,
-            startCopyX: 0,
-            startCopyY: 0,
-          }
+          newDrag('pan', sx, sy, wx, wy)
+          break
         }
       }
     }
@@ -426,25 +460,26 @@ export function Stage({ store }: { store: StudioStore }) {
     }
 
     if (mode === 'build') {
-      if (drag.mode === 'moveCopy' && selectedCopyId) {
+      const layer = store.getState().project.design.tiles
+      if (drag.mode === 'paint' && layer) {
+        // A fast drag can skip cells: fill the straight line from the last cell to this one.
+        const cell = worldToCell(layer, wx, wy)
+        if (cell && drag.paintLast) {
+          for (const c of cellsOnLine(drag.paintLast, cell)) paintCell(c, drag.paintChar)
+          drag.paintLast = cell
+        }
+        setTileHover(cell)
+      } else if (drag.mode === 'moveCopy' && selectedCopyId) {
         const dx = wx - drag.startWorldX
         const dy = wy - drag.startWorldY
-        let targetX = drag.startCopyX + dx
-        let targetY = drag.startCopyY + dy
-        if (gridSnap) {
-          targetX = snapToGrid(targetX, 8)
-          targetY = snapToGrid(targetY, 8)
-        }
-        store.updateCopy(selectedCopyId, { x: targetX, y: targetY })
+        drag.moved = true
+        store.updateCopy(selectedCopyId, { x: snapToGrid(drag.startCopyX + dx, GRID), y: snapToGrid(drag.startCopyY + dy, GRID) })
       } else {
-        // Idle move: update brush preview or hover highlight
-        if (activeTool === 'brush') {
-          setBrushPreviewPos({ x: wx, y: wy })
-          setHoverCopyId(null)
-        } else {
-          const hit = pickCopy(design, wx, wy)
-          setHoverCopyId(hit?.id ?? null)
-        }
+        // Idle move: hover highlight, tile cell and brick preview
+        const hit = pickCopy(store.getState().project.design, wx, wy)
+        setHoverCopyId(hit?.id ?? null)
+        setTileHover(!hit && layer && (brushTile || erasing) ? worldToCell(layer, wx, wy) : null)
+        setBrushPreviewPos(!hit && !brushTile && !erasing ? { x: wx, y: wy } : null)
       }
     }
   }
@@ -454,16 +489,21 @@ export function Stage({ store }: { store: StudioStore }) {
     if (drag.mode === 'panPending' && mode === 'play' && runtime) {
       runtime.clickTarget(runtime.world.stage)
     }
+    finishStroke()
     drag.mode = 'none'
+    drag.changes = []
     if (mode === 'play' && runtime) {
       runtime.world.mouse.down = false
     }
   }
 
   const handlePointerLeave = () => {
+    if (dragRef.current.mode === 'paint') finishStroke()
     dragRef.current.mode = 'none'
+    dragRef.current.changes = []
     setBrushPreviewPos(null)
     setHoverCopyId(null)
+    setTileHover(null)
     if (mode === 'play' && runtime) {
       runtime.world.mouse.down = false
     }
@@ -501,6 +541,8 @@ export function Stage({ store }: { store: StudioStore }) {
       if (selectedCopyId) {
         if (e.key === 'Delete' || e.key === 'Backspace') {
           e.preventDefault()
+          const gone = design.copies.find((c) => c.id === selectedCopyId)
+          if (gone && history) history.push(removeCopyEdit(history, gone))
           store.deleteCopy(selectedCopyId)
           return
         }
@@ -511,7 +553,7 @@ export function Stage({ store }: { store: StudioStore }) {
           const copy = design.copies.find((c) => c.id === selectedCopyId)
           if (!copy) return
 
-          const step = gridSnap ? 8 : (e.shiftKey ? 8 : 1)
+          const step = e.shiftKey ? 1 : GRID
           let dx = 0
           let dy = 0
           if (e.key === 'ArrowLeft') dx = -step
@@ -519,7 +561,9 @@ export function Stage({ store }: { store: StudioStore }) {
           if (e.key === 'ArrowUp') dy = step
           if (e.key === 'ArrowDown') dy = -step
 
-          store.updateCopy(selectedCopyId, { x: copy.x + dx, y: copy.y + dy })
+          const to = { x: copy.x + dx, y: copy.y + dy }
+          store.updateCopy(selectedCopyId, to)
+          if (history) history.push(moveCopyEdit(history, copy.id, { x: copy.x, y: copy.y }, to))
         }
       }
     }
@@ -534,15 +578,7 @@ export function Stage({ store }: { store: StudioStore }) {
     }
   }
 
-  // Toolbar actions
-  const handleTogglePlay = () => {
-    if (mode === 'play') {
-      store.stop()
-    } else {
-      store.play()
-    }
-  }
-
+  // Green flag (Play)
   const handleGreenFlag = () => {
     if (mode === 'play' && runtime) {
       runtime.greenFlag()
@@ -558,6 +594,7 @@ export function Stage({ store }: { store: StudioStore }) {
   // Fit: the whole level, letterboxed.
   const handleResetView = () => {
     viewDirty.current = false
+    session.viewDirty = false
     setCamera(fitCamera(design.bounds, viewport))
     if (mode === 'play') {
       setPlayChoice('whole')
@@ -570,11 +607,6 @@ export function Stage({ store }: { store: StudioStore }) {
     setPlayFree(false)
   }
 
-  // Selected copy info for KnobPanel
-  const selectedCopy = design.copies.find((c) => c.id === selectedCopyId)
-  const selectedBrick = selectedCopy ? store.brick(selectedCopy.brickId) : undefined
-  const showInBuildVars = selectedBrick?.program.variables.filter((v) => v.showInBuild) ?? []
-
   return (
     <div
       ref={wrapRef}
@@ -586,12 +618,7 @@ export function Stage({ store }: { store: StudioStore }) {
     >
       <StageControls
         mode={mode}
-        activeTool={activeTool}
-        gridSnap={gridSnap}
-        onTogglePlay={handleTogglePlay}
         onGreenFlag={handleGreenFlag}
-        onSelectTool={setActiveTool}
-        onToggleGridSnap={() => setGridSnap((s) => !s)}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetView={handleResetView}
@@ -610,16 +637,8 @@ export function Stage({ store }: { store: StudioStore }) {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerLeave}
           onWheel={handleWheel}
+          onContextMenu={(e) => e.preventDefault()}
         />
-
-        {mode === 'build' && selectedCopy && selectedBrick && (
-          <KnobPanel
-            store={store}
-            copy={selectedCopy}
-            brickName={selectedBrick.name}
-            variables={showInBuildVars}
-          />
-        )}
 
         {mode === 'play' && runtime && activeAskPrompt && (
           <AskDialog runtime={runtime} prompt={activeAskPrompt} />

@@ -1,0 +1,70 @@
+/* Builder chrome (step 6). The drawer, history cluster, strip and header are the real 2D builder's own classes
+   (src/platformer/ui/platformer.css, src/shell/shell.css); only what is new is styled here. */
+.builder { position: absolute; inset: 0; }
+.builder-stage { position: absolute; inset: 0; }
+
+/* The header shows brand, 3D/2D, the world's name, save status, Build/Play and the ⋯ menu; Scene and People are the
+   old builder's. */
+.builder-header .app-header-tools { display: none; }
+
+.builder-project .project-menu-buttons { flex-wrap: wrap; }
+.builder-project .project-menu-btn { color: var(--studio-ink, #263c51); background: var(--studio-panel-soft, #f3f5f9); border-color: var(--studio-panel-border, #d9dee8); }
+.builder-project .project-menu-btn:hover { background: rgba(88, 136, 218, 0.1); border-color: rgba(88, 136, 218, 0.4); }
+.builder-project .project-menu-confirm-dialog { position: static; color: var(--studio-ink, #263c51); background: var(--studio-panel-soft, #f3f5f9); border-color: var(--studio-panel-border, #d9dee8); }
+.builder-project .project-menu-confirm-text { color: var(--studio-ink, #263c51); }
+
+.builder-new-icon { color: var(--studio-blue, #5888da); }
+.builder-costume-thumb { object-fit: contain; }
+
+/* Buttons in the builder's panel look. */
+.builder-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 0 12px;
+  border: 1px solid transparent; border-radius: 12px; color: var(--studio-ink, #263c51); background: var(--studio-panel-soft, #f3f5f9);
+  font: 800 12px/1 inherit; cursor: pointer;
+}
+.builder-btn:hover { color: var(--studio-blue-dark, #2f5fb3); background: rgba(88, 136, 218, 0.1); }
+.builder-btn:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 1px; }
+.builder-btn[aria-pressed='true'], .builder-btn-primary { color: #fff; background: var(--studio-blue, #5888da); }
+.builder-btn-primary:hover { color: #fff; background: var(--studio-blue-dark, #2f5fb3); }
+.builder-btn-danger:hover { color: #b3261e; background: rgba(217, 83, 79, 0.12); }
+
+/* See inside: above the Placing strip, same centre. */
+.builder-inside {
+  position: absolute; z-index: 15; left: calc(50% + 138px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 70px);
+  display: flex; flex-direction: column; gap: 8px; width: max-content; max-width: min(520px, calc(100% - 312px));
+  box-sizing: border-box; padding: 8px; transform: translateX(-50%);
+  color: var(--studio-ink, #263c51); background: var(--studio-panel, #fff); border: 1px solid var(--studio-panel-border, #d9dee8);
+  border-radius: var(--radius-lg, 16px); box-shadow: var(--studio-panel-shadow, 0 6px 18px rgba(38, 60, 81, 0.12));
+}
+.p2d-drawer-collapsed .builder-inside { left: 50%; max-width: calc(100% - 24px); }
+.p2d-compact-shell .builder-inside { left: 50%; bottom: calc(max(8px, env(safe-area-inset-bottom)) + 74px); max-width: calc(100% - 16px); }
+.builder-inside-head { display: flex; align-items: center; gap: 8px; }
+.builder-inside-icon { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; border-radius: 10px; background: var(--studio-panel-soft, #f3f5f9); }
+.builder-inside-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; margin-right: 8px; }
+.builder-inside-text strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.builder-inside-text span { color: var(--studio-muted, #66788a); font-size: 11.5px; font-weight: 700; }
+.builder-knobs { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 4px 2px; border-top: 1px solid var(--studio-panel-border, #d9dee8); }
+.builder-knob { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; }
+.builder-knob-control { display: inline-flex; align-items: center; gap: 8px; }
+.builder-knob input[type='range'] { width: 130px; min-height: 32px; accent-color: var(--studio-blue, #5888da); }
+.builder-knob-value { min-width: 28px; color: var(--studio-blue-dark, #2f5fb3); font-weight: 900; text-align: right; }
+
+/* New brick picker */
+.builder-modal-backdrop { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; background: rgba(38, 60, 81, 0.34); }
+.builder-modal { width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; box-sizing: border-box; padding: 18px; color: var(--studio-ink, #263c51); background: var(--studio-panel, #fff); border-radius: 20px; box-shadow: 0 14px 44px rgba(38, 60, 81, 0.24); }
+.builder-modal-title { margin: 0 0 4px; font: 600 24px/1.1 var(--font-display, 'Fredoka'), sans-serif; }
+.builder-modal-sub, .builder-modal-empty { margin: 0 0 12px; color: var(--studio-muted, #66788a); font-size: 13px; font-weight: 700; }
+.builder-template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.builder-modal-empty { grid-column: 1 / -1; }
+.builder-template { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 76px; padding: 10px 12px; border: 2px solid transparent; border-radius: 14px; color: var(--studio-ink, #263c51); background: var(--studio-panel-soft, #f3f5f9); font: inherit; text-align: left; cursor: pointer; }
+.builder-template strong { font-size: 15px; }
+.builder-template span { color: var(--studio-muted, #66788a); font-size: 12px; font-weight: 700; }
+.builder-template:hover { border-color: var(--studio-blue, #5888da); background: rgba(88, 136, 218, 0.1); }
+.builder-template:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
+.builder-modal-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+
+/* Name picker: words, no typing */
+.builder-word-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; max-height: 50vh; overflow-y: auto; padding: 2px; }
+.builder-word { min-height: 44px; padding: 0 10px; border: 2px solid transparent; border-radius: 12px; color: var(--studio-ink, #263c51); background: var(--studio-panel-soft, #f3f5f9); font: 800 13px/1 inherit; cursor: pointer; }
+.builder-word:hover { border-color: var(--studio-blue, #5888da); background: rgba(88, 136, 218, 0.1); }
+.builder-word:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }

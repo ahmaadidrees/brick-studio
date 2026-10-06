@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { BrickDef, LevelDesign } from '../../core/contracts'
@@ -55,56 +55,30 @@ function makeTestDesign(): LevelDesign {
 }
 
 describe('Stage Component', () => {
-  it('renders canvas and controls in Build mode', () => {
+  it('has no toolbar of its own in Build: just the view tools (the builder chrome replaces the rest)', () => {
     const store = new StudioStore({ design: makeTestDesign(), workspaces: {} })
     render(<Stage store={store} />)
 
-    expect(screen.getByRole('toolbar', { name: 'Stage controls' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Play simulation' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Brush tool/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Select tool/ })).toBeTruthy()
-    expect(screen.getByText('BUILD')).toBeTruthy()
+    expect(screen.getByRole('toolbar', { name: 'Stage view' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reset view to fit' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Brush tool/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Select tool/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Play simulation' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Green flag/ })).toBeNull()
+    // the old knob card is the builder's See inside card now
+    expect(screen.queryByLabelText('Copy settings')).toBeNull()
   })
 
-  it('toggles mode to Play when Play button is clicked', () => {
+  it('Play (started from the store) shows the green flag and the camera choice; Stop hides them', () => {
     const store = new StudioStore({ design: makeTestDesign(), workspaces: {} })
     render(<Stage store={store} />)
 
-    const playBtn = screen.getByRole('button', { name: 'Play simulation' })
-    fireEvent.click(playBtn)
-
-    expect(store.getState().mode).toBe('play')
-    expect(screen.getByRole('button', { name: 'Stop simulation' })).toBeTruthy()
-    expect(screen.getByText('PLAY')).toBeTruthy()
-  })
-
-  it('shows KnobPanel with showInBuild variables when a copy is selected', () => {
-    const store = new StudioStore({ design: makeTestDesign(), workspaces: {} })
-    store.selectCopy('c1')
-    render(<Stage store={store} />)
-
-    expect(screen.getByLabelText('Copy settings')).toBeTruthy()
-    expect(screen.getByText('Hero')).toBeTruthy()
-    expect(screen.getByText('Speed')).toBeTruthy()
-    // Secret is showInBuild: false, so it must not be present
-    expect(screen.queryByText('Secret')).toBeNull()
-
-    // Stepper increases knob value
-    const incBtn = screen.getByRole('button', { name: 'Increase Speed' })
-    fireEvent.click(incBtn)
-    expect(store.getState().project.design.copies[0].knobs?.speed).toBe(9)
-  })
-
-  it('deletes copy from KnobPanel delete button', () => {
-    const store = new StudioStore({ design: makeTestDesign(), workspaces: {} })
-    store.selectCopy('c1')
-    render(<Stage store={store} />)
-
-    const delBtn = screen.getByRole('button', { name: 'Delete copy' })
-    fireEvent.click(delBtn)
-
-    expect(store.getState().project.design.copies.length).toBe(0)
-    expect(store.getState().selectedCopyId).toBeNull()
+    act(() => store.play())
+    expect(screen.getByRole('button', { name: /Green flag/ })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Camera follows' })).toBeTruthy()
+    act(() => store.stop())
+    expect(screen.queryByRole('button', { name: /Green flag/ })).toBeNull()
   })
 
   it('Play shows a "camera follows" choice: whole level by default, switchable to follow brick', () => {
@@ -112,7 +86,7 @@ describe('Stage Component', () => {
     render(<Stage store={store} />)
     expect(screen.queryByRole('group', { name: 'Camera follows' })).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Play simulation' }))
+    act(() => store.play())
     const whole = screen.getByRole('button', { name: 'Camera shows the whole level' })
     const follow = screen.getByRole('button', { name: 'Camera follows the selected brick' })
     expect(whole.getAttribute('aria-pressed')).toBe('true')
@@ -121,5 +95,16 @@ describe('Stage Component', () => {
     fireEvent.click(follow)
     expect(follow.getAttribute('aria-pressed')).toBe('true')
     expect(whole.getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('Delete removes the selected copy from the stage, and the arrow keys nudge it by 8', () => {
+    const store = new StudioStore({ design: makeTestDesign(), workspaces: {} })
+    store.selectCopy('c1')
+    render(<Stage store={store} />)
+    const stage = screen.getByLabelText('Level Stage')
+    fireEvent.keyDown(stage, { key: 'ArrowRight' })
+    expect(store.getState().project.design.copies[0].x).toBe(108)
+    fireEvent.keyDown(stage, { key: 'Delete' })
+    expect(store.getState().project.design.copies).toHaveLength(0)
   })
 })
