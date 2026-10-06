@@ -14,7 +14,7 @@
  *
  * y up, (0, 0) = bottom-left of the level, direction 90 = right.
  */
-import { EFFECT_NAMES, TILE_CHAR } from './contracts'
+import { EFFECT_NAMES, TILE_SIZE, gridCopyId } from './contracts'
 import type {
   BrickDef,
   BrickProgram,
@@ -34,6 +34,7 @@ import type {
   StageBounds,
   Stmt,
   Target,
+  TileLayer,
   Value,
   VariableDecl,
   World,
@@ -63,6 +64,8 @@ export const DESIGN_LIMITS = {
   maxProblems: 200,
   maxTileCols: 400,
   maxTileRows: 60,
+  /** Filled cells of the grid (step 7). Each becomes a target on Play; see core/perf.test.ts for what 8,000 costs. */
+  maxGridCells: 8_000,
   maxExprDepth: 64,
 } as const
 
@@ -186,15 +189,36 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
     copies.forEach((copy, i) => checkCopy(copy, i, brickIds, ids, copyIds, bricks ?? [], push))
   }
 
-  if (design.tiles !== undefined) checkTiles(design.tiles, push)
+  const gridChars = new Set<string>()
+  if (bricks) bricks.forEach((brick, i) => checkGrid(brick, `bricks[${i}]`, gridChars, push))
+  if (design.tiles !== undefined) checkTiles(design.tiles, gridChars, push)
 
   return problems
 }
 
-const TILE_CHARS = new Set(['.', ...Object.values(TILE_CHAR)])
+/** A grid brick (step 7): one character, not '.', unique among the level's grid bricks, and never limited. */
+function checkGrid(brick: BrickDef, path: string, chars: Set<string>, push: Push) {
+  if (!brick || typeof brick !== 'object' || brick.grid === undefined) return
+  const grid: unknown = brick.grid
+  if (!grid || typeof grid !== 'object' || Array.isArray(grid)) {
+    push('bad-value', `${path}.grid`, 'Grid must be an object.')
+    return
+  }
+  const { char, autotile } = grid as { char?: unknown; autotile?: unknown }
+  if (typeof char !== 'string' || char.length !== 1 || char === '.' || hasControlChar(char) || char === ' ') {
+    push('bad-value', `${path}.grid.char`, 'A grid brick needs one character that is not "." (that means empty).')
+  } else if (chars.has(char)) {
+    push('duplicate-id', `${path}.grid.char`, `Two grid bricks use the character "${char}".`)
+  } else chars.add(char)
+  if (autotile !== undefined && typeof autotile !== 'boolean') push('bad-value', `${path}.grid.autotile`, 'Autotile must be true or false.')
+  if (brick.limit !== undefined) push('bad-value', `${path}.limit`, 'A grid brick has no limit: it is painted as many times as you like.')
+}
 
-/** Tiles (step 6): `rows` strings of exactly `cols` characters, row 0 at the bottom, only '.' or a TILE_CHAR. */
-function checkTiles(tiles: unknown, push: Push) {
+/**
+ * Tiles (step 6, grid since step 7): `rows` strings of exactly `cols` characters, row 0 at the bottom, only '.' or the
+ * character of one of the level's grid bricks, at most DESIGN_LIMITS.maxGridCells filled cells.
+ */
+function checkTiles(tiles: unknown, gridChars: Set<string>, push: Push) {
   if (!tiles || typeof tiles !== 'object') {
     push('bad-value', 'tiles', 'Tiles must be an object.')
     return
@@ -213,6 +237,7 @@ function checkTiles(tiles: unknown, push: Push) {
     push('bad-value', 'tiles.data', `Tiles need exactly ${rows} rows of data.`)
     return
   }
+  let filled = 0
   for (let r = 0; r < rows; r++) {
     const row: unknown = data[r]
     if (typeof row !== 'string' || row.length !== cols) {
@@ -220,12 +245,15 @@ function checkTiles(tiles: unknown, push: Push) {
       continue
     }
     for (let c = 0; c < cols; c++) {
-      if (!TILE_CHARS.has(row[c])) {
-        push('bad-value', `tiles.data[${r}]`, `Tile row ${r} has an unknown tile character at column ${c}.`)
+      if (row[c] === '.') continue
+      filled++
+      if (!gridChars.has(row[c])) {
+        push('bad-value', `tiles.data[${r}]`, `Tile row ${r} has "${row[c]}" at column ${c}, and no grid brick uses that character.`)
         break
       }
     }
   }
+  if (filled > DESIGN_LIMITS.maxGridCells) push('limit', 'tiles', `A level can hold ${DESIGN_LIMITS.maxGridCells} painted cells.`)
 }
 
 type Push = (code: DesignProblemCode, path: string, message: string) => void
@@ -773,6 +801,8 @@ export function instantiate(design: LevelDesign): World {
   })
 
   const targets = design.copies.map((placement, index) => copyTarget(placement, index, bricks[placement.brickId]))
+  // Draw order is back to front: cells go behind every painted copy (the Hero draws in front of lava and blocks).
+  if (design.tiles) targets.unshift(...gridTargets(design, bricks))
 
   let nextTargetId = 1
   const consider = (id: string) => {
@@ -806,6 +836,47 @@ export function instantiate(design: LevelDesign): World {
     hostClock: null,
     ...(design.tiles ? { tiles: structuredClone(design.tiles) } : {}),
   }
+}
+
+/**
+ * Grid cells become ordinary painted-copy targets (see GridSpec): before design.copies in world.targets (behind them), rows from the bottom, left to
+ * right. Each gets its brick's variable defaults and, for an autotile brick, costume 2 when the cell above is the same.
+ */
+function gridTargets(design: LevelDesign, bricks: Record<string, BrickDef>): Target[] {
+  const tiles = design.tiles as TileLayer
+  const byChar = new Map<string, BrickDef>()
+  for (const brick of design.bricks) if (brick.grid) byChar.set(brick.grid.char, bricks[brick.id])
+  const out: Target[] = []
+  const left = finite(design.bounds.left, 0)
+  const bottom = finite(design.bounds.bottom, 0)
+  for (let row = 0; row < tiles.rows; row++) {
+    const line = tiles.data[row]
+    for (let col = 0; col < tiles.cols; col++) {
+      const ch = line[col]
+      if (ch === '.') continue
+      const brick = byChar.get(ch)
+      if (!brick) continue
+      const covered = brick.grid?.autotile === true && brick.costumes.length > 1 && tiles.data[row + 1]?.[col] === ch
+      const locals = localsFrom(brick.program, undefined)
+      const id = gridCopyId(col, row)
+      const target = newTarget({
+        id,
+        brickId: brick.id,
+        isStage: false,
+        x: left + col * TILE_SIZE + TILE_SIZE / 2,
+        y: bottom + row * TILE_SIZE + TILE_SIZE / 2,
+        direction: 90,
+        size: 100,
+        visible: true,
+        costumeIndex: covered ? 1 : 0,
+        variables: locals.variables,
+        lists: locals.lists,
+      })
+      target.copyId = id
+      out.push(target)
+    }
+  }
+  return out
 }
 
 function copyTarget(placement: CopyPlacement, index: number, brick: BrickDef | undefined): Target {

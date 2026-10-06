@@ -86,3 +86,23 @@ export function boundsFor(t: Transform, costume: Costume): StageBounds {
   }
   return { left, right, bottom, top }
 }
+
+const radiusCache = new WeakMap<Costume, number>()
+
+/**
+ * The furthest the opaque rectangle reaches from the rotation center, in costume pixels. At size S and any rotation or
+ * mirror, every opaque pixel lies within `radiusOf(costume) * S / 100` of the target's position, so a target whose
+ * position is further than that from a region cannot touch it (the cheap prefilter for touching thousands of copies).
+ */
+export function radiusOf(costume: Costume): number {
+  let r = radiusCache.get(costume)
+  if (r === undefined) {
+    const o = opaqueRect(costume)
+    r = 0
+    for (const [x, y] of [[o.left, o.top], [o.right, o.top], [o.left, o.bottom], [o.right, o.bottom]]) {
+      r = Math.max(r, Math.hypot(x - costume.rotationCenterX, y - costume.rotationCenterY))
+    }
+    radiusCache.set(costume, r)
+  }
+  return r
+}

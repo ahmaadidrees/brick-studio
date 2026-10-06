@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { compileWorkspace, type WorkspaceBlockJson } from './compile'
 import { createBlockDefinitions, registerEditorBlocks, HAT_OPCODES, CATEGORY_COLORS } from './definitions'
 import { createContinuousToolbox } from './toolbox'
-import { TILE_BUMP_OPTIONS } from './tileBlocks'
 
 const num = (n: number) => ({ shadow: { type: 'math_number', fields: { NUM: n } } })
 const ws = (...blocks: WorkspaceBlockJson[]) => ({ blocks: { languageVersion: 0, blocks } })
@@ -16,15 +15,13 @@ const PLATFORMER_TEXT: Record<string, string> = {
   platformer_speed: '%1 speed',
   platformer_onground: 'on ground?',
   platformer_whenbump: 'when I bump %1 of %2',
-  /** Step 6 (tiles lane, core/editor/tileBlocks.ts). */
-  platformer_touchingtile: 'touching tile %1?',
 }
 
 describe('Platformer blocks: wording', () => {
   const defs = createBlockDefinitions()
   const platformerDefs = defs.filter((d) => (d.type as string).startsWith('platformer_'))
 
-  it('has exactly the eight Platformer blocks, worded as the STEP3 table plus touching tile', () => {
+  it('has exactly the seven Platformer blocks, worded as the STEP3 table (and no touching tile: step 7 removed it)', () => {
     expect(platformerDefs.map((d) => d.type).sort()).toEqual(Object.keys(PLATFORMER_TEXT).sort())
     for (const d of platformerDefs) {
       expect(d.message0).toBe(PLATFORMER_TEXT[d.type as string])
@@ -64,6 +61,14 @@ describe('Platformer blocks: menus', () => {
     return (typeof o === 'function' ? (o as () => string[][])() : o) as string[][]
   }
 
+  it('solid menu: on, off, only on top (step 7: one-way platform)', () => {
+    expect(dropdownOptions('platformer_setsolid', 'SOLID')).toEqual([
+      ['on', 'on'],
+      ['off', 'off'],
+      ['only on top', 'top'],
+    ])
+  })
+
   it('SIDE menu: any side, top, bottom, left, right', () => {
     expect(dropdownOptions('platformer_whenbump', 'SIDE')).toEqual([
       ['any side', '_any_'],
@@ -74,13 +79,11 @@ describe('Platformer blocks: menus', () => {
     ])
   })
 
-  it('BRICK menu: anything, edge, a tile, each tile kind, then every brick name from the context', () => {
+  it('BRICK menu: anything, edge, then every brick name from the context (no tile entries since step 7)', () => {
     const opts = dropdownOptions('platformer_whenbump', 'BRICK', { getBricks: () => ['Ground', 'Coin'] })
     expect(opts).toEqual([
       ['anything', '_any_'],
       ['edge', '_edge_'],
-      ['a tile', '_tiles_'],
-      ...TILE_BUMP_OPTIONS,
       ['Ground', 'Ground'],
       ['Coin', 'Coin'],
     ])
@@ -195,5 +198,31 @@ describe('Platformer toolbox category', () => {
     expect(createContinuousToolbox(undefined, { isStage: true }).contents.map((c) => c.name)).not.toContain(
       'Platformer',
     )
+  })
+})
+
+describe('Platformer blocks: removed touching tile', () => {
+  it('is not in the toolbox or the block definitions', () => {
+    expect(createBlockDefinitions().some((d) => d.type === 'platformer_touchingtile')).toBe(false)
+    expect(JSON.stringify(createContinuousToolbox())).not.toContain('platformer_touchingtile')
+  })
+
+  it('an old workspace that still holds it compiles, with a clear unknown-block warning and no crash', () => {
+    const hat: WorkspaceBlockJson = { type: 'event_whenflagclicked', id: 'h' }
+    hat.next = {
+      block: {
+        type: 'control_if',
+        id: 'if1',
+        inputs: { CONDITION: { block: { type: 'platformer_touchingtile', id: 'tt', fields: { TILE: 'spikes' } } } },
+      },
+    }
+    const r = compileWorkspace(ws(hat))
+    expect(r.program.scripts).toHaveLength(1)
+    expect(r.diagnostics).toHaveLength(1)
+    expect(r.diagnostics[0]).toMatchObject({ code: 'block.unknown', severity: 'warning', blockId: 'tt' })
+    expect(r.diagnostics[0].message).toContain('touching tile')
+    // As a statement-position block too.
+    const r2 = compileWorkspace(ws({ ...hat, next: { block: { type: 'platformer_touchingtile', id: 'tt2' } } }))
+    expect(r2.diagnostics.map((d) => d.code)).toEqual(['block.unknown'])
   })
 })

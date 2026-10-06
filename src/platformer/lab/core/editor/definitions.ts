@@ -19,7 +19,6 @@ import {
   type MenuOption,
 } from './context'
 import { CATEGORY_COLORS } from './colors'
-import { TILE_BLOCK_DEFINITIONS, TILE_BRICK_OPTION, TILE_BUMP_OPTIONS } from './tileBlocks'
 
 /** Scratch 3 category colors. */
 export { CATEGORY_COLORS }
@@ -82,6 +81,12 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     ['on', 'on'],
     ['off', 'off'],
   ]
+  // `only on top` is a one-way platform: bodies land on it falling, and pass through it going up or sideways.
+  const solidOptions: MenuOption[] = [
+    ['on', 'on'],
+    ['off', 'off'],
+    ['only on top', 'top'],
+  ]
   const axisOptions: MenuOption[] = [
     ['x', 'x'],
     ['y', 'y'],
@@ -96,8 +101,6 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
   const bumpBrickOptions = (): MenuOption[] => [
     ['anything', '_any_'],
     ['edge', '_edge_'],
-    TILE_BRICK_OPTION,
-    ...TILE_BUMP_OPTIONS,
     ...(context?.getBricks?.() ?? getEditorContext().getBricks?.() ?? []).map((b): MenuOption => [b, b]),
   ]
 
@@ -1539,7 +1542,7 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     {
       type: 'platformer_setsolid',
       message0: 'solid %1',
-      args0: [{ type: 'field_dropdown', name: 'SOLID', options: onOff }],
+      args0: [{ type: 'field_dropdown', name: 'SOLID', options: solidOptions }],
       category: 'platformer',
       colour: CATEGORY_COLORS.platformer,
       previousStatement: null,
@@ -1589,7 +1592,6 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       output: 'Boolean',
       tooltip: '',
     },
-    ...TILE_BLOCK_DEFINITIONS,
     {
       type: 'platformer_whenbump',
       message0: 'when I bump %1 of %2',
