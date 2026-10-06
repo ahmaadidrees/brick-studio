@@ -10,7 +10,9 @@ import type {
 } from '../../core/contracts'
 import { boundsFor, opaqueRect, transformOf } from '../../core/geometry'
 import { getCameraZoom, snapToGrid, worldToScreen, type Camera, type Viewport } from './camera'
-import { drawCoinPops, drawSky, drawTileHover, drawTiles, trackCoinPops } from './tiles'
+import { parseGridCopyId, TILE_SIZE } from '../../core/contracts'
+import { cellCostumeIndex, drawCellOutline, gridBrickIndex, visibleCells } from './gridCells'
+import { drawSky } from './sky'
 
 /** The Brickgineers look: cream outside the level, a sky-blue level. */
 const OUTSIDE = '#efe9da'
@@ -59,8 +61,8 @@ export interface RenderOptions {
   brushBrickId?: string | null
   brushPreviewPos?: { x: number; y: number } | null
   tool?: 'select' | 'brush'
-  /** The tile cell under the pointer with the armed tile (or the eraser). */
-  tileHover?: { col: number; row: number; ch: string; erase: boolean } | null
+  /** The cell under the pointer with the armed grid brick's first costume (or the eraser, costume null). */
+  tileHover?: { col: number; row: number; costume: Costume | null; erase: boolean } | null
   /** Previous tick positions for interpolation during Play. Keyed by target ID. */
   prevPoses?: Map<string, TargetPose>
   /** Interpolation weight in [0, 1). */
@@ -124,8 +126,8 @@ export function renderBuildMode(
   ctx.fillText(dimText, rX - ctx.measureText(dimText).width - 6, tY + 14)
   ctx.restore()
 
-  // Tiles sit behind the copies
-  drawTiles(ctx, design.tiles, camera, viewport)
+  // Grid cells sit behind the copies (a Hero standing in front of a cell is drawn, and picked, first)
+  drawGridCells(ctx, design, camera, viewport, imageCache)
 
   // 3. Render painted copies in design.copies order
   for (const copy of design.copies) {
@@ -154,7 +156,12 @@ export function renderBuildMode(
   }
 
   // 4. Brush preview
-  if (opts.tileHover) drawTileHover(ctx, camera, viewport, opts.tileHover)
+  if (opts.tileHover) drawCellHover(ctx, camera, viewport, opts.tileHover, imageCache)
+  // The selected (or hovered) cell
+  for (const [id, selected] of [[opts.hoverCopyId, false], [opts.selectedCopyId, true]] as const) {
+    const cell = id ? parseGridCopyId(id) : null
+    if (cell && design.tiles?.data[cell.row]?.[cell.col] && design.tiles.data[cell.row][cell.col] !== '.') drawCellOutline(ctx, camera, viewport, cell.col, cell.row, selected)
+  }
   if (opts.tool === 'brush' && opts.brushBrickId && opts.brushPreviewPos) {
     const brick = design.bricks.find((b) => b.id === opts.brushBrickId)
     const costume = brick?.costumes[0]
@@ -217,13 +224,7 @@ export function renderPlayMode(
     drawSky(ctx, bounds, camera, viewport)
   }
 
-  // Tiles sit behind the targets; a ? block that was just hit pops a coin (a picture only)
-  const now = typeof performance !== 'undefined' ? performance.now() : 0
-  trackCoinPops(world.tiles, now)
-  drawTiles(ctx, world.tiles, camera, viewport)
-  drawCoinPops(ctx, world.tiles, camera, viewport, now)
-
-  // 3. Targets in draw order (world.targets)
+  // 3. Targets in draw order (world.targets). Grid cells are ordinary targets (step 7), drawn like any copy.
   for (const target of world.targets) {
     if (!target.visible) continue
     const brick = world.bricks[target.brickId]
@@ -263,6 +264,72 @@ export function renderPlayMode(
   }
 }
 
+/** Build: every filled cell drawn with its brick's costume, by GridSpec's rule (autotile: costume 2 under the same brick). */
+export function drawGridCells(
+  ctx: CanvasRenderingContext2D,
+  design: LevelDesign,
+  camera: Camera,
+  viewport: Viewport,
+  imageCache: ImageCache = globalImageCache,
+): void {
+  const layer = design.tiles
+  if (!layer) return
+  const bricks = gridBrickIndex(design)
+  if (bricks.size === 0) return
+  const { c0, c1, r0, r1 } = visibleCells(layer, camera, viewport)
+  for (let row = r0; row <= r1; row++) {
+    const line = layer.data[row]
+    if (!line) continue
+    for (let col = c0; col <= c1; col++) {
+      const brick = bricks.get(line[col])
+      if (!brick) continue
+      const costume = brick.costumes[cellCostumeIndex(layer, brick, col, row)] ?? brick.costumes[0]
+      if (!costume) continue
+      drawSprite(ctx, camera, viewport, {
+        x: col * TILE_SIZE + TILE_SIZE / 2,
+        y: row * TILE_SIZE + TILE_SIZE / 2,
+        direction: 90,
+        size: 100,
+        costume,
+        rotationStyle: 'all around',
+        imageCache,
+      })
+    }
+  }
+}
+
+/** A translucent preview of the armed grid brick (or an eraser outline) on the cell under the pointer. */
+function drawCellHover(
+  ctx: CanvasRenderingContext2D,
+  camera: Camera,
+  viewport: Viewport,
+  hover: { col: number; row: number; costume: Costume | null; erase: boolean },
+  imageCache: ImageCache,
+): void {
+  const zoom = getCameraZoom(camera, viewport)
+  if (!hover.erase && hover.costume) {
+    ctx.save()
+    ctx.globalAlpha = 0.6
+    drawSprite(ctx, camera, viewport, {
+      x: hover.col * TILE_SIZE + TILE_SIZE / 2,
+      y: hover.row * TILE_SIZE + TILE_SIZE / 2,
+      direction: 90,
+      size: 100,
+      costume: hover.costume,
+      rotationStyle: 'all around',
+      imageCache,
+    })
+    ctx.restore()
+  }
+  const [sx, sy] = worldToScreen(camera, viewport, hover.col * TILE_SIZE, (hover.row + 1) * TILE_SIZE)
+  const size = TILE_SIZE * zoom
+  ctx.save()
+  ctx.strokeStyle = hover.erase ? '#d9534f' : '#5888da'
+  ctx.lineWidth = 2
+  ctx.strokeRect(sx + 1, sy + 1, size - 2, size - 2)
+  ctx.restore()
+}
+
 interface SpriteDrawParams {
   x: number
   y: number
@@ -299,6 +366,24 @@ function drawSprite(
   const scale = (size / 100) * zoom
   const ghost = effects?.ghost ?? 0
   const brightness = effects?.brightness ?? 0
+
+  // Off screen: nothing to draw (a level can hold thousands of grid cells). The margin covers any rotation.
+  const reach = Math.max(img.width, img.height) * scale * 1.5
+  if (screenX + reach < 0 || screenY + reach < 0 || screenX - reach > viewport.width || screenY - reach > viewport.height) return
+
+  // Fast path, the common one (upright, same size, no effects): one drawImage, no save/restore, so a screen of
+  // 2,000+ cells and walls stays cheap. Edges round outward so neighbouring cells leave no seams.
+  if (angle === 0 && flipX === 1 && ghost === 0 && brightness === 0) {
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(
+      img,
+      Math.round(screenX - costume.rotationCenterX * scale),
+      Math.round(screenY - costume.rotationCenterY * scale),
+      Math.ceil(img.width * scale),
+      Math.ceil(img.height * scale),
+    )
+    return
+  }
 
   ctx.save()
   ctx.imageSmoothingEnabled = false

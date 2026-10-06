@@ -5,6 +5,7 @@ import { isKnobNumber, knobRange, snapKnob } from './knobs'
 import { CostumeThumb } from './tileArt'
 import { knobEdit, removeCopyEdit, type History } from './history'
 import { isSingleton } from './limits'
+import { cellCount, removeCell, selectedCell } from './cells'
 
 /**
  * The card above the Placing strip when a copy is selected: the brick's picture and name, how many copies are in this
@@ -13,15 +14,18 @@ import { isSingleton } from './limits'
 export function SeeInsideCard({ store, history }: { store: StudioStore; history?: History }) {
   const copyId = useStudio(store, (s) => s.selectedCopyId)
   const design = useStudio(store, (s) => s.project.design)
-  const copy = copyId ? design.copies.find((c) => c.id === copyId) : undefined
-  const brick = copy ? design.bricks.find((b) => b.id === copy.brickId) : undefined
-  if (!copy || !brick) return null
+  const cell = selectedCell(design, copyId)
+  const copy = copyId && !cell ? design.copies.find((c) => c.id === copyId) : undefined
+  const brick = cell?.brick ?? (copy ? design.bricks.find((b) => b.id === copy.brickId) : undefined)
+  if (!brick || (!cell && !copy)) return null
 
-  const count = design.copies.filter((c) => c.brickId === brick.id).length
+  const count = cell ? cellCount(design, cell.ch) : design.copies.filter((c) => c.brickId === brick.id).length
   // One-per-level bricks (Hero, Goal) have no per-copy knobs: their knobs live in See inside (the workshop).
-  const single = isSingleton(brick)
-  const knobs = single ? [] : brick.program.variables.filter((v) => v.showInBuild)
+  // Grid cells have no per-copy knobs either (GridSpec): their code and variables are the brick's.
+  const single = !cell && isSingleton(brick)
+  const knobs = single || cell ? [] : brick.program.variables.filter((v) => v.showInBuild)
   const setKnob = (variableId: string, value: Value) => {
+    if (!copy) return
     const before = copy.knobs?.[variableId]
     history?.push(knobEdit(history, copy.id, variableId, before, value))
     store.setKnob(copy.id, variableId, value)
@@ -45,8 +49,10 @@ export function SeeInsideCard({ store, history }: { store: StudioStore; history?
           type="button"
           className="builder-btn builder-btn-danger"
           aria-label={`Remove this ${brick.name}`}
-          title="Remove this copy"
+          title={cell ? 'Remove this block' : 'Remove this copy'}
           onClick={() => {
+            if (cell) return removeCell(store, history, cell.col, cell.row)
+            if (!copy) return
             if (history) history.push(removeCopyEdit(history, copy))
             store.deleteCopy(copy.id)
           }}
@@ -55,7 +61,7 @@ export function SeeInsideCard({ store, history }: { store: StudioStore; history?
           <span>Remove</span>
         </button>
       </div>
-      {knobs.length > 0 && (
+      {copy && knobs.length > 0 && (
         <div className="builder-knobs" role="group" aria-label="This copy's knobs">
           {knobs.map((v) => {
             const value: Value = copy.knobs?.[v.id] ?? v.value

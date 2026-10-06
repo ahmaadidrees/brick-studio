@@ -1,10 +1,14 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { play } from '../../core/index'
 import { validateDesign } from '../../core/project'
 import { createStarterProject } from '../starter'
 import { HERO_BRICK_ID, createHeroBrick } from '../hero/heroBrick'
 import { formatKnob, knobRange } from './knobs'
-import { BRICK_X, HELPER_X, ROOM_HEIGHT, ROOM_WIDTH, buildTestRoom, isHeroBrick, roomTiles } from './roomDesign'
+import { BRICK_X, HELPER_X, ROOM_AIR_ROW, ROOM_AIR_RUN, ROOM_FLOOR_RUN, ROOM_GROUND_ID, ROOM_HEIGHT, ROOM_WIDTH, buildTestRoom, isHeroBrick, roomTiles } from './roomDesign'
+import { fakeGridTemplate } from '../builder/testGridBricks'
+
+// gridBrickTemplate is a stub until the step 7 bricks lane merges: these tests use the builder's test double.
+vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gridBricks')>()), gridBrickTemplate: (await import('../builder/testGridBricks')).fakeGridTemplate }))
 
 const project = createStarterProject()
 const stage = project.design.stage
@@ -26,7 +30,7 @@ describe('test room design', () => {
 
   it('gives a non-Hero brick a helper Hero', () => {
     const d = buildTestRoom(walker, stage)
-    expect(d.bricks.map((b) => b.id)).toEqual([walker.id, HERO_BRICK_ID])
+    expect(d.bricks.map((b) => b.id)).toEqual([walker.id, HERO_BRICK_ID, ROOM_GROUND_ID])
     expect(d.copies.find((c) => c.brickId === HERO_BRICK_ID)?.x).toBe(HELPER_X)
     expect(d.copies.find((c) => c.brickId === walker.id)?.x).toBe(BRICK_X)
   })
@@ -39,13 +43,13 @@ describe('test room design', () => {
   it('adds no helper when the brick is the Hero, and the Hero is the only copy', () => {
     expect(isHeroBrick(hero)).toBe(true)
     const d = buildTestRoom(hero, stage)
-    expect(d.bricks).toHaveLength(1)
+    expect(d.bricks.map((b) => b.id)).toEqual([HERO_BRICK_ID, ROOM_GROUND_ID])
     expect(d.copies).toHaveLength(1)
     expect(d.copies[0].brickId).toBe(HERO_BRICK_ID)
     expect(validateDesign(d)).toEqual([])
   })
 
-  it('has a tile floor and wall columns that match the bounds', () => {
+  it('has a floor and wall columns of the standard Ground brick, sized to the bounds', () => {
     const t = roomTiles()
     expect(t.cols * 16).toBe(ROOM_WIDTH)
     expect(t.rows * 16).toBe(ROOM_HEIGHT)
@@ -55,6 +59,33 @@ describe('test room design', () => {
     expect(t.data[5][t.cols - 1]).toBe('G')
     expect(t.data[5][5]).toBe('.')
     expect(buildTestRoom(walker, stage).tiles).toEqual(t)
+    const d = buildTestRoom(walker, stage)
+    const ground = d.bricks.find((b) => b.id === ROOM_GROUND_ID)!
+    expect(ground.name).toBe('Ground')
+    expect(ground.grid?.char).toBe('G')
+  })
+
+  it('a grid brick (? block) gets Ground cells for a floor plus its own cells where the Hero touches them, and no copy', () => {
+    const q = { ...fakeGridTemplate('qblock').brick, id: 'q1' }
+    const d = buildTestRoom(q, stage)
+    expect(validateDesign(d)).toEqual([])
+    expect(d.copies.map((c) => c.brickId)).toEqual([HERO_BRICK_ID])
+    expect(d.bricks.map((b) => b.id)).toEqual(['q1', HERO_BRICK_ID, ROOM_GROUND_ID])
+    const t = d.tiles!
+    expect(t.data[0]).toBe('G'.repeat(t.cols))
+    // a run on the floor, in the helper's path, and a run two tiles up to jump into from below
+    for (const c of ROOM_FLOOR_RUN) expect(t.data[1][c]).toBe('Q')
+    for (const c of ROOM_AIR_RUN) expect(t.data[ROOM_AIR_ROW][c]).toBe('Q')
+    expect(t.data[1].indexOf('Q') * 16).toBeGreaterThan(HELPER_X)
+    expect(t.data.join('').split('Q')).toHaveLength(7)
+  })
+
+  it('the Ground brick itself is its own floor (no second Ground brick)', () => {
+    const g = { ...fakeGridTemplate('ground').brick, id: 'g1' }
+    const d = buildTestRoom(g, stage)
+    expect(d.bricks.map((b) => b.id)).toEqual(['g1', HERO_BRICK_ID])
+    expect(d.tiles!.data[0]).toBe('G'.repeat(d.tiles!.cols))
+    expect(validateDesign(d)).toEqual([])
   })
 
   it('applies knob values to the brick copy and leaves the defaults alone', () => {

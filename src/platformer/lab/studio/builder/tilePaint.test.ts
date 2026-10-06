@@ -106,3 +106,27 @@ describe('decidePress: selecting vs painting', () => {
     expect(decidePress(d, { ...none, brushTile: 'G' }, 5000, 5).kind).toBe('nothing')
   })
 })
+
+describe('decidePress: painted grid cells (step 7)', () => {
+  const withCells = () => {
+    const d = design()
+    d.tiles = { cols: 60, rows: 22, data: Array.from({ length: 22 }, (_, r) => (r === 2 ? '..QQQ' : '') .padEnd(60, '.')) }
+    return d
+  }
+  it('with nothing armed, a press on a painted cell selects it (it is not "nothing")', () => {
+    expect(decidePress(withCells(), none, 40, 40)).toEqual({ kind: 'select-cell', cell: { col: 2, row: 2 }, ch: 'Q' })
+  })
+  it('with a normal brick armed, a press on a painted cell selects it instead of placing a copy over it', () => {
+    expect(decidePress(withCells(), { ...none, brushBrickId: 'b1' }, 40, 40).kind).toBe('select-cell')
+  })
+  it('with the same grid brick armed it selects (and the drag goes on painting); a different one paints over it', () => {
+    expect(decidePress(withCells(), { ...none, brushTile: 'Q' }, 40, 40).kind).toBe('select-cell')
+    expect(decidePress(withCells(), { ...none, brushTile: 'H' }, 40, 40)).toEqual({ kind: 'paint-tile', cell: { col: 2, row: 2 }, ch: 'H' })
+  })
+  it('a copy in front of a cell wins, and erasing a cell paints "."', () => {
+    const d = withCells()
+    d.copies = [{ id: 'hero', brickId: 'b1', x: 40, y: 40 }]
+    expect(decidePress(d, none, 40, 40).kind).toBe('select-copy')
+    expect(decidePress(withCells(), none, 40, 40, { erase: true })).toEqual({ kind: 'paint-tile', cell: { col: 2, row: 2 }, ch: '.' })
+  })
+})

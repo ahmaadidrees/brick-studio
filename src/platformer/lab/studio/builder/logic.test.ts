@@ -1,17 +1,33 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { StudioStore, emptyProject } from '../store'
 import { fakeTemplate } from './testTemplates'
-import { TILE_ENTRIES, activeEntryId, brickEntryId, categoryForBrick } from './catalog'
+import { activeEntryId, brickEntryId, categoryForBrick, drawerEntries, standardKeyOf } from './catalog'
+import { fakeGridTemplate } from './testGridBricks'
 import { blankTileLayer, ensureTiles, withTiles } from './ensureTiles'
 import { knobRange, snapKnob } from './knobs'
 import { createBlankBrick, createBrickFromTemplate } from './newBrick'
 
+// gridBrickTemplate is a stub until the step 7 bricks lane merges: these tests use the builder's test double.
+vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gridBricks')>()), gridBrickTemplate: (await import('./testGridBricks')).fakeGridTemplate }))
+
 describe('drawer catalog', () => {
-  it('has the real builder tiles with the contract characters', () => {
-    const byLabel = Object.fromEntries(TILE_ENTRIES.map((t) => [t.label, t.ch]))
-    expect(byLabel).toMatchObject({ Ground: 'G', 'Hard block': 'H', Spikes: 'S', Lava: 'L', Brick: 'B', '? block': 'Q' })
-    expect(TILE_ENTRIES.filter((t) => t.category === 'terrain').map((t) => t.label)).toEqual(['Ground', 'Hard block', 'Spikes', 'Lava', 'One-way platform'])
-    expect(TILE_ENTRIES.filter((t) => t.category === 'blocks').map((t) => t.label)).toEqual(['Brick', '? block', 'Bounce block'])
+  it('has no fixed tiles: Terrain and Blocks list the standard grid bricks by category, in order, whether or not the level has them', () => {
+    const entries = drawerEntries([])
+    expect(entries.filter((e) => e.category === 'terrain').map((e) => e.name)).toEqual(['Ground', 'Hard block', 'Spikes', 'Lava', 'One-way platform'])
+    expect(entries.filter((e) => e.category === 'blocks').map((e) => e.name)).toEqual(['Brick', '? block', 'Bounce block'])
+    expect(entries.every((e) => e.id.startsWith('grid:') && !e.brick)).toBe(true)
+  })
+  it('a standard grid brick the level has is that brick (no second entry); a kid\'s own grid brick is under My bricks; other bricks sort by name', () => {
+    const q = { ...fakeGridTemplate('qblock').brick, id: 'q1' }
+    const mine = { ...fakeGridTemplate('hard').brick, id: 'm1', name: 'Mud', grid: { char: 'M' } }
+    const walker = { ...fakeGridTemplate('hard').brick, id: 'w1', name: 'Walker', grid: undefined }
+    const entries = drawerEntries([q, mine, walker])
+    expect(entries.find((e) => e.id === 'grid:qblock')?.brick?.id).toBe('q1')
+    expect(entries.filter((e) => e.name === '? block')).toHaveLength(1)
+    expect(entries.find((e) => e.id === 'brick:m1')).toMatchObject({ name: 'Mud', category: 'mine' })
+    expect(entries.find((e) => e.id === 'brick:w1')).toMatchObject({ category: 'critters' })
+    expect(standardKeyOf(q)).toBe('qblock')
+    expect(standardKeyOf(mine)).toBeUndefined()
   })
   it('sorts bricks into the real categories by name, and anything else is My bricks', () => {
     expect(categoryForBrick({ name: 'Walker' })).toBe('critters')
@@ -23,9 +39,12 @@ describe('drawer catalog', () => {
     expect(categoryForBrick({ name: 'Robot' })).toBe('mine')
   })
   it('knows which entry the armed brush is', () => {
-    expect(activeEntryId('G', null)).toBe('tile:ground')
-    expect(activeEntryId(null, 'b1')).toBe(brickEntryId('b1'))
-    expect(activeEntryId(null, null)).toBeNull()
+    const ground = { ...fakeGridTemplate('ground').brick, id: 'g1' }
+    const plain = { ...fakeGridTemplate('hard').brick, id: 'b1', grid: undefined }
+    expect(activeEntryId('g1', [ground, plain])).toBe('grid:ground')
+    expect(activeEntryId('b1', [ground, plain])).toBe(brickEntryId('b1'))
+    expect(activeEntryId(null, [ground])).toBeNull()
+    expect(activeEntryId('gone', [ground])).toBeNull()
   })
 })
 
