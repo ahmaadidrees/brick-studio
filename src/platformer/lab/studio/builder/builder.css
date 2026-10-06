@@ -2,6 +2,10 @@
    (src/platformer/ui/platformer.css, src/shell/shell.css); only what is new is styled here. */
 .builder { position: absolute; inset: 0; }
 .builder-stage { position: absolute; inset: 0; }
+/* The Bricks drawer floats over the stage's left edge. Keep the stage clear of it, so the level is fitted to what you can
+   see and the Hero (which starts at the far left) is never hidden under the drawer where it could not be clicked.
+   264px drawer + 12px margin + 12px gap. */
+.builder-drawer-open .builder-stage { left: 288px; }
 
 /* The header shows brand, 3D/2D, the world's name, save status, Build/Play and the ⋯ menu; Scene and People are the
    old builder's. */
@@ -33,6 +37,7 @@
   position: absolute; z-index: 15; left: calc(50% + 138px); bottom: calc(max(12px, env(safe-area-inset-bottom)) + 70px);
   display: flex; flex-direction: column; gap: 8px; width: max-content; max-width: min(520px, calc(100% - 312px));
   box-sizing: border-box; padding: 8px; transform: translateX(-50%);
+  max-height: calc(100% - 190px); overflow-y: auto;
   color: var(--studio-ink, #263c51); background: var(--studio-panel, #fff); border: 1px solid var(--studio-panel-border, #d9dee8);
   border-radius: var(--radius-lg, 16px); box-shadow: var(--studio-panel-shadow, 0 6px 18px rgba(38, 60, 81, 0.12));
 }

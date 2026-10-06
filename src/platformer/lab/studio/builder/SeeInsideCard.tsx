@@ -3,7 +3,8 @@ import type { Value } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
 import { isKnobNumber, knobRange, snapKnob } from './knobs'
 import { CostumeThumb } from './tileArt'
-import { removeCopyEdit, type History } from './history'
+import { knobEdit, removeCopyEdit, type History } from './history'
+import { isSingleton } from './limits'
 
 /**
  * The card above the Placing strip when a copy is selected: the brick's picture and name, how many copies are in this
@@ -17,7 +18,14 @@ export function SeeInsideCard({ store, history }: { store: StudioStore; history?
   if (!copy || !brick) return null
 
   const count = design.copies.filter((c) => c.brickId === brick.id).length
-  const knobs = brick.program.variables.filter((v) => v.showInBuild)
+  // One-per-level bricks (Hero, Goal) have no per-copy knobs: their knobs live in See inside (the workshop).
+  const single = isSingleton(brick)
+  const knobs = single ? [] : brick.program.variables.filter((v) => v.showInBuild)
+  const setKnob = (variableId: string, value: Value) => {
+    const before = copy.knobs?.[variableId]
+    history?.push(knobEdit(history, copy.id, variableId, before, value))
+    store.setKnob(copy.id, variableId, value)
+  }
 
   return (
     <section className="builder-inside" aria-label={`${brick.name} copy`}>
@@ -27,7 +35,7 @@ export function SeeInsideCard({ store, history }: { store: StudioStore; history?
         </span>
         <span className="builder-inside-text">
           <strong>{brick.name}</strong>
-          <span>{count} in this level</span>
+          <span>{single ? 'One per level' : `${count} in this level`}</span>
         </span>
         <button type="button" className="builder-btn builder-btn-primary" onClick={() => store.openWorkshop(brick.id)} title="See how this brick works">
           <Search size={16} aria-hidden="true" />
@@ -55,9 +63,9 @@ export function SeeInsideCard({ store, history }: { store: StudioStore; history?
               <label key={v.id} className="builder-knob">
                 <span className="builder-knob-name">{v.name}</span>
                 {isKnobNumber(value) && isKnobNumber(v.value) ? (
-                  <KnobSlider name={v.name} start={v.value} value={value} onChange={(n) => store.setKnob(copy.id, v.id, n)} />
+                  <KnobSlider name={v.name} start={v.value} value={value} onChange={(n) => setKnob(v.id, n)} />
                 ) : typeof value === 'boolean' ? (
-                  <button type="button" className="builder-btn" aria-pressed={value} onClick={() => store.setKnob(copy.id, v.id, !value)}>
+                  <button type="button" className="builder-btn" aria-pressed={value} onClick={() => setKnob(v.id, !value)}>
                     {value ? 'On' : 'Off'}
                   </button>
                 ) : (

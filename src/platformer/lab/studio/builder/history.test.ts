@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { costumeFromImage, imageFromRows } from '../pixels'
 import { StudioStore, emptyProject } from '../store'
-import { History, addCopyEdit, moveCopyEdit, removeCopyEdit, tileStrokeEdit } from './history'
+import { History, addCopyEdit, knobEdit, moveCopyEdit, removeCopyEdit, tileStrokeEdit } from './history'
 
 function setup() {
   const p = emptyProject()
@@ -84,5 +84,49 @@ describe('builder undo and redo', () => {
       n++
     }
     expect(n).toBe(200)
+  })
+})
+
+describe('knob edits in the undo history', () => {
+  it('a slider drag is one step from the first value to the last, and redo goes to the last', () => {
+    const { store, history, brickId } = setup()
+    const copy = store.addCopy(brickId, 10, 10)
+    store.setKnob(copy, 'v', 5)
+    const knobs = () => store.getState().project.design.copies.find((c) => c.id === copy)!.knobs?.v
+    let prev: number | undefined = 5
+    for (const n of [6, 7, 8, 9]) {
+      history.push(knobEdit(history, copy, 'v', prev, n))
+      store.setKnob(copy, 'v', n)
+      prev = n
+    }
+    expect(knobs()).toBe(9)
+    history.undo()
+    expect(knobs()).toBe(5)
+    expect(history.canUndo).toBe(false)
+    history.redo()
+    expect(knobs()).toBe(9)
+  })
+
+  it('a copy with no override goes back to following the brick when the first edit is undone', () => {
+    const { store, history, brickId } = setup()
+    const copy = store.addCopy(brickId, 10, 10)
+    history.push(knobEdit(history, copy, 'v', undefined, 3))
+    store.setKnob(copy, 'v', 3)
+    history.undo()
+    expect(store.getState().project.design.copies.find((c) => c.id === copy)!.knobs?.v).toBeUndefined()
+  })
+
+  it('different knobs, or another copy, are separate steps', () => {
+    const { store, history, brickId } = setup()
+    const a = store.addCopy(brickId, 10, 10)
+    const b = store.addCopy(brickId, 20, 10)
+    history.push(knobEdit(history, a, 'v', undefined, 1))
+    history.push(knobEdit(history, a, 'w', undefined, 1))
+    history.push(knobEdit(history, b, 'v', undefined, 1))
+    for (const id of [a, a, b]) store.setKnob(id, id === a ? 'v' : 'v', 1)
+    history.undo()
+    history.undo()
+    history.undo()
+    expect(history.canUndo).toBe(false)
   })
 })

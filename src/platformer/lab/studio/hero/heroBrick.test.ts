@@ -21,7 +21,9 @@ import { play } from '../../core/index'
 import { validateDesign } from '../../core/project'
 import { compileWorkspace } from '../../core/editor/compile'
 import { isHatOpcode, registerEditorBlocks } from '../../core/editor/definitions'
-import { createHeroBrick, createHeroCostume, createHeroWorkspace, HERO_BOX, HERO_KNOBS, heroVariables } from './heroBrick'
+import {
+  createHeroBrick, createHeroCostume, createHeroWorkspace, HERO_BOX, HERO_BUILD_KNOB_IDS, HERO_KNOB_GROUPS, HERO_KNOBS, HERO_MORE_TUNING_COUNT, heroVariables,
+} from './heroBrick'
 import { createHeroTestDesign, FLOOR_TOP, HERO_START_X, HERO_STAND_Y, type HeroTestOptions } from './heroLevel'
 
 // =============================================================================================
@@ -285,7 +287,8 @@ describe('The Hero brick is built from open blocks', () => {
   it('opens in the real Blockly editor and saves back to the same program', () => {
     const { workspace, brick } = createHeroBrick()
     const variables = heroVariables()
-    registerEditorBlocks({ getVariables: () => variables, getBricks: () => ['Hero'] })
+    // `coins` is the Stage's global: the editor offers the Stage's variables in every brick's variable menu.
+    registerEditorBlocks({ getVariables: () => [...variables, { id: 'coins', name: 'coins', value: 0 }], getBricks: () => ['Hero'] })
     // `platformer_touchingtile` comes from the tiles lane (core/editor/tileBlocks.ts, wired in by the integrator). Until
     // then register a stand-in with the same shape (a Boolean with fields.TILE) so the Hero's spike check can load.
     const stubbed = !Blockly.Blocks['platformer_touchingtile']
@@ -300,8 +303,8 @@ describe('The Hero brick is built from open blocks', () => {
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 2 flag scripts (feel, spikes), 7 My Blocks, 2 bump hats, 3 broadcast hats (boing, stomped, hero hurt).
-      expect(ws.getTopBlocks(false)).toHaveLength(14)
+      // 2 flag scripts (feel, spikes and lava), 7 My Blocks, 3 bump hats (left, right, ? block), 3 broadcast hats (boing, stomped, hero hurt).
+      expect(ws.getTopBlocks(false)).toHaveLength(15)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -355,20 +358,42 @@ describe('The Hero brick is built from open blocks', () => {
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
     const forever = flag.body.find((s) => s.opcode === 'control_forever')!
     expect(forever.branches![0].map((s) => s.call?.proccode)).toEqual(['read keys', 'feel the wall', 'walk', 'run meter', 'jump', 'fall'])
-    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right'])
+    expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right', 'bottom'])
   })
 
-  it('shows every tunable number as a Build knob, with its conversion written next to it', () => {
+  it('shows only four Hero knobs in Build; every other tuning number is a plain variable in the groups of "More tuning"', () => {
     const decls = heroVariables()
     for (const knob of HERO_KNOBS) {
       const decl = decls.find((d) => d.id === knob.id)!
-      expect(decl.showInBuild, knob.name).toBe(true)
+      expect(decl.showInBuild === true, knob.name).toBe(HERO_BUILD_KNOB_IDS.includes(knob.id))
       expect(decl.value).toBe(knob.value)
       expect(knob.from.length).toBeGreaterThan(8)
     }
-    // The working memory is not a knob.
-    expect(decls.filter((d) => !d.showInBuild).length).toBeGreaterThan(10)
-    expect(createHeroBrick().brick.program.variables.filter((v) => v.showInBuild)).toHaveLength(HERO_KNOBS.length)
+    expect(HERO_BUILD_KNOB_IDS.map((id) => HERO_KNOBS.find((k) => k.id === id)!.name)).toEqual(['walk top speed', 'run top speed', 'jump standing', 'fall gravity'])
+    const shown = createHeroBrick().brick.program.variables.filter((v) => v.showInBuild)
+    expect(shown.map((v) => v.id)).toEqual(['walk_top', 'run_top', 'jump_stand', 'fall_gravity'])
+    // The working memory is not a knob either.
+    expect(decls.filter((d) => !d.showInBuild).length).toBe(HERO_KNOBS.length - 4 + 23)
+    // The groups hold every other tuning number exactly once, in Walking / Running / Jumping / Falling / Walls order.
+    expect(HERO_KNOB_GROUPS.map((g) => g.label)).toEqual(['Walking', 'Running', 'Jumping', 'Falling', 'Walls'])
+    const grouped = HERO_KNOB_GROUPS.flatMap((g) => g.knobIds)
+    expect(new Set(grouped).size).toBe(grouped.length)
+    expect(grouped.sort()).toEqual(HERO_KNOBS.filter((k) => !HERO_BUILD_KNOB_IDS.includes(k.id)).map((k) => k.id).sort())
+    expect(HERO_MORE_TUNING_COUNT).toBe(HERO_KNOBS.length - 4)
+  })
+
+  it('is one per level (limit 1)', () => {
+    expect(createHeroBrick().brick.limit).toBe(1)
+  })
+
+  it('counts a coin when it bumps a ? block from below, and treats lava like spikes', () => {
+    const { brick, workspace } = createHeroBrick()
+    const bump = brick.program.scripts.find((s) => s.hat.opcode === 'platformer_whenbump' && s.hat.fields.BRICK === 'tile:qblock')!
+    expect(bump.hat.fields).toEqual({ SIDE: 'bottom', BRICK: 'tile:qblock' })
+    expect(bump.body.map((b) => [b.opcode, b.fields.VARIABLE])).toEqual([['data_changevariableby', 'coins']])
+    const text = JSON.stringify(workspace)
+    expect(text).toContain('"TILE":"spikes"')
+    expect(text).toContain('"TILE":"lava"')
   })
 
   it('has a 16 x 16 costume whose opaque box is the old player: 12 wide, 14 tall, standing on the floor', () => {

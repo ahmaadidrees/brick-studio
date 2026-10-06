@@ -1,5 +1,5 @@
 import { Hammer, MoreHorizontal, Play } from 'lucide-react'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AppHeader, useCompactLayout } from '../../../../shell'
 import { Button, Menu } from '../../../../ui'
 import { ProjectMenu } from '../persist/ProjectMenu'
@@ -7,6 +7,7 @@ import { Stage } from '../Stage'
 import { useStudio, type StudioStore } from '../store'
 import { BuildPanels } from './BuildPanels'
 import { ensureTiles } from './ensureTiles'
+import { limitedStore } from './limits'
 import { builderSession } from './session'
 import type { BrickTemplate } from '../templates'
 import './builder.css'
@@ -22,6 +23,8 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
   const compact = useCompactLayout()
   const session = builderSession(store)
   const history = session.history
+  // The Stage places copies through this view of the store, which keeps the Hero and the Goal to one each.
+  const stageStore = useMemo(() => limitedStore(store, history), [store, history])
   useSyncExternalStore(history.subscribe, history.getVersion)
   // Older saves have no tile layer; give them an empty one so painting works.
   useEffect(() => ensureTiles(store), [store])
@@ -63,7 +66,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
   }, [build, history])
 
   return (
-    <div className={`p2d-game p2d-studio builder ${build ? 'p2d-building' : 'p2d-playing'}${compact ? ' p2d-compact' : ''}`}>
+    <div className={`p2d-game p2d-studio builder ${build ? 'p2d-building' : 'p2d-playing'}${compact ? ' p2d-compact' : ''}${build && !compact && drawerOpen ? ' builder-drawer-open' : ''}`}>
       <div className="p2d-header builder-header">
         <AppHeader
           variant="editor"
@@ -100,7 +103,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
 
       <div className="p2d-body">
         <div className="builder-stage">
-          <Stage store={store} tools={{ history, erasing }} />
+          <Stage store={stageStore} tools={{ history, erasing }} />
         </div>
         {build && (
           <BuildPanels

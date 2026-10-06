@@ -10,8 +10,10 @@ import {
   createStarterTiles,
   GROUND_TOP,
   STARTER_COINS,
+  STARTER_BOUNCE,
   STARTER_COLS,
   STARTER_GAP_COLS,
+  STARTER_ONE_WAY,
   STARTER_PIT_COLS,
   STARTER_PLATFORMS,
   STARTER_ROWS,
@@ -119,6 +121,18 @@ describe('Starter level (starter.ts)', () => {
       const [fast, slow] = STARTER_WALKERS
       expect([fast!.x > 6 * 16 + 16 && fast!.x < 15 * 16, slow!.x > 31 * 16 + 16 && slow!.x < 39 * 16]).toEqual([true, true])
     })
+    it('has a one-way platform (cols 33-36, row 3, top 64) and a bounce block (col 18, row 1), using TILE_CHAR - and O', () => {
+      expect([TILE_CHAR.semi, TILE_CHAR.bounce]).toEqual(['-', 'O'])
+      expect(tiles.data[STARTER_ONE_WAY.row]!.slice(STARTER_ONE_WAY.col, STARTER_ONE_WAY.col + STARTER_ONE_WAY.length)).toBe('----')
+      expect((STARTER_ONE_WAY.row + 1) * TILE_SIZE).toBe(64)
+      expect(at(STARTER_BOUNCE.col, STARTER_BOUNCE.row)).toBe('O')
+      // The bounce block stands on the ground (row 0 is ground there) and outside both Walkers' lanes.
+      expect(at(STARTER_BOUNCE.col, 0)).toBe(TILE_CHAR.ground)
+      const [fast] = STARTER_WALKERS
+      expect(STARTER_BOUNCE.col * TILE_SIZE).toBeGreaterThan(fast!.x + 64)
+      // Nothing else is painted in the one-way platform's row or the bounce block's neighbours.
+      expect(tiles.data[STARTER_ONE_WAY.row]!.replace(/[-.]|[BQ]/g, '')).toBe('')
+    })
     it('uses only allowed tile characters', () => {
       const allowed = new Set(['.', ...Object.values(TILE_CHAR)])
       for (const row of tiles.data) for (const ch of row) expect(allowed.has(ch)).toBe(true)
@@ -174,15 +188,34 @@ describe('Starter level (starter.ts)', () => {
       expect(walkOpcodes(p.workspaces.brick_goal).get('control_stop')).toEqual({ STOP_OPTION: 'all' })
     })
 
-    it('Hero keeps its program and gains handlers for boing, stomped, hero hurt and touching tile [spikes]', () => {
+    it('Hero keeps its program and gains handlers for boing, stomped, hero hurt, spikes, lava and ? blocks', () => {
       const hero = brickOf(project(), 'brick_hero')
       const received = hero.program.scripts.filter((s) => s.hat.opcode === 'event_whenbroadcastreceived').map((s) => s.hat.fields.BROADCAST_OPTION)
       expect(received).toEqual(['boing', 'stomped', 'hero hurt'])
       const ops = walkOpcodes(project().workspaces.brick_hero)
-      expect(ops.get('platformer_touchingtile')).toEqual({ TILE: 'spikes' })
+      expect(JSON.stringify(project().workspaces.brick_hero)).toContain('"TILE":"spikes"')
+      expect(JSON.stringify(project().workspaces.brick_hero)).toContain('"TILE":"lava"')
+      expect(ops.has('platformer_touchingtile')).toBe(true)
+      // when I bump [bottom] of [tile:qblock] -> change coins by 1 (a labelled script)
+      const qbump = hero.program.scripts.find((x) => x.hat.opcode === 'platformer_whenbump' && x.hat.fields.BRICK === 'tile:qblock')!
+      expect(qbump.hat.fields).toEqual({ SIDE: 'bottom', BRICK: 'tile:qblock' })
+      expect(qbump.body.map((b) => [b.opcode, b.fields.VARIABLE])).toEqual([['data_changevariableby', 'coins']])
+      const qTop = topBlocks(project().workspaces.brick_hero).find((t) => (t.fields as Json | undefined)?.BRICK === 'tile:qblock')!
+      expect(readLabel(qTop.data as string)).toMatch(/\? block/)
       // its own feel scripts are all still there
       const names = hero.program.procedures.map((x) => x.proccode)
       expect(names).toEqual(['read keys', 'feel the wall', 'walk', 'run meter', 'jump', 'fall', 'hit a wall'])
+    })
+
+    it('only the Hero and the Goal are one per level (limit 1)', () => {
+      const p = project()
+      expect(p.design.bricks.map((b) => [b.name, b.limit])).toEqual([['Hero', 1], ['Walker', undefined], ['Coin', undefined], ['Spring', undefined], ['Goal', 1]])
+      expect(p.design.copies.filter((c) => c.brickId === 'brick_hero')).toHaveLength(1)
+      expect(p.design.copies.filter((c) => c.brickId === 'brick_goal')).toHaveLength(1)
+    })
+
+    it('has no backdrop costume, so the stage draws the Brickgineers sky', () => {
+      expect(project().design.stage.costumes).toEqual([])
     })
 
     it('Stage counts coins when a Coin says coin collected', () => {
@@ -285,6 +318,26 @@ describe('Starter level (starter.ts)', () => {
     run(20)
     expect([h.x, h.y]).toEqual([60, 24])
   })
+
+  it('lava sends the Hero back to the start, like spikes', () => {
+    const design = createStarterProject().design
+    // paint one lava tile in mid-air at col 10, row 5 (x 160..176, y 80..96)
+    const tiles = design.tiles!
+    const data = tiles.data.slice()
+    data[5] = data[5]!.slice(0, 10) + TILE_CHAR.lava + data[5]!.slice(11)
+    const rt = play({ ...design, tiles: { ...tiles, data } })
+    const h = rt.world.targets.find((t) => t.copyId === 'copy_hero')!
+    for (let i = 0; i < 20; i++) rt.step()
+    h.x = 168; h.y = 88
+    for (let i = 0; i < 20; i++) rt.step()
+    expect([h.x, h.y]).toEqual([60, 24])
+  })
+
+  // The three below need the tiles lane's step 6b physics (one-way, ? block hit, bounce). The integrator flips them.
+  // Layout: one-way platform cols 33-36 row 3 (x 528..592, top y 64); ? blocks at the platforms listed above; bounce block col 18 row 1.
+  it.todo('one-way platform: a Hero jumping up from the ground at x 560 passes through it, then lands on top: box bottom exactly 64 and onGround true')
+  it.todo('? block: the Hero jumping up into the ? block at col 12 row 3 (x 192..208, y 48..64) from below turns it into a used block (tile U) once and the stage variable coins becomes 1; a second jump gives no coin')
+  it.todo('bounce block: the Hero landing on the bounce block at col 18 row 1 (top y 32) is thrown to the converted old bounceHigh apex (core tile test pins the number); walking onto it without falling gives the low bounce')
 
   it('the Spring launches the Hero higher than its own best jump (62)', () => {
     const { rt, of, run } = fresh()

@@ -15,6 +15,7 @@ import {
   tileEntryById,
 } from './catalog'
 import type { History } from './history'
+import { copyToMove, limitOf } from './limits'
 import { NewBrickPicker } from './NewBrickPicker'
 import { SeeInsideCard } from './SeeInsideCard'
 import { CostumeThumb, TileArt } from './tileArt'
@@ -132,12 +133,18 @@ function PlacingStrip({ store, erasing, onErasing }: { store: StudioStore; erasi
   const tile = brushTile ? TILE_ENTRIES.find((t) => t.ch === brushTile) : undefined
   const brick = !brushTile && brushBrickId ? bricks.find((b) => b.id === brushBrickId) : undefined
   const label = tile?.label ?? brick?.name ?? 'Nothing'
+  const design = useStudio(store, (s) => s.project.design)
+  const moves = brick && !brushTile && copyToMove(design, brick.id)
   const hint = erasing
     ? 'Click or drag over things to remove them'
     : tile
       ? 'Click or drag to paint · right-click erases'
       : brick
-        ? 'Click to place a copy · click a copy to select it · right-click erases'
+        ? moves
+          ? `Moves your ${brick.name} · only one per level`
+          : limitOf(brick) === 1
+            ? `Click to place your ${brick.name} · only one per level`
+            : 'Click to place a copy · click a copy to select it · right-click erases'
         : 'Pick something from the Bricks drawer'
   return (
     <div className="p2d-strip" role="group" aria-label="Placing">
