@@ -10,7 +10,7 @@ import { play } from './index'
 import { DESIGN_LIMITS, instantiate, validateDesign } from './project'
 import type { Runtime } from './runtime'
 
-declare const process: { stderr: { write: (s: string) => void } }
+declare const process: { stderr: { write: (s: string) => void }; env: Record<string, string | undefined> }
 
 const lit = (value: number | string): Expr => ({ kind: 'lit', value })
 const stmt = (opcode: string, fields: Record<string, string> = {}, inputs: Record<string, Expr> = {}, branches?: Stmt[][]): Stmt => ({ opcode, fields, inputs, ...(branches ? { branches } : {}) })
