@@ -34,8 +34,10 @@ export const TILE_ENTRIES: TileEntry[] = [
   { id: 'tile:hard', label: 'Hard block', category: 'terrain', ch: TILE_CHAR.hard, art: 'hard' },
   { id: 'tile:spikes', label: 'Spikes', category: 'terrain', ch: TILE_CHAR.spikes, art: 'spikes' },
   { id: 'tile:lava', label: 'Lava', category: 'terrain', ch: TILE_CHAR.lava, art: 'lava:0:1' },
+  { id: 'tile:semi', label: 'One-way platform', category: 'terrain', ch: TILE_CHAR.semi, art: 'semi:00', hint: 'Jump up through it, land on top' },
   { id: 'tile:brick', label: 'Brick', category: 'blocks', ch: TILE_CHAR.brick, art: 'brick' },
   { id: 'tile:qblock', label: '? block', category: 'blocks', ch: TILE_CHAR.qblock, art: 'q:0' },
+  { id: 'tile:bounce', label: 'Bounce block', category: 'blocks', ch: TILE_CHAR.bounce, art: 'bounce', hint: 'Land on it to spring up' },
 ]
 
 const BY_NAME: Record<string, CatalogCategory> = {

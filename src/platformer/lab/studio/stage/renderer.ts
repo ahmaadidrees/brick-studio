@@ -10,7 +10,7 @@ import type {
 } from '../../core/contracts'
 import { boundsFor, opaqueRect, transformOf } from '../../core/geometry'
 import { getCameraZoom, snapToGrid, worldToScreen, type Camera, type Viewport } from './camera'
-import { drawTileHover, drawTiles } from './tiles'
+import { drawCoinPops, drawSky, drawTileHover, drawTiles, trackCoinPops } from './tiles'
 
 /** The Brickgineers look: cream outside the level, a sky-blue level. */
 const OUTSIDE = '#efe9da'
@@ -94,15 +94,15 @@ export function renderBuildMode(
   ctx.fillStyle = SKY
   ctx.fillRect(lX, tY, lvlW, lvlH)
 
-  // Stage backdrop if present
-  if (design.stage.costumes.length > 0) {
-    const backdrop = design.stage.costumes[0]
-    if (backdrop.asset) {
-      const img = imageCache.getImage(backdrop.asset)
-      if (img) {
-        ctx.drawImage(img, lX, tY, lvlW, lvlH)
-      }
+  // Stage backdrop if present, otherwise the Brickgineers day sky and hills
+  const backdrop = design.stage.costumes[0]
+  if (backdrop?.asset) {
+    const img = imageCache.getImage(backdrop.asset)
+    if (img) {
+      ctx.drawImage(img, lX, tY, lvlW, lvlH)
     }
+  } else {
+    drawSky(ctx, bounds, camera, viewport)
   }
 
   // Grid lines
@@ -213,10 +213,15 @@ export function renderPlayMode(
     if (img) {
       ctx.drawImage(img, lX, tY, lvlW, lvlH)
     }
+  } else {
+    drawSky(ctx, bounds, camera, viewport)
   }
 
-  // Tiles sit behind the targets
+  // Tiles sit behind the targets; a ? block that was just hit pops a coin (a picture only)
+  const now = typeof performance !== 'undefined' ? performance.now() : 0
+  trackCoinPops(world.tiles, now)
   drawTiles(ctx, world.tiles, camera, viewport)
+  drawCoinPops(ctx, world.tiles, camera, viewport, now)
 
   // 3. Targets in draw order (world.targets)
   for (const target of world.targets) {

@@ -10,8 +10,8 @@ describe('drawer catalog', () => {
   it('has the real builder tiles with the contract characters', () => {
     const byLabel = Object.fromEntries(TILE_ENTRIES.map((t) => [t.label, t.ch]))
     expect(byLabel).toMatchObject({ Ground: 'G', 'Hard block': 'H', Spikes: 'S', Lava: 'L', Brick: 'B', '? block': 'Q' })
-    expect(TILE_ENTRIES.filter((t) => t.category === 'terrain').map((t) => t.label)).toEqual(['Ground', 'Hard block', 'Spikes', 'Lava'])
-    expect(TILE_ENTRIES.filter((t) => t.category === 'blocks').map((t) => t.label)).toEqual(['Brick', '? block'])
+    expect(TILE_ENTRIES.filter((t) => t.category === 'terrain').map((t) => t.label)).toEqual(['Ground', 'Hard block', 'Spikes', 'Lava', 'One-way platform'])
+    expect(TILE_ENTRIES.filter((t) => t.category === 'blocks').map((t) => t.label)).toEqual(['Brick', '? block', 'Bounce block'])
   })
   it('sorts bricks into the real categories by name, and anything else is My bricks', () => {
     expect(categoryForBrick({ name: 'Walker' })).toBe('critters')
