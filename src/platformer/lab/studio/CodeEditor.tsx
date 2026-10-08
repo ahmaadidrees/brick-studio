@@ -61,6 +61,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
   // the old brick's code over the new brick's.
   const workspaceBrickIdRef = useRef<string>(selectedBrickId)
 
+  // True when this brick's saved blocks could not be loaded into the editor. Nothing may be saved for the brick until a
+  // load succeeds: the editor holds an empty workspace, and saving it would wipe the brick's code.
+  const loadBlockedRef = useRef<boolean>(false)
+  const [loadFailed, setLoadFailed] = useState<boolean>(false)
+
   // Debounced save timer
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -90,7 +95,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
       const ws = workspaceRef.current
-      if (ws && !isDisposedRef.current) {
+      if (ws && !isDisposedRef.current && !loadBlockedRef.current) {
         const json = Blockly.serialization.workspaces.save(ws)
         store.setWorkspace(workspaceBrickIdRef.current, json)
       }
@@ -103,6 +108,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
+    if (loadBlockedRef.current) return
     const json = Blockly.serialization.workspaces.save(ws)
     store.setWorkspace(workspaceBrickIdRef.current, json)
   }
@@ -205,6 +211,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     ws.getToolbox()?.refreshSelection()
 
     // 8. Load workspace for this brick
+    loadBlockedRef.current = false
+    setLoadFailed(false)
     const savedWorkspace = store.getState().project.workspaces[selectedBrickId]
     if (savedWorkspace) {
       try {
@@ -212,6 +220,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
         Blockly.serialization.workspaces.load(wsData, ws)
       } catch (err) {
         console.error('Failed to load workspace:', err)
+        // Keep the brick's saved code exactly as it is: block every save from this editor until a load works.
+        loadBlockedRef.current = true
+        setLoadFailed(true)
+        ws.clear()
       }
     } else {
       // Ensure declared variables exist in workspace
@@ -292,7 +304,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = setTimeout(() => {
         saveTimeoutRef.current = null
-        if (!isDisposedRef.current) {
+        if (!isDisposedRef.current && !loadBlockedRef.current) {
           const json = Blockly.serialization.workspaces.save(ws)
           store.setWorkspace(workspaceBrickIdRef.current, json)
         }
@@ -620,6 +632,12 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
 
       {/* Main Workspace Injection Container */}
       <div className="code-workspace-container">
+        {loadFailed && (
+          <div className="code-load-failed" role="alert">
+            <strong>We could not open this brick&apos;s blocks.</strong>
+            <span> They are safe: nothing here will be saved over them. Press Done, then open the brick again.</span>
+          </div>
+        )}
         <div ref={hostRef} className="code-blockly-host" />
 
         {/* Diagnostics Drawer (kid words, click to select block) */}

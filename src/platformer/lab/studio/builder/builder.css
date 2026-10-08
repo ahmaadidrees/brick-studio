@@ -73,3 +73,31 @@
 .builder-word { min-height: 44px; padding: 0 10px; border: 2px solid transparent; border-radius: 12px; color: var(--studio-ink, #263c51); background: var(--studio-panel-soft, #f3f5f9); font: 800 13px/1 inherit; cursor: pointer; }
 .builder-word:hover { border-color: var(--studio-blue, #5888da); background: rgba(88, 136, 218, 0.1); }
 .builder-word:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
+
+/* Play feedback (PlayFeedback.tsx): the coin counter matches the pill the real builder draws on its canvas. */
+.play-coins {
+  position: absolute;
+  z-index: var(--z-hud, 30);
+  top: var(--space-3, 12px);
+  left: max(var(--space-3, 12px), env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 10px;
+  font: 800 20px/1 var(--font-display, system-ui);
+  color: var(--text, #263c51);
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid var(--text, #263c51);
+  border-radius: 999px;
+  box-shadow: var(--shadow-md, 0 3px 10px rgba(0, 0, 0, 0.25));
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.play-coin-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f5b82e;
+  border: 2px solid var(--text, #263c51);
+  box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.15);
+}

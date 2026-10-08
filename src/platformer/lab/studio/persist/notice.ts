@@ -4,6 +4,10 @@ export interface StorageNotice {
   id: string
   type: 'corrupt' | 'newer-version' | 'quota-error' | 'error' | 'success' | 'info'
   message: string
+  /** Buttons shown beside the message (e.g. "Start with this new world"). */
+  actions?: Array<{ label: string; run: () => void }>
+  /** Stays on screen until a kid picks an action; Dismiss only hides it. */
+  sticky?: boolean
 }
 
 let currentNotice: StorageNotice | null = null

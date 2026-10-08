@@ -13,6 +13,24 @@ function setup() {
 const row0 = (s: StudioStore) => s.getState().project.design.tiles!.data[0]
 
 describe('builder undo and redo', () => {
+  it('opening a file, starting over or any load clears undo and redo (Ctrl+Z never reaches into the old world)', () => {
+    const { store, history } = setup()
+    const changes = [{ col: 0, row: 0, from: '.', to: 'G' }]
+    store.setTile(0, 0, 'G')
+    history.push(tileStrokeEdit(store, changes))
+    history.push(tileStrokeEdit(store, [{ col: 1, row: 0, from: '.', to: 'G' }]))
+    history.undo()
+    expect(history.canUndo).toBe(true)
+    expect(history.canRedo).toBe(true)
+
+    store.load(emptyProject())
+    expect(history.canUndo).toBe(false)
+    expect(history.canRedo).toBe(false)
+    history.undo() // does nothing
+    history.redo()
+    expect(row0(store).slice(0, 2)).toBe('..')
+  })
+
   it('a tile stroke is one undo step and one redo step', () => {
     const { store, history } = setup()
     const changes = [0, 1, 2].map((col) => ({ col, row: 0, from: '.', to: 'G' }))

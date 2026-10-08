@@ -151,14 +151,20 @@ function compileExpr(
   }
 
   // 2. Custom block parameter reporters
-  if (type === 'argument_reporter_string_number') {
+  if (type === 'argument_reporter_string_number' || type === 'argument_reporter_boolean') {
     const name = fields.VALUE ?? fields.NAME ?? ''
-    return { kind: 'param', name, boolean: false }
-  }
-
-  if (type === 'argument_reporter_boolean') {
-    const name = fields.VALUE ?? fields.NAME ?? ''
-    return { kind: 'param', name, boolean: true }
+    if (name.trim() === '') {
+      // A reporter with no name (saved before parameter names were kept) cannot be a valid parameter: an empty name
+      // fails the project's validation and the whole save would be lost. Answer empty and say so.
+      diagnostics.push({
+        message: 'A custom block input lost its name, so it answers empty.',
+        severity: 'warning',
+        code: 'block.nameless_input',
+        blockId: typeof target.id === 'string' ? target.id : undefined,
+      })
+      return { kind: 'lit', value: type === 'argument_reporter_boolean' ? false : '' }
+    }
+    return { kind: 'param', name, boolean: type === 'argument_reporter_boolean' }
   }
 
   // 3. Reporter / Boolean blocks

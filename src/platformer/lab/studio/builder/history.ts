@@ -28,7 +28,10 @@ export class History {
   private version = 0
   private lastPush = 0
 
-  constructor(readonly store: StudioStore) {}
+  constructor(readonly store: StudioStore) {
+    // Opening a file or starting over replaces the world: Undo must never reach back into the old one.
+    store.onLoad(() => this.clear())
+  }
 
   subscribe = (l: () => void): (() => void) => {
     this.listeners.add(l)

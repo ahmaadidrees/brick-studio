@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { CURRENT_SCHEMA_VERSION } from '../core/save'
+import { CURRENT_SCHEMA_VERSION, parse } from '../core/save'
 import { createStarterProject } from './starter'
 import {
   CODE_LAB_BACKUP_STORAGE_KEY,
@@ -10,7 +10,9 @@ import {
   getBackupProject,
   getStorageNotice,
   isQuotaError,
+  isSaveHeld,
   loadProject,
+  releaseSaveHold,
   saveProject,
   watchAndSave,
 } from './storage'
@@ -57,6 +59,7 @@ describe('Storage & Autosave (storage.ts)', () => {
   beforeEach(() => {
     memoryStorage = new MemoryStorage()
     clearStorageNotice()
+    releaseSaveHold()
     vi.restoreAllMocks()
   })
 
@@ -177,7 +180,7 @@ describe('Storage & Autosave (storage.ts)', () => {
     const notice = getStorageNotice()
     expect(notice).not.toBeNull()
     expect(notice?.type).toBe('quota-error')
-    expect(notice?.message).toContain('storage is full')
+    expect(notice?.message).toContain('computer is full')
   })
 
   it('detects isQuotaError correctly', () => {
@@ -215,7 +218,7 @@ describe('Storage & Autosave (storage.ts)', () => {
     expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toBeNull()
 
     // Trigger state change (revision bumps)
-    store.addCopy('brick_spinner', 100, 100)
+    store.addCopy('brick_coin', 100, 100)
 
     // Before debounce delay: not saved
     vi.advanceTimersByTime(200)
@@ -237,7 +240,7 @@ describe('Storage & Autosave (storage.ts)', () => {
 
     const stopWatching = watchAndSave(store, { debounceMs: 500, storage: memoryStorage })
 
-    store.addCopy('brick_spinner', 250, 250)
+    store.addCopy('brick_coin', 250, 250)
     expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toBeNull()
 
     // Unsubscribe triggers immediate flush
@@ -254,7 +257,7 @@ describe('Storage & Autosave (storage.ts)', () => {
 
     const stopWatching = watchAndSave(store, { debounceMs: 500, storage: memoryStorage })
 
-    store.addCopy('brick_spinner', 300, 300)
+    store.addCopy('brick_coin', 300, 300)
     expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toBeNull()
 
     // Dispatch pagehide
@@ -265,5 +268,63 @@ describe('Storage & Autosave (storage.ts)', () => {
     expect(saved).toContain('copy1')
 
     stopWatching()
+  })
+})
+
+describe('unreadable saves are held, not overwritten (s8 blockers)', () => {
+  let mem: MemoryStorage
+  beforeEach(() => {
+    mem = new MemoryStorage()
+    clearStorageNotice()
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    releaseSaveHold()
+    vi.useRealTimers()
+  })
+
+  it('does not autosave over a save it could not read until the kid chooses, and keeps a backup', () => {
+    const bad = '{"broken": [json...'
+    mem.setItem(CODE_LAB_STORAGE_KEY, bad)
+    const store = new StudioStore(loadProject(mem))
+    expect(isSaveHeld()).toBe(true)
+    const notice = getStorageNotice()
+    expect(notice?.sticky).toBe(true)
+    expect(notice?.actions?.map((a) => a.label)).toContain('Start with this new world')
+    expect(getBackupProject(mem)).toBe(bad)
+
+    const stop = watchAndSave(store, { storage: mem, debounceMs: 10 })
+    store.addCopy('brick_coin', 10, 10)
+    vi.advanceTimersByTime(100)
+    expect(mem.getItem(CODE_LAB_STORAGE_KEY)).toBe(bad)
+    stop() // the unmount flush must not write either
+    expect(mem.getItem(CODE_LAB_STORAGE_KEY)).toBe(bad)
+    expect(getBackupProject(mem)).toBe(bad)
+  })
+
+  it('saves the new world as soon as the kid chooses to start with it', () => {
+    mem.setItem(CODE_LAB_STORAGE_KEY, 'nope')
+    const store = new StudioStore(loadProject(mem))
+    watchAndSave(store, { storage: mem, debounceMs: 10 })
+    store.addCopy('brick_coin', 10, 10)
+    vi.advanceTimersByTime(100)
+    expect(mem.getItem(CODE_LAB_STORAGE_KEY)).toBe('nope')
+    getStorageNotice()!.actions!.find((a) => a.label === 'Start with this new world')!.run()
+    expect(isSaveHeld()).toBe(false)
+    expect(getStorageNotice()).toBeNull()
+    expect(mem.getItem(CODE_LAB_STORAGE_KEY)).not.toBe('nope')
+    expect(parse(mem.getItem(CODE_LAB_STORAGE_KEY)!).ok).toBe(true)
+    expect(getBackupProject(mem)).toBe('nope') // the old text stays in the backup key
+  })
+
+  it('refuses to write a project that would not load again, keeps the last good save, and says so', () => {
+    const project = createStarterProject()
+    expect(saveProject(project, mem)).toBe(true)
+    const good = mem.getItem(CODE_LAB_STORAGE_KEY)
+    project.design.bricks[1].name = '' // an invalid design
+    expect(saveProject(project, mem)).toBe(false)
+    expect(mem.getItem(CODE_LAB_STORAGE_KEY)).toBe(good)
+    expect(getStorageNotice()?.type).toBe('error')
+    expect(getStorageNotice()?.message).toMatch(/earlier save is safe/)
   })
 })

@@ -32,6 +32,13 @@ export function formatKidDiagnostic(diagnostic: Diagnostic): { title: string; hi
     }
   }
 
+  if (diagnostic.code === 'block.nameless_input') {
+    return {
+      title: 'An input lost its name',
+      hint: 'Drag the input from the My Blocks list into this spot again.',
+    }
+  }
+
   // Fallback with clean wording
   return {
     title: 'Block needs attention',

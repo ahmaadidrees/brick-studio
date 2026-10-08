@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react'
-import { CircleAlert, Download, RotateCcw, Upload } from 'lucide-react'
-import { clearStorageNotice, setStorageNotice, useStorageNotice } from './notice'
+import { Download, RotateCcw, Upload } from 'lucide-react'
+import { setStorageNotice } from './notice'
+import { releaseSaveHold } from '../storage'
 import { exportProjectFile, importProjectFile } from './projectIo'
 import { createStarterProject } from '../starter'
-import type { StudioStore } from '../store'
+import type { StudioProject, StudioStore } from '../store'
 import './projectMenu.css'
 
 export interface ProjectMenuProps {
@@ -14,7 +15,7 @@ export interface ProjectMenuProps {
 export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [showConfirmReset, setShowConfirmReset] = useState(false)
-  const notice = useStorageNotice()
+  const [pendingOpen, setPendingOpen] = useState<StudioProject | null>(null)
 
   const handleExport = () => {
     const project = store.getState().project
@@ -34,12 +35,8 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
 
     const result = await importProjectFile(file)
     if (result.ok) {
-      store.load(result.project)
-      setStorageNotice({
-        id: 'import-success',
-        type: 'success',
-        message: `Loaded "${result.project.design.name || 'project'}" successfully!`,
-      })
+      // Opening a file replaces this whole world: ask first (confirmOpen below).
+      setPendingOpen(result.project)
     } else {
       setStorageNotice({
         id: 'import-error',
@@ -49,14 +46,23 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
     }
   }
 
+  const confirmOpen = () => {
+    if (!pendingOpen) return
+    store.load(pendingOpen)
+    releaseSaveHold()
+    setStorageNotice({ id: 'import-success', type: 'success', message: `Opened ${pendingOpen.design.name || 'your world'}.` })
+    setPendingOpen(null)
+  }
+
   const handleResetToStarter = () => {
     const starter = createStarterProject()
     store.load(starter)
+    releaseSaveHold()
     setShowConfirmReset(false)
     setStorageNotice({
       id: 'reset-success',
       type: 'info',
-      message: 'Reset to starter playground.',
+      message: 'Started a new world.',
     })
   }
 
@@ -106,9 +112,25 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
         </button>
       </div>
 
+      {pendingOpen && (
+        <div className="project-menu-confirm-dialog" role="dialog" aria-label="Confirm open">
+          <p className="project-menu-confirm-text">
+            Open {pendingOpen.design.name || 'this file'}? The world you are working on will be replaced.
+          </p>
+          <div className="project-menu-confirm-actions">
+            <button type="button" className="project-menu-btn" onClick={() => setPendingOpen(null)}>
+              Cancel
+            </button>
+            <button type="button" className="project-menu-btn project-menu-btn-danger" onClick={confirmOpen}>
+              Open it
+            </button>
+          </div>
+        </div>
+      )}
+
       {showConfirmReset && (
         <div className="project-menu-confirm-dialog" role="dialog" aria-label="Confirm reset">
-          <p className="project-menu-confirm-text">Start over with the fresh starter playground?</p>
+          <p className="project-menu-confirm-text">Start over? Your changes will be lost.</p>
           <div className="project-menu-confirm-actions">
             <button
               type="button"
@@ -128,26 +150,6 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
         </div>
       )}
 
-      {notice && (
-        <div
-          className={`project-menu-banner banner-${notice.type}`}
-          role="status"
-          aria-live="polite"
-        >
-          <div className="project-menu-banner-content">
-            <CircleAlert size={16} aria-hidden="true" />
-            <span>{notice.message}</span>
-          </div>
-          <button
-            type="button"
-            className="project-menu-banner-btn"
-            onClick={clearStorageNotice}
-            aria-label="Dismiss message"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
     </div>
   )
 }
