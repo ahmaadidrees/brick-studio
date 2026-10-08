@@ -45,6 +45,7 @@ type Listener = () => void
 export class StudioStore {
   private state: StudioState
   private listeners = new Set<Listener>()
+  private loadListeners = new Set<Listener>()
 
   constructor(project: StudioProject) {
     const first = project.design.bricks[0]?.id ?? STAGE_ID
@@ -255,10 +256,17 @@ export class StudioStore {
     if (this.state.selectedCopyId === copyId) this.set({ selectedCopyId: null })
   }
 
+  /** Called after every `load`: the world was replaced, so anything remembered about the old one (undo) must go. */
+  onLoad = (listener: Listener): (() => void) => {
+    this.loadListeners.add(listener)
+    return () => this.loadListeners.delete(listener)
+  }
+
   /** Replace the whole project (load). Returns to Build. */
   load(project: StudioProject) {
     this.state.runtime?.stopAll()
     this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, diagnostics: {} })
+    for (const l of [...this.loadListeners]) l()
   }
 }
 

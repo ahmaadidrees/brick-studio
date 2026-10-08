@@ -40,26 +40,31 @@ export function SeeInsideCard({ store, history }: { store: StudioStore; history?
         <span className="builder-inside-text">
           <strong>{brick.name}</strong>
           <span>{single ? 'One per level' : `${count} in this level`}</span>
+          {single && <span>Place it again to move it</span>}
         </span>
         <button type="button" className="builder-btn builder-btn-primary" onClick={() => store.openWorkshop(brick.id)} title="See how this brick works">
           <Search size={16} aria-hidden="true" />
           <span>See inside</span>
         </button>
-        <button
-          type="button"
-          className="builder-btn builder-btn-danger"
-          aria-label={`Remove this ${brick.name}`}
-          title={cell ? 'Remove this block' : 'Remove this copy'}
-          onClick={() => {
-            if (cell) return removeCell(store, history, cell.col, cell.row)
-            if (!copy) return
-            if (history) history.push(removeCopyEdit(history, copy))
-            store.deleteCopy(copy.id)
-          }}
-        >
-          <Trash2 size={16} aria-hidden="true" />
-          <span>Remove</span>
-        </button>
+        {/* The Hero and the Goal have no Remove: a level without them cannot be played, and one click should not do that.
+            To change where they are, place them again (that moves them). */}
+        {!single && (
+          <button
+            type="button"
+            className="builder-btn builder-btn-danger"
+            aria-label={`Remove this ${brick.name}`}
+            title={cell ? 'Remove this block' : 'Remove this copy'}
+            onClick={() => {
+              if (cell) return removeCell(store, history, cell.col, cell.row)
+              if (!copy) return
+              if (history) history.push(removeCopyEdit(history, copy))
+              store.deleteCopy(copy.id)
+            }}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            <span>Remove</span>
+          </button>
+        )}
       </div>
       {copy && knobs.length > 0 && (
         <div className="builder-knobs" role="group" aria-label="This copy's knobs">

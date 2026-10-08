@@ -47,6 +47,29 @@ export {
   type StorageNotice,
 }
 
+/**
+ * While an unreadable save is waiting for the kid to choose, nothing is autosaved: the next save would overwrite it.
+ * A copy of the bad text is also kept under CODE_LAB_BACKUP_STORAGE_KEY.
+ */
+let savesHeld = false
+const holdListeners = new Set<() => void>()
+
+export function isSaveHeld(): boolean {
+  return savesHeld
+}
+
+/** The kid chose (start with the new world, open a file, start over): autosave may replace the old save now. */
+export function releaseSaveHold(): void {
+  if (!savesHeld) return
+  savesHeld = false
+  for (const l of [...holdListeners]) l()
+}
+
+function onSaveHoldReleased(listener: () => void): () => void {
+  holdListeners.add(listener)
+  return () => holdListeners.delete(listener)
+}
+
 export function getLocalStorage(): Storage | null {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
@@ -87,6 +110,7 @@ export function isQuotaError(err: unknown): boolean {
  */
 export function loadProject(storageOverride?: Storage): StudioProject {
   const storage = storageOverride ?? getLocalStorage()
+  savesHeld = false
   if (!storage) {
     return createStarterProject()
   }
@@ -123,19 +147,30 @@ export function loadProject(storageOverride?: Storage): StudioProject {
     (p) => p.path === 'schemaVersion' && p.message.includes('Unsupported future schema version'),
   )
 
+  // Do not touch the unreadable save until the kid chooses.
+  savesHeld = true
+  const actions = [
+    { label: 'Start with this new world', run: () => { releaseSaveHold(); clearStorageNotice() } },
+    { label: 'Save my old world to a file', run: () => downloadText(raw, 'my-old-world.json') },
+  ]
+
   if (isNewer) {
     setStorageNotice({
       id: 'newer-schema',
       type: 'newer-version',
+      sticky: true,
+      actions,
       message:
-        'This project was saved with a newer version of Code Lab. We kept a safe copy and started a fresh playground for you!',
+        'This world was saved with a newer version of Code Lab, so we could not open it. Your old world is safe. Nothing will be saved until you pick: start with this new world, or save the old one to a file.',
     })
   } else {
     setStorageNotice({
       id: 'corrupt-save',
       type: 'corrupt',
+      sticky: true,
+      actions,
       message:
-        'We had trouble opening your previous save, so we kept a safe backup copy and started a fresh playground for you!',
+        'We had trouble opening your previous save, so you are looking at a fresh world. Your old world is safe and was not changed. Nothing will be saved until you pick: start with this new world, or save the old one to a file.',
     })
   }
 
@@ -151,7 +186,21 @@ export function saveProject(project: StudioProject, storageOverride?: Storage): 
 
   try {
     const serialized = exportProjectJson(project)
+    // Never replace a good save with text we could not open again.
+    const check = parse(serialized)
+    if (!check.ok) {
+      console.warn('Code Lab: refused to save an invalid project:', check.problems)
+      setStorageNotice({
+        id: 'save-invalid',
+        type: 'error',
+        message:
+          'We could not save your last change because something in this world is not right. Your earlier save is safe. Try undoing your last change.',
+      })
+      return false
+    }
     storage.setItem(CODE_LAB_STORAGE_KEY, serialized)
+    const last = getStorageNotice()
+    if (last && (last.type === 'quota-error' || last.type === 'error') && last.id !== 'import-error') clearStorageNotice()
     return true
   } catch (err) {
     if (isQuotaError(err)) {
@@ -159,13 +208,13 @@ export function saveProject(project: StudioProject, storageOverride?: Storage): 
         id: 'quota-error',
         type: 'quota-error',
         message:
-          "Your browser's storage is full! Could not auto-save your project. Try exporting your project to a file.",
+          'This computer is full, so your world could not be saved. Press This world, then Save File, so you do not lose it.',
       })
     } else {
       setStorageNotice({
         id: 'save-error',
         type: 'error',
-        message: 'Could not save your project to browser storage.',
+        message: 'Your world could not be saved on this computer. Press This world, then Save File, so you do not lose it.',
       })
     }
     console.warn('Code Lab: Save failed:', err)
@@ -237,6 +286,7 @@ export function watchAndSave(
       clearTimeout(timeoutId)
       timeoutId = null
     }
+    if (isSaveHeld()) return
     const currentRev = store.getState().revision
     if (currentRev !== lastSavedRevision) {
       saveProject(store.getState().project, storage)
@@ -252,6 +302,7 @@ export function watchAndSave(
       }
       timeoutId = setTimeout(() => {
         timeoutId = null
+        if (isSaveHeld()) return
         saveProject(store.getState().project, storage)
         lastSavedRevision = currentRev
       }, debounceMs)
@@ -262,6 +313,12 @@ export function watchAndSave(
     flushSave()
   }
 
+  // The kid chose: save what is on screen now (it was held back until then).
+  const unsubscribeHold = onSaveHoldReleased(() => {
+    lastSavedRevision = -1
+    flushSave()
+  })
+
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('pagehide', onPageHide)
     window.addEventListener('beforeunload', onPageHide)
@@ -269,10 +326,24 @@ export function watchAndSave(
 
   return () => {
     unsubscribeStore()
+    unsubscribeHold()
     if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('beforeunload', onPageHide)
     }
     flushSave()
   }
+}
+
+/** Hand the kid a text file (their old world). Only ever called from a button press. */
+function downloadText(text: string, filename: string): void {
+  if (typeof document === 'undefined' || typeof URL === 'undefined' || typeof Blob === 'undefined') return
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
 }

@@ -4,6 +4,8 @@ import { createStarterProject } from '../starter'
 import { fitCamera, worldToScreen } from '../stage/camera'
 import { StudioStore, emptyProject } from '../store'
 import { Builder } from './Builder'
+import { builderSession } from './session'
+import { removeCopyEdit } from './history'
 import { fakeTemplate } from './testTemplates'
 import { costumeFromImage, imageFromRows } from '../pixels'
 
@@ -356,11 +358,30 @@ describe('one Hero, one Goal (limit 1)', () => {
     expect(copies.filter((c) => c.brickId === 'brick_walker')).toHaveLength(3)
   })
 
-  it('Undo of a removed Hero does not bring back a second one when another was placed since', () => {
+  it('the Hero and the Goal have no Remove on their card (a level needs them); the Walker does', () => {
     const store = new StudioStore(createStarterProject())
     render(<Builder store={store} templates={[]} />)
     act(() => store.selectCopy('copy_hero'))
-    fireEvent.click(screen.getByRole('button', { name: 'Remove this Hero' }))
+    expect(screen.getByText('One per level')).toBeTruthy()
+    expect(screen.getByText('Place it again to move it')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Remove this Hero' })).toBeNull()
+    expect(screen.getByRole('button', { name: /See inside/ })).toBeTruthy()
+    const goal = store.getState().project.design.copies.find((c) => c.brickId === 'brick_goal')!
+    act(() => store.selectCopy(goal.id))
+    expect(screen.queryByRole('button', { name: 'Remove this Goal' })).toBeNull()
+    const walker = store.getState().project.design.copies.find((c) => c.brickId === 'brick_walker')!
+    act(() => store.selectCopy(walker.id))
+    expect(screen.getByRole('button', { name: 'Remove this Walker' })).toBeTruthy()
+  })
+
+  it('Undo of a removed Hero does not bring back a second one when another was placed since', () => {
+    const store = new StudioStore(createStarterProject())
+    render(<Builder store={store} templates={[]} />)
+    const hero = store.getState().project.design.copies.find((c) => c.id === 'copy_hero')!
+    act(() => {
+      builderSession(store).history.push(removeCopyEdit(builderSession(store).history, hero))
+      store.deleteCopy('copy_hero')
+    })
     expect(heroOf(store)).toHaveLength(0)
     act(() => {
       store.addCopy('brick_hero', 200, 100)
@@ -423,7 +444,7 @@ describe('+ New brick picker', () => {
 
 describe('Build and Play from the header', () => {
   it('Play starts the run and Build comes back; the drawer hides while playing', () => {
-    const { store } = storeWithBrick()
+    const store = new StudioStore(createStarterProject())
     render(<Builder store={store} templates={[]} />)
     fireEvent.click(screen.getByRole('radio', { name: /Play/ }))
     expect(store.getState().mode).toBe('play')

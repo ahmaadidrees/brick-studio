@@ -2,7 +2,8 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStarterProject } from '../starter'
 import { StudioStore } from '../store'
-import { clearStorageNotice, setStorageNotice } from './notice'
+import { clearStorageNotice, getStorageNotice, setStorageNotice } from './notice'
+import { StorageNoticeBar } from './StorageNoticeBar'
 import { ProjectMenu } from './ProjectMenu'
 import * as projectIo from './projectIo'
 
@@ -59,12 +60,15 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.change(fileInput, { target: { files: [file] } })
 
     // Wait for async import
-    await vi.waitFor(() => {
-      expect(loadSpy).toHaveBeenCalledWith(customProject)
-    })
+    // Asks first: nothing is replaced until the kid says so
+    const confirm = await screen.findByRole('dialog', { name: /confirm open/i })
+    expect(confirm.textContent).toMatch(/Custom Level/)
+    expect(loadSpy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: /open it/i }))
+    expect(loadSpy).toHaveBeenCalledWith(customProject)
 
-    // Shows success banner
-    expect(screen.getByText(/Loaded "Custom Level" successfully!/i)).toBeDefined()
+    // Shows the notice (on the bar a kid can see, not in the menu)
+    expect(getStorageNotice()?.message).toMatch(/Opened Custom Level/)
   })
 
   it('shows error banner when imported file is invalid', async () => {
@@ -81,7 +85,7 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.change(fileInput, { target: { files: [file] } })
 
     await vi.waitFor(() => {
-      expect(screen.getByText(/Invalid project format/i)).toBeDefined()
+      expect(getStorageNotice()?.message).toMatch(/Invalid project format/i)
     })
   })
 
@@ -93,7 +97,7 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.click(resetBtn)
 
     // Confirm dialog is shown
-    expect(screen.getByText(/Start over with the fresh starter playground\?/i)).toBeDefined()
+    expect(screen.getByText(/Start over\? Your changes will be lost\./i)).toBeDefined()
     expect(loadSpy).not.toHaveBeenCalled()
 
     // Clicking confirm reset
@@ -101,11 +105,12 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.click(confirmResetBtn)
 
     expect(loadSpy).toHaveBeenCalled()
-    expect(screen.queryByText(/Start over with the fresh starter playground\?/i)).toBeNull()
+    expect(screen.queryByText(/Start over\? Your changes will be lost\./i)).toBeNull()
   })
 
-  it('displays storage notices (e.g. corrupt save or quota) and allows dismissing them', () => {
-    render(<ProjectMenu store={store} />)
+  it('shows storage notices on the visible bar (menu closed) and allows dismissing them', () => {
+    // The bar is mounted by the builder and the workshop, not by the menu, so it shows with the menu closed.
+    render(<StorageNoticeBar />)
 
     act(() => {
       setStorageNotice({

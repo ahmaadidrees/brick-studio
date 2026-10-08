@@ -2,6 +2,7 @@ import { CodeEditor } from '../CodeEditor'
 import { CostumeEditor } from '../CostumeEditor'
 import { SoundPanel } from '../SoundPanel'
 import { STAGE_ID, useStudio, type EditorTab, type StudioStore } from '../store'
+import { StorageNoticeBar } from '../persist/StorageNoticeBar'
 import { KnobsCard } from './KnobsCard'
 import { TestRoom } from './TestRoom'
 import './workshop.css'
@@ -28,6 +29,7 @@ export function Workshop({ store }: { store: StudioStore }) {
 
   return (
     <div className="ws">
+      <StorageNoticeBar />
       <header className="ws-header">
         <button type="button" className="ws-done" onClick={() => store.closeWorkshop()} aria-label="Done: back to the builder">
           ✓ Done

@@ -280,7 +280,19 @@ export class Runtime implements RuntimeApi {
     }
   }
 
+  private broadcastListeners = new Set<(message: string) => void>()
+
+  /**
+   * Watch broadcasts without changing anything: the Studio uses it to show "You made it!" when the Goal broadcasts
+   * `course clear`. A listener only observes; it never touches the world, so runs stay deterministic. Returns an unsubscribe.
+   */
+  onBroadcast(listener: (message: string) => void): () => void {
+    this.broadcastListeners.add(listener)
+    return () => this.broadcastListeners.delete(listener)
+  }
+
   broadcast(message: string): ThreadHandle[] {
+    for (const l of [...this.broadcastListeners]) l(message)
     return this.startHats('event_whenbroadcastreceived', {
       fields: { BROADCAST_OPTION: message },
     })

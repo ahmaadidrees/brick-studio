@@ -3,14 +3,19 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { AppHeader, useCompactLayout } from '../../../../shell'
 import { Button, Menu } from '../../../../ui'
 import { ProjectMenu } from '../persist/ProjectMenu'
+import { StorageNoticeBar } from '../persist/StorageNoticeBar'
 import { Stage } from '../Stage'
 import { useStudio, type StudioStore } from '../store'
 import { BuildPanels } from './BuildPanels'
+import { PlayFeedback } from './PlayFeedback'
+import { checkLevelForPlay, NO_HERO_MESSAGE } from './playRules'
 import { ensureTiles } from './ensureTiles'
 import { limitedStore } from './limits'
 import { builderSession } from './session'
 import type { BrickTemplate } from '../templates'
 import './builder.css'
+
+const NO_WORLD_SETUP = () => undefined
 
 /**
  * The Brickgineers 2D builder around the Code Lab stage (docs/qa/code-lab-core/STEP6.md): the app header, the Bricks
@@ -41,6 +46,20 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
     setDrawerOpenState(open)
   }
   const build = mode === 'build'
+
+  // Play needs a Hero. Without one, say so kindly and stay in Build instead of starting a level where nothing moves.
+  const [playNote, setPlayNote] = useState<string | null>(null)
+  useEffect(() => {
+    if (!playNote) return
+    const t = setTimeout(() => setPlayNote(null), 5000)
+    return () => clearTimeout(t)
+  }, [playNote])
+  const requestMode = (next: 'build' | 'explore') => {
+    if (next === 'build') return store.stop()
+    if (!checkLevelForPlay(store.getState().project.design).hero) return setPlayNote(NO_HERO_MESSAGE)
+    setPlayNote(null)
+    store.play()
+  }
 
   // Undo, redo and the Erase key, in Build, unless a field or dialog has the keyboard.
   useEffect(() => {
@@ -75,9 +94,11 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
           onSwitchDimension={(target) => target === '3d' && window.location.assign('/build')}
           worldTitle={name}
           saveStatus={{ source: { kind: 'local' } }}
-          onOpenWorldSetup={() => {}}
+          // Scene (cartoon/pixel look, day/underground) has nothing to open in Code Lab. The header's tools group is hidden
+          // in builder.css (display: none, so it is not shown or focusable); this handler is only the header's required prop.
+          onOpenWorldSetup={NO_WORLD_SETUP}
           mode={build ? 'build' : 'explore'}
-          onRequestMode={(next) => (next === 'build' ? store.stop() : store.play())}
+          onRequestMode={requestMode}
           canExplore
           modeLabels={{ explore: 'Play', exploreIcon: <Play size={16} />, buildIcon: <Hammer size={16} /> }}
           modeLock={{ locked: false }}
@@ -101,10 +122,18 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
         />
       </div>
 
+      <StorageNoticeBar />
+
       <div className="p2d-body">
         <div className="builder-stage">
           <Stage store={stageStore} tools={{ history, erasing }} />
         </div>
+        {!build && <PlayFeedback store={store} />}
+        {build && playNote && (
+          <div className="p2d-toast" role="status">
+            {playNote}
+          </div>
+        )}
         {build && (
           <BuildPanels
             store={store}

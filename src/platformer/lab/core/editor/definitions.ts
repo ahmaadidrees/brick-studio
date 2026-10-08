@@ -1511,7 +1511,8 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     {
       type: 'argument_reporter_string_number',
       message0: '%1',
-      args0: [{ type: 'field_label', name: 'VALUE', text: '' }],
+      // field_label is never saved by Blockly; the parameter's name must be, or every save empties it (Walker bug).
+      args0: [{ type: 'field_label_serializable', name: 'VALUE', text: '' }],
       category: 'procedures',
       colour: CATEGORY_COLORS.procedures,
       output: null,
@@ -1520,7 +1521,8 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
     {
       type: 'argument_reporter_boolean',
       message0: '%1',
-      args0: [{ type: 'field_label', name: 'VALUE', text: '' }],
+      // field_label is never saved by Blockly; the parameter's name must be, or every save empties it (Walker bug).
+      args0: [{ type: 'field_label_serializable', name: 'VALUE', text: '' }],
       category: 'procedures',
       colour: CATEGORY_COLORS.procedures,
       output: 'Boolean',
