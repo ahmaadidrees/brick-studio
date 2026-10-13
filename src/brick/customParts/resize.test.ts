@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { BRICK_STUDIO_MAX_CUSTOM_PARTS } from '../brickDocument'
 import { registerCustomParts } from '../parts'
 import type { BrickInstance } from '../types'
 import { resizeSelectionDefinitions } from './resize'
@@ -41,11 +42,11 @@ describe('resizeSelectionDefinitions', () => {
   })
 })
 
-it('rejects nonsquare round resize and a 25th custom definition', () => {
+it('rejects nonsquare round resize and a custom definition past the world limit', () => {
   const round = { id: 'custom_round', name: 'Round', template: 'round', width: 2, depth: 2, height: 3, studs: 'auto' } as const
   registerCustomParts([round])
   expect(resizeSelectionDefinitions([{ ...bricks[0], partId: round.id }], { width: 1, depth: 0, height: 0 }, [round]).ok).toBe(false)
-  const full = Array.from({ length: 24 }, (_, index) => ({ ...round, id: `custom_${index}` }))
+  const full = Array.from({ length: BRICK_STUDIO_MAX_CUSTOM_PARTS }, (_, index) => ({ ...round, id: `custom_${index}` }))
   expect(resizeSelectionDefinitions([bricks[0]], { width: 1, depth: 0, height: 0 }, full).ok).toBe(false)
 })
 

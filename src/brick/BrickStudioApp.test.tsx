@@ -2,7 +2,7 @@ import { exploreKeyboardBlocked } from './explorePreferences'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
-import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
+import { BRICK_STUDIO_MAX_BRICKS, createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
 import { createBrickGeometry } from './geometry'
 import { useBrickStore } from './store'
@@ -108,7 +108,7 @@ describe('keyboard construction loop', () => {
   it('places with Enter, reserves Space for camera, cancels with Escape, and never double-acts from a button', () => {
     render(<BrickStudioApp />)
 
-    expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
+    expect(screen.getByLabelText(`0 of ${BRICK_STUDIO_MAX_BRICKS} brick capacity`)).toBeInTheDocument()
     expect(fireEvent.keyDown(document.body, { key: 'Enter' })).toBe(false)
     expect(useBrickStore.getState().bricks).toHaveLength(1)
 
@@ -329,7 +329,7 @@ describe('Brick Studio responsive controls', () => {
 
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
-    expect(screen.getByLabelText('0 of 1000 brick capacity')).toBeInTheDocument()
+    expect(screen.getByLabelText(`0 of ${BRICK_STUDIO_MAX_BRICKS} brick capacity`)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'This build' }))
     const menu = within(screen.getByRole('menu', { name: 'This build' }))
     expect(menu.queryByRole('menuitem', { name: 'Rover Lab' })).not.toBeInTheDocument()

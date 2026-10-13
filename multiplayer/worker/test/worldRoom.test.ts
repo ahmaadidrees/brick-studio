@@ -1,5 +1,6 @@
 import {
   BRICK_STUDIO_MAX_BRICKS,
+  BRICK_STUDIO_MAX_CUSTOM_PARTS,
   LIVE_MAX_COMMAND_BYTES,
   LIVE_MAX_DOCUMENT_BYTES,
   LIVE_PROTOCOL_VERSION,
@@ -142,12 +143,12 @@ describe("WorldRoom", () => {
 
   it("enforces the shared custom part cap for non-owner additions", async () => {
     const part = { id: "custom_cap", name: "Cap", template: "solid" as const, width: 2, depth: 2, height: 3, studs: "auto" as const };
-    const customParts = Array.from({ length: 24 }, (_, i) => ({ ...part, id: `custom_cap_${i}` }));
+    const customParts = Array.from({ length: BRICK_STUDIO_MAX_CUSTOM_PARTS }, (_, i) => ({ ...part, id: `custom_cap_${i}` }));
     const { roomId } = await createWorld(createBrickStudioDocument([], { customParts }));
     const guest = await connectWorld(roomId, "custom_cap_guest");
     send(guest.socket!, { v: 1, type: "addCustomPart", opId: "custom_cap_guest#1", part });
     expect(await guest.inbox!.next("reject")).toMatchObject({ code: "custom-part-limit" });
-    expect((await getWorld(roomId)).document.customParts).toHaveLength(24);
+    expect((await getWorld(roomId)).document.customParts).toHaveLength(BRICK_STUDIO_MAX_CUSTOM_PARTS);
   });
 
   it("persists and rejoins a maximum-size custom brick while rejecting oversized definitions", async () => {
@@ -231,16 +232,18 @@ describe("WorldRoom", () => {
     ]));
   });
 
-  it("accepts, edits, and strictly bounds a 1,000-brick authoritative world", async () => {
+  it("accepts, edits, and strictly bounds a full-size authoritative world", async () => {
     const seed = largeWorld(BRICK_STUDIO_MAX_BRICKS - 1);
+    // The first empty cell after the seed, laid out like largeWorld, so the last brick fits.
+    const last = BRICK_STUDIO_MAX_BRICKS - 1;
     const { roomId } = await createWorld(worldDocument(seed));
     const guest = await connectWorld(roomId, "guest_large");
     const finalBrick: BrickInstance = {
       id: "large-final",
       partId: "brick_1x1",
-      x: 39,
+      x: last % 64,
       y: 0,
-      z: 15,
+      z: Math.floor(last / 64),
       rotation: 0,
       color: "#e7473c",
     };
@@ -260,7 +263,7 @@ describe("WorldRoom", () => {
       opId: "guest_large#2",
       commands: [{
         op: "place",
-        brick: { ...finalBrick, id: "over-limit", x: 40 },
+        brick: { ...finalBrick, id: "over-limit", x: finalBrick.x + 1 },
       }],
     });
     expect(await guest.inbox!.next("reject")).toMatchObject({
