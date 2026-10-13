@@ -27,6 +27,11 @@ import { RecoverySheet, recoveryWorldUuid } from './RecoverySheet'
 import { SceneSheet } from './SceneSheet'
 import { encodeShareCode } from './shareCode'
 import { TouchControls } from './TouchControls'
+import { RaceFeelPanel } from '../race/RaceFeelPanel'
+import { KitPicker } from './KitPicker'
+import { RaceHudView } from '../race/RaceHudView'
+import { loadRaceFeel, saveRaceFeel, type RaceFeel } from '../race/raceFeel'
+import type { RaceHud } from '../race/raceRun'
 
 export type LevelSource =
   | { kind: 'course'; id: string }
@@ -93,6 +98,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const inRoom = !!room
   const [feel, setFeel] = useState<Feel>(loadFeel)
   const [feelOpen, setFeelOpen] = useState(false)
+  const [kitPicker, setKitPicker] = useState(false)
+  // Race tracks: what the race shows over the game, and how the car drives.
+  const [raceHud, setRaceHud] = useState<RaceHud | null>(null)
+  const [raceFeel, setRaceFeel] = useState<RaceFeel>(loadRaceFeel)
+  const [rivals, setRivals] = useState(2)
   const [menu, setMenu] = useState(false)
   const [menuView, setMenuView] = useState<MenuView>('main')
   const [people, setPeople] = useState(false)
@@ -154,6 +164,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     }
     s.onModeChange = () => setMode(s.mode)
     s.onToast = say
+    s.onRaceHud = setRaceHud
     // Let the goal fanfare play, then offer what to do next.
     s.onClear = (time, best, newBest) =>
       window.setTimeout(() => {
@@ -268,7 +279,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }, [level])
 
   // Solo games pause while a menu or card is open; in rooms the world keeps going but you stand still.
-  const covered = menu || !!clear || sharing || people || scene || characterOpen || recoveryOpen
+  const covered = menu || !!clear || sharing || people || scene || characterOpen || recoveryOpen || kitPicker
   useEffect(() => {
     const s = sessionRef.current
     if (!s) return
@@ -462,6 +473,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
 
   const s = sessionRef.current
   const build = mode === 'build'
+  const race = !!s?.isRace
+  const changeRaceFeel = (v: RaceFeel) => {
+    setRaceFeel(v)
+    saveRaceFeel(v)
+    if (sessionRef.current) sessionRef.current.raceFeel = v
+  }
   const copy = async (text: string, done: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -687,7 +704,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           renameMaxLength={60}
           saveStatus={{ source: saveSource }}
           onOpenWorldSetup={(tab) => tab === 'character' ? setCharacterOpen(true) : setScene(true)}
-          onStartLiveWorld={inRoom ? undefined : startRoom}
+          onStartLiveWorld={inRoom || race ? undefined : startRoom}
           startLiveTitle="Open a room for friends with this world"
           livePolicy={livePolicy}
           mode={build ? 'build' : 'explore'}
@@ -707,7 +724,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               onShareWithClass={canShareWithClass ? openShare : undefined}
               onRecoveryCopies={recoveryWorldId ? () => setRecoveryOpen(true) : undefined}
               onResetWorld={s?.solo && build ? () => s.resetWorld() : undefined}
-              onNewLevel={inRoom ? undefined : () => void leave(() => window.location.assign('/2d/build?new=1'))}
+              onNewLevel={inRoom ? undefined : () => setKitPicker(true)}
               sound={sound}
               onSound={changeSound}
               onControls={() => openMenu('controls')}
@@ -743,11 +760,23 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             </Button>
           </div>
         )}
-        {!build && touch && s && !covered && <TouchControls input={s.input} canEnterPipe={canEnterPipe} onEnterPipe={() => s.enterPipe()} />}
+        {!build && race && s && raceHud && !covered && (
+          <RaceHudView
+            hud={raceHud}
+            rivals={s.solo ? rivals : undefined}
+            onRivals={s.solo ? (n) => { setRivals(n); s.startRace(n) } : undefined}
+            onRaceAgain={() => s.restartRun()}
+            onBuild={source.kind !== 'course' && s.canBuild ? () => s.setMode('build') : undefined}
+            onExit={onExit}
+            exitLabel={exitLabel}
+            touch={touch}
+          />
+        )}
+        {!build && !race && touch && s && !covered && <TouchControls input={s.input} canEnterPipe={canEnterPipe} onEnterPipe={() => s.enterPipe()} />}
 
         {!build && !touch && s && !covered && canEnterPipe && <button type="button" className="p2d-enter-pipe" onClick={(event) => { s.enterPipe(); if (event.detail > 0) event.currentTarget.blur() }}>Enter pipe · ↓</button>}
 
-        {playHint && (
+        {playHint && !race && (
           <div className="p2d-hint p2d-hint-top" role="status">
             {touch ? (
               <>
@@ -920,7 +949,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           onClose={() => setSharing(false)}
         />
       )}
-      {feelOpen && <FeelPanel feel={feel} onChange={changeFeel} onClose={() => setFeelOpen(false)} />}
+      <KitPicker open={kitPicker} onClose={() => setKitPicker(false)} onPick={(href) => { setKitPicker(false); void leave(() => window.location.assign(href)) }} />
+      {feelOpen && !race && <FeelPanel feel={feel} onChange={changeFeel} onClose={() => setFeelOpen(false)} />}
+      {feelOpen && race && <RaceFeelPanel value={raceFeel} onChange={changeRaceFeel} onClose={() => setFeelOpen(false)} />}
     </div>
   )
 }

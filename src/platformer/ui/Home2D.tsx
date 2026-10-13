@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { COURSES } from '@brick-studio/platformer-core/levels/courses'
 import { RACE_COURSES } from '@brick-studio/platformer-core/levels/raceCourses'
+import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import { raceThumb } from '../race/raceThumb'
+import { KitPicker } from './KitPicker'
 import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomWorld } from '../../classroom/contracts'
 import { formatSavedDate } from '../../classroom/panelShared'
@@ -26,6 +28,7 @@ export function Home2D() {
   const account = useClassroomSession()
   const signedIn = account.status === 'student' || account.status === 'teacher'
   const [drafts, setDrafts] = useState<Draft[]>(listDrafts)
+  const [kitPicker, setKitPicker] = useState(false)
   const [worlds, setWorlds] = useState<ClassroomWorld[] | null>(null)
   const [worldsError, setWorldsError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -87,7 +90,7 @@ export function Home2D() {
             <h1 id="p2d-hero-title">Build a 2D world. Then run through it.</h1>
             <p>Place bricks, springs and critters in a side-scrolling world, then play it: alone, with friends, or with your class.</p>
             <div className="p2d-hero-actions">
-              <Button href="/2d/build?new=1" variant="primary" size="lg" icon={<Plus size={20} />}>
+              <Button variant="primary" size="lg" icon={<Plus size={20} />} onClick={() => setKitPicker(true)}>
                 Start a new world
               </Button>
               {latest && (
@@ -143,8 +146,8 @@ export function Home2D() {
           )}
           {worldsError && <p className="p2d-error">{worldsError}</p>}
           <div className="p2d-cards">
-            <LevelCard thumb={levelThumb(createBlankLevel(160, 27, 'My world'), 'blank:cartoon')} smooth title="New world" sub="A start, a floor and a flag" badge>
-              <Button href="/2d/build?new=1" variant="primary" size="sm" icon={<Plus size={16} />}>
+            <LevelCard thumb={levelThumb(createBlankLevel(160, 27, 'My world'), 'blank:cartoon')} smooth title="New world" sub="A platformer or a race track" badge>
+              <Button variant="primary" size="sm" icon={<Plus size={16} />} onClick={() => setKitPicker(true)}>
                 Start
               </Button>
             </LevelCard>
@@ -165,9 +168,11 @@ export function Home2D() {
                 <Button href={`/2d/build?draft=${encodeURIComponent(d.id)}`} variant="primary" size="sm" icon={<Hammer size={16} />}>
                   Open
                 </Button>
-                <Button size="sm" icon={<Users size={16} />} disabled={busy} onClick={() => friends(level)}>
-                  With friends
-                </Button>
+                {kitOf(level) !== 'race' && (
+                  <Button size="sm" icon={<Users size={16} />} disabled={busy} onClick={() => friends(level)}>
+                    With friends
+                  </Button>
+                )}
               </LevelCard>
             ))}
           </div>
@@ -197,6 +202,7 @@ export function Home2D() {
           <JoinBox />
         </section>
       </main>
+      <KitPicker open={kitPicker} onClose={() => setKitPicker(false)} />
     </div>
   )
 }

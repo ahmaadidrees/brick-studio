@@ -2,6 +2,8 @@ import type { ObjKind } from '@brick-studio/platformer-core/engine/level'
 import { C, T } from '@brick-studio/platformer-core/engine/tiles'
 
 export type Category = 'terrain' | 'blocks' | 'items' | 'enemies' | 'gizmos' | 'course'
+/** The race kit's drawer groups (racePalette.ts). */
+export type RaceCategory = 'ground' | 'edges' | 'speed' | 'race-course' | 'scenery'
 
 export const CATEGORIES: { id: Category; label: string }[] = [
   { id: 'terrain', label: 'Terrain' },
@@ -22,7 +24,7 @@ export type Placement =
 export interface PaletteItem {
   id: string
   label: string
-  category: Category
+  category: Category | RaceCategory
   /** Art key for the icon. */
   icon: string
   place: Placement

@@ -36,7 +36,14 @@ bricks into Code Lab bricks comes later, the way the platformer did.
    physics (`engine/car.ts`); lap gates (`engine/laps.ts`); a computer driver for any looping track
    (`engine/raceAutopilot.ts`); the starter track Brick Speedway (`levels/raceCourses.ts`). Then solo racing in the
    app: `/2d/play/speedway`, top-down drawing, camera, HUD, countdown, results.
-2. **Builder:** "New world" kit picker, the race Bricks panel, laps/items settings, Feel panel, loop status chip.
+2. **Builder** (done): the 2D builder is kit-aware rather than a second builder, so saving, undo, rooms and sharing
+   are shared. Race tracks draw top-down in the same camera and world pixels (`race/raceView.ts`, chunk-cached), so
+   the editor and pointer code are unchanged; the editor knows the race kit (paints under the grid, keeps the grid,
+   R turns boost pads, the grid and the finish line; race settings are an undoable `{ o: 'race' }` edit; pipe logic
+   stays off race tracks because boost pads reuse pipe tile numbers). Play runs `race/raceRun.ts` (shared race
+   rules, used for every race). Kit picker on "New world" (home and the builder menu):
+   `/2d/build?new=1&kit=race-starter|race-empty`. "Laps work" chip, laps in the strip, race Feel panel.
+   Not yet: "Build together"/"With friends" on race tracks (milestone 3), a zoomed-out build view, items.
 3. **Multiplayer races:** heading in poses (Worker forwards it), a shared countdown, standings and results.
 4. **Items, coins and Walkers:** ? blocks, Turbo, Oil slick, Bouncy ball, Spark, Shield; hits on other players go
    through the room as events.

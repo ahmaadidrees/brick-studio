@@ -1,7 +1,8 @@
 import type { ClassroomWorld } from '../classroom/contracts'
 import { House, LoaderCircle, LogIn, Play } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import { createBlankLevel, createBlankRaceLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import { brickSpeedway } from '@brick-studio/platformer-core/levels/raceCourses'
 import { COURSES, courseById } from '@brick-studio/platformer-core/levels/courses'
 import { raceCourseById } from '@brick-studio/platformer-core/levels/raceCourses'
 import type { RoomInfo } from '@brick-studio/platformer-core/net/protocol'
@@ -9,10 +10,9 @@ import { browserClassroomClient } from '../classroom/client'
 import { AppHeader, currentPath, goToJoin, useClassroomSession } from '../shell'
 import { Button, TextField } from '../ui'
 import { classRoomSocketUrl, guestRoomInfo, guestRoomSocketUrl } from './net/endpoints'
-import { parse2dRoute, type Route2D } from './routes2d'
+import { parse2dRoute, type NewKit, type Route2D } from './routes2d'
 import { NotALevelError, cloudWorldInfo, loadCloudLevel } from './ui/cloudLevel'
 import { listDrafts, loadDraft } from './ui/drafts'
-import { RaceScreen } from './race/RaceScreen'
 import { GameScreen, type LevelSource } from './ui/GameScreen'
 import { Home2D } from './ui/Home2D'
 import { ownerTokenFor, saveGuestName, savedGuestName } from './ui/prefs'
@@ -48,6 +48,13 @@ export default function PlatformerApp() {
 
 const HOME = () => window.location.assign('/2d')
 
+/** A new world from the kit picker: a platformer, the starter race track to change, or an empty field. */
+function newLevel(kit?: NewKit): LevelDesign {
+  if (kit === 'race-starter') return { ...brickSpeedway(), title: 'My race track' }
+  if (kit === 'race-empty') return createBlankRaceLevel()
+  return createBlankLevel(160, 27, 'My world')
+}
+
 /** A centered card for loading and error states, under the shared page header. */
 function Notice({ title, body, busy, children }: { title: string; body?: string; busy?: boolean; children?: ReactNode }) {
   return (
@@ -69,7 +76,7 @@ function Notice({ title, body, busy, children }: { title: string; body?: string;
 
 type Loaded = { level: LevelDesign; source: LevelSource }
 
-function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fresh: boolean }) {
+function BuildPage({ world, draft, fresh, kit }: { world?: string; draft?: string; fresh: boolean; kit?: NewKit }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -111,12 +118,12 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
         const level = recent ? loadDraft(recent.id) : null
         if (recent && level) return done({ level, source: { kind: 'draft', id: recent.id } })
       }
-      done({ level: createBlankLevel(160, 27, 'My world'), source: { kind: 'new' } })
+      done({ level: newLevel(kit), source: { kind: 'new' } })
     })()
     return () => {
       cancelled = true
     }
-  }, [world, draft, fresh])
+  }, [world, draft, fresh, kit])
 
   if (error)
     return (
@@ -134,7 +141,7 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
 
 function CoursePage({ id }: { id: string }) {
   const race = raceCourseById(id)
-  if (race) return <RaceScreen level={race.level()} onExit={HOME} exitLabel="Back to 2D worlds" />
+  if (race) return <GameScreen level={race.level()} source={{ kind: 'course', id: race.id }} startMode="play" onExit={HOME} exitLabel="Back to 2D worlds" />
   const course = courseById(id)
   if (!course)
     return (

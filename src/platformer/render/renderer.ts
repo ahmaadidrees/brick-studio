@@ -1,4 +1,6 @@
 import { SUB, TILE } from '@brick-studio/platformer-core/engine/constants'
+import { kitOf } from '@brick-studio/platformer-core/engine/kits'
+import { RaceView, type RaceScene } from '../race/raceView'
 import type { LevelStyle } from '@brick-studio/platformer-core/engine/level'
 import { T, isAnimated } from '@brick-studio/platformer-core/engine/tiles'
 import { EK, ES, type Entity, type World } from '@brick-studio/platformer-core/engine/world'
@@ -72,6 +74,8 @@ export interface View {
   hud: Hud | null
   /** Drawn after the world, before the HUD (editor overlays), in world pixels from the camera the frame used. */
   overlay?: (ctx: CanvasRenderingContext2D, skin: Skin, camX: number, camY: number) => void
+  /** Race levels: the cars, skid marks and build overlay (drawn top-down instead of the platformer's world). */
+  race?: RaceScene
 }
 
 const CHUNK = 16
@@ -103,6 +107,7 @@ export class Renderer {
   private shadow: Uint8Array | null = null
   private shadowKey = ''
   private bumped = new Set<number>()
+  private raceView = new RaceView()
   private cssW = 0
   private cssH = 0
 
@@ -167,6 +172,10 @@ export class Renderer {
     ctx.globalAlpha = 1
     const camX = skin.snap(v.camX)
     const camY = skin.snap(v.camY)
+    if (kitOf(w.design) === 'race') {
+      this.raceView.draw(ctx, w, k, camX, camY, this.width, this.height, v.frame, v.race ?? { cars: [], skids: [], tags: false })
+      return
+    }
     skin.background(ctx, v, camX, camY, this.width, this.height)
     this.syncTiles(w)
     // Items still rising out of their block are drawn behind it.

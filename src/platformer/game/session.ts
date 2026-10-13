@@ -1,7 +1,12 @@
 import { SUB, TICK_MS, TILE } from '@brick-studio/platformer-core/engine/constants'
 import { MAX_EDIT_OPS, type EditOp, type WorldEvent } from '@brick-studio/platformer-core/engine/events'
 import { DEFAULT_FEEL, P_SEGMENTS, feelToSub, type Feel, type FeelSub } from '@brick-studio/platformer-core/engine/feel'
-import { levelFromJson, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import { cloneLevel, levelFromJson, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import { kitOf } from '@brick-studio/platformer-core/engine/kits'
+import { TILE as RACE_TILE } from '@brick-studio/platformer-core/engine/constants'
+import { RaceRun, carInputFrom, type RaceHud } from '../race/raceRun'
+import { loadRaceFeel, type RaceFeel } from '../race/raceFeel'
+import { drawRaceBuildOverlay } from '../race/raceOverlay'
 import {
   POWER,
   createPlayer,
@@ -161,6 +166,12 @@ export class GameSession {
   /** A class level's room: saved to the account by the room itself. */
   classroomRoom = false
   onRoom: (() => void) | null = null
+  /** Race tracks: the race being driven while playing, how the car drives, and how many computer racers join a solo race. */
+  raceRun: RaceRun | null = null
+  raceFeel: RaceFeel = loadRaceFeel()
+  rivals = 2
+  onRaceHud: ((hud: RaceHud) => void) | null = null
+  private raceRot = 0
 
   /** Where best times go; dropped once the course is changed, since it is not the same course. */
   private recordKey: string | null
@@ -216,6 +227,11 @@ export class GameSession {
 
   get solo(): boolean {
     return !this.room
+  }
+
+  /** Whether this level is a race track. */
+  get isRace(): boolean {
+    return kitOf(this.timeline.world.design) === 'race'
   }
 
   get isHost(): boolean {
@@ -367,8 +383,61 @@ export class GameSession {
     this.lastNow = -1
   }
 
+  /** Race tracks: Build and Play. Play always starts a fresh race on the grid from the track as built. */
+  private setRaceMode(mode: Mode): boolean {
+    if (mode === 'build' && !this.canBuild) {
+      this.onToast?.(this.buildBlockedReason ?? 'Building is off')
+      return false
+    }
+    this.editor.cancelStroke()
+    if (mode === 'build') this.raceRun = null
+    else {
+      this.editor.leave()
+      this.startRace()
+    }
+    this.mode = mode
+    this.cameraReady = false
+    this.sound.play('toggle')
+    this.onModeChange?.()
+    return true
+  }
+
+  /** Line everyone up on the grid for a new race (solo races bring computer racers). */
+  startRace(rivals = this.rivals) {
+    this.rivals = rivals
+    this.raceRun = new RaceRun(cloneLevel(this.timeline.world.design), this.solo ? rivals : 0, () => this.raceFeel.feel)
+    this.cameraReady = false
+    this.onRaceHud?.(this.raceRun.hud())
+  }
+
+  private stepRace(input: InputFrame) {
+    if (!this.raceRun) this.startRace()
+    const run = this.raceRun!
+    run.step(carInputFrom(input, this.raceFeel.steer, run.you.car, this.raceRot))
+    // The camera keeps your car in the middle, looking a little ahead; with "map turns", your car points up.
+    const c = run.you.car, W = this.renderer.width, H = this.renderer.height
+    const tx = c.x + c.vx * 16 - W / 2, ty = c.y + c.vy * 16 - H / 2
+    const want = this.raceFeel.camera === 'turn' && this.solo ? -Math.PI / 2 - c.a : 0
+    if (!this.cameraReady) {
+      this.camera.x = tx
+      this.camera.y = ty
+      this.raceRot = want
+      this.cameraReady = true
+    } else {
+      this.camera.x += (tx - this.camera.x) * 0.12
+      this.camera.y += (ty - this.camera.y) * 0.12
+      this.raceRot += Math.atan2(Math.sin(want - this.raceRot), Math.cos(want - this.raceRot)) * 0.1
+    }
+    if (run.tick % 4 === 0 || run.tick === 181) this.onRaceHud?.(run.hud())
+  }
+
   /** Start the current run over from the start flag (solo: with a fresh level). */
   restartRun() {
+    if (this.isRace) {
+      if (this.mode !== 'play') this.setMode('play')
+      else this.startRace()
+      return
+    }
     this.syncCtx()
     if (this.mode !== 'play') {
       this.resume = null
@@ -385,6 +454,7 @@ export class GameSession {
 
   setMode(mode: Mode): boolean {
     if (mode === this.mode) return true
+    if (this.isRace) return this.setRaceMode(mode)
     if (this.player.pipe) {
       this.onToast?.('Finish travelling through the pipe, then switch modes.')
       return false
@@ -618,6 +688,14 @@ export class GameSession {
   /** Centre the camera on the player (or where Play will resume). */
   focusPlayer() {
     const w = this.timeline.world
+    if (this.isRace) {
+      const start = w.design.objects.find((o) => o.kind === 'start')
+      const sx = ((start?.x ?? 0) + 0.5) * RACE_TILE, sy = ((start?.y ?? 0) + 0.5) * RACE_TILE
+      this.camera.x = sx - this.renderer.width / 2
+      this.camera.y = sy - this.renderer.height / 2
+      this.cameraReady = true
+      return
+    }
     const p = this.player
     const x = this.resume?.x ?? p.x
     const y = this.resume?.y ?? p.y
@@ -640,6 +718,7 @@ export class GameSession {
   }
 
   private stepPlay(input: InputFrame) {
+    if (this.isRace) return this.stepRace(input)
     const p = this.player
     const bx = p.x
     const by = p.y
@@ -769,6 +848,7 @@ export class GameSession {
 
   protected view(): View {
     const build = this.mode === 'build'
+    if (this.isRace) return this.raceView(build)
     const players: PlayerLook[] = []
     if (!build) players.push(this.lookOf(this.player))
     else if (this.resume) {
@@ -805,6 +885,31 @@ export class GameSession {
           }
           skin.label(ctx, c.name, sx + TILE / 2, sy + 1, color)
         }
+      },
+    }
+  }
+
+  private raceView(build: boolean): View {
+    const w = this.timeline.world
+    const tick = this.timeline.tick
+    const cursors = this.room ? this.remotes.cursors(tick).map((c) => ({ x: c.x, y: c.y, name: c.name, color: playerColor(c.num)[0] })) : []
+    const run = build ? null : this.raceRun
+    return {
+      world: w,
+      camX: this.camera.x,
+      camY: this.camera.y,
+      frame: this.frameCount,
+      players: [],
+      particles: [],
+      localNum: this.player.num,
+      localCheckpoint: 0,
+      hud: null,
+      race: {
+        cars: run ? run.cars() : [],
+        skids: run ? run.skids : [],
+        tags: true,
+        rot: build ? 0 : this.raceRot,
+        overlay: build ? (ctx) => drawRaceBuildOverlay(ctx, this.editor, w, this.frameCount, cursors) : undefined,
       },
     }
   }

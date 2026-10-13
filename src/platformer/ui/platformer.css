@@ -1445,7 +1445,8 @@
 
 .p2d-race-standings {
   position: absolute;
-  top: var(--space-3);
+  /* Under the Pause button. */
+  top: calc(var(--space-3) + 56px);
   right: var(--space-3);
   min-width: 160px;
   border-radius: var(--radius-lg);
@@ -1624,4 +1625,132 @@
   .p2d-race-keys {
     display: none;
   }
+}
+
+/* ---------- Race kit: building a track ---------- */
+
+.p2d-strip-laps {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.p2d-strip-laps output {
+  min-width: 2ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  color: var(--primary-strong);
+}
+
+.p2d-strip-icon {
+  min-width: 34px;
+  padding: 0;
+  justify-content: center;
+}
+
+.p2d-loop-chip {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: min(320px, calc(100% - 24px));
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  font-size: 13px;
+}
+
+.p2d-loop-chip small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.p2d-loop-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--success, #2e9d57);
+}
+
+.p2d-loop-bad .p2d-loop-dot {
+  background: #d18b15;
+}
+
+/* ---------- New world: the kit picker ---------- */
+
+.p2d-kits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.p2d-kit {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-3);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.p2d-kit-new {
+  border-color: var(--primary);
+}
+
+.p2d-kit-picture {
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--studio-panel-soft, #f3f5f9);
+}
+
+.p2d-kit-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.p2d-kit h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 19px var(--font-display);
+}
+
+.p2d-kit p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.p2d-kit-tag {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--accent, #f17861);
+  color: #fff;
+  font: 900 10px var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.p2d-kit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }

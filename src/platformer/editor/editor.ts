@@ -1,11 +1,14 @@
 import { TILE } from '@brick-studio/platformer-core/engine/constants'
 import type { EditOp } from '@brick-studio/platformer-core/engine/events'
 import { SINGLETON_KINDS, randomObjectId, type LevelObject, type ObjKind, type PipeEndpoint } from '@brick-studio/platformer-core/engine/level'
+import { DEFAULT_RACE, kitOf, type RaceSettings } from '@brick-studio/platformer-core/engine/kits'
+import { RT, type Dir4 } from '@brick-studio/platformer-core/engine/raceTiles'
 import { C, T, holdsContent } from '@brick-studio/platformer-core/engine/tiles'
 import type { World } from '@brick-studio/platformer-core/engine/world'
 import type { SoundName } from '../audio/sound'
 import { drawSprite, type Skin } from '../render/skin'
 import { PALETTE, type PaletteItem } from './palette'
+import { RACE_PALETTE } from './racePalette'
 
 /*
  * The level editor. It never changes the world directly: every placement becomes an edit op,
@@ -51,6 +54,10 @@ export class Editor {
   erasing = false
   /** Direction for newly placed enemies and platforms (R flips it). */
   dir: 1 | -1 = -1
+  /** Race kit: which way newly painted boost pads point (R turns it). */
+  boostDir: Dir4 = 0
+  /** Race settings sent but not yet in the world, so quick turns build on each other. */
+  private raceOverlay: { race: RaceSettings; at: number } | null = null
   hover: [number, number] | null = null
   undoStack: UndoEntry[] = []
   redoStack: UndoEntry[] = []
@@ -67,7 +74,39 @@ export class Editor {
    */
   private overlay = new Map<number, [number, number, number]>()
 
-  constructor(private readonly host: EditorHost) {}
+  constructor(private readonly host: EditorHost) {
+    if (this.race) this.item = RACE_PALETTE[0]
+  }
+
+  /** The world being edited (for panels that show facts about it). */
+  get world(): World {
+    return this.host.world()
+  }
+
+  /** Whether this level is a race track (its tile ids and rules are the race kit's). */
+  get race(): boolean {
+    return kitOf(this.host.world().design) === 'race'
+  }
+
+  /** The race settings as this player last set them (laps, grid and finish direction, items). */
+  get raceSettings(): RaceSettings {
+    const w = this.host.world()
+    return this.raceOverlay?.race ?? w.design.race ?? DEFAULT_RACE
+  }
+
+  /** Change race settings as one undoable step, shared like any other edit. */
+  setRace(patch: Partial<RaceSettings>) {
+    if (!this.race) return
+    const before = this.raceSettings
+    const next = { ...before, ...patch }
+    if (next.laps === before.laps && next.startDir === before.startDir && next.finishDir === before.finishDir && next.items === before.items) return
+    if (this.stroke) this.pointerUp()
+    this.stroke = { erase: false, last: null, redo: [], undo: [] }
+    this.redoStack = []
+    this.record({ o: 'race', race: next }, [{ o: 'race', race: { ...before } }])
+    this.pointerUp()
+    this.host.sound('place')
+  }
 
   select(item: PaletteItem) {
     this.cancelPipeLink()
@@ -85,7 +124,17 @@ export class Editor {
   }
 
   flip() {
+    if (this.race) return this.turn()
     this.dir = this.dir === 1 ? -1 : 1
+    this.onChange?.()
+  }
+
+  /** Race kit's R: turn the boost pad in hand, or the starting grid, or which way laps count at the finish line. */
+  turn() {
+    const next = (d: Dir4) => ((d + 1) % 4) as Dir4
+    if (this.item.id === 'race-boost') this.boostDir = next(this.boostDir)
+    else if (this.item.id === 'race-start') this.setRace({ startDir: next(this.raceSettings.startDir) })
+    else if (this.item.id === 'race-finish') this.setRace({ finishDir: next(this.raceSettings.finishDir) })
     this.onChange?.()
   }
 
@@ -177,6 +226,10 @@ export class Editor {
     for (const [i, [t, c, at]] of this.overlay) {
       if ((w.design.tiles[i] === t && w.design.contents[i] === c) || w.tick - at > 30) this.overlay.delete(i)
     }
+    if (this.raceOverlay) {
+      const r = w.design.race, o = this.raceOverlay
+      if ((r && r.laps === o.race.laps && r.startDir === o.race.startDir && r.finishDir === o.race.finishDir && r.items === o.race.items) || w.tick - o.at > 30) this.raceOverlay = null
+    }
     for (const [id, entry] of this.pipeOverlay) {
       const actual = w.design.pipes?.find((pipe) => pipe.id === id)
       if ((!entry.pipe && !actual) || (entry.pipe && actual && entry.pipe.x === actual.x && entry.pipe.y === actual.y && entry.pipe.exitId === actual.exitId) || w.tick - entry.at > 30) this.pipeOverlay.delete(id)
@@ -204,6 +257,8 @@ export class Editor {
 
   get pipeMouths(): [number, number][] {
     const w = this.host.world()
+    // Race tile ids reuse the numbers platformer pipes use; a race track has no pipes.
+    if (this.race) return []
     const mouths: [number, number][] = []
     for (let y = 0; y < w.height; y++) for (let x = 0; x < w.width - 1; x++) {
       if (this.tileAt(x, y)[0] === T.PIPE_L && this.tileAt(x + 1, y)[0] === T.PIPE_R && (y === 0 || this.tileAt(x, y - 1)[0] !== T.PIPE_L || this.tileAt(x + 1, y - 1)[0] !== T.PIPE_R)) mouths.push([x, y])
@@ -262,6 +317,7 @@ export class Editor {
   }
 
   private pipeMouthAt(x: number, y: number): [number, number] | null {
+    if (this.race) return null
     const t = this.tileAt(x, y)[0]
     const left = t === T.PIPE_L ? x : t === T.PIPE_R ? x - 1 : -1
     if (left < 0 || this.tileAt(left, y)[0] !== T.PIPE_L || this.tileAt(left + 1, y)[0] !== T.PIPE_R) return null
@@ -316,6 +372,7 @@ export class Editor {
     const w = this.host.world()
     for (const op of ops) {
       if (op.o === 'tile') this.overlay.set(op.y * w.width + op.x, [op.t, op.c, w.tick])
+      if (op.o === 'race') this.raceOverlay = { race: { ...op.race }, at: w.tick }
       if (op.o === 'pipe') this.pipeOverlay.set(op.pipe.id, { pipe: { ...op.pipe }, at: w.tick })
       if (op.o === 'pipeDel') {
         for (const pipe of this.pipes) if (pipe.exitId === op.id) this.pipeOverlay.set(pipe.id, { pipe: { ...pipe, exitId: null }, at: w.tick })
@@ -351,7 +408,7 @@ export class Editor {
 
   private setTile(x: number, y: number, t: number, c: number) {
     const [ct, cc] = this.tileAt(x, y)
-    const content = holdsContent(t) ? c : 0
+    const content = !this.race && holdsContent(t) ? c : 0
     if (ct === t && cc === content) return false
     this.record({ o: 'tile', x, y, t, c: content }, [{ o: 'tile', x, y, t: ct, c: cc }])
     return true
@@ -372,12 +429,13 @@ export class Editor {
 
   private eraseAt(x: number, y: number) {
     const o = this.objectAt(x, y)
-    if (o) {
+    // A race keeps its starting grid: erasing there clears the ground under it instead.
+    if (o && !(this.race && o.kind === 'start')) {
       this.deleteObject(o)
       return
     }
     const [t] = this.tileAt(x, y)
-    if (t === T.PIPE_L || t === T.PIPE_R) this.erasePipe(x, y)
+    if (!this.race && (t === T.PIPE_L || t === T.PIPE_R)) this.erasePipe(x, y)
     else if (t !== T.EMPTY) this.setTile(x, y, T.EMPTY, 0)
   }
 
@@ -403,6 +461,11 @@ export class Editor {
     const p = this.item.place
     switch (p.kind) {
       case 'tile': {
+        if (this.race) {
+          // Race objects sit on top of the track, so painting under them keeps them.
+          this.setTile(x, y, p.tile === RT.BOOST_R ? RT.BOOST_R + this.boostDir : p.tile, 0)
+          return
+        }
         const o = this.objectAt(x, y)
         if (o && o.x === x && o.y === y) this.deleteObject(o)
         this.setTile(x, y, p.tile, p.content)
@@ -453,7 +516,7 @@ export class Editor {
       const existing = w.design.objects.find((o) => o.kind === kind)
       if (existing) {
         if (existing.x === x && existing.y === y) return
-        if (t !== T.EMPTY) this.setTile(x, y, T.EMPTY, 0)
+        if (t !== T.EMPTY && !this.race) this.setTile(x, y, T.EMPTY, 0)
         this.record({ o: 'move', id: existing.id, x, y }, [{ o: 'move', id: existing.id, x: existing.x, y: existing.y }])
         return
       }

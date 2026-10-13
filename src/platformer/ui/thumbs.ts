@@ -1,6 +1,8 @@
 import { TILE } from '@brick-studio/platformer-core/engine/constants'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
+import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import { createWorld } from '@brick-studio/platformer-core/engine/world'
+import { raceThumb } from '../race/raceThumb'
 import { Renderer } from '../render/renderer'
 
 /* Picture cards for levels: the start of the level, drawn by the game's own renderer. */
@@ -12,6 +14,8 @@ const cache = new Map<string, string>()
 let renderer: Renderer | null = null
 
 export function levelThumb(design: LevelDesign, cacheKey: string): string {
+  // A race track shows the whole track from above.
+  if (kitOf(design) === 'race') return raceThumb(design, cacheKey, THUMB_W)
   const hit = cache.get(cacheKey)
   if (hit) return hit
   // One renderer for every thumbnail keeps its art cache warm.

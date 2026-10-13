@@ -9,9 +9,12 @@
  *   /2d/w/<world>          a class level's live room (its world id, with or without dashes)
  */
 
+/** What a new world starts from (the kit picker): absent is a platformer. */
+export type NewKit = 'race-starter' | 'race-empty'
+
 export type Route2D =
   | { kind: 'home' }
-  | { kind: 'build'; world?: string; draft?: string; fresh: boolean }
+  | { kind: 'build'; world?: string; draft?: string; fresh: boolean; kit?: NewKit }
   | { kind: 'course'; id: string }
   | { kind: 'shared'; code: string | null }
   | { kind: 'guest'; roomId: string }
@@ -32,7 +35,8 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
   if (path === '/2d/build') {
     const world = query.get('world')?.trim() || undefined
     const draft = query.get('draft')?.trim() || undefined
-    return { kind: 'build', world: world && canonicalWorldId(world) ? canonicalWorldId(world)! : undefined, draft: draft?.slice(0, 64), fresh: query.get('new') === '1' }
+    const kit = query.get('kit')
+    return { kind: 'build', world: world && canonicalWorldId(world) ? canonicalWorldId(world)! : undefined, draft: draft?.slice(0, 64), fresh: query.get('new') === '1', ...(kit === 'race-starter' || kit === 'race-empty' ? { kit } : {}) }
   }
   if (path === '/2d/play') return { kind: 'shared', code: /^#l=(.+)$/.exec(hash)?.[1] ?? null }
   const course = /^\/2d\/play\/([a-z0-9-]{1,40})$/.exec(path)
