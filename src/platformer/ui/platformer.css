@@ -1389,3 +1389,239 @@
 .p2d-enter-pipe:focus-visible { outline: 3px solid var(--studio-focus); outline-offset: 3px; }
 .p2d-touch-enter-pipe { bottom: calc(env(safe-area-inset-bottom) + 155px); }
 .p2d-compact-shell .p2d-pipe-panel { top: 10px; max-height: calc(100% - 90px); overflow-y: auto; }
+
+/* ---------- Race kit: racing on your own (src/platformer/race) ---------- */
+
+.p2d-race-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.p2d-race-hud {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  max-width: calc(100% - 220px);
+  pointer-events: none;
+}
+
+.p2d-race-hud span,
+.p2d-race-standings,
+.p2d-race-strip,
+.p2d-race-note {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.p2d-race-hud span {
+  padding: 6px 11px;
+  border-radius: var(--radius-md);
+  font-weight: 900;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.p2d-race-hud .p2d-race-place {
+  padding: 2px 12px;
+  font: 600 20px var(--font-display);
+}
+
+.p2d-race-standings,
+.p2d-race-final {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+}
+
+.p2d-race-standings {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  min-width: 160px;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+
+.p2d-race-standings li,
+.p2d-race-final li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.p2d-race-standings li.me,
+.p2d-race-final li.me {
+  background: var(--primary-soft);
+}
+
+.p2d-race-standings i,
+.p2d-race-final i {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.p2d-race-standings em,
+.p2d-race-final em {
+  margin-left: auto;
+  font-style: normal;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.p2d-race-lights {
+  position: absolute;
+  top: 22%;
+  left: 50%;
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  transform: translateX(-50%);
+  background: #263c51;
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.p2d-race-lights i {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #3b5168;
+}
+
+.p2d-race-lights i.on {
+  background: #ef4b3f;
+  box-shadow: 0 0 18px #ef4b3f;
+}
+
+.p2d-race-lights i.go {
+  background: #3fd26b;
+  box-shadow: 0 0 18px #3fd26b;
+}
+
+.p2d-race-note {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  margin: 0;
+  padding: 8px 14px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-md);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.p2d-race-strip {
+  position: absolute;
+  bottom: max(var(--space-3), env(safe-area-inset-bottom));
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-4);
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border-radius: var(--radius-lg);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.p2d-race-keys kbd {
+  font-size: 12px;
+}
+
+.p2d-race-rivals {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+  font-weight: 800;
+}
+
+.p2d-race-rivals select {
+  min-height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font: inherit;
+}
+
+.p2d-race-presets,
+.p2d-race-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.p2d-race-presets {
+  margin: var(--space-2) 0;
+}
+
+/* Tuning stays reachable over the results card. */
+.p2d-race-feel {
+  z-index: calc(var(--z-modal, 50) + 1);
+}
+
+.p2d-race-choices {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.p2d-race-results {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-modal, 50);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(38, 60, 81, 0.34);
+}
+
+.p2d-race-results .p2d-card {
+  width: min(420px, 100%);
+}
+
+.p2d-race-final {
+  width: 100%;
+  margin: var(--space-2) 0 var(--space-4);
+}
+
+.p2d-race-final li {
+  padding: 6px 8px;
+  background: var(--studio-panel-soft);
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .p2d-race-standings {
+    display: none;
+  }
+
+  .p2d-race-hud {
+    max-width: calc(100% - 24px);
+  }
+
+  .p2d-race-keys {
+    display: none;
+  }
+}

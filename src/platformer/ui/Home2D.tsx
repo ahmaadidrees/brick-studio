@@ -2,6 +2,8 @@ import { Hammer, LoaderCircle, Play, Plus, Trash2, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { COURSES } from '@brick-studio/platformer-core/levels/courses'
+import { RACE_COURSES } from '@brick-studio/platformer-core/levels/raceCourses'
+import { raceThumb } from '../race/raceThumb'
 import { browserClassroomClient } from '../../classroom/client'
 import type { ClassroomWorld } from '../../classroom/contracts'
 import { formatSavedDate } from '../../classroom/panelShared'
@@ -119,6 +121,13 @@ export function Home2D() {
                 </Button>
                 <Button size="sm" icon={<Users size={16} />} disabled={busy} onClick={() => friends(level)}>
                   With friends
+                </Button>
+              </LevelCard>
+            ))}
+            {RACE_COURSES.map((c) => (
+              <LevelCard key={c.id} thumb={raceThumb(c.level(), `race:${c.id}`)} smooth title={c.title} sub={c.blurb}>
+                <Button href={`/2d/play/${c.id}`} variant="primary" size="sm" icon={<Play size={16} />}>
+                  Race
                 </Button>
               </LevelCard>
             ))}

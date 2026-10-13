@@ -3,6 +3,7 @@ import { House, LoaderCircle, LogIn, Play } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { COURSES, courseById } from '@brick-studio/platformer-core/levels/courses'
+import { raceCourseById } from '@brick-studio/platformer-core/levels/raceCourses'
 import type { RoomInfo } from '@brick-studio/platformer-core/net/protocol'
 import { browserClassroomClient } from '../classroom/client'
 import { AppHeader, currentPath, goToJoin, useClassroomSession } from '../shell'
@@ -11,6 +12,7 @@ import { classRoomSocketUrl, guestRoomInfo, guestRoomSocketUrl } from './net/end
 import { parse2dRoute, type Route2D } from './routes2d'
 import { NotALevelError, cloudWorldInfo, loadCloudLevel } from './ui/cloudLevel'
 import { listDrafts, loadDraft } from './ui/drafts'
+import { RaceScreen } from './race/RaceScreen'
 import { GameScreen, type LevelSource } from './ui/GameScreen'
 import { Home2D } from './ui/Home2D'
 import { ownerTokenFor, saveGuestName, savedGuestName } from './ui/prefs'
@@ -131,6 +133,8 @@ function BuildPage({ world, draft, fresh }: { world?: string; draft?: string; fr
 }
 
 function CoursePage({ id }: { id: string }) {
+  const race = raceCourseById(id)
+  if (race) return <RaceScreen level={race.level()} onExit={HOME} exitLabel="Back to 2D worlds" />
   const course = courseById(id)
   if (!course)
     return (

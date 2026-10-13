@@ -34,6 +34,51 @@ export interface CarFeel {
 /** "Kart", the mock's default the owner tried first. */
 export const DEFAULT_CAR_FEEL: CarFeel = { top: 3.2, accel: 0.07, brake: 0.16, steer: 3.4, grip: 0.22, bounce: 0.35, grass: 0.45, dirt: 0.75, ice: 0.04, boostK: 1.6, jump: 30 }
 
+/** The Feel panel's sliders for a car, grouped like the platformer's FEEL_GROUPS. */
+export interface CarFeelField {
+  key: keyof CarFeel
+  label: string
+  min: number
+  max: number
+  step: number
+  hint?: string
+}
+export const CAR_FEEL_GROUPS: { title: string; fields: CarFeelField[] }[] = [
+  {
+    title: 'Speed',
+    fields: [
+      { key: 'top', label: 'Top speed (px/frame)', min: 1.5, max: 6, step: 0.1, hint: 'On road. A brick is 16 px.' },
+      { key: 'accel', label: 'Acceleration', min: 0.02, max: 0.25, step: 0.01 },
+      { key: 'brake', label: 'Brakes', min: 0.04, max: 0.4, step: 0.01 },
+    ],
+  },
+  {
+    title: 'Handling',
+    fields: [
+      { key: 'steer', label: 'Steering (°/frame)', min: 1, max: 7, step: 0.1 },
+      { key: 'grip', label: 'Grip', min: 0.03, max: 1, step: 0.01, hint: 'Low grip slides and drifts. 1 is on rails.' },
+      { key: 'bounce', label: 'Barrier bounce', min: 0, max: 1, step: 0.05 },
+    ],
+  },
+  {
+    title: 'Track bricks',
+    fields: [
+      { key: 'grass', label: 'Grass slows to', min: 0.2, max: 1, step: 0.05 },
+      { key: 'dirt', label: 'Dirt slows to', min: 0.4, max: 1, step: 0.05 },
+      { key: 'ice', label: 'Ice grip', min: 0.01, max: 0.3, step: 0.01 },
+      { key: 'boostK', label: 'Boost pad', min: 1, max: 2.5, step: 0.05 },
+      { key: 'jump', label: 'Jump ramp hang time (frames)', min: 12, max: 60, step: 1 },
+    ],
+  },
+]
+
+/** The mock's other two presets, for comparing feels quickly. */
+export const CAR_FEEL_PRESETS: Record<string, CarFeel> = {
+  Kart: DEFAULT_CAR_FEEL,
+  Drifty: { ...DEFAULT_CAR_FEEL, top: 3.6, accel: 0.06, brake: 0.12, steer: 3.8, grip: 0.06, bounce: 0.45, grass: 0.5, boostK: 1.7 },
+  'On rails': { ...DEFAULT_CAR_FEEL, top: 2.8, accel: 0.1, brake: 0.2, steer: 3.0, grip: 0.9, bounce: 0.2, grass: 0.4, boostK: 1.5, ice: 0.12 },
+}
+
 export const CAR_RADIUS = 5.5
 const BOOST_TICKS = 45
 const SPLASH_TICKS = 50
