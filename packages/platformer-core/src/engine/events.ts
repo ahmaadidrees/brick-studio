@@ -1,5 +1,6 @@
 import { OBJECT_KINDS, STYLES, THEMES, type LevelJson, type LevelObject, type PipeEndpoint, type LevelStyle, type Theme } from './level'
-import { CONTENT_ID_COUNT, TILE_ID_COUNT } from './tiles'
+import { isValidRaceSettings, tileIdCount, type Kit, type RaceSettings } from './kits'
+import { CONTENT_ID_COUNT } from './tiles'
 
 /** A change a builder makes to the level design. */
 export type EditOp =
@@ -12,6 +13,8 @@ export type EditOp =
   | { o: 'theme'; theme: Theme }
   | { o: 'style'; style: LevelStyle }
   | { o: 'title'; title: string }
+  /** Race levels only: laps, which way the grid and the finish line face, items on or off. */
+  | { o: 'race'; race: RaceSettings }
 
 /**
  * Everything that changes the shared world. Players' own movement is not here: each game moves
@@ -50,12 +53,12 @@ function validObject(o: unknown, w: number, h: number): o is LevelObject {
   )
 }
 
-function validOp(op: unknown, w: number, h: number): op is EditOp {
+function validOp(op: unknown, w: number, h: number, kit: Kit): op is EditOp {
   if (!op || typeof op !== 'object') return false
   const o = op as Record<string, unknown>
   switch (o.o) {
     case 'tile':
-      return inRange(o.x, 0, w - 1) && inRange(o.y, 0, h - 1) && inRange(o.t, 0, TILE_ID_COUNT - 1) && inRange(o.c, 0, CONTENT_ID_COUNT - 1)
+      return inRange(o.x, 0, w - 1) && inRange(o.y, 0, h - 1) && inRange(o.t, 0, tileIdCount(kit) - 1) && inRange(o.c, 0, kit === 'race' ? 0 : CONTENT_ID_COUNT - 1)
     case 'add':
       return validObject(o.obj, w, h)
     case 'pipe': {
@@ -75,20 +78,29 @@ function validOp(op: unknown, w: number, h: number): op is EditOp {
       return STYLES.includes(o.style as LevelStyle)
     case 'title':
       return typeof o.title === 'string' && o.title.length <= 60
+    case 'race':
+      return kit === 'race' && isValidRaceSettings(o.race)
     default:
       return false
   }
 }
 
-/** Shape and range check for an event from an untrusted source. World size bounds coordinates. */
-export function isValidEvent(ev: unknown, w: number, h: number): ev is WorldEvent {
+/** Events that only make sense in a platformer (they act on its critters, blocks and coins). */
+const PLATFORMER_ONLY = new Set(['stomp', 'kick', 'bump', 'coin', 'take', 'spark'])
+
+/**
+ * Shape and range check for an event from an untrusted source. World size bounds coordinates; the level's kit decides
+ * which tile ids an edit may use and which events exist at all.
+ */
+export function isValidEvent(ev: unknown, w: number, h: number, kit: Kit = 'platformer'): ev is WorldEvent {
   if (!ev || typeof ev !== 'object') return false
   const e = ev as Record<string, unknown>
   const maxX = w * 16 * 256
   const maxY = h * 16 * 256
+  if (kit === 'race' && PLATFORMER_ONLY.has(e.t as string)) return false
   switch (e.t) {
     case 'edit':
-      return Array.isArray(e.ops) && e.ops.length > 0 && e.ops.length <= MAX_EDIT_OPS && e.ops.every((op) => validOp(op, w, h))
+      return Array.isArray(e.ops) && e.ops.length > 0 && e.ops.length <= MAX_EDIT_OPS && e.ops.every((op) => validOp(op, w, h, kit))
     case 'stomp':
     case 'kick':
       return inRange(e.id, 1, 2 ** 40) && isDir(e.dir)

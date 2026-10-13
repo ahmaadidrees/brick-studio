@@ -15,7 +15,8 @@ import {
   type LevelJson,
   type LevelObject,
 } from './level'
-import { C, T, TILE_ID_COUNT, holdsContent, isBumpable } from './tiles'
+import { KITS, kitOf, tileIdCount } from './kits'
+import { C, T, holdsContent, isBumpable } from './tiles'
 
 // =============================================================================================
 // The shared world. Everything in here is deterministic: the same level plus the same events at
@@ -420,8 +421,9 @@ function applyOp(w: World, op: EditOp): boolean {
   switch (op.o) {
     case 'tile': {
       const i = op.y * w.width + op.x
-      const t = op.t < TILE_ID_COUNT ? op.t : T.EMPTY
-      const c = holdsContent(t) ? op.c : 0
+      const kit = kitOf(d)
+      const t = op.t < tileIdCount(kit) ? op.t : T.EMPTY
+      const c = kit === 'platformer' && holdsContent(t) ? op.c : 0
       if (d.tiles[i] === t && d.contents[i] === c && w.tiles[i] === t) return false
       ownDesignTiles(w)
       ownContents(w)
@@ -433,7 +435,8 @@ function applyOp(w: World, op: EditOp): boolean {
     }
     case 'pipe':
     case 'pipeDel':
-      // Pipe edits always replace the list, preserving rollback snapshots.
+    case 'race':
+      // These replace a list or a settings object rather than writing into one, preserving rollback snapshots.
       return editDesign(d, op)
     case 'add': {
       if (d.objects.length >= LEVEL_MAX_OBJECTS || d.objects.some((o) => o.id === op.obj.id)) return false
@@ -494,6 +497,8 @@ export function resetWorld(w: World) {
 
 /** Apply one event. Returns false when it no longer makes sense (the enemy is already gone, etc). */
 export function applyEvent(w: World, ev: WorldEvent, by: number): boolean {
+  // A race level has no critters, ? blocks or platformer coins for these to act on; its tile ids mean other things.
+  if (kitOf(w.design) === 'race' && ev.t !== 'edit' && ev.t !== 'reset' && ev.t !== 'load') return false
   switch (ev.t) {
     case 'edit': {
       let changed = false
@@ -871,6 +876,12 @@ export function hashWorld(w: World): number {
   }
   mix(THEMES.indexOf(w.design.theme))
   mix(STYLES.indexOf(w.design.style))
+  // Race levels only, so every platformer world keeps the fingerprint games already running in rooms expect.
+  if (kitOf(w.design) === 'race') {
+    const r = w.design.race
+    mix(KITS.indexOf('race'))
+    if (r) { mix(r.laps); mix(r.startDir); mix(r.finishDir); mix(r.items ? 1 : 0) }
+  }
   return h >>> 0
 }
 
@@ -958,7 +969,7 @@ export function deserializeWorld(j: WorldJson): World {
   const design = levelFromJson(j?.level)
   checkWorldJson(j, design.width, design.height)
   const w = createWorld(design, j.tick)
-  w.tiles = decodeRuns(j.tiles, design.width * design.height, TILE_ID_COUNT)
+  w.tiles = decodeRuns(j.tiles, design.width * design.height, tileIdCount(kitOf(design)))
   w.nextId = j.nextId
   w.entities = j.entities.map((row) => {
     const e = {} as Record<string, number>

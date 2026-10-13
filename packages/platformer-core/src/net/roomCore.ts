@@ -1,6 +1,7 @@
 import { TICK_MS } from '../engine/constants'
 import { editDesign } from '../engine/designEdit'
 import { isValidEvent } from '../engine/events'
+import { kitOf } from '../engine/kits'
 import { cloneLevel, levelFromJson, levelToJson, type LevelDesign, type LevelJson } from '../engine/level'
 import { deserializeWorld, serializeWorld, type WorldJson } from '../engine/world'
 import {
@@ -401,7 +402,7 @@ export class RoomCore {
 
   private event(sock: RoomSocket, c: Client, msg: Extract<ClientMsg, { type: 'ev' }>) {
     if (typeof msg.cid !== 'string' || msg.cid.length > 48 || !Number.isInteger(msg.tick)) return
-    if (!isValidEvent(msg.ev, this.design.width, this.design.height)) {
+    if (!isValidEvent(msg.ev, this.design.width, this.design.height, kitOf(this.design))) {
       this.stats.rejected++
       return this.send(sock, { type: 'reject', cid: msg.cid, reason: 'invalid' })
     }

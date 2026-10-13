@@ -5,7 +5,9 @@ import {
   LEVEL_MIN_HEIGHT,
   LEVEL_MIN_WIDTH,
 } from './constants'
-import { CONTENT_ID_COUNT, TILE_ID_COUNT, T, holdsContent } from './tiles'
+import { DEFAULT_RACE, kitOf, raceFromJson, raceToJson, tileIdCount, type Kit, type RaceSettings, type RaceSettingsJson } from './kits'
+import { RT } from './raceTiles'
+import { CONTENT_ID_COUNT, T, holdsContent } from './tiles'
 
 /** Things placed on the grid that are not tiles: course markers, enemies, gizmos, power-ups. */
 export const OBJECT_KINDS = [
@@ -64,6 +66,10 @@ export interface LevelDesign {
   objects: LevelObject[]
   /** Absent in old designs; loaders and constructors normalize to an empty list. */
   pipes?: PipeEndpoint[]
+  /** Absent means a platformer. A race level's tiles are race tile ids (raceTiles.ts) and it has no contents. */
+  kit?: Kit
+  /** Race levels only. */
+  race?: RaceSettings
 }
 
 export const SINGLETON_KINDS: ReadonlySet<ObjKind> = new Set(['start', 'goal'])
@@ -90,9 +96,31 @@ export function createBlankLevel(width = 120, height = 27, title = 'Untitled lev
   }
 }
 
+/** A new race level: a field of grass inside a barrier fence, with the starting grid on the left. */
+export function createBlankRaceLevel(width = 72, height = 44, title = 'My race track'): LevelDesign {
+  const tiles = new Uint8Array(width * height)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) if (x === 0 || y === 0 || x === width - 1 || y === height - 1) tiles[y * width + x] = RT.BARRIER
+  }
+  return {
+    title,
+    width,
+    height,
+    theme: 'day',
+    style: 'cartoon',
+    tiles,
+    contents: new Uint8Array(width * height),
+    pipes: [],
+    objects: [{ id: 1, kind: 'start', x: 6, y: height >> 1, dir: 1, alt: 0 }],
+    kit: 'race',
+    race: { ...DEFAULT_RACE },
+  }
+}
+
 export function cloneLevel(level: LevelDesign): LevelDesign {
   return {
     ...level,
+    ...(level.race ? { race: { ...level.race } } : {}),
     tiles: level.tiles.slice(),
     contents: level.contents.slice(),
     objects: level.objects.map((o) => ({ ...o })),
@@ -131,6 +159,10 @@ export interface LevelJson {
   objects: [number, number, number, number, number, number][]
   /** [endpoint id, mouth x, mouth y, destination id or null]. Old levels omit this. */
   pipes?: [number, number, number, number | null][]
+  /** Present only on race levels; levels without it are platformers. */
+  kit?: Kit
+  /** Race levels: [laps, startDir, finishDir, items 0/1]. */
+  race?: RaceSettingsJson
 }
 
 /**
@@ -182,6 +214,7 @@ export function levelToJson(level: LevelDesign): LevelJson {
     contents: encodeRuns(level.contents),
     objects: level.objects.map((o) => [o.id, OBJECT_KINDS.indexOf(o.kind), o.x, o.y, o.dir, o.alt]),
     pipes: (level.pipes ?? []).map((p) => [p.id, p.x, p.y, p.exitId]),
+    ...(kitOf(level) === 'race' ? { kit: 'race' as const, race: raceToJson(level.race ?? DEFAULT_RACE) } : {}),
   }
 }
 
@@ -196,9 +229,12 @@ export function levelFromJson(raw: unknown): LevelDesign {
   if (!isInt(w) || w < LEVEL_MIN_WIDTH || w > LEVEL_MAX_WIDTH) throw new Error('bad width')
   if (!isInt(h) || h < LEVEL_MIN_HEIGHT || h > LEVEL_MAX_HEIGHT) throw new Error('bad height')
   if (typeof j.tiles !== 'string' || typeof j.contents !== 'string') throw new Error('bad tiles')
-  const tiles = decodeRuns(j.tiles, w * h, TILE_ID_COUNT)
+  if (j.kit !== undefined && j.kit !== 'race') throw new Error('unknown kit')
+  const kit: Kit = j.kit ?? 'platformer'
+  const tiles = decodeRuns(j.tiles, w * h, tileIdCount(kit))
   const contents = decodeRuns(j.contents, w * h, CONTENT_ID_COUNT)
-  for (let i = 0; i < contents.length; i++) if (!holdsContent(tiles[i])) contents[i] = 0
+  for (let i = 0; i < contents.length; i++) if (kit === 'race' || !holdsContent(tiles[i])) contents[i] = 0
+  const race = kit === 'race' ? raceFromJson(j.race) : undefined
   if (!Array.isArray(j.objects) || j.objects.length > LEVEL_MAX_OBJECTS) throw new Error('bad objects')
   const seen = new Set<number>()
   const singletons = new Set<ObjKind>()
@@ -237,5 +273,5 @@ export function levelFromJson(raw: unknown): LevelDesign {
   const title = typeof j.title === 'string' ? j.title.slice(0, 60) : 'Untitled level'
   const theme: Theme = j.theme === 'underground' ? 'underground' : 'day'
   const style: LevelStyle = j.style === 'cartoon' ? 'cartoon' : 'pixel'
-  return { title, width: w, height: h, theme, style, tiles, contents, objects, pipes }
+  return { title, width: w, height: h, theme, style, tiles, contents, objects, pipes, ...(kit === 'race' ? { kit, race } : {}) }
 }

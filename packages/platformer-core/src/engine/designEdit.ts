@@ -1,7 +1,8 @@
 import { LEVEL_MAX_OBJECTS } from './constants'
 import type { EditOp } from './events'
 import { SINGLETON_KINDS, type LevelDesign } from './level'
-import { TILE_ID_COUNT, T, holdsContent } from './tiles'
+import { kitOf, tileIdCount } from './kits'
+import { T, holdsContent } from './tiles'
 
 /**
  * Apply an edit op to a bare level design, in place. The room server keeps the saved copy of a
@@ -13,8 +14,9 @@ export function editDesign(d: LevelDesign, op: EditOp): boolean {
     case 'tile': {
       if (op.x < 0 || op.y < 0 || op.x >= d.width || op.y >= d.height) return false
       const i = op.y * d.width + op.x
-      const t = op.t < TILE_ID_COUNT ? op.t : T.EMPTY
-      const c = holdsContent(t) ? op.c : 0
+      const kit = kitOf(d)
+      const t = op.t < tileIdCount(kit) ? op.t : T.EMPTY
+      const c = kit === 'platformer' && holdsContent(t) ? op.c : 0
       if (d.tiles[i] === t && d.contents[i] === c) return false
       d.tiles[i] = t
       d.contents[i] = c
@@ -65,5 +67,12 @@ export function editDesign(d: LevelDesign, op: EditOp): boolean {
       if (d.title === op.title) return false
       d.title = op.title
       return true
+    case 'race': {
+      const r = d.race
+      if (kitOf(d) !== 'race') return false
+      if (r && r.laps === op.race.laps && r.startDir === op.race.startDir && r.finishDir === op.race.finishDir && r.items === op.race.items) return false
+      d.race = { ...op.race }
+      return true
+    }
   }
 }
