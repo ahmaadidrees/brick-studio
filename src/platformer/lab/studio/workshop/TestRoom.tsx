@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRuntime, type Runtime } from '../../core/index'
 import { STAGE_ID, useStudio, type StudioStore } from '../store'
 import { FixedStepAccumulator } from '../stage/accumulator'
-import { fitCamera, type Viewport } from '../stage/camera'
+import { fitCamera, screenToWorld, type Viewport } from '../stage/camera'
 import { browserKeyToScratchKey } from '../stage/keys'
+import { pickTarget } from '../stage/picking'
 import { globalImageCache, renderPlayMode, type TargetPose } from '../stage/renderer'
 import { HERO_BRICK_ID } from '../hero/heroBrick'
 import { buildTestRoom, isHeroBrick } from './roomDesign'
@@ -94,6 +95,41 @@ export function TestRoom({ store, brickId }: { store: StudioStore; brickId: stri
     [runtime],
   )
 
+  // The mouse, the same way Play does it (Stage.tsx): position in level steps, mouse down?, and "when this sprite clicked".
+  const toWorld = useCallback(
+    (e: { clientX: number; clientY: number }): [number, number] | null => {
+      const canvas = canvasRef.current
+      if (!canvas || !runtime) return null
+      const r = canvas.getBoundingClientRect()
+      return screenToWorld(fitCamera(runtime.world.bounds, viewport), viewport, e.clientX - r.left, e.clientY - r.top)
+    },
+    [runtime, viewport],
+  )
+  const pointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const w = toWorld(e)
+      if (!w || !runtime) return
+      runtime.world.mouse.x = w[0]
+      runtime.world.mouse.y = w[1]
+    },
+    [runtime, toWorld],
+  )
+  const pointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      e.currentTarget.focus()
+      const w = toWorld(e)
+      if (!w || !runtime) return
+      runtime.world.mouse.x = w[0]
+      runtime.world.mouse.y = w[1]
+      runtime.world.mouse.down = true
+      runtime.clickTarget(pickTarget(runtime.world, w[0], w[1]))
+    },
+    [runtime, toWorld],
+  )
+  const pointerUp = useCallback(() => {
+    if (runtime) runtime.world.mouse.down = false
+  }, [runtime])
+
   if (brickId === STAGE_ID || !brick) {
     return <div className="ws-room ws-room-empty">The Stage has no test room. Pick a brick to see it run.</div>
   }
@@ -106,10 +142,10 @@ export function TestRoom({ store, brickId }: { store: StudioStore; brickId: stri
           ↻ Restart
         </button>
       </div>
-      <div ref={wrapRef} className="ws-room-view" tabIndex={0} onKeyDown={keyDown} onKeyUp={keyUp} onPointerDown={(e) => e.currentTarget.focus()} aria-label="Test room view">
+      <div ref={wrapRef} className="ws-room-view" tabIndex={0} onKeyDown={keyDown} onKeyUp={keyUp} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerLeave={pointerUp} aria-label="Test room view">
         <canvas ref={canvasRef} width={viewport.width} height={viewport.height} />
       </div>
-      <p className="ws-hint">{hero ? 'Click the room, then use the arrow keys, space and X.' : 'A helper Hero is in the room. Click it and use the arrow keys to touch your brick.'}</p>
+      <p className="ws-hint">{hero ? 'Click the room, then use the arrow keys, space and X.' : 'A helper Hero is in the room. Click the room, then use the arrow keys and the mouse.'}</p>
     </section>
   )
 }
