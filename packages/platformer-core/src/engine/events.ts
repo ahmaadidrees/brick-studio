@@ -30,6 +30,8 @@ export type WorldEvent =
   | { t: 'take'; id: number }
   | { t: 'spark'; x: number; y: number; dir: 1 | -1 }
   | { t: 'reset' }
+  /** Race tracks: everyone lines up on the grid and the start lights begin, at this tick for everyone. */
+  | { t: 'race' }
   /** Replace the whole level (a host restoring a saved level). Only the server sends this. */
   | { t: 'load'; level: LevelJson }
 
@@ -114,6 +116,8 @@ export function isValidEvent(ev: unknown, w: number, h: number, kit: Kit = 'plat
       return inRange(e.x, -maxX, 2 * maxX) && inRange(e.y, -maxY, 2 * maxY) && isDir(e.dir)
     case 'reset':
       return true
+    case 'race':
+      return kit === 'race'
     default:
       // 'load' included: players can never send it, only the room server.
       return false

@@ -127,6 +127,8 @@ export interface World {
   effects: Effect[]
   /** Copy-on-write flags: arrays currently shared with a snapshot. */
   cow: number
+  /** Race tracks: the tick the current race was started (everyone's countdown begins here), or -1 for practice. */
+  raceAt: number
 }
 
 export interface AppliedEvent {
@@ -202,6 +204,7 @@ export function createWorld(design: LevelDesign, tick = 0): World {
     respawns: [],
     effects: [],
     cow: 0,
+    raceAt: -1,
   }
   for (const o of w.design.objects) spawnFromObject(w, o)
   return w
@@ -486,6 +489,8 @@ function applyOp(w: World, op: EditOp): boolean {
 }
 
 export function resetWorld(w: World) {
+  // A race track goes back to practice.
+  w.raceAt = -1
   w.tiles = w.design.tiles.slice()
   w.cow &= ~COW_TILES
   w.entities = []
@@ -498,7 +503,7 @@ export function resetWorld(w: World) {
 /** Apply one event. Returns false when it no longer makes sense (the enemy is already gone, etc). */
 export function applyEvent(w: World, ev: WorldEvent, by: number): boolean {
   // A race level has no critters, ? blocks or platformer coins for these to act on; its tile ids mean other things.
-  if (kitOf(w.design) === 'race' && ev.t !== 'edit' && ev.t !== 'reset' && ev.t !== 'load') return false
+  if (kitOf(w.design) === 'race' && ev.t !== 'edit' && ev.t !== 'reset' && ev.t !== 'load' && ev.t !== 'race') return false
   switch (ev.t) {
     case 'edit': {
       let changed = false
@@ -570,6 +575,10 @@ export function applyEvent(w: World, ev: WorldEvent, by: number): boolean {
     }
     case 'reset':
       resetWorld(w)
+      return true
+    case 'race':
+      if (kitOf(w.design) !== 'race') return false
+      w.raceAt = w.tick
       return true
     case 'load': {
       let d: LevelDesign
@@ -880,6 +889,7 @@ export function hashWorld(w: World): number {
   if (kitOf(w.design) === 'race') {
     const r = w.design.race
     mix(KITS.indexOf('race'))
+    mix(w.raceAt)
     if (r) { mix(r.laps); mix(r.startDir); mix(r.finishDir); mix(r.items ? 1 : 0) }
   }
   return h >>> 0
@@ -893,6 +903,8 @@ export interface WorldJson {
   entities: number[][]
   bumps: number[][]
   respawns: number[][]
+  /** Race tracks: the tick the current race started; absent means practice (and in every platformer snapshot). */
+  ra?: number
 }
 
 const ENTITY_FIELDS = ['id', 'kind', 'x', 'y', 'w', 'h', 'vx', 'vy', 'ox', 'oy', 'dir', 'state', 'timer', 'spawn', 'owner', 'a', 'b', 'c', 'rm'] as const
@@ -906,6 +918,7 @@ export function serializeWorld(w: World): WorldJson {
     entities: w.entities.map((e) => ENTITY_FIELDS.map((f) => e[f])),
     bumps: w.bumps.map((b) => [b.tx, b.ty, b.timer]),
     respawns: w.respawns.map((r) => [r.spawn, r.at]),
+    ...(w.raceAt >= 0 ? { ra: w.raceAt } : {}),
   }
 }
 
@@ -978,5 +991,9 @@ export function deserializeWorld(j: WorldJson): World {
   })
   w.bumps = j.bumps.map(([tx, ty, timer]) => ({ tx, ty, timer }))
   w.respawns = j.respawns.map(([spawn, at]) => ({ spawn, at }))
+  if (j.ra !== undefined) {
+    if (kitOf(design) !== 'race' || !int(j.ra, 0, j.tick)) throw new Error('bad snapshot: race start')
+    w.raceAt = j.ra
+  }
   return w
 }

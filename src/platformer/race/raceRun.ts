@@ -40,8 +40,21 @@ export interface RaceStanding {
 
 export type LoopProblem = 'no-finish' | 'no-loop' | 'finish-gap'
 
+/** Someone else in the room, as their poses report them. */
+export interface RemoteRacer {
+  name: string
+  color: string
+  /** Laps done, distance round the lap, hidden gates passed this lap. */
+  lap: number
+  d: number
+  gates: number
+  /** Race time in ticks once finished, else -1. */
+  finish: number
+}
+
 export interface RaceHud {
-  phase: 'countdown' | 'racing' | 'results'
+  /** Practice: driving before anyone has started a race (rooms). */
+  phase: 'practice' | 'countdown' | 'racing' | 'results'
   /** Start lights lit: 1..3 red, 4 green, 0 off. */
   lights: number
   laps: number
@@ -90,10 +103,22 @@ export function carInputFrom(f: InputFrame, mode: SteerMode, car: Car, cameraRot
   return { steer: (f.right ? 1 : 0) - (f.left ? 1 : 0), gas: f.up, brake: f.down }
 }
 
+export interface RestartOptions {
+  /** Which place on the grid is yours (rooms give each player their own). */
+  slot?: number
+  /** Ticks since the race started, for joining a race already under way (rooms). */
+  elapsed?: number
+  /** Free driving until a race starts: no lights, no results. */
+  practice?: boolean
+  /** Your car's colour (rooms use each player's own colour). */
+  color?: string
+}
+
 export class RaceRun {
   readonly loop: RaceLoop
   racers: Racer[] = []
   tick = 0
+  practice = false
   skids: { x: number; y: number }[] = []
   private startTick = 0
   private finishedAt = -1
@@ -117,21 +142,33 @@ export class RaceRun {
   }
 
   /** Back to the starting grid. */
-  restart(rivals = this.rivals) {
+  restart(rivals = this.rivals, opts: RestartOptions = {}) {
     this.rivals = Math.max(0, Math.min(MAX_RIVALS, rivals))
-    const field = [{ ...YOU, you: true }, ...RIVALS.slice(0, this.rivals).map((r) => ({ ...r, you: false }))]
-    const spots = gridSpots(this.level, field.length)
-    this.racers = field.map((r, i) => ({ ...r, car: createCar(spots[i]), lap: createLapState(0) }))
+    const field = [{ ...YOU, ...(opts.color ? { color: opts.color } : {}), you: true }, ...RIVALS.slice(0, this.rivals).map((r) => ({ ...r, you: false }))]
+    const slot = Math.max(0, opts.slot ?? 0)
+    const spots = gridSpots(this.level, slot + field.length)
+    // You take your slot; computer racers fill the places behind it.
+    this.racers = field.map((r, i) => ({ ...r, car: createCar(spots[slot + i]), lap: createLapState(0) }))
     for (const r of this.racers) trackLaps(r.lap, this.loop, this.level, r.car.x, r.car.y, 0, this.laps)
-    this.tick = 0
+    this.practice = !!opts.practice
+    // Practice skips the lights; joining late lands mid-countdown or straight into the race.
+    this.tick = this.practice ? COUNTDOWN_TICKS : Math.max(0, opts.elapsed ?? 0)
+    this.startTick = Math.min(this.tick, COUNTDOWN_TICKS)
+    for (const r of this.racers) r.lap.lapStart = this.startTick
     this.finishedAt = -1
     this.skids = []
+  }
+
+  /** Your race time so far, or your finish time, in ticks; -1 before the start or while practising. */
+  get yourTime(): number {
+    if (this.practice || this.tick < COUNTDOWN_TICKS) return -1
+    return (this.you.lap.done >= 0 ? this.you.lap.done : this.tick) - this.startTick
   }
 
   /** One frame. `input` is how you are driving. */
   step(input: CarInput) {
     this.tick++
-    if (this.tick === COUNTDOWN_TICKS) {
+    if (this.tick === COUNTDOWN_TICKS && !this.practice) {
       this.startTick = this.tick
       for (const r of this.racers) r.lap.lapStart = this.tick
     }
@@ -142,7 +179,9 @@ export class RaceRun {
       this.events.length = 0
       stepCar(r.car, drive, this.level, feel, this.tick, this.events, r.topK)
       const result = trackLaps(r.lap, this.loop, this.level, r.car.x, r.car.y, this.tick, this.laps)
-      if (r.you && result === 'finish') this.finishedAt = this.tick
+      if (r.you && result === 'finish' && !this.practice) this.finishedAt = this.tick
+      // Practice laps never end the session.
+      if (this.practice && r.lap.done >= 0) r.lap.done = -1
       const c = r.car
       if (c.slip > 0.45 && c.air <= 0 && c.splash === 0 && Math.hypot(c.vx, c.vy) > 1) {
         const fx = Math.cos(c.a), fy = Math.sin(c.a)
@@ -174,25 +213,40 @@ export class RaceRun {
     }
   }
 
-  standings(): RaceStanding[] {
+  /** Everyone in the race, best first: your car, computer racers and (rooms) other people. */
+  standings(remotes: RemoteRacer[] = []): RaceStanding[] {
+    const L = this.loop.ok ? this.loop.length : 1
+    const progressOf = (lap: number, d: number, gates: number, finish: number) =>
+      finish >= 0 ? 1e9 - finish : lap * L + (!(gates & 2) && d > L / 2 ? d - L : d)
+    const rows = [
+      ...this.racers.map((r) => ({
+        name: r.name, color: r.color, you: r.you,
+        lap: Math.min(r.lap.lap + 1, this.laps), done: r.lap.done >= 0, time: r.lap.done >= 0 ? r.lap.done - this.startTick : 0,
+        p: r.lap.done >= 0 ? 1e9 - (r.lap.done - this.startTick) : raceProgress(r.lap, this.loop),
+      })),
+      ...remotes.map((r) => ({
+        name: r.name, color: r.color, you: false,
+        lap: Math.min(r.lap + 1, this.laps), done: r.finish >= 0, time: Math.max(0, r.finish), p: progressOf(r.lap, r.d, r.gates, r.finish),
+      })),
+    ]
     // On the grid, before the start, the order is the grid's.
-    const order = this.tick < COUNTDOWN_TICKS ? [...this.racers] : [...this.racers].sort((a, b) => raceProgress(b.lap, this.loop) - raceProgress(a.lap, this.loop))
-    return order.map((r) => ({ name: r.name, color: r.color, you: r.you, lap: Math.min(r.lap.lap + 1, this.laps), done: r.lap.done >= 0, time: r.lap.done >= 0 ? r.lap.done - this.startTick : 0 }))
+    if (this.tick >= COUNTDOWN_TICKS) rows.sort((a, b) => b.p - a.p)
+    return rows.map(({ p: _p, ...row }) => row)
   }
 
-  hud(): RaceHud {
+  hud(remotes: RemoteRacer[] = []): RaceHud {
     const me = this.you
-    const standings = this.standings()
+    const standings = this.standings(remotes)
     const t = this.tick
     return {
-      phase: t < COUNTDOWN_TICKS ? 'countdown' : this.finishedAt >= 0 && t >= this.finishedAt + RESULTS_DELAY ? 'results' : 'racing',
-      lights: t < COUNTDOWN_TICKS ? Math.floor(t / 60) + 1 : t < COUNTDOWN_TICKS + GO_SHOW_TICKS ? 4 : 0,
+      phase: this.practice ? 'practice' : t < COUNTDOWN_TICKS ? 'countdown' : this.finishedAt >= 0 && t >= this.finishedAt + RESULTS_DELAY ? 'results' : 'racing',
+      lights: this.practice ? 0 : t < COUNTDOWN_TICKS ? Math.floor(t / 60) + 1 : t < COUNTDOWN_TICKS + GO_SHOW_TICKS ? 4 : 0,
       laps: this.laps,
       lap: Math.min(me.lap.lap + 1, this.laps),
-      time: t < COUNTDOWN_TICKS ? 0 : (me.lap.done >= 0 ? me.lap.done : t) - this.startTick,
+      time: Math.max(0, this.yourTime),
       bestLap: me.lap.lapTimes.length ? Math.min(...me.lap.lapTimes) : 0,
       place: standings.findIndex((s) => s.you) + 1,
-      racers: this.racers.length,
+      racers: standings.length,
       youDone: me.lap.done >= 0,
       standings,
       loopProblem: this.loop.ok ? null : this.loop.reason,

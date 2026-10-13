@@ -24,6 +24,9 @@ import {
   type StampedEvent,
 } from './protocol'
 
+/** Players other than the host may start a new race this long after the last one started (75 seconds). */
+export const RACE_RESTART_TICKS = 75 * 60
+
 /**
  * One room's server logic, free of any hosting details so it can be tested directly. The Worker's
  * PlatformerRoom Durable Object feeds it sockets and messages, calls flushPoses() as poses arrive,
@@ -116,6 +119,8 @@ export class RoomCore {
    * order `design` (what gets saved) applied them in.
    */
   private designTick = 0
+  /** Server tick of the last race start, or -1. */
+  private raceTick = -1
   /** The design as of `base.tick`, as this room applied it: what a snapshot's design has to match. */
   private baseDesign: LevelDesign | null = null
   private hashes = new Map<number, Map<number, number>>()
@@ -235,6 +240,7 @@ export class RoomCore {
           ...(msg.p.gw === undefined ? {} : { gw: msg.p.gw }),
           ...(msg.p.lc === undefined ? {} : { lc: msg.p.lc }),
           ...(msg.p.pi === undefined ? {} : { pi: { x: msg.p.pi.x, y: msg.p.pi.y, phase: msg.p.pi.phase, progress: msg.p.pi.progress } }),
+          ...Object.fromEntries((['hd', 'lf', 'rl', 'rp', 'rg', 'ra', 'rf'] as const).filter((k) => msg.p[k] !== undefined).map((k) => [k, msg.p[k]])),
         })
         return
       case 'ping':
@@ -418,6 +424,11 @@ export class RoomCore {
       this.stats.rejected++
       return this.send(sock, { type: 'reject', cid: msg.cid, reason: 'host_only' })
     }
+    // The host starts races whenever they like; anyone else only once the last race has had time to finish.
+    if (msg.ev.t === 'race' && !c.host && this.raceTick >= 0 && this.serverTick() - this.raceTick < RACE_RESTART_TICKS) {
+      this.stats.rejected++
+      return this.send(sock, { type: 'reject', cid: msg.cid, reason: 'race_busy' })
+    }
     // Links are checked after the complete ordered batch so creating/undoing a pair is atomic.
     if (msg.ev.t === 'edit' && msg.ev.ops.some((op) => op.o === 'pipe' || op.o === 'pipeDel')) {
       const candidate = cloneLevel(this.design)
@@ -432,6 +443,7 @@ export class RoomCore {
     const lo = Math.max(st - MAX_LATE, (this.base?.tick ?? 0) + 1)
     let tick = Math.min(Math.max(msg.tick, lo), st + MAX_EARLY)
     if (msg.ev.t === 'edit') tick = this.designTick = Math.max(tick, this.designTick)
+    if (msg.ev.t === 'race') this.raceTick = tick
     const e: StampedEvent = { tick, seq: ++this.seq, by: c.num, cid: msg.cid, ev: msg.ev }
     this.events.push(e)
     this.stats.events++

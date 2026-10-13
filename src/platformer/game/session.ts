@@ -4,7 +4,7 @@ import { DEFAULT_FEEL, P_SEGMENTS, feelToSub, type Feel, type FeelSub } from '@b
 import { cloneLevel, levelFromJson, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import { TILE as RACE_TILE } from '@brick-studio/platformer-core/engine/constants'
-import { RaceRun, carInputFrom, type RaceHud } from '../race/raceRun'
+import { RaceRun, carInputFrom, type RaceHud, type RemoteRacer, type RestartOptions } from '../race/raceRun'
 import { loadRaceFeel, type RaceFeel } from '../race/raceFeel'
 import { drawRaceBuildOverlay } from '../race/raceOverlay'
 import {
@@ -109,10 +109,14 @@ const EFFECT_SOUNDS: Partial<Record<Effect['k'], SoundName>> = {
   propeller: 'kill',
 }
 
+/** A room race that started longer ago than this is over; newcomers practise instead (10 minutes). */
+const MAX_RACE_TICKS = 10 * 60 * 60
+
 const REJECT_MESSAGES: Record<string, string> = {
   locked: 'The host has locked building',
   read_only: 'You can play this world, but not change it',
   host_only: 'Only the host can reset the world',
+  race_busy: 'A race is on. The host can restart it; anyone can start a new one a little later.',
   unchecked: 'Could not check your class access, so that change was not made. Try again in a moment.',
 }
 
@@ -172,6 +176,9 @@ export class GameSession {
   rivals = 2
   onRaceHud: ((hud: RaceHud) => void) | null = null
   private raceRot = 0
+  /** Rooms: the race (world start tick) this game last lined up for. */
+  private seenRaceAt = -1
+  private roomPlayers: PlayerInfo[] = []
 
   /** Where best times go; dropped once the course is changed, since it is not the same course. */
   private recordKey: string | null
@@ -282,6 +289,7 @@ export class GameSession {
         this.classroomRoom = w.classroom
         this.joinWorld(w.base, w.events)
         this.remotes.setPlayers(w.players, w.you)
+        this.roomPlayers = w.players
         this.syncCtx()
         if (!w.reconnect) {
           respawn(this.player, this.ctx, true)
@@ -311,6 +319,7 @@ export class GameSession {
       pose: (from: number, p: Pose) => this.remotes.addPose(from, p),
       players: (list: PlayerInfo[]) => {
         this.remotes.setPlayers(list, this.player.num)
+        this.roomPlayers = list
         const me = list.find((p) => p.num === this.player.num)
         if (me && me.canBuild !== this.roomCanBuild) {
           this.roomCanBuild = me.canBuild
@@ -402,16 +411,46 @@ export class GameSession {
     return true
   }
 
-  /** Line everyone up on the grid for a new race (solo races bring computer racers). */
+  /**
+   * Line up on the grid. Solo: a new race with computer racers. Rooms: the room's current race (joining it late if it
+   * is under way), or practice until someone starts one; each player has their own place on the grid.
+   */
   startRace(rivals = this.rivals) {
     this.rivals = rivals
-    this.raceRun = new RaceRun(cloneLevel(this.timeline.world.design), this.solo ? rivals : 0, () => this.raceFeel.feel)
+    const w = this.timeline.world
+    const run = new RaceRun(cloneLevel(w.design), this.solo ? rivals : 0, () => this.raceFeel.feel)
+    if (this.room) {
+      const nums = [...new Set([...this.roomPlayers.map((p) => p.num), this.player.num])].sort((a, b) => a - b)
+      const elapsed = w.tick - w.raceAt
+      const opts: RestartOptions = { slot: Math.max(0, nums.indexOf(this.player.num)), color: playerColor(this.player.num)[0] }
+      // A race that started long ago is over: practise until the next one.
+      if (w.raceAt < 0 || elapsed > MAX_RACE_TICKS) opts.practice = true
+      else opts.elapsed = elapsed
+      run.restart(0, opts)
+      this.seenRaceAt = w.raceAt
+    }
+    this.raceRun = run
     this.cameraReady = false
-    this.onRaceHud?.(this.raceRun.hud())
+    this.onRaceHud?.(run.hud(this.remoteRacers()))
+  }
+
+  /** Start a race: solo, at once; in a room, for everyone (the host any time, others once the last race has run). */
+  requestRace() {
+    if (this.solo) return this.startRace()
+    this.emit({ t: 'race' })
+  }
+
+  /** Other players in this room's current race. */
+  private remoteRacers(): RemoteRacer[] {
+    if (!this.room) return []
+    const raceAt = this.timeline.world.raceAt
+    if (raceAt < 0) return []
+    return this.remotes.cars(this.timeline.tick).filter((c) => c.race === raceAt).map((c) => ({ name: c.name, color: playerColor(c.num)[0], lap: c.lap, d: c.d, gates: c.gates, finish: c.finish }))
   }
 
   private stepRace(input: InputFrame) {
-    if (!this.raceRun) this.startRace()
+    // Someone in the room started a race: everyone lines up for it.
+    if (!this.raceRun || (this.room && this.timeline.world.raceAt !== this.seenRaceAt)) this.startRace()
     const run = this.raceRun!
     run.step(carInputFrom(input, this.raceFeel.steer, run.you.car, this.raceRot))
     // The camera keeps your car in the middle, looking a little ahead; with "map turns", your car points up.
@@ -428,14 +467,15 @@ export class GameSession {
       this.camera.y += (ty - this.camera.y) * 0.12
       this.raceRot += Math.atan2(Math.sin(want - this.raceRot), Math.cos(want - this.raceRot)) * 0.1
     }
-    if (run.tick % 4 === 0 || run.tick === 181) this.onRaceHud?.(run.hud())
+    if (run.tick % 4 === 0 || run.tick === 181) this.onRaceHud?.(run.hud(this.remoteRacers()))
   }
 
   /** Start the current run over from the start flag (solo: with a fresh level). */
   restartRun() {
     if (this.isRace) {
       if (this.mode !== 'play') this.setMode('play')
-      else this.startRace()
+      else if (this.solo || this.raceRun?.practice) this.startRace()
+      else this.onToast?.('You’re in a race! Finish it, or ask the host to restart.')
       return
     }
     this.syncCtx()
@@ -640,6 +680,22 @@ export class GameSession {
 
   private pose(): Pose {
     const t = this.timeline.tick
+    const run = this.raceRun
+    if (this.isRace && this.mode === 'play' && run) {
+      const c = run.you.car, lap = run.you.lap
+      const time = run.yourTime
+      return {
+        m: 0, x: Math.round(c.x), y: Math.round(c.y), f: 1, a: 'stand', s: 0, v: c.splash > 0 ? 0 : 1, q: 0, t,
+        ch: this.character,
+        hd: Math.round(((((c.a / (Math.PI * 2)) % 1) + 1) % 1) * 256) & 255,
+        lf: c.air > 0 ? Math.round(Math.sin(Math.PI * (1 - c.air / c.airMax)) * 255) : 0,
+        rl: Math.min(9, lap.lap),
+        rp: Math.max(0, Math.min(65535, lap.d)),
+        rg: lap.gates & 15,
+        ra: run.practice ? -1 : this.seenRaceAt,
+        ...(lap.done >= 0 && time >= 0 ? { rf: time } : {}),
+      }
+    }
     if (this.mode === 'build') {
       const h = this.editor.hover
       return { m: 1, x: h ? h[0] : -1, y: h ? h[1] : -1, f: 1, a: 'stand', s: 0, v: 1, q: 0, t, it: this.editor.erasing ? 'eraser' : this.editor.item.id, ch: this.character, af: this.frameCount & 255 }
@@ -894,6 +950,10 @@ export class GameSession {
     const tick = this.timeline.tick
     const cursors = this.room ? this.remotes.cursors(tick).map((c) => ({ x: c.x, y: c.y, name: c.name, color: playerColor(c.num)[0] })) : []
     const run = build ? null : this.raceRun
+    // Other players' cars show while you build too, so you can watch them race.
+    const others = this.room
+      ? this.remotes.cars(tick).filter((c) => c.visible).map((c) => ({ x: c.x, y: c.y, a: c.a, color: playerColor(c.num)[0], name: c.name, you: false, lift: c.lift, flame: 0 }))
+      : []
     return {
       world: w,
       camX: this.camera.x,
@@ -905,7 +965,7 @@ export class GameSession {
       localCheckpoint: 0,
       hud: null,
       race: {
-        cars: run ? run.cars() : [],
+        cars: [...others, ...(run ? run.cars() : [])],
         skids: run ? run.skids : [],
         tags: true,
         rot: build ? 0 : this.raceRot,

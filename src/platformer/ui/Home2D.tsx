@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { COURSES } from '@brick-studio/platformer-core/levels/courses'
 import { RACE_COURSES } from '@brick-studio/platformer-core/levels/raceCourses'
-import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import { raceThumb } from '../race/raceThumb'
 import { KitPicker } from './KitPicker'
 import { browserClassroomClient } from '../../classroom/client'
@@ -168,11 +167,9 @@ export function Home2D() {
                 <Button href={`/2d/build?draft=${encodeURIComponent(d.id)}`} variant="primary" size="sm" icon={<Hammer size={16} />}>
                   Open
                 </Button>
-                {kitOf(level) !== 'race' && (
-                  <Button size="sm" icon={<Users size={16} />} disabled={busy} onClick={() => friends(level)}>
-                    With friends
-                  </Button>
-                )}
+                <Button size="sm" icon={<Users size={16} />} disabled={busy} onClick={() => friends(level)}>
+                  With friends
+                </Button>
               </LevelCard>
             ))}
           </div>

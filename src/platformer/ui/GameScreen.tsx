@@ -704,7 +704,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           renameMaxLength={60}
           saveStatus={{ source: saveSource }}
           onOpenWorldSetup={(tab) => tab === 'character' ? setCharacterOpen(true) : setScene(true)}
-          onStartLiveWorld={inRoom || race ? undefined : startRoom}
+          onStartLiveWorld={inRoom ? undefined : startRoom}
           startLiveTitle="Open a room for friends with this world"
           livePolicy={livePolicy}
           mode={build ? 'build' : 'explore'}
@@ -765,7 +765,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             hud={raceHud}
             rivals={s.solo ? rivals : undefined}
             onRivals={s.solo ? (n) => { setRivals(n); s.startRace(n) } : undefined}
-            onRaceAgain={() => s.restartRun()}
+            onRaceAgain={() => s.requestRace()}
+            onStartRace={s.solo ? undefined : () => s.requestRace()}
             onBuild={source.kind !== 'course' && s.canBuild ? () => s.setMode('build') : undefined}
             onExit={onExit}
             exitLabel={exitLabel}

@@ -1,4 +1,4 @@
-import { Flag, Hammer, RotateCcw } from 'lucide-react'
+import { Flag, Hammer, Play, RotateCcw } from 'lucide-react'
 import { LOOP_REASON_TEXT } from '@brick-studio/platformer-core/engine/laps'
 import { Button } from '../../ui'
 import { MAX_RIVALS, formatRaceTime, type RaceHud } from './raceRun'
@@ -11,6 +11,8 @@ interface Props {
   rivals?: number
   onRivals?: (n: number) => void
   onRaceAgain: () => void
+  /** Rooms, while practising: start a race for everyone. */
+  onStartRace?: () => void
   /** Back to building the track, when this player may build. */
   onBuild?: () => void
   /** Leave (starter tracks have no Build). */
@@ -20,18 +22,18 @@ interface Props {
 }
 
 /** Everything drawn over a race: place, lap, time, standings, the start lights, why laps don't count, and the results. */
-export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onBuild, onExit, exitLabel, touch }: Props) {
+export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, onBuild, onExit, exitLabel, touch }: Props) {
   const releaseFocus = () => requestAnimationFrame(() => (document.activeElement as HTMLElement | null)?.blur?.())
   return (
     <>
       <div className="p2d-race-hud" aria-live="off">
-        <span className="p2d-race-place">{ordinal(hud.place)}</span>
-        <span>{hud.loopProblem ? 'Free drive' : hud.youDone ? 'Finished' : `Lap ${hud.lap}/${hud.laps}`}</span>
-        <span>⏱ {formatRaceTime(hud.time)}</span>
+        {hud.phase !== 'practice' && <span className="p2d-race-place">{ordinal(hud.place)}</span>}
+        <span>{hud.loopProblem ? 'Free drive' : hud.phase === 'practice' ? 'Practice' : hud.youDone ? 'Finished' : `Lap ${hud.lap}/${hud.laps}`}</span>
+        {hud.phase !== 'practice' && <span>⏱ {formatRaceTime(hud.time)}</span>}
         <span>Best lap {hud.bestLap ? formatRaceTime(hud.bestLap) : '—'}</span>
       </div>
 
-      {hud.racers > 1 && (
+      {hud.racers > 1 && hud.phase !== 'practice' && (
         <ol className="p2d-race-standings" aria-label="Standings">
           {hud.standings.map((s, i) => (
             <li key={s.name} className={s.you ? 'me' : ''}>
@@ -53,6 +55,15 @@ export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onBuild, onExi
       )}
 
       {hud.loopProblem && hud.phase !== 'countdown' && <p className="p2d-race-note">{LOOP_REASON_TEXT[hud.loopProblem]}. Free drive for now.</p>}
+
+      {hud.phase === 'practice' && !hud.loopProblem && onStartRace && (
+        <div className="p2d-race-practice" onClickCapture={releaseFocus}>
+          <span>Practice laps. Start a race when everyone is ready: it lines everyone up on the grid.</span>
+          <Button variant="primary" size="sm" icon={<Play size={16} />} onClick={onStartRace}>
+            Start race
+          </Button>
+        </div>
+      )}
 
       <div className="p2d-race-strip" onClickCapture={releaseFocus}>
         <span className="p2d-race-keys">

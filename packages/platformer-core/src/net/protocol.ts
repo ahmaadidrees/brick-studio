@@ -95,6 +95,18 @@ export interface Pose {
   lc?: number
   /** Pipe mouth in tile coordinates, phase 0 entering / 1 emerging. */
   pi?: { x: number; y: number; phase: 0 | 1; progress: number }
+  /**
+   * Race tracks, while playing: x and y are the car's centre in pixels; heading (0..255 is a full turn clockwise from
+   * right), how high it is off a jump (0..255), laps done, distance round the lap, hidden gates passed this lap, the
+   * race it is in (the world's start tick, -1 practice) and, once finished, its race time in ticks.
+   */
+  hd?: number
+  lf?: number
+  rl?: number
+  rp?: number
+  rg?: number
+  ra?: number
+  rf?: number
 }
 
 /** What a joining player needs: a starting world and every event since. */
@@ -135,7 +147,7 @@ export type ServerMsg =
       classroom: boolean
     }
   | { type: 'ev'; e: StampedEvent }
-  | { type: 'reject'; cid: string; reason: 'invalid' | 'locked' | 'read_only' | 'host_only' | 'unchecked' }
+  | { type: 'reject'; cid: string; reason: 'invalid' | 'locked' | 'read_only' | 'host_only' | 'race_busy' | 'unchecked' }
   | { type: 'poses'; list: [number, Pose][] }
   | { type: 'pong'; c: number; s: number }
   | { type: 'players'; players: PlayerInfo[] }
@@ -236,6 +248,12 @@ export function isValidPose(p: unknown): p is Pose {
     (o.ga === undefined || o.ga === 0 || o.ga === 1) &&
     (o.gp === undefined || (isInt(o.gp) && o.gp >= 0 && o.gp <= 255)) &&
     [o.gb, o.gw, o.lc].every((v) => v === undefined || (isInt(v) && v >= 0 && v <= 255)) &&
-    (o.pi === undefined || (o.m === 0 && validPipePose(o.pi)))
+    (o.pi === undefined || (o.m === 0 && validPipePose(o.pi))) &&
+    [o.hd, o.lf].every((v) => v === undefined || (isInt(v) && v >= 0 && v <= 255)) &&
+    (o.rl === undefined || (isInt(o.rl) && o.rl >= 0 && o.rl <= 9)) &&
+    (o.rp === undefined || (isInt(o.rp) && o.rp >= 0 && o.rp <= 65535)) &&
+    (o.rg === undefined || (isInt(o.rg) && o.rg >= 0 && o.rg <= 15)) &&
+    (o.ra === undefined || (isInt(o.ra) && o.ra >= -1 && o.ra <= 2 ** 31)) &&
+    (o.rf === undefined || (isInt(o.rf) && o.rf >= 0 && o.rf <= 2 ** 31))
   )
 }

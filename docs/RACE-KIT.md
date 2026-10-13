@@ -44,7 +44,14 @@ bricks into Code Lab bricks comes later, the way the platformer did.
    rules, used for every race). Kit picker on "New world" (home and the builder menu):
    `/2d/build?new=1&kit=race-starter|race-empty`. "Laps work" chip, laps in the strip, race Feel panel.
    Not yet: "Build together"/"With friends" on race tracks (milestone 3), a zoomed-out build view, items.
-3. **Multiplayer races:** heading in poses (Worker forwards it), a shared countdown, standings and results.
+3. **Multiplayer races** (done): each game still drives its own car; poses carry heading, jump height, laps,
+   distance round the lap, gates, which race and the finish time (`hd lf rl rp rg ra rf`, forwarded by the room).
+   A shared `{ t: 'race' }` event sets `world.raceAt`, so everyone's lights start at the same world tick
+   (snapshots carry it as `ra`; platformer worlds and fingerprints are unchanged). Before a race the room practises;
+   newcomers join a race under way (or practise if it started over 10 minutes ago). Each player gets their own grid
+   slot and their room colour. The host can start or restart any time; anyone else once 75 seconds have passed since
+   the last start (`race_busy`). Standings mix your laps with everyone's reported ones. Rooms and "With friends"
+   are on for race tracks again. Checked end to end with a local Worker (`wrangler dev`) and two browser tabs.
 4. **Items, coins and Walkers:** ? blocks, Turbo, Oil slick, Bouncy ball, Spark, Shield; hits on other players go
    through the room as events.
 5. **Two players on one keyboard.**

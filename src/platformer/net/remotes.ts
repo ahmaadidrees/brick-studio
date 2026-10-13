@@ -31,6 +31,23 @@ interface Remote {
   characterTick: number
 }
 
+export interface RemoteCar {
+  num: number
+  name: string
+  x: number
+  y: number
+  /** Heading in radians, 0 pointing right. */
+  a: number
+  lift: number
+  visible: boolean
+  lap: number
+  d: number
+  gates: number
+  /** The race (world start tick) this car is in, -1 practising. */
+  race: number
+  finish: number
+}
+
 export interface RemoteCursor {
   num: number
   name: string
@@ -110,8 +127,10 @@ export class Remotes {
         // A teleport (respawn) should not glide across the level.
         if (Math.abs(b.x - a.x) > 96 || Math.abs(b.y - a.y) > 96) return b
         const gp = gaitPhaseBetween(a, b, f)
-        const blend = (key: 'gb' | 'gw' | 'lc') => a[key] === undefined || b[key] === undefined ? {} : { [key]: a[key]! + (b[key]! - a[key]!) * f }
-        return { ...a, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, ...(gp === undefined ? {} : { gp }), ...blend('gb'), ...blend('gw'), ...blend('lc') }
+        const blend = (key: 'gb' | 'gw' | 'lc' | 'lf') => a[key] === undefined || b[key] === undefined ? {} : { [key]: a[key]! + (b[key]! - a[key]!) * f }
+        // A car's heading turns the short way round (0..255 is a full turn).
+        const hd = a.hd === undefined || b.hd === undefined ? {} : { hd: (a.hd + ((((b.hd - a.hd) % 256) + 384) % 256 - 128) * f + 256) % 256 }
+        return { ...a, x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, ...(gp === undefined ? {} : { gp }), ...blend('gb'), ...blend('gw'), ...blend('lc'), ...blend('lf'), ...hd }
       }
     }
     return last
@@ -156,6 +175,30 @@ export class Remotes {
       const h = p.s > 0 && p.a !== 'crouch' ? sub(26) : sub(14)
       out.push({ num: r.num, x: Math.round(sub(p.x) - sub(6)), y: sub(p.y) - h, w: sub(12), h })
     }
+  }
+
+  /** Other players' race cars (race tracks, while they play), drawn slightly in the past like everyone else. */
+  cars(tick: number): RemoteCar[] {
+    const out: RemoteCar[] = []
+    for (const r of this.map.values()) {
+      const p = this.sample(r, tick)
+      if (!p || p.m !== 0 || p.hd === undefined) continue
+      out.push({
+        num: r.num,
+        name: r.name,
+        x: p.x,
+        y: p.y,
+        a: (p.hd / 256) * Math.PI * 2,
+        lift: (p.lf ?? 0) / 255,
+        visible: p.v === 1,
+        lap: p.rl ?? 0,
+        d: p.rp ?? 0,
+        gates: p.rg ?? 0,
+        race: p.ra ?? -1,
+        finish: p.rf ?? -1,
+      })
+    }
+    return out
   }
 
   cursors(tick: number): RemoteCursor[] {
