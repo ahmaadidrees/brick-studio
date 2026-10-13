@@ -46,7 +46,9 @@ function serverWorld(document: ClassroomWorld['document'], revision = 1): Classr
 function stubClassroomServer(create: (body: { title: string; document: ClassroomWorld['document'] }) => Promise<ClassroomWorld> | ClassroomWorld) {
   const calls: { path: string; method: string; body: unknown }[] = []
   vi.spyOn(browserClassroomClient, 'request').mockImplementation(async (path: string, method = 'GET', body?: unknown) => {
-    // The account chip refreshes `/me` and lists `/worlds` (invite badge) on mount; only world writes matter here.
+    // The account chip refreshes `/me` and lists `/worlds`, and the invites button lists `/invites`, on mount; only
+    // world writes matter here.
+    if (path === '/invites' && method === 'GET') return { invites: [] } as never
     if (path !== '/me' && !(path === '/worlds' && method === 'GET')) calls.push({ path, method, body })
     if (path === '/worlds' && method === 'POST') return { world: await create(body as { title: string; document: ClassroomWorld['document'] }) } as never
     if (path.startsWith('/worlds/') && method === 'PUT') { const { document, expectedRevision } = body as { document: ClassroomWorld['document']; expectedRevision: number }; return { world: serverWorld(document, expectedRevision + 1) } as never }

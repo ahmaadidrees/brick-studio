@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
+import { BRICK_STUDIO_MAX_BRICKS, createBrickStudioDocument, serializeBrickStudioDocument } from './brickDocument'
 import { registerCustomParts } from './parts'
 import { MAX_HISTORY_ENTRIES, draftIsValid, selectionDrafts, selectionDraftIsValid, useBrickStore, validateBrickGroup } from './store'
 import type { BrickDraft, BrickInstance } from './types'
@@ -227,17 +227,17 @@ describe('Explore recovery state', () => {
 })
 
 describe('budget and continuity gates', () => {
-  it('enforces the shared 1,000-brick limit without recording a rejected placement', () => {
+  it('enforces the shared brick limit without recording a rejected placement', () => {
     useBrickStore.getState().setBudgetProfile('phone')
-    useBrickStore.setState({ bricks: largeBuild(1_000) })
+    useBrickStore.setState({ bricks: largeBuild(BRICK_STUDIO_MAX_BRICKS) })
     const historyBefore = useBrickStore.getState().undoStack
     useBrickStore.getState().choosePart('brick_1x1')
     useBrickStore.getState().setDraftPosition(0, 3, 0)
 
     expect(useBrickStore.getState().placeDraft()).toBe(false)
-    expect(useBrickStore.getState().bricks).toHaveLength(1_000)
+    expect(useBrickStore.getState().bricks).toHaveLength(BRICK_STUDIO_MAX_BRICKS)
     expect(useBrickStore.getState().undoStack).toEqual(historyBefore)
-    expect(useBrickStore.getState().toast).toContain('1000-brick')
+    expect(useBrickStore.getState().toast).toContain(`${BRICK_STUDIO_MAX_BRICKS}-brick`)
   })
 
   it('keeps world-limit undo and redo intact', () => {
@@ -378,7 +378,7 @@ describe('placement feedback signals', () => {
 
   it('leaves blockedNonce untouched when only the budget rejects the placement', () => {
     useBrickStore.getState().setBudgetProfile('phone')
-    useBrickStore.setState({ bricks: largeBuild(1_000) })
+    useBrickStore.setState({ bricks: largeBuild(BRICK_STUDIO_MAX_BRICKS) })
     useBrickStore.getState().choosePart('brick_1x1')
     useBrickStore.getState().setDraftPosition(0, 3, 0)
     const feedbackBefore = useBrickStore.getState().placeFeedback
