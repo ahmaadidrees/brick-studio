@@ -1807,3 +1807,75 @@
   font-size: 14px;
   font-weight: 800;
 }
+
+/* Race tracks on touch screens: a steering pad on the left; Gas, Brake and the item on the right. */
+.p2d-race-steer {
+  width: 190px;
+  height: 104px;
+}
+
+.p2d-race-steer .p2d-arrow-l,
+.p2d-race-steer .p2d-arrow-r {
+  top: 27px;
+}
+
+.p2d-race-pedals {
+  align-items: flex-end;
+}
+
+.p2d-race-pedals .p2d-race-gas {
+  width: 96px;
+  height: 96px;
+  background: rgba(46, 157, 87, 0.8);
+}
+
+.p2d-race-pedals .p2d-race-brake {
+  width: 72px;
+  height: 72px;
+  background: rgba(201, 70, 58, 0.75);
+}
+
+.p2d-race-pedals .p2d-race-use {
+  position: absolute;
+  right: 4px;
+  bottom: 112px;
+  width: auto;
+  min-width: 84px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 23px;
+  background: rgba(196, 140, 10, 0.85);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .p2d-race-steer {
+    width: 150px;
+  }
+}
+
+/* The keyboard keys strip has nothing to say on touch; the computer racers choice moves to the top. */
+.p2d-is-touch .p2d-race-keys {
+  display: none;
+}
+
+.p2d-is-touch .p2d-race-strip {
+  bottom: auto;
+  top: calc(var(--space-3) + 52px);
+}
+
+/* Race tracks while building: zoom out to see more of the track. Under the "Laps work" chip. */
+.p2d-race-zoom {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--space-3) + 52px);
+  right: var(--space-3);
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}

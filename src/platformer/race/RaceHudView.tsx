@@ -81,30 +81,32 @@ export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, o
         </div>
       )}
 
-      <div className="p2d-race-strip" onClickCapture={releaseFocus}>
-        <span className="p2d-race-keys">
-          {touch ? (
-            'Racing needs a keyboard for now'
-          ) : (
-            <>
-              <kbd>←</kbd>
-              <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake{hud.itemsOn && <> · <kbd>Space</kbd> item</>} · <kbd>R</kbd> restart
-            </>
+      {(!touch || (onRivals && rivals !== undefined)) && (
+        <div className="p2d-race-strip" onClickCapture={releaseFocus}>
+          <span className="p2d-race-keys">
+            {touch ? (
+              'Steer with the left pad · Gas and Brake on the right'
+            ) : (
+              <>
+                <kbd>←</kbd>
+                <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake{hud.itemsOn && <> · <kbd>Space</kbd> item</>} · <kbd>R</kbd> restart
+              </>
+            )}
+          </span>
+          {onRivals && rivals !== undefined && (
+            <label className="p2d-race-rivals">
+              Computer racers
+              <select value={rivals} onChange={(e) => onRivals(Number(e.target.value))}>
+                {Array.from({ length: MAX_RIVALS + 1 }, (_, n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
-        </span>
-        {onRivals && rivals !== undefined && (
-          <label className="p2d-race-rivals">
-            Computer racers
-            <select value={rivals} onChange={(e) => onRivals(Number(e.target.value))}>
-              {Array.from({ length: MAX_RIVALS + 1 }, (_, n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </div>
+        </div>
+      )}
 
       {hud.phase === 'results' && (
         <div className="p2d-race-results" role="dialog" aria-modal="true" aria-labelledby="p2d-race-results-title">

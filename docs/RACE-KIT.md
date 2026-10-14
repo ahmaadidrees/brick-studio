@@ -68,6 +68,13 @@ bricks into Code Lab bricks comes later, the way the platformer did.
 5. ~~Two players on one keyboard~~: dropped by the owner (2026-10-13). Multiplayer is rooms only, the same as the
    platformer (milestone 3).
 
+6. **Parity with the platformer** (done): touch driving (`race/RaceTouchControls.tsx`: a steering pad, Gas, Brake
+   and the item button, pressing the same actions as the keys, so a game controller's d-pad and A button work too);
+   zooming the build view out to the whole track (`race/RaceZoom.tsx`; −/+/0 keys, trackpad pinch, two-finger
+   pinch; the renderer shows `zoom` times more world in the same canvas, race tracks only, building only); three
+   starter tracks (Snowy Oval for beginners, Brick Speedway, Canyon Twist for experts), each tested for laps, a clean
+   grid and a computer driver finishing three laps; "With friends" on race starter cards.
+
 ## Not yet
 
-Code Lab race bricks, scenery beyond trees/flowers/grandstand, more starter tracks, touch controls for driving.
+Code Lab race bricks, scenery beyond trees/flowers/grandstand, choosing which starter track "New world" copies.

@@ -109,6 +109,9 @@ const EFFECT_SOUNDS: Partial<Record<Effect['k'], SoundName>> = {
   propeller: 'kill',
 }
 
+/** Race tracks: the farthest the build view zooms out. */
+const MAX_RACE_ZOOM = 4
+
 /** A room race that started longer ago than this is over; newcomers practise instead (10 minutes). */
 const MAX_RACE_TICKS = 10 * 60 * 60
 
@@ -170,6 +173,9 @@ export class GameSession {
   /** A class level's room: saved to the account by the room itself. */
   classroomRoom = false
   onRoom: (() => void) | null = null
+  /** Race tracks: how far out the build view was last zoomed, restored when building again. */
+  private raceZoom = 1
+  onZoom: ((z: number) => void) | null = null
   /** Race tracks: the race being driven while playing, how the car drives, and how many computer racers join a solo race. */
   raceRun: RaceRun | null = null
   raceFeel: RaceFeel = loadRaceFeel()
@@ -405,6 +411,8 @@ export class GameSession {
       this.startRace()
     }
     this.mode = mode
+    // Driving is always close up; building comes back to where it was zoomed.
+    this.applyZoom(mode === 'build' ? this.raceZoom : 1)
     this.cameraReady = false
     this.sound.play('toggle')
     this.onModeChange?.()
@@ -594,7 +602,47 @@ export class GameSession {
 
   panCamera(dx: number, dy: number) {
     const w = this.timeline.world
+    this.camera.centerY = this.isRace
     this.camera.pan(dx, dy, this.renderer.width, this.renderer.height, w.width * TILE, w.height * TILE)
+  }
+
+  /** Race tracks while building: how far out the view is (1 = normal), and how far out shows the whole track. */
+  get zoom(): number {
+    return this.renderer.zoom
+  }
+
+  get maxZoom(): number {
+    if (!this.isRace) return 1
+    const w = this.timeline.world
+    const [bw, bh] = this.renderer.baseView
+    const z = this.renderer.zoom
+    // The drawer and the strip cover part of the view; the track should fit in what is left, with a little room.
+    const freeW = bw - this.camera.leftPad / z, freeH = bh - this.camera.bottomPad / z
+    const fit = Math.max((w.width + 2) * TILE / Math.max(1, freeW), (w.height + 2) * TILE / Math.max(1, freeH))
+    return Math.max(1, Math.min(MAX_RACE_ZOOM, fit))
+  }
+
+  /** Zoom a race track's build view, keeping the middle of the view where it is. */
+  setZoom(z: number, about?: [number, number]) {
+    const next = this.isRace && this.mode === 'build' ? Math.max(1, Math.min(this.maxZoom, z)) : 1
+    this.applyZoom(next, about)
+    if (this.isRace && this.mode === 'build') this.raceZoom = next
+  }
+
+  private applyZoom(z: number, about?: [number, number]) {
+    const r = this.renderer
+    const old = r.zoom
+    if (Math.abs(z - old) < 1e-3) return
+    // The point under `about` (world pixels; default the middle of the view) stays put.
+    const [ax, ay] = about ?? [this.camera.x + r.width / 2, this.camera.y + r.height / 2]
+    const fx = (ax - this.camera.x) / r.width, fy = (ay - this.camera.y) / r.height
+    this.camera.leftPad *= z / old
+    this.camera.bottomPad *= z / old
+    r.setZoom(z)
+    this.camera.x = ax - fx * r.width
+    this.camera.y = ay - fy * r.height
+    if (this.mode === 'build') this.panCamera(0, 0)
+    this.onZoom?.(z)
   }
 
   // -------------------------------------------------------------------------------------------
@@ -602,6 +650,8 @@ export class GameSession {
   private frame(now: number) {
     // The menu button works even while paused.
     if (this.input.consume('menu')) this.onMenu?.()
+    // Only a race track's build view zooms (a level loaded into a room can change kit under us).
+    if (this.renderer.zoom !== 1 && !(this.isRace && this.mode === 'build')) this.applyZoom(1)
     if (this.lastNow < 0) {
       this.lastNow = now
       this.fpsSince = now

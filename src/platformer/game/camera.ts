@@ -58,11 +58,19 @@ export class Camera {
     this.snapped = false
   }
 
+  /** Race tracks: centre the level when it fits, instead of resting it on the ground like a platformer. */
+  centerY = false
+
   private clamp(viewW: number, viewH: number, levelW: number, levelH: number, margin = 0, below = 0) {
     // While building, the drawer covers the left of the view, so the level may slide out from under it.
     const left = margin ? this.leftPad : 0
     if (levelW <= viewW - left) this.x = (levelW - viewW - left) / 2
     else this.x = Math.max(-margin - left, Math.min(levelW - viewW + margin, this.x))
+    // A race track that fits on screen sits in the middle of the free space.
+    if (this.centerY && levelH <= viewH - below) {
+      this.y = (levelH - viewH + below) / 2
+      return
+    }
     const minY = -3 * TILE - margin
     const maxY = levelH - viewH + Math.max(margin, below)
     if (maxY < minY) this.y = maxY

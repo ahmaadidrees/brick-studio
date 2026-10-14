@@ -131,6 +131,9 @@ export function Home2D() {
                 <Button href={`/2d/play/${c.id}`} variant="primary" size="sm" icon={<Play size={16} />}>
                   Race
                 </Button>
+                <Button size="sm" icon={<Users size={16} />} disabled={busy} onClick={() => friends(c.level())}>
+                  With friends
+                </Button>
               </LevelCard>
             ))}
           </div>

@@ -32,6 +32,9 @@ import { KitPicker } from './KitPicker'
 import { RaceHudView } from '../race/RaceHudView'
 import { loadRaceFeel, saveRaceFeel, type RaceFeel } from '../race/raceFeel'
 import type { RaceHud } from '../race/raceRun'
+import { RaceTouchControls } from '../race/RaceTouchControls'
+import { RaceZoom, ZOOM_STEP } from '../race/RaceZoom'
+import { RACE_ITEMS } from '@brick-studio/platformer-core/engine/raceItems'
 
 export type LevelSource =
   | { kind: 'course'; id: string }
@@ -101,6 +104,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const [kitPicker, setKitPicker] = useState(false)
   // Race tracks: what the race shows over the game, and how the car drives.
   const [raceHud, setRaceHud] = useState<RaceHud | null>(null)
+  const [zoom, setZoom] = useState(1)
   const [raceFeel, setRaceFeel] = useState<RaceFeel>(loadRaceFeel)
   const [rivals, setRivals] = useState(2)
   const [menu, setMenu] = useState(false)
@@ -165,6 +169,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     s.onModeChange = () => setMode(s.mode)
     s.onToast = say
     s.onRaceHud = setRaceHud
+    s.onZoom = setZoom
     // Let the goal fanfare play, then offer what to do next.
     s.onClear = (time, best, newBest) =>
       window.setTimeout(() => {
@@ -369,6 +374,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       if (mod) return
       if (e.code === 'Space') spaceHeld.current = true
       if (e.code === 'KeyE') s.editor.setErasing(!s.editor.erasing)
+      // Race tracks: - and = zoom out and in, 0 shows the whole track (or comes back close).
+      if (s.isRace && (e.code === 'Minus' || e.code === 'NumpadSubtract')) s.setZoom(s.zoom * ZOOM_STEP)
+      if (s.isRace && (e.code === 'Equal' || e.code === 'NumpadAdd')) s.setZoom(s.zoom / ZOOM_STEP)
+      if (s.isRace && (e.code === 'Digit0' || e.code === 'Numpad0')) s.setZoom(s.zoom >= s.maxZoom - 0.01 ? 1 : s.maxZoom)
       if (e.code === 'KeyR') s.editor.flip()
       if (e.code === 'KeyP' && s.editor.hover) {
         s.placeResume(s.editor.hover[0], s.editor.hover[1])
@@ -426,6 +435,15 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     const s = sessionRef.current
     if (!s || s.mode !== 'build') return
     const prev = pointers.current.get(e.pointerId)
+    if (panning.current && prev && pointers.current.size === 2 && s.isRace) {
+      // Two fingers on a race track: pinch zooms (about the middle of the fingers) as well as panning.
+      const other = [...pointers.current.entries()].find(([id]) => id !== e.pointerId)?.[1]
+      if (other) {
+        const before = Math.hypot(prev.x - other.x, prev.y - other.y)
+        const after = Math.hypot(e.clientX - other.x, e.clientY - other.y)
+        if (before > 20 && after > 20) s.setZoom(s.zoom * (before / after), s.renderer.toWorld((e.clientX + other.x) / 2, (e.clientY + other.y) / 2, s.camera.x, s.camera.y))
+      }
+    }
     if (panning.current && prev) {
       const r = s.renderer.canvas.getBoundingClientRect()
       const k = s.renderer.width / r.width / Math.max(1, pointers.current.size)
@@ -446,8 +464,26 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const onWheel = (e: React.WheelEvent) => {
     const s = sessionRef.current
     if (!s || s.mode !== 'build') return
+    // A trackpad pinch (or Ctrl and the wheel) zooms a race track about the pointer.
+    if (s.isRace && (e.ctrlKey || e.metaKey)) {
+      s.setZoom(s.zoom * Math.exp(e.deltaY * 0.01), s.renderer.toWorld(e.clientX, e.clientY, s.camera.x, s.camera.y))
+      return
+    }
     s.panCamera(e.deltaX * 0.5 + (e.shiftKey ? e.deltaY * 0.5 : 0), e.shiftKey ? 0 : e.deltaY * 0.5)
   }
+
+  // Browsers zoom the whole page on a trackpad pinch (Ctrl and the wheel) unless the game takes it, which React's
+  // passive wheel handler cannot do; on a race track's build view the pinch zooms the track instead.
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+    const stop = (e: WheelEvent) => {
+      const s = sessionRef.current
+      if (s?.isRace && s.mode === 'build' && (e.ctrlKey || e.metaKey)) e.preventDefault()
+    }
+    host.addEventListener('wheel', stop, { passive: false })
+    return () => host.removeEventListener('wheel', stop)
+  }, [])
 
   // Keep the level clear of whatever covers the edges of the game: the drawer and the strip while building,
   // the touch buttons while playing.
@@ -774,6 +810,10 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           />
         )}
         {!build && !race && touch && s && !covered && <TouchControls input={s.input} canEnterPipe={canEnterPipe} onEnterPipe={() => s.enterPipe()} />}
+        {!build && race && touch && s && !covered && raceHud?.phase !== 'results' && (
+          <RaceTouchControls input={s.input} items={raceHud?.itemsOn ?? true} itemName={raceHud?.item ? RACE_ITEMS[raceHud.item].name : undefined} />
+        )}
+        {build && race && s && <RaceZoom zoom={zoom} max={s.maxZoom} onZoom={(z) => s.setZoom(z)} />}
 
         {!build && !touch && s && !covered && canEnterPipe && <button type="button" className="p2d-enter-pipe" onClick={(event) => { s.enterPipe(); if (event.detail > 0) event.currentTarget.blur() }}>Enter pipe · ↓</button>}
 

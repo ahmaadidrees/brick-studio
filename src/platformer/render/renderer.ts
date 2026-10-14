@@ -100,6 +100,11 @@ export class Renderer {
   height = 240
   /** Screen pixels per world pixel. */
   scale = 1
+  /** Race tracks while building: the view shows this many times more of the track (1 = normal). */
+  zoom = 1
+  /** The view in world pixels at zoom 1; the canvas is always this size. */
+  private baseW = 400
+  private baseH = 240
   private skin: Skin
   private pixel = new PixelSkin()
   private cartoon: CartoonSkin | null = null
@@ -126,12 +131,26 @@ export class Renderer {
 
   /** Set the view directly: `width` × `height` world pixels at `scale` screen pixels each (thumbnails). */
   configure(width: number, height: number, scale: number, dpr = 1) {
-    this.width = width
-    this.height = height
+    this.baseW = width
+    this.baseH = height
+    this.width = Math.round(width * this.zoom)
+    this.height = Math.round(height * this.zoom)
     this.scale = scale
     this.cssW = (width * scale) / dpr
     this.cssH = (height * scale) / dpr
     this.applySkin(this.skin.style)
+  }
+
+  /** Show `z` times more of a race track (the canvas keeps its size). */
+  setZoom(z: number) {
+    this.zoom = z
+    this.width = Math.round(this.baseW * z)
+    this.height = Math.round(this.baseH * z)
+  }
+
+  /** The view's size in world pixels at zoom 1. */
+  get baseView(): [number, number] {
+    return [this.baseW, this.baseH]
   }
 
   /** The skin for a style, at the current scale; sizes the canvas for it. */
@@ -141,8 +160,8 @@ export class Renderer {
       this.skin = this.cartoon
     } else this.skin = this.pixel
     const k = this.skin.scale
-    this.canvas.width = this.width * k
-    this.canvas.height = this.height * k
+    this.canvas.width = this.baseW * k
+    this.canvas.height = this.baseH * k
     this.canvas.style.width = `${this.cssW}px`
     this.canvas.style.height = `${this.cssH}px`
     this.canvas.style.imageRendering = style === 'cartoon' ? 'auto' : ''
@@ -173,7 +192,9 @@ export class Renderer {
     const camX = skin.snap(v.camX)
     const camY = skin.snap(v.camY)
     if (kitOf(w.design) === 'race') {
-      this.raceView.draw(ctx, w, k, camX, camY, this.width, this.height, v.frame, v.race ?? { cars: [], skids: [], tags: false })
+      const kz = (k * this.baseW) / this.width
+      ctx.setTransform(kz, 0, 0, kz, 0, 0)
+      this.raceView.draw(ctx, w, kz, camX, camY, this.width, this.height, v.frame, v.race ?? { cars: [], skids: [], tags: false })
       return
     }
     skin.background(ctx, v, camX, camY, this.width, this.height)
