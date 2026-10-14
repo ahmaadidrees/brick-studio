@@ -65,7 +65,8 @@ bricks into Code Lab bricks comes later, the way the platformer did.
    Limits: 8 live thrown things per player, 48 per track; race tracks hold only a grid and Walkers. Engine:
    `engine/raceItems.ts` plus the race section of `engine/world.ts`. Brick Speedway gained the mock's ? blocks,
    coins and two Walkers. Computer racers pick up and use items too.
-5. **Two players on one keyboard.**
+5. ~~Two players on one keyboard~~: dropped by the owner (2026-10-13). Multiplayer is rooms only, the same as the
+   platformer (milestone 3).
 
 ## Not yet
 
