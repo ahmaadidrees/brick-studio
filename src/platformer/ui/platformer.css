@@ -1429,6 +1429,39 @@
   white-space: nowrap;
 }
 
+.p2d-race-hud .p2d-race-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.p2d-race-item b {
+  width: 26px;
+  height: 26px;
+  margin: -4px 0 -4px -5px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--soft, rgba(0, 0, 0, 0.04));
+  border: 2px dashed var(--border);
+  font-size: 15px;
+}
+
+.p2d-race-item.has b {
+  border: 2px solid #f7c33b;
+  background: #fff8dc;
+}
+
+.p2d-race-item small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.p2d-race-item kbd {
+  font-size: 11px;
+}
+
 .p2d-race-hud .p2d-race-place {
   padding: 2px 12px;
   font: 600 20px var(--font-display);

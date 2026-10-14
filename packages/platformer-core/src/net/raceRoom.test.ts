@@ -84,9 +84,9 @@ describe('race poses', () => {
     const r = raceRoom()
     const a = r.join('A')
     r.join('B')
-    r.send(a, { type: 'pose', p: { ...base, hd: 64, lf: 0, rl: 1, rp: 90, rg: 2, ra: 120, rf: 3000, sneaky: 1 } })
+    r.send(a, { type: 'pose', p: { ...base, hd: 64, lf: 0, rl: 1, rp: 90, rg: 2, ra: 120, rf: 3000, sh: 1, sneaky: 1 } })
     r.core.flushPoses()
-    expect(a.last('poses')?.list).toEqual([[1, { ...base, hd: 64, lf: 0, rl: 1, rp: 90, rg: 2, ra: 120, rf: 3000 }]])
+    expect(a.last('poses')?.list).toEqual([[1, { ...base, hd: 64, lf: 0, rl: 1, rp: 90, rg: 2, ra: 120, rf: 3000, sh: 1 }]])
   })
 })
 
@@ -106,6 +106,17 @@ describe('starting races in a room', () => {
     r.advance(RACE_RESTART_TICKS * TICK_MS + 1000)
     r.send(kid, { type: 'ev', cid: 'k:3', tick: r.core.serverTick(), ev: { t: 'race' } })
     expect(host.last('ev')?.e.cid).toBe('k:3')
+  })
+
+  it('thrown items and hits go round the room like any other event', () => {
+    const r = raceRoom()
+    const a = r.join('A')
+    const b = r.join('B')
+    r.advance(10 * TICK_MS)
+    r.send(a, { type: 'ev', cid: 'a:1', tick: r.core.serverTick(), ev: { t: 'item', k: 0, x: 300, y: 600, vx: 700, vy: 0, o: 0 } })
+    expect(b.last('ev')?.e.cid).toBe('a:1')
+    r.send(a, { type: 'ev', cid: 'a:2', tick: r.core.serverTick(), ev: { t: 'item', k: 0, x: 300, y: 600, vx: 99999, vy: 0, o: 0 } })
+    expect(a.last('reject')).toMatchObject({ cid: 'a:2', reason: 'invalid' })
   })
 
   it('platformer events are refused on a race track', () => {

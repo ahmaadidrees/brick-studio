@@ -111,4 +111,27 @@ describe('Editor on a race track', () => {
     expect(h.tile(7, 6)).toBe(RT.GRASS)
     expect(h.tile(6, 6)).toBe(RT.ROAD)
   })
+
+  it('puts Walkers on top of the road, never on a wall, and R turns which way they walk', () => {
+    const h = setup()
+    h.click(8, 8)
+    h.editor.select(item('race-walker'))
+    h.click(8, 8)
+    h.editor.flip()
+    h.click(8, 4)
+    h.click(0, 4)
+    const walkers = h.world.design.objects.filter((o) => o.kind === 'walker')
+    expect(walkers.map((o) => [o.x, o.y, o.alt])).toEqual([[8, 8, 0], [8, 4, 1]])
+    expect(h.tile(8, 8)).toBe(RT.ROAD)
+    h.click(8, 8, true)
+    expect(h.world.design.objects.filter((o) => o.kind === 'walker')).toHaveLength(1)
+    expect(h.tile(8, 8)).toBe(RT.ROAD)
+  })
+
+  it('Items on and off is a track setting', () => {
+    const h = setup()
+    h.editor.setRace({ items: false })
+    h.tick()
+    expect(h.world.design.race?.items).toBe(false)
+  })
 })

@@ -52,8 +52,19 @@ bricks into Code Lab bricks comes later, the way the platformer did.
    slot and their room colour. The host can start or restart any time; anyone else once 75 seconds have passed since
    the last start (`race_busy`). Standings mix your laps with everyone's reported ones. Rooms and "With friends"
    are on for race tracks again. Checked end to end with a local Worker (`wrangler dev`) and two browser tabs.
-4. **Items, coins and Walkers:** ? blocks, Turbo, Oil slick, Bouncy ball, Spark, Shield; hits on other players go
-   through the room as events.
+4. **Items, coins and Walkers** (done): new bricks ? block, Coin (Items) and Walker (Critters, R turns it across or
+   along the road), and an "Items on/off" track setting. ? blocks and coins are each game's own: driving through one
+   takes it for you, and it comes back for you (3 s, 6 s). Items roll by weight: Turbo 30, Oil slick 24, Bouncy ball
+   20, Spark 14, Shield 12; Space uses yours. Turbo and Shield act on your own car (a shielded car spins whoever it
+   touches, rooms included via pose `sh`). Coins add 1.2% top speed each, up to 10; spinning out drops 3, water 2.
+   Balls, sparks and oil slicks are shared world state (`{ t: 'item', k, x, y, vx, vy, o }`, entities
+   `RACE_BALL/SPARK/SLICK`, whole sub-pixel numbers), so everyone sees the same ones; balls bounce, sparks burst on
+   walls, slicks dry up after 25 s. The car that runs into one says so with `{ t: 'hit', id }`, which uses it up for
+   everyone (the victim decides, so no one is hit by a ball they never saw). Walkers are world entities too (pace
+   2.5 tiles each way, turn at walls and water); touching one spins you out, a ball or spark knocks it flat for 6 s.
+   Limits: 8 live thrown things per player, 48 per track; race tracks hold only a grid and Walkers. Engine:
+   `engine/raceItems.ts` plus the race section of `engine/world.ts`. Brick Speedway gained the mock's ? blocks,
+   coins and two Walkers. Computer racers pick up and use items too.
 5. **Two players on one keyboard.**
 
 ## Not yet

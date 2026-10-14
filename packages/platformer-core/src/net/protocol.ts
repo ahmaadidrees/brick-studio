@@ -98,7 +98,8 @@ export interface Pose {
   /**
    * Race tracks, while playing: x and y are the car's centre in pixels; heading (0..255 is a full turn clockwise from
    * right), how high it is off a jump (0..255), laps done, distance round the lap, hidden gates passed this lap, the
-   * race it is in (the world's start tick, -1 practice) and, once finished, its race time in ticks.
+   * race it is in (the world's start tick, -1 practice), once finished its race time in ticks, and 1 while it has a
+   * shield up.
    */
   hd?: number
   lf?: number
@@ -107,6 +108,7 @@ export interface Pose {
   rg?: number
   ra?: number
   rf?: number
+  sh?: 0 | 1
 }
 
 /** What a joining player needs: a starting world and every event since. */
@@ -254,6 +256,7 @@ export function isValidPose(p: unknown): p is Pose {
     (o.rp === undefined || (isInt(o.rp) && o.rp >= 0 && o.rp <= 65535)) &&
     (o.rg === undefined || (isInt(o.rg) && o.rg >= 0 && o.rg <= 15)) &&
     (o.ra === undefined || (isInt(o.ra) && o.ra >= -1 && o.ra <= 2 ** 31)) &&
-    (o.rf === undefined || (isInt(o.rf) && o.rf >= 0 && o.rf <= 2 ** 31))
+    (o.rf === undefined || (isInt(o.rf) && o.rf >= 0 && o.rf <= 2 ** 31)) &&
+    (o.sh === undefined || o.sh === 0 || o.sh === 1)
   )
 }

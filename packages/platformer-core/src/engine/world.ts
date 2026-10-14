@@ -17,6 +17,7 @@ import {
 } from './level'
 import { KITS, kitOf, tileIdCount } from './kits'
 import { C, T, holdsContent, isBumpable } from './tiles'
+import { RT, raceSolid } from './raceTiles'
 
 // =============================================================================================
 // The shared world. Everything in here is deterministic: the same level plus the same events at
@@ -35,6 +36,10 @@ export const EK = {
   SPARK_ITEM: 7,
   SPARK_SHOT: 8,
   COIN_POP: 9,
+  /** Race tracks: a bouncy ball, a spark and an oil slick (Walkers on race tracks are WALKER). */
+  RACE_BALL: 10,
+  RACE_SPARK: 11,
+  RACE_SLICK: 12,
 } as const
 
 /** Entity states. */
@@ -177,6 +182,9 @@ const SIZE: Record<number, [number, number]> = {
   [EK.SPARK_ITEM]: [sub(14), sub(15)],
   [EK.SPARK_SHOT]: [sub(8), sub(8)],
   [EK.COIN_POP]: [sub(16), sub(16)],
+  [EK.RACE_BALL]: [sub(6), sub(6)],
+  [EK.RACE_SPARK]: [sub(6), sub(6)],
+  [EK.RACE_SLICK]: [sub(12), sub(12)],
 }
 
 export const isEnemy = (e: Entity): boolean =>
@@ -321,8 +329,16 @@ export function spawnFromObject(w: World, o: LevelObject): Entity | undefined {
   const cx = o.x * TS + TS / 2
   const bottom = (o.y + 1) * TS
   switch (o.kind) {
-    case 'walker':
-      return addEntity(w, EK.WALKER, cx, bottom, o.dir, o.id)
+    case 'walker': {
+      const e = addEntity(w, EK.WALKER, cx, bottom, o.dir, o.id)
+      // On a race track a Walker paces across (alt 0) or along (alt 1) the road around where it was put.
+      if (kitOf(w.design) === 'race') {
+        e.a = e.x
+        e.b = e.y
+        e.c = o.alt
+      }
+      return e
+    }
     case 'shellbug':
       return addEntity(w, EK.SHELLBUG, cx, bottom, o.dir, o.id)
     case 'spiky':
@@ -503,7 +519,7 @@ export function resetWorld(w: World) {
 /** Apply one event. Returns false when it no longer makes sense (the enemy is already gone, etc). */
 export function applyEvent(w: World, ev: WorldEvent, by: number): boolean {
   // A race level has no critters, ? blocks or platformer coins for these to act on; its tile ids mean other things.
-  if (kitOf(w.design) === 'race' && ev.t !== 'edit' && ev.t !== 'reset' && ev.t !== 'load' && ev.t !== 'race') return false
+  if (kitOf(w.design) === 'race' && !RACE_EVENTS.has(ev.t)) return false
   switch (ev.t) {
     case 'edit': {
       let changed = false
@@ -579,7 +595,18 @@ export function applyEvent(w: World, ev: WorldEvent, by: number): boolean {
     case 'race':
       if (kitOf(w.design) !== 'race') return false
       w.raceAt = w.tick
+      // A new race starts with the track clear of thrown things.
+      for (const e of w.entities) if (isRaceThrown(e)) e.rm = 2
       return true
+    case 'item':
+      return kitOf(w.design) === 'race' && throwRaceItem(w, ev, by)
+    case 'hit': {
+      const e = findEntity(w, ev.id)
+      if (kitOf(w.design) !== 'race' || !e || e.rm || !isRaceThrown(e)) return false
+      e.rm = 2
+      effect(w, 'burst', e.x, e.y, by, e.id)
+      return true
+    }
     case 'load': {
       let d: LevelDesign
       try {
@@ -803,11 +830,140 @@ function processRespawns(w: World) {
   w.respawns = later
 }
 
+// ---------------------------------------------------------------------------------------------
+// Race tracks. Walkers pace back and forth and thrown items fly, bounce and wait. Cars are not in the world (each game
+// drives its own), so a car that runs into one of these says so with a 'hit' event, and a Walker just turns round.
+
+const RACE_EVENTS: ReadonlySet<WorldEvent['t']> = new Set(['edit', 'reset', 'load', 'race', 'item', 'hit'])
+const RACE_WALK_SPEED = sub(0.55)
+/** How far a Walker strays from where it was put. */
+const RACE_WALK_RANGE = (TS * 5) / 2
+/** How long a Walker stays knocked flat by a thrown item. */
+export const RACE_KNOCKED_TICKS = 360
+/** Ticks each thrown kind lasts: ball, spark, oil slick. */
+export const RACE_THROWN_LIFE: readonly number[] = [420, 100, 1500]
+const THROWN_KINDS: readonly number[] = [EK.RACE_BALL, EK.RACE_SPARK, EK.RACE_SLICK]
+/** Live thrown items per player (a solo player's computer racers count as theirs) and on the whole track. */
+const THROWN_PER_PLAYER = 8
+const THROWN_MAX = 48
+const KNOCK_RADIUS = sub(8)
+
+export const isRaceThrown = (e: Entity): boolean => e.kind === EK.RACE_BALL || e.kind === EK.RACE_SPARK || e.kind === EK.RACE_SLICK
+
+/** Whether a square of half-size r around (cx, cy), in sub-pixels, touches a wall (or, for Walkers, water). */
+function raceBlocked(w: World, cx: number, cy: number, r: number, water: boolean): boolean {
+  for (const [dx, dy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) {
+    const tx = fdiv(cx + dx, TS), ty = fdiv(cy + dy, TS)
+    if (tx < 0 || ty < 0 || tx >= w.width || ty >= w.height) return true
+    const t = w.tiles[ty * w.width + tx]
+    if (raceSolid(t) || (water && t === RT.WATER)) return true
+  }
+  return false
+}
+
+function throwRaceItem(w: World, ev: Extract<WorldEvent, { t: 'item' }>, by: number): boolean {
+  if (w.design.race && !w.design.race.items) return false
+  const kind = THROWN_KINDS[ev.k]
+  if (kind === undefined) return false
+  let mine = 0
+  let all = 0
+  for (const e of w.entities) {
+    if (e.rm || !isRaceThrown(e)) continue
+    all++
+    if (e.owner === by) mine++
+  }
+  if (mine >= THROWN_PER_PLAYER || all >= THROWN_MAX) return false
+  const [, eh] = SIZE[kind]
+  const e = addEntity(w, kind, ev.x * SUB, ev.y * SUB + eh / 2, 1, 0)
+  if (kind !== EK.RACE_SLICK) {
+    e.vx = ev.vx
+    e.vy = ev.vy
+  }
+  e.owner = by
+  e.a = ev.o
+  effect(w, 'throw', e.x, e.y, by, e.id)
+  return true
+}
+
+function stepRaceWalker(w: World, e: Entity) {
+  if (e.state === ES.SQUASHED) {
+    if (--e.timer <= 0) e.state = ES.ACTIVE
+    return
+  }
+  const step = e.dir * RACE_WALK_SPEED
+  const nx = e.c ? e.x : e.x + step
+  const ny = e.c ? e.y + step : e.y
+  if (Math.abs(nx - e.a) + Math.abs(ny - e.b) > RACE_WALK_RANGE || raceBlocked(w, nx + e.w / 2, ny + e.h / 2, sub(5), true)) e.dir = -e.dir
+  else {
+    e.x = nx
+    e.y = ny
+  }
+}
+
+function stepThrown(w: World, e: Entity) {
+  e.timer++
+  if (e.timer >= RACE_THROWN_LIFE[THROWN_KINDS.indexOf(e.kind)]) {
+    e.rm = 2
+    return
+  }
+  if (e.kind === EK.RACE_SLICK) return
+  // Small steps, so a fast ball can't pass through a wall; balls bounce off walls, sparks burst.
+  const r = e.w >> 1
+  const n = Math.max(1, Math.ceil(Math.max(Math.abs(e.vx), Math.abs(e.vy)) / (3 * SUB)))
+  for (let i = 0; i < n; i++) {
+    for (const axis of [0, 1]) {
+      const d = Math.trunc((axis ? e.vy : e.vx) / n)
+      if (axis) e.y += d
+      else e.x += d
+      if (!raceBlocked(w, e.x + r, e.y + r, r, false)) continue
+      if (axis) e.y -= d
+      else e.x -= d
+      if (e.kind === EK.RACE_SPARK) {
+        e.rm = 2
+        effect(w, 'burst', e.x, e.y, e.owner, e.id)
+        return
+      }
+      if (axis) e.vy = -e.vy
+      else e.vx = -e.vx
+      effect(w, 'bounce', e.x, e.y, e.owner, e.id)
+    }
+  }
+}
+
+function stepRaceThings(w: World) {
+  for (const e of w.entities) {
+    if (e.rm) continue
+    e.ox = e.x
+    e.oy = e.y
+    if (e.kind === EK.WALKER) stepRaceWalker(w, e)
+    else if (isRaceThrown(e)) stepThrown(w, e)
+  }
+  // Balls and sparks knock Walkers flat for a while.
+  for (const s of w.entities) {
+    if (s.rm || (s.kind !== EK.RACE_BALL && s.kind !== EK.RACE_SPARK)) continue
+    for (const k of w.entities) {
+      if (k.rm || k.kind !== EK.WALKER || k.state !== ES.ACTIVE) continue
+      const dx = k.x + k.w / 2 - (s.x + s.w / 2), dy = k.y + k.h / 2 - (s.y + s.h / 2)
+      if (dx * dx + dy * dy >= KNOCK_RADIUS * KNOCK_RADIUS) continue
+      k.state = ES.SQUASHED
+      k.timer = RACE_KNOCKED_TICKS
+      s.rm = 2
+      effect(w, 'stomp', k.x, k.y, s.owner, k.id)
+      break
+    }
+  }
+  if (w.entities.some((e) => e.rm)) w.entities = w.entities.filter((e) => !e.rm)
+}
+
 /** Advance one tick: apply this tick's events in order, then move everything. */
 export function advanceWorld(w: World, events: readonly AppliedEvent[] = []): boolean[] {
   w.tick++
   w.effects = []
   const results = events.map(({ ev, by }) => applyEvent(w, ev, by))
+  if (kitOf(w.design) === 'race') {
+    stepRaceThings(w)
+    return results
+  }
   for (const e of w.entities) {
     if (e.rm) continue
     e.ox = e.x

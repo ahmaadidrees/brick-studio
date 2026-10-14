@@ -2,14 +2,15 @@ import { RT } from '@brick-studio/platformer-core/engine/raceTiles'
 import type { PaletteItem, RaceCategory } from './palette'
 
 /*
- * The race kit's Bricks drawer. Icons are `race:<tile id>` (or `race:start`), drawn by RaceArt. Item boxes, coins and
- * critters come with milestone 4.
+ * The race kit's Bricks drawer. Icons are `race:<tile id>` (or `race:start`, `race:walker`), drawn by RaceIcon.
  */
 
 export const RACE_CATEGORIES: { id: RaceCategory; label: string }[] = [
   { id: 'ground', label: 'Ground' },
   { id: 'edges', label: 'Edges' },
   { id: 'speed', label: 'Speed' },
+  { id: 'race-items', label: 'Items' },
+  { id: 'critters', label: 'Critters' },
   { id: 'race-course', label: 'Start and finish' },
   { id: 'scenery', label: 'Scenery' },
 ]
@@ -34,6 +35,9 @@ export const RACE_PALETTE: PaletteItem[] = [
   tile('race-bumper', 'Bumper', 'edges', RT.BUMPER, 'Kicks cars away like a pinball bumper'),
   tile('race-boost', 'Boost pad', 'speed', RT.BOOST_R, 'A burst of speed if you drive the arrow’s way · R turns it'),
   tile('race-ramp', 'Jump ramp', 'speed', RT.RAMP, 'Cars fly over water and anything else'),
+  tile('race-item', '? block', 'race-items', RT.ITEM, 'Drive through for a random item. It comes back after a few seconds'),
+  tile('race-coin', 'Coin', 'race-items', RT.COIN, 'Each coin adds a little top speed, up to 10. Spinning out drops some'),
+  { id: 'race-walker', label: 'Walker', category: 'critters', icon: 'race:walker', place: { kind: 'object', obj: 'walker', alt: 0 }, hint: 'Walks back and forth on the road; touching it spins you out · R turns it' },
   { id: 'race-start', label: 'Starting grid', category: 'race-course', icon: 'race:start', place: { kind: 'object', obj: 'start', alt: 0 }, hint: 'Click to move the grid · R turns it' },
   tile('race-finish', 'Finish line', 'race-course', RT.FINISH, 'Paint it across the road · R turns which way laps count'),
   tile('race-tree', 'Tree', 'scenery', RT.TREE, 'Scenery that blocks cars'),
@@ -42,4 +46,4 @@ export const RACE_PALETTE: PaletteItem[] = [
 ]
 
 /** Bricks that R turns. */
-export const turnsWithR = (item: PaletteItem) => item.id === 'race-boost' || item.id === 'race-start' || item.id === 'race-finish'
+export const turnsWithR = (item: PaletteItem) => item.id === 'race-boost' || item.id === 'race-start' || item.id === 'race-finish' || item.id === 'race-walker'

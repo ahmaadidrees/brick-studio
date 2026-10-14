@@ -46,6 +46,7 @@ export interface RemoteCar {
   /** The race (world start tick) this car is in, -1 practising. */
   race: number
   finish: number
+  shield: boolean
 }
 
 export interface RemoteCursor {
@@ -196,6 +197,7 @@ export class Remotes {
         gates: p.rg ?? 0,
         race: p.ra ?? -1,
         finish: p.rf ?? -1,
+        shield: p.sh === 1,
       })
     }
     return out

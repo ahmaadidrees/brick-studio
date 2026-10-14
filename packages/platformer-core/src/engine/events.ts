@@ -32,22 +32,38 @@ export type WorldEvent =
   | { t: 'reset' }
   /** Race tracks: everyone lines up on the grid and the start lights begin, at this tick for everyone. */
   | { t: 'race' }
+  /**
+   * Race tracks: a thrown item enters the world at pixel (x, y) with velocity (vx, vy) in sub-pixels per tick. `k` is
+   * the item (RACE_THROWN), `o` which of the thrower's cars threw it (0 is the player, 1..3 computer racers).
+   */
+  | { t: 'item'; k: number; x: number; y: number; vx: number; vy: number; o: number }
+  /** Race tracks: a car ran into a thrown item or an oil slick, which is used up. The car that was hit says so. */
+  | { t: 'hit'; id: number }
   /** Replace the whole level (a host restoring a saved level). Only the server sends this. */
   | { t: 'load'; level: LevelJson }
 
 export const MAX_EDIT_OPS = 400
+
+/** Race items that go into the world when used: a bouncy ball, a spark and an oil slick (`item` events' `k`). */
+export const RACE_THROWN = { BALL: 0, SPARK: 1, OIL: 2 } as const
+export const RACE_THROWN_COUNT = 3
+/** Fastest a thrown item may start, in sub-pixels per tick (16 px per frame). */
+export const MAX_THROW_SPEED = 16 * 256
 
 const isInt = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n)
 const isDir = (n: unknown): n is 1 | -1 => n === 1 || n === -1
 const inRange = (n: unknown, lo: number, hi: number): n is number => isInt(n) && n >= lo && n <= hi
 const isId = (n: unknown): n is number => inRange(n, 1, 0x7fffffff)
 
-function validObject(o: unknown, w: number, h: number): o is LevelObject {
+/** A race track has a starting grid and Walkers, nothing else. */
+const RACE_OBJECT_KINDS: readonly string[] = ['start', 'walker']
+
+function validObject(o: unknown, w: number, h: number, kit: Kit): o is LevelObject {
   if (!o || typeof o !== 'object') return false
   const obj = o as Record<string, unknown>
   return (
     isId(obj.id) &&
-    (OBJECT_KINDS as readonly string[]).includes(obj.kind as string) &&
+    (kit === 'race' ? RACE_OBJECT_KINDS : (OBJECT_KINDS as readonly string[])).includes(obj.kind as string) &&
     inRange(obj.x, 0, w - 1) &&
     inRange(obj.y, 0, h - 1) &&
     isDir(obj.dir) &&
@@ -62,7 +78,7 @@ function validOp(op: unknown, w: number, h: number, kit: Kit): op is EditOp {
     case 'tile':
       return inRange(o.x, 0, w - 1) && inRange(o.y, 0, h - 1) && inRange(o.t, 0, tileIdCount(kit) - 1) && inRange(o.c, 0, kit === 'race' ? 0 : CONTENT_ID_COUNT - 1)
     case 'add':
-      return validObject(o.obj, w, h)
+      return validObject(o.obj, w, h, kit)
     case 'pipe': {
       if (!o.pipe || typeof o.pipe !== 'object') return false
       const p = o.pipe as Record<string, unknown>
@@ -118,6 +134,11 @@ export function isValidEvent(ev: unknown, w: number, h: number, kit: Kit = 'plat
       return true
     case 'race':
       return kit === 'race'
+    case 'item':
+      return kit === 'race' && inRange(e.k, 0, RACE_THROWN_COUNT - 1) && inRange(e.x, 0, w * 16) && inRange(e.y, 0, h * 16) &&
+        inRange(e.vx, -MAX_THROW_SPEED, MAX_THROW_SPEED) && inRange(e.vy, -MAX_THROW_SPEED, MAX_THROW_SPEED) && inRange(e.o, 0, 3)
+    case 'hit':
+      return kit === 'race' && inRange(e.id, 1, 2 ** 40)
     default:
       // 'load' included: players can never send it, only the room server.
       return false

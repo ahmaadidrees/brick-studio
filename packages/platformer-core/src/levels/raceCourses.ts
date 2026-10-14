@@ -60,6 +60,11 @@ export function brickSpeedway(): LevelDesign {
     }
   }
   for (let y = 36; y <= 38; y++) for (let x = 34; x <= 35; x++) set(x, y, RT.BOOST_R, road)
+  // ? blocks across the start straight and the top straight; coins along the start straight and down the left side.
+  for (let y = 34; y <= 40; y++) set(44, y, RT.ITEM, road)
+  for (let y = 4; y <= 10; y++) set(52, y, RT.ITEM, road)
+  for (const x of [24, 26, 28, 30]) set(x, 37, RT.COIN, road)
+  for (const y of [26, 28, 30, 32]) set(6, y, RT.COIN, road)
   for (const [x, y] of [[32, 10], [30, 8], [34, 8]]) set(x, y, RT.BUMPER)
   for (let y = 33; y <= 41; y++) if (raceTrack(t[at(20, y)])) t[at(20, y)] = RT.FINISH
   for (let x = 24; x <= 52; x++) { set(x, 41, RT.STAND); set(x, 42, RT.STAND) }
@@ -74,14 +79,19 @@ export function brickSpeedway(): LevelDesign {
     tiles: t,
     contents: new Uint8Array(W * H),
     pipes: [],
-    objects: [{ id: 1, kind: 'start', x: 15, y: 37, dir: 1, alt: 0 }],
+    objects: [
+      { id: 1, kind: 'start', x: 15, y: 37, dir: 1, alt: 0 },
+      // Walkers pace across the left straight and the dirt dip.
+      { id: 2, kind: 'walker', x: 6, y: 23, dir: 1, alt: 0 },
+      { id: 3, kind: 'walker', x: 32, y: 17, dir: 1, alt: 0 },
+    ],
     kit: 'race',
     race: { ...DEFAULT_RACE },
   }
 }
 
 export const RACE_COURSES: Course[] = [
-  { id: 'speedway', title: 'Brick Speedway', blurb: 'Ice, a dirt dip, boost pads and a jump over the water.', level: brickSpeedway },
+  { id: 'speedway', title: 'Brick Speedway', blurb: 'Ice, a dirt dip, boost pads, a jump over the water, ? blocks and Walkers.', level: brickSpeedway },
 ]
 
 export const raceCourseById = (id: string) => RACE_COURSES.find((c) => c.id === id)

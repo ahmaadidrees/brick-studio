@@ -1,7 +1,8 @@
 import { TILE } from '@brick-studio/platformer-core/engine/constants'
 import { RT, isRaceBoost } from '@brick-studio/platformer-core/engine/raceTiles'
+import { thrownToDraw, walkersToDraw } from '@brick-studio/platformer-core/engine/raceItems'
 import type { World } from '@brick-studio/platformer-core/engine/world'
-import { drawNameTag, drawRaceCar, drawRaceTile } from './raceArt'
+import { drawCoin, drawItemBox, drawNameTag, drawRaceCar, drawRaceTile, drawThrown, drawWalker } from './raceArt'
 import type { DrawnCar } from './raceRun'
 
 /*
@@ -24,6 +25,8 @@ export interface RaceScene {
   tags: boolean
   /** Turn the map around the middle of the view ("map turns with car"). */
   rot?: number
+  /** Whether the ? block or coin at this tile index is there for you (taken ones come back later); absent: all are. */
+  showing?: (i: number) => boolean
 }
 
 interface Chunk {
@@ -37,6 +40,8 @@ export class RaceView {
   private shadowKey = ''
   private bake = 1
   private boosts: number[] = []
+  /** ? blocks and coins: drawn live, since they come and go. */
+  private pickups: number[] = []
 
   /** `k` screen pixels per world pixel; the context already has that scale applied. */
   draw(ctx: CanvasRenderingContext2D, w: World, k: number, camX: number, camY: number, viewW: number, viewH: number, frame: number, scene: RaceScene) {
@@ -63,8 +68,19 @@ export class RaceView {
     for (const i of this.boosts) ctx.fillRect((i % w.width) * TILE, Math.floor(i / w.width) * TILE, TILE, TILE)
     ctx.fillStyle = 'rgba(25,28,36,.28)'
     for (const s of scene.skids) ctx.fillRect(s.x - 0.9, s.y - 0.9, 1.8, 1.8)
+    const itemsOn = w.design.race?.items ?? true
+    for (const i of this.pickups) {
+      if (scene.showing && !scene.showing(i)) continue
+      const x = (i % w.width) * TILE + TILE / 2, y = Math.floor(i / w.width) * TILE + TILE / 2
+      if (w.design.tiles[i] === RT.ITEM) drawItemBox(ctx, x, y, frame + i * 7, itemsOn ? 1 : 0.35)
+      else drawCoin(ctx, x, y, frame + i * 5)
+    }
+    const thrown = thrownToDraw(w)
+    for (const t of thrown) if (t.kind === 'oil') drawThrown(ctx, t.kind, t.x, t.y, frame, t.left)
     scene.overlay?.(ctx)
-    for (const c of scene.cars) drawRaceCar(ctx, c, c.color, { lift: c.lift, flame: c.flame })
+    for (const k of walkersToDraw(w)) drawWalker(ctx, k.x, k.y, k.dir, frame, k.flat)
+    for (const t of thrown) if (t.kind !== 'oil') drawThrown(ctx, t.kind, t.x, t.y, frame, t.left)
+    for (const c of scene.cars) drawRaceCar(ctx, c, c.color, { lift: c.lift, flame: c.flame, shield: c.shield, frame })
     if (scene.tags) for (const c of scene.cars) if (!c.you) drawNameTag(ctx, c.x, c.y - c.lift * 6, c.name, c.color, rot)
     ctx.restore()
   }
@@ -78,8 +94,7 @@ export class RaceView {
       this.shadowKey = key
       this.bake = bake
       this.chunks.clear()
-      this.boosts = []
-      for (let i = 0; i < tiles.length; i++) if (isRaceBoost(tiles[i])) this.boosts.push(i)
+      this.findLive(tiles)
       return
     }
     let changed = false
@@ -93,9 +108,16 @@ export class RaceView {
         if (c) c.dirty = true
       }
     }
-    if (changed) {
-      this.boosts = []
-      for (let i = 0; i < tiles.length; i++) if (isRaceBoost(tiles[i])) this.boosts.push(i)
+    if (changed) this.findLive(tiles)
+  }
+
+  /** Tiles drawn live over the chunks: pulsing boost pads, ? blocks and coins. */
+  private findLive(tiles: Uint8Array) {
+    this.boosts = []
+    this.pickups = []
+    for (let i = 0; i < tiles.length; i++) {
+      if (isRaceBoost(tiles[i])) this.boosts.push(i)
+      else if (tiles[i] === RT.ITEM || tiles[i] === RT.COIN) this.pickups.push(i)
     }
   }
 

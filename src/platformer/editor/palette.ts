@@ -3,7 +3,7 @@ import { C, T } from '@brick-studio/platformer-core/engine/tiles'
 
 export type Category = 'terrain' | 'blocks' | 'items' | 'enemies' | 'gizmos' | 'course'
 /** The race kit's drawer groups (racePalette.ts). */
-export type RaceCategory = 'ground' | 'edges' | 'speed' | 'race-course' | 'scenery'
+export type RaceCategory = 'ground' | 'edges' | 'speed' | 'race-items' | 'critters' | 'race-course' | 'scenery'
 
 export const CATEGORIES: { id: Category; label: string }[] = [
   { id: 'terrain', label: 'Terrain' },

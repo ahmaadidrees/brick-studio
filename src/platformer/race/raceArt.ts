@@ -154,6 +154,9 @@ export interface DrawCarOptions {
   lift?: number
   /** Boost flame length in pixels, or 0. */
   flame?: number
+  /** A shield bubble round the car, pulsing with `frame`. */
+  shield?: boolean
+  frame?: number
 }
 
 /** A top-down toy car, 14 by 9 pixels, pointing along `a`. */
@@ -179,6 +182,78 @@ export function drawRaceCar(c: Ctx, car: CarSpot, color: string, opts: DrawCarOp
     c.beginPath(); c.moveTo(-7, -2.4); c.lineTo(-7 - opts.flame, 0); c.lineTo(-7, 2.4); c.fill()
   }
   c.restore()
+  if (opts.shield) {
+    c.strokeStyle = `rgba(110,210,255,${0.55 + 0.3 * Math.sin((opts.frame ?? 0) / 4)})`
+    c.lineWidth = 1.6
+    c.beginPath(); c.arc(car.x, car.y - lift * 6, 10.5, 0, 7); c.stroke()
+  }
+}
+
+/** A ? block floating over the road at (cx, cy), bobbing with `frame`. Faded when items are off. */
+export function drawItemBox(c: Ctx, cx: number, cy: number, frame: number, alpha = 1) {
+  const bob = Math.sin(frame / 10) * 1.2
+  c.save()
+  c.globalAlpha = alpha
+  c.translate(cx, cy + bob)
+  c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(1, 7 - bob, 6, 2, 0, 0, 7); c.fill()
+  c.rotate(Math.sin(frame / 25) * 0.15)
+  c.fillStyle = '#c9951a'; c.beginPath(); c.roundRect(-6.5, -6.5, 13, 13, 2.5); c.fill()
+  c.fillStyle = '#f7c33b'; c.beginPath(); c.roundRect(-6.5, -6.5, 13, 11.5, 2.5); c.fill()
+  c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(-5, -5, 3, 1.5)
+  c.fillStyle = '#7a4d00'; c.font = '900 10px Nunito, ui-rounded, system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'
+  c.fillText('?', 0, -0.5)
+  c.restore()
+}
+
+/** A spinning coin at (cx, cy). */
+export function drawCoin(c: Ctx, cx: number, cy: number, frame: number) {
+  const sq = Math.abs(Math.cos(frame / 12)) * 0.8 + 0.2
+  c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(cx + 1, cy + 5, 4, 1.5, 0, 0, 7); c.fill()
+  c.fillStyle = '#e0a400'; c.beginPath(); c.ellipse(cx, cy, 4.6 * sq + 0.4, 5, 0, 0, 7); c.fill()
+  c.fillStyle = '#ffd34d'; c.beginPath(); c.ellipse(cx, cy, 3 * sq + 0.3, 3.5, 0, 0, 7); c.fill()
+}
+
+const LOOK: readonly (readonly [number, number])[] = [[1, 0], [0, 1], [-1, 0], [0, -1]]
+
+/** A Walker seen from above, looking `dir` (0 right, 1 down, 2 left, 3 up); squashed flat after an item hits it. */
+export function drawWalker(c: Ctx, x: number, y: number, dir: number, frame: number, flat = false) {
+  c.save()
+  c.translate(x, y)
+  if (flat) c.scale(1.35, 0.45)
+  c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(1.5, 2, 7, 6, 0, 0, 7); c.fill()
+  const wob = flat ? 0 : Math.sin(frame / 4) * 1.5
+  c.fillStyle = '#6a49c4'; c.beginPath(); c.arc(-4, 4 + wob * 0.3, 2.4, 0, 7); c.arc(4, 4 - wob * 0.3, 2.4, 0, 7); c.fill()
+  c.fillStyle = '#8f6be8'; c.beginPath(); c.arc(0, 0, 6.5, 0, 7); c.fill()
+  const [ex, ey] = LOOK[dir & 3]
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(-2.4 + ex * 2, -1.5 + ey * 2, 2, 0, 7); c.arc(2.4 + ex * 2, -1.5 + ey * 2, 2, 0, 7); c.fill()
+  c.fillStyle = '#1f2a44'; c.beginPath(); c.arc(-2.4 + ex * 2.8, -1.5 + ey * 2.8, 1, 0, 7); c.arc(2.4 + ex * 2.8, -1.5 + ey * 2.8, 1, 0, 7); c.fill()
+  c.restore()
+}
+
+/** A thrown item: a bouncy ball, a spark, or an oil slick (fading as it dries up). */
+export function drawThrown(c: Ctx, kind: 'ball' | 'spark' | 'oil', x: number, y: number, frame: number, left = 1) {
+  if (kind === 'oil') {
+    c.save()
+    c.globalAlpha = Math.min(1, left * 5)
+    c.fillStyle = '#23262d'; c.beginPath(); c.ellipse(x, y, 7, 5, 0.4, 0, 7); c.fill()
+    c.beginPath(); c.arc(x + 5, y + 3, 2.6, 0, 7); c.arc(x - 5, y - 3, 2.2, 0, 7); c.fill()
+    c.fillStyle = 'rgba(160,120,255,.35)'; c.beginPath(); c.ellipse(x - 1.5, y - 1, 3, 1.6, 0.4, 0, 7); c.fill()
+    c.restore()
+    return
+  }
+  if (kind === 'spark') {
+    c.fillStyle = 'rgba(255,230,120,.45)'; c.beginPath(); c.arc(x, y, 5.5, 0, 7); c.fill()
+    c.save(); c.translate(x, y); c.rotate(frame / 3)
+    c.fillStyle = '#fff3b0'
+    c.beginPath()
+    for (let i = 0; i < 8; i++) { const r = i % 2 ? 1.4 : 4.2, a = (i * Math.PI) / 4; c.lineTo(Math.cos(a) * r, Math.sin(a) * r) }
+    c.closePath(); c.fill()
+    c.restore()
+    return
+  }
+  c.fillStyle = 'rgba(0,0,0,.2)'; c.beginPath(); c.ellipse(x + 1.5, y + 3, 3.4, 1.6, 0, 0, 7); c.fill()
+  c.fillStyle = '#3e8ef0'; c.beginPath(); c.arc(x, y, 3.6, 0, 7); c.fill()
+  c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(x - 1.2, y - 1.3, 1.2, 0, 7); c.fill()
 }
 
 /** A small name label above a car, kept upright when the map turns. */

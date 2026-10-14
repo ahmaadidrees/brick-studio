@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Box, Eraser, Minus, Plus, RotateCw } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Box, Eraser, Gift, Minus, Plus, RotateCw } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import type { LevelStyle, Theme } from '@brick-studio/platformer-core/engine/level'
 import { ALL_CATEGORY, BRICK_DRAWER_LABELS, DrawerFab, DrawerPanel, DrawerSheet, DrawerToggle, HistoryTools, PartPicker, type DrawerItem } from '../../shell'
@@ -22,6 +22,7 @@ function raceDir(editor: Editor, item: PaletteItem): Dir4 {
   if (item.id === 'race-boost') return editor.boostDir
   if (item.id === 'race-start') return editor.raceSettings.startDir
   if (item.id === 'race-finish') return editor.raceSettings.finishDir
+  if (item.id === 'race-walker') return editor.walkerAxis
   return 0
 }
 const DIR_WORDS = ['right', 'down', 'left', 'up']
@@ -156,6 +157,18 @@ function PlacingStrip({ editor, theme, look, touch }: { editor: Editor; theme: T
               <Plus size={16} aria-hidden="true" />
             </button>
           </span>
+        )}
+        {race && (
+          <button
+            type="button"
+            className="p2d-strip-button"
+            aria-pressed={editor.raceSettings.items}
+            onClick={() => editor.setRace({ items: !editor.raceSettings.items })}
+            title={editor.raceSettings.items ? 'Items on: ? blocks hand out items' : 'Items off: pure racing, ? blocks give nothing'}
+          >
+            <Gift size={18} aria-hidden="true" />
+            <span>Items {editor.raceSettings.items ? 'on' : 'off'}</span>
+          </button>
         )}
         <button type="button" className="p2d-strip-button" aria-pressed={erasing} onClick={() => editor.setErasing(!erasing)} title="Eraser (E)">
           <Eraser size={18} aria-hidden="true" />

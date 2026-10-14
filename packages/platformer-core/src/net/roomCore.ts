@@ -240,7 +240,7 @@ export class RoomCore {
           ...(msg.p.gw === undefined ? {} : { gw: msg.p.gw }),
           ...(msg.p.lc === undefined ? {} : { lc: msg.p.lc }),
           ...(msg.p.pi === undefined ? {} : { pi: { x: msg.p.pi.x, y: msg.p.pi.y, phase: msg.p.pi.phase, progress: msg.p.pi.progress } }),
-          ...Object.fromEntries((['hd', 'lf', 'rl', 'rp', 'rg', 'ra', 'rf'] as const).filter((k) => msg.p[k] !== undefined).map((k) => [k, msg.p[k]])),
+          ...Object.fromEntries((['hd', 'lf', 'rl', 'rp', 'rg', 'ra', 'rf', 'sh'] as const).filter((k) => msg.p[k] !== undefined).map((k) => [k, msg.p[k]])),
         })
         return
       case 'ping':

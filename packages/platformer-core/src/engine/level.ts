@@ -246,6 +246,8 @@ export function levelFromJson(raw: unknown): LevelDesign {
     if (!kind || id < 1 || id > 0x7fffffff || seen.has(id)) throw new Error('bad object id/kind')
     if (x < 0 || x >= w || y < 0 || y >= h) throw new Error('object out of bounds')
     if ((dir !== 1 && dir !== -1) || (alt !== 0 && alt !== 1)) throw new Error('bad object dir/alt')
+    // A race track keeps only its grid and Walkers.
+    if (kit === 'race' && kind !== 'start' && kind !== 'walker') continue
     if (SINGLETON_KINDS.has(kind)) {
       if (singletons.has(kind)) continue
       singletons.add(kind)

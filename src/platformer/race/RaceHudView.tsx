@@ -1,7 +1,10 @@
 import { Flag, Hammer, Play, RotateCcw } from 'lucide-react'
 import { LOOP_REASON_TEXT } from '@brick-studio/platformer-core/engine/laps'
+import { RACE_ITEMS, type RaceItem } from '@brick-studio/platformer-core/engine/raceItems'
 import { Button } from '../../ui'
 import { MAX_RIVALS, formatRaceTime, type RaceHud } from './raceRun'
+
+const ITEM_ICONS: Record<RaceItem, string> = { turbo: '🚀', oil: '🛢️', ball: '🔵', spark: '✨', shield: '🛡️' }
 
 const ordinal = (n: number) => n + (['th', 'st', 'nd', 'rd'][n % 10 > 3 || Math.floor(n / 10) % 10 === 1 ? 0 : n % 10] || 'th')
 
@@ -31,6 +34,19 @@ export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, o
         <span>{hud.loopProblem ? 'Free drive' : hud.phase === 'practice' ? 'Practice' : hud.youDone ? 'Finished' : `Lap ${hud.lap}/${hud.laps}`}</span>
         {hud.phase !== 'practice' && <span>⏱ {formatRaceTime(hud.time)}</span>}
         <span>Best lap {hud.bestLap ? formatRaceTime(hud.bestLap) : '—'}</span>
+        {hud.itemsOn && (
+          <span className={`p2d-race-item${hud.item ? ' has' : ''}`} title={hud.item ? RACE_ITEMS[hud.item].hint : 'Drive through a ? block for an item'}>
+            <b aria-hidden="true">{hud.item ? ITEM_ICONS[hud.item] : ''}</b>
+            {hud.item ? (
+              <>
+                {RACE_ITEMS[hud.item].name} {!touch && <kbd>Space</kbd>}
+              </>
+            ) : (
+              <small>No item</small>
+            )}
+          </span>
+        )}
+        {hud.coins > 0 && <span className="p2d-race-coins" aria-label={`${hud.coins} coins`}>🪙 {hud.coins}</span>}
       </div>
 
       {hud.racers > 1 && hud.phase !== 'practice' && (
@@ -72,7 +88,7 @@ export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, o
           ) : (
             <>
               <kbd>←</kbd>
-              <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake · <kbd>R</kbd> restart
+              <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake{hud.itemsOn && <> · <kbd>Space</kbd> item</>} · <kbd>R</kbd> restart
             </>
           )}
         </span>

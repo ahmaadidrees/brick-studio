@@ -1,10 +1,10 @@
 import { RT, isRaceBoost } from '@brick-studio/platformer-core/engine/raceTiles'
 import type { Dir4 } from '@brick-studio/platformer-core/engine/raceTiles'
-import { drawArrow, drawRaceCar, drawRaceTile } from './raceArt'
+import { drawArrow, drawCoin, drawItemBox, drawRaceCar, drawRaceTile, drawWalker } from './raceArt'
 
 const cache = new Map<string, string>()
 
-/** A race brick's picture as an image URL: `race:<tile id>` or `race:start`, optionally turned (boost pads). */
+/** A race brick's picture as an image URL: `race:<tile id>`, `race:start` or `race:walker`, optionally turned. */
 export function raceIconUrl(key: string, dir: Dir4 = 0): string {
   const id = `${key}:${dir}`
   const hit = cache.get(id)
@@ -19,6 +19,9 @@ export function raceIconUrl(key: string, dir: Dir4 = 0): string {
     if (what === 'start') {
       drawRaceTile(g, 0, 0, RT.ROAD, () => RT.ROAD)
       drawRaceCar(g, { x: 8, y: 8, a: (dir * Math.PI) / 2 }, '#3e6fd8')
+    } else if (what === 'walker') {
+      drawRaceTile(g, 0, 0, RT.ROAD, () => RT.ROAD)
+      drawWalker(g, 8, 8.5, dir & 1, 0)
     } else {
       let t = Number(what)
       if (isRaceBoost(t)) t = RT.BOOST_R + dir
@@ -26,6 +29,8 @@ export function raceIconUrl(key: string, dir: Dir4 = 0): string {
       const around = t === RT.GRASS || t === RT.FLOWERS || t === RT.TREE || t === RT.TIRES || t === RT.BUMPER ? RT.GRASS : t === RT.BARRIER || t === RT.STAND || t === RT.WATER || t === RT.ICE || t === RT.DIRT ? t : RT.ROAD
       drawRaceTile(g, 0, 0, t, () => around)
       if (t === RT.FINISH) drawArrow(g, 8, 8, dir, 4.5, '#3fd26b')
+      if (t === RT.ITEM) drawItemBox(g, 8, 8, 0)
+      if (t === RT.COIN) drawCoin(g, 8, 8, 0)
     }
     try {
       url = c.toDataURL('image/png')

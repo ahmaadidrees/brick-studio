@@ -2,7 +2,7 @@ import { TILE } from '@brick-studio/platformer-core/engine/constants'
 import type { EditOp } from '@brick-studio/platformer-core/engine/events'
 import { SINGLETON_KINDS, randomObjectId, type LevelObject, type ObjKind, type PipeEndpoint } from '@brick-studio/platformer-core/engine/level'
 import { DEFAULT_RACE, kitOf, type RaceSettings } from '@brick-studio/platformer-core/engine/kits'
-import { RT, type Dir4 } from '@brick-studio/platformer-core/engine/raceTiles'
+import { RT, raceSolid, type Dir4 } from '@brick-studio/platformer-core/engine/raceTiles'
 import { C, T, holdsContent } from '@brick-studio/platformer-core/engine/tiles'
 import type { World } from '@brick-studio/platformer-core/engine/world'
 import type { SoundName } from '../audio/sound'
@@ -56,6 +56,8 @@ export class Editor {
   dir: 1 | -1 = -1
   /** Race kit: which way newly painted boost pads point (R turns it). */
   boostDir: Dir4 = 0
+  /** Race Walkers in hand: 0 walk across (left and right), 1 up and down. */
+  walkerAxis: 0 | 1 = 0
   /** Race settings sent but not yet in the world, so quick turns build on each other. */
   private raceOverlay: { race: RaceSettings; at: number } | null = null
   hover: [number, number] | null = null
@@ -129,10 +131,11 @@ export class Editor {
     this.onChange?.()
   }
 
-  /** Race kit's R: turn the boost pad in hand, or the starting grid, or which way laps count at the finish line. */
+  /** Race kit's R: turn the boost pad or Walker in hand, or the starting grid, or which way laps count at the finish line. */
   turn() {
     const next = (d: Dir4) => ((d + 1) % 4) as Dir4
     if (this.item.id === 'race-boost') this.boostDir = next(this.boostDir)
+    else if (this.item.id === 'race-walker') this.walkerAxis = this.walkerAxis ? 0 : 1
     else if (this.item.id === 'race-start') this.setRace({ startDir: next(this.raceSettings.startDir) })
     else if (this.item.id === 'race-finish') this.setRace({ finishDir: next(this.raceSettings.finishDir) })
     this.onChange?.()
@@ -475,7 +478,7 @@ export class Editor {
         if (click) this.placePipe(x, y)
         return
       case 'object':
-        if (click) this.placeObject(x, y, p.obj, p.alt)
+        if (click) this.placeObject(x, y, p.obj, this.race && p.obj === 'walker' ? this.walkerAxis : p.alt)
         return
       case 'content': {
         const [t] = this.tileAt(x, y)
@@ -521,12 +524,14 @@ export class Editor {
         return
       }
     }
+    // Race Walkers walk on the track, so they go on top of it, never on a wall or in water.
+    if (this.race && (raceSolid(t) || t === RT.WATER)) return
     const here = this.objectAt(x, y)
     if (here) {
       if (here.kind === kind && here.dir === this.dir && here.alt === alt && here.x === x && here.y === y) return
       this.deleteObject(here)
     }
-    if (t !== T.EMPTY && t !== T.COIN) this.setTile(x, y, T.EMPTY, 0)
+    if (!this.race && t !== T.EMPTY && t !== T.COIN) this.setTile(x, y, T.EMPTY, 0)
     const obj: LevelObject = { id: randomObjectId(), kind, x, y, dir: kind === 'platform' ? (this.dir === -1 ? 1 : -1) : this.dir, alt }
     this.record({ o: 'add', obj }, [{ o: 'del', id: obj.id }])
   }

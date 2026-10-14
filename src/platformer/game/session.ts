@@ -4,7 +4,7 @@ import { DEFAULT_FEEL, P_SEGMENTS, feelToSub, type Feel, type FeelSub } from '@b
 import { cloneLevel, levelFromJson, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import { TILE as RACE_TILE } from '@brick-studio/platformer-core/engine/constants'
-import { RaceRun, carInputFrom, type RaceHud, type RemoteRacer, type RestartOptions } from '../race/raceRun'
+import { RaceRun, carInputFrom, type RaceHud, type RaceLink, type RemoteRacer, type RestartOptions } from '../race/raceRun'
 import { loadRaceFeel, type RaceFeel } from '../race/raceFeel'
 import { drawRaceBuildOverlay } from '../race/raceOverlay'
 import {
@@ -418,7 +418,7 @@ export class GameSession {
   startRace(rivals = this.rivals) {
     this.rivals = rivals
     const w = this.timeline.world
-    const run = new RaceRun(cloneLevel(w.design), this.solo ? rivals : 0, () => this.raceFeel.feel)
+    const run = new RaceRun(cloneLevel(w.design), this.solo ? rivals : 0, () => this.raceFeel.feel, this.raceLink)
     if (this.room) {
       const nums = [...new Set([...this.roomPlayers.map((p) => p.num), this.player.num])].sort((a, b) => a - b)
       const elapsed = w.tick - w.raceAt
@@ -432,6 +432,13 @@ export class GameSession {
     this.raceRun = run
     this.cameraReady = false
     this.onRaceHud?.(run.hud(this.remoteRacers()))
+  }
+
+  /** Items and Walkers live in the shared world; races reach it through this. */
+  private readonly raceLink: RaceLink = {
+    world: () => this.timeline.world,
+    emit: (ev) => this.emit(ev),
+    num: 0,
   }
 
   /** Start a race: solo, at once; in a room, for everyone (the host any time, others once the last race has run). */
@@ -452,7 +459,11 @@ export class GameSession {
     // Someone in the room started a race: everyone lines up for it.
     if (!this.raceRun || (this.room && this.timeline.world.raceAt !== this.seenRaceAt)) this.startRace()
     const run = this.raceRun!
-    run.step(carInputFrom(input, this.raceFeel.steer, run.you.car, this.raceRot))
+    this.raceLink.num = this.link.num
+    const others = this.room ? this.remotes.cars(this.timeline.tick).filter((c) => c.visible).map((c) => ({ x: c.x, y: c.y, shield: c.shield, air: c.lift > 0 })) : []
+    // The jump button (Space) uses your item.
+    run.step(carInputFrom(input, this.raceFeel.steer, run.you.car, this.raceRot), input.jumpPressed, others)
+    if (!this.silent) for (const s of run.sounds) this.sound.play(s)
     // The camera keeps your car in the middle, looking a little ahead; with "map turns", your car points up.
     const c = run.you.car, W = this.renderer.width, H = this.renderer.height
     const tx = c.x + c.vx * 16 - W / 2, ty = c.y + c.vy * 16 - H / 2
@@ -694,6 +705,7 @@ export class GameSession {
         rg: lap.gates & 15,
         ra: run.practice ? -1 : this.seenRaceAt,
         ...(lap.done >= 0 && time >= 0 ? { rf: time } : {}),
+        ...(run.you.shield > 0 ? { sh: 1 as const } : {}),
       }
     }
     if (this.mode === 'build') {
@@ -952,7 +964,7 @@ export class GameSession {
     const run = build ? null : this.raceRun
     // Other players' cars show while you build too, so you can watch them race.
     const others = this.room
-      ? this.remotes.cars(tick).filter((c) => c.visible).map((c) => ({ x: c.x, y: c.y, a: c.a, color: playerColor(c.num)[0], name: c.name, you: false, lift: c.lift, flame: 0 }))
+      ? this.remotes.cars(tick).filter((c) => c.visible).map((c) => ({ x: c.x, y: c.y, a: c.a, color: playerColor(c.num)[0], name: c.name, you: false, lift: c.lift, flame: 0, shield: c.shield }))
       : []
     return {
       world: w,
@@ -969,6 +981,8 @@ export class GameSession {
         skids: run ? run.skids : [],
         tags: true,
         rot: build ? 0 : this.raceRot,
+        // ? blocks and coins you took are gone for you for a while; while building, all show.
+        showing: run ? (i) => run.showing(i) : undefined,
         overlay: build ? (ctx) => drawRaceBuildOverlay(ctx, this.editor, w, this.frameCount, cursors) : undefined,
       },
     }

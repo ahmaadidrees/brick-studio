@@ -3,7 +3,7 @@ import { TILE } from '@brick-studio/platformer-core/engine/constants'
 import { RT } from '@brick-studio/platformer-core/engine/raceTiles'
 import type { World } from '@brick-studio/platformer-core/engine/world'
 import type { Editor } from '../editor/editor'
-import { drawArrow, drawRaceTile } from './raceArt'
+import { drawArrow, drawCoin, drawItemBox, drawRaceTile, drawWalker } from './raceArt'
 
 export interface BuildCursor {
   x: number
@@ -14,7 +14,7 @@ export interface BuildCursor {
 
 /**
  * What building a race track shows over it: which way laps count at the finish line, the starting grid, the brick in
- * hand under the pointer, and other builders' cursors.
+ * hand under the pointer, where each Walker paces, and other builders' cursors.
  */
 export function drawRaceBuildOverlay(ctx: CanvasRenderingContext2D, editor: Editor, w: World, frame: number, cursors: BuildCursor[]) {
   const race = editor.raceSettings
@@ -36,6 +36,19 @@ export function drawRaceBuildOverlay(ctx: CanvasRenderingContext2D, editor: Edit
     ctx.restore()
   }
   ctx.restore()
+  // Each Walker's beat: two and a half tiles each way from where it was put.
+  ctx.save()
+  ctx.strokeStyle = 'rgba(143,107,232,.75)'
+  ctx.lineWidth = 1.4
+  ctx.setLineDash([2, 2])
+  for (const o of w.design.objects) {
+    if (o.kind !== 'walker') continue
+    const cx = (o.x + 0.5) * TILE, cy = (o.y + 0.5) * TILE, r = 2.5 * TILE
+    ctx.beginPath()
+    if (o.alt) { ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r) } else { ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy) }
+    ctx.stroke()
+  }
+  ctx.restore()
   const start = w.design.objects.find((o) => o.kind === 'start')
   if (start) drawArrow(ctx, (start.x + 0.5) * TILE, (start.y + 0.5) * TILE, race.startDir, 6, '#ffffff')
 
@@ -48,6 +61,13 @@ export function drawRaceBuildOverlay(ctx: CanvasRenderingContext2D, editor: Edit
       ctx.save()
       ctx.globalAlpha = 0.6
       drawRaceTile(ctx, x, y, t, () => RT.ROAD)
+      if (t === RT.ITEM) drawItemBox(ctx, (x + 0.5) * TILE, (y + 0.5) * TILE, frame)
+      if (t === RT.COIN) drawCoin(ctx, (x + 0.5) * TILE, (y + 0.5) * TILE, frame)
+      ctx.restore()
+    } else if (!editor.erasing && place.kind === 'object' && place.obj === 'walker') {
+      ctx.save()
+      ctx.globalAlpha = 0.7
+      drawWalker(ctx, (x + 0.5) * TILE, (y + 0.5) * TILE, editor.walkerAxis, frame)
       ctx.restore()
     } else if (!editor.erasing && place.kind === 'object') {
       drawArrow(ctx, (x + 0.5) * TILE, (y + 0.5) * TILE, race.startDir, 6, 'rgba(255,255,255,.7)')
