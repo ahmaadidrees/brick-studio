@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ClassroomPanel } from './ClassroomPanel'
+import { SESSION_STORE_KEYS } from './sessionStore'
 import { ClassroomClient } from './client'
 import { createBrickStudioDocument } from '../brick/brickDocument'
 import type { ClassroomAuthResult, ClassroomClass, ClassroomStudent, ClassroomWorld } from './contracts'
@@ -828,7 +829,8 @@ describe('streamlined student entry', () => {
     const loginBody = JSON.parse((fetcher as ReturnType<typeof vi.fn>).mock.calls.find(call => String(call[0]).endsWith('/auth/login'))![1].body as string)
     expect(loginBody).toEqual({ username: 'Builder', password: 'orbit7' })
     expect(JSON.parse(localStorage.getItem('brickgineers.last-class.v1')!)).toEqual({ name: classroom.name, code: classroom.loginCode })
-    cleanup(); sessionStorage.clear()
+    // The browser closes (its session cookie goes), and the next student opens the page signed out.
+    cleanup(); document.cookie = `${SESSION_STORE_KEYS.cookie}=; Path=/; Max-Age=0`
     render(<ClassroomPanel {...props()} intent="signin" client={new ClassroomClient('', vi.fn())} />)
     expect(screen.getByText(classroom.name)).toBeInTheDocument()
     expect(screen.queryByLabelText('Class code')).not.toBeInTheDocument()

@@ -1,3 +1,4 @@
+import { browserSessionStore, memorySessionStore, type SessionStore } from './sessionStore'
 import { BRAND_NAME } from '../brand'
 import type {
   ClassroomAuthResult as ClassroomAuth, ClassroomCheckpoint, ClassroomClass, ClassroomClassmate, ClassroomClassPatch, ClassroomClientSurface, ClassroomInvite, ClassroomLoginInput, ClassroomMe,
@@ -35,14 +36,30 @@ function waitForSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T>
 const GOOGLE_FLOW_KEY = 'brick-studio.teacher-google.v1'
 type GoogleFlow = { state: string; verifier: string; startedAt: number; returnTo: string; accountId: string | null }
 const base64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '')
-const SESSION_KEY = 'brick-studio.classroom-session.v1'
 export class ClassroomClient implements ClassroomClientSurface {
   private auth: ClassroomAuth | null = null
   private refreshing: { epoch: number; promise: Promise<ClassroomAuth> } | null = null
   private epoch = 0
   private listeners = new Set<() => void>()
-  constructor(private base = (import.meta.env.VITE_CLASSROOM_SERVER_URL || import.meta.env.VITE_LIVE_SERVER_URL || '').replace(/\/$/, ''), private fetcher: typeof fetch = fetch) {
-    try { const stored = sessionStorage.getItem(SESSION_KEY); if (stored) this.auth = JSON.parse(stored) } catch { /* Storage unavailable: keep session in memory. */ }
+  constructor(
+    private base = (import.meta.env.VITE_CLASSROOM_SERVER_URL || import.meta.env.VITE_LIVE_SERVER_URL || '').replace(/\/$/, ''),
+    private fetcher: typeof fetch = fetch,
+    private store: SessionStore<ClassroomAuth> = typeof window === 'undefined' ? memorySessionStore() : browserSessionStore(),
+  ) {
+    this.auth = store.read()
+    // Every tab shares one sign-in: follow renewals and sign-ins from other tabs, and sign out with them.
+    store.onChange((next) => {
+      const current = this.auth
+      if (!next) {
+        if (current) { this.epoch++; this.auth = null; this.listeners.forEach((l) => l()) }
+        return
+      }
+      if (current && next.user.id !== current.user.id) return // another account in another tab: this tab keeps its own
+      if (current && next.session.accessToken === current.session.accessToken) return
+      if (!current) this.epoch++
+      this.auth = next
+      this.listeners.forEach((l) => l())
+    })
   }
   getSession = () => this.auth
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
@@ -52,7 +69,7 @@ export class ClassroomClient implements ClassroomClientSurface {
   }
   private publishSession(auth: ClassroomAuth | null) {
     this.auth = auth
-    try { if (auth) sessionStorage.setItem(SESSION_KEY, JSON.stringify(auth)); else sessionStorage.removeItem(SESSION_KEY) } catch { /* In-memory login still works. */ }
+    this.store.write(auth)
     this.listeners.forEach(listener => listener())
   }
   private assertContext(epoch: number) {
@@ -86,11 +103,17 @@ export class ClassroomClient implements ClassroomClientSurface {
         // Another request may already have renewed this same login context.
         if (this.auth.session.accessToken === token) {
           if (!this.refreshing || this.refreshing.epoch !== epoch) {
-            const refreshToken = this.auth.session.refreshToken
             const entry = { epoch, promise: Promise.resolve(null as unknown as ClassroomAuth) }
-            entry.promise = this.perform<ClassroomAuth>('/auth/refresh', 'POST', { refreshToken }, false, epoch)
-              .then(refreshed => { this.assertContext(epoch); this.publishSession(refreshed); return refreshed })
-              .finally(() => { if (this.refreshing === entry) this.refreshing = null })
+            // One tab renews at a time; a tab that waited takes the renewal another tab already made.
+            entry.promise = this.store.withRenewLock(async () => {
+              const shared = this.store.read()
+              if (shared && this.auth && shared.user.id === this.auth.user.id && shared.session.accessToken !== token) {
+                this.assertContext(epoch); this.publishSession(shared); return shared
+              }
+              const refreshToken = this.auth!.session.refreshToken
+              const refreshed = await this.perform<ClassroomAuth>('/auth/refresh', 'POST', { refreshToken }, false, epoch)
+              this.assertContext(epoch); this.publishSession(refreshed); return refreshed
+            }).finally(() => { if (this.refreshing === entry) this.refreshing = null })
             this.refreshing = entry
           }
           await waitForSignal(this.refreshing.promise, signal)

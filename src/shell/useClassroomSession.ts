@@ -68,9 +68,9 @@ export function resetClassroomSessionCache(client: object = browserClassroomClie
 
 /**
  * The signed-in account as the header and pages see it. Reads the same
- * session the classroom client stores (`brick-studio.classroom-session.v1`,
- * no new keys), re-renders when the client publishes a change (sign-in,
- * sign-out, a revoked token), and refreshes the account once per page load
+ * session the classroom client stores (shared by every tab until the browser
+ * closes, see classroom/sessionStore.ts), re-renders when the client publishes
+ * a change (sign-in, sign-out, a revoked token, another tab signing out), and refreshes the account once per page load
  * through the existing `GET /classroom/me` call. No polling.
  */
 export function useClassroomSession(client: ClassroomSessionClient = browserClassroomClient, navigate?: Navigate): ClassroomSessionState {

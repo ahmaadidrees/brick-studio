@@ -29,3 +29,16 @@ function adoptJsdomStorage(key: StorageKey) {
 
 adoptJsdomStorage('localStorage')
 adoptJsdomStorage('sessionStorage')
+
+// The classroom sign-in is shared by every tab (src/classroom/sessionStore.ts). Each test starts signed out, as it did
+// when the sign-in lived in one tab's sessionStorage.
+import { beforeEach } from 'vitest'
+import { SESSION_STORE_KEYS } from '../classroom/sessionStore'
+beforeEach(() => {
+  try {
+    globalThis.localStorage?.removeItem(SESSION_STORE_KEYS.store)
+    if (typeof document !== 'undefined') document.cookie = `${SESSION_STORE_KEYS.cookie}=; Path=/; Max-Age=0`
+  } catch {
+    // Node-only suites have no storage.
+  }
+})
