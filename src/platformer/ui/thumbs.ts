@@ -17,9 +17,17 @@ export function levelThumb(design: LevelDesign, cacheKey: string): string {
   // A race track shows the whole track from above.
   if (kitOf(design) === 'race') return raceThumb(design, cacheKey, THUMB_W)
   const hit = cache.get(cacheKey)
-  if (hit) return hit
-  // One renderer for every thumbnail keeps its art cache warm.
-  renderer ??= new Renderer(document.createElement('canvas'))
+  if (hit !== undefined) return hit
+  // One renderer for every thumbnail keeps its art cache warm. Without a 2D canvas (locked-down browsers, test
+  // environments) there is no picture, and the card shows its plain art instead.
+  if (!renderer) {
+    const canvas = document.createElement('canvas')
+    if (!canvas.getContext('2d')) {
+      cache.set(cacheKey, '')
+      return ''
+    }
+    renderer = new Renderer(canvas)
+  }
   const r = renderer
   // Pixel art is crisp at one pixel per world pixel (the page scales it up); the cartoon look is drawn at 2×.
   r.configure(THUMB_W, THUMB_H, design.style === 'cartoon' ? 2 : 1)

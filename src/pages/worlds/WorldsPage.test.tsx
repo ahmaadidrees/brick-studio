@@ -75,7 +75,7 @@ function draw(client: WorldsClient = createFakeWorldsClient(), extra: Partial<Pa
 }
 
 const settled = () => waitFor(() => {
-  expect(screen.queryByText(/Loading your worlds/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Loading your projects/)).not.toBeInTheDocument()
   expect(screen.queryByText('Loading invites…')).not.toBeInTheDocument()
 })
 const inviteCard = (title: string, root: HTMLElement = screen.getByRole('region', { name: 'Shared with you' })) => within(root).getByText(title).closest('li')!
@@ -84,7 +84,7 @@ const inviteCard = (title: string, root: HTMLElement = screen.getByRole('region'
 function seedDraft(bricks = 3) {
   window.localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify({
     schemaVersion: 2, partLibraryVersion: 1, environmentId: 'toy-room', customParts: [],
-    bricks: Array.from({ length: bricks }, (_, index) => ({ id: `b${index}` })),
+    bricks: Array.from({ length: bricks }, (_, index) => ({ id: `b${index}`, partId: 'brick_2x4', x: 2 + (index % 10) * 5, y: 0, z: 2 + Math.floor(index / 10) * 6, rotation: 0, color: '#ffffff' })),
   }))
 }
 
@@ -93,8 +93,8 @@ describe('student', () => {
     draw()
     await settled()
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
-    expect(screen.getByText('3 worlds saved to your account')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My projects')
+    expect(screen.getByText('3 projects saved to your account')).toBeInTheDocument()
 
     // Shared for building: the world is a room, so the primary button walks into it.
     const card = screen.getByRole('article', { name: 'Lava Maze' })
@@ -178,36 +178,41 @@ describe('student', () => {
     expect(within(teacherWorlds).getByRole('article', { name: 'Our Town' })).toBeInTheDocument()
   })
 
-  it('offers New build at the top of the page, on every section', async () => {
+  it('offers New project at the top of the page, on every section, and it asks what to make', async () => {
     draw()
     await settled()
 
-    const newBuild = screen.getByRole('link', { name: 'New build' })
-    expect(newBuild).toHaveAttribute('href', '/build?new=1')
-    expect(newBuild).toHaveClass('ui-button-primary')
+    const newProject = screen.getByRole('button', { name: 'New project' })
+    expect(newProject).toHaveClass('ui-button-primary')
+    expect(screen.getByRole('button', { name: 'Import a file' })).toBeInTheDocument()
+    fireEvent.click(newProject)
+    const sheet = screen.getByRole('dialog', { name: 'New project' })
+    for (const kind of ['3D build', 'Platformer', 'Race track']) expect(within(sheet).getByRole('heading', { name: kind })).toBeInTheDocument()
+    fireEvent.click(within(sheet).getAllByRole('button', { name: 'Close' })[0])
 
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: new RegExp(FIXTURE_CLASS.name) }))
-    expect(screen.getByRole('link', { name: 'New build' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New project' })).toBeInTheDocument()
   })
 
-  it('shows the browser draft strip only when this browser holds a build', async () => {
+  it('lists the projects kept only on this computer, each with a way into the account', async () => {
     seedDraft(12)
     draw()
     await settled()
 
-    const strip = screen.getByRole('region', { name: 'Build in progress' })
-    expect(within(strip).getByText('Build in progress on this device')).toBeInTheDocument()
-    expect(within(strip).getByText('On this computer only · 12 bricks')).toBeInTheDocument()
-    expect(within(strip).getByRole('link', { name: 'Continue building' })).toHaveAttribute('href', '/build')
-    expect(within(strip).getByRole('link', { name: 'Save to my account' })).toHaveAttribute('href', '/build?classroom=save')
-    // Reading the draft never writes the key back.
+    const local = screen.getByRole('region', { name: 'On this computer' })
+    const card = within(local).getByRole('article', { name: 'My 3D build' })
+    expect(within(card).getByText(/On this computer only · 12 bricks/)).toBeInTheDocument()
+    expect(within(card).getByText('3D build')).toBeInTheDocument()
+    expect(within(card).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/build')
+    expect(within(card).getByRole('button', { name: 'Move to my account' })).toBeInTheDocument()
+    // Reading the build never writes the key back.
     expect(window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toContain('"bricks"')
   })
 
-  it('hides the draft strip when nothing is saved in this browser', async () => {
+  it('has no On this computer section when nothing is saved in this browser', async () => {
     draw()
     await settled()
-    expect(screen.queryByRole('region', { name: 'Build in progress' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'On this computer' })).not.toBeInTheDocument()
   })
 
   it('invites the class to look and stays on the page', async () => {
@@ -304,7 +309,7 @@ describe('student', () => {
   it('lists quiet invitations on Mine, apart from whole-class worlds, with one clear action', async () => {
     draw()
     await settled()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My projects')
     const arcade = inviteCard('Pixel Arcade')
     expect(within(arcade).getByText('Finn O. invited you')).toBeInTheDocument()
     expect(within(arcade).getByText('3D')).toBeInTheDocument()
@@ -340,7 +345,7 @@ describe('student', () => {
 
     await waitFor(() => expect(copyWorld).toHaveBeenCalledWith('world-chloe-castle'))
     expect(await screen.findByRole('article', { name: 'Crystal Castle (copy)' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My projects')
   })
 
   it('renames a world from the card menu', async () => {
@@ -350,7 +355,7 @@ describe('student', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'More for Rainbow Rocket' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }))
-    const field = within(screen.getByRole('dialog')).getByLabelText('World name')
+    const field = within(screen.getByRole('dialog')).getByLabelText('Project name')
     fireEvent.change(field, { target: { value: '' } })
     fireEvent.change(field, { target: { value: 'Rainbow Rocket 2.0' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save name' }))
@@ -375,7 +380,7 @@ describe('student', () => {
     expect(screen.getByText('Mr. Idrees closed collaboration. Class worlds come back when it reopens.')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Shared by classmates' })).not.toBeInTheDocument()
     expect(screen.queryByRole('article', { name: 'Sky Bridge' })).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Search worlds')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Search projects')).not.toBeInTheDocument()
     expect(within(screen.getByRole('navigation', { name: 'Worlds sections' })).getByRole('button', { name: /Period 3 Makers/ })).toHaveTextContent('0')
   })
 
@@ -470,8 +475,8 @@ describe('student', () => {
     draw(createFakeWorldsClient({ worlds: [] }))
     await settled()
     const main = screen.getByRole('main')
-    expect(within(main).getByText('Your first world starts here.')).toBeInTheDocument()
-    expect(within(main).getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/build')
+    expect(within(main).getByText('Your first project starts here.')).toBeInTheDocument()
+    expect(within(main).getAllByRole('button', { name: 'New project' }).length).toBeGreaterThan(1)
   })
 })
 
@@ -483,7 +488,7 @@ describe('teacher', () => {
     await settled()
 
     const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
-    expect(within(rail).getByRole('button', { name: /^My worlds/ })).toBeInTheDocument()
+    expect(within(rail).getByRole('button', { name: /^My projects/ })).toBeInTheDocument()
     expect(within(rail).getByRole('link', { name: /New class/ })).toHaveAttribute('href', '/class')
 
     // Teachers have no student invitation entry.
@@ -503,14 +508,17 @@ describe('teacher', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start world' }))
     await waitFor(() => expect(createSharedWorld).toHaveBeenCalledWith(FIXTURE_CLASS.id, 'Platform party', 'class', '2d'))
     const card = await screen.findByRole('article', { name: 'Platform party' })
-    expect(within(card).getByText('2D world')).toBeInTheDocument()
+    expect(within(card).getByText('Platformer')).toBeInTheDocument()
     expect(within(card).getByRole('link', { name: 'Join' })).toHaveAttribute('href', expect.stringMatching(/^\/2d\/w\/[a-z0-9-]+$/))
   })
 
-  it('links 2D worlds to the 2D builder and rooms, and offers a new 2D world beside New build', async () => {
+  it('links 2D worlds to the 2D builder and rooms, and offers platformers and race tracks in New project', async () => {
     draw(createFakeWorldsClient())
     await settled()
-    expect(screen.getByRole('link', { name: 'New 2D world' })).toHaveAttribute('href', '/2d/build?new=1')
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }))
+    const sheet = screen.getByRole('dialog', { name: 'New project' })
+    expect(within(sheet).getByRole('button', { name: 'Start a platformer' })).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Starter track' })).toBeInTheDocument()
   })
 
   it('offers the way back to the class page: a header button and a link on the selected class', async () => {
@@ -519,9 +527,6 @@ describe('teacher', () => {
 
     const header = screen.getByRole('banner')
     expect(within(header).getByRole('link', { name: 'My class' })).toHaveAttribute('href', '/class')
-    // Order matters: the class is the first thing a teacher reaches for.
-    const links = within(header).getAllByRole('link').map(link => link.textContent)
-    expect(links.indexOf('My class')).toBeLessThan(links.indexOf('Open the studio'))
 
     const rail = screen.getByRole('navigation', { name: 'Worlds sections' })
     expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
@@ -531,7 +536,7 @@ describe('teacher', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(FIXTURE_CLASS.name)
     expect(within(rail).getByRole('link', { name: 'Open class page' })).toHaveAttribute('href', `/class?classId=${FIXTURE_CLASS.id}`)
 
-    fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
+    fireEvent.click(within(rail).getByRole('button', { name: /^My projects/ }))
     expect(within(rail).queryByRole('link', { name: 'Open class page' })).not.toBeInTheDocument()
   })
 
@@ -548,7 +553,7 @@ describe('teacher', () => {
     expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
 
     // "My worlds" is not a class, so it never overwrites the remembered one.
-    fireEvent.click(within(rail).getByRole('button', { name: /^My worlds/ }))
+    fireEvent.click(within(rail).getByRole('button', { name: /^My projects/ }))
     expect(readRememberedTeacherClass()).toBe(FIXTURE_CLASS.id)
   })
 
@@ -641,10 +646,17 @@ describe('teacher', () => {
 })
 
 describe('session and layout', () => {
-  it('sends a signed-out visitor to sign-in and back to /worlds', async () => {
+  it('shows a signed-out visitor the projects on this computer, starters to play, and a way to sign in', async () => {
+    seedDraft(3)
+    navigate.mockClear()
     draw(createFakeWorldsClient({ session: null }))
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('/join?mode=signin&next=%2Fworlds'))
-    expect(screen.getByRole('status')).toHaveTextContent('Taking you to sign in…')
+    expect(navigate).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My projects')
+    expect(within(screen.getByRole('main')).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/join?mode=signin&next=%2Fprojects')
+    expect(within(screen.getByRole('region', { name: 'On this computer' })).getByRole('article', { name: 'My 3D build' })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'On this computer' })).queryByRole('button', { name: 'Move to my account' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Starters to play' })).getByRole('article', { name: 'Brick Speedway' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New project' })).toBeInTheDocument()
   })
 
   it('opens the class section for ?view=class and own worlds otherwise', async () => {
@@ -655,7 +667,7 @@ describe('session and layout', () => {
     cleanup()
     draw(createFakeWorldsClient(), { view: 'mine' })
     await settled()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My worlds')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My projects')
   })
 
   it('reads the view from the URL when nothing is passed', async () => {
@@ -667,11 +679,10 @@ describe('session and layout', () => {
     } finally { window.history.replaceState(null, '', '/') }
   })
 
-  it('keeps the account chip and studio link in the header', async () => {
+  it('keeps the account chip in the header', async () => {
     draw()
     await settled()
     const header = screen.getByRole('banner')
-    expect(within(header).getByRole('link', { name: 'Open the studio' })).toHaveAttribute('href', '/build')
     expect(within(header).getByRole('button', { name: /Ava R\./ })).toHaveTextContent(FIXTURE_CLASS.name)
   })
 
@@ -711,11 +722,11 @@ describe('search', () => {
     draw()
     await settled()
 
-    fireEvent.change(screen.getByLabelText('Search worlds'), { target: { value: 'lava' } })
+    fireEvent.change(screen.getByLabelText('Search projects'), { target: { value: 'lava' } })
     expect(screen.getByRole('article', { name: 'Lava Maze' })).toBeInTheDocument()
     expect(screen.queryByRole('article', { name: 'Treehouse Hideout' })).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText('Search worlds'), { target: { value: '' } })
+    fireEvent.change(screen.getByLabelText('Search projects'), { target: { value: '' } })
     expect(screen.getByRole('article', { name: 'Treehouse Hideout' })).toBeInTheDocument()
   })
 })

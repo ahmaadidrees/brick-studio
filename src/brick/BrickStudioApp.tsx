@@ -1463,7 +1463,7 @@ export default function BrickStudioApp({
           onGoHome={goHome}
           onGoToInviteWorld={goToInviteWorld}
           inviteNavigationBlocked={inviteNavigationBlocked}
-          onSwitchDimension={switchDimension}
+          onOpenProjects={livePolicy || readOnly ? undefined : () => leaveStudioFor(WORLDS_PATH)}
         />
       ) : (
         <ExploreHud
@@ -1516,7 +1516,7 @@ export default function BrickStudioApp({
       {worldSetupOpen && contentPreview && (
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
-      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>That world isn't available. It may have been removed, hidden by your teacher, or belong to another account.</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My worlds</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
+      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>That world isn't available. It may have been removed, hidden by your teacher, or belong to another account.</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
       {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {inviteSheet && <InviteSheet
         world={inviteSheet.world}

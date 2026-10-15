@@ -42,7 +42,7 @@ export function LevelMenu(p: Props) {
       {p.onInvite && <MenuItem icon={<Link2 size={18} />} label="Copy invite link" description="Friends who open it join this room" onSelect={p.onInvite} />}
       {p.onShareLink && <MenuItem icon={<Share2 size={18} />} label="Copy a link to this world" description="Anyone who opens it gets their own copy" onSelect={p.onShareLink} />}
       {p.onResetWorld && <MenuItem icon={<RotateCcw size={18} />} label="Bring back coins and enemies" description="Everything you took or stomped comes back" onSelect={p.onResetWorld} />}
-      {p.onNewLevel && <MenuItem icon={<FilePlus2 size={18} />} label="New world" description="A platformer or a race track" onSelect={p.onNewLevel} />}
+      {p.onNewLevel && <MenuItem icon={<FilePlus2 size={18} />} label="New project" description="A 3D build, a platformer or a race track" onSelect={p.onNewLevel} />}
       {p.onRecoveryCopies && <MenuItem icon={<History size={18} />} label="Recovery copies" description="Download an earlier copy of this world" onSelect={p.onRecoveryCopies} />}
       <MenuSeparator />
       <MenuItem icon={p.sound.muted ? <VolumeX size={18} /> : <Volume2 size={18} />} label={p.sound.muted ? 'Turn sound on' : 'Turn sound off'} onSelect={() => p.onSound({ ...p.sound, muted: !p.sound.muted })} />

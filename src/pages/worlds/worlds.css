@@ -361,3 +361,6 @@
   .worlds-title-actions { width: 100%; }
   .worlds-title-actions > .ui-button { flex: 1 1 auto; min-height: 44px; }
 }
+
+/* Not signed in: no class rail, just the projects on this computer. */
+.worlds-layout-solo { grid-template-columns: minmax(0, 1fr); width: min(1080px, 100%); }

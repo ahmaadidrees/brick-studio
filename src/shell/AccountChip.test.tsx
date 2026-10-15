@@ -45,10 +45,10 @@ describe('AccountChip', () => {
     expect(trigger).toHaveTextContent('Ava R.')
     expect(trigger).toHaveTextContent('Period 2 — Builders')
     fireEvent.click(trigger)
-    expect(menuItems()).toEqual(['New build', 'My worlds', 'My class', 'Switch account', 'Sign out'])
+    expect(menuItems()).toEqual(['New build', 'My projects', 'My class', 'Switch account', 'Sign out'])
     expect(screen.getByRole('menuitem', { name: 'New build' })).toHaveAttribute('href', '/build?new=1')
-    expect(screen.getByRole('menuitem', { name: 'My worlds' })).toHaveAttribute('href', '/worlds')
-    expect(screen.getByRole('menuitem', { name: 'My class' })).toHaveAttribute('href', '/worlds?view=class')
+    expect(screen.getByRole('menuitem', { name: 'My projects' })).toHaveAttribute('href', '/projects')
+    expect(screen.getByRole('menuitem', { name: 'My class' })).toHaveAttribute('href', '/projects?view=class')
   })
 
   it('students in the editor get Save this build to my account only when the callback exists', () => {
@@ -56,7 +56,7 @@ describe('AccountChip', () => {
     render(<AccountChip session={student} context="editor" onSaveToAccount={onSaveToAccount} />)
     fireEvent.click(screen.getByRole('button', { name: /^Account:/ }))
     // The editor keeps its own New build in the ⋯ menu, which resets in place.
-    expect(menuItems()).toEqual(['My worlds', 'My class', 'Save this build to my account', 'Switch account', 'Sign out'])
+    expect(menuItems()).toEqual(['My projects', 'My class', 'Save this build to my account', 'Switch account', 'Sign out'])
     fireEvent.click(screen.getByRole('menuitem', { name: 'Save this build to my account' }))
     expect(onSaveToAccount).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('menu')).toBeNull()
@@ -70,7 +70,7 @@ describe('AccountChip', () => {
     render(<AccountChip session={teacher} context="page" />)
     const trigger = screen.getByRole('button', { name: 'Account: Teacher' })
     fireEvent.click(trigger)
-    expect(menuItems()).toEqual(['New build', 'My class', 'My worlds', 'Show class code on projector', 'Switch account', 'Sign out'])
+    expect(menuItems()).toEqual(['New build', 'My class', 'My projects', 'Show class code on projector', 'Switch account', 'Sign out'])
     expect(screen.getByRole('menuitem', { name: 'New build' })).toHaveAttribute('href', '/build?new=1')
     expect(screen.getByRole('menuitem', { name: 'My class' })).toHaveAttribute('href', '/class')
     expect(screen.getByRole('menuitem', { name: 'Show class code on projector' })).toHaveAttribute('href', '/class/projector')
@@ -95,13 +95,13 @@ describe('invitation entry is separate from the account chip', () => {
     return { request: vi.fn(async (_path: string) => { if (invites instanceof Error) throw invites; return { invites } as never }) }
   }
 
-  it('keeps the avatar and My worlds description about the account even when invitations are waiting', () => {
+  it('keeps the avatar and My projects description about the account even when invitations are waiting', () => {
     render(<AccountChip session={student} context="page" inviteCount={2} />)
     const trigger = screen.getByRole('button', { name: 'Account: Ava R., Period 2 — Builders' })
     expect(trigger.querySelector('.shell-account-badge')).toBeNull()
     fireEvent.click(trigger)
-    const item = screen.getByRole('menuitem', { name: 'My worlds' })
-    expect(document.getElementById(item.getAttribute('aria-describedby')!)).toHaveTextContent('Your saved builds')
+    const item = screen.getByRole('menuitem', { name: 'My projects' })
+    expect(document.getElementById(item.getAttribute('aria-describedby')!)).toHaveTextContent('Everything you’ve made')
     expect(invitesWaitingLabel(1)).toBe('1 invite waiting')
     expect(invitesWaitingLabel(0)).toBe('')
   })

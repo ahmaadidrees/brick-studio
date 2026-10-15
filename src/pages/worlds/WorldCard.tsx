@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { CloudCheck, Eye, Hammer, MoreHorizontal, Play, Square, Users } from 'lucide-react'
 import { Button } from '../../ui'
 import { formatSavedDate } from '../../classroom/panelShared'
+import { KindChip } from '../../projects/ProjectSections'
+import { kindOfWorld } from '../../projects/projects'
 import { buildingCount, classmatesLabel, isInviteOnly, isLevel2d, isShared, plateSizeOf, sharedForBuilding, type WorldsWorld } from './worldsData'
 
 /**
@@ -155,7 +157,7 @@ export function WorldCard({ world, children, byline, chip, menu }: CardProps) {
       </div>
       {byline && <p className="worlds-card-owner">{byline}</p>}
       <p className="worlds-card-saved"><CloudCheck size={14} aria-hidden="true" /> <time dateTime={world.updatedAt} title={new Date(world.updatedAt).toLocaleString()}>{formatSavedDate(world.updatedAt)}</time></p>
-      {(chip || isLevel2d(world)) && <p className="worlds-card-chips"><FormatChip world={world} />{chip}</p>}
+      <p className="worlds-card-chips"><KindChip kind={kindOfWorld(world)} />{chip}</p>
       <div className="worlds-card-actions">{children}</div>
     </div>
   </article>

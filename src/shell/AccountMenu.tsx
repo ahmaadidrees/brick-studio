@@ -55,12 +55,12 @@ export function AccountMenu({ session, context, onSaveToAccount, trigger, defaul
       {teacher ? (
         <>
           <MenuItem icon={<Users size={18} />} label="My class" description="Students, worlds and settings" href={CLASS_PATH} />
-          <MenuItem icon={<FolderOpen size={18} />} label="My worlds" description="Your own builds" href={WORLDS_PATH} />
+          <MenuItem icon={<FolderOpen size={18} />} label="My projects" description="Everything you’ve made" href={WORLDS_PATH} />
           <MenuItem icon={<Presentation size={18} />} label="Show class code on projector" description="Full-screen code and QR" href={PROJECTOR_PATH} />
         </>
       ) : (
         <>
-          <MenuItem icon={<FolderOpen size={18} />} label="My worlds" description="Your saved builds" href={WORLDS_PATH} />
+          <MenuItem icon={<FolderOpen size={18} />} label="My projects" description="Everything you’ve made" href={WORLDS_PATH} />
           <MenuItem icon={<Users size={18} />} label="My class" description="Worlds shared with your class" href={MY_CLASS_STUDENT_PATH} />
           {context === 'editor' && onSaveToAccount && (
             <MenuItem icon={<Save size={18} />} label="Save this build to my account" description="Keep it across devices" onSelect={onSaveToAccount} />

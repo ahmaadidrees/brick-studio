@@ -107,16 +107,16 @@ describe('studio navigation and save context', () => {
     expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(before)
   })
 
-  it('keeps My worlds and My class at the start of the account menu and saves through the in-editor sheet', () => {
+  it('keeps My projects and My class at the start of the account menu and saves through the in-editor sheet', () => {
     browserClassroomClient.setSession(student)
     render(<BrickStudioApp />)
     fireEvent.click(screen.getByRole('button', { name: 'Account: Ava R.' }))
     const menu = screen.getByRole('menu', { name: 'Account' })
     const entries = within(menu).getAllByRole('menuitem')
-    expect(entries[0]).toHaveTextContent('My worlds')
-    expect(entries[0]).toHaveAttribute('href', '/worlds')
+    expect(entries[0]).toHaveTextContent('My projects')
+    expect(entries[0]).toHaveAttribute('href', '/projects')
     expect(entries[1]).toHaveTextContent('My class')
-    expect(entries[1]).toHaveAttribute('href', '/worlds?view=class')
+    expect(entries[1]).toHaveAttribute('href', '/projects?view=class')
     expect(entries[2]).toHaveTextContent('Save this build to my account')
     fireEvent.click(entries[2])
     expect(screen.getByRole('dialog', { name: 'Classroom save' })).toBeInTheDocument()
@@ -180,7 +180,7 @@ describe('studio navigation and save context', () => {
     expect(screen.getByRole('dialog', { name: 'Classroom save' })).toHaveAttribute('data-class-code', 'CLASS-456')
   })
 
-  describe('/build?world=<id> from My worlds', () => {
+  describe('/build?world=<id> from My projects', () => {
     const world: ClassroomWorld = { id: 'world-7', title: 'Sky bridge', kind: 'personal', ownerId: student.user.id, classId: null, visibility: 'private', canEdit: true, classCanEdit: false, ownerName: 'Ava R.', ownerClassId: null, sharedAt: null, revision: 3, updatedAt: '2026-09-18T09:00:00Z', document: createBrickStudioDocument([{ id: 'sky-1', partId: 'brick_2x4', x: 2, y: 0, z: 2, rotation: 0, color: '#fff' }]) }
 
     it('sends a signed-out visitor to sign in and back to the same world, stripping the param', () => {
@@ -203,7 +203,7 @@ describe('studio navigation and save context', () => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
 
-    it('keeps the current build and links back to My worlds when the world is unavailable', async () => {
+    it('keeps the current build and links back to My projects when the world is unavailable', async () => {
       browserClassroomClient.setSession(student)
       vi.spyOn(browserClassroomClient, 'getWorld').mockRejectedValue(Object.assign(new Error('World not found'), { status: 404 }))
       const before = useBrickStore.getState().getDocumentSnapshot()
@@ -211,7 +211,7 @@ describe('studio navigation and save context', () => {
       render(<BrickStudioApp />)
       const alert = await screen.findByRole('alert')
       expect(alert).toHaveTextContent("That world isn't available")
-      expect(within(alert).getByRole('link', { name: 'Back to My worlds' })).toHaveAttribute('href', '/worlds')
+      expect(within(alert).getByRole('link', { name: 'Back to My projects' })).toHaveAttribute('href', '/projects')
       expect(cloud.attach).not.toHaveBeenCalled()
       expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(before)
       fireEvent.click(within(alert).getByRole('button', { name: 'Keep building' }))

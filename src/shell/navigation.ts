@@ -8,7 +8,8 @@ import type { ClassroomEntryIntent } from '../routes'
  */
 
 export const JOIN_PATH = '/join'
-export const WORLDS_PATH = '/worlds'
+/** My projects (every kind of project, on this computer and in the account). */
+export const WORLDS_PATH = '/projects'
 export const CLASS_PATH = '/class'
 export const PROJECTOR_PATH = '/class/projector'
 

@@ -1,20 +1,25 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Blocks, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, MonitorSmartphone, Plus, Search, Settings, Square, Users } from 'lucide-react'
+import { Blocks, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, Plus, Search, Settings, Users } from 'lucide-react'
 import { BrickMark } from '../../brand'
 import { Button, SegmentedControl, Sheet, TextField } from '../../ui'
 import { errorMessage, formatSavedDate } from '../../classroom/panelShared'
 import type { ClassroomCheckpoint } from '../../classroom/contracts'
 import { AccessChip, BuildingChip, CardMenu, InviteesChip, OpenWorldButton, PresenceChips, WorldCard } from './WorldCard'
-import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, NEW_BUILD_HREF, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
+import { AppHeader, CLASS_PATH, clearRememberedTeacherClass, displayNameFor, pickTeacherClassId, rememberTeacherClass, type ClassroomSessionState } from '../../shell'
 import { InviteSheet } from '../../classroom/InviteSheet'
 import { useStudentInvites } from '../../classroom/inviteStore'
 import { inviteWorldHref, StudentInviteList } from '../../classroom/StudentInvites'
 import {
-  browserWorldsClient, buildHref, byNewest, CONTINUE_DRAFT_HREF, isInviteOnly, isMine, isShared, liveHref, matchesSearch, NEW_LEVEL_2D_HREF, readLocalDraft,
-  SAVE_DRAFT_HREF, sharedForBuilding, signInHref, type Classmate, type LocalDraft, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
+  browserWorldsClient, buildHref, byNewest, isInviteOnly, isMine, isShared, liveHref, matchesSearch,
+  sharedForBuilding, signInHref, type Classmate, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
 import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
+import { NewProjectSheet } from '../../projects/NewProjectSheet'
+import { ImportProjectButton, LocalProjectsSection, StartersSection } from '../../projects/ProjectSections'
+import { accountProject } from '../../projects/projects'
+import { downloadProjectFile } from '../../projects/projectFile'
 import './worlds.css'
+import '../../projects/projects.css'
 
 type Props = {
   client?: WorldsClient
@@ -101,7 +106,9 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const [renameTarget, setRenameTarget] = useState<WorldsWorld | null>(null)
   const [checkpointTarget, setCheckpointTarget] = useState<WorldsWorld | null>(null)
   const [checkpoints, setCheckpoints] = useState<ClassroomCheckpoint[]>([])
-  const [draft, setDraft] = useState<LocalDraft | null>(null)
+  const [newOpen, setNewOpen] = useState(false)
+  /** Bumped when a project on this computer is added, moved to the account or removed. */
+  const [localVersion, setLocalVersion] = useState(0)
   const narrow = useNarrow()
   const renameField = useRef<HTMLInputElement>(null)
   /** Consumed once, when the classes arrive; switching sections by hand wins afterwards. */
@@ -110,10 +117,6 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const teacher = session?.user.role === 'teacher'
   const me = session?.user.id ?? ''
 
-  // Presence-only: the browser draft is read once, never created or replaced here.
-  useEffect(() => { setDraft(readLocalDraft(storage ?? globalThis.localStorage)) }, [storage])
-
-  useEffect(() => { if (!session) navigate(signInHref('/worlds')) }, [session, navigate])
 
   useEffect(() => {
     if (!session) { setLoading(false); return }
@@ -152,7 +155,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const belongsToClass = (world: WorldsWorld, classId: string) =>
     world.ownerClassId === classId || (world.ownerClassId == null && classId === classes[0]?.id)
   const sections = useMemo(() => [
-    { id: 'mine', label: teacher ? 'My worlds' : 'Mine', count: myWorlds.length },
+    { id: 'mine', label: teacher ? 'My projects' : 'Mine', count: myWorlds.length },
     ...classes.map(item => ({
       id: item.id,
       label: item.name,
@@ -164,7 +167,40 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
 
   useEffect(() => { if (!sections.some(item => item.id === section)) setSection('mine') }, [sections, section])
 
-  if (!session) return <main className="worlds-page worlds-redirect"><p role="status">Taking you to sign in…</p></main>
+  const feedback = { onNotice: (message: string) => { setError(''); setNotice(message) }, onError: (message: string) => { setNotice(''); setError(message) }, navigate: (href: string) => window.location.assign(href) }
+  const titleActions = (signedIn: boolean) => <>
+    {/* The one obvious way to start something, on every section of this page. */}
+    <Button variant="primary" icon={<Plus size={18} />} onClick={() => setNewOpen(true)}>New project</Button>
+    <ImportProjectButton signedIn={signedIn} {...feedback} />
+  </>
+  const messages = <>
+    {error && <p className="worlds-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
+    {notice && <p className="worlds-notice" role="status"><CircleCheck size={18} aria-hidden="true" /><span>{notice}</span></p>}
+  </>
+
+  // Not signed in: the projects on this computer, starters to play, and the way to keep projects in an account.
+  if (!session) return <div className="worlds-page">
+    <AppHeader variant="page" title="Projects" />
+    <div className="worlds-layout worlds-layout-solo">
+      <main className="worlds-main" id="worlds-main">
+        <div className="worlds-title-row">
+          <div>
+            <h1>My projects</h1>
+            <p className="worlds-counts">On this computer</p>
+          </div>
+          <div className="worlds-title-actions">{titleActions(false)}</div>
+        </div>
+        {messages}
+        <div className="projects-signin">
+          <p>Sign in to keep your projects in your account, open them on any computer, and build with your class.</p>
+          <Button href={signInHref('/projects')} variant="primary" size="sm">Sign in</Button>
+        </div>
+        <LocalProjectsSection signedIn={false} version={localVersion} onChanged={() => setLocalVersion(v => v + 1)} {...feedback} />
+        <StartersSection signedIn={false} {...feedback} />
+      </main>
+    </div>
+    <NewProjectSheet open={newOpen} onClose={() => setNewOpen(false)} />
+  </div>
 
   const headerSession: ClassroomSessionState = {
     status: teacher ? 'teacher' : 'student',
@@ -173,7 +209,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     className: teacher ? undefined : classes[0]?.name,
     displayName: displayNameFor(session.user),
     signOut: async () => run(async () => { clearRememberedTeacherClass(); await client.signOut() }),
-    switchAccount: async () => { clearRememberedTeacherClass(); await client.signOut(); navigate(signInHref('/worlds')) },
+    switchAccount: async () => { clearRememberedTeacherClass(); await client.signOut(); navigate(signInHref('/projects')) },
   }
 
   const currentClass = classes.find(item => item.id === section) ?? null
@@ -261,20 +297,17 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     )}
   </Fragment>)
 
-  const heading = section === 'mine' ? 'My worlds' : currentClass?.name ?? 'Class'
+  const heading = section === 'mine' ? 'My projects' : currentClass?.name ?? 'Class'
   const counts = section === 'mine'
-    ? `${myWorlds.length} ${myWorlds.length === 1 ? 'world' : 'worlds'} saved to your account`
+    ? `${myWorlds.length} ${myWorlds.length === 1 ? 'project' : 'projects'} saved to your account`
     : collaborationClosed ? 'Collaboration is closed right now.'
-      : `${classmateWorlds.length + classWorlds.length} ${classmateWorlds.length + classWorlds.length === 1 ? 'world' : 'worlds'} ${teacher ? 'in this class' : 'to join'}`
+      : `${classmateWorlds.length + classWorlds.length} ${classmateWorlds.length + classWorlds.length === 1 ? 'project' : 'projects'} ${teacher ? 'in this class' : 'to join'}`
 
   return <div className="worlds-page">
     <AppHeader
       variant="page"
-      title="Worlds"
-      actions={<>
-        {teacher && <Button href={CLASS_PATH} variant="secondary" size="sm" icon={<Users size={16} />}>My class</Button>}
-        <Button href="/build" variant="secondary" size="sm">Open the studio</Button>
-      </>}
+      title="Projects"
+      actions={teacher ? <Button href={CLASS_PATH} variant="secondary" size="sm" icon={<Users size={16} />}>My class</Button> : undefined}
       session={headerSession}
       inviteClient={client.inviteClient}
       onGoToInviteWorld={navigate}
@@ -294,16 +327,13 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             <p className="worlds-counts">{counts}</p>
           </div>
           <div className="worlds-title-actions">
-            {/* The one obvious way to start something, on every section of this page. */}
-            <Button href={NEW_BUILD_HREF} variant="primary" icon={<Plus size={18} />}>New build</Button>
-            <Button href={NEW_LEVEL_2D_HREF} variant="secondary" icon={<Square size={18} />}>New 2D world</Button>
-            {!collaborationClosed && <TextField className="worlds-search" label="Search worlds" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
+            {titleActions(true)}
+            {!collaborationClosed && <TextField className="worlds-search" label="Search projects" type="search" icon={<Search size={16} />} value={search} onChange={event => setSearch(event.target.value)} />}
           </div>
         </div>
 
-        {error && <p className="worlds-error" role="alert"><CircleAlert size={18} aria-hidden="true" /><span>{error}</span></p>}
-        {notice && <p className="worlds-notice" role="status"><CircleCheck size={18} aria-hidden="true" /><span>{notice}</span></p>}
-        {loading && <p className="worlds-loading" role="status"><LoaderCircle className="ui-spin" size={18} aria-hidden="true" /> Loading your worlds…</p>}
+        {messages}
+        {loading && <p className="worlds-loading" role="status"><LoaderCircle className="ui-spin" size={18} aria-hidden="true" /> Loading your projects…</p>}
 
         {!loading && section === 'mine' && <>
           {!teacher && <section aria-label="Shared with you" className="worlds-section">
@@ -311,25 +341,15 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             <StudentInviteList state={inviteState} search={search} blocked={busy} onGo={invite => navigate(inviteWorldHref(invite))} />
           </section>}
 
-          {draft && <section className="worlds-draft" aria-label="Build in progress">
-            <MonitorSmartphone size={22} aria-hidden="true" />
-            <div className="worlds-draft-text">
-              <strong>Build in progress on this device</strong>
-              <small>On this computer only · {draft.bricks} {draft.bricks === 1 ? 'brick' : 'bricks'}</small>
-            </div>
-            <div className="worlds-draft-actions">
-              <Button href={CONTINUE_DRAFT_HREF} variant="secondary" size="sm">Continue building</Button>
-              <Button href={SAVE_DRAFT_HREF} variant="primary" size="sm">Save to my account</Button>
-            </div>
-          </section>}
+          <LocalProjectsSection signedIn version={localVersion} onChanged={() => { setLocalVersion(v => v + 1); void reload().catch(() => {}) }} {...feedback} />
 
           <section aria-label="Saved to your account" className="worlds-section">
             <h2 className="worlds-section-title">Saved to your account</h2>
             {filter(myWorlds).length === 0
               ? <EmptyState
-                title={myWorlds.length ? 'No worlds match that search' : 'Your first world starts here.'}
-                message={myWorlds.length ? 'Try another word from the world’s name.' : 'Build something in the studio, then save it to your account to open it on any device.'}
-                action={myWorlds.length ? undefined : <Button href="/build" variant="primary">Open the studio</Button>} />
+                title={myWorlds.length ? 'No projects match that search' : 'Your first project starts here.'}
+                message={myWorlds.length ? 'Try another word from the project’s name.' : 'Start a 3D build, a platformer or a race track. It saves to your account as you go.'}
+                action={myWorlds.length ? undefined : <Button variant="primary" icon={<Plus size={18} />} onClick={() => setNewOpen(true)}>New project</Button>} />
               : <div className="worlds-grid">{filter(myWorlds).map(world => {
                 const shared = isShared(world)
                 // Shared for building: the world is a room now, so the obvious button walks into it.
@@ -342,6 +362,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                     ...(shared ? [{ label: 'Open alone', onSelect: () => navigate(buildHref(world)) }] : []),
                     { label: 'Rename', onSelect: () => setRenameTarget(world) },
                     { label: 'Duplicate', onSelect: () => duplicate(world) },
+                    { label: 'Download a copy', onSelect: () => run(async () => { downloadProjectFile(await accountProject(world)) }) },
                     { label: 'Checkpoints', onSelect: () => openCheckpoints(world) },
                     ...(shared ? [{ label: 'Stop sharing', onSelect: () => stopSharing(world) }] : []),
                   ]} />}
@@ -355,6 +376,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                 </WorldCard>
               })}</div>}
           </section>
+          <StartersSection signedIn {...feedback} />
         </>}
 
         {!loading && section !== 'mine' && currentClass && <>
@@ -406,15 +428,17 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       onClose={() => setInviteWorld(null)}
     />}
 
-    {renameTarget && <Sheet open variant="dialog" size="sm" title="Rename world" description={`“${renameTarget.title}” keeps everything inside it.`} initialFocusRef={renameField} onClose={() => setRenameTarget(null)}
+    {renameTarget && <Sheet open variant="dialog" size="sm" title="Rename project" description={`“${renameTarget.title}” keeps everything inside it.`} initialFocusRef={renameField} onClose={() => setRenameTarget(null)}
       footer={<>
         <Button variant="secondary" disabled={busy} onClick={() => setRenameTarget(null)}>Cancel</Button>
         <Button type="submit" form="worlds-rename-form" variant="primary" loading={busy} loadingLabel="Saving…">Save name</Button>
       </>}>
       <form id="worlds-rename-form" onSubmit={event => { event.preventDefault(); rename(new FormData(event.currentTarget).get('title') as string) }}>
-        <TextField ref={renameField} label="World name" name="title" defaultValue={renameTarget.title} required maxLength={80} autoComplete="off" />
+        <TextField ref={renameField} label="Project name" name="title" defaultValue={renameTarget.title} required maxLength={80} autoComplete="off" />
       </form>
     </Sheet>}
+
+    <NewProjectSheet open={newOpen} onClose={() => setNewOpen(false)} />
 
     {checkpointTarget && <Sheet open variant="dialog" size="sm" title={`Checkpoints for “${checkpointTarget.title}”`} description="Restore an earlier version if something went wrong." onClose={() => setCheckpointTarget(null)}
       footer={<Button variant="secondary" disabled={busy} onClick={() => setCheckpointTarget(null)}>Close</Button>}>

@@ -52,7 +52,9 @@ export function resolveAppRoute(
   if (/^\/welcome\/?$/.test(pathname)) return { route: 'landing', canonicalPath: `/${search}${hash}` }
   // Account pages (flows v2). `/join` keeps its query (classCode, mode, next).
   if (/^\/join\/?$/.test(pathname)) return { route: 'join', ...(pathname.endsWith('/') ? { canonicalPath: `/join${search}${hash}` } : {}) }
-  if (/^\/worlds\/?$/.test(pathname)) return { route: 'worlds', ...(pathname.endsWith('/') ? { canonicalPath: `/worlds${search}${hash}` } : {}) }
+  // My projects. `/worlds` was its name before every kind of project lived there; old links still arrive.
+  if (/^\/projects\/?$/.test(pathname)) return { route: 'worlds', ...(pathname.endsWith('/') ? { canonicalPath: `/projects${search}${hash}` } : {}) }
+  if (/^\/worlds\/?$/.test(pathname)) return { route: 'worlds', canonicalPath: `/projects${search}${hash}` }
   if (/^\/class\/projector\/?$/.test(pathname)) return { route: 'class-projector' }
   if (/^\/class\/?$/.test(pathname)) return { route: 'class', ...(pathname.endsWith('/') ? { canonicalPath: `/class${search}${hash}` } : {}) }
   if (pathname === '/') return { route: 'landing' }

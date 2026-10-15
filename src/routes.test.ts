@@ -12,7 +12,9 @@ describe('public home and editor routes', () => {
     expect(resolve('/welcome')).toEqual({ route: 'landing', canonicalPath: '/' })
     expect(resolve('/join')).toEqual({ route: 'join' })
     expect(resolve('/join/?classCode=ABC123')).toEqual({ route: 'join', canonicalPath: '/join?classCode=ABC123' })
-    expect(resolve('/worlds')).toEqual({ route: 'worlds' })
+    expect(resolve('/projects')).toEqual({ route: 'worlds' })
+    // My projects was called My worlds; old links land on its new address.
+    expect(resolve('/worlds')).toEqual({ route: 'worlds', canonicalPath: '/projects' })
     expect(resolve('/class')).toEqual({ route: 'class' })
     expect(resolve('/class/projector')).toEqual({ route: 'class-projector' })
   })

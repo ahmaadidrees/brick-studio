@@ -1,4 +1,4 @@
-import { Mountain, Pencil, UserRound, Users } from 'lucide-react'
+import { FolderOpen, Mountain, Pencil, UserRound, Users } from 'lucide-react'
 import { useState, type HTMLAttributes, type ReactNode } from 'react'
 import { BrandLockup } from '../brand'
 import { Button, SaveStatus, type SaveStatusSource } from '../ui'
@@ -110,6 +110,8 @@ export type AppHeaderEditorProps = CommonProps & {
   onGoHome: () => void
   /** 3D ⇄ 2D: shown beside the mark when given (the studio saves first, then leaves for the 2D builder). */
   onSwitchDimension?: (target: BuildDimension) => void
+  /** "My projects": saves, then goes to every project (replaces the 3D/2D switch in the editors). */
+  onOpenProjects?: () => void
   /* The 2D builder uses this header too; everything below defaults to the 3D studio. */
   /** Which builder this is (the current side of the 3D ⇄ 2D switch). */
   dimension?: BuildDimension
@@ -206,7 +208,7 @@ function EditorHeader({
   worldTitle, onRenameWorld, saveStatus,
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
-  onSaveToAccount, onGoHome, onSwitchDimension, editorActions,
+  onSaveToAccount, onGoHome, onSwitchDimension, onOpenProjects, editorActions,
   dimension = '3d', modeLabels, modeLock, hideCharacter = false, hideScene = false, startLiveTitle, renameMaxLength, worldMenu,
   session, className, accountMenuDefaultOpen, onKeyDown, id, onGoToInviteWorld, inviteNavigationBlocked, inviteClient,
 }: AppHeaderEditorProps) {
@@ -231,7 +233,8 @@ function EditorHeader({
           className="app-header-brand app-header-mark"
           onClick={(event) => { event.preventDefault(); onGoHome() }}
         />
-        {onSwitchDimension && <DimensionSwitch current={dimension} onSwitch={onSwitchDimension} className="app-header-dimension" />}
+        {onOpenProjects && <Button variant="quiet" size="sm" className="app-header-tool app-header-projects" icon={<FolderOpen size={17} />} title="My projects" onClick={onOpenProjects}>My projects</Button>}
+        {!onOpenProjects && onSwitchDimension && <DimensionSwitch current={dimension} onSwitch={onSwitchDimension} className="app-header-dimension" />}
         <div className="app-header-world">
           <span className="app-header-title" title={title}>{title}</span>
           {onRenameWorld && (

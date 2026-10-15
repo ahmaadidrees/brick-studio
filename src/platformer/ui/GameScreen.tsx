@@ -28,7 +28,7 @@ import { SceneSheet } from './SceneSheet'
 import { encodeShareCode } from './shareCode'
 import { TouchControls } from './TouchControls'
 import { RaceFeelPanel } from '../race/RaceFeelPanel'
-import { KitPicker } from './KitPicker'
+import { NewProjectSheet } from '../../projects/NewProjectSheet'
 import { RaceHudView } from '../race/RaceHudView'
 import { loadRaceFeel, saveRaceFeel, type RaceFeel } from '../race/raceFeel'
 import type { RaceHud } from '../race/raceRun'
@@ -588,7 +588,6 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       setLeaving(false)
     }
   }
-  const switchTo3D = () => void leave(() => window.location.assign('/build'))
   // Sharing an account level with the class: the same invite sheet as My worlds.
   const cloudWorld = saver.current?.world ?? (source.kind === 'cloud' ? source.world : roomWorld)
   const ownsCloudWorld = !!cloudWorld && cloudWorld.ownerId === account.user?.id
@@ -747,7 +746,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           variant="editor"
           dimension="2d"
           editorActions={canSaveAccount ? <Button disabled={busy} onClick={() => void saveAccountAction(source.kind === 'room')}>{saveLabel}</Button> : undefined}
-          onSwitchDimension={inRoom ? undefined : (target) => target === '3d' && switchTo3D()}
+          onOpenProjects={inRoom ? undefined : () => void leave(() => window.location.assign('/projects'))}
           worldTitle={title}
           onRenameWorld={s?.canBuild ? rename : undefined}
           renameMaxLength={60}
@@ -1008,7 +1007,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           onClose={() => setSharing(false)}
         />
       )}
-      <KitPicker open={kitPicker} onClose={() => setKitPicker(false)} onPick={(href) => { setKitPicker(false); void leave(() => window.location.assign(href)) }} />
+      <NewProjectSheet open={kitPicker} onClose={() => setKitPicker(false)} onPick={(href) => { setKitPicker(false); void leave(() => window.location.assign(href)) }} />
       {feelOpen && !race && <FeelPanel feel={feel} onChange={changeFeel} onClose={() => setFeelOpen(false)} />}
       {feelOpen && race && <RaceFeelPanel value={raceFeel} onChange={changeRaceFeel} onClose={() => setFeelOpen(false)} />}
     </div>

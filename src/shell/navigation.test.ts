@@ -7,11 +7,11 @@ describe('joinPath', () => {
     expect(joinPath({ mode: 'signin' })).toBe('/join?mode=signin')
     expect(joinPath({ mode: 'teacher', next: '/class' })).toBe('/join?mode=teacher&next=%2Fclass')
     expect(joinPath({ classCode: ' ab7x ' })).toBe('/join?classCode=AB7X')
-    expect(joinPath({ mode: 'signin', next: '/worlds?view=class#top' })).toBe('/join?mode=signin&next=%2Fworlds%3Fview%3Dclass%23top')
+    expect(joinPath({ mode: 'signin', next: '/projects?view=class#top' })).toBe('/join?mode=signin&next=%2Fprojects%3Fview%3Dclass%23top')
   })
 
   it('drops a next that leaves this origin', () => {
-    expect(safeNextPath('/worlds')).toBe('/worlds')
+    expect(safeNextPath('/projects')).toBe('/projects')
     expect(safeNextPath('//evil.example/worlds')).toBeUndefined()
     expect(safeNextPath('https://evil.example')).toBeUndefined()
     expect(safeNextPath('javascript:alert(1)')).toBeUndefined()
@@ -24,11 +24,11 @@ describe('joinPath', () => {
 describe('goTo helpers', () => {
   it('navigate to the pages', () => {
     const navigate = vi.fn()
-    goToJoin({ mode: 'signin', next: '/worlds' }, navigate)
+    goToJoin({ mode: 'signin', next: '/projects' }, navigate)
     goToWorlds(navigate)
     goToClass(navigate)
     goToProjector(navigate)
-    expect(navigate.mock.calls.map(([url]) => url)).toEqual(['/join?mode=signin&next=%2Fworlds', '/worlds', '/class', '/class/projector'])
+    expect(navigate.mock.calls.map(([url]) => url)).toEqual(['/join?mode=signin&next=%2Fprojects', '/projects', '/class', '/class/projector'])
   })
 
   it('opens the live room of an account world, flagging the owner arrival after inviting', () => {
@@ -45,7 +45,7 @@ describe('goTo helpers', () => {
 
 describe('classroomIntentRedirect', () => {
   it('maps every page intent and keeps save in the editor', () => {
-    expect(classroomIntentPath('worlds')).toBe('/worlds')
+    expect(classroomIntentPath('worlds')).toBe('/projects')
     expect(classroomIntentPath('class')).toBe('/class')
     expect(classroomIntentPath('join')).toBe('/join')
     expect(classroomIntentPath('join', '?classroom=join&classCode=ab7x')).toBe('/join?classCode=AB7X')

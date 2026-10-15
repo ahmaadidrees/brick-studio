@@ -14,7 +14,6 @@ import { parse2dRoute, type NewKit, type Route2D } from './routes2d'
 import { NotALevelError, cloudWorldInfo, loadCloudLevel } from './ui/cloudLevel'
 import { listDrafts, loadDraft } from './ui/drafts'
 import { GameScreen, type LevelSource } from './ui/GameScreen'
-import { Home2D } from './ui/Home2D'
 import { ownerTokenFor, saveGuestName, savedGuestName } from './ui/prefs'
 import { decodeShareCode } from './ui/shareCode'
 import './ui/platformer.css'
@@ -24,7 +23,9 @@ export default function PlatformerApp() {
   const [route] = useState<Route2D>(() => parse2dRoute(window.location))
   switch (route.kind) {
     case 'home':
-      return <Home2D />
+      // The 2D home grew into My projects (every kind of project, plus the starters to play).
+      window.location.replace('/projects')
+      return <Notice title="Opening My projects…" busy />
     case 'build':
       return <BuildPage {...route} />
     case 'course':
@@ -38,15 +39,15 @@ export default function PlatformerApp() {
     default:
       return (
         <Notice title="We couldn't find that page">
-          <Button href="/2d" variant="primary" icon={<House size={18} />}>
-            2D worlds
+          <Button href="/projects" variant="primary" icon={<House size={18} />}>
+            My projects
           </Button>
         </Notice>
       )
   }
 }
 
-const HOME = () => window.location.assign('/2d')
+const HOME = () => window.location.assign('/projects')
 
 /** A new project: a copy of a starter (course or race track), the starter race track to change, or an empty one. */
 function newLevel(kit?: NewKit, template?: string): LevelDesign {
@@ -61,7 +62,7 @@ function newLevel(kit?: NewKit, template?: string): LevelDesign {
 function Notice({ title, body, busy, children }: { title: string; body?: string; busy?: boolean; children?: ReactNode }) {
   return (
     <div className="p2d-page">
-      <AppHeader variant="page" title="2D worlds" />
+      <AppHeader variant="page" title="Projects" />
       <main className="p2d-notice">
         <div className="p2d-card">
           {busy && <LoaderCircle className="ui-spin" size={28} aria-hidden="true" />}
@@ -130,26 +131,26 @@ function BuildPage({ world, draft, fresh, kit, template }: { world?: string; dra
   if (error)
     return (
       <Notice title="This world could not be opened" body={error}>
-        <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D worlds
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
   if (!loaded) return <Notice title="Opening your world…" busy />
   // Someone else's level opened here (not through its room) is for playing only.
   const readOnly = loaded.source.kind === 'cloud' && !loaded.source.world.canEdit
-  return <GameScreen level={loaded.level} source={loaded.source} startMode={readOnly ? 'play' : 'build'} onExit={HOME} exitLabel="Back to 2D worlds" />
+  return <GameScreen level={loaded.level} source={loaded.source} startMode={readOnly ? 'play' : 'build'} onExit={HOME} exitLabel="Back to My projects" />
 }
 
 function CoursePage({ id }: { id: string }) {
   const race = raceCourseById(id)
-  if (race) return <GameScreen level={race.level()} source={{ kind: 'course', id: race.id }} startMode="play" onExit={HOME} exitLabel="Back to 2D worlds" />
+  if (race) return <GameScreen level={race.level()} source={{ kind: 'course', id: race.id }} startMode="play" onExit={HOME} exitLabel="Back to My projects" />
   const course = courseById(id)
   if (!course)
     return (
       <Notice title="We couldn't find that course">
-        <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D worlds
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
@@ -161,7 +162,7 @@ function CoursePage({ id }: { id: string }) {
       source={{ kind: 'course', id: course.id }}
       startMode="play"
       onExit={HOME}
-      exitLabel="Back to 2D worlds"
+      exitLabel="Back to My projects"
       onNext={next ? () => window.location.assign(`/2d/play/${next.id}`) : undefined}
     />
   )
@@ -177,13 +178,13 @@ function SharedPage({ code }: { code: string | null }) {
   if (error)
     return (
       <Notice title="This world could not be opened" body={error}>
-        <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D worlds
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
   if (!level) return <Notice title="Opening the world…" busy />
-  return <GameScreen level={level} source={{ kind: 'shared' }} startMode="play" onExit={HOME} exitLabel="Back to 2D worlds" />
+  return <GameScreen level={level} source={{ kind: 'shared' }} startMode="play" onExit={HOME} exitLabel="Back to My projects" />
 }
 
 /** Before joining a guest room: check it exists and ask for a name (signed-in users get theirs filled in). */
@@ -215,8 +216,8 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
   if (error)
     return (
       <Notice title="The room service is unreachable" body={`${error} Check the connection and try again.`}>
-        <Button href="/2d" icon={<House size={18} />}>
-          2D worlds
+        <Button href="/projects" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
@@ -224,8 +225,8 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
   if (info === null)
     return (
       <Notice title="This room has closed" body="Rooms are forgotten about two hours after everyone leaves. Ask for a new link, or open your own.">
-        <Button href="/2d" variant="primary" icon={<House size={18} />}>
-          2D worlds
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
@@ -256,8 +257,8 @@ function GuestRoomPage({ roomId }: { roomId: string }) {
           </Button>
         </form>
       )}
-      <Button href="/2d" variant="quiet" icon={<House size={18} />}>
-        Back to 2D worlds
+      <Button href="/projects" variant="quiet" icon={<House size={18} />}>
+        Back to My projects
       </Button>
     </Notice>
   )

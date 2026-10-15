@@ -1,0 +1,134 @@
+/* New project and My projects. Uses the app's tokens from src/styles.css. */
+
+.projects-kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.projects-kind {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+  padding: var(--space-3);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.projects-kind-picture,
+.projects-starter-picture {
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--studio-panel-soft, #f3f5f9);
+}
+
+.projects-kind-picture img,
+.projects-starter-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.projects-kind h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font: 600 19px var(--font-display);
+}
+
+.projects-kind p,
+.projects-muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.projects-kind-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.projects-starters {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.projects-starters h3 {
+  margin: 0;
+  font: 600 17px var(--font-display);
+}
+
+.projects-starter-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.projects-starter {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.projects-starter:hover,
+.projects-starter:focus-visible {
+  border-color: var(--primary);
+}
+
+.projects-starter-title {
+  font-weight: 800;
+}
+
+/* My projects: the kind chip on every card and the "On this computer" cards. */
+.projects-kind-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.projects-local-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: auto;
+}
+
+.projects-signin {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.projects-signin p {
+  margin: 0;
+  flex: 1 1 260px;
+}
+
+.worlds-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
