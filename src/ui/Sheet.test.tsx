@@ -12,7 +12,7 @@ function Harness({ onCloseOuter, onCloseInner }: { onCloseOuter?: () => void; on
     <>
       <button type="button" onClick={() => setOuter(true)}>Open settings</button>
       <Sheet open={outer} onClose={() => { setOuter(false); onCloseOuter?.() }} title="Settings" description="Make the controls feel right." footer={<button type="button">Done</button>}>
-        <input aria-label="World name" />
+        <input aria-label="Project name" />
         <button type="button" onClick={() => setInner(true)}>Open confirm</button>
       </Sheet>
       <Dialog open={inner} onClose={() => { setInner(false); onCloseInner?.() }} title="Open this build?">
@@ -99,7 +99,7 @@ describe('Sheet', () => {
   it('focuses the requested element on open', () => {
     function WithInitialFocus() {
       const [ref, setRef] = useState<HTMLInputElement | null>(null)
-      return <Sheet open onClose={() => {}} title="Rename" initialFocusRef={{ current: ref }}><input ref={setRef} aria-label="World name" /></Sheet>
+      return <Sheet open onClose={() => {}} title="Rename" initialFocusRef={{ current: ref }}><input ref={setRef} aria-label="Project name" /></Sheet>
     }
     render(<WithInitialFocus />)
     // The ref resolves after the first commit; re-render through state so the effect sees it.

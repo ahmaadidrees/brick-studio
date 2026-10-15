@@ -1266,6 +1266,7 @@ export default function BrickStudioApp({
       setLocalCustomParts(document.customParts)
     },
     onLocalSaveError: setLocalSaveError,
+    title: cloud.world?.title,
   })
   // `/build?new=1`: the draft is loaded by the effect above, so the confirm sees the real build. A blank
   // draft needs no confirm. The guest path of onNewBuild owns the message; the cloud path never applies

@@ -330,8 +330,8 @@ describe('Brick Studio responsive controls', () => {
     expect(screen.getByRole('button', { name: 'Undo' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Redo' })).toBeInTheDocument()
     expect(screen.getByLabelText(`0 of ${BRICK_STUDIO_MAX_BRICKS} brick capacity`)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
-    const menu = within(screen.getByRole('menu', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
+    const menu = within(screen.getByRole('menu', { name: 'This project' }))
     expect(menu.queryByRole('menuitem', { name: 'Rover Lab' })).not.toBeInTheDocument()
     expect(menu.getByRole('menuitem', { name: 'Settings' })).toBeInTheDocument()
     expect(menu.queryByRole('menuitem', { name: /Publish/ })).not.toBeInTheDocument()
@@ -519,7 +519,7 @@ describe('Brick Studio responsive controls', () => {
     useBrickStore.setState({ bricks: [brick], mode: 'build', selectedId: brick.id, selectedIds: [brick.id] })
     render(<BrickStudioApp />)
     const before = useBrickStore.getState().getDocumentSnapshot()
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Settings' }))
     const control = screen.getByLabelText('Explore keyboard controls')
     control.focus()
@@ -1043,7 +1043,7 @@ describe('Builder Experience Alpha shell', () => {
 
     render(<BrickStudioApp />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Help' }))
     expect(screen.getByRole('dialog', { name: 'Build something you can explore' })).toBeInTheDocument()
   })
@@ -1062,13 +1062,13 @@ describe('Builder Experience Alpha shell', () => {
       />,
     )
 
-    const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    const openMenu = () => fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     openMenu()
     fireEvent.click(screen.getByRole('menuitem', { name: 'New build' }))
     expect(onNewBuild).toHaveBeenCalledOnce()
 
     openMenu()
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Download build' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Download a copy' }))
     expect(onExportProject).toHaveBeenCalledOnce()
 
     // People = Build together outside a room; it lives with the world tools, not in the menu.
@@ -1135,13 +1135,13 @@ describe('Builder Experience Alpha shell', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     render(<BrickStudioApp />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'New build' }))
     expect(useBrickStore.getState().bricks).toEqual([brick])
     expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('unchanged')
 
     confirm.mockReturnValue(true)
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'New build' }))
     expect(useBrickStore.getState().bricks).toEqual([])
     act(() => useBrickStore.getState().undo())
@@ -1155,7 +1155,7 @@ describe('Builder Experience Alpha shell', () => {
     const file = new File(['{bad'], 'broken.brickstudio.json', { type: 'application/json' })
     Object.defineProperty(file, 'text', { value: vi.fn().mockResolvedValue('{bad') })
 
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     fireEvent.change(screen.getByLabelText('Choose Brickgineers project file'), { target: { files: [file] } })
 
     await waitFor(() => expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('not valid JSON'))
@@ -1171,12 +1171,12 @@ describe('Builder Experience Alpha shell', () => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined)
     render(<BrickStudioApp />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Download build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Download a copy' }))
 
     expect(createObjectURL).toHaveBeenCalledOnce()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:brick-studio')
-    expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('Project exported')
+    expect(screen.getByRole('status', { name: 'Studio message' })).toHaveTextContent('Downloaded a copy')
   })
 })
 
@@ -1184,9 +1184,9 @@ describe('refined world navigation', () => {
   it('closes the world menu with Escape without cancelling the brick being placed', () => {
     render(<BrickStudioApp />)
     const draft = useBrickStore.getState().draft
-    const trigger = screen.getByRole('button', { name: 'This build' })
+    const trigger = screen.getByRole('button', { name: 'This project' })
     fireEvent.click(trigger)
-    const first = screen.getByRole('menuitem', { name: 'Download build' })
+    const first = screen.getByRole('menuitem', { name: 'Download a copy' })
     expect(first).toHaveFocus()
     fireEvent.keyDown(first, { key: 'Escape' })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()

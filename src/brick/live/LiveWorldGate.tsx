@@ -107,7 +107,7 @@ export function LiveWorldGate({
       <form className="live-gate-form" onSubmit={submit}>
         {creating && (
           <TextField
-            label="World name"
+            label="Project name"
             value={title}
             maxLength={LIVE_ROOM_TITLE_MAX_LENGTH}
             disabled={busy}

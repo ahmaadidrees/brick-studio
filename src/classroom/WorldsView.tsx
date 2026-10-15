@@ -37,7 +37,7 @@ export function WorldsView({ worlds, busy, showSave, saveTitle, saveDuplicate, o
 export function RenameWorldForm({ world, busy, onSubmit, onCancel, headingRef }: { world: ClassroomWorld; busy: boolean; onSubmit: (title: string) => void; onCancel: () => void; headingRef: React.RefObject<HTMLHeadingElement | null> }) {
   return <form className="classroom-card classroom-form" onSubmit={event => onSubmit(readForm(event).title)}>
     <div className="classroom-detail-heading"><div><small className="classroom-eyebrow">Rename world</small><h3 ref={headingRef} tabIndex={-1}>{world.title}</h3></div></div>
-    <TextInput label="World name" id="classroom-rename-title" name="title" defaultValue={world.title} required maxLength={80} autoComplete="off" />
+    <TextInput label="Project name" id="classroom-rename-title" name="title" defaultValue={world.title} required maxLength={80} autoComplete="off" />
     <div className="classroom-actions"><Button type="submit" variant="primary" loading={busy} loadingLabel="Saving…">Save name</Button><Button variant="secondary" disabled={busy} onClick={onCancel}>Cancel</Button></div>
   </form>
 }

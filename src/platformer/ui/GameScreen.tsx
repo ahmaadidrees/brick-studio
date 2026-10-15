@@ -29,6 +29,7 @@ import { encodeShareCode } from './shareCode'
 import { TouchControls } from './TouchControls'
 import { RaceFeelPanel } from '../race/RaceFeelPanel'
 import { NewProjectSheet } from '../../projects/NewProjectSheet'
+import { downloadProjectFile, kindOfLevel } from '../../projects/projectFile'
 import { RaceHudView } from '../race/RaceHudView'
 import { loadRaceFeel, saveRaceFeel, type RaceFeel } from '../race/raceFeel'
 import type { RaceHud } from '../race/raceRun'
@@ -777,6 +778,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               onResetWorld={s?.solo && build && !race ? () => s.resetWorld() : undefined}
               race={race}
               onNewLevel={inRoom ? undefined : () => setKitPicker(true)}
+              onDownload={s ? () => { const design = s.timeline.world.design; downloadProjectFile({ title: design.title || title, content: { kind: kindOfLevel(design), level: design } }); say('Downloaded a copy. Open it any time from My projects → Import a file.') } : undefined}
               sound={sound}
               onSound={changeSound}
               onControls={() => openMenu('controls')}

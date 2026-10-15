@@ -41,7 +41,7 @@ export function RenameWorldDialog({ currentTitle, onRename, onClose, maxLength =
     <Dialog
       open
       onClose={onClose}
-      title="Rename world"
+      title="Rename project"
       description="The new name shows in My worlds and in the header."
       dismissible={!busy}
       initialFocusRef={input}
@@ -53,7 +53,7 @@ export function RenameWorldDialog({ currentTitle, onRename, onClose, maxLength =
       <form id={formId} onSubmit={submit}>
         <TextField
           ref={input}
-          label="World name"
+          label="Project name"
           value={title}
           maxLength={maxLength}
           disabled={busy}

@@ -339,7 +339,7 @@ function SheetExample() {
       >
         <div className="ui-gallery-stack">
           <SegmentedControl label="Explore camera" showLabel fullWidth value={camera} onChange={setCamera} options={[{ value: 'follow', label: 'Follow' }, { value: 'free', label: 'Free look' }]} />
-          <TextField label="World name" value={name} onChange={(event) => setName(event.target.value)} hint="Shown to people you build with." />
+          <TextField label="Project name" value={name} onChange={(event) => setName(event.target.value)} hint="Shown to people you build with." />
           <Button variant="secondary" onClick={() => setDialogOpen(true)}>Open a dialog on top</Button>
           {Array.from({ length: 6 }, (_, index) => (
             <p key={index} className="ui-gallery-filler">Scrollable body paragraph {index + 1}. The footer stays put while this content scrolls, and Tab cycles inside the sheet.</p>

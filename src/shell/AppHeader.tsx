@@ -238,8 +238,8 @@ function EditorHeader({
         <div className="app-header-world">
           <span className="app-header-title" title={title}>{title}</span>
           {onRenameWorld && (
-            <Button variant="quiet" size="sm" iconOnly icon={<Pencil size={16} />} aria-label="Rename world" title="Rename world" className="app-header-rename" onClick={() => setRenaming(true)}>
-              Rename world
+            <Button variant="quiet" size="sm" iconOnly icon={<Pencil size={16} />} aria-label="Rename project" title="Rename project" className="app-header-rename" onClick={() => setRenaming(true)}>
+              Rename project
             </Button>
           )}
         </div>

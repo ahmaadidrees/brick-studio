@@ -58,7 +58,7 @@ describe('studio navigation and save context', () => {
     expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     // Guests get the neutral title, no Rename, and a Sign in link in the corner.
     expect(screen.getByText('My build', { selector: '.app-header-title' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     expect(screen.queryByRole('menuitem', { name: 'Rename' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toMatch(/^\/join\?mode=signin/)
   })
@@ -69,9 +69,9 @@ describe('studio navigation and save context', () => {
     cloud.status = 'pending'
     const view = render(<BrickStudioApp />)
     expect(screen.getByText('My mountain castle', { selector: '.app-header-title' })).toHaveAttribute('title', 'My mountain castle')
-    expect(screen.getByRole('button', { name: 'Rename world' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Rename project' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'This build' }))
+    fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     const states: [CloudSaveStatus, string][] = [
       ['pending', 'Waiting to save…'],
       ['saving', 'Saving to your account…'],
@@ -85,9 +85,9 @@ describe('studio navigation and save context', () => {
       expect(screen.getByText(label).closest('[role="status"]')).toHaveAttribute('data-kind', 'cloud')
     }
     fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }))
-    expect(screen.getByRole('dialog', { name: 'Rename world' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Rename project' })).toBeInTheDocument()
     // A cloud world is already saved: the account menu offers no second save path.
-    fireEvent.click(within(screen.getByRole('dialog', { name: 'Rename world' })).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Rename project' })).getByRole('button', { name: 'Cancel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Account: Ava R.' }))
     expect(screen.queryByRole('menuitem', { name: /Save this build/ })).not.toBeInTheDocument()
   })

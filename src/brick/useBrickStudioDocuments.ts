@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { downloadProjectFile, readProjectFile } from '../projects/projectFile'
 import {
   createBrickStudioDocument,
   parseBrickStudioDocument,
@@ -17,6 +18,8 @@ import { BRAND_NAME } from '../brand'
 export type BrickStudioDocumentPersistenceOptions = CreateBrickStudioDocumentOptions & {
   /** Receives normalized local/imported documents so app-owned metadata state can follow them. */
   onDocumentLoaded?: (document: BrickStudioDocument) => void
+  /** The project's name, for a downloaded copy's file name. */
+  title?: string
   /** The browser save failed (a message) or works again (null), so the header never claims a save that failed. */
   onLocalSaveError?: (message: string | null) => void
 }
@@ -137,7 +140,14 @@ export function useBrickStudioDocuments(
       return
     }
     try {
-      const serialized = await file.text()
+      let serialized = await file.text()
+      // A .brickgineers project file carries the build inside it; older .brickstudio.json files are the build itself.
+      const project = readProjectFile(serialized, file.name)
+      if (project.ok && project.project.content.kind !== '3d') {
+        showDocumentMessage('That file is a 2D project. Open it from My projects → Import a file. Your current build is unchanged.')
+        return
+      }
+      if (project.ok && project.project.content.kind === '3d') serialized = JSON.stringify(project.project.content.document)
       const parsed = parseBrickStudioDocument(serialized)
       const result = useBrickStore.getState().importDocument(serialized)
       if (result.ok && parsed.ok) persistenceRef.current.onDocumentLoaded?.(parsed.document)
@@ -147,8 +157,12 @@ export function useBrickStudioDocuments(
   }, [])
 
   const exportProject = useCallback(() => {
-    const result = downloadBrickStudioDocument(currentDocument())
-    showDocumentMessage(result.ok ? 'Project exported as .brickstudio.json.' : result.error.message)
+    try {
+      downloadProjectFile({ title: persistenceRef.current.title ?? 'My 3D build', content: { kind: '3d', document: currentDocument() } })
+      showDocumentMessage('Downloaded a copy. Open it any time from My projects → Import a file.')
+    } catch {
+      showDocumentMessage(`${BRAND_NAME} could not prepare the download.`)
+    }
   }, [currentDocument])
 
   return {

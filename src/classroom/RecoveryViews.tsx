@@ -38,7 +38,7 @@ export function SaveBuildForm({ title, busy, duplicate, onTitleChange, onSubmit,
       <h3 id="classroom-save-title" className="classroom-card-title">Save this build to your account</h3>
       <p className="classroom-help">Keep your world safe so you can open it on any device at school.</p>
     </div>
-    <TextInput label="World name" id="classroom-save-name" value={title} onChange={event => onTitleChange(event.target.value)} required maxLength={80} autoComplete="off" />
+    <TextInput label="Project name" id="classroom-save-name" value={title} onChange={event => onTitleChange(event.target.value)} required maxLength={80} autoComplete="off" />
     <div className="classroom-save-path" aria-label="Where this build is stored">
       <span className="classroom-save-chip"><MonitorSmartphone size={16} aria-hidden="true" /> On this computer only</span>
       <MoveRight size={18} aria-hidden="true" />

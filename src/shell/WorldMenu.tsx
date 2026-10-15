@@ -30,19 +30,19 @@ export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBui
   return (
     <>
       <Menu
-        label="This build"
+        label="This project"
         align={align}
         defaultOpen={defaultOpen}
         className={className}
         trigger={({ ref, ...props }) => (
-          <Button ref={ref} variant="quiet" iconOnly icon={<MoreHorizontal size={20} />} aria-label="This build" title="This build" className="shell-world-menu-trigger" {...props}>
-            This build
+          <Button ref={ref} variant="quiet" iconOnly icon={<MoreHorizontal size={20} />} aria-label="This project" title="This project" className="shell-world-menu-trigger" {...props}>
+            This project
           </Button>
         )}
       >
-        {onRename && <MenuItem icon={<Pencil size={18} />} label="Rename" description="Change this world’s name" onSelect={onRename} />}
-        <MenuItem icon={<Download size={18} />} label="Download build" description="Save a .brickstudio.json file" disabled={!onExportProject} onSelect={onExportProject} />
-        <MenuItem icon={<Upload size={18} />} label="Import build" description="Open a .brickstudio.json file" disabled={!onImportProject} onSelect={() => importRef.current?.click()} />
+        {onRename && <MenuItem icon={<Pencil size={18} />} label="Rename" description="Change this project’s name" onSelect={onRename} />}
+        <MenuItem icon={<Download size={18} />} label="Download a copy" description="Save a .brickgineers file you can import later" disabled={!onExportProject} onSelect={onExportProject} />
+        <MenuItem icon={<Upload size={18} />} label="Replace with a file" description="Open a project file in place of this build" disabled={!onImportProject} onSelect={() => importRef.current?.click()} />
         <MenuItem icon={<FilePlus2 size={18} />} label="New build" description="Start with a blank plate" disabled={!onNewBuild} onSelect={onNewBuild} />
         <MenuSeparator />
         <MenuItem icon={<Settings size={18} />} label="Settings" description="Camera, controls and preferences" disabled={!onOpenSettings} onSelect={onOpenSettings} />
@@ -52,7 +52,7 @@ export function WorldMenu({ onRename, onExportProject, onImportProject, onNewBui
         ref={importRef}
         className="sr-only"
         type="file"
-        accept=".brickstudio.json,application/json"
+        accept=".brickgineers,.brickstudio.json,application/json"
         aria-label={`Choose ${BRAND_NAME} project file`}
         tabIndex={-1}
         onChange={(event) => {
