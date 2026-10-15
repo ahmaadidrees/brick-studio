@@ -21,6 +21,8 @@ interface Props {
   onFeel: () => void
   onExit: () => void
   exitLabel: string
+  /** A race track: tuning is about the car. */
+  race?: boolean
 }
 
 /** The header's ⋯ menu in the 2D builder: this level, sound, help, and the way back. */
@@ -46,7 +48,7 @@ export function LevelMenu(p: Props) {
       <MenuItem icon={p.sound.muted ? <VolumeX size={18} /> : <Volume2 size={18} />} label={p.sound.muted ? 'Turn sound on' : 'Turn sound off'} onSelect={() => p.onSound({ ...p.sound, muted: !p.sound.muted })} />
       <MenuItem icon={<Music size={18} />} label={p.sound.music ? 'Turn music off' : 'Turn music on'} onSelect={() => p.onSound({ ...p.sound, music: !p.sound.music })} />
       <MenuItem icon={<Gamepad2 size={18} />} label="Controls" description="Keyboard, controller and touch" onSelect={p.onControls} />
-      <MenuItem icon={<SlidersHorizontal size={18} />} label="Tune how the player moves" onSelect={p.onFeel} />
+      <MenuItem icon={<SlidersHorizontal size={18} />} label={p.race ? 'Tune how the car drives' : 'Tune how the player moves'} onSelect={p.onFeel} />
       <MenuSeparator />
       <MenuItem icon={<House size={18} />} label={p.exitLabel} onSelect={p.onExit} />
     </Menu>

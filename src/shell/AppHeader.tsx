@@ -119,6 +119,8 @@ export type AppHeaderEditorProps = CommonProps & {
   modeLock?: { locked: boolean; reason?: string }
   /** Hide the Character tool (2D has no characters yet). */
   hideCharacter?: boolean
+  /** Hide Scene (2D race tracks have one look and no backdrop to choose). */
+  hideScene?: boolean
   /** The People tool's tooltip outside a room (what "Build together" starts). */
   startLiveTitle?: string
   /** The longest name rename allows (2D worlds keep shorter names). */
@@ -205,7 +207,7 @@ function EditorHeader({
   onOpenWorldSetup, onStartLiveWorld, livePolicy,
   mode, onRequestMode, canExplore, exploreReason,
   onSaveToAccount, onGoHome, onSwitchDimension, editorActions,
-  dimension = '3d', modeLabels, modeLock, hideCharacter = false, startLiveTitle, renameMaxLength, worldMenu,
+  dimension = '3d', modeLabels, modeLock, hideCharacter = false, hideScene = false, startLiveTitle, renameMaxLength, worldMenu,
   session, className, accountMenuDefaultOpen, onKeyDown, id, onGoToInviteWorld, inviteNavigationBlocked, inviteClient,
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
@@ -242,7 +244,7 @@ function EditorHeader({
       </div>
       <div className="app-header-tools" role="group" aria-label="World tools">
         {editorActions}
-        <Button variant="quiet" className="app-header-tool" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>
+        {!hideScene && <Button variant="quiet" className="app-header-tool" icon={<Mountain size={17} />} title="Scene" onClick={() => onOpenWorldSetup('environment')}>Scene</Button>}
         {!hideCharacter && <Button variant="quiet" className="app-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>}
         <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} startTitle={startLiveTitle} />
       </div>

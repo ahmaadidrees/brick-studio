@@ -740,6 +740,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           renameMaxLength={60}
           saveStatus={{ source: saveSource }}
           onOpenWorldSetup={(tab) => tab === 'character' ? setCharacterOpen(true) : setScene(true)}
+          // Race tracks have one look and you drive a car, so neither Scene nor Character applies (a car picker may come).
+          hideScene={race}
+          hideCharacter={race}
           onStartLiveWorld={inRoom ? undefined : startRoom}
           startLiveTitle="Open a room for friends with this world"
           livePolicy={livePolicy}
@@ -759,7 +762,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               onInvite={invite}
               onShareWithClass={canShareWithClass ? openShare : undefined}
               onRecoveryCopies={recoveryWorldId ? () => setRecoveryOpen(true) : undefined}
-              onResetWorld={s?.solo && build ? () => s.resetWorld() : undefined}
+              onResetWorld={s?.solo && build && !race ? () => s.resetWorld() : undefined}
+              race={race}
               onNewLevel={inRoom ? undefined : () => setKitPicker(true)}
               sound={sound}
               onSound={changeSound}
@@ -946,6 +950,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           sound={sound}
           onSound={changeSound}
           touch={touch}
+          race={race}
           onClose={() => setMenu(false)}
           onRestart={() => {
             setMenu(false)

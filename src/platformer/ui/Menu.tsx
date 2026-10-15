@@ -22,6 +22,8 @@ interface Props {
   onFeel: () => void
   onExit: () => void
   exitLabel: string
+  /** A race track: the controls and tuning are the car's. */
+  race?: boolean
 }
 
 /**
@@ -49,7 +51,7 @@ export function Menu(p: Props) {
       headerStart={view === 'controls' ? <Button variant="quiet" size="sm" iconOnly icon={<ArrowLeft size={18} />} aria-label="Back to the menu" onClick={() => setView('main')}>Back to the menu</Button> : undefined}
     >
       {view === 'controls' ? (
-        <Controls touch={p.touch} gamepad={s.input.gamepadName} />
+        <Controls touch={p.touch} gamepad={s.input.gamepadName} race={p.race} />
       ) : (
         <div className="p2d-menu-body">
           <div className="p2d-menu-list">
@@ -73,7 +75,7 @@ export function Menu(p: Props) {
               Controls
             </Button>
             <Button fullWidth variant="quiet" icon={<SlidersHorizontal size={18} />} onClick={p.onFeel}>
-              Tune how the player moves
+              {p.race ? 'Tune how the car drives' : 'Tune how the player moves'}
             </Button>
             <Button fullWidth variant="quiet" icon={<House size={18} />} onClick={p.onExit}>
               {p.exitLabel}
