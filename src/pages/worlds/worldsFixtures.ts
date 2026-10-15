@@ -39,14 +39,29 @@ const roleFor = (session: ClassroomAuthResult | null | undefined): MockRole =>
  */
 export function createFakeWorldsClient({ session, worlds, classes, checkpoints }: FakeWorldsOptions = {}): WorldsClient {
   const mock = createMockClient({ as: roleFor(session) })
+  // Recently deleted, in memory: deleted projects leave the list and can come back.
+  const deleted = new Map<string, WorldsWorld & { deletedAt: string }>()
+  const listed = async (options?: { presence?: boolean }) => (worlds
+    ? worlds.map(item => ({ ...item }))
+    : await (mock.listWorlds as (input?: { presence?: boolean }) => Promise<WorldsWorld[]>)(options)).filter(item => !deleted.has(item.id))
   return {
     getSession: mock.getSession,
     subscribe: mock.subscribe,
     // Lane A widens the mock's `listWorlds` to honour `?presence=1`; until then the extra argument is
     // ignored and the presence fields are simply absent, which is exactly what the page must survive.
-    listWorlds: async options => worlds
-      ? worlds.map(item => ({ ...item }))
-      : (mock.listWorlds as (input?: { presence?: boolean }) => Promise<WorldsWorld[]>)(options),
+    listWorlds: listed,
+    deleteWorld: async id => {
+      const target = (await listed()).find(item => item.id === id)
+      if (target) deleted.set(id, { ...target, visibility: 'private', deletedAt: new Date().toISOString() })
+    },
+    listDeletedWorlds: async () => [...deleted.values()].reverse(),
+    restoreDeletedWorld: async id => {
+      const target = deleted.get(id)
+      if (!target) throw new Error('That project is not in Recently deleted.')
+      deleted.delete(id)
+      const { deletedAt: _deletedAt, ...world } = target
+      return world
+    },
     listClasses: async () => classes ? classes.map(item => ({ ...item })) : mock.listClasses(),
     listClassmates: classId => mock.listClassmates(classId),
     renameWorld: (id, title) => mock.renameWorld(id, title),

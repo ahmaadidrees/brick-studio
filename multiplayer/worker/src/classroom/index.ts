@@ -166,7 +166,7 @@ export class ClassroomService {
    */
   async worldAccess(caller: Caller, id: string, _requireCollaboration = false, metadataOnly = false): Promise<WorldAccess> {
     if (!uuid(id)) fail(404, 'not_found', 'World not found.');
-    const world = (await this.rows('worlds', `id=eq.${id}&limit=1${metadataOnly ? `&select=${WORLD_FIELDS}` : ''}`))[0];
+    const world = (await this.rows('worlds', `id=eq.${id}&deleted_at=is.null&limit=1${metadataOnly ? `&select=${WORLD_FIELDS}` : ''}`))[0];
     if (!world) fail(404, 'not_found', 'World not found.');
     if (world.kind === 'personal') {
       if (world.owner_id === caller.id) return { world, canEdit: true, isOwner: true, ownerName: callerDisplayName(caller), ownerClassId: caller.classId ?? null };
@@ -258,10 +258,10 @@ export class ClassroomService {
    * caller can see also carries `buildingNow`/`buildingNames`; without it the listing is exactly what it always was.
    */
   async listWorlds(caller: Caller, presence?: ClassroomHandlerOptions['liveParticipantsByWorld']) {
-    const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&select=${WORLD_FIELDS}&order=updated_at.desc`);
+    const mine = await this.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&deleted_at=is.null&select=${WORLD_FIELDS}&order=updated_at.desc`);
     const allClasses = await this.classesFor(caller);
     const classes = allClasses.filter(row => caller.role === 'teacher' || row.collaboration_open);
-    const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&select=${WORLD_FIELDS}&order=updated_at.desc,id.asc`);
+    const candidates = await this.rowsForClasses('worlds', classes.map(row => row.id), `kind=in.(class,group)&deleted_at=is.null&select=${WORLD_FIELDS}&order=updated_at.desc,id.asc`);
     // Classmates' shared personal worlds: resolved through the owners' brick_students rows (personal worlds keep
     // class_id null). Students need collaboration_open and students_can_share and never see hidden worlds; the
     // teacher sees every shared world of their classes, hidden ones flagged.
@@ -332,7 +332,7 @@ export class ClassroomService {
     const result: Row[] = [];
     for (let start = 0; start < ownerIds.length; start += 100) {
       const ids = ownerIds.slice(start, start + 100);
-      result.push(...await this.rows('worlds', `owner_id=in.(${ids.join(',')})&kind=eq.personal&class_visibility=in.(class,members)&${filter}`));
+      result.push(...await this.rows('worlds', `owner_id=in.(${ids.join(',')})&kind=eq.personal&class_visibility=in.(class,members)&deleted_at=is.null&${filter}`));
     }
     return result;
   }
@@ -388,7 +388,7 @@ export class ClassroomService {
     const worldIds = [...new Set(memberships.map(row => row.world_id as string))];
     const worlds: Row[] = [];
     for (let start = 0; start < worldIds.length; start += 100) {
-      worlds.push(...await this.rows('worlds', `id=in.(${worldIds.slice(start, start + 100).join(',')})&kind=eq.personal&class_visibility=in.(members,class)&hidden_by_teacher=eq.false&select=${WORLD_FIELDS}`));
+      worlds.push(...await this.rows('worlds', `id=in.(${worldIds.slice(start, start + 100).join(',')})&kind=eq.personal&class_visibility=in.(members,class)&hidden_by_teacher=eq.false&deleted_at=is.null&select=${WORLD_FIELDS}`));
     }
     const ownerIds = [...new Set(worlds.map(row => row.owner_id as string))].filter(id => id !== caller.id);
     const owners = new Map<string, Row>();
@@ -558,6 +558,8 @@ export const PRESENCE_ROOM_LIMIT = 150;
 export const PRESENCE_RATE = { limit: 30, seconds: 60 } as const;
 /** Saved worlds per account; the database trigger (0003) enforces the same bound. */
 const WORLD_LIMIT = 50;
+/** Deleted projects can be restored for this many days (Recently deleted), then they are removed. */
+const TRASH_DAYS = 30;
 /** Invited classmates per members-only world. */
 export const WORLD_MEMBER_LIMIT = 30;
 /** Personal-world sharing states that admit someone other than the owner (migration 202609210001). */
@@ -856,6 +858,22 @@ async function route(request: Request, service: ClassroomService, path: string[]
       const presence = new URL(request.url).searchParams.get('presence') === '1' ? options.liveParticipantsByWorld : undefined;
       return json({ worlds: await service.listWorlds(caller, presence) });
     }
+    // Recently deleted: the caller's own projects deleted in the last 30 days, newest first. Older ones go for good here.
+    if (path[1] === 'deleted' && path.length === 2 && method === 'GET') {
+      const cutoff = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString();
+      await service.remove('worlds', `owner_id=eq.${caller.id}&deleted_at=lt.${cutoff}`);
+      const rows = await service.rows('worlds', `owner_id=eq.${caller.id}&kind=eq.personal&deleted_at=not.is.null&select=${WORLD_FIELDS},deleted_at&order=deleted_at.desc`);
+      return json({ worlds: rows.map(row => ({ ...worldView(row, ownView(caller, false)), deletedAt: row.deleted_at })) });
+    }
+    if (path.length === 3 && path[2] === 'undelete' && method === 'POST') {
+      if (!uuid(path[1])) fail(404, 'not_found', 'World not found.');
+      const row = (await service.rows('worlds', `id=eq.${path[1]}&owner_id=eq.${caller.id}&deleted_at=not.is.null&select=id&limit=1`))[0];
+      if (!row) fail(404, 'not_found', 'That project is not in Recently deleted.');
+      if ((await service.rows('worlds', `owner_id=eq.${caller.id}&deleted_at=is.null&select=id&limit=${WORLD_LIMIT}`)).length >= WORLD_LIMIT) fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
+      const restored = (await service.patch('worlds', `id=eq.${row.id}&owner_id=eq.${caller.id}&select=${WORLD_FIELDS}`, { deleted_at: null }))[0];
+      await service.audit(caller, 'undelete_world', undefined, row.id);
+      return json({ world: worldView(restored, ownView(caller, false)) });
+    }
     if (path.length === 1 && method === 'POST') {
       const input = await body(request), kind = input.kind || 'personal';
       if (!['personal', 'class', 'group'].includes(kind)) fail(400, 'invalid_input', 'Unknown world kind.');
@@ -868,6 +886,15 @@ async function route(request: Request, service: ClassroomService, path: string[]
       return json({ world: worldView(created, ownView(caller)) }, 201);
     }
     const access = await service.worldAccess(caller, path[1], false, path[2] === 'invites'), { world } = access;
+    // Delete one of your own projects: it goes to Recently deleted (30 days), stops being shared, and anyone in its
+    // room is let go.
+    if (path.length === 2 && method === 'DELETE') {
+      if (!access.isOwner || world.kind !== 'personal') fail(403, 'owner_required', 'Only the owner can delete this project.');
+      await service.patch('worlds', `id=eq.${world.id}&owner_id=eq.${caller.id}`, { deleted_at: new Date().toISOString(), class_visibility: 'private', class_can_edit: false });
+      await service.audit(caller, 'delete_world', undefined, world.id);
+      await options.onAccessChanged?.({ worldId: world.id, reason: 'visibility_updated', change: 'revocation' });
+      return json({ deleted: true });
+    }
     // Personal worlds belong to their owner: classmates and the teacher may look (and edit live when shared with
     // editing), but renaming, restoring and recovery history stay with the owner. Class/group worlds keep teacher control.
     const controls = access.isOwner || (world.kind !== 'personal' && caller.role === 'teacher');
@@ -922,7 +949,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
     }
     if (path[2] === 'copy' && path.length === 3 && method === 'POST') {
       await service.rate(`create-world:${caller.id}`, 60, 3600);
-      if ((await service.rows('worlds', `owner_id=eq.${caller.id}&select=id&limit=${WORLD_LIMIT}`)).length >= WORLD_LIMIT) fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
+      if ((await service.rows('worlds', `owner_id=eq.${caller.id}&deleted_at=is.null&select=id&limit=${WORLD_LIMIT}`)).length >= WORLD_LIMIT) fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
       let created: Row;
       // The stored row is the durable copy. A live room commits its edits to it write-behind (about a second
       // after they are acknowledged), so a copy taken mid-burst may trail the room by that much.
@@ -1061,7 +1088,7 @@ export type ClassroomWorldSnapshot = { id: string; title: string; ownerId: strin
 /** Server-only helpers. The DO must authorize the caller before committing any edit. */
 export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Promise<ClassroomWorldSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
-  const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&limit=1`))[0];
+  const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
   return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }
@@ -1069,7 +1096,7 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
 export type ClassroomLevelSnapshot = { id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document: PlatformerDocument };
 export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Promise<ClassroomLevelSnapshot> {
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
-  const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&limit=1`))[0];
+  const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
   if (worldFormat(row) !== '2d') fail(409, 'wrong_world_kind', 'This world is a 3D build. Open it in the 3D builder.');
   const level = validatePlatformerDocument(row.document);

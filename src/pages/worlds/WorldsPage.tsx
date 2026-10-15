@@ -11,7 +11,7 @@ import { useStudentInvites } from '../../classroom/inviteStore'
 import { inviteWorldHref, StudentInviteList } from '../../classroom/StudentInvites'
 import {
   browserWorldsClient, buildHref, byNewest, isInviteOnly, isMine, isShared, liveHref, matchesSearch,
-  sharedForBuilding, signInHref, type Classmate, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
+  sharedForBuilding, signInHref, type Classmate, type DeletedWorld, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
 import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
 import { NewProjectSheet } from '../../projects/NewProjectSheet'
@@ -107,6 +107,9 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const [checkpointTarget, setCheckpointTarget] = useState<WorldsWorld | null>(null)
   const [checkpoints, setCheckpoints] = useState<ClassroomCheckpoint[]>([])
   const [newOpen, setNewOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<WorldsWorld | null>(null)
+  /** Recently deleted (own projects, 30 days). Empty when the server cannot list them. */
+  const [deletedWorlds, setDeletedWorlds] = useState<DeletedWorld[]>([])
   /** Bumped when a project on this computer is added, moved to the account or removed. */
   const [localVersion, setLocalVersion] = useState(0)
   const narrow = useNarrow()
@@ -126,6 +129,8 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
       .then(([nextWorlds, nextClasses]) => {
         if (cancelled) return
         setWorlds(nextWorlds); setClasses(nextClasses)
+        // An older server has no Recently deleted; anything but a list means "nothing to show".
+        client.listDeletedWorlds?.().then(list => { if (!cancelled) setDeletedWorlds(Array.isArray(list) ? list : []) }).catch(() => {})
         // A teacher returns to the class they last picked; a student has one.
         if (pendingView.current && nextClasses[0]) { setSection(teacher ? pickTeacherClassId(nextClasses) : nextClasses[0].id); pendingView.current = false }
       })
@@ -137,7 +142,16 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
   const reload = async () => {
     const [nextWorlds, nextClasses] = await Promise.all([client.listWorlds({ presence: true }), client.listClasses()])
     setWorlds(nextWorlds); setClasses(nextClasses)
+    client.listDeletedWorlds?.().then(list => setDeletedWorlds(Array.isArray(list) ? list : [])).catch(() => {})
   }
+  const remove = (world: WorldsWorld) => run(async () => {
+    await client.deleteWorld!(world.id); setDeleteTarget(null); await reload()
+    setNotice(`“${world.title}” is in Recently deleted. You can bring it back for 30 days.`)
+  })
+  const restoreDeleted = (world: DeletedWorld) => run(async () => {
+    await client.restoreDeletedWorld!(world.id); await reload()
+    setNotice(`“${world.title}” is back in your projects.`)
+  })
   const run = (work: () => Promise<void>) => {
     void (async () => {
       setBusy(true); setError(''); setNotice('')
@@ -365,6 +379,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                     { label: 'Download a copy', onSelect: () => run(async () => { downloadProjectFile(await accountProject(world)) }) },
                     { label: 'Checkpoints', onSelect: () => openCheckpoints(world) },
                     ...(shared ? [{ label: 'Stop sharing', onSelect: () => stopSharing(world) }] : []),
+                    ...(client.deleteWorld ? [{ label: 'Delete', onSelect: () => setDeleteTarget(world) }] : []),
                   ]} />}
                 >
                   {together
@@ -376,6 +391,17 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
                 </WorldCard>
               })}</div>}
           </section>
+          {deletedWorlds.length > 0 && <section aria-label="Recently deleted" className="worlds-section">
+            <h2 className="worlds-section-title">Recently deleted</h2>
+            <p className="projects-muted">Deleted projects stay here for 30 days, then they're gone for good.</p>
+            <ul className="projects-deleted">{deletedWorlds.map(world => {
+              const gone = new Date(Date.parse(world.deletedAt) + 30 * 86_400_000)
+              return <li key={world.id}>
+                <div><strong>{world.title}</strong><small>Deleted {formatSavedDate(world.deletedAt)} · gone after {gone.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</small></div>
+                <Button variant="secondary" size="sm" disabled={busy} onClick={() => restoreDeleted(world)}>Restore</Button>
+              </li>
+            })}</ul>
+          </section>}
           <StartersSection signedIn {...feedback} />
         </>}
 
@@ -439,6 +465,16 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
     </Sheet>}
 
     <NewProjectSheet open={newOpen} onClose={() => setNewOpen(false)} />
+
+    {deleteTarget && <Sheet open variant="dialog" size="sm" title={`Delete “${deleteTarget.title}”?`}
+      description="It goes to Recently deleted for 30 days, so you can bring it back. Sharing stops, and anyone building in it is let out."
+      onClose={() => setDeleteTarget(null)}
+      footer={<>
+        <Button variant="secondary" disabled={busy} onClick={() => setDeleteTarget(null)}>Cancel</Button>
+        <Button variant="danger" loading={busy} loadingLabel="Deleting…" onClick={() => remove(deleteTarget)}>Delete</Button>
+      </>}>
+      <p className="worlds-help">Want a copy first? Use Download a copy in the project’s menu.</p>
+    </Sheet>}
 
     {checkpointTarget && <Sheet open variant="dialog" size="sm" title={`Checkpoints for “${checkpointTarget.title}”`} description="Restore an earlier version if something went wrong." onClose={() => setCheckpointTarget(null)}
       footer={<Button variant="secondary" disabled={busy} onClick={() => setCheckpointTarget(null)}>Close</Button>}>

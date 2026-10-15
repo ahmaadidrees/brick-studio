@@ -447,6 +447,9 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
       if (value.startsWith('eq.')) return String(row[key]) === value.slice(3);
       if (value.startsWith('neq.')) return String(row[key]) !== value.slice(4);
       if (value.startsWith('in.(')) return value.slice(4, -1).split(',').includes(String(row[key]));
+      if (value === 'is.null') return row[key] == null;
+      if (value === 'not.is.null') return row[key] != null;
+      if (value.startsWith('lt.')) return row[key] != null && String(row[key]) < value.slice(3);
       throw new Error(`Unsupported filter ${key}=${value}`);
     });
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -460,6 +463,7 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
       if (!(table in db)) throw new Error(`Unexpected table ${table}`);
       const rows = db[table].filter(row => matches(row, url.searchParams));
       if (method === 'PATCH') { const data = JSON.parse(String(init?.body)); rows.forEach(row => Object.assign(row, data)); return Response.json(rows); }
+      if (method === 'DELETE') { db[table] = db[table].filter(row => !rows.includes(row)); return Response.json(rows); }
       if (method === 'POST') { const data = { id: copyId, revision: 1, updated_at: '2026-09-17T12:00:00Z', ...JSON.parse(String(init?.body)) }; db[table].push(data); return Response.json([data]); }
       const limit = Number(url.searchParams.get('limit') || 1000);
       return Response.json(rows.slice(0, limit));
@@ -641,6 +645,29 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     vi.restoreAllMocks();
     const long = backend(ava, tables([world({ title: 'x'.repeat(80) })]));
     expect((await long.call('POST', `worlds/${treehouse}/copy`)).body.world.title).toHaveLength(80);
+  });
+  it('deletes an own project into Recently deleted, hides it everywhere, and restores it', async () => {
+    const { call, db, events } = backend(ava, tables([shared()]));
+    expect((await call('DELETE', `worlds/${treehouse}`)).body).toEqual({ deleted: true });
+    expect(db.worlds[0]).toMatchObject({ class_visibility: 'private', class_can_edit: false })
+    expect(db.worlds[0].deleted_at).toEqual(expect.any(String))
+    expect(events).toContainEqual({ worldId: treehouse, reason: 'visibility_updated', change: 'revocation' });
+    expect((await call('GET', 'worlds')).body.worlds).toEqual([]);
+    expect((await call('GET', `worlds/${treehouse}`)).status).toBe(404);
+    const trash = (await call('GET', 'worlds/deleted')).body.worlds;
+    expect(trash).toEqual([expect.objectContaining({ id: treehouse, title: 'Treehouse Hideout', deletedAt: expect.any(String) })]);
+    expect((await call('POST', `worlds/${treehouse}/undelete`)).body.world).toMatchObject({ id: treehouse });
+    expect((await call('GET', 'worlds')).body.worlds.map((w: Row) => w.id)).toEqual([treehouse]);
+    expect((await call('GET', 'worlds/deleted')).body.worlds).toEqual([]);
+  });
+  it('only the owner deletes; projects deleted over 30 days ago are removed for good', async () => {
+    const other = backend(ben, tables([shared({ class_can_edit: true })]));
+    expect((await other.call('DELETE', `worlds/${treehouse}`)).body).toMatchObject({ code: 'owner_required' });
+    vi.restoreAllMocks();
+    const old = backend(ava, tables([world({ deleted_at: '2026-01-01T00:00:00Z' }), world({ id: copyId, deleted_at: new Date().toISOString() })]));
+    expect((await old.call('GET', 'worlds/deleted')).body.worlds.map((w: Row) => w.id)).toEqual([copyId]);
+    expect(old.db.worlds.map(w => w.id)).toEqual([copyId]);
+    expect((await old.call('POST', `worlds/${treehouse}/undelete`)).status).toBe(404);
   });
   it('maps a database quota rejection on the copy insert to world_limit', async () => {
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);

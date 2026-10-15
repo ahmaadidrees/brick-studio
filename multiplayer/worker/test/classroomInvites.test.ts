@@ -51,6 +51,8 @@ function backend(as: Caller, tables: Tables) {
     if (value.startsWith('eq.')) return String(row[key]) === value.slice(3);
     if (value.startsWith('neq.')) return String(row[key]) !== value.slice(4);
     if (value.startsWith('in.(')) return value.slice(4, -1).split(',').includes(String(row[key]));
+    if (value === 'is.null') return row[key] == null;
+    if (value === 'not.is.null') return row[key] != null;
     throw new Error(`Unsupported filter ${key}=${value}`);
   });
   const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

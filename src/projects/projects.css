@@ -132,3 +132,32 @@
   justify-content: space-between;
   gap: var(--space-2);
 }
+
+.projects-deleted {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.projects-deleted li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.projects-deleted li div {
+  display: grid;
+  min-width: 0;
+}
+
+.projects-deleted small {
+  color: var(--text-muted);
+}

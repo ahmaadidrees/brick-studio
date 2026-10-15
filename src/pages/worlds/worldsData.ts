@@ -12,6 +12,8 @@ import type { InviteClient } from '../../classroom/inviteStore'
  * what the CALLER may do (an owner is always true) while `classCanEdit` is what the owner let others do.
  */
 export type WorldsWorld = ClassroomWorld
+/** A project in Recently deleted. */
+export type DeletedWorld = WorldsWorld & { deletedAt: string }
 
 export type WorldsClass = ClassroomClass & {
   studentsCanShare?: boolean
@@ -49,6 +51,11 @@ export type WorldsClient = {
   setWorldSharing: (id: string, sharing: WorldSharing) => Promise<WorldsWorld>
   setWorldHidden: (id: string, hidden: boolean) => Promise<WorldsWorld>
   copyWorld: (id: string) => Promise<WorldsWorld>
+  /** Delete an own project: it goes to Recently deleted for 30 days. Absent on clients that cannot delete. */
+  deleteWorld?: (id: string) => Promise<void>
+  /** The caller's projects deleted in the last 30 days, newest first, each with `deletedAt`. */
+  listDeletedWorlds?: () => Promise<DeletedWorld[]>
+  restoreDeletedWorld?: (id: string) => Promise<WorldsWorld>
   /** A class or group world for the teacher: a 3D build (the default) or a 2D level. */
   createSharedWorld: (classId: string, title: string, kind: 'class' | 'group', format?: 'brick' | '2d') => Promise<WorldsWorld>
   signOut: () => Promise<void>
@@ -78,6 +85,9 @@ export function createWorldsClient(client: ClassroomClient = browserClassroomCli
     setWorldSharing: (id, sharing) => client.request<{ world: WorldsWorld }>(`/worlds/${id}/sharing`, 'PATCH', sharing).then(world),
     setWorldHidden: (id, hidden) => client.request<{ world: WorldsWorld }>(`/worlds/${id}/visibility`, 'PATCH', { hiddenByTeacher: hidden }).then(world),
     copyWorld: id => client.request<{ world: WorldsWorld }>(`/worlds/${id}/copy`, 'POST').then(world),
+    deleteWorld: async id => { await client.request(`/worlds/${id}`, 'DELETE') },
+    listDeletedWorlds: () => client.request<{ worlds: DeletedWorld[] }>('/worlds/deleted').then(result => result.worlds),
+    restoreDeletedWorld: id => client.request<{ world: WorldsWorld }>(`/worlds/${id}/undelete`, 'POST').then(world),
     createSharedWorld: (classId, title, kind, format = 'brick') => client.request<{ world: WorldsWorld }>('/worlds', 'POST', { title, classId, kind, document: emptyDocument(format, title) }).then(world),
     signOut: () => client.signOut(),
   }

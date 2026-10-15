@@ -348,6 +348,23 @@ describe('student', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('My projects')
   })
 
+  it('deletes a project after asking, keeps it in Recently deleted, and restores it', async () => {
+    draw()
+    await settled()
+    fireEvent.click(within(screen.getByRole('article', { name: 'Treehouse Hideout' })).getByRole('button', { name: 'More for Treehouse Hideout' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete' }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete “Treehouse Hideout”?' })
+    expect(within(dialog).getByText(/Recently deleted for 30 days/)).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByText(/is in Recently deleted/)).toBeInTheDocument()
+    expect(screen.queryByRole('article', { name: 'Treehouse Hideout' })).not.toBeInTheDocument()
+    const trash = await screen.findByRole('region', { name: 'Recently deleted' })
+    fireEvent.click(within(trash).getByRole('button', { name: 'Restore' }))
+    expect(await screen.findByText(/is back in your projects/)).toBeInTheDocument()
+    expect(screen.getByRole('article', { name: 'Treehouse Hideout' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Recently deleted' })).not.toBeInTheDocument())
+  })
+
   it('renames a world from the card menu', async () => {
     const client = createFakeWorldsClient()
     draw(client)
