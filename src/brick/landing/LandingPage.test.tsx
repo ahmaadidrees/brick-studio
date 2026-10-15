@@ -21,7 +21,7 @@ describe('semantics and structure', () => {
 
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/snap it together\.\s*then play it\./i)
-    expect(screen.getByText('Pick a brick, click to place it, press play. Building in 3D or 2D is that easy.')).toBeInTheDocument()
+    expect(screen.getByText('Pick a brick, click to place it, press play. Making a 3D build, a platformer or a race track is that easy.')).toBeInTheDocument()
     expect(screen.getAllByText(/No account needed to start\./)).toHaveLength(2)
     expect(screen.getByRole('list', { name: 'At a glance' }).children).toHaveLength(4)
   })
@@ -44,19 +44,19 @@ describe('semantics and structure', () => {
     expect(screen.getByRole('banner').querySelector('.brand-lockup .brand-wordmark')).toHaveTextContent(BRAND_NAME)
     expect(screen.getByRole('contentinfo').querySelector('.brand-lockup .brand-wordmark')).toHaveTextContent(BRAND_NAME)
     expect(container.textContent).not.toMatch(/Brick Studio/)
-    for (const link of screen.getAllByRole('link', { name: /^(Start building|Join a class|Teacher sign in|Try building first|Make a 2D world)$/ })) {
+    for (const link of screen.getAllByRole('link', { name: /^(Start building|Join a class|Teacher sign in|Try building first|Make a platformer|Make a race track)$/ })) {
       expect(link.className).toMatch(/\bui-button\b/)
     }
     expect(screen.getByRole('button', { name: 'Menu' }).className).toMatch(/\bui-button\b/)
   })
 
-  it('offers both builders, a class code and Student login in the hero', () => {
+  it('offers New project, My projects, a class code and Student login in the hero', () => {
     render(<LandingPage />)
     const hero = screen.getByRole('heading', { level: 1 }).closest('section')!
     const order = [...hero.querySelectorAll('a')].map((a) => a.textContent)
-    expect(order).toEqual(['Build in 3D', 'Build in 2D', 'Student login'])
-    expect(within(hero).getByRole('link', { name: 'Build in 3D' })).toHaveAttribute('href', '/build')
-    expect(within(hero).getByRole('link', { name: 'Build in 2D' })).toHaveAttribute('href', '/2d/build')
+    expect(order).toEqual(['My projects', 'Student login'])
+    expect(within(hero).getByRole('button', { name: 'New project' })).toBeInTheDocument()
+    expect(within(hero).getByRole('link', { name: 'My projects' })).toHaveAttribute('href', '/projects')
     expect(within(hero).getByRole('link', { name: 'Student login' })).toHaveAttribute('href', '/build?classroom=signin')
 
     // A plain GET form: /join?mode=join&classCode=… opens the join page with the code filled in.
@@ -69,28 +69,33 @@ describe('semantics and structure', () => {
     expect(within(form).getByRole('button', { name: 'Join' })).toHaveAttribute('type', 'submit')
   })
 
-  it('makes 2D building a first-class choice: hero, a two-ways section and the nav', () => {
+  it('shows three ways to build, all in My projects: 3D builds, platformers and race tracks', () => {
     render(<LandingPage />)
     const ways = document.getElementById('two-ways')!
-    expect(within(ways).getByRole('heading', { level: 2 })).toHaveTextContent(/Two ways to build\.\s*One set of bricks\./)
-    expect(within(ways).getByRole('heading', { level: 3, name: '3D worlds' })).toBeInTheDocument()
-    expect(within(ways).getByRole('heading', { level: 3, name: '2D worlds' })).toBeInTheDocument()
+    expect(within(ways).getByRole('heading', { level: 2 })).toHaveTextContent(/Three ways to build\.\s*One set of bricks\./)
+    for (const name of ['3D builds', 'Platformers', 'Race tracks']) expect(within(ways).getByRole('heading', { level: 3, name })).toBeInTheDocument()
     expect(within(ways).getByRole('link', { name: 'Start building' })).toHaveAttribute('href', '/build')
-    expect(within(ways).getByRole('link', { name: 'Make a 2D world' })).toHaveAttribute('href', '/2d/build')
-    expect(within(ways).getByRole('link', { name: 'Make a 2D world' }).className).toMatch(/\bui-button\b/)
-    expect(within(ways).getByRole('link', { name: 'Try a starter world' })).toHaveAttribute('href', '/2d')
-    expect(within(ways).getByText(/the 3D \/ 2D switch at the top of the builder/)).toBeInTheDocument()
+    expect(within(ways).getByRole('link', { name: 'Make a platformer' })).toHaveAttribute('href', '/2d/build')
+    expect(within(ways).getByRole('link', { name: 'Make a race track' })).toHaveAttribute('href', '/2d/build?new=1&kit=race-starter')
+    expect(within(ways).getByRole('link', { name: 'Try a starter' })).toHaveAttribute('href', '/projects')
+    expect(within(ways).getByRole('link', { name: 'Race a starter' })).toHaveAttribute('href', '/2d/play/speedway')
+    expect(within(ways).getByText(/live together in My projects/)).toBeInTheDocument()
 
     const nav = screen.getByRole('navigation', { name: BRAND_NAME })
-    expect(within(nav).getByRole('link', { name: '3D worlds' })).toHaveAttribute('href', '#two-ways')
-    expect(within(nav).getByRole('link', { name: '2D worlds' })).toHaveAttribute('href', '#two-ways')
-    expect(screen.getByText('2D worlds', { selector: 'dt' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'What you can make' })).toHaveAttribute('href', '#two-ways')
+    expect(within(nav).getByRole('link', { name: 'My projects' })).toHaveAttribute('href', '/projects')
+    expect(screen.getByText('Platformers and race tracks', { selector: 'dt' })).toBeInTheDocument()
   })
 
-  it('routes the 2D calls to action through the platformerHref contract', () => {
+  it('opens the New project picker from the hero', async () => {
+    render(<LandingPage />)
+    fireEvent.click(screen.getByRole('button', { name: 'New project' }))
+    expect(await screen.findByRole('dialog', { name: 'New project' })).toBeInTheDocument()
+  })
+
+  it('routes the platformer call to action through the platformerHref contract', () => {
     render(<LandingPage platformerHref="/2d/build?new=1" />)
-    expect(screen.getByRole('link', { name: 'Make a 2D world' })).toHaveAttribute('href', '/2d/build?new=1')
-    expect(screen.getByRole('link', { name: 'Build in 2D' })).toHaveAttribute('href', '/2d/build?new=1')
+    expect(screen.getByRole('link', { name: 'Make a platformer' })).toHaveAttribute('href', '/2d/build?new=1')
   })
 
   it('names the LEGO Group non-affiliation honestly', () => {
@@ -131,7 +136,6 @@ describe('calls to action and anchors', () => {
   it('routes every studio call to action through the studioHref contract', () => {
     render(<LandingPage studioHref="/studio" />)
     for (const link of screen.getAllByRole('link', { name: 'Start building' })) expect(link).toHaveAttribute('href', '/studio')
-    expect(screen.getByRole('link', { name: 'Build in 3D' })).toHaveAttribute('href', '/studio')
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/studio')
     for (const link of screen.getAllByRole('link', { name: 'Join a class' })) expect(link).toHaveAttribute('href', '/studio?classroom=join')
     for (const link of screen.getAllByRole('link', { name: 'Student login' })) expect(link).toHaveAttribute('href', '/studio?classroom=signin')
@@ -168,7 +172,7 @@ describe('calls to action and anchors', () => {
     render(<LandingPage />)
     const continues = screen.getAllByRole('link', { name: 'Continue building' })
     expect(continues).toHaveLength(2)
-    expect(screen.getByRole('link', { name: 'Continue in 3D' })).toHaveAttribute('href', '/build')
+    expect(screen.getByRole('link', { name: 'Continue a project' })).toHaveAttribute('href', '/projects')
     for (const link of continues) expect(link).toHaveAttribute('href', '/build')
     expect(screen.queryAllByRole('link', { name: 'Start building' })).toHaveLength(0)
 
@@ -180,8 +184,8 @@ describe('calls to action and anchors', () => {
   it('falls back to Start building when storage is unavailable', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked') })
     render(<LandingPage />)
-    expect(screen.getAllByRole('link', { name: 'Start building' })).toHaveLength(2)
-    expect(screen.getByRole('link', { name: 'Build in 3D' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Start building' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'My projects' }).length).toBeGreaterThan(0)
   })
 })
 
@@ -203,7 +207,7 @@ describe('mobile menu', () => {
     expect(document.activeElement).toBe(toggle)
 
     fireEvent.click(toggle)
-    fireEvent.click(within(nav).getByRole('link', { name: '2D worlds' }))
+    fireEvent.click(within(nav).getByRole('link', { name: 'What you can make' }))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
   })
 })

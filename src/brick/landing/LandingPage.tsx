@@ -1,17 +1,19 @@
 import {
   ArrowRight,
-  Box,
   Cloud,
   Compass,
+  Flag,
+  FolderOpen,
   KeyRound,
   LogIn,
   Menu,
   Play,
+  Plus,
   SlidersHorizontal,
   Square,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
 import { BRAND_NAME, BrandLockup } from '../../brand'
 import { Button } from '../../ui/Button'
@@ -20,6 +22,9 @@ import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
 import { HeroDemo } from './HeroDemo'
 import { PixelLevelArt, ScenePlaceholder } from './LandingArt'
 import './landing.css'
+
+// The New project picker draws starter pictures with the 2D renderer: loaded only when someone opens it.
+const NewProjectSheet = lazy(() => import('../../projects/NewProjectSheet').then((m) => ({ default: m.NewProjectSheet })))
 
 /*
  * Brickgineers marketing page. Pure presentation: the hero's recorded demo
@@ -39,8 +44,9 @@ export type LandingPageProps = {
   className?: string
 }
 
-/** The 2D side's own pages: courses, your levels, play with friends. */
-const PLATFORMER_HOME_HREF = '/2d'
+/** Every project, on this computer and in the account, plus the starters to play. */
+const PROJECTS_HREF = '/projects'
+const RACE_STARTER_HREF = '/2d/build?new=1&kit=race-starter'
 
 type AccountIntent = 'join' | 'signin' | 'teacher'
 
@@ -194,6 +200,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
     try { return window.localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY) !== null } catch { return false }
   })
   const [menuOpen, setMenuOpen] = useState(false)
+  const [newOpen, setNewOpen] = useState(false)
   const menuButton = useRef<HTMLButtonElement>(null)
   const mainId = useId()
   const navId = useId()
@@ -257,8 +264,8 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               Menu
             </Button>
             <nav id={navId} aria-label={BRAND_NAME} data-open={menuOpen || undefined} onClick={closeMenu}>
-              <a className="landing-nav-link" href="#two-ways">3D worlds</a>
-              <a className="landing-nav-link" href="#two-ways">2D worlds</a>
+              <a className="landing-nav-link" href="#two-ways">What you can make</a>
+              <a className="landing-nav-link" href={PROJECTS_HREF}>My projects</a>
               <a className="landing-nav-link" href="#teachers">For teachers</a>
               <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
             </nav>
@@ -266,6 +273,11 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
         }
       />
 
+      {newOpen && (
+        <Suspense fallback={null}>
+          <NewProjectSheet open onClose={() => setNewOpen(false)} />
+        </Suspense>
+      )}
       <main id={mainId}>
         {window.location.hostname === 'virtual-legos.vercel.app' && (
           <aside className="landing-legacy-notice" aria-label="New Brickgineers address">
@@ -289,21 +301,21 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
         )}
         <section className="landing-hero" aria-labelledby="landing-hero-title">
           <div className="landing-hero-copy">
-            <span className="landing-eyebrow">3D or 2D · right in your browser</span>
+            <span className="landing-eyebrow">3D builds, platformers and race tracks · right in your browser</span>
             <h1 id="landing-hero-title">
               Snap it together.
               <br />
               Then play it.
             </h1>
-            <p className="landing-hero-lede">Pick a brick, click to place it, press play. Building in 3D or 2D is that easy.</p>
+            <p className="landing-hero-lede">Pick a brick, click to place it, press play. Making a 3D build, a platformer or a race track is that easy.</p>
             <p className="landing-hero-builds">
-              <a className="landing-stud-button landing-stud-button-3d" href={studioHref}>
-                <Box size={22} aria-hidden="true" />
-                {continueBuild ? 'Continue in 3D' : 'Build in 3D'}
-              </a>
-              <a className="landing-stud-button landing-stud-button-2d" href={platformerHref}>
-                <Square size={22} aria-hidden="true" />
-                Build in 2D
+              <button type="button" className="landing-stud-button landing-stud-button-3d" onClick={() => setNewOpen(true)}>
+                <Plus size={22} aria-hidden="true" />
+                New project
+              </button>
+              <a className="landing-stud-button landing-stud-button-2d" href={PROJECTS_HREF}>
+                <FolderOpen size={22} aria-hidden="true" />
+                {continueBuild ? 'Continue a project' : 'My projects'}
               </a>
             </p>
             {/* A plain GET form: /join reads ?classCode= (src/pages/join/joinQuery.ts). */}
@@ -327,11 +339,11 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
         <section id="two-ways" className="landing-section landing-ways" aria-labelledby={waysId}>
           <div className="landing-ways-head">
             <h2 id={waysId}>
-              Two ways to build.
+              Three ways to build.
               <br />
               <span>One set of bricks.</span>
             </h2>
-            <p>Both save the same way, share with your class the same way, and sit one tap apart: the 3D / 2D switch at the top of the builder.</p>
+            <p>They all save the same way, share with your class the same way, and live together in My projects.</p>
           </div>
           <ul className="landing-ways-grid">
             <li className="landing-way landing-way-3d">
@@ -345,9 +357,9 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
                 fallback={<ScenePlaceholder scene="toy-room" />}
               />
               <div className="landing-way-copy">
-                <h3>3D worlds</h3>
+                <h3>3D builds</h3>
                 <p>Stack bricks on a plate, pick a scene, then step inside as your character and explore what you built.</p>
-                <ul className="landing-chips" aria-label="3D worlds include">
+                <ul className="landing-chips" aria-label="3D builds include">
                   <li>Custom bricks</li>
                   <li>4 scenes</li>
                   <li>Walk inside</li>
@@ -366,16 +378,34 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
                 fallback={<PixelLevelArt />}
               />
               <div className="landing-way-copy">
-                <h3>2D worlds</h3>
+                <h3>Platformers</h3>
                 <p>Place bricks, springs and critters in a side-scrolling world, press Play, and run through it. Cartoon or retro pixel.</p>
-                <ul className="landing-chips" aria-label="2D worlds include">
-                  <li>3 starter worlds</li>
+                <ul className="landing-chips" aria-label="Platformers include">
+                  <li>3 starter courses</li>
                   <li>Up to 16 friends</li>
                   <li>Touch controls</li>
                 </ul>
                 <p className="landing-cta-row landing-cta-row-compact">
-                  <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Make a 2D world</CtaLink>
-                  <CtaLink href={PLATFORMER_HOME_HREF} icon={<Play size={18} />}>Try a starter world</CtaLink>
+                  <CtaLink href={platformerHref} variant="primary" icon={<Square size={18} />}>Make a platformer</CtaLink>
+                  <CtaLink href={PROJECTS_HREF} icon={<Play size={18} />}>Try a starter</CtaLink>
+                </p>
+              </div>
+            </li>
+            <li className="landing-way landing-way-race">
+              <span className="landing-media landing-media-loaded" style={{ aspectRatio: '1200 / 750' }}>
+                <img src={`${MEDIA_BASE}/race-track-1200.webp`} width={1200} height={750} alt="A race track seen from above, with ? blocks, a boost strip, a ramp over the water and cars racing" loading="lazy" decoding="async" />
+              </span>
+              <div className="landing-way-copy">
+                <h3>Race tracks</h3>
+                <p>Paint a track from above with boosts, ice, jumps and ? blocks, set the laps, then race your class in the same room.</p>
+                <ul className="landing-chips" aria-label="Race tracks include">
+                  <li>3 starter tracks</li>
+                  <li>Items and Walkers</li>
+                  <li>Race together</li>
+                </ul>
+                <p className="landing-cta-row landing-cta-row-compact">
+                  <CtaLink href={RACE_STARTER_HREF} variant="primary" icon={<Flag size={18} />}>Make a race track</CtaLink>
+                  <CtaLink href="/2d/play/speedway" icon={<Play size={18} />}>Race a starter</CtaLink>
                 </p>
               </div>
             </li>
@@ -480,10 +510,10 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
             <dl>
               <dt>Building</dt>
               <dd>Pick a brick from the drawer and tap or click the plate to place it. Undo and redo sit in the toolbar. Explore switches to your character; walk and jump with the keyboard, or with touch controls on phones and tablets.</dd>
-              <dt>2D worlds</dt>
-              <dd>Choose 2D with the 3D / 2D switch in the builder. Pick bricks, springs, critters or the goal flag from the Bricks drawer and tap or click to place them, then press Play to run through your world. Signed-in students find their 2D worlds in My Worlds and share them with the class the same way as 3D ones.</dd>
+              <dt>Platformers and race tracks</dt>
+              <dd>Choose New project, then Platformer or Race track. Pick bricks from the Bricks drawer and tap or click to place them, then press Play to run or race through what you made. Signed-in students find every project in My projects and share it with the class the same way.</dd>
               <dt>Saving</dt>
-              <dd>Guest drafts save automatically in this browser. The world menu can export any build as a file and import it again later. Signed-in students save to My Worlds.</dd>
+              <dd>Signed-in students save to their account as they build, and every project is in My projects. Without an account, projects stay on this computer. Any project can be downloaded as a .brickgineers file and imported again later.</dd>
               <dt>Sharing</dt>
               <dd>Build together creates a temporary room with an invite link you can copy. Anyone with the link can join while the room is open to new people; the owner can close it. Rooms expire about two hours after the last activity, so export a copy to keep the build.</dd>
               <dt>Students</dt>
