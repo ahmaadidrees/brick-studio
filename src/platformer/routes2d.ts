@@ -14,7 +14,7 @@ export type NewKit = 'race-starter' | 'race-empty'
 
 export type Route2D =
   | { kind: 'home' }
-  | { kind: 'build'; world?: string; draft?: string; fresh: boolean; kit?: NewKit }
+  | { kind: 'build'; world?: string; draft?: string; fresh: boolean; kit?: NewKit; template?: string }
   | { kind: 'course'; id: string }
   | { kind: 'shared'; code: string | null }
   | { kind: 'guest'; roomId: string }
@@ -36,7 +36,9 @@ export function parse2dRoute({ pathname, search, hash }: Pick<URL, 'pathname' | 
     const world = query.get('world')?.trim() || undefined
     const draft = query.get('draft')?.trim() || undefined
     const kit = query.get('kit')
-    return { kind: 'build', world: world && canonicalWorldId(world) ? canonicalWorldId(world)! : undefined, draft: draft?.slice(0, 64), fresh: query.get('new') === '1', ...(kit === 'race-starter' || kit === 'race-empty' ? { kit } : {}) }
+    // A new project copied from a starter course or track (New project → Start from a starter).
+    const template = /^[a-z0-9-]{1,40}$/.exec(query.get('template') ?? '')?.[0]
+    return { kind: 'build', world: world && canonicalWorldId(world) ? canonicalWorldId(world)! : undefined, draft: draft?.slice(0, 64), fresh: query.get('new') === '1', ...(kit === 'race-starter' || kit === 'race-empty' ? { kit } : {}), ...(template ? { template } : {}) }
   }
   if (path === '/2d/play') return { kind: 'shared', code: /^#l=(.+)$/.exec(hash)?.[1] ?? null }
   const course = /^\/2d\/play\/([a-z0-9-]{1,40})$/.exec(path)

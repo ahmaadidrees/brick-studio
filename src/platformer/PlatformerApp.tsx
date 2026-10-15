@@ -48,8 +48,10 @@ export default function PlatformerApp() {
 
 const HOME = () => window.location.assign('/2d')
 
-/** A new world from the kit picker: a platformer, the starter race track to change, or an empty field. */
-function newLevel(kit?: NewKit): LevelDesign {
+/** A new project: a copy of a starter (course or race track), the starter race track to change, or an empty one. */
+function newLevel(kit?: NewKit, template?: string): LevelDesign {
+  const starter = template ? (raceCourseById(template) ?? courseById(template)) : undefined
+  if (starter) return { ...starter.level(), title: `My ${starter.title}` }
   if (kit === 'race-starter') return { ...brickSpeedway(), title: 'My race track' }
   if (kit === 'race-empty') return createBlankRaceLevel()
   return createBlankLevel(160, 27, 'My world')
@@ -76,7 +78,7 @@ function Notice({ title, body, busy, children }: { title: string; body?: string;
 
 type Loaded = { level: LevelDesign; source: LevelSource }
 
-function BuildPage({ world, draft, fresh, kit }: { world?: string; draft?: string; fresh: boolean; kit?: NewKit }) {
+function BuildPage({ world, draft, fresh, kit, template }: { world?: string; draft?: string; fresh: boolean; kit?: NewKit; template?: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
@@ -118,12 +120,12 @@ function BuildPage({ world, draft, fresh, kit }: { world?: string; draft?: strin
         const level = recent ? loadDraft(recent.id) : null
         if (recent && level) return done({ level, source: { kind: 'draft', id: recent.id } })
       }
-      done({ level: newLevel(kit), source: { kind: 'new' } })
+      done({ level: newLevel(kit, template), source: { kind: 'new' } })
     })()
     return () => {
       cancelled = true
     }
-  }, [world, draft, fresh, kit])
+  }, [world, draft, fresh, kit, template])
 
   if (error)
     return (
