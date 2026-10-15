@@ -51,6 +51,11 @@ export class CloudLevelSaver {
   private pending: LevelDesign | null = null
   private timer: ReturnType<typeof setTimeout> | undefined
   private running: Promise<void> | null = null
+  private readonly accountId = browserClassroomClient.getSession()?.user.id
+
+  private assertAccount() {
+    if (browserClassroomClient.getSession()?.user.id !== this.accountId) throw new Error('Your account changed. Sign in to the original account again to save. Your edits are still in this tab; download a copy before leaving.')
+  }
 
   constructor(
     public world: ClassroomWorld,
@@ -84,11 +89,13 @@ export class CloudLevelSaver {
     this.set('saving')
     this.running = (async () => {
       try {
+        this.assertAccount()
         const { world } = await browserClassroomClient.request<{ world: ClassroomWorld }>(`/worlds/${this.world.id}`, 'PUT', {
           expectedRevision: this.world.revision,
           title: level.title.trim().slice(0, 80) || 'My world',
           document: createPlatformerDocument(level),
         })
+        this.assertAccount()
         this.world = { ...this.world, ...world }
         this.error = ''
         this.set(this.pending ? 'pending' : 'saved')

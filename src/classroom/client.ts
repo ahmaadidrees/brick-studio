@@ -54,9 +54,8 @@ export class ClassroomClient implements ClassroomClientSurface {
         if (current) { this.epoch++; this.auth = null; this.listeners.forEach((l) => l()) }
         return
       }
-      if (current && next.user.id !== current.user.id) return // another account in another tab: this tab keeps its own
       if (current && next.session.accessToken === current.session.accessToken) return
-      if (!current) this.epoch++
+      if (!current || next.user.id !== current.user.id) this.epoch++
       this.auth = next
       this.listeners.forEach((l) => l())
     })

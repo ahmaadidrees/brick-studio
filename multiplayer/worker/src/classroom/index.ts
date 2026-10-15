@@ -870,7 +870,10 @@ async function route(request: Request, service: ClassroomService, path: string[]
       const row = (await service.rows('worlds', `id=eq.${path[1]}&owner_id=eq.${caller.id}&deleted_at=not.is.null&select=id&limit=1`))[0];
       if (!row) fail(404, 'not_found', 'That project is not in Recently deleted.');
       if ((await service.rows('worlds', `owner_id=eq.${caller.id}&deleted_at=is.null&select=id&limit=${WORLD_LIMIT}`)).length >= WORLD_LIMIT) fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.');
-      const restored = (await service.patch('worlds', `id=eq.${row.id}&owner_id=eq.${caller.id}&select=${WORLD_FIELDS}`, { deleted_at: null }))[0];
+      let restored: Row;
+      // The database serializes activation with creates and other restores for this owner.
+      try { restored = (await service.patch('worlds', `id=eq.${row.id}&owner_id=eq.${caller.id}&select=${WORLD_FIELDS}`, { deleted_at: null }))[0]; }
+      catch (error) { if (error instanceof ClassroomHttpError && error.code === 'quota_exceeded') fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.'); throw error; }
       await service.audit(caller, 'undelete_world', undefined, row.id);
       return json({ world: worldView(restored, ownView(caller, false)) });
     }

@@ -41,7 +41,7 @@ describe('one sign-in for every tab', () => {
     expect(seen).toHaveBeenCalled()
   })
 
-  it('a guest tab picks up a sign-in from another tab; a tab signed in as someone else keeps its own account', () => {
+  it('all tabs follow an account switch', () => {
     const guest = new ClassroomClient('https://c.test', vi.fn())
     const leo = new ClassroomClient('https://c.test', vi.fn())
     leo.setSession(auth('leo', 'l1'))
@@ -49,7 +49,20 @@ describe('one sign-in for every tab', () => {
     maya.setSession(auth('maya', 'm1'))
     otherTabWrote()
     expect(guest.getSession()?.user.id).toBe('maya')
-    expect(leo.getSession()?.user.id).toBe('leo')
+    expect(leo.getSession()?.user.id).toBe('maya')
+  })
+
+  it('rejects an old account request that completes after another tab switches accounts', async () => {
+    let finish!: (response: Response) => void
+    const fetcher = vi.fn(() => new Promise<Response>(resolve => { finish = resolve }))
+    const tab = new ClassroomClient('https://c.test', fetcher as typeof fetch)
+    tab.setSession(auth('leo', 'l1'))
+    const pending = tab.request('/worlds')
+    browserSessionStore().write(auth('maya', 'm1'))
+    otherTabWrote()
+    finish(json({ worlds: [{ id: 'old-account-world' }] }))
+    await expect(pending).rejects.toMatchObject({ message: 'Your account changed. Please try again.' })
+    expect(tab.getSession()?.user.id).toBe('maya')
   })
 
   it('an older build’s tab-only sign-in moves to the shared place once', () => {

@@ -660,6 +660,13 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     expect((await call('GET', 'worlds')).body.worlds.map((w: Row) => w.id)).toEqual([treehouse]);
     expect((await call('GET', 'worlds/deleted')).body.worlds).toEqual([]);
   });
+  it('reports a database quota race during undelete as world_limit', async () => {
+    const { call } = backend(ava, tables([world({ deleted_at: new Date().toISOString() })]));
+    vi.spyOn(ClassroomService.prototype, 'patch').mockRejectedValue(new ClassroomHttpError(409, 'quota_exceeded', 'Quota exceeded.'));
+    const result = await call('POST', `worlds/${treehouse}/undelete`);
+    expect(result.status).toBe(409);
+    expect(result.body.code).toBe('world_limit');
+  });
   it('only the owner deletes; projects deleted over 30 days ago are removed for good', async () => {
     const other = backend(ben, tables([shared({ class_can_edit: true })]));
     expect((await other.call('DELETE', `worlds/${treehouse}`)).body).toMatchObject({ code: 'owner_required' });
