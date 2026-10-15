@@ -8,12 +8,12 @@ afterEach(cleanup)
 
 describe('describeSaveStatus', () => {
   it('maps every real enum value to the contract label', () => {
-    expect(describeSaveStatus({ kind: 'local' }).label).toBe('This browser only')
+    expect(describeSaveStatus({ kind: 'local' }).label).toBe('On this computer only')
     const cloud: Record<CloudSaveStatus, string> = {
       saved: 'Saved to your account',
       pending: 'Waiting to save…',
       saving: 'Saving to your account…',
-      error: 'Save needs attention',
+      error: 'Couldn’t save',
     }
     for (const [status, label] of Object.entries(cloud) as Array<[CloudSaveStatus, string]>) {
       expect(describeSaveStatus({ kind: 'cloud', status }).label).toBe(label)
@@ -31,7 +31,7 @@ describe('describeSaveStatus', () => {
 
   it('reports blocked storage as an error, never as saved', () => {
     const status = describeSaveStatus({ kind: 'local', error: 'Storage is blocked' })
-    expect(status.label).toBe('Save needs attention')
+    expect(status.label).toBe('Couldn’t save')
     expect(status.tone).toBe('error')
   })
 })
@@ -73,13 +73,13 @@ describe('SaveStatus', () => {
     const status = screen.getByRole('status')
     expect(status).toHaveClass('ui-save-status-auto')
     expect(status).not.toHaveClass('ui-save-status-compact')
-    expect(status).toHaveTextContent('This browser only')
-    expect(status).toHaveAttribute('title', 'This browser only')
+    expect(status).toHaveTextContent('On this computer only')
+    expect(status).toHaveAttribute('title', 'On this computer only')
   })
 
   it('shows the storage error as the detail line', () => {
     render(<SaveStatus source={{ kind: 'local', error: 'This browser is blocking storage.' }} />)
-    expect(screen.getByRole('status')).toHaveTextContent('Save needs attention')
+    expect(screen.getByRole('status')).toHaveTextContent('Couldn’t save')
     expect(screen.getByRole('status')).toHaveTextContent('This browser is blocking storage.')
   })
 })

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { createBlankLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { GameScreen } from './GameScreen'
 import { saveCharacter } from './prefs'
+import { listDrafts, saveDraft } from './drafts'
 import type { ClassroomWorld } from '../../classroom/contracts'
 
 const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '' }))
@@ -241,4 +242,15 @@ it('lets a signed-in guest host keep an account copy and continue to classroom i
   expect(state.create).toHaveBeenCalledOnce()
   expect(assign).toHaveBeenCalledWith('/2d/build?world=12345678-1234-4234-8234-123456789abc&share=1')
   vi.unstubAllGlobals()
+})
+
+it('moves a browser draft into the account: once the account copy exists, the draft is gone, not duplicated', async () => {
+  const draft = saveDraft(null, createBlankLevel(40, 20, 'Old draft'))
+  if (!draft.ok) throw new Error('draft not saved')
+  state.create.mockResolvedValue(savedWorld('private'))
+  render(<GameScreen level={createBlankLevel(40, 20, 'Old draft')} source={{ kind: 'draft', id: draft.id }} startMode="build" onExit={() => {}} />)
+  expect(listDrafts().map((d) => d.id)).toContain(draft.id)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save to my account' })); await Promise.resolve() })
+  expect(state.create).toHaveBeenCalledOnce()
+  expect(listDrafts().map((d) => d.id)).not.toContain(draft.id)
 })

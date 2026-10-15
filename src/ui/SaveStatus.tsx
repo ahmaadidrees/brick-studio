@@ -30,14 +30,14 @@ export function describeSaveStatus(source: SaveStatusSource): SaveStatusDescript
   switch (source.kind) {
     case 'local':
       return source.error
-        ? { label: 'Save needs attention', tone: 'error', busy: false }
-        : { label: 'This browser only', tone: 'local', busy: false }
+        ? { label: 'Couldn’t save', tone: 'error', busy: false }
+        : { label: 'On this computer only', tone: 'local', busy: false }
     case 'cloud':
       switch (source.status) {
         case 'saved': return { label: 'Saved to your account', tone: 'saved', busy: false }
         case 'pending': return { label: 'Waiting to save…', tone: 'pending', busy: false }
         case 'saving': return { label: 'Saving to your account…', tone: 'busy', busy: true }
-        case 'error': return { label: 'Save needs attention', tone: 'error', busy: false }
+        case 'error': return { label: 'Couldn’t save', tone: 'error', busy: false }
       }
       break
     case 'live':

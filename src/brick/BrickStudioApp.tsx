@@ -964,6 +964,7 @@ export default function BrickStudioApp({
   const session = useClassroomSession()
   const studentClassId = session.status === 'student' ? session.classes?.[0]?.id : undefined
   const localStorageBlocked = useLocalStorageHealth(!readOnly && !livePolicy && !cloud.world)
+  const [localSaveError, setLocalSaveError] = useState<string | null>(null)
   const closeClassroom = useCallback(() => setClassroomIntent(null), [])
   const [localEnvironmentId, setLocalEnvironmentId] = useState<EnvironmentId>(
     () => publishedWorld?.document.environmentId ?? 'classic',
@@ -1264,6 +1265,7 @@ export default function BrickStudioApp({
       setLocalEnvironmentId(document.environmentId)
       setLocalCustomParts(document.customParts)
     },
+    onLocalSaveError: setLocalSaveError,
   })
   // `/build?new=1`: the draft is loaded by the effect above, so the confirm sees the real build. A blank
   // draft needs no confirm. The guest path of onNewBuild owns the message; the cloud path never applies
@@ -1305,8 +1307,7 @@ export default function BrickStudioApp({
   }, [publishedWorld])
   const showOnboarding = onboarding.open && !worldSetupOpen && (brickCount === 0 || onboarding.forced)
   // Labels come only from the real state machines (guest autosave, CloudSaveStatus, LiveConnectionState).
-  // Guest autosave failures are reported by useBrickStudioDocuments as toasts and are not exposed as
-  // state, so the only local error the header can surface truthfully is blocked storage access.
+  // A failed browser save turns the header to "Couldn't save" until a save goes through again.
   const saveStatus: StudioSaveStatus = livePolicy
     ? {
       source: { kind: 'live', connection: livePolicy.connection },
@@ -1330,10 +1331,14 @@ export default function BrickStudioApp({
           source: { kind: 'local', error: 'This browser blocked local storage, so this build cannot be saved here.' },
           detail: 'This browser blocked local storage, so this build cannot be saved here. Download the build to keep it.',
         }
-        : {
-          source: { kind: 'local' },
-          detail: 'This build stays in this browser on this device. Use My Worlds to save a copy to your account, or Download build to keep a file.',
-        }
+        : localSaveError
+          ? { source: { kind: 'local', error: localSaveError }, detail: `${localSaveError} Download the build from the ⋯ menu to keep a copy.` }
+          : {
+            source: { kind: 'local' },
+            detail: signedInUserId()
+              ? 'This build is only on this computer. It moves to your account as soon as you add a brick.'
+              : 'This build is only on this computer, in this browser. Sign in to keep it in your account, or download a copy from the ⋯ menu.',
+          }
   /** Leave the studio for another page once this build is safely saved (account or browser). */
   const leaveStudioFor = (href: string) => { void (async () => {
     if (cloud.world) {
@@ -1530,7 +1535,15 @@ export default function BrickStudioApp({
         onClose={closeClassroom}
         beforeWorldMutation={cloud.flush}
         onWorldUpdated={world => { if (cloud.world?.id === world.id) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}
-        onSaved={world => { if (!livePolicy) void cloud.attach(world).catch(error => useBrickStore.setState({ toast: String(error) })) }}
+        onSaved={world => {
+          if (livePolicy) return
+          // Saving the browser build to the account moves it there: the browser copy would only be a stale duplicate.
+          // (Saving while an account world is open leaves any separate browser build alone.)
+          const wasBrowserBuild = !cloud.world
+          void cloud.attach(world)
+            .then(() => { if (wasBrowserBuild) clearLocalBrickStudioProject(localStorage) })
+            .catch(error => useBrickStore.setState({ toast: String(error) }))
+        }}
         onOpenWorld={openCloudWorld}
         onJoinWorld={async world => { const saved = await cloud.flush(); if (!saved && !window.confirm('Your latest edits are kept in this tab for recovery but are not saved online. Leave for the shared world?')) return; window.location.assign(`/live/${world.id.replaceAll('-', '')}`) }}
       />}

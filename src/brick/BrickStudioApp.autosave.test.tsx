@@ -85,7 +85,7 @@ describe('automatic account world for a signed-in fresh build', () => {
     let release!: () => void
     const calls = stubClassroomServer(async ({ title, document }) => { await new Promise<void>(resolve => { release = resolve }); return { ...serverWorld(document, 1), title } })
     render(<BrickStudioApp />)
-    expect(pillText()).toContain('This browser only')
+    expect(pillText()).toContain('On this computer only')
 
     placeBrick(brickA)
     await waitFor(() => expect(pillText()).toContain('Saving to your account…'))
@@ -119,7 +119,7 @@ describe('automatic account world for a signed-in fresh build', () => {
     const calls = stubClassroomServer(() => { throw new ClassroomError('You have reached the saved-world limit. Ask your teacher for help.', 409, 'world_limit') })
     render(<BrickStudioApp />)
     placeBrick(brickA)
-    await waitFor(() => expect(pillText()).toContain('Save needs attention'))
+    await waitFor(() => expect(pillText()).toContain('Couldn’t save'))
     const pill = document.querySelector('.app-header [role="status"][data-kind]')!
     expect(pill).toHaveAttribute('data-kind', 'local')
     expect(pill).toHaveAttribute('data-tone', 'error')
@@ -142,7 +142,7 @@ describe('automatic account world for a signed-in fresh build', () => {
     const calls = stubClassroomServer(({ document }) => { if (!online) throw new ClassroomError('Could not connect.', 0); return serverWorld(document) })
     render(<BrickStudioApp />)
     placeBrick(brickA)
-    await waitFor(() => expect(pillText()).toContain('Save needs attention'))
+    await waitFor(() => expect(pillText()).toContain('Couldn’t save'))
     online = true
     placeBrick(brickB)
     await waitFor(() => expect(pillText()).toContain('Saved to your account'))
@@ -156,7 +156,7 @@ describe('automatic account world for a signed-in fresh build', () => {
     placeBrick(brickA)
     await act(async () => { await Promise.resolve() })
     expect(calls).toHaveLength(0)
-    expect(pillText()).toContain('This browser only')
+    expect(pillText()).toContain('On this computer only')
     expect(screen.getByRole('link', { name: 'Sign in' })).toBeInTheDocument()
   })
 
@@ -169,7 +169,7 @@ describe('automatic account world for a signed-in fresh build', () => {
     placeBrick(brickB)
     await act(async () => { await Promise.resolve() })
     expect(calls).toHaveLength(0)
-    expect(pillText()).toContain('This browser only')
+    expect(pillText()).toContain('On this computer only')
     fireEvent.click(screen.getByRole('button', { name: /^Account:/ }))
     expect(within(screen.getByRole('menu', { name: 'Account' })).getByRole('menuitem', { name: 'Save this build to my account' })).toBeInTheDocument()
   })
@@ -245,7 +245,7 @@ describe('Build together from the editor', () => {
     browserClassroomClient.setSession(classmate)
     const calls = stubClassroomServer(({ document }) => serverWorld(document))
     render(<BrickStudioApp />)
-    expect(pillText()).toContain('This browser only')
+    expect(pillText()).toContain('On this computer only')
     fireEvent.click(screen.getByRole('button', { name: 'Build together' }))
     await screen.findByRole('dialog', { name: 'Who do you want to build with?' })
     expect(calls[0]).toMatchObject({ path: '/worlds', method: 'POST', body: { title: 'Untitled build' } })

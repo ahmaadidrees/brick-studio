@@ -197,7 +197,7 @@ describe('student', () => {
 
     const strip = screen.getByRole('region', { name: 'Build in progress' })
     expect(within(strip).getByText('Build in progress on this device')).toBeInTheDocument()
-    expect(within(strip).getByText('This browser only · 12 bricks')).toBeInTheDocument()
+    expect(within(strip).getByText('On this computer only · 12 bricks')).toBeInTheDocument()
     expect(within(strip).getByRole('link', { name: 'Continue building' })).toHaveAttribute('href', '/build')
     expect(within(strip).getByRole('link', { name: 'Save to my account' })).toHaveAttribute('href', '/build?classroom=save')
     // Reading the draft never writes the key back.

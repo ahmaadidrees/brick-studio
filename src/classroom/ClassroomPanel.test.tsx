@@ -268,7 +268,7 @@ describe('save hand-off (board 04)', () => {
     const callbacks = { ...props(), onSaved: vi.fn() }
     render(<ClassroomPanel {...callbacks} client={signedIn(auth, fetcher)} />)
     expect(await screen.findByRole('heading', { name: 'Save this build to your account' })).toBeInTheDocument()
-    expect(screen.getByText('This browser only')).toBeInTheDocument()
+    expect(screen.getByText('On this computer only')).toBeInTheDocument()
     expect(screen.getByText('Save online')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('World name'), { target: { value: 'Desk Castle' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save world' }))

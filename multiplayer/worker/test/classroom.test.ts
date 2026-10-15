@@ -652,6 +652,15 @@ describe('shared personal worlds (flows v2 sharing model)', () => {
     expect(response?.status).toBe(409);
     expect(await response?.json()).toMatchObject({ code: 'world_limit' });
   });
+  it('maps a database quota rejection on creating a world to world_limit, so apps can say the account is full', async () => {
+    vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(ben);
+    vi.spyOn(ClassroomService.prototype, 'rate').mockResolvedValue(undefined);
+    vi.spyOn(ClassroomService.prototype, 'insert').mockRejectedValue(new ClassroomHttpError(409, 'quota_exceeded', 'You have reached the saved-world limit. Ask your teacher for help.'));
+    const response = await handleClassroomRequest(new Request('https://worker.test/classroom/worlds', { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ title: 'Full', document: createBrickStudioDocument([]) }) }), env);
+    expect(response?.status).toBe(409);
+    expect(await response?.json()).toMatchObject({ code: 'world_limit' });
+    vi.restoreAllMocks();
+  });
   it('lets the teacher switch student sharing per class and reports it on the class view', async () => {
     const { call, db, events } = backend(teacher, tables([]));
     const off = await call('PATCH', `classes/${classId}`, { studentsCanShare: false });

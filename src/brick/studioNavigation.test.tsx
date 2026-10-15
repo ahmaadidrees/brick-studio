@@ -54,7 +54,7 @@ describe('studio navigation and save context', () => {
   it('distinguishes a browser-only draft without claiming an account save', () => {
     render(<BrickStudioApp />)
     // The header uses the shared SaveStatus primitive fed from the real enum; the chip carries its source.
-    expect(screen.getByText('This browser only').closest('[role="status"]')).toHaveAttribute('data-kind', 'local')
+    expect(screen.getByText('On this computer only').closest('[role="status"]')).toHaveAttribute('data-kind', 'local')
     expect(screen.queryByText('Saved to your account')).not.toBeInTheDocument()
     // Guests get the neutral title, no Rename, and a Sign in link in the corner.
     expect(screen.getByText('My build', { selector: '.app-header-title' })).toBeInTheDocument()
@@ -75,7 +75,7 @@ describe('studio navigation and save context', () => {
     const states: [CloudSaveStatus, string][] = [
       ['pending', 'Waiting to save…'],
       ['saving', 'Saving to your account…'],
-      ['error', 'Save needs attention'],
+      ['error', 'Couldn’t save'],
       ['saved', 'Saved to your account'],
     ]
     for (const [status, label] of states) {

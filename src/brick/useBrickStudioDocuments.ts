@@ -17,6 +17,8 @@ import { BRAND_NAME } from '../brand'
 export type BrickStudioDocumentPersistenceOptions = CreateBrickStudioDocumentOptions & {
   /** Receives normalized local/imported documents so app-owned metadata state can follow them. */
   onDocumentLoaded?: (document: BrickStudioDocument) => void
+  /** The browser save failed (a message) or works again (null), so the header never claims a save that failed. */
+  onLocalSaveError?: (message: string | null) => void
 }
 
 function showDocumentMessage(message: string) {
@@ -83,7 +85,11 @@ export function useBrickStudioDocuments(
       store: useBrickStore,
       storage,
       createDocument: currentDocument,
-      onError: (error) => showDocumentMessage(error.message),
+      onError: (error) => {
+        showDocumentMessage(error.message)
+        persistenceRef.current.onLocalSaveError?.(error.message)
+      },
+      onSaved: () => persistenceRef.current.onLocalSaveError?.(null),
     })
     autosaveRef.current = autosave
     loadedRef.current = true

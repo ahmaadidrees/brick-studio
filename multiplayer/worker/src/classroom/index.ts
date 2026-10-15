@@ -856,7 +856,10 @@ async function route(request: Request, service: ClassroomService, path: string[]
       if (!['personal', 'class', 'group'].includes(kind)) fail(400, 'invalid_input', 'Unknown world kind.');
       if (kind !== 'personal') await service.classFor(caller, input.classId, true);
       await service.rate(`create-world:${caller.id}`, 60, 3600);
-      const created = (await service.insert('worlds', { owner_id: caller.id, class_id: kind === 'personal' ? null : input.classId, kind, title: cleanText(input.title || 'My world', 'World title'), document: document(input.document) }))[0];
+      let created: Row;
+      // The database enforces the per-account limit; say so in the words the apps already show ("account is full").
+      try { created = (await service.insert('worlds', { owner_id: caller.id, class_id: kind === 'personal' ? null : input.classId, kind, title: cleanText(input.title || 'My world', 'World title'), document: document(input.document) }))[0]; }
+      catch (error) { if (error instanceof ClassroomHttpError && error.code === 'quota_exceeded') fail(409, 'world_limit', 'You have reached the saved-world limit. Ask your teacher for help.'); throw error; }
       return json({ world: worldView(created, ownView(caller)) }, 201);
     }
     const access = await service.worldAccess(caller, path[1], false, path[2] === 'invites'), { world } = access;

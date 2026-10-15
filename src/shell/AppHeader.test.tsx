@@ -64,7 +64,7 @@ describe('AppHeader editor', () => {
     const header = screen.getByRole('banner', { name: 'Studio toolbar' })
     expect(within(header).getByText('My build')).toBeInTheDocument()
     expect(within(header).queryByRole('button', { name: 'Rename world' })).toBeNull()
-    expect(within(header).getByRole('status')).toHaveTextContent('This browser only')
+    expect(within(header).getByRole('status')).toHaveTextContent('On this computer only')
 
     fireEvent.click(within(header).getByRole('link', { name: `${BRAND_NAME} Home` }))
     expect(props.onGoHome).toHaveBeenCalledTimes(1)

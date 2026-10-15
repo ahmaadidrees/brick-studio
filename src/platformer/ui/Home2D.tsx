@@ -166,7 +166,7 @@ export function Home2D() {
               </LevelCard>
             ))}
             {local.map(({ d, level }) => (
-              <LevelCard key={d.id} thumb={levelThumb(level, `draft:${d.id}:${d.updated}`)} smooth={level.style === 'cartoon'} title={d.title} sub={`This browser only · ${formatSavedDate(new Date(d.updated).toISOString())}`} onDelete={() => remove(d)}>
+              <LevelCard key={d.id} thumb={levelThumb(level, `draft:${d.id}:${d.updated}`)} smooth={level.style === 'cartoon'} title={d.title} sub={`On this computer only · ${formatSavedDate(new Date(d.updated).toISOString())}`} onDelete={() => remove(d)}>
                 <Button href={`/2d/build?draft=${encodeURIComponent(d.id)}`} variant="primary" size="sm" icon={<Hammer size={16} />}>
                   Open
                 </Button>

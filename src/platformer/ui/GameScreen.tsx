@@ -15,7 +15,7 @@ import { formatTime } from '../render/renderer'
 import { BuildShell } from './BuildShell'
 import { CharacterSheet } from './CharacterSheet'
 import { CloudLevelSaver, createCloudLevel } from './cloudLevel'
-import { draftSaveMessage, saveDraft, type DraftSaveFailure } from './drafts'
+import { deleteDraft, draftSaveMessage, saveDraft, type DraftSaveFailure } from './drafts'
 import { FeelPanel } from './FeelPanel'
 import { loadFeel, saveFeel } from './feelStore'
 import { LevelMenu } from './LevelMenu'
@@ -232,6 +232,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             savedEdits.current = s.editCount
             saver.current.schedule(s.timeline.world.design)
             window.history.replaceState(window.history.state, '', `/2d/build?world=${encodeURIComponent(world.id)}`)
+            // The account copy is now the one: the browser draft it came from would only be a stale duplicate.
+            if (draftId.current) {
+              deleteDraft(draftId.current)
+              draftId.current = null
+            }
             say('Saved to your account. Find it in My worlds.')
           })
           .catch((error: { code?: string; message?: string }) => {
@@ -710,6 +715,14 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     : saver.current
       ? { kind: 'cloud', status: saver.current.status }
       : { kind: 'local', error: localFailure ? draftSaveMessage(localFailure) : undefined }
+  // What the save status means, in words: where this world is, and what to do if that isn't good enough.
+  const saveDetail = saveSource.kind === 'live'
+    ? 'Changes are shared with everyone in this room as you make them.'
+    : saveSource.kind === 'cloud'
+      ? saveSource.status === 'saved' ? 'Your latest changes are saved to your account.' : saveSource.status === 'error' ? 'Your latest changes are not saved to your account yet. Press Retry save, or keep this tab open.' : 'Saving your latest changes to your account.'
+      : saveSource.error
+        ? `${saveSource.error} Copy a link to this world from the ⋯ menu to keep it.`
+        : signedIn ? 'This world is only on this computer. Press Save to my account to keep it with you.' : 'This world is only on this computer, in this browser. Sign in to keep it in your account.'
   const players = s?.room?.players ?? []
   const livePolicy: HeaderLivePolicy | undefined =
     inRoom && s
@@ -738,7 +751,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           worldTitle={title}
           onRenameWorld={s?.canBuild ? rename : undefined}
           renameMaxLength={60}
-          saveStatus={{ source: saveSource }}
+          saveStatus={{ source: saveSource, detail: saveDetail }}
           onOpenWorldSetup={(tab) => tab === 'character' ? setCharacterOpen(true) : setScene(true)}
           // Race tracks have one look and you drive a car, so neither Scene nor Character applies (a car picker may come).
           hideScene={race}

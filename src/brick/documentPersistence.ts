@@ -103,6 +103,7 @@ export function connectBrickStudioAutosave({
   delayMs = BRICK_STUDIO_AUTOSAVE_DELAY_MS,
   createDocument = (bricks) => createBrickStudioDocument(bricks),
   onError,
+  onSaved,
 }: {
   store: BrickStudioAutosaveStore
   storage: BrickStudioStorage
@@ -110,6 +111,8 @@ export function connectBrickStudioAutosave({
   /** Builds the complete project at flush time, including current document metadata. */
   createDocument?: (bricks: BrickInstance[]) => BrickStudioDocument
   onError?: (error: BrickStudioPersistenceError) => void
+  /** A save went through (after a failure, the header can say "saved" again). */
+  onSaved?: () => void
 }): BrickStudioAutosaveController {
   let timer: ReturnType<typeof setTimeout> | null = null
 
@@ -122,6 +125,7 @@ export function connectBrickStudioAutosave({
     if (isBrickStudioAutosaveSuspended()) return { ok: true } as const
     const result = saveLocalBrickStudioProject(storage, createDocument(store.getState().bricks))
     if (!result.ok) onError?.(result.error)
+    else onSaved?.()
     return result
   }
   const schedule = () => {

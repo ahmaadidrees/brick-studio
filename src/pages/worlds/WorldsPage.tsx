@@ -315,7 +315,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
             <MonitorSmartphone size={22} aria-hidden="true" />
             <div className="worlds-draft-text">
               <strong>Build in progress on this device</strong>
-              <small>This browser only · {draft.bricks} {draft.bricks === 1 ? 'brick' : 'bricks'}</small>
+              <small>On this computer only · {draft.bricks} {draft.bricks === 1 ? 'brick' : 'bricks'}</small>
             </div>
             <div className="worlds-draft-actions">
               <Button href={CONTINUE_DRAFT_HREF} variant="secondary" size="sm">Continue building</Button>
