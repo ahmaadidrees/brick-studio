@@ -532,7 +532,7 @@ async function publicClass(service: ClassroomService, input: Row): Promise<{ ali
   return { alias, cls };
 }
 /** Columns the API exposes without the document; the sharing columns come from migration 202609190001. */
-const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at,doc_format:document->>format';
+const WORLD_FIELDS = 'id,title,owner_id,class_id,kind,revision,updated_at,class_visibility,class_can_edit,hidden_by_teacher,class_shared_at,doc_format:document->>format,doc_kit:document->level->>kit';
 const INVITE_FIELDS = 'world_id,user_id,invite_id,invited_at,seen_at,joined_at';
 function newInviteState() { return { invite_id: crypto.randomUUID(), invited_at: new Date().toISOString(), seen_at: null, joined_at: null }; }
 function inviteView(row: Row, world: Row, ownerName: string, canEdit: boolean): ClassroomInvite {
@@ -546,6 +546,11 @@ function inviteView(row: Row, world: Row, ownerName: string, canEdit: boolean): 
 export type WorldFormat = 'brick' | '2d';
 export function worldFormat(row: Row): WorldFormat {
   return row.doc_format === PLATFORMER_FORMAT || isPlatformerDocument(row.document) ? '2d' : 'brick';
+}
+/** A 2D level's kit: 'race' for race tracks; absent for platformers and 3D builds (so older apps see nothing new). */
+export function worldKit(row: Row): 'race' | undefined {
+  const kit = row.doc_kit ?? (isPlatformerDocument(row.document) ? (row.document as { level?: { kit?: unknown } }).level?.kit : undefined);
+  return kit === 'race' ? 'race' : undefined;
 }
 /** Most live rooms one GET /classes will ask for presence, across all of the teacher's classes. */
 export const PRESENCE_ROOM_LIMIT = 150;
@@ -565,7 +570,7 @@ type WorldViewContext = { full?: boolean; canEdit?: boolean; ownerName?: string;
 function worldView(row: Row, context: WorldViewContext = {}) {
   const visibility = row.kind === 'personal' ? (isSharedVisibility(row.class_visibility) ? row.class_visibility : 'private') : 'class';
   return {
-    id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, format: worldFormat(row), revision: row.revision, updatedAt: row.updated_at,
+    id: row.id, title: row.title, ownerId: row.owner_id, classId: row.class_id, kind: row.kind, format: worldFormat(row), ...(worldKit(row) ? { kit: worldKit(row) } : {}), revision: row.revision, updatedAt: row.updated_at,
     visibility, canEdit: context.canEdit ?? true, classCanEdit: row.kind === 'personal' ? row.class_can_edit === true : true, ownerName: context.ownerName ?? 'Teacher', ownerClassId: context.ownerClassId ?? row.class_id ?? null,
     sharedAt: row.kind === 'personal' && visibility !== 'private' ? row.class_shared_at ?? null : null,
     ...(context.members ? { members: context.members } : {}),

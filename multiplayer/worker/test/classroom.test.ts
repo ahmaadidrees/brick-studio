@@ -836,3 +836,14 @@ it('unlocks both student login buckets while preserving school IP and other stud
   expect(await service.takeRate(keys[2], 12, 300)).toBe(false);
   expect(await service.takeRate(keys[3], 12, 300)).toBe(false);
 });
+
+describe('what kind of project a world is', () => {
+  it('reports race tracks from a metadata read or a full document, and nothing for platformers and 3D builds', async () => {
+    const { worldKit, worldFormat } = await import('../src/classroom');
+    expect(worldKit({ doc_format: 'brickgineers-2d', doc_kit: 'race' })).toBe('race');
+    expect(worldKit({ doc_format: 'brickgineers-2d', doc_kit: null })).toBeUndefined();
+    expect(worldKit({ document: { format: 'brickgineers-2d', version: 1, level: { kit: 'race' } } })).toBe('race');
+    expect(worldKit({ document: createBrickStudioDocument([]) })).toBeUndefined();
+    expect(worldFormat({ doc_format: 'brickgineers-2d', doc_kit: 'race' })).toBe('2d');
+  });
+});
