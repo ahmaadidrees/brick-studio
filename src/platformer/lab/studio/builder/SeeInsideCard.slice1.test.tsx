@@ -16,7 +16,7 @@ function selectedWalker() {
   store.selectCopy(copies[0].id)
   return { store, copies }
 }
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); localStorage.removeItem('brick-code-remix-hint-dismissed'); vi.unstubAllGlobals() })
 
 describe('Slice 1 brick card', () => {
   it('starts on all copies, creates an own value only in Just this one, and lets it inherit again', () => {
@@ -34,6 +34,34 @@ describe('Slice 1 brick card', () => {
     fireEvent.click(screen.getByRole('button', { name: "Use the brick's value for speed" }))
     expect(screen.queryByText('own value')).toBeNull()
     expect((screen.getByRole('slider', { name: 'speed' }) as HTMLInputElement).value).toBe('5')
+  })
+
+  it('puts sliders directly on the card with a single See inside action and no view tabs', () => {
+    const { store } = selectedWalker()
+    render(<SeeInsideCard store={store} />)
+    expect(screen.queryByRole('button', { name: 'Sliders' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'See inside' })).toHaveLength(1)
+    const slider = screen.getByRole('slider', { name: 'speed' })
+    const seeInside = screen.getByRole('button', { name: 'See inside' })
+    expect(slider.compareDocumentPosition(seeInside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Look' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to sliders' }))
+    expect(screen.getByRole('slider', { name: 'speed' })).toBeTruthy()
+  })
+
+  it('lets the small remix hint be dismissed without hiding code and remembers the dismissal', () => {
+    const { store } = selectedWalker()
+    store.openCode(walkerId)
+    const view = render(<SeeInsideCard store={store}><span>Docked code</span></SeeInsideCard>)
+    expect(screen.getByText('Change a block to make your own Walker.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss remix hint' }))
+    expect(screen.queryByText('Change a block to make your own Walker.')).toBeNull()
+    expect(screen.getByText('Docked code')).toBeTruthy()
+    view.unmount()
+    render(<SeeInsideCard store={store}><span>Docked code</span></SeeInsideCard>)
+    expect(screen.queryByRole('button', { name: 'Dismiss remix hint' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Sliders' }))
+    expect(screen.getByRole('slider', { name: 'speed' })).toBeTruthy()
   })
 
   it('shows Hero sliders and a collapsed more group without copy scope or Remove', () => {

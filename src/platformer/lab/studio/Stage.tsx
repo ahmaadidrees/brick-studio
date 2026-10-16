@@ -43,10 +43,11 @@ export interface BuildTools {
 /** Bricks snap to an 8-step grid, like the old stage's default. */
 const GRID = 8
 
-export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools }) {
+export function Stage({ store, tools, codeView = false }: { store: StudioStore; tools?: BuildTools; codeView?: boolean }) {
   const mode = useStudio(store, (s) => s.mode)
   const runtime = useStudio(store, (s) => s.runtime)
   const previewPaused = useStudio(store, (s) => s.previewPaused)
+  const pendingCodeChanges = useStudio(store, (s) => s.pendingCodeChanges)
   const sceneActive = !!runtime
   const design = useStudio(store, (s) => s.project.design)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
@@ -654,6 +655,8 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       aria-label="Level Stage"
     >
       <StageControls
+        codeView={codeView}
+        pendingCodeChanges={pendingCodeChanges}
         mode={sceneActive ? 'play' : mode}
         paused={previewPaused}
         onTogglePlay={() => previewPaused ? store.startPreview() : store.pausePreview()}

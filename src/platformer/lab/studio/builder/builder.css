@@ -102,39 +102,21 @@
   box-shadow: inset -3px -3px 0 rgba(0, 0, 0, 0.15);
 }
 
-/* One right-hand slot is shared by Sliders, See inside and Look. */
-.builder-has-dock .builder-stage { right: min(var(--builder-dock-width, 440px), 60vw); bottom: 82px; }
-.builder-dock { position: absolute; z-index: 16; right: 0; top: 0; bottom: 82px; width: min(var(--builder-dock-width, 440px), 60vw); min-width: 380px; display: flex; min-height: 0; background: var(--studio-panel, #fff); border-left: 1px solid var(--studio-panel-border, #d9dee8); }
-.builder-dock .builder-inside { position: static; transform: none; width: 100%; max-width: none; max-height: none; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+/* Tuning uses a compact card; code clears the workbench for a full-height split. */
+.builder-has-dock .builder-stage { right: calc(var(--builder-dock-width, 300px) + 24px); bottom: 82px; }
+.builder-dock { position: absolute; z-index: 16; right: 0; top: 0; bottom: 82px; width: var(--builder-dock-width, 300px); display: flex; min-height: 0; background: var(--studio-panel, #fff); border-left: 1px solid var(--studio-panel-border, #d9dee8); }
+.builder-dock-card { top: 12px; right: 12px; bottom: auto; max-height: calc(100% - 106px); border: 1px solid var(--studio-panel-border, #d9dee8); border-radius: 16px; overflow: auto; box-shadow: var(--studio-panel-shadow, 0 6px 18px rgba(38, 60, 81, 0.12)); }
+.builder-dock .builder-inside { position: static; transform: none; width: 100%; max-width: none; max-height: none; min-height: 0; margin: 0; border: 0; border-radius: inherit; box-shadow: none; }
 .builder-dock-resize { position: absolute; inset: 0 auto 0 -5px; width: 10px; cursor: col-resize; touch-action: none; z-index: 2; }
 .builder-dock-resize:hover, .builder-dock-resize:focus-visible { background: #5888da66; outline: 2px solid var(--studio-focus, #3565bf); outline-offset: -2px; }
+.builder-code-open .builder-stage { left: 0; right: var(--builder-dock-width); bottom: 0; }
+.builder-code-open .builder-dock { bottom: 0; }
 .builder-code-open .builder-dock .builder-inside { overflow: hidden; }
-.builder-code-open .brick-history-cluster { top: auto; bottom: 94px; }
 .builder-dock .code-editor-root { flex: 1; min-height: 0; width: 100%; }
-.builder-dock .code-editor-toolbar { height: auto; min-height: 48px; flex-shrink: 0; gap: 6px; padding: 8px; flex-wrap: wrap; }
-.builder-dock .code-toolbar-target-badge { display: none; }
-.builder-dock .code-toolbar-group { flex-wrap: wrap; }
-.builder-dock .code-toolbar-icon-btn, .builder-dock .code-toolbar-action-btn { min-height: 36px; padding: 5px 7px; }
-.builder-dock .code-toolbar-status-group { margin-left: 0; }
-.builder-dock .code-layer-bar { flex-wrap: wrap; }
 .builder-dock button:focus-visible, .builder-dock input:focus-visible, .builder-dock select:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: 2px; }
 @media (max-width: 1100px) and (min-width: 768px) { .builder-has-dock .builder-stage { left: 0; } .builder-has-dock .p2d-drawer-panel { max-width: 210px; } }
 @media (max-width: 767px) {
   .builder-has-dock .builder-stage { right: 0; bottom: 42%; }
-  .builder-dock { top: 58%; bottom: 82px; width: 100%; min-width: 0; border-left: 0; border-top: 1px solid var(--studio-panel-border, #d9dee8); }
+  .builder-dock { top: 58%; right: 0; bottom: 82px; width: 100%; min-width: 0; max-height: none; border-radius: 0; border-left: 0; border-top: 1px solid var(--studio-panel-border, #d9dee8); }
   .builder-dock-resize { display: none; }
 }
-/* Two compact toolbar rows leave room to read the actual program at the default dock width. */
-.builder-dock .code-editor-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 32px 32px; gap: 4px; padding: 7px 8px; }
-.builder-dock .code-editor-toolbar > .code-toolbar-group:not(.code-toolbar-view-controls):not(.code-toolbar-status-group) { grid-row: 1; grid-column: 1; gap: 4px; flex-wrap: nowrap; }
-.builder-dock .code-toolbar-action-btn { height: 32px; min-height: 32px; padding: 3px 7px; font-size: 11px; white-space: nowrap; }
-.builder-dock .code-toolbar-action-btn .code-btn-icon { display: none; }
-.builder-dock .code-toolbar-status-group { grid-row: 1; grid-column: 2; gap: 4px; flex-wrap: nowrap; }
-.builder-dock .code-knobs-pill { height: 30px; padding: 0 5px; font-size: 10px; white-space: nowrap; }
-.builder-dock .code-toolbar-status-group:has(.code-diagnostics-badge-btn) .code-knobs-pill { display: none; }
-.builder-dock .code-diagnostics-badge-btn { height: 30px; min-height: 30px; padding: 0 5px; font-size: 10px; }
-.builder-dock .code-toolbar-view-controls { grid-row: 2; grid-column: 1 / -1; width: 100%; margin: 0; gap: 3px; flex-wrap: nowrap; }
-.builder-dock .code-toolbar-icon-btn { flex: 1; min-width: 28px; height: 32px; min-height: 32px; padding: 0 3px; font-size: 11px; white-space: nowrap; }
-.builder-dock .layer-shelf { flex-wrap: nowrap; overflow-x: auto; min-height: 40px; max-height: 46px; padding: 5px 8px; }
-.builder-dock .layer-shelf > * { flex-shrink: 0; }
-.builder-dock .layer-chip { min-height: 30px; padding: 4px 8px; }

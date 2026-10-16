@@ -3,6 +3,8 @@ import type { PlayCameraMode } from './camera'
 
 export interface StageControlsProps {
   mode: StudioMode
+  codeView?: boolean
+  pendingCodeChanges?: boolean
   paused?: boolean
   onTogglePlay?: () => void
   onRestart?: () => void
@@ -17,15 +19,16 @@ export interface StageControlsProps {
 /**
  * The stage's small floating view tools: playback, zoom, fit and camera choice. Build or Play, and everything about placing, lives in the builder's own chrome, not here.
  */
-export function StageControls({ mode, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice }: StageControlsProps) {
+export function StageControls({ mode, codeView = false, pendingCodeChanges = false, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice }: StageControlsProps) {
   const isPlay = mode === 'play'
   return (
-    <div className="stage-view-tools" role="toolbar" aria-label="Stage view">
+    <div className={`stage-view-tools${codeView ? ' stage-view-tools-code' : ''}`} role="toolbar" aria-label="Stage view">
       {isPlay && <div className="stage-view-group" role="group" aria-label="Level playback">
         <button type="button" className="stage-view-btn" onClick={onTogglePlay} aria-label={paused ? 'Play level' : 'Pause level'}>{paused ? '▶ Play' : 'Ⅱ Pause'}</button>
         <button type="button" className="stage-view-btn" onClick={onRestart} aria-label="Restart level">↻ Restart</button>
       </div>}
-      {isPlay && onPlayCameraChoice && (
+      {codeView && pendingCodeChanges && <span className="stage-restart-note" role="status">Changes apply on Restart</span>}
+      {isPlay && !codeView && onPlayCameraChoice && (
         <div className="stage-view-group" role="group" aria-label="Camera follows">
           <button
             type="button"
@@ -49,7 +52,7 @@ export function StageControls({ mode, paused = false, onTogglePlay, onRestart, o
           </button>
         </div>
       )}
-      <div className="stage-view-group" role="group" aria-label="Zoom">
+      {!codeView && <div className="stage-view-group" role="group" aria-label="Zoom">
         <button type="button" className="stage-view-btn" aria-label="Zoom in" title="Zoom in" onClick={onZoomIn}>
           +
         </button>
@@ -59,7 +62,7 @@ export function StageControls({ mode, paused = false, onTogglePlay, onRestart, o
         <button type="button" className="stage-view-btn" aria-label="Reset view to fit" title="Fit the whole level" onClick={onResetView}>
           Fit
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

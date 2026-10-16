@@ -38,6 +38,8 @@ export interface StudioState {
   cardTab: CardTab
   sliderScope: SliderScope
   previewPaused: boolean
+  /** The saved program differs from the current run; sliders are applied live instead. */
+  pendingCodeChanges: boolean
   remixNotice: string | null
   editorResetRevision: number
   diagnostics: Record<string, Diagnostic[]>
@@ -56,6 +58,12 @@ export class StudioStore {
   private listeners = new Set<Listener>()
   private loadListeners = new Set<Listener>()
   private beforeRunListeners = new Set<Listener>()
+  private runningCode: string | null = null
+
+  private makeRuntime(): Runtime {
+    this.runningCode = codeFingerprint(this.state.project)
+    return play(this.state.project.design)
+  }
 
   constructor(project: StudioProject) {
     const first = project.design.bricks[0]?.id ?? STAGE_ID
@@ -70,6 +78,7 @@ export class StudioStore {
       cardTab: 'sliders',
       sliderScope: 'all',
       previewPaused: false,
+      pendingCodeChanges: false,
       remixNotice: null,
       editorResetRevision: 0,
       diagnostics: {},
@@ -131,13 +140,13 @@ export class StudioStore {
   play() {
     for (const listener of [...this.beforeRunListeners]) listener()
     this.state.runtime?.stopAll()
-    this.set({ mode: 'play', runtime: play(this.state.project.design), previewPaused: false })
+    this.set({ mode: 'play', runtime: this.makeRuntime(), previewPaused: false, pendingCodeChanges: false })
   }
 
   /** Back to Build. Nothing from the run is kept. */
   stop() {
     this.state.runtime?.stopAll()
-    this.set({ mode: 'build', runtime: null, previewPaused: false })
+    this.set({ mode: 'build', runtime: null, previewPaused: false, pendingCodeChanges: false })
   }
 
   setCardTab(cardTab: CardTab) {
@@ -150,18 +159,18 @@ export class StudioStore {
   closeCard() {
     if (this.state.mode === 'build') this.state.runtime?.stopAll()
     this.set({ selectedCopyId: null, cardTab: 'sliders', sliderScope: 'all',
-      ...(this.state.mode === 'build' ? { runtime: null, previewPaused: false } : {}) })
+      ...(this.state.mode === 'build' ? { runtime: null, previewPaused: false, pendingCodeChanges: false } : {}) })
   }
 
   openCode(brickId: string) {
     this.set({ selectedBrickId: brickId, cardTab: 'code',
-      ...(!this.state.runtime ? { runtime: play(this.state.project.design), previewPaused: false } : {}) })
+      ...(!this.state.runtime ? { runtime: this.makeRuntime(), previewPaused: false, pendingCodeChanges: false } : {}) })
   }
 
   closeCode() { this.set({ cardTab: 'sliders' }) }
 
   startPreview() {
-    this.set({ previewPaused: false, ...(!this.state.runtime ? { runtime: play(this.state.project.design) } : {}) })
+    this.set({ previewPaused: false, ...(!this.state.runtime ? { runtime: this.makeRuntime(), pendingCodeChanges: false } : {}) })
   }
 
   pausePreview() {
@@ -176,7 +185,7 @@ export class StudioStore {
   restartPreview() {
     for (const listener of [...this.beforeRunListeners]) listener()
     this.state.runtime?.stopAll()
-    this.set({ runtime: play(this.state.project.design), previewPaused: false })
+    this.set({ runtime: this.makeRuntime(), previewPaused: false, pendingCodeChanges: false })
   }
 
   dismissRemixNotice() { this.set({ remixNotice: null }) }
@@ -190,7 +199,8 @@ export class StudioStore {
   canResetBrick(brickId: string) { return canResetBrick(this.state.project, brickId) }
 
   resetBrickOriginal(brickId: string) {
-    this.set({ project: restoreBrickOriginal(this.state.project, brickId), remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1 })
+    const project = restoreBrickOriginal(this.state.project, brickId)
+    this.set({ project, pendingCodeChanges: !!this.state.runtime && codeFingerprint(project) !== this.runningCode, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
   /** A brick default changes every copy without its own starting value; the live preview follows immediately. */
@@ -292,7 +302,7 @@ export class StudioStore {
     const brick = this.brick(brickId)
     if (!brick) return
     const result = compileBrickEdit(this.state.project, brickId, workspace)
-    this.set({ project: result.project,
+    this.set({ project: result.project, pendingCodeChanges: !!this.state.runtime && codeFingerprint(result.project) !== this.runningCode,
       diagnostics: { ...this.state.diagnostics, [brickId]: result.diagnostics },
       ...(result.remixed ? { remixNotice: `You changed a block, so this is now ${result.remixed}. The original ${brick.name} is untouched.` } : {}) })
   }
@@ -372,9 +382,20 @@ export class StudioStore {
   /** Replace the whole project (load). Returns to Build. */
   load(project: StudioProject) {
     this.state.runtime?.stopAll()
-    this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, brushBrickId: initialBrush(project), brushTile: null, workshopBrickId: null, cardTab: 'sliders', sliderScope: 'all', previewPaused: false, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1, diagnostics: {} })
+    this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, brushBrickId: initialBrush(project), brushTile: null, workshopBrickId: null, cardTab: 'sliders', sliderScope: 'all', previewPaused: false, pendingCodeChanges: false, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1, diagnostics: {} })
     for (const l of [...this.loadListeners]) l()
   }
+}
+
+/** Runtime changes come from scripts/declarations, never view layout or live slider starting values. */
+function codeFingerprint(project: StudioProject): string {
+  return JSON.stringify([project.design.stage, ...project.design.bricks].map((brick) => ({
+    id: brick.id,
+    scripts: brick.program.scripts,
+    procedures: brick.program.procedures,
+    variables: brick.program.variables.map(({ id, name }) => ({ id, name })),
+    lists: brick.program.lists.map(({ id, name }) => ({ id, name })),
+  })))
 }
 
 function initialBrush(project: StudioProject): string | null {

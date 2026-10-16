@@ -7,7 +7,7 @@ import { formatKnob, knobList, sliderRange } from './knobs'
  * The brick's Build knobs as sliders (changing one sets the variable's starting value, so every copy follows). The Hero
  * shows just four, then a collapsed "More tuning (N)" section with every other tuning number, grouped.
  */
-export function KnobsCard({ store, brickId }: { store: StudioStore; brickId: string }) {
+export function KnobsCard({ store, brickId, compact = false }: { store: StudioStore; brickId: string; compact?: boolean }) {
   const brick = useStudio(store, (s) => (brickId === s.project.design.stage.id ? s.project.design.stage : s.project.design.bricks.find((b) => b.id === brickId)))
   const [moreOpen, setMoreOpen] = useState(false)
   const { main, groups, moreCount } = knobList(brick?.program.variables ?? [])
@@ -34,10 +34,10 @@ export function KnobsCard({ store, brickId }: { store: StudioStore; brickId: str
   }
   return (
     <section className="ws-card ws-knobs" aria-label="Sliders">
-      <div className="ws-card-head">
+      {!compact && <div className="ws-card-head">
         <h2>Sliders</h2>
         <span className="ws-hint">{main.length === 0 && moreCount === 0 ? 'none yet' : `${main.length}`}</span>
-      </div>
+      </div>}
       {main.length === 0 && moreCount === 0 ? (
         <p className="ws-hint">Make a variable and turn on “Show as a slider” to get a slider here.</p>
       ) : (

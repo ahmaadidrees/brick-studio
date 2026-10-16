@@ -17,6 +17,25 @@ function fixture() {
 }
 
 describe('Slice 1 shared studio lifecycle', () => {
+  it('shows a pending Restart only for program changes, not layout or immediate slider tuning', () => {
+    const { store, walker, speed } = fixture()
+    store.openCode(walker.id)
+    const original = structuredClone(store.getState().project.workspaces[walker.id]) as { blocks: { blocks: Array<Record<string, unknown>> } }
+    store.setBrickSlider(walker.id, speed.id, 4)
+    expect(store.getState().pendingCodeChanges).toBe(false)
+    const moved = structuredClone(original)
+    moved.blocks.blocks[0].x = 900
+    store.setWorkspace(walker.id, moved)
+    expect(store.getState().pendingCodeChanges).toBe(false)
+    const changed = structuredClone(moved)
+    changed.blocks.blocks.push({ type: 'event_whenflagclicked', id: 'new-pending-hat' })
+    store.setWorkspace(walker.id, changed)
+    expect(store.getState().pendingCodeChanges).toBe(true)
+    store.restartPreview()
+    expect(store.getState().pendingCodeChanges).toBe(false)
+    store.stop()
+    expect(store.getState().pendingCodeChanges).toBe(false)
+  })
   it('keeps remixed Hero and Goal playable and removes overrides when a slider is hidden', () => {
     const { store, walker, copies, speed } = fixture()
     const design = store.getState().project.design

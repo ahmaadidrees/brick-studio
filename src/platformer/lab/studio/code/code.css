@@ -7,6 +7,8 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
+  min-height: 0;
+  min-width: 0;
   position: relative;
   overflow: hidden;
   background-color: #1d2029;
@@ -1036,5 +1038,74 @@
   outline: 3px solid #93c5fd; outline-offset: 2px;
 }
 .code-starter-hint { position: absolute; top: 8px; right: 12px; z-index: 4; max-width: 190px; margin: 0; padding: 8px 12px; border-radius: 10px; background: #2c3548; color: #dbeafe; font-size: 12px; pointer-events: none; }
-.code-preview-note { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 10px; background: #233149; color: #cbdcf3; font-size: 11px; line-height: 1.4; }
-.code-preview-note button { min-height: 32px; padding: 3px 10px; border: 1px solid #607ea8; border-radius: 6px; color: #fff; background: #334b70; font: inherit; cursor: pointer; }
+.code-editor-toolbar-compact {
+  flex: 0 0 38px;
+  height: 38px;
+  min-height: 38px;
+  gap: 4px;
+  padding: 3px 8px;
+}
+.code-editor-toolbar-compact .code-toolbar-icon-btn,
+.code-editor-toolbar-compact .code-diagnostics-badge-btn {
+  flex: none;
+  min-height: 30px;
+  height: 30px;
+  padding: 0 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.code-view-options { position: relative; margin-left: auto; }
+.code-view-options summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: 1px solid #333a4f;
+  border-radius: 6px;
+  color: #dce2f1;
+  background: #222736;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  list-style: none;
+}
+.code-view-options summary::-webkit-details-marker { display: none; }
+.code-view-options summary:focus-visible,
+.code-view-options-panel button:focus-visible { outline: 2px solid #ffe066; outline-offset: 2px; }
+.code-view-options-panel {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  width: 164px;
+  padding: 5px;
+  border: 1px solid #44516d;
+  border-radius: 8px;
+  background: #222736;
+  box-shadow: 0 6px 18px #0006;
+}
+.code-view-options-panel button {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #eef0f5;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.code-view-options-panel button:hover { background: #34405a; }
+.code-editor-root-docked .layer-crumbs {
+  flex: none;
+  min-height: 36px;
+  padding: 3px 8px;
+  gap: 6px;
+}
+.code-editor-root-docked .layer-back,
+.code-editor-root-docked .layer-crumb { min-height: 28px; padding: 0 9px; font-size: 12px; }
+.code-editor-root-docked .layer-here { font-size: 12px; }
+.code-editor-root-docked .code-diagnostics-drawer { left: 100px; right: 12px; }

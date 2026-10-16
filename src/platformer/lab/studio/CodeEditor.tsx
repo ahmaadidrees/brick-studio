@@ -16,6 +16,8 @@ import { VariableModal } from './code/VariableModal'
 import { ProcedureModal, type ProcedureData } from './code/ProcedureModal'
 import { DiagnosticsList, formatKidDiagnostic } from './code/DiagnosticsList'
 import { EditorToolbar } from './code/EditorToolbar'
+import { DockedEditorToolbar } from './code/DockedEditorToolbar'
+import { focusedMyBlocksFlyout } from './code/focusedPalette'
 import { LayerBar } from './code/LayerBar'
 import { PlainScratchCard } from './code/PlainScratchCard'
 import {
@@ -31,7 +33,7 @@ import {
   tidyIfOverlapping,
   undoState,
 } from './code/affordances'
-import { back, drillInto, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
+import { back, drillInto, isTop, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
 import './code/code.css'
 
 export interface CodeEditorProps {
@@ -172,7 +174,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
         wheel: true,
         startScale: 0.85,
         maxScale: 2,
-        minScale: 0.4,
+        minScale: docked ? 0.65 : 0.4,
         scaleSpeed: 1.1,
       },
       trashcan: true,
@@ -206,7 +208,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
 
     // 7. Register dynamic flyout category callback for My Blocks (PROCEDURE)
     ws.registerToolboxCategoryCallback('PROCEDURE', (targetWs: Blockly.WorkspaceSvg) => {
-      const items = myBlocksFlyout(targetWs)
+      const items = docked
+        ? focusedMyBlocksFlyout(targetWs, (code) => navigateRef.current(drillInto(viewRef.current, code)))
+        : myBlocksFlyout(targetWs)
       return items as unknown as Blockly.utils.toolbox.FlyoutDefinition
     })
 
@@ -566,15 +570,27 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
   const handleResetZoom = () => {
     const ws = workspaceRef.current
     if (ws && !isDisposedRef.current) {
-      ws.setScale(0.85)
-      ws.scrollCenter()
+      // Hidden procedure bodies must not pull the current code out of view.
+      focusView(ws, viewRef.current)
     }
   }
 
   return (
-    <div className="code-editor-root">
+    <div className={`code-editor-root${docked ? ' code-editor-root-docked' : ''}`}>
       {/* Accessible Editor Toolbar */}
-      <EditorToolbar
+      {docked ? <DockedEditorToolbar
+        diagnosticsCount={diagnostics.length}
+        showDiagnostics={showDiagnostics}
+        onToggleDiagnostics={() => setShowDiagnostics((prev) => !prev)}
+        canUndo={undoable.canUndo}
+        canRedo={undoable.canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onCleanUp={handleCleanUp}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onResetZoom={handleResetZoom}
+      /> : <EditorToolbar
         targetName={targetName}
         isStage={isStage}
         diagnosticsCount={diagnostics.length}
@@ -591,19 +607,17 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetZoom={handleResetZoom}
-      />
-
-      {docked && <div className="code-preview-note"><span>Code changes apply on Restart. Sliders update now.</span><button type="button" onClick={() => store.closeCode()}>Done</button></div>}
+      />}
 
       {/* My Blocks shelf (top view) or breadcrumb + Back (inside a My Block) */}
-      <LayerBar
+      {(!docked || !isTop(view)) && <LayerBar
         brickName={targetName}
         state={view}
         definitions={definitions}
         onChange={navigate}
         onBack={() => navigate(back(viewRef.current))}
         onOpen={(code) => navigate(drillInto(viewRef.current, code))}
-      />
+      />}
 
       {/* Main Workspace Injection Container */}
       <div className="code-workspace-container">
@@ -611,7 +625,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
         {loadFailed && (
           <div className="code-load-failed" role="alert">
             <strong>We could not open this brick&apos;s blocks.</strong>
-            <span> They are safe: nothing here will be saved over them. Press Done, then open the brick again.</span>
+            <span> They are safe: nothing here will be saved over them. Close this editor, then open the brick again.</span>
           </div>
         )}
         <div ref={hostRef} className="code-blockly-host" />

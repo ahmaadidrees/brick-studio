@@ -1,4 +1,4 @@
-import { MoreHorizontal, Search, Trash2, X } from 'lucide-react'
+import { ArrowLeft, MoreHorizontal, Search, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Value } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
@@ -18,6 +18,9 @@ export function SeeInsideCard({ store, history, children }: { store: StudioStore
   const { selectedCopyId: copyId, project: { design }, cardTab: tab, sliderScope: scope } = state
   const [menu, setMenu] = useState(false)
   const [confirm, setConfirm] = useState(false)
+  const [hintDismissed, setHintDismissed] = useState(() => {
+    try { return localStorage.getItem('brick-code-remix-hint-dismissed') === 'true' } catch { return false }
+  })
   const [small, setSmall] = useState(() => typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches)
   const cell = selectedCell(design, copyId)
   const copy = copyId && !cell ? design.copies.find((c) => c.id === copyId) : undefined
@@ -77,17 +80,23 @@ export function SeeInsideCard({ store, history, children }: { store: StudioStore
   }
   const shownTab = small && tab === 'code' ? 'sliders' : tab
   const original = originalBrickName(brick)
+  const badge = brick.remixOf ? 'remix' : isCatalogBrick(brick) ? 'built in' : 'my brick'
+  const details = `${count} in this level${selectedNumber ? ` · copy ${selectedNumber} selected` : ''}${single ? ' · One per level. Place it again to move it.' : ''}${brick.remixOf ? ` · remix of ${original ?? brick.remixOf}` : ''}`
+  const dismissHint = () => {
+    setHintDismissed(true)
+    try { localStorage.setItem('brick-code-remix-hint-dismissed', 'true') } catch { /* Browser may block storage. */ }
+  }
 
   return (
     <section className={`builder-inside slice-card${shownTab === 'code' ? ' slice-card-code' : ''}`} aria-label={`${brick.name} copy`}>
       <div className="builder-inside-head slice-card-head">
-        <span className="builder-inside-icon" aria-hidden="true"><CostumeThumb asset={brick.costumes[0]?.asset} box={48} /></span>
-        <span className="builder-inside-text">
+        <span className="builder-inside-icon" aria-hidden="true"><CostumeThumb asset={brick.costumes[0]?.asset} box={32} /></span>
+        <span className="builder-inside-text" title={details}>
           <strong>{brick.name}</strong>
-          <span>{count} in this level{selectedNumber ? ` · copy ${selectedNumber} selected` : ''}</span>
-          <span className="slice-card-badge">{brick.remixOf ? `remix of ${original ?? brick.remixOf}` : isCatalogBrick(brick) ? 'built in' : 'my brick'}</span>
-          {single && <span>One per level · Place it again to move it</span>}
+          <span className="slice-card-badge">{badge}</span>
         </span>
+        {shownTab === 'code' && <button type="button" className="slice-card-action" onClick={() => store.closeCode()}>Sliders</button>}
+        {shownTab !== 'look' && <button type="button" className="slice-card-action" onClick={() => store.setCardTab('look')}>Look</button>}
         <div className="slice-card-menu-wrap">
           <button type="button" className="builder-btn" aria-label="Brick actions" aria-expanded={menu} onClick={() => setMenu(!menu)}><MoreHorizontal size={20} /></button>
           {menu && <div className="slice-card-menu" role="group" aria-label="Brick actions menu">
@@ -98,24 +107,24 @@ export function SeeInsideCard({ store, history, children }: { store: StudioStore
         </div>
         <button type="button" className="builder-btn" aria-label={tab === 'code' ? 'Close code' : 'Close brick card'} onClick={() => tab === 'code' ? store.closeCode() : store.closeCard()}><X size={18} /></button>
       </div>
-      <div className="slice-card-tabs" aria-label="Brick views">
-        <button type="button" aria-pressed={shownTab === 'sliders'} onClick={() => tab === 'code' ? store.closeCode() : store.setCardTab('sliders')}>Sliders</button>
-        <button type="button" aria-pressed={shownTab === 'code'} disabled={small} title={small ? 'Code needs a bigger screen' : 'See how this brick works'} onClick={() => store.openCode(brick.id)}><Search size={15} />{small ? 'Code needs a bigger screen' : 'See inside'}</button>
-        <button type="button" aria-pressed={shownTab === 'look'} onClick={() => store.setCardTab('look')}>Look</button>
-      </div>
       {shownTab === 'code' ? <>
-        {isCatalogBrick(brick) && <p className="slice-remix-callout">This is the {original ?? brick.name} every level starts with. Change a block and it becomes My {original ?? brick.name}.</p>}
+        {isCatalogBrick(brick) && !hintDismissed && <div className="slice-remix-hint">
+          <span>Change a block to make your own {original ?? brick.name}.</span>
+          <button type="button" aria-label="Dismiss remix hint" onClick={dismissHint}><X size={14} /></button>
+        </div>}
         {children}
       </> : <div className="slice-card-body">
         {shownTab === 'look' ? <>
+          <button type="button" className="slice-card-back" onClick={() => store.setCardTab('sliders')}><ArrowLeft size={15} /> Back to sliders</button>
           <ul className="slice-costumes" aria-label="Costumes">{brick.costumes.map((costume) => <li key={costume.name}><CostumeThumb asset={costume.asset} box={64} /><span>{costume.name}</span></li>)}</ul>
           <button type="button" className="builder-btn" onClick={() => { store.openWorkshop(brick.id); store.setEditorTab('costumes') }}>Edit costumes</button>
         </> : <>
+          <p className="slice-card-detail">{details}</p>
           {perCopy && <div className="slice-scope" role="group" aria-label="Slider scope">
             <button type="button" aria-pressed={scope === 'all'} onClick={() => store.setSliderScope('all')}>All copies</button>
             <button type="button" aria-pressed={scope === 'one'} onClick={() => store.setSliderScope('one')}>Just this one</button>
           </div>}
-          {single ? <KnobsCard store={store} brickId={brick.id} /> : knobs.length === 0 ? <p className="slice-card-hint">No sliders yet. See inside to show a variable as a slider.</p> : <div className="builder-knobs" role="group" aria-label="Sliders">
+          {single ? <KnobsCard store={store} brickId={brick.id} compact /> : knobs.length === 0 ? <p className="slice-card-hint">No sliders yet. See inside to show a variable as a slider.</p> : <div className="builder-knobs" role="group" aria-label="Sliders">
             {knobs.map((v) => {
               const own = !!copy && Object.prototype.hasOwnProperty.call(copy.knobs ?? {}, v.id)
               const value: Value = thisOne ? copy?.knobs?.[v.id] ?? v.value : v.value
@@ -127,6 +136,7 @@ export function SeeInsideCard({ store, history, children }: { store: StudioStore
               </div>
             })}
           </div>}
+          <button type="button" className="slice-see-inside" disabled={small} title={small ? 'Code needs a bigger screen' : 'See how this brick works'} onClick={() => store.openCode(brick.id)}><Search size={17} />{small ? 'Code needs a bigger screen' : 'See inside'}</button>
         </>}
       </div>}
       {confirm && <div className="slice-restore" role="dialog" aria-modal="true" aria-label="Back to the original?">

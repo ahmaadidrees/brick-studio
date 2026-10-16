@@ -14,7 +14,7 @@ vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gri
 
 vi.mock('../CodeEditor', () => ({ CodeEditor: () => <div aria-label="Docked code editor">Code editor</div> }))
 
-afterEach(cleanup)
+afterEach(() => { cleanup(); localStorage.removeItem('brick-code-panel-width-v2'); localStorage.removeItem('brick-code-panel-width') })
 
 function storeWithBrick() {
   const store = new StudioStore(emptyProject())
@@ -269,6 +269,31 @@ describe('See inside card', () => {
     expect(store.getState().workshopBrickId).toBeNull()
     expect(store.getState().cardTab).toBe('code')
     expect(screen.getByLabelText('Docked code editor')).toBeTruthy()
+  })
+
+  it('clears building chrome for code and restores it with the compact slider card', () => {
+    const store = new StudioStore(createStarterProject())
+    store.selectCopy('copy_walker_fast')
+    localStorage.setItem('brick-code-panel-width', '440')
+    const { container } = render(<Builder store={store} templates={[]} />)
+    const body = container.querySelector('.p2d-body') as HTMLElement
+    expect(body.style.getPropertyValue('--builder-dock-width')).toBe('300px')
+    expect(screen.queryByRole('separator')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /See inside/ }))
+    expect(screen.queryByRole('complementary', { name: 'Brick drawer' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Build tools' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Placing' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Camera follows' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Pause level' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Restart level' })).toBeTruthy()
+    expect(parseFloat(body.style.getPropertyValue('--builder-dock-width'))).toBeCloseTo(window.innerWidth * 0.58)
+    expect(container.querySelector('.builder')!.classList.contains('builder-drawer-open')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Close code' }))
+    expect(screen.getByRole('complementary', { name: 'Brick drawer' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Placing' })).toBeTruthy()
+    expect(body.style.getPropertyValue('--builder-dock-width')).toBe('300px')
+    expect(screen.queryByRole('separator')).toBeNull()
   })
 
   it('edits this copy\'s knob with a slider, and Remove deletes the copy (undoable)', () => {

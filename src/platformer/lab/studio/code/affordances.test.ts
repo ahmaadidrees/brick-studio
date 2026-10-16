@@ -1,8 +1,8 @@
 import * as Blockly from 'blockly'
-import { afterEach, beforeAll, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { compileWorkspace } from '../../core/editor/compile'
 import { registerEditorBlocks } from '../../core/editor/definitions'
-import { attachAffordances, foldLongDefinitions, getLabel, isShownIn, listDefinitions, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
+import { attachAffordances, focusView, foldLongDefinitions, getLabel, isShownIn, LABEL_BAND, listDefinitions, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
 import { createHeroWorkspace } from '../hero/heroBrick'
 import { drillInto, TOP_VIEW } from './layers'
 
@@ -154,5 +154,28 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     expect(shown(TOP_VIEW)).toEqual(['flag', 'bump'])
     expect(shown(drillInto(TOP_VIEW, 'walk at %s'))).toEqual(['def'])
     expect(shown(drillInto(TOP_VIEW, 'missing'))).toEqual([])
+  })
+
+  it('includes the label above the first hat when fitting and centering the visible code', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(WORKSPACE, ws)
+    const flag = ws.getBlockById('flag')! as Blockly.BlockSvg
+    const blockBounds = new Blockly.utils.Rect(20, 160, 20, 320)
+    flag.getBoundingRectangle = () => blockBounds
+    const scroll = vi.fn()
+    const displayed = {
+      getTopBlocks: () => [flag],
+      getMetrics: () => ({ viewWidth: 700, viewHeight: 580 }),
+      setScale: vi.fn(),
+      scrollBoundsIntoView: scroll,
+    } as unknown as Blockly.WorkspaceSvg
+    focusView(displayed, TOP_VIEW)
+    const labelledTop = (scroll.mock.calls[0][0] as Blockly.utils.Rect).top
+    expect(labelledTop).toBeLessThan(blockBounds.top - LABEL_BAND)
+    setLabel(flag, '')
+    focusView(displayed, TOP_VIEW)
+    const plainTop = (scroll.mock.calls[1][0] as Blockly.utils.Rect).top
+    expect(plainTop - labelledTop).toBe(LABEL_BAND)
+    expect(blockBounds.top).toBe(20)
   })
 })

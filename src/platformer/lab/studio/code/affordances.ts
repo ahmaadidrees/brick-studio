@@ -188,7 +188,14 @@ export function foldLongDefinitions(ws: Blockly.Workspace): boolean {
 export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
   const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state))
   if (shown.length === 0) return
-  const rectangles = shown.map((block) => block.getBoundingRectangle())
+  const rectangles = shown.map((block) => {
+    const bounds = block.getBoundingRectangle()
+    // The Blockly rectangle excludes our script label above the hat. Include its full text band before fitting or
+    // centering, otherwise the label's ascenders can land above the clipped workspace edge.
+    return takesLabel(block) && getLabel(block)
+      ? new Blockly.utils.Rect(bounds.top - LABEL_BAND, bounds.bottom, bounds.left, bounds.right)
+      : bounds
+  })
   const left = Math.min(...rectangles.map((r) => r.left))
   const top = Math.min(...rectangles.map((r) => r.top))
   const right = Math.max(...rectangles.map((r) => r.right))

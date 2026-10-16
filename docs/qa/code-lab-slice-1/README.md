@@ -1,5 +1,7 @@
 # Code Lab Slice 1 — local handoff
 
+Later UI revision: [Focused Code Lab cleanup](../code-lab-ui-cleanup-2026-10-15/README.md) supersedes the initial dock layout below.
+
 Date: 2026-10-15. Branch: `claude/code-lab-slice-1`, based on spec commit `cab94f2` and runtime `2cd8d94`.
 
 Implementation commit: `3604efe` (runtime `c946161`, remix/state `4c6132b`).

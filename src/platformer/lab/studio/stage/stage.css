@@ -189,3 +189,7 @@
 .stage-view-tools { max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: flex-end; }
 .stage-view-tools .stage-view-btn { min-height: 36px; padding: 0 8px; }
 .stage-container:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: -3px; }
+
+/* Code preview stays a quiet companion to the program. */
+.stage-view-tools-code { left: 12px; right: auto; justify-content: flex-start; gap: 8px; }
+.stage-restart-note { max-width: 170px; color: var(--studio-muted, #66788a); font-size: 11px; line-height: 1.3; font-weight: 600; }

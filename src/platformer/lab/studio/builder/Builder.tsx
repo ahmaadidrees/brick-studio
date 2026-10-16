@@ -7,7 +7,7 @@ import { StorageNoticeBar } from '../persist/StorageNoticeBar'
 import { Stage } from '../Stage'
 import { CodeEditor } from '../CodeEditor'
 import { SeeInsideCard } from './SeeInsideCard'
-import { DockPanel } from './DockPanel'
+import { clampDockWidth, CODE_PANEL_WIDTH_KEY, DockPanel } from './DockPanel'
 import { useStudio, type StudioStore } from '../store'
 import { BuildPanels } from './BuildPanels'
 import { PlayFeedback } from './PlayFeedback'
@@ -30,8 +30,15 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
   const cardTab = useStudio(store, (s) => s.cardTab)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const [dockWidth, setDockWidth] = useState(readDockWidth)
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
   const dockOpen = mode === 'build' && (selectedCopyId !== null || cardTab === 'code')
-  const codeOpen = dockOpen && cardTab === 'code'
+  const codeOpen = dockOpen && cardTab === 'code' && viewportWidth >= 768
+  const panelWidth = codeOpen ? clampDockWidth(dockWidth ?? viewportWidth * 0.58, viewportWidth) : 300
+  useEffect(() => {
+    const resize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', resize)
+    return () => window.removeEventListener('resize', resize)
+  }, [])
   const name = useStudio(store, (s) => s.project.design.name)
   const compact = useCompactLayout()
   const session = builderSession(store)
@@ -76,7 +83,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
 
   // Undo, redo and the Erase key, in Build, unless a field or dialog has the keyboard.
   useEffect(() => {
-    if (!build) return
+    if (!build || codeOpen) return
     const onKey = (e: KeyboardEvent) => {
       const el = e.target
       if (el instanceof Element && el.closest('.builder-dock, .blocklyWidgetDiv, .blocklyDropDownDiv')) return
@@ -96,7 +103,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [build, history])
+  }, [build, codeOpen, history])
 
   return (
     <div className={`p2d-game p2d-studio builder ${build ? 'p2d-building' : 'p2d-playing'}${compact ? ' p2d-compact' : ''}${build && !compact && drawerOpen && !codeOpen ? ' builder-drawer-open' : ''}`}>
@@ -138,11 +145,11 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
 
       <StorageNoticeBar />
 
-      <div className={`p2d-body${dockOpen ? ' builder-has-dock' : ''}${codeOpen ? ' builder-code-open' : ''}`} style={{ '--builder-dock-width': `${dockWidth}px` } as CSSProperties}>
+      <div className={`p2d-body${dockOpen ? ' builder-has-dock' : ''}${codeOpen ? ' builder-code-open' : ''}`} style={{ '--builder-dock-width': `${panelWidth}px` } as CSSProperties}>
         <div className="builder-stage">
-          <Stage store={stageStore} tools={{ history, erasing }} />
+          <Stage store={stageStore} tools={{ history, erasing }} codeView={codeOpen} />
         </div>
-        {dockOpen && <DockPanel width={dockWidth} onWidth={setDockWidth}>
+        {dockOpen && <DockPanel width={panelWidth} onWidth={setDockWidth} resizable={codeOpen}>
           <SeeInsideCard store={store} history={history}>{codeOpen ? <CodeEditor store={store} docked /> : null}</SeeInsideCard>
         </DockPanel>}
         {!build && <PlayFeedback store={store} />}
@@ -152,13 +159,13 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
             {playNote}
           </div>
         )}
-        {build && (
+        {build && !codeOpen && (
           <BuildPanels
             store={store}
             history={history}
             erasing={erasing}
             onErasing={setErasing}
-            compact={compact || codeOpen}
+            compact={compact}
             drawerOpen={drawerOpen}
             onDrawerOpen={setDrawerOpen}
             templates={templates}
@@ -169,9 +176,10 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
   )
 }
 
-function readDockWidth(): number {
+function readDockWidth(): number | null {
   try {
-    const saved = Number(localStorage.getItem('brick-code-panel-width'))
-    return Number.isFinite(saved) && saved >= 380 ? saved : 440
-  } catch { return 440 }
+    const raw = localStorage.getItem(CODE_PANEL_WIDTH_KEY)
+    const saved = raw === null ? NaN : Number(raw)
+    return Number.isFinite(saved) && saved >= 400 ? saved : null
+  } catch { return null }
 }
