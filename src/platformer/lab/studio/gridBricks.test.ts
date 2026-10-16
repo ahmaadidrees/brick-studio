@@ -222,7 +222,7 @@ describe('gridBrickTemplate: the eight standard grid bricks', () => {
       expect(ops.get('control_create_clone_of')).toEqual({ CLONE_OPTION: '_myself_' })
       expect(ops.get('data_changevariableby')).toEqual({ VARIABLE: 'coins' })
       expect(ops.has('control_delete_this_clone')).toBe(true)
-      expect(q.program.variables).toEqual([{ id: 'qblock_used', name: 'used', value: 0 }])
+      expect(q.program.variables).toEqual([{ id: 'qblock_times_left', name: 'times left', value: 1, showInBuild: true }])
       const text = JSON.stringify(gridBrickTemplate('qblock').workspace)
       expect(text).toContain('"COSTUME":"used"')
       expect(text).toContain('"COSTUME":"coin"')
@@ -244,7 +244,7 @@ describe('gridBrickTemplate: the eight standard grid bricks', () => {
         'control_start_as_clone', 'control_create_clone_of', 'control_delete_this_clone', 'control_forever', 'control_if',
         'control_repeat', 'control_wait', 'sensing_touchingobject', 'looks_switchcostumeto', 'looks_nextcostume',
         'data_variable', 'data_setvariableto', 'data_changevariableby', 'motion_changeyby', 'motion_sety', 'motion_yposition',
-        'operator_equals', 'operator_mod', 'procedures_definition', 'procedures_call', 'math_number', 'text',
+        'operator_equals', 'operator_gt', 'operator_mod', 'procedures_definition', 'procedures_call', 'math_number', 'text',
       ])
       for (const key of GRID_BRICK_KEYS) expect([...opcodes(gridBrickTemplate(key).workspace).keys()].filter((o) => !known.has(o)), key).toEqual([])
     })
@@ -367,6 +367,24 @@ describe('the bricks run their own code (bump hat swapped for broadcast poke)', 
     rt.broadcast('poke')
     run(20)
     expect(globals().coins).toBe(1)
+  })
+
+  it('? block: two give-a-coin calls use the visible times left value of 2', () => {
+    const design = levelWith(['qblock'], [{ id: 'q', key: 'qblock', x: 100, y: 100 }])
+    const brick = design.bricks.find((b) => b.id === 'brick_qblock')!
+    brick.program.variables.find((v) => v.name === 'times left')!.value = 2
+    const bump = brick.program.scripts.find((script) => script.hat.opcode === 'event_whenbroadcastreceived')!
+    bump.body = [...bump.body, ...bump.body]
+    const { rt, of, run, globals } = start(design)
+    run(2)
+    rt.broadcast('poke')
+    run(20)
+    expect(globals().coins).toBe(2)
+    expect(of('q').variables.qblock_times_left).toBe(0)
+    expect(of('q').costumeIndex).toBe(1)
+    rt.broadcast('poke')
+    run(20)
+    expect(globals().coins).toBe(2)
   })
 
   it('Brick: one poke shows the top of the hop (up 4) for a frame, then it comes back to exactly its own height', () => {

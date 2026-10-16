@@ -1030,3 +1030,11 @@
   line-height: 1.35;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
 }
+
+/* Visible keyboard focus throughout the editor, including the compact dock. */
+.code-editor-root button:focus-visible, .code-editor-root input:focus-visible, .code-editor-root select:focus-visible {
+  outline: 3px solid #93c5fd; outline-offset: 2px;
+}
+.code-starter-hint { position: absolute; top: 8px; right: 12px; z-index: 4; max-width: 190px; margin: 0; padding: 8px 12px; border-radius: 10px; background: #2c3548; color: #dbeafe; font-size: 12px; pointer-events: none; }
+.code-preview-note { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 6px; padding: 5px 10px; background: #233149; color: #cbdcf3; font-size: 11px; line-height: 1.4; }
+.code-preview-note button { min-height: 32px; padding: 3px 10px; border: 1px solid #607ea8; border-radius: 6px; color: #fff; background: #334b70; font: inherit; cursor: pointer; }

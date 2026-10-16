@@ -7,7 +7,7 @@ import './studio.css'
 
 /**
  * /2d/lab/next: Code Lab on the new core. Step 6 (docs/qa/code-lab-core/STEP6.md): the screen is the Brickgineers
- * 2D builder; "See inside" or "+ New brick" opens the full-screen Brick Workshop, and Done comes back.
+ * 2D builder; See inside docks code beside the level. New bricks and isolated tests use the full-screen Workshop.
  */
 export default function StudioApp() {
   const store = useMemo(() => new StudioStore(loadProject()), [])

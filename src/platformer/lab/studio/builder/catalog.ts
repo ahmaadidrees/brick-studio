@@ -5,6 +5,7 @@
  * critter, Coin an item...), anything else being one of "My bricks".
  */
 import type { BrickDef } from '../../core/contracts'
+import { catalogOriginal } from '../remix'
 import { GRID_BRICK_KEYS, gridBrickTemplate, type GridBrickKey, type GridBrickTemplate } from '../gridBricks'
 
 export type CatalogCategory = 'terrain' | 'blocks' | 'items' | 'critters' | 'course' | 'mine'
@@ -30,7 +31,8 @@ const BY_NAME: Record<string, CatalogCategory> = {
 }
 
 /** Which drawer category a brick belongs in. */
-export function categoryForBrick(brick: Pick<BrickDef, 'name'>): CatalogCategory {
+export function categoryForBrick(brick: Pick<BrickDef, 'name'> & Partial<Pick<BrickDef, 'id' | 'remixOf'>>): CatalogCategory {
+  if (brick.remixOf || (brick.id && !isCatalogBrick(brick as BrickDef))) return 'mine'
   return BY_NAME[brick.name.trim().toLowerCase().replace(/\s+\d+$/, '')] ?? 'mine'
 }
 
@@ -96,8 +98,8 @@ export function drawerEntries(bricks: readonly BrickDef[]): DrawerEntry[] {
     if (have) used.add(have.id)
     out.push({
       id: gridEntryId(key),
-      name: template.brick.name,
-      category: template.category,
+      name: have?.name ?? template.brick.name,
+      category: have && !isCatalogBrick(have) ? 'mine' : template.category,
       brick: have,
       asset: (have ?? template.brick).costumes[0]?.asset,
       key,
@@ -122,4 +124,13 @@ export function activeEntryId(brushBrickId: string | null, bricks: readonly Bric
 /** The Stage is not a brick you can place. */
 export function placeableBricks(bricks: readonly BrickDef[]): BrickDef[] {
   return bricks.filter((b) => !b.isStage)
+}
+
+/** Built-in identity follows the catalog definition, never a student's chosen display name. */
+export function isCatalogBrick(brick: BrickDef): boolean {
+  return !brick.remixOf && !!catalogOriginal(brick)
+}
+
+export function originalBrickName(brick: BrickDef): string | undefined {
+  return catalogOriginal(brick)?.brick.name
 }

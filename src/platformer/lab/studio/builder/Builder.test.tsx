@@ -12,6 +12,8 @@ import { costumeFromImage, imageFromRows } from '../pixels'
 // gridBrickTemplate is a stub until the step 7 bricks lane merges: these tests use the builder's test double.
 vi.mock('../gridBricks', async (orig) => ({ ...(await orig<typeof import('../gridBricks')>()), gridBrickTemplate: (await import('./testGridBricks')).fakeGridTemplate }))
 
+vi.mock('../CodeEditor', () => ({ CodeEditor: () => <div aria-label="Docked code editor">Code editor</div> }))
+
 afterEach(cleanup)
 
 function storeWithBrick() {
@@ -170,21 +172,25 @@ describe('grid bricks: paint, select a cell, See inside, Remove', () => {
     // the press did not change the cells
     expect(row(store, 2).slice(0, 8)).toBe('..QQQQQ.')
     const card = screen.getByRole('region', { name: '? block copy' })
-    expect(within(card).getByText('5 in this level')).toBeTruthy()
+    expect(within(card).getByText(/5 in this level/)).toBeTruthy()
     expect(within(card).getByText('? block')).toBeTruthy()
     expect(card.querySelector('img')).toBeTruthy()
     expect(within(card).queryByRole('slider')).toBeNull()
     expect(within(card).queryByRole('group', { name: /knobs/ })).toBeNull()
   })
 
-  it('See inside opens the workshop on the ? block brick, and Done brings the builder back with the cell still selected', () => {
+  it('See inside docks beside the real level, and closing code returns to Sliders with the cell selected', () => {
     const store = paintRowOfQ()
     fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 4, 40) })
     fireEvent.pointerUp(canvasOf(), { button: 0 })
     fireEvent.click(within(screen.getByRole('region', { name: '? block copy' })).getByRole('button', { name: /See inside/ }))
     const q = store.getState().project.design.bricks.find((b) => b.name === '? block')!
-    expect(store.getState().workshopBrickId).toBe(q.id)
-    act(() => store.closeWorkshop())
+    expect(store.getState().workshopBrickId).toBeNull()
+    expect(store.getState().selectedBrickId).toBe(q.id)
+    expect(store.getState().runtime).not.toBeNull()
+    expect(screen.getByLabelText('Docked code editor')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close code' }))
+    expect(store.getState().cardTab).toBe('sliders')
     expect(store.getState().selectedCopyId).toBe('cell:4:2')
     expect(screen.getByRole('region', { name: '? block copy' })).toBeTruthy()
   })
@@ -193,6 +199,7 @@ describe('grid bricks: paint, select a cell, See inside, Remove', () => {
     const store = paintRowOfQ()
     fireEvent.pointerDown(canvasOf(), { button: 0, ...screenOf(store, 8 + 16 * 4, 40) })
     fireEvent.pointerUp(canvasOf(), { button: 0 })
+    fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove this ? block' }))
     expect(row(store, 2).slice(0, 8)).toBe('..QQ.QQ.')
     expect(store.getState().selectedCopyId).toBeNull()
@@ -250,16 +257,18 @@ describe('grid bricks: paint, select a cell, See inside, Remove', () => {
 })
 
 describe('See inside card', () => {
-  it('shows the brick, how many copies, and opens the workshop', () => {
+  it('shows the brick, selected copy, and opens code in the shared panel', () => {
     const p = createStarterProject()
     const store = new StudioStore(p)
     const walkers = p.design.copies.filter((c) => c.brickId === 'brick_walker')
     store.selectCopy(walkers[0].id)
     render(<Builder store={store} templates={[]} />)
     const card = screen.getByRole('region', { name: 'Walker copy' })
-    expect(within(card).getByText(`${walkers.length} in this level`)).toBeTruthy()
+    expect(within(card).getByText(`${walkers.length} in this level · copy 1 selected`)).toBeTruthy()
     fireEvent.click(within(card).getByRole('button', { name: /See inside/ }))
-    expect(store.getState().workshopBrickId).toBe('brick_walker')
+    expect(store.getState().workshopBrickId).toBeNull()
+    expect(store.getState().cardTab).toBe('code')
+    expect(screen.getByLabelText('Docked code editor')).toBeTruthy()
   })
 
   it('edits this copy\'s knob with a slider, and Remove deletes the copy (undoable)', () => {
@@ -267,6 +276,7 @@ describe('See inside card', () => {
     const copy = store.getState().project.design.copies.find((c) => c.brickId === 'brick_walker')!
     store.selectCopy(copy.id)
     render(<Builder store={store} templates={[]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Just this one' }))
     const slider = screen.getByRole('slider', { name: 'speed' })
     fireEvent.change(slider, { target: { value: '1' } })
     const speedId = store.getState().project.design.bricks.find((b) => b.id === 'brick_walker')!.program.variables.find((v) => v.name === 'speed')!.id
@@ -276,6 +286,7 @@ describe('See inside card', () => {
     expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]).toBe(copy.knobs?.[speedId])
     fireEvent.click(screen.getByRole('button', { name: 'Redo' }))
     expect(store.getState().project.design.copies.find((c) => c.id === copy.id)!.knobs?.[speedId]).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     fireEvent.click(screen.getByRole('button', { name: 'Remove this Walker' }))
     expect(store.getState().project.design.copies.some((c) => c.id === copy.id)).toBe(false)
     expect(store.getState().selectedCopyId).toBeNull()
@@ -297,18 +308,19 @@ describe('one Hero, one Goal (limit 1)', () => {
     fireEvent.pointerUp(canvas, { button: 0 })
     expect(store.getState().selectedCopyId).toBe('copy_hero')
     const card = screen.getByRole('region', { name: 'Hero copy' })
-    expect(within(card).getByText('One per level')).toBeTruthy()
-    expect(within(card).queryByRole('slider')).toBeNull()
-    expect(within(card).queryByRole('group', { name: /knobs/ })).toBeNull()
+    expect(within(card).getByText(/One per level/)).toBeTruthy()
+    expect(within(card).getAllByRole('slider')).toHaveLength(4)
+    expect(within(card).queryByRole('group', { name: 'Slider scope' })).toBeNull()
     fireEvent.click(within(card).getByRole('button', { name: /See inside/ }))
-    expect(store.getState().workshopBrickId).toBe('brick_hero')
+    expect(store.getState().selectedBrickId).toBe('brick_hero')
+    expect(store.getState().cardTab).toBe('code')
   })
 
   it('the Hero card stays small: it is not a wall of sliders (the Walker still has its speed knob)', () => {
     const store = new StudioStore(createStarterProject())
     store.selectCopy('copy_hero')
     render(<Builder store={store} templates={[]} />)
-    expect(screen.queryAllByRole('slider')).toHaveLength(0)
+    expect(screen.getAllByRole('slider')).toHaveLength(4)
     act(() => store.selectCopy('copy_walker_fast'))
     expect(screen.getAllByRole('slider')).toHaveLength(1)
   })
@@ -362,8 +374,7 @@ describe('one Hero, one Goal (limit 1)', () => {
     const store = new StudioStore(createStarterProject())
     render(<Builder store={store} templates={[]} />)
     act(() => store.selectCopy('copy_hero'))
-    expect(screen.getByText('One per level')).toBeTruthy()
-    expect(screen.getByText('Place it again to move it')).toBeTruthy()
+    expect(screen.getByText(/One per level.*Place it again to move it/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Remove this Hero' })).toBeNull()
     expect(screen.getByRole('button', { name: /See inside/ })).toBeTruthy()
     const goal = store.getState().project.design.copies.find((c) => c.brickId === 'brick_goal')!
@@ -371,6 +382,7 @@ describe('one Hero, one Goal (limit 1)', () => {
     expect(screen.queryByRole('button', { name: 'Remove this Goal' })).toBeNull()
     const walker = store.getState().project.design.copies.find((c) => c.brickId === 'brick_walker')!
     act(() => store.selectCopy(walker.id))
+    fireEvent.click(screen.getByRole('button', { name: 'Brick actions' }))
     expect(screen.getByRole('button', { name: 'Remove this Walker' })).toBeTruthy()
   })
 
@@ -449,7 +461,8 @@ describe('Build and Play from the header', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Play/ }))
     expect(store.getState().mode).toBe('play')
     expect(screen.queryByRole('complementary', { name: 'Brick drawer' })).toBeNull()
-    expect(screen.getByRole('button', { name: /Green flag/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Green flag/ })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Pause level' })).toBeTruthy()
     fireEvent.click(screen.getByRole('radio', { name: /Build/ }))
     expect(store.getState().mode).toBe('build')
     expect(screen.getByRole('complementary', { name: 'Brick drawer' })).toBeTruthy()

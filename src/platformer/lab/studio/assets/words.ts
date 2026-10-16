@@ -29,7 +29,6 @@ export const BRICK_WORDS = [
   'Key',
   'Potion',
   'Shield',
-  'Sword',
   'Burger',
   'Pizza',
   'Apple',

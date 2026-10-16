@@ -1,5 +1,6 @@
 /** "+ New brick": start from a brick that works (BRICK_TEMPLATES), name it from a picked word, open the workshop. */
 import { blankImage, costumeFromImage } from '../pixels'
+import { createEmptyBrick } from '../starter'
 import { chooseUniqueName } from '../assets/words'
 import type { StudioStore } from '../store'
 import type { BrickTemplate } from '../templates'
@@ -20,6 +21,7 @@ export function createBrickFromTemplate(store: StudioStore, template: BrickTempl
   const { id: _id, ...rest } = brick
   const id = store.addBrickFrom({ ...rest, name }, workspace)
   store.openWorkshop(id)
+  store.setEditorTab('code')
   return id
 }
 
@@ -27,7 +29,10 @@ export function createBrickFromTemplate(store: StudioStore, template: BrickTempl
 export function createBlankBrick(store: StudioStore, word: string): string {
   const names = store.getState().project.design.bricks.map((b) => b.name)
   const name = chooseUniqueName(word, names)
-  const id = store.addBrick(name, costumeFromImage(name, blankImage(32, 32)))
+  const made = createEmptyBrick('blank', name)
+  const { id: _id, ...brick } = made.brick
+  const id = store.addBrickFrom({ ...brick, costumes: [costumeFromImage(name, blankImage(32, 32))] }, made.workspace)
   store.openWorkshop(id)
+  store.setEditorTab('code')
   return id
 }

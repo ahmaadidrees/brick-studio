@@ -26,7 +26,7 @@ export const BRICK_TEMPLATES: BrickTemplate[] = [
   { id: 'goal', label: 'Goal', blurb: 'ends the level when the Hero reaches it', make: (id, name) => createGoalBrick(id, name) },
   {
     id: 'block',
-    label: 'Block (snaps to grid)',
+    label: 'Solid brick',
     blurb: 'a solid block you paint on the grid, like Ground',
     make: (id, name, options) => {
       const made = createBlockBrick(name, options?.char)

@@ -188,9 +188,9 @@ export const VariableModal: React.FC<VariableModalProps> = ({
                 onChange={(e) => setShowInBuild(e.target.checked)}
               />
               <div className="code-knob-toggle-text">
-                <strong>Show in Build (per-copy knob)</strong>
+                <strong>Show as a slider</strong>
                 <p className="code-scope-desc">
-                  Adds an adjustable knob to each painted copy when editing the level in Build mode.
+                  Adds an adjustable slider to this brick’s card in Build mode.
                 </p>
               </div>
             </label>

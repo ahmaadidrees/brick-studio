@@ -2,7 +2,8 @@ import * as Blockly from 'blockly'
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { compileWorkspace } from '../../core/editor/compile'
 import { registerEditorBlocks } from '../../core/editor/definitions'
-import { attachAffordances, getLabel, isShownIn, listDefinitions, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
+import { attachAffordances, foldLongDefinitions, getLabel, isShownIn, listDefinitions, setLabel, setWorkspaceHandlers, takesLabel } from './affordances'
+import { createHeroWorkspace } from '../hero/heroBrick'
 import { drillInto, TOP_VIEW } from './layers'
 
 const WORKSPACE = {
@@ -126,6 +127,23 @@ describe('script labels and magnifiers (headless Blockly)', () => {
     ws.getBlockById('bump')!.getField('MAGNIFIER')!.showEditor()
     expect(drilled).toEqual(['walk at %s'])
     expect(explained).toEqual(['platformer_setgravity', 'platformer_whenbump'])
+  })
+
+  it('folds the Hero definitions on open without changing their compiled program', () => {
+    ws = new Blockly.Workspace()
+    const json = createHeroWorkspace()
+    Blockly.serialization.workspaces.load(json, ws)
+    const before = compileWorkspace(Blockly.serialization.workspaces.save(ws)).program
+    expect(foldLongDefinitions(ws)).toBe(true)
+    expect(listDefinitions(ws).every(({ block }) => block.isCollapsed())).toBe(true)
+    expect(compileWorkspace(Blockly.serialization.workspaces.save(ws)).program).toEqual(before)
+  })
+
+  it('does not fold a short brick automatically', () => {
+    ws = new Blockly.Workspace()
+    Blockly.serialization.workspaces.load(WORKSPACE, ws)
+    expect(foldLongDefinitions(ws)).toBe(false)
+    expect(ws.getBlockById('def')!.isCollapsed()).toBe(false)
   })
 
   it('the top view hides definitions; drilled in shows only that definition', () => {

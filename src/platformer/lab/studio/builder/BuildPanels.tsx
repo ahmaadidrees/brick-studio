@@ -17,7 +17,6 @@ import {
 import type { History } from './history'
 import { copyToMove, limitOf } from './limits'
 import { NewBrickPicker } from './NewBrickPicker'
-import { SeeInsideCard } from './SeeInsideCard'
 import { CostumeThumb } from './tileArt'
 
 const DRAWER_ID = 'p2d-brick-drawer'
@@ -50,7 +49,7 @@ export function BuildPanels({ store, history, erasing, onErasing, compact, drawe
 
   const entries = useMemo(() => drawerEntries(bricks), [bricks])
   const items = useMemo<DrawerItem[]>(() => {
-    const list = entries.map<DrawerItem>((e) => ({ id: e.id, name: e.name, category: e.category, thumbnail: <CostumeThumb asset={e.asset} box={40} /> }))
+    const list = entries.map<DrawerItem>((e) => ({ id: e.id, name: e.name, category: e.category, thumbnail: <CostumeThumb asset={e.asset} box={48} /> }))
     const fresh: DrawerItem = { id: NEW_BRICK_ID, name: '+ New brick', category: 'mine', thumbnail: <Plus size={30} aria-hidden="true" className="builder-new-icon" /> }
     return [...list, fresh]
   }, [entries])
@@ -59,6 +58,7 @@ export function BuildPanels({ store, history, erasing, onErasing, compact, drawe
   const active = erasing ? null : activeEntryId(brushBrickId, bricks)
 
   const choose = (id: string) => {
+    store.closeCard()
     if (id === NEW_BRICK_ID) {
       setPicking(true)
       return
@@ -118,7 +118,6 @@ export function BuildPanels({ store, history, erasing, onErasing, compact, drawe
         <HistoryTools onUndo={() => history.undo()} onRedo={() => history.redo()} canUndo={history.canUndo} canRedo={history.canRedo} />
       </div>
 
-      <SeeInsideCard store={store} history={history} />
       <PlacingStrip store={store} erasing={erasing} onErasing={onErasing} />
 
       {picking && <NewBrickPicker store={store} templates={templates} onClose={() => setPicking(false)} />}

@@ -118,12 +118,6 @@ export function renderBuildMode(
   ctx.lineWidth = 2
   ctx.strokeRect(lX, tY, lvlW, lvlH)
 
-  // Corner labels
-  ctx.font = '11px system-ui, sans-serif'
-  ctx.fillStyle = '#5b7287'
-  ctx.fillText(`(0, 0)`, lX + 6, bY - 6)
-  const dimText = `${bounds.right - bounds.left} × ${bounds.top - bounds.bottom}`
-  ctx.fillText(dimText, rX - ctx.measureText(dimText).width - 6, tY + 14)
   ctx.restore()
 
   // Grid cells sit behind the copies (a Hero standing in front of a cell is drawn, and picked, first)

@@ -7,7 +7,6 @@ Blockly.setLocale(En as unknown as Record<string, string>)
 import type { StudioStore } from './store'
 import { STAGE_ID } from './store'
 import type { Diagnostic } from '../core/editor/compile'
-import type { Thread } from '../core/runtime'
 import { registerEditorBlocks } from '../core/editor/definitions'
 import { setEditorContext } from '../core/editor/context'
 import { createContinuousToolbox, myBlocksFlyout, registerToolboxPlugins } from '../core/editor/toolbox'
@@ -23,6 +22,7 @@ import {
   applyView,
   attachAffordances,
   focusView,
+  foldLongDefinitions,
   hasDefinition,
   isShownIn,
   listDefinitions,
@@ -36,9 +36,10 @@ import './code/code.css'
 
 export interface CodeEditorProps {
   store: StudioStore
+  docked?: boolean
 }
 
-export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
+export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false }) => {
   // Subscribe to store state
   const state = useSyncExternalStore(
     (listener) => store.subscribe(listener),
@@ -60,6 +61,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
   // another brick, the selection changes before the old workspace is flushed and disposed, and saving by selection wrote
   // the old brick's code over the new brick's.
   const workspaceBrickIdRef = useRef<string>(selectedBrickId)
+  const workspaceResetRevisionRef = useRef(state.editorResetRevision)
 
   // True when this brick's saved blocks could not be loaded into the editor. Nothing may be saved for the brick until a
   // load succeeds: the editor holds an empty workspace, and saving it would wipe the brick's code.
@@ -95,6 +97,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
       const ws = workspaceRef.current
+      if (workspaceResetRevisionRef.current !== store.getState().editorResetRevision) return
       if (ws && !isDisposedRef.current && !loadBlockedRef.current) {
         const json = Blockly.serialization.workspaces.save(ws)
         store.setWorkspace(workspaceBrickIdRef.current, json)
@@ -108,7 +111,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = null
     }
-    if (loadBlockedRef.current) return
+    if (loadBlockedRef.current || workspaceResetRevisionRef.current !== store.getState().editorResetRevision) return
     const json = Blockly.serialization.workspaces.save(ws)
     store.setWorkspace(workspaceBrickIdRef.current, json)
   }
@@ -174,7 +177,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       },
       trashcan: true,
       sounds: false,
-      plugins: {
+      plugins: docked ? {} : {
         toolbox: 'ContinuousToolbox',
         flyoutsVerticalToolbox: 'ContinuousFlyout',
         metricsManager: 'ContinuousMetrics',
@@ -187,6 +190,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     })
     workspaceRef.current = ws
     workspaceBrickIdRef.current = selectedBrickId
+    workspaceResetRevisionRef.current = state.editorResetRevision
     isDisposedRef.current = false
 
     // 6. Register toolbox button callbacks
@@ -245,7 +249,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       }
     }
 
+    if (docked) ws.getToolbox()?.clearSelection()
+    foldLongDefinitions(ws)
     ws.getToolbox()?.refreshSelection() // calls for the definitions that just loaded
+    if (docked) ws.getToolbox()?.clearSelection()
 
     // 8b. Layered view: scripts on top, My Block definitions out of the way; magnifiers open definitions and cards
     viewRef.current = TOP_VIEW
@@ -304,7 +311,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
       saveTimeoutRef.current = setTimeout(() => {
         saveTimeoutRef.current = null
-        if (!isDisposedRef.current && !loadBlockedRef.current) {
+        if (!isDisposedRef.current && !loadBlockedRef.current && workspaceResetRevisionRef.current === store.getState().editorResetRevision) {
           const json = Blockly.serialization.workspaces.save(ws)
           store.setWorkspace(workspaceBrickIdRef.current, json)
         }
@@ -312,11 +319,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     }
 
     ws.addChangeListener(changeListener)
+    const unsubscribeBeforeRun = store.onBeforeRun(flushSave)
 
     // Resize workspace to fit container
     Blockly.svgResize(ws)
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+      if (!isDisposedRef.current && workspaceRef.current === ws) Blockly.svgResize(ws)
+    }) : null
+    resizeObserver?.observe(container)
 
     return () => {
+      unsubscribeBeforeRun()
+      resizeObserver?.disconnect()
       flushSave()
       setWorkspaceHandlers(ws, null)
       ws.removeChangeListener(changeListener)
@@ -324,7 +338,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
       ws.dispose()
       workspaceRef.current = null
     }
-  }, [selectedBrickId, isStage, store])
+  }, [selectedBrickId, isStage, store, state.editorResetRevision, docked])
 
   // Update block warning badges when diagnostics change
   useEffect(() => {
@@ -351,78 +365,37 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
     }
   }, [diagnostics])
 
-  // Real-time block glow for running threads during Play mode
+  // Capture actual execution, including short-lived statements that finish between draws.
+  // Collect three 30Hz ticks into one 10Hz visual update; looking inside never changes scheduling.
   useEffect(() => {
-    let animId: number | null = null
-    let glowingBlockIds = new Set<string>()
-
-    const checkRunningThreads = () => {
-      const currentState = store.getState()
-      const ws = workspaceRef.current
-
-      if (currentState.mode === 'play' && currentState.runtime && ws && !isDisposedRef.current) {
-        const activeIds = new Set<string>()
-        const threads = currentState.runtime.threads()
-
-        for (const t of threads) {
-          const thread = t as Thread
-          if (thread.done || thread.status === 'done') continue
-          if (thread.target.brickId !== currentState.selectedBrickId) continue
-
-          // Script hat block
-          if (thread.script?.id) {
-            activeIds.add(thread.script.id)
-          }
-
-          // Executing statement block
-          const topFrame = thread.stack[thread.stack.length - 1]
-          if (topFrame && topFrame.statements) {
-            const currentStmt =
-              topFrame.statements[topFrame.pc] ??
-              topFrame.statements[topFrame.statements.length - 1]
-            if (currentStmt?.id) {
-              activeIds.add(currentStmt.id)
-            }
-          }
-        }
-
-        // Apply diff to highlighted blocks
-        for (const id of glowingBlockIds) {
-          if (!activeIds.has(id)) {
-            ws.getBlockById(id)?.setHighlighted(false)
-          }
-        }
-        for (const id of activeIds) {
-          if (!glowingBlockIds.has(id)) {
-            ws.getBlockById(id)?.setHighlighted(true)
-          }
-        }
-        glowingBlockIds = activeIds
-      } else {
-        // Clear all highlights when not playing
-        if (glowingBlockIds.size > 0 && ws && !isDisposedRef.current) {
-          for (const id of glowingBlockIds) {
-            ws.getBlockById(id)?.setHighlighted(false)
-          }
-          glowingBlockIds = new Set()
-        }
-      }
-
-      animId = requestAnimationFrame(checkRunningThreads)
+    const runtime = state.runtime
+    const ws = workspaceRef.current
+    if (!runtime || state.previewPaused || !ws || isDisposedRef.current) return
+    let glowing = new Set<string>()
+    let pending = new Set<string>()
+    const clear = () => {
+      for (const id of glowing) ws.getBlockById(id)?.setHighlighted(false)
+      glowing.clear()
+      pending.clear()
     }
-
-    animId = requestAnimationFrame(checkRunningThreads)
-
-    return () => {
-      if (animId !== null) cancelAnimationFrame(animId)
-      const ws = workspaceRef.current
-      if (ws && !isDisposedRef.current) {
-        for (const id of glowingBlockIds) {
-          ws.getBlockById(id)?.setHighlighted(false)
-        }
+    const unsubscribe = runtime.onExecutedBlocks((snapshot) => {
+      if (snapshot.size === 0) { clear(); return }
+      for (const [targetId, ids] of snapshot) {
+        const target = runtime.world.targets.find((target) => target.id === targetId) ?? runtime.executionTarget(targetId)
+        if (!target || target.brickId !== selectedBrickId) continue
+        if (state.selectedCopyId && target.copyId !== state.selectedCopyId) continue
+        for (const id of ids) pending.add(id)
       }
-    }
-  }, [store])
+    })
+    const timer = setInterval(() => {
+      if (isDisposedRef.current || workspaceRef.current !== ws) return
+      for (const id of glowing) if (!pending.has(id)) ws.getBlockById(id)?.setHighlighted(false)
+      for (const id of pending) if (!glowing.has(id)) ws.getBlockById(id)?.setHighlighted(true)
+      glowing = pending
+      pending = new Set()
+    }, 100)
+    return () => { unsubscribe(); clearInterval(timer); if (!isDisposedRef.current) clear() }
+  }, [state.runtime, state.previewPaused, state.selectedCopyId, selectedBrickId, state.editorResetRevision])
 
   // Select and scroll to a diagnostic block
   const handleSelectBlock = (blockId: string) => {
@@ -620,6 +593,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
         onResetZoom={handleResetZoom}
       />
 
+      {docked && <div className="code-preview-note"><span>Code changes apply on Restart. Sliders update now.</span><button type="button" onClick={() => store.closeCode()}>Done</button></div>}
+
       {/* My Blocks shelf (top view) or breadcrumb + Back (inside a My Block) */}
       <LayerBar
         brickName={targetName}
@@ -632,6 +607,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store }) => {
 
       {/* Main Workspace Injection Container */}
       <div className="code-workspace-container">
+        {brick?.program.scripts.length === 1 && brick.program.scripts[0].body.length === 0 && <p className="code-starter-hint">Drag blocks under this hat.</p>}
         {loadFailed && (
           <div className="code-load-failed" role="alert">
             <strong>We could not open this brick&apos;s blocks.</strong>

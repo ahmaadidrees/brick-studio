@@ -144,9 +144,9 @@ export function wholeLevelReadable(bounds: StageBounds, viewport: Viewport): boo
 
 export type PlayCameraMode = 'whole' | 'follow'
 
-/** Play default: the whole level when readable, otherwise follow the action. */
-export function defaultPlayCameraMode(bounds: StageBounds, viewport: Viewport): PlayCameraMode {
-  return wholeLevelReadable(bounds, viewport) ? 'whole' : 'follow'
+/** Play always starts following the Hero; Whole level remains an explicit choice. */
+export function defaultPlayCameraMode(_bounds: StageBounds, _viewport: Viewport): PlayCameraMode {
+  return 'follow'
 }
 
 /**

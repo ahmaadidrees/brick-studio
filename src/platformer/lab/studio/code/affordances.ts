@@ -165,25 +165,42 @@ export function isShownIn(block: Blockly.Block, state: LayerState): boolean {
 
 /** Top view: scripts only (definitions kept out of the way). Drilled in: just that definition. Nothing is moved or saved. */
 export function applyView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
-  for (const block of ws.getTopBlocks(false)) setShown(block as Blockly.BlockSvg, isShownIn(block, state))
+  Blockly.Events.disable()
+  try {
+    for (const block of ws.getTopBlocks(false)) {
+      const shown = isShownIn(block, state)
+      if (shown && block.type === 'procedures_definition') block.setCollapsed(false)
+      setShown(block as Blockly.BlockSvg, shown)
+    }
+  } finally { Blockly.Events.enable() }
 }
 
-/** Scroll so the stacks of the current view are in sight: a short drilled definition is centred, otherwise the view starts at the first stack. */
+/** Long programs open with their definitions folded; drilling into one expands it locally. */
+export function foldLongDefinitions(ws: Blockly.Workspace): boolean {
+  if (ws.getAllBlocks(false).length <= 30) return false
+  Blockly.Events.disable()
+  try { for (const definition of listDefinitions(ws)) definition.block.setCollapsed(true) }
+  finally { Blockly.Events.enable() }
+  return true
+}
+
+/** Fit just the currently visible layer, excluding the hidden procedure bodies. */
 export function focusView(ws: Blockly.WorkspaceSvg, state: LayerState): void {
   const shown = ws.getTopBlocks(true).filter((b) => isShownIn(b, state))
   if (shown.length === 0) return
-  const first = shown[0].getBoundingRectangle()
+  const rectangles = shown.map((block) => block.getBoundingRectangle())
+  const left = Math.min(...rectangles.map((r) => r.left))
+  const top = Math.min(...rectangles.map((r) => r.top))
+  const right = Math.max(...rectangles.map((r) => r.right))
+  const bottom = Math.max(...rectangles.map((r) => r.bottom))
   const metrics = ws.getMetrics()
-  const w = metrics.viewWidth / ws.scale
-  const h = metrics.viewHeight / ws.scale
-  // A short definition sits in the middle of the view; anything taller than the view starts at its top.
-  if (currentProccode(state) !== null && first.bottom - first.top < h) {
-    ws.centerOnBlock(shown[0].id)
-    return
-  }
-  const pad = 40
-  // The continuous toolbox flyout covers the left of the view; scrollBoundsIntoView accounts for it.
-  ws.scrollBoundsIntoView(new Blockly.utils.Rect(first.top - pad, first.top + h, first.left - pad, first.left + w), 0)
+  const padding = 32
+  const scale = Math.min(0.85, Math.max(0.65, Math.min((metrics.viewWidth - padding * 2) / Math.max(1, right - left), (metrics.viewHeight - padding * 2) / Math.max(1, bottom - top))))
+  ws.setScale(scale)
+  const width = metrics.viewWidth / scale
+  const height = metrics.viewHeight / scale
+  // A layer too long to fit still opens at its first block, rather than halfway down.
+  ws.scrollBoundsIntoView(new Blockly.utils.Rect(top - padding, top + height - padding, left - padding, left + width - padding), 0)
 }
 
 export { LABEL_PREFIX }

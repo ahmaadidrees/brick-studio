@@ -24,6 +24,7 @@ export function NewBrickPicker({ store, templates = BRICK_TEMPLATES, onClose }: 
   if (chosen) {
     return (
       <NamePicker
+        existingNames={store.getState().project.design.bricks.map((b) => b.name)}
         onBack={() => setChosen(null)}
         onPick={(word) => {
           if (chosen === 'blank') createBlankBrick(store, word)
@@ -66,7 +67,7 @@ export function NewBrickPicker({ store, templates = BRICK_TEMPLATES, onClose }: 
 }
 
 /** Names come from a picked word list; kids don't type free text. */
-function NamePicker({ onPick, onBack }: { onPick: (word: string) => void; onBack: () => void }) {
+function NamePicker({ onPick, onBack, existingNames }: { onPick: (word: string) => void; onBack: () => void; existingNames: string[] }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onBack()
@@ -78,9 +79,10 @@ function NamePicker({ onPick, onBack }: { onPick: (word: string) => void; onBack
     <div className="builder-modal-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onBack()}>
       <div className="builder-modal" role="dialog" aria-modal="true" aria-label="Pick a name for your brick">
         <h2 className="builder-modal-title">Pick a name for your brick</h2>
+        <p className="builder-modal-sub">Pick a name that is not already in your level.</p>
         <div className="builder-word-grid">
           {BRICK_WORDS.map((word) => (
-            <button key={word} type="button" className="builder-word" onClick={() => onPick(word)}>
+            <button key={word} type="button" className="builder-word" disabled={existingNames.some((name) => name.toLowerCase() === word.toLowerCase())} title={existingNames.some((name) => name.toLowerCase() === word.toLowerCase()) ? 'Already in this level — pick another name' : undefined} onClick={() => onPick(word)}>
               {word}
             </button>
           ))}

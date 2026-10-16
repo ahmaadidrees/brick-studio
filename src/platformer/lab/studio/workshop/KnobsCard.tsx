@@ -12,7 +12,7 @@ export function KnobsCard({ store, brickId }: { store: StudioStore; brickId: str
   const [moreOpen, setMoreOpen] = useState(false)
   const { main, groups, moreCount } = knobList(brick?.program.variables ?? [])
   // Tuning numbers that are not Build knobs keep showInBuild off when they move.
-  const slider = (v: VariableDecl, showInBuild: boolean) => {
+  const slider = (v: VariableDecl) => {
     const value = v.value as number
     const r = sliderRange(v)
     return (
@@ -26,34 +26,34 @@ export function KnobsCard({ store, brickId }: { store: StudioStore; brickId: str
           step={r.step}
           value={value}
           aria-label={v.name}
-          onChange={(e) => store.setVariableKnob(brickId, v.id, showInBuild, Number(e.target.value))}
+          onChange={(e) => store.setBrickSlider(brickId, v.id, Number(e.target.value))}
         />
         <output>{formatKnob(value)}</output>
       </li>
     )
   }
   return (
-    <section className="ws-card ws-knobs" aria-label="Knobs">
+    <section className="ws-card ws-knobs" aria-label="Sliders">
       <div className="ws-card-head">
-        <h2>Knobs</h2>
+        <h2>Sliders</h2>
         <span className="ws-hint">{main.length === 0 && moreCount === 0 ? 'none yet' : `${main.length}`}</span>
       </div>
       {main.length === 0 && moreCount === 0 ? (
-        <p className="ws-hint">Make a variable and turn on “show in Build” to get a knob here.</p>
+        <p className="ws-hint">Make a variable and turn on “Show as a slider” to get a slider here.</p>
       ) : (
-        <ul className="ws-knob-list">{main.map((v) => slider(v, true))}</ul>
+        <ul className="ws-knob-list">{main.map((v) => slider(v))}</ul>
       )}
       {moreCount > 0 && (
         <div className="ws-more">
           <button type="button" className="ws-more-toggle" aria-expanded={moreOpen} aria-controls="ws-more-tuning" onClick={() => setMoreOpen((o) => !o)}>
-            <span aria-hidden="true">{moreOpen ? '▾' : '▸'}</span> More tuning ({moreCount})
+            <span aria-hidden="true">{moreOpen ? '▾' : '▸'}</span> More sliders for the Hero ({moreCount})
           </button>
           {moreOpen && (
             <div id="ws-more-tuning" className="ws-more-body">
               {groups.map((g) => (
                 <section key={g.id} className="ws-knob-group" aria-label={g.label}>
                   <h3>{g.label}</h3>
-                  <ul className="ws-knob-list">{g.knobs.map((v) => slider(v, false))}</ul>
+                  <ul className="ws-knob-list">{g.knobs.map((v) => slider(v))}</ul>
                 </section>
               ))}
             </div>

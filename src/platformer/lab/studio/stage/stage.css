@@ -185,3 +185,7 @@
 .stage-ask-submit-btn:hover {
   background: #276b42;
 }
+
+.stage-view-tools { max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: flex-end; }
+.stage-view-tools .stage-view-btn { min-height: 36px; padding: 0 8px; }
+.stage-container:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: -3px; }

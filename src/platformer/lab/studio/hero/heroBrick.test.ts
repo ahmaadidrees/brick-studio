@@ -292,8 +292,8 @@ describe('The Hero brick is built from open blocks', () => {
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 1 flag script (feel), 7 My Blocks, 2 bump hats (left, right), 4 broadcast hats (boing, stomped, hero hurt, bounce).
-      expect(ws.getTopBlocks(false)).toHaveLength(14)
+      // 1 flag script (feel), 9 My Blocks, 2 bump hats (left, right), 4 broadcast hats (boing, stomped, hero hurt, bounce).
+      expect(ws.getTopBlocks(false)).toHaveLength(16)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -341,11 +341,11 @@ describe('The Hero brick is built from open blocks', () => {
   it('is split into My Blocks a kid can read: read keys, feel the wall, walk, run meter, jump, fall', () => {
     const { brick } = createHeroBrick()
     expect(brick.program.procedures.map((p) => p.proccode)).toEqual([
-      'read keys', 'feel the wall', 'walk', 'run meter', 'jump', 'fall', 'hit a wall',
+      'read keys and walls', 'walk and run', 'read keys', 'feel the wall', 'walk', 'run meter', 'jump (hold to go higher)', 'fall and land', 'hit a wall',
     ])
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
     const forever = flag.body.find((s) => s.opcode === 'control_forever')!
-    expect(forever.branches![0].map((s) => s.call?.proccode)).toEqual(['read keys', 'feel the wall', 'walk', 'run meter', 'jump', 'fall'])
+    expect(forever.branches![0].map((s) => s.call?.proccode)).toEqual(['read keys and walls', 'walk and run', 'jump (hold to go higher)', 'fall and land'])
     expect(brick.program.scripts.filter((s) => s.hat.opcode === 'platformer_whenbump').map((s) => s.hat.fields.SIDE)).toEqual(['left', 'right'])
   })
 

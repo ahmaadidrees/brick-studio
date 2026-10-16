@@ -227,20 +227,25 @@ function brick(): GridBrickTemplate {
 }
 
 /**
- * ? block: variable "used" (0 until hit). Bumped from below by the Hero and not used yet: used = 1 first (so a second
- * bump in the same tick gives nothing), costume "used", one more coin on the Stage's global "coins", and a clone of
+ * ? block: the visible "times left" slider starts at 1. Each give-a-coin call uses one before counting, so two
+ * calls work when times left starts at 2. At zero the costume becomes "used". A coin is counted on the Stage and a clone of
  * myself that rises as a coin and goes away. The clone is the pop, so the engine and the builder draw no special effect.
  */
 function qblock(): GridBrickTemplate {
   const b = new Blocks('qblock')
-  const used = 'qblock_used'
+  const timesLeft = 'qblock_times_left'
   const give: MyBlock = { proccode: 'give a coin', argumentNames: [] }
   const rise: MyBlock = { proccode: 'rise and vanish', argumentNames: [] }
   solidOnStart(b, 'When the level starts: be solid', 'on')
   b.bump('When the Hero bumps me from below: give a coin', 'top', [b.call(give)], 'Hero')
   b.startAsClone('When I am a coin clone: rise and vanish', [b.call(rise)])
-  b.define(give, 'Only once: become a used block, count a coin, pop a coin clone', [
-    b.when(b.eq(b.v(used), 0), [b.set(used, 1), b.switchCostume('used'), b.change('coins', 1), b.cloneMyself()]),
+  b.define(give, 'Use one of the times left, count a coin, and pop a coin clone', [
+    b.when(b.gt(b.v(timesLeft), 0), [
+      b.change(timesLeft, -1),
+      b.when(b.eq(b.v(timesLeft), 0), [b.switchCostume('used')]),
+      b.change('coins', 1),
+      b.cloneMyself(),
+    ]),
   ])
   b.define(rise, 'Look like a coin, stop being solid, float up, then go away', [
     b.switchCostume('coin'),
@@ -248,13 +253,13 @@ function qblock(): GridBrickTemplate {
     b.repeat(6, [b.changeY(5)]),
     b.deleteThisClone(),
   ])
-  const variables: VariableDecl[] = [{ id: used, name: 'used', value: 0 }]
+  const variables: VariableDecl[] = [{ id: timesLeft, name: 'times left', value: 1, showInBuild: true }]
   return assemble({
     key: 'qblock', name: '? block', char: 'Q', category: 'blocks',
     hint: 'Hit it from below for a coin',
     costumes: [costumeOf('?', questionTile(0)), costumeOf('used', usedTile()), costumeOf('coin', coinArt())],
     variables,
-    workspace: b.workspace([{ id: used, name: 'used' }]),
+    workspace: b.workspace([{ id: timesLeft, name: 'times left' }]),
   })
 }
 

@@ -119,7 +119,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           title="Zoom in"
           aria-label="Zoom in"
         >
-          🔍+
+          +
         </button>
         <button
           type="button"
@@ -128,7 +128,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           title="Zoom out"
           aria-label="Zoom out"
         >
-          🔍−
+          −
         </button>
         <button
           type="button"
@@ -144,8 +144,8 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
       {/* Status Badges */}
       <div className="code-toolbar-group code-toolbar-status-group">
         {knobsCount > 0 && !isStage && (
-          <div className="code-knobs-pill" title={`${knobsCount} variable knob(s) appear on painted copies in Build mode`}>
-            <span>🎛️ {knobsCount} Build {knobsCount === 1 ? 'Knob' : 'Knobs'}</span>
+          <div className="code-knobs-pill" title={`${knobsCount} sliders appear in the brick card`}>
+            <span>🎛️ {knobsCount} {knobsCount === 1 ? 'slider' : 'sliders'}</span>
           </div>
         )}
 

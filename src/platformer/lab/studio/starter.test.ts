@@ -218,7 +218,7 @@ describe('Starter level (starter.ts)', () => {
       ])
       // its own feel scripts are all still there
       const names = hero.program.procedures.map((x) => x.proccode)
-      expect(names).toEqual(['read keys', 'feel the wall', 'walk', 'run meter', 'jump', 'fall', 'hit a wall'])
+      expect(names).toEqual(['read keys and walls', 'walk and run', 'read keys', 'feel the wall', 'walk', 'run meter', 'jump (hold to go higher)', 'fall and land', 'hit a wall'])
     })
 
     it('only the Hero and the Goal are one per level (limit 1)', () => {
@@ -243,14 +243,14 @@ describe('Starter level (starter.ts)', () => {
     })
   })
 
-  it('paints the Walker twice with different speed knob values', () => {
+  it('paints the Walker twice inheriting the same slider value', () => {
     const p = project()
     const walker = brickOf(p, 'brick_walker')
     expect(walker.program.variables.find((v) => v.id === 'brick_walker_speed')).toMatchObject({ name: 'speed', showInBuild: true })
     const copies = p.design.copies.filter((c) => c.brickId === 'brick_walker')
-    expect(copies.map((c) => c.knobs)).toEqual([{ brick_walker_speed: 4 }, { brick_walker_speed: 2 }])
+    expect(copies.map((c) => c.knobs)).toEqual([undefined, undefined])
     const speeds = instantiate(p.design).targets.filter((t) => t.brickId === 'brick_walker').map((t) => t.variables.brick_walker_speed)
-    expect(speeds.sort()).toEqual([2, 4])
+    expect(speeds.sort()).toEqual([3, 3])
   })
 
   it('lays the level out inside the bounds, with the Hero above the ground', () => {
@@ -321,8 +321,8 @@ describe('Starter level (starter.ts)', () => {
     }
     expect([minF, maxF, minS, maxS]).toEqual([119, 233, 519, 617])
     // 0 appears for the one tick between a bump and the turn-around script (STEP3.md step 7).
-    expect([...vF].sort((a, b) => a - b)).toEqual([-4, 0, 4])
-    expect([...vS].sort((a, b) => a - b)).toEqual([-2, 0, 2])
+    expect([...vF].sort((a, b) => a - b)).toEqual([-3, 0, 3])
+    expect([...vS].sort((a, b) => a - b)).toEqual([-3, 0, 3])
   })
 
   // ---- Play tests that go through the bricks' own code. They need the engine lane (cells become targets running the
@@ -540,7 +540,7 @@ describe('Starter level (starter.ts)', () => {
 
 describe('Brick templates (templates.ts)', () => {
   it('offers Walker, Coin, Spring, Goal, Block (snaps to grid) and Empty', () => {
-    expect(BRICK_TEMPLATES.map((t) => t.label)).toEqual(['Walker', 'Coin', 'Spring', 'Goal', 'Block (snaps to grid)', 'Empty'])
+    expect(BRICK_TEMPLATES.map((t) => t.label)).toEqual(['Walker', 'Coin', 'Spring', 'Goal', 'Solid brick', 'Empty'])
     expect(new Set(BRICK_TEMPLATES.map((t) => t.id)).size).toBe(6)
     for (const t of BRICK_TEMPLATES) expect(t.blurb.length).toBeGreaterThan(0)
   })
@@ -569,6 +569,7 @@ describe('Brick templates (templates.ts)', () => {
     const empty = BRICK_TEMPLATES[5]!.make('e', 'E').brick
     expect(walker.program.scripts).toHaveLength(3)
     expect(walker.program.variables.find((v) => v.id === 'w_speed')?.showInBuild).toBe(true)
-    expect(empty.program.scripts).toHaveLength(0)
+    expect(empty.program.scripts).toHaveLength(1)
+    expect(empty.program.scripts[0]!.hat.opcode).toBe('event_whenflagclicked')
   })
 })

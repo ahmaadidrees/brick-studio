@@ -386,7 +386,7 @@ export function createHeroWorkspace(): WorkspaceJson {
   ])
 
   // jump: late jump (coyote), early jump (buffer), takeoff speed by how fast we are going, wall jump.
-  const jump = define('jump', [
+  const jump = define('jump (hold to go higher)', [
     either(onGround(), [set('coyote', v('late_ticks'))], [when(gt(v('coyote'), 0), [change('coyote', -1)])]),
     when(gt(v('buffer'), 0), [
       either(
@@ -442,7 +442,7 @@ export function createHeroWorkspace(): WorkspaceJson {
 
   // fall: gravity, the Hero's own. Light while rising with space held, heavy otherwise. Always changes y speed, which
   // is also what keeps the forever loop to one trip per tick.
-  const fall = define('fall', [
+  const fall = define('fall and land', [
     either(
       and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), key('space')),
       [changeY(sub(0, v('hold')))],
@@ -468,6 +468,10 @@ export function createHeroWorkspace(): WorkspaceJson {
     ]),
   ])
 
+  // The first view has four readable calls; helpers keep the existing movement order and arithmetic.
+  const readControls = define('read keys and walls', [call('read keys'), call('feel the wall')])
+  const walkAndRun = define('walk and run', [call('walk'), call('run meter')])
+
   // hit a wall: the run meter drops by 2 (player.ts: bumping a wall while running).
   const hitWall = define('hit a wall', [when(and(onGround(), gt(v('meter'), 0)), [change('meter', -2), when(lt(v('meter'), 0), [set('meter', 0)])])])
 
@@ -479,7 +483,7 @@ export function createHeroWorkspace(): WorkspaceJson {
           blk('motion_setrotationstyle', { fields: { STYLE: 'left-right' } }),
           setX(0),
           setY(0),
-          blk('control_forever', { inputs: { SUBSTACK: sub1([call('read keys'), call('feel the wall'), call('walk'), call('run meter'), call('jump'), call('fall')]) } }),
+          blk('control_forever', { inputs: { SUBSTACK: sub1([call('read keys and walls'), call('walk and run'), call('jump (hold to go higher)'), call('fall and land')]) } }),
         ])!,
       },
     }),
@@ -509,6 +513,8 @@ export function createHeroWorkspace(): WorkspaceJson {
 
   const labels: Array<[Json, string]> = [
     [start, 'When the level starts: turn gravity off, then do these every tick'],
+    [readControls, 'Read the keys and feel nearby walls'],
+    [walkAndRun, 'Walk or run, then update the run meter'],
     [readKeys, 'Read the arrow keys, x and space'],
     [feelWall, 'Notice a wall beside me'],
     [walk, 'Speed up, slow down, skid'],
@@ -528,7 +534,7 @@ export function createHeroWorkspace(): WorkspaceJson {
   return {
     variables: heroVariables().map((d) => ({ id: d.id, name: d.name })),
     blocks: {
-      blocks: [start, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, onBounce] as never,
+      blocks: [start, readControls, walkAndRun, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, onBounce] as never,
     },
   }
 }

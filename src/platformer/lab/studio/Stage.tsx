@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CopyPlacement, Target } from '../core/contracts'
+import type { Target } from '../core/contracts'
 import { activeQuestion, type AskPrompt } from '../core/sensing'
 import { StudioStore, useStudio } from './store'
 import { FixedStepAccumulator } from './stage/accumulator'
@@ -46,13 +46,15 @@ const GRID = 8
 export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools }) {
   const mode = useStudio(store, (s) => s.mode)
   const runtime = useStudio(store, (s) => s.runtime)
+  const previewPaused = useStudio(store, (s) => s.previewPaused)
+  const sceneActive = !!runtime
   const design = useStudio(store, (s) => s.project.design)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const brushBrickId = useStudio(store, (s) => s.brushBrickId)
   const erasing = tools?.erasing ?? false
   const history = tools?.history
   const revision = useStudio(store, (s) => s.revision)
-  const selectedBrickId = useStudio(store, (s) => s.selectedBrickId)
+  const pressedKeys = useRef(new Set<string>())
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
@@ -140,25 +142,26 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     (world: { targets: Target[]; bounds: typeof design.bounds }): Camera => {
       if (playFree) return camera
       if (playCameraMode === 'whole') return fitCamera(world.bounds, viewport)
-      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === selectedBrickId)
+      const heroId = design.bricks.find((brick) => brick.name === 'Hero' || brick.id === 'brick_hero' || brick.remixOf === 'brick_hero')?.id
+      const first = world.targets.find((t) => !t.isStage && !t.isClone && t.brickId === heroId)
       const point = first ?? {
         x: (world.bounds.left + world.bounds.right) / 2,
         y: (world.bounds.bottom + world.bounds.top) / 2,
       }
       return followCamera(world.bounds, viewport, point)
     },
-    [playFree, camera, playCameraMode, viewport, selectedBrickId],
+    [playFree, camera, playCameraMode, viewport, design.bricks],
   )
 
   /** Camera used for pointer maths. */
-  const activeCamera = (): Camera => (mode === 'play' ? playCamRef.current : camera)
+  const activeCamera = (): Camera => (sceneActive ? playCamRef.current : camera)
 
   /** Move or zoom the view from whatever is on screen now. Marks the view as the kid's own. */
   const updateView = (fn: (c: Camera) => Camera) => {
     const base = activeCamera()
     viewDirty.current = true
     session.viewDirty = true
-    if (mode === 'play') setPlayFree(true)
+    if (sceneActive) setPlayFree(true)
     setCamera(clampCamera(fn(base), design.bounds))
   }
 
@@ -198,17 +201,17 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
 
   // Stop audio on mode change away from play
   useEffect(() => {
-    if (mode !== 'play') {
+    if (!sceneActive || previewPaused) {
       audioManager.stopAll()
       prevPosesRef.current.clear()
       setActiveAskPrompt(null)
     }
-  }, [mode, audioManager])
+  }, [sceneActive, previewPaused, audioManager])
 
-  // Play keys reach the game wherever focus is (the Play button, the code editor), not only when the stage is focused:
+  // In Play mode, keys also reach the game from the header. Docked code preview requires stage focus:
   // a kid presses Play and then the arrows. Text fields keep their keys; events inside the stage use its own handlers.
   useEffect(() => {
-    if (mode !== 'play' || !runtime) return
+    if (mode !== 'play' || !runtime || previewPaused) return
     wrapRef.current?.focus()
     const editable = (el: EventTarget | null) =>
       el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
@@ -216,12 +219,12 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     const onDown = (e: KeyboardEvent) => {
       if (inStage(e.target) || editable(e.target)) return
       const key = browserKeyToScratchKey(e)
-      if (key) runtime.pressKey(key)
+      if (key) { e.preventDefault(); pressedKeys.current.add(key); runtime.pressKey(key) }
     }
     const onUp = (e: KeyboardEvent) => {
       if (inStage(e.target)) return
       const key = browserKeyToScratchKey(e)
-      if (key) runtime.releaseKey(key)
+      if (key) { pressedKeys.current.delete(key); runtime.releaseKey(key) }
     }
     window.addEventListener('keydown', onDown)
     window.addEventListener('keyup', onUp)
@@ -229,17 +232,17 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       window.removeEventListener('keydown', onDown)
       window.removeEventListener('keyup', onUp)
     }
-  }, [mode, runtime])
+  }, [mode, runtime, previewPaused])
 
   // Play loop
   useEffect(() => {
-    if (mode !== 'play' || !runtime) return
+    if (!sceneActive || !runtime) return
 
     let animId: number
     accumulator.reset()
 
     const loop = (now: number) => {
-      const { ticks, alpha } = accumulator.advance(now)
+      const { ticks, alpha } = previewPaused ? { ticks: 0, alpha: 1 } : accumulator.advance(now)
 
       // Step runtime
       for (let t = 0; t < ticks; t++) {
@@ -291,7 +294,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
 
     animId = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(animId)
-  }, [mode, runtime, computePlayCamera, viewport, accumulator, audioManager])
+  }, [sceneActive, previewPaused, runtime, computePlayCamera, viewport, accumulator, audioManager])
 
   // The brush preview is the armed brick (not while a grid brick or the eraser is armed: those preview on the cell).
   const previewBrickId = brushTile || erasing ? null : brushBrickId
@@ -303,7 +306,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
 
   // Render in Build mode whenever design, camera, viewport, selection or brush changes; and when a costume finishes loading.
   useEffect(() => {
-    if (mode !== 'build') return
+    if (mode !== 'build' || sceneActive) return
     const draw = () => {
       const ctx = canvasRef.current?.getContext('2d')
       if (!ctx) return
@@ -322,7 +325,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     draw()
     return globalImageCache.onImageLoaded(draw)
     // hoverInfo is derived from tileHover, the brush brick and erasing; revision covers design changes.
-  }, [mode, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
+  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
 
   // Helper to get canvas-relative coordinates
   const getCanvasCoords = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
@@ -384,7 +387,13 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       return
     }
 
-    if (mode === 'play' && runtime) {
+    if (sceneActive && runtime) {
+      if (mode === 'build') {
+        const target = pickTarget(runtime.world, wx, wy)
+        if (!target.isStage && target.copyId) store.selectCopy(target.copyId)
+        else store.closeCard()
+        return
+      }
       // Play mode: update mouse and click target
       runtime.world.mouse.x = wx
       runtime.world.mouse.y = wy
@@ -465,7 +474,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       return
     }
 
-    if (mode === 'play' && runtime) {
+    if (sceneActive && runtime) {
       runtime.world.mouse.x = wx
       runtime.world.mouse.y = wy
       return
@@ -500,13 +509,13 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
 
   const handlePointerUp = () => {
     const drag = dragRef.current
-    if (drag.mode === 'panPending' && mode === 'play' && runtime) {
+    if (drag.mode === 'panPending' && sceneActive && runtime) {
       runtime.clickTarget(runtime.world.stage)
     }
     finishStroke()
     drag.mode = 'none'
     drag.changes = []
-    if (mode === 'play' && runtime) {
+    if (sceneActive && runtime) {
       runtime.world.mouse.down = false
     }
   }
@@ -518,7 +527,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     setBrushPreviewPos(null)
     setHoverCopyId(null)
     setTileHover(null)
-    if (mode === 'play' && runtime) {
+    if (sceneActive && runtime) {
       runtime.world.mouse.down = false
     }
   }
@@ -543,9 +552,11 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       return
     }
 
-    if (mode === 'play' && runtime) {
+    if (sceneActive && runtime) {
       const scratchKey = browserKeyToScratchKey(e)
-      if (scratchKey) {
+      if (scratchKey && !previewPaused) {
+        e.preventDefault()
+        pressedKeys.current.add(scratchKey)
         runtime.pressKey(scratchKey)
       }
       return
@@ -593,22 +604,24 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
   }
 
   const handleKeyUp = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (mode === 'play' && runtime) {
+    if (sceneActive && runtime) {
       const scratchKey = browserKeyToScratchKey(e)
       if (scratchKey) {
+        pressedKeys.current.delete(scratchKey)
         runtime.releaseKey(scratchKey)
       }
     }
   }
 
-  // Green flag (Play)
-  const handleGreenFlag = () => {
-    if (mode === 'play' && runtime) {
-      runtime.greenFlag()
-    } else {
-      store.play()
-    }
+  // Clear held input when focus leaves the level; editor typing must never steer the Hero.
+  const releaseKeys = () => {
+    if (runtime) for (const key of pressedKeys.current) runtime.releaseKey(key)
+    pressedKeys.current.clear()
   }
+  useEffect(() => {
+    window.addEventListener('blur', releaseKeys)
+    return () => { window.removeEventListener('blur', releaseKeys); releaseKeys() }
+  }, [runtime, previewPaused])
 
   // Zoom around the view center, so what the kid is looking at stays put.
   const handleZoomIn = () => updateView((c) => zoomCameraAt(c, viewport, 1.25))
@@ -619,7 +632,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
     viewDirty.current = false
     session.viewDirty = false
     setCamera(fitCamera(design.bounds, viewport))
-    if (mode === 'play') {
+    if (sceneActive) {
       setPlayChoice('whole')
       setPlayFree(false)
     }
@@ -637,11 +650,14 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
       tabIndex={0}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
+      onBlur={releaseKeys}
       aria-label="Level Stage"
     >
       <StageControls
-        mode={mode}
-        onGreenFlag={handleGreenFlag}
+        mode={sceneActive ? 'play' : mode}
+        paused={previewPaused}
+        onTogglePlay={() => previewPaused ? store.startPreview() : store.pausePreview()}
+        onRestart={() => store.restartPreview()}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onResetView={handleResetView}
@@ -663,7 +679,7 @@ export function Stage({ store, tools }: { store: StudioStore; tools?: BuildTools
           onContextMenu={(e) => e.preventDefault()}
         />
 
-        {mode === 'play' && runtime && activeAskPrompt && (
+        {sceneActive && runtime && activeAskPrompt && (
           <AskDialog runtime={runtime} prompt={activeAskPrompt} />
         )}
       </div>

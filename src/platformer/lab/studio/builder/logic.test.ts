@@ -25,7 +25,7 @@ describe('drawer catalog', () => {
     expect(entries.find((e) => e.id === 'grid:qblock')?.brick?.id).toBe('q1')
     expect(entries.filter((e) => e.name === '? block')).toHaveLength(1)
     expect(entries.find((e) => e.id === 'brick:m1')).toMatchObject({ name: 'Mud', category: 'mine' })
-    expect(entries.find((e) => e.id === 'brick:w1')).toMatchObject({ category: 'critters' })
+    expect(entries.find((e) => e.id === 'brick:w1')).toMatchObject({ category: 'mine' })
     expect(standardKeyOf(q)).toBe('qblock')
     expect(standardKeyOf(mine)).toBeUndefined()
   })

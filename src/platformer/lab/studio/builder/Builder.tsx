@@ -1,10 +1,13 @@
 import { Hammer, MoreHorizontal, Play } from 'lucide-react'
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { AppHeader, useCompactLayout } from '../../../../shell'
 import { Button, Menu } from '../../../../ui'
 import { ProjectMenu } from '../persist/ProjectMenu'
 import { StorageNoticeBar } from '../persist/StorageNoticeBar'
 import { Stage } from '../Stage'
+import { CodeEditor } from '../CodeEditor'
+import { SeeInsideCard } from './SeeInsideCard'
+import { DockPanel } from './DockPanel'
 import { useStudio, type StudioStore } from '../store'
 import { BuildPanels } from './BuildPanels'
 import { PlayFeedback } from './PlayFeedback'
@@ -19,11 +22,16 @@ const NO_WORLD_SETUP = () => undefined
 
 /**
  * The Brickgineers 2D builder around the Code Lab stage (docs/qa/code-lab-core/STEP6.md): the app header, the Bricks
- * drawer, undo and redo, and the Placing strip, using the real 2D builder's own components and classes. Code is not on
- * this screen: a placed brick's "See inside" and "+ New brick" open the Brick Workshop.
+ * drawer, undo and redo, and the Placing strip. A brick's Sliders, See inside and Look share one right-hand dock.
  */
 export function Builder({ store, templates }: { store: StudioStore; templates?: readonly BrickTemplate[] }) {
   const mode = useStudio(store, (s) => s.mode)
+  const remixNotice = useStudio(store, (s) => s.remixNotice)
+  const cardTab = useStudio(store, (s) => s.cardTab)
+  const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
+  const [dockWidth, setDockWidth] = useState(readDockWidth)
+  const dockOpen = mode === 'build' && (selectedCopyId !== null || cardTab === 'code')
+  const codeOpen = dockOpen && cardTab === 'code'
   const name = useStudio(store, (s) => s.project.design.name)
   const compact = useCompactLayout()
   const session = builderSession(store)
@@ -46,6 +54,11 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
     setDrawerOpenState(open)
   }
   const build = mode === 'build'
+  useEffect(() => {
+    if (!remixNotice) return
+    const timer = setTimeout(() => store.dismissRemixNotice(), 7000)
+    return () => clearTimeout(timer)
+  }, [remixNotice, store])
 
   // Play needs a Hero. Without one, say so kindly and stay in Build instead of starting a level where nothing moves.
   const [playNote, setPlayNote] = useState<string | null>(null)
@@ -66,6 +79,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
     if (!build) return
     const onKey = (e: KeyboardEvent) => {
       const el = e.target
+      if (el instanceof Element && el.closest('.builder-dock, .blocklyWidgetDiv, .blocklyDropDownDiv')) return
       if (el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return
       const mod = e.metaKey || e.ctrlKey
@@ -85,7 +99,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
   }, [build, history])
 
   return (
-    <div className={`p2d-game p2d-studio builder ${build ? 'p2d-building' : 'p2d-playing'}${compact ? ' p2d-compact' : ''}${build && !compact && drawerOpen ? ' builder-drawer-open' : ''}`}>
+    <div className={`p2d-game p2d-studio builder ${build ? 'p2d-building' : 'p2d-playing'}${compact ? ' p2d-compact' : ''}${build && !compact && drawerOpen && !codeOpen ? ' builder-drawer-open' : ''}`}>
       <div className="p2d-header builder-header">
         <AppHeader
           variant="editor"
@@ -124,11 +138,15 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
 
       <StorageNoticeBar />
 
-      <div className="p2d-body">
+      <div className={`p2d-body${dockOpen ? ' builder-has-dock' : ''}${codeOpen ? ' builder-code-open' : ''}`} style={{ '--builder-dock-width': `${dockWidth}px` } as CSSProperties}>
         <div className="builder-stage">
           <Stage store={stageStore} tools={{ history, erasing }} />
         </div>
+        {dockOpen && <DockPanel width={dockWidth} onWidth={setDockWidth}>
+          <SeeInsideCard store={store} history={history}>{codeOpen ? <CodeEditor store={store} docked /> : null}</SeeInsideCard>
+        </DockPanel>}
         {!build && <PlayFeedback store={store} />}
+        {remixNotice && <div className="p2d-toast" role="status">{remixNotice}<button type="button" className="builder-btn" aria-label="Dismiss remix notice" onClick={() => store.dismissRemixNotice()}>✕</button></div>}
         {build && playNote && (
           <div className="p2d-toast" role="status">
             {playNote}
@@ -140,7 +158,7 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
             history={history}
             erasing={erasing}
             onErasing={setErasing}
-            compact={compact}
+            compact={compact || codeOpen}
             drawerOpen={drawerOpen}
             onDrawerOpen={setDrawerOpen}
             templates={templates}
@@ -149,4 +167,11 @@ export function Builder({ store, templates }: { store: StudioStore; templates?: 
       </div>
     </div>
   )
+}
+
+function readDockWidth(): number {
+  try {
+    const saved = Number(localStorage.getItem('brick-code-panel-width'))
+    return Number.isFinite(saved) && saved >= 380 ? saved : 440
+  } catch { return 440 }
 }

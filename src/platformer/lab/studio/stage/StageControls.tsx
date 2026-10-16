@@ -3,7 +3,9 @@ import type { PlayCameraMode } from './camera'
 
 export interface StageControlsProps {
   mode: StudioMode
-  onGreenFlag: () => void
+  paused?: boolean
+  onTogglePlay?: () => void
+  onRestart?: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onResetView: () => void
@@ -13,18 +15,16 @@ export interface StageControlsProps {
 }
 
 /**
- * The stage's small floating view tools (top right of the level): zoom and fit, and in Play the green flag and the
- * camera choice. Build or Play, and everything about placing, lives in the builder's own chrome, not here.
+ * The stage's small floating view tools: playback, zoom, fit and camera choice. Build or Play, and everything about placing, lives in the builder's own chrome, not here.
  */
-export function StageControls({ mode, onGreenFlag, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice }: StageControlsProps) {
+export function StageControls({ mode, paused = false, onTogglePlay, onRestart, onZoomIn, onZoomOut, onResetView, playCamera = null, onPlayCameraChoice }: StageControlsProps) {
   const isPlay = mode === 'play'
   return (
     <div className="stage-view-tools" role="toolbar" aria-label="Stage view">
-      {isPlay && (
-        <button type="button" className="stage-view-btn stage-view-flag" aria-label="Green flag (start scripts)" title="Green flag" onClick={onGreenFlag}>
-          <span aria-hidden="true">⚑</span>
-        </button>
-      )}
+      {isPlay && <div className="stage-view-group" role="group" aria-label="Level playback">
+        <button type="button" className="stage-view-btn" onClick={onTogglePlay} aria-label={paused ? 'Play level' : 'Pause level'}>{paused ? '▶ Play' : 'Ⅱ Pause'}</button>
+        <button type="button" className="stage-view-btn" onClick={onRestart} aria-label="Restart level">↻ Restart</button>
+      </div>}
       {isPlay && onPlayCameraChoice && (
         <div className="stage-view-group" role="group" aria-label="Camera follows">
           <button
@@ -40,12 +40,12 @@ export function StageControls({ mode, onGreenFlag, onZoomIn, onZoomOut, onResetV
           <button
             type="button"
             className={`stage-view-btn${playCamera === 'follow' ? ' active' : ''}`}
-            aria-label="Camera follows the selected brick"
+            aria-label="Follow the Hero"
             aria-pressed={playCamera === 'follow'}
-            title="Camera follows the selected brick"
+            title="Follow the Hero"
             onClick={() => onPlayCameraChoice('follow')}
           >
-            Follow brick
+            Follow the Hero
           </button>
         </div>
       )}

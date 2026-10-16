@@ -9,12 +9,12 @@ import { knobList, sliderRange } from './knobs'
 afterEach(cleanup)
 
 describe('Knobs card', () => {
-  it('Hero: four sliders, then a collapsed "More tuning (N)" with the rest grouped Walking / Running / Jumping / Falling / Walls', () => {
+  it('Hero: four sliders, then a collapsed "More sliders for the Hero (N)" with the rest grouped Walking / Running / Jumping / Falling / Walls', () => {
     const store = new StudioStore(createStarterProject())
     render(<KnobsCard store={store} brickId={HERO_BRICK_ID} />)
-    const card = screen.getByRole('region', { name: 'Knobs' })
+    const card = screen.getByRole('region', { name: 'Sliders' })
     expect(within(card).getAllByRole('slider').map((s) => s.getAttribute('aria-label'))).toEqual(['walk top speed', 'run top speed', 'jump standing', 'fall gravity'])
-    const toggle = within(card).getByRole('button', { name: `More tuning (${HERO_MORE_TUNING_COUNT})` })
+    const toggle = within(card).getByRole('button', { name: `More sliders for the Hero (${HERO_MORE_TUNING_COUNT})` })
     expect(HERO_MORE_TUNING_COUNT).toBe(HERO_KNOBS.length - 4)
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(within(card).queryByRole('heading', { name: 'Walking' })).toBeNull()
@@ -25,24 +25,25 @@ describe('Knobs card', () => {
     expect(within(within(card).getByRole('region', { name: 'Walls' })).getAllByRole('slider')).toHaveLength(HERO_KNOB_GROUPS.find((g) => g.id === 'walls')!.knobIds.length)
   })
 
-  it('a "More tuning" slider changes the Hero variable but does not turn it into a Build knob', () => {
+  it('a "More sliders for the Hero" slider changes the Hero variable but does not turn it into a Build knob', () => {
     const store = new StudioStore(createStarterProject())
     render(<KnobsCard store={store} brickId={HERO_BRICK_ID} />)
-    fireEvent.click(screen.getByRole('button', { name: /More tuning/ }))
+    fireEvent.click(screen.getByRole('button', { name: /More sliders for the Hero/ }))
     fireEvent.change(screen.getByRole('slider', { name: 'wall slide speed' }), { target: { value: '3' } })
     const v = store.getState().project.design.bricks.find((b) => b.id === HERO_BRICK_ID)!.program.variables.find((x) => x.id === 'wall_slide')!
-    expect([v.value, v.showInBuild]).toEqual([3, false])
+    expect(v.value).toBe(3)
+    expect(!!v.showInBuild).toBe(false)
     // the four Build knobs stay Build knobs
     fireEvent.change(screen.getByRole('slider', { name: 'walk top speed' }), { target: { value: '2' } })
     const w = store.getState().project.design.bricks.find((b) => b.id === HERO_BRICK_ID)!.program.variables.find((x) => x.id === 'walk_top')!
     expect([w.value, w.showInBuild]).toEqual([2, true])
   })
 
-  it('another brick lists its Build knobs and has no "More tuning"', () => {
+  it('another brick lists its Build knobs and has no "More sliders for the Hero"', () => {
     const store = new StudioStore(createStarterProject())
     render(<KnobsCard store={store} brickId="brick_walker" />)
     expect(screen.getAllByRole('slider').map((s) => s.getAttribute('aria-label'))).toEqual(['speed'])
-    expect(screen.queryByRole('button', { name: /More tuning/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /More sliders for the Hero/ })).toBeNull()
   })
 
   it('a Hero slider range comes from the built-in value, so it does not stretch as you drag', () => {

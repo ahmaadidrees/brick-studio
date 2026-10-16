@@ -171,9 +171,9 @@ describe('fit and follow camera', () => {
     expect(fitZoom(level, vp)).toBeCloseTo(1366 / 960, 6)
   })
 
-  it('readable threshold: whole level at 570 px wide (0.59 px/step) is readable, 300 px is not', () => {
+  it('Follow the Hero is the default even when the whole level is readable', () => {
     expect(wholeLevelReadable(level, { width: 570, height: 723 })).toBe(true)
-    expect(defaultPlayCameraMode(level, { width: 570, height: 723 })).toBe('whole')
+    expect(defaultPlayCameraMode(level, { width: 570, height: 723 })).toBe('follow')
     expect(wholeLevelReadable(level, { width: 300, height: 400 })).toBe(false)
     expect(defaultPlayCameraMode(level, { width: 300, height: 400 })).toBe('follow')
   })

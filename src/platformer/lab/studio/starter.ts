@@ -5,7 +5,7 @@
  * - Grid cells (createStarterTiles): the ground, a few floating Brick and ? block platforms, a one-way platform, a Bounce block, hard-block walls for the Walkers, a gap and a Spikes pit.
  *   They are painted on the level's grid, one char per cell, and each char is one of the standard grid bricks (gridBricks.ts) with its own code.
  * - Hero: the open-block Hero (studio/hero), with labels and handlers for boing, hero hurt, stomped and bounce. Spikes, lava and ? blocks are bricks that run their own code.
- * - Walker (two copies, different "speed" knobs), Coin, Spring and Goal: each is a few short labelled scripts
+ * - Walker (two copies sharing a speed slider), Coin, Spring and Goal: each is a few short labelled scripts
  *   made of My Blocks (real procedures_definition / procedures_call), so the top view reads like a sentence and a kid
  *   can drill into any My Block to see how it works.
  * - Stage: counts the coins. It has no backdrop costume, so the stage draws the Brickgineers day sky.
@@ -321,9 +321,10 @@ export function createGoalBrick(id: string, name: string): MadeBrick {
   return { ...made, brick: { ...made.brick, limit: 1 } }
 }
 
-/** Empty: a costume and no scripts. */
+/** Empty: one flag hat gives a visible starting point for a new program. */
 export function createEmptyBrick(id: string, name: string): MadeBrick {
-  return compiled(id, name, [costume('Blob', WALKER_ROWS)], { blocks: { blocks: [] } })
+  const hat = { type: 'event_whenflagclicked', id: `${id}_flag`, x: 20, y: 20, data: 'label:Drag blocks under this hat.' }
+  return compiled(id, name, [costume('Blob', WALKER_ROWS)], { blocks: { blocks: [hat] } })
 }
 
 /** Stage: adds one to "coins" every time a Coin says it was collected. */
@@ -487,9 +488,9 @@ export const STARTER_COINS: ReadonlyArray<{ x: number; y: number }> = [
   { x: 736, y: 72 }, // above the spike pit
 ]
 /** Walkers: both stand on the ground (center y 24) between hard blocks. */
-export const STARTER_WALKERS: ReadonlyArray<{ id: string; x: number; speed: number }> = [
-  { id: 'copy_walker_fast', x: 170, speed: 4 }, // between the hard blocks at columns 6 and 15
-  { id: 'copy_walker_slow', x: 560, speed: 2 }, // between the hard blocks at columns 31 and 39
+export const STARTER_WALKERS: ReadonlyArray<{ id: string; x: number }> = [
+  { id: 'copy_walker_fast', x: 170 }, // between the hard blocks at columns 6 and 15
+  { id: 'copy_walker_slow', x: 560 }, // between the hard blocks at columns 31 and 39
 ]
 export const STARTER_SPRING = { x: 776, y: GROUND_TOP + 6 } // 16 x 12, standing on the ground
 export const STARTER_GOAL = { x: 920, y: GROUND_TOP + 16 } // 16 x 32 flag, standing on the ground
@@ -532,8 +533,8 @@ export function createStarterProject(): StudioProject {
     copies: [
       // Starts above the ground so you can watch it fall and land on the ground tiles.
       { id: 'copy_hero', brickId: hero.brick.id, x: HERO_START.x, y: 40 },
-      // One Walker brick painted twice with different knob values.
-      ...STARTER_WALKERS.map((w) => ({ id: w.id, brickId: 'brick_walker', x: w.x, y: GROUND_TOP + 8, knobs: { brick_walker_speed: w.speed } })),
+      // Both Walkers inherit the brick speed; Just this one can give either an own value.
+      ...STARTER_WALKERS.map((w) => ({ id: w.id, brickId: 'brick_walker', x: w.x, y: GROUND_TOP + 8 })),
       ...STARTER_COINS.map((p, i) => ({ id: `copy_coin_${i + 1}`, brickId: 'brick_coin', x: p.x, y: p.y })),
       { id: 'copy_spring', brickId: 'brick_spring', x: STARTER_SPRING.x, y: STARTER_SPRING.y },
       { id: 'copy_goal', brickId: 'brick_goal', x: STARTER_GOAL.x, y: STARTER_GOAL.y },
