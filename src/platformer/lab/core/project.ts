@@ -305,6 +305,7 @@ function checkBounds(bounds: StageBounds, push: Push) {
 
 function checkBrick(brick: BrickDef, path: string, push: Push, isStage: boolean, dataIds: Set<string>) {
   checkId(brick.id, `${path}.id`, push)
+  if (brick.remixOf !== undefined) checkId(brick.remixOf, `${path}.remixOf`, push)
   checkName(brick.name, `${path}.name`, push)
   if (!Array.isArray(brick.costumes)) push('bad-value', `${path}.costumes`, 'Costumes must be an array.')
   else {

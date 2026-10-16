@@ -5,8 +5,10 @@
  */
 import { useSyncExternalStore } from 'react'
 import type { BrickDef, Costume, CopyPlacement, LevelDesign, Sound, Value } from '../core/contracts'
-import { compileWorkspace, type Diagnostic } from '../core/editor/compile'
+import { type Diagnostic } from '../core/editor/compile'
 import { play, type Runtime } from '../core/index'
+import { parseGridCopyId } from '../core/contracts'
+import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
 
 export const STAGE_ID = 'stage'
 
@@ -17,6 +19,8 @@ export interface StudioProject {
 }
 
 export type StudioMode = 'build' | 'play'
+export type CardTab = 'sliders' | 'code' | 'look'
+export type SliderScope = 'all' | 'one'
 export type EditorTab = 'code' | 'costumes' | 'sounds'
 
 export interface StudioState {
@@ -31,6 +35,11 @@ export interface StudioState {
   brushTile: string | null
   mode: StudioMode
   editorTab: EditorTab
+  cardTab: CardTab
+  sliderScope: SliderScope
+  previewPaused: boolean
+  remixNotice: string | null
+  editorResetRevision: number
   diagnostics: Record<string, Diagnostic[]>
   /** Live while playing; null in Build. Every Play starts from the saved design (decision 1). */
   runtime: Runtime | null
@@ -46,6 +55,7 @@ export class StudioStore {
   private state: StudioState
   private listeners = new Set<Listener>()
   private loadListeners = new Set<Listener>()
+  private beforeRunListeners = new Set<Listener>()
 
   constructor(project: StudioProject) {
     const first = project.design.bricks[0]?.id ?? STAGE_ID
@@ -53,10 +63,15 @@ export class StudioStore {
       project,
       selectedBrickId: first,
       selectedCopyId: null,
-      brushBrickId: project.design.bricks[0]?.id ?? null,
+      brushBrickId: initialBrush(project),
       brushTile: null,
       mode: 'build',
       editorTab: 'code',
+      cardTab: 'sliders',
+      sliderScope: 'all',
+      previewPaused: false,
+      remixNotice: null,
+      editorResetRevision: 0,
       diagnostics: {},
       runtime: null,
       revision: 0,
@@ -87,15 +102,24 @@ export class StudioStore {
   }
 
   selectCopy(copyId: string | null) {
-    this.set({ selectedCopyId: copyId })
+    if (copyId === null) return this.closeCard()
+    const design = this.state.project.design
+    const cell = parseGridCopyId(copyId)
+    const brickId = cell
+      ? design.bricks.find((b) => b.grid?.char === design.tiles?.data[cell.row]?.[cell.col])?.id
+      : design.copies.find((c) => c.id === copyId)?.brickId
+    this.set({ selectedCopyId: copyId, ...(brickId ? { selectedBrickId: brickId } : {}),
+      ...(copyId !== this.state.selectedCopyId ? { cardTab: 'sliders' as const, sliderScope: 'all' as const } : {}) })
   }
 
   setBrush(brickId: string | null) {
+    this.closeCard()
     this.set({ brushBrickId: brickId, brushTile: null })
   }
 
   /** Step 6: paint tiles instead of bricks. */
   setTileBrush(ch: string | null) {
+    this.closeCard()
     this.set({ brushTile: ch, brushBrickId: ch ? null : this.state.brushBrickId })
   }
 
@@ -105,20 +129,88 @@ export class StudioStore {
 
   /** Play: a fresh runtime from the saved design, green flag fired. The Stage lane steps it. */
   play() {
-    this.set({ mode: 'play', runtime: play(this.state.project.design), selectedCopyId: null })
+    for (const listener of [...this.beforeRunListeners]) listener()
+    this.state.runtime?.stopAll()
+    this.set({ mode: 'play', runtime: play(this.state.project.design), previewPaused: false })
   }
 
   /** Back to Build. Nothing from the run is kept. */
   stop() {
     this.state.runtime?.stopAll()
-    this.set({ mode: 'build', runtime: null })
+    this.set({ mode: 'build', runtime: null, previewPaused: false })
+  }
+
+  setCardTab(cardTab: CardTab) {
+    if (cardTab === 'code') return this.openCode(this.state.selectedBrickId)
+    this.set({ cardTab })
+  }
+
+  setSliderScope(sliderScope: SliderScope) { this.set({ sliderScope }) }
+
+  closeCard() {
+    if (this.state.mode === 'build') this.state.runtime?.stopAll()
+    this.set({ selectedCopyId: null, cardTab: 'sliders', sliderScope: 'all',
+      ...(this.state.mode === 'build' ? { runtime: null, previewPaused: false } : {}) })
+  }
+
+  openCode(brickId: string) {
+    this.set({ selectedBrickId: brickId, cardTab: 'code',
+      ...(!this.state.runtime ? { runtime: play(this.state.project.design), previewPaused: false } : {}) })
+  }
+
+  closeCode() { this.set({ cardTab: 'sliders' }) }
+
+  startPreview() {
+    this.set({ previewPaused: false, ...(!this.state.runtime ? { runtime: play(this.state.project.design) } : {}) })
+  }
+
+  pausePreview() {
+    const runtime = this.state.runtime
+    if (runtime) {
+      for (const key of [...runtime.world.keysDown]) runtime.releaseKey(key)
+      runtime.world.mouse.down = false
+    }
+    this.set({ previewPaused: true })
+  }
+
+  restartPreview() {
+    for (const listener of [...this.beforeRunListeners]) listener()
+    this.state.runtime?.stopAll()
+    this.set({ runtime: play(this.state.project.design), previewPaused: false })
+  }
+
+  dismissRemixNotice() { this.set({ remixNotice: null }) }
+
+  /** Commit the open editor before a run, including edits still inside its debounce window. */
+  onBeforeRun = (listener: Listener): (() => void) => {
+    this.beforeRunListeners.add(listener)
+    return () => { this.beforeRunListeners.delete(listener) }
+  }
+
+  canResetBrick(brickId: string) { return canResetBrick(this.state.project, brickId) }
+
+  resetBrickOriginal(brickId: string) {
+    this.set({ project: restoreBrickOriginal(this.state.project, brickId), remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1 })
+  }
+
+  /** A brick default changes every copy without its own starting value; the live preview follows immediately. */
+  setBrickSlider(brickId: string, variableId: string, value: Value) {
+    if (!this.brick(brickId)?.program.variables.some((v) => v.id === variableId)) return
+    this.updateBrick(brickId, (b) => ({ ...b, program: { ...b.program,
+      variables: b.program.variables.map((v) => v.id === variableId ? { ...v, value } : v) } }))
+    const design = this.state.project.design
+    for (const target of this.state.runtime?.world.targets ?? []) {
+      if (target.brickId !== brickId) continue
+      const own = design.copies.find((c) => c.id === target.copyId)?.knobs
+      if (!own || !Object.hasOwn(own, variableId)) target.variables[variableId] = value
+    }
   }
 
   // ------------------------------------------------------------ Brick Workshop (step 6)
 
   /** Open the full-screen workshop on a brick ("See inside" or "+ New brick"). Leaves Play first. */
   openWorkshop(brickId: string) {
-    if (this.state.mode === 'play') this.stop()
+    if (this.state.runtime) this.stop()
     this.set({ workshopBrickId: brickId, selectedBrickId: brickId })
   }
 
@@ -199,10 +291,10 @@ export class StudioStore {
   setWorkspace(brickId: string, workspace: unknown) {
     const brick = this.brick(brickId)
     if (!brick) return
-    const { program, diagnostics } = compileWorkspace(workspace, { variables: brick.program.variables, lists: brick.program.lists })
-    const workspaces = { ...this.state.project.workspaces, [brickId]: workspace }
-    this.updateBrick(brickId, (b) => ({ ...b, program }), workspaces)
-    this.set({ diagnostics: { ...this.state.diagnostics, [brickId]: diagnostics } })
+    const result = compileBrickEdit(this.state.project, brickId, workspace)
+    this.set({ project: result.project,
+      diagnostics: { ...this.state.diagnostics, [brickId]: result.diagnostics },
+      ...(result.remixed ? { remixNotice: `You changed a block, so this is now ${result.remixed}. The original ${brick.name} is untouched.` } : {}) })
   }
 
   /** Mark a local variable as a Build knob (or not), with its default value. */
@@ -214,6 +306,15 @@ export class StudioStore {
         variables: b.program.variables.map((v) => (v.id === variableId ? { ...v, showInBuild, value: value ?? v.value } : v)),
       },
     }))
+    if (!showInBuild) {
+      const design = this.state.project.design
+      this.setDesign({ ...design, copies: design.copies.map((copy) => {
+        if (copy.brickId !== brickId || !copy.knobs || !Object.hasOwn(copy.knobs, variableId)) return copy
+        const knobs = { ...copy.knobs }
+        delete knobs[variableId]
+        return { ...copy, knobs }
+      }) })
+    }
   }
 
   private updateBrick(brickId: string, fn: (b: BrickDef) => BrickDef, workspaces?: Record<string, unknown>) {
@@ -238,6 +339,8 @@ export class StudioStore {
 
   setKnob(copyId: string, variableId: string, value: Value | undefined) {
     const d = this.state.project.design
+    const copy = d.copies.find((c) => c.id === copyId)
+    if (!copy) return
     this.setDesign({
       ...d,
       copies: d.copies.map((c) => {
@@ -248,6 +351,10 @@ export class StudioStore {
         return { ...c, knobs }
       }),
     })
+    const effective = value ?? this.brick(copy.brickId)?.program.variables.find((v) => v.id === variableId)?.value
+    if (effective !== undefined) for (const target of this.state.runtime?.world.targets ?? []) {
+      if (target.copyId === copyId) target.variables[variableId] = effective
+    }
   }
 
   deleteCopy(copyId: string) {
@@ -265,9 +372,13 @@ export class StudioStore {
   /** Replace the whole project (load). Returns to Build. */
   load(project: StudioProject) {
     this.state.runtime?.stopAll()
-    this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, diagnostics: {} })
+    this.set({ project, mode: 'build', runtime: null, selectedCopyId: null, selectedBrickId: project.design.bricks[0]?.id ?? STAGE_ID, brushBrickId: initialBrush(project), brushTile: null, workshopBrickId: null, cardTab: 'sliders', sliderScope: 'all', previewPaused: false, remixNotice: null, editorResetRevision: this.state.editorResetRevision + 1, diagnostics: {} })
     for (const l of [...this.loadListeners]) l()
   }
+}
+
+function initialBrush(project: StudioProject): string | null {
+  return project.design.bricks.find((b) => b.grid?.char === 'G')?.id ?? project.design.bricks.find((b) => b.limit !== 1 && !b.isStage)?.id ?? null
 }
 
 function uniqueId(prefix: string, taken: Set<string>): string {

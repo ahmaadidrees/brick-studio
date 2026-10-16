@@ -20,7 +20,8 @@ const isNamed = (name: string, wanted: string) => name.trim().toLowerCase() === 
 
 /** Does the level have a copy of the brick called `name` (the Hero, the Goal)? */
 export function hasCopyOf(design: LevelDesign, name: string): boolean {
-  const ids = new Set(design.bricks.filter((b) => isNamed(b.name, name.toLowerCase())).map((b) => b.id))
+  const canonicalId = `brick_${name.toLowerCase()}`
+  const ids = new Set(design.bricks.filter((b) => b.id === canonicalId || b.remixOf === canonicalId || isNamed(b.name, name.toLowerCase())).map((b) => b.id))
   return design.copies.some((c) => ids.has(c.brickId))
 }
 

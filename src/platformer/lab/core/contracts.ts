@@ -131,6 +131,8 @@ export interface Sound {
 }
 
 export interface BrickDef {
+  /** Catalog definition this level's edited brick came from. Missing on older saves and original bricks. */
+  remixOf?: string
   /** Step 6b: how many copies a level may hold (1 for the Hero and the Goal). Missing means no limit. */
   limit?: number
   /** Step 7: a grid brick (Ground, ? block, Spikes...). Its copies are painted cells of LevelDesign.tiles. See GridSpec. */
