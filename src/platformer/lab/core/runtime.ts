@@ -57,6 +57,9 @@ export interface RuntimeLifecycle {
 
 export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
 
+/** Blockly ids executed in one tick, grouped by runtime target (painted copy or clone). */
+export type ExecutedBlocks = ReadonlyMap<string, ReadonlySet<string>>
+
 export class Thread implements ThreadHandle {
   readonly id: number
   readonly target: Target
@@ -96,6 +99,10 @@ export class Runtime implements RuntimeApi {
   private _nextThreadId = 1
   private _redrawRequested = false
   private _tickOps = 0
+  private executedBlocks = new Map<string, Set<string>>()
+  private executionTargets = new Map<string, { brickId: string; copyId?: string }>()
+  private executedBlockListeners = new Set<(snapshot: ExecutedBlocks) => void>()
+  private startedTraceThreads = new WeakSet<Thread>()
 
   /** Lane cleanup that must run on green flag / stop (looks bubbles, sound effects, ask queue). */
   readonly lifecycle: RuntimeLifecycle
@@ -173,6 +180,7 @@ export class Runtime implements RuntimeApi {
   restoreWorld(world: World): void {
     (this as { world: World }).world = world
     this.restoreThreadsFromWorld()
+    this.clearExecutedBlocks()
   }
 
   nowMs(): number {
@@ -244,6 +252,7 @@ export class Runtime implements RuntimeApi {
     this.emit({ kind: 'stopSounds' })
     for (const hook of this.lifecycle.stopAll) hook(this)
     this.syncThreadsToWorld()
+    this.clearExecutedBlocks()
   }
 
   stop(): void {
@@ -289,6 +298,47 @@ export class Runtime implements RuntimeApi {
   onBroadcast(listener: (message: string) => void): () => void {
     this.broadcastListeners.add(listener)
     return () => this.broadcastListeners.delete(listener)
+  }
+
+  /**
+   * Observe execution after each tick, including threads/clones that finished during it. This display-only trace
+   * never enters the saved world, scheduler order or operation budget. Each listener owns a defensive copy, so even
+   * a caller bypassing TypeScript's readonly types cannot mutate another listener's view or a later tick.
+   * Stop/restart (and restoring a world) emit an empty snapshot to clear the editor's glow.
+   */
+  onExecutedBlocks(listener: (snapshot: ExecutedBlocks) => void): () => void {
+    this.executedBlockListeners.add(listener)
+    return () => { this.executedBlockListeners.delete(listener) }
+  }
+
+  /** Identity of a target in the most recent tick's trace, including clones deleted before the tick ended. */
+  executionTarget(targetId: string): Readonly<{ brickId: string; copyId?: string }> | undefined {
+    const identity = this.executionTargets.get(targetId)
+    return identity ? { ...identity } : undefined
+  }
+
+  private traceBlock(target: Target, blockId: string | undefined): void {
+    if (!blockId || this.executedBlockListeners.size === 0) return
+    if (!this.executionTargets.has(target.id)) {
+      this.executionTargets.set(target.id, { brickId: target.brickId, copyId: target.copyId })
+    }
+    let ids = this.executedBlocks.get(target.id)
+    if (!ids) this.executedBlocks.set(target.id, ids = new Set())
+    ids.add(blockId)
+  }
+
+  private emitExecutedBlocks(): void {
+    for (const listener of [...this.executedBlockListeners]) {
+      const snapshot = new Map([...this.executedBlocks].map(([id, blocks]) => [id, new Set(blocks)]))
+      // A presentation error must not interrupt stepping or prevent other observers from receiving their trace.
+      try { listener(snapshot) } catch { /* Observers are isolated from the simulation. */ }
+    }
+  }
+
+  private clearExecutedBlocks(): void {
+    this.executedBlocks.clear()
+    this.executionTargets.clear()
+    this.emitExecutedBlocks()
   }
 
   broadcast(message: string): ThreadHandle[] {
@@ -355,6 +405,8 @@ export class Runtime implements RuntimeApi {
   }
 
   step(): void {
+    this.executedBlocks.clear()
+    this.executionTargets.clear()
     this._redrawRequested = false
 
     // Reset threads from previous tick
@@ -402,6 +454,7 @@ export class Runtime implements RuntimeApi {
     for (const hook of this.lifecycle.afterTick) hook(this)
     this.world.tick++
     this.syncThreadsToWorld()
+    this.emitExecutedBlocks()
   }
 
   private hasRunnableThreads(): boolean {
@@ -538,6 +591,7 @@ export class Runtime implements RuntimeApi {
     }
 
     if (expr.kind === 'block') {
+      this.traceBlock(ctx.target, expr.id)
       if (ctx.thread) {
         this.chargeOp(ctx.thread)
       } else {
@@ -577,6 +631,10 @@ export class Runtime implements RuntimeApi {
   }
 
   private stepThread(thread: Thread): void {
+    if (!this.startedTraceThreads.has(thread)) {
+      this.startedTraceThreads.add(thread)
+      this.traceBlock(thread.target, thread.script?.id)
+    }
     while (thread.stack.length > 0 && thread.status === 'running') {
       const frame = thread.stack[thread.stack.length - 1]
 
@@ -678,6 +736,7 @@ export class Runtime implements RuntimeApi {
       if (thread.status !== 'running') {
         return
       }
+      this.traceBlock(thread.target, stmt.id)
 
       // Control flow owned by scheduler
       if (stmt.opcode === 'control_if') {
