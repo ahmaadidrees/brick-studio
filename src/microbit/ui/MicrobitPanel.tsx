@@ -88,9 +88,13 @@ function VirtualBoard({ selected, onSelect }: { selected: Part; onSelect: (p: Pa
 
   const press = (pin: Pin) => ({
     onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => {
-      e.currentTarget.setPointerCapture?.(e.pointerId)
       onSelect(pin)
       setPin(pin, true)
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      } catch {
+        // No live pointer to capture (some browsers, synthetic events): pointerup still lets go.
+      }
     },
     onPointerUp: (e: ReactPointerEvent<HTMLButtonElement>) => {
       setPin(pin, false)
