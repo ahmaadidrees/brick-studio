@@ -83,7 +83,7 @@ export function cleanAssignments(mode: RemoteMode, raw: unknown): Assignments {
 /** The live state of a board, real or virtual. */
 export interface BoardState {
   pins: Record<Pin, boolean>
-  /** milli-g, -1024…1024; x: right is +, y: toward you is +. */
+  /** milli-g, -1024…1024, raw accelerometer: x + when the right edge dips, y + when the logo end dips away. */
   tilt: { x: number; y: number }
   /** Until when (ms, performance clock) a moment part counts as held. */
   pulses: Partial<Record<'shake' | 'loud', number>>
@@ -130,7 +130,7 @@ export function resolve(assign: Assignments, board: BoardState, now: number): Re
   let stick: RemoteOutput['stick'] = null
   const t = assign.tilt
   if (t === 'walk' || t === 'steer') {
-    stick = { x: tiltAxis(board.tilt.x), y: -tiltAxis(board.tilt.y) }
+    stick = { x: tiltAxis(board.tilt.x), y: tiltAxis(board.tilt.y) }
     if (t === 'walk') {
       if (stick.x <= -WALK_HOLD) held.add('left')
       if (stick.x >= WALK_HOLD) held.add('right')

@@ -7,7 +7,7 @@
  * micro:bit → browser
  *   bg 1                 hello, with the protocol version (sent on start and in answer to `hi`)
  *   a 1 / a 0            button A down / up (also b, logo, p0, p1, p2)
- *   tilt <x> <y>         accelerometer in milli-g, each clamped to -1024…1024 (x: right is +, y: toward you is +)
+ *   tilt <x> <y>         accelerometer in milli-g, each clamped to -1024…1024 (raw accelerometer: x is + when the right edge dips, y is + when the logo end dips away from you)
  *   g <gesture>          shake, up, down, left, right, faceup, facedown, freefall, loud
  *
  * browser → micro:bit

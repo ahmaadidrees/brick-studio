@@ -75,3 +75,23 @@ describe('micro:bit into the 2D game input', () => {
     expect(drive.steer).toBeLessThan(1)
   })
 })
+
+describe('micro:bit in the 3D world', () => {
+  beforeEach(() => useMicrobit.getState().releaseAll())
+
+  it('walks by tilt and jumps once per press', async () => {
+    const { Remote3D } = await import('./remote3d')
+    const r = new Remote3D()
+    const mb = useMicrobit.getState()
+    mb.setTilt(0, 1024) // logo end tipped away: forward
+    mb.setPin('a', true)
+    const f = r.poll()
+    expect(f.z).toBe(1)
+    expect(f.jumpPressed).toBe(true)
+    expect(r.poll().jumpPressed).toBe(false)
+    r.reset()
+    mb.setPin('a', false)
+    mb.setPin('a', true)
+    expect(r.poll().jumpPressed).toBe(false) // held across a pause doesn't fire
+  })
+})

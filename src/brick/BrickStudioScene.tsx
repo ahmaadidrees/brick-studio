@@ -121,6 +121,7 @@ import {
 import type { CharacterPalette } from './characters/types'
 import type { BrickDraft, BrickInstance, CharacterId, EnvironmentId } from './types'
 import { GraphicsPausedOverlay } from './GraphicsPausedOverlay'
+import { Remote3D } from '../microbit/remote3d'
 
 export type RaceAvatarPose = {
   position: [number, number, number]
@@ -1446,6 +1447,8 @@ function ExplorerAvatar({
   const controller = useRef<KinematicCharacterController | null>(null)
   const keys = useRef(new Set<string>())
   const lastTouchJump = useRef(useBrickStore.getState().jumpNonce)
+  const remote = useRef(new Remote3D())
+  const touchAndRemote = useRef({ x: 0, z: 0 })
   const observedGrounded = useRef(false)
   const character = useRef(createCharacterMotionState(false))
   const characterStep = useRef(createCharacterStepResult())
@@ -1593,16 +1596,21 @@ function ExplorerAvatar({
   useFrame((_, delta) => {
     if (!body.current || !collider.current || !controller.current) return
     const store = useBrickStore.getState()
-    if (store.graphicsPaused) { keys.current.clear(); return }
+    if (store.graphicsPaused) { keys.current.clear(); remote.current.reset(); return }
     if (store.exploreRespawnNonce !== lastRespawnNonce.current) {
       lastRespawnNonce.current = store.exploreRespawnNonce
       beginSpawnSearch()
     }
-    if (spawnPending.current || store.exploreSpawnStatus !== 'ready') return
+    if (spawnPending.current || store.exploreSpawnStatus !== 'ready') { remote.current.reset(); return }
     if (store.jumpNonce !== lastTouchJump.current) {
       bufferCharacterJump(character.current)
       lastTouchJump.current = store.jumpNonce
     }
+    // A micro:bit (real, or the Remote panel's board) walks and jumps like the touch stick and jump button.
+    const mb = remote.current.poll()
+    if (mb.jumpPressed) bufferCharacterJump(character.current)
+    touchAndRemote.current.x = store.touchMove.x + mb.x
+    touchAndRemote.current.z = store.touchMove.z + mb.z
 
     if (keys.current.size && exploreKeyboardBlocked(document.activeElement)) keys.current.clear()
     readExploreKeys(keys.current, store.exploreKeyboardMode, false, keyboardMove.current)
@@ -1611,7 +1619,7 @@ function ExplorerAvatar({
       const seconds = Math.max(0, Math.min(0.05, delta))
       store.addTouchLook(-keyboardLook.current.x * seconds * 1.8, -keyboardLook.current.z * seconds * 1.2)
     }
-    combineMoveAxes(keyboardMove.current, store.touchMove, combinedMove.current)
+    combineMoveAxes(keyboardMove.current, touchAndRemote.current, combinedMove.current)
     cameraRelativeMove(
       combinedMove.current.x,
       combinedMove.current.z,
@@ -1620,7 +1628,7 @@ function ExplorerAvatar({
     )
     motionInput.current.worldX = worldMove.current.x
     motionInput.current.worldZ = worldMove.current.z
-    motionInput.current.running = keys.current.has('shift') || store.touchRunning
+    motionInput.current.running = keys.current.has('shift') || store.touchRunning || mb.running
 
     resetCharacterFrameTranslation(frameTranslation.current)
     const steps = consumeCharacterFixedSteps(fixedClock.current, delta, advanceFixedStep)
