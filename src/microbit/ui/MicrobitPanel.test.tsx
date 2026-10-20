@@ -32,6 +32,21 @@ describe('MicrobitPanel', () => {
     expect(screen.getByText(/can't connect over USB/)).toBeTruthy()
   })
 
+  it('offers to install the remote when the browser has WebUSB, and the file otherwise', () => {
+    render(<MicrobitPanel />)
+    expect(screen.queryByRole('button', { name: 'Install the remote program' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Get the remote program' })).toBeTruthy()
+    cleanup()
+    Object.defineProperty(navigator, 'usb', { value: {}, configurable: true })
+    try {
+      render(<MicrobitPanel />)
+      expect(screen.getByRole('button', { name: 'Install the remote program' })).toBeTruthy()
+      expect(screen.getByRole('link', { name: 'download the file' })).toBeTruthy()
+    } finally {
+      delete (navigator as { usb?: unknown }).usb
+    }
+  })
+
   it('closes with Escape and the button toggles it', () => {
     render(<><MicrobitButton /><MicrobitPanel /></>)
     fireEvent.keyDown(document.body, { key: 'Escape' })

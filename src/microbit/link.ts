@@ -14,6 +14,7 @@ interface SerialPortLike {
   close(): Promise<void>
   readable: ReadableStream<Uint8Array> | null
   writable: WritableStream<Uint8Array> | null
+  getInfo?(): { usbVendorId?: number }
 }
 interface SerialLike {
   requestPort(o?: { filters: { usbVendorId: number }[] }): Promise<SerialPortLike>
@@ -60,20 +61,43 @@ export async function connect(): Promise<void> {
   watch()
   st.setLink('connecting')
   try {
-    const p = await s.requestPort({ filters: [{ usbVendorId: MICROBIT_VENDOR }] })
-    await p.open({ baudRate: BAUD_RATE })
-    port = p
-    writer = p.writable?.getWriter() ?? null
-    setSender(sendLine)
-    useMicrobit.getState().setLink('connected')
-    sendLine({ t: 'hi' })
-    void readLoop(p)
+    await open(await s.requestPort({ filters: [{ usbVendorId: MICROBIT_VENDOR }] }))
   } catch (err) {
     port = null
     const name = (err as { name?: string })?.name
     // Closing the chooser without picking is not an error.
     if (name === 'NotFoundError') useMicrobit.getState().setLink('idle')
     else useMicrobit.getState().setLink('error', name === 'SecurityError' ? 'This computer does not allow websites to use USB devices' : 'Could not open the micro:bit. Is another tab using it?')
+  }
+}
+
+async function open(p: SerialPortLike) {
+  await p.open({ baudRate: BAUD_RATE })
+  port = p
+  writer = p.writable?.getWriter() ?? null
+  setSender(sendLine)
+  useMicrobit.getState().setLink('connected')
+  sendLine({ t: 'hi' })
+  void readLoop(p)
+}
+
+/**
+ * Connects again, without the chooser, to a micro:bit this browser was already allowed to use (after installing the
+ * remote program, for example). Resolves false when there is none or it won't open.
+ */
+export async function reconnect(): Promise<boolean> {
+  const s = serial()
+  if (!s) return false
+  if (port) return true
+  const known = (await s.getPorts()).find((p) => p.getInfo?.().usbVendorId === MICROBIT_VENDOR)
+  if (!known) return false
+  watch()
+  try {
+    await open(known)
+    return true
+  } catch {
+    port = null
+    return false
   }
 }
 

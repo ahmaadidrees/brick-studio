@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { ACTION_NAMES, EVENT_MODES, EVENT_NAMES, GAME_EVENTS, MODE_NAMES, PARTS, PART_NAMES, actionsFor, type Part, type ReactionShow, type ReactionSound, type RemoteAction } from '../assign'
+import { REMOTE_HEX_URL, canFlash, installRemote, preloadFlasher, useFlash } from '../flash'
 import { connect, disconnect } from '../link'
 import { IMAGES, TILT_MAX, TUNES, type Pin } from '../protocol'
 import { useMicrobit } from '../store'
@@ -71,10 +72,44 @@ function ConnectRow() {
         </button>
       )}
       {error && <p className="mb-error" role="alert">{error}</p>}
-      <p className="mb-note">
-        <a href="/microbit/brickgineers-remote.hex" download>Get the remote program</a>. Drag it onto the MICROBIT drive.
-      </p>
+      <InstallRow />
     </section>
+  )
+}
+
+/** Puts the remote program on the micro:bit from the page, or (no WebUSB) the file to drag onto the MICROBIT drive. */
+function InstallRow() {
+  const { phase, progress, error } = useFlash()
+  const linked = useMicrobit((s) => s.status === 'connected')
+  const usb = canFlash()
+  useEffect(() => {
+    if (usb) void preloadFlasher()
+  }, [usb])
+  if (!usb) {
+    return (
+      <p className="mb-note">
+        <a href={REMOTE_HEX_URL} download>Get the remote program</a>. Drag it onto the MICROBIT drive.
+      </p>
+    )
+  }
+  const busy = phase === 'choosing' || phase === 'installing'
+  return (
+    <div className="mb-install">
+      <button type="button" className="mb-btn" disabled={busy} onClick={() => void installRemote()}>
+        {phase === 'installing' ? `Installing… ${Math.round(progress * 100)}%` : phase === 'choosing' ? 'Pick your micro:bit…' : 'Install the remote program'}
+      </button>
+      {phase === 'installing' && (
+        <div className="mb-progress" role="progressbar" aria-label="Installing the remote program" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
+          <span style={{ width: `${Math.round(progress * 100)}%` }} />
+        </div>
+      )}
+      {phase === 'installing' && <p className="mb-note">Keep the micro:bit plugged in.</p>}
+      {phase === 'done' && <p className="mb-status is-ok" role="status">Installed. The micro:bit shows a happy face.{linked ? '' : ' Now press Connect micro:bit.'}</p>}
+      {phase === 'error' && <p className="mb-error" role="alert">{error}</p>}
+      <p className="mb-note">
+        Puts the remote on your micro:bit (do it once). Or <a href={REMOTE_HEX_URL} download>download the file</a> and drag it onto the MICROBIT drive.
+      </p>
+    </div>
   )
 }
 
