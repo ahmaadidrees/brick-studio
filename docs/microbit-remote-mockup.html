@@ -1,0 +1,94 @@
+<h2 class="sr-only">Interactive mockup of a virtual micro:bit where students click parts of the board to assign game actions for platformer, race, or 3D modes, and test them.</h2>
+<style>
+.mb-wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:1rem 0}
+.mb-part{cursor:pointer;transition:outline-color .15s}
+.mb-part.sel{outline:2px solid var(--border-accent);outline-offset:3px}
+.chip{font-size:13px;padding:4px 10px;border-radius:var(--radius);border:0.5px solid var(--border-strong);background:transparent;cursor:pointer;color:var(--text-primary)}
+.chip.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:0.5px solid var(--border);font-size:13px;cursor:pointer;border-radius:0}
+.row.sel{background:var(--surface-1)}
+.led{width:14px;height:14px;border-radius:3px;background:var(--surface-1);border:0.5px solid var(--border)}
+.led.lit{background:#E24B4A;border-color:#A32D2D}
+@media (max-width:560px){.mb-wrap{grid-template-columns:1fr}}
+</style>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <span style="font-size:13px;color:var(--text-secondary)">Controlling</span>
+  <button class="chip on" data-mode="platformer">Platformer</button>
+  <button class="chip" data-mode="race">Race</button>
+  <button class="chip" data-mode="3d">3D world</button>
+  <span style="margin-left:auto;font-size:12px;color:var(--text-secondary)"><i class="ti ti-usb" aria-hidden="true"></i> <span id="conn">Virtual only</span></span>
+</div>
+<div class="mb-wrap">
+  <div style="background:var(--surface-1);border-radius:12px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:12px">
+    <div id="board" style="width:240px;background:var(--surface-2);border:0.5px solid var(--border-strong);border-radius:16px;padding:14px 12px;transition:transform .15s">
+      <div style="display:flex;justify-content:center;margin-bottom:10px">
+        <div class="mb-part" data-part="logo" style="width:34px;height:20px;border-radius:10px;border:1.5px solid var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-secondary)">logo</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="mb-part" data-part="a" style="width:38px;height:38px;border-radius:50%;background:var(--surface-1);border:1.5px solid var(--border-stronger);display:flex;align-items:center;justify-content:center;font-weight:500">A</div>
+        <div id="leds" style="display:grid;grid-template-columns:repeat(5,14px);gap:6px"></div>
+        <div class="mb-part" data-part="b" style="width:38px;height:38px;border-radius:50%;background:var(--surface-1);border:1.5px solid var(--border-stronger);display:flex;align-items:center;justify-content:center;font-weight:500">B</div>
+      </div>
+      <div style="display:flex;justify-content:space-around;margin-top:14px">
+        <div class="mb-part" data-part="p0" style="font-size:11px;padding:6px 8px;border-radius:4px;background:var(--bg-warning);color:var(--text-warning)">P0</div>
+        <div class="mb-part" data-part="p1" style="font-size:11px;padding:6px 8px;border-radius:4px;background:var(--bg-warning);color:var(--text-warning)">P1</div>
+        <div class="mb-part" data-part="p2" style="font-size:11px;padding:6px 8px;border-radius:4px;background:var(--bg-warning);color:var(--text-warning)">P2</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="chip mb-part" data-part="tilt"><i class="ti ti-arrows-left-right" aria-hidden="true"></i> Tilt</button>
+      <button class="chip mb-part" data-part="shake"><i class="ti ti-vibration" aria-hidden="true"></i> Shake</button>
+      <button class="chip mb-part" data-part="loud"><i class="ti ti-microphone" aria-hidden="true"></i> Clap</button>
+    </div>
+    <div style="width:100%;display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--text-secondary)">Try tilt</span>
+      <input type="range" id="tiltr" min="-100" max="100" step="1" value="0" style="flex:1">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="chip" id="pressA">Press A</button>
+      <button class="chip" id="pressB">Press B</button>
+      <button class="chip" id="doShake">Shake it</button>
+    </div>
+  </div>
+  <div>
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">Tap a part of the board, then pick what it does</div>
+    <div id="rows"></div>
+    <div style="margin-top:12px;font-size:13px;color:var(--text-secondary)" id="pickLabel">Button A does</div>
+    <div id="picker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+    <div style="margin-top:14px;background:var(--surface-1);border-radius:var(--radius);padding:10px 12px">
+      <div style="font-size:12px;color:var(--text-secondary)">The game hears</div>
+      <div id="out" style="font-family:var(--font-mono);font-size:13px;margin-top:4px;min-height:20px">waiting for input</div>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--text-secondary)">When the game says <span style="font-family:var(--font-mono)">coin</span>, the LEDs show a heart</div>
+    <button class="chip" id="coin" style="margin-top:6px"><i class="ti ti-coin" aria-hidden="true"></i> Grab a coin</button>
+  </div>
+</div>
+<script>
+const ACTIONS={platformer:['nothing','jump','run','left','right','walk (tilt)','up','down','restart'],race:['nothing','steer (tilt)','gas','brake','use item','horn','restart'],'3d':['nothing','walk (tilt)','jump','run','camera turn','interact']};
+const DEF={platformer:{a:'jump',b:'run',logo:'restart',tilt:'walk (tilt)',shake:'jump',loud:'nothing',p0:'nothing',p1:'nothing',p2:'nothing'},race:{a:'gas',b:'brake',logo:'use item',tilt:'steer (tilt)',shake:'horn',loud:'nothing',p0:'nothing',p1:'nothing',p2:'nothing'},'3d':{a:'jump',b:'run',logo:'interact',tilt:'walk (tilt)',shake:'jump',loud:'nothing',p0:'nothing',p1:'nothing',p2:'nothing'}};
+const NAMES={a:'Button A',b:'Button B',logo:'Touch logo',tilt:'Tilt',shake:'Shake',loud:'Clap (loud sound)',p0:'Pin P0',p1:'Pin P1',p2:'Pin P2'};
+let mode='platformer',sel='a',map=JSON.parse(JSON.stringify(DEF));
+const leds=document.getElementById('leds');
+for(let i=0;i<25;i++){const d=document.createElement('div');d.className='led';leds.appendChild(d)}
+function show(pattern){[...leds.children].forEach((d,i)=>d.classList.toggle('lit',pattern.includes(i)))}
+const HEART=[1,3,5,6,7,8,9,10,11,12,13,14,16,17,18,22];
+function render(){
+  document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===mode));
+  document.querySelectorAll('.mb-part').forEach(p=>p.classList.toggle('sel',p.dataset.part===sel));
+  document.getElementById('rows').innerHTML=Object.keys(NAMES).map(k=>`<div class="row${k===sel?' sel':''}" data-row="${k}"><span>${NAMES[k]}</span><span style="color:${map[mode][k]==='nothing'?'var(--text-muted)':'var(--text-accent)'}">${map[mode][k]}</span></div>`).join('');
+  document.querySelectorAll('[data-row]').forEach(r=>r.onclick=()=>{sel=r.dataset.row;render()});
+  document.getElementById('pickLabel').textContent=NAMES[sel]+' does';
+  const opts=ACTIONS[mode].filter(a=>sel==='tilt'?true:!a.includes('(tilt)'));
+  document.getElementById('picker').innerHTML=opts.map(a=>`<button class="chip${map[mode][sel]===a?' on':''}" data-act="${a}">${a}</button>`).join('');
+  document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{map[mode][sel]=b.dataset.act;render()});
+}
+function fire(part,extra){const act=map[mode][part];const o=document.getElementById('out');o.textContent=act==='nothing'?NAMES[part]+' (not assigned)':act+(extra||'');}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;render()});
+document.querySelectorAll('.mb-part').forEach(p=>p.addEventListener('click',()=>{sel=p.dataset.part;render()}));
+document.getElementById('pressA').onclick=()=>{sel='a';render();fire('a')};
+document.getElementById('pressB').onclick=()=>{sel='b';render();fire('b')};
+document.getElementById('doShake').onclick=()=>{const b=document.getElementById('board');b.style.transform='rotate(-6deg)';setTimeout(()=>b.style.transform='rotate(6deg)',90);setTimeout(()=>b.style.transform='rotate(0)',180);fire('shake')};
+document.getElementById('tiltr').oninput=e=>{const v=Math.round(+e.target.value);document.getElementById('board').style.transform=`rotate(${Math.round(v*0.2)}deg)`;const act=map[mode].tilt;document.getElementById('out').textContent=act==='nothing'?'Tilt (not assigned)':`${act}: ${v>0?'right':v<0?'left':'center'} ${Math.abs(v)}%`;};
+document.getElementById('coin').onclick=()=>{show(HEART);document.getElementById('out').textContent='game → micro:bit: coin';setTimeout(()=>show([]),900)};
+render();
+</script>

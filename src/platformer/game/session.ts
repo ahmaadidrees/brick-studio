@@ -236,6 +236,7 @@ export class GameSession {
     if (!opts.room) this.player.invuln = 0
     if (this.recordKey) this.player.bestTime = loadBest(this.recordKey)
     this.editor = new Editor({ world: () => this.timeline.world, sound: (n) => this.sound.play(n) })
+    this.input.remoteMode = () => (this.isRace ? 'race' : 'platformer')
   }
 
   get solo(): boolean {

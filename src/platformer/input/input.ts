@@ -1,7 +1,9 @@
 import type { PlayerInput } from '@brick-studio/platformer-core/engine/player'
+import { resolve, type RemoteAction } from '../../microbit/assign'
+import { useMicrobit } from '../../microbit/store'
 
 /*
- * Keyboard, game controller and on-screen touch buttons merged into one input per tick.
+ * Keyboard, game controller, on-screen touch buttons and a micro:bit (real or the panel's virtual one) merged into one input per tick.
  * Presses are latched so a tap shorter than a frame still counts.
  */
 
@@ -44,10 +46,26 @@ const PAD: [number, Action][] = [
   [8, 'toggle'], // select / minus: switch between playing and building
 ]
 
+/** How the micro:bit's game actions drive this mode's buttons (race: gas is up, brake is down, the item is jump). */
+const REMOTE: Partial<Record<RemoteAction, Action>> = {
+  jump: 'jump',
+  run: 'run',
+  left: 'left',
+  right: 'right',
+  up: 'up',
+  down: 'down',
+  restart: 'restart',
+  gas: 'up',
+  brake: 'down',
+  item: 'jump',
+}
+
 export interface InputFrame extends PlayerInput {
   togglePressed: boolean
   menuPressed: boolean
   restartPressed: boolean
+  /** A micro:bit tilted as a stick: x right +, y forward +, each -1…1. Absent otherwise. */
+  stick?: { x: number; y: number }
 }
 
 export class Input {
@@ -55,6 +73,10 @@ export class Input {
   private pressed = new Set<Action>()
   private touchHeld = new Set<Action>()
   private padHeld = new Set<Action>()
+  private remoteHeld = new Set<Action>()
+  private remoteStick: { x: number; y: number } | null = null
+  /** Which of the micro:bit's assignment sets this game uses (the session says whether it is a race). */
+  remoteMode: () => 'platformer' | 'race' = () => 'platformer'
   /** While a menu is open, only the menu button counts. */
   suspended = false
   gamepadName: string | null = null
@@ -98,9 +120,24 @@ export class Input {
     this.pressed.clear()
   }
 
+  /** Reads the micro:bit through this mode's assignments. A press only counts on the way down, like a key. */
+  private pollRemote() {
+    const mb = useMicrobit.getState()
+    const out = resolve(mb.assignments[this.remoteMode()], mb.board, performance.now())
+    const now = new Set<Action>()
+    for (const a of out.held) {
+      const b = REMOTE[a]
+      if (b) now.add(b)
+    }
+    for (const a of now) if (!this.remoteHeld.has(a) && !this.suspended) this.pressed.add(a)
+    this.remoteHeld = now
+    this.remoteStick = out.stick
+  }
+
   /** Whether an action was pressed since last asked (polls the controller). */
   consume(a: Action): boolean {
     this.pollPad()
+    this.pollRemote()
     return this.pressed.delete(a)
   }
 
@@ -133,12 +170,13 @@ export class Input {
 
   private is(a: Action) {
     if (this.suspended) return false
-    return this.held.has(a) || this.touchHeld.has(a) || this.padHeld.has(a)
+    return this.held.has(a) || this.touchHeld.has(a) || this.padHeld.has(a) || this.remoteHeld.has(a)
   }
 
   /** Read the input for one tick. Presses are consumed. */
   frame(): InputFrame {
     this.pollPad()
+    this.pollRemote()
     const f: InputFrame = {
       left: this.is('left'),
       right: this.is('right'),
@@ -152,6 +190,7 @@ export class Input {
       menuPressed: this.pressed.has('menu'),
       restartPressed: this.pressed.has('restart'),
     }
+    if (this.remoteStick && !this.suspended) f.stick = this.remoteStick
     if (f.left && f.right) {
       f.left = false
       f.right = false

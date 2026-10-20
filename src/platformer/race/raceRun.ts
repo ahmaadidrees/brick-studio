@@ -132,15 +132,19 @@ export const MAX_RIVALS = RIVALS.length
 
 /** Turn the keys into driving: left and right steer, or (pointing mode) the arrows say which way to go. */
 export function carInputFrom(f: InputFrame, mode: SteerMode, car: Car, cameraRot = 0): CarInput {
+  const keySteer = (f.right ? 1 : 0) - (f.left ? 1 : 0)
   if (mode === 'point') {
-    const sx = (f.right ? 1 : 0) - (f.left ? 1 : 0), sy = (f.down ? 1 : 0) - (f.up ? 1 : 0)
+    // A tilted micro:bit points the way to go, unless arrows are held.
+    const keyed = keySteer || f.up || f.down
+    const sx = keyed || !f.stick ? keySteer : f.stick.x, sy = keyed || !f.stick ? (f.down ? 1 : 0) - (f.up ? 1 : 0) : -f.stick.y
     if (!sx && !sy) return { steer: 0, gas: false, brake: false }
     const r = -cameraRot
     const want = Math.atan2(sx * Math.sin(r) + sy * Math.cos(r), sx * Math.cos(r) - sy * Math.sin(r))
     const diff = Math.atan2(Math.sin(want - car.a), Math.cos(want - car.a))
     return { steer: Math.max(-1, Math.min(1, diff * 4)), gas: Math.abs(diff) < 2.2, brake: Math.abs(diff) >= 2.2 }
   }
-  return { steer: (f.right ? 1 : 0) - (f.left ? 1 : 0), gas: f.up, brake: f.down }
+  // Keys win; otherwise a tilted micro:bit steers smoothly.
+  return { steer: keySteer || (f.stick?.x ?? 0), gas: f.up, brake: f.down }
 }
 
 export interface RestartOptions {
