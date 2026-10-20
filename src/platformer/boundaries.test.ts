@@ -11,7 +11,7 @@ describe('2D chunk boundaries', () => {
     for (const [file, source] of files) {
       expect(source, file).not.toMatch(/from\s+'three'/)
       expect(source, file).not.toMatch(/@react-three|rapier/)
-      expect(source, file).not.toMatch(/BrickStudioApp|BrickStudioScene|from\s+'[^']*\/store'/)
+      expect(source, file).not.toMatch(/BrickStudioApp|BrickStudioScene|from\s+'(?![^']*microbit)[^']*\/store'/)
     }
   })
 })

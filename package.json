@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "dev": "vite",
+    "build:microbit-remote": "node scripts/build-microbit-remote.mjs",
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -34,6 +35,7 @@
     "zustand": "5.0.14"
   },
   "devDependencies": {
+    "@microbit/microbit-fs": "0.10.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@types/node": "24.10.1",

@@ -1,6 +1,9 @@
 import { normalizeCharacterAppearance, type CharacterAppearance } from '@brick-studio/core'
 import { getBuildPlateSize, type BuildPlateSize } from './buildPlate'
 import { ColorPalette, CommandStrip } from './CommandStrip'
+import { MicrobitButton } from '../microbit/ui/MicrobitButton'
+import { MicrobitPanel } from '../microbit/ui/MicrobitPanel'
+import { useMicrobit } from '../microbit/store'
 import { SettingsSheet, StudioSettings } from './ExploreCameraSettings'
 import { getExploreKeyboardHint } from './explorePreferences'
 import {
@@ -375,6 +378,7 @@ function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup
         <div className="brick-explore-cluster" role="group" aria-label="World tools">
           <PeopleEntry livePolicy={livePolicy} onStartLiveWorld={onStartLiveWorld} compact />
           <Button variant="quiet" className="brick-header-tool" icon={<UserRound size={17} />} title="Character" onClick={() => onOpenWorldSetup('character')}>Character</Button>
+          <MicrobitButton className="brick-header-tool" />
           <StudioSettings />
         </div>
         <span className="brick-explore-title-pill" title={title}><MapPin size={14} aria-hidden="true" /><span>{title}</span></span>
@@ -739,6 +743,15 @@ function BuildShell({
       />
     </div>
   )
+}
+
+/** The Remote panel while exploring: a micro:bit (or the panel's board) walks and jumps. Building closes it. */
+function ExploreRemote() {
+  useEffect(() => {
+    useMicrobit.getState().setMode('3d')
+    return () => useMicrobit.getState().setPanelOpen(false)
+  }, [])
+  return <MicrobitPanel />
 }
 
 function Toast() {
@@ -1491,6 +1504,7 @@ export default function BrickStudioApp({
           {showOnboarding && <OnboardingGuide onDismiss={onboarding.dismiss} />}
         </>
       ) : <TouchExploreControlsGate readOnly={readOnly || Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))} />}
+      {mode !== 'build' && <ExploreRemote />}
       <Toast />
       <Announcer />
       {!readOnly && <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />}

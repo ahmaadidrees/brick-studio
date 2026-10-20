@@ -35,6 +35,9 @@ import { loadRaceFeel, saveRaceFeel, type RaceFeel } from '../race/raceFeel'
 import type { RaceHud } from '../race/raceRun'
 import { RaceTouchControls } from '../race/RaceTouchControls'
 import { RaceZoom, ZOOM_STEP } from '../race/RaceZoom'
+import { MicrobitButton } from '../../microbit/ui/MicrobitButton'
+import { MicrobitPanel } from '../../microbit/ui/MicrobitPanel'
+import { useMicrobit } from '../../microbit/store'
 import { RACE_ITEMS } from '@brick-studio/platformer-core/engine/raceItems'
 
 export type LevelSource =
@@ -516,6 +519,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const s = sessionRef.current
   const build = mode === 'build'
   const race = !!s?.isRace
+  const setRemoteMode = useMicrobit((m) => m.setMode)
+  useEffect(() => setRemoteMode(race ? 'race' : 'platformer'), [race, setRemoteMode])
   const changeRaceFeel = (v: RaceFeel) => {
     setRaceFeel(v)
     saveRaceFeel(v)
@@ -746,7 +751,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         <AppHeader
           variant="editor"
           dimension="2d"
-          editorActions={canSaveAccount ? <Button disabled={busy} onClick={() => void saveAccountAction(source.kind === 'room')}>{saveLabel}</Button> : undefined}
+          editorActions={<>{canSaveAccount && <Button disabled={busy} onClick={() => void saveAccountAction(source.kind === 'room')}>{saveLabel}</Button>}<MicrobitButton /></>}
           onOpenProjects={inRoom ? undefined : () => void leave(() => window.location.assign('/projects'))}
           worldTitle={title}
           onRenameWorld={s?.canBuild ? rename : undefined}
@@ -1010,6 +1015,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         />
       )}
       <NewProjectSheet open={kitPicker} onClose={() => setKitPicker(false)} onPick={(href) => { setKitPicker(false); void leave(() => window.location.assign(href)) }} />
+      <MicrobitPanel />
       {feelOpen && !race && <FeelPanel feel={feel} onChange={changeFeel} onClose={() => setFeelOpen(false)} />}
       {feelOpen && race && <RaceFeelPanel value={raceFeel} onChange={changeRaceFeel} onClose={() => setFeelOpen(false)} />}
     </div>

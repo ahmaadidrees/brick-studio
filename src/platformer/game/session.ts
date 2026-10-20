@@ -4,7 +4,9 @@ import { DEFAULT_FEEL, P_SEGMENTS, feelToSub, type Feel, type FeelSub } from '@b
 import { cloneLevel, levelFromJson, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import { TILE as RACE_TILE } from '@brick-studio/platformer-core/engine/constants'
-import { RaceRun, carInputFrom, type RaceHud, type RaceLink, type RemoteRacer, type RestartOptions } from '../race/raceRun'
+import { useMicrobit } from '../../microbit/store'
+import type { GameEvent } from '../../microbit/assign'
+import { RaceRun, carInputFrom, type RaceHud, type RaceSound, type RaceLink, type RemoteRacer, type RestartOptions } from '../race/raceRun'
 import { loadRaceFeel, type RaceFeel } from '../race/raceFeel'
 import { drawRaceBuildOverlay } from '../race/raceOverlay'
 import {
@@ -109,6 +111,18 @@ const EFFECT_SOUNDS: Partial<Record<Effect['k'], SoundName>> = {
   propeller: 'kill',
 }
 
+/** Your own sounds that the micro:bit also reacts to. */
+const PLAYER_SOUND_EVENTS: Partial<Record<PlayerSound, GameEvent>> = {
+  die: 'die', hurt: 'hurt', powerup: 'powerup', goal: 'goal', checkpoint: 'checkpoint',
+}
+/** Your own race sounds that the micro:bit also reacts to (throwing isn't one). */
+const RACE_SOUND_EVENTS: Partial<Record<RaceSound, GameEvent>> = { coin: 'coin', item: 'item', powerup: 'powerup', hurt: 'hurt' }
+
+/** Tell a connected micro:bit about something your player did (does nothing when none is connected). */
+function reactMicrobit(event: GameEvent, n?: number) {
+  useMicrobit.getState().react(event, n)
+}
+
 /** Race tracks: the farthest the build view zooms out. */
 const MAX_RACE_ZOOM = 4
 
@@ -202,6 +216,9 @@ export class GameSession {
   private cameraReady = false
   /** Sounds and particles are held back while fast-forwarding into a room's present. */
   private silent = false
+  private reactRun: RaceRun | null = null
+  private reactLap = 0
+  private reactDone = false
   private joinTick = 0
 
   constructor(
@@ -227,7 +244,11 @@ export class GameSession {
       feel: this.feel,
       tick: 0,
       emit: (ev) => this.emit(ev),
-      sound: (s: PlayerSound) => this.sound.play(s),
+      sound: (s: PlayerSound) => {
+        this.sound.play(s)
+        const ev = PLAYER_SOUND_EVENTS[s]
+        if (ev && !this.silent) reactMicrobit(ev)
+      },
       dust: (x, y) => this.addParticle('dust', 3, x, y - 3, 0, -0.2, 0, 18),
       others: this.others,
       bonk: (num) => this.room?.sendBonk(num),
@@ -464,6 +485,22 @@ export class GameSession {
     return this.remotes.cars(this.timeline.tick).filter((c) => c.race === raceAt).map((c) => ({ name: c.name, color: playerColor(c.num)[0], lap: c.lap, d: c.d, gates: c.gates, finish: c.finish }))
   }
 
+  /** Your lap going up, or you crossing the line, tells the micro:bit (once each). */
+  private reactRaceProgress(run: RaceRun) {
+    const lap = run.you.lap
+    if (this.reactRun !== run) {
+      this.reactRun = run
+      this.reactLap = lap.lap
+      this.reactDone = lap.done >= 0
+      return
+    }
+    if (lap.done >= 0) {
+      if (!this.reactDone) reactMicrobit('finish', run.hud(this.remoteRacers()).place)
+    } else if (lap.lap > this.reactLap) reactMicrobit('lap', lap.lap + 1)
+    this.reactLap = lap.lap
+    this.reactDone = lap.done >= 0
+  }
+
   private stepRace(input: InputFrame) {
     // Someone in the room started a race: everyone lines up for it.
     if (!this.raceRun || (this.room && this.timeline.world.raceAt !== this.seenRaceAt)) this.startRace()
@@ -472,7 +509,14 @@ export class GameSession {
     const others = this.room ? this.remotes.cars(this.timeline.tick).filter((c) => c.visible).map((c) => ({ x: c.x, y: c.y, shield: c.shield, air: c.lift > 0 })) : []
     // The jump button (Space) uses your item.
     run.step(carInputFrom(input, this.raceFeel.steer, run.you.car, this.raceRot), input.jumpPressed, others)
-    if (!this.silent) for (const s of run.sounds) this.sound.play(s)
+    if (!this.silent) {
+      for (const s of run.sounds) {
+        this.sound.play(s)
+        const ev = RACE_SOUND_EVENTS[s]
+        if (ev) reactMicrobit(ev)
+      }
+      this.reactRaceProgress(run)
+    }
     // The camera keeps your car in the middle, looking a little ahead; with "map turns", your car points up.
     const c = run.you.car, W = this.renderer.width, H = this.renderer.height
     const tx = c.x + c.vx * 16 - W / 2, ty = c.y + c.vy * 16 - H / 2
@@ -884,6 +928,7 @@ export class GameSession {
       this.seen.set(key, tick)
       if (this.silent) continue
       if (e.by === this.player.num) {
+        if (e.k === 'coin' && !this.isRace) reactMicrobit('coin')
         this.syncCtx()
         grantEffect(this.player, e, this.ctx)
       }
