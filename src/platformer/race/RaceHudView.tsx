@@ -26,7 +26,11 @@ interface Props {
 
 /** Everything drawn over a race: place, lap, time, standings, the start lights, why laps don't count, and the results. */
 export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, onBuild, onExit, exitLabel, touch }: Props) {
-  const releaseFocus = () => requestAnimationFrame(() => (document.activeElement as HTMLElement | null)?.blur?.())
+  // Hand the keyboard back to the game after a click, except on the racers menu: blurring it closes it as it opens.
+  const releaseFocus = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.p2d-race-rivals')) return
+    requestAnimationFrame(() => (document.activeElement as HTMLElement | null)?.blur?.())
+  }
   return (
     <>
       <div className="p2d-race-hud" aria-live="off">
@@ -96,7 +100,13 @@ export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, o
           {onRivals && rivals !== undefined && (
             <label className="p2d-race-rivals">
               Computer racers
-              <select value={rivals} onChange={(e) => onRivals(Number(e.target.value))}>
+              <select
+                value={rivals}
+                onChange={(e) => {
+                  onRivals(Number(e.target.value))
+                  e.currentTarget.blur()
+                }}
+              >
                 {Array.from({ length: MAX_RIVALS + 1 }, (_, n) => (
                   <option key={n} value={n}>
                     {n}
