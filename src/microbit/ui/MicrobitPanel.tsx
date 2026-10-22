@@ -8,6 +8,8 @@ import { useMicrobit } from '../store'
 import './microbit.css'
 
 const PRESS_PARTS: Pin[] = ['a', 'b', 'logo', 'p0', 'p1', 'p2']
+/** The block editor we host (docs/MICRO-EDITOR.md). */
+export const BLOCK_EDITOR_URL = '/micro/'
 const label = (s: string) => s.replace(/_/g, ' ')
 
 /** Brickgineers Remote: connect a board, press its parts on screen, and choose what each part does. */
@@ -42,6 +44,7 @@ function PanelBody({ onClose }: { onClose: () => void }) {
         </button>
       </header>
       <ConnectRow />
+      <OwnProgram />
       <VirtualBoard selected={selected} onSelect={setSelected} />
       <AssignList selected={selected} onSelect={setSelected} />
       <Reactions />
@@ -110,6 +113,16 @@ function InstallRow() {
         Puts the remote on your micro:bit (do it once). Or <a href={REMOTE_HEX_URL} download>download the file</a> and drag it onto the MICROBIT drive.
       </p>
     </div>
+  )
+}
+
+/** The block editor opens in its own tab, so the game keeps running. */
+function OwnProgram() {
+  return (
+    <section className="mb-section" aria-label="Your own program">
+      <a className="mb-btn" href={BLOCK_EDITOR_URL} target="_blank" rel="noopener">Code your micro:bit</a>
+      <p className="mb-note">Opens the block editor in a new tab. Only one tab can use the micro:bit at a time, so close it before you press Connect micro:bit.</p>
+    </section>
   )
 }
 

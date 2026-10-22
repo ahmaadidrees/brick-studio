@@ -47,6 +47,13 @@ describe('MicrobitPanel', () => {
     }
   })
 
+  it('links to the block editor in a new tab', () => {
+    render(<MicrobitPanel />)
+    const link = screen.getByRole('link', { name: 'Code your micro:bit' })
+    expect(link.getAttribute('href')).toBe('/micro/')
+    expect(link.getAttribute('target')).toBe('_blank')
+  })
+
   it('closes with Escape and the button toggles it', () => {
     render(<><MicrobitButton /><MicrobitPanel /></>)
     fireEvent.keyDown(document.body, { key: 'Escape' })
