@@ -136,7 +136,6 @@ export type LiveRoomClientOptions = {
   onStatus?: (snapshot: LiveRoomSnapshot) => void
   onDocument?: (document: BrickStudioDocument, reason: LiveDocumentReason) => void
   onPresence?: (players: LivePlayer[]) => void
-  onMode?: (mode: LiveWorldMode) => void
   onLocked?: (locked: boolean) => void
   onPose?: (pose: LiveRemotePose) => void
   onError?: (error: LiveRoomError) => void
@@ -570,7 +569,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     applyingRemote = true
     try {
       const state = store.getState()
-      const patch = buildLiveRemotePatch(state, next, snapshot.mode, resetHistory)
+      const patch = buildLiveRemotePatch(state, next, undefined, resetHistory)
       if (remoteCommands?.length) {
         const touchedIds = new Set(remoteCommands.map(command => command.op === 'delete' ? command.id : command.brick.id))
         const keepIndependent = (entry: BrickState['undoStack'][number]) => !entry.documentBefore && !entry.documentAfter
@@ -594,17 +593,8 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
     applyDisplayedDocument(rebasePending(canonicalDocument), reason, resetHistory, remoteCommands)
   }
 
-  const adoptMode = (mode: LiveWorldMode) => {
-    const changed = snapshot.mode !== mode
-    snapshot = { ...snapshot, mode }
-    applyingRemote = true
-    try {
-      store.setState({ mode, ...(mode === 'explore'
-        ? { draft: null, movingId: null, movingSelection: null, activePartId: null }
-        : {}) })
-    } finally { applyingRemote = false }
-    if (changed) options.onMode?.(mode)
-  }
+  // Build and Explore belong to each person, like 2D's build and play: everyone can build while others explore.
+  // Rooms still carry the old shared mode on the wire; it is ignored and the room always counts as Build.
 
   const adoptLocked = (locked: boolean) => {
     const changed = snapshot.locked !== locked
@@ -793,14 +783,12 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         }
         reconnectAttempt = 0
         everOnline = true
-        adoptMode(message.mode)
         adoptLocked(message.locked)
         adoptPlayers(message.players)
         publish({
           connection: 'online',
           isOwner: message.isOwner,
           error: undefined,
-          mode: message.mode,
           locked: message.locked,
           players: clonePlayers(message.players),
         })
@@ -845,9 +833,8 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
           }
           return
         }
-        adoptMode(message.mode)
         if (!acceptDocument(message.document, 'snapshot', message.revision, true)) return
-        publish({ pendingOperations: pending.size, mode: message.mode })
+        publish({ pendingOperations: pending.size })
         armSyncWatchdog(true)
         return
       }
@@ -873,8 +860,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
         if (message.revision <= snapshot.revision) return
         if (snapshot.awaitingSnapshot) return
         if (message.revision !== snapshot.revision + 1) return void requestResync()
-        adoptMode(message.mode)
-        publish({ revision: message.revision, mode: message.mode })
+        publish({ revision: message.revision })
         return
       }
       case 'players':
@@ -1088,17 +1074,10 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
   const unsubscribeStore = store.subscribe((state, previous) => {
     if (disposed || applyingRemote) return
 
-    const rejectedModeChange = state.mode !== previous.mode && state.mode !== snapshot.mode
-    if (rejectedModeChange) {
-      applyingRemote = true
-      try { store.setState({ mode: snapshot.mode }) } finally { applyingRemote = false }
-    }
-
     if (state.bricks === previous.bricks) return
     if (
       !canonicalDocument
-      || rejectedModeChange
-      || snapshot.mode !== 'build'
+      || state.mode !== 'build'
       || snapshot.connection !== 'online'
     ) {
       if (canonicalDocument) refreshFromCanonical('remote')
@@ -1169,7 +1148,7 @@ export function createLiveRoomClient(options: LiveRoomClientOptions): LiveRoomCl
       && snapshot.connection === 'online'
       && send({ v: LIVE_PROTOCOL_VERSION, type: 'setLocked', locked }),
     addCustomPart: (part) => {
-      if (snapshot.connection !== 'online' || snapshot.mode !== 'build' || snapshot.awaitingSnapshot || pending.size > 0 || !canonicalDocument) return null
+      if (snapshot.connection !== 'online' || store.getState().mode !== 'build' || snapshot.awaitingSnapshot || pending.size > 0 || !canonicalDocument) return null
       const next = normalizeBrickStudioDocument({ ...canonicalDocument, schemaVersion: 3, plateSize: canonicalDocument.plateSize ?? 64, customParts: [...canonicalDocument.customParts, part] })
       if (!next.ok) { reportError(next.error.code, next.error.message); return null }
       const opId = nextOpId()

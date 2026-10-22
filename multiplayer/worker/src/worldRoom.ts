@@ -924,9 +924,6 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     if (bytes > LIVE_MAX_COMMAND_BYTES) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "commands_too_large", "The command batch exceeds 64 KiB.");
     }
-    if (this.record!.mode !== "build") {
-      return this.cacheAndReject(socket, attachment.playerId, opId, "explore_mode", "Building is paused while the room is in Explore mode.");
-    }
     const result = validateCommands(data.commands, this.record!.document);
     if (!result.ok) return this.cacheAndReject(socket, attachment.playerId, opId, result.code, result.message);
 
@@ -964,9 +961,6 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     }
     if (!additive && !attachment.isOwner) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "owner_only", "Only the room owner can replace the world.");
-    }
-    if (this.record!.mode !== "build") {
-      return this.cacheAndReject(socket, attachment.playerId, opId, "explore_mode", "The world cannot be replaced during Explore mode.");
     }
     if (!additive && (!Number.isInteger(data.expectedRevision) || data.expectedRevision !== this.record!.revision)) {
       return this.cacheAndReject(socket, attachment.playerId, opId, "revision_conflict", "The world changed while this update was prepared. Review the latest world and try again.");
@@ -1356,6 +1350,7 @@ export class WorldRoom extends DurableObject<WorldRoomEnv> {
     attachment: WorldSocketAttachment,
     data: Record<string, unknown>,
   ): Promise<void> {
+    // Legacy: current clients keep Build and Explore per person, ignore modeChanged, and may edit in either mode.
     if (!attachment.isOwner) return this.sendError(socket, "owner_only", "Only the room owner can change modes.");
     if (data.mode !== "build" && data.mode !== "explore") {
       return this.sendError(socket, "invalid_mode", "The room mode must be Build or Explore.");

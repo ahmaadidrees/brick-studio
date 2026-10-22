@@ -979,36 +979,28 @@ describe('live room synchronization', () => {
     expect(callbacks.errors).toContain('invalid_layout')
   })
 
-  it('supports owner replace/mode/lock controls and rejects local edits during Explore', () => {
-    const modes: string[] = []
+  it('ignores the old shared room mode, and keeps owner replace and lock controls', () => {
     const locks: boolean[] = []
-    const { client, socket } = createHarness({ onMode: (mode) => modes.push(mode), onLocked: (locked) => locks.push(locked) })
-    welcome(socket(), { isOwner: true, revision: 0 })
-    expect(client.setMode('explore')).toBe(true)
+    const { client, socket } = createHarness({ onLocked: (locked) => locks.push(locked) })
+    welcome(socket(), { isOwner: true, revision: 0, mode: 'explore' })
+    expect(useBrickStore.getState().mode).toBe('build')
+    expect(client.getSnapshot().mode).toBe('build')
     expect(client.setLocked(true)).toBe(true)
-    expect(socket().messages().slice(-2)).toEqual([
-      { v: 1, type: 'setMode', mode: 'explore' },
-      { v: 1, type: 'setLocked', locked: true },
-    ])
-
-    socket().receive({ v: 1, type: 'modeChanged', mode: 'explore', revision: 1 })
+    expect(socket().messages().at(-1)).toEqual({ v: 1, type: 'setLocked', locked: true })
     socket().receive({ v: 1, type: 'locked', locked: true })
-    expect(useBrickStore.getState().mode).toBe('explore')
-    expect(modes).toEqual(['explore'])
     expect(locks).toEqual([true])
-    const commandCount = socket().commandMessages().length
-    useBrickStore.setState({ bricks: [brick('not-allowed')] })
-    expect(socket().commandMessages()).toHaveLength(commandCount)
-    expect(useBrickStore.getState().bricks).toEqual([])
 
-    socket().receive({ v: 1, type: 'modeChanged', mode: 'build', revision: 2 })
+    // An older owner tab may still switch the room; this tab's own mode and edits are unaffected.
+    socket().receive({ v: 1, type: 'modeChanged', mode: 'explore', revision: 1 })
+    expect(useBrickStore.getState().mode).toBe('build')
+    expect(client.getSnapshot()).toMatchObject({ mode: 'build', revision: 1 })
+    useBrickStore.setState({ bricks: [brick('still-building')] })
+    expect(socket().commandMessages().at(-1)?.commands).toEqual([{ op: 'place', brick: brick('still-building') }])
+
     const replacement = documentWith(brick('replacement'))
     const opId = client.replaceDocument(replacement)
-    expect(opId).toBe('live-test-client#1')
-    expect(useBrickStore.getState().bricks).toEqual(replacement.bricks)
+    expect(opId).toBe('live-test-client#2')
     expect(socket().messages().at(-1)).toMatchObject({ type: 'replaceDocument', opId })
-    socket().receive({ v: 1, type: 'snapshot', opId: opId!, revision: 3, mode: 'build', document: replacement })
-    expect(client.getSnapshot()).toMatchObject({ revision: 3, pendingOperations: 0 })
   })
 
   it('allows known builders to edit a join-locked room but restores disconnected edits', () => {
@@ -1037,12 +1029,19 @@ describe('live room synchronization', () => {
     expect(client.getSnapshot()).toMatchObject({ connection: 'reconnecting', pendingOperations: 0 })
   })
 
-  it('reverts local mode attempts without leaking a simultaneous brick edit', () => {
+  it('keeps Build and Explore local: exploring sends nothing, still shows others\' edits, and makes none', () => {
     const canonical = documentWith(brick('a'))
     const { client, socket } = createHarness()
     welcome(socket(), { revision: 1, mode: 'build', document: canonical })
-    useBrickStore.setState({ mode: 'explore', bricks: [brick('leaked-edit')] })
-    expect(useBrickStore.getState()).toMatchObject({ mode: 'build', bricks: canonical.bricks })
+    useBrickStore.setState({ mode: 'explore' })
+    expect(useBrickStore.getState().mode).toBe('explore')
+    expect(socket().messages().some((m) => m.type === 'setMode')).toBe(false)
+
+    socket().receive({ v: 1, type: 'apply', from: 'peer', opId: 'peer#1', revision: 2, commands: [{ op: 'place', brick: brick('b') }] })
+    expect(useBrickStore.getState()).toMatchObject({ mode: 'explore', bricks: [brick('a'), brick('b')] })
+
+    useBrickStore.setState({ bricks: [brick('explore-edit')] })
+    expect(useBrickStore.getState().bricks).toEqual([brick('a'), brick('b')])
     expect(socket().commandMessages()).toHaveLength(0)
     expect(client.getSnapshot()).toMatchObject({ mode: 'build', pendingOperations: 0 })
   })

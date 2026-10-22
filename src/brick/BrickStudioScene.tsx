@@ -1922,7 +1922,14 @@ function RuntimeSceneContent({
             </RuntimeEnvironmentBoundary>
           )}
       {mode === 'build'
-        ? <><BuildScene mouseTravel={mouseTravel} surface={environment.surface} showStudioGround={usesClassicEnvironmentRig(environment.resolvedId)} /><Suspense fallback={null}><PhysicsPreload /></Suspense></>
+        ? (
+            <>
+              <BuildScene mouseTravel={mouseTravel} surface={environment.surface} showStudioGround={usesClassicEnvironmentRig(environment.resolvedId)} />
+              {/* Live rooms: builders see who is exploring (each person picks Build or Explore). Avatars take no clicks. */}
+              <Suspense fallback={null}><RemoteAvatars source={remoteAvatarSource} avatars={remoteAvatars} compact={compact} /></Suspense>
+              <Suspense fallback={null}><PhysicsPreload /></Suspense>
+            </>
+          )
         : (
             <Suspense fallback={null}>
               <ExploreScene

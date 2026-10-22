@@ -128,7 +128,7 @@ describe('canvas-first live room chrome', () => {
       />,
     )
     expect(screen.queryByRole('button', { name: /room to new people/i })).not.toBeInTheDocument()
-    expect(screen.getByText('The owner controls Build and Explore from the main switch.')).toBeInTheDocument()
+    expect(screen.queryByText(/controls Build and Explore/)).not.toBeInTheDocument()
   })
 
   it('keeps recovery and rejected-edit feedback visible without taking over the canvas', () => {

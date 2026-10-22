@@ -14,6 +14,13 @@ import { createLiveDiagnostics } from './liveDiagnostics'
 
 export type LiveRoomClientFactory = (options: LiveRoomClientOptions) => LiveRoomClient
 
+/**
+ * Explorers send a pose at least every 1.5 s (`DEFAULT_LIVE_POSE_HEARTBEAT_MS`). Someone who goes back to Build (or
+ * hides the tab) stops sending, so their character leaves the world after this long instead of standing frozen.
+ */
+export const LIVE_POSE_STALE_MS = 5_000
+const POSE_SWEEP_MS = 1_000
+
 function samePlayers(first: LiveRoomSnapshot['players'], second: LiveRoomSnapshot['players']) {
   return first === second
 }
@@ -32,6 +39,8 @@ export function createLiveRoomConnector(
     let snapshot = createInitialLiveRoomSnapshot(options.roomId, Boolean(options.ownerToken))
     const diagnostics = createLiveDiagnostics()
     const poses = new Map<string, LiveRoomRemotePose>()
+    /** When each remote pose last arrived, by this machine's clock. */
+    const poseSeen = new Map<string, number>()
     const listeners = new Set<() => void>()
 
     const emit = () => {
@@ -52,6 +61,7 @@ export function createLiveRoomConnector(
       for (const playerId of poses.keys()) {
         if (playerId === source.clientId || !connectedPlayerIds.has(playerId)) {
           poses.delete(playerId)
+          poseSeen.delete(playerId)
           posesChanged = true
         }
       }
@@ -111,8 +121,21 @@ export function createLiveRoomConnector(
       ) return
       const nextPose = { ...pose }
       poses.set(nextPose.playerId, nextPose)
+      poseSeen.set(nextPose.playerId, Date.now())
       commit({ ...snapshot, remotePoses: [...poses.values()] })
     }
+
+    const sweepPoses = setInterval(() => {
+      const cutoff = Date.now() - LIVE_POSE_STALE_MS
+      let changed = false
+      for (const [playerId, seen] of poseSeen) {
+        if (seen >= cutoff) continue
+        poseSeen.delete(playerId)
+        poses.delete(playerId)
+        changed = true
+      }
+      if (changed) commit({ ...snapshot, remotePoses: [...poses.values()] })
+    }, POSE_SWEEP_MS)
 
     const receiveError = (error: { code: string; message: string }) => {
       if (disconnected) return
@@ -157,6 +180,7 @@ export function createLiveRoomConnector(
       disconnect: () => {
         if (disconnected) return
         disconnected = true
+        clearInterval(sweepPoses)
         listeners.clear()
         const activeClient = client
         client = null

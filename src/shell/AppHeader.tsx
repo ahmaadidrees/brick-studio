@@ -214,10 +214,9 @@ function EditorHeader({
 }: AppHeaderEditorProps) {
   const [renaming, setRenaming] = useState(false)
   const title = worldTitle || livePolicy?.roomTitle || NEUTRAL_WORLD_TITLE
-  const locked = modeLock ? modeLock.locked : Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
-  const lockedReason = modeLock?.reason ?? (livePolicy && !livePolicy.isOwner
-    ? 'The room owner switches between Build and Explore for everyone.'
-    : 'Modes switch once the shared world is back online.')
+  // In live rooms everyone switches Build and Explore for themselves.
+  const locked = modeLock ? modeLock.locked : false
+  const lockedReason = modeLock?.reason
   const openRename = onRenameWorld ? () => setRenaming(true) : undefined
   const inRoom = Boolean(livePolicy)
 

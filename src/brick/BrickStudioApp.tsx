@@ -65,7 +65,7 @@ import { useClassroomWorld } from '../classroom/useClassroomWorld'
 import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '../classroom/contracts'
 import { InviteSheet, inviteAudienceLabel } from '../classroom/InviteSheet'
 import { InvitesButton } from '../classroom/StudentInvites'
-import type { LiveConnectionState, LiveWorldMode } from './liveProtocol'
+import type { LiveConnectionState } from './liveProtocol'
 import {
   CHARACTER_DESCRIPTORS,
   ENVIRONMENT_DESCRIPTORS,
@@ -92,7 +92,6 @@ installActiveWorldRecovery()
 export type BrickStudioLivePolicy = {
   connection: LiveConnectionState
   isOwner: boolean
-  onRequestMode: (mode: LiveWorldMode) => void
   onGoHome?: () => void
   /** Room title shown in place of the guest draft's neutral title. */
   roomTitle?: string
@@ -140,18 +139,9 @@ function useBuilderShortcuts(enabled = true, livePolicy?: BrickStudioLivePolicy)
       if (command && event.key.toLowerCase() === 'c') { event.preventDefault(); state.copy(); return }
       if (command && event.key.toLowerCase() === 'v') { event.preventDefault(); state.paste(); return }
       if (command && event.key.toLowerCase() === 'd') { event.preventDefault(); state.duplicate(); return }
-      if (event.key === '1') {
-        if (livePolicy) {
-          if (livePolicy.isOwner && livePolicy.connection === 'online') livePolicy.onRequestMode('build')
-        } else state.setMode('build')
-        return
-      }
-      if (event.key === '2') {
-        if (livePolicy) {
-          if (livePolicy.isOwner && livePolicy.connection === 'online' && state.bricks.length > 0) livePolicy.onRequestMode('explore')
-        } else requestExploreMode()
-        return
-      }
+      // Build and Explore are each person's own, in live rooms too.
+      if (event.key === '1') { state.setMode('build'); return }
+      if (event.key === '2') { requestExploreMode(); return }
       if (state.mode !== 'build') return
       if (interactiveTarget && (event.key === 'Enter' || event.key === ' ')) return
       if (event.key === 'Enter' && state.draft) { event.preventDefault(); state.placeDraft(); return }
@@ -364,14 +354,13 @@ type ExploreHudProps = {
 /** Board 07: the header steps aside in Explore. Back to building leads; People/Character/Settings stay one tap away. */
 function ExploreHud({ worldTitle, livePolicy, onStartLiveWorld, onOpenWorldSetup, onGoHome, onGoToInviteWorld, inviteNavigationBlocked }: ExploreHudProps) {
   const setMode = useBrickStore((state) => state.setMode)
-  const liveModeDisabled = Boolean(livePolicy && (!livePolicy.isOwner || livePolicy.connection !== 'online'))
-  const requestBuild = () => livePolicy ? livePolicy.onRequestMode('build') : setMode('build')
+  const requestBuild = () => setMode('build')
   const title = worldTitle || livePolicy?.roomTitle || NEUTRAL_WORLD_TITLE
   return (
     <div className="brick-explore-hud" role="region" aria-label="Explore toolbar">
       <div className="brick-explore-hud-start">
         <BrandHome onGoHome={onGoHome} wordmark="never" className="brick-brand-mark" />
-        <Button variant="secondary" aria-label="Back to building" className="brick-explore-back" icon={<ArrowLeft size={18} />} onClick={requestBuild} disabled={liveModeDisabled}>Back to building<kbd aria-hidden="true">1</kbd></Button>
+        <Button variant="secondary" aria-label="Back to building" className="brick-explore-back" icon={<ArrowLeft size={18} />} onClick={requestBuild}>Back to building<kbd aria-hidden="true">1</kbd></Button>
       </div>
       <div className="brick-explore-hud-end">
         <InvitesButton onGoToInviteWorld={onGoToInviteWorld} navigationBlocked={inviteNavigationBlocked} />
@@ -1467,8 +1456,7 @@ export default function BrickStudioApp({
           livePolicy={livePolicy}
           mode={mode}
           onRequestMode={(next) => {
-            if (livePolicy) livePolicy.onRequestMode(next)
-            else if (next === 'explore') requestExploreMode()
+            if (next === 'explore') requestExploreMode()
             else useBrickStore.getState().setMode('build')
           }}
           canExplore={brickCount > 0}

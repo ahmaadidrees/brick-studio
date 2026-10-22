@@ -141,7 +141,7 @@ describe('AppHeader editor', () => {
     expect(onRequestMode).toHaveBeenCalledWith('build')
   })
 
-  it('live rooms: room title, People headcount, locked modes for guests, no Import / New build', () => {
+  it('live rooms: room title, People headcount, everyone switches modes, no Import / New build', () => {
     const onOpenPeople = vi.fn()
     const { rerender } = render(<AppHeader {...editorProps({
       livePolicy: { connection: 'online', isOwner: false, roomTitle: 'Team Red', peopleCount: 4, onOpenPeople },
@@ -157,9 +157,9 @@ describe('AppHeader editor', () => {
     })} />)
     expect(screen.getByRole('button', { name: 'People, 4 here. Building with Ben K. Waiting for Cy D.' })).toHaveAttribute('title', 'People, 4 here. Building with Ben K. Waiting for Cy D.')
     const group = screen.getByRole('radiogroup', { name: 'Studio mode' })
-    expect(within(group).getByRole('radio', { name: 'Build' })).toBeDisabled()
-    expect(within(group).getByRole('radio', { name: 'Explore' })).toBeDisabled()
-    expect(group).toHaveAccessibleDescription('The room owner switches between Build and Explore for everyone.')
+    // Build and Explore are each person's own, so guests switch too.
+    expect(within(group).getByRole('radio', { name: 'Build' })).toBeEnabled()
+    expect(within(group).getByRole('radio', { name: 'Explore' })).toBeEnabled()
     fireEvent.click(screen.getByRole('button', { name: 'This project' }))
     expect(screen.getByRole('menuitem', { name: 'Replace with a file' })).toBeDisabled()
     expect(screen.getByRole('menuitem', { name: 'New build' })).toBeDisabled()

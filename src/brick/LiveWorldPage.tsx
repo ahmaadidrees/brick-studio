@@ -113,7 +113,6 @@ function DefaultLiveWorldScene({
   const livePolicy = useMemo(() => ({
     connection: snapshot.connection,
     isOwner: snapshot.isOwner,
-    onRequestMode: actions.setMode,
     // The HUD's beforeunload guard covers pending commands and recovery copies.
     onGoHome: () => window.location.assign('/'),
     roomTitle: view.roomTitle,
@@ -122,7 +121,7 @@ function DefaultLiveWorldScene({
     sessionReplaced: snapshot.connection === 'offline' && snapshot.notice?.code === 'session_replaced',
     onOpenPeople: () => setPeoplePanelRequest((current) => ({ seq: current.seq + 1 })),
     presence: view.presence,
-  }), [actions.setMode, snapshot.connection, snapshot.isOwner, snapshot.players.length, snapshot.pendingOperations, snapshot.notice?.code, view.roomTitle, view.presence])
+  }), [snapshot.connection, snapshot.isOwner, snapshot.players.length, snapshot.pendingOperations, snapshot.notice?.code, view.roomTitle, view.presence])
   const contentPolicy = useMemo(() => ({
     plateSize: view.document.plateSize,
     environmentId: view.document.environmentId,
@@ -134,7 +133,7 @@ function DefaultLiveWorldScene({
       && snapshot.mode === 'build'
       && Boolean(actions.replaceDocument),
     environmentHelp: snapshot.isOwner
-      ? 'Switch everyone to Build before changing the shared environment. You can still customize your character now.'
+      ? 'Switch to Build before changing the shared environment. You can still customize your character now.'
       : 'Choose your character and colors. The room owner controls the shared environment.',
     onApply: (selection: ContentPickerSelection, requestedPlateSize?: BuildPlateSize) => {
       const size = requestedPlateSize ?? getBuildPlateSize(view.document)

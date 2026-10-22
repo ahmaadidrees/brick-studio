@@ -6,7 +6,7 @@ import {
   type LiveRoomSnapshot as ClientSnapshot,
 } from '../liveRoomClient'
 import type { LivePlayer, LivePose } from '../liveProtocol'
-import { createLiveRoomConnector } from './liveRoomConnector'
+import { LIVE_POSE_STALE_MS, createLiveRoomConnector } from './liveRoomConnector'
 
 function player(playerId: string, isOwner = false): LivePlayer {
   return { playerId, isOwner, profile: { displayName: playerId } }
@@ -165,6 +165,27 @@ describe('live room controller adapter', () => {
     harness.emitStatus({ players: [player('self-player')] })
     expect(controller.getSnapshot().remotePoses).toEqual([])
     expect(listener).toHaveBeenCalledTimes(3)
+  })
+
+  it('removes a character whose poses stop, as when its player goes back to Build', () => {
+    vi.useFakeTimers()
+    try {
+      const harness = createClientHarness()
+      const controller = createLiveRoomConnector(harness.createClient)({ roomId: 'ROOM1234', profile: { displayName: 'Ada' } })
+      const pose = { playerId: 'friend-player', at: 10, x: 1, y: 2, z: 3, yaw: 0, moving: false, jumping: false }
+      harness.emitPose(pose)
+      // The idle heartbeat (1.5 s) keeps an explorer who stands still.
+      vi.advanceTimersByTime(3_000)
+      harness.emitPose({ ...pose, at: 11 })
+      vi.advanceTimersByTime(3_000)
+      expect(controller.getSnapshot().remotePoses).toHaveLength(1)
+
+      vi.advanceTimersByTime(LIVE_POSE_STALE_MS)
+      expect(controller.getSnapshot().remotePoses).toEqual([])
+      controller.disconnect()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('turns every client error into a new monotonic notice without replaying it on status changes', () => {

@@ -258,7 +258,6 @@ export function LiveWorldHud({
                   <span>{isOwner ? 'You are the owner' : ownerName ? `${ownerName} is the owner` : 'You are a guest'}</span>
                   <strong>{modeInfo.label}</strong>
                   <p>{sessionReplaced ? 'Building is paused in this tab. Rejoin below to continue here.' : permission.canEdit ? modeInfo.detail : permission.reason}</p>
-                  {!isOwner && <small>The owner controls Build and Explore from the main switch.</small>}
                   {permission.canEdit && !editingIntegrated && <small>Shared brick editing is still being connected.</small>}
                 </div>
                 {!guestRoom && <p className="live-retention-note">Reopen this classroom world from My Class. Your teacher manages who can join.</p>}

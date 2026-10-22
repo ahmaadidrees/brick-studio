@@ -430,33 +430,18 @@ describe('Brick Studio responsive controls', () => {
     expect(useBrickStore.getState().mode).toBe('build')
   })
 
-  it('lets only an online live-world owner request a shared mode change', () => {
+  it('lets every live-world member switch Build and Explore for themselves', () => {
     resetStore([brick])
-    const onRequestMode = vi.fn()
-    const { rerender } = render(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: false, onRequestMode }} />)
+    const { rerender } = render(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: false }} />)
 
-    expect(screen.getByRole('radio', { name: 'Explore' })).toBeDisabled()
     fireEvent.keyDown(document.body, { key: '2' })
-    expect(onRequestMode).not.toHaveBeenCalled()
-
-    rerender(<BrickStudioApp livePolicy={{ connection: 'reconnecting', isOwner: true, onRequestMode }} />)
-    expect(screen.getByRole('radio', { name: 'Explore' })).toBeDisabled()
-
-    rerender(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: true, onRequestMode }} />)
-    fireEvent.click(screen.getByRole('radio', { name: 'Explore' }))
-    expect(onRequestMode).toHaveBeenCalledWith('explore')
-    expect(useBrickStore.getState().mode).toBe('build')
-  })
-
-  it('does not expose a local mode-switch bypass to a live-world member', () => {
-    resetStore([brick])
-    useBrickStore.setState({ mode: 'explore' })
-    const onRequestMode = vi.fn()
-    render(<BrickStudioApp livePolicy={{ connection: 'online', isOwner: false, onRequestMode }} />)
-    expect(screen.getByRole('button', { name: 'Back to building' })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Return to Build' })).not.toBeInTheDocument()
+    expect(useBrickStore.getState().mode).toBe('explore')
     fireEvent.click(screen.getByRole('button', { name: 'Back to building' }))
-    expect(onRequestMode).not.toHaveBeenCalled()
+    expect(useBrickStore.getState().mode).toBe('build')
+
+    // Exploring needs no server, so it works while the room reconnects too.
+    rerender(<BrickStudioApp livePolicy={{ connection: 'reconnecting', isOwner: true }} />)
+    fireEvent.click(screen.getByRole('radio', { name: 'Explore' }))
     expect(useBrickStore.getState().mode).toBe('explore')
   })
 

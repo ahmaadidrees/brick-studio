@@ -242,6 +242,6 @@ export function formatLivePlayerCount(count: number): string {
 
 export function describeLiveMode(mode: LiveWorldMode): { label: string; detail: string } {
   return mode === 'build'
-    ? { label: 'Build together', detail: 'Everyone can place and edit bricks' }
+    ? { label: 'Build together', detail: 'Everyone can place and edit bricks, and explore whenever they like' }
     : { label: 'Explore', detail: 'Walk around the build — editing is paused' }
 }

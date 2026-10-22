@@ -22,7 +22,7 @@ export type ModeSwitchProps = {
 }
 
 export const DEFAULT_EXPLORE_REASON = 'Place a brick first, then explore.'
-export const DEFAULT_LOCKED_REASON = 'The room owner switches between Build and Explore for everyone.'
+export const DEFAULT_LOCKED_REASON = 'Switching is paused right now.'
 
 /**
  * Build | Explore as one pill (SegmentedControl, radiogroup semantics: one tab

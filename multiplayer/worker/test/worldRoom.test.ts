@@ -481,7 +481,7 @@ describe("WorldRoom", () => {
     expect(await getWorld(roomId)).toMatchObject({ revision: 4, document: { bricks: [replacement] } });
   });
 
-  it("enforces owner mode, lock, replace permissions, and lets known players reconnect while locked", async () => {
+  it("keeps the legacy owner mode switch without blocking edits, enforces lock and replace permissions, and lets known players reconnect while locked", async () => {
     const { roomId, ownerToken } = await createWorld(worldDocument([brick("seed")]));
     const owner = await connectWorld(roomId, "owner_201", ownerToken);
     const guest = await connectWorld(roomId, "guest_201");
@@ -498,7 +498,8 @@ describe("WorldRoom", () => {
       opId: "guest_201#1",
       commands: [{ op: "delete", id: "seed" }],
     });
-    expect(await guest.inbox!.next("reject")).toMatchObject({ code: "explore_mode", revision: 1 });
+    // Build and Explore are per person now: a guest still edits after an older owner client switched the room.
+    expect(await guest.inbox!.next("apply")).toMatchObject({ opId: "guest_201#1", revision: 2 });
     send(guest.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setLocked", locked: true });
     expect(await guest.inbox!.next("error")).toMatchObject({ code: "owner_only" });
     send(owner.socket!, { v: LIVE_PROTOCOL_VERSION, type: "setLocked", locked: true });
@@ -529,11 +530,11 @@ describe("WorldRoom", () => {
       v: LIVE_PROTOCOL_VERSION,
       type: "replaceDocument",
       opId: "owner_201#1",
-      expectedRevision: 2,
+      expectedRevision: 3,
       document: worldDocument([brick("replacement", 12, 12)]),
     });
-    expect(await owner.inbox!.next("snapshot")).toMatchObject({ opId: "owner_201#1", revision: 3 });
-    expect(await getWorld(roomId)).toMatchObject({ revision: 3, document: { bricks: [brick("replacement", 12, 12)] } });
+    expect(await owner.inbox!.next("snapshot")).toMatchObject({ opId: "owner_201#1", revision: 4 });
+    expect(await getWorld(roomId)).toMatchObject({ revision: 4, document: { bricks: [brick("replacement", 12, 12)] } });
   });
 
   it("deduplicates accepted, rejected, and replacement operation replays across reconnects", async () => {
