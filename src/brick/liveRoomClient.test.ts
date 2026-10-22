@@ -94,7 +94,6 @@ function createHarness(overrides: Partial<LiveRoomClientOptions> = {}) {
   const callbacks = {
     documents: [] as Array<{ document: BrickStudioDocument; reason: string }>,
     presence: [] as LivePlayer[][],
-    modes: [] as string[],
     locks: [] as boolean[],
     poses: [] as Array<{ playerId: string; x: number }>,
     errors: [] as string[],
@@ -114,7 +113,6 @@ function createHarness(overrides: Partial<LiveRoomClientOptions> = {}) {
     },
     onDocument: (document, reason) => callbacks.documents.push({ document, reason }),
     onPresence: (players) => callbacks.presence.push(players),
-    onMode: (mode) => callbacks.modes.push(mode),
     onLocked: (locked) => callbacks.locks.push(locked),
     onPose: (pose) => callbacks.poses.push({ playerId: pose.playerId, x: pose.x }),
     onError: (error) => callbacks.errors.push(error.code),
