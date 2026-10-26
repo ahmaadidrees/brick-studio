@@ -62,6 +62,7 @@
   color: var(--text); background: var(--surface); border: 1px solid var(--border-strong, var(--border)); border-radius: var(--radius-md, 10px); cursor: pointer;
 }
 a.mb-btn { text-decoration: none; }
+.mb-found { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .mb-btn:hover:not(:disabled), .mb-icon-btn:hover { background: var(--surface-2, rgba(0, 0, 0, 0.05)); }
 .mb-btn:disabled { opacity: 0.6; cursor: default; }
 .mb-btn-primary { color: var(--primary-contrast, #fff); background: var(--primary-strong); border-color: var(--primary-strong); }

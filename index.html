@@ -16,6 +16,11 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
+    <!-- Scrub (the iPad browser for Scratch) opens pages that carry this marker and gives them its Bluetooth bridge
+         (Scratch Link), which the Remote uses to reach a micro:bit on iPads. It must be in the HTML: Scrub looks when
+         the page has loaded. See src/microbit/bluetooth.ts. -->
+    <script id="scratch-link-extension-script" type="application/json">{}</script>
+
     <!-- Link previews (LinkedIn, Slack, iMessage, X). Vite replaces the VITE_PUBLIC_ORIGIN
          placeholder at build time with the origin from .env.production, so the URLs are absolute. -->
     <meta property="og:type" content="website" />

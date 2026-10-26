@@ -54,6 +54,18 @@ describe('MicrobitPanel', () => {
     expect(link.getAttribute('target')).toBe('_blank')
   })
 
+  it('inside Scrub, finds micro:bits over Bluetooth instead of USB', () => {
+    ;(self as unknown as { Scratch?: unknown }).Scratch = { ScratchLinkSafariSocket: class {} }
+    try {
+      render(<MicrobitPanel />)
+      expect(screen.getByRole('button', { name: 'Find micro:bits' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Connect micro:bit' })).toBeNull()
+      expect(screen.getByRole('link', { name: 'scratch.mit.edu/microbit' })).toBeTruthy()
+    } finally {
+      delete (self as unknown as { Scratch?: unknown }).Scratch
+    }
+  })
+
   it('closes with Escape and the button toggles it', () => {
     render(<><MicrobitButton /><MicrobitPanel /></>)
     fireEvent.keyDown(document.body, { key: 'Escape' })

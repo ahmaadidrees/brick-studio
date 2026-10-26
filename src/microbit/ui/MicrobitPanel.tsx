@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 import { useEffect, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { ACTION_NAMES, EVENT_MODES, EVENT_NAMES, GAME_EVENTS, MODE_NAMES, PARTS, PART_NAMES, actionsFor, type Part, type ReactionShow, type ReactionSound, type RemoteAction } from '../assign'
+import { SCRATCH_MICROBIT_HEX_PAGE, bluetoothAvailable, connectBluetooth, disconnectBluetooth, searchBluetooth, shortName, useBluetooth } from '../bluetooth'
 import { REMOTE_HEX_URL, canFlash, installRemote, preloadFlasher, useFlash } from '../flash'
 import { connect, disconnect } from '../link'
 import { IMAGES, TILT_MAX, TUNES, type Pin } from '../protocol'
@@ -54,6 +55,48 @@ function PanelBody({ onClose }: { onClose: () => void }) {
 }
 
 function ConnectRow() {
+  // Inside Scrub (iPads) the micro:bit is reached over Bluetooth; everywhere else over USB.
+  return bluetoothAvailable() ? <BluetoothRow /> : <UsbRow />
+}
+
+/** iPads, in the Scrub app: search, pick the micro:bit by the name it scrolls, connect. */
+function BluetoothRow() {
+  const { phase, found } = useBluetooth()
+  const error = useMicrobit((s) => s.error)
+  return (
+    <section className="mb-section" aria-label="Connection">
+      {phase === 'connected' ? (
+        <>
+          <p className="mb-status is-ok" role="status">Connected over Bluetooth</p>
+          <button type="button" className="mb-btn" onClick={() => void disconnectBluetooth()}>Disconnect</button>
+        </>
+      ) : phase === 'idle' ? (
+        <button type="button" className="mb-btn mb-btn-primary" onClick={() => void searchBluetooth()}>Find micro:bits</button>
+      ) : (
+        <>
+          <p className="mb-status is-wait" role="status">{phase === 'connecting' ? 'Connecting…' : found.length ? 'Tap the name your micro:bit is scrolling:' : 'Looking for micro:bits…'}</p>
+          {phase === 'searching' && found.length > 0 && (
+            <ul className="mb-found">
+              {found.map((p) => (
+                <li key={String(p.id)}>
+                  <button type="button" className="mb-btn" onClick={() => void connectBluetooth(p.id)}>{shortName(p.name)}</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <button type="button" className="mb-btn" onClick={() => void disconnectBluetooth()}>Cancel</button>
+        </>
+      )}
+      {error && <p className="mb-error" role="alert">{error}</p>}
+      <p className="mb-note">
+        On iPads the micro:bit needs Scratch&apos;s micro:bit program (from <a href={SCRATCH_MICROBIT_HEX_PAGE} target="_blank" rel="noopener">scratch.mit.edu/microbit</a>), put on it once from a computer. Sounds don&apos;t play over Bluetooth.
+      </p>
+    </section>
+  )
+}
+
+/** Computers and Chromebooks: USB serial, with the Brickgineers Remote program. */
+function UsbRow() {
   const status = useMicrobit((s) => s.status)
   const hello = useMicrobit((s) => s.hello)
   const error = useMicrobit((s) => s.error)
