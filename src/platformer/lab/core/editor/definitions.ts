@@ -33,6 +33,9 @@ export const HAT_OPCODES: readonly HatOpcode[] = [
   'event_whengreaterthan',
   'control_start_as_clone',
   'platformer_whenbump',
+  'platformer_everytick',
+  'platformer_whenland',
+  'platformer_whenleaveground',
 ]
 
 export function isHatOpcode(opcode: string): opcode is HatOpcode {
@@ -1606,6 +1609,33 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       nextStatement: null,
       hat: 'cap',
       tooltip: '',
+    },
+    {
+      type: 'platformer_everytick',
+      message0: 'every tick',
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      nextStatement: null,
+      hat: 'cap',
+      tooltip: 'Runs these blocks once every tick (30 times a second) while the level plays, in the order the scripts were made.',
+    },
+    {
+      type: 'platformer_whenland',
+      message0: 'when I land',
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      nextStatement: null,
+      hat: 'cap',
+      tooltip: 'Runs when this brick lands on something solid.',
+    },
+    {
+      type: 'platformer_whenleaveground',
+      message0: 'when I leave the ground',
+      category: 'platformer',
+      colour: CATEGORY_COLORS.platformer,
+      nextStatement: null,
+      hat: 'cap',
+      tooltip: 'Runs when this brick stops standing on something: it jumped, fell or walked off a ledge.',
     },
   ]
 }

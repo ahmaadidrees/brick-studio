@@ -61,6 +61,11 @@ export type HatOpcode =
   | 'control_start_as_clone'
   /** Platformer extension (step 3): fields.SIDE ('_any_' | 'top' | 'bottom' | 'left' | 'right'), fields.BRICK ('_any_' | '_edge_' | brick name). */
   | 'platformer_whenbump'
+  /** Platformer hooks (Code Lab power bricks): run once per tick after the green flag, in program order. */
+  | 'platformer_everytick'
+  /** Platformer hooks: the brick's body just landed on something / just left the ground (started by the physics step). */
+  | 'platformer_whenland'
+  | 'platformer_whenleaveground'
 
 export interface Script {
   id: string

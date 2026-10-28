@@ -471,3 +471,72 @@ describe('pacing', () => {
     expect(copyOf(rt, 'p1').body!.vy).toBe(-5)
   })
 })
+
+describe('hook hats: every tick, when I land, when I leave the ground', () => {
+  const counter = (id: string): BrickDef['program']['variables'][number] => ({ id, name: id, value: 0 })
+  const inc = (id: string) => stmt('data_changevariableby', { VARIABLE: id }, { VALUE: lit(1) })
+  const setVar = (id: string, value: Expr) => stmt('data_setvariableto', { VARIABLE: id }, { VALUE: value })
+  const hook = (opcode: 'platformer_everytick' | 'platformer_whenland' | 'platformer_whenleaveground', ...body: Stmt[]): Script => ({
+    id: `s${scriptId++}`,
+    hat: { opcode, fields: {}, inputs: {} },
+    body,
+  })
+  const v = (id: string): Expr => block('data_variable', { VARIABLE: id })
+
+  it('"every tick" runs exactly once per tick, even when nothing on screen changes (a forever loop would not)', () => {
+    const b = brick('b', 'Ticker', 20, 20, [hook('platformer_everytick', inc('n'))], [counter('n')])
+    const rt = play(level([b], [{ id: 'b', brickId: 'b', x: 100, y: 100 }]))
+    run(rt, 1)
+    const before = copyOf(rt, 'b').variables.n as number
+    run(rt, 30)
+    expect((copyOf(rt, 'b').variables.n as number) - before).toBe(30)
+  })
+
+  it('"every tick" scripts run in program order, so a later script sees what an earlier one did this tick', () => {
+    const b = brick('b', 'Ticker', 20, 20, [hook('platformer_everytick', inc('a')), hook('platformer_everytick', setVar('seen', v('a')))], [counter('a'), counter('seen')])
+    const rt = play(level([b], [{ id: 'b', brickId: 'b', x: 100, y: 100 }]))
+    run(rt, 10)
+    const t = copyOf(rt, 'b').variables
+    expect(t.seen).toBe(t.a)
+  })
+
+  it('"every tick" stops with the stop sign and starts again with the green flag', () => {
+    const b = brick('b', 'Ticker', 20, 20, [hook('platformer_everytick', inc('n'))], [counter('n')])
+    const rt = play(level([b], [{ id: 'b', brickId: 'b', x: 100, y: 100 }]))
+    run(rt, 5)
+    rt.stopAll()
+    const stopped = copyOf(rt, 'b').variables.n
+    run(rt, 10)
+    expect(copyOf(rt, 'b').variables.n).toBe(stopped)
+    rt.greenFlag()
+    run(rt, 5)
+    expect(copyOf(rt, 'b').variables.n as number).toBeGreaterThan(stopped as number)
+  })
+
+  it('"when I land" fires once when the faller lands, not every tick it rests', () => {
+    const f = faller([hook('platformer_whenland', inc('landed'))], [counter('landed')])
+    const rt = play(level([platform, f], [{ id: 'p', brickId: 'plat', x: 100, y: 50 }, { id: 'f', brickId: 'f', x: 100, y: 120 }]))
+    run(rt, 60)
+    expect(copyOf(rt, 'f').variables.landed).toBe(1)
+  })
+
+  it('"when I leave the ground" fires when a resting brick jumps, and "when I land" fires again on the way down', () => {
+    const f = faller(
+      [hook('platformer_whenleaveground', inc('left')), hook('platformer_whenland', inc('landed'))],
+      [counter('left'), counter('landed')],
+    )
+    const rt = play(level([platform, f], [{ id: 'p', brickId: 'plat', x: 100, y: 50 }, { id: 'f', brickId: 'f', x: 100, y: 70 }]))
+    run(rt, 10)
+    expect(copyOf(rt, 'f').variables.left).toBe(0)
+    const landedBefore = copyOf(rt, 'f').variables.landed as number
+    copyOf(rt, 'f').body!.vy = 8
+    run(rt, 60)
+    expect(copyOf(rt, 'f').variables.left).toBe(1)
+    expect(copyOf(rt, 'f').variables.landed).toBe(landedBefore + 1)
+  })
+
+  it('a level using the hook hats passes validateDesign', () => {
+    const f = faller([hook('platformer_everytick', inc('n')), hook('platformer_whenland', inc('n')), hook('platformer_whenleaveground', inc('n'))], [counter('n')])
+    expect(validateDesign(level([platform, f], [{ id: 'p', brickId: 'plat', x: 100, y: 50 }]))).toEqual([])
+  })
+})

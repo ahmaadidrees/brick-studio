@@ -288,9 +288,11 @@ export function physicsStep(runtime: RuntimeApi): void {
   const index = buildIndex(world)
   // Snapshot the list: bump hats start later, but nothing here adds or removes targets.
   const bumps: { mover: Target; bump: Bump }[] = []
+  const grounded: { mover: Target; was: boolean }[] = []
   for (const mover of movers) {
     const body = mover.body as Body
     if (body.gravity) body.vy = Math.max(body.vy - P.gravity, -P.maxFall)
+    grounded.push({ mover, was: body.onGround })
     body.onGround = false
     const fromX = mover.x
     const fromY = mover.y
@@ -305,6 +307,24 @@ export function physicsStep(runtime: RuntimeApi): void {
     if (mover.x !== fromX || mover.y !== fromY) runtime.requestRedraw()
   }
   for (const { mover, bump } of bumps) startBumpHats(runtime, mover, bump)
+  for (const { mover, was } of grounded) {
+    const now = (mover.body as Body).onGround
+    if (now && !was) runtime.startHats('platformer_whenland', { target: mover })
+    else if (was && !now) runtime.startHats('platformer_whenleaveground', { target: mover })
+  }
+}
+
+/** Runtimes between a green flag and a stop: only they run "every tick" scripts. */
+const ticking = new WeakSet<RuntimeApi>()
+export const everyTickLifecycle = {
+  greenFlag: (runtime: RuntimeApi) => { ticking.add(runtime) },
+  stopAll: (runtime: RuntimeApi) => { ticking.delete(runtime) },
+  /**
+   * Queue next tick's "every tick" scripts. This runs in `afterTick` BEFORE the physics step, so these threads sweep
+   * ahead of the bump and landing hats the physics step starts: a script sees a bump on the tick after it happened, the
+   * way a forever loop does. A script still running from the last tick (it waited) is not started again.
+   */
+  afterTick: (runtime: RuntimeApi) => { if (ticking.has(runtime)) runtime.startHats('platformer_everytick') },
 }
 
 const OPPOSITE: Record<Side, Side> = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' }

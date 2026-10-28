@@ -8,7 +8,7 @@ import { dataPrimitives } from './data'
 import { looksPrimitives, onGreenFlagLooks, onStopAllLooks } from './looks'
 import { motionPrimitives } from './motion'
 import { operatorPrimitives } from './operators'
-import { physicsStep, platformerPrimitives } from './platformer'
+import { everyTickLifecycle, physicsStep, platformerPrimitives } from './platformer'
 import { instantiate } from './project'
 import { Runtime } from './runtime'
 import { clearQuestions, sensingPrimitives } from './sensing'
@@ -28,9 +28,9 @@ export const ALL_PRIMITIVES: PrimitiveTable = {
 /** A fresh world and runtime for this design. Call `runtime.greenFlag()` to start, `runtime.step()` per tick. */
 export function createRuntime(design: LevelDesign): Runtime {
   return new Runtime(instantiate(design), ALL_PRIMITIVES, {
-    greenFlag: [onGreenFlagLooks, onGreenFlagSound],
-    stopAll: [onStopAllLooks, onStopAllSound, clearQuestions],
-    afterTick: [(runtime) => physicsStep(runtime)],
+    greenFlag: [onGreenFlagLooks, onGreenFlagSound, everyTickLifecycle.greenFlag],
+    stopAll: [onStopAllLooks, onStopAllSound, clearQuestions, everyTickLifecycle.stopAll],
+    afterTick: [everyTickLifecycle.afterTick, (runtime) => physicsStep(runtime)],
   })
 }
 

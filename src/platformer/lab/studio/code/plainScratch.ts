@@ -239,6 +239,44 @@ function whenBumpCard(): PlainScratchCard {
   }
 }
 
+function everyTickCard(): PlainScratchCard {
+  const b = builder('tick')
+  const loop = b.flag([b.forever([b.change(V.xSpeed, 1)])])
+  return {
+    opcode: 'platformer_everytick',
+    name: 'every tick',
+    explanation:
+      '"every tick" runs its blocks once each tick, 30 times a second, while the level plays. In plain Scratch you use a forever loop under the green flag. ' +
+      'The Platformer hat is steadier: a forever loop can run more than once in a tick when nothing on screen changes, but "every tick" always runs exactly once, and the scripts run in the order you made them. That is what lets small feel scripts each do one job.',
+    workspace: workspace([place(loop, 20, 20)], [V.xSpeed]),
+    extras: { ...NO_EXTRAS, variables: [V.xSpeed] },
+  }
+}
+
+function groundChangeCard(opcode: 'platformer_whenland' | 'platformer_whenleaveground'): PlainScratchCard {
+  const landing = opcode === 'platformer_whenland'
+  const b = builder(landing ? 'land' : 'leave')
+  const was = { id: `ps_was_${landing ? 'land' : 'leave'}`, name: 'was on ground' }
+  const msg = landing ? 'landed' : 'left the ground'
+  const loop = b.flag([
+    b.forever([
+      b.sCond(b.eq(b.v(V.onGround), landing ? 1 : 0), [
+        b.sCond(b.eq(b.v(was), landing ? 0 : 1), [b.blk('event_broadcast', { inputs: { BROADCAST_INPUT: b.text(msg) } })]),
+      ]),
+      b.set(was, b.v(V.onGround)),
+    ]),
+  ])
+  return {
+    opcode,
+    name: landing ? 'when I land' : 'when I leave the ground',
+    explanation: landing
+      ? '"when I land" runs the moment the brick lands on something solid. In plain Scratch you remember whether you were on the ground last time: when you are now and were not before, you just landed, so you broadcast a message.'
+      : '"when I leave the ground" runs the moment the brick stops standing on something: a jump, a fall, or walking off a ledge. In plain Scratch you remember whether you were on the ground last time: when you were and are not now, you just left it.',
+    workspace: workspace([place(loop, 20, 20)], [V.onGround, was]),
+    extras: { ...NO_EXTRAS, variables: [V.onGround, was], messages: [msg] },
+  }
+}
+
 /** One card for every Platformer opcode. Keep in step with `createBlockDefinitions` (a test checks it). */
 export const PLAIN_SCRATCH: Readonly<Record<string, PlainScratchCard>> = Object.fromEntries(
   [
@@ -249,6 +287,9 @@ export const PLAIN_SCRATCH: Readonly<Record<string, PlainScratchCard>> = Object.
     speedCard(),
     onGroundCard(),
     whenBumpCard(),
+    everyTickCard(),
+    groundChangeCard('platformer_whenland'),
+    groundChangeCard('platformer_whenleaveground'),
   ].map((c) => [c.opcode, c]),
 )
 

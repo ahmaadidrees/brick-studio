@@ -368,6 +368,9 @@ export function createContinuousToolbox(
       cssConfig: { container: 'code-extension-category' },
       contents: [
         { kind: 'label', text: 'Platformer extension' },
+        { kind: 'block', type: 'platformer_everytick' },
+        { kind: 'block', type: 'platformer_whenland' },
+        { kind: 'block', type: 'platformer_whenleaveground' },
         { kind: 'block', type: 'platformer_whenbump' },
         { kind: 'sep' },
         { kind: 'block', type: 'platformer_setgravity' },
