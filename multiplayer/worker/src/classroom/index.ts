@@ -3,6 +3,7 @@ import { PLATFORMER_FORMAT, isPlatformerDocument, validatePlatformerDocument, ty
 import { teacherGoogleAuthorizationUrl, validGoogleCodeVerifier } from './googleOAuth';
 import { ClassroomBodyError, readClassroomBody } from './readBody';
 import type { ClassroomInvite } from '../../../../packages/classroom-contracts/src/index';
+import { shelfRoute } from './shelf';
 
 export interface ClassroomEnv {
   SUPABASE_URL?: string;
@@ -89,6 +90,7 @@ export class ClassroomService {
     const data = response.status === 204 ? null : await response.json().catch(() => null) as Row | null;
     if (!response.ok) {
       if (data?.code === 'P0001' && ['brick_student_quota', 'brick_world_quota'].includes(data.message)) fail(409, 'quota_exceeded', data.message === 'brick_student_quota' ? 'This class has reached its student limit. Ask your teacher for help.' : 'You have reached the saved-world limit. Ask your teacher for help.');
+      if (data?.code === 'P0001' && data.message === 'brick_shelf_quota') fail(409, 'quota_exceeded', 'The class shelf is full (100 bricks). Ask your teacher to clear some space.');
       if (data?.code === '23514' && /brick_(world|checkpoint)_document_size/.test(data.message || '')) fail(413, 'too_large', 'This world exceeds the storage size limit. Your previous saved version is unchanged.');
       if (data?.code === '23505') fail(409, 'already_exists', 'That username or code is already in use.');
       // Admin user writes (registration, temporary/reset passwords) carry no sign-in credentials: a 400/422 there is
@@ -482,7 +484,7 @@ export class ClassroomService {
 }
 export type Caller = { id: string; username: string; rosterName: string; role: 'teacher' | 'student'; resetRequired: boolean; classId?: string; authVersion: number; sessionId: string; token: string };
 /** `teacherName` is null: teacher accounts are bare auth users with no roster name in the brick tables. */
-function classView(row: Row, code?: string, buildingNow: number | null = null) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, studentsCanShare: row.students_can_share !== false, buildingNow, teacherName: null, ...(code ? { code } : {}) }; }
+function classView(row: Row, code?: string, buildingNow: number | null = null) { return { id: row.id, name: row.name, loginCode: row.login_code, enrollmentOpen: row.enrollment_open, collaborationOpen: row.collaboration_open, showNamesOnJoin: row.show_names_on_join !== false, studentsCanShare: row.students_can_share !== false, shelfNeedsReview: row.shelf_needs_review !== false, raceHeroes: row.race_heroes ?? 'shelf', buildingNow, teacherName: null, ...(code ? { code } : {}) }; }
 /**
  * Whether a non-owner may edit a shared personal world right now: shared with editing, not hidden by the teacher,
  * the owner not suspended, and the owner's class has collaboration open and sharing on. Mirrors the checks
@@ -795,6 +797,7 @@ async function route(request: Request, service: ClassroomService, path: string[]
         .sort((a, b) => a.displayName.localeCompare(b.displayName) || a.id.localeCompare(b.id));
       return json({ classmates });
     }
+    if (path[2] === 'shelf') return shelfRoute(service, caller, await service.classFor(caller, path[1]), path, method, () => body(request), fail, rosterDisplayName);
     const cls = await service.classFor(caller, path[1], true);
     if (path.length === 2 && method === 'PATCH') {
       const input = await body(request), changes: Row = {};
@@ -802,6 +805,9 @@ async function route(request: Request, service: ClassroomService, path: string[]
       for (const [api, db] of [['enrollmentOpen', 'enrollment_open'], ['collaborationOpen', 'collaboration_open'], ['showNamesOnJoin', 'show_names_on_join'], ['studentsCanShare', 'students_can_share']]) {
         if (input[api] !== undefined) { if (typeof input[api] !== 'boolean') fail(400, 'invalid_input', `${api} must be true or false.`); changes[db] = input[api]; }
       }
+      // The class shelf: whether students' bricks wait for the teacher, and which Heroes a class race allows.
+      if (input.shelfNeedsReview !== undefined) { if (typeof input.shelfNeedsReview !== 'boolean') fail(400, 'invalid_input', 'shelfNeedsReview must be true or false.'); changes.shelf_needs_review = input.shelfNeedsReview; }
+      if (input.raceHeroes !== undefined) { if (!['builtin', 'shelf', 'any'].includes(input.raceHeroes)) fail(400, 'invalid_input', 'raceHeroes must be builtin, shelf or any.'); changes.race_heroes = input.raceHeroes; }
       const updated = Object.keys(changes).length ? (await service.patch('classes', `id=eq.${cls.id}&teacher_id=eq.${caller.id}`, changes))[0] : cls;
       let code: string | undefined;
       if (input.rotateCode === true) {

@@ -419,7 +419,7 @@ describe('join-screen roster', () => {
     const patchClass = (body: unknown, bearer = token) => handleClassroomRequest(new Request(`https://worker.test/classroom/classes/${classId}`, { method: 'PATCH', headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' }, body: JSON.stringify(body) }), env);
     const response = await patchClass({ showNamesOnJoin: false });
     expect(response?.status).toBe(200);
-    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false, studentsCanShare: true, buildingNow: null, teacherName: null } });
+    expect(await response?.json()).toEqual({ class: { id: classId, name: 'STEM class', loginCode: 'ROOM42', enrollmentOpen: true, collaborationOpen: true, showNamesOnJoin: false, studentsCanShare: true, shelfNeedsReview: true, raceHeroes: 'shelf', buildingNow: null, teacherName: null } });
     expect(patch).toHaveBeenCalledWith('classes', `id=eq.${classId}&teacher_id=eq.${teacherId}`, { show_names_on_join: false });
     expect((await patchClass({ showNamesOnJoin: 'no' }))?.status).toBe(400);
     vi.spyOn(ClassroomService.prototype, 'authenticate').mockResolvedValue(caller);
