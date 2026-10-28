@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { VariableDecl } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
 import { formatKnob, knobList, sliderRange } from './knobs'
+import './workshop.css'
 
 /**
  * The brick's Build knobs as sliders (changing one sets the variable's starting value, so every copy follows). The Hero

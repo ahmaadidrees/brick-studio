@@ -1,4 +1,4 @@
-/* Brick Workshop (step 6). Brickgineers light chrome; the editors keep their own dark panels. */
+/* The Hero's sliders (KnobsCard) and the Test room card. The full-screen Workshop these were made for is gone. */
 .ws { display: flex; flex-direction: column; height: 100%; min-height: 0; background: #F8F4EB; color: #263C51; }
 .ws-header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #fff; border-bottom: 2px solid #263C51; flex: none; }
 .ws-done { min-height: 44px; padding: 0 20px; border: 0; border-radius: 12px; background: #2f9e44; color: #fff; font: inherit; font-weight: 800; font-size: 16px; cursor: pointer; box-shadow: 0 3px 0 #1f7a33; }
