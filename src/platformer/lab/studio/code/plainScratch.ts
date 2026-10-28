@@ -277,6 +277,73 @@ function groundChangeCard(opcode: 'platformer_whenland' | 'platformer_whenleaveg
   }
 }
 
+// ---- bricks that move themselves ----
+
+function selfMoveCards(): PlainScratchCard[] {
+  const hit = { id: 'ps_hit', name: 'hit something' }
+  const b = builder('self')
+  const not = (c: { block: Record<string, unknown> } | { shadow: Record<string, unknown> }) => ({ block: b.blk('operator_not', { inputs: { OPERAND: c } }) })
+  const repeatUntil = (cond: ReturnType<typeof not>, body: Record<string, unknown>[]) => {
+    const first = b.chain(body)
+    return b.blk('control_repeat_until', { inputs: { CONDITION: cond, ...(first ? { SUBSTACK: { block: first } } : {}) } })
+  }
+  const moveLoop = b.flag([
+    b.forever([
+      b.set(hit, 0),
+      b.changeX(b.v(V.xSpeed)),
+      b.sCond(b.touching('Wall'), [b.set(hit, 1)]),
+      repeatUntil(not(b.touching('Wall')), [b.changeX(b.minus(0, 1))]),
+    ]),
+  ])
+  const tell = b.flag([b.forever([b.sCond(b.eq(b.v(hit), 1), [b.blk('event_broadcast', { inputs: { BROADCAST_INPUT: b.text('bumped') } })])])])
+  const ground = b.flag([b.forever([b.set(V.onGround, 0), b.changeY(b.v(V.ySpeed)), b.sCond(b.touching('Platform'), [b.set(V.onGround, 1)])])])
+  const vars = [V.xSpeed, hit]
+  return [
+    {
+      opcode: 'platformer_setmover',
+      name: 'move me with',
+      explanation:
+        'In plain Scratch every sprite moves itself with its own blocks. The Platformer can do it for you: every tick it adds the speeds, pulls down with gravity and stops you at solids. ' +
+        '"move me with [my own blocks]" turns that off for this brick, so its own scripts move it, the Scratch way, and you can change how walls and floors work.',
+      workspace: workspace([place(moveLoop, 20, 20)], vars),
+      extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
+    },
+    {
+      opcode: 'platformer_moveuntilhit',
+      name: 'move until I hit something',
+      explanation:
+        'In plain Scratch you move, and if you are now touching a wall you step back out one step at a time. ' +
+        'The Platformer block does the same in one go, with boxes instead of pixels: it stops exactly against the face of the first solid in the way, so fast bricks never jump through thin walls.',
+      workspace: workspace([place(moveLoop, 20, 20)], vars),
+      extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
+    },
+    {
+      opcode: 'platformer_hitsomething',
+      name: 'hit something?',
+      explanation:
+        '"hit something?" says whether the last move stopped early. In plain Scratch you remember it yourself: set a "hit something" variable to 0 before you move and to 1 when you find yourself touching a wall.',
+      workspace: workspace([place(moveLoop, 20, 20)], vars),
+      extras: { ...NO_EXTRAS, variables: vars, bricks: ['Wall'] },
+    },
+    {
+      opcode: 'platformer_tellhit',
+      name: 'tell what I hit',
+      explanation:
+        '"tell what I hit" starts "when I bump" on this brick and on the brick it ran into, so a ? block knows you hit it from below. In plain Scratch you broadcast a message, and the other sprite listens for it.',
+      workspace: workspace([place(tell, 20, 20)], vars),
+      extras: { ...NO_EXTRAS, variables: vars, messages: ['bumped'] },
+    },
+    {
+      opcode: 'platformer_setonground',
+      name: 'set on ground?',
+      explanation:
+        'A brick that moves itself says when it is standing on something, so "on ground?" and "when I land" keep working. In plain Scratch this is your own "on ground" variable: 0 before you fall, 1 when you land on a platform.',
+      workspace: workspace([place(ground, 20, 20)], [V.ySpeed, V.onGround]),
+      extras: { ...NO_EXTRAS, variables: [V.ySpeed, V.onGround], bricks: ['Platform'] },
+    },
+  ]
+}
+
 /** One card for every Platformer opcode. Keep in step with `createBlockDefinitions` (a test checks it). */
 export const PLAIN_SCRATCH: Readonly<Record<string, PlainScratchCard>> = Object.fromEntries(
   [
@@ -290,6 +357,7 @@ export const PLAIN_SCRATCH: Readonly<Record<string, PlainScratchCard>> = Object.
     everyTickCard(),
     groundChangeCard('platformer_whenland'),
     groundChangeCard('platformer_whenleaveground'),
+    ...selfMoveCards(),
   ].map((c) => [c.opcode, c]),
 )
 

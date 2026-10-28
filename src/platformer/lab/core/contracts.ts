@@ -311,6 +311,11 @@ export interface Body {
   vy: number
   /** True after a tick in which this body was stopped moving down by something solid (or the level floor). */
   onGround: boolean
+  /**
+   * "move me with [my own blocks]": the physics step leaves this body where it is (no gravity, no move, no bumps) and
+   * the brick's own blocks move it with "move [x] by (n) until I hit something". It is still solid for others.
+   */
+  selfMove?: boolean
 }
 
 export interface PhysicsSettings {

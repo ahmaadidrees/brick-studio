@@ -18,6 +18,11 @@ const PLATFORMER_TEXT: Record<string, string> = {
   platformer_everytick: 'every tick',
   platformer_whenland: 'when I land',
   platformer_whenleaveground: 'when I leave the ground',
+  platformer_setmover: 'move me with %1',
+  platformer_moveuntilhit: 'move %1 by %2 until I hit something',
+  platformer_hitsomething: 'hit something?',
+  platformer_tellhit: 'tell what I hit',
+  platformer_setonground: 'set on ground? to %1',
 }
 
 describe('Platformer blocks: wording', () => {

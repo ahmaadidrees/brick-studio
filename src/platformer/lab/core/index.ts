@@ -8,7 +8,7 @@ import { dataPrimitives } from './data'
 import { looksPrimitives, onGreenFlagLooks, onStopAllLooks } from './looks'
 import { motionPrimitives } from './motion'
 import { operatorPrimitives } from './operators'
-import { everyTickLifecycle, physicsStep, platformerPrimitives } from './platformer'
+import { everyTickLifecycle, physicsStep, platformerPrimitives, selfMovePrimitives } from './platformer'
 import { instantiate } from './project'
 import { Runtime } from './runtime'
 import { clearQuestions, sensingPrimitives } from './sensing'
@@ -23,6 +23,7 @@ export const ALL_PRIMITIVES: PrimitiveTable = {
   ...sensingPrimitives,
   ...clonePrimitives,
   ...platformerPrimitives,
+  ...selfMovePrimitives,
 }
 
 /** A fresh world and runtime for this design. Call `runtime.greenFlag()` to start, `runtime.step()` per tick. */

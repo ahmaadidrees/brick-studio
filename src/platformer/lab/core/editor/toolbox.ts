@@ -381,6 +381,12 @@ export function createContinuousToolbox(
         { kind: 'block', type: 'platformer_speed' },
         { kind: 'sep' },
         { kind: 'block', type: 'platformer_onground' },
+        { kind: 'label', text: 'Bricks that move themselves' },
+        { kind: 'block', type: 'platformer_setmover' },
+        { kind: 'block', type: 'platformer_moveuntilhit', inputs: { DISTANCE: numShadow(5) } },
+        { kind: 'block', type: 'platformer_hitsomething' },
+        { kind: 'block', type: 'platformer_tellhit' },
+        { kind: 'block', type: 'platformer_setonground' },
       ],
     },
   ]
