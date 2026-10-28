@@ -48,6 +48,21 @@ and not linked for students.
      as a file to hand to a classmate.
    - Painted grid bricks don't take powers.
 
+6. **The class shelf.**
+   - **Database:** migration `supabase/migrations/202610280001_brick_class_shelf.sql` adds `brick_shelf_items`
+     (at most 64 KB each, 100 per class) and two class settings: `shelf_needs_review` (on by default) and
+     `race_heroes` (`builtin`, `shelf` or `any`). Like every product table, only the Worker can reach it.
+   - **Worker routes** (`/classroom/classes/:id/shelf`) list, fetch, share, review (teacher only), remove (the maker
+     or the teacher) and count uses.
+     - A student's share waits for the teacher while the class checks first, and waiting or hidden items don't exist
+       for classmates.
+     - Makers show as first name and last initial. The class's "students can share" switch and rate limits apply.
+     - The server checks the power file again rather than trusting the browser.
+   - **In Code Lab** (signed in): "+ Power" lists the class shelf, and "Share with my class" follows "Make a power".
+   - **On the class page:** a Shelf tab with the review queue and both settings.
+   - **Races:** Code Lab levels can't race yet, and the race kit's Heroes aren't Code Lab bricks. The race setting is
+     stored and shown but not enforced.
+
 ## How it's checked
 
 - **The feel tests:** all 27 measurements still match the original engine (speeds, times to top speed, stopping and
@@ -83,7 +98,16 @@ and not linked for students.
 - **Making a power copies, it doesn't link:** a power made from scripts that use the Hero's own variables (like
   "late jump ticks") carries copies of them.
 
+## Deploying the shelf
+
+1. Apply `202610280001_brick_class_shelf.sql` to the production Supabase.
+2. Deploy the Worker.
+3. Deploy the site.
+
+The Worker's shelf routes fail without the table. The site works with an older Worker, but its shelf calls do
+nothing.
+
 ## Not built yet
 
-- The class shelf: sharing in class without passing files around, with teacher approval and the race setting.
+- Enforcing the race setting, once Code Lab levels can race.
 - Exporting and importing a whole brick (place and Hero bricks). Powers already travel as files.
