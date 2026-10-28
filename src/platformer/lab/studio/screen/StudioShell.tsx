@@ -124,7 +124,7 @@ export function StudioShell({ store, templates }: { store: StudioStore; template
           variant="editor"
           dimension="2d"
           hideCharacter
-          onSwitchDimension={(target) => target === '3d' && window.location.assign('/build')}
+          onOpenProjects={() => window.location.assign('/projects')}
           worldTitle={name}
           saveStatus={{ source: { kind: 'local' } }}
           // Scene has nothing to open in Code Lab; the header's tools group is hidden in builder.css.
