@@ -53,6 +53,8 @@ export interface RuntimeLifecycle {
   stopAll: ((runtime: RuntimeApi) => void)[]
   /** Runs once at the end of every tick, after all script sweeps and before world.tick advances (Platformer physics). */
   afterTick: ((runtime: RuntimeApi) => void)[]
+  /** After the green flag's own hats have started (so their threads run first in the first tick). */
+  afterGreenFlag?: ((runtime: RuntimeApi) => void)[]
 }
 
 export type { ThreadStatus, ExecutionFrame, SerializedThread } from './contracts'
@@ -110,7 +112,7 @@ export class Runtime implements RuntimeApi {
   constructor(world: World, primitives: PrimitiveTable = {}, lifecycle: Partial<RuntimeLifecycle> = {}) {
     this.world = world
     this.primitives = primitives
-    this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [], afterTick: lifecycle.afterTick ?? [] }
+    this.lifecycle = { greenFlag: lifecycle.greenFlag ?? [], stopAll: lifecycle.stopAll ?? [], afterTick: lifecycle.afterTick ?? [], afterGreenFlag: lifecycle.afterGreenFlag ?? [] }
     if (this.world.threads && this.world.threads.length > 0) {
       this.restoreThreadsFromWorld()
     } else {
@@ -269,6 +271,7 @@ export class Runtime implements RuntimeApi {
     }
     for (const hook of this.lifecycle.greenFlag) hook(this)
     this.startHats('event_whenflagclicked')
+    for (const hook of this.lifecycle.afterGreenFlag ?? []) hook(this)
   }
 
   pressKey(key: string): void {

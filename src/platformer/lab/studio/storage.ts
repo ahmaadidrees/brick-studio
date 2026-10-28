@@ -10,6 +10,7 @@
 
 import { parse } from '../core/save'
 import { upgradeLegacySaveText } from './legacySave'
+import { upgradeUntouchedHero } from './remix'
 import {
   clearStorageNotice,
   getStorageNotice,
@@ -130,10 +131,10 @@ export function loadProject(storageOverride?: Storage): StudioProject {
   // Step 6/6b saves paint tile characters with no brick behind them: add the standard grid bricks first (legacySave.ts).
   const result = parse(upgradeLegacySaveText(raw))
   if (result.ok) {
-    return {
+    return upgradeUntouchedHero({
       design: result.save.design,
       workspaces: result.save.workspaces ?? {},
-    }
+    })
   }
 
   // Handle invalid/corrupt save or newer schema version

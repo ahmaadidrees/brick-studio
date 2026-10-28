@@ -28,7 +28,8 @@ export const ALL_PRIMITIVES: PrimitiveTable = {
 /** A fresh world and runtime for this design. Call `runtime.greenFlag()` to start, `runtime.step()` per tick. */
 export function createRuntime(design: LevelDesign): Runtime {
   return new Runtime(instantiate(design), ALL_PRIMITIVES, {
-    greenFlag: [onGreenFlagLooks, onGreenFlagSound, everyTickLifecycle.greenFlag],
+    greenFlag: [onGreenFlagLooks, onGreenFlagSound],
+    afterGreenFlag: [everyTickLifecycle.afterGreenFlag],
     stopAll: [onStopAllLooks, onStopAllSound, clearQuestions, everyTickLifecycle.stopAll],
     afterTick: [everyTickLifecycle.afterTick, (runtime) => physicsStep(runtime)],
   })

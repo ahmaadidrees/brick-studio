@@ -67,6 +67,17 @@ function workspaceShape(workspace: unknown, values = false): unknown {
   return roots.map(node).sort((a, b) => stable(a).localeCompare(stable(b)))
 }
 
+/** A short fingerprint of a workspace's blocks, values included (FNV-1a over the stable shape), to recognise a known version. */
+export function workspaceFingerprint(workspace: unknown): string {
+  const text = stable(workspaceShape(workspace, true))
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
 export function isStructuralWorkspaceChange(before: unknown, after: unknown): boolean {
   return stable(workspaceShape(before)) !== stable(workspaceShape(after))
 }
@@ -200,4 +211,30 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
   const restored = clone(baseline)
   const next = retainOwnValues(replaceBrick(project, restored.brick, restored.workspace), restored.brick)
   return renameReferences(next, brick.name, restored.brick.name)
+}
+
+/**
+ * The built-in Hero's blocks before it was rebuilt as basics plus feel scripts (October 2026), as generated and after a
+ * trip through the editor, for this version and the one before it. Only these are upgraded: older saves predate "My
+ * Hero", so a Hero with other blocks may hold a kid's own edits.
+ */
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7']
+
+/**
+ * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly
+ * an earlier original moves to the current original. Slider values the kid tuned are kept for every variable that
+ * still exists, and so are its costumes and sounds.
+ */
+export function upgradeUntouchedHero(project: StudioProject): StudioProject {
+  const hero = project.design.bricks.find((b) => b.id === 'brick_hero')
+  const original = hero && !hero.remixOf ? catalogOriginal(hero) : undefined
+  if (!hero || !original || !EARLIER_HERO_FINGERPRINTS.includes(workspaceFingerprint(project.workspaces[hero.id]))) return project
+  const tuned = new Map(hero.program.variables.map((v) => [v.id, v.value]))
+  const fresh = clone(original)
+  const variables = fresh.brick.program.variables.map((v) => (tuned.has(v.id) ? { ...v, value: tuned.get(v.id)! } : v))
+  const upgraded: BrickDef = { ...hero, program: { ...fresh.brick.program, variables } }
+  return {
+    design: { ...project.design, bricks: project.design.bricks.map((b) => (b.id === hero.id ? upgraded : b)) },
+    workspaces: { ...project.workspaces, [hero.id]: fresh.workspace },
+  }
 }

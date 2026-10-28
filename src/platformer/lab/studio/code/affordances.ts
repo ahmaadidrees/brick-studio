@@ -245,16 +245,34 @@ export function anyOverlap(stacks: PlacedStack[]): boolean {
   return false
 }
 
-/** Scratch's "Clean up": one column, in reading order, each stack under the last with room for its label. */
+/** Stacks whose left edges are further apart than this are in different columns. */
+export const COLUMN_SPLIT = 300
+
+/**
+ * Scratch's "Clean up", keeping columns: stacks are grouped into the columns they were laid out in (left edges more
+ * than COLUMN_SPLIT apart), and each column becomes one tidy column in reading order, each stack under the last with
+ * room for its label. Columns stay left to right and never overlap each other. Most layouts are one column.
+ */
 export function columnLayout(stacks: PlacedStack[]): Map<string, { x: number; y: number }> {
-  const sorted = [...stacks].sort((a, b) => a.top - b.top || a.left - b.left)
-  const x = sorted.length ? Math.min(...sorted.map((s) => s.left)) : 0
+  const byLeft = [...stacks].sort((a, b) => a.left - b.left)
+  const columns: PlacedStack[][] = []
+  for (const s of byLeft) {
+    const last = columns[columns.length - 1]
+    if (last && s.left - last[0].left <= COLUMN_SPLIT) last.push(s)
+    else columns.push([s])
+  }
   const out = new Map<string, { x: number; y: number }>()
-  let y = sorted.length ? sorted[0].top - (sorted[0].labelled ? LABEL_BAND : 0) : 0
-  for (const s of sorted) {
-    const top = s.labelled ? y + LABEL_BAND : y
-    out.set(s.id, { x, y: top })
-    y = top + (s.bottom - s.top) + STACK_GAP
+  let minX = -Infinity
+  for (const column of columns) {
+    const sorted = [...column].sort((a, b) => a.top - b.top || a.left - b.left)
+    const x = Math.max(Math.min(...sorted.map((s) => s.left)), minX)
+    let y = sorted[0].top - (sorted[0].labelled ? LABEL_BAND : 0)
+    for (const s of sorted) {
+      const top = s.labelled ? y + LABEL_BAND : y
+      out.set(s.id, { x, y: top })
+      y = top + (s.bottom - s.top) + STACK_GAP
+    }
+    minX = x + Math.max(...sorted.map((s) => s.right - s.left)) + STACK_GAP * 2
   }
   return out
 }

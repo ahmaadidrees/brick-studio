@@ -49,6 +49,24 @@ describe('tidy on open: only overlapping layouts are rearranged', () => {
     expect(placed[1].top).toBe(placed[0].bottom + STACK_GAP)
     expect(placed[2].top).toBe(placed[1].bottom + STACK_GAP + LABEL_BAND)
   })
+
+  it('keeps two columns as two columns, each tidied on its own, without the columns overlapping', () => {
+    const input = [
+      stack('a1', 20, 20, 300, 400, true), stack('a2', 20, 300, 300, 200, true),
+      stack('b1', 900, 20, 250, 300, true), stack('b2', 905, 200, 250, 100, true),
+    ]
+    expect(anyOverlap(input)).toBe(true)
+    const target = columnLayout(input)
+    expect([target.get('a1')!.x, target.get('a2')!.x]).toEqual([20, 20])
+    expect([target.get('b1')!.x, target.get('b2')!.x]).toEqual([900, 900])
+    expect(target.get('a2')!.y).toBeGreaterThan(target.get('a1')!.y)
+    expect(target.get('b2')!.y).toBeGreaterThan(target.get('b1')!.y)
+    const placed = input.map((s) => {
+      const at = target.get(s.id)!
+      return { ...s, left: at.x, right: at.x + (s.right - s.left), top: at.y, bottom: at.y + (s.bottom - s.top) }
+    })
+    expect(anyOverlap(placed)).toBe(false)
+  })
 })
 
 describe('undo and redo use Blockly\'s own stack', () => {

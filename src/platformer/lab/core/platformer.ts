@@ -317,7 +317,8 @@ export function physicsStep(runtime: RuntimeApi): void {
 /** Runtimes between a green flag and a stop: only they run "every tick" scripts. */
 const ticking = new WeakSet<RuntimeApi>()
 export const everyTickLifecycle = {
-  greenFlag: (runtime: RuntimeApi) => { ticking.add(runtime) },
+  /** The first tick's "every tick" threads start right behind the green flag's, like a forever loop under the flag. */
+  afterGreenFlag: (runtime: RuntimeApi) => { ticking.add(runtime); runtime.startHats('platformer_everytick') },
   stopAll: (runtime: RuntimeApi) => { ticking.delete(runtime) },
   /**
    * Queue next tick's "every tick" scripts. This runs in `afterTick` BEFORE the physics step, so these threads sweep

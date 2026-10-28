@@ -182,6 +182,10 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'wall_lock_side', name: 'wall lock side' },
   { id: 'limit', name: 'fall limit now' },
   { id: 'excess', name: 'fall excess' },
+  { id: 'pressed', name: 'space just pressed' },
+  { id: 'jump_now', name: 'jump now' }, // the takeoff speed this tick (the feel scripts can raise it)
+  { id: 'float_now', name: 'float gravity for this jump' },
+  { id: 'gravity_now', name: 'gravity now' },
 ]
 
 export function heroVariables(): VariableDecl[] {
@@ -268,38 +272,80 @@ export function createHeroWorkspace(): WorkspaceJson {
       inputs: { CONDITION: cond, ...(sub1(then) ? { SUBSTACK: sub1(then) } : {}), ...(sub1(otherwise) ? { SUBSTACK2: sub1(otherwise) } : {}) },
     })
 
-  // ---- scripts and My Blocks
-  let row = 0
-  const place = (top: Json): Json => {
-    // Lay scripts out in two columns so the editor opens on something readable.
-    top.x = 20 + (row % 2) * 560
-    top.y = 20 + Math.floor(row / 2) * 760
-    row++
+  // ---- scripts: the basics plus feel scripts, each "every tick", no My Blocks to go inside
+  //
+  // "every tick" scripts run once per tick in the order they are listed here (the program order). The basics start each
+  // tick with plain numbers (walking speed, a normal jump, normal gravity); each feel script, placed just before the
+  // basic that uses it, changes one of those numbers. With every feel script on, the arithmetic is exactly the old
+  // Hero's. Turn one off and the Hero still works, just without that bit of polish.
+  // Rendered height, generously: a row with a condition in it is up to ~56 px, a C mouth adds its own top and bottom.
+  // Scripts that overlap make the editor tidy them into one column, so err on the tall side.
+  const stackHeight = (b: Json | undefined): number => {
+    let h = 0
+    for (let n: Json | undefined = b; n; n = (n.next as { block?: Json } | undefined)?.block) {
+      h += 56
+      const inputs = (n.inputs ?? {}) as Record<string, { block?: Json }>
+      for (const k of ['SUBSTACK', 'SUBSTACK2']) if (k in inputs || (k === 'SUBSTACK2' && n.type === 'control_if_else')) h += 40 + stackHeight(inputs[k]?.block)
+    }
+    return h
+  }
+  const columns = { basics: 20, feel: 20 }
+  const order: Json[] = []
+  const labels: Array<[Json, string]> = []
+  const place = (column: keyof typeof columns, top: Json, label: string): Json => {
+    top.x = column === 'basics' ? 20 : 900
+    top.y = columns[column]
+    columns[column] += 150 + stackHeight(top.next ? (top.next as { block: Json }).block : undefined)
+    order.push(top)
+    labels.push([top, label])
     return top
   }
-  const define = (proccode: string, body: Json[]): Json =>
-    place({ type: 'procedures_definition', id: ids.next(), extraState: { proccode, argumentNames: [], warp: false }, next: sub1(body) })
+  const tick = (column: keyof typeof columns, label: string, body: Json[]): Json =>
+    place(column, blk('platformer_everytick', { next: sub1(body) }), label)
+  const bump = (column: keyof typeof columns, label: string, side: 'left' | 'right', body: Json[]): Json =>
+    place(column, blk('platformer_whenbump', { fields: { SIDE: side, BRICK: '_any_' }, next: sub1(body) }), label)
 
-  // read keys: what the player is pressing this tick.
-  const readKeys = define('read keys', [
+  place(
+    'basics',
+    blk('event_whenflagclicked', {
+      next: sub1([blk('platformer_setgravity', { fields: { GRAVITY: 'off' } }), blk('motion_setrotationstyle', { fields: { STYLE: 'left-right' } }), setX(0), setY(0)]),
+    }),
+    'When the level starts: I do my own gravity, so turn the Platformer one off',
+  )
+
+  tick('basics', 'Read the arrow keys, x and space', [
     set('raw_steer', 0),
     when(key('right arrow'), [set('raw_steer', 1)]),
     when(key('left arrow'), [change('raw_steer', -1)]), // both arrows cancel out
+    set('steer', v('raw_steer')),
     set('running', 0),
     when(key('x'), [set('running', 1)]),
-    // jumpPressed: only the first tick space is down starts an "early jump" timer.
-    either(
-      key('space'),
-      [when(eq(v('space_down'), 0), [set('buffer', add(v('early_ticks'), 1))]), set('space_down', 1)],
-      [set('space_down', 0)],
-    ),
-    // After a wall jump you can't steer back into the wall for a few ticks.
-    set('steer', v('raw_steer')),
+    // "space just pressed" is only true on the first tick space is down, so holding it never jumps twice.
+    set('pressed', 0),
+    either(key('space'), [when(eq(v('space_down'), 0), [set('pressed', 1)]), set('space_down', 1)], [set('space_down', 0)]),
+    when(eq(v('pressed'), 1), [set('buffer', 1)]),
+  ])
+
+  tick('basics', 'Start each tick with the normal numbers: walking speed, a normal jump, normal gravity', [
+    set('speed', abs(xSpeed())),
+    set('way', 0),
+    when(gt(xSpeed(), 0), [set('way', 1)]),
+    when(lt(xSpeed(), 0), [set('way', -1)]),
+    set('cap', v('walk_top')),
+    set('push', v('air_push')),
+    when(onGround(), [set('push', v('walk_push'))]),
+    set('jump_now', v('jump_stand')),
+    set('float_now', v('hold_slow')),
+    set('gravity_now', v('fall_gravity')),
+    set('limit', v('max_fall')),
+  ])
+
+  tick('feel', 'Wall jump (part 1): just after pushing off a wall, I can\'t steer back into it', [
     when(gt(v('wall_lock'), 0), [change('wall_lock', -1), when(eq(v('steer'), v('wall_lock_side')), [set('steer', 0)])]),
   ])
 
-  // feel the wall: only the bump hats can tell us there is a wall, so they leave a note in "wall hit".
-  const feelWall = define('feel the wall', [
+  // Only the bump hats can tell us there is a wall, so they leave a note in "wall hit".
+  tick('feel', 'Wall slide (part 1): notice a wall beside me while I fall and push into it', [
     set('wall_side', 0),
     either(
       and(and(not(onGround()), not(gt(ySpeed(), 0))), and(not(eq(v('raw_steer'), 0)), eq(v('wall_hit'), v('raw_steer')))),
@@ -309,21 +355,24 @@ export function createHeroWorkspace(): WorkspaceJson {
     set('wall_hit', 0), // the bump hats set it again later this tick if we are still pushing
   ])
 
-  // walk: accelerate, slow down, skid. Mirrors player.ts "Horizontal speed".
-  const walk = define('walk', [
-    set('speed', abs(xSpeed())),
-    set('way', 0),
-    when(gt(xSpeed(), 0), [set('way', 1)]),
-    when(lt(xSpeed(), 0), [set('way', -1)]),
-    // the top speed right now: walking, running, or p speed
-    set('cap', v('walk_top')),
+  tick('feel', 'Run with x: a higher top speed and a stronger push, and p speed once the run meter is full', [
     when(eq(v('running'), 1), [
       either(
         onGround(),
         [either(not(lt(v('meter'), v('meter_full'))), [set('cap', v('p_top'))], [set('cap', v('run_top'))])],
         [either(eq(v('p_jump'), 1), [set('cap', v('p_top'))], [set('cap', v('run_top'))])],
       ),
+      when(onGround(), [set('push', v('run_push'))]),
     ]),
+  ])
+
+  tick('feel', 'Skid: pushing against the way I\'m going slows me down hard on the ground, and turns me in the air', [
+    when(and(not(eq(v('steer'), 0)), and(not(eq(v('way'), 0)), not(eq(v('way'), v('steer'))))), [
+      either(onGround(), [set('push', v('skid'))], [set('push', v('air_turn'))]),
+    ]),
+  ])
+
+  tick('basics', 'Walk: speed up toward my top speed, slow down when I let go, face the way I walk', [
     either(
       eq(v('steer'), 0),
       [
@@ -334,15 +383,9 @@ export function createHeroWorkspace(): WorkspaceJson {
         either(
           or(eq(v('way'), 0), eq(v('way'), v('steer'))),
           [
-            // pushing the way we are going (or standing still)
             either(
               lt(v('speed'), v('cap')),
-              [
-                set('push', v('air_push')),
-                when(onGround(), [set('push', v('walk_push')), when(eq(v('running'), 1), [set('push', v('run_push'))])]),
-                set('speed', add(v('speed'), v('push'))),
-                when(gt(v('speed'), v('cap')), [set('speed', v('cap'))]),
-              ],
+              [set('speed', add(v('speed'), v('push'))), when(gt(v('speed'), v('cap')), [set('speed', v('cap'))])],
               [
                 when(and(onGround(), gt(v('speed'), v('cap'))), [
                   set('speed', sub(v('speed'), v('friction'))),
@@ -352,18 +395,14 @@ export function createHeroWorkspace(): WorkspaceJson {
             ),
             setX(mul(v('steer'), v('speed'))),
           ],
-          [
-            // pushing against the way we are going: skid on the ground, turn in the air
-            either(onGround(), [changeX(mul(v('steer'), v('skid')))], [changeX(mul(v('steer'), v('air_turn')))]),
-          ],
+          [changeX(mul(v('steer'), v('push')))],
         ),
         blk('motion_pointindirection', { inputs: { DIRECTION: as(mul(v('steer'), 90)) } }),
       ],
     ),
   ])
 
-  // run meter: fills while you run flat out on the ground; at 7 you are at p speed.
-  const runMeter = define('run meter', [
+  tick('feel', 'Run meter: fills while I run flat out on the ground; full means p speed', [
     when(onGround(), [
       either(
         and(and(eq(v('running'), 1), gt(mul(v('steer'), xSpeed()), 0)), not(lt(abs(xSpeed()), sub(v('run_top'), v('meter_slack'))))),
@@ -374,10 +413,7 @@ export function createHeroWorkspace(): WorkspaceJson {
         [
           either(
             gt(v('meter'), 0),
-            [
-              change('meter_timer', 1),
-              when(not(lt(v('meter_timer'), v('meter_drain'))), [set('meter_timer', 0), change('meter', -1)]),
-            ],
+            [change('meter_timer', 1), when(not(lt(v('meter_timer'), v('meter_drain'))), [set('meter_timer', 0), change('meter', -1)])],
             [set('meter_timer', 0)],
           ),
         ],
@@ -385,157 +421,105 @@ export function createHeroWorkspace(): WorkspaceJson {
     ]),
   ])
 
-  // jump: late jump (coyote), early jump (buffer), takeoff speed by how fast we are going, wall jump.
-  const jump = define('jump (hold to go higher)', [
+  tick('feel', 'Coyote time: I can still jump for a moment after running off a ledge', [
     either(onGround(), [set('coyote', v('late_ticks'))], [when(gt(v('coyote'), 0), [change('coyote', -1)])]),
-    when(gt(v('buffer'), 0), [
-      either(
-        or(onGround(), gt(v('coyote'), 0)),
-        [
-          set('speed', abs(xSpeed())),
-          // which jump: standing, walking, running or p speed
-          either(
-            lt(v('speed'), v('walk_jump_from')),
-            [setY(v('jump_stand')), set('hold', v('hold_slow'))],
-            [
-              either(
-                lt(v('speed'), v('run_jump_from')),
-                [setY(v('jump_walk')), set('hold', v('hold_slow'))],
-                [
-                  either(
-                    lt(v('speed'), v('p_jump_from')),
-                    [setY(v('jump_run')), set('hold', v('hold_fast'))],
-                    [setY(v('jump_p')), set('hold', v('hold_fast'))],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          set('jumping', 1),
-          set('coyote', 0),
-          set('buffer', 0),
-          set('p_jump', 0),
-          when(not(lt(v('meter'), v('meter_full'))), [set('p_jump', 1)]),
-        ],
-        [
-          // not on the ground: maybe push off a wall
-          when(or(not(eq(v('wall_side'), 0)), gt(v('wall_late'), 0)), [
-            when(not(eq(v('wall_side'), 0)), [set('wall_last', v('wall_side'))]),
-            setX(mul(sub(0, v('wall_last')), v('wall_push'))),
-            setY(v('wall_up')),
-            set('hold', v('hold_slow')),
-            set('jumping', 1),
-            set('p_jump', 0),
-            set('wall_lock', v('wall_lock_ticks')),
-            set('wall_lock_side', v('wall_last')),
-            blk('motion_pointindirection', { inputs: { DIRECTION: as(mul(sub(0, v('wall_last')), 90)) } }),
-            set('wall_side', 0),
-            set('wall_late', 0),
-            set('buffer', 0),
-          ]),
-        ],
-      ),
-    ]),
-    // A press that could not jump yet stays live for a few ticks.
-    when(gt(v('buffer'), 0), [change('buffer', -1)]),
   ])
 
-  // fall: gravity, the Hero's own. Light while rising with space held, heavy otherwise. Always changes y speed, which
-  // is also what keeps the forever loop to one trip per tick.
-  const fall = define('fall and land', [
-    either(
-      and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), key('space')),
-      [changeY(sub(0, v('hold')))],
-      [changeY(sub(0, v('fall_gravity')))],
-    ),
-    when(not(gt(ySpeed(), 0)), [set('jumping', 0)]),
-    set('limit', v('max_fall')),
-    when(not(eq(v('wall_side'), 0)), [set('limit', v('wall_slide'))]),
-    when(lt(ySpeed(), sub(0, v('limit'))), [
+  tick('feel', 'Jump buffer: pressing jump just before I land still counts', [
+    when(eq(v('pressed'), 1), [set('buffer', add(v('early_ticks'), 1))]),
+  ])
+
+  tick('feel', 'Faster jumps go higher: walking, running and p speed each jump a bit higher', [
+    set('speed', abs(xSpeed())),
+    when(not(lt(v('speed'), v('walk_jump_from'))), [
       either(
-        eq(v('wall_side'), 0),
-        [setY(sub(0, v('limit')))],
-        [
-          // grabbing a wall sheds fall speed fast: half the extra, but at least "wall shed"
-          set('excess', sub(0, ySpeed())), // how fast we fall now (positive)
-          set('speed', div(sub(v('excess'), v('limit')), 2)),
-          when(lt(v('speed'), v('wall_shed')), [set('speed', v('wall_shed'))]),
-          set('excess', sub(v('excess'), v('speed'))),
-          when(lt(v('excess'), v('limit')), [set('excess', v('limit'))]), // never slower than the slide speed
-          setY(sub(0, v('excess'))),
-        ],
+        lt(v('speed'), v('run_jump_from')),
+        [set('jump_now', v('jump_walk'))],
+        [either(lt(v('speed'), v('p_jump_from')), [set('jump_now', v('jump_run'))], [set('jump_now', v('jump_p'))]), set('float_now', v('hold_fast'))],
       ),
     ]),
   ])
 
-  // The first view has four readable calls; helpers keep the existing movement order and arithmetic.
-  const readControls = define('read keys and walls', [call('read keys'), call('feel the wall')])
-  const walkAndRun = define('walk and run', [call('walk'), call('run meter')])
+  tick('basics', 'Jump: space jumps when I\'m on the ground', [
+    when(and(gt(v('buffer'), 0), or(onGround(), gt(v('coyote'), 0))), [
+      setY(v('jump_now')),
+      set('hold', v('float_now')),
+      set('jumping', 1),
+      set('coyote', 0),
+      set('buffer', 0),
+      set('p_jump', 0),
+      when(not(lt(v('meter'), v('meter_full'))), [set('p_jump', 1)]),
+    ]),
+  ])
 
-  // hit a wall: the run meter drops by 2 (player.ts: bumping a wall while running).
-  const hitWall = define('hit a wall', [when(and(onGround(), gt(v('meter'), 0)), [change('meter', -2), when(lt(v('meter'), 0), [set('meter', 0)])])])
+  tick('feel', 'Wall jump (part 2): jumping while I slide down a wall pushes me off it', [
+    when(and(gt(v('buffer'), 0), or(not(eq(v('wall_side'), 0)), gt(v('wall_late'), 0))), [
+      when(not(eq(v('wall_side'), 0)), [set('wall_last', v('wall_side'))]),
+      setX(mul(sub(0, v('wall_last')), v('wall_push'))),
+      setY(v('wall_up')),
+      set('hold', v('hold_slow')),
+      set('jumping', 1),
+      set('p_jump', 0),
+      set('wall_lock', v('wall_lock_ticks')),
+      set('wall_lock_side', v('wall_last')),
+      blk('motion_pointindirection', { inputs: { DIRECTION: as(mul(sub(0, v('wall_last')), 90)) } }),
+      set('wall_side', 0),
+      set('wall_late', 0),
+      set('buffer', 0),
+    ]),
+  ])
 
-  const start = place(
-    blk('event_whenflagclicked', {
-      next: {
-        block: chain([
-          blk('platformer_setgravity', { fields: { GRAVITY: 'off' } }),
-          blk('motion_setrotationstyle', { fields: { STYLE: 'left-right' } }),
-          setX(0),
-          setY(0),
-          blk('control_forever', { inputs: { SUBSTACK: sub1([call('read keys and walls'), call('walk and run'), call('jump (hold to go higher)'), call('fall and land')]) } }),
-        ])!,
-      },
-    }),
-  )
+  tick('basics', 'Forget an old jump press, one tick at a time', [when(gt(v('buffer'), 0), [change('buffer', -1)])])
 
-  const bumpLeft = place(
-    blk('platformer_whenbump', { fields: { SIDE: 'left', BRICK: '_any_' }, next: { block: chain([set('wall_hit', 1), call('hit a wall')])! } }),
-  )
-  const bumpRight = place(
-    blk('platformer_whenbump', { fields: { SIDE: 'right', BRICK: '_any_' }, next: { block: chain([set('wall_hit', -1), call('hit a wall')])! } }),
-  )
+  tick('feel', 'Hold to jump higher: gravity is lighter while I rise with space held', [
+    when(and(and(eq(v('jumping'), 1), gt(ySpeed(), 0)), key('space')), [set('gravity_now', v('hold'))]),
+  ])
+
+  tick('basics', 'Gravity: pull me down every tick', [changeY(sub(0, v('gravity_now'))), when(not(gt(ySpeed(), 0)), [set('jumping', 0)])])
+
+  tick('feel', 'Wall slide (part 2): sliding down a wall is slow, and grabbing one sheds speed fast', [
+    when(not(eq(v('wall_side'), 0)), [
+      set('limit', v('wall_slide')),
+      when(lt(ySpeed(), sub(0, v('limit'))), [
+        // half the extra fall speed, but at least "wall shed", and never slower than the slide speed
+        set('excess', sub(0, ySpeed())),
+        set('speed', div(sub(v('excess'), v('limit')), 2)),
+        when(lt(v('speed'), v('wall_shed')), [set('speed', v('wall_shed'))]),
+        set('excess', sub(v('excess'), v('speed'))),
+        when(lt(v('excess'), v('limit')), [set('excess', v('limit'))]),
+        setY(sub(0, v('excess'))),
+        set('limit', v('excess')), // this tick's fall speed is the limit, so the next script leaves it alone
+      ]),
+    ]),
+  ])
+
+  tick('basics', 'Top fall speed: never fall faster than this', [when(lt(ySpeed(), sub(0, v('limit'))), [setY(sub(0, v('limit')))])])
+
+  bump('feel', 'Wall slide (part 3): a wall on my right', 'left', [set('wall_hit', 1)])
+  bump('feel', 'Wall slide (part 3): a wall on my left', 'right', [set('wall_hit', -1)])
+  const meterLoss = [when(and(onGround(), gt(v('meter'), 0)), [change('meter', -2), when(lt(v('meter'), 0), [set('meter', 0)])])]
+  bump('feel', 'Run meter: running into a wall on my right drops it', 'left', meterLoss)
+  bump('feel', 'Run meter: running into a wall on my left drops it', 'right', JSON.parse(JSON.stringify(meterLoss), (k, val) => (k === 'id' ? ids.next() : val)))
 
   // Step 6: how the Hero answers the rest of the level. Messages come from the Spring, Walkers, Spikes, Lava and Bounce blocks.
-  const bc = (message: string): Json => blk('event_broadcast', { inputs: { BROADCAST_INPUT: { shadow: { type: 'text', id: ids.next(), fields: { TEXT: message } } } } })
   const goTo = (x: number, y: number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
-  const receive = (message: string, body: Json[]): Json =>
-    place(blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message }, next: { block: chain(body)! } }))
-  // The Spring: one big upward speed (the Hero's own fall script keeps pulling it down).
-  const onBoing = receive('boing', [setY(14)])
+  const receive = (message: string, label: string, body: Json[]): Json =>
+    place('basics', blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message }, next: sub1(body) }), label)
+  // The Spring: one big upward speed (gravity keeps pulling it down).
+  receive('boing', 'When a Spring says boing: fly up', [setY(14)])
   // A stomped Walker: a small bounce.
-  const onStomped = receive('stomped', [setY(8)])
+  receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
   // Hurt (by a Walker, Spikes or Lava): back to the start, standing still.
-  const onHurt = receive('hero hurt', [goTo(HERO_START.x, HERO_START.y), setX(0), setY(0)])
+  receive('hero hurt', 'When I get hurt: go back to the start', [goTo(HERO_START.x, HERO_START.y), setX(0), setY(0)])
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
-  const onBounce = receive('bounce', [either(key('space'), [setY(11)], [setY(6.5)])])
+  receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(key('space'), [setY(11)], [setY(6.5)])])
 
-  const labels: Array<[Json, string]> = [
-    [start, 'When the level starts: turn gravity off, then do these every tick'],
-    [readControls, 'Read the keys and feel nearby walls'],
-    [walkAndRun, 'Walk or run, then update the run meter'],
-    [readKeys, 'Read the arrow keys, x and space'],
-    [feelWall, 'Notice a wall beside me'],
-    [walk, 'Speed up, slow down, skid'],
-    [runMeter, 'Fill the run meter while running'],
-    [jump, 'Jump: late, early and off a wall'],
-    [fall, 'Gravity: light while holding space'],
-    [hitWall, 'Lose run meter when I hit a wall'],
-    [bumpLeft, 'When I run into something on my right'],
-    [bumpRight, 'When I run into something on my left'],
-    [onBoing, 'When a Spring says boing: fly up'],
-    [onStomped, 'When I stomp a Walker: bounce'],
-    [onHurt, 'When I get hurt: go back to the start'],
-    [onBounce, 'When a Bounce block says bounce: launch again, higher if I hold jump'],
-  ]
   for (const [block, text] of labels) withLabel(block, text)
 
   return {
     variables: heroVariables().map((d) => ({ id: d.id, name: d.name })),
-    blocks: {
-      blocks: [start, readControls, walkAndRun, readKeys, feelWall, walk, runMeter, jump, fall, hitWall, bumpLeft, bumpRight, onBoing, onStomped, onHurt, onBounce] as never,
-    },
+    blocks: { blocks: order as never },
   }
 }
 

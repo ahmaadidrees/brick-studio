@@ -183,3 +183,49 @@ describe('Slice 1 remix by default', () => {
     expect(compileBrickEdit(project, 'brick_walker', empty).project.design.bricks.find((b) => b.id === 'brick_walker')!.program.variables).toEqual([])
   })
 })
+
+describe('saves with the old Hero', () => {
+  it('a Hero that is exactly the previous built-in one moves to the current one and keeps the slider values the kid tuned', async () => {
+    const { upgradeUntouchedHero } = await import('./remix')
+    const { createStarterProject } = await import('./starter')
+    const previous = (await import('./__fixtures__/hero-before-feel-scripts.json')).default as unknown as { program: never; workspace: unknown }
+    const current = createStarterProject()
+    const old = createStarterProject()
+    old.workspaces.brick_hero = previous.workspace
+    const hero = old.design.bricks.find((b) => b.id === 'brick_hero')!
+    hero.program = previous.program
+    hero.program = { ...hero.program, variables: hero.program.variables.map((v) => (v.id === 'walk_top' ? { ...v, value: 9 } : v)) }
+    const up = upgradeUntouchedHero(old)
+    expect(up.workspaces.brick_hero).toEqual(current.workspaces.brick_hero)
+    const upHero = up.design.bricks.find((b) => b.id === 'brick_hero')!
+    expect(upHero.program.procedures).toEqual([])
+    expect(upHero.program.scripts.length).toBe(current.design.bricks.find((b) => b.id === 'brick_hero')!.program.scripts.length)
+    expect(upHero.program.variables.find((v) => v.id === 'walk_top')!.value).toBe(9)
+  })
+
+  it('leaves alone a current Hero, a remixed "My Hero", and any Hero with other blocks (it may be a kid\'s own edits)', async () => {
+    const { upgradeUntouchedHero } = await import('./remix')
+    const { createStarterProject } = await import('./starter')
+    const previous = (await import('./__fixtures__/hero-before-feel-scripts.json')).default as unknown as { program: never; workspace: { blocks: { blocks: Array<{ x: number }> } } }
+    const fresh = createStarterProject()
+    expect(upgradeUntouchedHero(fresh)).toBe(fresh)
+    const mine = createStarterProject()
+    mine.workspaces.brick_hero = previous.workspace
+    mine.design.bricks.find((b) => b.id === 'brick_hero')!.remixOf = 'brick_hero'
+    expect(upgradeUntouchedHero(mine)).toBe(mine)
+    const edited = createStarterProject()
+    edited.workspaces.brick_hero = edited.workspaces.brick_walker
+    expect(upgradeUntouchedHero(edited)).toBe(edited)
+  })
+
+  it('moving the old Hero\'s scripts around does not stop the upgrade (positions are not part of the blocks)', async () => {
+    const { upgradeUntouchedHero } = await import('./remix')
+    const { createStarterProject } = await import('./starter')
+    const previous = (await import('./__fixtures__/hero-before-feel-scripts.json')).default as unknown as { program: never; workspace: { blocks: { blocks: Array<{ x: number }> } } }
+    const moved = structuredClone(previous.workspace)
+    for (const b of moved.blocks.blocks) b.x += 100
+    const old = createStarterProject()
+    old.workspaces.brick_hero = moved
+    expect(upgradeUntouchedHero(old)).not.toBe(old)
+  })
+})
