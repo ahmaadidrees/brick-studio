@@ -11,7 +11,7 @@ import { registerEditorBlocks } from '../core/editor/definitions'
 import { setEditorContext } from '../core/editor/context'
 import { createContinuousToolbox, myBlocksFlyout, registerToolboxPlugins } from '../core/editor/toolbox'
 import { buildEditorContext } from './code/context'
-import { CODE_DARK_THEME } from './code/codeTheme'
+import { CODE_DARK_THEME, CODE_LIGHT_THEME } from './code/codeTheme'
 import { VariableModal } from './code/VariableModal'
 import { ProcedureModal, type ProcedureData } from './code/ProcedureModal'
 import { DiagnosticsList, formatKidDiagnostic } from './code/DiagnosticsList'
@@ -35,6 +35,7 @@ import {
 } from './code/affordances'
 import { back, drillInto, isTop, pruneMissing, TOP_VIEW, type LayerState } from './code/layers'
 import './code/code.css'
+import './code/light.css'
 
 export interface CodeEditorProps {
   store: StudioStore
@@ -162,11 +163,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
     const ws = Blockly.inject(container, {
       toolbox: toolboxDef,
       renderer: 'zelos',
-      theme: CODE_DARK_THEME,
+      theme: docked ? CODE_LIGHT_THEME : CODE_DARK_THEME,
       grid: {
         spacing: 24,
         length: 3,
-        colour: '#2a2e38',
+        colour: docked ? '#e9e4d8' : '#2a2e38',
         snap: false,
       },
       zoom: {
@@ -576,7 +577,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
   }
 
   return (
-    <div className={`code-editor-root${docked ? ' code-editor-root-docked' : ''}`}>
+    <div className={`code-editor-root${docked ? ' code-editor-root-docked code-light' : ''}`}>
       {/* Accessible Editor Toolbar */}
       {docked ? <DockedEditorToolbar
         diagnosticsCount={diagnostics.length}
@@ -621,7 +622,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
 
       {/* Main Workspace Injection Container */}
       <div className="code-workspace-container">
-        {brick?.program.scripts.length === 1 && brick.program.scripts[0].body.length === 0 && <p className="code-starter-hint">Drag blocks under this hat.</p>}
+        {/* Code mode's column offers its own "Start from…" here instead. */}
+        {!docked && brick?.program.scripts.length === 1 && brick.program.scripts[0].body.length === 0 && <p className="code-starter-hint">Drag blocks under this hat.</p>}
         {loadFailed && (
           <div className="code-load-failed" role="alert">
             <strong>We could not open this brick&apos;s blocks.</strong>

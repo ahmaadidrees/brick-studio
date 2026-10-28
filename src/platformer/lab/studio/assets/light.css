@@ -1,0 +1,105 @@
+/* Code Lab's light Costumes and Sounds tabs. assets.css is the original dark look; these rules re-skin the same parts
+   only inside Code mode's left column (.cl-code-body), matching code/light.css. Colours, borders and shadows only.
+   A few rules use !important to beat inline style colours set in CostumeEditor.tsx / SoundPanel.tsx. */
+.cl-code-body {
+  --cl-ink: #1f2340; --cl-ink-2: #2e3350; --cl-muted: #4a5068; --cl-line: #e4dfd3; --cl-soft: #f1ece1; --cl-softer: #fbf9f4;
+  --cl-blue: #3e5bd9; --cl-blue-soft: #eef2fe; --cl-gold: #ffd43b; --cl-line-strong: #c9c2b2;
+}
+.cl-code-body :is(.costume-editor-layout, .sound-panel-container, .asset-modal) :is(button, input, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--cl-blue);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------- Shared buttons */
+.cl-code-body .asset-btn { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
+.cl-code-body .asset-btn:hover:not(:disabled) { background: var(--cl-soft); border-color: var(--cl-line-strong); }
+.cl-code-body .asset-btn-primary { background: var(--cl-blue); border-color: var(--cl-blue); color: #fff; }
+.cl-code-body .asset-btn-primary:hover:not(:disabled) { background: #2b44b0; border-color: #2b44b0; }
+.cl-code-body .asset-btn-danger { background: #d63838; border-color: #c22f2f; color: #fff; }
+.cl-code-body .asset-btn-danger:hover:not(:disabled) { background: #bf2d2d; border-color: #a82626; }
+.cl-code-body .asset-btn:disabled { opacity: 0.5; }
+
+.cl-code-body .brick-icon-btn { background: #fff; border-color: var(--cl-line); color: var(--cl-ink-2); }
+.cl-code-body .brick-icon-btn:hover:not(:disabled) { background: var(--cl-soft); border-color: var(--cl-line-strong); color: var(--cl-ink); }
+.cl-code-body .brick-icon-btn-danger { color: #b42828; }
+.cl-code-body .brick-icon-btn-danger:hover:not(:disabled) { background: #d63838; border-color: #c22f2f; color: #fff; }
+.cl-code-body .brick-icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ------------------------------------------------------------- Modals (word picker, sound library) */
+.cl-code-body .asset-modal-overlay { background: rgba(31, 35, 64, 0.34); }
+.cl-code-body .asset-modal { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); box-shadow: 0 18px 48px rgba(31, 35, 64, 0.25); }
+.cl-code-body .asset-modal-title { color: var(--cl-ink); }
+.cl-code-body .asset-modal-body { color: var(--cl-muted); }
+.cl-code-body .asset-word-btn { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
+.cl-code-body .asset-word-btn:hover { background: var(--cl-blue-soft); border-color: var(--cl-blue); }
+
+/* ------------------------------------------------------------- CostumeEditor */
+.cl-code-body .costume-editor-layout { background: #fff; color: var(--cl-ink); }
+.cl-code-body .costume-sidebar { background: var(--cl-softer); border-right-color: var(--cl-line); }
+.cl-code-body .costume-sidebar-header { border-bottom-color: var(--cl-line); }
+.cl-code-body .costume-sidebar-title { color: var(--cl-muted); }
+
+.cl-code-body .costume-item { background: #fff; border-color: var(--cl-line); }
+.cl-code-body .costume-item:hover { background: var(--cl-soft); border-color: var(--cl-line-strong); }
+.cl-code-body .costume-item.active { background: var(--cl-blue-soft); border-color: var(--cl-blue); }
+.cl-code-body .costume-item-thumb {
+  border-color: var(--cl-line);
+  background-color: #fff;
+  background-image: linear-gradient(45deg, var(--cl-soft) 25%, transparent 25%), linear-gradient(-45deg, var(--cl-soft) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--cl-soft) 75%), linear-gradient(-45deg, transparent 75%, var(--cl-soft) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+.cl-code-body .costume-item-name { color: var(--cl-ink); }
+.cl-code-body .costume-item-size { color: var(--cl-muted); }
+.cl-code-body .costume-item-actions .brick-icon-btn { background: transparent; border-color: transparent; }
+.cl-code-body .costume-item-actions .brick-icon-btn:hover:not(:disabled) { background: #fff; border-color: var(--cl-line); }
+.cl-code-body .costume-item-actions .brick-icon-btn-danger:hover:not(:disabled) { background: #d63838; border-color: #c22f2f; color: #fff; }
+
+.cl-code-body .costume-toolbar { background: var(--cl-softer); border-bottom-color: var(--cl-line); }
+.cl-code-body .tool-group { background: #fff; border-color: var(--cl-line); }
+.cl-code-body .tool-group > span { color: var(--cl-muted) !important; }
+.cl-code-body .tool-btn { background: #fff; border-color: var(--cl-line); color: var(--cl-ink-2); }
+.cl-code-body .tool-btn:hover:not(:disabled) { background: var(--cl-soft); border-color: var(--cl-line-strong); color: var(--cl-ink); }
+.cl-code-body .tool-btn.active,
+.cl-code-body .tool-btn.active:hover { background: var(--cl-blue); border-color: var(--cl-blue); color: #fff; }
+.cl-code-body .tool-btn:disabled { background: #fff; border-color: var(--cl-line); color: var(--cl-ink-2); opacity: 0.4; }
+
+.cl-code-body .costume-viewport { background: var(--cl-soft); }
+.cl-code-body .pixel-canvas-wrapper {
+  border-color: var(--cl-line-strong);
+  box-shadow: 0 4px 16px rgba(31, 35, 64, 0.14);
+  background-color: #fff;
+  background-image: linear-gradient(45deg, #e6e0d3 25%, transparent 25%), linear-gradient(-45deg, #e6e0d3 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e6e0d3 75%), linear-gradient(-45deg, transparent 75%, #e6e0d3 75%);
+}
+/* The rotation handle keeps its cyan, with a dark ring so it reads on the pale checker. */
+.cl-code-body .rotation-center-handle { border-color: #0097a7; background: rgba(0, 200, 220, 0.28); box-shadow: 0 0 0 1px #fff, 0 0 0 2px rgba(31, 35, 64, 0.55); }
+.cl-code-body .rotation-center-handle::after { background: var(--cl-ink); }
+
+.cl-code-body .palette-bar { background: var(--cl-softer); border-top-color: var(--cl-line); }
+.cl-code-body .palette-bar > div > span { color: var(--cl-muted) !important; }
+.cl-code-body .color-swatch { border-color: var(--cl-line-strong); }
+.cl-code-body .color-swatch:hover { border-color: var(--cl-ink-2); }
+.cl-code-body .color-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--cl-blue), 0 0 0 4px var(--cl-gold); }
+.cl-code-body .custom-color-picker { border-color: var(--cl-line-strong); background: #fff; }
+.cl-code-body .custom-color-picker:hover { border-color: var(--cl-ink-2); }
+
+/* ------------------------------------------------------------- SoundPanel */
+.cl-code-body .sound-panel-container { background: #fff; color: var(--cl-ink); }
+.cl-code-body .sound-list-section h2 { color: var(--cl-ink) !important; }
+/* Empty state (inline-styled box) */
+.cl-code-body .sound-list-section > div:not([role='list']):not(:first-child) {
+  background: var(--cl-softer) !important;
+  border-color: var(--cl-line-strong) !important;
+  color: var(--cl-muted) !important;
+}
+.cl-code-body .sound-list-section > div:not([role='list']):not(:first-child) p { color: var(--cl-muted) !important; }
+.cl-code-body .sound-card { background: #fff; border-color: var(--cl-line); }
+.cl-code-body .sound-card:hover { background: var(--cl-softer); border-color: var(--cl-line-strong); }
+.cl-code-body .sound-card-name { color: var(--cl-ink); }
+.cl-code-body .sound-card-duration { background: var(--cl-soft); color: var(--cl-muted); }
+.cl-code-body .sound-lib-card { background: var(--cl-softer); border-color: var(--cl-line); }
+.cl-code-body .sound-lib-card:hover { background: #fff; border-color: var(--cl-line-strong); }
+.cl-code-body .sound-lib-card > span:first-child { color: var(--cl-ink) !important; }
+.cl-code-body .sound-lib-card > span:nth-child(2) { color: var(--cl-muted) !important; }

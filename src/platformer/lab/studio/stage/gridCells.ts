@@ -38,16 +38,18 @@ export function cellCentre(col: number, row: number): { x: number; y: number } {
 }
 
 /** An outline around one cell: the selection (solid) or the hover (faint). */
-export function drawCellOutline(ctx: CanvasRenderingContext2D, camera: Camera, viewport: Viewport, col: number, row: number, selected: boolean): void {
+/** The selection outline: Code Lab's gold (screen.css --cl-gold). */
+export const SELECTED_OUTLINE = '#ffd43b'
+
+export function drawCellOutline(ctx: CanvasRenderingContext2D, camera: Camera, viewport: Viewport, col: number, row: number, selected: boolean, grow = 0): void {
   const zoom = getCameraZoom(camera, viewport)
   const [sx, sy] = worldToScreen(camera, viewport, col * TILE_SIZE, (row + 1) * TILE_SIZE)
   const size = TILE_SIZE * zoom
   ctx.save()
   if (selected) {
-    ctx.strokeStyle = '#5bb2ff'
-    ctx.lineWidth = 2
-    ctx.setLineDash([4, 3])
-    ctx.strokeRect(sx - 1, sy - 1, size + 2, size + 2)
+    ctx.strokeStyle = SELECTED_OUTLINE
+    ctx.lineWidth = 3
+    ctx.strokeRect(sx - 2 - grow, sy - 2 - grow, size + 4 + grow * 2, size + 4 + grow * 2)
   } else {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)'
     ctx.lineWidth = 1.5

@@ -4,7 +4,7 @@ import { createRuntime } from '../../core/index'
 import type { Expr, Stmt } from '../../core/contracts'
 import { createStarterProject, STARTER_GOAL } from '../starter'
 import { StudioStore } from '../store'
-import { Builder } from './Builder'
+import { StudioShell } from '../screen/StudioShell'
 import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins } from './playRules'
 
 afterEach(cleanup)
@@ -14,7 +14,7 @@ const startPlay = (store: StudioStore) => fireEvent.click(screen.getByRole('radi
 describe('Play feedback in the builder (like /2d/build)', () => {
   it('shows the controls hint and a coin counter when Play starts, and the counter follows the Stage\'s "coins"', async () => {
     const store = new StudioStore(createStarterProject())
-    render(<Builder store={store} templates={[]} />)
+    render(<StudioShell store={store} />)
     startPlay(store)
     expect(store.getState().mode).toBe('play')
     const hint = screen.getByText(/Space jumps/)
@@ -36,7 +36,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     const project = createStarterProject()
     project.design.stage.program.variables = []
     const store = new StudioStore(project)
-    render(<Builder store={store} templates={[]} />)
+    render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByRole('status', { name: /Coins/ })).toBeNull()
     expect(screen.getByText(/Space jumps/)).toBeTruthy()
@@ -44,7 +44,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
 
   it('"Try again" when the Hero is hurt (hero hurt broadcast), and it goes away by itself', async () => {
     const store = new StudioStore(createStarterProject())
-    render(<Builder store={store} templates={[]} />)
+    render(<StudioShell store={store} />)
     startPlay(store)
     expect(screen.queryByText(/Try again/)).toBeNull()
     act(() => {
@@ -56,7 +56,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
 
   it('"You made it!" when the Goal says course clear, with Play again and Keep building', () => {
     const store = new StudioStore(createStarterProject())
-    render(<Builder store={store} templates={[]} />)
+    render(<StudioShell store={store} />)
     startPlay(store)
     const first = store.getState().runtime!
     act(() => {
@@ -79,7 +79,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
   it('Play with no Hero stays in Build and says what to do', () => {
     const store = new StudioStore(createStarterProject())
     store.deleteCopy('copy_hero')
-    render(<Builder store={store} templates={[]} />)
+    render(<StudioShell store={store} />)
     startPlay(store)
     expect(store.getState().mode).toBe('build')
     expect(screen.getByText(NO_HERO_MESSAGE)).toBeTruthy()
@@ -89,7 +89,7 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     const store = new StudioStore(createStarterProject())
     const goal = store.getState().project.design.copies.find((c) => c.brickId === 'brick_goal')!
     store.deleteCopy(goal.id)
-    render(<Builder store={store} templates={[]} />)
+    render(<StudioShell store={store} />)
     startPlay(store)
     expect(store.getState().mode).toBe('play')
     expect(screen.getByText(NO_GOAL_NOTE)).toBeTruthy()

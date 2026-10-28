@@ -1,0 +1,82 @@
+/* Code Lab's light editor (CODE_LIGHT_THEME). code.css is the original dark look; these rules re-skin the same parts
+   for the one editor in Code mode, so it reads as part of the light app. */
+.code-light {
+  --cl-ink: #1f2340; --cl-ink-2: #2e3350; --cl-muted: #4a5068; --cl-line: #e4dfd3; --cl-soft: #f1ece1; --cl-softer: #fbf9f4; --cl-blue: #3e5bd9;
+  color: var(--cl-ink);
+  background-color: #fff;
+}
+.code-light :is(button, input, select):focus-visible { outline: 3px solid var(--cl-blue); }
+
+/* Toolbar */
+.code-light .code-editor-toolbar { background: var(--cl-softer); border-bottom: 1px solid var(--cl-line); }
+.code-light .code-toolbar-icon-btn { background: #fff; border: 1px solid var(--cl-line); color: var(--cl-ink-2); }
+.code-light .code-toolbar-icon-btn:hover:not(:disabled) { background: var(--cl-soft); color: var(--cl-ink); }
+.code-light .code-diagnostics-badge-btn { background: #fff4d6; border: 1px solid #f0c75e; color: #7a4f00; }
+.code-light .code-diagnostics-badge-btn:hover { background: #ffe9a8; }
+.code-light .code-view-options summary { background: #fff; border-color: var(--cl-line); color: var(--cl-ink-2); }
+.code-light .code-view-options-panel { background: #fff; border-color: var(--cl-line); box-shadow: 0 8px 24px rgba(31, 35, 64, .18); animation: code-light-pop 160ms cubic-bezier(.2, .8, .2, 1) 1; transform-origin: top right; }
+.code-light .code-view-options-panel button { color: var(--cl-ink); }
+.code-light .code-view-options-panel button:hover { background: var(--cl-soft); }
+.code-light .code-starter-hint { background: var(--cl-soft); color: var(--cl-ink-2); }
+
+/* Blockly's own toolbox: Scratch-like circles on a light column. */
+.code-light .blocklyToolboxDiv, .code-light .blocklyToolbox { background-color: var(--cl-softer); border-right: 1px solid var(--cl-line); }
+.code-light .blocklyTreeLabel, .code-light .blocklyToolboxCategoryLabel { color: var(--cl-ink-2); font-weight: 700; }
+.code-light .blocklyTreeSelected, .code-light .blocklyToolboxSelected { background-color: var(--cl-soft) !important; }
+.code-light .blocklyFlyoutBackground { fill: #f6f3ec; fill-opacity: 1; }
+.code-light .blocklyFlyoutLabelText, .code-light .blocklyFlyoutButton .blocklyText { fill: var(--cl-ink-2); }
+.code-light .blocklyFlyoutButton { fill: #fff; stroke: var(--cl-line); }
+.code-light .blocklyFlyoutButton:hover { fill: var(--cl-soft); }
+.code-light .code-script-label { fill: var(--cl-muted); color: var(--cl-muted); }
+.code-light .blocklyScrollbarHandle { fill: #c9c2b2; }
+
+/* My Blocks layers */
+.code-light .layer-bar { background: var(--cl-softer); border-bottom-color: var(--cl-line); }
+.code-light .layer-shelf-title { color: #c2185b; }
+.code-light :is(.layer-chip, .layer-back, .layer-crumb) { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
+.code-light :is(.layer-chip, .layer-back, .layer-crumb):hover { background: var(--cl-soft); border-color: #c9c2b2; }
+.code-light .layer-here, .code-light .layer-trail { color: var(--cl-ink-2); }
+
+/* Notices */
+.code-light .code-diagnostics-drawer { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); box-shadow: 0 8px 24px rgba(31, 35, 64, .16); }
+.code-light .code-diagnostics-header { background: var(--cl-softer); border-bottom-color: var(--cl-line); }
+.code-light .code-diagnostics-title-group { color: #7a4f00; }
+.code-light .code-diagnostics-close { color: var(--cl-muted); }
+.code-light .code-diagnostics-close:hover { color: var(--cl-ink); background: var(--cl-soft); }
+.code-light .code-diagnostic-item { background: #fff; border-color: var(--cl-line); }
+.code-light .code-diagnostic-item.clickable:hover { background: var(--cl-softer); border-color: #f0c75e; }
+.code-light .code-diagnostic-item-title { color: var(--cl-ink); }
+.code-light .code-diagnostic-item-hint { color: var(--cl-muted); }
+.code-light .code-diagnostic-jump-tag { background: #eef2fe; color: var(--cl-blue); }
+.code-light .code-load-failed { background: #fff4d6; color: #7a4f00; border-color: #f0c75e; }
+
+/* Dialogs: Make a Variable, Make a Block */
+.code-light .code-modal-backdrop { background: rgba(31, 35, 64, .34); }
+.code-light .code-modal-card { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); box-shadow: 0 18px 48px rgba(31, 35, 64, .25); animation: code-light-pop 200ms cubic-bezier(.2, .8, .2, 1) 1; }
+.code-light .code-modal-header { background: var(--cl-softer); border-bottom-color: var(--cl-line); }
+.code-light .code-modal-title, .code-light .code-modal-section-title, .code-light .code-scope-card-header, .code-light .code-knob-toggle-text strong { color: var(--cl-ink); }
+.code-light .code-modal-close-btn { color: var(--cl-muted); }
+.code-light .code-modal-close-btn:hover { background: var(--cl-soft); color: var(--cl-ink); }
+.code-light .code-modal-preview-box { background: var(--cl-softer); border-bottom-color: var(--cl-line); }
+.code-light .code-modal-preview-label, .code-light .code-scope-desc, .code-light .code-modal-hint-box { color: var(--cl-muted); }
+.code-light .code-modal-hint-box { background: var(--cl-softer); border-color: var(--cl-line); }
+.code-light :is(.code-category-pill, .code-word-btn, .code-scope-card, .code-part-item, .code-add-part-btn, .code-part-name-btn, .code-knob-toggle-label) { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
+.code-light :is(.code-category-pill, .code-word-btn, .code-scope-card, .code-add-part-btn, .code-part-name-btn):hover { background: var(--cl-soft); border-color: #c9c2b2; }
+.code-light :is(.code-category-pill.active, .code-word-btn.selected, .code-scope-card.active) { background: #eef2fe; border-color: var(--cl-blue); color: var(--cl-ink); }
+.code-light .code-modal-footer { background: var(--cl-softer); border-top-color: var(--cl-line); }
+.code-light .code-btn-cancel { background: #fff; border-color: var(--cl-line); color: var(--cl-ink); }
+.code-light .code-btn-cancel:hover { background: var(--cl-soft); }
+.code-light .code-btn-primary { background: var(--cl-blue); border-color: var(--cl-blue); color: #fff; }
+.code-light .code-btn-primary:hover { background: #2b44b0; }
+.code-light .code-procedure-preview-wrapper, .code-light .code-word-picker-section { background: var(--cl-softer); border-color: var(--cl-line); }
+.code-light .code-picker-header { color: var(--cl-ink); }
+
+/* "What does this block do?" card */
+.code-light .plain-card-backdrop { background: rgba(31, 35, 64, .3); }
+.code-light .plain-card { background: #fff; color: var(--cl-ink); border-color: var(--cl-line); box-shadow: 0 18px 48px rgba(31, 35, 64, .25); animation: code-light-pop 200ms cubic-bezier(.2, .8, .2, 1) 1; }
+.code-light .plain-card-text { color: var(--cl-ink-2); }
+.code-light .plain-card-blocks, .code-light .plain-card-foot { background: var(--cl-softer); border-color: var(--cl-line); }
+.code-light .plain-card-close { color: var(--cl-muted); }
+
+@keyframes code-light-pop { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .code-light * { animation: none !important; } }

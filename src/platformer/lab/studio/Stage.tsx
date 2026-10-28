@@ -8,6 +8,7 @@ import { AudioManager } from './stage/audio'
 import {
   clampCamera,
   defaultPlayCameraMode,
+  buildCamera,
   fitCamera,
   followCamera,
   panCamera,
@@ -43,7 +44,7 @@ export interface BuildTools {
 /** Bricks snap to an 8-step grid, like the old stage's default. */
 const GRID = 8
 
-export function Stage({ store, tools, codeView = false }: { store: StudioStore; tools?: BuildTools; codeView?: boolean }) {
+export function Stage({ store, tools, codeView = false, onOpenCode }: { store: StudioStore; tools?: BuildTools; codeView?: boolean; /** Build: double-clicking a brick opens its code. */ onOpenCode?: () => void }) {
   const mode = useStudio(store, (s) => s.mode)
   const runtime = useStudio(store, (s) => s.runtime)
   const previewPaused = useStudio(store, (s) => s.previewPaused)
@@ -78,6 +79,23 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
   const [playFree, setPlayFree] = useState(false)
   // The camera actually used for the last Play frame, so pointer maths matches what is on screen.
   const playCamRef = useRef<Camera>(camera)
+
+  // A new selection pulses once (500 ms), unless the kid asked for less motion.
+  const [selectPulse, setSelectPulse] = useState(0)
+  useEffect(() => {
+    setSelectPulse(0)
+    if (!selectedCopyId || mode !== 'build' || typeof requestAnimationFrame !== 'function') return
+    if (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let raf = 0
+    const start = performance.now()
+    const tick = (now: number) => {
+      const p = (now - start) / 500
+      setSelectPulse(p >= 1 ? 0 : Math.max(p, 0.001))
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [selectedCopyId, mode])
 
   // Build view state (hover only; what is armed lives in the store and the builder chrome)
   const [hoverCopyId, setHoverCopyId] = useState<string | null>(null)
@@ -126,9 +144,10 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
   const boundsKey = `${design.bounds.left},${design.bounds.right},${design.bounds.bottom},${design.bounds.top}`
   useEffect(() => {
     // Until the kid moves the view, keep the whole level in view (letterboxed) as the stage or level changes size.
-    if (!viewDirty.current) setCamera(fitCamera(design.bounds, viewport))
+    // Build starts at the level's full height; Code's small preview shows it whole.
+    if (!viewDirty.current) setCamera(codeView ? fitCamera(design.bounds, viewport) : buildCamera(design.bounds, viewport))
     else setCamera((cam) => clampCamera(cam, design.bounds))
-  }, [boundsKey, design.bounds, viewport])
+  }, [boundsKey, design.bounds, viewport, codeView])
 
   // Each Play starts from the default camera.
   useEffect(() => {
@@ -316,6 +335,7 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
         viewport,
         gridSnap: true,
         selectedCopyId,
+        selectPulse,
         hoverCopyId,
         brushBrickId: previewBrickId,
         brushPreviewPos,
@@ -326,7 +346,7 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
     draw()
     return globalImageCache.onImageLoaded(draw)
     // hoverInfo is derived from tileHover, the brush brick and erasing; revision covers design changes.
-  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
+  }, [mode, sceneActive, design, camera, viewport, selectedCopyId, selectPulse, hoverCopyId, previewBrickId, brushPreviewPos, tileHover, brushBrick, erasing, revision])
 
   // Helper to get canvas-relative coordinates
   const getCanvasCoords = useCallback((e: { clientX: number; clientY: number }): [number, number] => {
@@ -654,7 +674,7 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
       onBlur={releaseKeys}
       aria-label="Level Stage"
     >
-      <StageControls
+      {!codeView && <StageControls
         codeView={codeView}
         pendingCodeChanges={pendingCodeChanges}
         mode={sceneActive ? 'play' : mode}
@@ -666,7 +686,7 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
         onResetView={handleResetView}
         playCamera={playFree ? null : playCameraMode}
         onPlayCameraChoice={handlePlayCameraChoice}
-      />
+      />}
 
       <div className="stage-canvas-wrap">
         <canvas
@@ -678,6 +698,10 @@ export function Stage({ store, tools, codeView = false }: { store: StudioStore; 
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerLeave}
+          onDoubleClick={() => {
+            // Selecting tool only: with a brush armed, a double-click is two placements.
+            if (mode === 'build' && !sceneActive && !brushBrickId && !erasing && store.getState().selectedCopyId) onOpenCode?.()
+          }}
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         />

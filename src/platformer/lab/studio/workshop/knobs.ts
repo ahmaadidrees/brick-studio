@@ -25,8 +25,11 @@ export function knobRange(value: number): KnobRange {
 }
 
 /** Tidy number for the label next to a slider. */
+/** Rounded for kids to read: 8.125 shows as 8.1, 0.21875 as 0.22. The value itself is unchanged. */
 export function formatKnob(value: number): string {
-  return Number.isInteger(value) ? String(value) : String(Math.round(value * 1000) / 1000)
+  if (Number.isInteger(value)) return String(value)
+  const places = Math.abs(value) >= 10 ? 0 : Math.abs(value) >= 1 ? 1 : 2
+  return String(Math.round(value * 10 ** places) / 10 ** places)
 }
 
 /**

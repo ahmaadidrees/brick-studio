@@ -13,18 +13,18 @@ import { buildTestRoom, isHeroBrick } from './roomDesign'
 export const RESTART_DEBOUNCE_MS = 350
 
 /** The brick running on its own in a small sandbox. Reuses the Stage's accumulator, camera and renderer. */
-export function TestRoom({ store, brickId }: { store: StudioStore; brickId: string }) {
+export function TestRoom({ store, brickId, bare = false, restartKey = 0 }: { store: StudioStore; brickId: string; /** Code's "Just this brick": only the room, filling its box. */ bare?: boolean; /** Bump to restart from outside. */ restartKey?: number }) {
   const brick = useStudio(store, (s) => s.project.design.bricks.find((b) => b.id === brickId))
   const stage = useStudio(store, (s) => s.project.design.stage)
   const projectHero = useStudio(store, (s) => s.project.design.bricks.find((b) => b.id === HERO_BRICK_ID))
   const [restarts, setRestarts] = useState(0)
-  const [settled, setSettled] = useState({ brick, stage, projectHero, restarts })
+  const [settled, setSettled] = useState({ brick, stage, projectHero, restarts, restartKey })
 
   // Restart (debounced) when the brick, the helper Hero or the stage's variables change, or on the button.
   useEffect(() => {
-    const id = setTimeout(() => setSettled({ brick, stage, projectHero, restarts }), RESTART_DEBOUNCE_MS)
+    const id = setTimeout(() => setSettled({ brick, stage, projectHero, restarts, restartKey }), RESTART_DEBOUNCE_MS)
     return () => clearTimeout(id)
-  }, [brick, stage, projectHero, restarts])
+  }, [brick, stage, projectHero, restarts, restartKey])
 
   const runtime = useMemo<Runtime | null>(() => {
     if (!settled.brick) return null
@@ -131,9 +131,17 @@ export function TestRoom({ store, brickId }: { store: StudioStore; brickId: stri
   }, [runtime])
 
   if (brickId === STAGE_ID || !brick) {
-    return <div className="ws-room ws-room-empty">The Stage has no test room. Pick a brick to see it run.</div>
+    return <div className={bare ? 'cl-room-empty' : 'ws-room ws-room-empty'}>The Stage runs the whole level. Pick a brick to see it on its own.</div>
   }
   const hero = isHeroBrick(brick)
+  if (bare) {
+    return (
+      <div ref={wrapRef} className="cl-room" tabIndex={0} onKeyDown={keyDown} onKeyUp={keyUp} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerLeave={pointerUp} aria-label={`${brick.name} on its own`}>
+        <canvas ref={canvasRef} width={viewport.width} height={viewport.height} />
+        <span className="cl-room-hint">{hero ? 'Click here, then use the arrow keys, space and X.' : 'A helper Hero is here too. Click, then use the arrow keys.'}</span>
+      </div>
+    )
+  }
   return (
     <section className="ws-card ws-room" aria-label="Test room">
       <div className="ws-card-head">

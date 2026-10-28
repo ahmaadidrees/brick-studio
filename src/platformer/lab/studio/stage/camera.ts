@@ -137,6 +137,18 @@ export function fitCamera(bounds: StageBounds, viewport: Viewport): Camera {
   }
 }
 
+/**
+ * Build's starting view: the level's full height, from its left edge (where the Hero starts), so a long level is shown
+ * big enough to build in rather than letterboxed small. A level that fits the view anyway is fitted whole.
+ */
+export function buildCamera(bounds: StageBounds, viewport: Viewport): Camera {
+  const levelW = bounds.right - bounds.left
+  const levelH = bounds.top - bounds.bottom
+  if (viewport.width <= 0 || viewport.height <= 0 || levelW / levelH <= viewport.width / viewport.height) return fitCamera(bounds, viewport)
+  const viewWidth = viewport.width / (viewport.height / levelH)
+  return { x: bounds.left + viewWidth / 2, y: (bounds.bottom + bounds.top) / 2, viewWidth }
+}
+
 /** Whether the whole level fits at a readable scale. */
 export function wholeLevelReadable(bounds: StageBounds, viewport: Viewport): boolean {
   return fitZoom(bounds, viewport) >= READABLE_MIN_ZOOM

@@ -1,0 +1,260 @@
+/* Code Lab's one shell (StudioShell.tsx). The level and the columns around it are absolutely placed per screen, so a
+   screen change slides and resizes them together. Every motion is 150–250 ms ease-out, and off under reduced motion. */
+.cl-shell {
+  --cl-bg: #f8f4eb;
+  --cl-panel: #fff;
+  --cl-ink: #1f2340;
+  --cl-ink-2: #2e3350;
+  --cl-muted: #4a5068;
+  --cl-line: #e4dfd3;
+  --cl-soft: #f1ece1;
+  --cl-softer: #fbf9f4;
+  --cl-blue: #3e5bd9;
+  --cl-blue-dark: #2b44b0;
+  --cl-blue-soft: #eef2fe;
+  --cl-gold: #ffd43b;
+  --cl-ease: cubic-bezier(.2, .8, .2, 1);
+  --cl-slide: 240ms;
+  --cl-gap: 12px;
+  --cl-drawer: 288px;
+  --cl-insp: 320px;
+  --cl-right: clamp(360px, 31vw, 480px);
+  --cl-stage-h: calc(var(--cl-right) * 0.5625);
+  color: var(--cl-ink);
+  background: var(--cl-bg);
+}
+.cl-shell .builder-header .app-header-tools { display: none; }
+.cl-body { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+
+/* ---------------------------------------------------------------- slots */
+.cl-slot {
+  position: absolute; display: flex; flex-direction: column; min-width: 0; min-height: 0; box-sizing: border-box;
+  transition: top var(--cl-slide) var(--cl-ease), right var(--cl-slide) var(--cl-ease), bottom var(--cl-slide) var(--cl-ease),
+    left var(--cl-slide) var(--cl-ease), opacity 200ms ease-out, transform var(--cl-slide) var(--cl-ease);
+}
+.cl-slot[inert] { opacity: 0; pointer-events: none; }
+.cl-slot > * { flex: 1 1 auto; min-height: 0; }
+
+/* Build */
+.cl-slot-drawer { top: var(--cl-gap); bottom: var(--cl-gap); left: var(--cl-gap); right: calc(100% - var(--cl-gap) - var(--cl-drawer)); }
+.cl-slot-drawer[inert] { transform: translateX(-28px); }
+.cl-slot-stage { top: var(--cl-gap); bottom: var(--cl-gap); left: calc(var(--cl-drawer) + 2 * var(--cl-gap)); right: var(--cl-gap); z-index: 1; }
+[data-inspecting='yes'] .cl-slot-stage { right: calc(var(--cl-insp) + 2 * var(--cl-gap)); }
+.cl-slot-inspector { top: var(--cl-gap); bottom: var(--cl-gap); right: var(--cl-gap); left: calc(100% - var(--cl-gap) - var(--cl-insp)); z-index: 2; }
+.cl-slot-inspector > * { flex: 0 1 auto; }
+.cl-slot-inspector[inert] { transform: translateX(28px); }
+
+/* Code */
+.cl-slot-code { top: var(--cl-gap); bottom: var(--cl-gap); left: var(--cl-gap); right: calc(var(--cl-right) + 2 * var(--cl-gap)); }
+.cl-slot-code[inert] { transform: translateX(-28px); }
+.cl-slot-level { top: calc(var(--cl-stage-h) + 2 * var(--cl-gap)); bottom: var(--cl-gap); right: var(--cl-gap); left: calc(100% - var(--cl-gap) - var(--cl-right)); }
+.cl-slot-level[inert] { transform: translateY(24px); }
+[data-screen='code'] .cl-slot-stage { top: var(--cl-gap); right: var(--cl-gap); left: calc(100% - var(--cl-gap) - var(--cl-right)); bottom: calc(100% - var(--cl-gap) - var(--cl-stage-h)); }
+
+/* Play: the level fills the screen. */
+[data-screen='play'] .cl-slot-stage { top: 0; right: 0; bottom: 0; left: 0; }
+[data-screen='play'] .cl-stage-frame { border-radius: 0; border-width: 0; box-shadow: none; }
+
+/* The level's frame, a panel like the others. */
+.cl-stage-frame { position: relative; flex: 1; min-height: 0; overflow: hidden; border: 1px solid var(--cl-line); border-radius: 16px; background: #efe9da; box-shadow: 0 2px 10px rgba(31, 35, 64, .06); transition: border-radius var(--cl-slide) var(--cl-ease); }
+.cl-stage-frame > .stage-container { position: absolute; inset: 0; }
+.cl-slot-stage .stage-view-tools { top: 10px; right: 10px; }
+
+/* ---------------------------------------------------------------- panels */
+.cl-panel { display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; color: var(--cl-ink); background: var(--cl-panel); border: 1px solid var(--cl-line); border-radius: 16px; box-shadow: 0 2px 10px rgba(31, 35, 64, .06); }
+.cl-shell button { font: inherit; color: inherit; }
+.cl-shell :is(button, input, [tabindex]):focus-visible { outline: 3px solid var(--cl-blue); outline-offset: 2px; }
+.cl-h { margin: 0; font: 600 15px/1.2 var(--font-display, 'Fredoka'), system-ui, sans-serif; }
+.cl-muted { color: var(--cl-muted); font-size: 12px; font-weight: 700; }
+.cl-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.cl-tools-gap { flex: 1; }
+.cl-thumb { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; background: var(--cl-soft); }
+.cl-new-icon { color: var(--cl-blue); }
+
+.cl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--cl-line); border-radius: 10px; background: var(--cl-panel); font-weight: 800; font-size: 14px; cursor: pointer; transition: background 120ms ease-out, border-color 120ms ease-out, transform 120ms ease-out; }
+.cl-btn:hover { border-color: var(--cl-blue); }
+.cl-btn:active { transform: translateY(1px); }
+.cl-btn[aria-pressed='true'], .cl-btn-primary { color: #fff !important; background: var(--cl-blue); border-color: var(--cl-blue); }
+.cl-btn-primary:hover { background: var(--cl-blue-dark); }
+.cl-btn-sm { min-height: 32px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+.cl-btn-icon { width: 34px; padding: 0; }
+.cl-btn-attn { border-color: var(--cl-gold); box-shadow: 0 0 0 3px rgba(255, 212, 59, .55); }
+.cl-icon-btn { display: grid; place-items: center; flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 9px; background: transparent; cursor: pointer; }
+.cl-icon-btn:hover:not(:disabled) { background: var(--cl-soft); }
+.cl-icon-btn:disabled { opacity: .35; cursor: default; }
+.cl-link { align-self: flex-start; min-height: 30px; padding: 0; border: 0; background: none; color: var(--cl-blue); font-size: 12px; font-weight: 800; text-decoration: underline; cursor: pointer; }
+
+/* Two-way choice (Every Walker / Just this one; Whole level / Just this brick). */
+.cl-seg { display: flex; padding: 3px; border-radius: 11px; background: var(--cl-soft); }
+.cl-seg button { flex: 1; min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 800; color: var(--cl-muted); cursor: pointer; transition: background 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out; white-space: nowrap; }
+.cl-seg button[aria-pressed='true'] { color: var(--cl-ink); background: var(--cl-panel); box-shadow: 0 1px 3px rgba(31, 35, 64, .14); }
+.cl-seg-sm button { min-height: 30px; font-size: 12px; }
+
+/* Tabs with a sliding underline (Sliders · Look; Code · Costumes · Sounds). */
+.cl-tabs { position: relative; display: flex; gap: 0; border-bottom: 1px solid var(--cl-line); }
+.cl-tabs button { flex: 1; min-height: 42px; padding: 0 14px; border: 0; background: none; color: var(--cl-muted); font-weight: 800; font-size: 14px; cursor: pointer; transition: color 160ms ease-out; }
+.cl-tabs button[aria-selected='true'] { color: var(--cl-ink); }
+.cl-tabs-ind { position: absolute; left: 0; bottom: -1px; width: 50%; height: 3px; border-radius: 3px; background: var(--cl-blue); transition: transform 220ms var(--cl-ease); }
+.cl-tabs-ind[data-at='1'] { transform: translateX(100%); }
+.cl-tabs-ind[data-of='3'] { width: calc(100% / 3); }
+.cl-tabs-ind[data-of='3'][data-at='2'] { transform: translateX(200%); }
+
+/* ---------------------------------------------------------------- Build · Code · Play */
+.cl-modes { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); padding: 4px; border-radius: 13px; background: var(--cl-soft, #f1ece1); }
+.cl-mode { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 96px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: none; color: var(--cl-muted, #4a5068); font-weight: 800; font-size: 15px; cursor: pointer; transition: color 220ms ease-out; }
+.cl-mode[aria-checked='true'] { color: #fff; }
+.cl-mode[aria-disabled='true'] { opacity: .45; cursor: not-allowed; }
+.cl-mode:focus-visible { outline: 3px solid var(--cl-blue, #3e5bd9); outline-offset: 2px; }
+.cl-modes-ind { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 3); border-radius: 10px; background: var(--cl-blue, #3e5bd9); box-shadow: 0 2px 6px rgba(62, 91, 217, .35); transition: transform 220ms var(--cl-ease, ease-out); }
+
+/* The mode switch sits at the top center when the header has room for it. */
+@media (min-width: 1200px) {
+  .cl-shell .builder-header .app-header { position: relative; }
+  .cl-shell .builder-header .app-header-mode { position: absolute; grid-area: auto; left: 50%; top: 50%; padding-left: 0; border-left: 0; transform: translate(-50%, -50%); }
+}
+
+/* ---------------------------------------------------------------- Build: drawer */
+.cl-drawer { padding: 10px; gap: 10px; overflow: hidden; }
+.cl-tools { display: flex; align-items: center; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--cl-line); }
+.cl-tool { display: inline-flex; align-items: center; gap: 5px; min-height: 38px; padding: 0 9px; border: 1px solid var(--cl-line); border-radius: 10px; background: var(--cl-panel); font-weight: 800; font-size: 13px; cursor: pointer; transition: background 150ms ease-out, color 150ms ease-out, border-color 150ms ease-out; }
+.cl-tool[aria-pressed='true'] { color: #fff; background: var(--cl-blue); border-color: var(--cl-blue); }
+.cl-drawer-picker { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.cl-drawer-picker > * { flex: 1; min-height: 0; }
+
+/* Paint strip: only while painting or erasing. */
+.cl-strip { position: absolute; z-index: 12; left: 50%; bottom: 14px; display: flex; align-items: center; gap: 12px; max-width: calc(100% - 28px); padding: 8px 8px 8px 10px; box-sizing: border-box; transform: translateX(-50%); background: var(--cl-panel); border: 1px solid var(--cl-line); border-radius: 14px; box-shadow: 0 6px 20px rgba(31, 35, 64, .16); }
+.cl-strip-text { display: flex; flex-direction: column; min-width: 0; }
+.cl-strip-text strong { font-size: 14px; }
+.cl-strip-text span { overflow: hidden; color: var(--cl-muted); font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- Build: inspector */
+.cl-inspector { max-height: 100%; overflow: hidden; animation: cl-in-right var(--cl-slide) var(--cl-ease) 1; }
+.cl-inspector-head { display: flex; align-items: center; gap: 8px; padding: 12px 10px 10px 12px; }
+.cl-inspector-title { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 1px; }
+.cl-inspector-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.cl-sliders { display: flex; flex-direction: column; gap: 14px; }
+.cl-slider { display: flex; flex-direction: column; gap: 6px; }
+.cl-slider-name { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; }
+.cl-slider-control { display: flex; align-items: center; gap: 10px; }
+.cl-slider-control input[type='range'] { flex: 1; min-height: 30px; accent-color: var(--cl-blue); }
+.cl-slider-value { min-width: 36px; color: var(--cl-blue); font-weight: 900; font-variant-numeric: tabular-nums; text-align: right; }
+.cl-own { padding: 1px 6px; border-radius: 999px; background: #fff4d6; color: #7a4f00; font-size: 11px; font-weight: 800; }
+.cl-empty { margin: 0; line-height: 1.45; }
+.cl-open-code { margin: 0 14px 14px; }
+.cl-costumes { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.cl-costumes li { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; border: 1px solid var(--cl-line); border-radius: 10px; font-size: 12px; font-weight: 700; overflow-wrap: anywhere; }
+.cl-menu-wrap { position: relative; }
+.cl-menu { position: absolute; z-index: 10; top: 40px; right: 0; width: 220px; padding: 5px; background: var(--cl-panel); border: 1px solid var(--cl-line); border-radius: 12px; box-shadow: 0 8px 24px rgba(31, 35, 64, .18); transform-origin: top right; }
+.cl-menu button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: none; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+.cl-menu button:hover { background: var(--cl-soft); }
+.cl-confirm { margin: 0 12px 12px; padding: 14px; border-radius: 12px; background: var(--cl-blue-soft); }
+.cl-confirm p { margin: 6px 0 10px; font-size: 14px; line-height: 1.45; }
+.cl-note { margin: 0 14px 14px; padding: 12px; border-radius: 12px; background: var(--cl-soft); color: var(--cl-ink-2); font-size: 13px; line-height: 1.45; }
+.cl-slot-inspector .ws-knobs { padding: 0; border: 0; background: none; }
+.cl-slot-inspector .ws-knob-list { gap: 12px; }
+.cl-slot-inspector .ws-knob label { font-size: 14px; }
+.cl-slot-inspector .ws-knob input[type='range'] { accent-color: var(--cl-blue); }
+.cl-slot-inspector .ws-knob output { color: var(--cl-blue); font-weight: 900; }
+
+/* The name: click to rename. */
+.cl-name { max-width: 100%; overflow: hidden; padding: 0 2px; border: 0; border-bottom: 2px dashed transparent; background: none; font: 700 18px/1.25 var(--font-display, 'Fredoka'), system-ui, sans-serif; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
+.cl-name:not(:disabled):hover { border-bottom-color: #c9c2b2; }
+.cl-name:disabled { cursor: default; }
+.cl-name-lg { font-size: 22px; }
+.cl-name-md { font-size: 18px; }
+.cl-name-edit { position: relative; display: inline-flex; min-width: 0; }
+.cl-name-input { width: 260px; max-width: 100%; padding: 0 2px; border: 0; border-bottom: 2px solid var(--cl-blue); border-radius: 4px 4px 0 0; background: var(--cl-blue-soft); color: var(--cl-ink); font: 700 22px/1.25 var(--font-display, 'Fredoka'), system-ui, sans-serif; }
+.cl-name-input.cl-name-md { font-size: 18px; width: 100%; }
+.cl-name-input:focus { outline: none; }
+.cl-name-hint { position: absolute; z-index: 20; top: calc(100% + 6px); left: 0; width: max-content; max-width: 320px; padding: 8px 12px; border-radius: 10px; background: #fff4d6; color: #7a4f00; font-size: 13px; font-weight: 700; line-height: 1.4; box-shadow: 0 4px 14px rgba(31, 35, 64, .12); }
+
+/* ---------------------------------------------------------------- Code */
+.cl-code { overflow: hidden; animation: cl-in-code 260ms var(--cl-ease) 1; transform-origin: 80% 20%; }
+.cl-code-head { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 6px 12px; border-bottom: 1px solid var(--cl-line); }
+.cl-chip { overflow: hidden; padding: 3px 9px; border-radius: 999px; background: var(--cl-soft); color: var(--cl-muted); font-size: 12px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.cl-tabs-inline { margin-left: auto; flex: none; border-bottom: 0; }
+.cl-tabs-inline button { flex: none; min-width: 92px; }
+.cl-code-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cl-code-body > :first-child { flex: 1; min-height: 0; }
+.cl-start { position: absolute; z-index: 5; left: 50%; top: 130px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; max-width: min(460px, calc(100% - 140px)); padding: 14px 16px; transform: translateX(-30%); border: 2px dashed #c9c2b2; border-radius: 14px; background: rgba(255, 255, 255, .94); color: var(--cl-ink-2); font-size: 14px; font-weight: 700; }
+.cl-chip-btn { min-height: 38px; padding: 0 16px; border: 1px solid var(--cl-line); border-radius: 999px; background: var(--cl-panel); font-weight: 800; cursor: pointer; transition: transform 150ms ease-out, border-color 150ms ease-out; }
+.cl-chip-btn:hover { transform: translateY(-2px); border-color: var(--cl-blue); }
+
+/* Over Code's small level. */
+.cl-stage-bar { position: absolute; z-index: 12; top: 8px; left: 8px; right: 8px; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.cl-stage-bar > * { pointer-events: auto; }
+.cl-stage-bar .cl-btn { background: rgba(255, 255, 255, .95); border-color: transparent; box-shadow: 0 1px 4px rgba(31, 35, 64, .18); }
+.cl-stage-bar .cl-seg { background: rgba(255, 255, 255, .85); box-shadow: 0 1px 4px rgba(31, 35, 64, .18); }
+.cl-stage-note { position: absolute; z-index: 12; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px; background: rgba(31, 35, 64, .86); color: #fff; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.cl-room-box { position: absolute; z-index: 11; inset: 0; background: #14161f; }
+.cl-room { position: absolute; inset: 0; outline: none; }
+.cl-room canvas { display: block; width: 100%; height: 100%; }
+.cl-room:focus-visible { box-shadow: inset 0 0 0 3px #4dabf7; }
+.cl-room-hint { position: absolute; left: 10px; bottom: 8px; color: rgba(255, 255, 255, .8); font-size: 12px; font-weight: 700; pointer-events: none; }
+.cl-room-empty { display: grid; place-items: center; height: 100%; padding: 20px; color: #fff; font-size: 14px; font-weight: 700; text-align: center; }
+
+/* In this level */
+.cl-level { padding: 12px; gap: 10px; overflow: hidden; }
+.cl-level-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; overflow-y: auto; padding: 2px; }
+.cl-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-height: 84px; padding: 6px; border: 2px solid var(--cl-line); border-radius: 12px; background: var(--cl-softer); font-size: 12px; font-weight: 800; cursor: pointer; overflow-wrap: anywhere; transition: border-color 150ms ease-out, background 150ms ease-out, transform 150ms ease-out; }
+.cl-tile:hover { transform: translateY(-2px); border-color: #c9c2b2; }
+.cl-tile[aria-current='true'] { border-color: var(--cl-blue); background: var(--cl-blue-soft); }
+.cl-tile-new { border-style: dashed; border-color: #c9c2b2; background: var(--cl-panel); color: var(--cl-blue); }
+.cl-stage-swatch { width: 34px; height: 24px; border-radius: 6px; background: linear-gradient(#8ec8f8 70%, #a8683a 70%); }
+
+/* Toasts */
+.cl-toast { position: absolute; z-index: 40; left: 50%; bottom: 24px; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); padding: 10px 12px 10px 16px; box-sizing: border-box; transform: translateX(-50%); border-radius: 12px; background: var(--cl-ink); color: #fff; font-size: 14px; font-weight: 700; line-height: 1.4; box-shadow: 0 8px 24px rgba(31, 35, 64, .25); }
+.cl-toast .cl-icon-btn { color: #fff; }
+.cl-toast .cl-icon-btn:hover { background: rgba(255, 255, 255, .14); }
+
+/* ---------------------------------------------------------------- motion */
+.cl-fade { animation: cl-fade 200ms ease-out 1; }
+.cl-pop { animation: cl-pop 180ms var(--cl-ease) 1; }
+.cl-rise { animation: cl-rise 200ms var(--cl-ease) 1; }
+.cl-strip.cl-rise, .cl-toast.cl-rise, .cl-stage-note.cl-rise { animation-name: cl-rise-centered; }
+@keyframes cl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cl-pop { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes cl-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes cl-rise-centered { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes cl-in-right { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes cl-in-code { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cl-shell *, .cl-shell *::before, .cl-shell *::after { transition: none !important; animation: none !important; }
+}
+
+/* ---------------------------------------------------------------- tablet */
+@media (max-width: 1180px) {
+  .cl-shell { --cl-drawer: 268px; --cl-insp: 290px; --cl-right: clamp(320px, 36vw, 380px); }
+  .cl-tabs-inline button { min-width: 0; padding: 0 10px; }
+  .cl-chip { min-width: 0; flex: 0 1 auto; }
+}
+@media (max-width: 1180px) and (min-width: 768px) {
+  .cl-mode { min-width: 84px; }
+}
+
+/* ---------------------------------------------------------------- phone: Build and Play only */
+@media (max-width: 767px) {
+  .cl-shell { --cl-gap: 8px; }
+  /* The header keeps the brand, Build · Play and the menus; 3D/2D and the title wait for a bigger screen. */
+  .cl-shell .builder-header :is(.app-header-dimension, .app-header-world, .app-header-save) { display: none; }
+  /* The tools row is hidden here, so the header is one row. */
+  .cl-shell .builder-header .app-header-editor { grid-template-rows: 44px; grid-template-areas: 'start mode end'; height: 60px; min-height: 60px; }
+  .cl-mode { min-width: 0; padding: 0 10px; }
+  .cl-mode > span:first-child { display: none; }
+  .cl-slot-stage, [data-inspecting='yes'] .cl-slot-stage { left: 0; right: 0; top: 0; bottom: 0; }
+  .cl-stage-frame { border-radius: 0; border-width: 0; }
+  .cl-slot-drawer { top: 38%; bottom: 0; left: 0; right: 0; z-index: 20; }
+  .cl-slot-drawer .cl-panel, .cl-slot-inspector .cl-panel { border-radius: 20px 20px 0 0; box-shadow: 0 -6px 24px rgba(31, 35, 64, .14); }
+  .cl-slot-drawer[inert] { transform: translateY(40px); }
+  .cl-slot-inspector { top: 46%; bottom: 0; left: 0; right: 0; z-index: 20; }
+  .cl-slot-inspector[inert] { transform: translateY(40px); }
+  .cl-slot-inspector > * { flex: 1 1 auto; }
+  .cl-inspector { animation-name: cl-rise; }
+  .cl-fab { position: absolute; z-index: 13; left: 12px; bottom: 14px; display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--cl-blue); color: #fff !important; font-weight: 800; font-size: 15px; box-shadow: 0 6px 18px rgba(62, 91, 217, .4); }
+  .cl-sheet-close { position: absolute; z-index: 21; top: calc(38% - 46px); right: 10px; box-shadow: 0 2px 8px rgba(31, 35, 64, .2); display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--cl-panel); }
+  .cl-strip { bottom: 76px; }
+}
+
+/* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
+[data-screen='play'] .play-hint { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); animation: cl-rise-centered 240ms var(--cl-ease) 1; }
+[data-screen='play'] .stage-view-tools { animation: cl-fade 240ms ease-out 1; }

@@ -50,9 +50,9 @@ describe('Slice 1 shared studio lifecycle', () => {
     expect(store.getState().project.design.copies.find((c) => c.id === copies[1].id)!.knobs?.[speed.id]).toBeUndefined()
     expect(parse(exportProjectJson(store.getState().project)).ok).toBe(true)
   })
-  it('starts with Ground and switches the selected brick without moving the Hero', () => {
+  it('starts on Select (nothing armed) and switches the selected brick without moving the Hero', () => {
     const { store, walker, copies } = fixture()
-    expect(store.brick(store.getState().brushBrickId!)?.grid?.char).toBe('G')
+    expect(store.getState().brushBrickId).toBeNull()
     const hero = store.getState().project.design.copies.find((c) => c.brickId === 'brick_hero')!
     const position = [hero.x, hero.y]
     store.selectCopy(copies[0].id)
@@ -131,7 +131,7 @@ describe('Slice 1 shared studio lifecycle', () => {
     store.load(createStarterProject())
     expect(store.getState().cardTab).toBe('sliders')
     expect(store.getState().selectedCopyId).toBeNull()
-    expect(store.getState().workshopBrickId).toBeNull()
+    expect(store.getState().codeSolo).toBe(false)
     expect(store.getState().runtime).toBeNull()
   })
 })
