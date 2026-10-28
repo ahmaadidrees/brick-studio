@@ -80,3 +80,13 @@
 
 @keyframes code-light-pop { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .code-light * { animation: none !important; } }
+
+/* On/Off switch in front of each script's label (affordances.ts renderLabels) */
+.code-light .code-script-switch { cursor: pointer; }
+.code-light .code-script-switch rect { fill: #eef2fe; stroke: #3e5bd9; stroke-width: 1.5; transition: fill 150ms ease-out; }
+.code-light .code-script-switch text { fill: #2b44b0; font: 800 12px Nunito, system-ui, sans-serif; pointer-events: none; user-select: none; }
+.code-light .code-script-switch.is-off rect { fill: #fff; stroke: #c9c2b2; }
+.code-light .code-script-switch.is-off text { fill: #4a5068; }
+.code-light .code-script-switch:hover rect { stroke-width: 2.5; }
+.code-light .code-script-switch:focus-visible { outline: none; }
+.code-light .code-script-switch:focus-visible rect { stroke: #ffd43b; stroke-width: 3; }

@@ -192,6 +192,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       },
     })
     workspaceRef.current = ws
+    // Dev only: the console can reach the open workspace (window.__codeWorkspace) while testing.
+    if (import.meta.env.DEV) (window as unknown as { __codeWorkspace?: Blockly.WorkspaceSvg }).__codeWorkspace = ws
     workspaceBrickIdRef.current = selectedBrickId
     workspaceResetRevisionRef.current = state.editorResetRevision
     isDisposedRef.current = false

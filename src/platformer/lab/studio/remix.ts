@@ -1,6 +1,6 @@
 /** Catalog bricks are copied into each level. A remix changes that level's definition, never the catalog. */
 import type { BrickDef } from '../core/contracts'
-import { compileWorkspace, type Diagnostic } from '../core/editor/compile'
+import { compileWorkspace, isTurnedOff, type Diagnostic } from '../core/editor/compile'
 import { createStarterProject } from './starter'
 import type { StudioProject } from './store'
 
@@ -62,7 +62,9 @@ function workspaceShape(workspace: unknown, values = false): unknown {
     // Empty argument arrays/warp=false are serialization defaults, not new procedure structure.
     const extraState = Object.fromEntries(Object.entries(extra).filter(([key, val]) => !(key === 'warp' && val === false) && !(Array.isArray(val) && val.length === 0)))
     const fields = values && record(b.fields) ? Object.fromEntries(Object.entries(b.fields).filter(([key]) => key !== 'LABEL').map(([key, val]) => [key, String(record(val) ? val.id ?? val.name ?? '' : val)])) : undefined
-    return { id: b.id, type: b.type, inputs: Object.fromEntries(connections), ...(next ? { next: node(next) } : {}), ...(Object.keys(extraState).length ? { extraState } : {}), ...(fields && Object.keys(fields).length ? { fields } : {}) }
+    // A script switched off is a change from the original (Back to the original undoes it), but not a remix.
+    const off = values && isTurnedOff(b) ? { off: true } : {}
+    return { id: b.id, type: b.type, inputs: Object.fromEntries(connections), ...(next ? { next: node(next) } : {}), ...(Object.keys(extraState).length ? { extraState } : {}), ...(fields && Object.keys(fields).length ? { fields } : {}), ...off }
   }
   return roots.map(node).sort((a, b) => stable(a).localeCompare(stable(b)))
 }

@@ -89,3 +89,49 @@ describe('undo and redo use Blockly\'s own stack', () => {
     }
   })
 })
+
+describe('turning a script off', () => {
+  it('keeps it in the workspace, saves it as off, and the program leaves it out; turning it on brings it back', async () => {
+    const { registerEditorBlocks } = await import('../../core/editor/definitions')
+    const { compileWorkspace } = await import('../../core/editor/compile')
+    const { setScriptOff, isScriptOff } = await import('./affordances')
+    const { createHeroBrick, heroVariables } = await import('../hero/heroBrick')
+    const Blockly = await import('blockly/core')
+    registerEditorBlocks({ getVariables: () => [...heroVariables(), { id: 'coins', name: 'coins', value: 0 }], getBricks: () => ['Hero'] })
+    const { workspace, brick } = createHeroBrick()
+    const ws = new Blockly.Workspace()
+    try {
+      Blockly.serialization.workspaces.load(workspace as never, ws)
+      const coyote = ws.getTopBlocks(false).find((b) => (b.data ?? '').includes('Coyote time'))!
+      setScriptOff(coyote, true)
+      expect(isScriptOff(coyote)).toBe(true)
+      const saved = Blockly.serialization.workspaces.save(ws)
+      expect(ws.getTopBlocks(false)).toHaveLength(29)
+      const off = compileWorkspace(saved, { variables: heroVariables() })
+      expect(off.program.scripts).toHaveLength(brick.program.scripts.length - 1)
+      setScriptOff(coyote, false)
+      const on = compileWorkspace(Blockly.serialization.workspaces.save(ws), { variables: heroVariables() })
+      expect(on.program.scripts).toHaveLength(brick.program.scripts.length)
+    } finally {
+      ws.dispose()
+    }
+  })
+
+  it('a built-in brick with a script turned off stays built-in (it is tuning, not a remix), and Back to the original turns it on again', async () => {
+    const { StudioStore } = await import('../store')
+    const { createStarterProject } = await import('../starter')
+    const store = new StudioStore(createStarterProject())
+    const ws = structuredClone(store.getState().project.workspaces.brick_hero) as { blocks: { blocks: Array<Record<string, unknown>> } }
+    const coyote = ws.blocks.blocks.find((b) => String(b.data ?? '').includes('Coyote time'))!
+    coyote.disabledReasons = ['MANUALLY_DISABLED']
+    const before = store.brick('brick_hero')!.program.scripts.length
+    store.setWorkspace('brick_hero', ws)
+    expect(store.brick('brick_hero')!.remixOf).toBeUndefined()
+    expect(store.brick('brick_hero')!.name).toBe('Hero')
+    expect(store.brick('brick_hero')!.program.scripts).toHaveLength(before - 1)
+    expect(store.canResetBrick('brick_hero')).toBe(true)
+    store.resetBrickOriginal('brick_hero')
+    expect(store.brick('brick_hero')!.program.scripts).toHaveLength(before)
+    expect(store.canResetBrick('brick_hero')).toBe(false)
+  })
+})
