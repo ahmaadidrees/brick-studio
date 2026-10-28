@@ -231,6 +231,12 @@
 @media (max-width: 1180px) and (min-width: 768px) {
   .cl-mode { min-width: 84px; }
 }
+/* Tablets and a Duo opened up: the "Built-in · change a block…" chip gets its own line, so the brick's name keeps
+   its room next to Code · Costumes · Sounds. */
+@media (max-width: 1024px) {
+  .cl-code-head { flex-wrap: wrap; row-gap: 2px; padding-block: 4px; }
+  .cl-code-head .cl-chip { order: 3; flex-basis: 100%; max-width: max-content; }
+}
 
 /* ---------------------------------------------------------------- phone: Build and Play only */
 @media (max-width: 767px) {
@@ -258,6 +264,24 @@
 /* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
 [data-screen='play'] .play-hint { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); animation: cl-rise-centered 240ms var(--cl-ease) 1; }
 [data-screen='play'] .stage-view-tools { animation: cl-fade 240ms ease-out 1; }
+/* Touch screens: the on-screen buttons say how to play, so the keyboard hint goes. */
+@media (pointer: coarse) { [data-screen='play'] .play-hint { display: none; } }
+/* A touch screen held upright: the buttons get their own strip under the level, like a handheld, so they never cover
+   the Hero (the level fills the rest; see followViewWidth). */
+@media (pointer: coarse) and (max-aspect-ratio: 4/5) {
+  [data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 212px); box-sizing: border-box; background: var(--cl-ink); }
+}
+/* Wide enough for Run beside Jump: a shorter strip. */
+@media (pointer: coarse) and (max-aspect-ratio: 4/5) and (min-width: 421px) {
+  [data-screen='play'] .cl-slot-stage { padding-bottom: calc(env(safe-area-inset-bottom) + 160px); }
+  [data-screen='play'] .p2d-face { flex-direction: row; align-items: center; }
+}
+/* A phone in Play: one row of tools (no zoom; Fit and the camera choice are enough). */
+.cl-phone[data-screen='play'] .stage-view-group[aria-label='Zoom'] { display: none; }
+.cl-phone[data-screen='play'] .stage-view-tools { flex-wrap: nowrap; gap: 6px; padding: 6px; overflow-x: auto; scrollbar-width: none; }
+.cl-phone[data-screen='play'] .stage-view-btn { padding: 0 8px; font-size: 13px; white-space: nowrap; }
+/* ...and the coin count goes under that row instead of over Pause. */
+.cl-phone[data-screen='play'] .play-coins { top: 64px; }
 
 /* Powers row in Code (PowersBar.tsx) */
 .cl-powers { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--cl-line); background: var(--cl-softer); }

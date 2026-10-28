@@ -182,3 +182,13 @@ export function followCamera(
     viewWidth,
   }
 }
+
+/**
+ * How wide a following camera looks: DEFAULT_VIEW_WIDTH, or narrower when the stage is taller than wide (a phone held
+ * upright), so the level fills the height instead of sitting in a band with empty space above and below.
+ */
+export function followViewWidth(bounds: StageBounds, viewport: Viewport): number {
+  const levelHeight = bounds.top - bounds.bottom
+  if (viewport.width <= 0 || viewport.height <= 0 || levelHeight <= 0) return DEFAULT_VIEW_WIDTH
+  return Math.min(DEFAULT_VIEW_WIDTH, (viewport.width * levelHeight) / viewport.height)
+}

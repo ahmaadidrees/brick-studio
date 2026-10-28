@@ -78,7 +78,7 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
   return (
     <div className="cl-power-panel cl-pop" role="dialog" aria-label={`Snap a power onto ${brick.name}`}>
       <div className="cl-power-panel-head"><b>Snap a power onto {brick.name}</b><button type="button" className="cl-icon-btn" aria-label="Close" onClick={onClose}><X size={16} /></button></div>
-      <span className="cl-power-group">Comes with Code Lab</span>
+      <span className="cl-power-group">Built in</span>
       <ul className="cl-power-list">{builtIn.map(row)}</ul>
       <span className="cl-power-group">Class shelf</span>
       <ClassShelfList store={store} brick={brick} shelf={shelf} onSnapped={onClose} />

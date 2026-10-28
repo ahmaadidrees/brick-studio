@@ -1,6 +1,7 @@
 import { Box, Code2, Hammer, MoreHorizontal, Pause, Play, RotateCcw, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import { AppHeader } from '../../../../shell'
+import type { HeaderSaveStatus } from '../../../../shell/AppHeader'
 import { Button, Menu } from '../../../../ui'
 import { ProjectMenu } from '../persist/ProjectMenu'
 import { StorageNoticeBar } from '../persist/StorageNoticeBar'
@@ -8,6 +9,7 @@ import { Stage } from '../Stage'
 import { screenOf, useStudio, type StudioScreen, type StudioStore } from '../store'
 import { TestRoom } from '../workshop/TestRoom'
 import { PlayFeedback } from '../builder/PlayFeedback'
+import { PlayTouchControls } from './PlayTouchControls'
 import { checkLevelForPlay, NO_HERO_MESSAGE } from '../builder/playRules'
 import { ensureTiles } from '../builder/ensureTiles'
 import { limitedStore } from '../builder/limits'
@@ -21,7 +23,10 @@ import '../builder/builder.css'
 import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
+const LOCAL_SAVE: HeaderSaveStatus = { source: { kind: 'local' } }
 const PHONE = '(max-width: 767px)'
+/** Touch screens get on-screen buttons in Play (the same test as the regular platformer). */
+const TOUCH = '(pointer: coarse)'
 export const CODE_NEEDS_ROOM = 'Code needs a bigger screen'
 
 const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode; key: string }> = [
@@ -38,12 +43,23 @@ const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode;
  *   Code:  palette and scripts · the level at the top right with "In this level" below it.
  *   Play:  the level fills the screen.
  */
-export function StudioShell({ store, templates }: { store: StudioStore; templates?: readonly BrickTemplate[] }) {
+export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner }: {
+  store: StudioStore
+  templates?: readonly BrickTemplate[]
+  /** Where the project saves to (this browser unless the page says otherwise). */
+  saveStatus?: HeaderSaveStatus
+  onRenameProject?: (title: string) => Promise<void>
+  /** A line under the header, e.g. "this is someone else's project". */
+  banner?: ReactNode
+}) {
   const screen = useStudio(store, screenOf)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
   const remixNotice = useStudio(store, (s) => s.remixNotice)
   const name = useStudio(store, (s) => s.project.design.name)
   const phone = useMedia(PHONE)
+  const touch = useMedia(TOUCH)
+  const runtime = useStudio(store, (s) => s.runtime)
+  const paused = useStudio(store, (s) => s.previewPaused)
   const session = builderSession(store)
   const history = session.history
   // The Stage places copies through this view of the store, which keeps the Hero and the Goal to one each.
@@ -126,7 +142,8 @@ export function StudioShell({ store, templates }: { store: StudioStore; template
           hideCharacter
           onOpenProjects={() => window.location.assign('/projects')}
           worldTitle={name}
-          saveStatus={{ source: { kind: 'local' } }}
+          onRenameWorld={onRenameProject}
+          saveStatus={saveStatus}
           // Scene has nothing to open in Code Lab; the header's tools group is hidden in builder.css.
           onOpenWorldSetup={NO_WORLD_SETUP}
           mode={screen === 'play' ? 'explore' : 'build'}
@@ -138,13 +155,13 @@ export function StudioShell({ store, templates }: { store: StudioStore; template
           onGoHome={() => window.location.assign('/')}
           worldMenu={() => (
             <Menu
-              label="This world"
+              label="This project"
               align="end"
               width={360}
               className="builder-project-menu"
               trigger={({ ref, ...props }) => (
-                <Button ref={ref} variant="quiet" iconOnly icon={<MoreHorizontal size={20} />} aria-label="This world" title="This world" className="shell-world-menu-trigger" {...props}>
-                  This world
+                <Button ref={ref} variant="quiet" iconOnly icon={<MoreHorizontal size={20} />} aria-label="This project" title="This project" className="shell-world-menu-trigger" {...props}>
+                  This project
                 </Button>
               )}
             >
@@ -155,6 +172,7 @@ export function StudioShell({ store, templates }: { store: StudioStore; template
       </div>
 
       <StorageNoticeBar />
+      {banner}
 
       <div className="cl-body">
         <div className="cl-slot cl-slot-drawer" inert={screen !== 'build' || (phone && !sheet) ? true : undefined}>
@@ -172,6 +190,7 @@ export function StudioShell({ store, templates }: { store: StudioStore; template
           </div>
           {screen === 'build' && <PaintStrip store={store} erasing={erasing} onErasing={setErasing} />}
           {screen === 'play' && <PlayFeedback store={store} />}
+          {screen === 'play' && touch && runtime && !paused && <PlayTouchControls runtime={runtime} />}
           {screen === 'build' && phone && !sheet && (
             <button type="button" className="cl-fab" onClick={() => setSheet(true)}><Box size={20} aria-hidden="true" /> Bricks</button>
           )}

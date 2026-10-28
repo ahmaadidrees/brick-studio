@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react'
 import type { BrickDef, Costume, CopyPlacement, LevelDesign, SnappedPower, Sound, Value } from '../core/contracts'
 import { type Diagnostic } from '../core/editor/compile'
 import { play, type Runtime } from '../core/index'
+import { deterministicStringify } from '../core/save'
 import { parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
@@ -369,6 +370,12 @@ export class StudioStore {
     this.set({ editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
+  /** The project's own name (the header's title, and its name in My projects). */
+  renameProject(name: string) {
+    const clean = name.trim().slice(0, 80)
+    if (clean) this.setDesign({ ...this.state.project.design, name: clean })
+  }
+
   renameBrick(brickId: string, name: string) {
     this.updateBrick(brickId, (b) => ({ ...b, name }))
   }
@@ -490,10 +497,11 @@ export class StudioStore {
 
 /**
  * Runtime changes come from scripts/declarations, never view layout or live slider starting values. Order does not
- * count either: the editor's automatic tidy on open rearranges scripts without changing what they do.
+ * count either: the editor's automatic tidy on open rearranges scripts without changing what they do. Nor does the
+ * order of keys inside a block: a reopened save has them sorted, a fresh compile does not.
  */
 function codeFingerprint(project: StudioProject): string {
-  const unordered = (items: readonly unknown[]) => items.map((item) => JSON.stringify(item)).sort()
+  const unordered = (items: readonly unknown[]) => items.map((item) => deterministicStringify(item, 0)).sort()
   return JSON.stringify([project.design.stage, ...project.design.bricks].map((brick) => ({
     id: brick.id,
     scripts: unordered(brick.program.scripts),

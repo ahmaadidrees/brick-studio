@@ -1,4 +1,4 @@
-import { CloudUpload, Download, FileUp, Flag, Footprints, Blocks, MonitorSmartphone, Play, Trash2, Users } from 'lucide-react'
+import { CloudUpload, Code2, Download, FileUp, Flag, Footprints, Blocks, MonitorSmartphone, Play, Trash2, Users } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { COURSES } from '@brick-studio/platformer-core/levels/courses'
 import { RACE_COURSES } from '@brick-studio/platformer-core/levels/raceCourses'
@@ -12,9 +12,9 @@ import { PROJECT_FILE_ACCEPT, PROJECT_KIND_LABEL, downloadProjectFile, readProje
 import { LOCAL_3D_ID, importProject, listLocalProjects, localProject, moveToAccount, removeLocalProject, type LocalProject } from './projects'
 import './projects.css'
 
-const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag }
+const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag, hackable: Code2 }
 
-/** "3D build", "Platformer" or "Race track", on every project card. */
+/** "3D build", "Platformer", "Race track" or "Hackable Platformer", on every project card. */
 export function KindChip({ kind }: { kind: ProjectKind }) {
   const Icon = KIND_ICON[kind]
   return (
@@ -25,6 +25,7 @@ export function KindChip({ kind }: { kind: ProjectKind }) {
 }
 
 function localPicture(p: LocalProject): string {
+  if (p.picture) return p.picture
   if (!p.level) return ''
   return p.kind === 'race' ? raceThumb(p.level, `local:${p.id}:${p.updated}`) : levelThumb(p.level, `local:${p.id}:${p.updated}`)
 }

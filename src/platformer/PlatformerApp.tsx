@@ -46,10 +46,13 @@ export default function PlatformerApp() {
           <LabApp />
         </Suspense>
       )
+    case 'studio-moved':
+      window.location.replace(`/2d/hackable${window.location.search}`)
+      return <Notice title="Opening the Hackable Platformer…" busy />
     case 'studio':
       return (
-        <Suspense fallback={<Notice title="Opening Code Lab…" busy />}>
-          <StudioApp />
+        <Suspense fallback={<Notice title="Opening the Hackable Platformer…" busy />}>
+          <StudioApp route={route} />
         </Suspense>
       )
     default:
@@ -295,6 +298,7 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
     cloudWorldInfo(worldId).then(
       (w) => {
         if (cancelled) return
+        if (w.format === 'hackable') return window.location.replace(`/2d/hackable?world=${worldId}`)
         if (w.format !== '2d') return window.location.replace(`/live/${worldId.replaceAll('-', '')}`)
         setWorld(w)
       },

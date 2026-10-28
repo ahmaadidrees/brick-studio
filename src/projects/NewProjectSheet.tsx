@@ -1,4 +1,4 @@
-import { Blocks, Flag, Footprints } from 'lucide-react'
+import { Blocks, Code2, Flag, Footprints } from 'lucide-react'
 import { useMemo } from 'react'
 import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
 import { COURSES } from '@brick-studio/platformer-core/levels/courses'
@@ -15,6 +15,7 @@ export const NEW_PROJECT_HREF = {
   raceStarter: '/2d/build?new=1&kit=race-starter',
   raceEmpty: '/2d/build?new=1&kit=race-empty',
   template: (id: string) => `/2d/build?new=1&template=${encodeURIComponent(id)}`,
+  hackable: '/2d/hackable?new=1',
 }
 
 /**
@@ -59,6 +60,25 @@ export function NewProjectSheet({ open, onClose, onPick = (href) => window.locat
           <div className="projects-kind-actions">
             <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.platformer)}>
               Start a platformer
+            </Button>
+          </div>
+        </article>
+        <article className="projects-kind projects-kind-hackable">
+          <div className="projects-kind-picture">
+            {pictures?.platformer && <img src={pictures.platformer} alt="" draggable={false} />}
+            {/* A taste of what is inside: two of the Hero's own blocks over the level. */}
+            <span className="projects-hack-blocks" aria-hidden="true">
+              <span className="projects-hack-block projects-hack-hat">when I land</span>
+              <span className="projects-hack-block">change <b>jumps left</b> to <i>2</i></span>
+            </span>
+          </div>
+          <h3>
+            <Code2 size={18} aria-hidden="true" /> Hackable Platformer <span className="projects-new-tag">New</span>
+          </h3>
+          <p>A platformer where you can change anything about how it works, with blocks. Open any brick, even your Hero.</p>
+          <div className="projects-kind-actions">
+            <Button variant="primary" onClick={() => onPick(NEW_PROJECT_HREF.hackable)}>
+              Start a Hackable Platformer
             </Button>
           </div>
         </article>

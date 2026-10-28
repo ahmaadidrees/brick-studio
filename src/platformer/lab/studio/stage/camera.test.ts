@@ -5,6 +5,8 @@ import {
   fitCamera,
   fitZoom,
   followCamera,
+  followViewWidth,
+  DEFAULT_VIEW_WIDTH,
   wholeLevelReadable,
   createDefaultCamera,
   getCameraZoom,
@@ -231,5 +233,15 @@ describe('fit and follow camera', () => {
       const wide = followCamera({ left: 0, right: 200, bottom: 0, top: 360 }, vp, { x: 190, y: 180 })
       expect(wide.x).toBe(100)
     })
+  })
+})
+
+describe('following on a tall screen', () => {
+  const bounds = { left: 0, right: 960, bottom: 0, top: 360 }
+  it('looks narrower so the level fills the height, and is unchanged on a wide screen', () => {
+    expect(followViewWidth(bounds, { width: 466, height: 600 })).toBeCloseTo(279.6)
+    const cam = followCamera(bounds, { width: 466, height: 600 }, { x: 60, y: 24 }, followViewWidth(bounds, { width: 466, height: 600 }))
+    expect(cam.y).toBeCloseTo(180)
+    expect(followViewWidth(bounds, { width: 1200, height: 600 })).toBe(DEFAULT_VIEW_WIDTH)
   })
 })

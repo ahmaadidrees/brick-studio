@@ -1,3 +1,4 @@
+import { hackableHref } from '../platformer/lab/studio/persist/hackableProjects'
 import { useState } from 'react'
 import { Mail } from 'lucide-react'
 import { Button, Sheet } from '../ui'
@@ -6,7 +7,8 @@ import { useStudentInvites, type InviteClient, type InviteSnapshot } from './inv
 import { useClassroomSession, type ClassroomSessionState } from '../shell/useClassroomSession'
 import './student-invites.css'
 
-export const inviteWorldHref = (invite: Pick<ClassroomInvite, 'worldId' | 'format'>) => `${invite.format === '2d' ? '/2d/w' : '/live'}/${invite.worldId.replaceAll('-', '')}`
+export const inviteWorldHref = (invite: Pick<ClassroomInvite, 'worldId' | 'format'>) =>
+  invite.format === 'hackable' ? hackableHref.world(invite.worldId) : `${invite.format === '2d' ? '/2d/w' : '/live'}/${invite.worldId.replaceAll('-', '')}`
 export function inviteActionLabel(invite: Pick<ClassroomInvite, 'ownerName'>) {
   const firstName = invite.ownerName?.trim().split(/\s+/)[0]
   return firstName ? `Go to ${firstName}’s world` : 'Go to world'
@@ -29,7 +31,7 @@ export function StudentInviteList({ state, onGo, blocked = false, search = '' }:
       </div>
       <p>{invite.ownerName || 'A classmate'} invited you</p>
       <div className="student-invite-tags">
-        <span>{invite.format === '2d' ? '2D' : '3D'}</span>
+        <span>{invite.format === 'hackable' ? 'Hackable' : invite.format === '2d' ? '2D' : '3D'}</span>
         <span>{invite.canEdit ? 'You can build' : 'Just looking'}</span>
       </div>
       <Button variant="primary" disabled={blocked} onClick={() => onGo(invite)}>{inviteActionLabel(invite)}</Button>

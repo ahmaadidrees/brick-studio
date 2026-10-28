@@ -109,7 +109,7 @@ export function isQuotaError(err: unknown): boolean {
  * If the saved project is corrupted or uses an unsupported future schema, a safe copy
  * is preserved in `CODE_LAB_BACKUP_STORAGE_KEY` and a kid-friendly notice is set.
  */
-export function loadProject(storageOverride?: Storage): StudioProject {
+export function loadProject(storageOverride?: Storage, key = CODE_LAB_STORAGE_KEY): StudioProject {
   const storage = storageOverride ?? getLocalStorage()
   savesHeld = false
   if (!storage) {
@@ -118,7 +118,7 @@ export function loadProject(storageOverride?: Storage): StudioProject {
 
   let raw: string | null = null
   try {
-    raw = storage.getItem(CODE_LAB_STORAGE_KEY)
+    raw = storage.getItem(key)
   } catch (err) {
     console.warn('Code Lab: Failed to read from localStorage:', err)
     return createStarterProject()
@@ -162,7 +162,7 @@ export function loadProject(storageOverride?: Storage): StudioProject {
       sticky: true,
       actions,
       message:
-        'This world was saved with a newer version of Code Lab, so we could not open it. Your old world is safe. Nothing will be saved until you pick: start with this new world, or save the old one to a file.',
+        'This world was saved with a newer version of Brickgineers, so we could not open it. Your old world is safe. Nothing will be saved until you pick: start with this new world, or save the old one to a file.',
     })
   } else {
     setStorageNotice({
@@ -181,7 +181,7 @@ export function loadProject(storageOverride?: Storage): StudioProject {
 /**
  * Saves a StudioProject synchronously to storage.
  */
-export function saveProject(project: StudioProject, storageOverride?: Storage): boolean {
+export function saveProject(project: StudioProject, storageOverride?: Storage, key = CODE_LAB_STORAGE_KEY): boolean {
   const storage = storageOverride ?? getLocalStorage()
   if (!storage) return false
 
@@ -199,7 +199,7 @@ export function saveProject(project: StudioProject, storageOverride?: Storage): 
       })
       return false
     }
-    storage.setItem(CODE_LAB_STORAGE_KEY, serialized)
+    storage.setItem(key, serialized)
     const last = getStorageNotice()
     if (last && (last.type === 'quota-error' || last.type === 'error') && last.id !== 'import-error') clearStorageNotice()
     return true
@@ -209,13 +209,13 @@ export function saveProject(project: StudioProject, storageOverride?: Storage): 
         id: 'quota-error',
         type: 'quota-error',
         message:
-          'This computer is full, so your world could not be saved. Press This world, then Save File, so you do not lose it.',
+          'This computer is full, so your world could not be saved. Press This project, then Save File, so you do not lose it.',
       })
     } else {
       setStorageNotice({
         id: 'save-error',
         type: 'error',
-        message: 'Your world could not be saved on this computer. Press This world, then Save File, so you do not lose it.',
+        message: 'Your world could not be saved on this computer. Press This project, then Save File, so you do not lose it.',
       })
     }
     console.warn('Code Lab: Save failed:', err)
@@ -265,6 +265,10 @@ export function clearBackupProject(storageOverride?: Storage): void {
 export interface WatchAndSaveOptions {
   debounceMs?: number
   storage?: Storage
+  /** Where the project is kept (each Hackable project has its own key). */
+  key?: string
+  /** After each save that worked: the Hackable list updates its name, date and picture. */
+  afterSave?: (project: StudioProject) => void
 }
 
 /**
@@ -278,6 +282,10 @@ export function watchAndSave(
 ): () => void {
   const debounceMs = options?.debounceMs ?? DEFAULT_AUTOSAVE_DEBOUNCE_MS
   const storage = options?.storage
+  const save = () => {
+    const project = store.getState().project
+    if (saveProject(project, storage, options?.key)) options?.afterSave?.(project)
+  }
 
   let timeoutId: ReturnType<typeof setTimeout> | null = null
   let lastSavedRevision = store.getState().revision
@@ -290,7 +298,7 @@ export function watchAndSave(
     if (isSaveHeld()) return
     const currentRev = store.getState().revision
     if (currentRev !== lastSavedRevision) {
-      saveProject(store.getState().project, storage)
+      save()
       lastSavedRevision = currentRev
     }
   }
@@ -304,7 +312,7 @@ export function watchAndSave(
       timeoutId = setTimeout(() => {
         timeoutId = null
         if (isSaveHeld()) return
-        saveProject(store.getState().project, storage)
+        save()
         lastSavedRevision = currentRev
       }, debounceMs)
     }

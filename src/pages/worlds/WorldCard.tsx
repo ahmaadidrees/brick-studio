@@ -13,7 +13,7 @@ import { buildingCount, classmatesLabel, isInviteOnly, isLevel2d, isShared, plat
  * carry every fact.
  */
 export function PlateArt({ world }: { world: WorldsWorld }) {
-  if (isLevel2d(world)) return <LevelArt />
+  if (isLevel2d(world) || world.format === 'hackable') return <LevelArt />
   const plate = plateSizeOf(world)
   const studs = plate === 128 ? 7 : plate === 96 ? 6 : 5
   const step = 100 / studs

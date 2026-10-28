@@ -136,7 +136,7 @@ it('saves the check-first switch and the race rule as class patches and shows wh
   await waitFor(() => expect(within(group).getByRole('radio', { name: 'Built-in Heroes only' })).toBeChecked())
   fireEvent.click(within(group).getByRole('radio', { name: 'Anything' }))
   await waitFor(() => expect(calls).toContainEqual(['/classes/class-1', 'PATCH', { raceHeroes: 'any' }]))
-  expect(screen.getByText('Code Lab levels can’t race yet; this is the rule they’ll follow when they can.')).toBeInTheDocument()
+  expect(screen.getByText('Hackable Platformers can’t race yet; this is the rule they’ll follow when they can.')).toBeInTheDocument()
 })
 
 it('shows a failed shelf load as the page error with a way to try again', async () => {

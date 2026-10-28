@@ -32,3 +32,17 @@ describe('2D routes', () => {
     expect(canonicalWorldId('xyz')).toBeNull()
   })
 })
+
+describe('the Hackable Platformer', () => {
+  it('opens the newest one, a new one, one in this browser or one in the account', () => {
+    expect(at('/2d/hackable')).toEqual({ kind: 'studio', fresh: false })
+    expect(at('/2d/hackable?new=1')).toEqual({ kind: 'studio', fresh: true })
+    expect(at('/2d/hackable?draft=hk3x9')).toEqual({ kind: 'studio', draft: 'hk3x9', fresh: false })
+    expect(at('/2d/hackable?world=33333333333343338333000000000001')).toEqual({ kind: 'studio', world: '33333333-3333-4333-8333-000000000001', fresh: false })
+    expect(at('/2d/hackable?draft=../x&world=nope')).toEqual({ kind: 'studio', fresh: false })
+  })
+
+  it('keeps its old address working', () => {
+    expect(at('/2d/lab/next')).toEqual({ kind: 'studio-moved' })
+  })
+})

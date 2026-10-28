@@ -545,9 +545,25 @@ function inviteView(row: Row, world: Row, ownerName: string, canEdit: boolean): 
  * Worlds hold either a 3D brick build or a 2D level; the document's own `format` field says which (brick documents
  * have none). Metadata-only reads select it as `doc_format`; full rows carry the document itself.
  */
-export type WorldFormat = 'brick' | '2d';
+export type WorldFormat = 'brick' | '2d' | 'hackable';
+/** A Hackable Platformer project (Code Lab): its save envelope, wrapped so it says what it is. */
+export const HACKABLE_FORMAT = 'brickgineers-hackable';
+const isHackableDocument = (value: unknown): boolean => !!value && typeof value === 'object' && (value as Row).format === HACKABLE_FORMAT;
 export function worldFormat(row: Row): WorldFormat {
+  if (row.doc_format === HACKABLE_FORMAT || isHackableDocument(row.document)) return 'hackable';
   return row.doc_format === PLATFORMER_FORMAT || isPlatformerDocument(row.document) ? '2d' : 'brick';
+}
+/**
+ * The Worker only checks a Hackable project's outline (the app's own parser checks the rest when it opens one, as it
+ * does for files): what it is, its version, and a save envelope with a design and workspaces. Size is the table's limit.
+ */
+function hackableDocument(value: unknown): Row {
+  const v = value as Row, save = v?.save as Row | undefined;
+  const ok = v?.version === 1 && !!save && typeof save === 'object' && !Array.isArray(save) && typeof save.schemaVersion === 'number'
+    && !!save.design && typeof save.design === 'object' && !Array.isArray(save.design)
+    && (save.workspaces === undefined || (typeof save.workspaces === 'object' && save.workspaces !== null && !Array.isArray(save.workspaces)));
+  if (!ok) fail(400, 'invalid_document', 'This project is incomplete or invalid. Your existing saved project has not been replaced.');
+  return { format: HACKABLE_FORMAT, version: 1, save };
 }
 /** A 2D level's kit: 'race' for race tracks; absent for platformers and 3D builds (so older apps see nothing new). */
 export function worldKit(row: Row): 'race' | undefined {
@@ -595,11 +611,12 @@ async function body(request: Request): Promise<Row> {
  * Validates a document of either kind and returns its canonical form. `expected` pins the kind a world already has:
  * a save never turns a 3D world into a 2D level or the other way round.
  */
-function document(value: unknown, expected?: WorldFormat): BrickStudioDocument | PlatformerDocument | null {
-  const format: WorldFormat = isPlatformerDocument(value) ? '2d' : 'brick';
+function document(value: unknown, expected?: WorldFormat): BrickStudioDocument | PlatformerDocument | Row | null {
+  const format: WorldFormat = isHackableDocument(value) ? 'hackable' : isPlatformerDocument(value) ? '2d' : 'brick';
   if (expected && format !== expected) {
-    fail(400, 'wrong_world_kind', expected === '2d' ? 'This world is a 2D level. Open it in the 2D builder.' : 'This world is a 3D build. Open it in the 3D builder.');
+    fail(400, 'wrong_world_kind', expected === 'hackable' ? 'This is a Hackable Platformer. Open it there.' : expected === '2d' ? 'This world is a 2D level. Open it in the 2D builder.' : 'This world is a 3D build. Open it in the 3D builder.');
   }
+  if (format === 'hackable') return hackableDocument(value);
   if (format === '2d') {
     const level = validatePlatformerDocument(value);
     if (!level.ok) fail(400, 'invalid_document', 'This level is incomplete or invalid. Your existing saved level has not been replaced.');
@@ -1099,6 +1116,8 @@ export async function loadClassroomWorld(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
+  // Hackable projects have no live rooms yet: never hand one to a 3D room.
+  if (worldFormat(row) === 'hackable') fail(409, 'wrong_world_kind', 'This is a Hackable Platformer. Open it there.');
   return worldView(row, { full: true }) as ClassroomWorldSnapshot;
 }
 /** A stored 2D level as the PlatformerRoom consumes it. Refuses 3D worlds. */
@@ -1107,6 +1126,7 @@ export async function loadClassroomLevel(env: ClassroomEnv, worldId: string): Pr
   if (!uuid(worldId)) fail(404, 'not_found', 'World not found.');
   const row = (await new ClassroomService(env).rows('worlds', `id=eq.${worldId}&deleted_at=is.null&limit=1`))[0];
   if (!row) fail(404, 'not_found', 'World not found.');
+  if (worldFormat(row) === 'hackable') fail(409, 'wrong_world_kind', 'This is a Hackable Platformer. Open it there.');
   if (worldFormat(row) !== '2d') fail(409, 'wrong_world_kind', 'This world is a 3D build. Open it in the 3D builder.');
   const level = validatePlatformerDocument(row.document);
   if (!level.ok) fail(409, 'invalid_document', 'This level could not be opened.');

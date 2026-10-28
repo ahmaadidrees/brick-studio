@@ -36,6 +36,15 @@ describe('Slice 1 shared studio lifecycle', () => {
     store.stop()
     expect(store.getState().pendingCodeChanges).toBe(false)
   })
+  it('does not ask for a Restart when a reopened save is opened in Code unchanged', () => {
+    // A save stores blocks with sorted keys; the editor's fresh compile does not. That is not a change.
+    const saved = parse(exportProjectJson(createStarterProject()))
+    if (!saved.ok) throw new Error('starter did not round-trip')
+    const store = new StudioStore({ design: saved.save.design, workspaces: saved.save.workspaces ?? {} })
+    store.openCode('brick_hero')
+    store.setWorkspace('brick_hero', structuredClone(store.getState().project.workspaces.brick_hero))
+    expect(store.getState().pendingCodeChanges).toBe(false)
+  })
   it('keeps remixed Hero and Goal playable and removes overrides when a slider is hidden', () => {
     const { store, walker, copies, speed } = fixture()
     const design = store.getState().project.design

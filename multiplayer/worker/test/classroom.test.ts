@@ -879,5 +879,7 @@ describe('what kind of project a world is', () => {
     expect(worldKit({ document: { format: 'brickgineers-2d', version: 1, level: { kit: 'race' } } })).toBe('race');
     expect(worldKit({ document: createBrickStudioDocument([]) })).toBeUndefined();
     expect(worldFormat({ doc_format: 'brickgineers-2d', doc_kit: 'race' })).toBe('2d');
+    expect(worldFormat({ doc_format: 'brickgineers-hackable' })).toBe('hackable');
+    expect(worldFormat({ document: { format: 'brickgineers-hackable', version: 1, save: {} } })).toBe('hackable');
   });
 });

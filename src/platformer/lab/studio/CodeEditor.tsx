@@ -173,7 +173,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ store, docked = false })
       zoom: {
         controls: false,
         wheel: true,
-        startScale: 0.85,
+        // Tablets and a Duo opened up show more of the script at a slightly smaller size.
+        startScale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 0.72 : 0.85,
         maxScale: 2,
         minScale: docked ? 0.65 : 0.4,
         scaleSpeed: 1.1,

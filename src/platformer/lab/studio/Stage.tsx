@@ -11,6 +11,7 @@ import {
   buildCamera,
   fitCamera,
   followCamera,
+  followViewWidth,
   panCamera,
   screenToWorld,
   snapToGrid,
@@ -168,7 +169,7 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
         x: (world.bounds.left + world.bounds.right) / 2,
         y: (world.bounds.bottom + world.bounds.top) / 2,
       }
-      return followCamera(world.bounds, viewport, point)
+      return followCamera(world.bounds, viewport, point, followViewWidth(world.bounds, viewport))
     },
     [playFree, camera, playCameraMode, viewport, design.bricks],
   )

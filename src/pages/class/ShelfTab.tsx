@@ -200,7 +200,7 @@ export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, o
             <span><strong id={`class-race-${option.value}-label`}>{option.label}</strong><small id={`class-race-${option.value}-hint`}>{option.description}</small></span>
           </label>)}
         </div>
-        <p className="class-help">Code Lab levels can’t race yet; this is the rule they’ll follow when they can.</p>
+        <p className="class-help">Hackable Platformers can’t race yet; this is the rule they’ll follow when they can.</p>
       </fieldset>
     </section>
 

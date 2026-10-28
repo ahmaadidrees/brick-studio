@@ -293,6 +293,30 @@ describe("2D class levels", () => {
     expect(await ticket.json()).toMatchObject({ code: "wrong_world_kind" });
   });
 
+  it("keep Hackable Platformer projects out of live rooms, and saved only over their own kind", async () => {
+    const hackable = (name: string) => ({ format: "brickgineers-hackable", version: 1, save: { schemaVersion: 1, design: { name }, workspaces: {} } });
+    const worldId = randomWorldUuid();
+    const f = fixture([worldId]);
+    (f.db.worlds[0] as { document: unknown }).document = hackable("Mine");
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue({ ...teacherCaller } as never);
+    for (const kind of ["live-ticket", "platformer-ticket"]) {
+      const ticket = await request(`/classroom/worlds/${worldId}/${kind}`, { method: "POST", headers: { authorization: "Bearer teacher" } });
+      expect(ticket.status).toBe(409);
+      expect(await ticket.json()).toMatchObject({ code: "wrong_world_kind" });
+    }
+    const put = (document: unknown, revision: number) => request(`/classroom/worlds/${worldId}`, {
+      method: "PUT", headers: { authorization: "Bearer teacher", "content-type": "application/json" }, body: JSON.stringify({ expectedRevision: revision, document }),
+    });
+    const ok = await put({ ...hackable("Renamed"), extra: "dropped" }, f.db.worlds[0].revision);
+    expect(ok.status).toBe(200);
+    expect((await ok.json<{ world: { format: string } }>()).world.format).toBe("hackable");
+    expect(f.db.worlds[0].document).toEqual(hackable("Renamed"));
+    const level = await put(createPlatformerDocument(createBlankLevel(40, 20, "Nope")), f.db.worlds[0].revision);
+    expect(await level.json()).toMatchObject({ code: "wrong_world_kind" });
+    const broken = await put({ format: "brickgineers-hackable", version: 1, save: { design: [] } }, f.db.worlds[0].revision);
+    expect(await broken.json()).toMatchObject({ code: "invalid_document" });
+  });
+
   it("save a 2D level only over a 2D level", async () => {
     const { world, worldId } = classLevel();
     const put = (id: string, document: unknown, revision: number) => request(`/classroom/worlds/${id}`, {

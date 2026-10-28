@@ -30,8 +30,8 @@ export type ClassroomWorldMemberSummary = { id: string; displayName: string }
 export type ClassroomClassmate = ClassroomWorldMemberSummary
 export type ClassroomWorld = {
   id: string; title: string; ownerId: string; classId: string | null; kind: 'personal' | 'group' | 'class'; revision: number; updatedAt: string; document?: BrickStudioDocument
-  /** What the world holds: a 3D brick build or a 2D level (`/2d`). Older servers omit it: treat that as 'brick'. */
-  format?: 'brick' | '2d'
+  /** What the world holds: a 3D brick build, a 2D level (`/2d`) or a Hackable Platformer. Older servers omit it: treat that as 'brick'. */
+  format?: 'brick' | '2d' | 'hackable'
   /** 2D only: 'race' for a race track. Absent means a platformer (or an older server). */
   kit?: 'race'
   visibility: ClassroomWorldVisibility
