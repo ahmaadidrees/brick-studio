@@ -218,9 +218,9 @@ describe('Starter level (starter.ts)', () => {
         { SIDE: 'left', BRICK: '_any_' },
         { SIDE: 'right', BRICK: '_any_' },
       ])
-      // its basics and feel scripts are all still there, and there is nothing to go inside
-      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(18)
-      expect(hero.program.procedures).toEqual([])
+      // its basics and feel scripts are all still there, and only the plumbing is a My Block to go inside
+      expect(hero.program.scripts.filter((x) => x.hat.opcode === 'platformer_everytick')).toHaveLength(19)
+      expect(hero.program.procedures.map((x) => x.proccode)).toEqual(['move and collide'])
     })
 
     it('only the Hero and the Goal are one per level (limit 1)', () => {

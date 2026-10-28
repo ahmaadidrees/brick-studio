@@ -308,9 +308,15 @@ export function createHeroWorkspace(): WorkspaceJson {
   place(
     'basics',
     blk('event_whenflagclicked', {
-      next: sub1([blk('platformer_setgravity', { fields: { GRAVITY: 'off' } }), blk('motion_setrotationstyle', { fields: { STYLE: 'left-right' } }), setX(0), setY(0)]),
+      next: sub1([
+        blk('platformer_setgravity', { fields: { GRAVITY: 'off' } }),
+        blk('platformer_setmover', { fields: { MOVER: 'self' } }),
+        blk('motion_setrotationstyle', { fields: { STYLE: 'left-right' } }),
+        setX(0),
+        setY(0),
+      ]),
     }),
-    'When the level starts: I do my own gravity, so turn the Platformer one off',
+    'When the level starts: I do my own gravity and my own moving, so the Platformer leaves me alone',
   )
 
   tick('basics', 'Read the arrow keys, x and space', [
@@ -494,6 +500,28 @@ export function createHeroWorkspace(): WorkspaceJson {
   ])
 
   tick('basics', 'Top fall speed: never fall faster than this', [when(lt(ySpeed(), sub(0, v('limit'))), [setY(sub(0, v('limit')))])])
+
+  // The plumbing, open: what the Platformer would do for me, as blocks. Peek or go inside "move and collide" to read
+  // it; change a block to make it your own (bounce off walls, slide on ice, remember a wall for a wall jump).
+  tick('basics', 'Move: walls and floors stop me (go inside to see how)', [call('move and collide')])
+  const hit = (): Conn => ({ block: blk('platformer_hitsomething') })
+  const moveUntilHit = (axis: 'x' | 'y', by: Conn): Json => blk('platformer_moveuntilhit', { fields: { AXIS: axis }, inputs: { DISTANCE: by } })
+  const plumbing = blk('procedures_definition', {
+    extraState: { proccode: 'move and collide', argumentNames: [], warp: false },
+    next: sub1([
+      blk('platformer_setonground', { fields: { ONGROUND: 'no' } }),
+      // sideways: as far as my x speed takes me, or flush against the first thing in the way
+      moveUntilHit('x', xSpeed()),
+      when(hit(), [blk('platformer_tellhit'), setX(0)]),
+      // up and down: the same, and stopping on the way down means I'm standing on something
+      moveUntilHit('y', ySpeed()),
+      when(hit(), [when(lt(ySpeed(), 0), [blk('platformer_setonground', { fields: { ONGROUND: 'yes' } })]), blk('platformer_tellhit'), setY(0)]),
+    ]),
+  })
+  plumbing.x = 1700
+  plumbing.y = 20
+  order.push(plumbing)
+  labels.push([plumbing, 'Move and collide: move by my speeds; stop at anything solid, and tell it I bumped it'])
 
   bump('feel', 'Wall slide (part 3): a wall on my right', 'left', [set('wall_hit', 1)])
   bump('feel', 'Wall slide (part 3): a wall on my left', 'right', [set('wall_hit', -1)])

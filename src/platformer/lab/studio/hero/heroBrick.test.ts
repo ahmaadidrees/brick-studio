@@ -292,9 +292,9 @@ describe('The Hero brick is built from open blocks', () => {
     const ws = new Blockly.Workspace()
     try {
       Blockly.serialization.workspaces.load(workspace as Record<string, unknown>, ws)
-      // 1 flag script, 18 "every tick" scripts (the basics and the feel scripts), 4 bump hats (wall slide and run meter,
-      // left and right), 4 broadcast hats (boing, stomped, hero hurt, bounce). No My Blocks.
-      expect(ws.getTopBlocks(false)).toHaveLength(27)
+      // 1 flag script, 19 "every tick" scripts (the basics, the feel scripts and Move), 4 bump hats (wall slide and run
+      // meter, left and right), 4 broadcast hats (boing, stomped, hero hurt, bounce), and the one My Block: move and collide.
+      expect(ws.getTopBlocks(false)).toHaveLength(29)
       const saved = Blockly.serialization.workspaces.save(ws)
       const again = compileWorkspace(saved, { variables })
       expect(again.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
@@ -302,7 +302,7 @@ describe('The Hero brick is built from open blocks', () => {
       // The scripts keep their order through a Blockly round trip: "every tick" scripts run in that order.
       expect(again.program.scripts.map((s) => s.hat.opcode)).toEqual(brick.program.scripts.map((s) => s.hat.opcode))
       expect(again.program.scripts.map((s) => JSON.stringify(s.body))).toEqual(brick.program.scripts.map((s) => JSON.stringify(s.body)))
-      expect(again.program.procedures).toEqual([])
+      expect(again.program.procedures).toEqual(brick.program.procedures)
     } finally {
       ws.dispose()
     }
@@ -325,7 +325,8 @@ describe('The Hero brick is built from open blocks', () => {
     }
     walk(workspace)
     const known = new Set([
-      'event_whenflagclicked', 'platformer_whenbump', 'platformer_everytick', 'platformer_setgravity', 'platformer_setspeed', 'platformer_changespeed',
+      'event_whenflagclicked', 'platformer_whenbump', 'platformer_everytick', 'platformer_setgravity', 'platformer_setmover',
+      'platformer_moveuntilhit', 'platformer_hitsomething', 'platformer_tellhit', 'platformer_setonground', 'platformer_setspeed', 'platformer_changespeed',
       'platformer_speed', 'platformer_onground', 'motion_pointindirection', 'motion_setrotationstyle', 'control_forever',
       'control_if', 'control_if_else', 'procedures_definition', 'procedures_call', 'data_variable', 'data_setvariableto',
       'data_changevariableby', 'sensing_keypressed', 'operator_add', 'operator_subtract', 'operator_multiply',
@@ -339,9 +340,9 @@ describe('The Hero brick is built from open blocks', () => {
     expect(JSON.stringify(workspace)).not.toContain('"GRAVITY":"on"')
   })
 
-  it('is the basics plus small feel scripts, each "every tick", with nothing to go inside', () => {
+  it('is the basics plus small feel scripts, each "every tick", with only the plumbing to go inside', () => {
     const { brick, workspace } = createHeroBrick()
-    expect(brick.program.procedures).toEqual([])
+    expect(brick.program.procedures.map((p) => p.proccode)).toEqual(['move and collide'])
     const labelOf = (id: string) => {
       const top = ((workspace.blocks as { blocks: Array<{ id: string; data?: string }> }).blocks).find((b) => b.id === id)!
       return (top.data ?? '').replace(/^label:/, '')
@@ -367,6 +368,7 @@ describe('The Hero brick is built from open blocks', () => {
       'Gravity',
       'Wall slide (part 2)',
       'Top fall speed',
+      'Move',
     ])
     const flag = brick.program.scripts.find((s) => s.hat.opcode === 'event_whenflagclicked')!
     expect(flag.body.some((s) => s.opcode === 'control_forever')).toBe(false)

@@ -198,7 +198,7 @@ describe('saves with the old Hero', () => {
     const up = upgradeUntouchedHero(old)
     expect(up.workspaces.brick_hero).toEqual(current.workspaces.brick_hero)
     const upHero = up.design.bricks.find((b) => b.id === 'brick_hero')!
-    expect(upHero.program.procedures).toEqual([])
+    expect(upHero.program.procedures.map((p) => p.proccode)).toEqual(['move and collide'])
     expect(upHero.program.scripts.length).toBe(current.design.bricks.find((b) => b.id === 'brick_hero')!.program.scripts.length)
     expect(upHero.program.variables.find((v) => v.id === 'walk_top')!.value).toBe(9)
   })

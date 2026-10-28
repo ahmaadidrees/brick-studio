@@ -214,11 +214,11 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
 }
 
 /**
- * The built-in Hero's blocks before it was rebuilt as basics plus feel scripts (October 2026), as generated and after a
- * trip through the editor, for this version and the one before it. Only these are upgraded: older saves predate "My
- * Hero", so a Hero with other blocks may hold a kid's own edits.
+ * Earlier built-in Heroes' blocks, as generated and after a trip through the editor: the two My Blocks versions, and the
+ * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
+ * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits.
  */
-export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7']
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812']
 
 /**
  * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly
