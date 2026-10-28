@@ -1,0 +1,16 @@
+.lab-authoring-backdrop { position: absolute; inset: 0; z-index: 100; display: grid; place-items: center; padding: 18px; background: rgba(29, 46, 62, .48); }
+.lab-authoring-dialog { width: min(430px, 100%); max-height: 100%; overflow-y: auto; box-sizing: border-box; padding: 23px; border: 2px solid #263c51; border-radius: 20px; background: #fffdf7; color: #263c51; box-shadow: 0 18px 48px rgba(20, 37, 54, .25); }
+.lab-authoring-dialog h2 { margin: 0 0 5px; font-size: 23px; }
+.lab-authoring-dialog p { margin: 0 0 17px; line-height: 1.4; }
+.lab-authoring-dialog small { display: block; margin-top: 5px; color: #5d6d79; }
+.lab-authoring-field, .lab-authoring-args label { display: grid; gap: 5px; font-weight: 800; }
+.lab-authoring-field input, .lab-authoring-field select, .lab-authoring-args input { box-sizing: border-box; width: 100%; min-height: 39px; padding: 7px 10px; border: 1px solid #aebac2; border-radius: 9px; background: #fff; color: #263c51; font: inherit; }
+.lab-authoring-field input:focus-visible, .lab-authoring-field select:focus-visible, .lab-authoring-args input:focus-visible { outline: 3px solid #f4ca3a; }
+.lab-authoring-advanced { margin: 18px 0 10px; padding: 5px 0; border: 0; background: none; color: #3565bf; font: inherit; font-weight: 900; cursor: pointer; }
+.lab-authoring-args { display: grid; gap: 9px; margin: 17px 0 0; padding: 12px; border: 1px solid #d9d5c9; border-radius: 10px; }
+.lab-authoring-args legend { padding: 0 4px; font-weight: 900; }
+.lab-authoring-error { margin: 9px 0 0 !important; color: #ac322c; font-weight: 800; }
+.lab-authoring-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
+.lab-authoring-actions button { min-height: 39px; padding: 7px 16px; border: 1px solid #b7c2c9; border-radius: 9px; background: #fff; color: #263c51; font: inherit; font-weight: 900; cursor: pointer; }
+.lab-authoring-actions button[type=submit] { border-color: #3565bf; background: #3565bf; color: #fff; }
+.lab-authoring-actions button:disabled { opacity: .45; cursor: not-allowed; }

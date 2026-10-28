@@ -1,0 +1,24 @@
+{
+  "buildingChrome": 0,
+  "panels": [
+    {
+      "class": "builder-stage",
+      "height": 703,
+      "width": 574
+    },
+    {
+      "class": "builder-dock builder-dock-code",
+      "height": 703,
+      "width": 792
+    },
+    {
+      "class": "code-workspace-container",
+      "height": 585,
+      "width": 775
+    }
+  ],
+  "viewport": {
+    "height": 768,
+    "width": 1366
+  }
+}

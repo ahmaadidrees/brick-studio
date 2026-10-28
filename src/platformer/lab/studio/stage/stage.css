@@ -1,0 +1,195 @@
+/* Stage panel styles (step 6: the stage fills the builder; its chrome is the builder's, not its own). */
+.stage-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: #efe9da;
+  overflow: hidden;
+  user-select: none;
+  outline: none;
+}
+
+/* Canvas viewport */
+.stage-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  background: #efe9da;
+  overflow: hidden;
+  outline: none;
+}
+
+.stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+/* View tools: zoom, fit, and in Play the flag and camera choice. Top right, in the builder's panel look. */
+.stage-view-tools {
+  position: absolute;
+  z-index: 11;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--studio-panel-border, #d9dee8);
+  border-radius: 14px;
+  background: var(--studio-panel, #fff);
+  box-shadow: var(--studio-panel-shadow, 0 6px 18px rgba(38, 60, 81, 0.12));
+}
+
+.stage-view-group {
+  display: flex;
+  gap: 0;
+  padding: 0 3px;
+  border-radius: 10px;
+  background: var(--studio-panel-soft, #f3f5f9);
+}
+
+.stage-view-btn {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--studio-ink, #263c51);
+  background: transparent;
+  font: 800 12px/1 inherit;
+  cursor: pointer;
+}
+
+.stage-view-btn:hover {
+  color: var(--studio-blue-dark, #2f5fb3);
+  background: rgba(88, 136, 218, 0.1);
+}
+
+.stage-view-btn:focus-visible {
+  outline: 3px solid var(--studio-focus, #3565bf);
+  outline-offset: 1px;
+}
+
+.stage-view-btn.active {
+  color: #fff;
+  background: var(--studio-blue, #5888da);
+}
+
+.stage-view-flag {
+  min-width: 44px;
+  padding: 0;
+  color: #1c8a4e;
+  background: rgba(46, 170, 96, 0.14);
+  font-size: 20px;
+}
+
+/* Ask Dialog */
+.stage-ask-dialog {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(22, 25, 34, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid #3c4458;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+
+.stage-ask-bubble {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f0f2f7;
+}
+
+.stage-ask-icon {
+  font-size: 18px;
+}
+
+.stage-ask-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 90px;
+  overflow-y: auto;
+}
+
+.stage-ask-chip {
+  min-height: 36px;
+  padding: 0 12px;
+  background: #252a36;
+  border: 1px solid #3b4254;
+  border-radius: 18px;
+  color: #dbe0eb;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stage-ask-chip:hover {
+  background: #333a4c;
+  border-color: #55607a;
+}
+
+.stage-ask-chip.selected {
+  background: #2a4c7e;
+  border-color: #4b7bc0;
+  color: #fff;
+}
+
+.stage-ask-form {
+  display: flex;
+  gap: 6px;
+}
+
+.stage-ask-input {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 12px;
+  background: #14161f;
+  border: 1px solid #3c4458;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.stage-ask-submit-btn {
+  min-width: 44px;
+  min-height: 40px;
+  background: #1e5233;
+  border: 1px solid #2d7d4e;
+  border-radius: 8px;
+  color: #58ee9a;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stage-ask-submit-btn:hover {
+  background: #276b42;
+}
+
+.stage-view-tools { max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: flex-end; }
+.stage-view-tools .stage-view-btn { min-height: 36px; padding: 0 8px; }
+.stage-container:focus-visible { outline: 3px solid var(--studio-focus, #3565bf); outline-offset: -3px; }
+
+/* Code preview stays a quiet companion to the program. */
+.stage-view-tools-code { left: 12px; right: auto; justify-content: flex-start; gap: 8px; }
+.stage-restart-note { max-width: 170px; color: var(--studio-muted, #66788a); font-size: 11px; line-height: 1.3; font-weight: 600; }

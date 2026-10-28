@@ -1,0 +1,257 @@
+{
+  "design": {
+    "bounds": {
+      "bottom": 0,
+      "left": 0,
+      "right": 640,
+      "top": 480
+    },
+    "bricks": [
+      {
+        "costumes": [
+          {
+            "height": 4,
+            "mask": {
+              "data": "AQEBAQEAAAEBAAABAQEBAQ==",
+              "height": 4,
+              "width": 4
+            },
+            "name": "costume1",
+            "rotationCenterX": 2,
+            "rotationCenterY": 2,
+            "width": 4
+          }
+        ],
+        "id": "hero",
+        "name": "Hero",
+        "program": {
+          "lists": [
+            {
+              "id": "l-inventory",
+              "name": "inventory",
+              "value": [
+                "sword",
+                "shield"
+              ]
+            }
+          ],
+          "procedures": [
+            {
+              "argumentNames": [
+                "amount"
+              ],
+              "body": [
+                {
+                  "fields": {},
+                  "inputs": {
+                    "DY": {
+                      "boolean": false,
+                      "kind": "param",
+                      "name": "amount"
+                    }
+                  },
+                  "opcode": "motion_changeyby"
+                }
+              ],
+              "proccode": "jumpBy %s",
+              "warp": true
+            }
+          ],
+          "scripts": [
+            {
+              "body": [
+                {
+                  "fields": {},
+                  "inputs": {
+                    "STEPS": {
+                      "kind": "lit",
+                      "value": 10
+                    }
+                  },
+                  "opcode": "motion_movesteps"
+                }
+              ],
+              "hat": {
+                "fields": {},
+                "inputs": {},
+                "opcode": "event_whenflagclicked"
+              },
+              "id": "s-flag"
+            }
+          ],
+          "variables": [
+            {
+              "id": "v-speed",
+              "name": "speed",
+              "showInBuild": true,
+              "value": 5
+            },
+            {
+              "id": "v-hp",
+              "name": "hp",
+              "showInBuild": true,
+              "value": 100
+            }
+          ]
+        },
+        "sounds": [
+          {
+            "durationMs": 150,
+            "name": "jump"
+          }
+        ]
+      }
+    ],
+    "copies": [
+      {
+        "brickId": "hero",
+        "costume": 0,
+        "direction": 90,
+        "id": "hero-1",
+        "knobs": {
+          "v-speed": 8
+        },
+        "size": 100,
+        "visible": true,
+        "x": 50,
+        "y": 100
+      },
+      {
+        "brickId": "hero",
+        "costume": 0,
+        "direction": -90,
+        "id": "hero-2",
+        "size": 120,
+        "visible": true,
+        "x": 200,
+        "y": 100
+      }
+    ],
+    "id": "complex-lvl",
+    "name": "Complex Level",
+    "seed": 12345,
+    "stage": {
+      "costumes": [
+        {
+          "height": 480,
+          "name": "backdrop",
+          "rotationCenterX": 320,
+          "rotationCenterY": 240,
+          "width": 640
+        }
+      ],
+      "id": "stage",
+      "isStage": true,
+      "name": "Stage",
+      "program": {
+        "lists": [
+          {
+            "id": "g-leaderboard",
+            "name": "leaderboard",
+            "value": [
+              100,
+              50,
+              20
+            ]
+          }
+        ],
+        "procedures": [],
+        "scripts": [],
+        "variables": [
+          {
+            "id": "g-score",
+            "name": "score",
+            "value": 100
+          }
+        ]
+      },
+      "sounds": []
+    }
+  },
+  "editorVersion": "13.3.0",
+  "engineSemanticsVersion": 1,
+  "ir": {
+    "hero": {
+      "lists": [
+        {
+          "id": "l-inventory",
+          "name": "inventory",
+          "value": [
+            "sword",
+            "shield"
+          ]
+        }
+      ],
+      "procedures": [
+        {
+          "argumentNames": [
+            "amount"
+          ],
+          "body": [
+            {
+              "fields": {},
+              "inputs": {
+                "DY": {
+                  "boolean": false,
+                  "kind": "param",
+                  "name": "amount"
+                }
+              },
+              "opcode": "motion_changeyby"
+            }
+          ],
+          "proccode": "jumpBy %s",
+          "warp": true
+        }
+      ],
+      "scripts": [
+        {
+          "body": [
+            {
+              "fields": {},
+              "inputs": {
+                "STEPS": {
+                  "kind": "lit",
+                  "value": 10
+                }
+              },
+              "opcode": "motion_movesteps"
+            }
+          ],
+          "hat": {
+            "fields": {},
+            "inputs": {},
+            "opcode": "event_whenflagclicked"
+          },
+          "id": "s-flag"
+        }
+      ],
+      "variables": [
+        {
+          "id": "v-speed",
+          "name": "speed",
+          "showInBuild": true,
+          "value": 5
+        },
+        {
+          "id": "v-hp",
+          "name": "hp",
+          "showInBuild": true,
+          "value": 100
+        }
+      ]
+    }
+  },
+  "pluginVersions": {
+    "@blockly/block-shareable-procedures": "13.3.0",
+    "@blockly/continuous-toolbox": "13.3.0"
+  },
+  "schemaVersion": 1,
+  "workspaces": {
+    "hero": {
+      "blocks": {
+        "languageVersion": 0
+      }
+    }
+  }
+}
