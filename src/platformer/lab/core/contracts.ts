@@ -135,9 +135,24 @@ export interface Sound {
   asset?: string
 }
 
+/** A power brick snapped onto this brick (studio/powers): which scripts and variables it added, and who made it. */
+export interface SnappedPower {
+  /** This snap, unique within the brick. */
+  id: string
+  name: string
+  /** Who made the power, then who remixed it, oldest first. */
+  credits: string[]
+  /** Top-level block ids (scripts and My Block definitions) the power added to the brick's workspace. */
+  blockIds: string[]
+  /** Variable and list ids the power added. */
+  variableIds: string[]
+}
+
 export interface BrickDef {
   /** Catalog definition this level's edited brick came from. Missing on older saves and original bricks. */
   remixOf?: string
+  /** Power bricks snapped on, in the order they were added. */
+  powers?: SnappedPower[]
   /** Step 6b: how many copies a level may hold (1 for the Hero and the Goal). Missing means no limit. */
   limit?: number
   /** Step 7: a grid brick (Ground, ? block, Spikes...). Its copies are painted cells of LevelDesign.tiles. See GridSpec. */

@@ -258,3 +258,32 @@
 /* Play: one bar. The keys hint sits at the bottom, clear of the controls, and fades in. */
 [data-screen='play'] .play-hint { top: auto; bottom: max(16px, env(safe-area-inset-bottom)); animation: cl-rise-centered 240ms var(--cl-ease) 1; }
 [data-screen='play'] .stage-view-tools { animation: cl-fade 240ms ease-out 1; }
+
+/* Powers row in Code (PowersBar.tsx) */
+.cl-powers { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--cl-line); background: var(--cl-softer); }
+.cl-powers-title { margin-right: 4px; color: var(--cl-muted); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.cl-power { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 4px 0 10px; border: 1.5px solid #d0bfff; border-radius: 999px; background: #fff; font-size: 13px; animation: cl-pop 180ms var(--cl-ease) 1; }
+.cl-power.is-off { opacity: .6; border-style: dashed; }
+.cl-power-dot { width: 12px; height: 12px; flex: none; border-radius: 50%; background: #9c36b5; border: 1.5px solid var(--cl-ink); }
+.cl-power-name span { color: var(--cl-muted); font-size: 12px; font-weight: 700; }
+.cl-power-switch { min-height: 24px; padding: 0 9px; border: 1px solid #d0bfff; border-radius: 999px; background: #f8f0fc; color: #862e9c; font-size: 12px; font-weight: 800; cursor: pointer; }
+.cl-power-switch[aria-pressed='false'] { background: #fff; color: var(--cl-muted); border-color: var(--cl-line); }
+.cl-power-off { width: 26px; height: 26px; }
+.cl-power-add { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 12px; font-size: 13px; }
+.cl-power-panel { position: absolute; z-index: 30; top: calc(100% + 6px); left: 12px; display: flex; flex-direction: column; gap: 8px; width: min(420px, calc(100% - 24px)); max-height: 460px; overflow-y: auto; padding: 14px; box-sizing: border-box; background: #fff; border: 1px solid var(--cl-line); border-radius: 14px; box-shadow: 0 14px 40px rgba(31, 35, 64, .22); transform-origin: top left; }
+.cl-power-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 15px; }
+.cl-power-group { margin-top: 4px; color: var(--cl-blue); font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.cl-power-list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.cl-power-pick { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--cl-line); border-radius: 12px; background: #fff; text-align: left; cursor: pointer; transition: border-color 150ms ease-out, background 150ms ease-out; }
+.cl-power-pick:hover:not(:disabled) { border-color: #9c36b5; background: #f8f0fc; }
+.cl-power-pick:disabled { opacity: .55; cursor: default; }
+.cl-power-pick .cl-power-dot { margin-top: 3px; }
+.cl-power-pick-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-size: 14px; }
+.cl-power-what { flex-basis: 100%; margin: 0; color: var(--cl-ink-2); font-size: 13px; line-height: 1.4; }
+.cl-power-empty { margin: 0; line-height: 1.4; }
+.cl-power-note { margin: 0; padding: 8px 10px; border-radius: 9px; background: var(--cl-blue-soft); color: var(--cl-blue-dark); font-size: 13px; font-weight: 700; }
+.cl-power-scripts { max-height: 180px; overflow-y: auto; }
+.cl-power-check { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.35; cursor: pointer; }
+.cl-power-check input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--cl-blue); }
+.cl-power-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 800; color: var(--cl-muted); }
+.cl-power-field input { min-height: 36px; padding: 0 10px; border: 1px solid var(--cl-line); border-radius: 9px; font: 700 14px Nunito, system-ui, sans-serif; color: var(--cl-ink); }

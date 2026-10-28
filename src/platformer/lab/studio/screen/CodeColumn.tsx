@@ -7,6 +7,7 @@ import { isCatalogBrick, originalBrickName } from '../builder/catalog'
 import { isFreshBrick, startBrickFromTemplate } from '../builder/newBrick'
 import { BRICK_TEMPLATES, type BrickTemplate } from '../templates'
 import { BrickName } from './BrickName'
+import { PowersBar } from './PowersBar'
 import '../assets/light.css'
 
 const TABS: ReadonlyArray<{ id: EditorTab; label: string }> = [
@@ -44,6 +45,7 @@ export function CodeColumn({ store, templates = START_FROM }: { store: StudioSto
           <span className="cl-tabs-ind" aria-hidden="true" data-at={TABS.findIndex((t) => t.id === tab)} data-of={3} />
         </div>
       </header>
+      {!brick.grid && <PowersBar store={store} brick={brick} />}
       <div className="cl-code-body">
         {tab === 'code' && <CodeEditor store={store} docked />}
         {tab === 'costumes' && <CostumeEditor store={store} />}

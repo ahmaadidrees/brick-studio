@@ -4,11 +4,12 @@
  * integrator, never inside a lane.
  */
 import { useSyncExternalStore } from 'react'
-import type { BrickDef, Costume, CopyPlacement, LevelDesign, Sound, Value } from '../core/contracts'
+import type { BrickDef, Costume, CopyPlacement, LevelDesign, SnappedPower, Sound, Value } from '../core/contracts'
 import { type Diagnostic } from '../core/editor/compile'
 import { play, type Runtime } from '../core/index'
 import { parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
+import { fits as fitsPower, isPowerOn as isPowerOnIn, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
 export const STAGE_ID = 'stage'
 
@@ -328,6 +329,44 @@ export class StudioStore {
     this.updateBrick(brickId, (b) => ({ ...rest, id: b.id, name: b.name }))
     this.setWorkspace(brickId, made.workspace)
     this.set({ editorResetRevision: this.state.editorResetRevision + 1, remixNotice: null })
+  }
+
+  // ------------------------------------------------------------ power bricks (studio/powers)
+
+  /** Snap a power onto a brick. Unsaved editor changes are kept first; the editor reloads to show the new scripts. */
+  snapPower(brickId: string, power: PowerBrick): SnappedPower | null {
+    const brick = this.brick(brickId)
+    if (!brick || !fitsPower(power, brick)) return null
+    this.flushEditor()
+    const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
+    this.applyPowerChange(brickId, project)
+    return snap
+  }
+
+  takeOffPower(brickId: string, snapId: string) {
+    this.flushEditor()
+    this.applyPowerChange(brickId, takeOffPowerFrom(this.state.project, brickId, snapId))
+  }
+
+  setPowerOn(brickId: string, snapId: string, on: boolean) {
+    this.flushEditor()
+    this.applyPowerChange(brickId, setPowerOnIn(this.state.project, brickId, snapId, on))
+  }
+
+  isPowerOn(brickId: string, snapId: string): boolean {
+    return isPowerOnIn(this.state.project, brickId, snapId)
+  }
+
+  private flushEditor() {
+    for (const listener of [...this.beforeRunListeners]) listener()
+  }
+
+  private applyPowerChange(brickId: string, project: StudioProject) {
+    if (project === this.state.project) return
+    const workspace = project.workspaces[brickId]
+    this.set({ project })
+    this.setWorkspace(brickId, workspace)
+    this.set({ editorResetRevision: this.state.editorResetRevision + 1 })
   }
 
   renameBrick(brickId: string, name: string) {
