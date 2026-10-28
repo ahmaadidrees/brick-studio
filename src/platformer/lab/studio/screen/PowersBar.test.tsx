@@ -2,10 +2,11 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, describe, expect, it } from 'vitest'
 import { createStarterProject } from '../starter'
 import { StudioStore } from '../store'
-import { MY_POWERS_KEY, resetPowerCache } from '../powers/library'
+import { MAKER_NAME_KEY, MY_POWERS_KEY, resetPowerCache } from '../powers/library'
 import { PowersBar } from './PowersBar'
+import { builtInPowers } from '../powers/powers'
 
-afterEach(() => { cleanup(); localStorage.removeItem(MY_POWERS_KEY); resetPowerCache() })
+afterEach(() => { cleanup(); localStorage.removeItem(MY_POWERS_KEY); localStorage.removeItem(MAKER_NAME_KEY); resetPowerCache() })
 
 function Bar({ store }: { store: StudioStore }) {
   return <PowersBar store={store} brick={store.brick('brick_hero')!} />
@@ -48,5 +49,66 @@ describe('Powers row in Code', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     fireEvent.click(screen.getByRole('button', { name: 'Power' }))
     expect(within(screen.getByRole('dialog', { name: 'Snap a power onto Hero' })).getByRole('button', { name: /Late jump/ })).toBeTruthy()
+  })
+})
+
+describe('the class shelf in Code', () => {
+  const classId = '33333333-3333-4333-8333-000000000001'
+  const session = { status: 'student', classes: [{ id: classId }], displayName: 'Ana K.', signOut: async () => {}, switchAccount: async () => {} } as never
+  function fakeShelf() {
+    const calls: string[] = []
+    const items = [
+      { id: 'i1', kind: 'power', name: 'Moon jump', what: 'Float down slowly', by: 'Sam R.', mine: false, status: 'approved', uses: 2, createdAt: '' },
+      { id: 'i2', kind: 'power', name: 'My dash', what: '', by: 'Ana K.', mine: true, status: 'pending', uses: 0, createdAt: '' },
+    ]
+    const payload = { ...builtInPowers()[0], name: 'Moon jump', credits: ['Sam R.'] }
+    const api = {
+      list: async () => { calls.push('list'); return { items, needsReview: true, raceHeroes: 'shelf' } },
+      get: async (_c: string, id: string) => { calls.push(`get ${id}`); return { ...items[0], payload } },
+      share: async (_c: string, input: { name: string }) => { calls.push(`share ${input.name}`); return { ...items[1], name: input.name } },
+      review: async () => items[0],
+      remove: async () => ({ removed: true as const }),
+      used: async (_c: string, id: string) => { calls.push(`used ${id}`); return { uses: 3 } },
+    }
+    return { api: api as never, calls }
+  }
+
+  it('lists what classmates shared and this kid\'s own waiting ones; snapping one on counts a use', async () => {
+    const store = new StudioStore(createStarterProject())
+    const { api, calls } = fakeShelf()
+    render(<PowersBar store={store} brick={store.brick('brick_hero')!} shelfApi={api} session={session} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Power' }))
+    const pick = await screen.findByRole('button', { name: /Moon jump/ })
+    expect(pick.textContent).toMatch(/from Sam R\. · 2 using it/)
+    expect(screen.getByText('My dash: waiting for your teacher.')).toBeTruthy()
+    await act(async () => { fireEvent.click(pick) })
+    expect(calls).toEqual(['list', 'get i1', 'used i1'])
+    expect(store.brick('brick_hero')!.powers!.map((p) => [p.name, p.credits])).toEqual([['Moon jump', ['Sam R.']]])
+  })
+
+  it('a power just made can be shared with the class; a student\'s waits for the teacher', async () => {
+    const store = new StudioStore(createStarterProject())
+    const { api, calls } = fakeShelf()
+    render(<PowersBar store={store} brick={store.brick('brick_hero')!} shelfApi={api} session={session} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Power' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Make a power from Hero…' }))
+    const maker = screen.getByRole('dialog', { name: 'Make a power from Hero' })
+    expect((within(maker).getByLabelText(/Made by/) as HTMLInputElement).value).toBe('Ana K.')
+    fireEvent.click(within(maker).getByLabelText(/Coyote time/))
+    fireEvent.change(within(maker).getByLabelText(/Power name/), { target: { value: 'Late jump' } })
+    act(() => { (within(maker).getByRole('button', { name: 'Make the power' }) as HTMLButtonElement).click() })
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Share with my class' })) })
+    expect(calls).toContain('share Late jump')
+    expect(screen.getByText(/Sent to your teacher/)).toBeTruthy()
+  })
+
+  it('signed out, the shelf says to sign in and nothing is fetched', () => {
+    const store = new StudioStore(createStarterProject())
+    const { api, calls } = fakeShelf()
+    const guest = { status: 'guest', signOut: async () => {}, switchAccount: async () => {} } as never
+    render(<PowersBar store={store} brick={store.brick('brick_hero')!} shelfApi={api} session={guest} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Power' }))
+    expect(screen.getByRole('link', { name: 'Sign in' })).toBeTruthy()
+    expect(calls).toEqual([])
   })
 })

@@ -7,6 +7,10 @@ export type ClassroomClass = {
   id: string; name: string; code?: string; loginCode: string; enrollmentOpen: boolean; collaborationOpen: boolean; showNamesOnJoin: boolean
   /** Students may share personal worlds with classmates (teacher setting; default on). */
   studentsCanShare: boolean
+  /** Class shelf: students' bricks wait for the teacher before classmates see them (default on). Missing on older servers. */
+  shelfNeedsReview?: boolean
+  /** Which Heroes a class race allows: only the built-in ones, also the class shelf's, or anything. Missing on older servers. */
+  raceHeroes?: ClassroomRaceHeroes
   /** Distinct accounts in this class's live rooms right now (teachers' class/me lists); null when unknown, e.g. at sign-in. */
   buildingNow: number | null
   /** The teacher's display name for student-facing copy; null when the server has none (teacher accounts carry no roster name). */
@@ -67,7 +71,8 @@ export type ClassroomRoster = { name: string; canEnroll: boolean; showNames: boo
 /** Sign-in credentials; the class code is optional because usernames are global. */
 export type ClassroomLoginInput = { username: string; password: string; classCode?: string }
 export type ClassroomRegisterInput = { classCode: string; username: string; password: string; rosterName?: string }
-export type ClassroomClassPatch = { name?: string; enrollmentOpen?: boolean; collaborationOpen?: boolean; showNamesOnJoin?: boolean; studentsCanShare?: boolean; rotateCode?: boolean }
+export type ClassroomClassPatch = { name?: string; enrollmentOpen?: boolean; collaborationOpen?: boolean; showNamesOnJoin?: boolean; studentsCanShare?: boolean; shelfNeedsReview?: boolean; raceHeroes?: ClassroomRaceHeroes; rotateCode?: boolean }
+export type ClassroomRaceHeroes = 'builtin' | 'shelf' | 'any'
 export type ClassroomStudentPatch = { username?: string; rosterName?: string; suspended?: boolean; temporaryPassword?: string }
 export type ClassroomWorldCreateInput = { title: string; document: BrickStudioDocument; kind?: ClassroomWorld['kind']; classId?: string }
 export type ClassroomWorldSaveInput = { expectedRevision: number; document: BrickStudioDocument; title?: string }

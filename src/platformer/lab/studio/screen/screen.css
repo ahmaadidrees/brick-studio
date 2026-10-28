@@ -287,3 +287,4 @@
 .cl-power-check input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--cl-blue); }
 .cl-power-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 800; color: var(--cl-muted); }
 .cl-power-field input { min-height: 36px; padding: 0 10px; border: 1px solid var(--cl-line); border-radius: 9px; font: 700 14px Nunito, system-ui, sans-serif; color: var(--cl-ink); }
+.cl-power-error { background: #fff4d6; color: #7a4f00; }

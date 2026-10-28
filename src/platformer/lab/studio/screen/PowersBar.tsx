@@ -5,6 +5,13 @@ import { useStudio, type StudioStore } from '../store'
 import { builtInPowers, makePower, powerFromFile, whyNot, type PowerBrick } from '../powers/powers'
 import { downloadPower, keepPower, makerName, myPowers, onPowersChange, rememberMakerName } from '../powers/library'
 import { getLabelText } from './labels'
+import { useClassShelf } from '../powers/useClassShelf'
+import type { ShelfClient } from '../../../../classroom/shelfClient'
+import type { ClassroomSessionState } from '../../../../shell'
+
+/** Tests pass a fake shelf and session; the app uses the signed-in account's class. */
+export interface ShelfOverrides { shelfApi?: ShelfClient; session?: ClassroomSessionState }
+type Shelf = ReturnType<typeof useClassShelf>
 
 const credit = (credits: string[]) => (credits.length <= 1 ? `from ${credits[0] ?? 'someone'}` : `from ${credits[0]} and ${credits.slice(1).join(', ')}`)
 
@@ -12,10 +19,11 @@ const credit = (credits: string[]) => (credits.length <= 1 ? `from ${credits[0] 
  * Code's Powers row: each power snapped onto this brick (name, who made it, On/Off, Take off), and "+ Power" to snap one
  * on from Code Lab's own, My powers or a file, or to make one from this brick's scripts.
  */
-export function PowersBar({ store, brick }: { store: StudioStore; brick: BrickDef }) {
+export function PowersBar({ store, brick, shelfApi, session }: { store: StudioStore; brick: BrickDef } & ShelfOverrides) {
   const workspace = useStudio(store, (s) => s.project.workspaces[brick.id])
   const [open, setOpen] = useState<null | 'pick' | 'make'>(null)
   const powers = brick.powers ?? []
+  const shelf = useClassShelf(open !== null, shelfApi, session)
   useEffect(() => setOpen(null), [brick.id])
   // `workspace` is read so this re-renders when the brick's scripts change: a power's On/Off follows them.
   void workspace
@@ -34,13 +42,13 @@ export function PowersBar({ store, brick }: { store: StudioStore; brick: BrickDe
         )
       })}
       <button type="button" className="cl-chip-btn cl-power-add" aria-expanded={open !== null} onClick={() => setOpen(open ? null : 'pick')}><Plus size={14} aria-hidden="true" /> Power</button>
-      {open === 'pick' && <PowerPicker store={store} brick={brick} onMake={() => setOpen('make')} onClose={() => setOpen(null)} />}
-      {open === 'make' && <PowerMaker store={store} brick={brick} onClose={() => setOpen(null)} />}
+      {open === 'pick' && <PowerPicker store={store} brick={brick} shelf={shelf} onMake={() => setOpen('make')} onClose={() => setOpen(null)} />}
+      {open === 'make' && <PowerMaker store={store} brick={brick} shelf={shelf} onClose={() => setOpen(null)} />}
     </div>
   )
 }
 
-function PowerPicker({ store, brick, onMake, onClose }: { store: StudioStore; brick: BrickDef; onMake: () => void; onClose: () => void }) {
+function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioStore; brick: BrickDef; shelf: Shelf; onMake: () => void; onClose: () => void }) {
   const mine = useSyncExternalStore(onPowersChange, myPowers)
   const builtIn = useMemo(builtInPowers, [])
   const file = useRef<HTMLInputElement | null>(null)
@@ -72,6 +80,8 @@ function PowerPicker({ store, brick, onMake, onClose }: { store: StudioStore; br
       <div className="cl-power-panel-head"><b>Snap a power onto {brick.name}</b><button type="button" className="cl-icon-btn" aria-label="Close" onClick={onClose}><X size={16} /></button></div>
       <span className="cl-power-group">Comes with Code Lab</span>
       <ul className="cl-power-list">{builtIn.map(row)}</ul>
+      <span className="cl-power-group">Class shelf</span>
+      <ClassShelfList store={store} brick={brick} shelf={shelf} onSnapped={onClose} />
       <span className="cl-power-group">My powers</span>
       {mine.length ? <ul className="cl-power-list">{mine.map(row)}</ul> : <p className="cl-muted cl-power-empty">Powers you make, or open from a classmate’s file, show up here.</p>}
       {note && <p className="cl-power-note" role="status">{note}</p>}
@@ -84,12 +94,13 @@ function PowerPicker({ store, brick, onMake, onClose }: { store: StudioStore; br
   )
 }
 
-function PowerMaker({ store, brick, onClose }: { store: StudioStore; brick: BrickDef; onClose: () => void }) {
+function PowerMaker({ store, brick, shelf, onClose }: { store: StudioStore; brick: BrickDef; shelf: Shelf; onClose: () => void }) {
   const workspace = useStudio(store, (s) => s.project.workspaces[brick.id])
   const scripts = useMemo(() => getLabelText(workspace), [workspace])
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [name, setName] = useState('')
-  const [by, setBy] = useState(makerName)
+  const [by, setBy] = useState(() => makerName() || shelf.displayName || '')
+  const [sharing, setSharing] = useState<'idle' | 'busy' | 'waiting' | 'shared' | string>('idle')
   const [what, setWhat] = useState('')
   const [made, setMade] = useState<PowerBrick | null>(null)
   useCloseOnEscape(onClose)
@@ -105,8 +116,18 @@ function PowerMaker({ store, brick, onClose }: { store: StudioStore; brick: Bric
     return (
       <div className="cl-power-panel cl-pop" role="dialog" aria-label="Power made">
         <div className="cl-power-panel-head"><b>{made.name} is in My powers</b><button type="button" className="cl-icon-btn" aria-label="Close" onClick={onClose}><X size={16} /></button></div>
-        <p className="cl-power-what">Snap it onto any brick from “+ Power”. To give it to a classmate, save it as a file and send it to them; they open it with “Open a power file…”.</p>
-        <div className="cl-row"><button type="button" className="cl-btn cl-btn-primary cl-btn-sm" onClick={() => downloadPower(made)}>Save as a file</button><button type="button" className="cl-btn cl-btn-sm" onClick={onClose}>Done</button></div>
+        <p className="cl-power-what">Snap it onto any brick from “+ Power”. {shelf.signedIn ? 'Share it with your class, or save it as a file.' : 'To give it to a classmate, save it as a file; they open it with “Open a power file…”. Sign in to share it on your class shelf.'}</p>
+        {sharing === 'waiting' && <p className="cl-power-note" role="status">Sent to your teacher. Classmates see it on the shelf once it’s OK’d.</p>}
+        {sharing === 'shared' && <p className="cl-power-note" role="status">It’s on your class shelf, with your name on it.</p>}
+        {sharing !== 'idle' && sharing !== 'busy' && sharing !== 'waiting' && sharing !== 'shared' && <p className="cl-power-note cl-power-error" role="alert">{sharing}</p>}
+        <div className="cl-row">
+          {shelf.signedIn && sharing !== 'waiting' && sharing !== 'shared' && <button type="button" className="cl-btn cl-btn-primary cl-btn-sm" disabled={sharing === 'busy'} onClick={async () => {
+            setSharing('busy')
+            try { setSharing(await shelf.share(made)) } catch (error) { setSharing(error instanceof Error ? error.message : 'Sharing did not work. Try again.') }
+          }}>{sharing === 'busy' ? 'Sharing…' : 'Share with my class'}</button>}
+          <button type="button" className={`cl-btn cl-btn-sm${shelf.signedIn ? '' : ' cl-btn-primary'}`} onClick={() => downloadPower(made)}>Save as a file</button>
+          <button type="button" className="cl-btn cl-btn-sm" onClick={onClose}>Done</button>
+        </div>
       </div>
     )
   }
@@ -133,4 +154,44 @@ function useCloseOnEscape(onClose: () => void) {
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
   }, [onClose])
+}
+
+/** The class shelf inside "+ Power": what classmates shared (snap one on), and this kid's own items still waiting. */
+function ClassShelfList({ store, brick, shelf, onSnapped }: { store: StudioStore; brick: BrickDef; shelf: Shelf; onSnapped: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const { state } = shelf
+  if (state.kind === 'signed-out') return <p className="cl-muted cl-power-empty"><a href={`/join?next=${encodeURIComponent(location.pathname)}`}>Sign in</a> to see what your class shared.</p>
+  if (state.kind === 'loading') return <p className="cl-muted cl-power-empty" role="status">Opening the class shelf…</p>
+  if (state.kind === 'error') return <p className="cl-power-note cl-power-error" role="alert">{state.message}</p>
+  const on = state.shelf.items.filter((i) => i.status === 'approved')
+  const waiting = state.shelf.items.filter((i) => i.mine && i.status === 'pending')
+  const snap = async (id: string, name: string) => {
+    setBusy(id)
+    setNote(null)
+    try {
+      const power = await shelf.fetchPower(id)
+      if (!power) return setNote(`${name} could not be opened.`)
+      const why = whyNot(power, brick)
+      if (why) return setNote(why)
+      if (store.snapPower(brick.id, power)) onSnapped()
+    } catch (error) {
+      setNote(error instanceof Error ? error.message : 'The class shelf could not open it.')
+    } finally {
+      setBusy(null)
+    }
+  }
+  return <>
+    {on.length === 0 && waiting.length === 0 && <p className="cl-muted cl-power-empty">Nothing on your class shelf yet. Make a power and share it, and you could be first.</p>}
+    {on.length > 0 && <ul className="cl-power-list">{on.map((i) => (
+      <li key={i.id}>
+        <button type="button" className="cl-power-pick" disabled={busy !== null} onClick={() => void snap(i.id, i.name)}>
+          <span aria-hidden="true" className="cl-power-dot" />
+          <span className="cl-power-pick-text"><b>{i.name}</b> <span className="cl-muted">from {i.mine ? 'you' : i.by}{i.uses ? ` · ${i.uses} using it` : ''}</span><span className="cl-power-what">{busy === i.id ? 'Opening…' : i.what}</span></span>
+        </button>
+      </li>
+    ))}</ul>}
+    {waiting.map((i) => <p key={i.id} className="cl-muted cl-power-empty">{i.name}: waiting for your teacher.</p>)}
+    {note && <p className="cl-power-note cl-power-error" role="alert">{note}</p>}
+  </>
 }
