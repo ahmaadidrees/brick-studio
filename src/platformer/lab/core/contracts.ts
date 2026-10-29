@@ -66,6 +66,8 @@ export type HatOpcode =
   /** Platformer hooks: the brick's body just landed on something / just left the ground (started by the physics step). */
   | 'platformer_whenland'
   | 'platformer_whenleaveground'
+  /** Racing extension (docs/qa/hackable-modes R1): this racer just crossed the finish line the right way, every gate passed. */
+  | 'race_whenlap'
 
 export interface Script {
   id: string
@@ -244,6 +246,11 @@ export interface GridSpec {
   char: string
   /** Pick the starting costume from the cell above (costume 2 when covered by the same brick: grass top vs dirt). */
   autotile?: boolean
+  /**
+   * Hackable Racing: this grid brick is a finish line, and racers cross it heading this way (a Scratch direction: 90
+   * right, 0 up, 180 down, -90 left). Laps count from it (core/race.ts). Missing means an ordinary brick.
+   */
+  finish?: number
 }
 
 export const gridCopyId = (col: number, row: number): string => `cell:${col}:${row}`

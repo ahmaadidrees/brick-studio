@@ -45,12 +45,14 @@ describe('kits: which Hackable game a project is', () => {
     expect(validateDesign(design)).toEqual([expect.objectContaining({ path: 'kit', code: 'bad-value' })])
   })
 
-  it('only the Platformer can run yet: Racing and 3D are named, and refused politely', () => {
+  it('only the Platformer opens in the studio yet: Racing and 3D are named, and refused politely', () => {
     expect(kitReady('platformer')).toBe(true)
     expect(kitReady('race')).toBe(false)
     expect(kitReady('3d')).toBe(false)
     expect(() => play(createStarterProject().design)).not.toThrow()
-    expect(() => createRuntime(asKit('race').design)).toThrow(/race/)
+    // Racing's engine runs headless (R1); its screens wait for the class notes. 3D has no engine yet.
+    expect(() => createRuntime(asKit('race').design)).not.toThrow()
+    expect(() => createRuntime(asKit('3d').design)).toThrow(/3d/)
     expect(kitNotReady(createStarterProject().design)).toBeNull()
     expect(kitNotReady(asKit('race').design)).toMatch(/Hackable Racing/)
     expect(kitNotReady(asKit('3d').design)).toMatch(/Hackable 3D/)

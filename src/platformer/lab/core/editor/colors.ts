@@ -12,4 +12,6 @@ export const CATEGORY_COLORS = {
   procedures: '#FF6680',
   /** Platformer extension (step 3): its own color, not shared with any Scratch category. */
   platformer: '#2BB3A3',
+  /** Racing extension (Hackable Racing R1): its own color too. */
+  race: '#E8553E',
 } as const

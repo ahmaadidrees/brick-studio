@@ -10,6 +10,7 @@ import { motionPrimitives } from './motion'
 import { operatorPrimitives } from './operators'
 import { everyTickLifecycle, physicsStep, platformerPrimitives, selfMovePrimitives } from './platformer'
 import { instantiate } from './project'
+import { racePrimitives, raceStep } from './race'
 import { Runtime, type RuntimeLifecycle } from './runtime'
 import { clearQuestions, sensingPrimitives } from './sensing'
 import { onGreenFlagSound, onStopAllSound, soundPrimitives } from './sound'
@@ -47,8 +48,20 @@ const platformerEngine: KitEngine = {
   },
 }
 
-/** The kits this core can run. Racing (R1) and 3D (D1) register here when they land. */
-const KIT_ENGINES: Partial<Record<KitId, KitEngine>> = { platformer: platformerEngine }
+/**
+ * Hackable Racing (R1): the Platformer's blocks with gravity left off (cars move themselves with the self-move blocks),
+ * plus the Racing blocks. Laps are counted after the tick's scripts have moved the cars.
+ */
+const raceEngine: KitEngine = {
+  primitives: { ...ALL_PRIMITIVES, ...racePrimitives },
+  lifecycle: {
+    ...platformerEngine.lifecycle,
+    afterTick: [...(platformerEngine.lifecycle.afterTick ?? []), raceStep],
+  },
+}
+
+/** The kits this core can run. 3D (D1) registers here when it lands. */
+const KIT_ENGINES: Partial<Record<KitId, KitEngine>> = { platformer: platformerEngine, race: raceEngine }
 
 export const hasKitEngine = (kit: KitId): boolean => !!KIT_ENGINES[kit]
 

@@ -36,6 +36,7 @@ export const HAT_OPCODES: readonly HatOpcode[] = [
   'platformer_everytick',
   'platformer_whenland',
   'platformer_whenleaveground',
+  'race_whenlap',
 ]
 
 export function isHatOpcode(opcode: string): opcode is HatOpcode {
@@ -1687,6 +1688,48 @@ export function createBlockDefinitions(context?: EditorContext): Array<Record<st
       nextStatement: null,
       hat: 'cap',
       tooltip: 'Runs when this brick stops standing on something: it jumped, fell or walked off a ledge.',
+    },
+    // Racing extension (Hackable Racing R1): built in, like touching. Laps count from the finish line (core/race.ts).
+    {
+      type: 'race_groundunder',
+      message0: 'ground under me',
+      category: 'race',
+      colour: CATEGORY_COLORS.race,
+      output: 'String',
+      tooltip: 'The name of the track brick painted under my middle, like Road, Dirt or Ice. "Grass" where nothing is painted.',
+    },
+    {
+      type: 'race_trackdirection',
+      message0: 'direction along the track',
+      category: 'race',
+      colour: CATEGORY_COLORS.race,
+      output: 'Number',
+      tooltip: 'Which way the road goes from here, a few bricks ahead, as a direction to point in.',
+    },
+    {
+      type: 'race_lapsdone',
+      message0: 'laps done',
+      category: 'race',
+      colour: CATEGORY_COLORS.race,
+      output: 'Number',
+      tooltip: 'How many laps I have finished. A lap counts when I cross the finish line the right way after going all the way round.',
+    },
+    {
+      type: 'race_whenlap',
+      message0: 'when I finish a lap',
+      category: 'race',
+      colour: CATEGORY_COLORS.race,
+      nextStatement: null,
+      hat: 'cap',
+      tooltip: 'Runs when I cross the finish line the right way after going all the way round.',
+    },
+    {
+      type: 'race_myplace',
+      message0: 'my place',
+      category: 'race',
+      colour: CATEGORY_COLORS.race,
+      output: 'Number',
+      tooltip: '1 when I am furthest round the race, 2 for second, and so on. Racers are the bricks that move themselves.',
     },
   ]
 }

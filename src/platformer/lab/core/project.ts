@@ -85,6 +85,7 @@ const HAT_OPCODES: readonly HatOpcode[] = [
   'platformer_everytick',
   'platformer_whenland',
   'platformer_whenleaveground',
+  'race_whenlap',
 ]
 
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
@@ -208,13 +209,16 @@ function checkGrid(brick: BrickDef, path: string, chars: Set<string>, push: Push
     push('bad-value', `${path}.grid`, 'Grid must be an object.')
     return
   }
-  const { char, autotile } = grid as { char?: unknown; autotile?: unknown }
+  const { char, autotile, finish } = grid as { char?: unknown; autotile?: unknown; finish?: unknown }
   if (typeof char !== 'string' || char.length !== 1 || char === '.' || hasControlChar(char) || char === ' ') {
     push('bad-value', `${path}.grid.char`, 'A grid brick needs one character that is not "." (that means empty).')
   } else if (chars.has(char)) {
     push('duplicate-id', `${path}.grid.char`, `Two grid bricks use the character "${char}".`)
   } else chars.add(char)
   if (autotile !== undefined && typeof autotile !== 'boolean') push('bad-value', `${path}.grid.autotile`, 'Autotile must be true or false.')
+  if (finish !== undefined && !(finish === 0 || finish === 90 || finish === 180 || finish === -90)) {
+    push('bad-value', `${path}.grid.finish`, 'A finish line points right (90), up (0), down (180) or left (-90).')
+  }
   if (brick.limit !== undefined) push('bad-value', `${path}.limit`, 'A grid brick has no limit: it is painted as many times as you like.')
 }
 
