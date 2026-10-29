@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { browserClassroomClient } from '../../../classroom/client'
+import { browserClassroomClient, type ClassroomClientSurface } from '../../../classroom/client'
 import type { ClassroomWorld } from '../../../classroom/contracts'
 import { Button } from '../../../ui'
 import type { HeaderSaveStatus } from '../../../shell/AppHeader'
@@ -198,21 +198,39 @@ function OpenProject({ opened }: { opened: Opened }) {
         saveStatus={saveStatus}
         onRenameProject={opened.kind === 'viewer' ? undefined : async (title) => store.renameProject(title)}
         onLeave={saveBeforeLeaving}
-        banner={opened.kind === 'viewer' ? <ViewerBanner world={opened.world} /> : undefined}
+        banner={opened.kind === 'viewer' ? <ViewerBanner world={opened.world} store={store} /> : undefined}
       />
     </div>
   )
 }
 
+/**
+ * "Make my own copy": the project as it is on screen, with everything the kid tried, as a new project of theirs (the
+ * server's copy would take the owner's saved version and drop those tries). It carries its new name inside it, so the
+ * first save does not rename it back. With the account full, the copy is kept in this browser instead.
+ */
+export async function makeOwnCopy(world: Pick<ClassroomWorld, 'title'>, project: StudioProject, client: ClassroomClientSurface = browserClassroomClient): Promise<string> {
+  const title = `${world.title} (copy)`.slice(0, 80)
+  const copy: StudioProject = { ...project, design: { ...project.design, name: title } }
+  try {
+    const mine = await createHackableWorld(copy, client, title)
+    return hackableHref.world(mine.id)
+  } catch (error) {
+    if ((error as { code?: string })?.code !== 'world_limit') throw error
+    const id = newHackableId()
+    if (!saveHackableProject(id, copy).ok) throw new Error('Your account is full, and this browser could not keep the copy either. Remove a project in My projects, then try again.')
+    return hackableHref.local(id)
+  }
+}
+
 /** Someone else's project: look and try things, then make your own copy to keep changes. */
-function ViewerBanner({ world }: { world: ClassroomWorld }) {
+function ViewerBanner({ world, store }: { world: ClassroomWorld; store: StudioStore }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const copy = async () => {
     setBusy(true)
     try {
-      const mine = await browserClassroomClient.copyWorld(world.id)
-      window.location.assign(hackableHref.world(mine.id))
+      window.location.assign(await makeOwnCopy(world, store.getState().project))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The copy could not be made.')
       setBusy(false)
