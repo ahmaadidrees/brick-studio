@@ -23,6 +23,8 @@ import '../builder/builder.css'
 import './screen.css'
 
 const NO_WORLD_SETUP = () => undefined
+const LEAVE_WAIT_MS = 5000
+const assignLocation = (href: string) => window.location.assign(href)
 const LOCAL_SAVE: HeaderSaveStatus = { source: { kind: 'local' } }
 const PHONE = '(max-width: 767px)'
 /** Touch screens get on-screen buttons in Play (the same test as the regular platformer). */
@@ -43,7 +45,7 @@ const SCREENS: ReadonlyArray<{ id: StudioScreen; label: string; icon: ReactNode;
  *   Code:  palette and scripts · the level at the top right with "In this level" below it.
  *   Play:  the level fills the screen.
  */
-export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner }: {
+export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenameProject, banner, onLeave, navigate = assignLocation }: {
   store: StudioStore
   templates?: readonly BrickTemplate[]
   /** Where the project saves to (this browser unless the page says otherwise). */
@@ -51,6 +53,10 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   onRenameProject?: (title: string) => Promise<void>
   /** A line under the header, e.g. "this is someone else's project". */
   banner?: ReactNode
+  /** Save everything now: the logo and My projects wait for it before leaving. */
+  onLeave?: () => Promise<unknown> | void
+  /** Leaves the page (tests pass a stand-in). */
+  navigate?: (href: string) => void
 }) {
   const screen = useStudio(store, screenOf)
   const selectedCopyId = useStudio(store, (s) => s.selectedCopyId)
@@ -71,6 +77,19 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
   const setErasing = (on: boolean) => { session.erasing = on; setErasingState(on) }
   const [sheet, setSheet] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  // The logo and My projects save first, then go (after LEAVE_WAIT_MS at most, so a slow save never traps the kid; a
+  // save still unfinished then is covered by the page's own "Leave site?" warning).
+  const leaving = useRef(false)
+  const leave = (href: string) => {
+    if (leaving.current) return
+    leaving.current = true
+    const saved = Promise.resolve().then(() => onLeave?.()).catch(() => undefined)
+    const wait = new Promise((resolve) => setTimeout(resolve, LEAVE_WAIT_MS))
+    void Promise.race([saved, wait]).then(() => {
+      leaving.current = false
+      navigate(href)
+    })
+  }
   useEffect(() => {
     if (!note) return
     const t = setTimeout(() => setNote(null), 5000)
@@ -140,7 +159,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           variant="editor"
           dimension="2d"
           hideCharacter
-          onOpenProjects={() => window.location.assign('/projects')}
+          onOpenProjects={() => leave('/projects')}
           worldTitle={name}
           onRenameWorld={onRenameProject}
           saveStatus={saveStatus}
@@ -152,7 +171,7 @@ export function StudioShell({ store, templates, saveStatus = LOCAL_SAVE, onRenam
           modeLock={{ locked: false }}
           modeSwitch={<ModeTabs screen={screen} phone={phone} onChange={go} />}
           onOpenHelp={() => {}}
-          onGoHome={() => window.location.assign('/')}
+          onGoHome={() => leave('/')}
           worldMenu={() => (
             <Menu
               label="This project"

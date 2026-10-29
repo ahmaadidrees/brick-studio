@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { browserClassroomClient } from '../../../classroom/client'
 import type { ClassroomWorld } from '../../../classroom/contracts'
 import { Button } from '../../../ui'
@@ -143,10 +143,11 @@ function OpenProject({ opened }: { opened: Opened }) {
   const saver = useMemo(() => (opened.kind === 'account' ? new HackableCloudSaver(opened.world, () => setTick((n) => n + 1)) : null), [opened])
 
   // This browser: save under the project's own key, then list it with its name and a fresh picture.
+  const localFlush = useRef<(() => void) | null>(null)
   useEffect(() => {
     if (opened.kind !== 'local') return
     let pictured = 0
-    return watchAndSave(store, {
+    const watch = watchAndSave(store, {
       key: projectKey(opened.id),
       afterSave: (project) => {
         const now = Date.now()
@@ -155,9 +156,12 @@ function OpenProject({ opened }: { opened: Opened }) {
         touchHackableEntry(opened.id, project.design.name, undefined, picture)
       },
     })
+    localFlush.current = watch.flush
+    return () => { localFlush.current = null; watch() }
   }, [opened, store])
 
-  // The account: save each changed project a moment later; warn before leaving with a save still going.
+  // The account: save each changed project a moment later, and at once when the tab is put away; warn before leaving
+  // with a save still going.
   useEffect(() => {
     if (!saver) return
     let last = store.getState().project
@@ -166,9 +170,17 @@ function OpenProject({ opened }: { opened: Opened }) {
       if (project !== last) { last = project; saver.schedule(project) }
     })
     const beforeUnload = (e: BeforeUnloadEvent) => { if (saver.dirty) { void saver.flush(); e.preventDefault() } }
+    const hidden = () => { if (document.visibilityState === 'hidden' && saver.dirty) void saver.flush() }
     window.addEventListener('beforeunload', beforeUnload)
-    return () => { unsubscribe(); window.removeEventListener('beforeunload', beforeUnload); void saver.flush() }
+    document.addEventListener('visibilitychange', hidden)
+    return () => { unsubscribe(); window.removeEventListener('beforeunload', beforeUnload); document.removeEventListener('visibilitychange', hidden); void saver.flush() }
   }, [saver, store])
+
+  // The logo and My projects: save first (StudioShell waits for this before it leaves).
+  const saveBeforeLeaving = useCallback(async () => {
+    localFlush.current?.()
+    if (saver) await saver.flush()
+  }, [saver])
 
   const name = useSyncExternalStore(store.subscribe, () => store.getState().project.design.name)
   useEffect(() => { document.title = `${name} · Hackable Platformer · Brickgineers` }, [name])
@@ -185,6 +197,7 @@ function OpenProject({ opened }: { opened: Opened }) {
         store={store}
         saveStatus={saveStatus}
         onRenameProject={opened.kind === 'viewer' ? undefined : async (title) => store.renameProject(title)}
+        onLeave={saveBeforeLeaving}
         banner={opened.kind === 'viewer' ? <ViewerBanner world={opened.world} /> : undefined}
       />
     </div>

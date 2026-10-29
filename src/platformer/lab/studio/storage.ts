@@ -271,15 +271,18 @@ export interface WatchAndSaveOptions {
   afterSave?: (project: StudioProject) => void
 }
 
+/** Stops watching (saving anything pending first); `flush()` saves anything pending now and keeps watching. */
+export type SaveWatch = (() => void) & { flush: () => void }
+
 /**
  * Subscribes to the store and saves on revision change (debounced).
- * Also attaches a `pagehide` listener to flush any dirty revision immediately.
- * Returns an unsubscribe callback that flushes pending saves.
+ * Also saves at once when the page is hidden (another tab, the home screen, a closed Chromebook lid) or closed.
+ * Returns an unsubscribe callback that flushes pending saves; its `flush` saves now (before leaving the page).
  */
 export function watchAndSave(
   store: StudioStore,
   options?: WatchAndSaveOptions,
-): () => void {
+): SaveWatch {
   const debounceMs = options?.debounceMs ?? DEFAULT_AUTOSAVE_DEBOUNCE_MS
   const storage = options?.storage
   const save = () => {
@@ -321,6 +324,10 @@ export function watchAndSave(
   const onPageHide = () => {
     flushSave()
   }
+  // iPads and Chromebooks often never fire pagehide (the tab is just put away): hidden is the last sure moment.
+  const onVisibility = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') flushSave()
+  }
 
   // The kid chose: save what is on screen now (it was held back until then).
   const unsubscribeHold = onSaveHoldReleased(() => {
@@ -332,16 +339,23 @@ export function watchAndSave(
     window.addEventListener('pagehide', onPageHide)
     window.addEventListener('beforeunload', onPageHide)
   }
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', onVisibility)
+  }
 
-  return () => {
+  const stop = () => {
     unsubscribeStore()
     unsubscribeHold()
     if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
       window.removeEventListener('pagehide', onPageHide)
       window.removeEventListener('beforeunload', onPageHide)
     }
+    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
     flushSave()
   }
+  return Object.assign(stop, { flush: flushSave })
 }
 
 /** Hand the kid a text file (their old world). Only ever called from a button press. */
