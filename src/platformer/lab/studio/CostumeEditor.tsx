@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -17,6 +17,7 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import type { Costume } from '../core/contracts'
+import { DESIGN_LIMITS } from '../core/project'
 import { blankImage, costumeFromImage, type PixelImage } from './pixels'
 import { STAGE_ID, useStudio, type StudioStore } from './store'
 import { BACKDROP_WORDS, chooseUniqueName, COSTUME_WORDS } from './assets/words'
@@ -71,8 +72,22 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
   const levelViewWidth = Math.min(bounds.right - bounds.left, 480)
   const levelViewHeight = bounds.top - bounds.bottom
 
-  const costumes: Costume[] = brick?.costumes ?? []
+  // A brick or stage with no costume yet shows a blank one to paint on. It is only added to the project once the
+  // kid paints (or adds another), so just opening Costumes never changes the project.
+  const unpainted = !!brick && brick.costumes.length === 0
+  const blankWidth = isStage ? levelViewWidth : 32
+  const blankHeight = isStage ? levelViewHeight : 32
+  const blankName = isStage ? 'Sky' : brick?.name ?? 'costume1'
+  const placeholder = useMemo<Costume | null>(
+    () =>
+      unpainted
+        ? { name: blankName, width: blankWidth, height: blankHeight, rotationCenterX: blankWidth / 2, rotationCenterY: blankHeight / 2 }
+        : null,
+    [unpainted, blankName, blankWidth, blankHeight]
+  )
+  const costumes: Costume[] = brick && brick.costumes.length > 0 ? brick.costumes : placeholder ? [placeholder] : []
   const [activeCostumeIndex, setActiveCostumeIndex] = useState(0)
+  const [tooBig, setTooBig] = useState(false)
 
   // Editor states
   const [tool, setTool] = useState<DrawingTool>('pencil')
@@ -94,23 +109,6 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
   const dragStart = useRef<{ x: number; y: number } | null>(null)
   const isDraggingCenter = useRef(false)
   const currentCostumeRef = useRef<Costume | null>(null)
-
-  // Ensure stage or brick has at least one costume/backdrop
-  useEffect(() => {
-    if (!brick) return
-    if (brick.costumes.length === 0) {
-      if (isStage) {
-        const defaultBackdrop = costumeFromImage(
-          'Sky',
-          blankImage(levelViewWidth, levelViewHeight)
-        )
-        store.setCostumes(selectedBrickId, [defaultBackdrop])
-      } else {
-        const defaultCostume = costumeFromImage(brick.name, blankImage(32, 32))
-        store.setCostumes(selectedBrickId, [defaultCostume])
-      }
-    }
-  }, [brick, isStage, levelViewHeight, levelViewWidth, selectedBrickId, store])
 
   // Clamp active index
   const safeIndex = Math.max(0, Math.min(activeCostumeIndex, Math.max(0, costumes.length - 1)))
@@ -143,12 +141,21 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
   // Save current image and center to the store
   const commitChanges = useCallback(
     (newImg: PixelImage, newCenter: { x: number; y: number }) => {
-      if (!currentCostumeRef.current) return
-      const updatedCostume = savePixelImageToCostume(
-        currentCostumeRef.current.name,
-        newImg,
-        newCenter
-      )
+      const current = currentCostumeRef.current
+      if (!current) return
+      const updatedCostume = savePixelImageToCostume(current.name, newImg, newCenter)
+      // A picture the save would refuse would stop every later change from saving: keep the last one that fits.
+      if ((updatedCostume.asset?.length ?? 0) > DESIGN_LIMITS.maxAssetChars) {
+        const kept = costumeToPixelImage(current)
+        setPixelImg(kept)
+        historyRef.current.clear()
+        historyRef.current.push(kept, newCenter)
+        setCanUndo(false)
+        setCanRedo(false)
+        setTooBig(true)
+        return
+      }
+      setTooBig(false)
       const nextCostumes = [...costumes]
       nextCostumes[safeIndex] = updatedCostume
       store.setCostumes(selectedBrickId, nextCostumes)
@@ -660,6 +667,12 @@ export function CostumeEditor({ store }: { store: StudioStore }) {
             </div>
           )}
         </div>
+
+        {tooBig && (
+          <p className="costume-too-big" role="alert">
+            That picture has too much detail to save, so your last change was taken back. Try bigger blocks of color.
+          </p>
+        )}
 
         {/* Canvas Viewport */}
         <div className="costume-viewport">

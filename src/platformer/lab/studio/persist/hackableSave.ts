@@ -1,15 +1,17 @@
-import { parse } from '../../core/save'
-import { upgradeLegacySaveText } from '../legacySave'
 import { upgradeUntouchedHero } from '../remix'
 import type { StudioProject } from '../store'
 import { HACKABLE_FORMAT, isHackableDocument, saveHackableText, type HackableDocument, type HackableSaveResult, type HackableStorage } from './hackableProjects'
 import { exportProjectJson } from './projectIo'
+import { parseSaveText } from './repairSave'
 
 /* Opening and writing Hackable Platformer projects: the part of hackableProjects.ts that needs the game's own parser. */
 
-/** A project's save text read back, upgraded the way Code Lab always upgrades a save; null when it is unreadable. */
+/**
+ * A project's save text read back, upgraded the way Code Lab always upgrades a save (and with any picture the game
+ * refuses put right, persist/repairSave.ts); null when it is unreadable.
+ */
 export function projectFromText(text: string): StudioProject | null {
-  const result = parse(upgradeLegacySaveText(text))
+  const result = parseSaveText(text)
   return result.ok ? upgradeUntouchedHero({ design: result.save.design, workspaces: result.save.workspaces ?? {} }) : null
 }
 

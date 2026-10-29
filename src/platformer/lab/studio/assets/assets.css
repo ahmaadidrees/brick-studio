@@ -646,3 +646,15 @@
   background: #31394e;
   border-color: #556282;
 }
+
+/* A picture the save would refuse: said once, above the canvas. */
+.costume-too-big {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff4e5;
+  border: 1px solid #f0b46a;
+  color: #6b3a00;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}

@@ -125,9 +125,9 @@ describe('pixelOps', () => {
 
   it('keeps mask and opaque bounds in sync on costume edits', () => {
     const img = blankImage(8, 8)
-    // Completely transparent image
+    // Completely transparent image: no opaque box (a save refuses an empty one); the mask says nothing is solid
     const emptyCostume = savePixelImageToCostume('blank', img)
-    expect(emptyCostume.opaque).toEqual({ left: 0, top: 0, right: 0, bottom: 0 })
+    expect(emptyCostume.opaque).toBeUndefined()
     expect(emptyCostume.mask!.data.every((v) => v === 0)).toBe(true)
 
     // Paint a 2x2 square at (2, 3) to (3, 4)

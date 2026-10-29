@@ -8,8 +8,6 @@
  *   and unmount, plus quota error defense.
  */
 
-import { parse } from '../core/save'
-import { upgradeLegacySaveText } from './legacySave'
 import { upgradeUntouchedHero } from './remix'
 import {
   clearStorageNotice,
@@ -27,6 +25,7 @@ import {
   importProjectJson,
   type ImportResult,
 } from './persist/projectIo'
+import { openableSaveText, parseSaveText } from './persist/repairSave'
 import { createStarterProject } from './starter'
 import type { StudioProject, StudioStore } from './store'
 
@@ -129,7 +128,8 @@ export function loadProject(storageOverride?: Storage, key = CODE_LAB_STORAGE_KE
   }
 
   // Step 6/6b saves paint tile characters with no brick behind them: add the standard grid bricks first (legacySave.ts).
-  const result = parse(upgradeLegacySaveText(raw))
+  // A save holding a picture the game refuses (the old blank Stage backdrop) opens with that picture put right.
+  const result = parseSaveText(raw)
   if (result.ok) {
     return upgradeUntouchedHero({
       design: result.save.design,
@@ -186,11 +186,11 @@ export function saveProject(project: StudioProject, storageOverride?: Storage, k
   if (!storage) return false
 
   try {
-    const serialized = exportProjectJson(project)
-    // Never replace a good save with text we could not open again.
-    const check = parse(serialized)
-    if (!check.ok) {
-      console.warn('Code Lab: refused to save an invalid project:', check.problems)
+    // Never replace a good save with text we could not open again. A picture the game would refuse is put right
+    // first (persist/repairSave.ts), so one picture never stops every later change from saving.
+    const serialized = openableSaveText(exportProjectJson(project))
+    if (serialized === null) {
+      console.warn('Code Lab: refused to save a project that would not open again')
       setStorageNotice({
         id: 'save-invalid',
         type: 'error',
