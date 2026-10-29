@@ -40,7 +40,10 @@ export type BrickStudioAutosaveStore = {
 }
 
 export type BrickStudioAutosaveController = {
+  /** Writes only when this tab changed the build since its last save; an untouched tab never writes. */
   flush: () => BrickStudioPersistenceResult
+  /** True when this tab has a change that is not in storage yet. */
+  hasUnsavedChanges: () => boolean
   /** Queues a save when document metadata changes without changing the brick array. */
   schedule: () => void
   cancel: () => void
@@ -115,6 +118,10 @@ export function connectBrickStudioAutosave({
   onSaved?: () => void
 }): BrickStudioAutosaveController {
   let timer: ReturnType<typeof setTimeout> | null = null
+  // Only this tab's own edits are saved. A tab that loaded the build and changed nothing (a stale
+  // tab left open, or a blank one) must never write on pagehide or when hidden: another tab may
+  // have saved a newer build since.
+  let dirty = false
 
   const cancel = () => {
     if (timer !== null) clearTimeout(timer)
@@ -122,15 +129,17 @@ export function connectBrickStudioAutosave({
   }
   const flush = () => {
     cancel()
-    if (isBrickStudioAutosaveSuspended()) return { ok: true } as const
+    if (isBrickStudioAutosaveSuspended() || !dirty) return { ok: true } as const
     const result = saveLocalBrickStudioProject(storage, createDocument(store.getState().bricks))
     if (!result.ok) onError?.(result.error)
-    else onSaved?.()
+    else { dirty = false; onSaved?.() }
     return result
   }
   const schedule = () => {
     cancel()
+    // Changes while a live room or account world holds the store belong to that owner, not this draft.
     if (isBrickStudioAutosaveSuspended()) return
+    dirty = true
     timer = setTimeout(flush, Math.max(0, delayMs))
   }
   const unsubscribe = store.subscribe((state, previous) => {
@@ -142,6 +151,7 @@ export function connectBrickStudioAutosave({
 
   return {
     flush,
+    hasUnsavedChanges: () => dirty,
     schedule,
     cancel,
     dispose: () => {

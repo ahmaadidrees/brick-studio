@@ -201,6 +201,60 @@ describe('local Brick Studio persistence', () => {
   })
 })
 
+it('flush writes only after this tab changed something, and only once per change', () => {
+  const storage = memoryStorage()
+  const setItem = vi.spyOn(storage, 'setItem')
+  let state = { bricks: [brick] }
+  const listeners = new Set<(next: typeof state, previous: typeof state) => void>()
+  const controller = connectBrickStudioAutosave({ store: { getState: () => state, subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener) } }, storage })
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).not.toHaveBeenCalled()
+  const previous = state
+  state = { bricks: [] }
+  listeners.forEach((listener) => listener(state, previous))
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).toHaveBeenCalledTimes(1)
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).toHaveBeenCalledTimes(1)
+  controller.schedule()
+  controller.flush()
+  expect(setItem).toHaveBeenCalledTimes(2)
+  controller.dispose()
+})
+
+it('keeps a failed write pending so the next flush tries again', () => {
+  let full = true
+  const storage = memoryStorage()
+  const guarded = { ...storage, setItem: (key: string, value: string) => { if (full) throw new Error('quota'); storage.setItem(key, value) } }
+  let state = { bricks: [] as BrickInstance[] }
+  let listener: ((next: typeof state, previous: typeof state) => void) | undefined
+  const controller = connectBrickStudioAutosave({ store: { getState: () => state, subscribe: (next) => { listener = next; return () => { listener = undefined } } }, storage: guarded })
+  const previous = state
+  state = { bricks: [brick] }
+  listener?.(state, previous)
+  expect(controller.flush().ok).toBe(false)
+  full = false
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: createBrickStudioDocument([brick]) })
+  controller.dispose()
+})
+
+it('changes made while a live room or account world holds the store are not this tab’s to save', () => {
+  const storage = memoryStorage()
+  const setItem = vi.spyOn(storage, 'setItem')
+  let state = { bricks: [] as BrickInstance[] }
+  let listener: ((next: typeof state, previous: typeof state) => void) | undefined
+  const controller = connectBrickStudioAutosave({ store: { getState: () => state, subscribe: (next) => { listener = next; return () => { listener = undefined } } }, storage })
+  const release = suspendBrickStudioAutosave()
+  const previous = state
+  state = { bricks: [brick] }
+  listener?.(state, previous)
+  release()
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).not.toHaveBeenCalled()
+  controller.dispose()
+})
+
 it('rejects invalid saves without replacing the last valid world', () => {
   const storage = memoryStorage()
   const valid = createBrickStudioDocument([brick])

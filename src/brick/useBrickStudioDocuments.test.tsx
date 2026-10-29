@@ -53,3 +53,35 @@ it('never writes an account or live document through the disabled guest lifecycl
   act(() => { useBrickStore.getState().placeDraft(); window.dispatchEvent(new Event('pagehide')) })
   expect(localStorage.getItem('brick-studio.current-project.v1')).toBeNull()
 })
+
+// A stale tab (left open since yesterday, or blank) must never overwrite the build another tab saved.
+it('a tab that changed nothing never writes on pagehide or when hidden', () => {
+  const older = createBrickStudioDocument([{ id: 'old', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }])
+  localStorage.setItem('brick-studio.current-project.v1', JSON.stringify(older))
+  renderHook(() => useBrickStudioDocuments())
+  expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['old'])
+  const newer = JSON.stringify(createBrickStudioDocument([{ id: 'new', partId: 'brick_2x4', x: 12, y: 0, z: 10, rotation: 0, color: '#f00' }]))
+  localStorage.setItem('brick-studio.current-project.v1', newer)
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' })
+  act(() => { document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide')) })
+  Reflect.deleteProperty(document, 'visibilityState')
+  expect(localStorage.getItem('brick-studio.current-project.v1')).toBe(newer)
+})
+
+it('a blank tab never saves an empty plate over another tab’s build', () => {
+  renderHook(() => useBrickStudioDocuments())
+  const other = JSON.stringify(createBrickStudioDocument([{ id: 'other', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }]))
+  localStorage.setItem('brick-studio.current-project.v1', other)
+  act(() => { window.dispatchEvent(new Event('pagehide')) })
+  expect(localStorage.getItem('brick-studio.current-project.v1')).toBe(other)
+})
+
+it('saves on pagehide again after a new edit, then goes quiet once saved', () => {
+  renderHook(() => useBrickStudioDocuments())
+  act(() => { useBrickStore.getState().placeDraft(); window.dispatchEvent(new Event('pagehide')) })
+  const saved = localStorage.getItem('brick-studio.current-project.v1')!
+  expect(JSON.parse(saved).bricks).toHaveLength(1)
+  localStorage.setItem('brick-studio.current-project.v1', 'another tab')
+  act(() => { window.dispatchEvent(new Event('pagehide')) })
+  expect(localStorage.getItem('brick-studio.current-project.v1')).toBe('another tab')
+})
