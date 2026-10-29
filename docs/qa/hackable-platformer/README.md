@@ -109,3 +109,7 @@ Projects in this browser work either way.
   the coin count at 01. `site-media.mjs` now makes `demo-hack.webm / .mp4 / -poster.jpg` with the others.
 - **Live on the page only once the Hackable Platformer is deployed:** the band links to it. The shelf card needs the
   shelf migration on production.
+
+**Held back (same evening):** the user wants to make a proper demo once the site is more polished. The band shows a
+still (`hackable-ledge.jpg`, the clip's last frame) instead of the clip, and the hero demo is back to 3D | 2D. The
+recording script stays for later; the clip files were removed.

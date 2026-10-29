@@ -122,46 +122,18 @@ function BrandPicture({ name, widths, width, height, alt, sizes, priority = fals
 
 /* ------------------------------------------------------------ hackable --- */
 
-const prefersReducedMotion = () => {
-  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch { return false }
-}
-
-/**
- * The Hackable Platformer's clip (scripts/demo/record-hack.mjs): plays on its own, silent and looping, once it is on
- * screen; with reduced motion it stays on its poster (the coin taken) unless the viewer presses play.
- */
-function HackableClip() {
-  const [reduced] = useState(prefersReducedMotion)
-  const video = useRef<HTMLVideoElement | null>(null)
-  useEffect(() => {
-    const el = video.current
-    if (!el || reduced || typeof IntersectionObserver === 'undefined') return
-    el.defaultMuted = true
-    el.muted = true
-    const seen = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) el.play()?.catch(() => undefined)
-      else el.pause()
-    }, { threshold: 0.35 })
-    seen.observe(el)
-    return () => seen.disconnect()
-  }, [reduced])
+/** A still from the Hackable Platformer: the Hero on a ledge it reached with Double jump (scripts/demo/record-hack.mjs). */
+function HackableStill() {
   return (
-    <video
-      ref={video}
-      className="landing-hack-video"
-      aria-label="A ledge the Hero cannot reach, then snapping Double jump onto the Hero in Code and jumping up to the coin"
-      playsInline
-      muted
-      loop
-      preload="none"
-      controls={reduced}
-      poster={`${MEDIA_BASE}/demo-hack-poster.jpg`}
+    <img
+      className="landing-hack-picture"
+      src={`${MEDIA_BASE}/hackable-ledge.jpg`}
+      alt="The Hero standing on a high ledge it reached with a Double jump power, in the Hackable Platformer"
       width={960}
       height={720}
-    >
-      <source src={`${MEDIA_BASE}/demo-hack.webm`} type="video/webm" />
-      <source src={`${MEDIA_BASE}/demo-hack.mp4`} type="video/mp4" />
-    </video>
+      loading="lazy"
+      decoding="async"
+    />
   )
 }
 
@@ -490,7 +462,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
             <p className="landing-hack-note">No coding needed to start. The code is there when you want it.</p>
           </div>
           <div className="landing-hack-art">
-            <HackableClip />
+            <HackableStill />
           </div>
         </section>
 

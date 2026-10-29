@@ -2,7 +2,7 @@ import { Maximize2, Pause, Play, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 /*
- * The hero's demo: the recorded 3D, 2D and Hackable clips (scripts/demo) play one after the other. The pill shows which
+ * The hero's demo: the recorded 3D and 2D clips (scripts/demo) play one after the other. The pill shows which
  * is on and how far along it is, and jumps on a click; Pause stops the motion (it plays on its own for longer than
  * five seconds); Full screen opens the whole-screen cut with its captions. With reduced motion nothing plays until
  * asked: each clip shows its finished build. The clips (about a megabyte) wait until the page itself has loaded;
@@ -14,7 +14,6 @@ const MEDIA_BASE = '/brand/media'
 const CLIPS = [
   { key: '3d', label: '3D', name: 'Building a rainbow staircase from bricks in 3D, then climbing it as a character' },
   { key: '2d', label: '2D', name: 'Building a 2D world from bricks and a spring, then running and jumping through it' },
-  { key: 'hack', label: 'Hackable', name: 'A ledge the Hero cannot reach, then snapping Double jump onto the Hero in Code and jumping up to the coin' },
 ] as const
 
 type ClipKey = (typeof CLIPS)[number]['key']
