@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useState } from 'react'
 import { createBrickStudioDocument } from './brickDocument'
+import { getBuildPlateSize } from './buildPlate'
 import * as persistence from './documentPersistence'
 import { useBrickStore } from './store'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
@@ -67,6 +68,32 @@ it('a tab that changed nothing never writes on pagehide or when hidden', () => {
   act(() => { document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('pagehide')) })
   Reflect.deleteProperty(document, 'visibilityState')
   expect(localStorage.getItem('brick-studio.current-project.v1')).toBe(newer)
+})
+
+it('opening a build does not write it back, so a tab closed right after loading never overwrites a newer build', () => {
+  vi.useFakeTimers()
+  try {
+    const custom = { id: 'custom_cloud', name: 'Cloud', template: 'solid', width: 2, depth: 2, height: 3, studs: 'auto' } as const
+    const stored = JSON.stringify(createBrickStudioDocument([{ id: 'old', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }], { environmentId: 'sky-island', customParts: [custom] }))
+    localStorage.setItem('brick-studio.current-project.v1', stored)
+    // The studio mirrors the loaded document's metadata into props, as BrickStudioApp does.
+    const { result } = renderHook(() => {
+      const [plateSize, setPlateSize] = useState(() => getBuildPlateSize({}))
+      const [environmentId, setEnvironment] = useState<EnvironmentId>('classic')
+      const [customParts, setCustomParts] = useState<CustomPartDefinition[]>([])
+      useBrickStudioDocuments({}, true, { plateSize, environmentId, customParts, onDocumentLoaded(document) { setPlateSize(getBuildPlateSize(document)); setEnvironment(document.environmentId); setCustomParts(document.customParts) } })
+      return setEnvironment
+    })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(localStorage.getItem('brick-studio.current-project.v1')).toBe(stored)
+    localStorage.setItem('brick-studio.current-project.v1', 'newer build from another tab')
+    act(() => { window.dispatchEvent(new Event('pagehide')) })
+    expect(localStorage.getItem('brick-studio.current-project.v1')).toBe('newer build from another tab')
+    // A real scene change in this tab is still saved.
+    act(() => { result.current('toy-room') })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(JSON.parse(localStorage.getItem('brick-studio.current-project.v1')!).environmentId).toBe('toy-room')
+  } finally { vi.useRealTimers() }
 })
 
 it('a blank tab never saves an empty plate over another tab’s build', () => {

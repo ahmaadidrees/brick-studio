@@ -13,6 +13,7 @@ import {
   loadLocalBrickStudioProject,
   OLD_BUILD_FILENAME,
 } from './documentPersistence'
+import { getBuildPlateSize } from './buildPlate'
 import type { StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { BRAND_NAME } from '../brand'
@@ -53,6 +54,8 @@ export function useBrickStudioDocuments(
     environmentId: persistence.environmentId,
     customParts: persistence.customParts,
   })
+  // Metadata of the build just loaded from storage, until the studio's props have caught up with it.
+  const loadedMetadataRef = useRef<BrickStudioDocumentPersistenceOptions | null>(null)
 
   useEffect(() => {
     useBrickStore.getState().setDocumentMetadata(persistence)
@@ -80,6 +83,13 @@ export function useBrickStudioDocuments(
     if (loaded.ok) {
       if (loaded.document) {
         useBrickStore.getState().restoreDocument(loaded.document)
+        // The studio mirrors the loaded metadata back into props; that echo is not an edit and must
+        // not write the build back (a tab closed right after opening would overwrite a newer build).
+        loadedMetadataRef.current = {
+          plateSize: getBuildPlateSize(loaded.document),
+          environmentId: loaded.document.environmentId,
+          customParts: loaded.document.customParts,
+        }
         persistenceRef.current.onDocumentLoaded?.(loaded.document)
       }
     } else {
@@ -117,15 +127,23 @@ export function useBrickStudioDocuments(
   // array is referentially unchanged, so they must enter the same debounced save.
   useEffect(() => {
     const previous = persistedMetadataRef.current
+    // Custom parts compare by value: the store hands back equal copies as props settle.
     const changed = previous.plateSize !== persistence.plateSize
       || previous.environmentId !== persistence.environmentId
-      || previous.customParts !== persistence.customParts
+      || (previous.customParts !== persistence.customParts
+        && JSON.stringify(previous.customParts ?? []) !== JSON.stringify(persistence.customParts ?? []))
     persistedMetadataRef.current = {
       plateSize: persistence.plateSize,
       environmentId: persistence.environmentId,
       customParts: persistence.customParts,
     }
-    if (changed && enabled && loadedRef.current) autosaveRef.current?.schedule()
+    if (!changed) return
+    const loaded = loadedMetadataRef.current
+    loadedMetadataRef.current = null
+    // Props catching up with the build just loaded are not an edit: nothing to save.
+    if (loaded && loaded.plateSize === persistence.plateSize && loaded.environmentId === persistence.environmentId
+      && JSON.stringify(loaded.customParts ?? []) === JSON.stringify(persistence.customParts ?? [])) return
+    if (enabled && loadedRef.current) autosaveRef.current?.schedule()
   }, [enabled, persistence.plateSize, persistence.environmentId, persistence.customParts])
 
   // This computer keeps one 3D build and Undo ends with the tab, so the old build is downloaded first.
