@@ -52,6 +52,19 @@ export function loadDraft(id: string): LevelDesign | null {
   }
 }
 
+/** One level by id: readable, not in this browser, or stored but unreadable (newer or damaged; kept as it is). */
+export type DraftRead = { kind: 'ok'; level: LevelDesign } | { kind: 'missing' } | { kind: 'unreadable'; draft: Draft }
+
+export function readDraft(id: string): DraftRead {
+  const d = readAll().find((x) => x && typeof x === 'object' && x.id === id)
+  if (!d) return { kind: 'missing' }
+  try {
+    return { kind: 'ok', level: levelFromJson(d.level) }
+  } catch {
+    return { kind: 'unreadable', draft: d }
+  }
+}
+
 /**
  * Save a level (a new one when `id` is null). The newest save goes to the front. A new level is refused, never
  * squeezed in by dropping an old one, once MAX_DRAFTS are kept; saving an existing level always fits.
