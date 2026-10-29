@@ -22,6 +22,9 @@ import './class.css'
 
 export type ClassTab = 'students' | 'worlds' | 'shelf' | 'settings'
 
+/** How often the roster reloads while students can join and the teacher is watching it. */
+const ROSTER_REFRESH_MS = 10_000
+
 type Props = {
   client?: ClassPageClient
   /** Injected in tests; the page replaces the location so /class leaves no history entry. */
@@ -111,6 +114,19 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
       .finally(() => { if (!cancelled) setStudentsLoading(false) })
     return () => { cancelled = true }
   }, [client, classId, teacher])
+
+  // Day one: 28 kids join while the teacher watches the roster. While joining is open, the Students tab is
+  // showing and the page is visible, reload it every few seconds (never while a student is being edited).
+  const enrollmentOpen = Boolean(currentClass?.enrollmentOpen)
+  useEffect(() => {
+    if (!teacher || !classId || !enrollmentOpen || tab !== 'students' || editingStudent) return
+    let cancelled = false
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
+      loadStudents(client, classId).then(result => { if (!cancelled) setStudents(result) }).catch(() => { /* the next tick tries again */ })
+    }, ROSTER_REFRESH_MS)
+    return () => { cancelled = true; window.clearInterval(timer) }
+  }, [client, classId, teacher, enrollmentOpen, tab, editingStudent])
 
   useEffect(() => {
     if (editingStudent && studentFocus.current === 'password') { document.querySelector<HTMLInputElement>('input[name="temporaryPassword"]')?.focus(); studentFocus.current = null }
