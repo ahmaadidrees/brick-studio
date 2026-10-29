@@ -13,8 +13,20 @@ import { listDrafts, saveDraft } from './drafts'
 import type { ClassroomWorld } from '../../classroom/contracts'
 
 const STUDENT = { status: 'student', user: { id: 'student' }, classes: [] }
-const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '', account: { status: 'student', user: { id: 'student' }, classes: [] } as { status: string; user?: { id: string }; classes?: unknown[] } }))
-vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; schedule = vi.fn(); flush = state.flush; constructor(world: unknown) { this.world = world } } }))
+const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '', download: vi.fn(), account: { status: 'student', user: { id: 'student' }, classes: [] } as { status: string; user?: { id: string }; classes?: unknown[] } }))
+vi.mock('./cloudLevel', () => ({
+  createCloudLevel: state.create,
+  // Follows the real saver's status: pending once scheduled, then saved or error by how the flush went.
+  CloudLevelSaver: class {
+    world
+    status = 'saved'
+    schedule = vi.fn(() => { this.status = 'pending' })
+    flush = vi.fn(async () => { const ok = !!(await state.flush()); this.status = ok ? 'saved' : 'error'; return ok })
+    constructor(world: unknown) { this.world = world }
+  },
+}))
+vi.mock('../../projects/projectFile', async (actual) => ({ ...await actual<typeof import('../../projects/projectFile')>(), downloadProjectFile: state.download }))
+vi.mock('../race/RaceHudView', () => ({ RaceHudView: (p: { onExit?: () => void }) => <button onClick={p.onExit}>Race exit</button> }))
 vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]), getSession: () => null, subscribe: () => () => {}, request: vi.fn(), signOut: vi.fn() } }))
 vi.mock('../../shell', async () => {
   // The real Sign in chip: it builds its return address from the page's address, which is what these tests check.
@@ -88,6 +100,7 @@ afterEach(() => {
   vi.useRealTimers()
   state.create.mockReset()
   state.flush.mockReset().mockResolvedValue(true)
+  state.download.mockReset()
   state.session = null
   state.characterOption = ''
   state.account = STUDENT
@@ -296,4 +309,75 @@ it('gives a guest’s new level its own address once it is saved, so refresh, Ba
   await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
   expect(listDrafts()).toHaveLength(1)
   expect(window.location.search).toBe(`?draft=${draft.id}`)
+})
+
+const unloadAsks = () => {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+it('asks before closing the tab only while an account save is on its way or has failed', async () => {
+  state.flush.mockResolvedValue(true)
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('private') }} startMode="build" onExit={() => {}} />)
+  expect(unloadAsks()).toBe(false)
+  state.session!.editCount = 1
+  // Not on the account yet: ask, and start the save at once.
+  expect(unloadAsks()).toBe(true)
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  expect(state.flush).toHaveBeenCalled()
+  expect(unloadAsks()).toBe(false)
+  // The save failed: keep asking until it lands.
+  state.flush.mockResolvedValue(false)
+  state.session!.editCount = 2
+  expect(unloadAsks()).toBe(true)
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  expect(unloadAsks()).toBe(true)
+  state.flush.mockResolvedValue(true)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave test world' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(unloadAsks()).toBe(false)
+  expect(confirmLeave).not.toHaveBeenCalled()
+})
+
+it('saves an account race track before the race screen’s exit leaves', async () => {
+  let land!: (ok: boolean) => void
+  state.flush.mockImplementation(() => new Promise((resolve) => { land = resolve }))
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('private') }} startMode="play" onExit={onExit} />)
+  const session = state.session as unknown as Record<string, unknown> & { onRaceHud: (hud: unknown) => void }
+  session.isRace = true
+  session.mode = 'play'
+  act(() => session.onRaceHud({ phase: 'racing' }))
+  state.session!.editCount = 1
+  fireEvent.click(screen.getByRole('button', { name: 'Race exit' }))
+  expect(onExit).not.toHaveBeenCalled()
+  await act(async () => { land(true); await vi.advanceTimersByTimeAsync(0) })
+  expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('offers a download before leaving a guest room, and leaves only when asked', async () => {
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20, 'Room level')} source={{ kind: 'room', roomKind: 'guest', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={onExit} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Leave test world' }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  const card = screen.getByRole('dialog', { name: 'Leave the room?' })
+  expect(card).toHaveTextContent('two hours')
+  expect(onExit).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Download a copy' }))
+  expect(state.download).toHaveBeenCalledWith(expect.objectContaining({ title: 'Room level' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Stay' }))
+  expect(screen.queryByRole('dialog', { name: 'Leave the room?' })).toBeNull()
+  expect(onExit).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Leave test world' }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave the room' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('leaves a class room without the guest-room question (the class room saves itself)', async () => {
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={onExit} />)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave test world' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(screen.queryByRole('dialog', { name: 'Leave the room?' })).toBeNull()
+  expect(onExit).toHaveBeenCalledOnce()
 })
