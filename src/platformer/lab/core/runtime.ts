@@ -378,8 +378,12 @@ export class Runtime implements RuntimeApi {
           continue
         }
 
+        // Scratch's startHats: a restarting hat reuses any thread of this script still in the list, even one that
+        // finished earlier in this sweep and has not been cleaned out yet; a non-restarting hat only defers to a
+        // running thread. Reusing the finished slot keeps cyclic broadcasts (a → b → a) from appending a new
+        // thread forever inside one sweep: the restarted thread runs in a later sweep instead.
         const existingIndex = this._threads.findIndex(
-          (t) => t.target === target && t.script === script && !t.done && !t.isStackClick,
+          (t) => t.target === target && t.script === script && !t.isStackClick && (restartExisting || !t.done),
         )
 
         if (existingIndex >= 0) {
@@ -434,14 +438,19 @@ export class Runtime implements RuntimeApi {
       sweep++
 
       // F15: sequencer iterates the live threads array so newly appended threads get a turn
+      const startedBeforeSweep = this._threads.length
       for (let i = 0; i < this._threads.length; i++) {
+        // Threads started during this sweep (F15) get their turn only while the tick has budget left, so scripts
+        // that keep starting scripts (a clone that replaces itself, a broadcast loop) cannot hold one sweep
+        // forever. The rest keep their place and run first next tick.
+        if (i >= startedBeforeSweep && this._tickOps >= this.opBudget) break
         const thread = this._threads[i]
         if (thread.done || thread.status !== 'running') continue
 
         this.stepThread(thread)
       }
-      // The op budget is checked only here, between sweeps (F02): every runnable thread
-      // gets a turn in each sweep, so a heavy warp thread cannot starve its siblings.
+      // For threads that were already there when the sweep began, the op budget is checked only here, between
+      // sweeps (F02): each of them gets a turn in each sweep, so a heavy warp thread cannot starve its siblings.
 
       this.cleanDoneThreads()
 
