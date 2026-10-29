@@ -87,6 +87,6 @@ export function deleteDraft(id: string): boolean {
 /** What to tell the player when a level could not be kept in this browser. */
 export function draftSaveMessage(reason: DraftSaveFailure): string {
   return reason === 'full'
-    ? `This browser already keeps ${MAX_DRAFTS} worlds, so this one is not saved. Delete one on the 2D worlds page, or copy a link to keep it.`
-    : 'This browser would not save your world (it may be out of space). Copy a link to keep it.'
+    ? `This browser already keeps ${MAX_DRAFTS} projects, so this one is not saved. Remove one in My projects, or download a copy from the ⋯ menu to keep it.`
+    : 'This browser would not save your project (it may be out of space). Download a copy from the ⋯ menu to keep it.'
 }

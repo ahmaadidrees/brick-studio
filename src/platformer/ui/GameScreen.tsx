@@ -78,7 +78,7 @@ const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: 
  * and the strip that says what a click places. Playing is the game alone, with a pause button.
  *
  * Where edits go: an account level saves to the account a moment after each change; a signed-in student's new
- * level becomes an account level on its first edit (so it shows up in My worlds, ready to share); guests keep a
+ * level becomes an account level on its first edit (so it shows up in My projects, ready to share); guests keep a
  * draft in this browser; rooms save by themselves.
  */
 export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext, room }: Props) {
@@ -242,7 +242,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       if (signedInRef.current && !cloudFailed.current) {
         // On its way to the account, not there yet: nothing counts as saved until it lands.
         if (creatingCloud.current) return false
-        // A signed-in builder's level goes to the account on its first edit, so it is in My worlds, ready to share.
+        // A signed-in builder's level goes to the account on its first edit, so it is in My projects, ready to share.
         creatingCloud.current = createCloudLevel(design)
           .then((world) => {
             saver.current = new CloudLevelSaver(world, () => refresh((n) => n + 1))
@@ -254,7 +254,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               deleteDraft(draftId.current)
               draftId.current = null
             }
-            say('Saved to your account. Find it in My worlds.')
+            say('Saved to your account. Find it in My projects.')
           })
           .catch((error: { code?: string; message?: string }) => {
             // From now on this level is kept in this browser (keepLocally says so itself if that fails too).
@@ -262,7 +262,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             cloudFailed.current = true
             refresh((n) => n + 1)
             if (!keepLocally(s.editCount)) return
-            say(error?.code === 'world_limit' ? 'Your account is full, so this world is saved in this browser only.' : 'Could not save to your account, so this world is saved in this browser for now.')
+            say(error?.code === 'world_limit' ? 'Your account is full, so this project is saved in this browser only.' : 'Could not save to your account, so this project is saved in this browser for now.')
           }).finally(() => { creatingCloud.current = null })
         return false
       }
@@ -658,7 +658,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       }
       refresh(n => n + 1)
       if (share && account.status === 'student') openShare()
-      else say('Saved to your account. Find it in My worlds.')
+      else say('Saved to your account. Find it in My projects.')
     } catch (error) {
       cloudFailed.current = true
       refresh(n => n + 1)
@@ -718,12 +718,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       if (inRoom) setRoomWorld(previous => previous ? { ...previous, ...updated } : updated)
       setSharing(false)
       if (inRoom) {
-        say(next.visibility === 'private' ? 'Only you can open this world now.' : 'Invites updated. Your classmates can join from My worlds.')
+        say(next.visibility === 'private' ? 'Only you can open this project now.' : 'Invites updated. Your classmates can join from My projects.')
         return
       }
       // Building together happens in the level's live room, where the owner is already waiting.
       if (next.visibility !== 'private' && next.canEdit) window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)
-      else say(next.visibility === 'private' ? 'Only you can see this world now.' : 'Shared. Your classmates can play it from My worlds.')
+      else say(next.visibility === 'private' ? 'Only you can see this project now.' : 'Shared. Your classmates can play it from My projects.')
     } catch (error) {
       say(error instanceof Error ? error.message : 'Sharing did not work. Try again.')
     } finally {
@@ -754,8 +754,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     : saveSource.kind === 'cloud'
       ? saveSource.status === 'saved' ? 'Your latest changes are saved to your account.' : saveSource.status === 'error' ? 'Your latest changes are not saved to your account yet. Press Retry save, or keep this tab open.' : 'Saving your latest changes to your account.'
       : saveSource.error
-        ? `${saveSource.error} Copy a link to this world from the ⋯ menu to keep it.`
-        : signedIn ? 'This world is only on this computer. Press Save to my account to keep it with you.' : 'This world is only on this computer, in this browser. Sign in to keep it in your account.'
+        ? saveSource.error
+        : signedIn ? 'This project is only on this computer. Press Save to my account to keep it with you.' : 'This project is only on this computer, in this browser. Sign in to keep it in your account.'
   const players = s?.room?.players ?? []
   const livePolicy: HeaderLivePolicy | undefined =
     inRoom && s

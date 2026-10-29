@@ -352,13 +352,13 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
         if (w.format !== '2d') return window.location.replace(`/live/${worldId.replaceAll('-', '')}`)
         setWorld(w)
       },
-      (e: Error) => { if (!cancelled) setError(e instanceof Error && 'status' in e && e.status === 404 ? 'This world isn’t available to this account. Ask its owner to invite you, or check which account you’re using.' : e.message) },
+      (e: Error) => { if (!cancelled) setError(e instanceof Error && 'status' in e && e.status === 404 ? 'This project isn’t available to this account. Ask its owner to invite you, or check which account you’re using.' : e.message) },
     )
     return () => { cancelled = true }
   }, [worldId, signedIn, account.user?.id])
   if (!signedIn && account.status !== 'loading')
     return (
-      <Notice title="Sign in to open this world" body="Class worlds open for the students and teacher of the class.">
+      <Notice title="Sign in to open this project" body="Class projects open for the students and teacher of the class.">
         <Button variant="primary" icon={<LogIn size={18} />} onClick={() => goToJoin({ mode: 'signin', next: currentPath() })}>
           Sign in
         </Button>
@@ -366,9 +366,9 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
     )
   if (error)
     return (
-      <Notice title="This world could not be opened" body={error}>
-        <Button href="/worlds" variant="primary" icon={<House size={18} />}>
-          My worlds
+      <Notice title="This project could not be opened" body={error}>
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
@@ -382,8 +382,8 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
       source={{ kind: 'room', roomKind: 'classroom', roomId: worldId.replaceAll('-', ''), world }}
       startMode="play"
       room={{ roomId: worldId.replaceAll('-', ''), name: account.displayName ?? 'Builder', url: () => classRoomSocketUrl(worldId) }}
-      onExit={() => window.location.assign('/worlds')}
-      exitLabel="Back to My worlds"
+      onExit={HOME}
+      exitLabel="Back to My projects"
     />
   )
 }
