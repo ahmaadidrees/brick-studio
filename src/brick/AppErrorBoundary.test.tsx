@@ -313,3 +313,27 @@ describe('AppErrorBoundary', () => {
     expect(download).toHaveBeenCalledWith(expect.objectContaining({ bricks: [brick] }), 'brickgineers-build')
   })
 })
+
+// A part of the page that failed to download (flaky Wi-Fi, or a tab left open over a deploy).
+describe('a page part that did not load', () => {
+  function ChunkBoom(): never {
+    throw new TypeError('Failed to fetch dynamically imported module: https://brickgineers.com/assets/StudioApp-9c1d.js')
+  }
+  it('says to check the internet and try again, without the raw error', () => {
+    const reload = vi.fn()
+    render(<AppErrorBoundary storage={() => memoryStorage()} download={okDownload()} reload={reload}><ChunkBoom /></AppErrorBoundary>)
+    expect(screen.getByRole('heading', { name: 'Check your internet and try again' })).toBeInTheDocument()
+    expect(screen.queryByText(/Failed to fetch dynamically imported module/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/tripped over a brick/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(reload).toHaveBeenCalledOnce()
+  })
+  it('still offers the open project as a download first', () => {
+    openWorld(createBrickStudioDocument([brick]))
+    const download = okDownload()
+    render(<AppErrorBoundary storage={() => memoryStorage()} download={download} reload={vi.fn()}><ChunkBoom /></AppErrorBoundary>)
+    expect(screen.getByRole('heading', { name: 'Check your internet and try again' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Download the world I was in' }))
+    expect(download).toHaveBeenCalledOnce()
+  })
+})

@@ -3,25 +3,31 @@ import { createRoot } from 'react-dom/client'
 import './styles.css'
 import { AppErrorBoundary } from './brick/AppErrorBoundary'
 import { installBrickStudioErrorListeners } from './brick/errorLog'
+import { createChunkLoadRecovery } from './brick/chunkLoadRecovery'
 import { resolveAppRoute } from './routes'
 import { BRAND_NAME } from './brand'
 
 // Prefixed console logging plus a small in-memory ring buffer for the recovery screen.
 installBrickStudioErrorListeners()
+// A page part that fails to download while the page starts reloads once (never in a loop, never
+// once a page is open); after that, the error screen says "Check your internet and try again".
+const chunks = createChunkLoadRecovery()
+chunks.install()
+const page = chunks.route
 
-const TeacherGoogleCallback = lazy(() => import('./classroom/TeacherGoogleCallback'))
-const BrickStudioApp = lazy(() => import('./brick/BrickStudioApp'))
-const PublishedWorldPage = lazy(() => import('./brick/PublishedWorldPage'))
-const LiveWorldPage = lazy(() => import('./brick/LiveWorldPage'))
-const LandingPage = lazy(() => import('./brick/landing/LandingPage'))
+const TeacherGoogleCallback = lazy(page(() => import('./classroom/TeacherGoogleCallback')))
+const BrickStudioApp = lazy(page(() => import('./brick/BrickStudioApp')))
+const PublishedWorldPage = lazy(page(() => import('./brick/PublishedWorldPage')))
+const LiveWorldPage = lazy(page(() => import('./brick/LiveWorldPage')))
+const LandingPage = lazy(page(() => import('./brick/landing/LandingPage')))
 // Dev-only component gallery; the production bundle drops the chunk along with this branch.
-const UiGallery = import.meta.env.DEV ? lazy(() => import('./ui/Gallery')) : null
-const JoinPage = lazy(() => import('./pages/join/JoinPage'))
-const WorldsPage = lazy(() => import('./pages/worlds/WorldsPage'))
-const ClassPage = lazy(() => import('./pages/class/ClassPage'))
-const ProjectorPage = lazy(() => import('./pages/class/ProjectorPage'))
+const UiGallery = import.meta.env.DEV ? lazy(page(() => import('./ui/Gallery'))) : null
+const JoinPage = lazy(page(() => import('./pages/join/JoinPage')))
+const WorldsPage = lazy(page(() => import('./pages/worlds/WorldsPage')))
+const ClassPage = lazy(page(() => import('./pages/class/ClassPage')))
+const ProjectorPage = lazy(page(() => import('./pages/class/ProjectorPage')))
 // The 2D side (docs/PLATFORMER.md): its own chunk, so the 3D studio and the landing page never load it.
-const PlatformerApp = lazy(() => import('./platformer/PlatformerApp'))
+const PlatformerApp = lazy(page(() => import('./platformer/PlatformerApp')))
 const { route, canonicalPath } = resolveAppRoute(window.location)
 if (canonicalPath) window.history.replaceState(null, '', canonicalPath)
 const experience = route === 'teacher-callback'
