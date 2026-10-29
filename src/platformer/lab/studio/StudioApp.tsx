@@ -8,7 +8,7 @@ import { loadProject, watchAndSave } from './storage'
 import { StudioStore, type StudioProject } from './store'
 import { createStarterProject } from './starter'
 import { HackableCloudSaver, NotHackableError, createHackableWorld, loadHackableWorld } from './persist/hackableCloud'
-import { MAX_HACKABLE_PROJECTS, NEW_PROJECT_NAME, hackableHref, listHackableProjects, newHackableId, projectKey, touchHackableEntry } from './persist/hackableProjects'
+import { MAX_HACKABLE_PROJECTS, NEW_PROJECT_NAME, hackableHref, listHackableProjects, loadHackableText, newHackableId, projectKey, touchHackableEntry } from './persist/hackableProjects'
 import { saveHackableProject } from './persist/hackableSave'
 import './studio.css'
 
@@ -33,6 +33,11 @@ const newProject = (): StudioProject => {
 
 /** Replace the address without a reload, so a refresh opens this same project. */
 const settle = (href: string) => window.history.replaceState(window.history.state, '', href)
+
+/** Exported for tests: what a /2d/hackable address opens. */
+export async function openStudioRoute(route: StudioRoute): Promise<Opening> {
+  return open(route)
+}
 
 async function open(route: StudioRoute): Promise<Opening> {
   const signedIn = !!browserClassroomClient.getSession()
@@ -76,7 +81,8 @@ async function open(route: StudioRoute): Promise<Opening> {
   }
   const id = route.draft ?? listHackableProjects()[0]?.id
   if (!id) return open({ fresh: true })
-  if (route.draft && !listHackableProjects().some((e) => e.id === id)) {
+  // The save itself decides, not the list: a project whose list entry was lost still opens (and is listed again).
+  if (route.draft && loadHackableText(id) === null) {
     return { kind: 'problem', title: 'That project isn’t on this computer', body: 'It may have been removed, or saved in a different browser. Your other projects are in My projects.' }
   }
   if (!route.draft) settle(hackableHref.local(id))

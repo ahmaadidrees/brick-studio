@@ -53,6 +53,54 @@ describe('Hackable Platformer projects in this browser', () => {
   })
 })
 
+describe('the list never loses a project kept in this browser', () => {
+  const named = (name: string) => ({ ...createStarterProject(), design: { ...createStarterProject().design, name } })
+
+  it('a damaged list is rebuilt from the saves themselves, and the next save keeps them all', () => {
+    saveHackableProject('ha', named('Castle'))
+    saveHackableProject('hb', named('Volcano'))
+    saveHackableProject(LEGACY_ID, named('First one'))
+    localStorage.setItem(HACKABLE_INDEX_KEY, '{not json')
+    expect(listHackableProjects().map((e) => [e.id, e.title]).sort()).toEqual([['ha', 'Castle'], ['hb', 'Volcano'], [LEGACY_ID, 'First one']])
+    // The studio saves one of them: the others stay listed (before, the list was rewritten with this one alone).
+    touchHackableEntry('ha', 'Castle 2')
+    expect(listHackableProjects().map((e) => e.id).sort()).toEqual(['ha', 'hb', LEGACY_ID])
+    expect(JSON.parse(localStorage.getItem(HACKABLE_INDEX_KEY)!)).toHaveLength(3)
+  })
+
+  it('My projects shows them again', async () => {
+    saveHackableProject('ha', named('Castle'))
+    localStorage.setItem(HACKABLE_INDEX_KEY, 'garbage')
+    const { listLocalProjects } = await import('../../../../projects/projects')
+    expect(listLocalProjects().filter((p) => p.kind === 'hackable').map((p) => [p.title, p.href])).toEqual([['Castle', '/2d/hackable?draft=ha']])
+  })
+
+  it('a list that is not a list is rebuilt too', () => {
+    saveHackableProject('ha', named('Castle'))
+    localStorage.setItem(HACKABLE_INDEX_KEY, '{"oops":true}')
+    expect(listHackableProjects().map((e) => e.title)).toEqual(['Castle'])
+  })
+
+  it('a save whose list entry could not be written is listed again', () => {
+    saveHackableProject('ha', named('Castle'))
+    const real = localStorage.setItem.bind(localStorage)
+    const full = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+      if (key === HACKABLE_INDEX_KEY) throw new DOMException('full', 'QuotaExceededError')
+      real(key, value)
+    })
+    expect(saveHackableProject('hb', named('Volcano'))).toEqual({ ok: false, reason: 'storage' })
+    full.mockRestore()
+    expect(loadHackableText('hb')).toContain('Volcano')
+    expect(listHackableProjects().map((e) => e.title).sort()).toEqual(['Castle', 'Volcano'])
+  })
+
+  it('other keys are not projects', () => {
+    localStorage.setItem('code-lab.project.backup.v1', '{"design":{"name":"Backup"}}')
+    localStorage.setItem('brick-studio.project.v1', '{}')
+    expect(listHackableProjects()).toEqual([])
+  })
+})
+
 describe('Hackable Platformer projects in an account', () => {
   it('a project becomes an account document and back, unchanged, and the starter fits easily', () => {
     const project = createStarterProject()
