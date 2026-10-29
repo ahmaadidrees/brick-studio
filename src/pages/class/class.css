@@ -292,6 +292,23 @@
   .class-print-steps { font-size: 20px; }
 }
 
+/* Temporary password, shown large after a reset ---------------------------- */
+.class-temp-password {
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-family: var(--font-display);
+  font-size: clamp(36px, 9vw, 56px);
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.class-temp-username { margin: var(--space-3) 0 0; color: var(--text-muted); text-align: center; }
+
 /* Responsive --------------------------------------------------------------- */
 @media (max-width: 1080px) {
   .class-page-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }

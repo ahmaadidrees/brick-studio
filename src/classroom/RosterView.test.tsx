@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { ClassroomClass, ClassroomStudent } from './contracts'
-import { RosterSection } from './RosterView'
+import { ManageStudentForm, RosterSection } from './RosterView'
 
 afterEach(cleanup)
 
@@ -80,4 +80,24 @@ it('still renders the inline buttons when actions is left at the default', async
   draw({ actions: 'buttons' })
   expect(screen.getByRole('button', { name: 'Reset password for Ava Rivera' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Manage Ava Rivera' })).not.toHaveAttribute('aria-haspopup')
+})
+
+it('Generate fills in an easy word-and-number password and shows it, so the teacher can read it out', () => {
+  render(<ManageStudentForm student={STUDENTS[0]} busy={false} headingRef={{ current: null }} onSubmit={vi.fn()} onToggleSuspend={vi.fn()} onCancel={vi.fn()} />)
+  const field = screen.getByLabelText('Temporary password') as HTMLInputElement
+  expect(field).toHaveAttribute('type', 'password')
+  fireEvent.click(screen.getByRole('button', { name: 'Generate temporary password' }))
+  expect(field.value).toMatch(/^[a-z]{4,6}[2-9]{3}$/)
+  expect(field).toHaveAttribute('type', 'text')
+  expect(field).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Hide temporary password' })).toHaveAttribute('aria-pressed', 'true')
+})
+
+it('Generate never makes the password the same as the username being saved', () => {
+  const onSubmit = vi.fn()
+  render(<ManageStudentForm student={STUDENTS[0]} busy={false} headingRef={{ current: null }} onSubmit={onSubmit} onToggleSuspend={vi.fn()} onCancel={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Generate temporary password' }))
+  const password = (screen.getByLabelText('Temporary password') as HTMLInputElement).value
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  expect(onSubmit).toHaveBeenCalledWith({ username: 'ava_builds', rosterName: 'Ava Rivera', temporaryPassword: password })
 })

@@ -9,7 +9,7 @@ import { playWithFriends } from '../platformer/ui/rooms'
 import { createCloudLevel } from '../platformer/ui/cloudLevel'
 import { formatSavedDate } from '../classroom/panelShared'
 import { PROJECT_FILE_ACCEPT, PROJECT_KIND_LABEL, downloadProjectFile, readProjectFile, type Project, type ProjectKind } from './projectFile'
-import { LOCAL_3D_ID, importProject, listLocalProjects, localProject, moveToAccount, removeLocalProject, type LocalProject } from './projects'
+import { LOCAL_3D_ID, importProject, listLocalProjects, localProject, localProjectAge, moveToAccount, removeLocalProject, type LocalProject } from './projects'
 import './projects.css'
 
 const KIND_ICON: Record<ProjectKind, typeof Blocks> = { '3d': Blocks, platformer: Footprints, race: Flag, hackable: Code2 }
@@ -30,6 +30,14 @@ function localPicture(p: LocalProject): string {
   return p.kind === 'race' ? raceThumb(p.level, `local:${p.id}:${p.updated}`) : levelThumb(p.level, `local:${p.id}:${p.updated}`)
 }
 
+/** One key per local project: a 2D draft and a Hackable Platformer could in principle share an id. */
+const localKey = (p: LocalProject) => `${p.kind}:${p.id}`
+
+const moveError = (error: unknown) => {
+  const code = (error as { code?: string })?.code
+  return code === 'world_limit' ? 'Your account is full. Remove a project you no longer need, then try again.' : error instanceof Error ? error.message : 'That project could not be moved.'
+}
+
 interface Feedback {
   onNotice: (message: string) => void
   onError: (message: string) => void
@@ -38,26 +46,33 @@ interface Feedback {
 
 /**
  * Projects kept on this computer only: the 3D build in this browser and the 2D drafts. Signed in, each one can move
- * to the account (and then it is gone from here, so there is never a stale second copy). Removing one asks first.
+ * to the account (and then it is gone from here, so there is never a stale second copy). Removing one asks first,
+ * and so does moving them all: on a shared class device some of them may be someone else's.
  */
 export function LocalProjectsSection({ signedIn, version, onChanged, onNotice, onError, navigate }: Feedback & { signedIn: boolean; version: number; onChanged: () => void }) {
   // `version` changes when something on the page added or removed a local project.
   const projects = useMemo(() => listLocalProjects(), [version])
   const [busy, setBusy] = useState(false)
   const [removing, setRemoving] = useState<LocalProject | null>(null)
+  /** "Move all" asks first: the projects still ticked, by `localKey`. */
+  const [ticked, setTicked] = useState<Set<string> | null>(null)
   if (projects.length === 0) return null
 
-  const move = async (p: LocalProject) => {
+  /** Moves one at a time, stopping at the first failure so the rest stay on this computer. */
+  const move = async (...items: LocalProject[]) => {
     setBusy(true)
+    let moved = 0
     try {
-      await moveToAccount(p)
-      onNotice(`“${p.title}” is in your account now. It's no longer only on this computer.`)
-      onChanged()
+      for (const p of items) {
+        await moveToAccount(p)
+        moved++
+      }
+      onNotice(moved === 1 ? `“${items[0].title}” is in your account now. It's no longer only on this computer.` : `${moved} projects are in your account now. They're no longer only on this computer.`)
     } catch (error) {
-      const code = (error as { code?: string })?.code
-      onError(code === 'world_limit' ? 'Your account is full. Remove a project you no longer need, then try again.' : error instanceof Error ? error.message : 'That project could not be moved.')
+      onError(moveError(error))
     } finally {
       setBusy(false)
+      if (moved) onChanged()
     }
   }
   const download = (p: LocalProject) => {
@@ -65,16 +80,20 @@ export function LocalProjectsSection({ signedIn, version, onChanged, onNotice, o
     if (project) downloadProjectFile(project)
     else onError('That project is no longer on this computer.')
   }
-  const moveAll = async () => {
-    for (const p of projects) await move(p)
-  }
+  const toggle = (p: LocalProject) => setTicked((current) => {
+    const next = new Set(current)
+    if (next.has(localKey(p))) next.delete(localKey(p))
+    else next.add(localKey(p))
+    return next
+  })
+  const chosen = ticked ? projects.filter((p) => ticked.has(localKey(p))) : []
 
   return (
     <section aria-label="On this computer" className="worlds-section">
       <div className="worlds-section-heading">
         <h2 className="worlds-section-title">On this computer only</h2>
         {signedIn && projects.length > 1 && (
-          <Button variant="secondary" size="sm" icon={<CloudUpload size={16} />} disabled={busy} onClick={() => void moveAll()}>
+          <Button variant="secondary" size="sm" icon={<CloudUpload size={16} />} disabled={busy} onClick={() => setTicked(new Set(projects.map(localKey)))}>
             Move all to my account
           </Button>
         )}
@@ -122,6 +141,48 @@ export function LocalProjectsSection({ signedIn, version, onChanged, onNotice, o
           )
         })}
       </div>
+      {ticked && (
+        <Sheet
+          open
+          variant="dialog"
+          size="sm"
+          title="Move these to your account?"
+          description="Only move projects you made. Untick anything that is someone else's, and it stays on this computer."
+          onClose={() => setTicked(null)}
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setTicked(null)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                icon={<CloudUpload size={16} />}
+                disabled={chosen.length === 0}
+                onClick={() => {
+                  setTicked(null)
+                  void move(...chosen)
+                }}
+              >
+                {`Move ${chosen.length} ${chosen.length === 1 ? 'project' : 'projects'}`}
+              </Button>
+            </>
+          }
+        >
+          <ul className="projects-move-list" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
+            {projects.map((p) => (
+              <li key={localKey(p)}>
+                <label className="projects-move-item" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={ticked.has(localKey(p))} onChange={() => toggle(p)} style={{ width: 22, height: 22, marginTop: 2, flex: 'none' }} />
+                  <span className="projects-move-text" style={{ display: 'grid', gap: 2 }}>
+                    <strong>{p.title}</strong>
+                    <span className="projects-muted">{PROJECT_KIND_LABEL[p.kind]} · {localProjectAge(p)}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </Sheet>
+      )}
       {removing && (
         <Sheet
           open

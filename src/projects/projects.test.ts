@@ -7,7 +7,7 @@ import type { ClassroomClient } from '../classroom/client'
 import type { ClassroomWorld } from '../classroom/contracts'
 import { listDrafts, saveDraft } from '../platformer/ui/drafts'
 import { listHackableProjects, saveHackableText, touchHackableEntry } from '../platformer/lab/studio/persist/hackableProjects'
-import { LOCAL_3D_ID, importProject, kindOfWorld, listLocalProjects, localProject, moveToAccount, projectHref, removeLocalProject } from './projects'
+import { LOCAL_3D_ID, importProject, kindOfWorld, listLocalProjects, localProject, localProjectAge, moveToAccount, projectHref, removeLocalProject } from './projects'
 
 const created = vi.hoisted(() => ({ levels: [] as unknown[] }))
 vi.mock('../platformer/ui/cloudLevel', () => ({
@@ -123,5 +123,23 @@ describe('Hackable Platformers in My projects', () => {
   it('says what kind an account one is, and where it opens', () => {
     expect(kindOfWorld({ format: 'hackable' })).toBe('hackable')
     expect(projectHref({ id: 'abc', format: 'hackable' })).toBe('/2d/hackable?world=abc')
+  })
+})
+
+describe('how old a project on this computer is', () => {
+  const now = new Date(2026, 9, 28, 15, 0).getTime()
+  const at = (days: number, hour = 9) => new Date(2026, 9, 28 - days, hour, 0).getTime()
+  it('counts calendar days, then weeks, then names the date', () => {
+    expect(localProjectAge({ updated: at(0) }, now)).toBe('saved today')
+    expect(localProjectAge({ updated: new Date(2026, 9, 27, 23, 50).getTime() }, now)).toBe('saved yesterday')
+    expect(localProjectAge({ updated: at(3) }, now)).toBe('saved 3 days ago')
+    expect(localProjectAge({ updated: at(7) }, now)).toBe('saved 1 week ago')
+    expect(localProjectAge({ updated: at(20) }, now)).toBe('saved 2 weeks ago')
+    expect(localProjectAge({ updated: at(60) }, now)).toMatch(/^saved Aug 29, 2026$/)
+  })
+  it('the 3D build keeps no date, so it says how big it is', () => {
+    expect(localProjectAge({ updated: 0, bricks: 12 }, now)).toBe('12 bricks, no date')
+    expect(localProjectAge({ updated: 0, bricks: 1 }, now)).toBe('1 brick, no date')
+    expect(localProjectAge({ updated: 0 }, now)).toBe('no date')
   })
 })

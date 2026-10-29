@@ -10,6 +10,11 @@ export type JoinQuery = {
   classCode: string
   /** Same-origin path to open after a successful sign-in, or '' when the link carried none. */
   next: string
+  /**
+   * A class code with no mode (the QR, the printout, the landing box): look the class up first, then show the
+   * names to tap plus "I'm new", or the form that fits a class without names. An explicit mode always wins.
+   */
+  codeFirst: boolean
 }
 
 /**
@@ -25,10 +30,13 @@ export function safeNext(value: string | null): string {
 export function parseJoinQuery(search: string): JoinQuery {
   const params = new URLSearchParams(search)
   const mode = params.get('mode')
+  const known = Boolean(mode && MODES.has(mode))
+  const classCode = (params.get('classCode') ?? '').trim().toUpperCase().slice(0, 32)
   return {
-    mode: mode && MODES.has(mode) ? (mode as JoinMode) : 'join',
-    classCode: (params.get('classCode') ?? '').trim().toUpperCase().slice(0, 32),
+    mode: known ? (mode as JoinMode) : 'join',
+    classCode,
     next: safeNext(params.get('next')),
+    codeFirst: Boolean(classCode) && !known,
   }
 }
 
