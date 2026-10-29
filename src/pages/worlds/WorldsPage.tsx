@@ -10,7 +10,7 @@ import { InviteSheet } from '../../classroom/InviteSheet'
 import { useStudentInvites } from '../../classroom/inviteStore'
 import { inviteWorldHref, StudentInviteList } from '../../classroom/StudentInvites'
 import {
-  browserWorldsClient, buildHref, byNewest, isInviteOnly, isMine, isShared, liveHref, matchesSearch,
+  browserWorldsClient, buildHref, byNewest, canBuildTogether, invitedHref, isInviteOnly, isMine, isShared, liveHref, matchesSearch,
   sharedForBuilding, signInHref, type Classmate, type DeletedWorld, type WorldsClass, type WorldsClient, type WorldSharing, type WorldsWorld,
 } from './worldsData'
 import { createFakeWorldsClient, FIXTURE_CLASS, teacherSession } from './worldsFixtures'
@@ -247,9 +247,11 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
    * "Join and build" opens for them, so the owner is already there when the first friend arrives.
    * Look-only sharing (and Stop sharing) stays on this page and just refreshes the card.
    */
-  const invite = (target: WorldsWorld, sharing: WorldSharing) => run(async () => {
+  const invite = (target: WorldsWorld, asked: WorldSharing) => run(async () => {
+    // No live room for a Hackable Platformer: classmates only look (and make their own copy), never build in it.
+    const sharing = canBuildTogether(target) ? asked : { ...asked, canEdit: false }
     await client.setWorldSharing(target.id, sharing)
-    if (sharing.visibility !== 'private' && sharing.canEdit) { window.location.assign(`${liveHref(target)}?invited=1`); return }
+    if (sharing.visibility !== 'private' && sharing.canEdit) { window.location.assign(invitedHref(target)); return }
     await reload(); setInviteWorld(null)
     if (sharing.visibility === 'private') setNotice(`“${target.title}” is private again.`)
   })
@@ -367,7 +369,7 @@ export default function WorldsPage({ client: injectedClient, navigate: injectedN
               : <div className="worlds-grid">{filter(myWorlds).map(world => {
                 const shared = isShared(world)
                 // Shared for building: the world is a room now, so the obvious button walks into it.
-                const together = shared && sharedForBuilding(world)
+                const together = shared && sharedForBuilding(world) && canBuildTogether(world)
                 return <WorldCard
                   key={world.id}
                   world={world}

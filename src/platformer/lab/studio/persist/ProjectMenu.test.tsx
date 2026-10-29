@@ -32,6 +32,12 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     expect(resetBtn).toBeDefined()
   })
 
+  it('Open File offers the .brickgineers files My projects downloads, as well as .json', () => {
+    render(<ProjectMenu store={store} />)
+    const accept = screen.getByLabelText('Upload project file').getAttribute('accept')!.split(',')
+    expect(accept).toEqual(expect.arrayContaining(['.brickgineers', '.json']))
+  })
+
   it('triggers exportProjectFile when clicking Save File', () => {
     const exportSpy = vi.spyOn(projectIo, 'exportProjectFile').mockImplementation(() => {})
     render(<ProjectMenu store={store} />)
@@ -97,7 +103,7 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.click(resetBtn)
 
     // Confirm dialog is shown
-    expect(screen.getByText(/Start over\? Your changes will be lost\./i)).toBeDefined()
+    expect(screen.getByText(/Start over with the starter level\? You can undo it right after\./i)).toBeDefined()
     expect(loadSpy).not.toHaveBeenCalled()
 
     // Clicking confirm reset
@@ -105,7 +111,39 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     fireEvent.click(confirmResetBtn)
 
     expect(loadSpy).toHaveBeenCalled()
-    expect(screen.queryByText(/Start over\? Your changes will be lost\./i)).toBeNull()
+    expect(screen.queryByText(/Start over with the starter level/i)).toBeNull()
+  })
+
+  it('Reset keeps the project’s name, and Undo puts the project back', () => {
+    store.renameProject('Lava jump')
+    store.addCopy('brick_coin', 640, 120)
+    const before = store.getState().project
+    render(<><StorageNoticeBar /><ProjectMenu store={store} /></>)
+    fireEvent.click(screen.getByRole('button', { name: /reset project to starter/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^reset$/i }))
+    expect(store.getState().project.design.name).toBe('Lava jump')
+    expect(store.getState().project.design.copies).toHaveLength(createStarterProject().design.copies.length)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(store.getState().project).toBe(before)
+    expect(getStorageNotice()?.message).toBe('Put back the project you had before.')
+  })
+
+  it('Open File can be undone too, and the Undo offer does not fade away', async () => {
+    vi.useFakeTimers()
+    const before = store.getState().project
+    const other = createStarterProject()
+    other.design.name = 'Other level'
+    vi.spyOn(projectIo, 'importProjectFile').mockResolvedValue({ ok: true, project: other })
+    render(<><StorageNoticeBar /><ProjectMenu store={store} /></>)
+    fireEvent.change(screen.getByLabelText(/upload project file/i), { target: { files: [new File(['{}'], 'x.json')] } })
+    await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    fireEvent.click(screen.getByRole('button', { name: /open it/i }))
+    expect(store.getState().project.design.name).toBe('Other level')
+    await act(async () => { await vi.advanceTimersByTimeAsync(10_000) })
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(store.getState().project).toBe(before)
+    vi.useRealTimers()
   })
 
   it('shows storage notices on the visible bar (menu closed) and allows dismissing them', () => {

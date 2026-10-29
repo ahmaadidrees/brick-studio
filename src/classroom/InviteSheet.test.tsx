@@ -175,3 +175,15 @@ it('offers targeted reinvite for whole-class sharing without narrowing access or
   expect(onInviteAgain).toHaveBeenCalledWith([jayden.id])
   expect(props.onInvite).not.toHaveBeenCalled()
 })
+
+it('a Hackable Platformer is only shared to look at and copy: no build switch, no “build with you, live”', () => {
+  const onInvite = vi.fn()
+  render(<InviteSheet world={{ ...privateWorld, title: 'Coin Cave', format: 'hackable' }} className="Period 3" classmates={classmates} busy={false} onInvite={onInvite} onClose={vi.fn()} />)
+  const dialog = screen.getByRole('dialog', { name: 'Who do you want to show it to?' })
+  expect(dialog).toHaveAccessibleDescription('They get an invite to look at “Coin Cave” and play it. To change it, they make their own copy.')
+  expect(within(dialog).queryByRole('switch')).not.toBeInTheDocument()
+  expect(dialog).not.toHaveTextContent(/live|build with you/i)
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Jayden' }))
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Invite Jayden to look' }))
+  expect(onInvite).toHaveBeenCalledWith({ visibility: 'members', canEdit: false, members: ['student-jayden'] })
+})

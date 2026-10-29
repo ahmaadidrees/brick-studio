@@ -17,6 +17,10 @@ export const MAX_HACKABLE_PROJECTS = 30
 export const NEW_PROJECT_NAME = 'My platformer'
 /** What an account world can hold (the worlds table's own limit). */
 export const ACCOUNT_DOCUMENT_MAX_BYTES = 2_000_000
+/** The biggest save text the game opens (core/save.ts MAX_SAVE_BYTES, counted in characters; projectIo.test.ts checks they agree). */
+export const HACKABLE_SAVE_MAX_CHARS = 5 * 1024 * 1024
+/** The biggest Hackable Platformer file read: its save plus a `.brickgineers` wrapper around it. */
+export const HACKABLE_FILE_MAX_CHARS = HACKABLE_SAVE_MAX_CHARS + 64 * 1024
 
 export interface HackableEntry {
   id: string
@@ -35,8 +39,8 @@ export interface HackableDocument {
 
 export const projectKey = (id: string) => (id === LEGACY_ID ? LEGACY_KEY : `${LEGACY_KEY}:${id}`)
 
-/** All this module needs of localStorage (tests pass a stand-in). */
-export type HackableStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+/** All this module needs of localStorage (tests pass a stand-in). With `key` and `length` the list can be rebuilt. */
+export type HackableStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> & Partial<Pick<Storage, 'key' | 'length'>>
 
 function storage(): HackableStorage | null {
   try {
@@ -56,15 +60,38 @@ function savedName(text: string): string {
   }
 }
 
+/** The list as kept; null when there is none, or it is damaged (it is then rebuilt from the saves themselves). */
 function readIndex(store: HackableStorage): HackableEntry[] | null {
   try {
     const raw = store.getItem(HACKABLE_INDEX_KEY)
     if (raw === null) return null
     const list = JSON.parse(raw)
-    return Array.isArray(list) ? list.filter((e) => e && typeof e.id === 'string' && typeof e.title === 'string') : []
+    return Array.isArray(list)
+      ? list
+        .filter((e) => e && typeof e.id === 'string' && typeof e.title === 'string')
+        .map((e) => (typeof e.updated === 'number' ? e : { ...e, updated: 0 }))
+      : null
   } catch {
-    return []
+    return null
   }
+}
+
+/** The ids of every project save kept in this browser, listed or not. */
+function storedIds(store: HackableStorage): string[] {
+  const ids: string[] = []
+  const prefix = `${LEGACY_KEY}:`
+  try {
+    if (typeof store.key === 'function' && typeof store.length === 'number') {
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i)
+        if (key === LEGACY_KEY) ids.push(LEGACY_ID)
+        else if (key?.startsWith(prefix) && key.length > prefix.length) ids.push(key.slice(prefix.length))
+      }
+    } else if (store.getItem(LEGACY_KEY) !== null) ids.push(LEGACY_ID)
+  } catch {
+    /* blocked */
+  }
+  return ids
 }
 
 function writeIndex(store: HackableStorage, list: HackableEntry[]): boolean {
@@ -76,19 +103,28 @@ function writeIndex(store: HackableStorage, list: HackableEntry[]): boolean {
   }
 }
 
-/** The projects in this browser, newest first. A browser with only the older single save lists it as one project. */
+/**
+ * The projects in this browser, newest first. The list is kept apart from the saves, so a save is never lost to it:
+ * a save the list does not name (the list was damaged, or could not be written after the save was) is listed again
+ * with the name inside it. A browser with only the older single save lists it as one project.
+ */
 export function listHackableProjects(store = storage()): HackableEntry[] {
   if (!store) return []
-  let list = readIndex(store)
-  if (list === null) {
-    list = []
-    let legacy: string | null = null
-    try { legacy = store.getItem(LEGACY_KEY) } catch { /* blocked */ }
-    if (legacy) {
-      list.push({ id: LEGACY_ID, title: savedName(legacy) || NEW_PROJECT_NAME, updated: Date.now() })
-    }
-    writeIndex(store, list)
+  const kept = readIndex(store)
+  const list = kept ?? []
+  const listed = new Set(list.map((e) => e.id))
+  const now = Date.now()
+  let found = 0
+  for (const id of storedIds(store)) {
+    if (listed.has(id)) continue
+    let text: string | null = null
+    try { text = store.getItem(projectKey(id)) } catch { /* blocked */ }
+    if (!text) continue
+    listed.add(id)
+    // Found again just now; keep the order they are kept in.
+    list.push({ id, title: savedName(text) || NEW_PROJECT_NAME, updated: now - found++ })
   }
+  if (kept === null || found > 0) writeIndex(store, list)
   return [...list].sort((a, b) => b.updated - a.updated)
 }
 
