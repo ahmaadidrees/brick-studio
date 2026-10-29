@@ -299,6 +299,66 @@ describe('/join?mode=teacher', () => {
   })
 })
 
+describe('/join on a shared device — someone is still signed in', () => {
+  /** What another kid may have left on this device: guest drafts and a tab's recovery copy. */
+  const seedDeviceWork = () => {
+    localStorage.setItem('brick-studio.current-project.v1', JSON.stringify({ version: 1, bricks: [{ id: 'kept' }] }))
+    localStorage.setItem('brick-studio.platformer-drafts.v1', '[{"id":"d1","title":"Jumps"}]')
+    sessionStorage.setItem('brick-studio.cloud-recovery.s1.w1', '{"unsaved":true}')
+  }
+  const deviceWork = () => [
+    localStorage.getItem('brick-studio.current-project.v1'),
+    localStorage.getItem('brick-studio.platformer-drafts.v1'),
+    sessionStorage.getItem('brick-studio.cloud-recovery.s1.w1'),
+  ]
+
+  it('asks “Are you …?” before opening that account when a class code came with the link', async () => {
+    const { onNavigate } = setup('?classCode=ROOM-42', fakeApi(), studentAuth)
+    expect(screen.getByRole('heading', { name: 'Are you Alex R.?' })).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Tap your name, then type your password.' })).not.toBeInTheDocument()
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(onNavigate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, that’s me' }))
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/worlds'))
+  })
+
+  it('Not me signs that account out and shows this class’s names, leaving work on the device alone', async () => {
+    seedDeviceWork()
+    const before = deviceWork()
+    const { client, onNavigate, fetcher } = setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/logout' ? json({ ok: true }) : undefined), studentAuth)
+    fireEvent.click(screen.getByRole('button', { name: 'Not me' }))
+    expect(await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })).toBeInTheDocument()
+    expect(client.getSession()).toBeNull()
+    expect((fetcher as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith('/auth/logout'))).toBe(true)
+    expect(deviceWork()).toEqual(before)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('Not me still signs out on this device when the server cannot be reached', async () => {
+    const { client } = setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/logout' ? json({ error: 'Down.', code: 'internal_error' }, 500) : undefined), studentAuth)
+    fireEvent.click(screen.getByRole('button', { name: 'Not me' }))
+    expect(await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })).toBeInTheDocument()
+    expect(client.getSession()).toBeNull()
+  })
+
+  it('the next kid can sign in after Not me', async () => {
+    const other: ClassroomAuthResult = { ...studentAuth, user: { ...studentAuth.user, id: 's2', username: 'mia_t', rosterName: 'Mia Torres' } }
+    const { onNavigate } = setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/logout' ? json({ ok: true }) : path === '/auth/login' ? json(other) : undefined), studentAuth)
+    fireEvent.click(screen.getByRole('button', { name: 'Not me' }))
+    const grid = await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })
+    fireEvent.click(within(grid).getByRole('button', { name: /Mia T\./ }))
+    type('Mia T., type your password', 'brick tower')
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/worlds'))
+  })
+
+  it('without a class code, a signed-in account goes straight on', async () => {
+    const { onNavigate } = setup('?mode=signin', fakeApi(), studentAuth)
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/worlds'))
+    expect(screen.queryByRole('heading', { name: /Are you/ })).not.toBeInTheDocument()
+  })
+})
+
 describe('/join — everywhere', () => {
   it('keeps guest building one link away in every mode', () => {
     setup('')
