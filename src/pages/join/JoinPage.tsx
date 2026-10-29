@@ -173,6 +173,14 @@ export function JoinExperience({
   const usernameChecks = usernameRules(username)
   const passwordChecks = passwordRules(password, username)
   const joinReady = Boolean(trimmedCode) && Boolean(rosterName.trim()) && allGreen(usernameChecks) && allGreen(passwordChecks)
+  // Why "Create account and join" is still grey, once the student has started filling it in.
+  const missing = [
+    !trimmedCode && 'your class code',
+    !rosterName.trim() && 'the name your teacher knows',
+    !allGreen(usernameChecks) && (username ? 'a username that follows the rules' : 'a username'),
+    !allGreen(passwordChecks) && (password ? 'a password that follows the rules' : 'a password'),
+  ].filter((item): item is string => Boolean(item))
+  const showMissing = mode === 'join' && !joinReady && Boolean(username || password || rosterName)
 
   const submitJoin = () => run(async () => {
     setSuggestions([])
@@ -342,9 +350,10 @@ export function JoinExperience({
                 />
                 {mode === 'join' && <RuleList id="join-password-rules" label="Password rules" rules={passwordChecks} />}
 
-                <Button type="submit" variant="primary" fullWidth className="join-submit" disabled={mode === 'join' && !joinReady} loading={busy} loadingLabel={mode === 'join' ? 'Creating your account…' : 'Signing you in…'}>
+                <Button type="submit" variant="primary" fullWidth className="join-submit" disabled={mode === 'join' && !joinReady} aria-describedby={showMissing ? 'join-missing' : undefined} loading={busy} loadingLabel={mode === 'join' ? 'Creating your account…' : 'Signing you in…'}>
                   {mode === 'join' ? 'Create account and join' : 'Sign in'}
                 </Button>
+                {showMissing && <p className="join-note join-note-center" id="join-missing">Still needed: {listInWords(missing)}.</p>}
                 {mode === 'signin' && <p className="join-note join-note-center">Forgot it? Ask your teacher.</p>}
                 </>}
               </form>}
@@ -358,6 +367,9 @@ export function JoinExperience({
     </main>
   </div>
 }
+
+/** "a, b and c" */
+const listInWords = (items: string[]) => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 
 /** One line per rule; green when it passes, red once it is broken, grey before anything is typed. */
 function RuleList({ id, label, rules }: { id: string; label: string; rules: RuleResult[] }) {

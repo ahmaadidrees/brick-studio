@@ -164,6 +164,30 @@ describe('/join — new student', () => {
     }
   })
 
+  it('says what is still missing while Create account is greyed out', () => {
+    setup('?mode=join&classCode=ROOM-42')
+    const submit = screen.getByRole('button', { name: 'Create account and join' })
+    expect(screen.queryByText(/^Still needed:/)).not.toBeInTheDocument()
+    type('Choose a username', 'sky_builder')
+    type('Choose a password', 'brick tower')
+    expect(submit).toBeDisabled()
+    expect(submit).toHaveAccessibleDescription('Still needed: the name your teacher knows.')
+    type('Choose a username', 'sky builder')
+    type('Choose a password', '123')
+    expect(screen.getByText(/^Still needed:/)).toHaveTextContent('Still needed: the name your teacher knows, a username that follows the rules and a password that follows the rules.')
+    type('Choose a username', 'sky_builder')
+    type('Choose a password', 'brick tower')
+    type('Name your teacher knows', 'Alex Rivera')
+    expect(submit).toBeEnabled()
+    expect(screen.queryByText(/^Still needed:/)).not.toBeInTheDocument()
+  })
+
+  it('names a missing class code too', () => {
+    setup('?mode=join')
+    type('Name your teacher knows', 'Alex Rivera')
+    expect(screen.getByText(/^Still needed:/)).toHaveTextContent('Still needed: your class code, a username and a password.')
+  })
+
   it('keeps the primary action disabled until every rule is green', () => {
     setup('?mode=join&classCode=ROOM-42')
     const submit = screen.getByRole('button', { name: 'Create account and join' })
