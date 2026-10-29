@@ -968,6 +968,8 @@ export default function BrickStudioApp({
   const studentClassId = session.status === 'student' ? session.classes?.[0]?.id : undefined
   const localStorageBlocked = useLocalStorageHealth(!readOnly && !livePolicy && !cloud.world)
   const [localSaveError, setLocalSaveError] = useState<string | null>(null)
+  // Another tab saved a different guest build: opens it here (see useBrickStudioDocuments).
+  const [newestBuildElsewhere, setNewestBuildElsewhere] = useState<(() => boolean) | null>(null)
   const closeClassroom = useCallback(() => setClassroomIntent(null), [])
   const [localEnvironmentId, setLocalEnvironmentId] = useState<EnvironmentId>(
     () => publishedWorld?.document.environmentId ?? 'classic',
@@ -1274,6 +1276,7 @@ export default function BrickStudioApp({
       setLocalCustomParts(document.customParts)
     },
     onLocalSaveError: setLocalSaveError,
+    onChangedInAnotherTab: (showNewest) => setNewestBuildElsewhere(() => showNewest),
     title: cloud.world?.title,
   })
   // `/build?new=1`: the draft is loaded by the effect above, so the confirm sees the real build. A blank
@@ -1528,6 +1531,13 @@ export default function BrickStudioApp({
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
       {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>{worldUnavailable}</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
+      {newestBuildElsewhere && !cloud.world && !livePolicy && !readOnly && (
+        <div className="classroom-recovery" role="status">
+          <span>This build was changed in another tab.</span>
+          <button type="button" onClick={() => { if (newestBuildElsewhere()) setNewestBuildElsewhere(null) }}>Show the newest</button>
+          <button type="button" onClick={() => setNewestBuildElsewhere(null)}>Keep this one</button>
+        </div>
+      )}
       {cloud.signedOut && (
         // Signed out without choosing to: the project stays visible behind this card but can't be
         // changed until the student signs back in (its edits so far stay in this tab).

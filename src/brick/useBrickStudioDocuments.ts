@@ -7,6 +7,7 @@ import {
   type CreateBrickStudioDocumentOptions,
 } from './brickDocument'
 import {
+  BRICK_STUDIO_LOCAL_STORAGE_KEY,
   connectBrickStudioAutosave,
   downloadBrickStudioDocument,
   keepOldBuildBeforeReplacing,
@@ -25,6 +26,11 @@ export type BrickStudioDocumentPersistenceOptions = CreateBrickStudioDocumentOpt
   title?: string
   /** The browser save failed (a message) or works again (null), so the header never claims a save that failed. */
   onLocalSaveError?: (message: string | null) => void
+  /**
+   * Another tab saved a different build to this computer. `showNewest` opens that build here
+   * (true when it did); until then this tab's next edit would replace it.
+   */
+  onChangedInAnotherTab?: (showNewest: () => boolean) => void
 }
 
 function showDocumentMessage(message: string) {
@@ -112,9 +118,27 @@ export function useBrickStudioDocuments(
     // Flush the existing local-only autosave before that happens.
     const flush = () => { autosave.flush() }
     const visibilityChanged = () => { if (document.visibilityState === 'hidden') flush() }
+    // Another tab saved the build: offer its version here instead of silently saving over it later.
+    const showNewest = () => {
+      const newest = loadLocalBrickStudioProject(storage)
+      if (!newest.ok || !newest.document || !useBrickStore.getState().restoreDocument(newest.document).ok) {
+        showDocumentMessage('We couldn’t open the newest build. Your build here is unchanged.')
+        return false
+      }
+      autosave.markSaved()
+      loadedMetadataRef.current = { plateSize: getBuildPlateSize(newest.document), environmentId: newest.document.environmentId, customParts: newest.document.customParts }
+      persistenceRef.current.onDocumentLoaded?.(newest.document)
+      return true
+    }
+    const changedElsewhere = (event: StorageEvent) => {
+      if (event.key !== BRICK_STUDIO_LOCAL_STORAGE_KEY || event.newValue === null) return
+      persistenceRef.current.onChangedInAnotherTab?.(showNewest)
+    }
     window.addEventListener('pagehide', flush)
+    window.addEventListener('storage', changedElsewhere)
     document.addEventListener('visibilitychange', visibilityChanged)
     return () => {
+      window.removeEventListener('storage', changedElsewhere)
       window.removeEventListener('pagehide', flush)
       document.removeEventListener('visibilitychange', visibilityChanged)
       loadedRef.current = false

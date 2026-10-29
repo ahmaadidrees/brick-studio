@@ -220,6 +220,24 @@ describe('automatic account world for a signed-in fresh build', () => {
   })
 })
 
+describe('the same guest build open in two tabs', () => {
+  it('offers the other tab’s newer build instead of silently saving over it', async () => {
+    localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))
+    render(<BrickStudioApp />)
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a'])
+    const newer = JSON.stringify(createBrickStudioDocument([brickA, brickB]))
+    localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, newer)
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: BRICK_STUDIO_LOCAL_STORAGE_KEY, newValue: newer })) })
+    expect(screen.getByText('This build was changed in another tab.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the newest' }))
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
+    expect(screen.queryByText('This build was changed in another tab.')).not.toBeInTheDocument()
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: BRICK_STUDIO_LOCAL_STORAGE_KEY, newValue: newer })) })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this one' }))
+    expect(screen.queryByText('This build was changed in another tab.')).not.toBeInTheDocument()
+  })
+})
+
 describe('/build?world=<id> that this version cannot open', () => {
   it('says so, keeps the build on screen, and never saves it into that world', async () => {
     localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))

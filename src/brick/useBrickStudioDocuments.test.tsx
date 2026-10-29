@@ -152,3 +152,26 @@ it('New build on an empty plate asks nothing and downloads nothing', () => {
   act(() => { result.current.onNewBuild() })
   expect(confirm).not.toHaveBeenCalled(); expect(download).not.toHaveBeenCalled()
 })
+
+// If time (item 2): another tab saved a different build, so offer it instead of saving over it later.
+it('tells the studio when another tab saved the build, and opens that build without writing it back', () => {
+  vi.useFakeTimers()
+  try {
+    const onChangedInAnotherTab = vi.fn()
+    renderHook(() => useBrickStudioDocuments({}, true, { onChangedInAnotherTab }))
+    const newer = JSON.stringify(createBrickStudioDocument([{ id: 'other-tab', partId: 'brick_2x4', x: 12, y: 0, z: 10, rotation: 0, color: '#f00' }]))
+    localStorage.setItem('brick-studio.current-project.v1', newer)
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: 'brick-studio.other', newValue: 'x' })) })
+    expect(onChangedInAnotherTab).not.toHaveBeenCalled()
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: 'brick-studio.current-project.v1', newValue: newer })) })
+    expect(onChangedInAnotherTab).toHaveBeenCalledOnce()
+    const showNewest = onChangedInAnotherTab.mock.calls[0][0] as () => boolean
+    const setItem = vi.spyOn(window.localStorage, 'setItem')
+    let shown = false
+    act(() => { shown = showNewest() })
+    expect(shown).toBe(true)
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['other-tab'])
+    act(() => { vi.advanceTimersByTime(1000); window.dispatchEvent(new Event('pagehide')) })
+    expect(setItem).not.toHaveBeenCalled()
+  } finally { vi.useRealTimers() }
+})

@@ -44,6 +44,8 @@ export type BrickStudioAutosaveController = {
   flush: () => BrickStudioPersistenceResult
   /** True when this tab has a change that is not in storage yet. */
   hasUnsavedChanges: () => boolean
+  /** The store now holds exactly what storage holds (e.g. the newest build from another tab): nothing to save. */
+  markSaved: () => void
   /** Queues a save when document metadata changes without changing the brick array. */
   schedule: () => void
   cancel: () => void
@@ -206,6 +208,7 @@ export function connectBrickStudioAutosave({
   return {
     flush,
     hasUnsavedChanges: () => dirty,
+    markSaved: () => { cancel(); dirty = false },
     schedule,
     cancel,
     dispose: () => {
