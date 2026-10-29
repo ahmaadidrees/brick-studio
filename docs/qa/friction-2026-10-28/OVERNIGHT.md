@@ -192,8 +192,80 @@ and `npm run build` once lanes are quiet. Status is kept in the table below.
 
 | Lane | Status | Head | Merged | Notes |
 |---|---|---|---|---|
-| L1 | running | | | |
+| L1 | done: tier 1 + most of tier 2 | 77ba788 | merged | headless 20/20 (faked API); browser re-check on int below; 'My powers save failure' left (L2 files) |
 | L2 | done: tier 1 + tier 2 | e8edd8d | merged + hero fingerprint fix on int | 39 changed test files 550/550 after merge, tsc ok; headless iPad-size touch checks for Dash; three-person shelf journey and real audio not run live |
 | L3 | done: tier 1 + other-tab banner | 27cd841 | f134162 | 28 changed test files 420/420 after merge, tsc ok; headless 13/13 + 7/7 (mocked API); header sign-out loss proven real by a failing test; 409 'keep mine / open other' still to do |
 | L4 | done: tier 1 + tier 2 | bf38862 | eb9eb22 | 19 merged test files 287/287, tsc ok; full room/guest-room leave/room races proven by tests only (need Worker) |
 | L5 | done: tier 1 + tier 2 | eaaf873 | d6527c1 | headless 13/13 (faked API); Supabase acceptance of generated passwords unverified |
+
+## Browser journeys on the integrated build (Claude browser pane, Chromium, 1366×768, local stack)
+
+Local stack: `scripts/local/start.mjs --reset` on friction-int (fake accounts/storage, real Worker rooms).
+Not a device test; no touch emulation.
+
+| Journey | Result |
+|---|---|
+| Landing "Got a class code?" ROOM-11 → "Find your name" tiles + "I'm new" | pass |
+| Sign in by tapping a name → My projects; reopen the code link → "Are you Builder S.? / Not me" → Not me → names again | pass |
+| Back after signing in does not bounce to /join | pass |
+| Teacher email sign-in → /class → Reset password → Generate ("whale695") → Save → large password card with username; roster shows "Password change required"; 10 s roster refresh steady | pass |
+| 3D account build: account service paused (SIGSTOP) → "Saving…" → after the 20 s timeout "Can't save right now. We'll keep trying." with Try now / Download a copy → service resumed → "Saved to your account" within 10 s, no click → reopen shows 3/2000 bricks | pass |
+| Hackable `?new=1` → Code → Stage → Costumes (no error) → paint → Build → 3 coins → reload → stroke and coins kept | pass |
+
+Gaps in the local stack (not product bugs): the fake account service rejects Hackable worlds
+(`scripts/qa/lib/classroom-mock-server.mjs:62` only knows 3D and 2D), so Hackable account saves fell
+back to "On this computer only" as designed; and it has no class shelf routes, so the three-person
+shelf loop was not run live (unit tests only).
+
+Seen in passing (follow-ups, not regressions): painting a Stage backdrop swaps the blue sky and clouds
+for a pale background (also on the old code, where merely opening Costumes did it); the "Shared by
+students" card clips its "2 classmates" chip at 1366 wide; the class page header says "Open the studio".
+
+## Morning summary (written ~01:00 PT, 2026-10-29)
+
+**Branch:** `claude/friction-int` = `9b0a43e` + five merged lanes + one integration fix
+(`736cf4b`, Hero fingerprint so Heroes saved just before the respawn change still upgrade).
+146 files, all under `src/` and `docs/`. **Not pushed, not deployed.**
+
+**Checks on the integrated branch:** `tsc -b` clean; full vitest 285 files, 3198 passed +
+25 expected-fail (baseline on 9b0a43e: 266 files, 2962 passed); `npm run build` ok (existing
+chunk-size warning only); brick-core, platformer-core and Worker typechecks ok. Worker tests not
+run (no Worker files changed). Browser journeys above.
+
+**Proof levels:** every item has unit tests (most written to fail on the old code). Lanes also ran
+headless Chromium with mocked APIs (L1 20/20, L3 13/13 + 7/7, L4 and L5 13/13). The Claude
+browser pane ran six journeys on the local stack. **No physical iPad, Chromebook or Duo test.**
+Not exercised live: full 2D room with 17 players, room races, guest-room leave, the class shelf
+loop, Hackable account saves (local mock limits), real audio, iPad Safari downloads.
+
+**Follow-ups found tonight (not done):**
+- Saving: two-tab 409 conflict still needs "keep mine / open the other"; live rooms that lose
+  their sign-in still drop to the sign-in panel; after signing back in via /join, recovered 3D
+  changes need one "Retry save".
+- Hackable: a signed-in kid's Hackable import over ~2 MB goes to the account and gets a generic
+  error (should fall back to the browser; `src/projects/projects.ts`); "My powers" save failures
+  still report success; Take off clicked within 300 ms of an edit may skip the confirm; Stop All
+  lets landing/bump hooks start new scripts; painting a Stage backdrop turns the sky pale.
+- 2D: a corrupt 2D drafts list still reads as empty (same fix as Hackable's list rebuild); the
+  micro:bit restart button does nothing in play; the guest-room leave card shows even when nothing
+  was built.
+- Joining: old `/build?classroom=…` poster links still detour through the 3D builder; whether the
+  hosted Supabase "leaked password" check would reject generated passwords is unverified.
+- Small UI: Dash/Run/Jump touch labels may be low contrast; class page "Shared by students" card
+  clips "2 classmates" at 1366; "Open the studio" wording on /class.
+- Harness: the local mock (`scripts/qa/lib/classroom-mock-server.mjs`) knows no Hackable worlds
+  and no shelf routes; add both so these journeys can run locally.
+
+**Behaviour changes to know about:** account 2D levels now ask before the tab closes while a save
+is pending (~0.8 s after an edit); "New build" and "Use as my local build" download the old build
+first; generated reset passwords look like "otter472"; the class code box no longer forces account
+creation; picture assets are now stored compressed (old saves are read and repaired on open).
+
+**Owner decisions for the morning:** push `claude/friction-int` and open a PR (into
+`claude/code-lab-on-main`/PR #22, or into `main` after #22 merges); a physical iPad + Chromebook
+playtest before any deploy; deploy order still includes the unapplied class-shelf migration from
+PR #22 (migration → Worker → site).
+
+Worktrees left in place: `~/.codex/worktrees/friction/{int,L1-…,L5-…}` (lane branches unchanged
+after merge). Local stack from friction-int may still be running on 5185/8798/8799/9235
+(stop with Ctrl+C in its terminal or kill the `scripts/local/start.mjs` process).
