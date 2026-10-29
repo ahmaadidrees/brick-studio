@@ -19,7 +19,7 @@ import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 
 import type { KeyboardEvent, ReactNode } from 'react'
 import { BRAND_NAME, BrandLockup } from '../../brand'
 import { Button } from '../../ui/Button'
-import { AppHeader } from '../../shell'
+import { AppHeader, joinPath } from '../../shell'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from '../localProjectKeys'
 import { HeroDemo } from './HeroDemo'
 import { PixelLevelArt, ScenePlaceholder } from './LandingArt'
@@ -39,7 +39,7 @@ const NewProjectSheet = lazy(() => import('../../projects/NewProjectSheet').then
 const MEDIA_BASE = '/brand/media'
 
 export type LandingPageProps = {
-  /** Destination of "Start building" / "Continue building"; account intents are appended as `?classroom=<intent>`. */
+  /** Destination of "Start building" / "Continue building". Account links always go straight to `/join`. */
   studioHref?: string
   /** Destination of the 2D builder ("Make a 2D world", "Build in 2D"). */
   platformerHref?: string
@@ -51,11 +51,13 @@ const PROJECTS_HREF = '/projects'
 const RACE_STARTER_HREF = '/2d/build?new=1&kit=race-starter'
 const HACKABLE_HREF = '/2d/hackable?new=1'
 
-type AccountIntent = 'join' | 'signin' | 'teacher'
-
-function intentHref(studioHref: string, intent: AccountIntent): string {
-  return `${studioHref}${studioHref.includes('?') ? '&' : '?'}classroom=${intent}`
-}
+/*
+ * Account links open the join page in the mode they ask for. They used to go through
+ * `/build?classroom=…`, which loaded the 3D builder only to redirect, and left it in Back.
+ */
+const JOIN_HREF = joinPath()
+const SIGNIN_HREF = joinPath({ mode: 'signin' })
+const TEACHER_HREF = joinPath({ mode: 'teacher' })
 
 /* --------------------------------------------------------------- media --- */
 
@@ -244,10 +246,6 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
   const helpId = useId()
   const privacyId = useId()
 
-  const joinHref = intentHref(studioHref, 'join')
-  const signinHref = intentHref(studioHref, 'signin')
-  const teacherHref = intentHref(studioHref, 'teacher')
-
   const closeMenu = useCallback(() => setMenuOpen(false), [])
   const onNavKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
     if (event.key !== 'Escape' || !menuOpen) return
@@ -298,7 +296,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               <a className="landing-nav-link" href="#two-ways">What you can make</a>
               <a className="landing-nav-link" href={PROJECTS_HREF}>My projects</a>
               <a className="landing-nav-link" href="#teachers">For teachers</a>
-              <a className="landing-nav-link" href={teacherHref}>Teacher login</a>
+              <a className="landing-nav-link" href={TEACHER_HREF}>Teacher login</a>
             </nav>
           </>
         }
@@ -357,7 +355,7 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
               <button type="submit" className="ui-button ui-button-primary">Join</button>
             </form>
             <p className="landing-hero-trust">
-              No account needed to start. <a href={signinHref}>Student login</a>
+              No account needed to start. <a href={SIGNIN_HREF}>Student login</a>
             </p>
           </div>
           <HeroDemo />
@@ -531,9 +529,9 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
             </div>
             <div className="landing-teachers-cta">
               <p className="landing-cta-row landing-cta-row-compact">
-                <CtaLink href={teacherHref} variant="primary" icon={<LogIn size={18} />}>Teacher sign in</CtaLink>
+                <CtaLink href={TEACHER_HREF} variant="primary" icon={<LogIn size={18} />}>Teacher sign in</CtaLink>
                 <CtaLink href={studioHref} icon={<Play size={18} />}>Try building first</CtaLink>
-                <CtaLink href={joinHref} icon={<KeyRound size={18} />}>Join a class</CtaLink>
+                <CtaLink href={JOIN_HREF} icon={<KeyRound size={18} />}>Join a class</CtaLink>
               </p>
               <p className="landing-teachers-hint">Continue with your teacher Google account. Email and password sign-in is also available.</p>
               <p className="landing-teachers-hint">

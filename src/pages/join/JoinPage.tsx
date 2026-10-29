@@ -51,7 +51,10 @@ export type JoinExperienceProps = {
   client?: ClassroomClient
   /** Defaults to the real query string; tests pass their own. */
   search?: string
-  /** Same-origin path or an external sign-in URL; defaults to a real navigation. */
+  /**
+   * Same-origin path or an external sign-in URL. Defaults to replacing this page in history: /join is a
+   * doorway, and a signed-in account that came Back to it would only be sent forward again.
+   */
   onNavigate?: (url: string) => void
 }
 
@@ -63,7 +66,7 @@ export default function JoinPage(props: JoinExperienceProps = {}) {
 export function JoinExperience({
   client = browserClassroomClient,
   search = typeof window === 'undefined' ? '' : window.location.search,
-  onNavigate = url => { window.location.assign(url) },
+  onNavigate = url => { window.location.replace(url) },
 }: JoinExperienceProps) {
   const query = useMemo(() => parseJoinQuery(search), [search])
   const auth = useSyncExternalStore(client.subscribe, client.getSession)

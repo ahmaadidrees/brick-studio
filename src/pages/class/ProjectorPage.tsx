@@ -26,7 +26,7 @@ function resolveClient(): ClassPageClient {
  * The class code on the board. It loads its own class, so a teacher can open it
  * in a second tab and leave it up while they work in `/class`.
  */
-export default function ProjectorPage({ client = resolveClient(), navigate = href => window.location.assign(href) }: Props) {
+export default function ProjectorPage({ client = resolveClient(), navigate = href => window.location.replace(href) }: Props) {
   const session = useSyncExternalStore(client.subscribe, client.getSession)
   const teacher = session?.user.role === 'teacher'
   const [classes, setClasses] = useState<ClassPageClass[]>([])

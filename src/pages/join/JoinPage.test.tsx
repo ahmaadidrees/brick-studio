@@ -359,6 +359,33 @@ describe('/join on a shared device — someone is still signed in', () => {
   })
 })
 
+describe('/join leaves no bounce in Back', () => {
+  // jsdom implements fragment navigations: `assign` adds a history entry, `replace` does not.
+  const hereWith = (hash: string) => `${window.location.pathname}${window.location.search}${hash}`
+
+  it('replaces itself when it sends a signed-in account on, so Back does not land on /join again', async () => {
+    const client = new ClassroomClient('', fakeApi())
+    client.setSession(studentAuth)
+    const before = window.history.length
+    const next = hereWith('#opened-projects')
+    render(<JoinExperience client={client} search={`?mode=signin&next=${encodeURIComponent(next)}`} />)
+    await waitFor(() => expect(window.location.hash).toBe('#opened-projects'))
+    expect(window.history.length).toBe(before)
+  })
+
+  it('replaces itself after a successful sign-in too', async () => {
+    const client = new ClassroomClient('', fakeApi(path => path === '/auth/login' ? json(studentAuth) : undefined))
+    const before = window.history.length
+    const next = hereWith('#signed-in')
+    render(<JoinExperience client={client} search={`?mode=signin&next=${encodeURIComponent(next)}`} />)
+    type('Username', 'sky_builder')
+    type('Password', 'brick tower')
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(window.location.hash).toBe('#signed-in'))
+    expect(window.history.length).toBe(before)
+  })
+})
+
 describe('/join — everywhere', () => {
   it('keeps guest building one link away in every mode', () => {
     setup('')

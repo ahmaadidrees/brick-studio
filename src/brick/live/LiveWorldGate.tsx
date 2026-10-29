@@ -179,7 +179,7 @@ export function LiveWorldGate({
           <Button variant="secondary" fullWidth icon={<ArrowLeft size={16} />} onClick={() => window.location.assign('/build')}>Keep building</Button>
         ) : (<>
           <Button variant="quiet" fullWidth href="/build" icon={<ArrowLeft size={16} />}>Back to building</Button>
-          <a className="live-gate-classroom" href="/build?classroom=signin">
+          <a className="live-gate-classroom" href="/join?mode=signin">
             <GraduationCap size={18} aria-hidden="true" />
             <span><strong>Classroom sign in</strong><small>Use your teacher’s sign-in code.</small></span>
           </a>
