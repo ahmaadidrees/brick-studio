@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ClassroomClientSurface } from '../../../classroom/client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { browserClassroomClient, type ClassroomClientSurface } from '../../../classroom/client'
 import type { ClassroomWorld } from '../../../classroom/contracts'
 import { exportProjectJson } from './persist/projectIo'
 import { HACKABLE_INDEX_KEY, listHackableProjects, projectKey } from './persist/hackableProjects'
@@ -53,5 +53,24 @@ describe('“Make my own copy” of a classmate’s project', () => {
     const href = await makeOwnCopy(classmates, named('Ava’s level'), surface)
     expect(href).toMatch(/^\/2d\/hackable\?draft=/)
     expect(listHackableProjects().map((e) => e.title)).toEqual(['Ava’s level (copy)'])
+  })
+})
+
+describe('opening an account project from a link or an invite', () => {
+  const save = () => JSON.parse(exportProjectJson(named('Ava’s level')))
+  const world = (over: Partial<ClassroomWorld>) => ({ id: 'w9', title: 'Ava’s level', revision: 2, format: 'hackable', ownerId: 'ava', canEdit: true, document: { format: 'brickgineers-hackable', version: 1, save: save() }, ...over }) as unknown as ClassroomWorld
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('a classmate who may build in it still opens it look-only, so nobody saves over the owner', async () => {
+    vi.spyOn(browserClassroomClient, 'getSession').mockReturnValue({ user: { id: 'ben' } } as never)
+    vi.spyOn(browserClassroomClient, 'getWorld').mockResolvedValue(world({ canEdit: true }))
+    expect(await openStudioRoute({ world: 'w9', fresh: false })).toMatchObject({ kind: 'viewer' })
+  })
+
+  it('the owner opens it to edit and save', async () => {
+    vi.spyOn(browserClassroomClient, 'getSession').mockReturnValue({ user: { id: 'ava' } } as never)
+    vi.spyOn(browserClassroomClient, 'getWorld').mockResolvedValue(world({ canEdit: true }))
+    expect(await openStudioRoute({ world: 'w9', fresh: false })).toMatchObject({ kind: 'account' })
   })
 })

@@ -14,7 +14,8 @@ import './invite-sheet.css'
  * "Invite the class to look", "Pick someone first" (disabled) …
  */
 export type InviteSheetProps = {
-  world: Pick<ClassroomWorld, 'id' | 'title' | 'visibility' | 'classCanEdit' | 'members'>
+  /** A Hackable Platformer (`format: 'hackable'`) has no live room: it can only be shared to look at and copy. */
+  world: Pick<ClassroomWorld, 'id' | 'title' | 'visibility' | 'classCanEdit' | 'members'> & Partial<Pick<ClassroomWorld, 'format'>>
   /** The owner's class name ("Period 3"). */
   className: string
   /** Active classmates (caller excluded); null while loading, [] when nobody else is enrolled. */
@@ -53,9 +54,12 @@ const classmatesCount = (count: number) => `${count} ${count === 1 ? 'classmate'
  */
 export function InviteSheet({ world, className, classmates, classmatesError, busy: externalBusy, onInvite, onInviteAgain, onStopSharing, onClose }: InviteSheetProps) {
   const shared = world.visibility !== 'private'
+  // No live room to build in together: classmates look, and make their own copy to change it.
+  const onlyLook = world.format === 'hackable'
   const [everyone, setEveryone] = useState(world.visibility === 'class')
   const [picked, setPicked] = useState<string[]>(() => initialPicks(world))
-  const [lookOnly, setLookOnly] = useState(shared && !world.classCanEdit)
+  const [lookOnlyChoice, setLookOnly] = useState(shared && !world.classCanEdit)
+  const lookOnly = onlyLook || lookOnlyChoice
   const [resending, setResending] = useState(false)
   const [resendNotice, setResendNotice] = useState('')
   const busy = externalBusy || resending
@@ -97,8 +101,8 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
     closeLabel="Cancel"
     onClose={onClose}
     className="invite-sheet"
-    title="Who do you want to build with?"
-    description={`They get an invite and can jump into “${world.title}” with you.`}
+    title={onlyLook ? 'Who do you want to show it to?' : 'Who do you want to build with?'}
+    description={onlyLook ? `They get an invite to look at “${world.title}” and play it. To change it, they make their own copy.` : `They get an invite and can jump into “${world.title}” with you.`}
     footer={<>
       <p className="invite-sheet-teacher">Your teacher can see it too.</p>
       <div className="invite-sheet-actions">
@@ -132,7 +136,7 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
             })}
           </div>}
 
-    <div className="invite-sheet-look">
+    {onlyLook ? <p className="invite-sheet-note">Only you change this project. Classmates can look, play and make their own copy.</p> : <div className="invite-sheet-look">
       <div className="invite-sheet-look-text">
         <strong id="invite-sheet-look-label">Just let them look</strong>
         <small>{lookOnly ? 'They can visit and walk around. Only you change the bricks.' : 'Off: they build with you, live, in the same room.'}</small>
@@ -141,6 +145,6 @@ export function InviteSheet({ world, className, classmates, classmatesError, bus
         <span className="invite-sheet-switch-track" aria-hidden="true"><span className="invite-sheet-switch-knob" /></span>
         <span className="invite-sheet-switch-state">{lookOnly ? 'On' : 'Off'}</span>
       </button>
-    </div>
+    </div>}
   </Sheet>
 }

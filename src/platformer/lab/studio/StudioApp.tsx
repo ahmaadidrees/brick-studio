@@ -40,11 +40,15 @@ export async function openStudioRoute(route: StudioRoute): Promise<Opening> {
 }
 
 async function open(route: StudioRoute): Promise<Opening> {
-  const signedIn = !!browserClassroomClient.getSession()
+  const session = browserClassroomClient.getSession()
+  const signedIn = !!session
   if (route.world) {
     try {
       const { world, project } = await loadHackableWorld(route.world)
-      return world.canEdit ? { kind: 'account', world, project } : { kind: 'viewer', world, project }
+      // Only the owner saves into it. There are no live rooms for Hackable Platformers, so a classmate (or a teacher)
+      // who may build in it would save over the owner's project; they look, and make their own copy to keep changes.
+      const mine = world.canEdit && !!session && world.ownerId === session.user.id
+      return mine ? { kind: 'account', world, project } : { kind: 'viewer', world, project }
     } catch (error) {
       if (error instanceof NotHackableError) {
         window.location.replace(error.world.format === '2d' ? `/2d/build?world=${route.world}` : `/build?world=${route.world}`)
