@@ -68,6 +68,8 @@ vi.mock('../game/session', () => ({
     renderer: { canvas: HTMLCanvasElement }
     sound = { setMuted() {}, setMusic() {}, unlock() {} }
     setCharacter = vi.fn()
+    restartRun = vi.fn()
+    player = { clearTime: -1 }
     constructor(canvas: HTMLCanvasElement, level: LevelDesign, options: { character?: string }) {
       this.timeline = { world: { design: level } }
       this.renderer = { canvas }
@@ -380,4 +382,34 @@ it('leaves a class room without the guest-room question (the class room saves it
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave test world' })); await vi.advanceTimersByTimeAsync(0) })
   expect(screen.queryByRole('dialog', { name: 'Leave the room?' })).toBeNull()
   expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('starts play from the start flag while building', () => {
+  open()
+  fireEvent.click(screen.getByRole('button', { name: 'Play from start' }))
+  expect((state.session as unknown as { restartRun: () => void }).restartRun).toHaveBeenCalledOnce()
+})
+
+it('after the last starter course, offers to build your own', async () => {
+  const assign = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'course', id: 'last' }} startMode="play" onExit={() => {}} />)
+  const session = state.session as unknown as { player: { clearTime: number }; onClear: (time: number, best: number, newBest: boolean) => void }
+  session.player.clearTime = 900
+  act(() => session.onClear(900, -1, true))
+  await act(async () => { await vi.advanceTimersByTimeAsync(1600) })
+  const card = screen.getByRole('dialog', { name: 'You made it' })
+  expect(card).toHaveTextContent('All starter courses done!')
+  vi.stubGlobal('location', { ...window.location, assign })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Build your own' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(assign).toHaveBeenCalledWith('/2d/build?new=1')
+})
+
+it('keeps Next world, not Build your own, while more courses follow', async () => {
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'course', id: 'first' }} startMode="play" onExit={() => {}} onNext={() => {}} />)
+  const session = state.session as unknown as { player: { clearTime: number }; onClear: (time: number, best: number, newBest: boolean) => void }
+  session.player.clearTime = 900
+  act(() => session.onClear(900, -1, true))
+  await act(async () => { await vi.advanceTimersByTimeAsync(1600) })
+  expect(screen.getByRole('button', { name: 'Next world' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Build your own' })).toBeNull()
 })

@@ -762,6 +762,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       ? { connection: s.roomStatus, isOwner: s.isHost, roomTitle: title, peopleCount: s.joined ? players.length : undefined, onOpenPeople: s.joined ? () => setPeople(true) : undefined }
       : undefined
   const buildHint = hint === 'build' && build && (s?.editCount ?? 0) === 0
+  // The last starter course: nothing comes next, so the card points at building one's own.
+  const lastCourse = source.kind === 'course' && !onNext && !race
   // A toast takes the hint's place at the top rather than landing on it.
   const playHint = hint === 'play' && !build && !!s?.joined && !covered && !toast
   const offlineAfterJoin = !!s?.room && s.joined && s.roomStatus === 'offline'
@@ -840,6 +842,14 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           <canvas ref={canvasRef} className="p2d-canvas" />
         </div>
 
+        {build && s && !race && (
+          // Play from the start flag, wherever the player was (Play alone carries on from where building began).
+          <div className="p2d-build-tools" onClickCapture={releaseFocus}>
+            <Button icon={<RotateCcw size={18} />} title="Play from the start flag" onClick={() => s.restartRun()}>
+              Play from start
+            </Button>
+          </div>
+        )}
         {build && s && <BuildShell editor={s.editor} theme={s.timeline.world.design.theme} look={s.timeline.world.design.style} compact={compact} touch={touch} drawerOpen={drawerOpen} onDrawerOpen={setDrawerOpen} />}
 
         {!build && s && (
@@ -926,7 +936,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         {clear && !menu && (
           <div className="p2d-overlay">
             <div className="p2d-card p2d-clear" role="dialog" aria-label="You made it">
-              <p className="p2d-kicker">{source.kind === 'course' ? 'Starter world' : 'Flag reached'}</p>
+              <p className="p2d-kicker">{lastCourse ? 'All starter courses done!' : source.kind === 'course' ? 'Starter world' : 'Flag reached'}</p>
               <h2 className="p2d-clear-title">{clear.newBest ? 'New best time!' : 'You made it!'}</h2>
               <p className="p2d-clear-time">
                 <span>Time</span> {formatTime(clear.time)}
@@ -937,16 +947,22 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
                   </>
                 )}
               </p>
+              {lastCourse && <p className="p2d-lead">You finished every starter course. Now build your own!</p>}
               {onNext && (
                 <Button variant="primary" fullWidth icon={<Play size={18} />} onClick={onNext} autoFocus>
                   Next world
                 </Button>
               )}
+              {lastCourse && (
+                <Button variant="primary" fullWidth icon={<Hammer size={18} />} autoFocus onClick={() => void leave(() => window.location.assign('/2d/build?new=1'))}>
+                  Build your own
+                </Button>
+              )}
               <Button
-                variant={onNext ? 'secondary' : 'primary'}
+                variant={onNext || lastCourse ? 'secondary' : 'primary'}
                 fullWidth
                 icon={<RotateCcw size={18} />}
-                autoFocus={!onNext}
+                autoFocus={!onNext && !lastCourse}
                 onClick={() => {
                   setClear(null)
                   sessionRef.current?.restartRun()

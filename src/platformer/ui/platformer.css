@@ -370,6 +370,18 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Building: Play from start, top right (the pipe panel opens below it). */
+.p2d-build-tools {
+  position: absolute;
+  z-index: var(--z-hud);
+  top: var(--space-3);
+  right: max(var(--space-3), env(safe-area-inset-right));
+}
+
+.p2d-build-tools .ui-button {
+  box-shadow: var(--shadow-md);
+}
+
 .p2d-stats {
   position: absolute;
   z-index: var(--z-hud);
