@@ -149,3 +149,27 @@ it('still reads an existing recovery when storage is full', async () => {
   expect(result.current.status).toBe('error')
   expect(result.current.recovery?.document).toEqual(guest)
 })
+// A world this app cannot open (e.g. saved by a newer version) must never receive the guest build.
+const unreadable = { ...cloud, schemaVersion: 99 } as unknown as typeof cloud
+it('never attaches a world whose build cannot be opened, so the guest build is never saved into it', async () => {
+  const request = vi.spyOn(client, 'request').mockResolvedValue({ world })
+  const { result } = renderHook(() => { useBrickStudioDocuments({}, true); return useClassroomWorld(true) })
+  await act(async () => { await expect(result.current.attach({ ...world, document: unreadable }, unreadable)).rejects.toThrow('couldn’t open this project') })
+  expect(result.current.world).toBeNull(); expect(isBrickStudioAutosaveSuspended()).toBe(false)
+  expect(sessionStorage.getItem('brick-studio.active-cloud-world.v1')).toBeNull()
+  expect(useBrickStore.getState().getDocumentSnapshot()).toEqual(guest)
+  act(() => { useBrickStore.getState().setDocumentMetadata({ environmentId: 'brick-valley' }) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+  expect(request).not.toHaveBeenCalled()
+})
+it('does not resume a world whose saved build cannot be opened', async () => {
+  sessionStorage.setItem('brick-studio.active-cloud-world.v1', JSON.stringify({ userId: 'a', worldId: world.id }))
+  const request = vi.spyOn(client, 'request').mockResolvedValue({ world: { ...world, document: unreadable } })
+  const { result } = renderHook(() => { useBrickStudioDocuments({}, true); return useClassroomWorld(true) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  expect(result.current.world).toBeNull(); expect(result.current.error).toMatch(/couldn’t open this project/)
+  act(() => { useBrickStore.getState().setDocumentMetadata({ environmentId: 'brick-valley' }) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
+  expect(request).toHaveBeenCalledTimes(1)
+  expect(request.mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
+})

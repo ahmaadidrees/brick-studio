@@ -224,6 +224,7 @@ function useCoarsePointerPreference() {
 
 const ACTIVE_CLOUD_WORLD_KEY = 'brick-studio.active-cloud-world.v1'
 const AUTO_WORLD_TITLE = 'Untitled build'
+const WORLD_UNAVAILABLE_MESSAGE = 'That world isn\'t available. It may have been removed, hidden by your teacher, or belong to another account.'
 
 /** A signed-in account that can own worlds right now (a forced password reset cannot save). */
 function signedInUserId() {
@@ -1392,7 +1393,8 @@ export default function BrickStudioApp({
     }
     await cloud.attach(world, document)
   }, [cloud, livePolicy])
-  const [worldUnavailable, setWorldUnavailable] = useState(false)
+  // False, or the reason the `?world=` project could not open (missing, or unreadable by this version).
+  const [worldUnavailable, setWorldUnavailable] = useState<string | false>(false)
   const entryWorldId = readOnly ? undefined : classroomEntry.worldId
   entryWorldPending.current = Boolean(entryWorldId) && !cloud.world && !worldUnavailable
   useEffect(() => {
@@ -1412,9 +1414,9 @@ export default function BrickStudioApp({
         if (world.format === 'hackable') { window.location.replace(`/2d/hackable?world=${encodeURIComponent(world.id)}`); return }
         if (!world.document) throw new Error('This world did not include a complete build.')
         await openCloudWorld(world.document, world)
-      } catch {
+      } catch (reason) {
         // Unknown, hidden, unshared or someone else's world: keep the current build and say so.
-        if (!cancelled) setWorldUnavailable(true)
+        if (!cancelled) setWorldUnavailable(reason instanceof Error && reason.name === 'CloudWorldUnreadableError' ? reason.message : WORLD_UNAVAILABLE_MESSAGE)
       }
     })()
     return () => { cancelled = true }
@@ -1525,7 +1527,7 @@ export default function BrickStudioApp({
       {worldSetupOpen && contentPreview && (
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
-      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>That world isn't available. It may have been removed, hidden by your teacher, or belong to another account.</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
+      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>{worldUnavailable}</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
       {cloud.retrying && cloud.error && <div className="classroom-recovery" role="status"><span>{cloud.error}</span><button onClick={() => void cloud.retry()}>Try now</button><button onClick={cloud.downloadRecovery}>Download a copy</button></div>}
       {!cloud.retrying && (cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {inviteSheet && <InviteSheet

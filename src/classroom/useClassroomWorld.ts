@@ -7,6 +7,10 @@ import { browserClassroomClient as client } from './client'
 import { createCloudAutosave, recoveryKey, type CloudRecovery, type CloudSaveStatus } from './cloudAutosave'
 import type { ClassroomWorld } from './contracts'
 const ACTIVE_KEY = 'brick-studio.active-cloud-world.v1'
+/** The account world's build can't be opened by this version of the app; the editor keeps what it had and saves nothing into it. */
+export class CloudWorldUnreadableError extends Error {
+  constructor() { super('We couldn’t open this project here, so nothing was changed. Reload the page and try again.'); this.name = 'CloudWorldUnreadableError' }
+}
 export function useClassroomWorld(enabled: boolean) {
   const [world, setWorld] = useState<ClassroomWorld | null>(null)
   const [status, setStatus] = useState<CloudSaveStatus>('saved')
@@ -36,6 +40,9 @@ export function useClassroomWorld(enabled: boolean) {
     const auth = client.getSession()
     if (!auth || auth.user.resetRequired || next.kind !== 'personal' || next.ownerId !== auth.user.id) throw new Error('Sign in to the owning account before opening this world.')
     const opening = ++operation.current
+    // A world that fails to load must never be attached: the editor would keep the guest build on
+    // screen and the next edit would save it into the account world.
+    if (!validateBrickStudioDocument(document).ok) throw new CloudWorldUnreadableError()
     if (active.current && await controller.current?.flush() === false) throw new Error('Your current world has unsaved changes. Download a recovery copy and reload the saved world before switching.')
     if (opening !== operation.current) return
     if (client.getSession()?.user.id !== auth.user.id) throw new Error('Your account changed. Please reopen the world.')
@@ -59,7 +66,13 @@ export function useClassroomWorld(enabled: boolean) {
     // an export button while editing and autosaving the server version over it.
     // Keep its original revision so Retry cannot overwrite another tab's save.
     const openedDocument = savedRecovery?.document ?? document
-    useBrickStore.getState().restoreDocument(openedDocument)
+    if (!useBrickStore.getState().restoreDocument(openedDocument).ok) {
+      // Defensive: both documents were checked above, but never autosave a build that did not open.
+      active.current = null; identity.current = null
+      try { sessionStorage.removeItem(ACTIVE_KEY) } catch { /* optional session resume */ }
+      release.current?.(); release.current = null
+      throw new CloudWorldUnreadableError()
+    }
     setWorld(next); setRecovery(savedRecovery)
     setStatus(savedRecovery ? 'error' : 'saved'); setRetrying(false)
     setError(savedRecovery ? 'Recovered unsaved changes from this tab. Review them, then retry saving or download a copy.' : '')

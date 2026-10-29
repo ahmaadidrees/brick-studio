@@ -204,6 +204,27 @@ describe('automatic account world for a signed-in fresh build', () => {
   })
 })
 
+describe('/build?world=<id> that this version cannot open', () => {
+  it('says so, keeps the build on screen, and never saves it into that world', async () => {
+    localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))
+    browserClassroomClient.setSession(student)
+    const calls = stubClassroomServer(({ document }) => ({ ...serverWorld(document), id: 'world-fresh' }))
+    const request = vi.mocked(browserClassroomClient.request)
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (path: string, method?: string, body?: unknown) => {
+      if (path === '/worlds/world-newer' && (method ?? 'GET') === 'GET') return { world: { ...serverWorld({ ...createBrickStudioDocument([brickB]), schemaVersion: 99 } as never), id: 'world-newer' } } as never
+      return server(path, method, body)
+    })
+    window.history.replaceState(null, '', '/build?world=world-newer')
+    render(<BrickStudioApp />)
+    expect(await screen.findByText('We couldn’t open this project here, so nothing was changed. Reload the page and try again.')).toBeInTheDocument()
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a'])
+    placeBrick(brickB)
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1000)) })
+    expect(calls.some(call => call.path === '/worlds/world-newer' && call.method === 'PUT')).toBe(false)
+  })
+})
+
 describe('/build?new=1', () => {
   it('clears the current draft after the New build confirm, strips the param, and forgets the resumable world', async () => {
     localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))
