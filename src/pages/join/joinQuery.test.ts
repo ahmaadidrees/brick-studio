@@ -4,9 +4,17 @@ import { allGreen, passwordRules, usernameRules } from './joinRules'
 
 describe('join query', () => {
   it('defaults to the join mode and upper-cases an invited code', () => {
-    expect(parseJoinQuery('')).toEqual({ mode: 'join', classCode: '', next: '' })
-    expect(parseJoinQuery('?classCode=room-42&mode=signin')).toEqual({ mode: 'signin', classCode: 'ROOM-42', next: '' })
+    expect(parseJoinQuery('')).toEqual({ mode: 'join', classCode: '', next: '', codeFirst: false })
+    expect(parseJoinQuery('?classCode=room-42&mode=signin')).toEqual({ mode: 'signin', classCode: 'ROOM-42', next: '', codeFirst: false })
     expect(parseJoinQuery('?mode=nonsense').mode).toBe('join')
+  })
+
+  it('looks a class code up first when the link names no mode (QR, printout, landing box)', () => {
+    expect(parseJoinQuery('?classCode=room-42').codeFirst).toBe(true)
+    expect(parseJoinQuery('?classCode=room-42&mode=nonsense').codeFirst).toBe(true)
+    expect(parseJoinQuery('?classCode=room-42&mode=join').codeFirst).toBe(false)
+    expect(parseJoinQuery('?classCode=%20').codeFirst).toBe(false)
+    expect(parseJoinQuery('?mode=signin').codeFirst).toBe(false)
   })
 
   it('keeps only same-app destinations', () => {

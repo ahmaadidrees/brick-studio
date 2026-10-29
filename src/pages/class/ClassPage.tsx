@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Blocks, CircleAlert, CircleCheck, Library, LoaderCircle, Plus, Settings, Users } from 'lucide-react'
 import { createBrickStudioDocument } from '@brick-studio/core'
-import { Button, SegmentedControl } from '../../ui'
+import { Button, SegmentedControl, Sheet } from '../../ui'
 import type { ClassroomCheckpoint, ClassroomStudent, ClassroomWorldMember } from '../../classroom/contracts'
 import { ManageStudentForm } from '../../classroom/RosterView'
 import { errorMessage } from '../../classroom/panelShared'
@@ -21,6 +21,9 @@ import { createDemoClassPageClient, type DemoVariant } from './demoData'
 import './class.css'
 
 export type ClassTab = 'students' | 'worlds' | 'shelf' | 'settings'
+
+/** How often the roster reloads while students can join and the teacher is watching it. */
+const ROSTER_REFRESH_MS = 10_000
 
 type Props = {
   client?: ClassPageClient
@@ -61,6 +64,8 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   const [studentsLoading, setStudentsLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [editingStudent, setEditingStudent] = useState<ClassroomStudent | null>(null)
+  /** The temporary password just saved, shown large until the teacher has read it out. */
+  const [issued, setIssued] = useState<{ name: string; username: string; password: string } | null>(null)
   const [selectedWorld, setSelectedWorld] = useState<ClassPageWorld | null>(null)
   const [members, setMembers] = useState<ClassroomWorldMember[]>([])
   const [checkpoints, setCheckpoints] = useState<ClassroomCheckpoint[]>([])
@@ -110,6 +115,19 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
     return () => { cancelled = true }
   }, [client, classId, teacher])
 
+  // Day one: 28 kids join while the teacher watches the roster. While joining is open, the Students tab is
+  // showing and the page is visible, reload it every few seconds (never while a student is being edited).
+  const enrollmentOpen = Boolean(currentClass?.enrollmentOpen)
+  useEffect(() => {
+    if (!teacher || !classId || !enrollmentOpen || tab !== 'students' || editingStudent) return
+    let cancelled = false
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'hidden') return
+      loadStudents(client, classId).then(result => { if (!cancelled) setStudents(result) }).catch(() => { /* the next tick tries again */ })
+    }, ROSTER_REFRESH_MS)
+    return () => { cancelled = true; window.clearInterval(timer) }
+  }, [client, classId, teacher, enrollmentOpen, tab, editingStudent])
+
   useEffect(() => {
     if (editingStudent && studentFocus.current === 'password') { document.querySelector<HTMLInputElement>('input[name="temporaryPassword"]')?.focus(); studentFocus.current = null }
     else if (editingStudent || selectedWorld) detailHeading.current?.focus()
@@ -135,6 +153,7 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
   const onManageStudent = (student: ClassroomStudent, focus?: 'password') => { studentFocus.current = focus ?? null; setEditingStudent(student) }
   const onUpdateStudent = (student: ClassroomStudent, values: { username: string; rosterName: string; temporaryPassword?: string }) => run(async () => {
     await patchStudent(client, classId, student.id, values)
+    if (values.temporaryPassword) setIssued({ name: values.rosterName || student.rosterName, username: values.username || student.username, password: values.temporaryPassword })
     setStudents(await loadStudents(client, classId)); setEditingStudent(null)
     setNotice(values.temporaryPassword ? 'Student account updated. They are signed out and will choose a new password next time.' : 'Student account updated.')
   })
@@ -247,5 +266,17 @@ export default function ClassPage({ client = resolveClient(), navigate = href =>
             </> : <p className="class-help" role="status">Pick a class from the list, or create one in Settings.</p>}
           </main>
         </div>}
+    {issued && <Sheet
+      open
+      variant="dialog"
+      size="sm"
+      title={`${issued.name}’s new password`}
+      description="Read it out or write it down. They choose their own password when they sign in."
+      onClose={() => setIssued(null)}
+      footer={<Button variant="primary" onClick={() => setIssued(null)}>Done</Button>}
+    >
+      <p className="class-temp-password">{issued.password}</p>
+      <p className="class-temp-username">Username: <strong>{issued.username}</strong></p>
+    </Sheet>}
   </div>
 }

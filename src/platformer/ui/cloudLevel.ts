@@ -1,4 +1,4 @@
-import { createPlatformerDocument, validatePlatformerDocument } from '@brick-studio/platformer-core/document'
+import { createPlatformerDocument, isPlatformerDocument, validatePlatformerDocument } from '@brick-studio/platformer-core/document'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { browserClassroomClient, ClassroomError } from '../../classroom/client'
 import type { CloudSaveStatus } from '../../classroom/cloudAutosave'
@@ -10,18 +10,35 @@ import type { ClassroomWorld } from '../../classroom/contracts'
  * checkpoints all work as they do for 3D worlds.
  */
 
-/** Thrown when the world exists but is a 3D build (the caller sends it to the 3D studio). */
+/** Thrown when the world exists but is another kind of project (the caller sends it to its own page). */
 export class NotALevelError extends Error {
-  constructor(readonly worldId: string) {
-    super('This world is a 3D build.')
+  constructor(
+    readonly worldId: string,
+    readonly format?: ClassroomWorld['format'],
+  ) {
+    super('This world is not a 2D level.')
+  }
+}
+
+/**
+ * Thrown when the world is a 2D level this app cannot read (a newer version, or damaged). It must not go to the 3D
+ * studio: that sends every 2D level straight back here, and the page would bounce between the two for ever.
+ */
+export class UnreadableLevelError extends Error {
+  constructor(
+    readonly world: ClassroomWorld,
+    readonly reason: string,
+  ) {
+    super('This project could not be opened.')
   }
 }
 
 export async function loadCloudLevel(id: string): Promise<{ world: ClassroomWorld; level: LevelDesign }> {
   const { world } = await browserClassroomClient.request<{ world: ClassroomWorld }>(`/worlds/${encodeURIComponent(id)}`)
   const checked = validatePlatformerDocument(world.document)
-  if (!checked.ok) throw new NotALevelError(world.id)
-  return { world, level: checked.level }
+  if (checked.ok) return { world, level: checked.level }
+  if (world.format === '2d' || isPlatformerDocument(world.document)) throw new UnreadableLevelError(world, checked.reason)
+  throw new NotALevelError(world.id, world.format)
 }
 
 /** A world's metadata without its document (title, owner, sharing, whether the caller may edit). */

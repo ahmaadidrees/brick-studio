@@ -1,0 +1,77 @@
+BRICKGINEERS: INDEPENDENT OVERNIGHT ADDENDUM
+October 28, 2026, approximately 10:30 PM Pacific
+
+Current project
+Checkout: /Users/ahmaadidrees/.codex/worktrees/microbit-editor-plan
+Branch: claude/code-lab-on-main, HEAD 9b0a43e
+PR #22: https://github.com/ahmaadidrees/brick-studio/pull/22
+The Claude UI shows it open with passing checks. Source checkout remains unchanged apart from the pre-existing untracked docs/qa/friction-2026-10-28 folder. Production was not inspected in this pass.
+
+Today’s work now includes the Hackable Platformer redesign, inspectable Hero code, powers and custom-power sharing/class shelf, real local/account project support, touch/responsive changes, and the landing marketing pass. The live local preview is localhost:5179. I explored the landing entry, Build/Code and Hero’s power picker at 1366x768. This was desktop Chromium emulation, not physical-device testing. I read the open Claude thread and its updated recovery plan; Computer History was supplementary. Five independent read-only explorers reviewed gaps beyond the twelve existing reports. No implementation or messages to Claude were performed.
+
+Existing plan, not a new finding
+Read docs/qa/friction-2026-10-28/RECOVERY.md and explorer-reports/ first. Claude’s two passes already contain about 140 reported issues, with a reproduced Stage Costumes save-loss bug. Avoid adding those again. The plan proposes eight lanes but implementation is still awaiting owner scope approval in the inspected thread.
+
+RECOMMENDED ADDITIONS
+Paths below are relative to the checkout above. Sizes are estimates, not commitments.
+
+1. MUST: cyclic broadcasts bypass the runtime safety limits.
+A single target with “when I receive a -> broadcast b” and “when I receive b -> broadcast a” appends threads indefinitely inside one live-array sweep. Budget and maximum-sweep checks occur outside that loop.
+Evidence: src/platformer/lab/core/runtime.ts:428-444 and 1004-1019. Stage calls step synchronously, so a non-returning step blocks UI handling too.
+Proof: independently reran actual Runtime code bundled in memory with existing esbuild. With opBudget=1 and an external guard, result was:
+{"guard":"diagnostic guard","broadcastsInOneTick":1001,"configuredBudget":1,"tick":0,"threads":1001}
+The unlimited version was deliberately not run in a browser.
+Scope: S-M, one core runtime owner. Bound work within live-thread iteration while preserving broadcast ordering and correctly resuming deferred work.
+Acceptance: cyclic broadcasts return control, UI and Stop remain responsive, normal messages retain order. This is more serious than the already-known general script-budget performance concern.
+Related behavior: Stop All clears current threads, but subsequent physics hooks can create new land/bump/leave-ground scripts. Explorer diagnostic: stopped at y=15; after ten steps y=10 and land counter increased once. See runtime.ts:243-257,457; core/index.ts:35; platformer.ts:303-361. Define automatic-event behavior after Stop All before changing it; retain intended explicit key/click restart behavior.
+
+2. MUST within recovery: make downloaded backups restorable through My projects.
+Hackable accepts 5 MiB save envelopes (core/save.ts:32-33), but unified My projects import rejects text above 3,000,000 characters before examining project kind (src/projects/projectFile.ts:20,85-86). Hackable export has no corresponding smaller cap (studio/persist/projectIo.ts:36-50). The cloud saver even recommends a file for oversized projects.
+Proof: code-confirmed contract mismatch, not a large real-project browser round-trip.
+Scope: S, coordinated save/import contract. Align file limits, account limits and useful messages; do not merely inflate every limit.
+Acceptance: a valid project above 3 MB exports, imports through My projects and reopens identically. Local, account and file boundaries should have explicit distinct limits where necessary.
+
+3. MUST within recovery: rebuild orphaned local-project entries.
+Hackable writes project text and its listing index separately (persist/hackableProjects.ts:106-115). Index corruption returns an empty list without scanning saved payloads (:59-66,80-92). StudioApp.tsx:77-80 rejects a direct draft URL if it is absent from the index, even if the payload survives.
+Proof: explorer used the actual exported functions with isolated in-memory Storage. Successful payload write followed by failed index write left the project stored, returned a storage error and listed no project.
+Scope: S-M, same owner as save/recovery. Recover index entries or direct draft payloads safely; never silently discard a recoverable project.
+Acceptance: force index-write failure/corruption, reopen and recover the exact project. Existing damaged-index tests do not prove recovery.
+
+4. SHOULD: shared powers must include nested custom-block dependencies.
+makePower discovers procedure calls only from the selected scripts, adds those definitions and stops (powers/powers.ts:277-288). Script -> custom block A -> custom block B therefore exports script+A without B. Runtime treats the missing B call as a silent no-op (core/runtime.ts:959-965). Both a power file and the class shelf transport this same incomplete power.
+Proof: actual pure makePower function executed in memory returned block IDs ["script","A"], omitting B.
+Scope: S, recursive dependency closure with visited-set handling; keep dependency variables/credits intact.
+Acceptance: make -> export/share -> import/snap -> play in a different project behaves like the original. Include mutual recursion so dependency collection cannot itself loop.
+
+5. SHOULD: finish the submit -> approve -> use class-shelf journey.
+Teacher Shelf loads only on mount/class change (src/pages/class/ShelfTab.tsx:57-66); its successful screen has no refresh or polling. Student picker loads when opened or after that student shares (powers/useClassShelf.ts:36-51). A teacher who opened Shelf before submissions never sees them arrive without leaving/reopening; an already-open student picker never sees an approval.
+Proof: code-confirmed, not a three-identity live journey.
+Scope: S, teacher/power UI owners. Explicit refresh plus modest visible-only polling can be enough; preserve current selection/Peek.
+Also cancel/reject stale responses on session/class changes: useClassShelf.ts:36-45 can let a delayed old-account request repopulate names/descriptions after sign-out. This is a stale-display race, not a demonstrated backend authorization bypass. Existing Worker membership/review/ownership checks looked sound.
+Acceptance: three local identities submit, approve and snap without browser reload/tab cycling; delayed account A response cannot appear after switching to B.
+
+6. IF TIME: bound image-cache lifetime and cancel late audio.
+The module-global ImageCache retains every unique image URL forever (stage/renderer.ts:21-45). Costume edits create new assets, so replaced revisions remain held. Explorer diagnostic retained all 200 unique revisions; actual Chromebook memory growth remains unmeasured.
+Web Audio awaits fetch/decode and starts without checking intervening Stop (stage/audio.ts:65-100). stopAll only stops sources already active (:127-131). Explorer delayed-decode diagnostic: play -> Stop -> resolve produced starts=1, stops=0, activeSounds=1. Repeated uncached requests also decode separately.
+Scope: S-M cache lifecycle; S audio cancellation/generation guard and in-flight deduplication.
+Acceptance: repeated costume editing/project switching has bounded retained cache; Pause/Build during initial sound loading never produces a late sound. Do not turn this into a broad speculative performance rewrite.
+
+7. LATER / SMALL BOUNDARY CHECK: shelf payload limits disagree.
+Worker checks compact JSON against 65,536 bytes (multiplayer/worker/src/classroom/shelf.ts:39-45); migration checks JSONB text length after formatting (supabase/migrations/202610280001_brick_class_shelf.sql:20-21). Explorer’s schema-shaped example was 64,275 compact bytes and estimated 70,091 after formatting. It may pass Worker validation then fail with a generic service error.
+Evidence is code/arithmetic only, not a database reproduction. Verify in isolated SQL before changing; map size errors clearly. Lower priority than the first five findings.
+
+CORRECT THE OVERNIGHT PLAN BEFORE RUNNING IT
+
+- One owner should coordinate Hackable data safety, including CostumeEditor.tsx, store.ts, saving and navigation flush. F1/F2 currently overlap or omit these shared files; the nav fix needs F2-owned screen/StudioShell.tsx. Deliver one end-to-end slice rather than assembling incompatible partial fixes.
+- Include already-poisoned project recovery in the Stage-costume acceptance. Preventing new bad saves does not recover existing account projects rejected by the parser.
+- Autosave retries must classify errors: retry transient/offline failures; do not blindly retry 409 conflicts, validation or authorization failures. Two-tab acceptance must preserve both versions and allow downloading the unsaved one. Hackable has a separate saver from 3D/2D.
+- “Keep three 3D drafts” is a larger project-model change. src/projects/projects.ts:36,69-78,125-128 and ProjectSections.tsx:203-225 assume one 3D build. That crosses A/C ownership. Tonight, prioritize safe replacement/download and stale-tab prevention; defer multi-draft migration unless fully owned and tested.
+- Configurable backend ports need not block every lane. Mocks support unit checks; use one browser/integration owner and one local stack unless concurrent backend acceptance really needs more. Danville and GameCoder are using this Mac too.
+- Integrate and exercise slices during the night. Morning should verify an already-integrated candidate, not discover its first combined behavior.
+
+PRACTICAL SINGLE-NIGHT CUT
+First: existing save-loss/auth/route/conflict fixes, runtime broadcast guard, backup round-trip and index recovery. Integrate and run the real save/reload/reopen and two-tab/offline journeys.
+Then: power portability and the three-person shelf loop; full-room error, shared-device identity, touch Dash, readable teacher reset and the worst portrait Code layout from the existing list if capacity remains.
+Defer: multiple-3D-draft migration, broad wording sweep, new Remote integrations, speculative performance work and new product modes. Keep cache/audio fixes as compact follow-ons if the core candidate is already sound.
+
+This addendum is a recommendation for owner review, not authorization to implement, push or deploy. Preserve the original reports and mark code-reading findings separately from actual diagnostic/browser proof.

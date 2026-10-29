@@ -269,6 +269,31 @@ describe('Storage & Autosave (storage.ts)', () => {
 
     stopWatching()
   })
+
+  it('saves at once when the tab is put away (iPads and Chromebooks may never send pagehide)', () => {
+    vi.useFakeTimers()
+    const store = new StudioStore(createStarterProject())
+    const stopWatching = watchAndSave(store, { debounceMs: 500, storage: memoryStorage })
+    store.addCopy('brick_coin', 300, 300)
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    visibility.mockRestore()
+    expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toContain('copy1')
+    stopWatching()
+  })
+
+  it('flush() saves now and keeps watching', () => {
+    vi.useFakeTimers()
+    const store = new StudioStore(createStarterProject())
+    const watch = watchAndSave(store, { debounceMs: 500, storage: memoryStorage })
+    store.addCopy('brick_coin', 300, 300)
+    watch.flush()
+    expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toContain('copy1')
+    store.addCopy('brick_coin', 320, 300)
+    vi.advanceTimersByTime(600)
+    expect(memoryStorage.getItem(CODE_LAB_STORAGE_KEY)).toContain('copy2')
+    watch()
+  })
 })
 
 describe('unreadable saves are held, not overwritten (s8 blockers)', () => {

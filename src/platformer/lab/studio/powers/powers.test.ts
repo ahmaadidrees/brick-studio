@@ -2,11 +2,36 @@ import { describe, expect, it } from 'vitest'
 import { play } from '../../core/index'
 import { validateDesign } from '../../core/project'
 import { createStarterProject } from '../starter'
+import { Blocks } from '../blockBuilder'
 import { StudioStore } from '../store'
 import { builtInPowers, fits, makePower, powerFromFile, powerToFile, whyNot, type PowerBrick } from './powers'
 
 const power = (id: string): PowerBrick => builtInPowers().find((p) => p.id === id)!
 const heroOf = (store: StudioStore) => store.brick('brick_hero')!
+const testCostume = { name: 'c1', width: 16, height: 16, rotationCenterX: 8, rotationCenterY: 8 }
+
+/**
+ * A brick whose every-tick script calls My Block "step a"; "step a" calls "step b"; "step b" can call "step a" back
+ * (never taken: a stays small). "unused" is called by nothing.
+ */
+function nestedCustomBlocks() {
+  const store = new StudioStore(createStarterProject())
+  const brickId = store.addBrick('Counter', testCostume)
+  store.addCopy(brickId, 0, 0)
+  const b = new Blocks('t')
+  const A = { proccode: 'step a', argumentNames: [] }
+  const B = { proccode: 'step b', argumentNames: [] }
+  const unused = { proccode: 'unused', argumentNames: [] }
+  const script = b.script('Count every tick', b.blk('platformer_everytick'), [b.call(A)])
+  b.define(A, 'A', [b.change('a', 1), b.call(B)])
+  b.define(B, 'B', [b.change('b', 10), b.when(b.gt(b.v('a'), 100000), [b.call(A)])])
+  b.define(unused, 'never called', [b.change('c', 1)])
+  store.setWorkspace(brickId, {
+    blocks: { languageVersion: 0, blocks: b.scripts },
+    variables: [{ id: 'a', name: 'a count', type: '' }, { id: 'b', name: 'b count', type: '' }, { id: 'c', name: 'c count', type: '' }],
+  })
+  return { store, brickId, scriptId: script.id as string }
+}
 
 /** Highest the Hero gets over a run, pressing space on the given ticks (held for 4 ticks each). */
 function peakHeight(store: StudioStore, presses: number[], ticks = 90): number {
@@ -140,6 +165,58 @@ describe('making a power and sharing it as a file', () => {
     const store = new StudioStore(createStarterProject())
     expect(store.snapPower('brick_walker', back)).not.toBeNull()
     expect(validateDesign(store.getState().project.design)).toEqual([])
+  })
+
+  it('a script that calls My Block A, which calls My Block B, takes both (and their variables) and plays the same elsewhere', () => {
+    const { store, brickId, scriptId } = nestedCustomBlocks()
+    const made = makePower(store.getState().project, brickId, { name: 'Counter', by: 'Ana', what: 'counts', blockIds: [scriptId] })
+    const procs = made.blocks.map((b) => (b.extraState as { proccode?: string } | undefined)?.proccode).filter(Boolean).sort()
+    expect(procs).toEqual(['step a', 'step b']) // not the unused My Block
+    expect(made.blocks).toHaveLength(3)
+    expect(made.variables.map((v) => v.name).sort()).toEqual(['a count', 'b count'])
+    expect(made.credits).toEqual(['Ana'])
+
+    // Through a file and into a different project, it behaves like the original.
+    const back = powerFromFile(powerToFile(made))!
+    const other = new StudioStore(createStarterProject())
+    const otherId = other.addBrick('Counter bot', testCostume)
+    other.addCopy(otherId, 0, 0)
+    const snap = other.snapPower(otherId, back)!
+    expect(other.getState().diagnostics[otherId]?.filter((d) => d.severity === 'error') ?? []).toEqual([])
+    expect(validateDesign(other.getState().project.design)).toEqual([])
+    const counts = (s: StudioStore, id: string, vars: string[]) => {
+      const rt = play(s.getState().project.design)
+      for (let i = 0; i < 12; i++) rt.step()
+      const t = rt.world.targets.find((x) => x.brickId === id && !x.isClone)!
+      return vars.map((v) => t.variables[v])
+    }
+    const original = counts(store, brickId, ['a', 'b'])
+    expect(original[0]).toBeGreaterThan(0)
+    expect(original[1]).toBe(Number(original[0]) * 10)
+    expect(counts(other, otherId, [`${snap.id}_a`, `${snap.id}_b`])).toEqual(original)
+  })
+
+  it('a new script that calls a My Block from Ana\'s power credits Ana first', () => {
+    const { store, brickId, scriptId } = nestedCustomBlocks()
+    const ana = makePower(store.getState().project, brickId, { name: 'Counter', by: 'Ana', what: '', blockIds: [scriptId] })
+    const other = new StudioStore(createStarterProject())
+    const otherId = other.addBrick('Counter bot', testCostume)
+    other.snapPower(otherId, ana)
+    const b = new Blocks('sam')
+    const mine = b.flag('Count once at the start', [b.call({ proccode: 'step a', argumentNames: [] })])
+    const ws = structuredClone(other.getState().project.workspaces[otherId]) as { blocks: { blocks: unknown[] } }
+    ws.blocks.blocks.push(mine)
+    other.setWorkspace(otherId, ws)
+    const made = makePower(other.getState().project, otherId, { name: 'Start count', by: 'Sam', what: '', blockIds: [mine.id as string] })
+    expect(made.credits).toEqual(['Ana', 'Sam'])
+    expect(made.blocks.filter((x) => x.type === 'procedures_definition')).toHaveLength(2)
+  })
+
+  it('My Blocks that call each other come along once each', () => {
+    const { store, brickId, scriptId } = nestedCustomBlocks()
+    const made = makePower(store.getState().project, brickId, { name: 'Counter', by: 'Ana', what: '', blockIds: [scriptId] })
+    const defs = made.blocks.filter((b) => b.type === 'procedures_definition')
+    expect(defs).toHaveLength(2)
   })
 
   it('refuses files that are not powers', () => {

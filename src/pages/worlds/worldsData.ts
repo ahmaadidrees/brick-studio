@@ -140,6 +140,13 @@ export const buildHref = (world: Pick<WorldsWorld, 'id' | 'format'>) =>
 export const liveHref = (world: Pick<WorldsWorld, 'id' | 'format'>) =>
   // Hackable Platformers have no live rooms yet: a classmate's opens to look at and copy.
   world.format === 'hackable' ? hackableHref.world(world.id) : `${isLevel2d(world) ? '/2d/w' : '/live'}/${world.id.replaceAll('-', '')}`
+/** The owner's way into the room right after inviting (`?invited=1` joined to any query the address already has). */
+export const invitedHref = (world: Pick<WorldsWorld, 'id' | 'format'>) => {
+  const href = liveHref(world)
+  return `${href}${href.includes('?') ? '&' : '?'}invited=1`
+}
+/** Kinds with a live room to build in together. A Hackable Platformer has none: classmates look and make a copy. */
+export const canBuildTogether = (world: Pick<WorldsWorld, 'format'>) => world.format !== 'hackable'
 /** A new 2D level, next to "New build". */
 export const NEW_LEVEL_2D_HREF = '/2d/build?new=1'
 export const SAVE_DRAFT_HREF = '/build?classroom=save'

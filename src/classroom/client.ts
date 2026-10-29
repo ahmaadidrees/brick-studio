@@ -41,6 +41,10 @@ export class ClassroomClient implements ClassroomClientSurface {
   private refreshing: { epoch: number; promise: Promise<ClassroomAuth> } | null = null
   private epoch = 0
   private listeners = new Set<() => void>()
+  private signOutGuards = new Set<() => Promise<boolean>>()
+  // True only while this tab's own Sign out clears the session, so listeners can tell a chosen
+  // sign-out from an involuntary one (an expired or revoked sign-in, or another tab signing out).
+  private signingOut = false
   constructor(
     private base = (import.meta.env.VITE_CLASSROOM_SERVER_URL || import.meta.env.VITE_LIVE_SERVER_URL || '').replace(/\/$/, ''),
     private fetcher: typeof fetch = fetch,
@@ -242,7 +246,24 @@ export class ClassroomClient implements ClassroomClientSurface {
   }
   async signOut() {
     const epoch = this.epoch
-    try { await this.request('/auth/logout', 'POST') } finally { if (this.epoch === epoch) this.setSession(null) }
+    try { await this.request('/auth/logout', 'POST') } finally {
+      if (this.epoch === epoch) {
+        this.signingOut = true
+        try { this.setSession(null) } finally { this.signingOut = false }
+      }
+    }
+  }
+  /** True while this tab's own Sign out is ending the session (read it from a `subscribe` listener). */
+  isSigningOut = () => this.signingOut
+  /**
+   * Work that must be saved before a chosen sign-out, e.g. an account world's waiting autosave.
+   * A guard resolves false to keep the session (the student chose to stay). Returns the unregister.
+   */
+  guardSignOut(guard: () => Promise<boolean>) { this.signOutGuards.add(guard); return () => { this.signOutGuards.delete(guard) } }
+  /** Runs every sign-out guard; false means something unsaved asked to stay signed in. */
+  async prepareSignOut() {
+    for (const guard of [...this.signOutGuards]) if (!await guard()) return false
+    return true
   }
 }
 export const browserClassroomClient = new ClassroomClient()

@@ -154,7 +154,11 @@ export const HERO_KNOB_GROUPS: ReadonlyArray<{ id: string; label: string; knobId
 /** How many tuning numbers are tucked under "More tuning". */
 export const HERO_MORE_TUNING_COUNT = HERO_KNOB_GROUPS.reduce((n, g) => n + g.knobIds.length, 0)
 
-/** Where "hero hurt" sends the Hero: the level start (copy center; the 16 x 16 costume stands on the ground at y 24). */
+/**
+ * Where the starter level's Hero stands (copy center; the 16 x 16 costume stands on the ground at y 24). "hero hurt" does
+ * not use it: the Hero remembers where it first stands after the level starts ("start x", "start y"), so a kid who moves
+ * the Hero gets it back where they put it.
+ */
 export const HERO_START = { x: 60, y: 24 } as const
 
 /** The Hero's own working memory. Not knobs: they change every tick. */
@@ -186,6 +190,8 @@ const STATE_VARIABLES: ReadonlyArray<{ id: string; name: string }> = [
   { id: 'jump_now', name: 'jump now' }, // the takeoff speed this tick (the feel scripts can raise it)
   { id: 'float_now', name: 'float gravity for this jump' },
   { id: 'gravity_now', name: 'gravity now' },
+  { id: 'start_x', name: 'start x' }, // where I start this level (where I first stand): getting hurt sends me back here
+  { id: 'start_y', name: 'start y' },
 ]
 
 export function heroVariables(): VariableDecl[] {
@@ -219,10 +225,23 @@ export function withLabel<T extends Json>(block: T, text: string): T {
 
 export function createHeroWorkspace(): WorkspaceJson {
   const ids = makeIds()
-  const blk = (type: string, extra: Json = {}): Json => ({ type, id: ids.next(), ...extra })
+  // Blocks added after the Hero shipped take ids from their own sequence (`later`), so every older block keeps its id.
+  let idSource: Ids = ids
+  let laterCount = 0
+  const laterIds: Ids = { next: () => `hero_start_${++laterCount}` }
+  const later = <T>(make: () => T): T => {
+    const before = idSource
+    idSource = laterIds
+    try {
+      return make()
+    } finally {
+      idSource = before
+    }
+  }
+  const blk = (type: string, extra: Json = {}): Json => ({ type, id: idSource.next(), ...extra })
 
   // ---- values
-  const num = (value: number): Conn => ({ shadow: { type: 'math_number', id: ids.next(), fields: { NUM: value } } })
+  const num = (value: number): Conn => ({ shadow: { type: 'math_number', id: idSource.next(), fields: { NUM: value } } })
   const as = (c: Conn | number): Conn => (typeof c === 'number' ? num(c) : c)
   const v = (id: string): Conn => ({ block: blk('data_variable', { fields: { VARIABLE: id } }) })
   const op = (type: string, a: Conn | number, b: Conn | number, names: [string, string] = ['NUM1', 'NUM2']): Conn => ({
@@ -314,9 +333,15 @@ export function createHeroWorkspace(): WorkspaceJson {
         blk('motion_setrotationstyle', { fields: { STYLE: 'left-right' } }),
         setX(0),
         setY(0),
+        // Where getting hurt sends me back: where I was placed, then the spot where I first stand (standing, like the
+        // old fixed start). So a Hero the kid moved comes back where they put it.
+        ...later(() => {
+          const here = (): Json[] => [set('start_x', { block: blk('motion_xposition') }), set('start_y', { block: blk('motion_yposition') })]
+          return [...here(), blk('control_wait_until', { inputs: { CONDITION: onGround() } }), ...here()]
+        }),
       ]),
     }),
-    'When the level starts: I do my own gravity and my own moving, so the Platformer leaves me alone',
+    'When the level starts: I do my own gravity and my own moving, and remember where I start',
   )
 
   tick('basics', 'Read the arrow keys, x and space', [
@@ -530,15 +555,15 @@ export function createHeroWorkspace(): WorkspaceJson {
   bump('feel', 'Run meter: running into a wall on my left drops it', 'right', JSON.parse(JSON.stringify(meterLoss), (k, val) => (k === 'id' ? ids.next() : val)))
 
   // Step 6: how the Hero answers the rest of the level. Messages come from the Spring, Walkers, Spikes, Lava and Bounce blocks.
-  const goTo = (x: number, y: number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
+  const goTo = (x: Conn | number, y: Conn | number): Json => blk('motion_gotoxy', { inputs: { X: as(x), Y: as(y) } })
   const receive = (message: string, label: string, body: Json[]): Json =>
     place('basics', blk('event_whenbroadcastreceived', { fields: { BROADCAST_OPTION: message }, next: sub1(body) }), label)
   // The Spring: one big upward speed (gravity keeps pulling it down).
   receive('boing', 'When a Spring says boing: fly up', [setY(14)])
   // A stomped Walker: a small bounce.
   receive('stomped', 'When I stomp a Walker: bounce', [setY(8)])
-  // Hurt (by a Walker, Spikes or Lava): back to the start, standing still.
-  receive('hero hurt', 'When I get hurt: go back to the start', [goTo(HERO_START.x, HERO_START.y), setX(0), setY(0)])
+  // Hurt (by a Walker, Spikes or Lava): back to where I started this level, standing still.
+  receive('hero hurt', 'When I get hurt: go back to where I started', [goTo(v('start_x'), v('start_y')), setX(0), setY(0)])
   // A Bounce block under me says bounce: launch again, higher when jump is held (the old bounceHigh 5.5 / bounceLow 3.25
   // px/frame, times 2 for ticks: 11 and 6.5).
   receive('bounce', 'When a Bounce block says bounce: launch again, higher if I hold jump', [either(key('space'), [setY(11)], [setY(6.5)])])

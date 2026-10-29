@@ -3,6 +3,7 @@ import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { clearLocalBrickStudioProject, loadLocalBrickStudioProject, saveLocalBrickStudioProject, type BrickStudioStorage } from '../brick/documentPersistence'
 import type { BrickStudioDocument } from '../brick/brickDocument'
 import { browserClassroomClient, type ClassroomClient } from '../classroom/client'
+import { formatSavedDate } from '../classroom/panelShared'
 import type { ClassroomWorld } from '../classroom/contracts'
 import { createCloudLevel } from '../platformer/ui/cloudLevel'
 import { deleteDraft, listDrafts, loadDraft, saveDraft } from '../platformer/ui/drafts'
@@ -69,6 +70,22 @@ export function listLocalProjects(store = storage()): LocalProject[] {
   const three = local3d(store)
   if (three) out.push({ where: 'local', id: LOCAL_3D_ID, kind: '3d', title: 'My 3D build', updated: 0, href: '/build', bricks: three.bricks })
   return out
+}
+
+const startOfDay = (ms: number) => new Date(ms).setHours(0, 0, 0, 0)
+
+/**
+ * How old a project on this computer is, in kid words ("saved 3 days ago"), so someone on a shared device can tell
+ * their projects from other people's. The 3D build keeps no date, so it says how many bricks it has instead.
+ */
+export function localProjectAge(item: Pick<LocalProject, 'updated' | 'bricks'>, now = Date.now()): string {
+  if (!item.updated) return item.bricks ? `${item.bricks} ${item.bricks === 1 ? 'brick' : 'bricks'}, no date` : 'no date'
+  const days = Math.max(0, Math.round((startOfDay(now) - startOfDay(item.updated)) / 86_400_000))
+  if (days === 0) return 'saved today'
+  if (days === 1) return 'saved yesterday'
+  if (days < 7) return `saved ${days} days ago`
+  if (days < 35) { const weeks = Math.floor(days / 7); return `saved ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago` }
+  return `saved ${formatSavedDate(new Date(item.updated).toISOString())}`
 }
 
 /** A local project's content, for a download or a move to the account. */

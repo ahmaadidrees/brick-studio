@@ -29,7 +29,7 @@ export type ClassPageData = { classes: ClassPageClass[]; worlds: ClassPageWorld[
 /** The code students type on the join screen: the enrollment code while it exists, else the sign-in code. */
 export const classCode = (classroom: Pick<ClassPageClass, 'code' | 'loginCode'>) => classroom.code || classroom.loginCode
 
-/** Invite links open account creation first: `/join?classCode=<code>` on this origin. */
+/** Invite links and the QR: `/join?classCode=<code>` on this origin, which looks the class up and shows the names to tap plus “I’m new”. */
 export function joinLink(code: string) {
   const url = new URL('/join', window.location.origin)
   url.searchParams.set('classCode', code)

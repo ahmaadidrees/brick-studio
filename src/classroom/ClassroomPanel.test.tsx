@@ -501,7 +501,7 @@ describe('teacher roster (board 13)', () => {
     render(<ClassroomPanel {...props()} intent="class" client={signedIn(teacherAuth, fetcher)} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Manage Alex R.' }))
     fireEvent.click(screen.getByRole('button', { name: 'Generate temporary password' }))
-    expect((screen.getByLabelText('Temporary password') as HTMLInputElement).value).toMatch(/^[A-Za-z2-9]{12}$/)
+    expect((screen.getByLabelText('Temporary password') as HTMLInputElement).value).toMatch(/^[a-z]{4,6}[2-9]{3}$/)
     expect((fetcher as ReturnType<typeof vi.fn>).mock.calls.some(call => call[1]?.method === 'PATCH')).toBe(false)
   })
   it('omits the temporary password when left blank', async () => {

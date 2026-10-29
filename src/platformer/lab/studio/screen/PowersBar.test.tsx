@@ -31,6 +31,34 @@ describe('Powers row in Code', () => {
     expect(screen.queryByText('from Brickgineers')).toBeNull()
   })
 
+  it('Take off asks first once the kid changed the power\'s blocks; Keep it keeps them', () => {
+    const store = new StudioStore(createStarterProject())
+    const snap = store.snapPower('brick_hero', builtInPowers().find((p) => p.id === 'dash')!)!
+    // The kid adds a block under Dash's script.
+    const ws = structuredClone(store.getState().project.workspaces.brick_hero) as { blocks: { blocks: Array<Record<string, unknown>> } }
+    const top = ws.blocks.blocks.find((b) => b.id === snap.blockIds[0])!
+    let last = top
+    while ((last.next as { block?: Record<string, unknown> } | undefined)?.block) last = (last.next as { block: Record<string, unknown> }).block
+    last.next = { block: { type: 'looks_nextcostume', id: 'kid_1' } }
+    store.setWorkspace('brick_hero', ws)
+
+    const { rerender } = render(<Bar store={store} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Take Dash off' }))
+    rerender(<Bar store={store} />)
+    const ask = screen.getByRole('group', { name: 'Take Dash off?' })
+    expect(within(ask).getByText('Your changes to it go too.')).toBeTruthy()
+    expect(store.brick('brick_hero')!.powers).toHaveLength(1)
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep it' }))
+    rerender(<Bar store={store} />)
+    expect(store.brick('brick_hero')!.powers).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Take Dash off' })).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Take Dash off' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Take Dash off?' })).getByRole('button', { name: 'Take it off' }))
+    rerender(<Bar store={store} />)
+    expect(store.brick('brick_hero')!.powers).toEqual([])
+  })
+
   it('makes a power from chosen scripts, keeps it in My powers, and offers it next time', () => {
     const store = new StudioStore(createStarterProject())
     render(<Bar store={store} />)

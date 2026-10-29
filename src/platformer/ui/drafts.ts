@@ -52,6 +52,19 @@ export function loadDraft(id: string): LevelDesign | null {
   }
 }
 
+/** One level by id: readable, not in this browser, or stored but unreadable (newer or damaged; kept as it is). */
+export type DraftRead = { kind: 'ok'; level: LevelDesign } | { kind: 'missing' } | { kind: 'unreadable'; draft: Draft }
+
+export function readDraft(id: string): DraftRead {
+  const d = readAll().find((x) => x && typeof x === 'object' && x.id === id)
+  if (!d) return { kind: 'missing' }
+  try {
+    return { kind: 'ok', level: levelFromJson(d.level) }
+  } catch {
+    return { kind: 'unreadable', draft: d }
+  }
+}
+
 /**
  * Save a level (a new one when `id` is null). The newest save goes to the front. A new level is refused, never
  * squeezed in by dropping an old one, once MAX_DRAFTS are kept; saving an existing level always fits.
@@ -74,6 +87,6 @@ export function deleteDraft(id: string): boolean {
 /** What to tell the player when a level could not be kept in this browser. */
 export function draftSaveMessage(reason: DraftSaveFailure): string {
   return reason === 'full'
-    ? `This browser already keeps ${MAX_DRAFTS} worlds, so this one is not saved. Delete one on the 2D worlds page, or copy a link to keep it.`
-    : 'This browser would not save your world (it may be out of space). Copy a link to keep it.'
+    ? `This browser already keeps ${MAX_DRAFTS} projects, so this one is not saved. Remove one in My projects, or download a copy from the ⋯ menu to keep it.`
+    : 'This browser would not save your project (it may be out of space). Download a copy from the ⋯ menu to keep it.'
 }

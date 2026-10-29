@@ -224,6 +224,7 @@ function useCoarsePointerPreference() {
 
 const ACTIVE_CLOUD_WORLD_KEY = 'brick-studio.active-cloud-world.v1'
 const AUTO_WORLD_TITLE = 'Untitled build'
+const WORLD_UNAVAILABLE_MESSAGE = 'That world isn\'t available. It may have been removed, hidden by your teacher, or belong to another account.'
 
 /** A signed-in account that can own worlds right now (a forced password reset cannot save). */
 function signedInUserId() {
@@ -967,6 +968,8 @@ export default function BrickStudioApp({
   const studentClassId = session.status === 'student' ? session.classes?.[0]?.id : undefined
   const localStorageBlocked = useLocalStorageHealth(!readOnly && !livePolicy && !cloud.world)
   const [localSaveError, setLocalSaveError] = useState<string | null>(null)
+  // Another tab saved a different guest build: opens it here (see useBrickStudioDocuments).
+  const [newestBuildElsewhere, setNewestBuildElsewhere] = useState<(() => boolean) | null>(null)
   const closeClassroom = useCallback(() => setClassroomIntent(null), [])
   const [localEnvironmentId, setLocalEnvironmentId] = useState<EnvironmentId>(
     () => publishedWorld?.document.environmentId ?? 'classic',
@@ -1247,9 +1250,14 @@ export default function BrickStudioApp({
   }, [cloud, studentClassId, createAccountWorld, openInviteSheet])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild: onNewBuild ?? (cloud.world ? () => { void (async () => {
-      if (!window.confirm('Start a new build? Your current world stays saved in your account.')) return
+      if (!window.confirm('Start a new build? Your current project stays saved in your account.')) return
       const saved = await cloud.flush()
-      if (!saved && !window.confirm('Some edits are only in recovery storage. Download a recovery copy before leaving if needed. Continue?')) return
+      if (!saved) {
+        // The newest edits are only in this tab: they go to a file before the editor moves on.
+        if (!window.confirm('Your newest changes aren’t saved to your account yet. Download a copy and start a new build?')) return
+        const downloaded = cloud.downloadRecovery()
+        if (!downloaded.ok) { useBrickStore.setState({ toast: 'We couldn’t download a copy, so nothing changed.' }); return }
+      }
       cloud.leave()
       useBrickStore.getState().newBuild()
     })() } : undefined),
@@ -1268,6 +1276,7 @@ export default function BrickStudioApp({
       setLocalCustomParts(document.customParts)
     },
     onLocalSaveError: setLocalSaveError,
+    onChangedInAnotherTab: (showNewest) => setNewestBuildElsewhere(() => showNewest),
     title: cloud.world?.title,
   })
   // `/build?new=1`: the draft is loaded by the effect above, so the confirm sees the real build. A blank
@@ -1323,7 +1332,7 @@ export default function BrickStudioApp({
     : cloud.world
       ? {
         source: { kind: 'cloud', status: cloud.status },
-        detail: cloud.status === 'saved' ? 'Your latest changes are saved to your account.' : cloud.status === 'error' ? cloud.error || 'Your latest changes are not saved online. Use the recovery controls before leaving.' : 'Your latest changes are not saved online yet. Keep this tab open.',
+        detail: cloud.status === 'saved' ? 'Your latest changes are saved to your account.' : cloud.status === 'error' || cloud.retrying ? cloud.error || 'Your latest changes are not saved online. Use the recovery controls before leaving.' : 'Your latest changes are not saved online yet. Keep this tab open.',
       }
       : autoSave.status === 'saving'
         ? { source: { kind: 'cloud', status: 'saving' }, detail: 'Creating a world in your account for this build.' }
@@ -1387,7 +1396,8 @@ export default function BrickStudioApp({
     }
     await cloud.attach(world, document)
   }, [cloud, livePolicy])
-  const [worldUnavailable, setWorldUnavailable] = useState(false)
+  // False, or the reason the `?world=` project could not open (missing, or unreadable by this version).
+  const [worldUnavailable, setWorldUnavailable] = useState<string | false>(false)
   const entryWorldId = readOnly ? undefined : classroomEntry.worldId
   entryWorldPending.current = Boolean(entryWorldId) && !cloud.world && !worldUnavailable
   useEffect(() => {
@@ -1407,9 +1417,9 @@ export default function BrickStudioApp({
         if (world.format === 'hackable') { window.location.replace(`/2d/hackable?world=${encodeURIComponent(world.id)}`); return }
         if (!world.document) throw new Error('This world did not include a complete build.')
         await openCloudWorld(world.document, world)
-      } catch {
+      } catch (reason) {
         // Unknown, hidden, unshared or someone else's world: keep the current build and say so.
-        if (!cancelled) setWorldUnavailable(true)
+        if (!cancelled) setWorldUnavailable(reason instanceof Error && reason.name === 'CloudWorldUnreadableError' ? reason.message : WORLD_UNAVAILABLE_MESSAGE)
       }
     })()
     return () => { cancelled = true }
@@ -1520,8 +1530,29 @@ export default function BrickStudioApp({
       {worldSetupOpen && contentPreview && (
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
-      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>That world isn't available. It may have been removed, hidden by your teacher, or belong to another account.</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
-      {(cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
+      {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>{worldUnavailable}</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
+      {newestBuildElsewhere && !cloud.world && !livePolicy && !readOnly && (
+        <div className="classroom-recovery" role="status">
+          <span>This build was changed in another tab.</span>
+          <button type="button" onClick={() => { if (newestBuildElsewhere()) setNewestBuildElsewhere(null) }}>Show the newest</button>
+          <button type="button" onClick={() => setNewestBuildElsewhere(null)}>Keep this one</button>
+        </div>
+      )}
+      {cloud.signedOut && (
+        // Signed out without choosing to: the project stays visible behind this card but can't be
+        // changed until the student signs back in (its edits so far stay in this tab).
+        <div className="classroom-signed-out" role="alertdialog" aria-modal="true" aria-labelledby="classroom-signed-out-title" aria-describedby="classroom-signed-out-text"
+          style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-dialog)', display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(23, 35, 43, 0.35)' }}>
+          <div className="classroom-recovery" style={{ position: 'static', transform: 'none', flexDirection: 'column', alignItems: 'stretch', maxWidth: 420, textAlign: 'center' }}>
+            <strong id="classroom-signed-out-title" style={{ fontSize: '1.1em' }}>You were signed out</strong>
+            <span id="classroom-signed-out-text" style={{ flex: 'none' }}>Sign in to keep saving. Your project stays here until then.</span>
+            <button type="button" autoFocus onClick={cloud.signIn}>Sign in</button>
+            <button type="button" onClick={() => { const result = cloud.downloadRecovery(); if (!result.ok) useBrickStore.setState({ toast: result.error.message }) }}>Download a copy</button>
+          </div>
+        </div>
+      )}
+      {!cloud.signedOut && cloud.retrying && cloud.error && <div className="classroom-recovery" role="status"><span>{cloud.error}</span><button onClick={() => void cloud.retry()}>Try now</button><button onClick={cloud.downloadRecovery}>Download a copy</button></div>}
+      {!cloud.signedOut && !cloud.retrying && (cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {inviteSheet && <InviteSheet
         world={inviteSheet.world}
         className={session.className ?? 'your class'}

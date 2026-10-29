@@ -1,4 +1,4 @@
-import { Hammer, House, Lock, Menu as MenuIcon, Pause, Play, RotateCcw } from 'lucide-react'
+import { Download, Hammer, House, Lock, LogOut, Menu as MenuIcon, Pause, Play, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { Feel } from '@brick-studio/platformer-core/engine/feel'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
@@ -8,7 +8,7 @@ import type { ClassroomClassmate, ClassroomWorld, ClassroomWorldSharing } from '
 import { InviteSheet } from '../../classroom/InviteSheet'
 import { markInviteJoinedForWorld } from '../../classroom/inviteStore'
 import { AppHeader, useClassroomSession, useCompactLayout, type HeaderLivePolicy } from '../../shell'
-import { Button, type SaveStatusSource } from '../../ui'
+import { Button, Dialog, type SaveStatusSource } from '../../ui'
 import { CATEGORIES, PALETTE } from '../editor/palette'
 import { GameSession, type Mode, type RoomOptions } from '../game/session'
 import { formatTime } from '../render/renderer'
@@ -78,7 +78,7 @@ const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: 
  * and the strip that says what a click places. Playing is the game alone, with a pause button.
  *
  * Where edits go: an account level saves to the account a moment after each change; a signed-in student's new
- * level becomes an account level on its first edit (so it shows up in My worlds, ready to share); guests keep a
+ * level becomes an account level on its first edit (so it shows up in My projects, ready to share); guests keep a
  * draft in this browser; rooms save by themselves.
  */
 export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext, room }: Props) {
@@ -137,6 +137,9 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const [busy, setBusy] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const leavingRef = useRef(false)
+  /** Leaving a guest room waits on this card: the room forgets its world, so it offers a download first. */
+  const [roomLeave, setRoomLeave] = useState<(() => void) | null>(null)
+  const downloadButton = useRef<HTMLButtonElement>(null)
   const [canEnterPipe, setCanEnterPipe] = useState(false)
   const markedArrival = useRef(false)
   const [, refresh] = useState(0)
@@ -198,8 +201,14 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     const keepLocally = (edits: number) => {
       const result = saveDraft(draftId.current, s.timeline.world.design)
       if (result.ok) {
+        const firstSave = draftId.current !== result.id
         draftId.current = result.id
         savedEdits.current = edits
+        if (firstSave) {
+          // Give the level its own address, so refresh, Back and the Sign in link (built from this address) reopen it.
+          window.history.replaceState(window.history.state, '', `/2d/build?draft=${encodeURIComponent(result.id)}`)
+          refresh((n) => n + 1)
+        }
         if (localFailureRef.current) {
           localFailureRef.current = null
           setLocalFailure(null)
@@ -214,22 +223,26 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       return false
     }
 
-    // Keep the player's work: save a moment after edits, and on the way out. Returns false when work is unsaved.
+    // Keep the player's work: save a moment after edits, and on the way out. Returns false when work is unsaved
+    // (an account save still on its way or failed counts as unsaved, so closing the tab asks first).
     const save = (force = false): boolean => {
-      if (s.room || (!force && s.editCount === savedEdits.current)) return true
+      if (s.room) return true
+      if (saver.current) {
+        if (force || s.editCount !== savedEdits.current) {
+          savedEdits.current = s.editCount
+          saver.current.schedule(s.timeline.world.design)
+        }
+        return saver.current.status === 'saved'
+      }
+      if (!force && s.editCount === savedEdits.current) return true
       if (force) cloudFailed.current = false
       const edits = s.editCount
       const design = s.timeline.world.design
-      if (saver.current) {
-        savedEdits.current = edits
-        saver.current.schedule(design)
-        return true
-      }
       if (source.kind === 'cloud') return true // someone else's level, opened to look at
       if (signedInRef.current && !cloudFailed.current) {
         // On its way to the account, not there yet: nothing counts as saved until it lands.
         if (creatingCloud.current) return false
-        // A signed-in builder's level goes to the account on its first edit, so it is in My worlds, ready to share.
+        // A signed-in builder's level goes to the account on its first edit, so it is in My projects, ready to share.
         creatingCloud.current = createCloudLevel(design)
           .then((world) => {
             saver.current = new CloudLevelSaver(world, () => refresh((n) => n + 1))
@@ -241,7 +254,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               deleteDraft(draftId.current)
               draftId.current = null
             }
-            say('Saved to your account. Find it in My worlds.')
+            say('Saved to your account. Find it in My projects.')
           })
           .catch((error: { code?: string; message?: string }) => {
             // From now on this level is kept in this browser (keepLocally says so itself if that fails too).
@@ -249,7 +262,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             cloudFailed.current = true
             refresh((n) => n + 1)
             if (!keepLocally(s.editCount)) return
-            say(error?.code === 'world_limit' ? 'Your account is full, so this world is saved in this browser only.' : 'Could not save to your account, so this world is saved in this browser for now.')
+            say(error?.code === 'world_limit' ? 'Your account is full, so this project is saved in this browser only.' : 'Could not save to your account, so this project is saved in this browser for now.')
           }).finally(() => { creatingCloud.current = null })
         return false
       }
@@ -270,6 +283,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     // Closing the tab with work the browser would not keep: ask first.
     const onUnload = (event: BeforeUnloadEvent) => {
       if (save()) return
+      // Start the account save now: by the time the player answers the browser's question it may have landed.
+      void saver.current?.flush()
       event.preventDefault()
       event.returnValue = ''
     }
@@ -293,7 +308,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   }, [level])
 
   // Solo games pause while a menu or card is open; in rooms the world keeps going but you stand still.
-  const covered = menu || !!clear || sharing || people || scene || characterOpen || recoveryOpen || kitPicker
+  const covered = menu || !!clear || sharing || people || scene || characterOpen || recoveryOpen || kitPicker || !!roomLeave
   useEffect(() => {
     const s = sessionRef.current
     if (!s) return
@@ -366,6 +381,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       if (e.code === 'F3') {
         e.preventDefault()
         setShowStats((v) => !v)
+      }
+      // Driving: R restarts a race on your own, and puts you back on the road in a room's race.
+      if (s.mode === 'play' && s.isRace && e.code === 'KeyR' && !e.metaKey && !e.ctrlKey && !s.input.suspended) {
+        s.restartRun()
+        return
       }
       if (s.mode !== 'build' || s.input.suspended) return
       const mod = e.metaKey || e.ctrlKey
@@ -526,6 +546,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     saveRaceFeel(v)
     if (sessionRef.current) sessionRef.current.raceFeel = v
   }
+  const downloadCopy = () => {
+    if (!s) return
+    const design = s.timeline.world.design
+    downloadProjectFile({ title: design.title || title, content: { kind: kindOfLevel(design), level: design } })
+    say('Downloaded a copy. Open it any time from My projects → Import a file.')
+  }
   const copy = async (text: string, done: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -570,9 +596,15 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   const tryBuild = () => {
     if (s?.setMode('build')) setMenu(false)
   }
-  /** Leave once any account save has landed. */
-  const leave = async (then: () => void) => {
+  /** Leave once any account save has landed. A guest room asks first (it is forgotten once everyone leaves). */
+  const leave = async (then: () => void, { roomChecked = false } = {}) => {
     if (leavingRef.current) return
+    if (!roomChecked && source.kind === 'room' && source.roomKind === 'guest' && sessionRef.current?.joined) {
+      setMenu(false)
+      setClear(null)
+      setRoomLeave(() => then)
+      return
+    }
     leavingRef.current = true
     setLeaving(true)
     try {
@@ -583,7 +615,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       await creatingCloud.current
       saved = saveNow.current()
     }
-    if (!saved && !confirm('This world is not saved anywhere yet. Leave anyway and lose it?\n\nCancel, then use "Copy a link to this world" in the menu to keep it.')) return
+    // An account level's answer comes from its save below; this question is for work kept nowhere at all.
+    if (!saved && !saver.current && !confirm('This project is not saved anywhere yet. Leave anyway and lose it?\n\nCancel, then use "Download a copy" in the ⋯ menu to keep it.')) return
     if (saver.current && !(await saver.current.flush())) {
       say('Your world has not saved yet. Check your connection, then try again.')
       return
@@ -630,7 +663,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       }
       refresh(n => n + 1)
       if (share && account.status === 'student') openShare()
-      else say('Saved to your account. Find it in My worlds.')
+      else say('Saved to your account. Find it in My projects.')
     } catch (error) {
       cloudFailed.current = true
       refresh(n => n + 1)
@@ -690,12 +723,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
       if (inRoom) setRoomWorld(previous => previous ? { ...previous, ...updated } : updated)
       setSharing(false)
       if (inRoom) {
-        say(next.visibility === 'private' ? 'Only you can open this world now.' : 'Invites updated. Your classmates can join from My worlds.')
+        say(next.visibility === 'private' ? 'Only you can open this project now.' : 'Invites updated. Your classmates can join from My projects.')
         return
       }
       // Building together happens in the level's live room, where the owner is already waiting.
       if (next.visibility !== 'private' && next.canEdit) window.location.assign(`/2d/w/${cloudWorld.id.replaceAll('-', '')}?invited=1`)
-      else say(next.visibility === 'private' ? 'Only you can see this world now.' : 'Shared. Your classmates can play it from My worlds.')
+      else say(next.visibility === 'private' ? 'Only you can see this project now.' : 'Shared. Your classmates can play it from My projects.')
     } catch (error) {
       say(error instanceof Error ? error.message : 'Sharing did not work. Try again.')
     } finally {
@@ -726,17 +759,21 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     : saveSource.kind === 'cloud'
       ? saveSource.status === 'saved' ? 'Your latest changes are saved to your account.' : saveSource.status === 'error' ? 'Your latest changes are not saved to your account yet. Press Retry save, or keep this tab open.' : 'Saving your latest changes to your account.'
       : saveSource.error
-        ? `${saveSource.error} Copy a link to this world from the ⋯ menu to keep it.`
-        : signedIn ? 'This world is only on this computer. Press Save to my account to keep it with you.' : 'This world is only on this computer, in this browser. Sign in to keep it in your account.'
+        ? saveSource.error
+        : signedIn ? 'This project is only on this computer. Press Save to my account to keep it with you.' : 'This project is only on this computer, in this browser. Sign in to keep it in your account.'
   const players = s?.room?.players ?? []
   const livePolicy: HeaderLivePolicy | undefined =
     inRoom && s
       ? { connection: s.roomStatus, isOwner: s.isHost, roomTitle: title, peopleCount: s.joined ? players.length : undefined, onOpenPeople: s.joined ? () => setPeople(true) : undefined }
       : undefined
   const buildHint = hint === 'build' && build && (s?.editCount ?? 0) === 0
+  // The last starter course: nothing comes next, so the card points at building one's own.
+  const lastCourse = source.kind === 'course' && !onNext && !race
   // A toast takes the hint's place at the top rather than landing on it.
   const playHint = hint === 'play' && !build && !!s?.joined && !covered && !toast
   const offlineAfterJoin = !!s?.room && s.joined && s.roomStatus === 'offline'
+  // The room had no space: it stays that way until someone leaves, so the player chooses when to try again.
+  const roomFull = !!s?.room && s.roomStatus === 'offline' && s.room.refusal === 'full'
   const sceneLocked = !s ? null : s.canBuild ? null : (s.buildBlockedReason ?? 'You can play this world, but not change it.')
   // A pointer click on a header button hands the keyboard straight back to the game (keyboard users keep focus).
   const releaseFocus = (e: React.MouseEvent) => {
@@ -783,7 +820,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
               onResetWorld={s?.solo && build && !race ? () => s.resetWorld() : undefined}
               race={race}
               onNewLevel={inRoom ? undefined : () => setKitPicker(true)}
-              onDownload={s ? () => { const design = s.timeline.world.design; downloadProjectFile({ title: design.title || title, content: { kind: kindOfLevel(design), level: design } }); say('Downloaded a copy. Open it any time from My projects → Import a file.') } : undefined}
+              onDownload={s ? downloadCopy : undefined}
               sound={sound}
               onSound={changeSound}
               onControls={() => openMenu('controls')}
@@ -810,6 +847,14 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           <canvas ref={canvasRef} className="p2d-canvas" />
         </div>
 
+        {build && s && !race && (
+          // Play from the start flag, wherever the player was (Play alone carries on from where building began).
+          <div className="p2d-build-tools" onClickCapture={releaseFocus}>
+            <Button icon={<RotateCcw size={18} />} title="Play from the start flag" onClick={() => s.restartRun()}>
+              Play from start
+            </Button>
+          </div>
+        )}
         {build && s && <BuildShell editor={s.editor} theme={s.timeline.world.design.theme} look={s.timeline.world.design.style} compact={compact} touch={touch} drawerOpen={drawerOpen} onDrawerOpen={setDrawerOpen} />}
 
         {!build && s && (
@@ -827,14 +872,19 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
             onRaceAgain={() => s.requestRace()}
             onStartRace={s.solo ? undefined : () => s.requestRace()}
             onBuild={source.kind !== 'course' && s.canBuild ? () => s.setMode('build') : undefined}
-            onExit={onExit}
+            onExit={() => void leave(onExit)}
             exitLabel={exitLabel}
             touch={touch}
           />
         )}
         {!build && !race && touch && s && !covered && <TouchControls input={s.input} canEnterPipe={canEnterPipe} onEnterPipe={() => s.enterPipe()} />}
         {!build && race && touch && s && !covered && raceHud?.phase !== 'results' && (
-          <RaceTouchControls input={s.input} items={raceHud?.itemsOn ?? true} itemName={raceHud?.item ? RACE_ITEMS[raceHud.item].name : undefined} />
+          <RaceTouchControls
+            input={s.input}
+            items={raceHud?.itemsOn ?? true}
+            itemName={raceHud?.item ? RACE_ITEMS[raceHud.item].name : undefined}
+            onRescue={!s.solo && (raceHud?.phase === 'racing' || raceHud?.phase === 'practice') && !raceHud.youDone ? () => s.restartRun() : undefined}
+          />
         )}
         {build && race && s && <RaceZoom zoom={zoom} max={s.maxZoom} onZoom={(z) => s.setZoom(z)} />}
 
@@ -862,8 +912,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
 
         {s?.room && !s.joined && (
           <div className="p2d-overlay">
-            <div className="p2d-card">
+            <div className="p2d-card" role={s.roomStatus === 'offline' ? 'alert' : 'status'}>
               <p className="p2d-lead">{s.roomStatus === 'offline' ? s.roomDetail || 'Could not join the room.' : 'Joining the room…'}</p>
+              {roomFull && (
+                <Button fullWidth variant="primary" icon={<RotateCcw size={18} />} onClick={() => s.room?.connect()}>
+                  Try again
+                </Button>
+              )}
               {s.roomStatus === 'offline' && (
                 <Button fullWidth icon={<House size={18} />} onClick={onExit}>
                   {exitLabel ?? 'Back'}
@@ -874,8 +929,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         )}
         {offlineAfterJoin && s?.roomDetail && (
           <div className="p2d-overlay">
-            <div className="p2d-card">
+            <div className="p2d-card" role="alert">
               <p className="p2d-lead">{s.roomDetail}</p>
+              {roomFull && (
+                <Button fullWidth variant="primary" icon={<RotateCcw size={18} />} onClick={() => s.room?.connect()}>
+                  Try again
+                </Button>
+              )}
               <Button fullWidth icon={<House size={18} />} onClick={onExit}>
                 {exitLabel ?? 'Back'}
               </Button>
@@ -886,7 +946,7 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         {clear && !menu && (
           <div className="p2d-overlay">
             <div className="p2d-card p2d-clear" role="dialog" aria-label="You made it">
-              <p className="p2d-kicker">{source.kind === 'course' ? 'Starter world' : 'Flag reached'}</p>
+              <p className="p2d-kicker">{lastCourse ? 'All starter courses done!' : source.kind === 'course' ? 'Starter world' : 'Flag reached'}</p>
               <h2 className="p2d-clear-title">{clear.newBest ? 'New best time!' : 'You made it!'}</h2>
               <p className="p2d-clear-time">
                 <span>Time</span> {formatTime(clear.time)}
@@ -897,16 +957,22 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
                   </>
                 )}
               </p>
+              {lastCourse && <p className="p2d-lead">You finished every starter course. Now build your own!</p>}
               {onNext && (
                 <Button variant="primary" fullWidth icon={<Play size={18} />} onClick={onNext} autoFocus>
                   Next world
                 </Button>
               )}
+              {lastCourse && (
+                <Button variant="primary" fullWidth icon={<Hammer size={18} />} autoFocus onClick={() => void leave(() => window.location.assign('/2d/build?new=1'))}>
+                  Build your own
+                </Button>
+              )}
               <Button
-                variant={onNext ? 'secondary' : 'primary'}
+                variant={onNext || lastCourse ? 'secondary' : 'primary'}
                 fullWidth
                 icon={<RotateCcw size={18} />}
-                autoFocus={!onNext}
+                autoFocus={!onNext && !lastCourse}
                 onClick={() => {
                   setClear(null)
                   sessionRef.current?.restartRun()
@@ -1014,6 +1080,35 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
           onClose={() => setSharing(false)}
         />
       )}
+      <Dialog
+        open={!!roomLeave}
+        onClose={() => setRoomLeave(null)}
+        title="Leave the room?"
+        description="This room forgets its project about two hours after everyone leaves."
+        initialFocusRef={downloadButton}
+        footer={
+          <>
+            <Button variant="quiet" onClick={() => setRoomLeave(null)}>
+              Stay
+            </Button>
+            <Button
+              icon={<LogOut size={18} />}
+              onClick={() => {
+                const then = roomLeave
+                setRoomLeave(null)
+                if (then) void leave(then, { roomChecked: true })
+              }}
+            >
+              Leave the room
+            </Button>
+            <Button ref={downloadButton} variant="primary" icon={<Download size={18} />} onClick={downloadCopy}>
+              Download a copy
+            </Button>
+          </>
+        }
+      >
+        <p className="p2d-lead">Download a copy to keep it. You can open it again from My projects.</p>
+      </Dialog>
       <NewProjectSheet open={kitPicker} onClose={() => setKitPicker(false)} onPick={(href) => { setKitPicker(false); void leave(() => window.location.assign(href)) }} />
       <MicrobitPanel />
       {feelOpen && !race && <FeelPanel feel={feel} onChange={changeFeel} onClose={() => setFeelOpen(false)} />}

@@ -12,14 +12,31 @@ import { saveCharacter } from './prefs'
 import { listDrafts, saveDraft } from './drafts'
 import type { ClassroomWorld } from '../../classroom/contracts'
 
-const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '' }))
-vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; schedule = vi.fn(); flush = state.flush; constructor(world: unknown) { this.world = world } } }))
-vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]) } }))
-vi.mock('../../shell', () => ({
-  useClassroomSession: () => ({ status: 'student', user: { id: 'student' }, classes: [] }),
+const STUDENT = { status: 'student', user: { id: 'student' }, classes: [] }
+const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '', download: vi.fn(), account: { status: 'student', user: { id: 'student' }, classes: [] } as { status: string; user?: { id: string }; classes?: unknown[] } }))
+vi.mock('./cloudLevel', () => ({
+  createCloudLevel: state.create,
+  // Follows the real saver's status: pending once scheduled, then saved or error by how the flush went.
+  CloudLevelSaver: class {
+    world
+    status = 'saved'
+    schedule = vi.fn(() => { this.status = 'pending' })
+    flush = vi.fn(async () => { const ok = !!(await state.flush()); this.status = ok ? 'saved' : 'error'; return ok })
+    constructor(world: unknown) { this.world = world }
+  },
+}))
+vi.mock('../../projects/projectFile', async (actual) => ({ ...await actual<typeof import('../../projects/projectFile')>(), downloadProjectFile: state.download }))
+vi.mock('../race/RaceHudView', () => ({ RaceHudView: (p: { onExit?: () => void }) => <button onClick={p.onExit}>Race exit</button> }))
+vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]), getSession: () => null, subscribe: () => () => {}, request: vi.fn(), signOut: vi.fn() } }))
+vi.mock('../../shell', async () => {
+  // The real Sign in chip: it builds its return address from the page's address, which is what these tests check.
+  const { AccountChip } = await vi.importActual<typeof import('../../shell/AccountChip')>('../../shell/AccountChip')
+  return {
+  useClassroomSession: () => state.account,
   useCompactLayout: () => false,
   AppHeader: (p: { editorActions?: ReactNode; saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void; livePolicy?: { onOpenPeople?: () => void } }) => (
     <div>
+      {state.account.status === 'guest' && <AccountChip session={{ status: 'guest', signOut: async () => {}, switchAccount: async () => {} }} context="editor" />}
       <span>{p.saveStatus.source.error}</span>
       {p.editorActions}
       <button className="app-header-tool" onClick={() => p.onOpenWorldSetup('character')}>Character</button>
@@ -28,7 +45,8 @@ vi.mock('../../shell', () => ({
       {p.worldMenu({ openRename() {} })}
     </div>
   ),
-}))
+  }
+})
 vi.mock('./LevelMenu', () => ({ LevelMenu: (p: { onExit: () => void }) => <button onClick={p.onExit}>Leave test world</button> }))
 vi.mock('./BuildShell', () => ({ BuildShell: () => null }))
 vi.mock('./PeopleSheet', () => ({ PeopleSheet: (p: { open: boolean; onInviteMore?: () => void }) => p.open && p.onInviteMore ? <button onClick={p.onInviteMore}>Invite more</button> : null }))
@@ -50,6 +68,8 @@ vi.mock('../game/session', () => ({
     renderer: { canvas: HTMLCanvasElement }
     sound = { setMuted() {}, setMusic() {}, unlock() {} }
     setCharacter = vi.fn()
+    restartRun = vi.fn()
+    player = { clearTime: -1 }
     constructor(canvas: HTMLCanvasElement, level: LevelDesign, options: { character?: string }) {
       this.timeline = { world: { design: level } }
       this.renderer = { canvas }
@@ -82,9 +102,12 @@ afterEach(() => {
   vi.useRealTimers()
   state.create.mockReset()
   state.flush.mockReset().mockResolvedValue(true)
+  state.download.mockReset()
   state.session = null
   state.characterOption = ''
+  state.account = STUDENT
   localStorage.clear()
+  window.history.replaceState(null, '', '/')
 })
 
 const browserFull = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError') })
@@ -170,7 +193,8 @@ it('leaves without asking once a failed account save has fallen back to this bro
 it('opens the same shared account world after flushing instead of creating a guest copy', async () => {
   const assign = vi.fn()
   render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('class') }} startMode="build" onExit={() => {}} />)
-  vi.stubGlobal('window', Object.assign(Object.create(window), { location: { assign }, clearTimeout: vi.fn() }))
+  // Own properties, not Object.assign: assigning `location` through the prototype would replace the page's real location for later tests.
+  vi.stubGlobal('window', Object.create(window, { location: { value: { assign } }, clearTimeout: { value: vi.fn() } }))
   fireEvent.click(screen.getByRole('button', { name: 'People action' }))
   await act(async () => { await Promise.resolve() })
   vi.unstubAllGlobals()
@@ -253,4 +277,162 @@ it('moves a browser draft into the account: once the account copy exists, the dr
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save to my account' })); await Promise.resolve() })
   expect(state.create).toHaveBeenCalledOnce()
   expect(listDrafts().map((d) => d.id)).not.toContain(draft.id)
+})
+
+it('shows a full room with Try again and Back instead of joining forever', async () => {
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={onExit} exitLabel="Back to My projects" />)
+  const connect = vi.fn()
+  const session = state.session as unknown as Record<string, unknown> & { onRoom: () => void }
+  Object.assign(session, { room: { refusal: 'full', connect, players: [] }, joined: false, roomStatus: 'offline', roomDetail: 'This room is full. Try again when someone leaves.' })
+  act(() => session.onRoom())
+  expect(screen.getByRole('alert')).toHaveTextContent('This room is full')
+  expect(screen.queryByText('Joining the room…')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+  expect(connect).toHaveBeenCalledOnce()
+  fireEvent.click(screen.getByRole('button', { name: 'Back to My projects' }))
+  expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('gives a guest’s new level its own address once it is saved, so refresh, Back and Sign in reopen it', async () => {
+  state.account = { status: 'guest' }
+  window.history.replaceState(null, '', '/2d/build?new=1&kit=race-starter')
+  open()
+  expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toContain(encodeURIComponent('/2d/build?new=1'))
+  state.session!.editCount = 1
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+  const [draft] = listDrafts()
+  expect(draft).toBeDefined()
+  expect(window.location.pathname + window.location.search).toBe(`/2d/build?draft=${draft.id}`)
+  expect(window.history.state).toEqual({ p2dGame: true })
+  expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', `/join?mode=signin&next=${encodeURIComponent(`/2d/build?draft=${draft.id}`)}`)
+  // Later saves keep the same draft and the same address.
+  state.session!.editCount = 2
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+  expect(listDrafts()).toHaveLength(1)
+  expect(window.location.search).toBe(`?draft=${draft.id}`)
+})
+
+const unloadAsks = () => {
+  const event = new Event('beforeunload', { cancelable: true })
+  window.dispatchEvent(event)
+  return event.defaultPrevented
+}
+
+it('asks before closing the tab only while an account save is on its way or has failed', async () => {
+  state.flush.mockResolvedValue(true)
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('private') }} startMode="build" onExit={() => {}} />)
+  expect(unloadAsks()).toBe(false)
+  state.session!.editCount = 1
+  // Not on the account yet: ask, and start the save at once.
+  expect(unloadAsks()).toBe(true)
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  expect(state.flush).toHaveBeenCalled()
+  expect(unloadAsks()).toBe(false)
+  // The save failed: keep asking until it lands.
+  state.flush.mockResolvedValue(false)
+  state.session!.editCount = 2
+  expect(unloadAsks()).toBe(true)
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  expect(unloadAsks()).toBe(true)
+  state.flush.mockResolvedValue(true)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave test world' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(unloadAsks()).toBe(false)
+  expect(confirmLeave).not.toHaveBeenCalled()
+})
+
+it('saves an account race track before the race screen’s exit leaves', async () => {
+  let land!: (ok: boolean) => void
+  state.flush.mockImplementation(() => new Promise((resolve) => { land = resolve }))
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('private') }} startMode="play" onExit={onExit} />)
+  const session = state.session as unknown as Record<string, unknown> & { onRaceHud: (hud: unknown) => void }
+  session.isRace = true
+  session.mode = 'play'
+  act(() => session.onRaceHud({ phase: 'racing' }))
+  state.session!.editCount = 1
+  fireEvent.click(screen.getByRole('button', { name: 'Race exit' }))
+  expect(onExit).not.toHaveBeenCalled()
+  await act(async () => { land(true); await vi.advanceTimersByTimeAsync(0) })
+  expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('offers a download before leaving a guest room, and leaves only when asked', async () => {
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20, 'Room level')} source={{ kind: 'room', roomKind: 'guest', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={onExit} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Leave test world' }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  const card = screen.getByRole('dialog', { name: 'Leave the room?' })
+  expect(card).toHaveTextContent('two hours')
+  expect(onExit).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Download a copy' }))
+  expect(state.download).toHaveBeenCalledWith(expect.objectContaining({ title: 'Room level' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Stay' }))
+  expect(screen.queryByRole('dialog', { name: 'Leave the room?' })).toBeNull()
+  expect(onExit).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Leave test world' }))
+  await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave the room' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('leaves a class room without the guest-room question (the class room saves itself)', async () => {
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={onExit} />)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Leave test world' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(screen.queryByRole('dialog', { name: 'Leave the room?' })).toBeNull()
+  expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('starts play from the start flag while building', () => {
+  open()
+  fireEvent.click(screen.getByRole('button', { name: 'Play from start' }))
+  expect((state.session as unknown as { restartRun: () => void }).restartRun).toHaveBeenCalledOnce()
+})
+
+it('after the last starter course, offers to build your own', async () => {
+  const assign = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'course', id: 'last' }} startMode="play" onExit={() => {}} />)
+  const session = state.session as unknown as { player: { clearTime: number }; onClear: (time: number, best: number, newBest: boolean) => void }
+  session.player.clearTime = 900
+  act(() => session.onClear(900, -1, true))
+  await act(async () => { await vi.advanceTimersByTimeAsync(1600) })
+  const card = screen.getByRole('dialog', { name: 'You made it' })
+  expect(card).toHaveTextContent('All starter courses done!')
+  vi.stubGlobal('location', { ...window.location, assign })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Build your own' })); await vi.advanceTimersByTimeAsync(0) })
+  expect(assign).toHaveBeenCalledWith('/2d/build?new=1')
+})
+
+it('keeps Next world, not Build your own, while more courses follow', async () => {
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'course', id: 'first' }} startMode="play" onExit={() => {}} onNext={() => {}} />)
+  const session = state.session as unknown as { player: { clearTime: number }; onClear: (time: number, best: number, newBest: boolean) => void }
+  session.player.clearTime = 900
+  act(() => session.onClear(900, -1, true))
+  await act(async () => { await vi.advanceTimersByTimeAsync(1600) })
+  expect(screen.getByRole('button', { name: 'Next world' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Build your own' })).toBeNull()
+})
+
+it('gives touch drivers in a room’s race a Back on road button', () => {
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={() => {}} />)
+  const session = state.session as unknown as Record<string, unknown> & { onRaceHud: (hud: unknown) => void; restartRun: () => void; input: Record<string, unknown> }
+  Object.assign(session, { isRace: true, solo: false, mode: 'play' })
+  session.input.setTouch = vi.fn()
+  act(() => { window.dispatchEvent(new Event('touchstart')) })
+  act(() => session.onRaceHud({ phase: 'countdown', youDone: false }))
+  expect(screen.queryByRole('button', { name: 'Back on road' })).toBeNull()
+  act(() => session.onRaceHud({ phase: 'racing', youDone: false }))
+  fireEvent.click(screen.getByRole('button', { name: 'Back on road' }))
+  expect(session.restartRun).toHaveBeenCalledOnce()
+  act(() => session.onRaceHud({ phase: 'racing', youDone: true }))
+  expect(screen.queryByRole('button', { name: 'Back on road' })).toBeNull()
+})
+
+it('R drives a race restart while playing (back on the road in a room)', () => {
+  open()
+  const session = state.session as unknown as Record<string, unknown> & { restartRun: () => void }
+  Object.assign(session, { isRace: true, mode: 'play' })
+  fireEvent.keyDown(window, { code: 'KeyR' })
+  expect(session.restartRun).toHaveBeenCalledOnce()
 })

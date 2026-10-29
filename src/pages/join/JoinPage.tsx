@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Check, ChevronDown, ChevronUp, KeyRound, Mail, UserRound, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, KeyRound, Mail, UserRound } from 'lucide-react'
 import { Button } from '../../ui'
-import { AppHeader } from '../../shell'
+import { AppHeader, displayNameFor, useClassroomSession } from '../../shell'
 import { BRAND_TAGLINE, BrandLockup, BrickMark } from '../../brand'
 import { browserClassroomClient, ClassroomError, type ClassroomClient } from '../../classroom/client'
 import type { ClassroomAuthResult, ClassroomRosterStudent } from '../../classroom/contracts'
 import { PasswordField } from '../../classroom/PasswordField'
 import { TextInput } from '../../classroom/fields'
 import { errorMessage } from '../../classroom/panelShared'
-import { PasswordResetView, RESET_FORM_ID } from '../../classroom/RecoveryViews'
+import { PasswordResetView, RESET_FORM_ID, RuleList } from '../../classroom/RecoveryViews'
 import { forgetClass, readRememberedClass, rememberClass } from '../../classroom/rememberedClass'
 import '../../classroom/classroom.css'
-import { allGreen, passwordRules, usernameRules, type RuleResult } from './joinRules'
+import { allGreen, passwordRules, usernameRules } from './joinRules'
 import { joinDestination, parseJoinQuery, type JoinMode } from './joinQuery'
 import './join.css'
 
@@ -22,8 +22,8 @@ type ClassInfo = { code: string; name: string; canEnroll: boolean; showNames: bo
 
 const HEADLINES: Record<JoinMode, { title: string; lead: string }> = {
   join: { title: 'Join your class', lead: 'Start with the code your teacher gave you.' },
-  signin: { title: 'Welcome back', lead: 'Sign in to open your worlds.' },
-  teacher: { title: 'Teacher sign in', lead: 'Open your class and your students’ worlds.' },
+  signin: { title: 'Welcome back', lead: 'Sign in to open your projects.' },
+  teacher: { title: 'Teacher sign in', lead: 'Open your class and your students’ projects.' },
 }
 
 /** One welcoming line beside the form, per mode. Decoration, not instruction: the form says what to do. */
@@ -51,7 +51,10 @@ export type JoinExperienceProps = {
   client?: ClassroomClient
   /** Defaults to the real query string; tests pass their own. */
   search?: string
-  /** Same-origin path or an external sign-in URL; defaults to a real navigation. */
+  /**
+   * Same-origin path or an external sign-in URL. Defaults to replacing this page in history: /join is a
+   * doorway, and a signed-in account that came Back to it would only be sent forward again.
+   */
   onNavigate?: (url: string) => void
 }
 
@@ -63,12 +66,21 @@ export default function JoinPage(props: JoinExperienceProps = {}) {
 export function JoinExperience({
   client = browserClassroomClient,
   search = typeof window === 'undefined' ? '' : window.location.search,
-  onNavigate = url => { window.location.assign(url) },
+  onNavigate = url => { window.location.replace(url) },
 }: JoinExperienceProps) {
   const query = useMemo(() => parseJoinQuery(search), [search])
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
+  // The header's own session state and sign-out (the path every page uses), on this page's client.
+  const session = useClassroomSession(client)
+  // Shared class iPads: a link with a class code may be the next kid's, so an account that was already
+  // signed in when the page opened is confirmed first ("Are you Ava R.?") instead of opened.
+  const [askWho, setAskWho] = useState(() => Boolean(query.classCode && client.getSession()))
+  const confirming = askWho && Boolean(auth)
   const [remembered, setRemembered] = useState(readRememberedClass)
-  const [mode, setMode] = useState<JoinMode>(query.mode)
+  // A code with no mode starts on sign-in, held behind "Finding your class…" until the lookup says
+  // whether there are names to tap. `codeFirst` ends at the first class found or any mode switch.
+  const [codeFirst, setCodeFirst] = useState(query.codeFirst)
+  const [mode, setMode] = useState<JoinMode>(query.codeFirst ? 'signin' : query.mode)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -93,13 +105,14 @@ export function JoinExperience({
   const rememberedActive = Boolean(remembered && trimmedCode === remembered.code && !query.classCode)
 
   // A signed-in account never sits on this page: it goes where the link asked,
-  // or to its own home. A forced password change is the one thing that happens here.
+  // or to its own home. A forced password change is the one thing that happens here,
+  // and on a shared device the "Are you …?" question comes first.
   useEffect(() => {
-    if (!auth || auth.user.resetRequired || redirected.current) return
+    if (!auth || auth.user.resetRequired || redirected.current || confirming) return
     redirected.current = true
     rememberClass(auth)
     onNavigate(joinDestination(auth.user.role, query.next))
-  }, [auth, onNavigate, query.next])
+  }, [auth, confirming, onNavigate, query.next])
 
   // Class lookup: the same public roster call answers both modes. The join form
   // needs the class name and whether it can enroll; sign-in also gets the names.
@@ -126,7 +139,17 @@ export function JoinExperience({
 
   useEffect(() => { if (focusCode.current && codeInput.current) { codeInput.current.focus(); focusCode.current = false } }, [codeOpen, requireClassCode, editingCode])
 
+  // The code's class is known: names to tap keep sign-in (with "I'm new" beside them). A class
+  // without names opens account creation while it takes new accounts, and sign-in when it does not.
+  useEffect(() => {
+    if (!codeFirst || !matched) return
+    setCodeFirst(false)
+    if (matched.showNames && matched.students.length) return
+    if (matched.canEnroll) setMode('join')
+  }, [codeFirst, matched])
+
   const changeMode = (next: JoinMode) => {
+    setCodeFirst(false)
     setMode(next); setError(''); setSuggestions([]); setRequireClassCode(false); setPassword(''); setPickedName('')
     // A remembered return code is not an invitation to enroll: a new student types their teacher's code.
     if (next === 'join' && !query.classCode && rememberedActive) setClassCode('')
@@ -150,6 +173,14 @@ export function JoinExperience({
   const usernameChecks = usernameRules(username)
   const passwordChecks = passwordRules(password, username)
   const joinReady = Boolean(trimmedCode) && Boolean(rosterName.trim()) && allGreen(usernameChecks) && allGreen(passwordChecks)
+  // Why "Create account and join" is still grey, once the student has started filling it in.
+  const missing = [
+    !trimmedCode && 'your class code',
+    !rosterName.trim() && 'the name your teacher knows',
+    !allGreen(usernameChecks) && (username ? 'a username that follows the rules' : 'a username'),
+    !allGreen(passwordChecks) && (password ? 'a password that follows the rules' : 'a password'),
+  ].filter((item): item is string => Boolean(item))
+  const showMissing = mode === 'join' && !joinReady && Boolean(username || password || rosterName)
 
   const submitJoin = () => run(async () => {
     setSuggestions([])
@@ -167,6 +198,9 @@ export function JoinExperience({
     const url = await client.startGoogleTeacher(`/join?${new URLSearchParams({ mode: 'teacher', ...(query.next ? { next: query.next } : {}) })}`)
     onNavigate(url)
   })
+  // "Not me": the same sign-out as the header's menu. It ends this account's session only; projects
+  // kept on this device and other tabs' recovery copies are left exactly as they are.
+  const notMe = () => run(async () => { await session.signOut(); setAskWho(false) })
   const changePassword = (nextPassword: string, confirm: string) => run(async () => {
     if (nextPassword !== confirm) throw new Error('The two passwords are different. Type the same one twice.')
     await client.changePassword(nextPassword)
@@ -186,16 +220,22 @@ export function JoinExperience({
   const codeVisible = mode === 'join' || codeOpen || requireClassCode || (mode === 'signin' && rememberedActive && !matched)
   const roster = mode === 'signin' && matched?.showNames && matched.students.length ? matched.students : null
   const reset = Boolean(auth?.user.resetRequired)
+  // Waiting for the code's class before choosing between names and a form (a wrong code or an outage shows sign-in).
+  const finding = codeFirst && Boolean(trimmedCode) && !matched && !classError
 
-  const cornerLink = reset ? null
+  const cornerLink = reset || confirming ? null
     : mode === 'join' ? <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('signin')}>I already have an account</Button>
     : mode === 'teacher' ? <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('signin')}>Sign in with username instead</Button>
     : <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('join')}>New here? Join a class</Button>
 
-  const headline = reset ? { title: 'Choose a new password', lead: 'Your teacher reset your password. Pick one you will remember.' } : HEADLINES[mode]
+  const headline = confirming && auth ? { title: `Are you ${displayNameFor(auth.user)}?`, lead: 'Someone is still signed in on this device.' }
+    : reset ? { title: 'Choose a new password', lead: 'Your teacher reset your password. Pick one you will remember.' }
+    : finding ? HEADLINES.join
+    : roster ? { title: 'Find your name', lead: matched?.canEnroll ? 'Tap your name to sign in. New here? Tap I’m new.' : 'Tap your name to sign in.' }
+    : HEADLINES[mode]
 
   return <div className="join-page">
-    <AppHeader variant="page" actions={cornerLink} />
+    <AppHeader variant="page" actions={cornerLink} session={session} />
     <main className="join-main">
       <div className={['join-layout', roster ? 'join-layout-wide' : ''].filter(Boolean).join(' ')}>
         {/* Brand side: the lockup, the tagline and the Toy Room. Presentation only —
@@ -217,9 +257,14 @@ export function JoinExperience({
           </div>
           {error && <p className="join-alert" role="alert">{error}</p>}
 
-          {reset
+          {confirming
+            ? <div className="join-form join-who">
+              <Button variant="primary" fullWidth className="join-submit" disabled={busy} onClick={() => setAskWho(false)}>Yes, that’s me</Button>
+              <Button variant="secondary" fullWidth loading={busy} loadingLabel="Signing out…" onClick={notMe}>Not me</Button>
+            </div>
+            : reset
             ? <>
-              <PasswordResetView onSubmit={changePassword} />
+              <PasswordResetView onSubmit={changePassword} username={auth?.user.username} />
               <Button type="submit" form={RESET_FORM_ID} variant="primary" fullWidth className="join-submit" loading={busy} loadingLabel="Saving your password…">Set my new password</Button>
               <div className="join-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => run(() => client.signOut())}>Sign out</Button></div>
             </>
@@ -266,8 +311,12 @@ export function JoinExperience({
                       </button>
                     </li>)}
                   </ul>
+                  {matched?.canEnroll && <div className="join-links join-links-start">
+                    <Button variant="secondary" size="sm" disabled={busy} onClick={() => changeMode('join')}>I’m new</Button>
+                  </div>}
                 </div>}
 
+                {finding ? <p className="join-note join-finding" role="status">Finding your class…</p> : <>
                 <TextInput
                   label={mode === 'join' ? 'Choose a username' : 'Username'}
                   name="username"
@@ -301,13 +350,15 @@ export function JoinExperience({
                 />
                 {mode === 'join' && <RuleList id="join-password-rules" label="Password rules" rules={passwordChecks} />}
 
-                <Button type="submit" variant="primary" fullWidth className="join-submit" disabled={mode === 'join' && !joinReady} loading={busy} loadingLabel={mode === 'join' ? 'Creating your account…' : 'Signing you in…'}>
+                <Button type="submit" variant="primary" fullWidth className="join-submit" disabled={mode === 'join' && !joinReady} aria-describedby={showMissing ? 'join-missing' : undefined} loading={busy} loadingLabel={mode === 'join' ? 'Creating your account…' : 'Signing you in…'}>
                   {mode === 'join' ? 'Create account and join' : 'Sign in'}
                 </Button>
+                {showMissing && <p className="join-note join-note-center" id="join-missing">Still needed: {listInWords(missing)}.</p>}
                 {mode === 'signin' && <p className="join-note join-note-center">Forgot it? Ask your teacher.</p>}
+                </>}
               </form>}
 
-          {!reset && <div className="join-links join-links-footer">
+          {!reset && !confirming && <div className="join-links join-links-footer">
             {mode !== 'teacher' && <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('teacher')}>I’m a teacher</Button>}
             <Button variant="quiet" size="sm" href="/build">Keep building as a guest</Button>
           </div>}
@@ -317,16 +368,8 @@ export function JoinExperience({
   </div>
 }
 
-/** One line per rule; green when it passes, red once it is broken, grey before anything is typed. */
-function RuleList({ id, label, rules }: { id: string; label: string; rules: RuleResult[] }) {
-  return <ul className="join-rules" id={id} aria-label={label} aria-live="polite">
-    {rules.map(rule => <li key={rule.id} className={`join-rule join-rule-${rule.state}`}>
-      {rule.state === 'bad' ? <X size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
-      <span>{rule.label}</span>
-      {rule.state !== 'pending' && <span className="sr-only">{rule.state === 'ok' ? ' — done' : ' — not yet'}</span>}
-    </li>)}
-  </ul>
-}
+/** "a, b and c" */
+const listInWords = (items: string[]) => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
 
 function TeacherEntry({ busy, open, onToggle, onGoogle, onSubmit }: { busy: boolean; open: boolean; onToggle: () => void; onGoogle: () => void; onSubmit: (email: string, password: string) => void }) {
   const [email, setEmail] = useState('')

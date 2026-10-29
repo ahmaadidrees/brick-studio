@@ -26,7 +26,7 @@ export default function TeacherGoogleCallback() {
             <p className="classroom-lead">Your build is still here.</p>
             <p className="classroom-error" role="alert">{error}</p>
             <div className="classroom-actions classroom-actions-stack">
-              <a className="ui-button ui-button-primary ui-button-md" href="/build?classroom=teacher"><span className="ui-button-label">Try again</span></a>
+              <a className="ui-button ui-button-primary ui-button-md" href="/join?mode=teacher"><span className="ui-button-label">Try again</span></a>
               <a className="ui-button ui-button-secondary ui-button-md" href="/build"><span className="ui-button-label">Keep building</span></a>
             </div>
           </> : <>

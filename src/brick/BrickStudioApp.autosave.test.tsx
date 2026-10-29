@@ -3,11 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { createBrickStudioDocument } from './brickDocument'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
+import * as persistence from './documentPersistence'
 import { useBrickStore } from './store'
 import type { BrickInstance } from './types'
 import { browserClassroomClient, ClassroomError, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import type { InviteSheetProps } from '../classroom/InviteSheet'
-import { goToLiveWorld, goToNewLiveRoom } from '../shell/navigation'
+import { goToJoin, goToLiveWorld, goToNewLiveRoom } from '../shell/navigation'
 
 /**
  * A signed-in builder's fresh build becomes an account world on its first brick, through the real
@@ -150,6 +151,50 @@ describe('automatic account world for a signed-in fresh build', () => {
     expect((calls[1].body as { document: { bricks: BrickInstance[] } }).document.bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
   })
 
+  it('keeps saving by itself after the Wi-Fi drops, with one short notice and no click', async () => {
+    browserClassroomClient.setSession(student)
+    const calls = stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    const request = vi.mocked(browserClassroomClient.request)
+    const server = request.getMockImplementation()!
+    let online = false
+    request.mockImplementation(async (path: string, method?: string, body?: unknown) => {
+      if (method === 'PUT' && !online) throw new ClassroomError('Could not connect. Your current build is still here. Check your connection and try again.', 0, 'unreachable')
+      return server(path, method, body)
+    })
+    placeBrick(brickB)
+    const notice = () => document.querySelector('.classroom-recovery')
+    await waitFor(() => expect(notice()?.textContent).toContain('Can’t save right now. We’ll keep trying.'), { timeout: 3000 })
+    expect(notice()).toHaveAttribute('role', 'status')
+    expect(pillText()).toContain('Waiting to save')
+    expect(screen.queryByRole('button', { name: 'Reload saved world' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download a copy' })).toBeInTheDocument()
+    online = true
+    act(() => { window.dispatchEvent(new Event('online')) })
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    expect(notice()).toBeNull()
+    const puts = calls.filter(call => call.method === 'PUT')
+    expect((puts[puts.length - 1].body as { document: { bricks: BrickInstance[] } }).document.bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
+  })
+
+  it('an involuntary sign-out keeps the project on screen behind a sign-in card, not the guest build', async () => {
+    browserClassroomClient.setSession(student)
+    stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    act(() => { browserClassroomClient.setSession(null) })
+    const card = screen.getByRole('alertdialog', { name: 'You were signed out' })
+    expect(card).toHaveTextContent('Sign in to keep saving.')
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a'])
+    expect(screen.getByText('Untitled build', { selector: '.app-header-title' })).toBeInTheDocument()
+    expect(localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBeNull()
+    fireEvent.click(within(card).getByRole('button', { name: 'Sign in' }))
+    expect(goToJoin).toHaveBeenCalledWith({ mode: 'signin', next: '/build?world=world-new' })
+  })
+
   it('leaves guests browser-only with no account required', async () => {
     const calls = stubClassroomServer(({ document }) => serverWorld(document))
     render(<BrickStudioApp />)
@@ -175,6 +220,45 @@ describe('automatic account world for a signed-in fresh build', () => {
   })
 })
 
+describe('the same guest build open in two tabs', () => {
+  it('offers the other tab’s newer build instead of silently saving over it', async () => {
+    localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))
+    render(<BrickStudioApp />)
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a'])
+    const newer = JSON.stringify(createBrickStudioDocument([brickA, brickB]))
+    localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, newer)
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: BRICK_STUDIO_LOCAL_STORAGE_KEY, newValue: newer })) })
+    expect(screen.getByText('This build was changed in another tab.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the newest' }))
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
+    expect(screen.queryByText('This build was changed in another tab.')).not.toBeInTheDocument()
+    act(() => { window.dispatchEvent(new StorageEvent('storage', { key: BRICK_STUDIO_LOCAL_STORAGE_KEY, newValue: newer })) })
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this one' }))
+    expect(screen.queryByText('This build was changed in another tab.')).not.toBeInTheDocument()
+  })
+})
+
+describe('/build?world=<id> that this version cannot open', () => {
+  it('says so, keeps the build on screen, and never saves it into that world', async () => {
+    localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))
+    browserClassroomClient.setSession(student)
+    const calls = stubClassroomServer(({ document }) => ({ ...serverWorld(document), id: 'world-fresh' }))
+    const request = vi.mocked(browserClassroomClient.request)
+    const server = request.getMockImplementation()!
+    request.mockImplementation(async (path: string, method?: string, body?: unknown) => {
+      if (path === '/worlds/world-newer' && (method ?? 'GET') === 'GET') return { world: { ...serverWorld({ ...createBrickStudioDocument([brickB]), schemaVersion: 99 } as never), id: 'world-newer' } } as never
+      return server(path, method, body)
+    })
+    window.history.replaceState(null, '', '/build?world=world-newer')
+    render(<BrickStudioApp />)
+    expect(await screen.findByText('We couldn’t open this project here, so nothing was changed. Reload the page and try again.')).toBeInTheDocument()
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a'])
+    placeBrick(brickB)
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 1000)) })
+    expect(calls.some(call => call.path === '/worlds/world-newer' && call.method === 'PUT')).toBe(false)
+  })
+})
+
 describe('/build?new=1', () => {
   it('clears the current draft after the New build confirm, strips the param, and forgets the resumable world', async () => {
     localStorage.setItem(BRICK_STUDIO_LOCAL_STORAGE_KEY, JSON.stringify(createBrickStudioDocument([brickA])))
@@ -182,11 +266,14 @@ describe('/build?new=1', () => {
     browserClassroomClient.setSession(student)
     const calls = stubClassroomServer(({ document }) => serverWorld(document))
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true })
     window.history.replaceState(null, '', '/build?new=1&utm_source=poster')
     render(<BrickStudioApp />)
     expect(window.location.search).toBe('?utm_source=poster')
     expect(confirm).toHaveBeenCalledTimes(1)
-    expect(confirm.mock.calls[0][0]).toMatch(/Start a new blank build/)
+    expect(confirm.mock.calls[0][0]).toMatch(/^Start a new build\? This build will be replaced on this computer\. We’ll download a copy first/)
+    // The old build goes to a file before the one browser slot is cleared.
+    expect(download).toHaveBeenCalledWith(createBrickStudioDocument([brickA]), globalThis, 'my-old-3d-build')
     expect(useBrickStore.getState().bricks).toEqual([])
     expect(sessionStorage.getItem(ACTIVE_KEY)).toBeNull()
     expect(calls.filter(call => call.method === 'GET')).toHaveLength(0)

@@ -117,3 +117,30 @@ describe('items in a race', () => {
     expect(spun).toBe(true)
   })
 })
+
+describe('back on the road', () => {
+  it('puts a stuck car back on a road spot it drove over, facing the way it went, keeping its lap', () => {
+    const h = setup()
+    h.step(GAS, false, 120)
+    const car = h.run.you.car
+    const lap = { ...h.run.you.lap }
+    // Wedged somewhere it should not be, facing backwards.
+    Object.assign(car, { x: 2 * 16, y: 2 * 16, a: Math.PI, vx: 0, vy: 0 })
+    expect(h.run.rescue()).toBe(true)
+    expect(car.x).toBeGreaterThan(6 * 16)
+    expect(Math.cos(car.a)).toBeGreaterThan(0.9)
+    expect(car.vx).toBe(0)
+    expect(h.run.you.lap.lap).toBe(lap.lap)
+  })
+
+  it('does nothing before the lights go green or after you finish', () => {
+    const d = createBlankRaceLevel(60, 20, 'Straight')
+    const run = new RaceRun(d, 0, () => DEFAULT_CAR_FEEL)
+    expect(run.racing).toBe(false)
+    expect(run.rescue()).toBe(false)
+    const h = setup()
+    h.step(GAS, false, 10)
+    h.run.you.lap.done = 500
+    expect(h.run.rescue()).toBe(false)
+  })
+})

@@ -9,17 +9,18 @@ import './projectMenu.css'
  */
 export function StorageNoticeBar() {
   const notice = useStorageNotice()
-  const quiet = notice !== null && !notice.sticky && (notice.type === 'success' || notice.type === 'info')
+  const good = notice !== null && (notice.type === 'success' || notice.type === 'info')
+  // Good news fades on its own, unless it offers something to do (Undo); problems stay until a kid dismisses them.
+  const fades = good && !notice.sticky && !notice.actions?.length
 
-  // Good news fades on its own; problems stay until a kid dismisses them.
   useEffect(() => {
-    if (!quiet || !notice) return
+    if (!fades || !notice) return
     const t = setTimeout(clearStorageNotice, 6000)
     return () => clearTimeout(t)
-  }, [quiet, notice])
+  }, [fades, notice])
 
   if (!notice) return null
-  const problem = !quiet
+  const problem = !good
   return (
     <div className={`storage-notice-bar banner-${notice.type}`} role={problem ? 'alert' : 'status'} aria-live={problem ? 'assertive' : 'polite'}>
       <div className="storage-notice-text">

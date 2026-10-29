@@ -3,8 +3,9 @@
  * are ordinary bricks that broadcast these messages (starter.ts "check for the Hero", hero/heroBrick.ts "hero hurt"),
  * and the builder only listens (Runtime.onBroadcast). A test keeps the words below in step with those bricks.
  */
-import type { LevelDesign, Value } from '../../core/contracts'
+import type { BrickDef, LevelDesign, Value } from '../../core/contracts'
 import type { Runtime } from '../../core/runtime'
+import { powerKeysOf } from '../powers/powers'
 
 /** The Goal says this when the Hero reaches it. */
 export const COURSE_CLEAR = 'course clear'
@@ -15,6 +16,46 @@ export const COINS_VARIABLE = 'coins'
 
 /** The keys the Hero reads (hero/heroBrick.ts "read keys"). */
 export const PLAY_CONTROLS_HINT = 'move · Space jumps (hold to go higher) · hold X to run'
+
+/** Keys the Hero already has (the touch buttons press these): a power reading one needs no button or hint of its own. */
+export const HERO_KEYS: ReadonlySet<string> = new Set(['left arrow', 'right arrow', 'up arrow', 'down arrow', 'space', 'x', 'any'])
+
+/** A key a snapped power reads beyond the Hero's own, and the power's name (Dash reads z). */
+export interface PowerKey {
+  key: string
+  power: string
+}
+
+/**
+ * Keys that switched-on powers on placed bricks (or the Stage) read, one entry per key, in brick order. Works on a
+ * design's bricks or a running world's (both are BrickDefs with their compiled programs).
+ */
+export function powerKeysIn(bricks: readonly BrickDef[], placed: ReadonlySet<string>): PowerKey[] {
+  const out: PowerKey[] = []
+  for (const brick of bricks) {
+    if (!placed.has(brick.id)) continue
+    for (const snap of brick.powers ?? []) {
+      for (const key of powerKeysOf(brick, snap)) {
+        if (!HERO_KEYS.has(key) && !out.some((k) => k.key === key)) out.push({ key, power: snap.name })
+      }
+    }
+  }
+  return out
+}
+
+export function powerKeys(design: LevelDesign): PowerKey[] {
+  return powerKeysIn([design.stage, ...design.bricks], new Set([design.stage.id, ...design.copies.map((c) => c.brickId)]))
+}
+
+/** "z" → "Z", "enter" → "Enter". */
+export function keyLabel(key: string): string {
+  return key.length === 1 ? key.toUpperCase() : key.charAt(0).toUpperCase() + key.slice(1)
+}
+
+/** Added to the controls hint: " · Z for Dash". */
+export function powerKeysHint(keys: readonly PowerKey[]): string {
+  return keys.map((k) => ` · ${keyLabel(k.key)} for ${k.power}`).join('')
+}
 
 const isNamed = (name: string, wanted: string) => name.trim().toLowerCase() === wanted
 

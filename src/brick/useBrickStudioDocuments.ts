@@ -7,10 +7,14 @@ import {
   type CreateBrickStudioDocumentOptions,
 } from './brickDocument'
 import {
+  BRICK_STUDIO_LOCAL_STORAGE_KEY,
   connectBrickStudioAutosave,
   downloadBrickStudioDocument,
+  keepOldBuildBeforeReplacing,
   loadLocalBrickStudioProject,
+  OLD_BUILD_FILENAME,
 } from './documentPersistence'
+import { getBuildPlateSize } from './buildPlate'
 import type { StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
 import { BRAND_NAME } from '../brand'
@@ -22,6 +26,11 @@ export type BrickStudioDocumentPersistenceOptions = CreateBrickStudioDocumentOpt
   title?: string
   /** The browser save failed (a message) or works again (null), so the header never claims a save that failed. */
   onLocalSaveError?: (message: string | null) => void
+  /**
+   * Another tab saved a different build to this computer. `showNewest` opens that build here
+   * (true when it did); until then this tab's next edit would replace it.
+   */
+  onChangedInAnotherTab?: (showNewest: () => boolean) => void
 }
 
 function showDocumentMessage(message: string) {
@@ -51,6 +60,8 @@ export function useBrickStudioDocuments(
     environmentId: persistence.environmentId,
     customParts: persistence.customParts,
   })
+  // Metadata of the build just loaded from storage, until the studio's props have caught up with it.
+  const loadedMetadataRef = useRef<BrickStudioDocumentPersistenceOptions | null>(null)
 
   useEffect(() => {
     useBrickStore.getState().setDocumentMetadata(persistence)
@@ -78,6 +89,13 @@ export function useBrickStudioDocuments(
     if (loaded.ok) {
       if (loaded.document) {
         useBrickStore.getState().restoreDocument(loaded.document)
+        // The studio mirrors the loaded metadata back into props; that echo is not an edit and must
+        // not write the build back (a tab closed right after opening would overwrite a newer build).
+        loadedMetadataRef.current = {
+          plateSize: getBuildPlateSize(loaded.document),
+          environmentId: loaded.document.environmentId,
+          customParts: loaded.document.customParts,
+        }
         persistenceRef.current.onDocumentLoaded?.(loaded.document)
       }
     } else {
@@ -100,9 +118,27 @@ export function useBrickStudioDocuments(
     // Flush the existing local-only autosave before that happens.
     const flush = () => { autosave.flush() }
     const visibilityChanged = () => { if (document.visibilityState === 'hidden') flush() }
+    // Another tab saved the build: offer its version here instead of silently saving over it later.
+    const showNewest = () => {
+      const newest = loadLocalBrickStudioProject(storage)
+      if (!newest.ok || !newest.document || !useBrickStore.getState().restoreDocument(newest.document).ok) {
+        showDocumentMessage('We couldn’t open the newest build. Your build here is unchanged.')
+        return false
+      }
+      autosave.markSaved()
+      loadedMetadataRef.current = { plateSize: getBuildPlateSize(newest.document), environmentId: newest.document.environmentId, customParts: newest.document.customParts }
+      persistenceRef.current.onDocumentLoaded?.(newest.document)
+      return true
+    }
+    const changedElsewhere = (event: StorageEvent) => {
+      if (event.key !== BRICK_STUDIO_LOCAL_STORAGE_KEY || event.newValue === null) return
+      persistenceRef.current.onChangedInAnotherTab?.(showNewest)
+    }
     window.addEventListener('pagehide', flush)
+    window.addEventListener('storage', changedElsewhere)
     document.addEventListener('visibilitychange', visibilityChanged)
     return () => {
+      window.removeEventListener('storage', changedElsewhere)
       window.removeEventListener('pagehide', flush)
       document.removeEventListener('visibilitychange', visibilityChanged)
       loadedRef.current = false
@@ -115,24 +151,39 @@ export function useBrickStudioDocuments(
   // array is referentially unchanged, so they must enter the same debounced save.
   useEffect(() => {
     const previous = persistedMetadataRef.current
+    // Custom parts compare by value: the store hands back equal copies as props settle.
     const changed = previous.plateSize !== persistence.plateSize
       || previous.environmentId !== persistence.environmentId
-      || previous.customParts !== persistence.customParts
+      || (previous.customParts !== persistence.customParts
+        && JSON.stringify(previous.customParts ?? []) !== JSON.stringify(persistence.customParts ?? []))
     persistedMetadataRef.current = {
       plateSize: persistence.plateSize,
       environmentId: persistence.environmentId,
       customParts: persistence.customParts,
     }
-    if (changed && enabled && loadedRef.current) autosaveRef.current?.schedule()
+    if (!changed) return
+    const loaded = loadedMetadataRef.current
+    loadedMetadataRef.current = null
+    // Props catching up with the build just loaded are not an edit: nothing to save.
+    if (loaded && loaded.plateSize === persistence.plateSize && loaded.environmentId === persistence.environmentId
+      && JSON.stringify(loaded.customParts ?? []) === JSON.stringify(persistence.customParts ?? [])) return
+    if (enabled && loadedRef.current) autosaveRef.current?.schedule()
   }, [enabled, persistence.plateSize, persistence.environmentId, persistence.customParts])
 
+  // This computer keeps one 3D build and Undo ends with the tab, so the old build is downloaded first.
   const newBuild = useCallback(() => {
-    if (!window.confirm('Start a new blank build? You can Undo during this session to restore the current build.')) {
-      showDocumentMessage('New Build canceled. Your current build is unchanged.')
+    const kept = keepOldBuildBeforeReplacing(currentDocument(), null, {
+      confirm: (question) => window.confirm(question),
+      download: (document) => downloadBrickStudioDocument(document, globalThis, OLD_BUILD_FILENAME),
+      question: 'Start a new build? This build will be replaced on this computer. We’ll download a copy first so you can open it again from My projects.',
+    })
+    if (!kept.ok) {
+      showDocumentMessage(kept.canceled ? 'New build canceled. Your build is unchanged.' : kept.error.message)
       return
     }
     useBrickStore.getState().newBuild()
-  }, [])
+    if (kept.downloaded) showDocumentMessage('Your old build was downloaded. Open it any time from My projects → Import a file.')
+  }, [currentDocument])
 
   const importProject = useCallback(async (file: File) => {
     if (!window.confirm(`Replace the current build with “${file.name}”? The file will be validated before anything changes.`)) {

@@ -57,15 +57,17 @@ describe('semantics and structure', () => {
     expect(order).toEqual(['My projects', 'Student login'])
     expect(within(hero).getByRole('button', { name: 'New project' })).toBeInTheDocument()
     expect(within(hero).getByRole('link', { name: 'My projects' })).toHaveAttribute('href', '/projects')
-    expect(within(hero).getByRole('link', { name: 'Student login' })).toHaveAttribute('href', '/build?classroom=signin')
+    expect(within(hero).getByRole('link', { name: 'Student login' })).toHaveAttribute('href', '/join?mode=signin')
 
-    // A plain GET form: /join?mode=join&classCode=… opens the join page with the code filled in.
+    // A plain GET form: /join?classCode=… with no mode, so the join page looks the class up and shows the
+    // names to tap plus "I'm new" (a hard-coded mode=join would open account creation for returning kids).
     const code = within(hero).getByLabelText('Got a class code?') as HTMLInputElement
     expect(code).toHaveAttribute('name', 'classCode')
     const form = code.closest('form')!
     expect(form).toHaveAttribute('action', '/join')
     expect(form).toHaveAttribute('method', 'get')
-    expect(form.querySelector('input[type="hidden"][name="mode"]')).toHaveAttribute('value', 'join')
+    expect([...new FormData(form).keys()]).toEqual(['classCode'])
+    expect(form.querySelector('input[name="mode"]')).toBeNull()
     expect(within(form).getByRole('button', { name: 'Join' })).toHaveAttribute('type', 'submit')
   })
 
@@ -113,7 +115,7 @@ describe('semantics and structure', () => {
 })
 
 describe('calls to action and anchors', () => {
-  it('points every entry link at the studio routes and account intents', () => {
+  it('points every entry link at the studio, and every account link straight at the join page', () => {
     render(<LandingPage />)
 
     const starts = screen.getAllByRole('link', { name: 'Start building' })
@@ -122,25 +124,28 @@ describe('calls to action and anchors', () => {
 
     const joins = screen.getAllByRole('link', { name: 'Join a class' })
     expect(joins).toHaveLength(1)
-    for (const link of joins) expect(link).toHaveAttribute('href', '/build?classroom=join')
+    for (const link of joins) expect(link).toHaveAttribute('href', '/join')
 
     // The header's student entry is the shell's account chip (flows v2); the hero keeps its own link.
     const signins = screen.getAllByRole('link', { name: 'Student login' })
     expect(signins).toHaveLength(1)
-    for (const link of signins) expect(link).toHaveAttribute('href', '/build?classroom=signin')
+    for (const link of signins) expect(link).toHaveAttribute('href', '/join?mode=signin')
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/join?mode=signin')
-    expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/build?classroom=teacher')
+    expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/join?mode=teacher')
+    expect(within(screen.getByRole('navigation', { name: BRAND_NAME })).getByRole('link', { name: 'Teacher login' })).toHaveAttribute('href', '/join?mode=teacher')
+    // No account link detours through the 3D builder (`/build?classroom=…` loads it, then redirects).
+    expect(document.querySelector('a[href*="classroom="]')).toBeNull()
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/build')
     expect(screen.getByText('Continue with your teacher Google account. Email and password sign-in is also available.')).toBeInTheDocument()
   })
 
-  it('routes every studio call to action through the studioHref contract', () => {
+  it('routes every studio call to action through the studioHref contract; account links stay on the join page', () => {
     render(<LandingPage studioHref="/studio" />)
     for (const link of screen.getAllByRole('link', { name: 'Start building' })) expect(link).toHaveAttribute('href', '/studio')
     expect(screen.getByRole('link', { name: 'Try building first' })).toHaveAttribute('href', '/studio')
-    for (const link of screen.getAllByRole('link', { name: 'Join a class' })) expect(link).toHaveAttribute('href', '/studio?classroom=join')
-    for (const link of screen.getAllByRole('link', { name: 'Student login' })) expect(link).toHaveAttribute('href', '/studio?classroom=signin')
-    expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/studio?classroom=teacher')
+    for (const link of screen.getAllByRole('link', { name: 'Join a class' })) expect(link).toHaveAttribute('href', '/join')
+    for (const link of screen.getAllByRole('link', { name: 'Student login' })) expect(link).toHaveAttribute('href', '/join?mode=signin')
+    expect(screen.getByRole('link', { name: 'Teacher sign in' })).toHaveAttribute('href', '/join?mode=teacher')
   })
 
   it('resolves every in-page anchor to an element that exists', () => {

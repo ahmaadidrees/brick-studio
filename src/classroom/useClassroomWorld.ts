@@ -3,15 +3,30 @@ import { createBrickStudioDocument, validateBrickStudioDocument } from '../brick
 import { loadLocalBrickStudioProject, saveLocalBrickStudioProject, downloadBrickStudioDocument } from '../brick/documentPersistence'
 import { suspendBrickStudioAutosave } from '../brick/liveAutosaveGuard'
 import { useBrickStore } from '../brick/store'
+import { goToJoin } from '../shell/navigation'
 import { browserClassroomClient as client } from './client'
 import { createCloudAutosave, recoveryKey, type CloudRecovery, type CloudSaveStatus } from './cloudAutosave'
 import type { ClassroomWorld } from './contracts'
 const ACTIVE_KEY = 'brick-studio.active-cloud-world.v1'
+/** The account world's build can't be opened by this version of the app; the editor keeps what it had and saves nothing into it. */
+export class CloudWorldUnreadableError extends Error {
+  constructor() { super('We couldn’t open this project here, so nothing was changed. Reload the page and try again.'); this.name = 'CloudWorldUnreadableError' }
+}
+export const SIGNED_OUT_MESSAGE = 'You were signed out. Sign in to keep saving.'
 export function useClassroomWorld(enabled: boolean) {
   const [world, setWorld] = useState<ClassroomWorld | null>(null)
   const [status, setStatus] = useState<CloudSaveStatus>('saved')
   const [error, setError] = useState('')
   const [recovery, setRecovery] = useState<CloudRecovery | null>(null)
+  // A transient failure is waiting for its automatic retry (no connection, a timeout, a server error).
+  const [retrying, setRetrying] = useState(false)
+  // Signed out without choosing to (an expired or revoked sign-in, a teacher's password reset, another
+  // tab signing out): the project stays on screen, read-only, instead of swapping in the guest build.
+  const [signedOut, setSignedOutState] = useState(false)
+  const signedOutRef = useRef(false)
+  const setSignedOut = useCallback((value: boolean) => { signedOutRef.current = value; setSignedOutState(value) }, [])
+  // Set while the student follows "Sign in" to /join, so the leave-page warning doesn't stop them.
+  const leavingToSignIn = useRef(false)
   const controller = useRef<ReturnType<typeof createCloudAutosave> | null>(null)
   const release = useRef<(() => void) | null>(null)
   const unsubscribe = useRef<(() => void) | null>(null)
@@ -27,13 +42,16 @@ export function useClassroomWorld(enabled: boolean) {
     let guest = createBrickStudioDocument([])
     try { const loaded = loadLocalBrickStudioProject(localStorage); if (loaded.ok && loaded.document) guest = loaded.document } catch { /* empty guest */ }
     useBrickStore.getState().restoreDocument(guest)
-    setWorld(null); setRecovery(null); setError(''); setStatus('saved')
+    setWorld(null); setRecovery(null); setError(''); setStatus('saved'); setRetrying(false); setSignedOut(false)
     release.current?.(); release.current = null
-  }, [stop])
+  }, [stop, setSignedOut])
   const attach = useCallback(async (next: ClassroomWorld, document = useBrickStore.getState().getDocumentSnapshot(), restoreRecovery = true) => {
     const auth = client.getSession()
     if (!auth || auth.user.resetRequired || next.kind !== 'personal' || next.ownerId !== auth.user.id) throw new Error('Sign in to the owning account before opening this world.')
     const opening = ++operation.current
+    // A world that fails to load must never be attached: the editor would keep the guest build on
+    // screen and the next edit would save it into the account world.
+    if (!validateBrickStudioDocument(document).ok) throw new CloudWorldUnreadableError()
     if (active.current && await controller.current?.flush() === false) throw new Error('Your current world has unsaved changes. Download a recovery copy and reload the saved world before switching.')
     if (opening !== operation.current) return
     if (client.getSession()?.user.id !== auth.user.id) throw new Error('Your account changed. Please reopen the world.')
@@ -57,13 +75,19 @@ export function useClassroomWorld(enabled: boolean) {
     // an export button while editing and autosaving the server version over it.
     // Keep its original revision so Retry cannot overwrite another tab's save.
     const openedDocument = savedRecovery?.document ?? document
-    useBrickStore.getState().restoreDocument(openedDocument)
-    setWorld(next); setRecovery(savedRecovery)
-    setStatus(savedRecovery ? 'error' : 'saved')
-    setError(savedRecovery ? 'Recovered unsaved changes from this tab. Review them, then retry saving or download a copy.' : '')
-    controller.current = createCloudAutosave({ client, userId: auth.user.id, world: savedRecovery ? { ...next, revision: savedRecovery.world.revision } : next, document: openedDocument, storage: sessionStorage, pendingRecovery: savedRecovery !== null, onStatus: (value, detail) => { setStatus(value); setError(detail || ''); if (value === 'saved') setRecovery(null) }, onWorld: value => { active.current = value; setWorld(value) } })
+    if (!useBrickStore.getState().restoreDocument(openedDocument).ok) {
+      // Defensive: both documents were checked above, but never autosave a build that did not open.
+      active.current = null; identity.current = null
+      try { sessionStorage.removeItem(ACTIVE_KEY) } catch { /* optional session resume */ }
+      release.current?.(); release.current = null
+      throw new CloudWorldUnreadableError()
+    }
+    setWorld(next); setRecovery(savedRecovery); setSignedOut(false)
+    setStatus(savedRecovery ? 'error' : 'saved'); setRetrying(false)
+    setError(savedRecovery ? 'Your changes that weren’t saved yet are back. Press Retry save to save them, or download a copy.' : '')
+    controller.current = createCloudAutosave({ client, userId: auth.user.id, world: savedRecovery ? { ...next, revision: savedRecovery.world.revision } : next, document: openedDocument, storage: sessionStorage, pendingRecovery: savedRecovery !== null, onStatus: (value, detail, willRetry) => { setStatus(value); setError(detail || ''); setRetrying(Boolean(willRetry)); if (value === 'saved') setRecovery(null) }, onWorld: value => { active.current = value; setWorld(value) } })
     unsubscribe.current = useBrickStore.subscribe((state, previous) => { if (state.bricks !== previous.bricks || state.documentMetadata !== previous.documentMetadata) controller.current?.schedule(state.getDocumentSnapshot()) })
-  }, [stop])
+  }, [stop, setSignedOut])
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
@@ -82,12 +106,46 @@ export function useClassroomWorld(enabled: boolean) {
         }
       }
     } catch { /* Invalid resume metadata does not affect guest builds. */ }
-    const off = client.subscribe(() => { const auth = client.getSession(); if (identity.current && (auth?.user.id !== identity.current || auth.user.resetRequired)) leave() })
-    const unload = (event: BeforeUnloadEvent) => { if (controller.current?.hasPending()) { void controller.current.flush(); event.preventDefault(); event.returnValue = '' } }
+    const off = client.subscribe(() => {
+      if (!identity.current) return
+      const auth = client.getSession()
+      if (auth?.user.id === identity.current && !auth.user.resetRequired) {
+        // The same student is back (signed in here or in another tab): saving resumes where it stopped.
+        if (!signedOutRef.current) return
+        setSignedOut(false)
+        const current = controller.current
+        if (current?.hasPending()) void current.retry()
+        else { setStatus('saved'); setError('') }
+        return
+      }
+      // Someone else signed in on this device, or this student chose Sign out here: back to the guest build.
+      if ((auth && auth.user.id !== identity.current) || (!auth && client.isSigningOut())) { leave(); return }
+      // Not chosen: keep the project on screen. The autosave stays attached but sends nothing while
+      // signed out (its edits stay in this tab's recovery), and the guest autosave stays suspended.
+      if (signedOutRef.current) return
+      setSignedOut(true); setStatus('error'); setError(SIGNED_OUT_MESSAGE); setRetrying(false)
+    })
+    // The header's Sign out waits for this: save the waiting edits, or ask before signing out without them.
+    const unguard = client.guardSignOut(async () => {
+      const current = controller.current
+      if (!current?.hasPending() || await current.flush()) return true
+      if (!window.confirm('Your newest changes aren’t saved to your account yet. Download a copy and sign out?')) return false
+      return downloadBrickStudioDocument(current.getDocument()).ok
+    })
+    const unload = (event: BeforeUnloadEvent) => { if (!leavingToSignIn.current && controller.current?.hasPending()) { void controller.current.flush(); event.preventDefault(); event.returnValue = '' } }
+    // Coming back to this page from the browser's history: warn again before leaving.
+    const shown = () => { leavingToSignIn.current = false }
     window.addEventListener('beforeunload', unload)
-    return () => { cancelled = true; operation.current++; off(); window.removeEventListener('beforeunload', unload); stop(); release.current?.(); release.current = null }
-  }, [enabled, attach, leave, stop])
-  return { world, status, error, recovery, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(),
+    window.addEventListener('pageshow', shown)
+    return () => { cancelled = true; operation.current++; off(); unguard(); window.removeEventListener('beforeunload', unload); window.removeEventListener('pageshow', shown); stop(); release.current?.(); release.current = null }
+  }, [enabled, attach, leave, stop, setSignedOut])
+  /** "Sign in" from the signed-out notice: /join, then straight back to this project (this tab keeps its unsaved edits). */
+  const signIn = useCallback(() => {
+    const id = active.current?.id
+    leavingToSignIn.current = true
+    goToJoin({ mode: 'signin', next: id ? `/build?world=${encodeURIComponent(id)}` : '/build' })
+  }, [])
+  return { world, status, error, recovery, retrying, signedOut, signIn, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(),
   // Edits made while a world was being created online are not yet in it; queue the editor's current document for autosave.
   scheduleCurrent: () => { controller.current?.schedule(useBrickStore.getState().getDocumentSnapshot()) }, downloadRecovery: () => downloadBrickStudioDocument(controller.current?.getDocument() ?? recovery?.document ?? useBrickStore.getState().getDocumentSnapshot()), reload: async () => {
     if (!active.current) return

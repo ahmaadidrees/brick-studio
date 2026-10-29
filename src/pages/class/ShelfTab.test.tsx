@@ -4,9 +4,10 @@ import type { ClassroomAuthResult, ClassroomClass } from '../../classroom/contra
 import type { ShelfItem } from '../../classroom/shelfClient'
 import ClassPage from './ClassPage'
 import type { ClassPageClient } from './classPageData'
+import { SHELF_REFRESH_MS } from './ShelfTab'
 
 vi.mock('qrcode', () => ({ toDataURL: vi.fn(async () => 'data:image/png;base64,AA==') }))
-afterEach(() => { cleanup(); window.localStorage.clear() })
+afterEach(() => { cleanup(); window.localStorage.clear(); vi.useRealTimers(); vi.restoreAllMocks() })
 
 const session: ClassroomAuthResult = {
   user: { id: 'teacher-1', username: 'mrsdiaz', rosterName: 'Ana Diaz', role: 'teacher', resetRequired: false },
@@ -24,6 +25,8 @@ type Call = [string, string, unknown?]
 /** A fake page client whose `request` answers the class list and the shelf routes from memory. */
 function shelfClient({ failList = false } = {}) {
   const calls: Call[] = []
+  /** Set by hold(): the next list answer waits (holding the list as it was when asked) until released. */
+  let held: ((release: () => void) => void) | null = null
   let cls: ClassroomClass = { ...CLASS }
   let items = [item('p1', 'Double jump', 'Ava M.', 'pending'), item('a1', 'Coin magnet', 'Ben T.', 'approved', 3), item('h1', 'Spin forever', 'Chloe R.', 'hidden')]
   const request = vi.fn(async (path: string, method = 'GET', body?: unknown) => {
@@ -34,7 +37,9 @@ function shelfClient({ failList = false } = {}) {
     if (path.endsWith('/students')) return { students: [] }
     if (path === '/classes/class-1/shelf' && method === 'GET') {
       if (failList) throw new Error('The shelf is not reachable right now.')
-      return { items, needsReview: cls.shelfNeedsReview, raceHeroes: cls.raceHeroes }
+      const answer = { items, needsReview: cls.shelfNeedsReview, raceHeroes: cls.raceHeroes }
+      if (held) { const wait = held; held = null; await new Promise<void>(resolve => wait(resolve)) }
+      return answer
     }
     const one = /^\/classes\/class-1\/shelf\/([^/]+)$/.exec(path)
     if (one) {
@@ -46,7 +51,10 @@ function shelfClient({ failList = false } = {}) {
     return {}
   })
   const client: ClassPageClient = { getSession: () => session, subscribe: () => () => {}, signOut: vi.fn(async () => {}), request: request as unknown as ClassPageClient['request'] }
-  return { client, calls }
+  const add = (row: ShelfItem) => { items = [row, ...items] }
+  /** The next list request answers with the list as it is now, but only once `release` is called. */
+  const hold = () => new Promise<() => void>(ready => { held = ready })
+  return { client, calls, add, hold }
 }
 
 async function openShelf(client: ClassPageClient) {
@@ -145,4 +153,53 @@ it('shows a failed shelf load as the page error with a way to try again', async 
   fireEvent.click(await screen.findByRole('radio', { name: 'Shelf' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('The shelf is not reachable right now.')
   expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+})
+
+const listCalls = (calls: Call[]) => calls.filter(([path, method]) => path === '/classes/class-1/shelf' && method === 'GET').length
+
+it('Refresh shows a brick a student just shared, and an open Peek stays open', async () => {
+  const { client, calls, add } = shelfClient()
+  const waiting = await openShelf(client)
+  fireEvent.click(within(card(waiting, 'Double jump')).getByRole('button', { name: 'Peek' }))
+  await waitFor(() => expect(within(card(waiting, 'Double jump')).getByText('3 scripts')).toBeInTheDocument())
+  add(item('p2', 'Moon jump', 'Dev K.', 'pending'))
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+  const list = screen.getByRole('list', { name: 'Bricks waiting for you' })
+  await waitFor(() => expect(within(list).getByText('Moon jump')).toBeInTheDocument())
+  expect(within(card(list, 'Double jump')).getByText('3 scripts')).toBeInTheDocument()
+  expect(listCalls(calls)).toBe(2)
+})
+
+it('checks for new bricks by itself while the page is on screen, and not while it is hidden', async () => {
+  vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+  const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  const { client, calls, add } = shelfClient()
+  await openShelf(client)
+  expect(listCalls(calls)).toBe(1)
+  add(item('p2', 'Moon jump', 'Dev K.', 'pending'))
+  vi.advanceTimersByTime(SHELF_REFRESH_MS)
+  expect(await within(screen.getByRole('list', { name: 'Bricks waiting for you' })).findByText('Moon jump')).toBeInTheDocument()
+  expect(listCalls(calls)).toBe(2)
+
+  visibility.mockReturnValue('hidden')
+  vi.advanceTimersByTime(SHELF_REFRESH_MS * 3)
+  expect(listCalls(calls)).toBe(2)
+  // Coming back to the page checks at once.
+  visibility.mockReturnValue('visible')
+  document.dispatchEvent(new Event('visibilitychange'))
+  await waitFor(() => expect(listCalls(calls)).toBe(3))
+})
+
+it('a check that was already on its way cannot undo "Put on shelf"', async () => {
+  const { client, hold } = shelfClient()
+  const waiting = await openShelf(client)
+  const release = hold()
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+  const releaseOld = await release
+  fireEvent.click(within(card(waiting, 'Double jump')).getByRole('button', { name: 'Put on shelf' }))
+  await waitFor(() => expect(within(screen.getByRole('list', { name: 'Bricks on the shelf' })).getByText('Double jump')).toBeInTheDocument())
+  releaseOld() // the old answer still has Double jump waiting
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).not.toBeDisabled())
+  expect(within(screen.getByRole('list', { name: 'Bricks on the shelf' })).getByText('Double jump')).toBeInTheDocument()
+  expect(screen.queryByRole('list', { name: 'Bricks waiting for you' })).not.toBeInTheDocument()
 })

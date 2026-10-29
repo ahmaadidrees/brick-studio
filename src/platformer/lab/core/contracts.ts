@@ -146,6 +146,11 @@ export interface SnappedPower {
   blockIds: string[]
   /** Variable and list ids the power added. */
   variableIds: string[]
+  /**
+   * What the power's blocks did when snapped (studio/powers powerChanged), so Take off can ask first once the kid has
+   * changed them. Missing on snaps made before it was recorded.
+   */
+  fingerprint?: string
 }
 
 export interface BrickDef {
