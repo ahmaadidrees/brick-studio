@@ -1247,9 +1247,14 @@ export default function BrickStudioApp({
   }, [cloud, studentClassId, createAccountWorld, openInviteSheet])
   const documentCommands = useBrickStudioDocuments({
     onNewBuild: onNewBuild ?? (cloud.world ? () => { void (async () => {
-      if (!window.confirm('Start a new build? Your current world stays saved in your account.')) return
+      if (!window.confirm('Start a new build? Your current project stays saved in your account.')) return
       const saved = await cloud.flush()
-      if (!saved && !window.confirm('Some edits are only in recovery storage. Download a recovery copy before leaving if needed. Continue?')) return
+      if (!saved) {
+        // The newest edits are only in this tab: they go to a file before the editor moves on.
+        if (!window.confirm('Your newest changes aren’t saved to your account yet. Download a copy and start a new build?')) return
+        const downloaded = cloud.downloadRecovery()
+        if (!downloaded.ok) { useBrickStore.setState({ toast: 'We couldn’t download a copy, so nothing changed.' }); return }
+      }
       cloud.leave()
       useBrickStore.getState().newBuild()
     })() } : undefined),

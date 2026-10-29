@@ -175,6 +175,33 @@ it('exports a guest room snapshot without overwriting the separately saved local
   }
 });
 
+it('"Use as my local build" asks first and downloads the old build before replacing it', async () => {
+  const mine = createBrickStudioDocument([{ id: 'mine', partId: 'brick_2x4', x: 10, y: 0, z: 10, rotation: 0, color: '#fff' }]);
+  saveLocalBrickStudioProject(window.localStorage, mine);
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true });
+  try {
+    render(<LiveWorldPage classroomClient={client()} initialLocation={{ pathname: `/live/${roomId}`, hash: '' }}
+      connectRoom={guestConnector()} fetchWorldSummary={async () => ({ roomId, mode: 'build', title: 'Guest world', locked: false, playerCount: 1 })}
+      renderWorld={view => <>{view.overlay}</>} />);
+    fireEvent.change(await screen.findByLabelText('Your name'), { target: { value: 'Friend' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join world' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^People, \d+ here$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use as my local build' }));
+    expect(await screen.findByText('Nothing changed. Your build on this computer is still there.')).toBeInTheDocument();
+    expect(confirm.mock.calls[0][0]).toMatch(/download your old build first/);
+    expect(download).not.toHaveBeenCalled();
+    expect(loadLocalBrickStudioProject(window.localStorage)).toEqual({ ok: true, document: mine });
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Use as my local build' }));
+    expect(await screen.findByText(/Your old build was downloaded/)).toBeInTheDocument();
+    expect(download).toHaveBeenCalledWith(mine, globalThis, 'my-old-3d-build');
+    expect(loadLocalBrickStudioProject(window.localStorage)).toEqual({ ok: true, document: createBrickStudioDocument([]) });
+  } finally {
+    confirm.mockRestore(); download.mockRestore();
+  }
+});
+
 it('allows explicit classroom rejoin when the first connection was replaced before a document loaded', async () => {
   const c = client(); c.setSession(auth);
   const reconnect = vi.fn();

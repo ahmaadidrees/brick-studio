@@ -1,7 +1,8 @@
 import { act, cleanup, renderHook } from '@testing-library/react'
-import { afterEach, beforeEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { useState } from 'react'
 import { createBrickStudioDocument } from './brickDocument'
+import * as persistence from './documentPersistence'
 import { useBrickStore } from './store'
 import { useBrickStudioDocuments } from './useBrickStudioDocuments'
 import type { CustomPartDefinition, EnvironmentId } from './types'
@@ -15,7 +16,7 @@ beforeEach(() => {
   } })
   useBrickStore.setState(useBrickStore.getInitialState(), true)
 })
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
 it('propagates full-document restoration and undo to parent metadata without a feedback loop', () => {
   const { result } = renderHook(() => {
@@ -84,4 +85,43 @@ it('saves on pagehide again after a new edit, then goes quiet once saved', () =>
   localStorage.setItem('brick-studio.current-project.v1', 'another tab')
   act(() => { window.dispatchEvent(new Event('pagehide')) })
   expect(localStorage.getItem('brick-studio.current-project.v1')).toBe('another tab')
+})
+
+// "New build" replaces the one build on this computer; Undo does not survive a reload, so say so and download first.
+it('New build asks honestly, downloads the old build, then starts fresh', () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true })
+  const { result } = renderHook(() => useBrickStudioDocuments())
+  act(() => { useBrickStore.getState().placeDraft() })
+  const before = useBrickStore.getState().getDocumentSnapshot()
+  act(() => { result.current.onNewBuild() })
+  expect(confirm.mock.calls[0][0]).not.toMatch(/Undo/)
+  expect(confirm.mock.calls[0][0]).toMatch(/replaced/)
+  expect(confirm.mock.calls[0][0]).toMatch(/download/i)
+  expect(download).toHaveBeenCalledWith(before, globalThis, expect.any(String))
+  expect(useBrickStore.getState().bricks).toEqual([])
+  expect(useBrickStore.getState().toast).toMatch(/downloaded/)
+})
+
+it('New build keeps the build when the kid says no or the download fails', () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: false, error: { code: 'download', message: 'blocked' } })
+  const { result } = renderHook(() => useBrickStudioDocuments())
+  act(() => { useBrickStore.getState().placeDraft() })
+  act(() => { result.current.onNewBuild() })
+  expect(download).not.toHaveBeenCalled()
+  expect(useBrickStore.getState().bricks).toHaveLength(1)
+  confirm.mockReturnValue(true)
+  act(() => { result.current.onNewBuild() })
+  expect(download).toHaveBeenCalledOnce()
+  expect(useBrickStore.getState().bricks).toHaveLength(1)
+  expect(useBrickStore.getState().toast).toMatch(/nothing was replaced/)
+})
+
+it('New build on an empty plate asks nothing and downloads nothing', () => {
+  const confirm = vi.spyOn(window, 'confirm')
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument')
+  const { result } = renderHook(() => useBrickStudioDocuments())
+  act(() => { result.current.onNewBuild() })
+  expect(confirm).not.toHaveBeenCalled(); expect(download).not.toHaveBeenCalled()
 })

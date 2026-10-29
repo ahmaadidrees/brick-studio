@@ -100,6 +100,60 @@ export function clearLocalBrickStudioProject(storage: BrickStudioStorage): Brick
   }
 }
 
+/** A build with something worth keeping: bricks or custom parts. An empty plate has nothing to lose. */
+export function hasBrickStudioWork(document: BrickStudioDocument): boolean {
+  return document.bricks.length > 0 || document.customParts.length > 0
+}
+
+export type KeepOldBuildResult =
+  | { ok: true; downloaded: boolean }
+  | { ok: false; canceled: true }
+  | { ok: false; canceled: false; error: BrickStudioPersistenceError }
+
+export type KeepOldBuildOptions = {
+  /** Asked only when the old build has work in it (tests pass a stub; the app passes window.confirm). */
+  confirm: (question: string) => boolean
+  download: (document: BrickStudioDocument) => BrickStudioPersistenceResult
+  question: string
+}
+
+/**
+ * This computer keeps one guest 3D build, so replacing it loses the old one for good (Undo ends
+ * with the tab). Before anything replaces it: ask, then download the old build. A "no" or a failed
+ * download replaces nothing. An empty or identical build needs no question.
+ */
+export function keepOldBuildBeforeReplacing(
+  old: BrickStudioDocument | null,
+  next: BrickStudioDocument | null,
+  { confirm, download, question }: KeepOldBuildOptions,
+): KeepOldBuildResult {
+  if (!old || !hasBrickStudioWork(old)) return { ok: true, downloaded: false }
+  try {
+    if (next && serializeBrickStudioDocument(old) === serializeBrickStudioDocument(next)) return { ok: true, downloaded: false }
+  } catch { /* An unserializable pair is treated as different. */ }
+  if (!confirm(question)) return { ok: false, canceled: true }
+  const downloaded = download(old)
+  if (!downloaded.ok) return { ok: false, canceled: false, error: { code: 'download', message: 'We couldn’t download your old build, so nothing was replaced.' } }
+  return { ok: true, downloaded: true }
+}
+
+/** Replaces the build saved on this computer, keeping the old one first (see keepOldBuildBeforeReplacing). */
+export function replaceLocalBrickStudioProject(
+  storage: BrickStudioStorage,
+  next: BrickStudioDocument,
+  options: KeepOldBuildOptions,
+): KeepOldBuildResult {
+  const loaded = loadLocalBrickStudioProject(storage)
+  // An unreadable draft is quarantined by the save below, never silently dropped.
+  const kept = keepOldBuildBeforeReplacing(loaded.ok ? loaded.document : null, next, options)
+  if (!kept.ok) return kept
+  const saved = saveLocalBrickStudioProject(storage, next)
+  return saved.ok ? kept : { ok: false, canceled: false, error: saved.error }
+}
+
+/** File name (no extension) for the old build downloaded before a replacement. */
+export const OLD_BUILD_FILENAME = 'my-old-3d-build'
+
 export function connectBrickStudioAutosave({
   store,
   storage,

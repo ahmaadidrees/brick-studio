@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BrickStudioApp from './BrickStudioApp'
 import { createBrickStudioDocument } from './brickDocument'
 import { BRICK_STUDIO_LOCAL_STORAGE_KEY } from './documentPersistence'
+import * as persistence from './documentPersistence'
 import { useBrickStore } from './store'
 import type { BrickInstance } from './types'
 import { browserClassroomClient, ClassroomError, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
@@ -210,11 +211,14 @@ describe('/build?new=1', () => {
     browserClassroomClient.setSession(student)
     const calls = stubClassroomServer(({ document }) => serverWorld(document))
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true })
     window.history.replaceState(null, '', '/build?new=1&utm_source=poster')
     render(<BrickStudioApp />)
     expect(window.location.search).toBe('?utm_source=poster')
     expect(confirm).toHaveBeenCalledTimes(1)
-    expect(confirm.mock.calls[0][0]).toMatch(/Start a new blank build/)
+    expect(confirm.mock.calls[0][0]).toMatch(/^Start a new build\? This build will be replaced on this computer\. We’ll download a copy first/)
+    // The old build goes to a file before the one browser slot is cleared.
+    expect(download).toHaveBeenCalledWith(createBrickStudioDocument([brickA]), globalThis, 'my-old-3d-build')
     expect(useBrickStore.getState().bricks).toEqual([])
     expect(sessionStorage.getItem(ACTIVE_KEY)).toBeNull()
     expect(calls.filter(call => call.method === 'GET')).toHaveLength(0)

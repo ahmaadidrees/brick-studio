@@ -9,7 +9,9 @@ import {
 import {
   connectBrickStudioAutosave,
   downloadBrickStudioDocument,
+  keepOldBuildBeforeReplacing,
   loadLocalBrickStudioProject,
+  OLD_BUILD_FILENAME,
 } from './documentPersistence'
 import type { StudioDocumentCommands } from './StudioMenu'
 import { useBrickStore } from './store'
@@ -126,13 +128,20 @@ export function useBrickStudioDocuments(
     if (changed && enabled && loadedRef.current) autosaveRef.current?.schedule()
   }, [enabled, persistence.plateSize, persistence.environmentId, persistence.customParts])
 
+  // This computer keeps one 3D build and Undo ends with the tab, so the old build is downloaded first.
   const newBuild = useCallback(() => {
-    if (!window.confirm('Start a new blank build? You can Undo during this session to restore the current build.')) {
-      showDocumentMessage('New Build canceled. Your current build is unchanged.')
+    const kept = keepOldBuildBeforeReplacing(currentDocument(), null, {
+      confirm: (question) => window.confirm(question),
+      download: (document) => downloadBrickStudioDocument(document, globalThis, OLD_BUILD_FILENAME),
+      question: 'Start a new build? This build will be replaced on this computer. We’ll download a copy first so you can open it again from My projects.',
+    })
+    if (!kept.ok) {
+      showDocumentMessage(kept.canceled ? 'New build canceled. Your build is unchanged.' : kept.error.message)
       return
     }
     useBrickStore.getState().newBuild()
-  }, [])
+    if (kept.downloaded) showDocumentMessage('Your old build was downloaded. Open it any time from My projects → Import a file.')
+  }, [currentDocument])
 
   const importProject = useCallback(async (file: File) => {
     if (!window.confirm(`Replace the current build with “${file.name}”? The file will be validated before anything changes.`)) {
