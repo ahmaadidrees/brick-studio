@@ -12,6 +12,10 @@ export class AudioManager {
   private activeSounds = new Set<SoundSource>()
   private audioCtx: AudioContext | null = null
   private audioBufferCache = new Map<string, AudioBuffer>()
+  /** Sounds still loading, so asking twice loads once. */
+  private loading = new Map<string, Promise<AudioBuffer>>()
+  /** Goes up on every Stop: a sound that finishes loading after a Stop belongs to the run that stopped, so it stays quiet. */
+  private generation = 0
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null
@@ -62,15 +66,28 @@ export class AudioManager {
     }
   }
 
-  private async playViaWebAudio(ctx: AudioContext, asset: string, gainVal: number, playbackRate: number): Promise<void> {
-    try {
-      let buffer = this.audioBufferCache.get(asset)
-      if (!buffer) {
+  private loadBuffer(ctx: AudioContext, asset: string): Promise<AudioBuffer> {
+    let load = this.loading.get(asset)
+    if (!load) {
+      load = (async () => {
         const resp = await fetch(asset)
-        const arrayBuf = await resp.arrayBuffer()
-        buffer = await ctx.decodeAudioData(arrayBuf)
+        const buffer = await ctx.decodeAudioData(await resp.arrayBuffer())
         this.audioBufferCache.set(asset, buffer)
-      }
+        return buffer
+      })()
+      this.loading.set(asset, load)
+      const done = () => { this.loading.delete(asset) }
+      load.then(done, done)
+    }
+    return load
+  }
+
+  private async playViaWebAudio(ctx: AudioContext, asset: string, gainVal: number, playbackRate: number): Promise<void> {
+    const generation = this.generation
+    try {
+      const buffer = this.audioBufferCache.get(asset) ?? (await this.loadBuffer(ctx, asset))
+      // Stop (or leaving Play) happened while it loaded: it is kept for next time, but not played now.
+      if (generation !== this.generation || this.audioCtx !== ctx) return
 
       const source = ctx.createBufferSource()
       source.buffer = buffer
@@ -125,6 +142,7 @@ export class AudioManager {
   }
 
   stopAll(): void {
+    this.generation++
     for (const s of this.activeSounds) {
       s.stop()
     }
