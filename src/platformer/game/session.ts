@@ -534,12 +534,15 @@ export class GameSession {
     if (run.tick % 4 === 0 || run.tick === 181) this.onRaceHud?.(run.hud(this.remoteRacers()))
   }
 
-  /** Start the current run over from the start flag (solo: with a fresh level). */
+  /**
+   * Start the current run over from the start flag (solo: with a fresh level). A race in a room cannot be restarted
+   * by one driver, so there it puts your car back on the road instead (stuck on a wall, or turned round).
+   */
   restartRun() {
     if (this.isRace) {
       if (this.mode !== 'play') this.setMode('play')
-      else if (this.solo || this.raceRun?.practice) this.startRace()
-      else this.onToast?.('You’re in a race! Finish it, or ask the host to restart.')
+      else if (this.solo) this.startRace()
+      else if (this.raceRun?.rescue()) this.onToast?.('Back on the road')
       return
     }
     this.syncCtx()

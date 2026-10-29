@@ -382,6 +382,11 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         e.preventDefault()
         setShowStats((v) => !v)
       }
+      // Driving: R restarts a race on your own, and puts you back on the road in a room's race.
+      if (s.mode === 'play' && s.isRace && e.code === 'KeyR' && !e.metaKey && !e.ctrlKey && !s.input.suspended) {
+        s.restartRun()
+        return
+      }
       if (s.mode !== 'build' || s.input.suspended) return
       const mod = e.metaKey || e.ctrlKey
       if (mod && e.code === 'KeyZ') {
@@ -874,7 +879,12 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         )}
         {!build && !race && touch && s && !covered && <TouchControls input={s.input} canEnterPipe={canEnterPipe} onEnterPipe={() => s.enterPipe()} />}
         {!build && race && touch && s && !covered && raceHud?.phase !== 'results' && (
-          <RaceTouchControls input={s.input} items={raceHud?.itemsOn ?? true} itemName={raceHud?.item ? RACE_ITEMS[raceHud.item].name : undefined} />
+          <RaceTouchControls
+            input={s.input}
+            items={raceHud?.itemsOn ?? true}
+            itemName={raceHud?.item ? RACE_ITEMS[raceHud.item].name : undefined}
+            onRescue={!s.solo && (raceHud?.phase === 'racing' || raceHud?.phase === 'practice') && !raceHud.youDone ? () => s.restartRun() : undefined}
+          />
         )}
         {build && race && s && <RaceZoom zoom={zoom} max={s.maxZoom} onZoom={(z) => s.setZoom(z)} />}
 

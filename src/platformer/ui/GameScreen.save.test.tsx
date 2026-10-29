@@ -413,3 +413,26 @@ it('keeps Next world, not Build your own, while more courses follow', async () =
   expect(screen.getByRole('button', { name: 'Next world' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Build your own' })).toBeNull()
 })
+
+it('gives touch drivers in a room’s race a Back on road button', () => {
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={() => {}} />)
+  const session = state.session as unknown as Record<string, unknown> & { onRaceHud: (hud: unknown) => void; restartRun: () => void; input: Record<string, unknown> }
+  Object.assign(session, { isRace: true, solo: false, mode: 'play' })
+  session.input.setTouch = vi.fn()
+  act(() => { window.dispatchEvent(new Event('touchstart')) })
+  act(() => session.onRaceHud({ phase: 'countdown', youDone: false }))
+  expect(screen.queryByRole('button', { name: 'Back on road' })).toBeNull()
+  act(() => session.onRaceHud({ phase: 'racing', youDone: false }))
+  fireEvent.click(screen.getByRole('button', { name: 'Back on road' }))
+  expect(session.restartRun).toHaveBeenCalledOnce()
+  act(() => session.onRaceHud({ phase: 'racing', youDone: true }))
+  expect(screen.queryByRole('button', { name: 'Back on road' })).toBeNull()
+})
+
+it('R drives a race restart while playing (back on the road in a room)', () => {
+  open()
+  const session = state.session as unknown as Record<string, unknown> & { restartRun: () => void }
+  Object.assign(session, { isRace: true, mode: 'play' })
+  fireEvent.keyDown(window, { code: 'KeyR' })
+  expect(session.restartRun).toHaveBeenCalledOnce()
+})

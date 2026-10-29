@@ -37,7 +37,8 @@ export function Menu(p: Props) {
     if (p.open) setView(p.view ?? 'main')
   }, [p.open, p.view])
   const s = p.session
-  const restartLabel = p.building ? 'Play from the start' : s.solo ? 'Start over' : 'Back to the start'
+  // A room's race goes on for everyone: you go back on the road instead of back to the start.
+  const restartLabel = p.building ? 'Play from the start' : s.solo ? 'Start over' : p.race ? 'Back on the road' : 'Back to the start'
   const kicker = view === 'controls' ? 'Controls' : s.solo ? 'Paused' : 'The game keeps going while this is open'
   return (
     <Sheet

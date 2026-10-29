@@ -93,7 +93,7 @@ export function RaceHudView({ hud, rivals, onRivals, onRaceAgain, onStartRace, o
             ) : (
               <>
                 <kbd>←</kbd>
-                <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake{hud.itemsOn && <> · <kbd>Space</kbd> item</>} · <kbd>R</kbd> restart
+                <kbd>→</kbd> steer · <kbd>↑</kbd> gas · <kbd>↓</kbd> brake{hud.itemsOn && <> · <kbd>Space</kbd> item</>} · <kbd>R</kbd> {onStartRace ? 'back on road' : 'restart'}
               </>
             )}
           </span>

@@ -1861,6 +1861,32 @@
   white-space: nowrap;
 }
 
+/* Rooms: back on the road, above the steering pad (one driver cannot restart everyone's race). */
+.p2d-race-rescue {
+  position: absolute;
+  left: calc(env(safe-area-inset-left) + 30px);
+  bottom: calc(env(safe-area-inset-bottom) + 136px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 800 12px / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(38, 60, 81, 0.72);
+  border: 3px solid rgba(255, 255, 255, 0.65);
+  border-radius: 22px;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.p2d-race-rescue:active {
+  filter: brightness(1.15);
+  transform: translateY(2px);
+}
+
 @media (max-width: 480px) {
   .p2d-race-steer {
     width: 150px;
