@@ -280,6 +280,27 @@ export function powerChanged(project: StudioProject, brickId: string, snapId: st
   return fingerprintOf(current) !== snap.fingerprint
 }
 
+/**
+ * The keys a snapped power's scripts read right now ("key z pressed?", "when z key pressed"), in the order they appear.
+ * Read from the brick's compiled program, so a switched-off power reads none and a kid's edit to the key is followed.
+ */
+export function powerKeysOf(brick: BrickDef, snap: SnappedPower): string[] {
+  const ids = new Set(snap.blockIds)
+  const keys: string[] = []
+  const add = (key: unknown) => {
+    const k = typeof key === 'string' ? key.trim().toLowerCase() : ''
+    if (k && !keys.includes(k)) keys.push(k)
+  }
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (!isRecord(node)) return
+    if ((node.opcode === 'sensing_keypressed' || node.opcode === 'event_whenkeypressed') && isRecord(node.fields)) add(node.fields.KEY_OPTION)
+    Object.values(node).forEach(walk)
+  }
+  for (const script of brick.program.scripts) if (ids.has(script.id)) walk(script)
+  return keys
+}
+
 /** Is any of the power's scripts on? */
 export function isPowerOn(project: StudioProject, brickId: string, snapId: string): boolean {
   const snap = brickOf(project, brickId)?.powers?.find((p) => p.id === snapId)

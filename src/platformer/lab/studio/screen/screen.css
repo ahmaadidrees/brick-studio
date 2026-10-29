@@ -295,6 +295,12 @@
 /* Take off sits clear of On/Off, so a tap meant for the switch doesn't land on it. */
 .cl-power-off { width: 28px; height: 28px; margin-left: 8px; }
 @media (pointer: coarse) { .cl-power-off { width: 32px; height: 32px; margin-left: 12px; } }
+/* Play on touch: a button for each key a snapped power reads (Dash: z), above Run and Jump (PlayTouchControls.tsx). */
+.cl-power-keys { position: absolute; z-index: var(--z-hud); right: calc(env(safe-area-inset-right) + 22px); bottom: calc(env(safe-area-inset-bottom) + 160px); display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; max-width: 60%; pointer-events: none; }
+.cl-power-key { pointer-events: auto; touch-action: none; min-width: 72px; height: 56px; padding: 0 16px; border: 3px solid rgba(255, 255, 255, .65); border-radius: 999px; background: rgba(134, 46, 156, .78); color: #fff; font: 800 14px / 1 Nunito, system-ui, sans-serif; box-shadow: 0 4px 0 rgba(0, 0, 0, .25); -webkit-user-select: none; user-select: none; }
+.cl-power-key:active { filter: brightness(1.15); transform: translateY(2px); }
+/* Portrait phones stack Run above Jump (platformer.css), so the power buttons go higher. */
+@media (max-width: 480px) { .cl-power-keys { bottom: calc(env(safe-area-inset-bottom) + 222px); } }
 .cl-power.is-asking { border-color: #f59f00; background: #fff9db; padding-left: 12px; }
 .cl-power.is-asking .cl-power-name span { color: #7a4f00; }
 .cl-power-switch.cl-power-yes { background: #fff; border-color: #f59f00; color: #7a4f00; }
