@@ -12,6 +12,8 @@ export function useClassroomWorld(enabled: boolean) {
   const [status, setStatus] = useState<CloudSaveStatus>('saved')
   const [error, setError] = useState('')
   const [recovery, setRecovery] = useState<CloudRecovery | null>(null)
+  // A transient failure is waiting for its automatic retry (no connection, a timeout, a server error).
+  const [retrying, setRetrying] = useState(false)
   const controller = useRef<ReturnType<typeof createCloudAutosave> | null>(null)
   const release = useRef<(() => void) | null>(null)
   const unsubscribe = useRef<(() => void) | null>(null)
@@ -27,7 +29,7 @@ export function useClassroomWorld(enabled: boolean) {
     let guest = createBrickStudioDocument([])
     try { const loaded = loadLocalBrickStudioProject(localStorage); if (loaded.ok && loaded.document) guest = loaded.document } catch { /* empty guest */ }
     useBrickStore.getState().restoreDocument(guest)
-    setWorld(null); setRecovery(null); setError(''); setStatus('saved')
+    setWorld(null); setRecovery(null); setError(''); setStatus('saved'); setRetrying(false)
     release.current?.(); release.current = null
   }, [stop])
   const attach = useCallback(async (next: ClassroomWorld, document = useBrickStore.getState().getDocumentSnapshot(), restoreRecovery = true) => {
@@ -59,9 +61,9 @@ export function useClassroomWorld(enabled: boolean) {
     const openedDocument = savedRecovery?.document ?? document
     useBrickStore.getState().restoreDocument(openedDocument)
     setWorld(next); setRecovery(savedRecovery)
-    setStatus(savedRecovery ? 'error' : 'saved')
+    setStatus(savedRecovery ? 'error' : 'saved'); setRetrying(false)
     setError(savedRecovery ? 'Recovered unsaved changes from this tab. Review them, then retry saving or download a copy.' : '')
-    controller.current = createCloudAutosave({ client, userId: auth.user.id, world: savedRecovery ? { ...next, revision: savedRecovery.world.revision } : next, document: openedDocument, storage: sessionStorage, pendingRecovery: savedRecovery !== null, onStatus: (value, detail) => { setStatus(value); setError(detail || ''); if (value === 'saved') setRecovery(null) }, onWorld: value => { active.current = value; setWorld(value) } })
+    controller.current = createCloudAutosave({ client, userId: auth.user.id, world: savedRecovery ? { ...next, revision: savedRecovery.world.revision } : next, document: openedDocument, storage: sessionStorage, pendingRecovery: savedRecovery !== null, onStatus: (value, detail, willRetry) => { setStatus(value); setError(detail || ''); setRetrying(Boolean(willRetry)); if (value === 'saved') setRecovery(null) }, onWorld: value => { active.current = value; setWorld(value) } })
     unsubscribe.current = useBrickStore.subscribe((state, previous) => { if (state.bricks !== previous.bricks || state.documentMetadata !== previous.documentMetadata) controller.current?.schedule(state.getDocumentSnapshot()) })
   }, [stop])
   useEffect(() => {
@@ -87,7 +89,7 @@ export function useClassroomWorld(enabled: boolean) {
     window.addEventListener('beforeunload', unload)
     return () => { cancelled = true; operation.current++; off(); window.removeEventListener('beforeunload', unload); stop(); release.current?.(); release.current = null }
   }, [enabled, attach, leave, stop])
-  return { world, status, error, recovery, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(),
+  return { world, status, error, recovery, retrying, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(),
   // Edits made while a world was being created online are not yet in it; queue the editor's current document for autosave.
   scheduleCurrent: () => { controller.current?.schedule(useBrickStore.getState().getDocumentSnapshot()) }, downloadRecovery: () => downloadBrickStudioDocument(controller.current?.getDocument() ?? recovery?.document ?? useBrickStore.getState().getDocumentSnapshot()), reload: async () => {
     if (!active.current) return

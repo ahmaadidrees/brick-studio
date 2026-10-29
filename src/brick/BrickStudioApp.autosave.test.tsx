@@ -150,6 +150,34 @@ describe('automatic account world for a signed-in fresh build', () => {
     expect((calls[1].body as { document: { bricks: BrickInstance[] } }).document.bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
   })
 
+  it('keeps saving by itself after the Wi-Fi drops, with one short notice and no click', async () => {
+    browserClassroomClient.setSession(student)
+    const calls = stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    const request = vi.mocked(browserClassroomClient.request)
+    const server = request.getMockImplementation()!
+    let online = false
+    request.mockImplementation(async (path: string, method?: string, body?: unknown) => {
+      if (method === 'PUT' && !online) throw new ClassroomError('Could not connect. Your current build is still here. Check your connection and try again.', 0, 'unreachable')
+      return server(path, method, body)
+    })
+    placeBrick(brickB)
+    const notice = () => document.querySelector('.classroom-recovery')
+    await waitFor(() => expect(notice()?.textContent).toContain('Can’t save right now. We’ll keep trying.'), { timeout: 3000 })
+    expect(notice()).toHaveAttribute('role', 'status')
+    expect(pillText()).toContain('Waiting to save')
+    expect(screen.queryByRole('button', { name: 'Reload saved world' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download a copy' })).toBeInTheDocument()
+    online = true
+    act(() => { window.dispatchEvent(new Event('online')) })
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    expect(notice()).toBeNull()
+    const puts = calls.filter(call => call.method === 'PUT')
+    expect((puts[puts.length - 1].body as { document: { bricks: BrickInstance[] } }).document.bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
+  })
+
   it('leaves guests browser-only with no account required', async () => {
     const calls = stubClassroomServer(({ document }) => serverWorld(document))
     render(<BrickStudioApp />)
