@@ -5,7 +5,7 @@ import { exportProjectJson } from './persist/projectIo'
 import { HACKABLE_INDEX_KEY, listHackableProjects, projectKey } from './persist/hackableProjects'
 import { projectFromDocument } from './persist/hackableSave'
 import { createStarterProject } from './starter'
-import { makeOwnCopy, openStudioRoute } from './StudioApp'
+import { designSignature, keepNewProject, makeOwnCopy, openStudioRoute } from './StudioApp'
 
 beforeEach(() => localStorage.clear())
 
@@ -72,5 +72,54 @@ describe('opening an account project from a link or an invite', () => {
     vi.spyOn(browserClassroomClient, 'getSession').mockReturnValue({ user: { id: 'ava' } } as never)
     vi.spyOn(browserClassroomClient, 'getWorld').mockResolvedValue(world({ canEdit: true }))
     expect(await openStudioRoute({ world: 'w9', fresh: false })).toMatchObject({ kind: 'account' })
+  })
+})
+
+describe('a new project (?new=1) is kept only once the kid changes something', () => {
+  const projectKeys = () => Object.keys(localStorage).filter((k) => k.startsWith('code-lab.project.v1'))
+
+  it('opening one stores nothing', async () => {
+    const opened = await openStudioRoute({ fresh: true })
+    expect(opened.kind).toBe('new')
+    expect(projectKeys()).toEqual([])
+    expect(listHackableProjects()).toEqual([])
+  })
+
+  it('a guest’s is kept in this browser at the first change', async () => {
+    const kept = await keepNewProject(named('My platformer'), { getSession: () => null } as unknown as ClassroomClientSurface)
+    expect(kept.home.kind).toBe('local')
+    expect(kept.href).toMatch(/^\/2d\/hackable\?draft=/)
+    expect(listHackableProjects().map((e) => e.title)).toEqual(['My platformer'])
+  })
+
+  it('a signed-in kid’s goes to the account', async () => {
+    const createWorld = vi.fn(async (input: { title: string }) => ({ id: 'w-new', title: input.title, revision: 1, format: 'hackable', ownerId: 'me' }))
+    const kept = await keepNewProject(named('My platformer'), { getSession: () => ({ user: { id: 'me' } }), createWorld } as unknown as ClassroomClientSurface)
+    expect(kept).toMatchObject({ home: { kind: 'account' }, href: '/2d/hackable?world=w-new' })
+    expect(projectKeys()).toEqual([])
+  })
+
+  it('with the account full (50 projects) it is kept in this browser instead, and the kid is told', async () => {
+    const createWorld = vi.fn(async () => { throw Object.assign(new Error('full'), { code: 'world_limit' }) })
+    const kept = await keepNewProject(named('My platformer'), { getSession: () => ({ user: { id: 'me' } }), createWorld } as unknown as ClassroomClientSurface)
+    expect(kept.home.kind).toBe('local')
+    expect(kept.notice?.message).toMatch(/Your account is full, so this project is saved on this computer/)
+    expect(listHackableProjects()).toHaveLength(1)
+  })
+
+  it('a guest whose browser already keeps the most hears so before building', async () => {
+    for (let i = 0; i < 30; i++) localStorage.setItem(projectKey(`p${i}`), JSON.stringify({ design: { name: `P${i}` } }))
+    expect(await openStudioRoute({ fresh: true })).toMatchObject({ kind: 'problem', title: 'This computer is full of projects' })
+  })
+})
+
+describe('what counts as the first change', () => {
+  it('the same level with its scripts in another order is no change; a moved coin is', () => {
+    const project = named('Mine')
+    const hero = project.design.bricks[0]
+    const reordered = { ...project.design, bricks: [{ ...hero, program: { ...hero.program, scripts: [...hero.program.scripts].reverse() } }, ...project.design.bricks.slice(1)] }
+    expect(designSignature(reordered)).toBe(designSignature(project.design))
+    const moved = { ...project.design, copies: project.design.copies.map((c, i) => (i === 0 ? { ...c, x: c.x + 16 } : c)) }
+    expect(designSignature(moved)).not.toBe(designSignature(project.design))
   })
 })
