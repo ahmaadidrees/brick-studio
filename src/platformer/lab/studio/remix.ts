@@ -220,7 +220,7 @@ export function restoreBrickOriginal(project: StudioProject, brickId: string): S
  * first feel-scripts version (moved by the Platformer, before "move and collide" was open). Only these are upgraded:
  * older saves predate "My Hero", so a Hero with other blocks may hold a kid's own edits.
  */
-export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812']
+export const EARLIER_HERO_FINGERPRINTS: readonly string[] = ['e9c867ad', '2317e33b', '8fd9195b', 'be2651d7', 'a8bbd0b8', '6cf36812', 'f9ce2b65']
 
 /**
  * Saves made before the Hero was rebuilt still hold the old Hero (My Blocks). A built-in Hero whose blocks are exactly

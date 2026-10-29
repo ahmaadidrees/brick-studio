@@ -110,10 +110,14 @@ describe('saves with an earlier Hero', () => {
     expect(after).toEqual({ x: HERO_START.x + 30, y: HERO_START.y })
   })
 
-  it('a Hero saved just before this change is still a valid project that plays', () => {
+  it('a Hero saved just before this change upgrades too, and plays', () => {
     const old = savedWith(startRespawnHero as never)
     const loaded = upgradeUntouchedHero(old)
+    expect(loaded).not.toBe(old)
+    expect(loaded.workspaces.brick_hero).toEqual(createStarterProject().workspaces.brick_hero)
     expect(validateDesign(loaded.design)).toEqual([])
+    const { after } = hurtAfter(placedAt(loaded.design, HERO_START.x + 30, HERO_START.y), 20)
+    expect(after).toEqual({ x: HERO_START.x + 30, y: HERO_START.y })
     const rt = play(loaded.design)
     for (let i = 0; i < 10; i++) rt.step()
     expect(heroOf(rt)).toBeTruthy()
