@@ -194,6 +194,6 @@ and `npm run build` once lanes are quiet. Status is kept in the table below.
 |---|---|---|---|---|
 | L1 | running | | | |
 | L2 | running | | | |
-| L3 | running | | | |
+| L3 | done: tier 1 + other-tab banner | 27cd841 | f134162 | 28 changed test files 420/420 after merge, tsc ok; headless 13/13 + 7/7 (mocked API); header sign-out loss proven real by a failing test; 409 'keep mine / open other' still to do |
 | L4 | done: tier 1 + tier 2 | bf38862 | eb9eb22 | 19 merged test files 287/287, tsc ok; full room/guest-room leave/room races proven by tests only (need Worker) |
 | L5 | done: tier 1 + tier 2 | eaaf873 | d6527c1 | headless 13/13 (faked API); Supabase acceptance of generated passwords unverified |
