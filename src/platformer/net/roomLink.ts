@@ -57,6 +57,19 @@ function isRefusal(error: unknown): boolean {
   return status >= 400 && status < 500 && status !== 408 && status !== 429
 }
 
+/** What a kid sees when the room is full (the server holds the cap; we do not repeat its number). */
+export const ROOM_FULL_MESSAGE = 'This room is full. Try again when someone leaves.'
+const NOT_SHARED_MESSAGE = 'This project isn’t shared with you any more. Ask its owner to invite you again.'
+const ACCESS_CHANGED_MESSAGE = 'You can’t open this project right now. Ask your teacher if you need it.'
+
+/** Why the room turned us away, in kid words: the classroom service's own wording is for grown-ups. */
+function refusalMessage(message: string | undefined, status = 0): string {
+  const text = message?.trim() ?? ''
+  if (status === 404 || /world not found/i.test(text)) return NOT_SHARED_MESSAGE
+  if (!text || /classroom access changed/i.test(text)) return ACCESS_CHANGED_MESSAGE
+  return text
+}
+
 /**
  * A live room connection. Keeps an estimate of the server's clock (so every game counts the same
  * ticks), sends our events and pose, and hands everything that arrives to the session.
@@ -70,6 +83,8 @@ export class RoomLink implements Link {
   rtt = 0
   players: PlayerInfo[] = []
   status: LinkStatus = 'connecting'
+  /** Why the room turned this player away (`full`, `closed`, `kicked`…), until the next try. */
+  refusal: string | null = null
   /** Simulated one-way network delay for testing (?lag=ms in the page URL), with some jitter. */
   lagMs = 0
   private ws: WebSocket | null = null
@@ -105,6 +120,7 @@ export class RoomLink implements Link {
   connect() {
     if (this.closed) this.closed = false
     if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) return
+    this.refusal = null
     clearTimeout(this.retryTimer)
     this.retryTimer = undefined
     clearTimeout(this.watchdog)
@@ -163,12 +179,7 @@ export class RoomLink implements Link {
       clearTimeout(this.watchdog)
       this.watchdog = undefined
       if (isRefusal(error)) {
-        this.closed = true
-        clearTimeout(this.retryTimer)
-        this.retryTimer = undefined
-        clearInterval(this.pingTimer)
-        this.ws?.close()
-        this.setStatus('offline', error instanceof Error ? error.message : 'You cannot join this world right now.')
+        this.stop('access', refusalMessage(error instanceof Error ? error.message : undefined, (error as { status?: number })?.status))
       } else {
         ++this.generation
         this.scheduleRetry()
@@ -295,18 +306,16 @@ export class RoomLink implements Link {
         this.h.bonk(msg.from)
         return
       case 'error':
-        if (msg.code === 'full' || msg.code === 'rate') {
+        // Too many messages: a short wait helps, so try again, waiting longer each time.
+        if (msg.code === 'rate') {
           if (this.ws) this.failAttempt(this.ws, this.generation)
-        } else if (msg.code === 'version' || msg.code === 'closed' || msg.code === 'kicked' || msg.code === 'access') {
-          this.closed = true
-          clearTimeout(this.watchdog)
-          this.watchdog = undefined
-          clearTimeout(this.retryTimer)
-          this.retryTimer = undefined
-          clearInterval(this.pingTimer)
-          this.synced = false
-          this.ws?.close()
-          this.setStatus('offline', msg.message)
+        } else if (msg.code === 'full') {
+          // A full room stays full until someone leaves: stop here and let the player choose (Try again, or Back).
+          this.stop('full', ROOM_FULL_MESSAGE)
+        } else if (msg.code === 'access') {
+          this.stop('access', refusalMessage(msg.message))
+        } else if (msg.code === 'version' || msg.code === 'closed' || msg.code === 'kicked') {
+          this.stop(msg.code, msg.message)
         }
         return
     }
@@ -373,6 +382,20 @@ export class RoomLink implements Link {
 
   restoreLevel() {
     this.send({ type: 'restore' })
+  }
+
+  /** The room said no: no more tries until the player asks (connect() again). */
+  private stop(reason: string, message: string) {
+    this.closed = true
+    this.refusal = reason
+    clearTimeout(this.watchdog)
+    this.watchdog = undefined
+    clearTimeout(this.retryTimer)
+    this.retryTimer = undefined
+    clearInterval(this.pingTimer)
+    this.synced = false
+    this.ws?.close()
+    this.setStatus('offline', message)
   }
 
   close() {

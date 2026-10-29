@@ -737,6 +737,8 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
   // A toast takes the hint's place at the top rather than landing on it.
   const playHint = hint === 'play' && !build && !!s?.joined && !covered && !toast
   const offlineAfterJoin = !!s?.room && s.joined && s.roomStatus === 'offline'
+  // The room had no space: it stays that way until someone leaves, so the player chooses when to try again.
+  const roomFull = !!s?.room && s.roomStatus === 'offline' && s.room.refusal === 'full'
   const sceneLocked = !s ? null : s.canBuild ? null : (s.buildBlockedReason ?? 'You can play this world, but not change it.')
   // A pointer click on a header button hands the keyboard straight back to the game (keyboard users keep focus).
   const releaseFocus = (e: React.MouseEvent) => {
@@ -862,8 +864,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
 
         {s?.room && !s.joined && (
           <div className="p2d-overlay">
-            <div className="p2d-card">
+            <div className="p2d-card" role={s.roomStatus === 'offline' ? 'alert' : 'status'}>
               <p className="p2d-lead">{s.roomStatus === 'offline' ? s.roomDetail || 'Could not join the room.' : 'Joining the room…'}</p>
+              {roomFull && (
+                <Button fullWidth variant="primary" icon={<RotateCcw size={18} />} onClick={() => s.room?.connect()}>
+                  Try again
+                </Button>
+              )}
               {s.roomStatus === 'offline' && (
                 <Button fullWidth icon={<House size={18} />} onClick={onExit}>
                   {exitLabel ?? 'Back'}
@@ -874,8 +881,13 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
         )}
         {offlineAfterJoin && s?.roomDetail && (
           <div className="p2d-overlay">
-            <div className="p2d-card">
+            <div className="p2d-card" role="alert">
               <p className="p2d-lead">{s.roomDetail}</p>
+              {roomFull && (
+                <Button fullWidth variant="primary" icon={<RotateCcw size={18} />} onClick={() => s.room?.connect()}>
+                  Try again
+                </Button>
+              )}
               <Button fullWidth icon={<House size={18} />} onClick={onExit}>
                 {exitLabel ?? 'Back'}
               </Button>

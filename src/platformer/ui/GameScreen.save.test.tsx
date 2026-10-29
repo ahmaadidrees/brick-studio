@@ -254,3 +254,18 @@ it('moves a browser draft into the account: once the account copy exists, the dr
   expect(state.create).toHaveBeenCalledOnce()
   expect(listDrafts().map((d) => d.id)).not.toContain(draft.id)
 })
+
+it('shows a full room with Try again and Back instead of joining forever', async () => {
+  const onExit = vi.fn()
+  render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'room', roomKind: 'classroom', roomId: 'abcd' }} room={{ roomId: 'abcd', name: 'Ada', url: 'ws://localhost/test' }} startMode="play" onExit={onExit} exitLabel="Back to My projects" />)
+  const connect = vi.fn()
+  const session = state.session as unknown as Record<string, unknown> & { onRoom: () => void }
+  Object.assign(session, { room: { refusal: 'full', connect, players: [] }, joined: false, roomStatus: 'offline', roomDetail: 'This room is full. Try again when someone leaves.' })
+  act(() => session.onRoom())
+  expect(screen.getByRole('alert')).toHaveTextContent('This room is full')
+  expect(screen.queryByText('Joining the room…')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+  expect(connect).toHaveBeenCalledOnce()
+  fireEvent.click(screen.getByRole('button', { name: 'Back to My projects' }))
+  expect(onExit).toHaveBeenCalledOnce()
+})
