@@ -198,8 +198,14 @@ export function GameScreen({ level, source, startMode, onExit, exitLabel, onNext
     const keepLocally = (edits: number) => {
       const result = saveDraft(draftId.current, s.timeline.world.design)
       if (result.ok) {
+        const firstSave = draftId.current !== result.id
         draftId.current = result.id
         savedEdits.current = edits
+        if (firstSave) {
+          // Give the level its own address, so refresh, Back and the Sign in link (built from this address) reopen it.
+          window.history.replaceState(window.history.state, '', `/2d/build?draft=${encodeURIComponent(result.id)}`)
+          refresh((n) => n + 1)
+        }
         if (localFailureRef.current) {
           localFailureRef.current = null
           setLocalFailure(null)

@@ -12,14 +12,19 @@ import { saveCharacter } from './prefs'
 import { listDrafts, saveDraft } from './drafts'
 import type { ClassroomWorld } from '../../classroom/contracts'
 
-const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '' }))
+const STUDENT = { status: 'student', user: { id: 'student' }, classes: [] }
+const state = vi.hoisted(() => ({ session: null as null | { editCount: number; setCharacter: ReturnType<typeof vi.fn> }, sharing: vi.fn(), create: vi.fn(), flush: vi.fn(), characterOption: '', account: { status: 'student', user: { id: 'student' }, classes: [] } as { status: string; user?: { id: string }; classes?: unknown[] } }))
 vi.mock('./cloudLevel', () => ({ createCloudLevel: state.create, CloudLevelSaver: class { world; schedule = vi.fn(); flush = state.flush; constructor(world: unknown) { this.world = world } } }))
-vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]) } }))
-vi.mock('../../shell', () => ({
-  useClassroomSession: () => ({ status: 'student', user: { id: 'student' }, classes: [] }),
+vi.mock('../../classroom/client', () => ({ browserClassroomClient: { setWorldSharing: state.sharing, listClassmates: vi.fn().mockResolvedValue([]), getSession: () => null, subscribe: () => () => {}, request: vi.fn(), signOut: vi.fn() } }))
+vi.mock('../../shell', async () => {
+  // The real Sign in chip: it builds its return address from the page's address, which is what these tests check.
+  const { AccountChip } = await vi.importActual<typeof import('../../shell/AccountChip')>('../../shell/AccountChip')
+  return {
+  useClassroomSession: () => state.account,
   useCompactLayout: () => false,
   AppHeader: (p: { editorActions?: ReactNode; saveStatus: { source: { error?: string } }; worldMenu: (m: { openRename: () => void }) => ReactNode; onOpenWorldSetup: (tab: 'environment' | 'character') => void; onStartLiveWorld?: () => void; livePolicy?: { onOpenPeople?: () => void } }) => (
     <div>
+      {state.account.status === 'guest' && <AccountChip session={{ status: 'guest', signOut: async () => {}, switchAccount: async () => {} }} context="editor" />}
       <span>{p.saveStatus.source.error}</span>
       {p.editorActions}
       <button className="app-header-tool" onClick={() => p.onOpenWorldSetup('character')}>Character</button>
@@ -28,7 +33,8 @@ vi.mock('../../shell', () => ({
       {p.worldMenu({ openRename() {} })}
     </div>
   ),
-}))
+  }
+})
 vi.mock('./LevelMenu', () => ({ LevelMenu: (p: { onExit: () => void }) => <button onClick={p.onExit}>Leave test world</button> }))
 vi.mock('./BuildShell', () => ({ BuildShell: () => null }))
 vi.mock('./PeopleSheet', () => ({ PeopleSheet: (p: { open: boolean; onInviteMore?: () => void }) => p.open && p.onInviteMore ? <button onClick={p.onInviteMore}>Invite more</button> : null }))
@@ -84,7 +90,9 @@ afterEach(() => {
   state.flush.mockReset().mockResolvedValue(true)
   state.session = null
   state.characterOption = ''
+  state.account = STUDENT
   localStorage.clear()
+  window.history.replaceState(null, '', '/')
 })
 
 const browserFull = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Full', 'QuotaExceededError') })
@@ -170,7 +178,8 @@ it('leaves without asking once a failed account save has fallen back to this bro
 it('opens the same shared account world after flushing instead of creating a guest copy', async () => {
   const assign = vi.fn()
   render(<GameScreen level={createBlankLevel(40, 20)} source={{ kind: 'cloud', world: savedWorld('class') }} startMode="build" onExit={() => {}} />)
-  vi.stubGlobal('window', Object.assign(Object.create(window), { location: { assign }, clearTimeout: vi.fn() }))
+  // Own properties, not Object.assign: assigning `location` through the prototype would replace the page's real location for later tests.
+  vi.stubGlobal('window', Object.create(window, { location: { value: { assign } }, clearTimeout: { value: vi.fn() } }))
   fireEvent.click(screen.getByRole('button', { name: 'People action' }))
   await act(async () => { await Promise.resolve() })
   vi.unstubAllGlobals()
@@ -268,4 +277,23 @@ it('shows a full room with Try again and Back instead of joining forever', async
   expect(connect).toHaveBeenCalledOnce()
   fireEvent.click(screen.getByRole('button', { name: 'Back to My projects' }))
   expect(onExit).toHaveBeenCalledOnce()
+})
+
+it('gives a guest’s new level its own address once it is saved, so refresh, Back and Sign in reopen it', async () => {
+  state.account = { status: 'guest' }
+  window.history.replaceState(null, '', '/2d/build?new=1&kit=race-starter')
+  open()
+  expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toContain(encodeURIComponent('/2d/build?new=1'))
+  state.session!.editCount = 1
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+  const [draft] = listDrafts()
+  expect(draft).toBeDefined()
+  expect(window.location.pathname + window.location.search).toBe(`/2d/build?draft=${draft.id}`)
+  expect(window.history.state).toEqual({ p2dGame: true })
+  expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', `/join?mode=signin&next=${encodeURIComponent(`/2d/build?draft=${draft.id}`)}`)
+  // Later saves keep the same draft and the same address.
+  state.session!.editCount = 2
+  await act(async () => { await vi.advanceTimersByTimeAsync(1000) })
+  expect(listDrafts()).toHaveLength(1)
+  expect(window.location.search).toBe(`?draft=${draft.id}`)
 })
