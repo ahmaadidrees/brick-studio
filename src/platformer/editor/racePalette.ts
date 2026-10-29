@@ -15,13 +15,14 @@ export const RACE_CATEGORIES: { id: RaceCategory; label: string }[] = [
   { id: 'scenery', label: 'Scenery' },
 ]
 
-const tile = (id: string, label: string, category: RaceCategory, t: number, hint: string): PaletteItem => ({
+const tile = (id: string, label: string, category: RaceCategory, t: number, hint: string, touchHint?: string): PaletteItem => ({
   id,
   label,
   category,
   icon: `race:${t}`,
   place: { kind: 'tile', tile: t, content: 0 },
   hint,
+  ...(touchHint ? { touchHint } : {}),
 })
 
 export const RACE_PALETTE: PaletteItem[] = [
@@ -33,13 +34,13 @@ export const RACE_PALETTE: PaletteItem[] = [
   tile('race-barrier', 'Barrier', 'edges', RT.BARRIER, 'Cars bounce off'),
   tile('race-tires', 'Tire stack', 'edges', RT.TIRES, 'Soft: cars stop without bouncing much'),
   tile('race-bumper', 'Bumper', 'edges', RT.BUMPER, 'Kicks cars away like a pinball bumper'),
-  tile('race-boost', 'Boost pad', 'speed', RT.BOOST_R, 'A burst of speed if you drive the arrow’s way · R turns it'),
+  tile('race-boost', 'Boost pad', 'speed', RT.BOOST_R, 'A burst of speed if you drive the arrow’s way · R turns it', 'A burst of speed if you drive the arrow’s way · Turn points it'),
   tile('race-ramp', 'Jump ramp', 'speed', RT.RAMP, 'Cars fly over water and anything else'),
   tile('race-item', '? block', 'race-items', RT.ITEM, 'Drive through for a random item. It comes back after a few seconds'),
   tile('race-coin', 'Coin', 'race-items', RT.COIN, 'Each coin adds a little top speed, up to 10. Spinning out drops some'),
-  { id: 'race-walker', label: 'Walker', category: 'critters', icon: 'race:walker', place: { kind: 'object', obj: 'walker', alt: 0 }, hint: 'Walks back and forth on the road; touching it spins you out · R turns it' },
-  { id: 'race-start', label: 'Starting grid', category: 'race-course', icon: 'race:start', place: { kind: 'object', obj: 'start', alt: 0 }, hint: 'Click to move the grid · R turns it' },
-  tile('race-finish', 'Finish line', 'race-course', RT.FINISH, 'Paint it across the road · R turns which way laps count'),
+  { id: 'race-walker', label: 'Walker', category: 'critters', icon: 'race:walker', place: { kind: 'object', obj: 'walker', alt: 0 }, hint: 'Walks back and forth on the road; touching it spins you out · R turns it', touchHint: 'Walks back and forth on the road; touching it spins you out · Turn points it' },
+  { id: 'race-start', label: 'Starting grid', category: 'race-course', icon: 'race:start', place: { kind: 'object', obj: 'start', alt: 0 }, hint: 'Click to move the grid · R turns it', touchHint: 'Tap to move the grid · Turn points it' },
+  tile('race-finish', 'Finish line', 'race-course', RT.FINISH, 'Paint it across the road · R turns which way laps count', 'Paint it across the road · Turn sets which way laps count'),
   tile('race-tree', 'Tree', 'scenery', RT.TREE, 'Scenery that blocks cars'),
   tile('race-flowers', 'Flowers', 'scenery', RT.FLOWERS, 'Scenery you can drive over (like grass)'),
   tile('race-stand', 'Grandstand', 'scenery', RT.STAND, 'Scenery that blocks cars'),
