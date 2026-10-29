@@ -92,17 +92,24 @@ type ManageProps = {
 /** Board 13 right: account editing, temporary password with Generate, and the suspend/reactivate boundary. */
 export function ManageStudentForm({ student, busy, headingRef, onSubmit, onToggleSuspend, onCancel }: ManageProps) {
   const [confirmSuspend, setConfirmSuspend] = useState(false)
+  // A generated password is shown straight away: the teacher reads it out or writes it down.
+  const [showTemporary, setShowTemporary] = useState(false)
   return <form className="classroom-card classroom-form" onSubmit={event => { const data = readForm(event); onSubmit({ username: data.username, rosterName: data.rosterName, ...(data.temporaryPassword ? { temporaryPassword: data.temporaryPassword } : {}) }) }}>
     <div className="classroom-detail-heading"><div><small className="classroom-eyebrow">Manage student</small><h3 ref={headingRef} tabIndex={-1}>{student.rosterName}</h3></div><StudentStatusChip student={student} /></div>
     <div className="classroom-form-grid">
       <TextInput label="Username" id="classroom-manage-username" name="username" defaultValue={student.username} required minLength={3} maxLength={24} pattern={USERNAME_PATTERN} title={USERNAME_RULE} autoCapitalize="none" spellCheck={false} autoComplete="off" />
       <TextInput label="Roster name" id="classroom-manage-roster" name="rosterName" defaultValue={student.rosterName} required maxLength={80} autoComplete="off" />
     </div>
-    <PasswordField label="Temporary password" name="temporaryPassword" autoComplete="new-password" minLength={6} maxLength={128} placeholder="Leave blank to keep the current password" hint="Setting this signs the student out and asks them to choose a new password." />
+    <PasswordField label="Temporary password" name="temporaryPassword" autoComplete="new-password" minLength={6} maxLength={128} placeholder="Leave blank to keep the current password" hint="Setting this signs the student out and asks them to choose a new password." visible={showTemporary} onVisibleChange={setShowTemporary} />
     <div>
       <Button variant="secondary" size="sm" icon={<RefreshCw size={16} />} disabled={busy} onClick={event => {
-        const input = event.currentTarget.form?.elements.namedItem('temporaryPassword')
-        if (input instanceof HTMLInputElement) { input.value = generateTemporaryPassword(); input.focus() }
+        const form = event.currentTarget.form
+        const input = form?.elements.namedItem('temporaryPassword')
+        const username = form?.elements.namedItem('username')
+        if (input instanceof HTMLInputElement) {
+          input.value = generateTemporaryPassword(username instanceof HTMLInputElement ? username.value : student.username)
+          setShowTemporary(true); input.focus()
+        }
       }}>Generate temporary password</Button>
     </div>
     <div className="classroom-actions"><Button type="submit" variant="primary" loading={busy} loadingLabel="Saving…">Save changes</Button><Button variant="secondary" disabled={busy} onClick={onCancel}>Cancel</Button></div>

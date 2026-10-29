@@ -261,3 +261,30 @@ it('forgets the remembered class when the teacher signs out', async () => {
   fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
   await waitFor(() => expect(readRememberedTeacherClass()).toBeNull())
 })
+
+it('shows a reset password large after saving, until the teacher taps Done', async () => {
+  const { client, calls } = testClient()
+  render(<ClassPage client={client} navigate={vi.fn()} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage Aiden Kim' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Reset password' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Generate temporary password' }))
+  const password = (screen.getByLabelText('Temporary password') as HTMLInputElement).value
+  expect(password).toMatch(/^[a-z]{4,6}[2-9]{3}$/)
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Aiden Kim’s new password' })
+  expect(within(dialog).getByText(password)).toHaveClass('class-temp-password')
+  expect(within(dialog).getByText('aiden_k')).toBeInTheDocument()
+  expect(lastBody(calls, '/classes/class-1/students/s1')).toEqual({ username: 'aiden_k', rosterName: 'Aiden Kim', temporaryPassword: password })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('an edit without a new password shows no password card', async () => {
+  const { client } = testClient()
+  render(<ClassPage client={client} navigate={vi.fn()} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Manage Aiden Kim' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Edit student' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Save changes' }))
+  expect(await screen.findByText('Student account updated.')).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
