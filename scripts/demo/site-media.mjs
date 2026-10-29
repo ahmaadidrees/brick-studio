@@ -2,7 +2,7 @@
  * The landing page's demo media, from the recordings in DEMO_OUT (run record-3d.mjs, record-2d.mjs and social-cut.mjs
  * first). Writes to public/brand/media (OUT_DIR changes it):
  *
- *   demo-3d.webm / .mp4, demo-2d.webm / .mp4   the hero's 4:3 auto-zoom clips, sized for the web
+ *   demo-3d / demo-2d / demo-hack .webm / .mp4   the hero's 4:3 auto-zoom clips, sized for the web (record-hack.mjs too)
  *   demo-3d-poster.jpg, demo-2d-poster.jpg      each clip's last frame, shown before it plays and for reduced motion
  *   demo-full.mp4                               the 16:9 cut with title cards, for the hero's full-screen view
  *   world-2d-800.avif / .webp / .png            a 2D world at play, for the "Two ways to build" card
@@ -19,7 +19,7 @@ const run = promisify(execFile)
 const DEST = process.env.OUT_DIR || 'public/brand/media'
 await mkdir(DEST, { recursive: true })
 
-for (const key of ['3d', '2d']) {
+for (const key of ['3d', '2d', 'hack']) {
   const meta = JSON.parse(await readFile(path.join(OUT, `build-${key}.json`), 'utf8'))
   const file = path.join(DEST, `demo-${key}`)
   hero(meta, { out: [960, 720], file, crf: [27, 38] })

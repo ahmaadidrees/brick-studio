@@ -90,7 +90,8 @@ describe('semantics and structure', () => {
   it('opens the New project picker from the hero', async () => {
     render(<LandingPage />)
     fireEvent.click(screen.getByRole('button', { name: 'New project' }))
-    expect(await screen.findByRole('dialog', { name: 'New project' })).toBeInTheDocument()
+    // The sheet is a lazy chunk: under a full test run it can take more than the default second to arrive.
+    expect(await screen.findByRole('dialog', { name: 'New project' }, { timeout: 5000 })).toBeInTheDocument()
   })
 
   it('routes the platformer call to action through the platformerHref contract', () => {
@@ -294,18 +295,22 @@ describe('bundle and asset boundaries', () => {
     expect(video.muted).toBe(true)
     expect(video).toHaveAttribute('poster', '/brand/media/demo-3d-poster.jpg')
 
-    const pills = () => within(screen.getByRole('radiogroup', { name: 'Show the 3D or 2D builder' })).getAllByRole('radio')
-    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['true', 'false'])
+    const pills = () => within(screen.getByRole('radiogroup', { name: 'Choose a demo' })).getAllByRole('radio')
+    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
     fireEvent.ended(video)
-    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false'])
     expect(container.querySelector('.landing-demo-video source')).toHaveAttribute('src', '/brand/media/demo-2d.webm')
+    fireEvent.ended(container.querySelector('.landing-demo-video')!)
+    expect(container.querySelector('.landing-demo-video source')).toHaveAttribute('src', '/brand/media/demo-hack.webm')
+    fireEvent.ended(container.querySelector('.landing-demo-video')!)
+    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false'])
     fireEvent.click(pills()[0])
     expect(container.querySelector('.landing-demo-video source')).toHaveAttribute('src', '/brand/media/demo-3d.webm')
 
     // A radio group: only the chosen pill is in the tab order, and arrow keys move the choice and focus.
-    expect(pills().map((p) => p.tabIndex)).toEqual([0, -1])
+    expect(pills().map((p) => p.tabIndex)).toEqual([0, -1, -1])
     fireEvent.keyDown(pills()[0], { key: 'ArrowRight' })
-    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    expect(pills().map((p) => p.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false'])
     expect(document.activeElement).toBe(pills()[1])
     fireEvent.keyDown(pills()[1], { key: 'ArrowLeft' })
     expect(document.activeElement).toBe(pills()[0])
@@ -317,6 +322,17 @@ describe('bundle and asset boundaries', () => {
     expect(container.querySelector('.landing-demo-dialog video')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Full screen' }))
     expect(container.querySelector('.landing-demo-dialog video source')).toHaveAttribute('src', '/brand/media/demo-full.mp4')
+  })
+
+  it('shows the Hackable Platformer: its band and clip, the teacher shelf card and the coding question', () => {
+    const { container } = render(<LandingPage />)
+    expect(screen.getByRole('heading', { name: 'Every brick has code inside.' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Try the Hackable Platformer' })).toHaveAttribute('href', '/2d/hackable?new=1')
+    const clip = container.querySelector<HTMLVideoElement>('.landing-hack-video')!
+    expect(clip).toHaveAttribute('poster', '/brand/media/demo-hack-poster.jpg')
+    expect([...clip.querySelectorAll('source')].map((s) => s.getAttribute('src'))).toEqual(['/brand/media/demo-hack.webm', '/brand/media/demo-hack.mp4'])
+    expect(screen.getByRole('heading', { name: 'Kids learn to code because they want to' })).toBeInTheDocument()
+    expect(screen.getByText('Do students need to know how to code?')).toBeInTheDocument()
   })
 
   it('imports nothing heavy: no 3D, scene, store, or protocol modules', () => {

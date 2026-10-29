@@ -15,6 +15,7 @@ import {
   panCamera,
   screenToWorld,
   snapToGrid,
+  worldToScreen,
   zoomCameraAt,
   type Camera,
   type PlayCameraMode,
@@ -176,6 +177,17 @@ export function Stage({ store, tools, codeView = false, onOpenCode }: { store: S
 
   /** Camera used for pointer maths. */
   const activeCamera = (): Camera => (sceneActive ? playCamRef.current : camera)
+  // Dev only: where a point of the level is on screen, for the demo recordings (scripts/demo/record-hack.mjs).
+  if (import.meta.env.DEV) {
+    (window as unknown as { __studioStage?: unknown }).__studioStage = {
+      toScreen: (wx: number, wy: number) => {
+        const rect = canvasRef.current?.getBoundingClientRect()
+        if (!rect) return null
+        const [sx, sy] = worldToScreen(activeCamera(), viewport, wx, wy)
+        return { x: rect.left + sx, y: rect.top + sy }
+      },
+    }
+  }
 
   /** Move or zoom the view from whatever is on screen now. Marks the view as the kid's own. */
   const updateView = (fn: (c: Camera) => Camera) => {

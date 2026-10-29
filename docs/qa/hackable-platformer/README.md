@@ -84,3 +84,28 @@ Same order as the shelf (docs/qa/code-lab-layers):
 
 A site without the new Worker can't save Hackable projects to an account: the old Worker rejects the document.
 Projects in this browser work either way.
+
+## The landing page (second pass, same day)
+
+- **A band after "Three ways to build":** "Every brick has code inside."
+  - It has the three steps (Build it, Open it up, Change how it plays) and "Try the Hackable Platformer"
+    (`/2d/hackable?new=1`).
+  - The clip loops beside it, silent, once it is on screen; with reduced motion it stays on its poster with controls.
+  - The colours are theme tokens `--landing-hack` and `--landing-hack-soft` (src/styles.css).
+- **The hero demo:** its pill is now 3D | 2D | Hackable, and the clips play in turn.
+- **For teachers:** a fourth card, "Kids learn to code because they want to", about the class shelf. The cards are now
+  two by two.
+- **FAQ and Help:**
+  - The FAQ starts with "Do students need to know how to code?" (no).
+  - Help has a Hackable Platformer entry, which says rooms aren't supported yet.
+- **The clip:** `scripts/demo/record-hack.mjs`, the storyboard as a script.
+  1. Paint a high ledge, put a coin on it.
+  2. Play: one jump falls short.
+  3. Code → + Power → Double jump.
+  4. Play: jump, jump again, take the coin.
+
+  The starter's first Walker is moved off camera before filming, because it knocks the Hero back on landing.
+  `DEMO_PREVIEW=1` dry-runs it and logs the Hero's position; the timings were tuned that way, and the run ends with
+  the coin count at 01. `site-media.mjs` now makes `demo-hack.webm / .mp4 / -poster.jpg` with the others.
+- **Live on the page only once the Hackable Platformer is deployed:** the band links to it. The shelf card needs the
+  shelf migration on production.
