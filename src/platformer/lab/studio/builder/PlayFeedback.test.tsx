@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createRuntime } from '../../core/index'
 import type { Expr, Stmt } from '../../core/contracts'
 import { createStarterProject, STARTER_GOAL } from '../starter'
+import { builtInPowers } from '../powers/powers'
 import { StudioStore } from '../store'
 import { StudioShell } from '../screen/StudioShell'
 import { checkLevelForPlay, COINS_VARIABLE, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, NO_HERO_MESSAGE, readCoins } from './playRules'
@@ -83,6 +84,14 @@ describe('Play feedback in the builder (like /2d/build)', () => {
     startPlay(store)
     expect(store.getState().mode).toBe('build')
     expect(screen.getByText(NO_HERO_MESSAGE)).toBeTruthy()
+  })
+
+  it('names a snapped power\'s own key in the hint (Dash: Z)', () => {
+    const store = new StudioStore(createStarterProject())
+    store.snapPower('brick_hero', builtInPowers().find((p) => p.id === 'dash')!)
+    render(<StudioShell store={store} />)
+    startPlay(store)
+    expect(screen.getByText(/Space jumps/).textContent).toMatch(/hold X to run · Z for Dash/)
   })
 
   it('Play with no Goal plays, and the hint says there is nowhere to finish', () => {

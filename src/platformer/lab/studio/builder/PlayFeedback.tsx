@@ -2,7 +2,7 @@ import { Hammer, RotateCcw } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../../ui'
 import { useStudio, type StudioStore } from '../store'
-import { checkLevelForPlay, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, readCoins } from './playRules'
+import { checkLevelForPlay, COURSE_CLEAR, HERO_HURT, NO_GOAL_NOTE, PLAY_CONTROLS_HINT, powerKeys, powerKeysHint, readCoins } from './playRules'
 
 const HINT_MS = 7000
 const HURT_MS = 1600
@@ -48,7 +48,8 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
   }, [runtime, store])
 
   if (!runtime) return null
-  const noGoal = !checkLevelForPlay(store.getState().project.design).goal
+  const design = store.getState().project.design
+  const noGoal = !checkLevelForPlay(design).goal
 
   return (
     <>
@@ -60,7 +61,7 @@ export function PlayFeedback({ store }: { store: StudioStore }) {
       )}
       {hint && !won && (
         <div className="p2d-hint p2d-hint-top play-hint" role="status">
-          <kbd>←</kbd> <kbd>→</kbd> {PLAY_CONTROLS_HINT}
+          <kbd>←</kbd> <kbd>→</kbd> {PLAY_CONTROLS_HINT}{powerKeysHint(powerKeys(design))}
           {noGoal && <span className="p2d-hint-goal"> {NO_GOAL_NOTE}</span>}
         </div>
       )}
