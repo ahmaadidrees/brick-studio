@@ -47,6 +47,87 @@ const rule = (text: string) => screen.getByText(text).closest('li')!
 beforeEach(() => { localStorage.clear(); sessionStorage.clear() })
 afterEach(cleanup)
 
+describe('/join?classCode= — a code from the board, the QR or the landing box', () => {
+  it('looks the class up, then shows the names to tap plus I’m new', async () => {
+    setup('?classCode=room-42')
+    expect(screen.getByRole('status')).toHaveTextContent('Finding your class…')
+    expect(screen.queryByLabelText('Choose a username')).not.toBeInTheDocument()
+    const grid = await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })
+    expect(screen.getByRole('heading', { name: 'Find your name' })).toBeInTheDocument()
+    expect(within(grid).getAllByRole('button')).toHaveLength(2)
+    fireEvent.click(within(grid).getByRole('button', { name: /Mia T\./ }))
+    expect(screen.getByLabelText('Username')).toHaveValue('mia_t')
+    expect(screen.getByLabelText('Mia T., type your password')).toHaveFocus()
+    expect(screen.queryByText('3 to 24 characters')).not.toBeInTheDocument()
+  })
+
+  it('I’m new opens account creation with the code kept', async () => {
+    setup('?classCode=ROOM-42')
+    fireEvent.click(await screen.findByRole('button', { name: 'I’m new' }, { timeout: 2000 }))
+    expect(screen.getByRole('heading', { name: 'Join your class' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Class code')).toHaveValue('ROOM-42')
+    expect(screen.getByRole('button', { name: 'Create account and join' })).toBeInTheDocument()
+    expect(screen.getByText('Studio 5')).toBeInTheDocument()
+  })
+
+  it('signs a returning student in from a tapped name', async () => {
+    const { onNavigate, fetcher } = setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/login' ? json(studentAuth) : undefined))
+    const grid = await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })
+    fireEvent.click(within(grid).getByRole('button', { name: /Ben K\./ }))
+    type('Ben K., type your password', 'brick tower')
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(onNavigate).toHaveBeenCalledWith('/worlds'))
+    const login = (fetcher as unknown as ReturnType<typeof vi.fn>).mock.calls.find(([url]) => String(url).endsWith('/auth/login'))!
+    expect(JSON.parse(String((login[1] as RequestInit).body))).toEqual({ username: 'ben_k', password: 'brick tower', classCode: 'ROOM-42' })
+  })
+
+  it('hides I’m new when the class is not taking new accounts', async () => {
+    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/roster' ? json({ ...roster, canEnroll: false }) : undefined))
+    await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })
+    expect(screen.queryByRole('button', { name: 'I’m new' })).not.toBeInTheDocument()
+  })
+
+  it('falls back to account creation when the class shows no names', async () => {
+    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/roster' ? json({ ...roster, showNames: false, students: [] }) : undefined))
+    expect(await screen.findByRole('button', { name: 'Create account and join' }, { timeout: 2000 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Join your class' })).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Tap your name, then type your password.' })).not.toBeInTheDocument()
+  })
+
+  it('falls back to account creation for a brand-new class with nobody in it yet', async () => {
+    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/roster' ? json({ ...roster, students: [] }) : undefined))
+    expect(await screen.findByRole('button', { name: 'Create account and join' }, { timeout: 2000 })).toBeInTheDocument()
+  })
+
+  it('falls back to sign-in when the class shows no names and is not taking new accounts', async () => {
+    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/roster' ? json({ ...roster, canEnroll: false, showNames: false, students: [] }) : undefined))
+    expect(await screen.findByRole('button', { name: 'Sign in' }, { timeout: 2000 })).toBeInTheDocument()
+    expect(screen.getByLabelText('Username')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create account and join' })).not.toBeInTheDocument()
+  })
+
+  it('shows sign-in with the code to fix when the code is wrong, then the names once it is right', async () => {
+    setup('?classCode=ROOM-24', fakeApi((path, body) => path !== '/auth/roster' ? undefined
+      : body.classCode === 'ROOM-42' ? json(roster) : json({ error: 'Class not found.', code: 'class_not_found' }, 404)))
+    expect(await screen.findByText('Check the class code with your teacher.', {}, { timeout: 2000 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+    type('Class code', 'ROOM-42')
+    expect(await screen.findByRole('list', { name: 'Tap your name, then type your password.' }, { timeout: 2000 })).toBeInTheDocument()
+  })
+
+  it('keeps sign-in open when the class list cannot load', async () => {
+    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/roster' ? json({ error: 'Down.', code: 'internal_error' }, 500) : undefined))
+    expect(await screen.findByText('The class list could not load right now. You can still sign in.', {}, { timeout: 2000 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+  })
+
+  it('an explicit mode=join link still opens account creation straight away', () => {
+    setup('?mode=join&classCode=ROOM-42')
+    expect(screen.getByRole('button', { name: 'Create account and join' })).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+})
+
 describe('/join — new student', () => {
   it('asks for the class code first and names the class once it resolves', async () => {
     setup('')
@@ -84,7 +165,7 @@ describe('/join — new student', () => {
   })
 
   it('keeps the primary action disabled until every rule is green', () => {
-    setup('?classCode=ROOM-42')
+    setup('?mode=join&classCode=ROOM-42')
     const submit = screen.getByRole('button', { name: 'Create account and join' })
     expect(submit).toBeDisabled()
     type('Choose a username', 'sky_builder')
@@ -96,7 +177,7 @@ describe('/join — new student', () => {
   })
 
   it('offers the server’s free usernames as tap-to-fill chips after username_taken', async () => {
-    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/register'
+    setup('?mode=join&classCode=ROOM-42', fakeApi(path => path === '/auth/register'
       ? json({ error: 'That username is taken.', code: 'username_taken', suggestions: ['sky_builder2', 'sky_builder_r'] }, 409)
       : undefined))
     type('Choose a username', 'sky_builder')
@@ -109,7 +190,7 @@ describe('/join — new student', () => {
   })
 
   it('says what to change when the class is not taking new accounts', async () => {
-    setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/register'
+    setup('?mode=join&classCode=ROOM-42', fakeApi(path => path === '/auth/register'
       ? json({ error: 'Enrollment is closed.', code: 'enrollment_closed' }, 403)
       : undefined))
     type('Choose a username', 'sky_builder')
@@ -120,7 +201,7 @@ describe('/join — new student', () => {
   })
 
   it('sends the enrollment and opens the student’s worlds', async () => {
-    const { onNavigate, fetcher } = setup('?classCode=ROOM-42', fakeApi(path => path === '/auth/register' ? json(studentAuth) : undefined))
+    const { onNavigate, fetcher } = setup('?mode=join&classCode=ROOM-42', fakeApi(path => path === '/auth/register' ? json(studentAuth) : undefined))
     type('Choose a username', 'sky_builder')
     type('Name your teacher knows', 'Alex Rivera')
     type('Choose a password', 'brick tower')
@@ -132,7 +213,7 @@ describe('/join — new student', () => {
   })
 
   it('returns to the page the link asked for', async () => {
-    const { onNavigate } = setup('?classCode=ROOM-42&next=/build', fakeApi(path => path === '/auth/register' ? json(studentAuth) : undefined))
+    const { onNavigate } = setup('?mode=join&classCode=ROOM-42&next=/build', fakeApi(path => path === '/auth/register' ? json(studentAuth) : undefined))
     type('Choose a username', 'sky_builder')
     type('Name your teacher knows', 'Alex Rivera')
     type('Choose a password', 'brick tower')

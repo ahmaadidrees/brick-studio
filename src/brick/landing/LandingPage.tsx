@@ -349,9 +349,9 @@ export function LandingPage({ studioHref = '/build', platformerHref = '/2d/build
                 {continueBuild ? 'Continue a project' : 'My projects'}
               </a>
             </p>
-            {/* A plain GET form: /join reads ?classCode= (src/pages/join/joinQuery.ts). */}
+            {/* A plain GET form: /join?classCode= with no mode looks the class up, then shows the names to tap
+                plus "I'm new" (src/pages/join/joinQuery.ts), so a returning kid never lands on account creation. */}
             <form className="landing-code" action="/join" method="get">
-              <input type="hidden" name="mode" value="join" />
               <label htmlFor={codeId}>Got a class code?</label>
               <input id={codeId} name="classCode" placeholder="e.g. BRICK-42" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={32} required />
               <button type="submit" className="ui-button ui-button-primary">Join</button>

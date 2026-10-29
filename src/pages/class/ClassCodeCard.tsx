@@ -45,7 +45,7 @@ export function ClassCodeCard({ className, code, projectorHref }: Props) {
     <div className="class-code-main">
       <small className="class-code-eyebrow" id="class-code-title">Class code</small>
       <strong className="class-code-value">{code || 'Unavailable'}</strong>
-      <p className="class-code-steps">Students go to <strong>{joinHost()}</strong>, enter the code, then tap their name.</p>
+      <p className="class-code-steps">Students go to <strong>{joinHost()}</strong>, enter the code, then tap their name. New students tap “I’m new”.</p>
       {copied === 'failed' && <label className="class-code-fallback">Join link<input className="ui-input" readOnly value={link} onFocus={event => event.target.select()} /></label>}
       <div className="class-code-actions">
         {projectorHref && <Button variant="primary" size="sm" icon={<Monitor size={16} />} href={projectorHref}>Show on projector</Button>}
@@ -64,6 +64,6 @@ export function PrintableCode({ className, code }: { className: string; code: st
     <h2>{className}</h2>
     <p className="class-print-code">{code}</p>
     {qr && <img src={qr} width={420} height={420} alt="" />}
-    <p className="class-print-steps">Go to {joinHost()}, enter the code, then tap your name.</p>
+    <p className="class-print-steps">Go to {joinHost()}, enter the code, then tap your name. New? Tap “I’m new”.</p>
   </div>
 }

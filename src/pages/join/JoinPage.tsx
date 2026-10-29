@@ -22,8 +22,8 @@ type ClassInfo = { code: string; name: string; canEnroll: boolean; showNames: bo
 
 const HEADLINES: Record<JoinMode, { title: string; lead: string }> = {
   join: { title: 'Join your class', lead: 'Start with the code your teacher gave you.' },
-  signin: { title: 'Welcome back', lead: 'Sign in to open your worlds.' },
-  teacher: { title: 'Teacher sign in', lead: 'Open your class and your students’ worlds.' },
+  signin: { title: 'Welcome back', lead: 'Sign in to open your projects.' },
+  teacher: { title: 'Teacher sign in', lead: 'Open your class and your students’ projects.' },
 }
 
 /** One welcoming line beside the form, per mode. Decoration, not instruction: the form says what to do. */
@@ -68,7 +68,10 @@ export function JoinExperience({
   const query = useMemo(() => parseJoinQuery(search), [search])
   const auth = useSyncExternalStore(client.subscribe, client.getSession)
   const [remembered, setRemembered] = useState(readRememberedClass)
-  const [mode, setMode] = useState<JoinMode>(query.mode)
+  // A code with no mode starts on sign-in, held behind "Finding your class…" until the lookup says
+  // whether there are names to tap. `codeFirst` ends at the first class found or any mode switch.
+  const [codeFirst, setCodeFirst] = useState(query.codeFirst)
+  const [mode, setMode] = useState<JoinMode>(query.codeFirst ? 'signin' : query.mode)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [suggestions, setSuggestions] = useState<string[]>([])
@@ -126,7 +129,17 @@ export function JoinExperience({
 
   useEffect(() => { if (focusCode.current && codeInput.current) { codeInput.current.focus(); focusCode.current = false } }, [codeOpen, requireClassCode, editingCode])
 
+  // The code's class is known: names to tap keep sign-in (with "I'm new" beside them). A class
+  // without names opens account creation while it takes new accounts, and sign-in when it does not.
+  useEffect(() => {
+    if (!codeFirst || !matched) return
+    setCodeFirst(false)
+    if (matched.showNames && matched.students.length) return
+    if (matched.canEnroll) setMode('join')
+  }, [codeFirst, matched])
+
   const changeMode = (next: JoinMode) => {
+    setCodeFirst(false)
     setMode(next); setError(''); setSuggestions([]); setRequireClassCode(false); setPassword(''); setPickedName('')
     // A remembered return code is not an invitation to enroll: a new student types their teacher's code.
     if (next === 'join' && !query.classCode && rememberedActive) setClassCode('')
@@ -186,13 +199,18 @@ export function JoinExperience({
   const codeVisible = mode === 'join' || codeOpen || requireClassCode || (mode === 'signin' && rememberedActive && !matched)
   const roster = mode === 'signin' && matched?.showNames && matched.students.length ? matched.students : null
   const reset = Boolean(auth?.user.resetRequired)
+  // Waiting for the code's class before choosing between names and a form (a wrong code or an outage shows sign-in).
+  const finding = codeFirst && Boolean(trimmedCode) && !matched && !classError
 
   const cornerLink = reset ? null
     : mode === 'join' ? <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('signin')}>I already have an account</Button>
     : mode === 'teacher' ? <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('signin')}>Sign in with username instead</Button>
     : <Button variant="quiet" size="sm" disabled={busy} onClick={() => changeMode('join')}>New here? Join a class</Button>
 
-  const headline = reset ? { title: 'Choose a new password', lead: 'Your teacher reset your password. Pick one you will remember.' } : HEADLINES[mode]
+  const headline = reset ? { title: 'Choose a new password', lead: 'Your teacher reset your password. Pick one you will remember.' }
+    : finding ? HEADLINES.join
+    : roster ? { title: 'Find your name', lead: matched?.canEnroll ? 'Tap your name to sign in. New here? Tap I’m new.' : 'Tap your name to sign in.' }
+    : HEADLINES[mode]
 
   return <div className="join-page">
     <AppHeader variant="page" actions={cornerLink} />
@@ -266,8 +284,12 @@ export function JoinExperience({
                       </button>
                     </li>)}
                   </ul>
+                  {matched?.canEnroll && <div className="join-links join-links-start">
+                    <Button variant="secondary" size="sm" disabled={busy} onClick={() => changeMode('join')}>I’m new</Button>
+                  </div>}
                 </div>}
 
+                {finding ? <p className="join-note join-finding" role="status">Finding your class…</p> : <>
                 <TextInput
                   label={mode === 'join' ? 'Choose a username' : 'Username'}
                   name="username"
@@ -305,6 +327,7 @@ export function JoinExperience({
                   {mode === 'join' ? 'Create account and join' : 'Sign in'}
                 </Button>
                 {mode === 'signin' && <p className="join-note join-note-center">Forgot it? Ask your teacher.</p>}
+                </>}
               </form>}
 
           {!reset && <div className="join-links join-links-footer">

@@ -59,13 +59,15 @@ describe('semantics and structure', () => {
     expect(within(hero).getByRole('link', { name: 'My projects' })).toHaveAttribute('href', '/projects')
     expect(within(hero).getByRole('link', { name: 'Student login' })).toHaveAttribute('href', '/build?classroom=signin')
 
-    // A plain GET form: /join?mode=join&classCode=… opens the join page with the code filled in.
+    // A plain GET form: /join?classCode=… with no mode, so the join page looks the class up and shows the
+    // names to tap plus "I'm new" (a hard-coded mode=join would open account creation for returning kids).
     const code = within(hero).getByLabelText('Got a class code?') as HTMLInputElement
     expect(code).toHaveAttribute('name', 'classCode')
     const form = code.closest('form')!
     expect(form).toHaveAttribute('action', '/join')
     expect(form).toHaveAttribute('method', 'get')
-    expect(form.querySelector('input[type="hidden"][name="mode"]')).toHaveAttribute('value', 'join')
+    expect([...new FormData(form).keys()]).toEqual(['classCode'])
+    expect(form.querySelector('input[name="mode"]')).toBeNull()
     expect(within(form).getByRole('button', { name: 'Join' })).toHaveAttribute('type', 'submit')
   })
 

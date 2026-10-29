@@ -68,7 +68,7 @@ export default function ProjectorPage({ client = resolveClient(), navigate = hre
             <p className="class-projector-label">Class code</p>
             <p className="class-projector-code-big">{code}</p>
             {qr && <img className="class-projector-qr" src={qr} width={320} height={320} alt={`Scan to join ${current.name}`} />}
-            <p className="class-projector-steps">Go to <strong>{joinHost()}</strong>, enter the code, then tap your name.</p>
+            <p className="class-projector-steps">Go to <strong>{joinHost()}</strong>, enter the code, then tap your name. New? Tap “I’m new”.</p>
           </>
           : <p role="status" className="class-help">Create a class first — its code appears here.</p>}
   </main>
