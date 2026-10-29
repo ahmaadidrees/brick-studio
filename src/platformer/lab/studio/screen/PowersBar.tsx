@@ -1,8 +1,8 @@
 import { Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import type { BrickDef } from '../../core/contracts'
+import { designKit, type BrickDef, type KitId } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
-import { builtInPowers, makePower, powerChanged, powerFromFile, whyNot, type PowerBrick } from '../powers/powers'
+import { builtInPowers, forGame, makePower, powerChanged, powerFromFile, whyNot, type PowerBrick } from '../powers/powers'
 import { downloadPower, keepPower, makerName, myPowers, onPowersChange, rememberMakerName } from '../powers/library'
 import { getLabelText } from './labels'
 import { useClassShelf } from '../powers/useClassShelf'
@@ -65,8 +65,11 @@ export function PowersBar({ store, brick, shelfApi, session }: { store: StudioSt
 }
 
 function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioStore; brick: BrickDef; shelf: Shelf; onMake: () => void; onClose: () => void }) {
-  const mine = useSyncExternalStore(onPowersChange, myPowers)
-  const builtIn = useMemo(builtInPowers, [])
+  // A power shows only in its own game: Racing powers never list in the Platformer, and the other way round.
+  const kit = useStudio(store, (s) => designKit(s.project.design))
+  const allMine = useSyncExternalStore(onPowersChange, myPowers)
+  const mine = useMemo(() => allMine.filter((p) => forGame(p, kit)), [allMine, kit])
+  const builtIn = useMemo(() => builtInPowers().filter((p) => forGame(p, kit)), [kit])
   const file = useRef<HTMLInputElement | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
@@ -82,11 +85,12 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
     if (!f) return
     const power = powerFromFile(await f.text())
     if (!power) return setNote('That file isn’t a power. Power files end in .power.json.')
+    if (!forGame(power, kit)) return setNote(whyNot(power, brick, kit))
     keepPower(power)
     setNote(`${power.name} is in My powers.`)
   }
   const row = (p: PowerBrick) => {
-    const why = whyNot(p, brick)
+    const why = whyNot(p, brick, kit)
     return (
       <li key={p.id}>
         <button type="button" className="cl-power-pick" disabled={!!why} title={why ?? `Snap ${p.name} onto ${brick.name}`} onClick={() => snap(p)}>
@@ -105,7 +109,7 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
         <span className="cl-power-group">Class shelf</span>
         {shelf.signedIn && <button type="button" className="cl-power-refresh" disabled={checking || shelf.state.kind === 'loading'} onClick={() => void checkShelf()}>{checking ? 'Checking…' : 'Check again'}</button>}
       </div>
-      <ClassShelfList store={store} brick={brick} shelf={shelf} onSnapped={onClose} />
+      <ClassShelfList store={store} brick={brick} kit={kit} shelf={shelf} onSnapped={onClose} />
       <span className="cl-power-group">My powers</span>
       {mine.length ? <ul className="cl-power-list">{mine.map(row)}</ul> : <p className="cl-muted cl-power-empty">Powers you make, or open from a classmate’s file, show up here.</p>}
       {note && <p className="cl-power-note" role="status">{note}</p>}
@@ -181,22 +185,23 @@ function useCloseOnEscape(onClose: () => void) {
 }
 
 /** The class shelf inside "+ Power": what classmates shared (snap one on), and this kid's own items still waiting. */
-function ClassShelfList({ store, brick, shelf, onSnapped }: { store: StudioStore; brick: BrickDef; shelf: Shelf; onSnapped: () => void }) {
+function ClassShelfList({ store, brick, kit, shelf, onSnapped }: { store: StudioStore; brick: BrickDef; kit: KitId; shelf: Shelf; onSnapped: () => void }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const { state } = shelf
   if (state.kind === 'signed-out') return <p className="cl-muted cl-power-empty"><a href={`/join?next=${encodeURIComponent(location.pathname)}`}>Sign in</a> to see what your class shared.</p>
   if (state.kind === 'loading') return <p className="cl-muted cl-power-empty" role="status">Opening the class shelf…</p>
   if (state.kind === 'error') return <p className="cl-power-note cl-power-error" role="alert">{state.message}</p>
-  const on = state.shelf.items.filter((i) => i.status === 'approved')
-  const waiting = state.shelf.items.filter((i) => i.mine && i.status === 'pending')
+  const items = state.shelf.items.filter((i) => forGame(i, kit))
+  const on = items.filter((i) => i.status === 'approved')
+  const waiting = items.filter((i) => i.mine && i.status === 'pending')
   const snap = async (id: string, name: string) => {
     setBusy(id)
     setNote(null)
     try {
       const power = await shelf.fetchPower(id)
       if (!power) return setNote(`${name} could not be opened.`)
-      const why = whyNot(power, brick)
+      const why = whyNot(power, brick, kit)
       if (why) return setNote(why)
       if (store.snapPower(brick.id, power)) onSnapped()
     } catch (error) {

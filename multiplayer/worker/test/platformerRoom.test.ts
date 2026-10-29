@@ -317,6 +317,26 @@ describe("2D class levels", () => {
     expect(await broken.json()).toMatchObject({ code: "invalid_document" });
   });
 
+  it("keep a Hackable project's game: a Racing project says so, and is never saved over as a Platformer", async () => {
+    const hackable = (name: string, kit?: string) => ({ format: "brickgineers-hackable", version: 1, save: { schemaVersion: 1, design: { name, ...(kit ? { kit } : {}) }, workspaces: {} } });
+    const worldId = randomWorldUuid();
+    const f = fixture([worldId]);
+    (f.db.worlds[0] as { document: unknown }).document = hackable("Track", "race");
+    vi.spyOn(ClassroomService.prototype, "authenticate").mockResolvedValue({ ...teacherCaller } as never);
+    const ticket = await request(`/classroom/worlds/${worldId}/platformer-ticket`, { method: "POST", headers: { authorization: "Bearer teacher" } });
+    expect(await ticket.json()).toMatchObject({ code: "wrong_world_kind", error: "This is a Hackable Racing project. Open it there." });
+    const put = (document: unknown, revision: number) => request(`/classroom/worlds/${worldId}`, {
+      method: "PUT", headers: { authorization: "Bearer teacher", "content-type": "application/json" }, body: JSON.stringify({ expectedRevision: revision, document }),
+    });
+    const ok = await put(hackable("Faster track", "race"), f.db.worlds[0].revision);
+    expect(ok.status).toBe(200);
+    expect((await ok.json<{ world: { format: string; kit?: string } }>()).world).toMatchObject({ format: "hackable", kit: "race" });
+    const platformer = await put(hackable("Now a platformer"), f.db.worlds[0].revision);
+    expect(platformer.status).toBe(400);
+    expect(await platformer.json()).toMatchObject({ code: "wrong_world_kind", error: "This is a Hackable Racing project. Open it there." });
+    expect(f.db.worlds[0].document).toEqual(hackable("Faster track", "race"));
+  });
+
   it("save a 2D level only over a 2D level", async () => {
     const { world, worldId } = classLevel();
     const put = (id: string, document: unknown, revision: number) => request(`/classroom/worlds/${id}`, {

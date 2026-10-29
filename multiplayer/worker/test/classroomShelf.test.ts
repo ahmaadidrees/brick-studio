@@ -134,6 +134,17 @@ describe('the class shelf', () => {
     expect((await call(ana, 'POST', [], { name: 'x', payload: big })).status).toBe(413);
   });
 
+  it('says which game each power is for (missing means the Platformer), and refuses a game it does not know', async () => {
+    const { call } = db({ shelf_needs_review: false });
+    await call(ana, 'POST', [], { name: 'Double jump', payload: power() });
+    await call(ana, 'POST', [], { name: 'Turbo', payload: { ...power('Turbo'), game: 'race' } });
+    const listed = (await call(sam, 'GET')).body.items as Row[];
+    expect(listed.map((i) => [i.name, i.game])).toEqual(expect.arrayContaining([['Double jump', 'platformer'], ['Turbo', 'race']]));
+    const turbo = listed.find((i) => i.name === 'Turbo')!;
+    expect((await call(sam, 'GET', [turbo.id])).body.item).toMatchObject({ game: 'race', payload: { game: 'race' } });
+    expect((await call(ana, 'POST', [], { name: 'x', payload: { ...power(), game: 'kart' } })).body.code).toBe('invalid_power');
+  });
+
   it('with sharing between students off, students cannot share and only see their own; the teacher still can', async () => {
     const { call, items } = db({ students_can_share: false, shelf_needs_review: false });
     expect((await call(ana, 'POST', [], { name: 'Dash', payload: power('Dash') })).body.code).toBe('sharing_disabled');

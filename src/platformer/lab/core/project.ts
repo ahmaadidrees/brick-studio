@@ -14,7 +14,7 @@
  *
  * y up, (0, 0) = bottom-left of the level, direction 90 = right.
  */
-import { EFFECT_NAMES, TILE_SIZE, gridCopyId } from './contracts'
+import { EFFECT_NAMES, TILE_SIZE, gridCopyId, isKitId } from './contracts'
 import type {
   BrickDef,
   BrickProgram,
@@ -136,6 +136,7 @@ export function validateDesign(design: LevelDesign): DesignProblem[] {
 
   checkId(design.id, 'id', push)
   checkName(design.name, 'name', push)
+  if (design.kit !== undefined && !isKitId(design.kit)) push('bad-value', 'kit', 'Kit must be platformer, race or 3d.')
   checkSeed(design.seed, push)
   checkBounds(design.bounds, push)
 

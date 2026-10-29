@@ -9,6 +9,8 @@ export type ShelfStatus = 'pending' | 'approved' | 'hidden'
 export interface ShelfItem {
   id: string
   kind: 'power'
+  /** The Hackable game the power is for; it shows only there. Missing (older servers and powers) means the Platformer. */
+  game?: 'platformer' | 'race' | '3d'
   name: string
   what: string
   /** First name and last initial, or "Teacher". */

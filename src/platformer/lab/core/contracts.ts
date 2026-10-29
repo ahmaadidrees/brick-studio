@@ -194,9 +194,21 @@ export interface CopyPlacement {
   knobs?: Record<string, Value>
 }
 
+/**
+ * Which Hackable game a project is (docs/qa/hackable-modes): the Platformer, Racing or 3D. Every kit shares this core's
+ * scheduler, blocks and save format; a kit adds its own blocks, lifecycle and Stage on top.
+ */
+export type KitId = 'platformer' | 'race' | '3d'
+export const KIT_IDS: readonly KitId[] = ['platformer', 'race', '3d']
+export const isKitId = (value: unknown): value is KitId => typeof value === 'string' && (KIT_IDS as readonly string[]).includes(value)
+/** A design's kit. Missing means the Platformer, so every save made before kits opens unchanged. */
+export const designKit = (design: Pick<LevelDesign, 'kit'>): KitId => design.kit ?? 'platformer'
+
 export interface LevelDesign {
   id: string
   name: string
+  /** Which Hackable game this is. Missing means the Platformer; the studio never writes 'platformer' itself. */
+  kit?: KitId
   /** The level is the stage (decision 2): fencing, edge, random position. */
   bounds: StageBounds
   /** Holds global variables/lists, stage scripts and backdrops. */

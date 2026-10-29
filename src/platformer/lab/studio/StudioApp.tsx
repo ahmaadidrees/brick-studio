@@ -11,6 +11,7 @@ import { createStarterProject } from './starter'
 import { HackableCloudSaver, NotHackableError, createHackableWorld, loadHackableWorld } from './persist/hackableCloud'
 import { MAX_HACKABLE_PROJECTS, NEW_PROJECT_NAME, hackableHref, listHackableProjects, loadHackableText, newHackableId, projectKey, touchHackableEntry } from './persist/hackableProjects'
 import { saveHackableProject } from './persist/hackableSave'
+import { kitNotReady, kitOf } from '../kits'
 import './studio.css'
 
 export interface StudioRoute {
@@ -59,7 +60,15 @@ export async function openStudioRoute(route: StudioRoute): Promise<Opening> {
   return open(route)
 }
 
+/** What a route opens, as its own kit: a project of a kit this version cannot run yet is a problem card, not a Platformer. */
 async function open(route: StudioRoute): Promise<Opening> {
+  const opening = await openWhere(route)
+  if (!('project' in opening)) return opening
+  const notReady = kitNotReady(opening.project.design)
+  return notReady ? { kind: 'problem', title: `This is ${kitOf(opening.project.design).name}`, body: notReady } : opening
+}
+
+async function openWhere(route: StudioRoute): Promise<Opening> {
   const session = browserClassroomClient.getSession()
   const signedIn = !!session
   if (route.world) {
@@ -90,7 +99,7 @@ async function open(route: StudioRoute): Promise<Opening> {
     return { kind: 'new', project: newProject() }
   }
   const id = route.draft ?? listHackableProjects()[0]?.id
-  if (!id) return open({ fresh: true })
+  if (!id) return openWhere({ fresh: true })
   // The save itself decides, not the list: a project whose list entry was lost still opens (and is listed again).
   if (route.draft && loadHackableText(id) === null) {
     return { kind: 'problem', title: 'That project isn’t on this computer', body: 'It may have been removed, or saved in a different browser. Your other projects are in My projects.' }
@@ -291,7 +300,8 @@ function OpenProject({ opened }: { opened: Opened }) {
   }, [saver])
 
   const name = useSyncExternalStore(store.subscribe, () => store.getState().project.design.name)
-  useEffect(() => { document.title = `${name} · Hackable Platformer · Brickgineers` }, [name])
+  const kitName = useSyncExternalStore(store.subscribe, () => kitOf(store.getState().project.design).name)
+  useEffect(() => { document.title = `${name} · ${kitName} · Brickgineers` }, [name, kitName])
 
   const saveStatus: HeaderSaveStatus = saver
     ? { source: { kind: 'cloud', status: saver.status }, detail: saver.status === 'error' ? saver.error : saver.status === 'saved' ? 'Your latest changes are saved to your account.' : 'Saving your latest changes to your account.' }

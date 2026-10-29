@@ -10,6 +10,7 @@ import {
 import type { StudioProject } from '../store'
 import { HACKABLE_FILE_MAX_CHARS, HACKABLE_SAVE_MAX_CHARS, isHackableDocument } from './hackableProjects'
 import { parseSaveText } from './repairSave'
+import { kitNotReady } from '../../kits'
 
 export function createProjectEnvelope(project: StudioProject): SavedProjectEnvelope {
   return {
@@ -128,6 +129,8 @@ export function importProjectJson(text: string): ImportResult {
   // picture the game refuses (the old blank Stage backdrop) opens with that picture put right.
   const result = parseSaveText(unwrapped.text)
   if (!result.ok) return { ok: false, error: reasonFor(result.problems), problems: result.problems }
+  const notReady = kitNotReady(result.save.design)
+  if (notReady) return { ok: false, error: notReady }
 
   return {
     ok: true,

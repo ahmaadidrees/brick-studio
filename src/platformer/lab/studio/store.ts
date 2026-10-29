@@ -8,7 +8,7 @@ import type { BrickDef, Costume, CopyPlacement, LevelDesign, SnappedPower, Sound
 import { type Diagnostic } from '../core/editor/compile'
 import { play, type Runtime } from '../core/index'
 import { deterministicStringify } from '../core/save'
-import { parseGridCopyId } from '../core/contracts'
+import { designKit, parseGridCopyId } from '../core/contracts'
 import { compileBrickEdit, canResetBrick, restoreBrickOriginal } from './remix'
 import { fits as fitsPower, isPowerOn as isPowerOnIn, setPowerOn as setPowerOnIn, snapPower as snapPowerOnto, takeOffPower as takeOffPowerFrom, type PowerBrick } from './powers/powers'
 
@@ -337,7 +337,7 @@ export class StudioStore {
   /** Snap a power onto a brick. Unsaved editor changes are kept first; the editor reloads to show the new scripts. */
   snapPower(brickId: string, power: PowerBrick): SnappedPower | null {
     const brick = this.brick(brickId)
-    if (!brick || !fitsPower(power, brick)) return null
+    if (!brick || !fitsPower(power, brick, designKit(this.state.project.design))) return null
     this.flushEditor()
     const { project, snap } = snapPowerOnto(this.state.project, brickId, power)
     this.applyPowerChange(brickId, project)
