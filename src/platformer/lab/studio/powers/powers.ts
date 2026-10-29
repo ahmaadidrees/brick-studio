@@ -5,6 +5,7 @@
  * power. Taking it off removes exactly those. Everything here is pure: it takes a project and returns a new one.
  */
 import type { BrickDef, SnappedPower, VariableDecl } from '../../core/contracts'
+import { compileWorkspace } from '../../core/editor/compile'
 import { Blocks, type BlockJson } from '../blockBuilder'
 import { STAGE_ID, type StudioProject } from '../store'
 
@@ -202,7 +203,7 @@ export function snapPower(project: StudioProject, brickId: string, power: PowerB
   ws.blocks!.blocks = [...tops, ...added]
   ws.variables = [...(ws.variables ?? []), ...declared.map((v) => ({ id: v.id, name: v.name, type: v.list ? 'list' : '' }))]
 
-  const snap: SnappedPower = { id: snapId, name: power.name, credits: [...power.credits], blockIds: added.map((b) => b.id as string), variableIds: declared.map((v) => v.id) }
+  const snap: SnappedPower = { id: snapId, name: power.name, credits: [...power.credits], blockIds: added.map((b) => b.id as string), variableIds: declared.map((v) => v.id), fingerprint: fingerprintOf(added) }
   const next = withBrick(project, brickId, (b) => ({
     ...b,
     powers: [...(b.powers ?? []), snap],
@@ -232,6 +233,51 @@ export function takeOffPower(project: StudioProject, brickId: string, snapId: st
     powers: (b.powers ?? []).filter((p) => p.id !== snapId),
     program: { ...b.program, variables: b.program.variables.filter((v) => !gone.has(v.id)), lists: b.program.lists.filter((v) => !gone.has(v.id)) },
   }), ws)
+}
+
+/** JSON with object keys sorted, so the same program always gives the same text. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  if (isRecord(value)) return `{${Object.keys(value).filter((k) => value[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${stableJson(value[k])}`).join(',')}}`
+  return JSON.stringify(value) ?? 'null'
+}
+
+/** A short hash (two FNV-1a passes) of some text. */
+function hashText(text: string): string {
+  let a = 0x811c9dc5
+  let b = 0x01000193
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    a = Math.imul(a ^ c, 0x01000193)
+    b = Math.imul(b ^ c, 0x5bd1e995) ^ (b >>> 13)
+  }
+  return `${(a >>> 0).toString(36)}${(b >>> 0).toString(36)}`
+}
+
+/**
+ * What some top-level blocks do: their compiled scripts and My Blocks. Compiling first means the editor re-saving the
+ * same blocks (shadows, field shapes), moving them, their labels and On/Off do not count; editing, adding or removing
+ * a block does.
+ */
+function fingerprintOf(blocks: unknown[]): string {
+  const on = blocks.map((b) => (isRecord(b) ? { ...b, enabled: undefined, disabledReasons: undefined, x: undefined, y: undefined } : b))
+  const { program } = compileWorkspace({ blocks: { languageVersion: 0, blocks: on } })
+  return hashText(stableJson({ scripts: program.scripts, procedures: program.procedures }))
+}
+
+/**
+ * Has the kid changed a snapped power's blocks since it was snapped on (so taking it off would lose their work)? A snap
+ * from before snaps remembered their blocks counts as changed: Take off then asks, to be safe.
+ */
+export function powerChanged(project: StudioProject, brickId: string, snapId: string): boolean {
+  const snap = brickOf(project, brickId)?.powers?.find((p) => p.id === snapId)
+  if (!snap) return false
+  if (!snap.fingerprint) return true
+  const order = new Map(snap.blockIds.map((id, i) => [id, i]))
+  const current = topBlocks(workspaceOf(project, brickId))
+    .filter((b) => order.has(b.id as string))
+    .sort((x, y) => order.get(x.id as string)! - order.get(y.id as string)!)
+  return fingerprintOf(current) !== snap.fingerprint
 }
 
 /** Is any of the power's scripts on? */

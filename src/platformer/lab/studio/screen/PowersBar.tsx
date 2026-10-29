@@ -2,7 +2,7 @@ import { Plus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { BrickDef } from '../../core/contracts'
 import { useStudio, type StudioStore } from '../store'
-import { builtInPowers, makePower, powerFromFile, whyNot, type PowerBrick } from '../powers/powers'
+import { builtInPowers, makePower, powerChanged, powerFromFile, whyNot, type PowerBrick } from '../powers/powers'
 import { downloadPower, keepPower, makerName, myPowers, onPowersChange, rememberMakerName } from '../powers/library'
 import { getLabelText } from './labels'
 import { useClassShelf } from '../powers/useClassShelf'
@@ -22,22 +22,38 @@ const credit = (credits: string[]) => (credits.length <= 1 ? `from ${credits[0] 
 export function PowersBar({ store, brick, shelfApi, session }: { store: StudioStore; brick: BrickDef } & ShelfOverrides) {
   const workspace = useStudio(store, (s) => s.project.workspaces[brick.id])
   const [open, setOpen] = useState<null | 'pick' | 'make'>(null)
+  // The snap whose "Take off" is asking first, because the kid changed its blocks.
+  const [asking, setAsking] = useState<string | null>(null)
   const powers = brick.powers ?? []
   const shelf = useClassShelf(open !== null, shelfApi, session)
-  useEffect(() => setOpen(null), [brick.id])
+  useEffect(() => { setOpen(null); setAsking(null) }, [brick.id])
   // `workspace` is read so this re-renders when the brick's scripts change: a power's On/Off follows them.
   void workspace
+  const takeOff = (snapId: string) => {
+    if (asking !== snapId && powerChanged(store.getState().project, brick.id, snapId)) return setAsking(snapId)
+    setAsking(null)
+    store.takeOffPower(brick.id, snapId)
+  }
   return (
     <div className="cl-powers" role="group" aria-label="Powers on this brick">
       <span className="cl-powers-title">Powers</span>
       {powers.map((p) => {
         const on = store.isPowerOn(brick.id, p.id)
+        if (asking === p.id) {
+          return (
+            <span key={p.id} className="cl-power is-asking" role="group" aria-label={`Take ${p.name} off?`}>
+              <span className="cl-power-name"><b>Take {p.name} off?</b> <span>Your changes to it go too.</span></span>
+              <button type="button" className="cl-power-switch cl-power-yes" onClick={() => takeOff(p.id)}>Take it off</button>
+              <button type="button" className="cl-power-switch" autoFocus onClick={() => setAsking(null)}>Keep it</button>
+            </span>
+          )
+        }
         return (
           <span key={p.id} className={`cl-power${on ? '' : ' is-off'}`}>
             <span aria-hidden="true" className="cl-power-dot" />
             <span className="cl-power-name"><b>{p.name}</b> <span>{credit(p.credits)}</span></span>
             <button type="button" className="cl-power-switch" aria-pressed={on} aria-label={`${on ? 'Turn off' : 'Turn on'} ${p.name}`} onClick={() => store.setPowerOn(brick.id, p.id, !on)}>{on ? 'On' : 'Off'}</button>
-            <button type="button" className="cl-icon-btn cl-power-off" aria-label={`Take ${p.name} off`} title="Take it off" onClick={() => store.takeOffPower(brick.id, p.id)}><X size={14} /></button>
+            <button type="button" className="cl-icon-btn cl-power-off" aria-label={`Take ${p.name} off`} title="Take it off" onClick={() => takeOff(p.id)}><X size={14} /></button>
           </span>
         )
       })}
