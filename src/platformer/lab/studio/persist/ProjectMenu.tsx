@@ -85,7 +85,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
           className="project-menu-btn"
           onClick={handleImportClick}
           aria-label="Open project from file"
-          title="Open project from file (.json)"
+          title="Open a project file (.brickgineers or .json)"
         >
           <Upload size={16} aria-hidden="true" />
           <span>Open File</span>
@@ -94,7 +94,7 @@ export function ProjectMenu({ store, className = '' }: ProjectMenuProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".json,application/json"
+          accept=".brickgineers,.json,application/json"
           className="project-menu-hidden-input"
           aria-label="Upload project file"
           onChange={handleFileSelected}

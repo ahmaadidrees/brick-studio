@@ -17,6 +17,10 @@ export const MAX_HACKABLE_PROJECTS = 30
 export const NEW_PROJECT_NAME = 'My platformer'
 /** What an account world can hold (the worlds table's own limit). */
 export const ACCOUNT_DOCUMENT_MAX_BYTES = 2_000_000
+/** The biggest save text the game opens (core/save.ts MAX_SAVE_BYTES, counted in characters; projectIo.test.ts checks they agree). */
+export const HACKABLE_SAVE_MAX_CHARS = 5 * 1024 * 1024
+/** The biggest Hackable Platformer file read: its save plus a `.brickgineers` wrapper around it. */
+export const HACKABLE_FILE_MAX_CHARS = HACKABLE_SAVE_MAX_CHARS + 64 * 1024
 
 export interface HackableEntry {
   id: string

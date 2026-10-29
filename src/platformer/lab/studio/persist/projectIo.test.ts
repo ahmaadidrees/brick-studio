@@ -35,7 +35,7 @@ describe('Project IO: Export / Import (projectIo.ts)', () => {
     const result = importProjectJson('{ broken json')
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toContain('Invalid JSON')
+    expect(result.error).toBe('That file is not a project file.')
   })
 
   it('rejects project with missing design', () => {
@@ -49,7 +49,8 @@ describe('Project IO: Export / Import (projectIo.ts)', () => {
     )
     expect(result.ok).toBe(false)
     if (result.ok) return
-    expect(result.error).toContain('design must be an object')
+    expect(result.error).toBe('That file is damaged, so it could not be opened.')
+    expect(result.problems?.map((p) => p.message).join(' ')).toContain('design must be an object')
   })
 
   it('imports valid File object via importProjectFile', async () => {

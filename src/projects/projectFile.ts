@@ -2,7 +2,7 @@ import { createPlatformerDocument, isPlatformerDocument, validatePlatformerDocum
 import { kitOf } from '@brick-studio/platformer-core/engine/kits'
 import type { LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { BRICK_STUDIO_FILE_EXTENSION, validateBrickStudioDocument, type BrickStudioDocument } from '../brick/brickDocument'
-import { HACKABLE_FORMAT, isHackableDocument, type HackableDocument } from '../platformer/lab/studio/persist/hackableProjects'
+import { HACKABLE_FILE_MAX_CHARS, HACKABLE_FORMAT, isHackableDocument, type HackableDocument } from '../platformer/lab/studio/persist/hackableProjects'
 
 /*
  * One file for every kind of project: a 3D build, a platformer, a race track or a Hackable Platformer. A `.brickgineers` file says what it
@@ -16,8 +16,17 @@ export const PROJECT_FILE_FORMAT = 'brickgineers'
 export const PROJECT_FILE_VERSION = 1
 /** Every file the import button accepts. */
 export const PROJECT_FILE_ACCEPT = `${PROJECT_FILE_EXTENSION},${BRICK_STUDIO_FILE_EXTENSION},.json,application/json`
-/** Larger than any project an account can hold (2 MB), so a real project always fits. */
+/**
+ * How big a file may be, in characters of its text, by kind. 3D builds and 2D levels: larger than any an account can
+ * hold (2 MB), so a real one always fits. Hackable Platformers: as big as the game itself opens (5 MB, core/save.ts),
+ * so every one it can save as a file comes back. No file is read past the bigger of the two.
+ */
 export const PROJECT_FILE_MAX_BYTES = 3_000_000
+export const HACKABLE_FILE_MAX_BYTES = HACKABLE_FILE_MAX_CHARS
+const ANY_FILE_MAX_BYTES = Math.max(PROJECT_FILE_MAX_BYTES, HACKABLE_FILE_MAX_BYTES)
+const megabytes = (chars: number) => `${Math.floor(chars / 1_000_000)} MB`
+const TOO_BIG = `That file is too big to be a project. Project files can be up to ${megabytes(ANY_FILE_MAX_BYTES)}.`
+const TOO_BIG_NOT_HACKABLE = `That file is too big to open. 3D builds and 2D projects can be up to ${megabytes(PROJECT_FILE_MAX_BYTES)}.`
 
 export type ProjectKind = '3d' | 'platformer' | 'race' | 'hackable'
 
@@ -81,9 +90,15 @@ function read2d(document: unknown, title: string | null): ReadResult {
   return { ok: true, project: { title: title ?? level.title, content: { kind: kindOfLevel(level), level: title ? { ...level, title } : level } } }
 }
 
+/** A Hackable Platformer's file in either of its shapes (the `.brickgineers` file, or its own "Save File"). */
+function hackableShaped(v: Record<string, unknown>): boolean {
+  if (v.format === PROJECT_FILE_FORMAT) return v.kind === 'hackable'
+  return typeof v.schemaVersion === 'number' && !!v.design && typeof v.design === 'object' && !Array.isArray(v.design)
+}
+
 /** Read any project file this app has ever written. `fileName` names projects whose files carry no title. */
 export function readProjectFile(text: string, fileName = ''): ReadResult {
-  if (text.length > PROJECT_FILE_MAX_BYTES) return { ok: false, message: 'That file is too big to be a project.' }
+  if (text.length > ANY_FILE_MAX_BYTES) return { ok: false, message: TOO_BIG }
   let value: unknown
   try {
     value = JSON.parse(text)
@@ -92,6 +107,8 @@ export function readProjectFile(text: string, fileName = ''): ReadResult {
   }
   if (!value || typeof value !== 'object') return { ok: false, message: 'That file is not a project file.' }
   const v = value as Record<string, unknown>
+  // 3D builds and 2D levels keep their own, smaller limit.
+  if (text.length > PROJECT_FILE_MAX_BYTES && !hackableShaped(v)) return { ok: false, message: TOO_BIG_NOT_HACKABLE }
   if (v.format === PROJECT_FILE_FORMAT) {
     if (typeof v.version !== 'number' || v.version > PROJECT_FILE_VERSION) return { ok: false, message: 'That project was made with a newer version. Refresh the page and try again.' }
     const title = typeof v.title === 'string' && v.title.trim() ? v.title.trim().slice(0, 80) : titleFromName(fileName)

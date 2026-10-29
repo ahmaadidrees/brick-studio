@@ -32,6 +32,12 @@ describe('ProjectMenu UI (ProjectMenu.tsx)', () => {
     expect(resetBtn).toBeDefined()
   })
 
+  it('Open File offers the .brickgineers files My projects downloads, as well as .json', () => {
+    render(<ProjectMenu store={store} />)
+    const accept = screen.getByLabelText('Upload project file').getAttribute('accept')!.split(',')
+    expect(accept).toEqual(expect.arrayContaining(['.brickgineers', '.json']))
+  })
+
   it('triggers exportProjectFile when clicking Save File', () => {
     const exportSpy = vi.spyOn(projectIo, 'exportProjectFile').mockImplementation(() => {})
     render(<ProjectMenu store={store} />)
