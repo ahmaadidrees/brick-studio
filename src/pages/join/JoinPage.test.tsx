@@ -427,6 +427,23 @@ describe('/join — everywhere', () => {
     expect(screen.getByRole('button', { name: 'New here? Join a class' })).toBeInTheDocument()
   })
 
+  it('checks the new password rules and the match live on the reset view', () => {
+    setup('?mode=signin', fakeApi(), { ...studentAuth, user: { ...studentAuth.user, resetRequired: true } })
+    const rules = screen.getByRole('list', { name: 'New password rules' })
+    for (const item of within(rules).getAllByRole('listitem')) expect(item).toHaveClass('join-rule-pending')
+    type('New password', 'sky_builder')
+    expect(rule('Different from your username')).toHaveClass('join-rule-bad')
+    type('New password', 'password')
+    expect(rule('Not an easy-to-guess password')).toHaveClass('join-rule-bad')
+    type('New password', 'brick tower')
+    type('Repeat new password', 'brick towel')
+    expect(rule('Both passwords match')).toHaveClass('join-rule-bad')
+    type('Repeat new password', 'brick tower')
+    for (const label of ['At least 6 characters', 'Different from your username', 'Not an easy-to-guess password', 'Both passwords match']) {
+      expect(rule(label)).toHaveClass('join-rule-ok')
+    }
+  })
+
   it('sends an account whose password was reset to the inline reset view, not to a page', async () => {
     const { onNavigate } = setup('?mode=signin', fakeApi(path => path === '/auth/change-password' ? json(studentAuth) : undefined), { ...studentAuth, user: { ...studentAuth.user, resetRequired: true } })
     expect(screen.getByRole('heading', { name: 'Choose a new password' })).toBeInTheDocument()

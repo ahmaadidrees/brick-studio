@@ -1,16 +1,39 @@
-import { CloudUpload, MonitorSmartphone, MoveRight } from 'lucide-react'
+import { useState } from 'react'
+import { Check, CloudUpload, MonitorSmartphone, MoveRight, X } from 'lucide-react'
 import { Button } from '../ui'
+import { passwordRules, type RuleResult } from '../pages/join/joinRules'
 import { PasswordField } from './PasswordField'
 import { TextInput } from './fields'
 import { PASSWORD_RULE, readForm } from './panelShared'
 
 export const RESET_FORM_ID = 'classroom-reset-form'
 
-/** Board 04 left: forced password change after a teacher reset. Only me / change-password / logout are allowed here. */
-export function PasswordResetView({ onSubmit }: { onSubmit: (password: string, confirm: string) => void }) {
+/** One line per rule; green when it passes, red once it is broken, grey before anything is typed. */
+export function RuleList({ id, label, rules }: { id: string; label: string; rules: RuleResult[] }) {
+  return <ul className="join-rules" id={id} aria-label={label} aria-live="polite" style={{ listStyle: 'none', padding: 0 }}>
+    {rules.map(rule => <li key={rule.id} className={`join-rule join-rule-${rule.state}`}>
+      {rule.state === 'bad' ? <X size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
+      <span>{rule.label}</span>
+      {rule.state !== 'pending' && <span className="sr-only">{rule.state === 'ok' ? ' — done' : ' — not yet'}</span>}
+    </li>)}
+  </ul>
+}
+
+/**
+ * Board 04 left: forced password change after a teacher reset. Only me / change-password / logout are allowed here.
+ * The same live rules as the join page, plus whether the two passwords match, so nothing is a surprise on submit.
+ */
+export function PasswordResetView({ onSubmit, username = '' }: { onSubmit: (password: string, confirm: string) => void; username?: string }) {
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const rules: RuleResult[] = [
+    ...passwordRules(password, username),
+    { id: 'match', label: 'Both passwords match', state: confirm === '' ? 'pending' : confirm === password ? 'ok' : 'bad' },
+  ]
   return <form id={RESET_FORM_ID} className="classroom-form" onSubmit={event => { const data = readForm(event); onSubmit(data.password, data.confirm) }}>
-    <PasswordField label="New password" name="password" maxLength={128} autoComplete="new-password" required minLength={6} hint={PASSWORD_RULE} />
-    <PasswordField label="Repeat new password" name="confirm" maxLength={128} autoComplete="new-password" required minLength={6} />
+    <PasswordField label="New password" name="password" value={password} onChange={event => setPassword(event.target.value)} maxLength={128} autoComplete="new-password" required minLength={6} hint={PASSWORD_RULE} />
+    <PasswordField label="Repeat new password" name="confirm" value={confirm} onChange={event => setConfirm(event.target.value)} maxLength={128} autoComplete="new-password" required minLength={6} />
+    <RuleList id="classroom-reset-rules" label="New password rules" rules={rules} />
   </form>
 }
 

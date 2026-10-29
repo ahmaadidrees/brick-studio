@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { Check, ChevronDown, ChevronUp, KeyRound, Mail, UserRound, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, KeyRound, Mail, UserRound } from 'lucide-react'
 import { Button } from '../../ui'
 import { AppHeader, displayNameFor, useClassroomSession } from '../../shell'
 import { BRAND_TAGLINE, BrandLockup, BrickMark } from '../../brand'
@@ -8,10 +8,10 @@ import type { ClassroomAuthResult, ClassroomRosterStudent } from '../../classroo
 import { PasswordField } from '../../classroom/PasswordField'
 import { TextInput } from '../../classroom/fields'
 import { errorMessage } from '../../classroom/panelShared'
-import { PasswordResetView, RESET_FORM_ID } from '../../classroom/RecoveryViews'
+import { PasswordResetView, RESET_FORM_ID, RuleList } from '../../classroom/RecoveryViews'
 import { forgetClass, readRememberedClass, rememberClass } from '../../classroom/rememberedClass'
 import '../../classroom/classroom.css'
-import { allGreen, passwordRules, usernameRules, type RuleResult } from './joinRules'
+import { allGreen, passwordRules, usernameRules } from './joinRules'
 import { joinDestination, parseJoinQuery, type JoinMode } from './joinQuery'
 import './join.css'
 
@@ -264,7 +264,7 @@ export function JoinExperience({
             </div>
             : reset
             ? <>
-              <PasswordResetView onSubmit={changePassword} />
+              <PasswordResetView onSubmit={changePassword} username={auth?.user.username} />
               <Button type="submit" form={RESET_FORM_ID} variant="primary" fullWidth className="join-submit" loading={busy} loadingLabel="Saving your password…">Set my new password</Button>
               <div className="join-links"><Button variant="quiet" size="sm" disabled={busy} onClick={() => run(() => client.signOut())}>Sign out</Button></div>
             </>
@@ -370,17 +370,6 @@ export function JoinExperience({
 
 /** "a, b and c" */
 const listInWords = (items: string[]) => items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
-
-/** One line per rule; green when it passes, red once it is broken, grey before anything is typed. */
-function RuleList({ id, label, rules }: { id: string; label: string; rules: RuleResult[] }) {
-  return <ul className="join-rules" id={id} aria-label={label} aria-live="polite">
-    {rules.map(rule => <li key={rule.id} className={`join-rule join-rule-${rule.state}`}>
-      {rule.state === 'bad' ? <X size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
-      <span>{rule.label}</span>
-      {rule.state !== 'pending' && <span className="sr-only">{rule.state === 'ok' ? ' — done' : ' — not yet'}</span>}
-    </li>)}
-  </ul>
-}
 
 function TeacherEntry({ busy, open, onToggle, onGoogle, onSubmit }: { busy: boolean; open: boolean; onToggle: () => void; onGoogle: () => void; onSubmit: (email: string, password: string) => void }) {
   const [email, setEmail] = useState('')
