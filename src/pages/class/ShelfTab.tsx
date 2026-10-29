@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { EyeOff, LoaderCircle, ScanEye, Trash2, Undo2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { EyeOff, LoaderCircle, RefreshCw, ScanEye, Trash2, Undo2 } from 'lucide-react'
 import { Button } from '../../ui'
 import type { ClassroomRaceHeroes } from '../../classroom/contracts'
 import { ConfirmDialog } from '../../classroom/ConfirmDialog'
@@ -38,6 +38,9 @@ function readPeek(payload: unknown): Peek {
   return { scripts: blocks.length, variables, credits }
 }
 
+/** How often an open Shelf tab checks for new bricks, while the page is on screen. */
+export const SHELF_REFRESH_MS = 20_000
+
 const nameId = (item: ShelfItem) => `class-shelf-name-${item.id}`
 const usedBy = (uses: number) => `Used by ${uses} ${uses === 1 ? 'classmate' : 'classmates'}`
 
@@ -53,17 +56,51 @@ export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, o
   const [settings, setSettings] = useState<{ needsReview: boolean; raceHeroes: ClassroomRaceHeroes } | null>(null)
   const [peeks, setPeeks] = useState<Record<string, Peek>>({})
   const [deleteTarget, setDeleteTarget] = useState<ShelfItem | null>(null)
+  /** The Refresh press being answered (0: none). */
+  const [refreshing, setRefreshing] = useState(0)
+  // Every list request and every change made here takes a ticket; a list answer older than the newest ticket is
+  // dropped, so a slow check can never undo "Put on shelf" or bring back a deleted brick.
+  const latest = useRef(0)
 
-  const load = useCallback(() => {
-    let cancelled = false
-    setLoading(true); setFailed(false); setItems([]); setPeeks({})
-    shelf.list(currentClass.id)
-      .then(result => { if (!cancelled) { setItems(result.items ?? []); setSettings({ needsReview: result.needsReview, raceHeroes: result.raceHeroes }) } })
-      .catch(failure => { if (!cancelled) { setFailed(true); onError(errorMessage(failure)) } })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
+  /**
+   * 'first': the tab opening (or Try again): a loading line, then the list or an error. 'refresh' (the button) and 'poll'
+   * (every SHELF_REFRESH_MS) keep the list and open Peeks on screen and swap in the new list when it comes; a failed
+   * poll stays quiet and the next one tries again.
+   */
+  const fetchList = useCallback(async (mode: 'first' | 'refresh' | 'poll') => {
+    const ticket = ++latest.current
+    if (mode === 'first') { setLoading(true); setFailed(false); setItems([]); setPeeks({}) }
+    if (mode === 'refresh') setRefreshing(ticket)
+    try {
+      const result = await shelf.list(currentClass.id)
+      if (ticket !== latest.current) return
+      const next = result.items ?? []
+      setItems(next)
+      setSettings({ needsReview: result.needsReview, raceHeroes: result.raceHeroes })
+      setLoading(false); setFailed(false)
+      // A Peek stays open while its brick is still on the list.
+      setPeeks(current => Object.fromEntries(Object.entries(current).filter(([id]) => next.some(item => item.id === id))))
+    } catch (failure) {
+      if (ticket !== latest.current || mode === 'poll') return
+      if (mode === 'first') { setFailed(true); setLoading(false) }
+      onError(errorMessage(failure))
+    } finally {
+      setRefreshing(current => (current === ticket ? 0 : current))
+    }
   }, [shelf, currentClass.id, onError])
-  useEffect(() => load(), [load])
+  const load = useCallback(() => { void fetchList('first') }, [fetchList])
+  useEffect(() => {
+    void fetchList('first')
+    // Leaving the tab (or another class): any answer still on its way is old.
+    return () => { latest.current++ }
+  }, [fetchList])
+  // New bricks show up by themselves while the page is on screen, and as soon as the teacher comes back to it.
+  useEffect(() => {
+    const check = () => { if (document.visibilityState === 'visible') void fetchList('poll') }
+    const timer = window.setInterval(check, SHELF_REFRESH_MS)
+    document.addEventListener('visibilitychange', check)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', check) }
+  }, [fetchList])
 
   // The class row is the source of truth once the page has it; the list's copy covers an older class payload.
   const needsReview = currentClass.shelfNeedsReview ?? settings?.needsReview ?? true
@@ -75,6 +112,7 @@ export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, o
 
   const review = (item: ShelfItem, status: 'approved' | 'hidden', message: string) => run(async () => {
     const updated = await shelf.review(currentClass.id, item.id, status)
+    latest.current++
     setItems(list => list.map(row => row.id === item.id ? { ...row, ...updated } : row))
     onNotice(message)
   })
@@ -87,6 +125,7 @@ export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, o
   }
   const remove = (item: ShelfItem) => run(async () => {
     await shelf.remove(currentClass.id, item.id)
+    latest.current++
     setItems(list => list.filter(row => row.id !== item.id))
     onNotice(`“${item.name}” is gone from the shelf.`)
   })
@@ -119,6 +158,14 @@ export function ShelfTab({ client, currentClass, busy, run, onNotice, onError, o
       <div className="class-section-head">
         <h2 id="class-shelf-waiting-title" className="class-section-title">Waiting for you</h2>
         <span className={`class-chip class-chip-${needsReview ? 'on' : 'off'}`}>Check first: {needsReview ? 'On' : 'Off'}</span>
+        <Button
+          variant="quiet"
+          size="sm"
+          icon={<RefreshCw size={16} className={refreshing ? 'ui-spin' : undefined} />}
+          disabled={loading || refreshing !== 0}
+          title="The shelf also checks by itself every few seconds"
+          onClick={() => void fetchList('refresh')}
+        >{refreshing ? 'Checking…' : 'Refresh'}</Button>
       </div>
       {loading
         ? <p role="status" className="class-loading"><LoaderCircle className="ui-spin" size={18} aria-hidden="true" /> Loading the shelf…</p>

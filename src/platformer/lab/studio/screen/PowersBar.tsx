@@ -69,7 +69,12 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
   const builtIn = useMemo(builtInPowers, [])
   const file = useRef<HTMLInputElement | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
   useCloseOnEscape(onClose)
+  const checkShelf = async () => {
+    setChecking(true)
+    try { await shelf.reload() } finally { setChecking(false) }
+  }
   const snap = (p: PowerBrick) => {
     if (store.snapPower(brick.id, p)) onClose()
   }
@@ -96,7 +101,10 @@ function PowerPicker({ store, brick, shelf, onMake, onClose }: { store: StudioSt
       <div className="cl-power-panel-head"><b>Snap a power onto {brick.name}</b><button type="button" className="cl-icon-btn" aria-label="Close" onClick={onClose}><X size={16} /></button></div>
       <span className="cl-power-group">Built in</span>
       <ul className="cl-power-list">{builtIn.map(row)}</ul>
-      <span className="cl-power-group">Class shelf</span>
+      <div className="cl-power-group-row">
+        <span className="cl-power-group">Class shelf</span>
+        {shelf.signedIn && <button type="button" className="cl-power-refresh" disabled={checking || shelf.state.kind === 'loading'} onClick={() => void checkShelf()}>{checking ? 'Checking…' : 'Check again'}</button>}
+      </div>
       <ClassShelfList store={store} brick={brick} shelf={shelf} onSnapped={onClose} />
       <span className="cl-power-group">My powers</span>
       {mine.length ? <ul className="cl-power-list">{mine.map(row)}</ul> : <p className="cl-muted cl-power-empty">Powers you make, or open from a classmate’s file, show up here.</p>}
