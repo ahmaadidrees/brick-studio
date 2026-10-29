@@ -273,25 +273,40 @@ export function makePower(project: StudioProject, brickId: string, opts: { name:
   const tops = topBlocks(workspaceOf(project, brickId))
   const chosen = new Set(opts.blockIds)
   const picked = tops.filter((b) => chosen.has(b.id as string))
-  // My Blocks the picked scripts call come too.
-  const calls = new Set<string>()
-  const findCalls = (b: unknown): void => {
-    if (Array.isArray(b)) return b.forEach(findCalls)
-    if (!isRecord(b)) return
-    if (b.type === 'procedures_call' && isRecord(b.extraState) && typeof b.extraState.proccode === 'string') calls.add(b.extraState.proccode)
-    Object.values(b).forEach(findCalls)
-  }
-  findCalls(picked)
+  // My Blocks the picked scripts call come too, and the My Blocks those call, all the way down. Each definition comes
+  // once, so My Blocks that call each other cannot loop here.
+  const definitions = new Map<string, Json>()
   for (const b of tops) {
     const code = proccodeOf(b)
-    if (code && calls.has(code) && !chosen.has(b.id as string)) picked.push(b)
+    if (code && !definitions.has(code)) definitions.set(code, b)
   }
+  const pickedIds = new Set(picked.map((b) => b.id))
+  const followed = new Set<string>()
+  const follow = (b: unknown): void => {
+    if (Array.isArray(b)) return b.forEach(follow)
+    if (!isRecord(b)) return
+    const code = b.type === 'procedures_call' && isRecord(b.extraState) ? b.extraState.proccode : undefined
+    if (typeof code === 'string' && !followed.has(code)) {
+      followed.add(code)
+      const definition = definitions.get(code)
+      if (definition) {
+        if (!pickedIds.has(definition.id)) {
+          pickedIds.add(definition.id)
+          picked.push(definition)
+        }
+        follow(definition)
+      }
+    }
+    Object.values(b).forEach(follow)
+  }
+  follow([...picked])
   const used = referencedVariables(picked)
   const variables: PowerVariable[] = [
     ...brick.program.variables.filter((v) => used.has(v.id)).map((v) => ({ id: v.id, name: v.name, value: v.value, ...(v.showInBuild ? { showInBuild: true } : {}) })),
     ...brick.program.lists.filter((v) => used.has(v.id)).map((v) => ({ id: v.id, name: v.name, value: v.value, list: true })),
   ]
-  const fromPowers = (brick.powers ?? []).filter((p) => p.blockIds.some((id) => chosen.has(id)))
+  // Credit every power whose blocks come along, including My Blocks it brought that the picked scripts call.
+  const fromPowers = (brick.powers ?? []).filter((p) => p.blockIds.some((id) => pickedIds.has(id)))
   const credits = [...new Set([...fromPowers.flatMap((p) => p.credits), opts.by.trim() || 'someone'])]
   const blocks = picked.map((b) => {
     const { x: _x, y: _y, ...rest } = structuredClone(b)
