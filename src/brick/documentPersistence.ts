@@ -40,7 +40,12 @@ export type BrickStudioAutosaveStore = {
 }
 
 export type BrickStudioAutosaveController = {
+  /** Writes only when this tab changed the build since its last save; an untouched tab never writes. */
   flush: () => BrickStudioPersistenceResult
+  /** True when this tab has a change that is not in storage yet. */
+  hasUnsavedChanges: () => boolean
+  /** The store now holds exactly what storage holds (e.g. the newest build from another tab): nothing to save. */
+  markSaved: () => void
   /** Queues a save when document metadata changes without changing the brick array. */
   schedule: () => void
   cancel: () => void
@@ -97,6 +102,60 @@ export function clearLocalBrickStudioProject(storage: BrickStudioStorage): Brick
   }
 }
 
+/** A build with something worth keeping: bricks or custom parts. An empty plate has nothing to lose. */
+export function hasBrickStudioWork(document: BrickStudioDocument): boolean {
+  return document.bricks.length > 0 || document.customParts.length > 0
+}
+
+export type KeepOldBuildResult =
+  | { ok: true; downloaded: boolean }
+  | { ok: false; canceled: true }
+  | { ok: false; canceled: false; error: BrickStudioPersistenceError }
+
+export type KeepOldBuildOptions = {
+  /** Asked only when the old build has work in it (tests pass a stub; the app passes window.confirm). */
+  confirm: (question: string) => boolean
+  download: (document: BrickStudioDocument) => BrickStudioPersistenceResult
+  question: string
+}
+
+/**
+ * This computer keeps one guest 3D build, so replacing it loses the old one for good (Undo ends
+ * with the tab). Before anything replaces it: ask, then download the old build. A "no" or a failed
+ * download replaces nothing. An empty or identical build needs no question.
+ */
+export function keepOldBuildBeforeReplacing(
+  old: BrickStudioDocument | null,
+  next: BrickStudioDocument | null,
+  { confirm, download, question }: KeepOldBuildOptions,
+): KeepOldBuildResult {
+  if (!old || !hasBrickStudioWork(old)) return { ok: true, downloaded: false }
+  try {
+    if (next && serializeBrickStudioDocument(old) === serializeBrickStudioDocument(next)) return { ok: true, downloaded: false }
+  } catch { /* An unserializable pair is treated as different. */ }
+  if (!confirm(question)) return { ok: false, canceled: true }
+  const downloaded = download(old)
+  if (!downloaded.ok) return { ok: false, canceled: false, error: { code: 'download', message: 'We couldn’t download your old build, so nothing was replaced.' } }
+  return { ok: true, downloaded: true }
+}
+
+/** Replaces the build saved on this computer, keeping the old one first (see keepOldBuildBeforeReplacing). */
+export function replaceLocalBrickStudioProject(
+  storage: BrickStudioStorage,
+  next: BrickStudioDocument,
+  options: KeepOldBuildOptions,
+): KeepOldBuildResult {
+  const loaded = loadLocalBrickStudioProject(storage)
+  // An unreadable draft is quarantined by the save below, never silently dropped.
+  const kept = keepOldBuildBeforeReplacing(loaded.ok ? loaded.document : null, next, options)
+  if (!kept.ok) return kept
+  const saved = saveLocalBrickStudioProject(storage, next)
+  return saved.ok ? kept : { ok: false, canceled: false, error: saved.error }
+}
+
+/** File name (no extension) for the old build downloaded before a replacement. */
+export const OLD_BUILD_FILENAME = 'my-old-3d-build'
+
 export function connectBrickStudioAutosave({
   store,
   storage,
@@ -115,6 +174,10 @@ export function connectBrickStudioAutosave({
   onSaved?: () => void
 }): BrickStudioAutosaveController {
   let timer: ReturnType<typeof setTimeout> | null = null
+  // Only this tab's own edits are saved. A tab that loaded the build and changed nothing (a stale
+  // tab left open, or a blank one) must never write on pagehide or when hidden: another tab may
+  // have saved a newer build since.
+  let dirty = false
 
   const cancel = () => {
     if (timer !== null) clearTimeout(timer)
@@ -122,15 +185,17 @@ export function connectBrickStudioAutosave({
   }
   const flush = () => {
     cancel()
-    if (isBrickStudioAutosaveSuspended()) return { ok: true } as const
+    if (isBrickStudioAutosaveSuspended() || !dirty) return { ok: true } as const
     const result = saveLocalBrickStudioProject(storage, createDocument(store.getState().bricks))
     if (!result.ok) onError?.(result.error)
-    else onSaved?.()
+    else { dirty = false; onSaved?.() }
     return result
   }
   const schedule = () => {
     cancel()
+    // Changes while a live room or account world holds the store belong to that owner, not this draft.
     if (isBrickStudioAutosaveSuspended()) return
+    dirty = true
     timer = setTimeout(flush, Math.max(0, delayMs))
   }
   const unsubscribe = store.subscribe((state, previous) => {
@@ -142,6 +207,8 @@ export function connectBrickStudioAutosave({
 
   return {
     flush,
+    hasUnsavedChanges: () => dirty,
+    markSaved: () => { cancel(); dirty = false },
     schedule,
     cancel,
     dispose: () => {

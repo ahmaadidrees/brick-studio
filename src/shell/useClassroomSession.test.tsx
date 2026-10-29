@@ -102,6 +102,20 @@ describe('useClassroomSession', () => {
     expect(readRememberedTeacherClass()).toBeNull()
   })
 
+  it('saves waiting work before signing out, and stays signed in when the student chooses to', async () => {
+    const client = { ...stubClient(student), prepareSignOut: vi.fn(async () => false) }
+    const navigate = vi.fn()
+    const { result } = renderHook(() => useClassroomSession(client, navigate))
+    await act(async () => { await result.current.signOut() })
+    await act(async () => { await result.current.switchAccount() })
+    expect(client.prepareSignOut).toHaveBeenCalledTimes(2)
+    expect(client.signOut).not.toHaveBeenCalled(); expect(navigate).not.toHaveBeenCalled()
+    expect(result.current.status).toBe('student')
+    client.prepareSignOut.mockResolvedValue(true)
+    await act(async () => { await result.current.signOut() })
+    expect(client.signOut).toHaveBeenCalledOnce()
+  })
+
   it('forgets it on switchAccount too, which signs out first', async () => {
     window.localStorage.setItem(REMEMBERED_TEACHER_CLASS_KEY, JSON.stringify({ classId: 'class-2' }))
     const client = stubClient(student)

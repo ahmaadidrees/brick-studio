@@ -14,6 +14,7 @@ import {
   type BrickStudioErrorEntry,
 } from './errorLog'
 import { captureRecoverySnapshot, type RecoverySnapshot, type RecoverySnapshotSource } from './recoverySnapshot'
+import { isChunkLoadError } from './chunkLoadRecovery'
 import { BRAND_NAME } from '../brand'
 import { BrickMark } from '../brand/BrickMark'
 import './app-error-boundary.css'
@@ -163,7 +164,13 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
     const { error, active, localDocument, recent, status } = this.state
     const summary = describeBrickStudioError(error, 'Something unexpected happened.')
-    const lead = active
+    // A page part that didn't download is a connection problem, not a crash: say so in plain words.
+    const offline = isChunkLoadError(error)
+    const lead = offline
+      ? active
+        ? 'Part of the page didn’t load. Download a copy of your project to keep it safe, then try again.'
+        : 'Part of the page didn’t load. Check your internet, then try again.'
+      : active
       ? 'We captured the world you were in just before the studio closed. Download a copy to keep it safe, then reload to jump back in.'
       : localDocument
         ? 'A build saved on this device can be downloaded below. Keep a copy, then reload to jump back in.'
@@ -173,11 +180,13 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
       <div className="app-recovery" role="alert" aria-labelledby="app-recovery-title">
         <section className="app-recovery__card">
           <p className="app-recovery__eyebrow"><BrickMark size={22} title={null} />{BRAND_NAME}</p>
-          <h1 id="app-recovery-title" className="app-recovery__title">Oops! The studio tripped over a brick.</h1>
+          <h1 id="app-recovery-title" className="app-recovery__title">{offline ? 'Check your internet and try again' : 'Oops! The studio tripped over a brick.'}</h1>
           <p className="app-recovery__lead">{lead}</p>
-          <p className="app-recovery__error">
-            <span>What happened:</span> {summary}
-          </p>
+          {!offline && (
+            <p className="app-recovery__error">
+              <span>What happened:</span> {summary}
+            </p>
+          )}
           <div className="app-recovery__actions">
             {active ? (
               <div className="app-recovery__option">
@@ -209,8 +218,8 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
                 </p>
               </div>
             ) : null}
-            <button type="button" className="app-recovery__button" onClick={this.handleReload}>
-              Reload
+            <button type="button" className={offline && !active && !localDocument ? 'app-recovery__button app-recovery__button--primary' : 'app-recovery__button'} onClick={this.handleReload}>
+              {offline ? 'Try again' : 'Reload'}
             </button>
           </div>
           {status ? <p className="app-recovery__status" role="status">{status}</p> : null}

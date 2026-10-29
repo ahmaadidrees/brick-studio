@@ -4,7 +4,9 @@ import {
   BRICK_STUDIO_LOCAL_STORAGE_KEY,
   clearLocalBrickStudioProject,
   connectBrickStudioAutosave,
+  keepOldBuildBeforeReplacing,
   loadLocalBrickStudioProject,
+  replaceLocalBrickStudioProject,
   saveLocalBrickStudioProject,
   type BrickStudioAutosaveStore,
   type BrickStudioStorage,
@@ -201,6 +203,60 @@ describe('local Brick Studio persistence', () => {
   })
 })
 
+it('flush writes only after this tab changed something, and only once per change', () => {
+  const storage = memoryStorage()
+  const setItem = vi.spyOn(storage, 'setItem')
+  let state = { bricks: [brick] }
+  const listeners = new Set<(next: typeof state, previous: typeof state) => void>()
+  const controller = connectBrickStudioAutosave({ store: { getState: () => state, subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener) } }, storage })
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).not.toHaveBeenCalled()
+  const previous = state
+  state = { bricks: [] }
+  listeners.forEach((listener) => listener(state, previous))
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).toHaveBeenCalledTimes(1)
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).toHaveBeenCalledTimes(1)
+  controller.schedule()
+  controller.flush()
+  expect(setItem).toHaveBeenCalledTimes(2)
+  controller.dispose()
+})
+
+it('keeps a failed write pending so the next flush tries again', () => {
+  let full = true
+  const storage = memoryStorage()
+  const guarded = { ...storage, setItem: (key: string, value: string) => { if (full) throw new Error('quota'); storage.setItem(key, value) } }
+  let state = { bricks: [] as BrickInstance[] }
+  let listener: ((next: typeof state, previous: typeof state) => void) | undefined
+  const controller = connectBrickStudioAutosave({ store: { getState: () => state, subscribe: (next) => { listener = next; return () => { listener = undefined } } }, storage: guarded })
+  const previous = state
+  state = { bricks: [brick] }
+  listener?.(state, previous)
+  expect(controller.flush().ok).toBe(false)
+  full = false
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: createBrickStudioDocument([brick]) })
+  controller.dispose()
+})
+
+it('changes made while a live room or account world holds the store are not this tab’s to save', () => {
+  const storage = memoryStorage()
+  const setItem = vi.spyOn(storage, 'setItem')
+  let state = { bricks: [] as BrickInstance[] }
+  let listener: ((next: typeof state, previous: typeof state) => void) | undefined
+  const controller = connectBrickStudioAutosave({ store: { getState: () => state, subscribe: (next) => { listener = next; return () => { listener = undefined } } }, storage })
+  const release = suspendBrickStudioAutosave()
+  const previous = state
+  state = { bricks: [brick] }
+  listener?.(state, previous)
+  release()
+  expect(controller.flush()).toEqual({ ok: true })
+  expect(setItem).not.toHaveBeenCalled()
+  controller.dispose()
+})
+
 it('rejects invalid saves without replacing the last valid world', () => {
   const storage = memoryStorage()
   const valid = createBrickStudioDocument([brick])
@@ -222,4 +278,47 @@ it('quarantines an unreadable draft before saving and refuses replacement if qua
   } }
   expect(saveLocalBrickStudioProject(guarded, []).ok).toBe(false)
   expect(storage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBe('{second broken draft')
+})
+
+// One guest build lives on this computer: replacing it asks first and downloads the old build.
+describe('replacing the build on this computer', () => {
+  const old = createBrickStudioDocument([brick])
+  const next = createBrickStudioDocument([{ ...brick, id: 'room', x: 20 }])
+  const question = 'Replace it?'
+  it('asks, downloads the old build, then saves the new one', () => {
+    const storage = memoryStorage(); saveLocalBrickStudioProject(storage, old)
+    const confirm = vi.fn(() => true), download = vi.fn(() => ({ ok: true }) as const)
+    expect(replaceLocalBrickStudioProject(storage, next, { confirm, download, question })).toEqual({ ok: true, downloaded: true })
+    expect(confirm).toHaveBeenCalledWith(question)
+    expect(download).toHaveBeenCalledWith(old)
+    expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: next })
+  })
+  it('changes nothing when the kid says no', () => {
+    const storage = memoryStorage(); saveLocalBrickStudioProject(storage, old)
+    const download = vi.fn(() => ({ ok: true }) as const)
+    expect(replaceLocalBrickStudioProject(storage, next, { confirm: () => false, download, question })).toEqual({ ok: false, canceled: true })
+    expect(download).not.toHaveBeenCalled()
+    expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: old })
+  })
+  it('keeps the old build when its download fails', () => {
+    const storage = memoryStorage(); saveLocalBrickStudioProject(storage, old)
+    const result = replaceLocalBrickStudioProject(storage, next, { confirm: () => true, download: () => ({ ok: false, error: { code: 'download', message: 'nope' } }), question })
+    expect(result).toMatchObject({ ok: false, canceled: false, error: { message: expect.stringMatching(/nothing was replaced/) } })
+    expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: old })
+  })
+  it('asks nothing when there is nothing to lose: no build, an empty plate, or the same build', () => {
+    for (const before of [null, createBrickStudioDocument([]), next]) {
+      const storage = memoryStorage(); if (before) saveLocalBrickStudioProject(storage, before)
+      const confirm = vi.fn(() => false), download = vi.fn(() => ({ ok: true }) as const)
+      expect(replaceLocalBrickStudioProject(storage, next, { confirm, download, question })).toEqual({ ok: true, downloaded: false })
+      expect(confirm).not.toHaveBeenCalled(); expect(download).not.toHaveBeenCalled()
+      expect(loadLocalBrickStudioProject(storage)).toEqual({ ok: true, document: next })
+    }
+  })
+  it('counts custom parts as work worth keeping', () => {
+    const custom = createBrickStudioDocument([], { customParts: [{ id: 'custom_cloud', name: 'Cloud', template: 'solid', width: 2, depth: 2, height: 3, studs: 'auto' }] })
+    const confirm = vi.fn(() => false)
+    expect(keepOldBuildBeforeReplacing(custom, null, { confirm, download: vi.fn(), question })).toEqual({ ok: false, canceled: true })
+    expect(confirm).toHaveBeenCalledOnce()
+  })
 })

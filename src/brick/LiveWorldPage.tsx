@@ -24,7 +24,7 @@ import { LiveStatusChip } from './live/LiveStatusChip'
 import { CopyInviteButton } from './live/CopyInviteButton'
 import { liveProfileWithDisplayName, normalizeLiveProfile, loadStoredLiveProfile, saveStoredLiveProfile } from './live/liveProfile'
 import { liveOwnerLocation } from './live/liveRoomModel'
-import { saveLocalBrickStudioProject } from './documentPersistence'
+import { downloadBrickStudioDocument, OLD_BUILD_FILENAME, replaceLocalBrickStudioProject } from './documentPersistence'
 import { loadLiveWorldSeed, LIVE_WORLD_SEED_KEY } from './live/liveWorldSeed'
 import { useLiveRoomSession } from './live/useLiveRoomSession'
 import { BlockedView, ClassroomAccessChangedView, OpeningRoomView, exportLiveWorldCopy, friendlyReason } from './live/LiveStateViews'
@@ -581,10 +581,20 @@ function GuestLiveWorld(props: LiveWorldPageProps & { initialSummary?: LiveWorld
     setProfile(nextProfile)
   }
 
+  // This computer keeps one 3D build: ask first and download the old one before replacing it.
   const remixWorld = props.remixWorld ?? (async (world: LiveWorldSnapshotExport) => {
-    const saved = saveLocalBrickStudioProject(window.localStorage, world.document)
-    if (!saved.ok) throw new Error(saved.error.message)
-    return 'Saved as this browser’s local build. Go to the builder to continue, or export a file to keep it elsewhere.'
+    const result = replaceLocalBrickStudioProject(window.localStorage, world.document, {
+      confirm: (question) => window.confirm(question),
+      download: (document) => downloadBrickStudioDocument(document, globalThis, OLD_BUILD_FILENAME),
+      question: 'Replace the build on this computer with this room’s build? We’ll download your old build first so you can keep it.',
+    })
+    if (!result.ok) {
+      if (result.canceled) return 'Nothing changed. Your build on this computer is still there.'
+      throw new Error(result.error.message)
+    }
+    return result.downloaded
+      ? 'Your old build was downloaded. This room’s build is now your build on this computer. Go to the builder to keep going.'
+      : 'This room’s build is now your build on this computer. Go to the builder to keep going.'
   })
 
   const leaveRoom = () => {

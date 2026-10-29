@@ -10,6 +10,8 @@ export type ClassroomSessionClient = {
   subscribe: (listener: () => void) => () => void
   request: <T>(path: string, method?: string, body?: unknown, retry?: boolean) => Promise<T>
   signOut: () => Promise<void>
+  /** Saves waiting work first (e.g. an open account world); false keeps the session. Optional for stubs. */
+  prepareSignOut?: () => Promise<boolean>
 }
 
 export type ClassroomSessionStatus = 'loading' | 'guest' | 'student' | 'teacher'
@@ -88,19 +90,27 @@ export function useClassroomSession(client: ClassroomSessionClient = browserClas
     return () => { cancelled = true }
   }, [client, userId])
 
-  const signOut = useCallback(async () => {
+  /** Resolves false when the student chose to stay signed in because something wasn't saved. */
+  const endSession = useCallback(async () => {
     setBusy(true)
-    // The remembered class belongs to the account that is leaving, so it goes
-    // with the session (switchAccount signs out first and is covered too).
-    clearRememberedTeacherClass()
-    try { await client.signOut() } catch { /* The client already dropped the local session. */ } finally { setBusy(false) }
+    try {
+      // An open account world saves its waiting edits first (or asks), so the header's Sign out
+      // never drops them (they would otherwise live only in this tab until it closed).
+      if (client.prepareSignOut && !await client.prepareSignOut().catch(() => false)) return false
+      // The remembered class belongs to the account that is leaving, so it goes
+      // with the session (switchAccount signs out first and is covered too).
+      clearRememberedTeacherClass()
+      try { await client.signOut() } catch { /* The client already dropped the local session. */ }
+      return true
+    } finally { setBusy(false) }
   }, [client])
+  const signOut = useCallback(async () => { await endSession() }, [endSession])
 
   const switchAccount = useCallback(async () => {
     const role = client.getSession()?.user.role
-    await signOut()
+    if (!await endSession()) return
     goToJoin({ mode: role === 'teacher' ? 'teacher' : 'signin', next: currentPath() }, navigate)
-  }, [client, navigate, signOut])
+  }, [client, navigate, endSession])
 
   return useMemo<ClassroomSessionState>(() => {
     if (!session) return { status: busy ? 'loading' : 'guest', signOut, switchAccount }

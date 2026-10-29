@@ -71,3 +71,77 @@ it('retains current recovery and acknowledged revision within a one-document sto
   expect(JSON.parse(stored)).toMatchObject({ userId: 'a', world: { id: world.id, revision: 1 }, document: large })
   save.dispose()
 })
+// Autosave recovers by itself from transient failures only (network, timeout, rate limit, 5xx).
+const putCalls = (fetcher: ReturnType<typeof vi.fn>) => fetcher.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'PUT')
+it('retries a dropped connection with backoff and saves the latest edits without a click', async () => {
+  const fetcher = vi.fn()
+    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    .mockImplementation(async (_url: string, init: RequestInit) => json({ world: { ...world, revision: JSON.parse(String(init.body)).expectedRevision + 1 } }))
+  const { save, onStatus } = setup(fetcher); save.schedule(changed)
+  await expect(save.flush()).resolves.toBe(false)
+  expect(onStatus).toHaveBeenLastCalledWith('pending', 'Can’t save right now. We’ll keep trying.', true)
+  // Edits made while offline join the next attempt; they do not restart a 700 ms save.
+  save.schedule({ ...changed, environmentId: 'sky-island' })
+  expect(onStatus).toHaveBeenLastCalledWith('pending', 'Can’t save right now. We’ll keep trying.', true)
+  await vi.advanceTimersByTimeAsync(1999); expect(fetcher).toHaveBeenCalledTimes(1)
+  await vi.advanceTimersByTimeAsync(1); expect(fetcher).toHaveBeenCalledTimes(2)
+  await vi.advanceTimersByTimeAsync(5000); expect(fetcher).toHaveBeenCalledTimes(3)
+  expect(JSON.parse(fetcher.mock.calls[2][1].body)).toMatchObject({ expectedRevision: 1, document: { environmentId: 'sky-island' } })
+  expect(onStatus).toHaveBeenLastCalledWith('saved')
+  expect(save.hasPending()).toBe(false); expect(sessionStorage.getItem(recoveryKey('a', world.id))).toBeNull()
+  await vi.advanceTimersByTimeAsync(120_000); expect(fetcher).toHaveBeenCalledTimes(3)
+  save.dispose()
+})
+it('saves as soon as the browser is back online', async () => {
+  const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockResolvedValue(json({ world: { ...world, revision: 2 } }))
+  const { save, onStatus } = setup(fetcher); save.schedule(changed)
+  await expect(save.flush()).resolves.toBe(false)
+  window.dispatchEvent(new Event('online')); await vi.advanceTimersByTimeAsync(0)
+  expect(fetcher).toHaveBeenCalledTimes(2); expect(onStatus).toHaveBeenLastCalledWith('saved')
+  save.dispose()
+})
+it.each([
+  ['a timeout', (_url: string, init: RequestInit) => new Promise<Response>((_resolve, reject) => init.signal!.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError'))))],
+  ['a server error', async () => json({ error: 'The classroom service could not complete this request. Please retry.' }, 503)],
+  ['a rate limit', async () => json({ error: 'Too many saves. Please wait briefly.', code: 'rate_limited' }, 429)],
+])('retries after %s', async (name, failure) => {
+  const fetcher = vi.fn().mockImplementationOnce(failure).mockResolvedValue(json({ world: { ...world, revision: 2 } }))
+  const { save, onStatus } = setup(fetcher); save.schedule(changed)
+  const first = save.flush(); await vi.advanceTimersByTimeAsync(name === 'a timeout' ? 20_000 : 0); await expect(first).resolves.toBe(false)
+  expect(onStatus).toHaveBeenLastCalledWith('pending', 'Can’t save right now. We’ll keep trying.', true)
+  await vi.advanceTimersByTimeAsync(2000)
+  expect(fetcher).toHaveBeenCalledTimes(2); expect(onStatus).toHaveBeenLastCalledWith('saved')
+  save.dispose()
+})
+it.each([
+  ['a revision conflict', 409, { error: 'Someone saved a newer version. Refresh before saving again.', code: 'revision_conflict', currentRevision: 7 }, /saved somewhere else/],
+  ['a rejected document', 400, { error: 'Document is too large.', code: 'invalid_document' }, /^Document is too large\. Download a copy/],
+  ['a project that is too big', 413, { error: 'Request too large.' }, /Download a copy/],
+  ['lost access', 403, { error: 'World not found.' }, /Download a copy/],
+  ['a revoked sign-in', 401, { error: 'Unauthorized' }, /Sign in again/],
+])('never retries %s by itself', async (_name, status, body, message) => {
+  const fetcher = vi.fn().mockImplementation(async () => json(body, status))
+  const { save, onStatus } = setup(fetcher); save.schedule(changed)
+  await expect(save.flush()).resolves.toBe(false)
+  const attempts = putCalls(fetcher).length
+  expect(attempts).toBe(1)
+  expect(onStatus).toHaveBeenLastCalledWith('error', expect.stringMatching(message))
+  save.schedule({ ...changed, environmentId: 'sky-island' })
+  window.dispatchEvent(new Event('online')); await vi.advanceTimersByTimeAsync(300_000)
+  expect(putCalls(fetcher)).toHaveLength(attempts); expect(save.hasPending()).toBe(true)
+  save.dispose()
+})
+it('stops retrying once disposed', async () => {
+  const fetcher = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+  const { save } = setup(fetcher); save.schedule(changed)
+  await save.flush(); save.dispose()
+  window.dispatchEvent(new Event('online')); await vi.advanceTimersByTimeAsync(300_000)
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+it('keeps backing off while the connection stays down, up to every 30 seconds', async () => {
+  const fetcher = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+  const { save } = setup(fetcher); save.schedule(changed); await save.flush()
+  for (const wait of [2000, 5000, 10_000, 20_000, 30_000, 30_000]) { const before = fetcher.mock.calls.length; await vi.advanceTimersByTimeAsync(wait - 1); expect(fetcher).toHaveBeenCalledTimes(before); await vi.advanceTimersByTimeAsync(1); expect(fetcher).toHaveBeenCalledTimes(before + 1) }
+  save.dispose()
+})
