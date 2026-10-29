@@ -8,7 +8,7 @@ import { useBrickStore } from './store'
 import type { BrickInstance } from './types'
 import { browserClassroomClient, ClassroomError, type ClassroomAuth, type ClassroomWorld } from '../classroom/client'
 import type { InviteSheetProps } from '../classroom/InviteSheet'
-import { goToLiveWorld, goToNewLiveRoom } from '../shell/navigation'
+import { goToJoin, goToLiveWorld, goToNewLiveRoom } from '../shell/navigation'
 
 /**
  * A signed-in builder's fresh build becomes an account world on its first brick, through the real
@@ -177,6 +177,22 @@ describe('automatic account world for a signed-in fresh build', () => {
     expect(notice()).toBeNull()
     const puts = calls.filter(call => call.method === 'PUT')
     expect((puts[puts.length - 1].body as { document: { bricks: BrickInstance[] } }).document.bricks.map(brick => brick.id)).toEqual(['brick-a', 'brick-b'])
+  })
+
+  it('an involuntary sign-out keeps the project on screen behind a sign-in card, not the guest build', async () => {
+    browserClassroomClient.setSession(student)
+    stubClassroomServer(({ document }) => serverWorld(document))
+    render(<BrickStudioApp />)
+    placeBrick(brickA)
+    await waitFor(() => expect(pillText()).toContain('Saved to your account'))
+    act(() => { browserClassroomClient.setSession(null) })
+    const card = screen.getByRole('alertdialog', { name: 'You were signed out' })
+    expect(card).toHaveTextContent('Sign in to keep saving.')
+    expect(useBrickStore.getState().bricks.map(brick => brick.id)).toEqual(['brick-a'])
+    expect(screen.getByText('Untitled build', { selector: '.app-header-title' })).toBeInTheDocument()
+    expect(localStorage.getItem(BRICK_STUDIO_LOCAL_STORAGE_KEY)).toBeNull()
+    fireEvent.click(within(card).getByRole('button', { name: 'Sign in' }))
+    expect(goToJoin).toHaveBeenCalledWith({ mode: 'signin', next: '/build?world=world-new' })
   })
 
   it('leaves guests browser-only with no account required', async () => {

@@ -1528,8 +1528,21 @@ export default function BrickStudioApp({
         <div className="content-preview-banner" role="status">Preview — only you can see this</div>
       )}
       {worldUnavailable && <div className="classroom-recovery brick-world-unavailable" role="alert"><span>{worldUnavailable}</span><a className="brick-world-unavailable-link" href={WORLDS_PATH}>Back to My projects</a><button type="button" onClick={() => setWorldUnavailable(false)}>Keep building</button></div>}
-      {cloud.retrying && cloud.error && <div className="classroom-recovery" role="status"><span>{cloud.error}</span><button onClick={() => void cloud.retry()}>Try now</button><button onClick={cloud.downloadRecovery}>Download a copy</button></div>}
-      {!cloud.retrying && (cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
+      {cloud.signedOut && (
+        // Signed out without choosing to: the project stays visible behind this card but can't be
+        // changed until the student signs back in (its edits so far stay in this tab).
+        <div className="classroom-signed-out" role="alertdialog" aria-modal="true" aria-labelledby="classroom-signed-out-title" aria-describedby="classroom-signed-out-text"
+          style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-dialog)', display: 'grid', placeItems: 'center', padding: 16, background: 'rgba(23, 35, 43, 0.35)' }}>
+          <div className="classroom-recovery" style={{ position: 'static', transform: 'none', flexDirection: 'column', alignItems: 'stretch', maxWidth: 420, textAlign: 'center' }}>
+            <strong id="classroom-signed-out-title" style={{ fontSize: '1.1em' }}>You were signed out</strong>
+            <span id="classroom-signed-out-text" style={{ flex: 'none' }}>Sign in to keep saving. Your project stays here until then.</span>
+            <button type="button" autoFocus onClick={cloud.signIn}>Sign in</button>
+            <button type="button" onClick={() => { const result = cloud.downloadRecovery(); if (!result.ok) useBrickStore.setState({ toast: result.error.message }) }}>Download a copy</button>
+          </div>
+        </div>
+      )}
+      {!cloud.signedOut && cloud.retrying && cloud.error && <div className="classroom-recovery" role="status"><span>{cloud.error}</span><button onClick={() => void cloud.retry()}>Try now</button><button onClick={cloud.downloadRecovery}>Download a copy</button></div>}
+      {!cloud.signedOut && !cloud.retrying && (cloud.error || cloud.recovery) && <div className="classroom-recovery" role="alert"><span>{cloud.error || 'Your recovered changes are open in the editor.'}</span><button onClick={cloud.downloadRecovery}>Download recovery copy</button>{cloud.world && <><button onClick={() => void cloud.retry()}>Retry save</button><button onClick={() => { if (window.confirm('Replace your unsaved changes with the account’s saved version? Download a recovery copy first if you want to keep them.')) void cloud.reload().catch(error => useBrickStore.setState({ toast: String(error) })) }}>Reload saved world</button></>}</div>}
       {inviteSheet && <InviteSheet
         world={inviteSheet.world}
         className={session.className ?? 'your class'}
