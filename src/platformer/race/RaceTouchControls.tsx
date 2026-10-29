@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Undo2 } from 'lucide-react'
 import { useRef } from 'react'
 import type { Action, Input } from '../input/input'
 
@@ -8,6 +8,8 @@ interface Props {
   items: boolean
   /** The item you hold, for the button's label. */
   itemName?: string
+  /** Rooms: put your car back on the road (stuck on a wall, or turned round). */
+  onRescue?: () => void
 }
 
 /**
@@ -15,7 +17,7 @@ interface Props {
  * lifting), Gas and Brake under the right, and the item button above them. They press the same actions as the
  * arrow keys and Space, so racing needs nothing new from the game.
  */
-export function RaceTouchControls({ input, items, itemName }: Props) {
+export function RaceTouchControls({ input, items, itemName, onRescue }: Props) {
   const padRef = useRef<HTMLDivElement>(null)
   const steer = useRef<Action | null>(null)
 
@@ -71,6 +73,12 @@ export function RaceTouchControls({ input, items, itemName }: Props) {
         <ChevronLeft className="p2d-arrow p2d-arrow-l" size={44} aria-hidden="true" />
         <ChevronRight className="p2d-arrow p2d-arrow-r" size={44} aria-hidden="true" />
       </div>
+      {onRescue && (
+        <button type="button" className="p2d-race-rescue" onClick={onRescue}>
+          <Undo2 size={16} aria-hidden="true" />
+          Back on road
+        </button>
+      )}
       <div className="p2d-face p2d-race-pedals">
         {items && (
           <button type="button" className="p2d-race-use" {...button('jump')} aria-label={itemName ? `Use ${itemName}` : 'Use item'}>

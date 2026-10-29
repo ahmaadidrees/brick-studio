@@ -1,5 +1,5 @@
 import type { ClassroomWorld } from '../classroom/contracts'
-import { House, LoaderCircle, LogIn, Play } from 'lucide-react'
+import { Download, House, LoaderCircle, LogIn, Play, RotateCw } from 'lucide-react'
 import { Suspense, lazy, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { createBlankLevel, createBlankRaceLevel, type LevelDesign } from '@brick-studio/platformer-core/engine/level'
 import { brickSpeedway } from '@brick-studio/platformer-core/levels/raceCourses'
@@ -11,11 +11,12 @@ import { AppHeader, currentPath, goToJoin, useClassroomSession } from '../shell'
 import { Button, TextField } from '../ui'
 import { classRoomSocketUrl, guestRoomInfo, guestRoomSocketUrl } from './net/endpoints'
 import { parse2dRoute, type NewKit, type Route2D } from './routes2d'
-import { NotALevelError, cloudWorldInfo, loadCloudLevel } from './ui/cloudLevel'
-import { listDrafts, loadDraft } from './ui/drafts'
+import { NotALevelError, UnreadableLevelError, cloudWorldInfo, loadCloudLevel } from './ui/cloudLevel'
+import { listDrafts, readDraft } from './ui/drafts'
 import { GameScreen, type LevelSource } from './ui/GameScreen'
 import { ownerTokenFor, saveGuestName, savedGuestName } from './ui/prefs'
 import { decodeShareCode } from './ui/shareCode'
+import { downloadUnreadable, unreadableDraftFile, unreadableLevelFile, type UnreadableFile } from './ui/unreadableFile'
 import './ui/platformer.css'
 
 /** The code lab (/2d/lab) is its own chunk: Blockly loads only there. */
@@ -98,12 +99,42 @@ function Notice({ title, body, busy, children }: { title: string; body?: string;
 
 type Loaded = { level: LevelDesign; source: LevelSource }
 
+/** Why the level named in the address did not open: not in this browser, or kept but unreadable (file offered). */
+type Problem = { kind: 'missing' } | { kind: 'unreadable'; file: UnreadableFile; newer: boolean }
+
+/** A project kept here or in the account that this app cannot read: say so, and let the kid save it to a file. */
+function UnreadableNotice({ file, newer }: { file: UnreadableFile; newer: boolean }) {
+  return (
+    <Notice
+      title="This project could not be opened"
+      body={newer ? 'It may have been made with a newer version of Brickgineers. Reload to get the newest version. Your project is safe.' : 'Something in it is damaged. Your project is still kept. Save it to a file so you don’t lose it.'}
+    >
+      {newer && (
+        <Button variant="primary" icon={<RotateCw size={18} />} onClick={() => window.location.reload()}>
+          Reload
+        </Button>
+      )}
+      <Button variant={newer ? 'secondary' : 'primary'} icon={<Download size={18} />} onClick={() => downloadUnreadable(file)}>
+        Save it to a file
+      </Button>
+      <Button href="/projects" variant="quiet" icon={<House size={18} />}>
+        My projects
+      </Button>
+    </Notice>
+  )
+}
+
+/** A newer level version is the likely cause when the stored version is above the one this app knows. */
+const looksNewer = (version: unknown, known: number) => typeof version === 'number' && version > known
+
 function BuildPage({ world, draft, fresh, kit, template }: { world?: string; draft?: string; fresh: boolean; kit?: NewKit; template?: string }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
+  const [problem, setProblem] = useState<Problem | null>(null)
   useEffect(() => {
     let cancelled = false
     const done = (value: Loaded) => !cancelled && setLoaded(value)
+    const fail = (value: Problem) => !cancelled && setProblem(value)
     void (async () => {
       if (world) {
         if (!browserClassroomClient.getSession()) return goToJoin({ mode: 'signin', next: currentPath() })
@@ -111,16 +142,24 @@ function BuildPage({ world, draft, fresh, kit, template }: { world?: string; dra
           const { world: w, level } = await loadCloudLevel(world)
           done({ level, source: { kind: 'cloud', world: w } })
         } catch (e) {
-          if (e instanceof NotALevelError) return window.location.replace(`/build?world=${encodeURIComponent(world)}`)
-          if (!cancelled) setError(e instanceof Error ? e.message : 'This world could not be opened.')
+          if (cancelled) return
+          if (e instanceof NotALevelError) return window.location.replace(e.format === 'hackable' ? `/2d/hackable?world=${encodeURIComponent(world)}` : `/build?world=${encodeURIComponent(world)}`)
+          if (e instanceof UnreadableLevelError) {
+            const stored = e.world.document as { version?: unknown; level?: { v?: unknown } } | undefined
+            return fail({ kind: 'unreadable', file: unreadableLevelFile(e.world.title, e.world.document), newer: looksNewer(stored?.version, 1) || looksNewer(stored?.level?.v, 1) })
+          }
+          setError(e instanceof Error ? e.message : 'This world could not be opened.')
         }
         return
       }
       if (draft) {
-        const level = loadDraft(draft)
-        if (level) return done({ level, source: { kind: 'draft', id: draft } })
+        // The address names one level: open it, or say why not. Never a blank level in its place.
+        const read = readDraft(draft)
+        if (read.kind === 'ok') return done({ level: read.level, source: { kind: 'draft', id: draft } })
+        if (read.kind === 'missing') return fail({ kind: 'missing' })
+        return fail({ kind: 'unreadable', file: unreadableDraftFile(read.draft), newer: looksNewer((read.draft.level as { v?: unknown } | null)?.v, 1) })
       }
-      if (!fresh && !draft) {
+      if (!fresh) {
         // "Your latest 2D world": the account's newest, else this browser's newest, else a new one.
         if (browserClassroomClient.getSession()) {
           try {
@@ -136,9 +175,11 @@ function BuildPage({ world, draft, fresh, kit, template }: { world?: string; dra
             // Fall through to this browser's levels.
           }
         }
-        const recent = listDrafts()[0]
-        const level = recent ? loadDraft(recent.id) : null
-        if (recent && level) return done({ level, source: { kind: 'draft', id: recent.id } })
+        // The newest level this browser can read (one it cannot is kept, and opens by its own address).
+        for (const recent of listDrafts()) {
+          const read = readDraft(recent.id)
+          if (read.kind === 'ok') return done({ level: read.level, source: { kind: 'draft', id: recent.id } })
+        }
       }
       done({ level: newLevel(kit, template), source: { kind: 'new' } })
     })()
@@ -147,6 +188,15 @@ function BuildPage({ world, draft, fresh, kit, template }: { world?: string; dra
     }
   }, [world, draft, fresh, kit, template])
 
+  if (problem?.kind === 'unreadable') return <UnreadableNotice file={problem.file} newer={problem.newer} />
+  if (problem?.kind === 'missing')
+    return (
+      <Notice title="That project isn’t on this computer" body="It may have moved to your account, been removed, or been made in a different browser. Your projects are in My projects.">
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
+        </Button>
+      </Notice>
+    )
   if (error)
     return (
       <Notice title="This world could not be opened" body={error}>
@@ -302,13 +352,13 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
         if (w.format !== '2d') return window.location.replace(`/live/${worldId.replaceAll('-', '')}`)
         setWorld(w)
       },
-      (e: Error) => { if (!cancelled) setError(e instanceof Error && 'status' in e && e.status === 404 ? 'This world isn’t available to this account. Ask its owner to invite you, or check which account you’re using.' : e.message) },
+      (e: Error) => { if (!cancelled) setError(e instanceof Error && 'status' in e && e.status === 404 ? 'This project isn’t available to this account. Ask its owner to invite you, or check which account you’re using.' : e.message) },
     )
     return () => { cancelled = true }
   }, [worldId, signedIn, account.user?.id])
   if (!signedIn && account.status !== 'loading')
     return (
-      <Notice title="Sign in to open this world" body="Class worlds open for the students and teacher of the class.">
+      <Notice title="Sign in to open this project" body="Class projects open for the students and teacher of the class.">
         <Button variant="primary" icon={<LogIn size={18} />} onClick={() => goToJoin({ mode: 'signin', next: currentPath() })}>
           Sign in
         </Button>
@@ -316,9 +366,9 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
     )
   if (error)
     return (
-      <Notice title="This world could not be opened" body={error}>
-        <Button href="/worlds" variant="primary" icon={<House size={18} />}>
-          My worlds
+      <Notice title="This project could not be opened" body={error}>
+        <Button href="/projects" variant="primary" icon={<House size={18} />}>
+          My projects
         </Button>
       </Notice>
     )
@@ -332,8 +382,8 @@ function ClassRoomPage({ worldId }: { worldId: string }) {
       source={{ kind: 'room', roomKind: 'classroom', roomId: worldId.replaceAll('-', ''), world }}
       startMode="play"
       room={{ roomId: worldId.replaceAll('-', ''), name: account.displayName ?? 'Builder', url: () => classRoomSocketUrl(worldId) }}
-      onExit={() => window.location.assign('/worlds')}
-      exitLabel="Back to My worlds"
+      onExit={HOME}
+      exitLabel="Back to My projects"
     />
   )
 }

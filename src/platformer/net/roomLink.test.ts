@@ -75,6 +75,73 @@ describe('RoomLink recovery', () => {
     link.close()
   })
 
+  it('stops on a full room and says so instead of trying again forever', async () => {
+    const h = handlers()
+    const link = new RoomLink('room', 'Ada', h, { url: 'wss://room' })
+    link.connect()
+    const ws = FakeWebSocket.instances[0]
+    ws.open()
+    ws.message({ type: 'error', code: 'full', message: 'This room is full (16 players).' })
+    expect(link.status).toBe('offline')
+    expect(link.refusal).toBe('full')
+    expect(h.status).toHaveBeenLastCalledWith('offline', expect.stringMatching(/^This room is full/))
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(FakeWebSocket.instances).toHaveLength(1)
+    expect(link.status).toBe('offline')
+  })
+
+  it('tries a full room again only when asked', async () => {
+    const link = new RoomLink('room', 'Ada', handlers(), { url: 'wss://room' })
+    link.connect()
+    FakeWebSocket.instances[0].open()
+    FakeWebSocket.instances[0].message({ type: 'error', code: 'full', message: 'This room is full (16 players).' })
+    link.connect()
+    expect(FakeWebSocket.instances).toHaveLength(2)
+    expect(link.refusal).toBeNull()
+    expect(link.status).toBe('connecting')
+    link.close()
+  })
+
+  it('keeps trying after a rate limit, waiting longer each time', async () => {
+    const link = new RoomLink('room', 'Ada', handlers(), { url: 'wss://room' })
+    link.connect()
+    FakeWebSocket.instances[0].open()
+    FakeWebSocket.instances[0].message({ type: 'error', code: 'rate', message: 'Too many messages.' })
+    expect(link.status).toBe('reconnecting')
+    await vi.advanceTimersByTimeAsync(700)
+    expect(FakeWebSocket.instances).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(200)
+    expect(FakeWebSocket.instances).toHaveLength(2)
+    FakeWebSocket.instances[1].open()
+    FakeWebSocket.instances[1].message({ type: 'error', code: 'rate', message: 'Too many messages.' })
+    await vi.advanceTimersByTimeAsync(1_500)
+    expect(FakeWebSocket.instances).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(200)
+    expect(FakeWebSocket.instances).toHaveLength(3)
+    link.close()
+  })
+
+  it('puts a room that is no longer shared in kid words', () => {
+    const h = handlers()
+    const link = new RoomLink('room', 'Ada', h, { url: 'wss://room' })
+    link.connect()
+    FakeWebSocket.instances[0].open()
+    FakeWebSocket.instances[0].message({ type: 'error', code: 'access', message: 'World not found.' })
+    expect(link.status).toBe('offline')
+    expect(h.status).toHaveBeenLastCalledWith('offline', expect.not.stringContaining('World not found'))
+    expect(h.status).toHaveBeenLastCalledWith('offline', expect.stringContaining('project'))
+  })
+
+  it('puts a refused class-room ticket in kid words', async () => {
+    const h = handlers()
+    const ticket = vi.fn(() => Promise.reject(Object.assign(new Error('World not found.'), { status: 404 })))
+    const link = new RoomLink('room', 'Ada', h, { url: ticket })
+    link.connect()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(link.status).toBe('offline')
+    expect(h.status).toHaveBeenLastCalledWith('offline', expect.not.stringContaining('World not found'))
+  })
+
   it('cancels pending retry and callbacks on close', async () => {
     const link = new RoomLink('room', 'Ada', handlers(), { url: 'wss://room' })
     link.connect()

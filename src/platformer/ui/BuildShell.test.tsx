@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Editor } from '../editor/editor'
-import { PALETTE } from '../editor/palette'
+import { hintFor, PALETTE } from '../editor/palette'
+import { RACE_PALETTE } from '../editor/racePalette'
 import { BuildShell } from './BuildShell'
 
 // The game's pixel art is drawn on canvases, which jsdom does not have.
@@ -104,5 +105,28 @@ describe('2D build shell', () => {
     expect(editor.select).toHaveBeenCalledWith(PALETTE.find((p) => p.id === 'coin'))
     expect(screen.queryByRole('dialog', { name: 'Bricks' })).toBeNull()
     expect(screen.getByRole('group', { name: 'Placing' })).toHaveTextContent('Tap or drag to place')
+  })
+
+  it('words every brick’s hint for touch: tap, and the Flip or Turn button, never click or R', () => {
+    const items = [...PALETTE, ...RACE_PALETTE].filter((item) => item.hint)
+    expect(items.length).toBeGreaterThan(10)
+    for (const item of items) {
+      expect(hintFor(item, true), item.id).toBeTruthy()
+      expect(hintFor(item, true), item.id).not.toMatch(/\bclick|\bR\b|press/i)
+      expect(hintFor(item, false), item.id).toBe(item.hint)
+    }
+    expect(hintFor(RACE_PALETTE.find((p) => p.id === 'race-start')!, true)).toMatch(/^Tap .*Turn/)
+  })
+
+  it('keeps keyboard words on a computer', () => {
+    shell(fakeEditor({ item: PALETTE.find((p) => p.id === 'lift')! }))
+    expect(screen.getByRole('group', { name: 'Placing' })).toHaveTextContent('Press R')
+  })
+
+  it('points touch builders at the Flip button for a moving platform', () => {
+    const { container } = shell(fakeEditor({ item: PALETTE.find((p) => p.id === 'lift')! }), { touch: true })
+    const hint = container.querySelector('.p2d-strip-hint')!.textContent
+    expect(hint).toMatch(/Flip/)
+    expect(hint).not.toMatch(/Press R/)
   })
 })

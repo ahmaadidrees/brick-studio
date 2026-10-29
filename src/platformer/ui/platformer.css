@@ -370,6 +370,18 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Building: Play from start, top right (the pipe panel opens below it). */
+.p2d-build-tools {
+  position: absolute;
+  z-index: var(--z-hud);
+  top: var(--space-3);
+  right: max(var(--space-3), env(safe-area-inset-right));
+}
+
+.p2d-build-tools .ui-button {
+  box-shadow: var(--shadow-md);
+}
+
 .p2d-stats {
   position: absolute;
   z-index: var(--z-hud);
@@ -1847,6 +1859,32 @@
   background: rgba(196, 140, 10, 0.85);
   font-size: 12px;
   white-space: nowrap;
+}
+
+/* Rooms: back on the road, above the steering pad (one driver cannot restart everyone's race). */
+.p2d-race-rescue {
+  position: absolute;
+  left: calc(env(safe-area-inset-left) + 30px);
+  bottom: calc(env(safe-area-inset-bottom) + 136px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  font: 800 12px / 1 var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: rgba(38, 60, 81, 0.72);
+  border: 3px solid rgba(255, 255, 255, 0.65);
+  border-radius: 22px;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.p2d-race-rescue:active {
+  filter: brightness(1.15);
+  transform: translateY(2px);
 }
 
 @media (max-width: 480px) {

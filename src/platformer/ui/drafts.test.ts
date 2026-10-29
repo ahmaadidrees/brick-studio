@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createBlankLevel } from '@brick-studio/platformer-core/engine/level'
-import { deleteDraft, listDrafts, loadDraft, MAX_DRAFTS, saveDraft } from './drafts'
+import { deleteDraft, listDrafts, loadDraft, MAX_DRAFTS, readDraft, saveDraft } from './drafts'
+import { unreadableDraftFile, unreadableLevelFile } from './unreadableFile'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -39,5 +40,33 @@ describe('2D drafts in this browser', () => {
     })
     expect(saveDraft(null, level('Nowhere to go'))).toEqual({ ok: false, reason: 'storage' })
     expect(saveDraft('existing', level('Nowhere to go'))).toEqual({ ok: false, reason: 'storage' })
+  })
+
+  it('tells a missing world apart from one it cannot read', () => {
+    const saved = saveDraft(null, level('Readable'))
+    if (!saved.ok) throw new Error('not saved')
+    expect(readDraft(saved.id)).toMatchObject({ kind: 'ok', level: { title: 'Readable' } })
+    expect(readDraft('not-here')).toEqual({ kind: 'missing' })
+    const stored = JSON.parse(localStorage.getItem('brick-studio.2d.drafts.v1')!) as { level: unknown }[]
+    stored[0].level = { v: 9, title: 'From the future', kit: 'race' }
+    localStorage.setItem('brick-studio.2d.drafts.v1', JSON.stringify(stored))
+    const unreadable = readDraft(saved.id)
+    expect(unreadable).toMatchObject({ kind: 'unreadable', draft: { id: saved.id, title: 'Readable' } })
+    // Reading never changes what is stored.
+    expect(JSON.parse(localStorage.getItem('brick-studio.2d.drafts.v1')!)).toEqual(stored)
+  })
+
+  it('packs an unreadable world into a project file My projects can import once the app can read it', () => {
+    const raw = { v: 9, title: 'From the future', kit: 'race' }
+    const file = unreadableDraftFile({ id: 'd1', title: 'Fast track', updated: 0, level: raw as never })
+    expect(file.name).toBe('fast-track.brickgineers')
+    expect(JSON.parse(file.text)).toMatchObject({ format: 'brickgineers', version: 1, kind: 'race', title: 'Fast track', document: { format: 'brickgineers-2d', version: 1, level: raw } })
+  })
+
+  it('packs an unreadable account level as it is stored', () => {
+    const document = { format: 'brickgineers-2d', version: 2, level: { v: 2 } }
+    const file = unreadableLevelFile('', document)
+    expect(file.name).toBe('my-project.brickgineers')
+    expect(JSON.parse(file.text)).toMatchObject({ kind: 'platformer', title: 'My project', document })
   })
 })

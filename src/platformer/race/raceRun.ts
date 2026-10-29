@@ -219,6 +219,21 @@ export class RaceRun {
     this.reported.clear()
   }
 
+  /**
+   * Back on the road: your car returns to a road spot it drove over a moment ago (the same place falling in water
+   * brings it back to), stopped and facing the way it went. For a car stuck on a wall or turned round, in rooms where
+   * the race cannot be restarted. Laps are kept. False when there is nothing to do (lights not green yet, finished,
+   * already on its way back).
+   */
+  rescue(): boolean {
+    const r = this.you
+    const c = r.car
+    if (!this.racing || r.lap.done >= 0 || c.splash > 0 || c.air > 0) return false
+    const s = c.safeHist[0] ?? c.safe
+    Object.assign(c, { x: s.x, y: s.y, a: s.a, vx: 0, vy: 0, boost: 0, spin: 0, slip: 0, safeHist: [{ ...s }] })
+    return true
+  }
+
   /** Your race time so far, or your finish time, in ticks; -1 before the start or while practising. */
   get yourTime(): number {
     if (this.practice || this.tick < COUNTDOWN_TICKS) return -1

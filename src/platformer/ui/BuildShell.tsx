@@ -6,7 +6,7 @@ import type { Editor } from '../editor/editor'
 import { computeLoop, LOOP_REASON_TEXT } from '@brick-studio/platformer-core/engine/laps'
 import { RACE_MAX_LAPS } from '@brick-studio/platformer-core/engine/kits'
 import type { Dir4 } from '@brick-studio/platformer-core/engine/raceTiles'
-import { CATEGORIES, PALETTE, type PaletteItem } from '../editor/palette'
+import { CATEGORIES, hintFor, PALETTE, type PaletteItem } from '../editor/palette'
 import { RACE_CATEGORIES, RACE_PALETTE, turnsWithR } from '../editor/racePalette'
 import { RaceIcon } from '../race/RaceIcon'
 import { Art } from './art'
@@ -118,9 +118,9 @@ function PlacingStrip({ editor, theme, look, touch }: { editor: Editor; theme: T
   const flips = !race && !erasing && (item.category === 'enemies' || item.category === 'gizmos')
   const turns = race && !erasing && turnsWithR(item)
   const laps = race ? editor.raceSettings.laps : 0
-  const hint = editor.linkingPipe ? 'Choose another pipe, or an empty spot for its exit · Esc cancels' : editor.selectedPipe ? 'Pipe selected · choose an exit in Pipe settings' : erasing
+  const hint = editor.linkingPipe ? `Choose another pipe, or an empty spot for its exit · ${touch ? 'Cancel connection stops' : 'Esc cancels'}` : editor.selectedPipe ? 'Pipe selected · choose an exit in Pipe settings' : erasing
     ? `${touch ? 'Tap' : 'Click'} or drag over things to remove them`
-    : (item.hint ?? (touch ? 'Tap or drag to place' : 'Click or drag to place · right-click erases'))
+    : (hintFor(item, touch) ?? (touch ? 'Tap or drag to place' : 'Click or drag to place · right-click erases'))
   return (
     <div className="p2d-strip" role="group" aria-label="Placing">
       <div className="p2d-strip-chip" aria-live="polite">

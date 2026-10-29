@@ -112,7 +112,7 @@ function RoomSection({ session, onInvite, inviteLink, onInviteMore }: { session:
             </Button>
           )}
           {session.classroomRoom && session.bannedCount > 0 && onInviteMore && <p className="p2d-note">To bring back one classmate, open Invite more and choose Invite again for them.</p>}
-          {session.classroomRoom && <p className="p2d-note">This class world saves by itself; restore earlier versions from My worlds.</p>}
+          {session.classroomRoom && <p className="p2d-note">This class project saves by itself; restore earlier versions from My projects.</p>}
         </>
       ) : !session.roomCanBuild ? (
         <p className="p2d-note">

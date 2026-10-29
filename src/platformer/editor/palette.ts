@@ -29,13 +29,20 @@ export interface PaletteItem {
   icon: string
   place: Placement
   hint?: string
+  /** The hint for touch screens, when `hint` speaks of clicking or keys (tap, and the strip's Flip or Turn button). */
+  touchHint?: string
+}
+
+/** What the strip says about the brick in hand, worded for the screen being used. */
+export function hintFor(item: PaletteItem, touch: boolean): string | undefined {
+  return touch ? (item.touchHint ?? item.hint) : item.hint
 }
 
 export const PALETTE: PaletteItem[] = [
   { id: 'ground', label: 'Ground', category: 'terrain', icon: 'g:0:day', place: { kind: 'tile', tile: T.GROUND, content: 0 } },
   { id: 'hard', label: 'Hard block', category: 'terrain', icon: 'hard', place: { kind: 'tile', tile: T.HARD, content: 0 } },
   { id: 'semi', label: 'One-way platform', category: 'terrain', icon: 'semi:00', place: { kind: 'tile', tile: T.SEMI, content: 0 }, hint: 'Jump up through it, land on top' },
-  { id: 'pipe', label: 'Pipe', category: 'terrain', icon: 'pipeicon', place: { kind: 'pipe' }, hint: 'Click where the top should be; it reaches down to the ground' },
+  { id: 'pipe', label: 'Pipe', category: 'terrain', icon: 'pipeicon', place: { kind: 'pipe' }, hint: 'Click where the top should be; it reaches down to the ground', touchHint: 'Tap where the top should be; it reaches down to the ground' },
   { id: 'spikes', label: 'Spikes', category: 'terrain', icon: 'spikes', place: { kind: 'tile', tile: T.SPIKES, content: 0 } },
   { id: 'lava', label: 'Lava', category: 'terrain', icon: 'lava:0:1', place: { kind: 'tile', tile: T.LAVA, content: 0 } },
 
@@ -53,7 +60,7 @@ export const PALETTE: PaletteItem[] = [
   { id: 'spiky', label: 'Spiky', category: 'enemies', icon: 'spiky:1', place: { kind: 'object', obj: 'spiky', alt: 0 }, hint: 'Cannot be stomped' },
   { id: 'flyer', label: 'Flyer', category: 'enemies', icon: 'flyer:1', place: { kind: 'object', obj: 'flyer', alt: 0 }, hint: 'Bobs up and down; stomp it to ground it' },
 
-  { id: 'lift', label: 'Moving platform', category: 'gizmos', icon: 'lift', place: { kind: 'object', obj: 'platform', alt: 0 }, hint: 'Press R before placing to flip direction' },
+  { id: 'lift', label: 'Moving platform', category: 'gizmos', icon: 'lift', place: { kind: 'object', obj: 'platform', alt: 0 }, hint: 'Press R before placing to flip direction', touchHint: 'Tap Flip before placing to change its direction' },
   { id: 'liftv', label: 'Up-down platform', category: 'gizmos', icon: 'lift', place: { kind: 'object', obj: 'platform', alt: 1 } },
 
   { id: 'start', label: 'Start', category: 'course', icon: 'start', place: { kind: 'object', obj: 'start', alt: 0 } },
