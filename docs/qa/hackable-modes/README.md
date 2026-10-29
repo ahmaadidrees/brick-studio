@@ -1,6 +1,10 @@
 # Hackable Racing and Hackable 3D: scoping proposal — October 29, 2026
 
-**Status:** a proposal for the owner to review. Nothing is built.
+**Status:** the owner's decisions came back on October 29.
+- Slice K landed (`K.md`).
+- R1's engine parts landed (`R1-engine.md`): the Car, laps, the Racing blocks, the beginner track and racers, and a
+  performance check.
+- R1's screens wait for the class notes.
 - **Branch:** `claude/hackable-modes-proposal`, from main `e4d4930`, which matches production. It is not pushed.
 - **Mocks:** linked at the end.
 - **The rule this follows:** no code, pushes, deploys or migrations until the owner agrees on scope.
@@ -224,6 +228,12 @@ The order is **K → R1 (playtest) → D1 (playtest) → R2 / D2**, and later R3
   - My projects, account saving and Make my own copy, all through the existing Hackable paths.
 - **Touch:** the race kit's steering pad, Gas and Brake.
 - **Not in R1:** items, coins, Walkers, jump ramps, powers on the shelf, racing classmates.
+- **Under the hood, done October 29** (`R1-engine.md`):
+  - The Car's feel matches car.ts on all 11 feel tests (`RACE_FEEL.md`).
+  - Laps match `laps.ts` cell for cell, and a full race runs headless.
+  - **Performance:** the beginner track has 1,080 targets. With the CPU slowed 6× in headless Chrome, a tick takes
+    p95 1.8 ms and a draw p95 3.8 ms. The worst frame's JS is 15 ms, and no frame is late at 60 fps. At 4×, those
+    numbers are 1.3, 2.4 and 8.4 ms. This was not measured on real Chromebook hardware.
 - **Playtest questions:**
   - Can a student paint a track that laps?
   - Can they make ice less slippery, or slow the computer racers?
