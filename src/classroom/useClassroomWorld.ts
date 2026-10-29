@@ -98,9 +98,16 @@ export function useClassroomWorld(enabled: boolean) {
       }
     } catch { /* Invalid resume metadata does not affect guest builds. */ }
     const off = client.subscribe(() => { const auth = client.getSession(); if (identity.current && (auth?.user.id !== identity.current || auth.user.resetRequired)) leave() })
+    // The header's Sign out waits for this: save the waiting edits, or ask before signing out without them.
+    const unguard = client.guardSignOut(async () => {
+      const current = controller.current
+      if (!current?.hasPending() || await current.flush()) return true
+      if (!window.confirm('Your newest changes aren’t saved to your account yet. Download a copy and sign out?')) return false
+      return downloadBrickStudioDocument(current.getDocument()).ok
+    })
     const unload = (event: BeforeUnloadEvent) => { if (controller.current?.hasPending()) { void controller.current.flush(); event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('beforeunload', unload)
-    return () => { cancelled = true; operation.current++; off(); window.removeEventListener('beforeunload', unload); stop(); release.current?.(); release.current = null }
+    return () => { cancelled = true; operation.current++; off(); unguard(); window.removeEventListener('beforeunload', unload); stop(); release.current?.(); release.current = null }
   }, [enabled, attach, leave, stop])
   return { world, status, error, recovery, retrying, attach, leave, flush: () => controller.current?.flush() ?? Promise.resolve(true), retry: () => controller.current?.retry(),
   // Edits made while a world was being created online are not yet in it; queue the editor's current document for autosave.

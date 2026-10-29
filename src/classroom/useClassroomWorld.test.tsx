@@ -8,8 +8,10 @@ import { useBrickStore } from '../brick/store'
 import { useBrickStudioDocuments } from '../brick/useBrickStudioDocuments'
 import { browserClassroomClient as client } from './client'
 import { useClassroomWorld } from './useClassroomWorld'
+import { useClassroomSession } from '../shell/useClassroomSession'
 import { recoveryKey } from './cloudAutosave'
 import type { ClassroomAuthResult, ClassroomWorld } from './contracts'
+import { ClassroomError } from './client'
 const auth: ClassroomAuthResult = { user: { id: 'a', username: 'builder', rosterName: 'Alex', role: 'student', resetRequired: false }, classes: [], session: { accessToken: 'access', refreshToken: 'refresh', expiresIn: 3600 } }
 const guest = createBrickStudioDocument([], { environmentId: 'toy-room' })
 const cloud = createBrickStudioDocument([], { environmentId: 'sky-island' })
@@ -172,4 +174,46 @@ it('does not resume a world whose saved build cannot be opened', async () => {
   await act(async () => { await vi.advanceTimersByTimeAsync(2000) })
   expect(request).toHaveBeenCalledTimes(1)
   expect(request.mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
+})
+
+// Item 7: the header's Sign out right after an edit. The edit was waiting for its 700 ms autosave.
+function signOutServer(save: () => Promise<unknown>) {
+  const calls: { path: string; method?: string }[] = []
+  vi.spyOn(client, 'request').mockImplementation(async (path: string, method?: string) => {
+    calls.push({ path, method })
+    if (path === '/me') return { user: auth.user, classes: [] } as never
+    if (path === '/auth/logout') return {} as never
+    if (method === 'PUT') return await save() as never
+    throw new Error(`unexpected ${method} ${path}`)
+  })
+  return calls
+}
+it('header sign-out saves the waiting edit to the account before the session ends', async () => {
+  const calls = signOutServer(async () => ({ world: { ...world, revision: 2 } }))
+  const { result } = renderHook(() => ({ cloud: useClassroomWorld(true), session: useClassroomSession() }))
+  await act(async () => { await result.current.cloud.attach(world, cloud) })
+  act(() => { useBrickStore.getState().setDocumentMetadata({ environmentId: 'brick-valley' }) })
+  await act(async () => { await result.current.session.signOut() })
+  const put = calls.findIndex(call => call.method === 'PUT'), logout = calls.findIndex(call => call.path === '/auth/logout')
+  expect(put).toBeGreaterThanOrEqual(0)
+  expect(put).toBeLessThan(logout)
+  expect(vi.mocked(client.request).mock.calls[put][2]).toMatchObject({ document: { environmentId: 'brick-valley' } })
+  expect(client.getSession()).toBeNull()
+  expect(sessionStorage.getItem(recoveryKey('a', world.id))).toBeNull()
+})
+it('header sign-out with a save that fails asks first: no keeps the session, yes downloads a copy and signs out', async () => {
+  signOutServer(async () => { throw new ClassroomError('Someone saved a newer version.', 409, 'revision_conflict') })
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  const download = vi.spyOn(persistence, 'downloadBrickStudioDocument').mockReturnValue({ ok: true })
+  const { result } = renderHook(() => ({ cloud: useClassroomWorld(true), session: useClassroomSession() }))
+  await act(async () => { await result.current.cloud.attach(world, cloud) })
+  act(() => { useBrickStore.getState().setDocumentMetadata({ environmentId: 'brick-valley' }) })
+  await act(async () => { await result.current.session.signOut() })
+  expect(confirm.mock.calls[0][0]).toMatch(/aren’t saved/)
+  expect(client.getSession()).not.toBeNull(); expect(download).not.toHaveBeenCalled()
+  expect(result.current.cloud.world?.id).toBe(world.id)
+  confirm.mockReturnValue(true)
+  await act(async () => { await result.current.session.signOut() })
+  expect(download).toHaveBeenCalledWith(expect.objectContaining({ environmentId: 'brick-valley' }))
+  expect(client.getSession()).toBeNull()
 })
